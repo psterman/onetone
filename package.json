@@ -1,0 +1,11 @@
+{
+  "name": "voice-pilot",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Voice Pilot — 硬件启动键到语音输入法快捷键的映射工具（Tauri + Rust）",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  }
+}

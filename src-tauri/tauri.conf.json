@@ -1,0 +1,36 @@
+{
+  "productName": "Voice Pilot",
+  "version": "1.0.0",
+  "identifier": "com.voicepilot.app",
+  "build": {
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../src",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Voice Pilot",
+        "width": 760,
+        "height": 820,
+        "resizable": true,
+        "minWidth": 640,
+        "minHeight": 680,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.ico"
+    ]
+  }
+}

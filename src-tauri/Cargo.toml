@@ -1,0 +1,23 @@
+[package]
+name = "voice-pilot"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+enigo = "0.2"
+notify = { version = "6", features = ["macos_kqueue"] }
+directories = "5"
+parking_lot = "0.12"
+raw-window-handle = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+image = "0.25"

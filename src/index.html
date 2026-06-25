@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Pilot</title>
+  <style>
+    :root{
+      --primary:#2563eb;
+      --primary-muted:#3b6ea8;
+      --primary-soft:#eaf2ff;
+      --key-soft:#3b6ea8;
+      --on-primary:#ffffff;
+      --surface:rgba(255,255,255,.88);
+      --surface-high:rgba(255,255,255,.96);
+      --surface-soft:#eef5ff;
+      --on-surface:#111827;
+      --on-surface-muted:#64748b;
+      --btn-label:#1e3a5f;
+      --btn-label-muted:#6b7c93;
+      --outline:rgba(120,140,170,.24);
+      --outline-variant:rgba(120,140,170,.16);
+      --success:#16a34a;
+      --warning:#f97316;
+      --error:#dc2626;
+      --radius-card:28px;
+      --radius-inner:20px;
+      --radius-row:16px;
+      --radius-pill:999px;
+      --shadow-card:0 18px 48px rgba(30,41,59,.10);
+      --shadow-button:0 10px 22px rgba(26,115,232,.22);
+      --dur-fast:160ms;
+      --dur-med:260ms;
+      --ease-standard:cubic-bezier(.2,.8,.2,1);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    html[data-theme="dark"]{
+      --primary:#8ab4f8;
+      --primary-muted:#7eb3ff;
+      --primary-soft:rgba(110,182,255,.12);
+      --key-soft:#7eb3ff;
+      --on-primary:#0b1220;
+      --surface:rgba(36,42,52,.92);
+      --surface-high:rgba(44,50,62,.96);
+      --surface-soft:rgba(80,140,255,.10);
+      --on-surface:#e8eaed;
+      --on-surface-muted:#9aa3b2;
+      --btn-label:#dce6f5;
+      --btn-label-muted:#8b97a8;
+      --outline:rgba(148,163,184,.22);
+      --outline-variant:rgba(148,163,184,.12);
+      --shadow-card:0 12px 36px rgba(0,0,0,.28);
+      --shadow-button:0 8px 18px rgba(26,115,232,.18);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;overflow:hidden}
+    body{background:#eef3f8;color:var(--on-surface)}
+    .app{
+      height:100vh;display:flex;flex-direction:column;
+      background:
+        radial-gradient(circle at 20% 0%,rgba(80,140,255,.12),transparent 32%),
+        linear-gradient(180deg,#f4f7fb 0%,#edf2f7 100%);
+    }
+    html[data-theme="dark"] .app{
+      background:
+        radial-gradient(circle at 20% 0%,rgba(80,140,255,.16),transparent 32%),
+        linear-gradient(180deg,#121820 0%,#171d27 100%);
+    }
+    html[data-theme="dark"] body{background:#121820}
+    .app-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:18px 22px 10px;flex-shrink:0;
+    }
+    .app-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.03em}
+    #btnSettings{
+      height:36px;padding:0 16px;border-radius:var(--radius-pill);
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    }
+    #btnSettings:hover{background:var(--primary-soft);transform:translateY(-1px)}
+    #btnSettings:active{transform:scale(0.97)}
+    .main-scroll{
+      flex:1;overflow-y:auto;padding:12px 22px 28px;
+      scrollbar-width:thin;scrollbar-color:rgba(80,96,120,.32) transparent;
+    }
+    .main-scroll::-webkit-scrollbar{width:8px}
+    .main-scroll::-webkit-scrollbar-track{background:transparent}
+    .main-scroll::-webkit-scrollbar-thumb{background:rgba(80,96,120,.28);border-radius:999px}
+    .main-scroll::-webkit-scrollbar-thumb:hover{background:rgba(80,96,120,.42)}
+    .hero-grid{
+      display:grid;grid-template-columns:1fr auto 1fr;gap:12px 10px;margin-bottom:8px;align-items:stretch;
+    }
+    .hero-flow-arrow{
+      display:flex;align-items:center;justify-content:center;align-self:center;
+      color:var(--on-surface-muted);opacity:.22;font-size:20px;user-select:none;padding-top:28px;
+    }
+    .editor-zone{margin-bottom:20px}
+    .bubble-card{
+      background:var(--surface);border:1px solid var(--outline-variant);
+      border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:20px 18px 16px;
+    }
+    .bubble-card.is-recording{border-color:rgba(26,115,232,.35);animation:card-pulse 1.6s ease-in-out infinite}
+    @keyframes card-pulse{0%,100%{box-shadow:var(--shadow-card)}50%{box-shadow:0 0 0 3px rgba(26,115,232,.12),var(--shadow-card)}}
+    .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}
+    .title{font-size:17px;font-weight:700;letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:6px}
+    .title-icon{width:16px;height:16px;flex-shrink:0;color:var(--primary-muted)}
+    .step-mark{font-size:15px;font-weight:700;color:var(--primary-muted);line-height:1}
+    .badge{
+      font-size:12px;font-weight:600;color:var(--key-soft);background:var(--primary-soft);
+      padding:4px 10px;border-radius:var(--radius-pill);white-space:nowrap;
+    }
+    .display{
+      min-height:88px;border-radius:var(--radius-inner);background:var(--surface-soft);
+      border:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;
+      text-align:center;padding:14px;
+    }
+    .display:not(.empty){border-color:rgba(37,99,184,.18)}
+    .display.empty .display-value{font-size:15px;font-weight:500;color:var(--on-surface-muted);opacity:.65}
+    .display:not(.empty) .display-value{font-size:34px;font-weight:800;color:var(--key-soft);letter-spacing:-.03em}
+    .actions{margin-top:14px}
+    .btn,.list-add,.map-test,.btn-test-send,.map-menu-btn,#btnSettings{
+      transition:transform var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard),
+        border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard),color var(--dur-fast) var(--ease-standard);
+    }
+    .btn{
+      width:100%;height:52px;border-radius:var(--radius-pill);border:1px solid var(--outline);
+      background:var(--surface-high);color:var(--btn-label);font:inherit;font-size:15px;font-weight:600;cursor:pointer;
+    }
+    .btn:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22)}
+    .btn:active:not(:disabled){transform:scale(0.98)}
+    .btn.primary{
+      border:none;background:linear-gradient(180deg,#3b82f6 0%,var(--primary) 100%);
+      color:var(--on-primary);font-weight:700;box-shadow:var(--shadow-button);
+    }
+    .btn.primary:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px)}
+    .btn.primary:active:not(:disabled){transform:scale(0.98) translateY(0)}
+    .btn.primary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite}
+    .btn.primary.record-btn,
+    .btn.primary.record-btn:hover:not(:disabled),
+    .btn.primary.record-btn.is-recording{color:var(--on-primary)}
+    .btn.secondary{background:var(--surface-high);color:var(--btn-label);border-color:var(--outline)}
+    .btn.record-btn{color:var(--primary-muted)}
+    .btn.record-btn:hover:not(:disabled){color:var(--primary-muted);background:var(--primary-soft)}
+    .btn.secondary:hover:not(:disabled){background:var(--primary-soft);color:var(--btn-label)}
+    .btn.secondary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite;border-color:rgba(26,115,232,.3)}
+    @keyframes btn-recording-pulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(26,115,232,.0)}
+      50%{box-shadow:0 0 0 4px rgba(26,115,232,.18)}
+    }
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .help{margin-top:8px;font-size:11px;line-height:1.4;color:var(--on-surface-muted);opacity:.52;text-align:center}
+    .record-cancel-bar{
+      display:none;align-items:center;justify-content:center;gap:12px;margin-top:12px;padding-top:10px;
+      border-top:1px dashed var(--outline-variant);
+    }
+    .record-cancel-bar.show{display:flex}
+    .btn-cancel-record{
+      height:34px;padding:0 14px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:var(--surface-high);color:var(--on-surface-muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    }
+    .btn-cancel-record:hover{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .mapping-section{margin-top:4px;padding:20px 20px 18px}
+    .list-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:16px}
+    .list-head h2{margin:0;font-size:18px;font-weight:800;flex:1}
+    .list-add{
+      height:40px;padding:0 22px;border-radius:var(--radius-pill);border:1px solid var(--outline);
+      background:var(--surface-high);color:var(--btn-label);font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+      flex-shrink:0;
+    }
+    .list-add:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .list-add:active:not(:disabled){transform:scale(0.97)}
+    .list-add:disabled{opacity:.55;cursor:not-allowed;color:var(--btn-label-muted);border-style:dashed}
+    .draft-hint{
+      display:none;margin-bottom:18px;padding:18px 20px;border-radius:var(--radius-inner);
+      background:var(--surface-soft);border:1px dashed var(--outline-variant);
+      color:var(--on-surface-muted);font-size:13px;line-height:1.55;text-align:center;
+    }
+    .draft-hint.show{display:block}
+    .mapping-empty{
+      text-align:center;padding:28px 16px 20px;color:var(--on-surface-muted);
+      border:1px dashed var(--outline-variant);border-radius:var(--radius-inner);margin-bottom:12px;
+    }
+    .mapping-empty strong{display:block;font-size:15px;color:var(--on-surface);margin-bottom:6px}
+    #mappingList{overflow:visible}
+    .map-row{
+      display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;
+      padding:12px 14px 12px 12px;border:1px solid var(--outline-variant);border-radius:var(--radius-row);
+      margin-bottom:10px;cursor:pointer;background:var(--surface-high);position:relative;z-index:1;
+    }
+    .map-row.menu-open{z-index:40}
+    .map-row.is-on{box-shadow:inset 3px 0 0 var(--success)}
+    .map-row.selected{background:var(--primary-soft);border-color:rgba(26,115,232,.14)}
+    .map-row:not(.is-on){opacity:.68}
+    .map-main{min-width:0}
+    .map-pair{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--on-surface)}
+    .map-row:not(.is-on) .map-pair{color:var(--on-surface-muted)}
+    .map-row-draft{border-style:dashed;opacity:.82}
+    .map-row-draft .toggle{opacity:.35;pointer-events:none}
+    .map-pair-draft{color:var(--on-surface-muted)}
+    .draft-ph{opacity:.72}
+    .map-conflict{
+      margin-top:5px;font-size:11px;line-height:1.35;color:#9a3412;font-weight:500;
+      padding:3px 8px;border-radius:var(--radius-pill);background:#fff7ed;border:1px solid #fed7aa;
+    }
+    .toggle{width:44px;height:26px;border-radius:var(--radius-pill);background:#cfd5dd;position:relative;flex-shrink:0;cursor:pointer}
+    .toggle.on{background:var(--success)}
+    .toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left var(--dur-fast) var(--ease-standard);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .toggle.on::after{left:20px}
+    .map-test{
+      height:34px;padding:0 14px;border-radius:var(--radius-pill);border:1px solid var(--outline);
+      background:var(--surface);color:var(--btn-label);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+    }
+    .map-test:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.2);transform:translateY(-1px)}
+    .map-test:active:not(:disabled){transform:scale(0.96)}
+    .map-test:disabled{opacity:.5;cursor:not-allowed;color:var(--btn-label-muted)}
+    .map-test.sending{
+      pointer-events:none;border-color:rgba(26,115,232,.35);color:var(--key-soft);
+      animation:test-pulse .75s ease-in-out infinite;
+    }
+    @keyframes test-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .map-menu-btn{
+      width:34px;height:34px;border-radius:10px;border:1px solid var(--outline-variant);
+      background:var(--surface);color:var(--btn-label);cursor:pointer;font-size:16px;line-height:1;
+    }
+    .map-menu-btn:hover{background:var(--primary-soft);transform:translateY(-1px)}
+    .map-menu-btn:active{transform:scale(0.94)}
+    .map-row-wrap{margin-bottom:10px}
+    .map-row-wrap .map-row{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;cursor:pointer}
+    .map-row-wrap .map-row .map-main{cursor:pointer;min-height:26px;display:flex;flex-direction:column;justify-content:center}
+    .map-row-wrap .map-row .toggle,.map-row-wrap .map-row .map-test,.map-row-wrap .map-row .map-menu-btn{cursor:pointer}
+    .map-adv{
+      border:1px solid var(--outline-variant);border-top:none;border-radius:0 0 var(--radius-row) var(--radius-row);
+      background:var(--surface);padding:0 14px 12px;margin-top:-1px;
+    }
+    .map-adv>summary{
+      list-style:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--btn-label-muted);
+      padding:10px 14px 8px;margin:0 -14px;user-select:none;
+    }
+    .map-adv>summary::-webkit-details-marker{display:none}
+    .map-adv>summary::before{content:"▸ ";display:inline-block;transition:transform var(--dur-fast) var(--ease-standard)}
+    .map-adv[open]>summary::before{transform:rotate(90deg)}
+    .map-adv[open]>summary{color:var(--btn-label)}
+    .map-trigger-meta{
+      display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:0 0 8px;padding:8px 10px;
+      border-radius:10px;border:1px solid var(--outline-variant);background:var(--surface-soft);
+    }
+    .map-trigger-meta.is-selected{border-color:rgba(26,115,232,.28);background:var(--primary-soft)}
+    .map-trigger-meta-keys{font-size:13px;font-weight:700;color:var(--key-soft);line-height:1.4}
+    .map-trigger-meta-time{font-size:11px;color:var(--on-surface-muted);line-height:1.4}
+    .map-native-keys-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
+    .map-trigger-mode{padding:10px 0;border-top:1px solid var(--outline-variant)}
+    .map-mode-pills{display:flex;flex-wrap:wrap;gap:6px}
+    .map-mode-pill{
+      height:30px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:var(--surface-high);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--btn-label);
+    }
+    .map-mode-pill:hover{background:var(--primary-soft)}
+    .map-mode-pill.is-active{border-color:rgba(26,115,232,.35);background:var(--primary-soft);color:var(--key-soft)}
+    .map-timing-block{padding:10px 0;border-top:1px solid var(--outline-variant)}
+    .map-timing-block:first-of-type{border-top:none;padding-top:4px}
+    .map-timing-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+    .map-timing-head span{font-size:13px;font-weight:700;color:var(--on-surface)}
+    .map-timing-desc{font-size:11px;color:var(--on-surface-muted);margin:0 0 8px;line-height:1.45}
+    .map-timing-desc b{color:var(--key-soft);font-weight:700}
+    .map-timing-range{width:100%;accent-color:var(--primary)}
+    .map-native-block,.map-switch-block{padding:10px 0;border-top:1px solid var(--outline-variant)}
+    .map-switch-block .map-switch-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .map-switch-block .map-switch-head span{font-size:13px;font-weight:700;color:var(--on-surface)}
+    .map-switch-desc{font-size:11px;color:var(--on-surface-muted);margin:0 0 8px;line-height:1.45}
+    .map-switch-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+    .map-switch-chip{
+      display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:var(--radius-pill);
+      border:1px solid var(--outline-variant);background:var(--surface-high);font-size:12px;font-weight:600;color:var(--key-soft);
+    }
+    .map-switch-chip button{
+      border:none;background:none;cursor:pointer;color:var(--on-surface-muted);font-size:14px;line-height:1;padding:0 2px;
+    }
+    .map-switch-chip button:hover{color:var(--error)}
+    .map-switch-add{
+      height:30px;padding:0 12px;border-radius:var(--radius-pill);border:1px dashed var(--outline);
+      background:var(--surface);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--btn-label);
+    }
+    .map-switch-add:hover{background:var(--primary-soft)}
+    .map-switch-add.recording{border-color:var(--primary);animation:test-pulse .75s ease-in-out infinite}
+    .list-head-hint{font-size:12px;color:var(--on-surface-muted);font-weight:500;max-width:220px;line-height:1.4;text-align:right}
+    .trigger-trace{
+      display:none;margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--on-surface-muted);text-align:center;
+    }
+    .trigger-trace.show{display:block}
+    .list-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .list-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .scheme-switch-ctrl{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--on-surface-muted);
+    }
+    .scheme-switch-ctrl label{font-weight:700;color:var(--btn-label)}
+    .scheme-switch-key{
+      height:32px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:var(--surface-high);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--key-soft);max-width:180px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .scheme-switch-key:hover{background:var(--primary-soft)}
+    .scheme-switch-key.recording{border-color:var(--primary);animation:test-pulse .75s ease-in-out infinite}
+    .scheme-switch-clear{
+      height:32px;padding:0 10px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:transparent;font:inherit;font-size:11px;font-weight:600;cursor:pointer;color:var(--btn-label-muted);
+    }
+    .scheme-switch-clear:hover{color:var(--error);border-color:rgba(220,38,38,.25)}
+    .scheme-switch-cancel{
+      height:32px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid rgba(220,38,38,.22);
+      background:var(--surface);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--error);
+    }
+    .scheme-switch-cancel:hover{background:#fef2f2;border-color:rgba(220,38,38,.35)}
+    .status-section{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      margin-top:16px;padding-top:14px;border-top:1px solid var(--outline-variant);
+    }
+    .status-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1}
+    .conflict-pill,.conflict-banner{
+      display:none;font-size:12px;line-height:1.35;color:#9a3412;font-weight:500;
+      padding:4px 10px;border-radius:var(--radius-pill);background:#fff7ed;border:1px solid #fed7aa;
+    }
+    .conflict-pill.show,.conflict-banner.show{display:inline-flex;align-items:center}
+    .btn-test-send{
+      height:40px;padding:0 20px;border-radius:var(--radius-pill);
+      border:1px solid var(--outline);background:var(--surface-high);color:var(--btn-label);
+      font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:none;
+    }
+    .btn-test-send:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .btn-test-send:active:not(:disabled){transform:scale(0.97)}
+    .btn-test-send:disabled{opacity:.55;cursor:not-allowed;color:var(--btn-label-muted);border-style:dashed;box-shadow:none}
+    .btn-test-send.sending{
+      pointer-events:none;border-color:rgba(26,115,232,.35);color:var(--key-soft);
+      animation:test-pulse .75s ease-in-out infinite;
+    }
+    .settings-overlay{
+      position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:400;
+      opacity:0;pointer-events:none;transition:opacity var(--dur-med) var(--ease-standard);
+    }
+    .settings-overlay.open{opacity:1;pointer-events:auto}
+    .settings-drawer{
+      position:fixed;top:0;right:0;width:min(400px,92vw);height:100%;z-index:401;
+      background:var(--surface-high);border-left:1px solid var(--outline-variant);
+      transform:translateX(100%);transition:transform var(--dur-med) var(--ease-standard);
+      display:flex;flex-direction:column;overflow:hidden;
+    }
+    .settings-drawer.open{transform:translateX(0)}
+    .drawer-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--outline-variant)}
+    .drawer-head h2{margin:0;font-size:16px;font-weight:800}
+    .drawer-close{width:32px;height:32px;border-radius:10px;border:1px solid var(--outline-variant);background:var(--surface-high);cursor:pointer;font-size:18px;line-height:1;color:var(--on-surface)}
+    .drawer-body{flex:1;overflow:auto;padding:16px 18px 24px;display:grid;gap:16px}
+    .appearance-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .appearance-pill{
+      height:48px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:var(--surface-high);font:inherit;font-size:15px;font-weight:700;cursor:pointer;color:var(--on-surface);
+    }
+    .appearance-pill:hover{background:var(--primary-soft)}
+    .control-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .control-row.three{grid-template-columns:1fr 1fr 1fr}
+    .control-btn{
+      min-height:38px;padding:0 10px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
+      background:var(--surface-high);font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--btn-label);
+    }
+    .control-btn:hover{background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .control-btn:active{transform:scale(0.97)}
+    .control-btn.warning{color:#9a3412;background:#fff7ed;border-color:#fed7aa}
+    html[data-theme="dark"] .control-btn.warning{color:#fed7aa;background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.32)}
+    .drawer-section{border-top:1px solid var(--outline-variant);padding-top:14px}
+    .mini-title{margin:0 0 8px;font-size:14px;font-weight:700}
+    .mini{margin:0;color:var(--on-surface-muted);font-size:13px;line-height:1.65}
+    .chip{display:inline-flex;padding:4px 10px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:600}
+    .log{margin:0;padding:10px 0 0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,monospace;min-height:60px;color:var(--on-surface-muted)}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:8px 0;border-top:1px solid var(--outline-variant)}
+    .clear-panel{margin-top:10px;display:flex;justify-content:flex-end}
+    .clear-btn{border:none;background:transparent;color:var(--error);font-weight:700;cursor:pointer;padding:0;font:inherit;font-size:13px}
+    .trash-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--outline-variant);font-size:13px}
+    .trash-row:last-child{border-bottom:none}
+    .trash-empty{color:var(--on-surface-muted);font-size:13px;margin:0}
+    .trash-restore{height:30px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);background:var(--surface-high);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--on-surface)}
+    .map-menu-float{
+      position:fixed;min-width:152px;background:var(--surface-high);border:1px solid var(--outline-variant);
+      border-radius:14px;box-shadow:var(--shadow-card);padding:6px;z-index:300;display:none;
+    }
+    .map-menu-float.open{display:block}
+    .map-menu-float button{
+      display:block;width:100%;text-align:left;border:none;background:transparent;color:var(--on-surface);
+      padding:9px 11px;font:inherit;font-size:13px;border-radius:10px;cursor:pointer;
+    }
+    .map-menu-float button:hover{background:var(--primary-soft)}
+    .map-menu-float button.danger{color:var(--error)}
+    .map-menu-float button:disabled{opacity:.45;cursor:not-allowed}
+    #toast{
+      position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);
+      background:var(--on-surface);color:var(--surface-high);padding:12px 18px;border-radius:20px;
+      font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-standard),transform var(--dur-fast) var(--ease-standard);
+      z-index:500;max-width:min(90vw,420px);text-align:center;
+    }
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media (max-width:720px){
+      .hero-grid{grid-template-columns:1fr}
+      .hero-flow-arrow{display:none}
+      .map-row{grid-template-columns:auto 1fr auto;grid-template-rows:auto auto}
+      .map-test{grid-column:3;grid-row:1}
+      .map-menu-btn{grid-column:3;grid-row:2;justify-self:end}
+    }
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation:none!important;transition:none!important}
+      .btn:active:not(:disabled),.list-add:active:not(:disabled),.map-test:active:not(:disabled),.btn-test-send:active:not(:disabled){transform:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1 class="app-title" id="appTitle">语音启动设置</h1>
+      <button type="button" id="btnSettings">设置</button>
+    </header>
+
+    <main class="main-scroll">
+      <div class="editor-zone">
+        <div class="hero-grid" id="editorWrap">
+        <section class="bubble-card trigger-card" id="leftCard">
+          <div class="card-head">
+            <h2 class="title"><span class="step-mark" aria-hidden="true">①</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span id="triggerTitle">录启动按键</span></h2>
+            <div class="badge" id="leftBadge">未设置</div>
+          </div>
+          <div class="display empty" id="triggerDisplay">
+            <span class="display-value" id="triggerView">未设置</span>
+          </div>
+          <p class="trigger-trace" id="triggerTrace" hidden></p>
+          <div class="actions">
+            <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">设置启动按键</button>
+          </div>
+          <p class="help" id="triggerHelp">录制我的专属VibeCoding按键</p>
+          <span class="sr-only" id="triggerState" aria-live="polite"></span>
+        </section>
+
+        <div class="hero-flow-arrow" aria-hidden="true">→</div>
+
+        <section class="bubble-card target-card" id="rightCard">
+          <div class="card-head">
+            <h2 class="title"><span class="step-mark" aria-hidden="true">②</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg><span id="targetTitle">录输入法按键</span></h2>
+            <div class="badge" id="rightBadge">未设置</div>
+          </div>
+          <div class="display empty" id="targetDisplay">
+            <span class="display-value" id="targetView">未设置</span>
+          </div>
+          <div class="actions">
+            <button class="btn secondary record-btn" id="btnRecordTarget" type="button">录制语音输入按键</button>
+          </div>
+          <p class="help" id="targetHelp">录制语音输入法的激活快捷键，注意先退出或切换输入法，避免冲突或者无法收录。</p>
+          <span class="sr-only" id="targetState" aria-live="polite"></span>
+        </section>
+        </div>
+        <div class="record-cancel-bar" id="recordCancelBar">
+          <button type="button" class="btn-cancel-record" id="btnCancelRecord">取消录制</button>
+        </div>
+      </div>
+
+      <section class="bubble-card mapping-section">
+        <div class="list-head-row">
+          <h2 id="mappingListTitle">我的方案</h2>
+          <div class="list-head-actions">
+            <span class="list-head-hint" id="mappingListHint">展开方案可配置切换快捷键</span>
+            <button class="list-add" id="btnAddMapping" type="button">添加新方案</button>
+          </div>
+        </div>
+        <div class="draft-hint" id="mappingDraftHint"></div>
+        <div class="mapping-empty" id="mappingEmpty" hidden>
+          <strong id="mappingEmptyTitle">还没有方案</strong>
+          <span id="mappingEmptyHint">请先在上方完成启动按键与语音快捷键设置。</span>
+        </div>
+        <div id="mappingList"></div>
+        <div class="status-section">
+          <div class="status-left">
+            <div class="conflict-pill" id="conflictBanner" role="status"></div>
+          </div>
+          <button type="button" class="btn-test-send" id="btnTestSend" disabled>请先设置语音快捷键</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="settings-overlay" id="drawerOverlay"></div>
+  <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
+    <div class="drawer-head">
+      <h2 id="settingsTitle">设置</h2>
+      <button type="button" class="drawer-close" id="btnDrawerClose" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="appearance-row">
+        <button type="button" class="appearance-pill" id="btnTheme">☀ 浅色</button>
+        <button type="button" class="appearance-pill" id="btnLang">中</button>
+      </div>
+      <div class="drawer-section" style="border-top:0;padding-top:0">
+        <div class="mini-title" id="listenTitle">监听状态</div>
+        <span class="chip" id="listenState">监听中</span>
+        <div class="control-row three">
+          <button type="button" class="control-btn" id="btnListenToggle">暂停</button>
+          <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
+          <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
+        <p class="map-switch-desc" id="cycleSwitchDesc">在同一启动键的多个方案间按顺序轮换；也可在下方每个方案里单独设置直达快捷键。</p>
+        <div class="scheme-switch-ctrl">
+          <button type="button" class="scheme-switch-key" id="btnSchemeSwitchKey" title="">Ctrl+Alt+`</button>
+          <button type="button" class="scheme-switch-cancel" id="btnSchemeSwitchCancel" hidden>取消录制</button>
+          <button type="button" class="scheme-switch-clear" id="btnSchemeSwitchClear" hidden>清除</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="sourceTitle">当前源组</div>
+        <pre class="log" id="sourceExplain">source: 右 Alt
+grouping: exact
+events:
+- key=Alt code=AltRight hotkey=RAlt</pre>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="logTitle">事件日志</div>
+        <pre class="log" id="rawEventLog">等待录制…</pre>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="runtimeTitle">运行解释</div>
+        <div class="row2">
+          <div class="item"><span>key</span><span id="dbKey">-</span></div>
+          <div class="item"><span>code</span><span id="dbCode">-</span></div>
+          <div class="item"><span id="actionLabel">动作</span><span id="liveAction">-</span></div>
+          <div class="item"><span id="sendLabel">发送</span><span id="liveTimer">-</span></div>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="trashTitle">回收站</div>
+        <p class="trash-empty" id="trashEmpty">暂无已删除的映射</p>
+        <div id="trashList"></div>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="noteTitle">说明</div>
+        <p class="mini" id="noteText">录制真实按钮，状态机只接管动作，不接管用户的命名方式。</p>
+        <div class="clear-panel"><button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="map-menu-float" id="mapMenuFloat">
+    <button type="button" data-act="dup" id="menuActDup"></button>
+    <button type="button" data-act="up" id="menuActUp"></button>
+    <button type="button" data-act="down" id="menuActDown"></button>
+    <button type="button" class="danger" data-act="del" id="menuActDel"></button>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+  (function(){
+    const listeners={message:[]};
+    const invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
+    window.__vp_invoke__=invoke;
+    window.chrome={webview:{}};
+    window.chrome.webview.postMessage=function(msg){
+      const type=msg&&msg.type;
+      if(type==='mvp_ready')invoke('cmd_ready',{});
+      else if(type==='mvp_save')invoke('cmd_save',{json:msg.json||'{}'});
+      else if(type==='mvp_start_recording')invoke('cmd_start_recording',{mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_stop_recording')invoke('cmd_stop_recording',{});
+      else if(type==='mvp_mapping_toggle')invoke('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
+      else if(type==='mvp_mapping_delete')invoke('cmd_mapping_delete',{id:msg.id});
+      else if(type==='mvp_mapping_duplicate')invoke('cmd_mapping_duplicate',{id:msg.id});
+      else if(type==='mvp_mapping_reorder')invoke('cmd_mapping_reorder',{ordered_ids:msg.orderedIds||[]});
+      else if(type==='mvp_mapping_set_group')invoke('cmd_mapping_set_group',{id:msg.id,group:msg.group||''});
+      else if(type==='mvp_pause')invoke('cmd_pause',{});
+      else if(type==='mvp_resume')invoke('cmd_resume',{});
+      else if(type==='mvp_request_runtime')invoke('cmd_request_runtime',{});
+      else if(type==='mvp_reload_latest')invoke('cmd_reload_latest',{});
+      else if(type==='mvp_sync_theme_backdrop')invoke('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
+      else if(type==='mvp_frontend_keydown')invoke('cmd_frontend_keydown',{key:msg.key||'',mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_test_send')invoke('cmd_test_send',{mapping_id:msg.mappingId||null,target_key:msg.targetKey||null});
+    };
+    window.chrome.webview.addEventListener=function(event,cb){ if(!listeners[event]) listeners[event]=[]; listeners[event].push(cb); };
+    window.__vp_bridge__=function(type,data){ const event={data:Object.assign({type:type},data||{})}; (listeners.message||[]).forEach(function(cb){ try{cb(event);}catch(e){} }); };
+    if(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen){
+      window.__TAURI_INTERNALS__.listen('to_js',function(event){
+        const payload=event.payload;
+        if(payload&&typeof payload==='object') (listeners.message||[]).forEach(function(cb){ try{cb({data:payload});}catch(e){} });
+      });
+    }
+  })();
+  </script>
+
+  <script>
+  const $=id=>document.getElementById(id);
+  const state={config:null,selectedMappingId:null};
+  const runtime={lastAction:'-',timerActive:false,paused:false};
+  const logLines=[];
+  let recordingMode='none';
+  let recordTimer=0;
+  let openMenuId=null;
+  let menuAnchorBtn=null;
+  let theme='light';
+  let lang='zh';
+  let testSendState='idle';
+  let testSendTimer=0;
+  let testSendWatchdog=0;
+  let testSendFromFooter=false;
+  let testSendMappingId=null;
+  const ui={drawerOpen:false};
+  let conflictRows=[];
+  let editorTriggerKey='';
+  let editorTargetKey='';
+  let recordSnapshot=null;
+  let pendingNewDraftId=null;
+  const expandedAdvIds=new Set();
+  let timingSaveTimer=0;
+  let schemeSwitchSnapshot='';
+  let nativeRestoreSnapshot=null;
+  let recordingMappingId='';
+  const targetCapture={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
+  const I18N={
+    zh:{
+      appTitle:'语音启动设置',
+      mappingListTitle:'我的方案',addMapping:'添加新方案',
+      triggerTitle:'录启动按键',targetTitle:'录输入法按键',
+      btnRecordTrigger:'设置启动按键',btnRecordTarget:'录制语音输入按键',
+      btnRerecordTrigger:'重新设置',btnRerecordTarget:'重新设置',
+      triggerPlaceholder:'未设置',targetPlaceholder:'未设置',
+      triggerHelp:'录制我的专属VibeCoding按键',
+      targetHelp:'录制语音输入法的激活快捷键，注意先退出或切换输入法，避免冲突或者无法收录。',
+      badgeNotRecorded:'未设置',badgeRecording:'录制中',badgeRecorded:'已设置',
+      badgeNotSet:'未设置',badgeSet:'已设置',
+      mappingEmptyTitle:'还没有方案',mappingEmptyHint:'请先在上方完成启动按键与语音快捷键设置。',
+      draftHint:'请先在上方完成当前方案的两项设置，再添加新方案。',
+      addNeedComplete:'请先完成当前方案的设置',
+      cancelRecord:'取消录制',cancelDraft:'取消新方案',
+      groupLabel:'分组',enabled:'已启用',disabled:'已停用',
+      duplicate:'复制',moveUp:'上移',moveDown:'下移',delete:'删除',
+      confirmDelete:'要删除这条快捷键吗？\n\n删除后会先放进「设置 → 回收站」，需要时还能恢复。',
+      confirmDeleteDraft:'确定删除这个未完成的方案？',
+      confirmClear:'确定清除全部映射并恢复默认？',
+      movedToTrash:'已移入回收站，可在「设置」中恢复',
+      trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
+      settingsTitle:'设置',listenTitle:'监听状态',
+      listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启 Voice Pilot？',
+      testSendDisabled:'请先设置语音快捷键',
+      testSendTarget:'测试语音快捷键',testSending:'发送中…',testSent:'已发送',
+      testShort:'测试',testFailed:'发送失败，请检查目标键',
+      testSentToast:'已发送：',selectedLabel:'已选中',
+      logTitle:'事件日志',runtimeTitle:'运行解释',actionLabel:'动作',sendLabel:'发送',
+      sourceTitle:'当前源组',noteTitle:'说明',
+      listenOn:'监听中',listenPaused:'已暂停监听',
+      themeLight:'☀ 浅色',themeDark:'🌙 深色',
+      noteText:'录制真实按钮，状态机只接管动作，不接管用户的命名方式。',
+      clearAll:'清除全部映射',waitLog:'等待录制…',
+      triggerRejected:'未能识别该按键，请再试一次',
+      whitelistRejected:'未能识别该按键，请再试一次',conflictDisabled:'已停用冲突映射',
+      conflictBannerCount:'{n} 处按键重复',
+      conflictRowHint:'重复：已用于 {key}',
+      restoredDefault:'已恢复默认方案',logStartTrigger:'开始设置启动按键...',logStartTarget:'开始设置语音快捷键...',
+      logTimeout:'设置超时',logTriggerDone:'已设置启动按键: ',logTargetDone:'已设置语音快捷键: ',logWaitMain:'等待按下主键...',
+      comboHint:'等待组合键…',triggerRecordHint:'请按下启动键（支持左右修饰键、组合键）',targetRecordHint:'请按下语音快捷键',
+      triggerModeTitle:'触发方式',triggerModeTap:'连按',triggerModeHold:'长按',triggerModeToggle:'切换',
+      triggerModeTapDesc:'快速按两次启动；间隔内再按可取消',
+      triggerModeHoldDesc:'每次按下立即启动，不做连按计数',
+      triggerModeToggleDesc:'按一次启动，再按一次取消',
+      triggerRecordDetected:'已检测到：',
+      schemeSwitchLabel:'轮换快捷键',schemeSwitchRecord:'点击录制轮换键',schemeSwitchRecording:'录制中…',
+      schemeSwitchCancel:'取消录制',schemeSwitchClear:'清除',schemeSwitchCleared:'已清除轮换快捷键',
+      cycleSwitchTitle:'轮换快捷键（可选）',
+      cycleSwitchDesc:'在同一启动键的多个方案间按顺序轮换；也可在每个方案里单独设置直达快捷键。',
+      mappingListHint:'展开方案可配置切换快捷键',
+      switchKeysTitle:'切换到此方案',switchKeysDesc:'可添加多个快捷键，按下后直接启用本方案',
+      switchKeysAdd:'+ 添加快捷键',switchKeysRecording:'录制中…',switchKeysRemoved:'已移除快捷键',
+      nativeKeyTitle:'原生按键',nativeKeyDesc:'开启后恢复 <b>{keys}</b> 的系统原功能，请用切换快捷键激活本方案',
+      nativeKeyDescUnset:'录制物理键后，可开启还原其系统原功能；请用切换快捷键激活本方案',
+      nativeKeysUnset:'尚未录制物理键',nativeRestoreRecord:'录制物理键',nativeRestoreRecording:'录制中…',
+      nativeKeyRestore:'还原系统功能',traceRecorded:'录制于',
+      advSummary:'调整',
+      cancelTimingTitle:'取消按键时长',cancelTimingDesc:'在 <b>{n}</b> 秒内再次按下 → 发送 Esc 取消',
+      sendTimingTitle:'自动发送等待',sendTimingDesc:'第二次启动后等待 <b>{n}</b> 秒 → 自动发送 Enter',
+      schemeSwitched:'已切换至：'
+    },
+    en:{
+      appTitle:'Voice Launch Settings',
+      mappingListTitle:'My profiles',addMapping:'Add profile',
+      triggerTitle:'Record launch key',targetTitle:'Record IME key',
+      btnRecordTrigger:'Set launch key',btnRecordTarget:'Record voice input key',
+      btnRerecordTrigger:'Set again',btnRerecordTarget:'Set again',
+      triggerPlaceholder:'Not set',targetPlaceholder:'Not set',
+      triggerHelp:'Record your VibeCoding key',
+      targetHelp:'Record your voice-IME activation shortcut. Exit or switch IME first to avoid conflicts or missed keys.',
+      badgeNotRecorded:'Not set',badgeRecording:'Recording',badgeRecorded:'Set',
+      badgeNotSet:'Not set',badgeSet:'Set',
+      mappingEmptyTitle:'No profiles yet',mappingEmptyHint:'Complete launch key and voice shortcut above first.',
+      draftHint:'Finish both settings above before adding another profile.',
+      addNeedComplete:'Complete the current profile first',
+      cancelRecord:'Cancel recording',cancelDraft:'Cancel new profile',
+      groupLabel:'Group',enabled:'On',disabled:'Off',
+      duplicate:'Duplicate',moveUp:'Move up',moveDown:'Move down',delete:'Delete',
+      confirmDelete:'Remove this shortcut?\n\nIt will go to Settings → Recycle Bin and you can restore it later.',
+      confirmDeleteDraft:'Delete this incomplete profile?',
+      confirmClear:'Clear all mappings and restore default?',
+      movedToTrash:'Moved to recycle bin (see Settings)',
+      trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
+      settingsTitle:'Settings',listenTitle:'Listen status',
+      listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart Voice Pilot?',
+      testSendDisabled:'Set a voice shortcut first',
+      testSendTarget:'Test voice shortcut',testSending:'Sending…',testSent:'Sent',
+      testShort:'Test',testFailed:'Send failed — check target key',
+      testSentToast:'Sent: ',selectedLabel:'Selected',
+      logTitle:'Event Log',runtimeTitle:'Live Status',actionLabel:'Action',sendLabel:'Send',
+      sourceTitle:'Source Group',noteTitle:'Note',
+      listenOn:'Listening',listenPaused:'Paused',
+      themeLight:'☀ Light',themeDark:'🌙 Dark',
+      noteText:'Record the real button; the state machine handles actions, not naming.',
+      clearAll:'Clear all mappings',waitLog:'Waiting to record…',
+      triggerRejected:'Could not recognize that key — please try again',
+      whitelistRejected:'Could not recognize that key — please try again',conflictDisabled:'Conflicting mappings disabled',
+      conflictBannerCount:'{n} duplicate key(s)',
+      conflictRowHint:'Duplicate: used by {key}',
+      restoredDefault:'Default mapping restored',logStartTrigger:'Start recording trigger...',logStartTarget:'Start recording target...',
+      logTimeout:'Recording timed out',logTriggerDone:'Trigger recorded: ',logTargetDone:'Target recorded: ',logWaitMain:'Waiting for main key...',
+      comboHint:'Waiting for combo…',triggerRecordHint:'Press launch key (side modifiers & combos supported)',targetRecordHint:'Press voice shortcut',
+      triggerModeTitle:'Trigger style',triggerModeTap:'Double-tap',triggerModeHold:'Press',triggerModeToggle:'Toggle',
+      triggerModeTapDesc:'Press twice to launch; press again within window to cancel',
+      triggerModeHoldDesc:'Each press launches immediately',
+      triggerModeToggleDesc:'Press to start, press again to cancel',
+      triggerRecordDetected:'Detected: ',
+      schemeSwitchLabel:'Cycle shortcut',schemeSwitchRecord:'Click to record cycle key',schemeSwitchRecording:'Recording…',
+      schemeSwitchCancel:'Cancel recording',schemeSwitchClear:'Clear',schemeSwitchCleared:'Cycle shortcut cleared',
+      cycleSwitchTitle:'Cycle shortcut (optional)',
+      cycleSwitchDesc:'Rotate among profiles with the same trigger; or set direct shortcuts per profile below.',
+      mappingListHint:'Expand a profile to set switch shortcuts',
+      switchKeysTitle:'Switch to this profile',switchKeysDesc:'Add multiple shortcuts; any activates this profile',
+      switchKeysAdd:'+ Add shortcut',switchKeysRecording:'Recording…',switchKeysRemoved:'Shortcut removed',
+      nativeKeyTitle:'Native keys',nativeKeyDesc:'When on, <b>{keys}</b> work normally; use switch shortcuts to activate',
+      nativeKeyDescUnset:'Record physical keys first; then enable to restore their system behavior',
+      nativeKeysUnset:'No physical keys recorded',nativeRestoreRecord:'Record physical keys',nativeRestoreRecording:'Recording…',
+      nativeKeyRestore:'Restore system keys',traceRecorded:'Recorded at',
+      advSummary:'Adjust',
+      cancelTimingTitle:'Cancel window',cancelTimingDesc:'Press again within <b>{n}</b>s → send Esc to cancel',
+      sendTimingTitle:'Auto-send wait',sendTimingDesc:'After 2nd start, wait <b>{n}</b>s → auto Enter',
+      schemeSwitched:'Switched to: '
+    }
+  };
+
+  function t(key){ return (I18N[lang]&&I18N[lang][key])||key; }
+
+  function isSavedMapping(m){
+    return !!(m&&m.triggerKey&&m.targetKey);
+  }
+
+  function isDraftMapping(m){
+    return !!(m&&!isSavedMapping(m));
+  }
+
+  function hasDraftMappings(){
+    return sortedMappings().some(isDraftMapping);
+  }
+
+  function isDraftPristine(m){
+    return isDraftMapping(m)&&!m.triggerKey&&!m.targetKey;
+  }
+
+  function removeDraftMapping(id){
+    ensureConfig();
+    const m=state.config.mappings.find(function(x){return x.id===id;});
+    if(!m||isSavedMapping(m)) return;
+    state.config.mappings=state.config.mappings.filter(function(x){return x.id!==id;});
+    if(pendingNewDraftId===id) pendingNewDraftId=null;
+    if(state.selectedMappingId===id){
+      const remain=state.config.mappings;
+      state.selectedMappingId=remain.length?remain[remain.length-1].id:null;
+      syncEditorFromSelection();
+    }
+    save();
+    render();
+  }
+
+  function abandonDraftIfPristine(id){
+    const m=state.config.mappings.find(function(x){return x.id===id;});
+    if(!m||!isDraftPristine(m)) return false;
+    removeDraftMapping(id);
+    return true;
+  }
+
+  function beginRecordSnapshot(){
+    const m=selectedMapping();
+    recordSnapshot={
+      editorTrigger:editorTriggerKey||'',
+      editorTarget:editorTargetKey||'',
+      mappingTrigger:m.triggerKey||'',
+      mappingTarget:m.targetKey||'',
+    };
+  }
+
+  function cancelRecording(){
+    if(recordingMode==='none') return;
+    const draftId=state.selectedMappingId;
+    clearTimeout(recordTimer);
+    if(recordingMode==='schemeSwitch'){
+      recordingMode='none';
+      ensureConfig();
+      state.config.schemeSwitchKey=schemeSwitchSnapshot;
+      schemeSwitchSnapshot='';
+      resetTargetCapture();
+      renderSchemeSwitch();
+      renderRecordCancelBar();
+      return;
+    }
+    if(recordingMode==='nativeRestore'){
+      recordingMode='none';
+      const m=state.config&&state.config.mappings.find(function(x){return x.id===recordingMappingId;});
+      if(m&&nativeRestoreSnapshot){
+        m.triggerSource=nativeRestoreSnapshot.triggerSource;
+        m.sourceKey=nativeRestoreSnapshot.sourceKey;
+        m.sourceTime=nativeRestoreSnapshot.sourceTime;
+      }
+      nativeRestoreSnapshot=null;
+      recordingMappingId='';
+      resetTargetCapture();
+      try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
+      renderMappingList();
+      renderRecordCancelBar();
+      return;
+    }
+    if(recordingMode==='mappingSwitch'){
+      recordingMode='none';
+      recordingMappingId='';
+      resetTargetCapture();
+      renderMappingList();
+      renderRecordCancelBar();
+      return;
+    }
+    recordingMode='none';
+    if(recordSnapshot){
+      editorTriggerKey=recordSnapshot.editorTrigger;
+      editorTargetKey=recordSnapshot.editorTarget;
+      const m=selectedMapping();
+      m.triggerKey=recordSnapshot.mappingTrigger;
+      m.targetKey=recordSnapshot.mappingTarget;
+      m.label=(recordSnapshot.mappingTrigger||'?')+' → '+(recordSnapshot.mappingTarget||'?');
+    }
+    recordSnapshot=null;
+    resetTargetCapture();
+    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
+    setRecording('none');
+    if(abandonDraftIfPristine(draftId)) return;
+    render();
+  }
+
+  function cancelDraftOrRecording(){
+    if(recordingMode!=='none'){
+      cancelRecording();
+      return;
+    }
+    const m=selectedMapping();
+    if(m&&isDraftMapping(m)) removeDraftMapping(m.id);
+  }
+
+  function syncEditorFromSelection(){
+    const m=selectedMapping();
+    editorTriggerKey=m.triggerKey||'';
+    editorTargetKey=m.targetKey||'';
+  }
+
+  function mappingTargetKey(id){
+    const m=state.config&&state.config.mappings.find(function(x){return x.id===id;});
+    return m&&(m.targetKey||'?');
+  }
+
+  function conflictsForMapping(id){
+    return conflictRows.filter(function(c){return c.mappingId===id||c.otherId===id;});
+  }
+
+  function otherIdInConflict(c,selfId){
+    return c.mappingId===selfId?c.otherId:c.mappingId;
+  }
+
+  function conflictHintForRow(c,selfId){
+    const otherId=otherIdInConflict(c,selfId);
+    const key=mappingTargetKey(otherId);
+    return t('conflictRowHint').replace('{key}',key);
+  }
+
+  function focusMapping(id){
+    state.selectedMappingId=id;
+    render();
+    const row=document.querySelector('.map-row[data-id="'+id+'"]');
+    if(row) row.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+
+  function toggleMappingAdv(id){
+    if(expandedAdvIds.has(id)) expandedAdvIds.delete(id);
+    else expandedAdvIds.add(id);
+  }
+
+  function countConflictPairs(){
+    const seen={};
+    conflictRows.forEach(function(c){
+      seen[[c.mappingId,c.otherId].sort().join('|')]=true;
+    });
+    return Object.keys(seen).length;
+  }
+
+  function renderConflictBanner(){
+    const el=$('conflictBanner');
+    if(!el) return;
+    const n=countConflictPairs();
+    if(!n){ el.classList.remove('show'); el.textContent=''; return; }
+    el.textContent=t('conflictBannerCount').replace('{n}',String(n));
+    el.classList.add('show');
+  }
+
+  function applyTheme(){
+    document.documentElement.setAttribute('data-theme',theme);
+    $('btnTheme').textContent=theme==='light'?t('themeLight'):t('themeDark');
+    try{ localStorage.setItem('vp_theme',theme); }catch(_){ }
+    try{window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme});}catch(_){ }
+  }
+
+  function openDrawer(){
+    ui.drawerOpen=true;
+    $('settingsDrawer').classList.add('open');
+    $('drawerOverlay').classList.add('open');
+    $('settingsDrawer').setAttribute('aria-hidden','false');
+  }
+
+  function closeDrawer(){
+    ui.drawerOpen=false;
+    $('settingsDrawer').classList.remove('open');
+    $('drawerOverlay').classList.remove('open');
+    $('settingsDrawer').setAttribute('aria-hidden','true');
+  }
+
+  function applyLang(){
+    const d=I18N[lang];
+    $('appTitle').textContent=d.appTitle;
+    $('btnSettings').textContent=d.settingsTitle;
+    $('settingsTitle').textContent=d.settingsTitle;
+    $('mappingListTitle').textContent=d.mappingListTitle;
+    const listHint=$('mappingListHint');
+    if(listHint) listHint.textContent=d.mappingListHint;
+    const cycleTitle=$('cycleSwitchTitle');
+    if(cycleTitle) cycleTitle.textContent=d.cycleSwitchTitle;
+    const cycleDesc=$('cycleSwitchDesc');
+    if(cycleDesc) cycleDesc.textContent=d.cycleSwitchDesc;
+    $('btnAddMapping').textContent=d.addMapping;
+    $('btnCancelRecord').textContent=d.cancelRecord;
+    $('triggerTitle').textContent=d.triggerTitle;
+    $('targetTitle').textContent=d.targetTitle;
+    $('btnRecordTrigger').textContent=editorTriggerKey?t('btnRerecordTrigger'):t('btnRecordTrigger');
+    $('btnRecordTarget').textContent=editorTargetKey?t('btnRerecordTarget'):t('btnRecordTarget');
+    $('mappingEmptyTitle').textContent=d.mappingEmptyTitle;
+    $('mappingEmptyHint').textContent=d.mappingEmptyHint;
+    const draftHint=$('mappingDraftHint');
+    if(draftHint) draftHint.textContent=d.draftHint;
+    $('triggerHelp').innerHTML=d.triggerHelp;
+    $('targetHelp').innerHTML=d.targetHelp;
+    $('listenTitle').textContent=d.listenTitle;
+    $('logTitle').textContent=d.logTitle;
+    $('runtimeTitle').textContent=d.runtimeTitle;
+    $('actionLabel').textContent=d.actionLabel;
+    $('sendLabel').textContent=d.sendLabel;
+    $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
+    $('btnRefreshRuntime').textContent=t('refreshRuntime');
+    $('btnRestartApp').textContent=t('restartApp');
+    $('sourceTitle').textContent=d.sourceTitle;
+    $('noteTitle').textContent=d.noteTitle;
+    $('noteText').textContent=d.noteText;
+    $('btnClearAll').textContent=d.clearAll;
+    $('trashTitle').textContent=d.trashTitle;
+    $('trashEmpty').textContent=d.trashEmpty;
+    $('menuActDup').textContent=d.duplicate;
+    $('menuActUp').textContent=d.moveUp;
+    $('menuActDown').textContent=d.moveDown;
+    $('menuActDel').textContent=d.delete;
+    $('btnLang').textContent=lang==='zh'?'中':'EN';
+    applyTheme();
+    if(recordingMode==='none') setRecording('none');
+    render();
+    try{ localStorage.setItem('vp_lang',lang); }catch(_){ }
+  }
+
+  function toast(msg){
+    const el=$('toast');
+    el.textContent=msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t=setTimeout(function(){el.classList.remove('show');},2200);
+  }
+
+  function newMappingId(){ return 'm-'+Date.now()+'-'+Math.random().toString(36).slice(2,7); }
+
+  function defaultConfig(){
+    const id=newMappingId();
+    return {version:5,mappings:[{id:id,label:'AutoTrigger → RAlt',group:'默认',triggerKey:'AutoTrigger',targetKey:'RAlt',enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false}],trash:[],intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:''};
+  }
+
+  function ensureMappingExtras(m){
+    if(!m) return;
+    ensureMappingTiming(m);
+    if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
+    if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
+  }
+
+  function isAutoTriggerMapping(m){
+    return normalizeTriggerKey(m&&m.triggerKey)==='AutoTrigger';
+  }
+
+  function ensureMappingTiming(m){
+    if(!m) return;
+    if(!m.intervalMs) m.intervalMs=state.config.intervalMs||1200;
+    if(!m.enterDelayMs) m.enterDelayMs=state.config.enterDelayMs||5000;
+    if(m.cancelEnabled===undefined) m.cancelEnabled=state.config.cancelEnabled!==false;
+    if(m.autoEnterEnabled===undefined) m.autoEnterEnabled=state.config.autoEnterEnabled!==false;
+  }
+
+  function formatTriggerTrace(m){
+    if(!m) return '';
+    const events=[];
+    if(m.triggerSource&&Array.isArray(m.triggerSource.rawEvents)){
+      m.triggerSource.rawEvents.forEach(function(ev){
+        const label=ev.label||ev.hotkey||ev.key||'';
+        if(label&&events.indexOf(label)<0) events.push(label);
+      });
+    }
+    if(!events.length&&m.sourceKey) events.push(m.sourceKey);
+    if(!events.length) return '';
+    return events.join(' / ');
+  }
+
+  function formatSourceTime(raw){
+    if(!raw) return '';
+    const n=Number(raw);
+    if(!isNaN(n)&&n>1e11){
+      try{ return new Date(n).toLocaleString(); }catch(_){ return raw; }
+    }
+    return raw;
+  }
+
+  function formatNativeKeyLabels(m){
+    const trace=formatTriggerTrace(m);
+    if(trace) return trace;
+    if(isAutoTriggerMapping(m)) return t('nativeKeysUnset');
+    return m.triggerKey||'?';
+  }
+
+  function renderTriggerMetaBlock(m,id){
+    if(isAutoTriggerMapping(m)) return '';
+    const keys=formatTriggerTrace(m)||m.triggerKey||'?';
+    const time=formatSourceTime(m.sourceTime);
+    const sel=state.selectedMappingId===id;
+    let html='<div class="map-trigger-meta'+(sel?' is-selected':'')+'">';
+    html+='<span class="map-trigger-meta-keys">'+keys+'</span>';
+    if(time) html+='<span class="map-trigger-meta-time">'+t('traceRecorded')+' '+time+'</span>';
+    html+='</div>';
+    return html;
+  }
+
+  function renderNativeRestoreBlock(m,id){
+    if(!isAutoTriggerMapping(m)) return '';
+    const keys=formatNativeKeyLabels(m);
+    const hasKeys=!!formatTriggerTrace(m);
+    const time=formatSourceTime(m.sourceTime);
+    const sel=state.selectedMappingId===id;
+    const rec=recordingMode==='nativeRestore'&&recordingMappingId===id;
+    const desc=hasKeys?t('nativeKeyDesc').replace('{keys}',keys):t('nativeKeyDescUnset');
+    let html='<div class="map-native-block">';
+    html+='<div class="map-timing-head"><span>'+t('nativeKeyTitle')+'</span>';
+    html+='<div class="toggle'+(m.nativeKeyRestore?' on':'')+'" data-native-restore="'+id+'" role="switch"></div></div>';
+    html+='<p class="map-switch-desc">'+desc+'</p>';
+    html+='<div class="map-trigger-meta'+(sel?' is-selected':'')+'">';
+    html+='<span class="map-trigger-meta-keys">'+keys+'</span>';
+    if(time) html+='<span class="map-trigger-meta-time">'+t('traceRecorded')+' '+time+'</span>';
+    html+='</div>';
+    html+='<div class="map-native-keys-row">';
+    html+='<button type="button" class="map-switch-add'+(rec?' recording':'')+'" data-native-restore-record="'+id+'">'+(rec?t('nativeRestoreRecording'):t('nativeRestoreRecord'))+'</button>';
+    html+='</div></div>';
+    return html;
+  }
+
+  function renderSwitchKeysBlock(m,id){
+    ensureMappingExtras(m);
+    const keys=m.switchKeys||[];
+    const rec=recordingMode==='mappingSwitch'&&recordingMappingId===id;
+    let html='<div class="map-switch-block">';
+    html+='<div class="map-switch-head"><span>'+t('switchKeysTitle')+'</span></div>';
+    html+='<p class="map-switch-desc">'+t('switchKeysDesc')+'</p>';
+    html+='<div class="map-switch-chips">';
+    keys.forEach(function(k,idx){
+      html+='<span class="map-switch-chip">'+k+'<button type="button" data-rm-switch="'+id+'" data-idx="'+idx+'" aria-label="remove">×</button></span>';
+    });
+    if(!keys.length) html+='<span class="map-switch-desc" style="margin:0">—</span>';
+    html+='</div>';
+    html+='<button type="button" class="map-switch-add'+(rec?' recording':'')+'" data-add-switch="'+id+'">'+(rec?t('switchKeysRecording'):t('switchKeysAdd'))+'</button>';
+    html+='</div>';
+    return html;
+  }
+
+  function renderTriggerModeBlock(m,id){
+    const mode=(m.triggerMode||'tap').toLowerCase();
+    const descKey=mode==='hold'?'triggerModeHoldDesc':mode==='toggle'?'triggerModeToggleDesc':'triggerModeTapDesc';
+    let html='<div class="map-trigger-mode">';
+    html+='<div class="map-timing-head"><span>'+t('triggerModeTitle')+'</span></div>';
+    html+='<p class="map-switch-desc">'+t(descKey)+'</p>';
+    html+='<div class="map-mode-pills">';
+    ['tap','hold','toggle'].forEach(function(opt){
+      html+='<button type="button" class="map-mode-pill'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
+      html+=t('triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle'))+'</button>';
+    });
+    html+='</div></div>';
+    return html;
+  }
+
+  function renderTimingBlock(m,id,prefix){
+    ensureMappingTiming(m);
+    const cancelSec=(m.intervalMs/1000).toFixed(1);
+    const sendSec=(m.enterDelayMs/1000).toFixed(1);
+    let html='<div class="map-timing-block">';
+    html+='<div class="map-timing-head"><span>'+t('cancelTimingTitle')+'</span>';
+    html+='<div class="toggle'+(m.cancelEnabled?' on':'')+'" data-timing-toggle="'+id+'" data-field="cancelEnabled" role="switch"></div></div>';
+    html+='<p class="map-timing-desc">'+t('cancelTimingDesc').replace('{n}',cancelSec)+'</p>';
+    html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="intervalMs" min="200" max="5000" step="100" value="'+m.intervalMs+'"'+(m.cancelEnabled?'':' disabled')+'>';
+    html+='</div><div class="map-timing-block">';
+    html+='<div class="map-timing-head"><span>'+t('sendTimingTitle')+'</span>';
+    html+='<div class="toggle'+(m.autoEnterEnabled?' on':'')+'" data-timing-toggle="'+id+'" data-field="autoEnterEnabled" role="switch"></div></div>';
+    html+='<p class="map-timing-desc">'+t('sendTimingDesc').replace('{n}',sendSec)+'</p>';
+    html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+m.enterDelayMs+'"'+(m.autoEnterEnabled?'':' disabled')+'>';
+    html+='</div>';
+    return html;
+  }
+
+  function scheduleTimingSave(){
+    clearTimeout(timingSaveTimer);
+    timingSaveTimer=setTimeout(function(){ save(); },280);
+  }
+
+  function updateMappingTiming(id,field,value){
+    const m=state.config&&state.config.mappings.find(function(x){return x.id===id;});
+    if(!m) return;
+    m[field]=value;
+    scheduleTimingSave();
+    renderMappingList();
+  }
+
+  function ensureConfig(){
+    if(!state.config||!Array.isArray(state.config.mappings)) state.config=defaultConfig();
+    if(!Array.isArray(state.config.trash)) state.config.trash=[];
+    if(!state.config.mappings.length){
+      const id=newMappingId();
+      state.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
+    }
+    if(!state.selectedMappingId) state.selectedMappingId=state.config.mappings[0].id;
+    if(state.config.schemeSwitchKey===undefined||state.config.schemeSwitchKey===null) state.config.schemeSwitchKey='';
+    state.config.mappings.forEach(ensureMappingExtras);
+    (state.config.trash||[]).forEach(ensureMappingExtras);
+  }
+
+  function selectedMapping(){
+    ensureConfig();
+    return state.config.mappings.find(function(m){return m.id===state.selectedMappingId;})||state.config.mappings[0];
+  }
+
+  function buildSavePayload(){
+    ensureConfig();
+    return JSON.stringify({
+      version:5,
+      mappings:state.config.mappings.map(function(m,i){
+        ensureMappingExtras(m);
+        return {id:m.id,label:m.label||((m.triggerKey&&m.targetKey)?((m.triggerKey||'?')+' → '+(m.targetKey||'?')):''),group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore};
+      }),
+      trash:(state.config.trash||[]).map(function(m){
+        ensureMappingExtras(m);
+        return {id:m.id,label:m.label||'',group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore};
+      }),
+      intervalMs:state.config.intervalMs||1200,
+      enterDelayMs:state.config.enterDelayMs||5000,
+      cancelEnabled:state.config.cancelEnabled!==false,
+      autoEnterEnabled:state.config.autoEnterEnabled!==false,
+      debounceMs:state.config.debounceMs||80,
+      keyPressDurationMs:state.config.keyPressDurationMs||250,
+      schemeSwitchKey:state.config.schemeSwitchKey||'',
+      scenes:state.config.scenes||null
+    });
+  }
+
+  function save(){
+    try{ window.chrome?.webview?.postMessage({type:'mvp_save',json:buildSavePayload()}); }catch(_){ }
+  }
+
+  function rawEventForHotkey(hotkey, label){
+    const keyCode={
+      Volume_Down:['AudioVolumeDown','AudioVolumeDown'],
+      Volume_Up:['AudioVolumeUp','AudioVolumeUp'],
+      Volume_Mute:['AudioVolumeMute','AudioVolumeMute'],
+      Media_Next:['MediaTrackNext','MediaTrackNext'],
+      Media_Prev:['MediaTrackPrevious','MediaTrackPrevious'],
+      Media_Play_Pause:['MediaPlayPause','MediaPlayPause'],
+      Media_Stop:['MediaStop','MediaStop'],
+      Browser_Back:['BrowserBack','BrowserBack'],
+      Browser_Forward:['BrowserForward','BrowserForward'],
+      Browser_Refresh:['BrowserRefresh','BrowserRefresh'],
+      Launch_Mail:['LaunchMail','LaunchMail'],
+      Launch_App1:['LaunchApp1','LaunchApp1'],
+      Launch_App2:['LaunchApp2','LaunchApp2']
+    };
+    const pair=keyCode[hotkey]||[hotkey,hotkey];
+    return {device:'keyboard',key:pair[0],code:pair[1],location:0,type:'keydown',hotkey:hotkey,label:label||hotkey,button:null};
+  }
+
+  function buildPeripheralTriggerSource(physical){
+    const events=[];
+    if(physical==='Volume_Down'||physical==='Volume_Up'){
+      events.push(rawEventForHotkey('Volume_Down','Volume Down'));
+      events.push(rawEventForHotkey('Volume_Up','Volume Up'));
+    }else{
+      events.push(rawEventForHotkey(physical,physical.replace(/_/g,' ')));
+    }
+    return {
+      id:'source_peripheral_mixed',
+      label:'外设混合单键',
+      mode:'single_press',
+      grouping:(physical==='Volume_Down'||physical==='Volume_Up')?'same_source_group':'exact',
+      rawEvents:events
+    };
+  }
+
+  function webEventToPhysicalKey(key,code){
+    const media=normalizeMediaTargetKey(code,key);
+    if(media) return media;
+    const c=String(code||'');
+    const k=String(key||'');
+    if(c==='ArrowUp'||k==='ArrowUp') return 'Up';
+    if(c==='ArrowDown'||k==='ArrowDown') return 'Down';
+    if(c==='ArrowLeft'||k==='ArrowLeft') return 'Left';
+    if(c==='ArrowRight'||k==='ArrowRight') return 'Right';
+    return normalizeKeyFromCode(c,k)||k||c;
+  }
+
+  function normalizeTriggerKey(key){
+    if(!key) return 'AutoTrigger';
+    const v=String(key);
+    if(v.includes('+')) return v;
+    if(/^Audio_?Volume/i.test(v)||/^Volume/i.test(v)) return 'AutoTrigger';
+    if(v==='AudioVolumeUp'||v==='VolumeUp'||v==='Volume_Up'||v==='Audio_Volume_Up') return 'AutoTrigger';
+    if(v==='AudioVolumeDown'||v==='VolumeDown'||v==='Volume_Down'||v==='Audio_Volume_Down') return 'AutoTrigger';
+    if(v==='AudioVolumeMute'||v==='VolumeMute'||v==='Volume_Mute'||v==='Audio_Volume_Mute') return 'AutoTrigger';
+    return v;
+  }
+
+  function normalizeMediaTargetKey(code, key){
+    const c=String(code||'');
+    const k=String(key||'');
+    const map={
+      AudioVolumeUp:'Volume_Up',AudioVolumeDown:'Volume_Down',AudioVolumeMute:'Volume_Mute',
+      Audio_Volume_Up:'Volume_Up',Audio_Volume_Down:'Volume_Down',Audio_Volume_Mute:'Volume_Mute',
+      MediaTrackNext:'Media_Next',MediaTrackPrevious:'Media_Prev',
+      MediaPlayPause:'Media_Play_Pause',MediaStop:'Media_Stop',
+      BrowserBack:'Browser_Back',BrowserForward:'Browser_Forward',BrowserRefresh:'Browser_Refresh',
+      LaunchMail:'Launch_Mail',LaunchApp1:'Launch_App1',LaunchApp2:'Launch_App2'
+    };
+    if(Object.prototype.hasOwnProperty.call(map,c)) return map[c];
+    if(Object.prototype.hasOwnProperty.call(map,k)) return map[k];
+    return '';
+  }
+
+  function normalizeMouseButton(button){
+    switch(button){
+      case 0: return 'LButton';
+      case 1: return 'MButton';
+      case 2: return 'RButton';
+      case 3: return 'XButton1';
+      case 4: return 'XButton2';
+      default: return '';
+    }
+  }
+
+  function normalizeKeyFromCode(code, key){
+    const c=String(code||'');
+    const k=String(key||'');
+    const map={
+      Backspace:'Backspace',Tab:'Tab',Enter:'Enter',NumpadEnter:'NumpadEnter',Escape:'Esc',Space:'Space',
+      Minus:'-',Equal:'=',BracketLeft:'[',BracketRight:']',Backslash:'\\',Semicolon:';',Quote:"'",Comma:',',Period:'.',Slash:'/',
+      Insert:'Insert',Delete:'Delete',Home:'Home',End:'End',PageUp:'PageUp',PageDown:'PageDown',
+      ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',
+      PrintScreen:'PrintScreen',ScrollLock:'ScrollLock',Pause:'Pause',CapsLock:'CapsLock',ContextMenu:'AppsKey'
+    };
+    if(Object.prototype.hasOwnProperty.call(map, c)) return map[c];
+    if(/^Digit\d$/.test(c)) return c.slice(5);
+    if(/^Numpad\d$/.test(c)) return c;
+    if(/^Key[A-Z]$/.test(c)) return c.slice(3);
+    if(/^F\d{1,2}$/.test(c)) return c;
+    if(c==='AltLeft') return 'LAlt';
+    if(c==='AltRight') return 'RAlt';
+    if(c==='ControlLeft') return 'LCtrl';
+    if(c==='ControlRight') return 'RCtrl';
+    if(c==='ShiftLeft') return 'LShift';
+    if(c==='ShiftRight') return 'RShift';
+    if(c==='MetaLeft') return 'LWin';
+    if(c==='MetaRight') return 'RWin';
+    if(k && !['Control','Shift','Alt','Meta','OS'].includes(k)) return k;
+    return c || k;
+  }
+
+  function normalizeStandaloneModifier(code){
+    switch(String(code||'')){
+      case 'ControlLeft': return 'LCtrl';
+      case 'ControlRight': return 'RCtrl';
+      case 'ShiftLeft': return 'LShift';
+      case 'ShiftRight': return 'RShift';
+      case 'AltLeft': return 'LAlt';
+      case 'AltRight': return 'RAlt';
+      case 'MetaLeft': return 'LWin';
+      case 'MetaRight': return 'RWin';
+      default: return '';
+    }
+  }
+
+  function normalizeTargetCombination(mods, mainKey, modSide){
+    const side=modSide||{};
+    const parts=[];
+    if(mods.ctrl) parts.push(side.ctrl||'Ctrl');
+    if(mods.shift) parts.push(side.shift||'Shift');
+    if(mods.alt) parts.push(side.alt||'Alt');
+    if(mods.meta) parts.push(side.meta||'Win');
+    if(mainKey) parts.push(mainKey);
+    return parts.join('+');
+  }
+
+  function isModifierCode(code){
+    return ['ControlLeft','ControlRight','ShiftLeft','ShiftRight','AltLeft','AltRight','MetaLeft','MetaRight'].includes(String(code||''));
+  }
+
+  function resetTargetCapture(){
+    targetCapture.pendingModifier='';
+    targetCapture.mods={ctrl:false,shift:false,alt:false,meta:false};
+    targetCapture.modSide={ctrl:'',shift:'',alt:'',meta:''};
+  }
+
+  function noteModifierSide(code){
+    const side=normalizeStandaloneModifier(code);
+    if(!side) return;
+    if(code.startsWith('Control')) targetCapture.modSide.ctrl=side;
+    else if(code.startsWith('Shift')) targetCapture.modSide.shift=side;
+    else if(code.startsWith('Alt')) targetCapture.modSide.alt=side;
+    else if(code.startsWith('Meta')) targetCapture.modSide.meta=side;
+  }
+
+  function pushLog(line){ logLines.unshift(line); logLines.length=Math.min(logLines.length,20); $('rawEventLog').textContent=logLines.join('\n'); }
+
+  function isAllowedTriggerKey(key){
+    return !!String(normalizeTriggerKey(key)||'').trim();
+  }
+
+  function sortedMappings(){
+    return state.config.mappings.slice().sort(function(a,b){
+      const ae=!!a.enabled, be=!!b.enabled;
+      if(ae!==be) return ae?-1:1;
+      return (a.order||0)-(b.order||0);
+    });
+  }
+
+  function closeFloatMenu(){
+    openMenuId=null;
+    menuAnchorBtn=null;
+    const pop=$('mapMenuFloat');
+    pop.classList.remove('open');
+    pop.removeAttribute('data-id');
+    document.querySelectorAll('.map-row.menu-open').forEach(function(row){ row.classList.remove('menu-open'); });
+  }
+
+  function openFloatMenu(id, btn){
+    if(openMenuId===id){ closeFloatMenu(); return; }
+    openMenuId=id;
+    menuAnchorBtn=btn;
+    const pop=$('mapMenuFloat');
+    pop.dataset.id=id;
+    const rect=btn.getBoundingClientRect();
+    const width=148;
+    let left=rect.right-width;
+    if(left<8) left=8;
+    let top=rect.bottom+6;
+    if(top+120>window.innerHeight) top=Math.max(8, rect.top-120);
+    pop.style.left=left+'px';
+    pop.style.top=top+'px';
+    pop.classList.add('open');
+    document.querySelectorAll('.map-row.menu-open').forEach(function(row){ row.classList.remove('menu-open'); });
+    const row=btn.closest('.map-row');
+    if(row) row.classList.add('menu-open');
+    const list=sortedMappings();
+    const i=list.findIndex(function(m){return m.id===id;});
+    const m=state.config.mappings.find(function(x){return x.id===id;});
+    const isDraft=m&&isDraftMapping(m);
+    $('menuActDup').disabled=!!isDraft;
+    $('menuActUp').disabled=!!isDraft||i<=0;
+    $('menuActDown').disabled=!!isDraft||i<0||i>=list.length-1;
+    $('menuActDel').disabled=false;
+  }
+
+  function deleteMappingFromMenu(id){
+    ensureConfig();
+    const m=state.config.mappings.find(function(x){return x.id===id;});
+    if(!m) return;
+    if(isDraftMapping(m)){
+      if((m.triggerKey||m.targetKey)&&!confirm(t('confirmDeleteDraft'))) return;
+      closeFloatMenu();
+      removeDraftMapping(id);
+      return;
+    }
+    softDeleteMapping(id);
+  }
+
+  function reorderMapping(id, dir){
+    ensureConfig();
+    const list=sortedMappings();
+    const i=list.findIndex(function(m){return m.id===id;});
+    if(i<0) return;
+    if(dir==='up'&&i>0){
+      const tmp=list[i-1];
+      list[i-1]=list[i];
+      list[i]=tmp;
+    }else if(dir==='down'&&i<list.length-1){
+      const tmp=list[i+1];
+      list[i+1]=list[i];
+      list[i]=tmp;
+    }else return;
+    list.forEach(function(m,idx){ m.order=idx; });
+    state.config.mappings=list;
+    closeFloatMenu();
+    save();
+    render();
+  }
+
+  function softDeleteMapping(id){
+    ensureConfig();
+    if(!confirm(t('confirmDelete'))) return;
+    const idx=state.config.mappings.findIndex(function(m){return m.id===id;});
+    if(idx<0) return;
+    const removed=Object.assign({}, state.config.mappings.splice(idx,1)[0]);
+    removed.enabled=false;
+    state.config.trash.unshift(removed);
+    if(state.selectedMappingId===id){
+      state.selectedMappingId=state.config.mappings[0]&&state.config.mappings[0].id;
+    }
+    if(!state.config.mappings.length){
+      const newId=newMappingId();
+      state.config.mappings.push({id:newId,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
+      state.selectedMappingId=newId;
+    }
+    state.config.mappings.forEach(function(m,i){ m.order=i; });
+    syncEditorFromSelection();
+    closeFloatMenu();
+    save();
+    render();
+    toast(t('movedToTrash'));
+  }
+
+  function restoreFromTrash(id){
+    ensureConfig();
+    const idx=state.config.trash.findIndex(function(m){return m.id===id;});
+    if(idx<0) return;
+    const item=state.config.trash.splice(idx,1)[0];
+    item.enabled=false;
+    item.order=state.config.mappings.length;
+    state.config.mappings.push(item);
+    state.selectedMappingId=item.id;
+    syncEditorFromSelection();
+    save();
+    render();
+  }
+
+  function renderTrashList(){
+    ensureConfig();
+    const box=$('trashList');
+    const empty=$('trashEmpty');
+    const items=state.config.trash||[];
+    empty.hidden=items.length>0;
+    if(!items.length){ box.innerHTML=''; return; }
+    let html='';
+    items.forEach(function(m){
+      html+='<div class="trash-row"><span>'+(m.triggerKey||'?')+' → '+(m.targetKey||'?')+'</span>';
+      html+='<button type="button" class="trash-restore" data-restore="'+m.id+'">'+t('trashRestore')+'</button></div>';
+    });
+    box.innerHTML=html;
+  }
+
+  function hasCompleteMappings(){
+    return sortedMappings().some(isSavedMapping);
+  }
+
+  function resolveTestTarget(forMappingId){
+    ensureConfig();
+    if(forMappingId){
+      const m=state.config.mappings.find(function(x){return x.id===forMappingId;});
+      if(m&&m.targetKey) return {mappingId:m.id,targetKey:m.targetKey};
+      return null;
+    }
+    if(state.selectedMappingId){
+      const m=state.config.mappings.find(function(x){return x.id===state.selectedMappingId;});
+      if(m&&m.targetKey) return {mappingId:m.id,targetKey:m.targetKey};
+    }
+    if(editorTargetKey){
+      const m=selectedMapping();
+      return {mappingId:m.id,targetKey:editorTargetKey};
+    }
+    return null;
+  }
+
+  function isCurrentDraftComplete(){
+    return !!(editorTriggerKey&&editorTargetKey);
+  }
+
+  function renderAddButton(){
+    const btn=$('btnAddMapping');
+    if(!btn) return;
+    const ready=isCurrentDraftComplete();
+    btn.disabled=!ready;
+    btn.title=ready?'':t('addNeedComplete');
+  }
+
+  function renderDraftHint(){
+    const el=$('mappingDraftHint');
+    if(!el) return;
+    const m=selectedMapping();
+    const incomplete=!isCurrentDraftComplete();
+    const hideForDraft=m&&isDraftMapping(m);
+    el.classList.toggle('show',incomplete&&!hideForDraft);
+    if(incomplete&&!hideForDraft) el.textContent=t('draftHint');
+  }
+
+  function updatePrimaryCTA(){
+    const triggerBtn=$('btnRecordTrigger');
+    const targetBtn=$('btnRecordTarget');
+    if(!triggerBtn||!targetBtn) return;
+    triggerBtn.className='btn secondary record-btn';
+    targetBtn.className='btn secondary record-btn';
+    if(!editorTriggerKey){
+      triggerBtn.className='btn primary record-btn';
+    }else if(!editorTargetKey){
+      targetBtn.className='btn primary record-btn';
+    }
+  }
+
+  function resetTestSendState(){
+    clearTimeout(testSendTimer);
+    clearTimeout(testSendWatchdog);
+    testSendState='idle';
+    testSendMappingId=null;
+    testSendFromFooter=false;
+  }
+
+  function renderTestSendButton(){
+    const btn=$('btnTestSend');
+    if(!btn) return;
+    const rowSending=testSendState==='sending'&&!testSendFromFooter;
+    btn.classList.toggle('sending',testSendState==='sending'&&testSendFromFooter);
+    if(testSendState==='sending'&&testSendFromFooter){
+      btn.disabled=true;
+      btn.textContent=t('testSending');
+      return;
+    }
+    if(testSendState==='sent'&&testSendFromFooter){
+      btn.disabled=false;
+      btn.textContent=t('testSent');
+      return;
+    }
+    if(rowSending){
+      btn.disabled=false;
+    }
+    const target=resolveTestTarget(null);
+    if(!target){
+      btn.disabled=true;
+      btn.textContent=t('testSendDisabled');
+      return;
+    }
+    btn.disabled=false;
+    btn.textContent=t('testSendTarget');
+  }
+
+  function fireTestSend(forMappingId){
+    const target=resolveTestTarget(forMappingId||null);
+    if(!target||testSendState==='sending') return;
+    testSendState='sending';
+    testSendMappingId=target.mappingId;
+    testSendFromFooter=!forMappingId;
+    clearTimeout(testSendWatchdog);
+    testSendWatchdog=setTimeout(function(){
+      if(testSendState==='sending'){
+        resetTestSendState();
+        renderTestSendButton();
+        renderMappingList();
+      }
+    },3000);
+    renderTestSendButton();
+    renderMappingList();
+    try{
+      window.chrome?.webview?.postMessage({
+        type:'mvp_test_send',
+        mappingId:target.mappingId,
+        targetKey:target.targetKey
+      });
+    }catch(_){
+      resetTestSendState();
+      renderTestSendButton();
+      renderMappingList();
+      toast(t('testFailed'));
+    }
+  }
+
+  function renderSchemeSwitch(){
+    ensureConfig();
+    const key=(state.config.schemeSwitchKey||'').trim();
+    const btn=$('btnSchemeSwitchKey');
+    const clr=$('btnSchemeSwitchClear');
+    const cancel=$('btnSchemeSwitchCancel');
+    const lbl=$('schemeSwitchLabel');
+    if(lbl) lbl.textContent=t('schemeSwitchLabel');
+    if(!btn) return;
+    const rec=recordingMode==='schemeSwitch';
+    if(rec){
+      btn.textContent=t('schemeSwitchRecording');
+      btn.classList.add('recording');
+      btn.title='';
+    }else if(key){
+      btn.textContent=key;
+      btn.title=key;
+      btn.classList.remove('recording');
+    }else{
+      btn.textContent=t('schemeSwitchRecord');
+      btn.title='';
+      btn.classList.remove('recording');
+    }
+    if(cancel){
+      cancel.textContent=t('schemeSwitchCancel');
+      cancel.hidden=!rec;
+    }
+    if(clr){
+      clr.textContent=t('schemeSwitchClear');
+      clr.hidden=!key||rec;
+    }
+  }
+
+  function startNativeRestoreRecord(mappingId){
+    if(recordingMode!=='none') return;
+    const m=state.config&&state.config.mappings.find(function(x){return x.id===mappingId;});
+    if(!m||!isAutoTriggerMapping(m)) return;
+    nativeRestoreSnapshot={
+      triggerSource:m.triggerSource?JSON.parse(JSON.stringify(m.triggerSource)):null,
+      sourceKey:m.sourceKey||'',
+      sourceTime:m.sourceTime||''
+    };
+    recordingMappingId=mappingId;
+    resetTargetCapture();
+    recordingMode='nativeRestore';
+    try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:mappingId,mode:'trigger'});}catch(_){}
+    renderMappingList();
+    renderRecordCancelBar();
+    pushLog(t('nativeRestoreRecord'));
+    recordTimer=setTimeout(function(){
+      if(recordingMode==='nativeRestore'){
+        cancelRecording();
+        pushLog(t('logTimeout'));
+      }
+    },30000);
+  }
+
+  function finishNativeRestoreCapture(physical,source){
+    if(recordingMode!=='nativeRestore'||!recordingMappingId) return;
+    const m=state.config&&state.config.mappings.find(function(x){return x.id===recordingMappingId;});
+    if(!m) return;
+    m.triggerSource=source||buildPeripheralTriggerSource(physical);
+    m.sourceKey=physical||'';
+    m.sourceTime=String(Date.now());
+    recordingMode='none';
+    nativeRestoreSnapshot=null;
+    recordingMappingId='';
+    clearTimeout(recordTimer);
+    resetTargetCapture();
+    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
+    save();
+    renderMappingList();
+    renderRecordCancelBar();
+    pushLog(t('triggerRecordDetected')+formatTriggerTrace(m));
+  }
+
+  function startSchemeSwitchRecord(){
+    if(recordingMode!=='none') return;
+    ensureConfig();
+    schemeSwitchSnapshot=state.config.schemeSwitchKey||'';
+    resetTargetCapture();
+    recordingMode='schemeSwitch';
+    renderSchemeSwitch();
+    renderRecordCancelBar();
+    pushLog(t('schemeSwitchRecord'));
+    recordTimer=setTimeout(function(){
+      if(recordingMode==='schemeSwitch'){
+        cancelRecording();
+        pushLog(t('logTimeout'));
+      }
+    },30000);
+  }
+
+  function finishSchemeSwitchCapture(combo){
+    if(!combo) return;
+    ensureConfig();
+    state.config.schemeSwitchKey=combo;
+    recordingMode='none';
+    schemeSwitchSnapshot='';
+    clearTimeout(recordTimer);
+    resetTargetCapture();
+    save();
+    renderSchemeSwitch();
+    renderRecordCancelBar();
+    pushLog('scheme switch: '+combo);
+  }
+
+  function clearSchemeSwitchKey(){
+    ensureConfig();
+    state.config.schemeSwitchKey='';
+    save();
+    renderSchemeSwitch();
+    toast(t('schemeSwitchCleared'));
+  }
+
+  function startMappingSwitchRecord(mappingId){
+    if(recordingMode!=='none') return;
+    ensureConfig();
+    recordingMappingId=mappingId;
+    resetTargetCapture();
+    recordingMode='mappingSwitch';
+    renderMappingList();
+    renderRecordCancelBar();
+    pushLog(t('switchKeysAdd'));
+    recordTimer=setTimeout(function(){
+      if(recordingMode==='mappingSwitch'){
+        recordingMode='none';
+        recordingMappingId='';
+        renderMappingList();
+        pushLog(t('logTimeout'));
+      }
+    },30000);
+  }
+
+  function finishMappingSwitchCapture(combo){
+    if(!combo||!recordingMappingId) return;
+    const m=state.config.mappings.find(function(x){return x.id===recordingMappingId;});
+    if(!m) return;
+    ensureMappingExtras(m);
+    const k=combo.trim();
+    if(k&&m.switchKeys.indexOf(k)<0) m.switchKeys.push(k);
+    recordingMode='none';
+    recordingMappingId='';
+    clearTimeout(recordTimer);
+    resetTargetCapture();
+    save();
+    renderMappingList();
+    renderRecordCancelBar();
+    pushLog('switch key: '+k);
+  }
+
+  function removeMappingSwitchKey(mappingId,idx){
+    const m=state.config.mappings.find(function(x){return x.id===mappingId;});
+    if(!m||!Array.isArray(m.switchKeys)) return;
+    m.switchKeys.splice(idx,1);
+    save();
+    renderMappingList();
+    toast(t('switchKeysRemoved'));
+  }
+
+  function renderMappingList(){
+    ensureConfig();
+    const list=$('mappingList');
+    const empty=$('mappingEmpty');
+    const d=I18N[lang];
+    const hasRows=hasCompleteMappings()||hasDraftMappings();
+    if(empty) empty.hidden=hasRows;
+    if(!hasRows){ list.innerHTML=''; return; }
+    let html='';
+    sortedMappings().forEach(function(m){
+      if(isDraftMapping(m)){
+        const sel=m.id===state.selectedMappingId;
+        const left=m.triggerKey||d.triggerPlaceholder;
+        const right=m.targetKey||d.targetPlaceholder;
+        html+='<div class="map-row map-row-draft'+(sel?' selected':'')+'" data-id="'+m.id+'">';
+        html+='<div class="toggle" role="presentation" aria-hidden="true"></div>';
+        html+='<div class="map-main"><div class="map-pair map-pair-draft">';
+        html+='<span class="draft-ph">'+left+'</span> → <span class="draft-ph">'+right+'</span>';
+        html+='</div></div>';
+        html+='<button type="button" class="map-test" disabled>'+d.testShort+'</button>';
+        html+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
+        html+='</div>';
+        return;
+      }
+      if(!isSavedMapping(m)) return;
+      const sel=m.id===state.selectedMappingId;
+      const on=!!m.enabled;
+      const hasTarget=!!m.targetKey;
+      const rowConflicts=conflictsForMapping(m.id);
+      const hasConflict=rowConflicts.length>0;
+      html+='<div class="map-row-wrap">';
+      html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(openMenuId===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
+      html+='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
+      html+='<div class="map-main"><div class="map-pair">'+(m.triggerKey||'?')+' → '+(m.targetKey||'?')+'</div>';
+      if(hasConflict){
+        const c=rowConflicts[0];
+        html+='<div class="map-conflict">'+conflictHintForRow(c,m.id)+'</div>';
+      }
+      html+='</div>';
+      html+='<button type="button" class="map-test'+(testSendState==='sending'&&testSendMappingId===m.id?' sending':'')+'" data-test="'+m.id+'"'+(hasTarget?'':' disabled')+'>'+d.testShort+'</button>';
+      html+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
+      html+='</div>';
+      const advOpen=expandedAdvIds.has(m.id);
+      html+='<details class="map-adv"'+(advOpen?' open':'')+' data-adv="'+m.id+'">';
+      html+='<summary>'+t('advSummary')+'</summary>';
+      if(!isAutoTriggerMapping(m)) html+=renderTriggerMetaBlock(m,m.id);
+      html+=renderNativeRestoreBlock(m,m.id);
+      html+=renderTriggerModeBlock(m,m.id);
+      html+=renderSwitchKeysBlock(m,m.id);
+      html+=renderTimingBlock(m,m.id);
+      html+='</details></div>';
+    });
+    list.innerHTML=html;
+    list.querySelectorAll('details.map-adv').forEach(function(det){
+      det.addEventListener('toggle',function(){
+        const id=det.dataset.adv;
+        if(det.open) expandedAdvIds.add(id); else expandedAdvIds.delete(id);
+      });
+    });
+  }
+
+  function renderEditor(){
+    const d=I18N[lang];
+    const triggerEl=$('triggerView');
+    const targetEl=$('targetView');
+    const triggerDisp=$('triggerDisplay');
+    const targetDisp=$('targetDisplay');
+    const traceEl=$('triggerTrace');
+    triggerEl.textContent=editorTriggerKey||d.triggerPlaceholder;
+    targetEl.textContent=editorTargetKey||d.targetPlaceholder;
+    if(triggerDisp) triggerDisp.classList.toggle('empty',!editorTriggerKey);
+    if(targetDisp) targetDisp.classList.toggle('empty',!editorTargetKey);
+    const m=selectedMapping();
+    const trace=formatTriggerTrace(m);
+    if(traceEl){
+      if(trace){
+        traceEl.textContent=trace;
+        traceEl.classList.add('show');
+        traceEl.hidden=false;
+      }else{
+        traceEl.textContent='';
+        traceEl.classList.remove('show');
+        traceEl.hidden=true;
+      }
+    }
+    $('btnRecordTrigger').textContent=editorTriggerKey?t('btnRerecordTrigger'):t('btnRecordTrigger');
+    $('btnRecordTarget').textContent=editorTargetKey?t('btnRerecordTarget'):t('btnRecordTarget');
+    updatePrimaryCTA();
+    renderHeroBadges();
+    renderRecordCancelBar();
+  }
+
+  function renderHeroBadges(){
+    const d=I18N[lang];
+    const leftBadge=$('leftBadge');
+    const rightBadge=$('rightBadge');
+    const leftCard=$('leftCard');
+    const rightCard=$('rightCard');
+    const triggerBtn=$('btnRecordTrigger');
+    const targetBtn=$('btnRecordTarget');
+    if(recordingMode==='trigger'){
+      leftBadge.textContent=d.badgeRecording;
+      rightBadge.textContent=editorTargetKey?d.badgeSet:d.badgeNotSet;
+      if(leftCard) leftCard.classList.add('is-recording');
+      if(rightCard) rightCard.classList.remove('is-recording');
+      if(triggerBtn) triggerBtn.classList.add('is-recording');
+      if(targetBtn) targetBtn.classList.remove('is-recording');
+    }else if(recordingMode==='target'){
+      rightBadge.textContent=d.badgeRecording;
+      leftBadge.textContent=editorTriggerKey?d.badgeRecorded:d.badgeNotRecorded;
+      if(rightCard) rightCard.classList.add('is-recording');
+      if(leftCard) leftCard.classList.remove('is-recording');
+      if(targetBtn) targetBtn.classList.add('is-recording');
+      if(triggerBtn) triggerBtn.classList.remove('is-recording');
+    }else{
+      leftBadge.textContent=editorTriggerKey?d.badgeRecorded:d.badgeNotRecorded;
+      rightBadge.textContent=editorTargetKey?d.badgeSet:d.badgeNotSet;
+      if(leftCard) leftCard.classList.remove('is-recording');
+      if(rightCard) rightCard.classList.remove('is-recording');
+      if(triggerBtn) triggerBtn.classList.remove('is-recording');
+      if(targetBtn) targetBtn.classList.remove('is-recording');
+    }
+  }
+
+  function render(){
+    renderMappingList();
+    renderEditor();
+    renderSchemeSwitch();
+    renderTrashList();
+    renderTestSendButton();
+    renderConflictBanner();
+    renderAddButton();
+    renderDraftHint();
+    renderRecordCancelBar();
+    $('listenState').textContent=runtime.paused?t('listenPaused'):t('listenOn');
+    $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
+    $('liveAction').textContent=runtime.lastAction||'-';
+    $('liveTimer').textContent=runtime.timerActive?'⏳':'-';
+  }
+
+  function renderRecordCancelBar(){
+    const bar=$('recordCancelBar');
+    const btn=$('btnCancelRecord');
+    if(!bar) return;
+    const m=selectedMapping();
+    const showDraft=m&&isDraftMapping(m);
+    const show=recordingMode!=='none'||showDraft;
+    bar.classList.toggle('show',show);
+    if(btn) btn.textContent=recordingMode!=='none'?t('cancelRecord'):t('cancelDraft');
+  }
+
+  function setRecording(mode){
+    recordingMode=mode;
+    clearTimeout(recordTimer);
+    const d=I18N[lang];
+    if(mode==='trigger'){
+      $('triggerState').textContent=d.triggerRecordHint;
+    }else if(mode==='target'){
+      $('targetState').textContent=d.targetRecordHint;
+    }else{
+      $('triggerState').textContent='';
+      $('targetState').textContent='';
+    }
+    renderHeroBadges();
+    renderRecordCancelBar();
+  }
+
+  function startTriggerRecord(){
+    ensureConfig();
+    beginRecordSnapshot();
+    resetTargetCapture();
+    setRecording('trigger');
+    try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:state.selectedMappingId,mode:'trigger'});}catch(_){ }
+    pushLog(t('logStartTrigger'));
+    $('triggerState').textContent=t('triggerRecordHint');
+    recordTimer=setTimeout(function(){
+      if(recordingMode==='trigger'){ cancelRecording(); pushLog(t('logTimeout')); }
+    },30000);
+  }
+
+  function startTargetRecord(){
+    ensureConfig();
+    beginRecordSnapshot();
+    setRecording('target');
+    resetTargetCapture();
+    pushLog(t('logStartTarget'));
+    recordTimer=setTimeout(function(){
+      if(recordingMode==='target'){ cancelRecording(); pushLog(t('logTimeout')); }
+    },30000);
+  }
+
+  function isHardwareDelegatedTriggerKey(key,code){
+    const k=String(key||'');
+    const c=String(code||'');
+    const blob=(k+' '+c).toLowerCase();
+    return blob.indexOf('volume')>=0||blob.indexOf('audiovolume')>=0
+      ||blob.indexOf('media_')>=0||blob.indexOf('browser_')>=0
+      ||blob.indexOf('launch_')>=0||/^f1[3-9]$|^f2[0-4]$/.test(blob.replace(/\s/g,''));
+  }
+
+  function finishTriggerCapture(key, source, sourceKey, sourceTime){
+    if(recordingMode!=='trigger') return;
+    const k=normalizeTriggerKey(key);
+    if(!isAllowedTriggerKey(k)){ toast(t('triggerRejected')); return; }
+    const m=selectedMapping();
+    m.triggerKey=k;
+    if(source){
+      m.triggerSource=source;
+    }else if(k!=='AutoTrigger'){
+      m.triggerSource=null;
+    }
+    m.sourceKey=sourceKey||(source&&source.rawEvents&&source.rawEvents[0]&&source.rawEvents[0].hotkey)||k;
+    m.sourceTime=sourceTime||'';
+    editorTriggerKey=k;
+    m.label=k+' → '+(m.targetKey||'?');
+    pushLog(t('logTriggerDone')+k);
+    recordSnapshot=null;
+    clearTimeout(recordTimer);
+    setRecording('none');
+    save();
+    render();
+    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
+  }
+
+  function finishTargetCapture(combo){
+    const m=selectedMapping();
+    m.targetKey=combo;
+    editorTargetKey=combo;
+    m.label=(m.triggerKey||'?')+' → '+combo;
+    if(pendingNewDraftId===m.id) pendingNewDraftId=null;
+    pushLog(t('logTargetDone')+combo);
+    recordSnapshot=null;
+    clearTimeout(recordTimer);
+    setRecording('none');
+    resetTargetCapture();
+    save();
+    render();
+  }
+
+  $('btnTheme').onclick=function(){ theme=theme==='light'?'dark':'light'; applyTheme(); };
+  $('btnLang').onclick=function(){ lang=lang==='zh'?'en':'zh'; applyLang(); };
+  $('btnSettings').onclick=openDrawer;
+  $('btnDrawerClose').onclick=closeDrawer;
+  $('drawerOverlay').onclick=closeDrawer;
+  $('btnListenToggle').onclick=function(){
+    try{window.chrome?.webview?.postMessage({type:runtime.paused?'mvp_resume':'mvp_pause'});}catch(_){ }
+  };
+  $('btnRefreshRuntime').onclick=function(){
+    try{window.chrome?.webview?.postMessage({type:'mvp_request_runtime'});}catch(_){ }
+    toast(t('runtimeRefreshed'));
+  };
+  $('btnRestartApp').onclick=function(){
+    if(!confirm(t('restartConfirm'))) return;
+    try{window.chrome?.webview?.postMessage({type:'mvp_reload_latest'});}catch(_){ }
+  };
+  $('btnTestSend').onclick=function(){ fireTestSend(null); };
+  $('btnRecordTrigger').onclick=startTriggerRecord;
+  $('btnRecordTarget').onclick=startTargetRecord;
+  $('btnCancelRecord').onclick=cancelDraftOrRecording;
+  $('btnSchemeSwitchKey').onclick=function(){
+    if(recordingMode==='schemeSwitch') return;
+    startSchemeSwitchRecord();
+  };
+  $('btnSchemeSwitchCancel').onclick=function(e){
+    e.stopPropagation();
+    cancelRecording();
+  };
+  $('btnSchemeSwitchClear').onclick=function(e){
+    e.stopPropagation();
+    clearSchemeSwitchKey();
+  };
+
+  $('mappingList').addEventListener('input',function(e){
+    const range=e.target.closest&&e.target.closest('[data-timing-range]');
+    if(!range) return;
+    e.stopPropagation();
+    const id=range.dataset.timingRange;
+    const field=range.dataset.field;
+    const val=Number(range.value);
+    updateMappingTiming(id,field,val);
+  });
+
+  $('mappingList').addEventListener('click',function(e){
+    const el=e.target;
+    if(el.closest&&el.closest('.map-adv')){ e.stopPropagation(); }
+    const manageBtn=el.closest&&el.closest('[data-manage-trigger]');
+    if(manageBtn){
+      e.stopPropagation();
+      const id=manageBtn.dataset.manageTrigger;
+      focusMapping(id);
+      expandedAdvIds.add(id);
+      const hero=$('editorWrap');
+      if(hero) hero.scrollIntoView({behavior:'smooth',block:'start'});
+      const leftCard=$('leftCard');
+      if(leftCard) leftCard.classList.add('is-recording');
+      setTimeout(function(){ if(leftCard) leftCard.classList.remove('is-recording'); },1200);
+      return;
+    }
+    const nativeRecBtn=el.closest&&el.closest('[data-native-restore-record]');
+    if(nativeRecBtn){
+      e.stopPropagation();
+      const id=nativeRecBtn.dataset.nativeRestoreRecord;
+      if(recordingMode==='nativeRestore'&&recordingMappingId===id){
+        cancelRecording();
+        return;
+      }
+      startNativeRestoreRecord(id);
+      return;
+    }
+    const modeBtn=el.closest&&el.closest('[data-trigger-mode]');
+    if(modeBtn){
+      e.stopPropagation();
+      const id=modeBtn.dataset.triggerMode;
+      const mode=modeBtn.dataset.mode;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m||!mode) return;
+      m.triggerMode=mode;
+      save();
+      renderMappingList();
+      return;
+    }
+    const timingToggle=el.closest&&el.closest('[data-timing-toggle]');
+    if(timingToggle){
+      e.stopPropagation();
+      const id=timingToggle.dataset.timingToggle;
+      const field=timingToggle.dataset.field;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m) return;
+      m[field]=!m[field];
+      scheduleTimingSave();
+      renderMappingList();
+      return;
+    }
+    const nativeToggle=el.closest&&el.closest('[data-native-restore]');
+    if(nativeToggle){
+      e.stopPropagation();
+      const id=nativeToggle.dataset.nativeRestore;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m) return;
+      m.nativeKeyRestore=!m.nativeKeyRestore;
+      save();
+      renderMappingList();
+      return;
+    }
+    const addSwitch=el.closest&&el.closest('[data-add-switch]');
+    if(addSwitch){
+      e.stopPropagation();
+      if(recordingMode==='mappingSwitch'&&recordingMappingId===addSwitch.dataset.addSwitch){
+        recordingMode='none';
+        recordingMappingId='';
+        renderMappingList();
+        renderRecordCancelBar();
+        return;
+      }
+      startMappingSwitchRecord(addSwitch.dataset.addSwitch);
+      return;
+    }
+    const rmSwitch=el.closest&&el.closest('[data-rm-switch]');
+    if(rmSwitch){
+      e.stopPropagation();
+      removeMappingSwitchKey(rmSwitch.dataset.rmSwitch, Number(rmSwitch.dataset.idx));
+      return;
+    }
+    const toggleEl=el.closest&&el.closest('[data-toggle]');
+    if(toggleEl){
+      e.stopPropagation();
+      const id=toggleEl.dataset.toggle;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m) return;
+      const next=!m.enabled;
+      try{window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:id,enabled:next});}catch(_){ }
+      return;
+    }
+    const testBtn=el.closest&&el.closest('[data-test]');
+    if(testBtn){
+      e.stopPropagation();
+      if(!testBtn.disabled) fireTestSend(testBtn.dataset.test);
+      return;
+    }
+    const delBtn=el.closest&&el.closest('[data-del]');
+    if(delBtn){
+      e.stopPropagation();
+      softDeleteMapping(delBtn.dataset.del);
+      return;
+    }
+    const menuBtn=el.closest&&el.closest('[data-menu]');
+    if(menuBtn){
+      e.stopPropagation();
+      openFloatMenu(menuBtn.dataset.menu, menuBtn);
+      return;
+    }
+    const row=el.closest&&el.closest('.map-row');
+    if(row&&row.dataset.id){
+      const id=row.dataset.id;
+      if(row.closest('.map-row-wrap')) toggleMappingAdv(id);
+      state.selectedMappingId=id;
+      syncEditorFromSelection();
+      closeFloatMenu();
+      render();
+    }
+  });
+
+  $('btnAddMapping').onclick=function(){
+    if(!isCurrentDraftComplete()){
+      toast(t('addNeedComplete'));
+      renderDraftHint();
+      return;
+    }
+    ensureConfig();
+    const id=newMappingId();
+    state.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:state.config.mappings.length,triggerMode:'tap',intervalMs:state.config.intervalMs||1200,enterDelayMs:state.config.enterDelayMs||5000,cancelEnabled:state.config.cancelEnabled!==false,autoEnterEnabled:state.config.autoEnterEnabled!==false});
+    state.selectedMappingId=id;
+    pendingNewDraftId=id;
+    editorTriggerKey='';
+    editorTargetKey='';
+    syncEditorFromSelection();
+    save();
+    render();
+    renderRecordCancelBar();
+    const hero=$('editorWrap');
+    if(hero) hero.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  $('btnClearAll').onclick=function(){
+    if(!confirm(t('confirmClear'))) return;
+    state.config=defaultConfig();
+    state.selectedMappingId=state.config.mappings[0].id;
+    syncEditorFromSelection();
+    save();
+    render();
+    toast(t('restoredDefault'));
+  };
+
+  $('mapMenuFloat').addEventListener('click',function(e){
+    e.stopPropagation();
+    const actBtn=e.target.closest&&e.target.closest('[data-act]');
+    if(!actBtn||actBtn.disabled) return;
+    const id=$('mapMenuFloat').dataset.id;
+    const act=actBtn.dataset.act;
+    if(!id) return;
+    if(act==='dup'){ closeFloatMenu(); try{window.chrome?.webview?.postMessage({type:'mvp_mapping_duplicate',id:id});}catch(_){ } return; }
+    if(act==='del'){ closeFloatMenu(); deleteMappingFromMenu(id); return; }
+    if(act==='up'||act==='down'){ reorderMapping(id, act); return; }
+  });
+
+  $('trashList').addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('[data-restore]');
+    if(btn) restoreFromTrash(btn.dataset.restore);
+  });
+
+  document.addEventListener('click',function(e){
+    if(openMenuId){
+      const pop=$('mapMenuFloat');
+      if(!pop.contains(e.target) && !(menuAnchorBtn&&menuAnchorBtn.contains(e.target))){
+        closeFloatMenu();
+        renderMappingList();
+      }
+    }
+  });
+  window.addEventListener('resize',function(){ if(openMenuId&&menuAnchorBtn) openFloatMenu(openMenuId, menuAnchorBtn); });
+  window.addEventListener('scroll',function(){ if(openMenuId) closeFloatMenu(); }, true);
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){
+      if(recordingMode!=='none'){ e.preventDefault(); cancelRecording(); return; }
+      const m=selectedMapping();
+      if(m&&isDraftMapping(m)){ e.preventDefault(); removeDraftMapping(m.id); return; }
+      if(ui.drawerOpen){ closeDrawer(); return; }
+    }
+    $('dbKey').textContent=e.key;
+    $('dbCode').textContent=e.code;
+    pushLog(new Date().toLocaleTimeString()+' key='+e.key+' code='+e.code);
+    if(recordingMode==='trigger'){
+      e.preventDefault();
+      e.stopPropagation();
+      const code=String(e.code||'');
+      const key=String(e.key||'');
+      if(isHardwareDelegatedTriggerKey(key,code)){
+        $('triggerState').textContent=t('triggerRecordDetected')+(webEventToPhysicalKey(key,code)||key);
+        pushLog(t('triggerRecordDetected')+(webEventToPhysicalKey(key,code)||key));
+        return;
+      }
+      const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+      if(isModifierCode(code)){
+        targetCapture.pendingModifier=code;
+        targetCapture.mods=mods;
+        noteModifierSide(code);
+        const standalone=normalizeStandaloneModifier(code);
+        $('triggerState').textContent=t('comboHint')+(standalone||'');
+        pushLog(t('logWaitMain'));
+        return;
+      }
+      const main=normalizeKeyFromCode(code, key);
+      const combo=normalizeTargetCombination(mods, main, targetCapture.modSide);
+      if(combo){
+        $('triggerState').textContent=t('triggerRecordDetected')+combo;
+        try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:combo, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+      }
+      return;
+    }
+    if(recordingMode==='target'){
+      e.preventDefault();
+      e.stopPropagation();
+      const code=String(e.code||'');
+      const key=String(e.key||'');
+      const media=normalizeMediaTargetKey(code,key);
+      if(media){
+        finishTargetCapture(media);
+        return;
+      }
+      const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+      if(isModifierCode(code)){
+        targetCapture.pendingModifier=code;
+        targetCapture.mods=mods;
+        noteModifierSide(code);
+        const standalone=normalizeStandaloneModifier(code);
+        $('targetState').textContent=t('comboHint');
+        pushLog(t('logWaitMain'));
+        if(standalone==='') return;
+        return;
+      }
+      const main=normalizeKeyFromCode(code, key);
+      const combo=normalizeTargetCombination(mods, main, targetCapture.modSide);
+      if(combo){
+        finishTargetCapture(combo);
+        try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:combo, mappingId:state.selectedMappingId, mode:'target'});}catch(_){ }
+      }
+      return;
+    }
+    if(recordingMode==='schemeSwitch'){
+      e.preventDefault();
+      e.stopPropagation();
+      const code=String(e.code||'');
+      const key=String(e.key||'');
+      const media=normalizeMediaTargetKey(code,key);
+      if(media){
+        finishSchemeSwitchCapture(media);
+        return;
+      }
+      const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+      if(isModifierCode(code)){
+        targetCapture.pendingModifier=code;
+        targetCapture.mods=mods;
+        noteModifierSide(code);
+        pushLog(t('logWaitMain'));
+        return;
+      }
+      const main=normalizeKeyFromCode(code, key);
+      const combo=normalizeTargetCombination(mods, main, targetCapture.modSide);
+      if(combo) finishSchemeSwitchCapture(combo);
+      return;
+    }
+    if(recordingMode==='mappingSwitch'){
+      e.preventDefault();
+      e.stopPropagation();
+      const code=String(e.code||'');
+      const key=String(e.key||'');
+      const media=normalizeMediaTargetKey(code,key);
+      if(media){
+        finishMappingSwitchCapture(media);
+        return;
+      }
+      const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+      if(isModifierCode(code)){
+        targetCapture.pendingModifier=code;
+        targetCapture.mods=mods;
+        noteModifierSide(code);
+        pushLog(t('logWaitMain'));
+        return;
+      }
+      const main=normalizeKeyFromCode(code, key);
+      const combo=normalizeTargetCombination(mods, main, targetCapture.modSide);
+      if(combo) finishMappingSwitchCapture(combo);
+      return;
+    }
+    if(recordingMode==='nativeRestore'){
+      e.preventDefault();
+      e.stopPropagation();
+      const code=String(e.code||'');
+      const key=String(e.key||'');
+      if(isHardwareDelegatedTriggerKey(key,code)){
+        const physical=webEventToPhysicalKey(key,code);
+        if(!physical) return;
+        const source=buildPeripheralTriggerSource(physical);
+        finishNativeRestoreCapture(physical,source);
+      }
+      return;
+    }
+  },true);
+
+  document.addEventListener('mousedown',function(e){
+    if(recordingMode!=='target'&&recordingMode!=='trigger') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const btn=normalizeMouseButton(e.button);
+    if(!btn) return;
+    const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+    noteModifierSideFromFlags(mods);
+    const combo=normalizeTargetCombination(mods, btn, targetCapture.modSide);
+    if(recordingMode==='trigger'){
+      $('triggerState').textContent=t('triggerRecordDetected')+combo;
+      try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:combo, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+      return;
+    }
+    finishTargetCapture(combo);
+  },true);
+
+  function noteModifierSideFromFlags(mods){
+    if(mods.ctrl&&!targetCapture.modSide.ctrl) targetCapture.modSide.ctrl='Ctrl';
+    if(mods.shift&&!targetCapture.modSide.shift) targetCapture.modSide.shift='Shift';
+    if(mods.alt&&!targetCapture.modSide.alt) targetCapture.modSide.alt='Alt';
+    if(mods.meta&&!targetCapture.modSide.meta) targetCapture.modSide.meta='Win';
+  }
+
+  document.addEventListener('keyup',function(e){
+    if(recordingMode!=='target'&&recordingMode!=='schemeSwitch'&&recordingMode!=='mappingSwitch'&&recordingMode!=='trigger') return;
+    const code=String(e.code||'');
+    if(!isModifierCode(code)) return;
+    if(targetCapture.pendingModifier===code){
+      const modifierName=normalizeStandaloneModifier(code);
+      if(modifierName){
+        if(recordingMode==='schemeSwitch') finishSchemeSwitchCapture(modifierName);
+        else if(recordingMode==='mappingSwitch') finishMappingSwitchCapture(modifierName);
+        else if(recordingMode==='trigger'){
+          e.preventDefault();
+          e.stopPropagation();
+          $('triggerState').textContent=t('triggerRecordDetected')+modifierName;
+          try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:modifierName, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+        }
+        else finishTargetCapture(modifierName);
+      }
+      targetCapture.pendingModifier='';
+    }
+  },true);
+
+  window.chrome?.webview?.addEventListener?.('message',function(e){
+    const msg=e&&e.data;
+    if(!msg||typeof msg!=='object') return;
+    if(msg.type==='mvp_init'){
+      if(msg.config) state.config=msg.config;
+      if(Array.isArray(msg.conflicts)) conflictRows=msg.conflicts;
+      ensureConfig();
+      syncEditorFromSelection();
+      render();
+    }
+    if(msg.type==='mvp_saved'&&msg.ok){ /* persisted */ }
+    if(msg.type==='mvp_mapping_toggled'&&msg.ok){
+      const m=state.config&&state.config.mappings.find(function(x){return x.id===msg.id;});
+      if(m) m.enabled=!!msg.enabled;
+      if(msg.autoDisabled&&msg.autoDisabled.length) toast(t('conflictDisabled'));
+      render();
+    }
+    if(msg.type==='mvp_mapping_duplicated'&&msg.ok){ /* backend persisted; wait mvp_init */ }
+    if(msg.type==='mvp_record_rejected'){
+      toast(t('whitelistRejected'));
+      cancelRecording();
+    }
+    if(msg.type==='mvp_record_seen'){
+      const seen=msg.key||'?';
+      if(recordingMode==='trigger'||recordingMode==='nativeRestore'){
+        $('triggerState').textContent=t('triggerRecordDetected')+seen;
+      }
+      pushLog(t('triggerRecordDetected')+seen);
+    }
+    if(msg.type==='mvp_record_pending'){
+      const seen=msg.displayKey||'?';
+      if(recordingMode==='trigger') $('triggerState').textContent=t('comboHint')+seen;
+      else $('triggerState').textContent=t('triggerRecordDetected')+seen;
+    }
+    if(msg.type==='mvp_key_captured'){
+      const key = msg.key || 'AutoTrigger';
+      if(recordingMode==='trigger'){
+        finishTriggerCapture(key, msg.source || null, msg.sourceKey || '', msg.sourceTime || '');
+      }else if(recordingMode==='target'&&msg.mode==='target'){
+        finishTargetCapture(key);
+      }else if(recordingMode==='nativeRestore'){
+        const physical=msg.sourceKey||key;
+        finishNativeRestoreCapture(physical, msg.source || null);
+      }
+    }
+    if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; render(); }
+    if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; render(); }
+    if(msg.type==='mvp_runtime'){
+      runtime.lastAction=msg.lastAction||'-';
+      runtime.timerActive=!!msg.timerActive;
+      runtime.paused=!!msg.paused;
+      if(recordingMode==='trigger' && runtime.lastAction==='recorded'){
+        /* handled by mvp_key_captured */
+      } else {
+        render();
+      }
+    }
+    if(msg.type==='mvp_scheme_switched'){
+      if(msg.config) state.config=msg.config;
+      else if(msg.toId){
+        ensureConfig();
+        state.config.mappings.forEach(function(m){ m.enabled=(m.id===msg.toId); });
+        state.selectedMappingId=msg.toId;
+        syncEditorFromSelection();
+      }
+      toast(t('schemeSwitched')+(msg.label||''));
+      render();
+    }
+    if(msg.type==='mvp_test_sent'){
+      clearTimeout(testSendWatchdog);
+      const wasFooter=testSendFromFooter;
+      if(msg.ok){
+        if(wasFooter){
+          testSendState='sent';
+          renderTestSendButton();
+          toast(t('testSentToast')+(msg.key||''));
+          clearTimeout(testSendTimer);
+          testSendTimer=setTimeout(function(){
+            resetTestSendState();
+            renderTestSendButton();
+            renderMappingList();
+          },800);
+        }else{
+          resetTestSendState();
+          renderTestSendButton();
+          renderMappingList();
+          toast(t('testSentToast')+(msg.key||''));
+        }
+      }else{
+        resetTestSendState();
+        renderTestSendButton();
+        renderMappingList();
+        toast(t('testFailed'));
+      }
+    }
+  });
+
+  try{
+    const savedTheme=localStorage.getItem('vp_theme');
+    const savedLang=localStorage.getItem('vp_lang');
+    if(savedTheme==='dark'||savedTheme==='light') theme=savedTheme;
+    if(savedLang==='zh'||savedLang==='en') lang=savedLang;
+  }catch(_){}
+  state.config=defaultConfig();
+  ensureConfig();
+  syncEditorFromSelection();
+  applyLang();
+  setRecording('none');
+  pushLog(t('waitLog'));
+  try{window.chrome?.webview?.postMessage({type:'mvp_ready'});}catch(_){ }
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
