@@ -51,7 +51,9 @@ cargo tauri build
 
 ## 从牛马仓库迁出
 
-本仓库自 [牛马nmer](https://github.com/) 的 `voice_input_mvp` 实验目录独立而来。旧 AHK 实现仅作历史参考，不在此仓库内。
+本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/voice-pilot**
+
+旧 AHK 实现仅作历史参考，不在此仓库内（牛马仓库 `archive/voice-pilot-legacy-ahk-20260625/`）。
 
 ## 目录结构
 
