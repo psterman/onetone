@@ -1,7 +1,7 @@
 {
-  "productName": "Voice Pilot",
+  "productName": "织音",
   "version": "1.0.0",
-  "identifier": "com.voicepilot.app",
+  "identifier": "com.onetone.app",
   "build": {
     "devUrl": "http://localhost:1420",
     "frontendDist": "../src",
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Voice Pilot",
+        "title": "织音",
         "width": 760,
         "height": 820,
         "resizable": true,
@@ -30,6 +30,10 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
       "icons/icon.ico"
     ]
   }

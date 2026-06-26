@@ -1,4 +1,4 @@
-﻿use notify::{Event, EventKind, RecursiveMode, Watcher};
+use notify::{Event, EventKind, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -889,11 +889,25 @@ impl VoiceConfig {
 }
 
 pub fn config_path() -> PathBuf {
-    let app_path = directories::ProjectDirs::from("com", "VoicePilot", "Voice Pilot")
+    let app_path = directories::ProjectDirs::from("com", "oneTone", "oneTone")
         .map(|d| d.config_dir().join("settings.json"));
     if let Some(ref p) = app_path {
         if p.exists() {
             return p.clone();
+        }
+    }
+    if let Some(voice_pilot_dirs) = directories::ProjectDirs::from("com", "VoicePilot", "Voice Pilot") {
+        let legacy_vp = voice_pilot_dirs.config_dir().join("settings.json");
+        if legacy_vp.exists() {
+            if let Some(ref dest) = app_path {
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent).ok();
+                }
+                if fs::copy(&legacy_vp, dest).is_ok() {
+                    return dest.clone();
+                }
+            }
+            return legacy_vp;
         }
     }
     let legacy = legacy_config_candidates();

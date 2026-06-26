@@ -230,7 +230,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(wnd_proc),
         hInstance: std::ptr::null_mut(),
-        lpszClassName: w!("VoicePilotHotkey"),
+        lpszClassName: w!("OneToneHotkey"),
         cbClsExtra: 0,
         cbWndExtra: 0,
         hIcon: std::ptr::null_mut(),
@@ -243,7 +243,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
     let hwnd = unsafe {
         CreateWindowExW(
             0,
-            w!("VoicePilotHotkey"),
+            w!("OneToneHotkey"),
             w!("VP"),
             0, 0, 0, 0, 0,
             winuser::HWND_MESSAGE,
@@ -269,19 +269,22 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
 
     let mut recording_mode = false;
 
-    unsafe fn register(ctx: *mut WndCtx, hwnd: HWND, name: &str) -> Option<u32> {
-        let id = (*ctx).next_id;
-        let ok = if name.contains('+') {
-            chord_to_register_hotkey(name)
-                .map(|(mods, vk)| RegisterHotKey(hwnd, id as i32, mods, vk as UINT) != 0)
+    unsafe fn try_register_hotkey(hwnd: HWND, id: i32, combo: &str) -> bool {
+        if combo.contains('+') {
+            chord_to_register_hotkey(combo)
+                .map(|(mods, vk)| RegisterHotKey(hwnd, id, mods, vk as UINT) != 0)
                 .unwrap_or(false)
-        } else if let Some(vk) = key_to_vk(name) {
-            RegisterHotKey(hwnd, id as i32, MOD_NOREPEAT as u32, vk) != 0
-                || RegisterHotKey(hwnd, id as i32, 0, vk) != 0
+        } else if let Some(vk) = key_to_vk(combo) {
+            RegisterHotKey(hwnd, id, MOD_NOREPEAT as u32, vk) != 0
+                || RegisterHotKey(hwnd, id, 0, vk) != 0
         } else {
             false
-        };
-        if ok {
+        }
+    }
+
+    unsafe fn register(ctx: *mut WndCtx, hwnd: HWND, name: &str) -> Option<u32> {
+        let id = (*ctx).next_id;
+        if try_register_hotkey(hwnd, id as i32, name) {
             (*ctx).names.insert(id, name.to_string());
             (*ctx).next_id += 1;
             Some(id)
@@ -316,14 +319,10 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
         unregister_scheme_selects(ctx, hwnd);
         let mut id = SCHEME_SELECT_BASE_ID;
         for (combo, mapping_id) in bindings {
-            let Ok((mods, vk)) = chord_to_register_hotkey(combo) else {
-                continue;
-            };
             if id >= SCHEME_SWITCH_HOTKEY_ID {
                 break;
             }
-            let ok = RegisterHotKey(hwnd, id as i32, mods, vk as UINT) != 0;
-            if ok {
+            if try_register_hotkey(hwnd, id as i32, combo) {
                 (*ctx)
                     .scheme_select_ids
                     .insert(id, mapping_id.clone());
@@ -334,14 +333,12 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
 
     unsafe fn register_scheme_switch(ctx: *mut WndCtx, hwnd: HWND, combo: &str) -> bool {
         unregister_scheme_switch(ctx, hwnd);
-        let Ok((mods, vk)) = chord_to_register_hotkey(combo) else {
-            return false;
-        };
-        let ok = RegisterHotKey(hwnd, SCHEME_SWITCH_HOTKEY_ID as i32, mods, vk as UINT) != 0;
-        if ok {
+        if try_register_hotkey(hwnd, SCHEME_SWITCH_HOTKEY_ID as i32, combo) {
             (*ctx).scheme_switch_id = Some(SCHEME_SWITCH_HOTKEY_ID);
+            true
+        } else {
+            false
         }
-        ok
     }
 
     unsafe fn register_list(ctx: *mut WndCtx, hwnd: HWND, keys: &[String]) {
@@ -792,8 +789,9 @@ fn scan_consumer_bytes(data: &[u8]) -> Option<String> {
             return Some(name);
         }
     }
-    // 常见蓝牙外设：单字节位图报告，usage 位于 consumer page 低字节
-    for byte in data {
+    // 常见蓝牙外设：consumer control 以位图方式上报，usage 常从 0x00E0 起连续展开。
+    // 这里不能只看单字节内的 0..7 位，Volume Up/Down 往往落在更高位（如 0x00E9/0x00EA）。
+    for (byte_index, byte) in data.iter().enumerate() {
         if *byte == 0 {
             continue;
         }
@@ -801,7 +799,7 @@ fn scan_consumer_bytes(data: &[u8]) -> Option<String> {
             if (*byte as u16) & (1 << bit) == 0 {
                 continue;
             }
-            let usage = 0x00E0u16 + bit;
+            let usage = 0x00E0u16 + (byte_index as u16 * 8) + bit;
             if let Some(name) = consumer_usage_to_name(usage) {
                 return Some(name);
             }
@@ -887,5 +885,4 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
         _ => None,
     }
 }
-
 

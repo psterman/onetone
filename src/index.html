@@ -3,75 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voice Pilot</title>
+  <title>织音 oneTone</title>
+  <link rel="icon" type="image/png" href="icon.png" />
   <style>
     :root{
-      --primary:#2563eb;
-      --primary-muted:#3b6ea8;
-      --primary-soft:#eaf2ff;
-      --key-soft:#3b6ea8;
+      --primary:#2a9cc4;
+      --primary-strong:#1f8fb8;
+      --primary-muted:#45b0d4;
+      --primary-soft:#e6f7fc;
+      --primary-glow:#5ec8e8;
+      --indigo:#1a2d4a;
+      --indigo-muted:#5a7086;
+      --key-soft:#2a9cc4;
       --on-primary:#ffffff;
-      --surface:rgba(255,255,255,.88);
-      --surface-high:rgba(255,255,255,.96);
-      --surface-soft:#eef5ff;
-      --on-surface:#111827;
-      --on-surface-muted:#64748b;
-      --btn-label:#1e3a5f;
-      --btn-label-muted:#6b7c93;
-      --outline:rgba(120,140,170,.24);
-      --outline-variant:rgba(120,140,170,.16);
-      --success:#16a34a;
+      --surface:rgba(255,255,255,.9);
+      --surface-high:rgba(255,255,255,.97);
+      --surface-soft:#f0f7fb;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --btn-label:#1a2d4a;
+      --btn-label-muted:#5a7086;
+      --outline:rgba(42,156,196,.24);
+      --outline-variant:rgba(26,45,74,.10);
+      --success:#2a9cc4;
+      --toggle-off:#c5d3de;
       --warning:#f97316;
       --error:#dc2626;
       --radius-card:28px;
       --radius-inner:20px;
       --radius-row:16px;
       --radius-pill:999px;
-      --shadow-card:0 18px 48px rgba(30,41,59,.10);
-      --shadow-button:0 10px 22px rgba(26,115,232,.22);
+      --shadow-card:0 14px 34px rgba(26,45,74,.07);
+      --shadow-button:0 10px 22px rgba(42,156,196,.20);
       --dur-fast:160ms;
       --dur-med:260ms;
       --ease-standard:cubic-bezier(.2,.8,.2,1);
       font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
     }
     html[data-theme="dark"]{
-      --primary:#8ab4f8;
-      --primary-muted:#7eb3ff;
-      --primary-soft:rgba(110,182,255,.12);
-      --key-soft:#7eb3ff;
+      --primary:#5ec8e8;
+      --primary-strong:#3eb8dc;
+      --primary-muted:#7ed4ef;
+      --primary-soft:rgba(94,200,232,.14);
+      --primary-glow:#8ee0f4;
+      --indigo:#dce8f5;
+      --indigo-muted:#8b97a8;
+      --key-soft:#8ee0f4;
       --on-primary:#0b1220;
-      --surface:rgba(36,42,52,.92);
-      --surface-high:rgba(44,50,62,.96);
-      --surface-soft:rgba(80,140,255,.10);
-      --on-surface:#e8eaed;
-      --on-surface-muted:#9aa3b2;
-      --btn-label:#dce6f5;
+      --surface:rgba(22,30,44,.94);
+      --surface-high:rgba(28,38,54,.97);
+      --surface-soft:rgba(94,200,232,.08);
+      --on-surface:#e8f0f8;
+      --on-surface-muted:#9aa8b8;
+      --btn-label:#dce8f5;
       --btn-label-muted:#8b97a8;
-      --outline:rgba(148,163,184,.22);
-      --outline-variant:rgba(148,163,184,.12);
-      --shadow-card:0 12px 36px rgba(0,0,0,.28);
-      --shadow-button:0 8px 18px rgba(26,115,232,.18);
+      --outline:rgba(94,200,232,.22);
+      --outline-variant:rgba(148,163,184,.14);
+      --success:#5ec8e8;
+      --toggle-off:#3d4d62;
+      --shadow-card:0 12px 36px rgba(0,0,0,.32);
+      --shadow-button:0 8px 20px rgba(94,200,232,.18);
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;overflow:hidden}
-    body{background:#eef3f8;color:var(--on-surface)}
+    body{background:#edf2f8;color:var(--on-surface)}
     .app{
       height:100vh;display:flex;flex-direction:column;
       background:
-        radial-gradient(circle at 20% 0%,rgba(80,140,255,.12),transparent 32%),
-        linear-gradient(180deg,#f4f7fb 0%,#edf2f7 100%);
+        radial-gradient(circle at 14% 0%,rgba(94,200,232,.12),transparent 36%),
+        radial-gradient(circle at 88% 8%,rgba(26,45,74,.05),transparent 28%),
+        linear-gradient(180deg,#f9fbfd 0%,#edf2f8 100%);
     }
     html[data-theme="dark"] .app{
       background:
-        radial-gradient(circle at 20% 0%,rgba(80,140,255,.16),transparent 32%),
-        linear-gradient(180deg,#121820 0%,#171d27 100%);
+        radial-gradient(circle at 18% 0%,rgba(94,200,232,.16),transparent 38%),
+        radial-gradient(circle at 82% 10%,rgba(26,45,74,.28),transparent 32%),
+        linear-gradient(180deg,#0f1419 0%,#151d2b 100%);
     }
-    html[data-theme="dark"] body{background:#121820}
+    html[data-theme="dark"] body{background:#0f1419}
+    html[data-theme="dark"] .welcome-overlay{background:rgba(15,20,25,.88)}
+    html[data-theme="dark"] .display:not(.empty){
+      background:linear-gradient(180deg,rgba(94,200,232,.10),rgba(28,38,54,.95));
+      border-color:rgba(94,200,232,.24);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    }
     .app-header{
       display:flex;align-items:center;justify-content:space-between;
       padding:18px 22px 10px;flex-shrink:0;
     }
-    .app-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.03em}
+    .app-brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .app-logo{
+      display:block;width:36px;height:36px;flex-shrink:0;
+    }
+    .app-title-wrap{min-width:0}
+    .app-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em;color:var(--indigo)}
+    .app-subtitle{margin:4px 0 0;color:var(--on-surface-muted);font-size:12px;line-height:1.45}
     #btnSettings{
       height:36px;padding:0 16px;border-radius:var(--radius-pill);
       border:1px solid var(--outline-variant);background:var(--surface-high);
@@ -95,14 +121,153 @@
       color:var(--on-surface-muted);opacity:.22;font-size:20px;user-select:none;padding-top:28px;
     }
     .editor-zone{margin-bottom:20px}
+    .welcome-overlay{
+      position:fixed;inset:0;z-index:700;background:rgba(237,245,250,.86);backdrop-filter:blur(16px);
+      display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;
+      transition:opacity var(--dur-med) var(--ease-standard);
+    }
+    .welcome-overlay.open{opacity:1;pointer-events:auto}
+    .welcome-modal{
+      width:min(860px,96vw);background:rgba(255,255,255,.92);border:1px solid var(--outline-variant);
+      border-radius:28px;box-shadow:0 24px 60px rgba(26,45,74,.14);padding:28px;
+      transform:translateY(14px) scale(.98);transition:transform var(--dur-med) var(--ease-standard);
+    }
+    .welcome-overlay.open .welcome-modal{transform:translateY(0) scale(1)}
+    .test-overlay{
+      position:fixed;inset:0;z-index:800;background:rgba(237,245,250,.88);backdrop-filter:blur(14px);
+      display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;
+      transition:opacity var(--dur-med) var(--ease-standard);
+    }
+    html[data-theme="dark"] .test-overlay{background:rgba(15,20,25,.88)}
+    .test-overlay.open{opacity:1;pointer-events:auto}
+    .test-modal{
+      width:min(480px,96vw);background:rgba(255,255,255,.96);border:1px solid var(--outline-variant);
+      border-radius:24px;box-shadow:0 24px 60px rgba(26,45,74,.14);padding:22px 22px 18px;
+      transform:translateY(12px) scale(.98);transition:transform var(--dur-med) var(--ease-standard);
+    }
+    .test-overlay.open .test-modal{transform:translateY(0) scale(1)}
+    .test-modal-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+    .test-status-icon{
+      width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+      font-size:18px;font-weight:900;flex-shrink:0;
+    }
+    .test-status-icon.is-sending{background:var(--primary-soft);color:var(--primary)}
+    .test-status-icon.is-ok{background:rgba(42,156,196,.14);color:var(--primary-strong)}
+    .test-status-icon.is-fail{background:rgba(220,38,38,.1);color:var(--error)}
+    .test-modal-title{margin:2px 0 0;font-size:18px;font-weight:900;color:var(--indigo);line-height:1.3;flex:1}
+    .test-modal-summary{margin:0 0 12px;font-size:13px;line-height:1.65;color:var(--on-surface-muted)}
+    .test-check-list{margin:0 0 12px;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+    .test-check-item{
+      display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);font-size:12px;line-height:1.5;
+    }
+    .test-check-mark{width:18px;height:18px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px}
+    .test-check-item.is-ok .test-check-mark{background:rgba(42,156,196,.14);color:var(--primary-strong)}
+    .test-check-item.is-warn .test-check-mark{background:rgba(249,115,22,.12);color:var(--warning)}
+    .test-check-item.is-fail .test-check-mark{background:rgba(220,38,38,.1);color:var(--error)}
+    .test-check-item.is-pending .test-check-mark{background:var(--primary-soft);color:var(--primary);animation:test-pulse .75s ease-in-out infinite}
+    .test-check-body b{display:block;color:var(--on-surface);font-size:12px;margin-bottom:2px}
+    .test-check-body span{color:var(--on-surface-muted)}
+    .test-modal-hint{
+      margin:0 0 14px;padding:10px 12px;border-radius:12px;background:var(--primary-soft);
+      border:1px solid rgba(42,156,196,.16);font-size:12px;line-height:1.6;color:var(--on-surface-muted);
+    }
+    .test-modal-hint b{color:var(--key-soft)}
+    .test-modal-actions{display:flex;justify-content:flex-end}
+    .test-modal-actions .btn{min-width:108px}
+    .welcome-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+    .welcome-kicker{
+      display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:var(--primary-soft);
+      color:var(--primary);font-size:12px;font-weight:800;margin-bottom:10px;
+    }
+    .welcome-title{margin:0;font-size:30px;line-height:1.1;font-weight:900;letter-spacing:-.02em;color:var(--indigo)}
+    .welcome-desc{margin:10px 0 0;font-size:14px;line-height:1.7;color:var(--on-surface-muted);max-width:520px}
+    .welcome-close{
+      width:38px;height:38px;border-radius:12px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:20px;cursor:pointer;flex-shrink:0;
+    }
+    .welcome-close:hover{background:var(--primary-soft)}
+    .welcome-stage{margin-bottom:18px}
+    .welcome-demo{
+      border:1px solid var(--outline-variant);border-radius:22px;background:rgba(255,255,255,.7);padding:20px 18px
+    }
+    .demo-label{font-size:12px;font-weight:800;color:var(--btn-label-muted);margin-bottom:14px}
+    .demo-track{
+      position:relative;display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center;
+      min-height:196px;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(230,247,252,.95),rgba(247,251,253,.95));
+      overflow:hidden;
+    }
+    .demo-step{
+      display:flex;flex-direction:column;align-items:center;gap:8px;min-width:48px;
+    }
+    .demo-step-no{
+      width:30px;height:30px;border-radius:999px;background:var(--primary-soft);color:var(--primary);
+      display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;
+    }
+    .demo-step-label{font-size:11px;line-height:1.35;color:var(--btn-label-muted);text-align:center}
+    .demo-card{
+      position:relative;border:1px solid var(--outline-variant);border-radius:18px;background:rgba(255,255,255,.9);
+      min-height:116px;padding:16px 14px;
+    }
+    .demo-card::after{
+      content:"";position:absolute;left:14px;right:14px;bottom:16px;height:10px;border-radius:999px;background:rgba(42,156,196,.08);
+    }
+    .demo-card-title{font-size:12px;font-weight:800;color:var(--btn-label-muted);margin-bottom:10px}
+    .demo-key{
+      display:inline-flex;align-items:center;justify-content:center;min-width:96px;height:54px;padding:0 16px;border-radius:16px;
+      background:#fff;border:1px solid rgba(42,156,196,.14);font-size:18px;font-weight:900;color:var(--key-soft);
+      box-shadow:0 12px 24px rgba(42,156,196,.10);
+    }
+    .demo-card.left .demo-key{animation:demo-key-pulse 2.8s ease-in-out infinite}
+    .demo-card.right .demo-key{animation:demo-key-arrive 2.8s ease-in-out infinite}
+    .demo-step.step-1 .demo-step-no{animation:demo-step-glow 2.8s ease-in-out infinite}
+    .demo-step.step-2 .demo-step-no{animation:demo-step-glow 2.8s ease-in-out .25s infinite}
+    .demo-step.step-3 .demo-step-no{animation:demo-step-glow 2.8s ease-in-out .5s infinite}
+    .demo-arrow{
+      font-size:30px;color:var(--primary);opacity:.75;animation:demo-arrow-flow 2.8s ease-in-out infinite;
+    }
+    .demo-caption{margin-top:10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .welcome-mini-note{margin-top:12px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .welcome-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .welcome-hint{font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .welcome-btns{display:flex;gap:10px;flex-wrap:wrap}
+    .welcome-btn{
+      height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--outline);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+    }
+    .welcome-btn.primary{background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);color:var(--on-primary);border:none;box-shadow:var(--shadow-button)}
+    .welcome-btn:hover{background:var(--primary-soft)}
+    .welcome-btn.primary:hover{filter:brightness(1.04)}
+    .replay-link{
+      border:none;background:transparent;color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;
+    }
+    .replay-link:hover{text-decoration:underline}
+    @keyframes demo-key-pulse{
+      0%,100%{transform:scale(1);box-shadow:0 12px 24px rgba(42,156,196,.10)}
+      20%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(42,156,196,.10)}
+      55%{transform:scale(1)}
+    }
+    @keyframes demo-arrow-flow{
+      0%,100%{transform:translateX(0);opacity:.35}
+      28%,52%{transform:translateX(4px);opacity:1}
+    }
+    @keyframes demo-key-arrive{
+      0%,24%{opacity:.35;transform:translateY(8px) scale(.96)}
+      36%,100%{opacity:1;transform:translateY(0) scale(1)}
+    }
+    @keyframes demo-step-glow{
+      0%,100%{background:var(--primary-soft);color:var(--primary);box-shadow:none}
+      22%,44%{background:var(--primary);color:var(--on-primary);box-shadow:0 0 0 8px rgba(42,156,196,.10)}
+      55%{background:var(--primary-soft);color:var(--primary);box-shadow:none}
+    }
     .bubble-card{
       background:var(--surface);border:1px solid var(--outline-variant);
-      border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:20px 18px 16px;
+      border-radius:24px;box-shadow:var(--shadow-card);padding:20px 18px 16px;
     }
-    .bubble-card.is-recording{border-color:rgba(26,115,232,.35);animation:card-pulse 1.6s ease-in-out infinite}
-    @keyframes card-pulse{0%,100%{box-shadow:var(--shadow-card)}50%{box-shadow:0 0 0 3px rgba(26,115,232,.12),var(--shadow-card)}}
+    .bubble-card.is-recording{border-color:rgba(42,156,196,.35);animation:card-pulse 1.6s ease-in-out infinite}
+    @keyframes card-pulse{0%,100%{box-shadow:var(--shadow-card)}50%{box-shadow:0 0 0 3px rgba(42,156,196,.12),var(--shadow-card)}}
     .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}
-    .title{font-size:17px;font-weight:700;letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:6px}
+    .title{font-size:17px;font-weight:700;letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:6px;color:var(--indigo)}
     .title-icon{width:16px;height:16px;flex-shrink:0;color:var(--primary-muted)}
     .step-mark{font-size:15px;font-weight:700;color:var(--primary-muted);line-height:1}
     .badge{
@@ -114,7 +279,11 @@
       border:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;
       text-align:center;padding:14px;
     }
-    .display:not(.empty){border-color:rgba(37,99,184,.18)}
+    .display:not(.empty){
+      border-color:rgba(42,156,196,.24);
+      background:linear-gradient(180deg,rgba(230,247,252,.55),rgba(255,255,255,.92));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.8);
+    }
     .display.empty .display-value{font-size:15px;font-weight:500;color:var(--on-surface-muted);opacity:.65}
     .display:not(.empty) .display-value{font-size:34px;font-weight:800;color:var(--key-soft);letter-spacing:-.03em}
     .actions{margin-top:14px}
@@ -126,26 +295,35 @@
       width:100%;height:52px;border-radius:var(--radius-pill);border:1px solid var(--outline);
       background:var(--surface-high);color:var(--btn-label);font:inherit;font-size:15px;font-weight:600;cursor:pointer;
     }
-    .btn:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22)}
+    .btn:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.22)}
     .btn:active:not(:disabled){transform:scale(0.98)}
     .btn.primary{
-      border:none;background:linear-gradient(180deg,#3b82f6 0%,var(--primary) 100%);
+      border:none;background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);
       color:var(--on-primary);font-weight:700;box-shadow:var(--shadow-button);
     }
     .btn.primary:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px)}
     .btn.primary:active:not(:disabled){transform:scale(0.98) translateY(0)}
     .btn.primary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite}
+    .btn.record-btn.is-recording,
+    .btn.secondary.record-btn.is-recording{
+      border:none;
+      background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);
+      color:var(--on-primary);
+      font-weight:700;
+      box-shadow:var(--shadow-button);
+    }
+    .btn.record-btn.is-recording:hover:not(:disabled){filter:brightness(1.04)}
     .btn.primary.record-btn,
     .btn.primary.record-btn:hover:not(:disabled),
     .btn.primary.record-btn.is-recording{color:var(--on-primary)}
     .btn.secondary{background:var(--surface-high);color:var(--btn-label);border-color:var(--outline)}
-    .btn.record-btn{color:var(--primary-muted)}
-    .btn.record-btn:hover:not(:disabled){color:var(--primary-muted);background:var(--primary-soft)}
+    .btn.record-btn:not(.is-recording){color:var(--primary-muted)}
+    .btn.record-btn:not(.is-recording):hover:not(:disabled){color:var(--primary);background:var(--primary-soft)}
     .btn.secondary:hover:not(:disabled){background:var(--primary-soft);color:var(--btn-label)}
-    .btn.secondary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite;border-color:rgba(26,115,232,.3)}
+    .btn.secondary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite}
     @keyframes btn-recording-pulse{
-      0%,100%{box-shadow:0 0 0 0 rgba(26,115,232,.0)}
-      50%{box-shadow:0 0 0 4px rgba(26,115,232,.18)}
+      0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,.0)}
+      50%{box-shadow:0 0 0 4px rgba(42,156,196,.18)}
     }
     .btn:disabled{opacity:.5;cursor:not-allowed}
     .help{margin-top:8px;font-size:11px;line-height:1.4;color:var(--on-surface-muted);opacity:.52;text-align:center}
@@ -162,13 +340,13 @@
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
     .mapping-section{margin-top:4px;padding:20px 20px 18px}
     .list-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:16px}
-    .list-head h2{margin:0;font-size:18px;font-weight:800;flex:1}
+    .list-head h2{margin:0;font-size:18px;font-weight:800;flex:1;color:var(--indigo)}
     .list-add{
       height:40px;padding:0 22px;border-radius:var(--radius-pill);border:1px solid var(--outline);
       background:var(--surface-high);color:var(--btn-label);font:inherit;font-size:14px;font-weight:600;cursor:pointer;
       flex-shrink:0;
     }
-    .list-add:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .list-add:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.22);transform:translateY(-1px)}
     .list-add:active:not(:disabled){transform:scale(0.97)}
     .list-add:disabled{opacity:.55;cursor:not-allowed;color:var(--btn-label-muted);border-style:dashed}
     .draft-hint{
@@ -189,8 +367,17 @@
       margin-bottom:10px;cursor:pointer;background:var(--surface-high);position:relative;z-index:1;
     }
     .map-row.menu-open{z-index:40}
-    .map-row.is-on{box-shadow:inset 3px 0 0 var(--success)}
-    .map-row.selected{background:var(--primary-soft);border-color:rgba(26,115,232,.14)}
+    .map-row.is-on{box-shadow:inset 3px 0 0 var(--primary)}
+    .map-row.is-switch-flash{
+      animation:mapSwitchFlash 1.2s var(--ease-standard);
+      border-color:rgba(42,156,196,.42);
+    }
+    @keyframes mapSwitchFlash{
+      0%{background:rgba(94,200,232,.28);transform:translateY(0)}
+      35%{background:rgba(94,200,232,.16)}
+      100%{background:transparent;transform:translateY(0)}
+    }
+    .map-row.selected{background:var(--primary-soft);border-color:rgba(42,156,196,.14)}
     .map-row:not(.is-on){opacity:.68}
     .map-main{min-width:0}
     .map-pair{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--on-surface)}
@@ -203,19 +390,19 @@
       margin-top:5px;font-size:11px;line-height:1.35;color:#9a3412;font-weight:500;
       padding:3px 8px;border-radius:var(--radius-pill);background:#fff7ed;border:1px solid #fed7aa;
     }
-    .toggle{width:44px;height:26px;border-radius:var(--radius-pill);background:#cfd5dd;position:relative;flex-shrink:0;cursor:pointer}
-    .toggle.on{background:var(--success)}
+    .toggle{width:44px;height:26px;border-radius:var(--radius-pill);background:var(--toggle-off);position:relative;flex-shrink:0;cursor:pointer;transition:background var(--dur-fast) var(--ease-standard)}
+    .toggle.on{background:var(--primary)}
     .toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left var(--dur-fast) var(--ease-standard);box-shadow:0 1px 2px rgba(0,0,0,.15)}
     .toggle.on::after{left:20px}
     .map-test{
       height:34px;padding:0 14px;border-radius:var(--radius-pill);border:1px solid var(--outline);
       background:var(--surface);color:var(--btn-label);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
     }
-    .map-test:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.2);transform:translateY(-1px)}
+    .map-test:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.2);transform:translateY(-1px)}
     .map-test:active:not(:disabled){transform:scale(0.96)}
     .map-test:disabled{opacity:.5;cursor:not-allowed;color:var(--btn-label-muted)}
     .map-test.sending{
-      pointer-events:none;border-color:rgba(26,115,232,.35);color:var(--key-soft);
+      pointer-events:none;border-color:rgba(42,156,196,.35);color:var(--key-soft);
       animation:test-pulse .75s ease-in-out infinite;
     }
     @keyframes test-pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -229,6 +416,7 @@
     .map-row-wrap .map-row{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;cursor:pointer}
     .map-row-wrap .map-row .map-main{cursor:pointer;min-height:26px;display:flex;flex-direction:column;justify-content:center}
     .map-row-wrap .map-row .toggle,.map-row-wrap .map-row .map-test,.map-row-wrap .map-row .map-menu-btn{cursor:pointer}
+    .map-shortcut-hint{cursor:default;user-select:none}
     .map-adv{
       border:1px solid var(--outline-variant);border-top:none;border-radius:0 0 var(--radius-row) var(--radius-row);
       background:var(--surface);padding:0 14px 12px;margin-top:-1px;
@@ -245,25 +433,122 @@
       display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:0 0 8px;padding:8px 10px;
       border-radius:10px;border:1px solid var(--outline-variant);background:var(--surface-soft);
     }
-    .map-trigger-meta.is-selected{border-color:rgba(26,115,232,.28);background:var(--primary-soft)}
+    .map-trigger-meta.is-selected{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
     .map-trigger-meta-keys{font-size:13px;font-weight:700;color:var(--key-soft);line-height:1.4}
     .map-trigger-meta-time{font-size:11px;color:var(--on-surface-muted);line-height:1.4}
     .map-native-keys-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
     .map-trigger-mode{padding:10px 0;border-top:1px solid var(--outline-variant)}
-    .map-mode-pills{display:flex;flex-wrap:wrap;gap:6px}
-    .map-mode-pill{
-      height:30px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
-      background:var(--surface-high);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--btn-label);
+    .map-mode-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+    @media(max-width:640px){.map-mode-cards{grid-template-columns:1fr}}
+    .map-mode-card{
+      display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 10px 12px;
+      border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      font:inherit;text-align:left;cursor:pointer;color:inherit;transition:border-color .16s,box-shadow .16s,background .16s;
     }
-    .map-mode-pill:hover{background:var(--primary-soft)}
-    .map-mode-pill.is-active{border-color:rgba(26,115,232,.35);background:var(--primary-soft);color:var(--key-soft)}
+    .map-mode-card:hover{background:var(--primary-soft)}
+    .map-mode-card.is-active{
+      border-color:rgba(42,156,196,.42);background:linear-gradient(180deg,rgba(230,247,252,.95),rgba(255,255,255,.98));
+      box-shadow:0 8px 20px rgba(42,156,196,.12);
+    }
+    .mode-anim{
+      position:relative;height:52px;border-radius:10px;background:var(--surface-soft);
+      border:1px solid var(--outline-variant);overflow:hidden;
+    }
+    .map-mode-card.is-active .mode-anim{border-color:rgba(42,156,196,.2);background:rgba(255,255,255,.7)}
+    .mode-anim-inner{
+      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;
+    }
+    .ma-chip{
+      display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:22px;padding:0 7px;
+      border-radius:999px;font-size:10px;font-weight:800;line-height:1;white-space:nowrap;
+    }
+    .ma-key{background:var(--primary-soft);color:var(--primary);border:1px solid rgba(42,156,196,.25)}
+    .ma-voice{background:var(--primary);color:#fff}
+    .ma-esc{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.2)}
+    .ma-enter{background:rgba(42,156,196,.15);color:var(--primary-strong);border:1px solid rgba(42,156,196,.25)}
+    .ma-arrow{font-size:11px;color:var(--on-surface-muted);font-weight:700;opacity:.55}
+    .map-mode-card:not(.is-active) .mode-anim-inner .ma-chip,
+    .map-mode-card:not(.is-active) .mode-anim-inner .ma-arrow{
+      animation:none!important;transform:none;box-shadow:none;
+    }
+    .map-mode-card:not(.is-active) .mode-anim-inner .ma-chip{opacity:.82}
+    .map-mode-card:not(.is-active) .mode-anim-inner .ma-arrow{opacity:.4}
+    .map-mode-card:not(.is-active) .ma-out-enter{opacity:0}
+    .map-mode-card:not(.is-active) .ma-out-cancel{opacity:.88}
+    .map-mode-card.is-active .mode-anim-tap .ma-k1{animation:modeTapK1 2.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-tap .ma-k2{animation:modeTapK2 2.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-tap .ma-v1{animation:modeTapV1 2.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-tap .ma-a1{animation:modeTapA1 2.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-tap .ma-out-cancel{animation:modeTapOutCancel 2.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-tap .ma-out-enter{animation:modeTapOutEnter 2.8s ease-in-out infinite}
+    .ma-out-stack{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px}
+    .ma-out-stack .ma-chip{position:absolute;inset:0;margin:auto}
+    @keyframes modeTapOutCancel{0%,58%{opacity:.12;transform:scale(.92)}66%,78%{opacity:1;transform:scale(1)}86%,100%{opacity:.12}}
+    @keyframes modeTapOutEnter{0%,78%{opacity:.12;transform:scale(.92)}86%,96%{opacity:1;transform:scale(1)}100%{opacity:.12}}
+    @keyframes modeTapK1{0%,8%{transform:scale(1.15);box-shadow:0 0 0 3px rgba(42,156,196,.25)}18%,100%{transform:scale(1);box-shadow:none}}
+    @keyframes modeTapV1{0%,12%{opacity:.2;transform:translateY(2px)}20%,42%{opacity:1;transform:translateY(0)}52%,100%{opacity:.25}}
+    @keyframes modeTapK2{0%,38%{opacity:.25;transform:scale(1)}48%,58%{opacity:1;transform:scale(1.12)}68%,100%{opacity:.25;transform:scale(1)}}
+    @keyframes modeTapA1{0%,48%{opacity:0}54%,100%{opacity:.7}}
+    .map-mode-card.is-active .mode-anim-hold .ma-k1{animation:modeHoldK 1.8s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-hold .ma-v1{animation:modeHoldV 1.8s ease-in-out infinite}
+    @keyframes modeHoldK{0%,18%{transform:scale(1.14);box-shadow:0 0 0 3px rgba(42,156,196,.22)}32%,100%{transform:scale(1);box-shadow:none}}
+    @keyframes modeHoldV{0%,20%{opacity:.2}30%,70%{opacity:1}82%,100%{opacity:.2}}
+    .map-mode-card.is-active .mode-anim-toggle .ma-k1{animation:modeTogK1 2.6s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-toggle .ma-v1{animation:modeTogV1 2.6s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-toggle .ma-k2{animation:modeTogK2 2.6s ease-in-out infinite}
+    .map-mode-card.is-active .mode-anim-toggle .ma-esc1{animation:modeTogEsc 2.6s ease-in-out infinite}
+    @keyframes modeTogK1{0%,10%{transform:scale(1.12)}18%,46%{transform:scale(1)}100%{transform:scale(1)}}
+    @keyframes modeTogV1{0%,12%{opacity:.2}20%,44%{opacity:1}52%,100%{opacity:.15}}
+    @keyframes modeTogK2{0%,48%{opacity:.2;transform:scale(1)}56%,66%{opacity:1;transform:scale(1.1)}74%,100%{opacity:.2}}
+    @keyframes modeTogEsc{0%,56%{opacity:.15}64%,84%{opacity:1}92%,100%{opacity:.15}}
+    .mode-card-title{font-size:13px;font-weight:800;color:var(--on-surface);line-height:1.3}
+    .mode-card-desc{font-size:11px;color:var(--on-surface-muted);line-height:1.4}
+    .map-mode-settings{
+      margin-top:10px;padding:10px 12px;border-radius:12px;
+      border:1px solid rgba(42,156,196,.18);background:var(--primary-soft);
+    }
+    .map-mode-settings-tip{margin:0;font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .map-mode-settings-tip b{color:var(--key-soft);font-weight:700}
+    .map-mode-settings .map-timing-block{border-top:1px solid rgba(42,156,196,.14);padding:10px 0 0;margin-top:8px}
+    .map-mode-settings .map-timing-block:first-child{border-top:none;padding-top:0;margin-top:0}
     .map-timing-block{padding:10px 0;border-top:1px solid var(--outline-variant)}
     .map-timing-block:first-of-type{border-top:none;padding-top:4px}
     .map-timing-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
     .map-timing-head span{font-size:13px;font-weight:700;color:var(--on-surface)}
     .map-timing-desc{font-size:11px;color:var(--on-surface-muted);margin:0 0 8px;line-height:1.45}
     .map-timing-desc b{color:var(--key-soft);font-weight:700}
-    .map-timing-range{width:100%;accent-color:var(--primary)}
+    .map-timing-range{
+      --range-pct:50%;
+      --range-track:rgba(94,200,232,.42);
+      --range-fill:var(--primary);
+      width:100%;height:28px;margin:0;padding:0;
+      background:transparent;border:none;outline:none;
+      -webkit-appearance:none;appearance:none;cursor:pointer;touch-action:none;
+    }
+    html[data-theme="dark"] .map-timing-range{--range-track:rgba(94,200,232,.28)}
+    .map-timing-range:disabled{opacity:.45;cursor:not-allowed}
+    .map-timing-range::-webkit-slider-runnable-track{
+      height:6px;border-radius:999px;
+      background:linear-gradient(90deg,var(--range-fill) 0%,var(--range-fill) var(--range-pct),var(--range-track) var(--range-pct),var(--range-track) 100%);
+    }
+    .map-timing-range::-webkit-slider-thumb{
+      -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+      background:var(--range-fill);border:2px solid #fff;
+      box-shadow:0 2px 8px rgba(42,156,196,.28);
+      margin-top:-6px;transition:transform .12s var(--ease-standard);
+    }
+    .map-timing-range:not(:disabled):active::-webkit-slider-thumb{transform:scale(1.08)}
+    .map-timing-range::-moz-range-track{
+      height:6px;border-radius:999px;background:var(--range-track);border:none;
+    }
+    .map-timing-range::-moz-range-progress{
+      height:6px;border-radius:999px;background:var(--range-fill);border:none;
+    }
+    .map-timing-range::-moz-range-thumb{
+      width:18px;height:18px;border-radius:50%;
+      background:var(--range-fill);border:2px solid #fff;
+      box-shadow:0 2px 8px rgba(42,156,196,.28);cursor:pointer;
+    }
     .map-native-block,.map-switch-block{padding:10px 0;border-top:1px solid var(--outline-variant)}
     .map-switch-block .map-switch-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
     .map-switch-block .map-switch-head span{font-size:13px;font-weight:700;color:var(--on-surface)}
@@ -289,6 +574,7 @@
     }
     .trigger-trace.show{display:block}
     .list-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .list-head-row h2{margin:0;font-size:18px;font-weight:800;color:var(--indigo)}
     .list-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .scheme-switch-ctrl{
       display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--on-surface-muted);
@@ -326,11 +612,11 @@
       border:1px solid var(--outline);background:var(--surface-high);color:var(--btn-label);
       font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:none;
     }
-    .btn-test-send:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .btn-test-send:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.22);transform:translateY(-1px)}
     .btn-test-send:active:not(:disabled){transform:scale(0.97)}
     .btn-test-send:disabled{opacity:.55;cursor:not-allowed;color:var(--btn-label-muted);border-style:dashed;box-shadow:none}
     .btn-test-send.sending{
-      pointer-events:none;border-color:rgba(26,115,232,.35);color:var(--key-soft);
+      pointer-events:none;border-color:rgba(42,156,196,.35);color:var(--key-soft);
       animation:test-pulse .75s ease-in-out infinite;
     }
     .settings-overlay{
@@ -361,13 +647,28 @@
       min-height:38px;padding:0 10px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
       background:var(--surface-high);font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--btn-label);
     }
-    .control-btn:hover{background:var(--primary-soft);border-color:rgba(26,115,232,.22);transform:translateY(-1px)}
+    .control-btn:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.22);transform:translateY(-1px)}
     .control-btn:active{transform:scale(0.97)}
     .control-btn.warning{color:#9a3412;background:#fff7ed;border-color:#fed7aa}
     html[data-theme="dark"] .control-btn.warning{color:#fed7aa;background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.32)}
     .drawer-section{border-top:1px solid var(--outline-variant);padding-top:14px}
     .mini-title{margin:0 0 8px;font-size:14px;font-weight:700}
     .mini{margin:0;color:var(--on-surface-muted);font-size:13px;line-height:1.65}
+    .helper-note{
+      padding:12px 14px;border-radius:14px;background:var(--surface-soft);border:1px solid var(--outline-variant);
+      font-size:12px;line-height:1.6;color:var(--btn-label);
+    }
+    .helper-note strong{display:block;font-size:13px;color:var(--on-surface);margin-bottom:4px}
+    .drawer-collapsible{
+      border:1px solid var(--outline-variant);border-radius:16px;background:rgba(255,255,255,.46);overflow:hidden;
+    }
+    .drawer-collapsible > summary{
+      list-style:none;cursor:pointer;padding:14px 14px 12px;font-size:13px;font-weight:800;color:var(--btn-label);user-select:none;
+    }
+    .drawer-collapsible > summary::-webkit-details-marker{display:none}
+    .drawer-collapsible > summary::before{content:"▸ ";display:inline-block;transition:transform var(--dur-fast) var(--ease-standard)}
+    .drawer-collapsible[open] > summary::before{transform:rotate(90deg)}
+    .drawer-collapsible-body{padding:0 14px 14px}
     .chip{display:inline-flex;padding:4px 10px;border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:600}
     .log{margin:0;padding:10px 0 0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,monospace;min-height:60px;color:var(--on-surface-muted)}
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -394,10 +695,39 @@
       position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);
       background:var(--on-surface);color:var(--surface-high);padding:12px 18px;border-radius:20px;
       font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-standard),transform var(--dur-fast) var(--ease-standard);
-      z-index:500;max-width:min(90vw,420px);text-align:center;
+      z-index:9999;max-width:min(90vw,420px);text-align:center;
     }
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast.toast-scheme{
+      background:linear-gradient(180deg,rgba(230,247,252,.98),rgba(255,255,255,.98));
+      color:var(--primary-strong);
+      border:1px solid rgba(42,156,196,.35);
+      box-shadow:0 12px 32px rgba(42,156,196,.22);
+      font-weight:800;padding:13px 20px;
+    }
+    html[data-theme="dark"] #toast.toast-scheme{
+      background:linear-gradient(180deg,rgba(28,48,62,.98),rgba(22,34,48,.98));
+      color:var(--primary-glow);
+      border-color:rgba(94,200,232,.32);
+      box-shadow:0 12px 32px rgba(0,0,0,.36);
+    }
+    .map-shortcut-hint{
+      display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 12px;
+      border-radius:var(--radius-pill);border:1px solid rgba(42,156,196,.24);
+      background:var(--primary-soft);color:var(--key-soft);font-size:12px;font-weight:800;
+      white-space:nowrap;letter-spacing:.02em;
+    }
+    .map-shortcut-hint.is-empty{
+      opacity:.45;border-style:dashed;color:var(--on-surface-muted);font-weight:600;
+    }
     @media (max-width:720px){
+      .welcome-modal{padding:22px 18px}
+      .welcome-top{margin-bottom:14px}
+      .welcome-title{font-size:24px}
+      .welcome-stage{grid-template-columns:1fr}
+      .welcome-actions{align-items:flex-start}
+      .welcome-btns{width:100%}
+      .welcome-btn{flex:1}
       .hero-grid{grid-template-columns:1fr}
       .hero-flow-arrow{display:none}
       .map-row{grid-template-columns:auto 1fr auto;grid-template-rows:auto auto}
@@ -413,7 +743,13 @@
 <body>
   <div class="app">
     <header class="app-header">
-      <h1 class="app-title" id="appTitle">语音启动设置</h1>
+      <div class="app-brand">
+        <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" />
+        <div class="app-title-wrap">
+          <h1 class="app-title" id="appTitle">织音</h1>
+          <p class="app-subtitle" id="appSubtitle">按两步设置：先选启动键，再选语音输入快捷键。</p>
+        </div>
+      </div>
       <button type="button" id="btnSettings">设置</button>
     </header>
 
@@ -422,7 +758,7 @@
         <div class="hero-grid" id="editorWrap">
         <section class="bubble-card trigger-card" id="leftCard">
           <div class="card-head">
-            <h2 class="title"><span class="step-mark" aria-hidden="true">①</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span id="triggerTitle">录启动按键</span></h2>
+            <h2 class="title"><span class="step-mark" aria-hidden="true">①</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span id="triggerTitle">选择启动键</span></h2>
             <div class="badge" id="leftBadge">未设置</div>
           </div>
           <div class="display empty" id="triggerDisplay">
@@ -430,9 +766,9 @@
           </div>
           <p class="trigger-trace" id="triggerTrace" hidden></p>
           <div class="actions">
-            <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">设置启动按键</button>
+            <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的启动键</button>
           </div>
-          <p class="help" id="triggerHelp">录制我的专属VibeCoding按键</p>
+          <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
           <span class="sr-only" id="triggerState" aria-live="polite"></span>
         </section>
 
@@ -440,16 +776,16 @@
 
         <section class="bubble-card target-card" id="rightCard">
           <div class="card-head">
-            <h2 class="title"><span class="step-mark" aria-hidden="true">②</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg><span id="targetTitle">录输入法按键</span></h2>
+            <h2 class="title"><span class="step-mark" aria-hidden="true">②</span><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg><span id="targetTitle">选择语音快捷键</span></h2>
             <div class="badge" id="rightBadge">未设置</div>
           </div>
           <div class="display empty" id="targetDisplay">
             <span class="display-value" id="targetView">未设置</span>
           </div>
           <div class="actions">
-            <button class="btn secondary record-btn" id="btnRecordTarget" type="button">录制语音输入按键</button>
+            <button class="btn secondary record-btn" id="btnRecordTarget" type="button">按一下语音输入快捷键</button>
           </div>
-          <p class="help" id="targetHelp">录制语音输入法的激活快捷键，注意先退出或切换输入法，避免冲突或者无法收录。</p>
+          <p class="help" id="targetHelp">这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。</p>
           <span class="sr-only" id="targetState" aria-live="polite"></span>
         </section>
         </div>
@@ -462,8 +798,8 @@
         <div class="list-head-row">
           <h2 id="mappingListTitle">我的方案</h2>
           <div class="list-head-actions">
-            <span class="list-head-hint" id="mappingListHint">展开方案可配置切换快捷键</span>
-            <button class="list-add" id="btnAddMapping" type="button">添加新方案</button>
+            <span class="list-head-hint" id="mappingListHint">需要多个输入法时，再添加方案</span>
+            <button class="list-add" id="btnAddMapping" type="button">新增方案</button>
           </div>
         </div>
         <div class="draft-hint" id="mappingDraftHint"></div>
@@ -503,32 +839,21 @@
         </div>
       </div>
       <div class="drawer-section">
+        <div class="helper-note" id="quickTips">
+          <strong id="quickTipsTitle">怎么设置最省心</strong>
+          <span id="quickTipsBody">先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。</span>
+        </div>
+        <div style="margin-top:10px">
+          <button type="button" class="replay-link" id="btnReplayWelcome">重新查看首次引导</button>
+        </div>
+      </div>
+      <div class="drawer-section">
         <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
         <p class="map-switch-desc" id="cycleSwitchDesc">在同一启动键的多个方案间按顺序轮换；也可在下方每个方案里单独设置直达快捷键。</p>
         <div class="scheme-switch-ctrl">
           <button type="button" class="scheme-switch-key" id="btnSchemeSwitchKey" title="">Ctrl+Alt+`</button>
           <button type="button" class="scheme-switch-cancel" id="btnSchemeSwitchCancel" hidden>取消录制</button>
           <button type="button" class="scheme-switch-clear" id="btnSchemeSwitchClear" hidden>清除</button>
-        </div>
-      </div>
-      <div class="drawer-section">
-        <div class="mini-title" id="sourceTitle">当前源组</div>
-        <pre class="log" id="sourceExplain">source: 右 Alt
-grouping: exact
-events:
-- key=Alt code=AltRight hotkey=RAlt</pre>
-      </div>
-      <div class="drawer-section">
-        <div class="mini-title" id="logTitle">事件日志</div>
-        <pre class="log" id="rawEventLog">等待录制…</pre>
-      </div>
-      <div class="drawer-section">
-        <div class="mini-title" id="runtimeTitle">运行解释</div>
-        <div class="row2">
-          <div class="item"><span>key</span><span id="dbKey">-</span></div>
-          <div class="item"><span>code</span><span id="dbCode">-</span></div>
-          <div class="item"><span id="actionLabel">动作</span><span id="liveAction">-</span></div>
-          <div class="item"><span id="sendLabel">发送</span><span id="liveTimer">-</span></div>
         </div>
       </div>
       <div class="drawer-section">
@@ -541,14 +866,98 @@ events:
         <p class="mini" id="noteText">录制真实按钮，状态机只接管动作，不接管用户的命名方式。</p>
         <div class="clear-panel"><button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button></div>
       </div>
+      <div class="drawer-section">
+        <details class="drawer-collapsible" id="debugPanel">
+          <summary id="debugTitle">开发者信息</summary>
+          <div class="drawer-collapsible-body">
+            <div class="mini-title" id="sourceTitle">当前源组</div>
+            <pre class="log" id="sourceExplain">等待录制后显示</pre>
+            <div class="mini-title" id="logTitle">事件日志</div>
+            <pre class="log" id="rawEventLog">等待录制…</pre>
+            <div class="mini-title" id="runtimeTitle">运行解释</div>
+            <div class="row2">
+              <div class="item"><span id="debugKeyLabel">按键</span><span id="dbKey">-</span></div>
+              <div class="item"><span id="debugCodeLabel">编码</span><span id="dbCode">-</span></div>
+              <div class="item"><span id="actionLabel">动作</span><span id="liveAction">-</span></div>
+              <div class="item"><span id="sendLabel">发送</span><span id="liveTimer">-</span></div>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
   </aside>
 
   <div class="map-menu-float" id="mapMenuFloat">
+    <button type="button" data-act="test" id="menuActTest"></button>
     <button type="button" data-act="dup" id="menuActDup"></button>
     <button type="button" data-act="up" id="menuActUp"></button>
     <button type="button" data-act="down" id="menuActDown"></button>
     <button type="button" class="danger" data-act="del" id="menuActDel"></button>
+  </div>
+  <div class="welcome-overlay" id="welcomeOverlay" aria-hidden="true">
+    <div class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+      <div class="welcome-top">
+        <div>
+          <div class="welcome-kicker" id="welcomeKicker">首次使用</div>
+          <h2 class="welcome-title" id="welcomeTitle">两步就能开始语音启动</h2>
+          <p class="welcome-desc" id="welcomeDesc">先定一个启动方式，再录一次语音快捷键。以后你一按启动键，它就会帮你唤起语音输入。</p>
+        </div>
+        <button type="button" class="welcome-close" id="btnWelcomeClose" aria-label="关闭">×</button>
+      </div>
+      <div class="welcome-stage">
+        <section class="welcome-demo">
+          <div class="demo-label" id="demoLabel">动画演示</div>
+          <div class="demo-track">
+            <div class="demo-step step-1">
+              <div class="demo-step-no">1</div>
+              <div class="demo-step-label" id="guideTitle1">先设置</div>
+            </div>
+            <div class="demo-card left">
+              <div class="demo-card-title" id="demoCardTitle1">你来按</div>
+              <div class="demo-key" id="demoKeyLeft">启动键</div>
+              <p class="demo-caption" id="demoCaptionLeft">选一个你觉得顺手的启动方式。</p>
+            </div>
+            <div class="demo-arrow" aria-hidden="true">→</div>
+            <div class="demo-step step-2">
+              <div class="demo-step-no">2</div>
+              <div class="demo-step-label" id="guideTitle2">再录一次</div>
+            </div>
+            <div class="demo-card right">
+              <div class="demo-card-title" id="demoCardTitle2">帮你触发</div>
+              <div class="demo-key" id="demoKeyRight">语音快捷键</div>
+              <p class="demo-caption" id="demoCaptionRight">它只会帮你触发录好的语音快捷键。</p>
+            </div>
+            <div class="demo-step step-3">
+              <div class="demo-step-no">3</div>
+              <div class="demo-step-label" id="guideTitle3">马上用</div>
+            </div>
+          </div>
+          <p class="welcome-mini-note" id="guideDesc1">以后按一下启动键，就能更快进入语音输入。</p>
+        </section>
+      </div>
+      <div class="welcome-actions">
+        <div class="welcome-hint" id="welcomeHint">这个引导只会在首次启动时出现一次。</div>
+        <div class="welcome-btns">
+          <button type="button" class="welcome-btn" id="btnWelcomeLater">稍后再看</button>
+          <button type="button" class="welcome-btn primary" id="btnWelcomeStart">开始设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="test-overlay" id="testOverlay" aria-hidden="true">
+    <div class="test-modal" role="dialog" aria-modal="true" aria-labelledby="testModalTitle">
+      <div class="test-modal-head">
+        <div class="test-status-icon is-sending" id="testStatusIcon">…</div>
+        <h3 class="test-modal-title" id="testModalTitle">测试语音快捷键</h3>
+        <button type="button" class="welcome-close" id="btnTestModalClose" aria-label="关闭">×</button>
+      </div>
+      <p class="test-modal-summary" id="testModalSummary"></p>
+      <ul class="test-check-list" id="testCheckList"></ul>
+      <div class="test-modal-hint" id="testModalHint" hidden></div>
+      <div class="test-modal-actions">
+        <button type="button" class="btn primary" id="btnTestModalOk">知道了</button>
+      </div>
+    </div>
   </div>
   <div class="toast" id="toast" role="status"></div>
 
@@ -557,6 +966,16 @@ events:
     const listeners={message:[]};
     const invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
     window.__vp_invoke__=invoke;
+    function tauriArgs(args){
+      const out=Object.assign({},args||{});
+      Object.keys(args||{}).forEach(function(k){
+        if(k.indexOf('_')<0) return;
+        const camel=k.replace(/_([a-z])/g,function(_,c){return c.toUpperCase();});
+        if(out[camel]===undefined) out[camel]=args[k];
+      });
+      return out;
+    }
+    window.__vp_tauri_args__=tauriArgs;
     window.chrome={webview:{}};
     window.chrome.webview.postMessage=function(msg){
       const type=msg&&msg.type;
@@ -575,6 +994,7 @@ events:
       else if(type==='mvp_reload_latest')invoke('cmd_reload_latest',{});
       else if(type==='mvp_sync_theme_backdrop')invoke('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
       else if(type==='mvp_frontend_keydown')invoke('cmd_frontend_keydown',{key:msg.key||'',mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_physical_trigger')invoke('cmd_physical_trigger',{key:msg.key||''});
       else if(type==='mvp_test_send')invoke('cmd_test_send',{mapping_id:msg.mappingId||null,target_key:msg.targetKey||null});
     };
     window.chrome.webview.addEventListener=function(event,cb){ if(!listeners[event]) listeners[event]=[]; listeners[event].push(cb); };
@@ -604,6 +1024,7 @@ events:
   let testSendWatchdog=0;
   let testSendFromFooter=false;
   let testSendMappingId=null;
+  let testModalMappingId=null;
   const ui={drawerOpen:false};
   let conflictRows=[];
   let editorTriggerKey='';
@@ -615,21 +1036,40 @@ events:
   let schemeSwitchSnapshot='';
   let nativeRestoreSnapshot=null;
   let recordingMappingId='';
+  let welcomeOpen=false;
   const targetCapture={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
   const I18N={
     zh:{
-      appTitle:'语音启动设置',
-      mappingListTitle:'我的方案',addMapping:'添加新方案',
-      triggerTitle:'录启动按键',targetTitle:'录输入法按键',
-      btnRecordTrigger:'设置启动按键',btnRecordTarget:'录制语音输入按键',
+      appTitle:'织音',
+      appSubtitle:'按两步设置：先选启动键，再选语音输入快捷键。',
+      welcomeKicker:'首次使用',
+      welcomeTitle:'两步就能开始语音启动',
+      welcomeDesc:'先定一个启动方式，再录一次语音快捷键。以后你一按启动键，它就会帮你唤起语音输入。',
+      welcomeHint:'这个引导只会在首次启动时出现一次。',
+      welcomeStart:'开始设置',
+      welcomeLater:'稍后再看',
+      demoLabel:'动画演示',
+      demoCardTitle1:'你来按',
+      demoCardTitle2:'帮你触发',
+      demoCaptionLeft:'选一个你觉得顺手的启动方式。',
+      demoCaptionRight:'它只会帮你触发录好的语音快捷键。',
+      guideTitle1:'先设置',
+      guideDesc1:'以后按一下启动键，就能更快进入语音输入。',
+      guideTitle2:'再录一次',
+      guideDesc2:'',
+      guideTitle3:'马上用',
+      guideDesc3:'',
+      mappingListTitle:'我的方案',addMapping:'新增方案',
+      triggerTitle:'选择启动键',targetTitle:'选择语音快捷键',
+      btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
       btnRerecordTrigger:'重新设置',btnRerecordTarget:'重新设置',
       triggerPlaceholder:'未设置',targetPlaceholder:'未设置',
-      triggerHelp:'录制我的专属VibeCoding按键',
-      targetHelp:'录制语音输入法的激活快捷键，注意先退出或切换输入法，避免冲突或者无法收录。',
+      triggerHelp:'比如音量键、鼠标侧键，或一个不常用的组合键。',
+      targetHelp:'这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。',
       badgeNotRecorded:'未设置',badgeRecording:'录制中',badgeRecorded:'已设置',
       badgeNotSet:'未设置',badgeSet:'已设置',
-      mappingEmptyTitle:'还没有方案',mappingEmptyHint:'请先在上方完成启动按键与语音快捷键设置。',
-      draftHint:'请先在上方完成当前方案的两项设置，再添加新方案。',
+      mappingEmptyTitle:'还没有方案',mappingEmptyHint:'先完成上方两步，这里会自动生成第一条方案。',
+      draftHint:'先把上方两步都设置好，再新增另一个方案。',
       addNeedComplete:'请先完成当前方案的设置',
       cancelRecord:'取消录制',cancelDraft:'取消新方案',
       groupLabel:'分组',enabled:'已启用',disabled:'已停用',
@@ -640,47 +1080,98 @@ events:
       movedToTrash:'已移入回收站，可在「设置」中恢复',
       trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
       settingsTitle:'设置',listenTitle:'监听状态',
-      listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启 Voice Pilot？',
-      testSendDisabled:'请先设置语音快捷键',
-      testSendTarget:'测试语音快捷键',testSending:'发送中…',testSent:'已发送',
-      testShort:'测试',testFailed:'发送失败，请检查目标键',
+      listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启织音？',
+      testSendDisabled:'设置语音快捷键后可测试',
+      testSendTarget:'试一下语音快捷键',testSending:'发送中…',testSent:'已发送',
+      testShort:'测试',shortcutHintEmpty:'无切换键',shortcutHintTitle:'按下可切换到此方案',
+      testModalTitle:'测试语音快捷键',testModalOk:'知道了',
+      testModalSendingTitle:'正在发送测试按键…',testModalSendingSummary:'织音会自动模拟语音快捷键，你无需按键。请先切换到要输入文字的窗口，再查看是否出现语音输入。',
+      testModalOkTitle:'按键已发送',testModalOkSummary:'已向系统发送 <b>{key}</b>。请查看当前窗口是否出现语音输入。',
+      testModalOkHint:'若语音没有出现，通常不是启动键的问题，请检查：① 当前窗口是否支持该快捷键 ② 输入法语音功能是否已开启 ③ 快捷键是否与输入法设置一致。可重新录制「语音快捷键」后再测。',
+      testModalFailTitle:'测试未通过',testModalTimeoutTitle:'测试超时',
+      testModalTimeoutSummary:'未在预期时间内收到测试结果。若按键实际已生效，可忽略；否则请重新编译运行最新版本。',
+      testCheckListen:'监听状态',testCheckListenOk:'监听中，可以测试',testCheckListenFail:'监听已暂停 — 请先在设置中恢复监听',
+      testCheckTarget:'语音快捷键',testCheckTargetOk:'已设置：{key}',testCheckTargetFail:'未设置语音快捷键 — 请先录制',
+      testCheckTargetInvalid:'快捷键格式无法识别 — 请重新录制',
+      testCheckMapping:'当前方案',testCheckMappingOk:'方案：{name}',testCheckMappingDisabled:'方案未启用 — 不影响测试，但日常需启用或切换到此方案',
+      testCheckConflict:'按键冲突',testCheckConflictWarn:'与方案「{key}」存在重复，可能导致行为异常',
+      testCheckConflictOk:'未发现明显冲突',
+      testCheckSend:'模拟发送',testCheckSendPending:'正在向系统发送…',testCheckSendOk:'系统已接收按键模拟',
+      testCheckSendFail:'按键未能发送 — 请重新录制或更换快捷键',
+      testCheckSendTimeout:'未收到测试响应 — 请重新编译运行最新版本后再试',
+      testReasonRecording:'当前正在录制按键，请先结束录制再测试',
+      testFailed:'发送失败，请检查目标键',
       testSentToast:'已发送：',selectedLabel:'已选中',
       logTitle:'事件日志',runtimeTitle:'运行解释',actionLabel:'动作',sendLabel:'发送',
-      sourceTitle:'当前源组',noteTitle:'说明',
+      sourceTitle:'按键来源',noteTitle:'说明',
+      debugTitle:'开发者信息',
+      debugKeyLabel:'按键',
+      debugCodeLabel:'编码',
       listenOn:'监听中',listenPaused:'已暂停监听',
       themeLight:'☀ 浅色',themeDark:'🌙 深色',
-      noteText:'录制真实按钮，状态机只接管动作，不接管用户的命名方式。',
+      quickTipsTitle:'怎么设置最省心',
+      quickTipsBody:'先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。',
+      replayWelcome:'重新查看首次引导',
+      welcomePathLabel:'设置路径',
+      noteText:'织音只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
       clearAll:'清除全部映射',waitLog:'等待录制…',
       triggerRejected:'未能识别该按键，请再试一次',
       whitelistRejected:'未能识别该按键，请再试一次',conflictDisabled:'已停用冲突映射',
       conflictBannerCount:'{n} 处按键重复',
       conflictRowHint:'重复：已用于 {key}',
-      restoredDefault:'已恢复默认方案',logStartTrigger:'开始设置启动按键...',logStartTarget:'开始设置语音快捷键...',
+      restoredDefault:'已恢复默认方案',logStartTrigger:'开始等待启动键...',logStartTarget:'开始等待语音快捷键...',
       logTimeout:'设置超时',logTriggerDone:'已设置启动按键: ',logTargetDone:'已设置语音快捷键: ',logWaitMain:'等待按下主键...',
-      comboHint:'等待组合键…',triggerRecordHint:'请按下启动键（支持左右修饰键、组合键）',targetRecordHint:'请按下语音快捷键',
-      triggerModeTitle:'触发方式',triggerModeTap:'连按',triggerModeHold:'长按',triggerModeToggle:'切换',
-      triggerModeTapDesc:'快速按两次启动；间隔内再按可取消',
-      triggerModeHoldDesc:'每次按下立即启动，不做连按计数',
-      triggerModeToggleDesc:'按一次启动，再按一次取消',
+      comboHint:'等待组合键…',triggerRecordHint:'请按下你想用来启动语音的按键',targetRecordHint:'请按下语音输入法的快捷键',
+      triggerModeTitle:'启动方式',
+      triggerModeTap:'智能连按',triggerModeHold:'即按即用',triggerModeToggle:'开/关切换',
+      triggerModeTapDesc:'第 1 次按开语音；短时间内再按可取消，或等待后自动确认',
+      triggerModeHoldDesc:'每按一次启动键，立刻唤起一次语音',
+      triggerModeToggleDesc:'按一次开启语音，再按一次关闭（只发 Esc，不再开语音）',
+      triggerModeTapAnimVoice:'语音',triggerModeTapAnimCancel:'取消',triggerModeTapAnimEnter:'确认',
+      triggerModeHoldAnimVoice:'语音',triggerModeToggleAnimOn:'开',triggerModeToggleAnimOff:'关',
+      triggerModeSettingsTap:'此模式专属设置',
+      triggerModeSettingsTapTip:'除下方时间设置外，每次按启动键都会再次模拟语音快捷键；仅在取消窗口内的快速连按会发 Esc。',
+      triggerModeSettingsHold:'此模式无需额外设置',
+      triggerModeSettingsHoldTip:'每次按下启动键都会立刻模拟语音快捷键，没有取消窗口和自动确认。',
+      triggerModeSettingsToggle:'此模式专属说明',
+      triggerModeSettingsToggleTip:'开启后保持「开」状态；再按一次只发送 <b>Esc</b> 关闭，不会像智能连按那样再次唤起语音。',
       triggerRecordDetected:'已检测到：',
       schemeSwitchLabel:'轮换快捷键',schemeSwitchRecord:'点击录制轮换键',schemeSwitchRecording:'录制中…',
       schemeSwitchCancel:'取消录制',schemeSwitchClear:'清除',schemeSwitchCleared:'已清除轮换快捷键',
-      cycleSwitchTitle:'轮换快捷键（可选）',
-      cycleSwitchDesc:'在同一启动键的多个方案间按顺序轮换；也可在每个方案里单独设置直达快捷键。',
-      mappingListHint:'展开方案可配置切换快捷键',
-      switchKeysTitle:'切换到此方案',switchKeysDesc:'可添加多个快捷键，按下后直接启用本方案',
+      cycleSwitchTitle:'方案轮换键（可选）',
+      cycleSwitchDesc:'有多个方案时，可用一个快捷键在它们之间轮换。',
+      mappingListHint:'需要多个输入法时，再添加方案',
+      switchKeysTitle:'直接切到这个方案',switchKeysDesc:'可添加一个或多个快捷键，按下后立即启用本方案。',
       switchKeysAdd:'+ 添加快捷键',switchKeysRecording:'录制中…',switchKeysRemoved:'已移除快捷键',
-      nativeKeyTitle:'原生按键',nativeKeyDesc:'开启后恢复 <b>{keys}</b> 的系统原功能，请用切换快捷键激活本方案',
-      nativeKeyDescUnset:'录制物理键后，可开启还原其系统原功能；请用切换快捷键激活本方案',
+      nativeKeyTitle:'保留原本功能',nativeKeyDesc:'开启后，<b>{keys}</b> 仍保留系统原本功能；如果需要，可另外设置方案切换键。',
+      nativeKeyDescUnset:'录制物理键后，可选择保留它在系统里的原本功能。',
       nativeKeysUnset:'尚未录制物理键',nativeRestoreRecord:'录制物理键',nativeRestoreRecording:'录制中…',
-      nativeKeyRestore:'还原系统功能',traceRecorded:'录制于',
-      advSummary:'调整',
+      nativeKeyRestore:'保留原本功能',traceRecorded:'来源',
+      advSummary:'更多设置',
       cancelTimingTitle:'取消按键时长',cancelTimingDesc:'在 <b>{n}</b> 秒内再次按下 → 发送 Esc 取消',
       sendTimingTitle:'自动发送等待',sendTimingDesc:'第二次启动后等待 <b>{n}</b> 秒 → 自动发送 Enter',
       schemeSwitched:'已切换至：'
     },
     en:{
-      appTitle:'Voice Launch Settings',
+      appTitle:'oneTone',
+      appSubtitle:'Set it up in two steps: choose a launch key, then choose the voice input shortcut.',
+      welcomeKicker:'First launch',
+      welcomeTitle:'Start voice launch in two steps',
+      welcomeDesc:'Choose how you want to start, then record the voice shortcut once. After that, pressing the launch key will open voice input faster.',
+      welcomeHint:'This guide only appears once on first launch.',
+      welcomeStart:'Start setup',
+      welcomeLater:'Maybe later',
+      demoLabel:'Quick demo',
+      demoCardTitle1:'You press',
+      demoCardTitle2:'It triggers',
+      demoCaptionLeft:'Pick a launch method that feels natural.',
+      demoCaptionRight:'It only triggers the voice shortcut you recorded.',
+      guideTitle1:'Set it up',
+      guideDesc1:'One press gets you into voice input faster.',
+      guideTitle2:'Record once',
+      guideDesc2:'',
+      guideTitle3:'Use it',
+      guideDesc3:'',
       mappingListTitle:'My profiles',addMapping:'Add profile',
       triggerTitle:'Record launch key',targetTitle:'Record IME key',
       btnRecordTrigger:'Set launch key',btnRecordTarget:'Record voice input key',
@@ -702,15 +1193,39 @@ events:
       movedToTrash:'Moved to recycle bin (see Settings)',
       trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
       settingsTitle:'Settings',listenTitle:'Listen status',
-      listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart Voice Pilot?',
+      listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart oneTone?',
       testSendDisabled:'Set a voice shortcut first',
       testSendTarget:'Test voice shortcut',testSending:'Sending…',testSent:'Sent',
-      testShort:'Test',testFailed:'Send failed — check target key',
+      testShort:'Test',shortcutHintEmpty:'No switch key',shortcutHintTitle:'Press to switch to this profile',
+      testModalTitle:'Test voice shortcut',testModalOk:'Got it',
+      testModalSendingTitle:'Sending test key…',testModalSendingSummary:'oneTone will simulate your voice shortcut once. Watch whether voice input appears in the current window.',
+      testModalOkTitle:'Key sent',testModalOkSummary:'Sent <b>{key}</b> to the system. Check whether voice input appeared in the current window.',
+      testModalOkHint:'If voice did not appear, the launch key is usually not the problem. Check: ① Does the focused app support this shortcut? ② Is voice input enabled in your IME? ③ Does the shortcut match IME settings? Re-record the voice shortcut and test again.',
+      testModalFailTitle:'Test failed',testModalTimeoutTitle:'Test timed out',
+      testModalTimeoutSummary:'The test did not complete in time. Please try again.',
+      testCheckListen:'Listen status',testCheckListenOk:'Listening — ready to test',testCheckListenFail:'Listening paused — resume in Settings first',
+      testCheckTarget:'Voice shortcut',testCheckTargetOk:'Set: {key}',testCheckTargetFail:'No voice shortcut — record one first',
+      testCheckTargetInvalid:'Shortcut format not recognized — record again',
+      testCheckMapping:'Profile',testCheckMappingOk:'Profile: {name}',testCheckMappingDisabled:'Profile disabled — test still works, but enable or switch to it for daily use',
+      testCheckConflict:'Key conflicts',testCheckConflictWarn:'Overlaps with profile「{key}」— behavior may be unreliable',
+      testCheckConflictOk:'No obvious conflicts',
+      testCheckSend:'Simulate send',testCheckSendPending:'Sending to system…',testCheckSendOk:'System accepted key simulation',
+      testCheckSendFail:'Could not send key — re-record or change shortcut',
+      testCheckSendTimeout:'No test response — rebuild and run the latest version',
+      testReasonRecording:'Recording in progress — finish recording before testing',
+      testFailed:'Send failed — check target key',
       testSentToast:'Sent: ',selectedLabel:'Selected',
       logTitle:'Event Log',runtimeTitle:'Live Status',actionLabel:'Action',sendLabel:'Send',
       sourceTitle:'Source Group',noteTitle:'Note',
+      debugTitle:'Developer Info',
+      debugKeyLabel:'Key',
+      debugCodeLabel:'Code',
       listenOn:'Listening',listenPaused:'Paused',
       themeLight:'☀ Light',themeDark:'🌙 Dark',
+      quickTipsTitle:'Easiest setup',
+      quickTipsBody:'Set a launch key first, then record the voice shortcut. You can ignore advanced options at first.',
+      replayWelcome:'Replay first-run guide',
+      welcomePathLabel:'Setup path',
       noteText:'Record the real button; the state machine handles actions, not naming.',
       clearAll:'Clear all mappings',waitLog:'Waiting to record…',
       triggerRejected:'Could not recognize that key — please try again',
@@ -720,10 +1235,19 @@ events:
       restoredDefault:'Default mapping restored',logStartTrigger:'Start recording trigger...',logStartTarget:'Start recording target...',
       logTimeout:'Recording timed out',logTriggerDone:'Trigger recorded: ',logTargetDone:'Target recorded: ',logWaitMain:'Waiting for main key...',
       comboHint:'Waiting for combo…',triggerRecordHint:'Press launch key (side modifiers & combos supported)',targetRecordHint:'Press voice shortcut',
-      triggerModeTitle:'Trigger style',triggerModeTap:'Double-tap',triggerModeHold:'Press',triggerModeToggle:'Toggle',
-      triggerModeTapDesc:'Press twice to launch; press again within window to cancel',
-      triggerModeHoldDesc:'Each press launches immediately',
-      triggerModeToggleDesc:'Press to start, press again to cancel',
+      triggerModeTitle:'Trigger style',
+      triggerModeTap:'Smart repeat',triggerModeHold:'Instant press',triggerModeToggle:'On / Off',
+      triggerModeTapDesc:'1st press opens voice; quick 2nd press cancels, or wait for auto-confirm',
+      triggerModeHoldDesc:'Each press on the launch key triggers voice once',
+      triggerModeToggleDesc:'Press to start voice; press again to stop (Esc only, no re-open)',
+      triggerModeTapAnimVoice:'Voice',triggerModeTapAnimCancel:'Cancel',triggerModeTapAnimEnter:'OK',
+      triggerModeHoldAnimVoice:'Voice',triggerModeToggleAnimOn:'On',triggerModeToggleAnimOff:'Off',
+      triggerModeSettingsTap:'Settings for this mode',
+      triggerModeSettingsTapTip:'Each press re-sends the voice shortcut; only a quick 2nd press within the cancel window sends Esc.',
+      triggerModeSettingsHold:'No extra settings',
+      triggerModeSettingsHoldTip:'Each press sends the voice shortcut immediately — no cancel window or auto-confirm.',
+      triggerModeSettingsToggle:'How this mode works',
+      triggerModeSettingsToggleTip:'Stays "on" until you press again; 2nd press sends <b>Esc</b> only — unlike Smart repeat, it won\'t re-open voice.',
       triggerRecordDetected:'Detected: ',
       schemeSwitchLabel:'Cycle shortcut',schemeSwitchRecord:'Click to record cycle key',schemeSwitchRecording:'Recording…',
       schemeSwitchCancel:'Cancel recording',schemeSwitchClear:'Clear',schemeSwitchCleared:'Cycle shortcut cleared',
@@ -745,8 +1269,86 @@ events:
 
   function t(key){ return (I18N[lang]&&I18N[lang][key])||key; }
 
+  function friendlySingleToken(token){
+    const raw=String(token||'').trim();
+    if(!raw) return '';
+    const zh=lang==='zh';
+    const direct={
+      AutoTrigger:zh?'音量键启动':'Volume key trigger',
+      Ctrl:zh?'Ctrl':'Ctrl',
+      Shift:zh?'Shift':'Shift',
+      Alt:zh?'Alt':'Alt',
+      Win:zh?'Win':'Win',
+      LCtrl:zh?'左 Ctrl':'Left Ctrl',
+      RCtrl:zh?'右 Ctrl':'Right Ctrl',
+      LShift:zh?'左 Shift':'Left Shift',
+      RShift:zh?'右 Shift':'Right Shift',
+      LAlt:zh?'左 Alt':'Left Alt',
+      RAlt:zh?'右 Alt':'Right Alt',
+      LWin:zh?'左 Win':'Left Win',
+      RWin:zh?'右 Win':'Right Win',
+      Esc:zh?'Esc':'Esc',
+      Space:zh?'空格':'Space',
+      Enter:zh?'回车':'Enter',
+      NumpadEnter:zh?'小键盘回车':'Numpad Enter',
+      Tab:zh?'Tab':'Tab',
+      Backspace:zh?'退格':'Backspace',
+      Delete:zh?'删除':'Delete',
+      Insert:zh?'插入':'Insert',
+      Home:zh?'Home':'Home',
+      End:zh?'End':'End',
+      PageUp:zh?'向上翻页':'Page Up',
+      PageDown:zh?'向下翻页':'Page Down',
+      Up:zh?'上方向键':'Up Arrow',
+      Down:zh?'下方向键':'Down Arrow',
+      Left:zh?'左方向键':'Left Arrow',
+      Right:zh?'右方向键':'Right Arrow',
+      CapsLock:zh?'大写锁定':'Caps Lock',
+      PrintScreen:zh?'截图键':'Print Screen',
+      ScrollLock:zh?'滚动锁定':'Scroll Lock',
+      Pause:zh?'暂停键':'Pause',
+      AppsKey:zh?'菜单键':'Menu Key',
+      Volume_Down:zh?'音量减':'Volume Down',
+      Volume_Up:zh?'音量加':'Volume Up',
+      Volume_Mute:zh?'静音键':'Mute',
+      Media_Next:zh?'下一曲':'Next Track',
+      Media_Prev:zh?'上一曲':'Previous Track',
+      Media_Play_Pause:zh?'播放 / 暂停':'Play / Pause',
+      Media_Stop:zh?'停止播放':'Stop',
+      Browser_Back:zh?'浏览器后退':'Browser Back',
+      Browser_Forward:zh?'浏览器前进':'Browser Forward',
+      Browser_Refresh:zh?'浏览器刷新':'Browser Refresh',
+      Launch_Mail:zh?'打开邮件':'Launch Mail',
+      Launch_App1:zh?'快捷应用 1':'Launch App 1',
+      Launch_App2:zh?'快捷应用 2':'Launch App 2',
+      LButton:zh?'鼠标左键':'Left Mouse',
+      RButton:zh?'鼠标右键':'Right Mouse',
+      MButton:zh?'鼠标中键':'Middle Mouse',
+      XButton1:zh?'鼠标侧键 1':'Mouse Side Button 1',
+      XButton2:zh?'鼠标侧键 2':'Mouse Side Button 2'
+    };
+    if(Object.prototype.hasOwnProperty.call(direct, raw)) return direct[raw];
+    if(/^F\d{1,2}$/.test(raw)) return raw;
+    if(/^Numpad\d$/.test(raw)) return zh?('小键盘 '+raw.slice(6)):('Numpad '+raw.slice(6));
+    if (/^[A-Z]$/.test(raw)) return raw;
+    if (/^\d$/.test(raw)) return raw;
+    return raw.replace(/_/g,' ');
+  }
+
+  function friendlyKeyName(key){
+    const k=String(key||'').trim();
+    if(!k) return '';
+    if(k.includes('+')) return k.split('+').map(friendlySingleToken).join(' + ');
+    if(k.includes(' / ')) return k.split(' / ').map(friendlySingleToken).join(' / ');
+    return friendlySingleToken(k);
+  }
+
+  function friendlyPair(triggerKey,targetKey){
+    return (friendlyKeyName(triggerKey)||'?')+' → '+(friendlyKeyName(targetKey)||'?');
+  }
+
   function isSavedMapping(m){
-    return !!(m&&m.triggerKey&&m.targetKey);
+    return !!(m&&editorTriggerForMapping(m)&&editorTargetForMapping(m));
   }
 
   function isDraftMapping(m){
@@ -827,6 +1429,7 @@ events:
       recordingMode='none';
       recordingMappingId='';
       resetTargetCapture();
+      try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
       renderMappingList();
       renderRecordCancelBar();
       return;
@@ -835,12 +1438,15 @@ events:
     if(recordSnapshot){
       editorTriggerKey=recordSnapshot.editorTrigger;
       editorTargetKey=recordSnapshot.editorTarget;
-      const m=selectedMapping();
-      m.triggerKey=recordSnapshot.mappingTrigger;
-      m.targetKey=recordSnapshot.mappingTarget;
-      m.label=(recordSnapshot.mappingTrigger||'?')+' → '+(recordSnapshot.mappingTarget||'?');
+      const m=recordingMapping();
+      if(m){
+        m.triggerKey=recordSnapshot.mappingTrigger;
+        m.targetKey=recordSnapshot.mappingTarget;
+        m.label=(recordSnapshot.mappingTrigger||'?')+' → '+(recordSnapshot.mappingTarget||'?');
+      }
     }
     recordSnapshot=null;
+    recordingMappingId='';
     resetTargetCapture();
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
     setRecording('none');
@@ -863,9 +1469,54 @@ events:
     editorTargetKey=m.targetKey||'';
   }
 
+  function mappingById(id){
+    return id&&state.config&&state.config.mappings.find(function(x){return x.id===id;})||null;
+  }
+
+  function isSelectedMapping(id){
+    return !!(id&&state.selectedMappingId===id);
+  }
+
+  function editorTriggerForMapping(m){
+    if(!m) return '';
+    const saved=(m.triggerKey||'').trim();
+    if(saved) return saved;
+    if(isSelectedMapping(m.id)) return (editorTriggerKey||'').trim();
+    return '';
+  }
+
+  function editorTargetForMapping(m){
+    if(!m) return '';
+    const saved=(m.targetKey||'').trim();
+    if(saved) return saved;
+    if(isSelectedMapping(m.id)) return (editorTargetKey||'').trim();
+    return '';
+  }
+
+  function flushEditorToMapping(m){
+    if(!m||!isSelectedMapping(m.id)) return;
+    const trig=(editorTriggerKey||'').trim();
+    const tgt=(editorTargetKey||'').trim();
+    if(trig) m.triggerKey=trig;
+    if(tgt){
+      m.targetKey=tgt;
+      m.label=(m.triggerKey||'?')+' → '+tgt;
+    }
+  }
+
+  function flushAllEditorToMappings(){
+    ensureConfig();
+    const m=selectedMapping();
+    if(m) flushEditorToMapping(m);
+  }
+
+  function recordingMapping(){
+    return mappingById(recordingMappingId)||selectedMapping();
+  }
+
   function mappingTargetKey(id){
-    const m=state.config&&state.config.mappings.find(function(x){return x.id===id;});
-    return m&&(m.targetKey||'?');
+    const m=mappingById(id);
+    return editorTargetForMapping(m)||'?';
   }
 
   function conflictsForMapping(id){
@@ -935,6 +1586,52 @@ events:
   function applyLang(){
     const d=I18N[lang];
     $('appTitle').textContent=d.appTitle;
+    const subtitle=$('appSubtitle');
+    if(subtitle) subtitle.textContent=d.appSubtitle||'';
+    const welcomeKicker=$('welcomeKicker');
+    if(welcomeKicker) welcomeKicker.textContent=d.welcomeKicker;
+    const welcomeTitle=$('welcomeTitle');
+    if(welcomeTitle) welcomeTitle.textContent=d.welcomeTitle;
+    const welcomeDesc=$('welcomeDesc');
+    if(welcomeDesc) welcomeDesc.textContent=d.welcomeDesc;
+    const welcomeHint=$('welcomeHint');
+    if(welcomeHint) welcomeHint.textContent=d.welcomeHint;
+    const btnWelcomeStart=$('btnWelcomeStart');
+    if(btnWelcomeStart) btnWelcomeStart.textContent=d.welcomeStart;
+    const btnWelcomeLater=$('btnWelcomeLater');
+    if(btnWelcomeLater) btnWelcomeLater.textContent=d.welcomeLater;
+    const demoLabel=$('demoLabel');
+    if(demoLabel) demoLabel.textContent=d.demoLabel;
+    const demoCardTitle1=$('demoCardTitle1');
+    if(demoCardTitle1) demoCardTitle1.textContent=d.demoCardTitle1;
+    const demoCardTitle2=$('demoCardTitle2');
+    if(demoCardTitle2) demoCardTitle2.textContent=d.demoCardTitle2;
+    const demoCaptionLeft=$('demoCaptionLeft');
+    if(demoCaptionLeft) demoCaptionLeft.textContent=d.demoCaptionLeft;
+    const demoCaptionRight=$('demoCaptionRight');
+    if(demoCaptionRight) demoCaptionRight.textContent=d.demoCaptionRight;
+    const quickTipsTitle=$('quickTipsTitle');
+    if(quickTipsTitle) quickTipsTitle.textContent=d.quickTipsTitle;
+    const quickTipsBody=$('quickTipsBody');
+    if(quickTipsBody) quickTipsBody.textContent=d.quickTipsBody;
+    const replayWelcome=$('btnReplayWelcome');
+    if(replayWelcome) replayWelcome.textContent=d.replayWelcome;
+    const welcomePathLabel=$('welcomePathLabel');
+    if(welcomePathLabel) welcomePathLabel.textContent=d.welcomePathLabel;
+    const debugTitle=$('debugTitle');
+    if(debugTitle) debugTitle.textContent=d.debugTitle;
+    const debugKeyLabel=$('debugKeyLabel');
+    if(debugKeyLabel) debugKeyLabel.textContent=d.debugKeyLabel;
+    const debugCodeLabel=$('debugCodeLabel');
+    if(debugCodeLabel) debugCodeLabel.textContent=d.debugCodeLabel;
+    const guideTitle1=$('guideTitle1');
+    if(guideTitle1) guideTitle1.textContent=d.guideTitle1;
+    const guideDesc1=$('guideDesc1');
+    if(guideDesc1) guideDesc1.textContent=d.guideDesc1;
+    const guideTitle2=$('guideTitle2');
+    if(guideTitle2) guideTitle2.textContent=d.guideTitle2;
+    const guideTitle3=$('guideTitle3');
+    if(guideTitle3) guideTitle3.textContent=d.guideTitle3;
     $('btnSettings').textContent=d.settingsTitle;
     $('settingsTitle').textContent=d.settingsTitle;
     $('mappingListTitle').textContent=d.mappingListTitle;
@@ -970,6 +1667,8 @@ events:
     $('btnClearAll').textContent=d.clearAll;
     $('trashTitle').textContent=d.trashTitle;
     $('trashEmpty').textContent=d.trashEmpty;
+    $('menuActTest').textContent=d.testShort;
+    $('btnTestModalOk').textContent=d.testModalOk;
     $('menuActDup').textContent=d.duplicate;
     $('menuActUp').textContent=d.moveUp;
     $('menuActDown').textContent=d.moveDown;
@@ -981,12 +1680,75 @@ events:
     try{ localStorage.setItem('vp_lang',lang); }catch(_){ }
   }
 
-  function toast(msg){
+  let switchFlashTimer=null;
+  let notificationPermissionAsked=false;
+
+  function toast(msg, kind){
     const el=$('toast');
     el.textContent=msg;
+    el.classList.toggle('toast-scheme', kind==='scheme');
     el.classList.add('show');
     clearTimeout(el._t);
-    el._t=setTimeout(function(){el.classList.remove('show');},2200);
+    el._t=setTimeout(function(){el.classList.remove('show');}, kind==='scheme'?1800:2200);
+  }
+
+  function ensureNotificationPermission(){
+    if(notificationPermissionAsked||!window.Notification) return;
+    if(Notification.permission!=='default') return;
+    notificationPermissionAsked=true;
+    Notification.requestPermission().catch(function(){});
+  }
+
+  function notifySchemeSwitchIfBackground(msg){
+    if(document.visibilityState==='visible'&&document.hasFocus()) return;
+    try{
+      if(!window.Notification||Notification.permission!=='granted') return;
+      new Notification(t('appTitle')||'织音',{body:msg,silent:true});
+    }catch(_){}
+  }
+
+  function formatSwitchKeyHint(keys){
+    if(!keys||!keys.length) return '';
+    return keys.map(function(k){ return friendlyKeyName(k); }).join(' / ');
+  }
+
+  function renderMapRowAction(m){
+    ensureMappingExtras(m);
+    const keys=m.switchKeys||[];
+    if(keys.length){
+      const hint=formatSwitchKeyHint(keys);
+      return '<span class="map-shortcut-hint" title="'+t('shortcutHintTitle')+'">'+hint+'</span>';
+    }
+    const hasTarget=!!editorTargetForMapping(m);
+    return '<button type="button" class="map-test'+(testSendState==='sending'&&testSendMappingId===m.id?' sending':'')+'" data-test="'+m.id+'"'+(hasTarget?'':' disabled')+'>'+t('testShort')+'</button>';
+  }
+
+  function showSchemeSwitchFeedback(toId, label){
+    const msg=t('schemeSwitched')+(label||'');
+    if(toId){
+      state.selectedMappingId=toId;
+      syncEditorFromSelection();
+    }
+    renderMappingList();
+    renderEditor();
+    if(toId){
+      requestAnimationFrame(function(){
+        const row=document.querySelector('.map-row[data-id="'+toId+'"]');
+        if(row){
+          row.classList.remove('is-switch-flash');
+          void row.offsetWidth;
+          row.classList.add('is-switch-flash');
+          row.scrollIntoView({block:'nearest',behavior:'smooth'});
+          clearTimeout(switchFlashTimer);
+          switchFlashTimer=setTimeout(function(){ row.classList.remove('is-switch-flash'); },1200);
+        }
+        toast(msg,'scheme');
+      });
+    }else{
+      render();
+      toast(msg,'scheme');
+    }
+    notifySchemeSwitchIfBackground(msg);
   }
 
   function newMappingId(){ return 'm-'+Date.now()+'-'+Math.random().toString(36).slice(2,7); }
@@ -1026,7 +1788,7 @@ events:
     }
     if(!events.length&&m.sourceKey) events.push(m.sourceKey);
     if(!events.length) return '';
-    return events.join(' / ');
+    return events.map(friendlyKeyName).join(' / ');
   }
 
   function formatSourceTime(raw){
@@ -1042,7 +1804,7 @@ events:
     const trace=formatTriggerTrace(m);
     if(trace) return trace;
     if(isAutoTriggerMapping(m)) return t('nativeKeysUnset');
-    return m.triggerKey||'?';
+    return friendlyKeyName(m.triggerKey||'?');
   }
 
   function renderTriggerMetaBlock(m,id){
@@ -1088,7 +1850,7 @@ events:
     html+='<p class="map-switch-desc">'+t('switchKeysDesc')+'</p>';
     html+='<div class="map-switch-chips">';
     keys.forEach(function(k,idx){
-      html+='<span class="map-switch-chip">'+k+'<button type="button" data-rm-switch="'+id+'" data-idx="'+idx+'" aria-label="remove">×</button></span>';
+      html+='<span class="map-switch-chip">'+friendlyKeyName(k)+'<button type="button" data-rm-switch="'+id+'" data-idx="'+idx+'" aria-label="remove">×</button></span>';
     });
     if(!keys.length) html+='<span class="map-switch-desc" style="margin:0">—</span>';
     html+='</div>';
@@ -1097,22 +1859,32 @@ events:
     return html;
   }
 
-  function renderTriggerModeBlock(m,id){
-    const mode=(m.triggerMode||'tap').toLowerCase();
-    const descKey=mode==='hold'?'triggerModeHoldDesc':mode==='toggle'?'triggerModeToggleDesc':'triggerModeTapDesc';
-    let html='<div class="map-trigger-mode">';
-    html+='<div class="map-timing-head"><span>'+t('triggerModeTitle')+'</span></div>';
-    html+='<p class="map-switch-desc">'+t(descKey)+'</p>';
-    html+='<div class="map-mode-pills">';
-    ['tap','hold','toggle'].forEach(function(opt){
-      html+='<button type="button" class="map-mode-pill'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
-      html+=t('triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle'))+'</button>';
-    });
-    html+='</div></div>';
-    return html;
+  function renderModeAnim(opt){
+    if(opt==='hold'){
+      return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-hold">'
+        +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
+        +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeHoldAnimVoice')+'</span>'
+        +'</div></div>';
+    }
+    if(opt==='toggle'){
+      return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-toggle">'
+        +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
+        +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeToggleAnimOn')+'</span>'
+        +'<span class="ma-arrow">→</span><span class="ma-chip ma-key ma-k2">2</span><span class="ma-arrow">→</span>'
+        +'<span class="ma-chip ma-esc ma-esc1">'+t('triggerModeToggleAnimOff')+'</span>'
+        +'</div></div>';
+    }
+    return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-tap">'
+      +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
+      +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeTapAnimVoice')+'</span>'
+      +'<span class="ma-arrow">→</span><span class="ma-chip ma-key ma-k2">2</span><span class="ma-arrow ma-a1">→</span>'
+      +'<span class="ma-out-stack">'
+      +'<span class="ma-chip ma-esc ma-out-cancel">'+t('triggerModeTapAnimCancel')+'</span>'
+      +'<span class="ma-chip ma-enter ma-out-enter">'+t('triggerModeTapAnimEnter')+'</span>'
+      +'</span></div></div>';
   }
 
-  function renderTimingBlock(m,id,prefix){
+  function renderTapTimingSettings(m,id){
     ensureMappingTiming(m);
     const cancelSec=(m.intervalMs/1000).toFixed(1);
     const sendSec=(m.enterDelayMs/1000).toFixed(1);
@@ -1130,17 +1902,92 @@ events:
     return html;
   }
 
+  function renderModeSettingsPanel(m,id,mode){
+    let html='<div class="map-mode-settings">';
+    if(mode==='tap'){
+      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsTap')+'</span></div>';
+      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsTapTip')+'</p>';
+      html+=renderTapTimingSettings(m,id);
+    }else if(mode==='hold'){
+      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsHold')+'</span></div>';
+      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsHoldTip')+'</p>';
+    }else{
+      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsToggle')+'</span></div>';
+      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsToggleTip')+'</p>';
+    }
+    html+='</div>';
+    return html;
+  }
+
+  function renderTriggerModeBlock(m,id){
+    const mode=(m.triggerMode||'tap').toLowerCase();
+    let html='<div class="map-trigger-mode">';
+    html+='<div class="map-timing-head"><span>'+t('triggerModeTitle')+'</span></div>';
+    html+='<div class="map-mode-cards">';
+    ['hold','toggle','tap'].forEach(function(opt){
+      const titleKey='triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle');
+      const descKey='triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle')+'Desc';
+      html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
+      html+=renderModeAnim(opt);
+      html+='<span class="mode-card-title">'+t(titleKey)+'</span>';
+      html+='<span class="mode-card-desc">'+t(descKey)+'</span>';
+      html+='</button>';
+    });
+    html+='</div>';
+    html+=renderModeSettingsPanel(m,id,mode);
+    html+='</div>';
+    return html;
+  }
+
+  function renderTimingBlock(m,id,prefix){
+    return renderTapTimingSettings(m,id);
+  }
+
   function scheduleTimingSave(){
     clearTimeout(timingSaveTimer);
     timingSaveTimer=setTimeout(function(){ save(); },280);
   }
 
-  function updateMappingTiming(id,field,value){
+  function formatTimingSec(ms){ return (Number(ms)/1000).toFixed(1); }
+
+  function timingDescText(field,ms){
+    const n=formatTimingSec(ms);
+    if(field==='intervalMs') return t('cancelTimingDesc').replace('{n}',n);
+    if(field==='enterDelayMs') return t('sendTimingDesc').replace('{n}',n);
+    return '';
+  }
+
+  function syncTimingRangeFill(range){
+    if(!range) return;
+    const min=Number(range.min), max=Number(range.max), val=Number(range.value);
+    const pct=max>min?((val-min)/(max-min))*100:0;
+    range.style.setProperty('--range-pct', pct+'%');
+  }
+
+  function syncAllTimingRanges(root){
+    (root||document).querySelectorAll('.map-timing-range').forEach(syncTimingRangeFill);
+  }
+
+  function liveUpdateTimingRange(range){
+    const id=range.dataset.timingRange;
+    const field=range.dataset.field;
+    const val=Number(range.value);
+    const m=state.config&&state.config.mappings.find(function(x){return x.id===id;});
+    if(!m) return;
+    m[field]=val;
+    scheduleTimingSave();
+    syncTimingRangeFill(range);
+    const block=range.closest('.map-timing-block');
+    const desc=block&&block.querySelector('.map-timing-desc');
+    if(desc) desc.innerHTML=timingDescText(field,val);
+  }
+
+  function updateMappingTiming(id,field,value,skipRender){
     const m=state.config&&state.config.mappings.find(function(x){return x.id===id;});
     if(!m) return;
     m[field]=value;
     scheduleTimingSave();
-    renderMappingList();
+    if(!skipRender) renderMappingList();
   }
 
   function ensureConfig(){
@@ -1163,11 +2010,14 @@ events:
 
   function buildSavePayload(){
     ensureConfig();
+    flushAllEditorToMappings();
     return JSON.stringify({
       version:5,
       mappings:state.config.mappings.map(function(m,i){
         ensureMappingExtras(m);
-        return {id:m.id,label:m.label||((m.triggerKey&&m.targetKey)?((m.triggerKey||'?')+' → '+(m.targetKey||'?')):''),group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore};
+        const trig=editorTriggerForMapping(m);
+        const tgt=editorTargetForMapping(m);
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'默认',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore};
       }),
       trash:(state.config.trash||[]).map(function(m){
         ensureMappingExtras(m);
@@ -1186,6 +2036,16 @@ events:
 
   function save(){
     try{ window.chrome?.webview?.postMessage({type:'mvp_save',json:buildSavePayload()}); }catch(_){ }
+  }
+
+  function saveAsync(){
+    const invoke=window.__vp_invoke__;
+    if(!invoke) return Promise.resolve(false);
+    try{
+      return invoke('cmd_save',{json:buildSavePayload()}).then(function(){ return true; }).catch(function(){ return false; });
+    }catch(_){
+      return Promise.resolve(false);
+    }
   }
 
   function rawEventForHotkey(hotkey, label){
@@ -1348,6 +2208,45 @@ events:
 
   function pushLog(line){ logLines.unshift(line); logLines.length=Math.min(logLines.length,20); $('rawEventLog').textContent=logLines.join('\n'); }
 
+  function openWelcome(){
+    welcomeOpen=true;
+    const overlay=$('welcomeOverlay');
+    if(!overlay) return;
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+  }
+
+  function closeWelcome(markSeen){
+    welcomeOpen=false;
+    const overlay=$('welcomeOverlay');
+    if(!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+    if(markSeen){
+      try{ localStorage.setItem('vp_welcome_seen','1'); }catch(_){ }
+    }
+  }
+
+  function renderDebugPanel(){
+    const source=$('sourceExplain');
+    if(source){
+      const m=selectedMapping();
+      const lines=[];
+      if(m&&m.triggerSource){
+        lines.push((lang==='zh'?'来源模式: ':'Mode: ')+(m.triggerSource.mode||'-'));
+        lines.push((lang==='zh'?'分组方式: ':'Grouping: ')+(m.triggerSource.grouping||'-'));
+      }
+      const trace=formatTriggerTrace(m);
+      lines.push((lang==='zh'?'识别到的按键: ':'Captured keys: ')+(trace||'-'));
+      if(m&&m.sourceKey) lines.push((lang==='zh'?'底层键值: ':'Raw key: ')+(m.sourceKey||'-'));
+      source.textContent=lines.join('\n');
+    }
+    const keyEl=$('dbKey');
+    const codeEl=$('dbCode');
+    if(keyEl && keyEl.textContent && keyEl.textContent!=='-') keyEl.textContent=friendlyKeyName(keyEl.textContent);
+    if(codeEl && codeEl.textContent && codeEl.textContent!=='-') codeEl.textContent=friendlyKeyName(codeEl.textContent);
+  }
+
   function isAllowedTriggerKey(key){
     return !!String(normalizeTriggerKey(key)||'').trim();
   }
@@ -1392,6 +2291,7 @@ events:
     const m=state.config.mappings.find(function(x){return x.id===id;});
     const isDraft=m&&isDraftMapping(m);
     $('menuActDup').disabled=!!isDraft;
+    $('menuActTest').disabled=!!isDraft||!editorTargetForMapping(m);
     $('menuActUp').disabled=!!isDraft||i<=0;
     $('menuActDown').disabled=!!isDraft||i<0||i>=list.length-1;
     $('menuActDel').disabled=false;
@@ -1478,7 +2378,7 @@ events:
     if(!items.length){ box.innerHTML=''; return; }
     let html='';
     items.forEach(function(m){
-      html+='<div class="trash-row"><span>'+(m.triggerKey||'?')+' → '+(m.targetKey||'?')+'</span>';
+      html+='<div class="trash-row"><span>'+friendlyPair(m.triggerKey,m.targetKey)+'</span>';
       html+='<button type="button" class="trash-restore" data-restore="'+m.id+'">'+t('trashRestore')+'</button></div>';
     });
     box.innerHTML=html;
@@ -1490,20 +2390,31 @@ events:
 
   function resolveTestTarget(forMappingId){
     ensureConfig();
+    flushAllEditorToMappings();
+    function pick(m){
+      if(!m) return null;
+      const key=editorTargetForMapping(m);
+      if(!key) return null;
+      return {mappingId:m.id,targetKey:key};
+    }
     if(forMappingId){
-      const m=state.config.mappings.find(function(x){return x.id===forMappingId;});
-      if(m&&m.targetKey) return {mappingId:m.id,targetKey:m.targetKey};
-      return null;
+      return pick(mappingById(forMappingId));
     }
     if(state.selectedMappingId){
-      const m=state.config.mappings.find(function(x){return x.id===state.selectedMappingId;});
-      if(m&&m.targetKey) return {mappingId:m.id,targetKey:m.targetKey};
+      const picked=pick(mappingById(state.selectedMappingId));
+      if(picked) return picked;
     }
-    if(editorTargetKey){
-      const m=selectedMapping();
-      return {mappingId:m.id,targetKey:editorTargetKey};
-    }
-    return null;
+    const enabled=sortedMappings().find(function(m){ return m.enabled&&editorTargetForMapping(m); });
+    if(enabled) return pick(enabled);
+    const any=sortedMappings().find(function(m){ return editorTargetForMapping(m); });
+    if(any) return pick(any);
+    return pick(selectedMapping());
+  }
+
+  function effectiveTargetKey(mappingId, key){
+    const k=String(key||'').trim();
+    if(k) return k;
+    return editorTargetForMapping(mappingById(mappingId));
   }
 
   function isCurrentDraftComplete(){
@@ -1534,6 +2445,14 @@ events:
     if(!triggerBtn||!targetBtn) return;
     triggerBtn.className='btn secondary record-btn';
     targetBtn.className='btn secondary record-btn';
+    if(recordingMode==='trigger'){
+      triggerBtn.className='btn primary record-btn';
+      return;
+    }
+    if(recordingMode==='target'){
+      targetBtn.className='btn primary record-btn';
+      return;
+    }
     if(!editorTriggerKey){
       triggerBtn.className='btn primary record-btn';
     }else if(!editorTargetKey){
@@ -1547,6 +2466,180 @@ events:
     testSendState='idle';
     testSendMappingId=null;
     testSendFromFooter=false;
+  }
+
+  function closeTestModal(){
+    const overlay=$('testOverlay');
+    if(overlay){
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+    }
+    testModalMappingId=null;
+  }
+
+  function mappingLabelForTest(mappingId){
+    const m=mappingById(mappingId);
+    if(!m) return '';
+    const trig=editorTriggerForMapping(m);
+    const tgt=editorTargetForMapping(m);
+    if(trig&&tgt) return m.label||friendlyPair(trig,tgt);
+    if(m.label) return m.label;
+    return friendlyPair(trig,tgt);
+  }
+
+  function buildTestChecks(mappingId, targetKey, sendState){
+    const checks=[];
+    const resolvedKey=effectiveTargetKey(mappingId,targetKey);
+    const m=mappingId?state.config.mappings.find(function(x){return x.id===mappingId;}):null;
+    if(runtime.paused){
+      checks.push({state:'fail',title:t('testCheckListen'),detail:t('testCheckListenFail')});
+    }else if(recordingMode!=='none'){
+      checks.push({state:'fail',title:t('testCheckListen'),detail:t('testReasonRecording')});
+    }else{
+      checks.push({state:'ok',title:t('testCheckListen'),detail:t('testCheckListenOk')});
+    }
+    if(!resolvedKey){
+      checks.push({state:'fail',title:t('testCheckTarget'),detail:t('testCheckTargetFail')});
+    }else{
+      checks.push({state:'ok',title:t('testCheckTarget'),detail:t('testCheckTargetOk').replace('{key}',friendlyKeyName(resolvedKey))});
+    }
+    if(m){
+      const name=mappingLabelForTest(mappingId);
+      if(m.enabled){
+        checks.push({state:'ok',title:t('testCheckMapping'),detail:t('testCheckMappingOk').replace('{name}',name)});
+      }else{
+        checks.push({state:'warn',title:t('testCheckMapping'),detail:t('testCheckMappingDisabled')});
+      }
+      const conflicts=conflictsForMapping(mappingId);
+      if(conflicts.length){
+        const c=conflicts[0];
+        checks.push({state:'warn',title:t('testCheckConflict'),detail:t('testCheckConflictWarn').replace('{key}',mappingTargetKey(otherIdInConflict(c,mappingId)))});
+      }else{
+        checks.push({state:'ok',title:t('testCheckConflict'),detail:t('testCheckConflictOk')});
+      }
+    }
+    if(sendState==='pending'){
+      checks.push({state:'pending',title:t('testCheckSend'),detail:t('testCheckSendPending')});
+    }else if(sendState==='ok'){
+      checks.push({state:'ok',title:t('testCheckSend'),detail:t('testCheckSendOk')});
+    }else if(sendState==='fail'){
+      checks.push({state:'fail',title:t('testCheckSend'),detail:t('testCheckSendFail')});
+    }else if(sendState==='timeout'){
+      checks.push({state:'fail',title:t('testCheckSend'),detail:t('testCheckSendTimeout')});
+    }
+    return checks;
+  }
+
+  function renderTestChecks(checks){
+    const list=$('testCheckList');
+    if(!list) return;
+    list.innerHTML=checks.map(function(c){
+      const mark=c.state==='ok'?'✓':c.state==='warn'?'!':c.state==='pending'?'…':'×';
+      return '<li class="test-check-item is-'+c.state+'"><span class="test-check-mark">'+mark+'</span><div class="test-check-body"><b>'+c.title+'</b><span>'+c.detail+'</span></div></li>';
+    }).join('');
+  }
+
+  function setTestModalView(mode, data){
+    const overlay=$('testOverlay');
+    const icon=$('testStatusIcon');
+    const title=$('testModalTitle');
+    const summary=$('testModalSummary');
+    const hint=$('testModalHint');
+    if(!overlay||!icon||!title||!summary||!hint) return;
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    icon.className='test-status-icon';
+    hint.hidden=true;
+    hint.innerHTML='';
+    if(mode==='sending'){
+      icon.classList.add('is-sending');
+      icon.textContent='…';
+      title.textContent=t('testModalSendingTitle');
+      summary.textContent=t('testModalSendingSummary');
+      renderTestChecks(buildTestChecks(data.mappingId,data.targetKey,'pending'));
+      return;
+    }
+    if(mode==='ok'){
+      icon.classList.add('is-ok');
+      icon.textContent='✓';
+      title.textContent=t('testModalOkTitle');
+      summary.innerHTML=t('testModalOkSummary').replace('{key}',friendlyKeyName(data.key||''));
+      hint.hidden=false;
+      hint.innerHTML=t('testModalOkHint');
+      renderTestChecks(buildTestChecks(data.mappingId,data.key||data.targetKey,'ok'));
+      return;
+    }
+    icon.classList.add('is-fail');
+    icon.textContent='×';
+    if(mode==='timeout'){
+      title.textContent=t('testModalTimeoutTitle');
+      summary.textContent=t('testModalTimeoutSummary');
+      renderTestChecks(buildTestChecks(data.mappingId,data.targetKey,'timeout'));
+      return;
+    }
+    title.textContent=t('testModalFailTitle');
+    summary.textContent=data.summary||t('testFailed');
+    if(data.hint){
+      hint.hidden=false;
+      hint.innerHTML=data.hint;
+    }
+    renderTestChecks(data.checks||buildTestChecks(data.mappingId,data.targetKey,'fail'));
+  }
+
+  function testFailSummary(reason, key){
+    if(reason==='paused') return t('testCheckListenFail');
+    if(reason==='recording') return t('testReasonRecording');
+    if(reason==='no_target') return t('testCheckTargetFail');
+    if(reason==='invalid_key') return t('testCheckTargetInvalid');
+    if(reason==='send_failed') return t('testCheckSendFail');
+    return t('testFailed');
+  }
+
+  function buildTestFailChecks(mappingId, targetKey, reason){
+    const checks=buildTestChecks(mappingId, targetKey, 'fail');
+    if(reason==='invalid_key'){
+      return checks.map(function(c){
+        if(c.title===t('testCheckTarget')) return {state:'fail',title:c.title,detail:t('testCheckTargetInvalid')};
+        return c;
+      });
+    }
+    if(reason==='no_target'){
+      return checks.map(function(c){
+        if(c.title===t('testCheckTarget')) return {state:'fail',title:c.title,detail:t('testCheckTargetFail')};
+        return c;
+      });
+    }
+    return checks;
+  }
+
+  function handleTestSendResult(msg){
+    clearTimeout(testSendWatchdog);
+    const mappingId=testModalMappingId||testSendMappingId;
+    const targetKey=effectiveTargetKey(mappingId,msg.key||'');
+    resetTestSendState();
+    renderTestSendButton();
+    renderMappingList();
+    if(msg.ok){
+      setTestModalView('ok',{mappingId:mappingId,key:targetKey,targetKey:targetKey});
+      return;
+    }
+    const reason=msg.reason||'send_failed';
+    setTestModalView('fail',{
+      mappingId:mappingId,
+      targetKey:targetKey,
+      summary:testFailSummary(reason,targetKey),
+      hint:reason==='invalid_key'||reason==='no_target'?t('testModalOkHint'):'',
+      checks:buildTestFailChecks(mappingId,targetKey,reason)
+    });
+  }
+
+  function runTestSendInvoke(target){
+    const invoke=window.__vp_invoke__;
+    if(!invoke) return Promise.reject(new Error('invoke unavailable'));
+    return invoke('cmd_test_send',window.__vp_tauri_args__({
+      mapping_id:target.mappingId||null,
+      target_key:target.targetKey||null
+    }));
   }
 
   function renderTestSendButton(){
@@ -1579,32 +2672,86 @@ events:
 
   function fireTestSend(forMappingId){
     const target=resolveTestTarget(forMappingId||null);
-    if(!target||testSendState==='sending') return;
+    if(testSendState==='sending') return;
+    if(!target){
+      testModalMappingId=forMappingId||state.selectedMappingId||'';
+      setTestModalView('fail',{
+        mappingId:testModalMappingId,
+        targetKey:'',
+        summary:t('testCheckTargetFail'),
+        hint:t('testModalOkHint'),
+        checks:buildTestFailChecks(testModalMappingId,'','no_target')
+      });
+      return;
+    }
+    if(runtime.paused){
+      testModalMappingId=target.mappingId;
+      setTestModalView('fail',{
+        mappingId:target.mappingId,
+        targetKey:target.targetKey,
+        summary:t('testCheckListenFail'),
+        checks:buildTestFailChecks(target.mappingId,target.targetKey,'paused')
+      });
+      return;
+    }
+    if(recordingMode!=='none'){
+      testModalMappingId=target.mappingId;
+      setTestModalView('fail',{
+        mappingId:target.mappingId,
+        targetKey:target.targetKey,
+        summary:t('testReasonRecording'),
+        checks:buildTestFailChecks(target.mappingId,target.targetKey,'recording')
+      });
+      return;
+    }
     testSendState='sending';
     testSendMappingId=target.mappingId;
+    testModalMappingId=target.mappingId;
     testSendFromFooter=!forMappingId;
+    setTestModalView('sending',{mappingId:target.mappingId,targetKey:target.targetKey});
     clearTimeout(testSendWatchdog);
     testSendWatchdog=setTimeout(function(){
       if(testSendState==='sending'){
         resetTestSendState();
         renderTestSendButton();
         renderMappingList();
+        setTestModalView('timeout',{mappingId:testModalMappingId,targetKey:target.targetKey});
       }
-    },3000);
+    },8000);
     renderTestSendButton();
     renderMappingList();
-    try{
-      window.chrome?.webview?.postMessage({
-        type:'mvp_test_send',
-        mappingId:target.mappingId,
-        targetKey:target.targetKey
-      });
-    }catch(_){
+    const invoke=window.__vp_invoke__;
+    if(!invoke){
       resetTestSendState();
       renderTestSendButton();
       renderMappingList();
-      toast(t('testFailed'));
+      setTestModalView('fail',{
+        mappingId:target.mappingId,
+        targetKey:target.targetKey,
+        summary:t('testCheckSendFail'),
+        checks:buildTestFailChecks(target.mappingId,target.targetKey,'send_failed')
+      });
+      return;
     }
+    runTestSendInvoke(target)
+      .then(function(msg){
+        if(testSendState!=='sending') return;
+        handleTestSendResult(msg&&typeof msg==='object'?msg:{ok:false,reason:'send_failed'});
+      })
+      .catch(function(err){
+        if(testSendState!=='sending') return;
+        resetTestSendState();
+        renderTestSendButton();
+        renderMappingList();
+        const detail=err&&(err.message||String(err))||'';
+        setTestModalView('fail',{
+          mappingId:target.mappingId,
+          targetKey:target.targetKey,
+          summary:t('testCheckSendFail'),
+          hint:detail?(''+detail):'',
+          checks:buildTestFailChecks(target.mappingId,target.targetKey,'send_failed')
+        });
+      });
   }
 
   function renderSchemeSwitch(){
@@ -1622,8 +2769,8 @@ events:
       btn.classList.add('recording');
       btn.title='';
     }else if(key){
-      btn.textContent=key;
-      btn.title=key;
+      btn.textContent=friendlyKeyName(key);
+      btn.title=friendlyKeyName(key);
       btn.classList.remove('recording');
     }else{
       btn.textContent=t('schemeSwitchRecord');
@@ -1711,7 +2858,7 @@ events:
     save();
     renderSchemeSwitch();
     renderRecordCancelBar();
-    pushLog('scheme switch: '+combo);
+    pushLog((lang==='zh'?'方案轮换键: ':'scheme switch: ')+friendlyKeyName(combo));
   }
 
   function clearSchemeSwitchKey(){
@@ -1755,7 +2902,7 @@ events:
     save();
     renderMappingList();
     renderRecordCancelBar();
-    pushLog('switch key: '+k);
+    pushLog((lang==='zh'?'方案直达键: ':'switch key: ')+friendlyKeyName(k));
   }
 
   function removeMappingSwitchKey(mappingId,idx){
@@ -1779,8 +2926,8 @@ events:
     sortedMappings().forEach(function(m){
       if(isDraftMapping(m)){
         const sel=m.id===state.selectedMappingId;
-        const left=m.triggerKey||d.triggerPlaceholder;
-        const right=m.targetKey||d.targetPlaceholder;
+        const left=m.triggerKey?friendlyKeyName(m.triggerKey):d.triggerPlaceholder;
+        const right=m.targetKey?friendlyKeyName(m.targetKey):d.targetPlaceholder;
         html+='<div class="map-row map-row-draft'+(sel?' selected':'')+'" data-id="'+m.id+'">';
         html+='<div class="toggle" role="presentation" aria-hidden="true"></div>';
         html+='<div class="map-main"><div class="map-pair map-pair-draft">';
@@ -1800,13 +2947,13 @@ events:
       html+='<div class="map-row-wrap">';
       html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(openMenuId===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
       html+='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
-      html+='<div class="map-main"><div class="map-pair">'+(m.triggerKey||'?')+' → '+(m.targetKey||'?')+'</div>';
+      html+='<div class="map-main"><div class="map-pair">'+friendlyPair(m.triggerKey,m.targetKey)+'</div>';
       if(hasConflict){
         const c=rowConflicts[0];
         html+='<div class="map-conflict">'+conflictHintForRow(c,m.id)+'</div>';
       }
       html+='</div>';
-      html+='<button type="button" class="map-test'+(testSendState==='sending'&&testSendMappingId===m.id?' sending':'')+'" data-test="'+m.id+'"'+(hasTarget?'':' disabled')+'>'+d.testShort+'</button>';
+      html+=renderMapRowAction(m);
       html+='<button type="button" class="map-menu-btn" data-menu="'+m.id+'">⋮</button>';
       html+='</div>';
       const advOpen=expandedAdvIds.has(m.id);
@@ -1816,10 +2963,10 @@ events:
       html+=renderNativeRestoreBlock(m,m.id);
       html+=renderTriggerModeBlock(m,m.id);
       html+=renderSwitchKeysBlock(m,m.id);
-      html+=renderTimingBlock(m,m.id);
       html+='</details></div>';
     });
     list.innerHTML=html;
+    syncAllTimingRanges(list);
     list.querySelectorAll('details.map-adv').forEach(function(det){
       det.addEventListener('toggle',function(){
         const id=det.dataset.adv;
@@ -1835,8 +2982,8 @@ events:
     const triggerDisp=$('triggerDisplay');
     const targetDisp=$('targetDisplay');
     const traceEl=$('triggerTrace');
-    triggerEl.textContent=editorTriggerKey||d.triggerPlaceholder;
-    targetEl.textContent=editorTargetKey||d.targetPlaceholder;
+    triggerEl.textContent=editorTriggerKey?friendlyKeyName(editorTriggerKey):d.triggerPlaceholder;
+    targetEl.textContent=editorTargetKey?friendlyKeyName(editorTargetKey):d.targetPlaceholder;
     if(triggerDisp) triggerDisp.classList.toggle('empty',!editorTriggerKey);
     if(targetDisp) targetDisp.classList.toggle('empty',!editorTargetKey);
     const m=selectedMapping();
@@ -1901,6 +3048,7 @@ events:
     renderAddButton();
     renderDraftHint();
     renderRecordCancelBar();
+    renderDebugPanel();
     $('listenState').textContent=runtime.paused?t('listenPaused'):t('listenOn');
     $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
     $('liveAction').textContent=runtime.lastAction||'-';
@@ -1930,6 +3078,7 @@ events:
       $('triggerState').textContent='';
       $('targetState').textContent='';
     }
+    updatePrimaryCTA();
     renderHeroBadges();
     renderRecordCancelBar();
   }
@@ -1938,6 +3087,7 @@ events:
     ensureConfig();
     beginRecordSnapshot();
     resetTargetCapture();
+    recordingMappingId=state.selectedMappingId||'';
     setRecording('trigger');
     try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:state.selectedMappingId,mode:'trigger'});}catch(_){ }
     pushLog(t('logStartTrigger'));
@@ -1950,8 +3100,10 @@ events:
   function startTargetRecord(){
     ensureConfig();
     beginRecordSnapshot();
-    setRecording('target');
     resetTargetCapture();
+    recordingMappingId=state.selectedMappingId||'';
+    setRecording('target');
+    try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:state.selectedMappingId,mode:'target'});}catch(_){ }
     pushLog(t('logStartTarget'));
     recordTimer=setTimeout(function(){
       if(recordingMode==='target'){ cancelRecording(); pushLog(t('logTimeout')); }
@@ -1971,7 +3123,8 @@ events:
     if(recordingMode!=='trigger') return;
     const k=normalizeTriggerKey(key);
     if(!isAllowedTriggerKey(k)){ toast(t('triggerRejected')); return; }
-    const m=selectedMapping();
+    const m=recordingMapping();
+    if(!m) return;
     m.triggerKey=k;
     if(source){
       m.triggerSource=source;
@@ -1980,10 +3133,11 @@ events:
     }
     m.sourceKey=sourceKey||(source&&source.rawEvents&&source.rawEvents[0]&&source.rawEvents[0].hotkey)||k;
     m.sourceTime=sourceTime||'';
-    editorTriggerKey=k;
-    m.label=k+' → '+(m.targetKey||'?');
-    pushLog(t('logTriggerDone')+k);
+    if(isSelectedMapping(m.id)) editorTriggerKey=k;
+    m.label=k+' → '+(editorTargetForMapping(m)||'?');
+    pushLog(t('logTriggerDone')+friendlyKeyName(k));
     recordSnapshot=null;
+    recordingMappingId='';
     clearTimeout(recordTimer);
     setRecording('none');
     save();
@@ -1991,23 +3145,59 @@ events:
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
   }
 
-  function finishTargetCapture(combo){
-    const m=selectedMapping();
+  function finishFrontendTriggerCapture(combo){
+    const normalized=normalizeTriggerKey(combo);
+    finishTriggerCapture(normalized, null, normalized, String(Date.now()));
+  }
+
+  function isHardwareCaptureToken(key){
+    const k=String(key||'');
+    const physical=normalizeMediaTargetKey(k,k)||k;
+    return k==='Volume_Up' || k==='Volume_Down' || k==='Volume_Mute'
+      || k==='AudioVolumeUp' || k==='AudioVolumeDown' || k==='AudioVolumeMute'
+      || k==='VolumeUp' || k==='VolumeDown' || k==='VolumeMute'
+      || physical==='Volume_Up' || physical==='Volume_Down' || physical==='Volume_Mute'
+      || k==='Media_Next' || k==='Media_Prev' || k==='Media_Play_Pause' || k==='Media_Stop'
+      || k==='Browser_Back' || k==='Browser_Forward' || k==='Browser_Refresh'
+      || k==='Launch_Mail' || k==='Launch_App1' || k==='Launch_App2';
+  }
+
+  function finishDetectedHardwareTriggerCapture(key){
+    const raw=String(key||'').trim();
+    const physical=normalizeMediaTargetKey(raw,raw)||raw;
+    if(!physical) return;
+    const source=buildPeripheralTriggerSource(physical);
+    const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
+    finishTriggerCapture(display, source, physical, String(Date.now()));
+  }
+
+  function finishTargetCapture(combo, mappingId){
+    const m=mappingById(mappingId)||recordingMapping();
+    if(!m) return;
     m.targetKey=combo;
-    editorTargetKey=combo;
-    m.label=(m.triggerKey||'?')+' → '+combo;
+    if(isSelectedMapping(m.id)) editorTargetKey=combo;
+    m.label=(editorTriggerForMapping(m)||'?')+' → '+combo;
     if(pendingNewDraftId===m.id) pendingNewDraftId=null;
-    pushLog(t('logTargetDone')+combo);
+    pushLog(t('logTargetDone')+friendlyKeyName(combo));
     recordSnapshot=null;
+    recordingMappingId='';
     clearTimeout(recordTimer);
     setRecording('none');
     resetTargetCapture();
     save();
     render();
+    try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
   }
 
   $('btnTheme').onclick=function(){ theme=theme==='light'?'dark':'light'; applyTheme(); };
   $('btnLang').onclick=function(){ lang=lang==='zh'?'en':'zh'; applyLang(); };
+  $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
+  $('btnWelcomeLater').onclick=function(){ closeWelcome(true); };
+  $('btnWelcomeStart').onclick=function(){ closeWelcome(true); };
+  $('btnReplayWelcome').onclick=function(){ openWelcome(); };
+  $('welcomeOverlay').addEventListener('click',function(e){
+    if(e.target===this) closeWelcome(true);
+  });
   $('btnSettings').onclick=openDrawer;
   $('btnDrawerClose').onclick=closeDrawer;
   $('drawerOverlay').onclick=closeDrawer;
@@ -2022,6 +3212,12 @@ events:
     if(!confirm(t('restartConfirm'))) return;
     try{window.chrome?.webview?.postMessage({type:'mvp_reload_latest'});}catch(_){ }
   };
+  $('btnTestModalOk').onclick=function(){ closeTestModal(); };
+  $('btnTestModalClose').onclick=function(){ closeTestModal(); };
+  $('testOverlay').addEventListener('click',function(e){
+    if(e.target===$('testOverlay')) closeTestModal();
+  });
+
   $('btnTestSend').onclick=function(){ fireTestSend(null); };
   $('btnRecordTrigger').onclick=startTriggerRecord;
   $('btnRecordTarget').onclick=startTargetRecord;
@@ -2043,10 +3239,7 @@ events:
     const range=e.target.closest&&e.target.closest('[data-timing-range]');
     if(!range) return;
     e.stopPropagation();
-    const id=range.dataset.timingRange;
-    const field=range.dataset.field;
-    const val=Number(range.value);
-    updateMappingTiming(id,field,val);
+    liveUpdateTimingRange(range);
   });
 
   $('mappingList').addEventListener('click',function(e){
@@ -2207,6 +3400,7 @@ events:
     const id=$('mapMenuFloat').dataset.id;
     const act=actBtn.dataset.act;
     if(!id) return;
+    if(act==='test'){ closeFloatMenu(); fireTestSend(id); return; }
     if(act==='dup'){ closeFloatMenu(); try{window.chrome?.webview?.postMessage({type:'mvp_mapping_duplicate',id:id});}catch(_){ } return; }
     if(act==='del'){ closeFloatMenu(); deleteMappingFromMenu(id); return; }
     if(act==='up'||act==='down'){ reorderMapping(id, act); return; }
@@ -2231,22 +3425,36 @@ events:
 
   document.addEventListener('keydown',function(e){
     if(e.key==='Escape'){
+      const testOpen=$('testOverlay')&&$('testOverlay').classList.contains('open');
+      if(testOpen){ e.preventDefault(); closeTestModal(); return; }
       if(recordingMode!=='none'){ e.preventDefault(); cancelRecording(); return; }
       const m=selectedMapping();
       if(m&&isDraftMapping(m)){ e.preventDefault(); removeDraftMapping(m.id); return; }
+      if(welcomeOpen){ closeWelcome(true); return; }
       if(ui.drawerOpen){ closeDrawer(); return; }
     }
-    $('dbKey').textContent=e.key;
-    $('dbCode').textContent=e.code;
-    pushLog(new Date().toLocaleTimeString()+' key='+e.key+' code='+e.code);
+    $('dbKey').textContent=friendlyKeyName(e.key);
+    $('dbCode').textContent=friendlyKeyName(normalizeKeyFromCode(e.code, e.key)||e.code);
+    pushLog(new Date().toLocaleTimeString()+' key='+friendlyKeyName(e.key)+' code='+(friendlyKeyName(normalizeKeyFromCode(e.code, e.key)||e.code)));
+    if(recordingMode==='none'){
+      const physical=webEventToPhysicalKey(e.key,e.code);
+      if(isHardwareCaptureToken(physical)){
+        e.preventDefault();
+        e.stopPropagation();
+        try{window.chrome?.webview?.postMessage({type:'mvp_physical_trigger', key:physical});}catch(_){ }
+        return;
+      }
+    }
     if(recordingMode==='trigger'){
       e.preventDefault();
       e.stopPropagation();
       const code=String(e.code||'');
       const key=String(e.key||'');
       if(isHardwareDelegatedTriggerKey(key,code)){
-        $('triggerState').textContent=t('triggerRecordDetected')+(webEventToPhysicalKey(key,code)||key);
-        pushLog(t('triggerRecordDetected')+(webEventToPhysicalKey(key,code)||key));
+        const physical=webEventToPhysicalKey(key,code)||key;
+        $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(physical);
+        pushLog(t('triggerRecordDetected')+friendlyKeyName(physical));
+        finishDetectedHardwareTriggerCapture(physical);
         return;
       }
       const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
@@ -2262,8 +3470,8 @@ events:
       const main=normalizeKeyFromCode(code, key);
       const combo=normalizeTargetCombination(mods, main, targetCapture.modSide);
       if(combo){
-        $('triggerState').textContent=t('triggerRecordDetected')+combo;
-        try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:combo, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+        $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(combo);
+        finishFrontendTriggerCapture(combo);
       }
       return;
     }
@@ -2367,8 +3575,8 @@ events:
     noteModifierSideFromFlags(mods);
     const combo=normalizeTargetCombination(mods, btn, targetCapture.modSide);
     if(recordingMode==='trigger'){
-      $('triggerState').textContent=t('triggerRecordDetected')+combo;
-      try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:combo, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+      $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(combo);
+      finishFrontendTriggerCapture(combo);
       return;
     }
     finishTargetCapture(combo);
@@ -2393,8 +3601,8 @@ events:
         else if(recordingMode==='trigger'){
           e.preventDefault();
           e.stopPropagation();
-          $('triggerState').textContent=t('triggerRecordDetected')+modifierName;
-          try{window.chrome?.webview?.postMessage({type:'mvp_frontend_keydown', key:modifierName, mappingId:state.selectedMappingId, mode:'trigger'});}catch(_){ }
+          $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(modifierName);
+          finishFrontendTriggerCapture(modifierName);
         }
         else finishTargetCapture(modifierName);
       }
@@ -2406,10 +3614,20 @@ events:
     const msg=e&&e.data;
     if(!msg||typeof msg!=='object') return;
     if(msg.type==='mvp_init'){
+      const keepTrigger=editorTriggerKey, keepTarget=editorTargetKey;
       if(msg.config) state.config=msg.config;
       if(Array.isArray(msg.conflicts)) conflictRows=msg.conflicts;
       ensureConfig();
+      const m=selectedMapping();
+      if(m){
+        if(keepTrigger&&!(m.triggerKey||'').trim()) m.triggerKey=keepTrigger;
+        if(keepTarget&&!(m.targetKey||'').trim()){
+          m.targetKey=keepTarget;
+          m.label=(m.triggerKey||'?')+' → '+keepTarget;
+        }
+      }
       syncEditorFromSelection();
+      ensureNotificationPermission();
       render();
     }
     if(msg.type==='mvp_saved'&&msg.ok){ /* persisted */ }
@@ -2427,21 +3645,25 @@ events:
     if(msg.type==='mvp_record_seen'){
       const seen=msg.key||'?';
       if(recordingMode==='trigger'||recordingMode==='nativeRestore'){
-        $('triggerState').textContent=t('triggerRecordDetected')+seen;
+        $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(seen);
       }
-      pushLog(t('triggerRecordDetected')+seen);
+      pushLog(t('triggerRecordDetected')+friendlyKeyName(seen));
+      if(recordingMode==='trigger' && isHardwareCaptureToken(seen)){
+        finishDetectedHardwareTriggerCapture(seen);
+        return;
+      }
     }
     if(msg.type==='mvp_record_pending'){
       const seen=msg.displayKey||'?';
-      if(recordingMode==='trigger') $('triggerState').textContent=t('comboHint')+seen;
-      else $('triggerState').textContent=t('triggerRecordDetected')+seen;
+      if(recordingMode==='trigger') $('triggerState').textContent=t('comboHint')+friendlyKeyName(seen);
+      else $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(seen);
     }
     if(msg.type==='mvp_key_captured'){
       const key = msg.key || 'AutoTrigger';
       if(recordingMode==='trigger'){
         finishTriggerCapture(key, msg.source || null, msg.sourceKey || '', msg.sourceTime || '');
-      }else if(recordingMode==='target'&&msg.mode==='target'){
-        finishTargetCapture(key);
+      }else if(msg.mode==='target'){
+        finishTargetCapture(key, msg.mappingId||'');
       }else if(recordingMode==='nativeRestore'){
         const physical=msg.sourceKey||key;
         finishNativeRestoreCapture(physical, msg.source || null);
@@ -2455,7 +3677,7 @@ events:
       runtime.paused=!!msg.paused;
       if(recordingMode==='trigger' && runtime.lastAction==='recorded'){
         /* handled by mvp_key_captured */
-      } else {
+      } else if(runtime.lastAction!=='scheme_select'&&runtime.lastAction!=='scheme_cycle'){
         render();
       }
     }
@@ -2464,67 +3686,30 @@ events:
       else if(msg.toId){
         ensureConfig();
         state.config.mappings.forEach(function(m){ m.enabled=(m.id===msg.toId); });
-        state.selectedMappingId=msg.toId;
-        syncEditorFromSelection();
       }
-      toast(t('schemeSwitched')+(msg.label||''));
-      render();
+      showSchemeSwitchFeedback(msg.toId, msg.label||'');
     }
     if(msg.type==='mvp_test_sent'){
-      clearTimeout(testSendWatchdog);
-      const wasFooter=testSendFromFooter;
-      if(msg.ok){
-        if(wasFooter){
-          testSendState='sent';
-          renderTestSendButton();
-          toast(t('testSentToast')+(msg.key||''));
-          clearTimeout(testSendTimer);
-          testSendTimer=setTimeout(function(){
-            resetTestSendState();
-            renderTestSendButton();
-            renderMappingList();
-          },800);
-        }else{
-          resetTestSendState();
-          renderTestSendButton();
-          renderMappingList();
-          toast(t('testSentToast')+(msg.key||''));
-        }
-      }else{
-        resetTestSendState();
-        renderTestSendButton();
-        renderMappingList();
-        toast(t('testFailed'));
-      }
+      handleTestSendResult(msg);
     }
   });
 
   try{
     const savedTheme=localStorage.getItem('vp_theme');
     const savedLang=localStorage.getItem('vp_lang');
+    const seenWelcome=localStorage.getItem('vp_welcome_seen');
     if(savedTheme==='dark'||savedTheme==='light') theme=savedTheme;
     if(savedLang==='zh'||savedLang==='en') lang=savedLang;
+    if(seenWelcome!=='1') welcomeOpen=true;
   }catch(_){}
   state.config=defaultConfig();
   ensureConfig();
   syncEditorFromSelection();
   applyLang();
+  if(welcomeOpen) openWelcome();
   setRecording('none');
   pushLog(t('waitLog'));
   try{window.chrome?.webview?.postMessage({type:'mvp_ready'});}catch(_){ }
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,8 +1,8 @@
 {
-  "name": "voice-pilot",
+  "name": "onetone",
   "private": true,
   "version": "1.0.0",
-  "description": "Voice Pilot — 硬件启动键到语音输入法快捷键的映射工具（Tauri + Rust）",
+  "description": "织音 oneTone — 硬件启动键到语音输入法快捷键的映射工具（Tauri + Rust）",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",

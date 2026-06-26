@@ -1,4 +1,4 @@
-# Voice Pilot
+# 织音 · oneTone
 
 独立的 Windows 桌面应用：把硬件启动键（音量键、侧键、组合键等）映射到语音输入法的激活快捷键。
 
@@ -30,24 +30,24 @@ cargo tauri dev
 npm run build
 
 # 方式二：脚本（会先结束旧进程再编译）
-.\run_voice_pilot.ps1
+.\run_onetone.ps1
 
 # 方式三：直接 cargo
 cd src-tauri
 cargo tauri build
 ```
 
-产物：`src-tauri/target/release/voice-pilot.exe`
+产物：`src-tauri/target/release/onetone.exe`
 
 ## 配置位置
 
 用户配置保存在：
 
 ```
-%APPDATA%\Voice Pilot\config\settings.json
+%APPDATA%\oneTone\config\settings.json
 ```
 
-首次启动时，若 exe 同目录存在旧的 `voice_input_settings.json`，会自动迁移到上述路径。
+首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录下的旧配置文件存在，会自动迁移到新路径。
 
 ## 从牛马仓库迁出
 
@@ -59,8 +59,11 @@ cargo tauri build
 
 ```
 voice-pilot/
-├── src/                 # 设置界面
+├── assets/
+│   └── icons/onetone-logo-source.png  # 品牌图标源文件
+├── src/                 # 设置界面（含 icon.png）
 ├── src-tauri/           # Rust 后端
+│   ├── icons/           # 应用图标（ico / png / icns）
 │   ├── src/
 │   │   ├── hotkey_win.rs   # 热键捕获与绑定
 │   │   ├── config.rs       # 方案配置与迁移
@@ -68,7 +71,8 @@ voice-pilot/
 │   │   └── ipc.rs          # 前后端通信
 │   └── tauri.conf.json
 ├── package.json
-└── run_voice_pilot.ps1
+├── run_onetone.ps1
+└── Start-OneTone.vbs
 ```
 
 ## 许可证

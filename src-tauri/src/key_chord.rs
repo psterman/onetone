@@ -196,6 +196,18 @@ pub fn is_right_alt_only(combo: &str) -> bool {
     }
 }
 
+pub fn is_left_alt_only(combo: &str) -> bool {
+    match parse_chord(combo) {
+        Ok(tokens) if tokens.len() == 1 => {
+            matches!(
+                tokens[0],
+                SendToken::Key(VkKey { vk: 0xA4, extended: false })
+            )
+        }
+        _ => false,
+    }
+}
+
 fn token_def(raw: &str) -> Option<TokenDef> {
     for candidate in lookup_candidates(raw) {
         if let Some(def) = token_def_exact(&candidate) {

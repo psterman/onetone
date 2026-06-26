@@ -1,4 +1,4 @@
-use crate::key_chord::{is_right_alt_only, parse_chord, MouseButton, SendToken, VkKey};
+use crate::key_chord::{is_left_alt_only, is_right_alt_only, parse_chord, MouseButton, SendToken, VkKey};
 use crate::send_guard;
 use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
@@ -162,6 +162,19 @@ pub fn send_right_alt(duration_ms: u32) {
     });
 }
 
+pub fn send_left_alt(duration_ms: u32) {
+    let hold_ms = duration_ms.max(250) as u64;
+    send_guard::run_guarded(hold_ms + 80, || {
+        send_vk(0xA4, false, false);
+        std::thread::sleep(std::time::Duration::from_millis(hold_ms));
+        send_vk(0xA4, false, true);
+
+        send_scancode(0x38, false, false);
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        send_scancode(0x38, false, true);
+    });
+}
+
 /// 发送目标键/组合键：键盘、媒体键、鼠标键、扫描码与别名。
 pub fn send_chord(combo: &str, duration_ms: u32) -> bool {
     let trimmed = combo.trim();
@@ -171,6 +184,11 @@ pub fn send_chord(combo: &str, duration_ms: u32) -> bool {
 
     if is_right_alt_only(trimmed) {
         send_right_alt(duration_ms);
+        return true;
+    }
+
+    if is_left_alt_only(trimmed) {
+        send_left_alt(duration_ms);
         return true;
     }
 

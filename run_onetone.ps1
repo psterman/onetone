@@ -2,12 +2,14 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $tauri = Join-Path $root 'src-tauri'
-$releaseExe = Join-Path $tauri 'target\release\voice-pilot.exe'
+$releaseExe = Join-Path $tauri 'target\release\onetone.exe'
 
-$procs = Get-Process voice-pilot -ErrorAction SilentlyContinue
-if ($procs) {
-  $procs | Stop-Process -Force
-  Start-Sleep -Milliseconds 500
+foreach ($name in @('onetone', 'voice-pilot')) {
+  $procs = Get-Process $name -ErrorAction SilentlyContinue
+  if ($procs) {
+    $procs | Stop-Process -Force
+    Start-Sleep -Milliseconds 500
+  }
 }
 
 $cargoTauri = Join-Path $env:USERPROFILE '.cargo\bin\cargo-tauri.exe'

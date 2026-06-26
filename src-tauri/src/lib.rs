@@ -98,12 +98,12 @@ pub fn run() {
                         continue;
                     };
 
-                    if *state2.paused.lock() {
+                    if *state2.recording.lock() {
+                        ipc::handle_hardware_record_key(&state2, &win2, &key_name);
                         continue;
                     }
 
-                    if *state2.recording.lock() {
-                        ipc::handle_hardware_record_key(&state2, &win2, &key_name);
+                    if *state2.paused.lock() {
                         continue;
                     }
 
