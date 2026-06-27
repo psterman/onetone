@@ -1211,11 +1211,20 @@ pub fn cmd_mic_list() -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
 }
 
 #[tauri::command]
-pub fn cmd_mic_set_default(#[allow(non_snake_case)] deviceId: Option<String>, device_id: Option<String>) -> Result<(), String> {
+pub fn cmd_mic_set_default(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] deviceId: Option<String>,
+    device_id: Option<String>,
+) -> Result<(), String> {
     let id = device_id
         .or(deviceId)
         .ok_or_else(|| "missing device id".to_string())?;
-    crate::audio_win::set_default_input_device(&id)
+    crate::audio_win::set_default_input_device(&id)?;
+    let cfg = state.cfg.lock().voice_sapi.clone();
+    if cfg.enabled {
+        crate::voice_sapi_runtime::voice_sapi_start(&state, &cfg)?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1243,4 +1252,43 @@ pub fn cmd_mic_get_level(state: tauri::State<Arc<AppState>>) -> crate::audio_win
 #[tauri::command]
 pub fn cmd_mic_monitor_stop(state: tauri::State<Arc<AppState>>) {
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+}
+
+#[tauri::command]
+pub fn cmd_voice_sapi_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    crate::voice_sapi_runtime::voice_sapi_status(&state)
+}
+
+#[tauri::command]
+pub fn cmd_voice_sapi_set_enabled(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    crate::voice_sapi_runtime::voice_sapi_set_enabled(&state, &window, enabled)
+}
+
+#[tauri::command]
+pub fn cmd_voice_sapi_set_phrases(
+    state: tauri::State<Arc<AppState>>,
+    phrases: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    crate::voice_sapi_runtime::voice_sapi_set_phrases(&state, phrases)
+}
+
+#[tauri::command]
+pub fn cmd_voice_sapi_set_min_confidence(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] minConfidence: Option<f32>,
+    min_confidence: Option<f32>,
+) -> Result<serde_json::Value, String> {
+    let value = min_confidence
+        .or(minConfidence)
+        .ok_or_else(|| "missing min confidence".to_string())?;
+    crate::voice_sapi_runtime::voice_sapi_set_min_confidence(&state, value)
+}
+
+#[tauri::command]
+pub fn cmd_voice_sapi_test_send(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    crate::voice_sapi_runtime::voice_sapi_test_send(&state)
 }

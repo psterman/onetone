@@ -8,6 +8,8 @@ mod backdrop;
 mod tray;
 mod policy_config;
 mod audio_win;
+mod voice_sapi;
+mod voice_sapi_runtime;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -33,6 +35,12 @@ pub struct AppState {
     pub paused: Mutex<bool>,
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
+    pub voice_sapi: Mutex<Option<crate::voice_sapi::VoiceSapiHandle>>,
+    pub voice_sapi_cooldown_until: Mutex<Option<std::time::Instant>>,
+    pub voice_sapi_state: Mutex<String>,
+    pub voice_sapi_last_error: Mutex<String>,
+    pub voice_sapi_last_heard: Mutex<String>,
+    pub voice_sapi_last_skip: Mutex<String>,
 }
 
 pub fn run() {
@@ -50,6 +58,12 @@ pub fn run() {
         paused: Mutex::new(false),
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),
+        voice_sapi: Mutex::new(None),
+        voice_sapi_cooldown_until: Mutex::new(None),
+        voice_sapi_state: Mutex::new("stopped".into()),
+        voice_sapi_last_error: Mutex::new(String::new()),
+        voice_sapi_last_heard: Mutex::new(String::new()),
+        voice_sapi_last_skip: Mutex::new(String::new()),
     });
 
     tauri::Builder::default()
@@ -93,6 +107,15 @@ pub fn run() {
 
             tray::setup(app.handle(), app_state.clone())?;
 
+            {
+                let cfg = app_state.cfg.lock();
+                if cfg.voice_sapi.enabled {
+                    if let Err(e) = voice_sapi_runtime::voice_sapi_start(&app_state, &cfg.voice_sapi) {
+                        eprintln!("voice_sapi start failed: {e}");
+                    }
+                }
+            }
+
             let window_clone = window.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -110,6 +133,8 @@ pub fn run() {
 
                 loop {
                     sleep(Duration::from_millis(20)).await;
+
+                    voice_sapi_runtime::drain_voice_sapi_events(&state2, &win2);
 
                     if crate::send_guard::is_active() {
                         continue;
@@ -194,6 +219,11 @@ pub fn run() {
             ipc::cmd_mic_monitor_start,
             ipc::cmd_mic_monitor_stop,
             ipc::cmd_mic_get_level,
+            ipc::cmd_voice_sapi_status,
+            ipc::cmd_voice_sapi_set_enabled,
+            ipc::cmd_voice_sapi_set_phrases,
+            ipc::cmd_voice_sapi_set_min_confidence,
+            ipc::cmd_voice_sapi_test_send,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -208,5 +238,3 @@ fn main_window_hwnd(window: &tauri::WebviewWindow) -> Option<winapi::shared::win
         _ => None,
     }
 }
-
-

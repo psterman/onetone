@@ -113,6 +113,19 @@
     .header-listen-chip.is-paused{
       background:rgba(220,120,40,.12);color:#c86a12;
     }
+    .voice-sapi-box{margin-top:10px;display:grid;gap:8px}
+    .voice-sapi-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .voice-sapi-range{flex:1;min-width:150px}
+    .voice-sapi-preset-grid{display:flex;gap:6px;flex-wrap:wrap}
+    .voice-sapi-preset{
+      border:1px solid var(--outline-variant);background:var(--surface-high);color:var(--btn-label);
+      border-radius:999px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    }
+    .voice-sapi-preset:hover{background:var(--primary-soft);border-color:var(--outline)}
+    .voice-sapi-preset.is-selected{
+      background:var(--primary);border-color:var(--primary);color:var(--on-primary);
+      box-shadow:var(--shadow-button);
+    }
     html[data-theme="dark"] .header-listen-chip.is-paused{
       background:rgba(255,170,80,.14);color:#ffb366;
     }
@@ -949,6 +962,37 @@
         <div class="mic-device-list" id="micDeviceList"></div>
       </div>
       <div class="drawer-section">
+        <div class="mini-title" id="voiceSapiTitle">语音唤醒</div>
+        <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。下面「测试快捷键」只测按键，不走麦克风。</p>
+        <div class="setting-row">
+          <div class="setting-row-main">
+            <span class="setting-row-text" id="voiceSapiLabel">开启语音唤醒</span>
+          </div>
+          <button type="button" class="toggle-switch" id="btnVoiceSapi" role="switch" aria-checked="false"></button>
+        </div>
+        <div class="control-row" style="margin-top:8px">
+          <span class="chip" id="voiceSapiState">stopped</span>
+        </div>
+        <p class="mic-desc" id="voiceSapiDebug" style="margin-top:6px"></p>
+        <p class="mic-empty" id="voiceSapiError" hidden></p>
+        <div class="voice-sapi-box">
+          <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
+            <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+          </div>
+          <div class="voice-sapi-row">
+            <span class="mic-desc" id="voiceSapiConfidenceLabel">识别灵敏度（越低越容易触发）0.35</span>
+            <input class="voice-sapi-range" id="voiceSapiConfidence" type="range" min="0" max="1" step="0.05" value="0.35">
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <button type="button" class="control-btn" id="btnVoiceSapiTest">测试快捷键（不走麦克风）</button>
+        </div>
+      </div>
+      <div class="drawer-section">
         <div class="helper-note" id="quickTips">
           <strong id="quickTipsTitle">怎么设置最省心</strong>
           <span id="quickTipsBody">先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。</span>
@@ -1136,6 +1180,7 @@
   let activeMicId='';
   let micMonitorDeviceId='';
   let micPollTimer=0;
+  let voiceSapiPollTimer=0;
   let lang='zh';
   let testSendState='idle';
   let testSendTimer=0;
@@ -1235,6 +1280,19 @@
       micAutoDetect:'自动检测（系统默认）',micAutoDetectSub:'使用系统默认麦克风',micExternal:'外部麦克风',
       micWindowsOnly:'麦克风切换与监测仅支持 Windows',micEmpty:'未检测到可用麦克风',
       micSwitchFail:'切换麦克风失败',
+      voiceSapiTitle:'语音唤醒',
+      voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。下面「测试快捷键」只测按键，不走麦克风。',
+      voiceSapiLabel:'开启语音唤醒',
+      voiceSapiTest:'测试快捷键（不走麦克风）',
+      voiceSapiFail:'无法启动语音识别，请检查 Windows 是否已安装中文语音包',
+      voiceSapiWakeWord:'你要说的词',
+      voiceSapiHeard:'刚才听到',
+      voiceSapiSkip:'没触发',
+      voiceSapiWaiting:'等待说话…',
+      voiceSapiOff:'未开启',
+      voiceSapiNone:'—',
+      voiceSapiSensitivity:'识别灵敏度（越低越容易触发）',
+      voiceSapiPresetUpdated:'已更新唤醒词',
       quickTipsTitle:'怎么设置最省心',
       quickTipsBody:'先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。',
       replayWelcome:'重新查看首次引导',
@@ -1356,6 +1414,19 @@
       micAutoDetect:'Auto-detect (system default)',micAutoDetectSub:'Use the system default microphone',micExternal:'External microphone',
       micWindowsOnly:'Microphone switching and monitoring are Windows-only',micEmpty:'No microphones detected',
       micSwitchFail:'Failed to switch microphone',
+      voiceSapiTitle:'Voice wake',
+      voiceSapiDesc:'Say one of the selected phrases into the mic to press your voice shortcut once. “Test shortcut” skips the mic.',
+      voiceSapiLabel:'Enable voice wake',
+      voiceSapiTest:'Test shortcut (no mic)',
+      voiceSapiFail:'Could not start speech recognition. Check that a Chinese speech pack is installed.',
+      voiceSapiWakeWord:'Wake phrase',
+      voiceSapiHeard:'Last heard',
+      voiceSapiSkip:'Not triggered',
+      voiceSapiWaiting:'Waiting…',
+      voiceSapiOff:'Off',
+      voiceSapiNone:'—',
+      voiceSapiSensitivity:'Sensitivity (lower = easier to trigger)',
+      voiceSapiPresetUpdated:'Wake phrases updated',
       quickTipsTitle:'Easiest setup',
       quickTipsBody:'Set a launch key first, then record the voice shortcut. You can ignore advanced options at first.',
       replayWelcome:'Replay first-run guide',
@@ -1896,6 +1967,7 @@
     loadAutostartState();
     loadMicDevices();
     startMicLevelPoll();
+    startVoiceSapiPoll();
   }
 
   function closeDrawer(){
@@ -1905,6 +1977,147 @@
     $('settingsDrawer').setAttribute('aria-hidden','true');
     stopMicLevelPoll();
     stopMicMonitor();
+    stopVoiceSapiPoll();
+  }
+
+  function syncVoiceSapiToggle(enabled){
+    const btn=$('btnVoiceSapi');
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
+  function renderVoiceSapiStatus(res){
+    if(!res) return;
+    syncVoiceSapiToggle(!!res.enabled);
+    const stateEl=$('voiceSapiState');
+    if(stateEl){
+      const raw=res.state||'stopped';
+      const labels={stopped:'已停止',listening:'等待说话',triggered:'已触发',cooldown:'请稍后再说',error:'出错了'};
+      stateEl.textContent=lang==='zh'? (labels[raw]||raw) : raw;
+    }
+    const debugEl=$('voiceSapiDebug');
+    if(debugEl){
+      const heard=res.lastHeard||'';
+      const skip=res.lastSkip||'';
+      const phrases=Array.isArray(res.phrases)?res.phrases:[];
+      const parts=[];
+      parts.push(t('voiceSapiWakeWord')+'：'+(phrases.length?phrases.join(' / '):t('voiceSapiNone')));
+      parts.push(t('voiceSapiHeard')+'：'+(heard || (res.enabled ? t('voiceSapiWaiting') : t('voiceSapiOff'))));
+      if(skip) parts.push(t('voiceSapiSkip')+'：'+skip);
+      debugEl.textContent=parts.join(' · ');
+    }
+    syncVoiceSapiPresets(res.phrases||[]);
+    const confidenceEl=$('voiceSapiConfidence');
+    const confidenceLabel=$('voiceSapiConfidenceLabel');
+    const conf=Number(res.minConfidence==null?0.35:res.minConfidence);
+    if(confidenceEl && document.activeElement!==confidenceEl){
+      confidenceEl.value=String(conf);
+    }
+    if(confidenceLabel){
+      confidenceLabel.textContent=t('voiceSapiSensitivity')+' '+conf.toFixed(2);
+    }
+    const errEl=$('voiceSapiError');
+    if(errEl){
+      const err=res.lastError||'';
+      if(err){
+        errEl.hidden=false;
+        errEl.textContent=err;
+      }else{
+        errEl.hidden=true;
+        errEl.textContent='';
+      }
+    }
+  }
+
+  function loadVoiceSapiStatus(){
+    return vpInvoke('cmd_voice_sapi_status',{}).then(function(res){
+      renderVoiceSapiStatus(res);
+      return res;
+    }).catch(function(){
+      syncVoiceSapiToggle(false);
+    });
+  }
+
+  function toggleVoiceSapi(){
+    const btn=$('btnVoiceSapi');
+    if(!btn) return;
+    const next=!btn.classList.contains('is-on');
+    syncVoiceSapiToggle(next);
+    vpInvoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
+      renderVoiceSapiStatus(res);
+    }).catch(function(err){
+      loadVoiceSapiStatus();
+      toast(t('voiceSapiFail'));
+      console.error('voice_sapi',err);
+    });
+  }
+
+  function testVoiceSapiSend(){
+    vpInvoke('cmd_voice_sapi_test_send',{}).then(function(res){
+      if(res&&res.ok) toast(t('testSent'));
+      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
+      else toast(t('testFailed'));
+    }).catch(function(){ toast(t('testFailed')); });
+  }
+
+  function addVoiceSapiPreset(ev){
+    const btn=ev.target.closest&&ev.target.closest('[data-phrase]');
+    if(!btn) return;
+    const phrase=btn.getAttribute('data-phrase')||'';
+    const selected=[];
+    document.querySelectorAll('#voiceSapiPresets [data-phrase].is-selected').forEach(function(x){
+      const p=x.getAttribute('data-phrase')||'';
+      if(p) selected.push(p);
+    });
+    const idx=selected.indexOf(phrase);
+    if(idx>=0 && selected.length>1) selected.splice(idx,1);
+    else if(idx<0) selected.push(phrase);
+    const next=selected.length?selected:[phrase];
+    vpInvoke('cmd_voice_sapi_set_phrases',{phrases:next}).then(function(res){
+      renderVoiceSapiStatus(res);
+      toast(t('voiceSapiPresetUpdated'));
+    }).catch(function(err){
+      console.error('voice_sapi_preset',err);
+      toast(t('voiceSapiFail'));
+      loadVoiceSapiStatus();
+    });
+  }
+
+  function syncVoiceSapiPresets(phrases){
+    const selected=(Array.isArray(phrases)?phrases:[]).map(function(x){return String(x||'').trim();});
+    document.querySelectorAll('#voiceSapiPresets [data-phrase]').forEach(function(btn){
+      const phrase=btn.getAttribute('data-phrase')||'';
+      btn.classList.toggle('is-selected',selected.includes(phrase));
+    });
+  }
+
+  function updateVoiceSapiConfidence(saveNow){
+    const el=$('voiceSapiConfidence');
+    const label=$('voiceSapiConfidenceLabel');
+    if(!el) return;
+    const value=Number(el.value||0);
+    if(label) label.textContent=t('voiceSapiSensitivity')+' '+value.toFixed(2);
+    if(!saveNow) return;
+    vpInvoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
+      renderVoiceSapiStatus(res);
+    }).catch(function(err){
+      console.error('voice_sapi_confidence',err);
+      loadVoiceSapiStatus();
+    });
+  }
+
+  function startVoiceSapiPoll(){
+    stopVoiceSapiPoll();
+    loadVoiceSapiStatus();
+    voiceSapiPollTimer=setInterval(loadVoiceSapiStatus,500);
+  }
+
+  function stopVoiceSapiPoll(){
+    if(voiceSapiPollTimer){
+      clearInterval(voiceSapiPollTimer);
+      voiceSapiPollTimer=0;
+    }
   }
 
   function applyLang(){
@@ -1992,6 +2205,10 @@
     const autostartLabel=$('autostartLabel'); if(autostartLabel) autostartLabel.textContent=d.autostartLabel;
     const micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
     const micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;
+    const voiceSapiTitle=$('voiceSapiTitle'); if(voiceSapiTitle) voiceSapiTitle.textContent=d.voiceSapiTitle;
+    const voiceSapiDesc=$('voiceSapiDesc'); if(voiceSapiDesc) voiceSapiDesc.textContent=d.voiceSapiDesc;
+    const voiceSapiLabel=$('voiceSapiLabel'); if(voiceSapiLabel) voiceSapiLabel.textContent=d.voiceSapiLabel;
+    const btnVoiceSapiTest=$('btnVoiceSapiTest'); if(btnVoiceSapiTest) btnVoiceSapiTest.textContent=d.voiceSapiTest;
     $('logTitle').textContent=d.logTitle;
     $('runtimeTitle').textContent=d.runtimeTitle;
     $('actionLabel').textContent=d.actionLabel;
@@ -3540,6 +3757,11 @@
     btn.addEventListener('click',function(){ setFontScale(btn.getAttribute('data-scale')); });
   });
   $('btnAutostart').onclick=toggleAutostart;
+  $('btnVoiceSapi').onclick=toggleVoiceSapi;
+  $('btnVoiceSapiTest').onclick=testVoiceSapiSend;
+  $('voiceSapiPresets').onclick=addVoiceSapiPreset;
+  $('voiceSapiConfidence').oninput=function(){updateVoiceSapiConfidence(false)};
+  $('voiceSapiConfidence').onchange=function(){updateVoiceSapiConfidence(true)};
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeLater').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeStart').onclick=function(){ closeWelcome(true); };

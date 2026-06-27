@@ -152,6 +152,8 @@ pub struct VoiceConfig {
     #[serde(default = "default_key_press_duration_ms")]
     #[serde(rename = "keyPressDurationMs")]
     pub key_press_duration_ms: u32,
+    #[serde(default, rename = "voiceSapi")]
+    pub voice_sapi: VoiceSapiConfig,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -187,6 +189,54 @@ fn default_debounce_ms() -> u32 {
 }
 fn default_key_press_duration_ms() -> u32 {
     250
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceSapiConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_voice_sapi_phrases")]
+    pub phrases: Vec<String>,
+    #[serde(default = "default_voice_sapi_target_key")]
+    pub target_key: String,
+    #[serde(default = "default_voice_sapi_cooldown_ms")]
+    pub cooldown_ms: u32,
+    #[serde(default = "default_voice_sapi_min_confidence")]
+    pub min_confidence: f32,
+}
+
+fn default_voice_sapi_phrases() -> Vec<String> {
+    vec![
+        "开始输入".into(),
+        "开始听写".into(),
+        "开启输入".into(),
+        "开始说话".into(),
+    ]
+}
+
+fn default_voice_sapi_target_key() -> String {
+    "RAlt".into()
+}
+
+fn default_voice_sapi_cooldown_ms() -> u32 {
+    2000
+}
+
+fn default_voice_sapi_min_confidence() -> f32 {
+    0.35
+}
+
+impl Default for VoiceSapiConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            phrases: default_voice_sapi_phrases(),
+            target_key: default_voice_sapi_target_key(),
+            cooldown_ms: default_voice_sapi_cooldown_ms(),
+            min_confidence: default_voice_sapi_min_confidence(),
+        }
+    }
 }
 
 pub fn now_source_time() -> String {
@@ -487,6 +537,7 @@ impl Default for VoiceConfig {
             auto_enter_enabled: true,
             debounce_ms: default_debounce_ms(),
             key_press_duration_ms: default_key_press_duration_ms(),
+            voice_sapi: VoiceSapiConfig::default(),
             scenes: None,
             scheme_switch_key: String::new(),
             record_key: String::new(),
@@ -659,6 +710,20 @@ impl VoiceConfig {
         }
         if self.mappings.is_empty() {
             *self = VoiceConfig::default();
+        }
+        if self.voice_sapi.phrases.iter().all(|p| p.trim().is_empty()) {
+            self.voice_sapi.phrases = default_voice_sapi_phrases();
+        }
+        if self.voice_sapi.target_key.trim().is_empty() {
+            self.voice_sapi.target_key = default_voice_sapi_target_key();
+        }
+        if self.voice_sapi.cooldown_ms < 200 {
+            self.voice_sapi.cooldown_ms = default_voice_sapi_cooldown_ms();
+        }
+        if self.voice_sapi.min_confidence <= 0.0
+            || (self.voice_sapi.min_confidence - 0.55).abs() < f32::EPSILON
+        {
+            self.voice_sapi.min_confidence = default_voice_sapi_min_confidence();
         }
         for (i, m) in self.mappings.iter_mut().enumerate() {
             if m.id.is_empty() {
@@ -1268,8 +1333,6 @@ mod tests {
         assert!(bindings.iter().all(|(_, id)| id == &cfg.mappings[0].id));
     }
 }
-
-
 
 
 
