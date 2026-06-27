@@ -10,6 +10,8 @@ mod policy_config;
 mod audio_win;
 mod voice_sapi;
 mod voice_sapi_runtime;
+mod voice_vosk;
+mod voice_vosk_runtime;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -41,6 +43,16 @@ pub struct AppState {
     pub voice_sapi_last_error: Mutex<String>,
     pub voice_sapi_last_heard: Mutex<String>,
     pub voice_sapi_last_skip: Mutex<String>,
+    pub voice_vosk: Mutex<Option<crate::voice_vosk::VoiceVoskHandle>>,
+    pub voice_vosk_cooldown_until: Mutex<Option<std::time::Instant>>,
+    pub voice_vosk_state: Mutex<String>,
+    pub voice_vosk_last_error: Mutex<String>,
+    pub voice_vosk_last_partial: Mutex<String>,
+    pub voice_vosk_last_final: Mutex<String>,
+    pub voice_vosk_last_skip: Mutex<String>,
+    pub voice_vosk_last_detected_phrase: Mutex<String>,
+    pub voice_vosk_grammar_mode: Mutex<Option<bool>>,
+    pub voice_vosk_model_load_time_ms: Mutex<Option<u64>>,
 }
 
 pub fn run() {
@@ -64,6 +76,16 @@ pub fn run() {
         voice_sapi_last_error: Mutex::new(String::new()),
         voice_sapi_last_heard: Mutex::new(String::new()),
         voice_sapi_last_skip: Mutex::new(String::new()),
+        voice_vosk: Mutex::new(None),
+        voice_vosk_cooldown_until: Mutex::new(None),
+        voice_vosk_state: Mutex::new("stopped".into()),
+        voice_vosk_last_error: Mutex::new(String::new()),
+        voice_vosk_last_partial: Mutex::new(String::new()),
+        voice_vosk_last_final: Mutex::new(String::new()),
+        voice_vosk_last_skip: Mutex::new(String::new()),
+        voice_vosk_last_detected_phrase: Mutex::new(String::new()),
+        voice_vosk_grammar_mode: Mutex::new(None),
+        voice_vosk_model_load_time_ms: Mutex::new(None),
     });
 
     tauri::Builder::default()
@@ -113,6 +135,15 @@ pub fn run() {
                     if let Err(e) = voice_sapi_runtime::voice_sapi_start(&app_state, &cfg.voice_sapi) {
                         eprintln!("voice_sapi start failed: {e}");
                     }
+                } else if cfg.voice_vosk.enabled {
+                    let resource_dir = app.path().resource_dir().ok();
+                    if let Err(e) = voice_vosk_runtime::voice_vosk_start(
+                        &app_state,
+                        &cfg.voice_vosk,
+                        resource_dir,
+                    ) {
+                        eprintln!("voice_vosk start failed: {e}");
+                    }
                 }
             }
 
@@ -135,6 +166,7 @@ pub fn run() {
                     sleep(Duration::from_millis(20)).await;
 
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &win2);
+                    voice_vosk_runtime::drain_voice_vosk_events(&state2, &win2);
 
                     if crate::send_guard::is_active() {
                         continue;
@@ -224,6 +256,12 @@ pub fn run() {
             ipc::cmd_voice_sapi_set_phrases,
             ipc::cmd_voice_sapi_set_min_confidence,
             ipc::cmd_voice_sapi_test_send,
+            ipc::cmd_voice_vosk_status,
+            ipc::cmd_voice_vosk_set_enabled,
+            ipc::cmd_voice_vosk_set_phrases,
+            ipc::cmd_voice_vosk_set_model_preset,
+            ipc::cmd_voice_vosk_set_model_path,
+            ipc::cmd_voice_vosk_test_send,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

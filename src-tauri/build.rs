@@ -1,13 +1,88 @@
 use std::fs;
 use std::io::BufWriter;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use image::{ImageEncoder, Rgba, RgbaImage};
 
+const VOSK_RUNTIME_DLLS: &[&str] = &[
+    "libvosk.dll",
+    "libgcc_s_seh-1.dll",
+    "libstdc++-6.dll",
+    "libwinpthread-1.dll",
+];
+
 fn main() {
     ensure_icons_exist();
+    link_vosk_if_present();
 
     tauri_build::build();
+}
+
+fn link_vosk_if_present() {
+    println!("cargo::rustc-check-cfg=cfg(vosk_disabled)");
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let vosk_dir = manifest_dir.join("resources/vosk");
+    let lib = vosk_dir.join("libvosk.lib");
+    if lib.exists() {
+        println!("cargo:rustc-link-search=native={}", vosk_dir.display());
+        println!("cargo:rustc-link-lib=dylib=libvosk");
+        copy_vosk_runtime_dlls(&vosk_dir, &manifest_dir);
+    } else {
+        println!(
+            "cargo:warning=Vosk: libvosk.lib not found at {} — place libvosk.lib + libvosk.dll there to enable offline voice",
+            lib.display()
+        );
+        println!("cargo:rustc-cfg=vosk_disabled");
+    }
+}
+
+/// Windows loads link-time DLL dependencies from the exe directory before main().
+/// Copy Vosk + MinGW runtime DLLs next to onetone.exe (target/debug|release).
+fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
+    let dll_src = vosk_dir.join("libvosk.dll");
+    if !dll_src.is_file() {
+        println!(
+            "cargo:warning=Vosk: libvosk.dll not found at {} — runtime copy skipped",
+            dll_src.display()
+        );
+        return;
+    }
+
+    for name in VOSK_RUNTIME_DLLS {
+        println!("cargo:rerun-if-changed=resources/vosk/{name}");
+    }
+
+    let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".into());
+    let target_dir = std::env::var("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| manifest_dir.join("target"));
+    let exe_dir = target_dir.join(&profile);
+
+    if fs::create_dir_all(&exe_dir).is_err() {
+        return;
+    }
+
+    let mut copied = 0usize;
+    for name in VOSK_RUNTIME_DLLS {
+        let src = vosk_dir.join(name);
+        if !src.is_file() {
+            continue;
+        }
+        let dst = exe_dir.join(name);
+        match fs::copy(&src, &dst) {
+            Ok(_) => copied += 1,
+            Err(e) => {
+                println!("cargo:warning=Vosk: failed to copy {name} -> {}: {e}", dst.display());
+            }
+        }
+    }
+
+    if copied > 0 {
+        println!(
+            "cargo:warning=Vosk: copied {copied} runtime DLL(s) to {}",
+            exe_dir.display()
+        );
+    }
 }
 
 fn ensure_icons_exist() {

@@ -993,6 +993,49 @@
         </div>
       </div>
       <div class="drawer-section">
+        <div class="mini-title" id="voiceVoskTitle">Vosk 离线语音</div>
+        <p class="mic-desc" id="voiceVoskDesc">与上方「语音唤醒」只能开一个；开启后会自动关闭 SAPI。模型需自行下载，不随安装包分发。</p>
+        <div class="setting-row">
+          <div class="setting-row-main">
+            <span class="setting-row-text" id="voiceVoskLabel">开启 Vosk 离线语音</span>
+          </div>
+          <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false"></button>
+        </div>
+        <div class="control-row" style="margin-top:8px">
+          <span class="chip" id="voiceVoskState">stopped</span>
+        </div>
+        <div class="voice-sapi-row" style="margin-top:8px">
+          <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
+          <select class="control-select" id="voiceVoskModelPreset" style="width:100%;margin-top:4px">
+            <option value="cn-light">中文语音（small-cn，默认）</option>
+            <option value="en-light">英文语音（small-en-us）</option>
+          </select>
+        </div>
+        <p class="mic-desc" id="voiceVoskDebug" style="margin-top:6px"></p>
+        <p class="mic-empty" id="voiceVoskError" hidden></p>
+        <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
+          <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
+          <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
+            <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+          </div>
+          <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
+          <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
+            <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="voice input">voice input</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <button type="button" class="control-btn" id="btnVoiceVoskTest">测试快捷键（不走麦克风）</button>
+        </div>
+      </div>
+      <div class="drawer-section">
         <div class="helper-note" id="quickTips">
           <strong id="quickTipsTitle">怎么设置最省心</strong>
           <span id="quickTipsBody">先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。</span>
@@ -1181,6 +1224,7 @@
   let micMonitorDeviceId='';
   let micPollTimer=0;
   let voiceSapiPollTimer=0;
+  let voiceVoskPollTimer=0;
   let lang='zh';
   let testSendState='idle';
   let testSendTimer=0;
@@ -1293,6 +1337,28 @@
       voiceSapiNone:'—',
       voiceSapiSensitivity:'识别灵敏度（越低越容易触发）',
       voiceSapiPresetUpdated:'已更新唤醒词',
+      voiceVoskTitle:'Vosk 离线语音',
+      voiceVoskDesc:'与上方「语音唤醒」只能开一个。请选「中文语音」或「英文语音」，切换后模型与唤醒词会自动更新。',
+      voiceVoskLabel:'开启 Vosk 离线语音',
+      voiceVoskTest:'测试快捷键（不走麦克风）',
+      voiceVoskFail:'无法启动 Vosk，请检查 libvosk.dll 与模型目录',
+      voiceVoskWakeWord:'当前候选',
+      voiceVoskPartial:'实时识别',
+      voiceVoskFinal:'最终识别',
+      voiceVoskHit:'命中候选',
+      voiceVoskSkip:'没触发',
+      voiceVoskWaiting:'等待说话…',
+      voiceVoskOff:'未开启',
+      voiceVoskNone:'—',
+      voiceVoskModel:'模型路径',
+      voiceVoskDll:'DLL',
+      voiceVoskGrammar:'识别模式',
+      voiceVoskLoad:'加载耗时',
+      voiceVoskModelLabel:'识别语言',
+      voiceVoskPresetsCnLabel:'中文唤醒词',
+      voiceVoskPresetsEnLabel:'英文唤醒词',
+      voiceVoskPresetUpdated:'已更新唤醒词',
+      voiceVoskModelUpdated:'已切换模型预设',
       quickTipsTitle:'怎么设置最省心',
       quickTipsBody:'先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。',
       replayWelcome:'重新查看首次引导',
@@ -1427,6 +1493,28 @@
       voiceSapiNone:'—',
       voiceSapiSensitivity:'Sensitivity (lower = easier to trigger)',
       voiceSapiPresetUpdated:'Wake phrases updated',
+      voiceVoskTitle:'Vosk offline voice',
+      voiceVoskDesc:'Only one of SAPI or Vosk can run. Choose Chinese or English voice; model and wake phrases update when you switch.',
+      voiceVoskLabel:'Enable Vosk offline voice',
+      voiceVoskTest:'Test shortcut (no mic)',
+      voiceVoskFail:'Could not start Vosk. Check libvosk.dll and model folder.',
+      voiceVoskWakeWord:'Phrases',
+      voiceVoskPartial:'Partial',
+      voiceVoskFinal:'Final',
+      voiceVoskHit:'Matched',
+      voiceVoskSkip:'Not triggered',
+      voiceVoskWaiting:'Waiting…',
+      voiceVoskOff:'Off',
+      voiceVoskNone:'—',
+      voiceVoskModel:'Model path',
+      voiceVoskDll:'DLL',
+      voiceVoskGrammar:'Mode',
+      voiceVoskLoad:'Load time',
+      voiceVoskModelLabel:'Voice language',
+      voiceVoskPresetsCnLabel:'Chinese phrases',
+      voiceVoskPresetsEnLabel:'English phrases',
+      voiceVoskPresetUpdated:'Wake phrases updated',
+      voiceVoskModelUpdated:'Model preset updated',
       quickTipsTitle:'Easiest setup',
       quickTipsBody:'Set a launch key first, then record the voice shortcut. You can ignore advanced options at first.',
       replayWelcome:'Replay first-run guide',
@@ -1968,6 +2056,7 @@
     loadMicDevices();
     startMicLevelPoll();
     startVoiceSapiPoll();
+    startVoiceVoskPoll();
   }
 
   function closeDrawer(){
@@ -1978,6 +2067,7 @@
     stopMicLevelPoll();
     stopMicMonitor();
     stopVoiceSapiPoll();
+    stopVoiceVoskPoll();
   }
 
   function syncVoiceSapiToggle(enabled){
@@ -2046,6 +2136,7 @@
     syncVoiceSapiToggle(next);
     vpInvoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
       renderVoiceSapiStatus(res);
+      loadVoiceVoskStatus();
     }).catch(function(err){
       loadVoiceSapiStatus();
       toast(t('voiceSapiFail'));
@@ -2117,6 +2208,184 @@
     if(voiceSapiPollTimer){
       clearInterval(voiceSapiPollTimer);
       voiceSapiPollTimer=0;
+    }
+  }
+
+  function isEnglishVoskPreset(preset){
+    return String(preset||'')==='en-light';
+  }
+
+  function activeVoiceVoskPresetRoots(){
+    const preset=($('voiceVoskModelPreset')||{}).value||'cn-light';
+    return [isEnglishVoskPreset(preset)?'#voiceVoskPresetsEn':'#voiceVoskPresetsCn'];
+  }
+
+  function updateVoiceVoskPresetPanel(preset){
+    const p=preset||($('voiceVoskModelPreset')||{}).value||'cn-light';
+    const cn=$('voiceVoskPresetsCn');
+    const en=$('voiceVoskPresetsEn');
+    const cnLabel=$('voiceVoskPresetsCnLabel');
+    const enLabel=$('voiceVoskPresetsEnLabel');
+    if(!cn||!en) return;
+    const enOnly=isEnglishVoskPreset(p);
+    cn.hidden=enOnly;
+    en.hidden=!enOnly;
+    if(cnLabel) cnLabel.hidden=enOnly;
+    if(enLabel) enLabel.hidden=!enOnly;
+  }
+
+  function renderVoiceVoskStatus(res){
+    if(!res) return;
+    syncVoiceVoskToggle(!!res.enabled);
+    const stateEl=$('voiceVoskState');
+    if(stateEl){
+      const raw=res.state||'stopped';
+      const labels={stopped:'已停止',starting:'启动中',listening:'等待说话',triggered:'已触发',cooldown:'请稍后再说',error:'出错了'};
+      stateEl.textContent=lang==='zh'? (labels[raw]||raw) : raw;
+    }
+    const presetEl=$('voiceVoskModelPreset');
+    if(presetEl && document.activeElement!==presetEl){
+      const preset=res.modelPreset||'cn-light';
+      const uiPreset=(preset==='auto'||preset==='custom')?'cn-light':preset;
+      if(presetEl.value!==uiPreset) presetEl.value=uiPreset;
+      updateVoiceVoskPresetPanel(uiPreset);
+    }
+    const debugEl=$('voiceVoskDebug');
+    if(debugEl){
+      const partial=res.lastPartial||'';
+      const finalText=res.lastFinal||'';
+      const skip=res.lastSkip||'';
+      const hit=res.lastDetectedPhrase||'';
+      const phrases=Array.isArray(res.phrases)?res.phrases:[];
+      const modelPath=res.resolvedModelPath||res.modelPath||'';
+      const dllOk=res.dllExists?'OK':'缺失';
+      const modelOk=res.modelExists?'OK':'缺失';
+      const grammar=res.grammarMode===true?'语法限制':(res.grammarMode===false?'自由识别':'—');
+      const loadMs=res.modelLoadTimeMs!=null? (res.modelLoadTimeMs+'ms') : '—';
+      const parts=[];
+      parts.push(t('voiceVoskModel')+'：'+modelPath+' ('+modelOk+')');
+      parts.push(t('voiceVoskDll')+'：'+dllOk);
+      parts.push(t('voiceVoskGrammar')+'：'+grammar);
+      parts.push(t('voiceVoskLoad')+'：'+loadMs);
+      parts.push(t('voiceVoskWakeWord')+'：'+(phrases.length?phrases.join(' / '):t('voiceVoskNone')));
+      parts.push(t('voiceVoskPartial')+'：'+(partial || (res.enabled ? t('voiceVoskWaiting') : t('voiceVoskOff'))));
+      parts.push(t('voiceVoskFinal')+'：'+(finalText||t('voiceVoskNone')));
+      if(hit) parts.push(t('voiceVoskHit')+'：'+hit);
+      if(skip) parts.push(t('voiceVoskSkip')+'：'+skip);
+      debugEl.textContent=parts.join(' · ');
+    }
+    syncVoiceVoskPresets(res.phrases||[]);
+    const errEl=$('voiceVoskError');
+    if(errEl){
+      const err=res.lastError||'';
+      if(err){
+        errEl.hidden=false;
+        errEl.textContent=err;
+      }else{
+        errEl.hidden=true;
+        errEl.textContent='';
+      }
+    }
+  }
+
+  function loadVoiceVoskStatus(){
+    return vpInvoke('cmd_voice_vosk_status',{}).then(function(res){
+      renderVoiceVoskStatus(res);
+      return res;
+    }).catch(function(){
+      syncVoiceVoskToggle(false);
+    });
+  }
+
+  function syncVoiceVoskToggle(enabled){
+    const btn=$('btnVoiceVosk');
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
+  function toggleVoiceVosk(){
+    const btn=$('btnVoiceVosk');
+    if(!btn) return;
+    const next=!btn.classList.contains('is-on');
+    syncVoiceVoskToggle(next);
+    vpInvoke('cmd_voice_vosk_set_enabled',{enabled:next}).then(function(res){
+      renderVoiceVoskStatus(res);
+      loadVoiceSapiStatus();
+    }).catch(function(err){
+      loadVoiceVoskStatus();
+      toast(t('voiceVoskFail'));
+      console.error('voice_vosk',err);
+    });
+  }
+
+  function testVoiceVoskSend(){
+    vpInvoke('cmd_voice_vosk_test_send',{}).then(function(res){
+      if(res&&res.ok) toast(t('testSent'));
+      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
+      else toast(t('testFailed'));
+    }).catch(function(){ toast(t('testFailed')); });
+  }
+
+  function addVoiceVoskPreset(ev){
+    const btn=ev.target.closest&&ev.target.closest('[data-phrase]');
+    if(!btn) return;
+    const phrase=btn.getAttribute('data-phrase')||'';
+    const root=activeVoiceVoskPresetRoots();
+    const selected=[];
+    root.forEach(function(r){
+      document.querySelectorAll(r+' [data-phrase].is-selected').forEach(function(x){
+        const p=x.getAttribute('data-phrase')||'';
+        if(p) selected.push(p);
+      });
+    });
+    const idx=selected.indexOf(phrase);
+    if(idx>=0 && selected.length>1) selected.splice(idx,1);
+    else if(idx<0) selected.push(phrase);
+    const next=selected.length?selected:[phrase];
+    vpInvoke('cmd_voice_vosk_set_phrases',{phrases:next}).then(function(res){
+      renderVoiceVoskStatus(res);
+      toast(t('voiceVoskPresetUpdated'));
+    }).catch(function(err){
+      console.error('voice_vosk_preset',err);
+      toast(t('voiceVoskFail'));
+      loadVoiceVoskStatus();
+    });
+  }
+
+  function syncVoiceVoskPresets(phrases){
+    const selected=(Array.isArray(phrases)?phrases:[]).map(function(x){return String(x||'').trim();});
+    document.querySelectorAll('#voiceVoskPresetsCn [data-phrase], #voiceVoskPresetsEn [data-phrase]').forEach(function(btn){
+      const phrase=btn.getAttribute('data-phrase')||'';
+      btn.classList.toggle('is-selected',selected.includes(phrase));
+    });
+  }
+
+  function changeVoiceVoskModelPreset(){
+    const el=$('voiceVoskModelPreset');
+    if(!el) return;
+    const preset=el.value||'cn-light';
+    updateVoiceVoskPresetPanel(preset);
+    vpInvoke('cmd_voice_vosk_set_model_preset',{preset:preset}).then(function(res){
+      renderVoiceVoskStatus(res);
+      toast(t('voiceVoskModelUpdated'));
+    }).catch(function(err){
+      console.error('voice_vosk_model',err);
+      toast(t('voiceVoskFail'));
+      loadVoiceVoskStatus();
+    });
+  }
+
+  function startVoiceVoskPoll(){
+    stopVoiceVoskPoll();
+    loadVoiceVoskStatus();
+    voiceVoskPollTimer=setInterval(loadVoiceVoskStatus,500);
+  }
+
+  function stopVoiceVoskPoll(){
+    if(voiceVoskPollTimer){
+      clearInterval(voiceVoskPollTimer);
+      voiceVoskPollTimer=0;
     }
   }
 
@@ -2209,6 +2478,13 @@
     const voiceSapiDesc=$('voiceSapiDesc'); if(voiceSapiDesc) voiceSapiDesc.textContent=d.voiceSapiDesc;
     const voiceSapiLabel=$('voiceSapiLabel'); if(voiceSapiLabel) voiceSapiLabel.textContent=d.voiceSapiLabel;
     const btnVoiceSapiTest=$('btnVoiceSapiTest'); if(btnVoiceSapiTest) btnVoiceSapiTest.textContent=d.voiceSapiTest;
+    const voiceVoskTitle=$('voiceVoskTitle'); if(voiceVoskTitle) voiceVoskTitle.textContent=d.voiceVoskTitle;
+    const voiceVoskDesc=$('voiceVoskDesc'); if(voiceVoskDesc) voiceVoskDesc.textContent=d.voiceVoskDesc;
+    const voiceVoskLabel=$('voiceVoskLabel'); if(voiceVoskLabel) voiceVoskLabel.textContent=d.voiceVoskLabel;
+    const btnVoiceVoskTest=$('btnVoiceVoskTest'); if(btnVoiceVoskTest) btnVoiceVoskTest.textContent=d.voiceVoskTest;
+    const voiceVoskModelLabel=$('voiceVoskModelLabel'); if(voiceVoskModelLabel) voiceVoskModelLabel.textContent=d.voiceVoskModelLabel;
+    const voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
+    const voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
     $('logTitle').textContent=d.logTitle;
     $('runtimeTitle').textContent=d.runtimeTitle;
     $('actionLabel').textContent=d.actionLabel;
@@ -3760,6 +4036,10 @@
   $('btnVoiceSapi').onclick=toggleVoiceSapi;
   $('btnVoiceSapiTest').onclick=testVoiceSapiSend;
   $('voiceSapiPresets').onclick=addVoiceSapiPreset;
+  $('btnVoiceVosk').onclick=toggleVoiceVosk;
+  $('btnVoiceVoskTest').onclick=testVoiceVoskSend;
+  $('voiceVoskPresetsWrap').onclick=addVoiceVoskPreset;
+  $('voiceVoskModelPreset').onchange=changeVoiceVoskModelPreset;
   $('voiceSapiConfidence').oninput=function(){updateVoiceSapiConfidence(false)};
   $('voiceSapiConfidence').onchange=function(){updateVoiceSapiConfidence(true)};
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };

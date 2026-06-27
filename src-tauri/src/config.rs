@@ -154,6 +154,8 @@ pub struct VoiceConfig {
     pub key_press_duration_ms: u32,
     #[serde(default, rename = "voiceSapi")]
     pub voice_sapi: VoiceSapiConfig,
+    #[serde(default, rename = "voiceVosk")]
+    pub voice_vosk: VoiceVoskConfig,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -236,6 +238,118 @@ impl Default for VoiceSapiConfig {
             cooldown_ms: default_voice_sapi_cooldown_ms(),
             min_confidence: default_voice_sapi_min_confidence(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceVoskConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_voice_vosk_phrases")]
+    pub phrases: Vec<String>,
+    #[serde(default = "default_voice_vosk_target_key")]
+    pub target_key: String,
+    #[serde(default = "default_voice_vosk_cooldown_ms")]
+    pub cooldown_ms: u32,
+    #[serde(default = "default_voice_vosk_model_path")]
+    pub model_path: String,
+    #[serde(default = "default_voice_vosk_model_preset")]
+    pub model_preset: String,
+}
+
+fn default_voice_vosk_phrases() -> Vec<String> {
+    default_voice_vosk_phrases_cn()
+}
+
+fn default_voice_vosk_phrases_cn() -> Vec<String> {
+    vec![
+        "开始输入".into(),
+        "开始听写".into(),
+        "打开听写".into(),
+        "语音输入".into(),
+        "开启输入".into(),
+    ]
+}
+
+fn default_voice_vosk_phrases_en() -> Vec<String> {
+    vec![
+        "start dictation".into(),
+        "start input".into(),
+        "begin dictation".into(),
+        "voice input".into(),
+        "start typing".into(),
+    ]
+}
+
+fn default_voice_vosk_target_key() -> String {
+    "RAlt".into()
+}
+
+fn default_voice_vosk_cooldown_ms() -> u32 {
+    2000
+}
+
+fn default_voice_vosk_model_path() -> String {
+    "resources/vosk/vosk-model-small-cn-0.22".into()
+}
+
+fn default_voice_vosk_model_preset() -> String {
+    "cn-light".into()
+}
+
+/// Relative paths for built-in Vosk light models.
+pub const VOSK_CN_LIGHT_REL: &str = "resources/vosk/vosk-model-small-cn-0.22";
+pub const VOSK_EN_LIGHT_REL: &str = "resources/vosk/vosk-model-small-en-us-0.15";
+
+impl Default for VoiceVoskConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            phrases: default_voice_vosk_phrases(),
+            target_key: default_voice_vosk_target_key(),
+            cooldown_ms: default_voice_vosk_cooldown_ms(),
+            model_path: default_voice_vosk_model_path(),
+            model_preset: default_voice_vosk_model_preset(),
+        }
+    }
+}
+
+/// Built-in Vosk model preset → relative path under project/resources.
+pub fn vosk_preset_model_path(preset: &str) -> Option<&'static str> {
+    match preset.trim() {
+        "cn-light" => Some(VOSK_CN_LIGHT_REL),
+        "en-light" => Some(VOSK_EN_LIGHT_REL),
+        _ => None,
+    }
+}
+
+pub fn vosk_preset_is_dual(preset: &str) -> bool {
+    preset.trim() == "auto"
+}
+
+/// Default wake phrases when switching model preset.
+pub fn vosk_preset_default_phrases(preset: &str) -> Option<Vec<String>> {
+    match preset.trim() {
+        "cn-light" => Some(default_voice_vosk_phrases_cn()),
+        "en-light" => Some(default_voice_vosk_phrases_en()),
+        _ => None,
+    }
+}
+pub fn resolve_vosk_model_path(cfg: &VoiceVoskConfig) -> String {
+    if cfg.model_preset.trim() == "custom" || cfg.model_preset.trim().is_empty() {
+        if cfg.model_path.trim().is_empty() {
+            return default_voice_vosk_model_path();
+        }
+        return cfg.model_path.trim().to_string();
+    }
+    if let Some(path) = vosk_preset_model_path(&cfg.model_preset) {
+        return path.to_string();
+    }
+    if cfg.model_path.trim().is_empty() {
+        default_voice_vosk_model_path()
+    } else {
+        cfg.model_path.trim().to_string()
     }
 }
 
@@ -538,6 +652,7 @@ impl Default for VoiceConfig {
             debounce_ms: default_debounce_ms(),
             key_press_duration_ms: default_key_press_duration_ms(),
             voice_sapi: VoiceSapiConfig::default(),
+            voice_vosk: VoiceVoskConfig::default(),
             scenes: None,
             scheme_switch_key: String::new(),
             record_key: String::new(),
@@ -724,6 +839,32 @@ impl VoiceConfig {
             || (self.voice_sapi.min_confidence - 0.55).abs() < f32::EPSILON
         {
             self.voice_sapi.min_confidence = default_voice_sapi_min_confidence();
+        }
+        if self.voice_vosk.phrases.iter().all(|p| p.trim().is_empty()) {
+            self.voice_vosk.phrases = default_voice_vosk_phrases();
+        }
+        if self.voice_vosk.target_key.trim().is_empty() {
+            self.voice_vosk.target_key = default_voice_vosk_target_key();
+        }
+        if self.voice_vosk.cooldown_ms < 200 {
+            self.voice_vosk.cooldown_ms = default_voice_vosk_cooldown_ms();
+        }
+        if self.voice_vosk.model_preset == "auto" {
+            self.voice_vosk.model_preset = "cn-light".to_string();
+        }
+        if self.voice_vosk.model_preset.trim().is_empty()
+            || (self.voice_vosk.model_preset != "custom"
+                && vosk_preset_model_path(&self.voice_vosk.model_preset).is_none())
+        {
+            self.voice_vosk.model_preset = default_voice_vosk_model_preset();
+            self.voice_vosk.phrases = default_voice_vosk_phrases_cn();
+        }
+        if self.voice_vosk.model_preset != "custom" {
+            if let Some(path) = vosk_preset_model_path(&self.voice_vosk.model_preset) {
+                self.voice_vosk.model_path = path.to_string();
+            }
+        } else if self.voice_vosk.model_path.trim().is_empty() {
+            self.voice_vosk.model_path = default_voice_vosk_model_path();
         }
         for (i, m) in self.mappings.iter_mut().enumerate() {
             if m.id.is_empty() {

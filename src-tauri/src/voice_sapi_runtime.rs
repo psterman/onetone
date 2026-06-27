@@ -193,6 +193,10 @@ pub fn voice_sapi_set_enabled(
     _window: &WebviewWindow,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
+    if enabled {
+        crate::voice_vosk_runtime::disable_vosk_for_sapi(state);
+    }
+
     {
         let mut cfg = state.cfg.lock();
         cfg.voice_sapi.enabled = enabled;

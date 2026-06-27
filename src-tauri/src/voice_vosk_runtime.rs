@@ -1,0 +1,403 @@
+//! Runtime integration for Vosk offline voice wake.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use tauri::WebviewWindow;
+
+use crate::config::{save_config, vosk_preset_default_phrases, vosk_preset_model_path, VoiceVoskConfig};
+use crate::voice_vosk::{
+    probe_vosk_resources, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent,
+};
+use crate::AppState;
+
+pub fn voice_vosk_start(
+    state: &AppState,
+    cfg: &VoiceVoskConfig,
+    resource_dir: Option<PathBuf>,
+) -> Result<(), String> {
+    // Release mic level monitor so WASAPI default capture can reopen cleanly.
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    voice_vosk_stop(state);
+    clear_vosk_recognition_state(state);
+
+    match start_voice_vosk(cfg.clone(), resource_dir) {
+        Ok(handle) => {
+            *state.voice_vosk.lock() = Some(handle);
+            *state.voice_vosk_last_error.lock() = String::new();
+            *state.voice_vosk_state.lock() = "starting".into();
+            Ok(())
+        }
+        Err(e) => {
+            *state.voice_vosk_last_error.lock() = e.clone();
+            *state.voice_vosk_state.lock() = "error".into();
+            Err(e)
+        }
+    }
+}
+
+pub fn voice_vosk_stop(state: &AppState) {
+    if let Some(handle) = state.voice_vosk.lock().take() {
+        stop_voice_vosk(handle);
+    }
+    *state.voice_vosk_state.lock() = "stopped".into();
+}
+
+fn clear_vosk_recognition_state(state: &AppState) {
+    *state.voice_vosk_last_partial.lock() = String::new();
+    *state.voice_vosk_last_final.lock() = String::new();
+    *state.voice_vosk_last_skip.lock() = String::new();
+    *state.voice_vosk_last_detected_phrase.lock() = String::new();
+    *state.voice_vosk_last_error.lock() = String::new();
+    *state.voice_vosk_grammar_mode.lock() = None;
+    *state.voice_vosk_model_load_time_ms.lock() = None;
+}
+
+fn tick_cooldown_state(state: &AppState) {
+    let mut current = state.voice_vosk_state.lock();
+    if *current == "error" || *current == "stopped" {
+        return;
+    }
+
+    let cooldown = state.voice_vosk_cooldown_until.lock();
+    if let Some(until) = *cooldown {
+        if Instant::now() < until {
+            if *current != "cooldown" && *current != "triggered" {
+                *current = "cooldown".into();
+            }
+            return;
+        }
+    }
+    drop(cooldown);
+
+    if state.voice_vosk.lock().is_some() {
+        if *current != "starting" {
+            *current = "listening".into();
+        }
+    }
+}
+
+pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
+    let events: Vec<VoiceVoskEvent> = {
+        let guard = state.voice_vosk.lock();
+        let Some(handle) = guard.as_ref() else {
+            tick_cooldown_state(state);
+            return;
+        };
+        let mut out = Vec::new();
+        while let Some(ev) = handle.try_recv() {
+            out.push(ev);
+        }
+        out
+    };
+
+    for ev in events {
+        match ev {
+            VoiceVoskEvent::StateChanged(s) => {
+                *state.voice_vosk_state.lock() = s;
+            }
+            VoiceVoskEvent::Error(e) => {
+                *state.voice_vosk_last_error.lock() = e;
+                *state.voice_vosk_state.lock() = "error".into();
+            }
+            VoiceVoskEvent::Partial(text) => {
+                *state.voice_vosk_last_partial.lock() = text;
+            }
+            VoiceVoskEvent::Final(text) => {
+                *state.voice_vosk_last_final.lock() = text;
+            }
+            VoiceVoskEvent::GrammarMode { grammar, note } => {
+                *state.voice_vosk_grammar_mode.lock() = Some(grammar);
+                *state.voice_vosk_last_skip.lock() = note;
+            }
+            VoiceVoskEvent::ModelLoaded { load_time_ms } => {
+                *state.voice_vosk_model_load_time_ms.lock() = Some(load_time_ms);
+            }
+            VoiceVoskEvent::Detected { phrase, text } => {
+                *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
+                *state.voice_vosk_last_final.lock() = text;
+                process_detected(state, window, &phrase);
+            }
+        }
+    }
+
+    tick_cooldown_state(state);
+}
+
+fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str) {
+    let (target_key, duration_ms, cooldown_ms) = {
+        let cfg = state.cfg.lock();
+        (
+            cfg.voice_vosk.target_key.clone(),
+            cfg.key_press_duration_ms,
+            cfg.voice_vosk.cooldown_ms,
+        )
+    };
+
+    if crate::send_guard::is_active() {
+        *state.voice_vosk_last_skip.lock() = "正在发送快捷键，请稍候再试。".into();
+        return;
+    }
+
+    if *state.paused.lock() {
+        *state.voice_vosk_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
+        return;
+    }
+
+    let now = Instant::now();
+    if let Some(until) = *state.voice_vosk_cooldown_until.lock() {
+        if now < until {
+            *state.voice_vosk_last_skip.lock() = "说得太快了，等几秒再说一次。".into();
+            return;
+        }
+    }
+
+    let sent = crate::keyboard::send_chord(&target_key, duration_ms);
+    *state.voice_vosk_cooldown_until.lock() =
+        Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
+    *state.voice_vosk_state.lock() = if sent {
+        "triggered".into()
+    } else {
+        "error".into()
+    };
+    if !sent {
+        *state.voice_vosk_last_error.lock() = format!("快捷键发送失败：{target_key}");
+    } else {
+        *state.voice_vosk_last_skip.lock() =
+            format!("已触发语音快捷键（命中「{phrase}」）。");
+    }
+
+    let label = if sent {
+        "voice_vosk"
+    } else {
+        "voice_vosk_send_failed"
+    };
+    crate::ipc::push_runtime(state.as_ref(), window, label, "");
+}
+
+pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
+    let cfg = state.cfg.lock();
+    let probe = probe_vosk_resources(&cfg.voice_vosk, resource_dir.as_deref());
+    serde_json::json!({
+        "enabled": cfg.voice_vosk.enabled,
+        "state": state.voice_vosk_state.lock().clone(),
+        "lastError": state.voice_vosk_last_error.lock().clone(),
+        "lastPartial": state.voice_vosk_last_partial.lock().clone(),
+        "lastFinal": state.voice_vosk_last_final.lock().clone(),
+        "lastSkip": state.voice_vosk_last_skip.lock().clone(),
+        "lastDetectedPhrase": state.voice_vosk_last_detected_phrase.lock().clone(),
+        "phrases": cfg.voice_vosk.phrases.clone(),
+        "targetKey": cfg.voice_vosk.target_key.clone(),
+        "cooldownMs": cfg.voice_vosk.cooldown_ms,
+        "modelPath": probe.model_path,
+        "modelPreset": probe.model_preset,
+        "resolvedModelPath": probe.resolved_model_path,
+        "resolvedDllPath": probe.resolved_dll_path,
+        "modelExists": probe.model_exists,
+        "dllExists": probe.dll_exists,
+        "libExists": probe.lib_exists,
+        "grammarMode": state.voice_vosk_grammar_mode.lock().clone(),
+        "modelLoadTimeMs": state.voice_vosk_model_load_time_ms.lock().clone(),
+    })
+}
+
+pub fn disable_vosk_for_sapi(state: &Arc<AppState>) {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_vosk.enabled = false;
+        save_config(&cfg);
+    }
+    voice_vosk_stop(state);
+    *state.voice_vosk_cooldown_until.lock() = None;
+}
+
+fn disable_sapi(state: &Arc<AppState>) {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_sapi.enabled = false;
+        save_config(&cfg);
+    }
+    crate::voice_sapi_runtime::voice_sapi_stop(state);
+    *state.voice_sapi_cooldown_until.lock() = None;
+}
+
+pub fn voice_vosk_set_enabled(
+    state: &Arc<AppState>,
+    _window: &WebviewWindow,
+    enabled: bool,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    if enabled {
+        disable_sapi(state);
+    }
+
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_vosk.enabled = enabled;
+        cfg.normalize();
+        save_config(&cfg);
+    }
+
+    if enabled {
+        let cfg = state.cfg.lock().voice_vosk.clone();
+        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+    } else {
+        voice_vosk_stop(state);
+        *state.voice_vosk_cooldown_until.lock() = None;
+        *state.voice_vosk_last_error.lock() = String::new();
+    }
+
+    Ok(voice_vosk_status(state, resource_dir))
+}
+
+pub fn voice_vosk_set_phrases(
+    state: &Arc<AppState>,
+    phrases: Vec<String>,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    let cleaned = clean_phrases(phrases);
+    let enabled = {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_vosk.phrases = if cleaned.is_empty() {
+            vec!["开始输入".into()]
+        } else {
+            cleaned
+        };
+        cfg.normalize();
+        save_config(&cfg);
+        cfg.voice_vosk.enabled
+    };
+
+    if enabled {
+        let cfg = state.cfg.lock().voice_vosk.clone();
+        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+    }
+
+    Ok(voice_vosk_status(state, resource_dir))
+}
+
+pub fn voice_vosk_set_model_preset(
+    state: &Arc<AppState>,
+    preset: String,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    let preset = preset.trim().to_string();
+    if preset.is_empty() {
+        return Err("model preset is empty".into());
+    }
+    if preset != "custom" && vosk_preset_model_path(&preset).is_none() {
+        return Err(format!("unknown model preset: {preset}"));
+    }
+
+    let enabled = {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_vosk.model_preset = preset.clone();
+        if preset != "custom" {
+            if let Some(path) = vosk_preset_model_path(&preset) {
+                cfg.voice_vosk.model_path = path.to_string();
+            }
+            if let Some(phrases) = vosk_preset_default_phrases(&preset) {
+                cfg.voice_vosk.phrases = phrases;
+            }
+        }
+        cfg.normalize();
+        save_config(&cfg);
+        cfg.voice_vosk.enabled
+    };
+
+    if enabled {
+        let cfg = state.cfg.lock().voice_vosk.clone();
+        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+    }
+
+    Ok(voice_vosk_status(state, resource_dir))
+}
+
+pub fn voice_vosk_set_model_path(
+    state: &Arc<AppState>,
+    path: String,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    let path = path.trim().to_string();
+    if path.is_empty() {
+        return Err("model path is empty".into());
+    }
+
+    let enabled = {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_vosk.model_preset = "custom".into();
+        cfg.voice_vosk.model_path = path;
+        cfg.normalize();
+        save_config(&cfg);
+        cfg.voice_vosk.enabled
+    };
+
+    if enabled {
+        let cfg = state.cfg.lock().voice_vosk.clone();
+        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+    }
+
+    Ok(voice_vosk_status(state, resource_dir))
+}
+
+fn clean_phrases(phrases: Vec<String>) -> Vec<String> {
+    let mut out = Vec::new();
+    for phrase in phrases {
+        let p = phrase.trim();
+        if p.is_empty() {
+            continue;
+        }
+        if !out.iter().any(|x: &String| x == p) {
+            out.push(p.to_string());
+        }
+    }
+    out
+}
+
+pub fn voice_vosk_test_send(state: &AppState) -> serde_json::Value {
+    if *state.paused.lock() {
+        return serde_json::json!({
+            "type": "mvp_voice_vosk_test_sent",
+            "ok": false,
+            "reason": "paused",
+        });
+    }
+    if *state.recording.lock() {
+        return serde_json::json!({
+            "type": "mvp_voice_vosk_test_sent",
+            "ok": false,
+            "reason": "recording",
+        });
+    }
+
+    let (key, duration_ms) = {
+        let cfg = state.cfg.lock();
+        (cfg.voice_vosk.target_key.clone(), cfg.key_press_duration_ms)
+    };
+
+    if key.trim().is_empty() {
+        return serde_json::json!({
+            "type": "mvp_voice_vosk_test_sent",
+            "ok": false,
+            "reason": "no_target",
+        });
+    }
+
+    if crate::key_chord::parse_chord(key.trim()).is_err() {
+        return serde_json::json!({
+            "type": "mvp_voice_vosk_test_sent",
+            "ok": false,
+            "reason": "invalid_key",
+            "key": key,
+        });
+    }
+
+    let ok = crate::keyboard::send_chord(&key, duration_ms);
+    serde_json::json!({
+        "type": "mvp_voice_vosk_test_sent",
+        "ok": ok,
+        "reason": if ok { "sent" } else { "send_failed" },
+        "key": key,
+    })
+}

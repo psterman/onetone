@@ -18,3 +18,8 @@ Desktop.ini
 .DS_Store
 *.tmp
 *.bak
+
+# Vosk 大体积资源（本地保留；运行时 DLL 可提交）
+src-tauri/resources/vosk/vosk-model-*/
+src-tauri/resources/vosk/vosk-win64-*/
+src-tauri/resources/vosk/downloads/

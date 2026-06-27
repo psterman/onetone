@@ -17,8 +17,10 @@ parking_lot = "0.12"
 raw-window-handle = "0.6"
 image = "0.25"
 cpal = "0.15"
+crossbeam-channel = "0.5"
 
 [target.'cfg(windows)'.dependencies]
+vosk = "0.3.1"
 winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi"] }
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",
@@ -28,6 +30,7 @@ windows = { version = "0.58", features = [
   "Win32_System_Com",
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Threading",
+  "Win32_System_LibraryLoader",
   "Win32_UI_Shell_PropertiesSystem",
   "Win32_System_Ole",
   "Win32_System_Variant",
