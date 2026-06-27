@@ -100,6 +100,9 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
                 confidence,
                 exact,
             } => {
+                if crate::voice_end_runtime::should_skip_wake_phrase(state) {
+                    continue;
+                }
                 process_detected(state, window, &phrase, confidence, exact);
             }
         }
@@ -151,26 +154,36 @@ fn process_detected(
         }
     }
 
-    let sent = crate::keyboard::send_chord(&target_key, duration_ms);
-    *state.voice_sapi_cooldown_until.lock() =
-        Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
-    *state.voice_sapi_state.lock() = if sent {
-        "triggered".into()
-    } else {
-        "error".into()
-    };
-    if !sent {
-        *state.voice_sapi_last_error.lock() = format!("快捷键发送失败：{target_key}");
-    } else {
-        *state.voice_sapi_last_skip.lock() = "已触发语音快捷键。".into();
-    }
+    let state2 = Arc::clone(state);
+    let window2 = window.clone();
+    std::thread::spawn(move || {
+        let sent = crate::keyboard::send_chord(&target_key, duration_ms);
+        let now = Instant::now();
+        *state2.voice_sapi_cooldown_until.lock() =
+            Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
+        *state2.voice_sapi_state.lock() = if sent {
+            "triggered".into()
+        } else {
+            "error".into()
+        };
+        if !sent {
+            *state2.voice_sapi_last_error.lock() = format!("快捷键发送失败：{target_key}");
+        } else {
+            *state2.voice_sapi_last_skip.lock() = "已触发语音快捷键。".into();
+            let mapping_id = {
+                let cfg = state2.cfg.lock();
+                crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
+            };
+            crate::voice_end_runtime::enter_dictating(&state2, &window2, &mapping_id, "sapi wake");
+        }
 
-    let label = if sent {
-        "voice_sapi"
-    } else {
-        "voice_sapi_send_failed"
-    };
-    crate::ipc::push_runtime(state.as_ref(), window, label, "");
+        let label = if sent {
+            "voice_sapi"
+        } else {
+            "voice_sapi_send_failed"
+        };
+        crate::ipc::push_runtime(state2.as_ref(), &window2, label, "");
+    });
 }
 
 pub fn voice_sapi_status(state: &AppState) -> serde_json::Value {

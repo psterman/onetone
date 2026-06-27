@@ -140,16 +140,17 @@ fn model_dir_valid(path: &Path) -> bool {
 pub fn start_voice_vosk(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
+    grammar_phrases: Vec<String>,
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
-        let _ = (cfg, resource_dir);
+        let _ = (cfg, resource_dir, grammar_phrases);
         return Err("Vosk is Windows-only".into());
     }
 
     #[cfg(all(windows, vosk_disabled))]
     {
-        let _ = (cfg, resource_dir);
+        let _ = (cfg, resource_dir, grammar_phrases);
         return Err(
             "Vosk native library not linked: place libvosk.lib and libvosk.dll in src-tauri/resources/vosk/ and rebuild"
                 .into(),
@@ -158,7 +159,7 @@ pub fn start_voice_vosk(
 
     #[cfg(all(windows, not(vosk_disabled)))]
     {
-        start_voice_vosk_impl(cfg, resource_dir)
+        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases)
     }
 }
 
@@ -172,6 +173,7 @@ pub fn stop_voice_vosk(handle: VoiceVoskHandle) {
 fn start_voice_vosk_impl(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
+    grammar_phrases: Vec<String>,
 ) -> Result<VoiceVoskHandle, String> {
     let probe = probe_vosk_resources(&cfg, resource_dir.as_deref());
     if !probe.dll_exists {
@@ -191,7 +193,11 @@ fn start_voice_vosk_impl(
     let stop = Arc::new(AtomicBool::new(false));
     let stop_thread = stop.clone();
     let dll_dir = resolve_vosk_dll_dir(resource_dir.as_deref());
-    let phrases = cfg.phrases.clone();
+    let phrases = if grammar_phrases.is_empty() {
+        cfg.phrases.clone()
+    } else {
+        grammar_phrases
+    };
     let model_preset = cfg.model_preset.clone();
     let event_tx_err = event_tx.clone();
     let resource_dir = resource_dir;

@@ -12,6 +12,7 @@ mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
+mod voice_end_runtime;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -53,6 +54,13 @@ pub struct AppState {
     pub voice_vosk_last_detected_phrase: Mutex<String>,
     pub voice_vosk_grammar_mode: Mutex<Option<bool>>,
     pub voice_vosk_model_load_time_ms: Mutex<Option<u64>>,
+    pub voice_session_state: Mutex<String>,
+    pub voice_session_started_at: Mutex<Option<std::time::Instant>>,
+    pub voice_session_last_end_phrase: Mutex<String>,
+    pub voice_session_last_action: Mutex<String>,
+    pub voice_session_mapping_id: Mutex<String>,
+    pub voice_session_commit_token: Mutex<u64>,
+    pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
 }
 
 pub fn run() {
@@ -86,6 +94,13 @@ pub fn run() {
         voice_vosk_last_detected_phrase: Mutex::new(String::new()),
         voice_vosk_grammar_mode: Mutex::new(None),
         voice_vosk_model_load_time_ms: Mutex::new(None),
+        voice_session_state: Mutex::new("idle".into()),
+        voice_session_started_at: Mutex::new(None),
+        voice_session_last_end_phrase: Mutex::new(String::new()),
+        voice_session_last_action: Mutex::new(String::new()),
+        voice_session_mapping_id: Mutex::new(String::new()),
+        voice_session_commit_token: Mutex::new(0),
+        voice_vosk_probe: Mutex::new(None),
     });
 
     tauri::Builder::default()
@@ -118,12 +133,13 @@ pub fn run() {
             }
             *app_state.hotkey_mgr.lock() = Some(mgr);
 
-            let json = ipc::mvp_init_json(&app_state, &backdrop_mode);
-            window
-                .eval(&format!(
-                    "setTimeout(function(){{ window.__vp_bridge__('mvp_init', {json}) }}, 300)",
-                ))
-                .ok();
+            let window_init = window.clone();
+            let state_init = app_state.clone();
+            let mode_init = backdrop_mode.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(Duration::from_millis(300)).await;
+                ipc::push_mvp_init(&state_init, &window_init, &mode_init);
+            });
 
             config::start_watcher(app_state.clone(), window.clone());
 
@@ -137,13 +153,12 @@ pub fn run() {
                     }
                 } else if cfg.voice_vosk.enabled {
                     let resource_dir = app.path().resource_dir().ok();
-                    if let Err(e) = voice_vosk_runtime::voice_vosk_start(
-                        &app_state,
-                        &cfg.voice_vosk,
-                        resource_dir,
-                    ) {
-                        eprintln!("voice_vosk start failed: {e}");
-                    }
+                    let vosk = cfg.voice_vosk.clone();
+                    let state = app_state.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(Duration::from_millis(900)).await;
+                        voice_vosk_runtime::spawn_voice_vosk_start(state, vosk, resource_dir);
+                    });
                 }
             }
 
@@ -167,6 +182,7 @@ pub fn run() {
 
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &win2);
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &win2);
+                    voice_end_runtime::maybe_timeout_dictation(&state2, &win2);
 
                     if crate::send_guard::is_active() {
                         continue;
@@ -262,6 +278,13 @@ pub fn run() {
             ipc::cmd_voice_vosk_set_model_preset,
             ipc::cmd_voice_vosk_set_model_path,
             ipc::cmd_voice_vosk_test_send,
+            ipc::cmd_voice_end_status,
+            ipc::cmd_voice_end_set_enabled,
+            ipc::cmd_voice_end_set_auto_send,
+            ipc::cmd_voice_end_set_commit_delay,
+            ipc::cmd_voice_end_set_phrases,
+            ipc::cmd_voice_end_test_stop,
+            ipc::cmd_voice_end_test_commit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

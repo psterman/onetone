@@ -309,27 +309,71 @@ struct RuntimePayload {
     paused: bool,
 }
 
+/// Emit to the webview on the main thread (safe from hotkey/voice/watcher threads).
+pub fn emit_to_js_main(window: &tauri::WebviewWindow, payload: serde_json::Value) {
+    let win = window.clone();
+    let _ = window.run_on_main_thread(move || {
+        let _ = win.emit("to_js", &payload);
+    });
+}
+
+pub fn emit_to_js_main_t<T: serde::Serialize + Send + 'static>(
+    window: &tauri::WebviewWindow,
+    payload: T,
+) {
+    let win = window.clone();
+    let _ = window.run_on_main_thread(move || {
+        let _ = win.emit("to_js", &payload);
+    });
+}
+
+pub fn mvp_init_payload(state: &AppState, backdrop_mode: &str) -> serde_json::Value {
+    let cfg = state.cfg.lock().clone();
+    let conflicts = cfg.conflict_report();
+    serde_json::json!({
+        "type": "mvp_init",
+        "config": cfg,
+        "conflicts": conflicts,
+        "shell": {
+            "customTitlebar": crate::backdrop::CUSTOM_TITLEBAR,
+            "backdropMode": backdrop_mode,
+        }
+    })
+}
+
+pub fn push_mvp_init(state: &AppState, window: &tauri::WebviewWindow, backdrop_mode: &str) {
+    emit_to_js_main(window, mvp_init_payload(state, backdrop_mode));
+}
+
 pub fn push_runtime(
     state: &AppState,
     window: &tauri::WebviewWindow,
     last_action: &str,
     last_mapping_id: &str,
 ) {
-    let cfg = state.cfg.lock();
-    let pool = state.machine_pool.lock();
-    let paused = *state.paused.lock();
-    let enabled_count = cfg.mappings.iter().filter(|m| m.enabled).count() as u32;
+    let (bindings, mapping_count, enabled_count, paused) = {
+        let cfg = state.cfg.lock();
+        let paused = *state.paused.lock();
+        let enabled_count = cfg.mappings.iter().filter(|m| m.enabled).count() as u32;
+        (
+            cfg.bindings().join(", "),
+            cfg.mappings.len() as u32,
+            enabled_count,
+            paused,
+        )
+    };
+    let timer_active = state.machine_pool.lock().any_timer_active();
     let payload = RuntimePayload {
         msg_type: "mvp_runtime".into(),
-        bindings: cfg.bindings().join(", "),
+        bindings,
         last_action: last_action.into(),
         last_mapping_id: last_mapping_id.into(),
-        mapping_count: cfg.mappings.len() as u32,
+        mapping_count,
         enabled_count,
-        timer_active: pool.any_timer_active(),
+        timer_active,
         paused,
     };
-    window.emit("to_js", &payload).ok();
+    emit_to_js_main_t(window, payload);
 }
 
 fn dispatch_trigger_action(
@@ -343,6 +387,28 @@ fn dispatch_trigger_action(
     match action {
         state::Action::SendKey { key } => {
             let sent = keyboard::send_chord(&key, duration_ms);
+            if sent {
+                let should_enter = {
+                    let cfg = state.cfg.lock();
+                    if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
+                        false
+                    } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
+                        !m.native_key_restore
+                            && !m.target_key.trim().is_empty()
+                            && key == m.target_key
+                    } else {
+                        false
+                    }
+                };
+                if should_enter {
+                    crate::voice_end_runtime::enter_dictating(
+                        state,
+                        window,
+                        mapping_id,
+                        "physical trigger",
+                    );
+                }
+            }
             let label = if sent { key.as_str() } else { "send_failed" };
             push_runtime(state.as_ref(), window, label, mapping_id);
         }
@@ -387,22 +453,15 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
     let (mapping_id, duration_ms, actions) = {
         let cfg = state.cfg.lock();
         let Some(mapping) = cfg.find_mapping_by_physical(key_name) else {
-            drop(cfg);
-            push_runtime(
-                state.as_ref(),
-                window,
-                &format!("no_mapping:{key_name}"),
-                "",
-            );
             return;
         };
         let mapping_id = mapping.id.clone();
         let duration_ms = cfg.key_press_duration_ms;
-        let actions = state
-            .machine_pool
-            .lock()
-            .get_or_create(&mapping_id)
-            .trigger(&cfg, mapping, key_name, now);
+        let actions = {
+            let mut pool = state.machine_pool.lock();
+            pool.get_or_create(&mapping_id)
+                .trigger(&cfg, mapping, key_name, now)
+        };
         (mapping_id, duration_ms, actions)
     };
     for action in actions {
@@ -425,12 +484,7 @@ pub fn mvp_init_json(state: &AppState, backdrop_mode: &str) -> String {
 }
 
 fn sync_config_ui(state: &AppState, window: &tauri::WebviewWindow, backdrop_mode: &str) {
-    let json = mvp_init_json(state, backdrop_mode);
-    window
-        .eval(&format!(
-            "window.__vp_bridge__('mvp_init', {json})"
-        ))
-        .ok();
+    push_mvp_init(state, window, backdrop_mode);
 }
 
 fn persist_and_rebind(state: &AppState, window: &tauri::WebviewWindow, last_action: &str) {
@@ -579,11 +633,7 @@ fn finish_scheme_switch(
         "label": label,
         "config": cfg_snapshot,
     });
-    if let Ok(json) = serde_json::to_string(&payload) {
-        window
-            .eval(&format!("window.__vp_bridge__('mvp_scheme_switched', {json})"))
-            .ok();
-    }
+    emit_to_js_main(window, payload);
     crate::tray::refresh_menu(window.app_handle());
 }
 
@@ -594,24 +644,8 @@ pub fn cmd_ready(
     backdrop_mode: Option<String>,
 ) {
     let mode = backdrop_mode.unwrap_or_else(|| "unchanged".into());
-    let json = mvp_init_json(&state, &mode);
-    window
-        .eval(&format!(
-            "window.__vp_bridge__('mvp_init', {json})"
-        ))
-        .ok();
+    push_mvp_init(&state, &window, &mode);
     push_runtime(&state, &window, "config_push", "");
-    if let Some(ref mgr) = *state.hotkey_mgr.lock() {
-        let cfg = state.cfg.lock();
-        mgr.bind_all(&cfg.bindings());
-        mgr.bind_scheme_select(cfg.switch_bindings());
-        let switch_key = cfg.scheme_switch_key.trim();
-        if switch_key.is_empty() {
-            mgr.bind_scheme_switch(None);
-        } else {
-            mgr.bind_scheme_switch(Some(switch_key.to_string()));
-        }
-    }
 }
 
 #[tauri::command]
@@ -1235,6 +1269,10 @@ pub fn cmd_mic_monitor_start(
     #[allow(non_snake_case)] deviceId: Option<String>,
     device_id: Option<String>,
 ) -> Result<(), String> {
+    // Voice engines hold the default capture device; starting a second stream freezes/hangs WASAPI.
+    if state.voice_vosk.lock().is_some() || state.voice_sapi.lock().is_some() {
+        return Ok(());
+    }
     crate::audio_win::start_mic_monitor(
         app,
         window,
@@ -1354,4 +1392,98 @@ pub fn cmd_voice_vosk_set_model_path(
 #[tauri::command]
 pub fn cmd_voice_vosk_test_send(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
     crate::voice_vosk_runtime::voice_vosk_test_send(&state)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    crate::voice_end_runtime::voice_end_status(&state)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_enabled(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    let status = crate::voice_end_runtime::voice_end_set_enabled(&state, &window, enabled);
+    if enabled {
+        let cfg = state.cfg.lock();
+        if cfg.voice_vosk.enabled {
+            let vosk = cfg.voice_vosk.clone();
+            drop(cfg);
+            crate::voice_vosk_runtime::spawn_voice_vosk_start(
+                Arc::clone(&state),
+                vosk,
+                app_resource_dir(&app),
+            );
+        }
+    } else if state.cfg.lock().voice_vosk.enabled {
+        let vosk = state.cfg.lock().voice_vosk.clone();
+        crate::voice_vosk_runtime::spawn_voice_vosk_start(
+            Arc::clone(&state),
+            vosk,
+            app_resource_dir(&app),
+        );
+    }
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_auto_send(
+    state: tauri::State<Arc<AppState>>,
+    enabled: bool,
+) -> serde_json::Value {
+    crate::voice_end_runtime::voice_end_set_auto_send(&state, enabled)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_commit_delay(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] commitDelayMs: Option<u32>,
+    commit_delay_ms: Option<u32>,
+) -> serde_json::Value {
+    let delay = commit_delay_ms.or(commitDelayMs).unwrap_or(4000);
+    crate::voice_end_runtime::voice_end_set_commit_delay(&state, delay)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_phrases(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    #[allow(non_snake_case)] phrasesZh: Option<Vec<String>>,
+    phrases_zh: Option<Vec<String>>,
+    #[allow(non_snake_case)] phrasesEn: Option<Vec<String>>,
+    phrases_en: Option<Vec<String>>,
+) -> Result<serde_json::Value, String> {
+    let zh = phrases_zh.or(phrasesZh).unwrap_or_default();
+    let en = phrases_en.or(phrasesEn).unwrap_or_default();
+    let status = crate::voice_end_runtime::voice_end_set_phrases(&state, zh, en);
+    let cfg = state.cfg.lock();
+    if cfg.voice_vosk.enabled && cfg.voice_end.enabled {
+        let vosk = cfg.voice_vosk.clone();
+        drop(cfg);
+        crate::voice_vosk_runtime::spawn_voice_vosk_start(
+            Arc::clone(&state),
+            vosk,
+            app_resource_dir(&app),
+        );
+    }
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_test_stop(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    crate::voice_end_runtime::test_stop_dictation(&state, &window)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_test_commit(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    crate::voice_end_runtime::test_commit_key(&state, &window)
 }

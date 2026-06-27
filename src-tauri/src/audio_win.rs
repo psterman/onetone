@@ -204,7 +204,7 @@ mod imp {
 
     fn run_cpal_monitor(
         app: AppHandle,
-        window: WebviewWindow,
+        _window: WebviewWindow,
         device_name: String,
         device_id: String,
         stop: Arc<AtomicBool>,
@@ -279,7 +279,7 @@ mod imp {
             let level = ((peak_hold * 8.0).min(1.0) * 100.0).round() as u32;
             peak_hold *= 0.45;
             level_state.set(&device_id, level);
-            emit_mic_level(&app, &window, &device_id, level);
+            emit_mic_level(&app, &device_id, level);
         }
 
         drop(stream);
@@ -365,14 +365,13 @@ mod imp {
         peak
     }
 
-    fn emit_mic_level(app: &AppHandle, window: &WebviewWindow, device_id: &str, level: u32) {
+    fn emit_mic_level(app: &AppHandle, device_id: &str, level: u32) {
         let payload = serde_json::json!({
             "type": "mic_level",
             "level": level,
             "deviceId": device_id,
         });
         let _ = app.emit("to_js", &payload);
-        let _ = window.emit("to_js", &payload);
     }
 
     fn resolve_cpal_input(host: &cpal::Host, device_name: &str) -> Result<cpal::Device, String> {

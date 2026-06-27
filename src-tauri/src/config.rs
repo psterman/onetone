@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::AppState;
+use crate::ipc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -156,6 +157,8 @@ pub struct VoiceConfig {
     pub voice_sapi: VoiceSapiConfig,
     #[serde(default, rename = "voiceVosk")]
     pub voice_vosk: VoiceVoskConfig,
+    #[serde(default, rename = "voiceEnd")]
+    pub voice_end: VoiceEndConfig,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -239,6 +242,97 @@ impl Default for VoiceSapiConfig {
             min_confidence: default_voice_sapi_min_confidence(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceEndConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_voice_end_phrases_zh")]
+    pub phrases_zh: Vec<String>,
+    #[serde(default = "default_voice_end_phrases_en")]
+    pub phrases_en: Vec<String>,
+    #[serde(default = "default_voice_end_commit_delay_ms")]
+    pub commit_delay_ms: u32,
+    #[serde(default = "default_voice_end_commit_key")]
+    pub commit_key: String,
+    #[serde(default = "default_voice_end_dictation_timeout_ms")]
+    pub dictation_timeout_ms: u32,
+    #[serde(default = "default_false")]
+    pub auto_send_enabled: bool,
+    #[serde(default = "default_voice_end_target_key")]
+    pub target_key: String,
+}
+
+fn default_false() -> bool {
+    false
+}
+
+pub fn default_voice_end_phrases_zh() -> Vec<String> {
+    vec!["结束输入".into(), "发出去".into()]
+}
+
+pub fn default_voice_end_phrases_en() -> Vec<String> {
+    vec!["end dictation".into(), "send it".into()]
+}
+
+fn default_voice_end_commit_delay_ms() -> u32 {
+    4000
+}
+
+fn default_voice_end_commit_key() -> String {
+    "Enter".into()
+}
+
+fn default_voice_end_dictation_timeout_ms() -> u32 {
+    60000
+}
+
+fn default_voice_end_target_key() -> String {
+    "RAlt".into()
+}
+
+impl Default for VoiceEndConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            phrases_zh: default_voice_end_phrases_zh(),
+            phrases_en: default_voice_end_phrases_en(),
+            commit_delay_ms: default_voice_end_commit_delay_ms(),
+            commit_key: default_voice_end_commit_key(),
+            dictation_timeout_ms: default_voice_end_dictation_timeout_ms(),
+            auto_send_enabled: false,
+            target_key: default_voice_end_target_key(),
+        }
+    }
+}
+
+/// Start + end phrases merged for Vosk grammar (deduplicated).
+pub fn vosk_grammar_phrases(cfg: &VoiceConfig) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    let mut push = |p: &str| {
+        let t = p.trim();
+        if t.is_empty() {
+            return;
+        }
+        if seen.insert(t.to_string()) {
+            out.push(t.to_string());
+        }
+    };
+    for p in &cfg.voice_vosk.phrases {
+        push(p);
+    }
+    if cfg.voice_end.enabled {
+        for p in &cfg.voice_end.phrases_zh {
+            push(p);
+        }
+        for p in &cfg.voice_end.phrases_en {
+            push(p);
+        }
+    }
+    out
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -653,6 +747,7 @@ impl Default for VoiceConfig {
             key_press_duration_ms: default_key_press_duration_ms(),
             voice_sapi: VoiceSapiConfig::default(),
             voice_vosk: VoiceVoskConfig::default(),
+            voice_end: VoiceEndConfig::default(),
             scenes: None,
             scheme_switch_key: String::new(),
             record_key: String::new(),
@@ -865,6 +960,26 @@ impl VoiceConfig {
             }
         } else if self.voice_vosk.model_path.trim().is_empty() {
             self.voice_vosk.model_path = default_voice_vosk_model_path();
+        }
+        if self.voice_end.phrases_zh.iter().all(|p| p.trim().is_empty()) {
+            self.voice_end.phrases_zh = default_voice_end_phrases_zh();
+        }
+        if self.voice_end.phrases_en.iter().all(|p| p.trim().is_empty()) {
+            self.voice_end.phrases_en = default_voice_end_phrases_en();
+        }
+        if self.voice_end.commit_key.trim().is_empty() {
+            self.voice_end.commit_key = default_voice_end_commit_key();
+        }
+        if self.voice_end.target_key.trim().is_empty() {
+            self.voice_end.target_key = default_voice_end_target_key();
+        }
+        if self.voice_end.commit_delay_ms < 1000 {
+            self.voice_end.commit_delay_ms = default_voice_end_commit_delay_ms();
+        } else if self.voice_end.commit_delay_ms > 10000 {
+            self.voice_end.commit_delay_ms = 10000;
+        }
+        if self.voice_end.dictation_timeout_ms < 10000 {
+            self.voice_end.dictation_timeout_ms = default_voice_end_dictation_timeout_ms();
         }
         for (i, m) in self.mappings.iter_mut().enumerate() {
             if m.id.is_empty() {
@@ -1207,19 +1322,12 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
                 if rx.recv_timeout(Duration::from_millis(500)).is_ok() {
                     let mut new_cfg = load_config();
                     new_cfg.migrate();
+                    {
+                        *state.cfg.lock() = new_cfg.clone();
+                    }
                     apply_config(&state, &new_cfg);
-                    *state.cfg.lock() = new_cfg.clone();
-                    let conflicts = new_cfg.conflict_report();
-                    let payload = serde_json::json!({
-                        "config": new_cfg,
-                        "conflicts": conflicts,
-                    });
-                    let json = serde_json::to_string(&payload).unwrap();
-                    window
-                        .eval(&format!(
-                            "window.__vp_bridge__('mvp_init', {json})"
-                        ))
-                        .ok();
+                    let payload = ipc::mvp_init_payload(&state, "unchanged");
+                    ipc::emit_to_js_main(&window, payload);
                 }
             }
         }

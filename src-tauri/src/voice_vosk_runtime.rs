@@ -6,9 +6,12 @@ use std::time::{Duration, Instant};
 
 use tauri::WebviewWindow;
 
-use crate::config::{save_config, vosk_preset_default_phrases, vosk_preset_model_path, VoiceVoskConfig};
+use crate::config::{
+    save_config, vosk_grammar_phrases, vosk_preset_default_phrases, vosk_preset_model_path,
+    VoiceVoskConfig,
+};
 use crate::voice_vosk::{
-    probe_vosk_resources, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent,
+    probe_vosk_resources, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent, VoskResourceProbe,
 };
 use crate::AppState;
 
@@ -22,7 +25,10 @@ pub fn voice_vosk_start(
     voice_vosk_stop(state);
     clear_vosk_recognition_state(state);
 
-    match start_voice_vosk(cfg.clone(), resource_dir) {
+    let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
+    *state.voice_vosk_probe.lock() = Some(probe);
+
+    match start_voice_vosk(cfg.clone(), resource_dir, vosk_grammar_phrases(&state.cfg.lock())) {
         Ok(handle) => {
             *state.voice_vosk.lock() = Some(handle);
             *state.voice_vosk_last_error.lock() = String::new();
@@ -35,6 +41,23 @@ pub fn voice_vosk_start(
             Err(e)
         }
     }
+}
+
+pub fn spawn_voice_vosk_start(
+    state: Arc<AppState>,
+    cfg: VoiceVoskConfig,
+    resource_dir: Option<PathBuf>,
+) {
+    *state.voice_vosk_state.lock() = "starting".into();
+    *state.voice_vosk_last_error.lock() = String::new();
+    std::thread::Builder::new()
+        .name("voice-vosk-start".into())
+        .spawn(move || {
+            if let Err(e) = voice_vosk_start(state.as_ref(), &cfg, resource_dir) {
+                eprintln!("voice_vosk background start failed: {e}");
+            }
+        })
+        .ok();
 }
 
 pub fn voice_vosk_stop(state: &AppState) {
@@ -105,7 +128,8 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
                 *state.voice_vosk_last_partial.lock() = text;
             }
             VoiceVoskEvent::Final(text) => {
-                *state.voice_vosk_last_final.lock() = text;
+                *state.voice_vosk_last_final.lock() = text.clone();
+                crate::voice_end_runtime::try_match_end_phrase_on_final(state, window, &text);
             }
             VoiceVoskEvent::GrammarMode { grammar, note } => {
                 *state.voice_vosk_grammar_mode.lock() = Some(grammar);
@@ -115,6 +139,16 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
                 *state.voice_vosk_model_load_time_ms.lock() = Some(load_time_ms);
             }
             VoiceVoskEvent::Detected { phrase, text } => {
+                if crate::voice_end_runtime::should_skip_wake_phrase(state) {
+                    continue;
+                }
+                let is_start = {
+                    let cfg = state.cfg.lock();
+                    crate::voice_end_runtime::is_start_phrase(&cfg, &phrase)
+                };
+                if !is_start {
+                    continue;
+                }
                 *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
                 *state.voice_vosk_last_final.lock() = text;
                 process_detected(state, window, &phrase);
@@ -153,32 +187,43 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         }
     }
 
-    let sent = crate::keyboard::send_chord(&target_key, duration_ms);
-    *state.voice_vosk_cooldown_until.lock() =
-        Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
-    *state.voice_vosk_state.lock() = if sent {
-        "triggered".into()
-    } else {
-        "error".into()
-    };
-    if !sent {
-        *state.voice_vosk_last_error.lock() = format!("快捷键发送失败：{target_key}");
-    } else {
-        *state.voice_vosk_last_skip.lock() =
-            format!("已触发语音快捷键（命中「{phrase}」）。");
-    }
+    let state2 = Arc::clone(state);
+    let window2 = window.clone();
+    let phrase2 = phrase.to_string();
+    std::thread::spawn(move || {
+        let sent = crate::keyboard::send_chord(&target_key, duration_ms);
+        let now = Instant::now();
+        *state2.voice_vosk_cooldown_until.lock() =
+            Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
+        *state2.voice_vosk_state.lock() = if sent {
+            "triggered".into()
+        } else {
+            "error".into()
+        };
+        if !sent {
+            *state2.voice_vosk_last_error.lock() = format!("快捷键发送失败：{target_key}");
+        } else {
+            *state2.voice_vosk_last_skip.lock() =
+                format!("已触发语音快捷键（命中「{phrase2}」）。");
+            let mapping_id = {
+                let cfg = state2.cfg.lock();
+                crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
+            };
+            crate::voice_end_runtime::enter_dictating(&state2, &window2, &mapping_id, "vosk wake");
+        }
 
-    let label = if sent {
-        "voice_vosk"
-    } else {
-        "voice_vosk_send_failed"
-    };
-    crate::ipc::push_runtime(state.as_ref(), window, label, "");
+        let label = if sent {
+            "voice_vosk"
+        } else {
+            "voice_vosk_send_failed"
+        };
+        crate::ipc::push_runtime(state2.as_ref(), &window2, label, "");
+    });
 }
 
 pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
     let cfg = state.cfg.lock();
-    let probe = probe_vosk_resources(&cfg.voice_vosk, resource_dir.as_deref());
+    let probe = cached_vosk_probe(state, &cfg.voice_vosk, resource_dir.as_deref());
     serde_json::json!({
         "enabled": cfg.voice_vosk.enabled,
         "state": state.voice_vosk_state.lock().clone(),
@@ -200,6 +245,24 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "grammarMode": state.voice_vosk_grammar_mode.lock().clone(),
         "modelLoadTimeMs": state.voice_vosk_model_load_time_ms.lock().clone(),
     })
+}
+
+fn cached_vosk_probe(
+    state: &AppState,
+    cfg: &VoiceVoskConfig,
+    resource_dir: Option<&std::path::Path>,
+) -> VoskResourceProbe {
+    if let Some(probe) = state.voice_vosk_probe.lock().clone() {
+        return probe;
+    }
+    let probe = probe_vosk_resources(cfg, resource_dir);
+    *state.voice_vosk_probe.lock() = Some(probe.clone());
+    probe
+}
+
+pub fn refresh_vosk_probe_cache(state: &AppState, resource_dir: Option<&std::path::Path>) {
+    let cfg = state.cfg.lock().voice_vosk.clone();
+    *state.voice_vosk_probe.lock() = Some(probe_vosk_resources(&cfg, resource_dir));
 }
 
 pub fn disable_vosk_for_sapi(state: &Arc<AppState>) {
@@ -241,11 +304,12 @@ pub fn voice_vosk_set_enabled(
 
     if enabled {
         let cfg = state.cfg.lock().voice_vosk.clone();
-        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     } else {
         voice_vosk_stop(state);
         *state.voice_vosk_cooldown_until.lock() = None;
         *state.voice_vosk_last_error.lock() = String::new();
+        refresh_vosk_probe_cache(state, resource_dir.as_deref());
     }
 
     Ok(voice_vosk_status(state, resource_dir))
@@ -271,7 +335,7 @@ pub fn voice_vosk_set_phrases(
 
     if enabled {
         let cfg = state.cfg.lock().voice_vosk.clone();
-        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
 
     Ok(voice_vosk_status(state, resource_dir))
@@ -308,7 +372,7 @@ pub fn voice_vosk_set_model_preset(
 
     if enabled {
         let cfg = state.cfg.lock().voice_vosk.clone();
-        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
 
     Ok(voice_vosk_status(state, resource_dir))
@@ -335,7 +399,7 @@ pub fn voice_vosk_set_model_path(
 
     if enabled {
         let cfg = state.cfg.lock().voice_vosk.clone();
-        voice_vosk_start(state, &cfg, resource_dir.clone())?;
+        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
 
     Ok(voice_vosk_status(state, resource_dir))

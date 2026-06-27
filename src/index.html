@@ -1036,6 +1036,59 @@
         </div>
       </div>
       <div class="drawer-section">
+        <div class="mini-title" id="voiceEndTitle">语音结束与发送</div>
+        <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。结束词识别依赖 Vosk。</p>
+        <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用 Vosk 才能语音结束</p>
+        <p class="mic-desc" id="voiceEndCompatWarn" style="margin-top:4px">外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。</p>
+        <div class="setting-row">
+          <div class="setting-row-main">
+            <span class="setting-row-text" id="voiceEndLabel">启用语音结束</span>
+          </div>
+          <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
+        </div>
+        <div class="control-row" style="margin-top:8px">
+          <span class="chip" id="voiceEndState">待命</span>
+        </div>
+        <p class="mic-desc" id="voiceEndPhrasesLine" style="margin-top:6px"></p>
+        <p class="mic-desc" id="voiceEndLastPhraseLine"></p>
+        <p class="mic-desc" id="voiceEndLastActionLine"></p>
+        <p class="mic-desc" id="voiceEndAutoSendLine"></p>
+        <p class="mic-desc" id="voiceEndDelayLine"></p>
+        <p class="mic-empty" id="voiceEndAutoSendWarn" hidden></p>
+        <div class="voice-sapi-box" id="voiceEndPresetsWrap">
+          <p class="mic-desc" id="voiceEndPresetsZhLabel">中文结束词</p>
+          <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
+            <button type="button" class="voice-sapi-preset" data-phrase="结束输入">结束输入</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="完成">完成</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="提交">提交</button>
+          </div>
+          <p class="mic-desc" id="voiceEndPresetsEnLabel" style="margin-top:8px">英文结束词</p>
+          <div class="voice-sapi-preset-grid" id="voiceEndPresetsEn">
+            <button type="button" class="voice-sapi-preset" data-phrase="end dictation">end dictation</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="send">send</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="finish">finish</button>
+            <button type="button" class="voice-sapi-preset" data-phrase="done">done</button>
+          </div>
+        </div>
+        <div class="voice-sapi-row" style="margin-top:10px">
+          <span class="mic-desc" id="voiceEndDelayLabel">发送延迟</span>
+          <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000" style="width:100%;margin-top:4px">
+        </div>
+        <div class="setting-row" style="margin-top:8px">
+          <div class="setting-row-main">
+            <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
+          </div>
+          <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
+          <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
+        </div>
+      </div>
+      <div class="drawer-section">
         <div class="helper-note" id="quickTips">
           <strong id="quickTipsTitle">怎么设置最省心</strong>
           <span id="quickTipsBody">先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。</span>
@@ -1210,7 +1263,15 @@
   const vpInvoke=function(cmd,args){return invoke(cmd,window.__vp_tauri_args__?window.__vp_tauri_args__(args||{}):(args||{}));};
   const $=id=>document.getElementById(id);
   const state={config:null,selectedMappingId:null};
-  const runtime={lastAction:'-',timerActive:false,paused:false};
+  let runtime={lastAction:'-',timerActive:false,paused:false};
+  let runtimeRenderTimer=0;
+  function scheduleRuntimeRender(){
+    if(runtimeRenderTimer) return;
+    runtimeRenderTimer=setTimeout(function(){
+      runtimeRenderTimer=0;
+      render();
+    },150);
+  }
   const logLines=[];
   let recordingMode='none';
   let recordTimer=0;
@@ -1225,6 +1286,8 @@
   let micPollTimer=0;
   let voiceSapiPollTimer=0;
   let voiceVoskPollTimer=0;
+  let voiceEndPollTimer=0;
+  let drawerVoicePollTimer=0;
   let lang='zh';
   let testSendState='idle';
   let testSendTimer=0;
@@ -1359,6 +1422,33 @@
       voiceVoskPresetsEnLabel:'英文唤醒词',
       voiceVoskPresetUpdated:'已更新唤醒词',
       voiceVoskModelUpdated:'已切换模型预设',
+      voiceEndTitle:'语音结束与发送',
+      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。结束词识别依赖 Vosk。',
+      voiceEndLabel:'启用语音结束',
+      voiceEndVoskWarn:'需要启用 Vosk 才能语音结束',
+      voiceEndCompatWarn:'外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。',
+      voiceEndPhrases:'结束词',
+      voiceEndLastPhrase:'最后结束词',
+      voiceEndLastAction:'最近动作',
+      voiceEndAutoSend:'自动发送',
+      voiceEndAutoSendOn:'开',
+      voiceEndAutoSendOff:'关',
+      voiceEndDelay:'发送延迟',
+      voiceEndDelayMs:'{n}ms',
+      voiceEndPresetsZhLabel:'中文结束词',
+      voiceEndPresetsEnLabel:'英文结束词',
+      voiceEndAutoSendLabel:'自动发送（Enter）',
+      voiceEndAutoSendWarn:'与方案「自动发送等待」二选一，建议关闭 mapping 的 autoEnterEnabled',
+      voiceEndTestStop:'测试结束录音',
+      voiceEndTestCommit:'测试发送',
+      voiceEndPresetUpdated:'已更新结束词',
+      voiceEndFail:'语音结束设置失败',
+      voiceEndStateIdle:'待命',
+      voiceEndStateDictating:'正在听写，等待结束词',
+      voiceEndStateStopping:'已按快捷键结束录音',
+      voiceEndStateCommitting:'等待输入法上屏',
+      voiceEndStateSent:'已发送',
+      voiceEndStateError:'出错',
       quickTipsTitle:'怎么设置最省心',
       quickTipsBody:'先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。',
       replayWelcome:'重新查看首次引导',
@@ -1515,6 +1605,33 @@
       voiceVoskPresetsEnLabel:'English phrases',
       voiceVoskPresetUpdated:'Wake phrases updated',
       voiceVoskModelUpdated:'Model preset updated',
+      voiceEndTitle:'Voice end & send',
+      voiceEndDesc:'Say an end phrase while dictating to stop recording via the voice shortcut. End phrases require Vosk.',
+      voiceEndLabel:'Enable voice end',
+      voiceEndVoskWarn:'Enable Vosk to use voice end phrases',
+      voiceEndCompatWarn:'External IME may exclusive-lock the mic; end phrases may not work (compat mode).',
+      voiceEndPhrases:'End phrases',
+      voiceEndLastPhrase:'Last end phrase',
+      voiceEndLastAction:'Last action',
+      voiceEndAutoSend:'Auto send',
+      voiceEndAutoSendOn:'On',
+      voiceEndAutoSendOff:'Off',
+      voiceEndDelay:'Send delay',
+      voiceEndDelayMs:'{n}ms',
+      voiceEndPresetsZhLabel:'Chinese end phrases',
+      voiceEndPresetsEnLabel:'English end phrases',
+      voiceEndAutoSendLabel:'Auto send (Enter)',
+      voiceEndAutoSendWarn:'Pick one: voice-end auto send OR mapping auto-enter — disable mapping autoEnterEnabled',
+      voiceEndTestStop:'Test stop recording',
+      voiceEndTestCommit:'Test send key',
+      voiceEndPresetUpdated:'End phrases updated',
+      voiceEndFail:'Voice end settings failed',
+      voiceEndStateIdle:'Idle',
+      voiceEndStateDictating:'Dictating — waiting for end phrase',
+      voiceEndStateStopping:'Stop key sent',
+      voiceEndStateCommitting:'Waiting for text on screen',
+      voiceEndStateSent:'Sent',
+      voiceEndStateError:'Error',
       quickTipsTitle:'Easiest setup',
       quickTipsBody:'Set a launch key first, then record the voice shortcut. You can ignore advanced options at first.',
       replayWelcome:'Replay first-run guide',
@@ -1940,8 +2057,16 @@
     });
   }
 
+  function voiceCaptureActive(){
+    const cfg=state.config||{};
+    const vosk=cfg.voiceVosk||cfg.voice_vosk;
+    const sapi=cfg.voiceSapi||cfg.voice_sapi;
+    return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled);
+  }
+
   function pollMicLevel(){
     if(!ui.drawerOpen) return;
+    if(voiceCaptureActive()) return;
     vpInvoke('cmd_mic_get_level',{}).then(function(res){
       if(!res) return;
       const id=res.deviceId||res.device_id||'';
@@ -1952,7 +2077,7 @@
   function startMicLevelPoll(){
     stopMicLevelPoll();
     pollMicLevel();
-    micPollTimer=setInterval(pollMicLevel,80);
+    micPollTimer=setInterval(pollMicLevel, voiceCaptureActive()?400:80);
   }
 
   function stopMicLevelPoll(){
@@ -2015,6 +2140,7 @@
       if(!micDevices.length) return;
       const target=micDevices.find(function(d){ return d.isDefault; })||micDevices[0];
       activeMicId=target?target.id:'';
+      if(voiceCaptureActive()) return;
       startMicMonitor(activeMicId||null);
     }).catch(function(err){
       micDevices=[];
@@ -2053,10 +2179,12 @@
     $('drawerOverlay').classList.add('open');
     $('settingsDrawer').setAttribute('aria-hidden','false');
     loadAutostartState();
-    loadMicDevices();
-    startMicLevelPoll();
-    startVoiceSapiPoll();
-    startVoiceVoskPoll();
+    requestAnimationFrame(function(){
+      if(!ui.drawerOpen) return;
+      loadMicDevices();
+      startMicLevelPoll();
+      startDrawerVoicePoll();
+    });
   }
 
   function closeDrawer(){
@@ -2066,8 +2194,41 @@
     $('settingsDrawer').setAttribute('aria-hidden','true');
     stopMicLevelPoll();
     stopMicMonitor();
+    stopDrawerVoicePoll();
+  }
+
+  function pollDrawerVoiceStatus(){
+    if(!ui.drawerOpen) return;
+    loadVoiceSapiStatus();
+    loadVoiceVoskStatus();
+    loadVoiceEndStatus();
+  }
+
+  function startDrawerVoicePoll(){
+    stopDrawerVoicePoll();
+    pollDrawerVoiceStatus();
+    drawerVoicePollTimer=setInterval(pollDrawerVoiceStatus,1000);
+  }
+
+  function stopDrawerVoicePoll(){
+    if(drawerVoicePollTimer){
+      clearInterval(drawerVoicePollTimer);
+      drawerVoicePollTimer=0;
+    }
     stopVoiceSapiPoll();
     stopVoiceVoskPoll();
+    stopVoiceEndPoll();
+  }
+
+  function refreshDrawerMicAfterVoiceToggle(){
+    if(!ui.drawerOpen) return;
+    if(voiceCaptureActive()){
+      stopMicMonitor();
+      stopMicLevelPoll();
+    }else{
+      loadMicDevices();
+      startMicLevelPoll();
+    }
   }
 
   function syncVoiceSapiToggle(enabled){
@@ -2137,6 +2298,7 @@
     vpInvoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
       renderVoiceSapiStatus(res);
       loadVoiceVoskStatus();
+      refreshDrawerMicAfterVoiceToggle();
     }).catch(function(err){
       loadVoiceSapiStatus();
       toast(t('voiceSapiFail'));
@@ -2312,6 +2474,7 @@
     vpInvoke('cmd_voice_vosk_set_enabled',{enabled:next}).then(function(res){
       renderVoiceVoskStatus(res);
       loadVoiceSapiStatus();
+      refreshDrawerMicAfterVoiceToggle();
     }).catch(function(err){
       loadVoiceVoskStatus();
       toast(t('voiceVoskFail'));
@@ -2386,6 +2549,194 @@
     if(voiceVoskPollTimer){
       clearInterval(voiceVoskPollTimer);
       voiceVoskPollTimer=0;
+    }
+  }
+
+  function voiceEndStateLabel(raw){
+    const labels={
+      idle:t('voiceEndStateIdle'),
+      dictating:t('voiceEndStateDictating'),
+      stopping:t('voiceEndStateStopping'),
+      committing:t('voiceEndStateCommitting'),
+      sent:t('voiceEndStateSent'),
+      error:t('voiceEndStateError')
+    };
+    return labels[raw]||raw||t('voiceEndStateIdle');
+  }
+
+  function renderVoiceEndStatus(res){
+    if(!res) return;
+    syncVoiceEndToggle(!!res.enabled);
+    syncVoiceEndAutoSendToggle(!!res.autoSendEnabled);
+    const stateEl=$('voiceEndState');
+    if(stateEl){
+      stateEl.textContent=res.statusLabel||voiceEndStateLabel(res.state||'idle');
+    }
+    const voskWarn=$('voiceEndVoskWarn');
+    if(voskWarn) voskWarn.hidden=!(res.enabled&&res.voskRequired);
+    const autoWarn=$('voiceEndAutoSendWarn');
+    if(autoWarn){
+      autoWarn.hidden=!res.autoSendEnabled;
+      autoWarn.textContent=t('voiceEndAutoSendWarn');
+    }
+    const zh=Array.isArray(res.phrasesZh)?res.phrasesZh:[];
+    const en=Array.isArray(res.phrasesEn)?res.phrasesEn:[];
+    const phrasesLine=$('voiceEndPhrasesLine');
+    if(phrasesLine) phrasesLine.textContent=t('voiceEndPhrases')+'：'+(zh.concat(en).join(' / ')||'—');
+    const lastPhrase=$('voiceEndLastPhraseLine');
+    if(lastPhrase) lastPhrase.textContent=t('voiceEndLastPhrase')+'：'+(res.lastEndPhrase||'—');
+    const lastAction=$('voiceEndLastActionLine');
+    if(lastAction) lastAction.textContent=t('voiceEndLastAction')+'：'+(res.lastAction||'—');
+    const autoLine=$('voiceEndAutoSendLine');
+    if(autoLine) autoLine.textContent=t('voiceEndAutoSend')+'：'+(res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'));
+    const delayMs=res.commitDelayMs!=null?res.commitDelayMs:4000;
+    const delayLine=$('voiceEndDelayLine');
+    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
+    const range=$('voiceEndDelayRange');
+    if(range&&document.activeElement!==range){
+      range.value=String(delayMs);
+      range.style.setProperty('--range-pct',((delayMs-1000)/9000*100)+'%');
+    }
+    syncVoiceEndPresets(zh,en);
+  }
+
+  function loadVoiceEndStatus(){
+    return vpInvoke('cmd_voice_end_status',{}).then(function(res){
+      renderVoiceEndStatus(res);
+      return res;
+    }).catch(function(){});
+  }
+
+  function syncVoiceEndToggle(enabled){
+    const btn=$('btnVoiceEnd');
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
+  function syncVoiceEndAutoSendToggle(enabled){
+    const btn=$('btnVoiceEndAutoSend');
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
+  function toggleVoiceEnd(){
+    const btn=$('btnVoiceEnd');
+    if(!btn) return;
+    const next=!btn.classList.contains('is-on');
+    syncVoiceEndToggle(next);
+    vpInvoke('cmd_voice_end_set_enabled',{enabled:next}).then(function(res){
+      renderVoiceEndStatus(res);
+      loadVoiceVoskStatus();
+    }).catch(function(err){
+      loadVoiceEndStatus();
+      toast(t('voiceEndFail'));
+      console.error('voice_end',err);
+    });
+  }
+
+  function toggleVoiceEndAutoSend(){
+    const btn=$('btnVoiceEndAutoSend');
+    if(!btn) return;
+    const next=!btn.classList.contains('is-on');
+    syncVoiceEndAutoSendToggle(next);
+    vpInvoke('cmd_voice_end_set_auto_send',{enabled:next}).then(renderVoiceEndStatus).catch(function(){
+      loadVoiceEndStatus();
+      toast(t('voiceEndFail'));
+    });
+  }
+
+  function onVoiceEndDelayInput(){
+    const el=$('voiceEndDelayRange');
+    if(!el) return;
+    const ms=parseInt(el.value,10)||4000;
+    el.style.setProperty('--range-pct',((ms-1000)/9000*100)+'%');
+    const delayLine=$('voiceEndDelayLine');
+    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(ms));
+  }
+
+  function onVoiceEndDelayChange(){
+    const el=$('voiceEndDelayRange');
+    if(!el) return;
+    const ms=parseInt(el.value,10)||4000;
+    onVoiceEndDelayInput();
+    vpInvoke('cmd_voice_end_set_commit_delay',{commitDelayMs:ms}).then(renderVoiceEndStatus).catch(function(){
+      loadVoiceEndStatus();
+    });
+  }
+
+  function addVoiceEndPreset(ev){
+    const btn=ev.target.closest&&ev.target.closest('[data-phrase]');
+    if(!btn) return;
+    const phrase=btn.getAttribute('data-phrase')||'';
+    const zhSel=[];
+    const enSel=[];
+    document.querySelectorAll('#voiceEndPresetsZh [data-phrase].is-selected').forEach(function(x){
+      const p=x.getAttribute('data-phrase')||'';
+      if(p) zhSel.push(p);
+    });
+    document.querySelectorAll('#voiceEndPresetsEn [data-phrase].is-selected').forEach(function(x){
+      const p=x.getAttribute('data-phrase')||'';
+      if(p) enSel.push(p);
+    });
+    const inZh=btn.closest('#voiceEndPresetsZh');
+    const list=inZh?zhSel:enSel;
+    const idx=list.indexOf(phrase);
+    if(idx>=0 && list.length>1) list.splice(idx,1);
+    else if(idx<0) list.push(phrase);
+    if(inZh){
+      vpInvoke('cmd_voice_end_set_phrases',{phrasesZh:list.length?list:[phrase],phrasesEn:enSel.length?enSel:['end dictation']}).then(function(res){
+        renderVoiceEndStatus(res);
+        toast(t('voiceEndPresetUpdated'));
+      }).catch(function(){ toast(t('voiceEndFail')); loadVoiceEndStatus(); });
+    }else{
+      vpInvoke('cmd_voice_end_set_phrases',{phrasesZh:zhSel.length?zhSel:['结束输入'],phrasesEn:list.length?list:[phrase]}).then(function(res){
+        renderVoiceEndStatus(res);
+        toast(t('voiceEndPresetUpdated'));
+      }).catch(function(){ toast(t('voiceEndFail')); loadVoiceEndStatus(); });
+    }
+  }
+
+  function syncVoiceEndPresets(zh,en){
+    const zhSet=(Array.isArray(zh)?zh:[]).map(function(x){return String(x||'').trim();});
+    const enSet=(Array.isArray(en)?en:[]).map(function(x){return String(x||'').trim();});
+    document.querySelectorAll('#voiceEndPresetsZh [data-phrase]').forEach(function(btn){
+      const phrase=btn.getAttribute('data-phrase')||'';
+      btn.classList.toggle('is-selected',zhSet.includes(phrase));
+    });
+    document.querySelectorAll('#voiceEndPresetsEn [data-phrase]').forEach(function(btn){
+      const phrase=btn.getAttribute('data-phrase')||'';
+      btn.classList.toggle('is-selected',enSet.includes(phrase));
+    });
+  }
+
+  function testVoiceEndStop(){
+    vpInvoke('cmd_voice_end_test_stop',{}).then(function(res){
+      if(res&&res.ok) toast(t('testSent')+(res.targetKey||''));
+      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
+      else toast(t('testFailed'));
+    }).catch(function(){ toast(t('testFailed')); });
+  }
+
+  function testVoiceEndCommit(){
+    vpInvoke('cmd_voice_end_test_commit',{}).then(function(res){
+      if(res&&res.ok) toast(t('testSent')+(res.commitKey||''));
+      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
+      else toast(t('testFailed'));
+    }).catch(function(){ toast(t('testFailed')); });
+  }
+
+  function startVoiceEndPoll(){
+    stopVoiceEndPoll();
+    loadVoiceEndStatus();
+    voiceEndPollTimer=setInterval(loadVoiceEndStatus,500);
+  }
+
+  function stopVoiceEndPoll(){
+    if(voiceEndPollTimer){
+      clearInterval(voiceEndPollTimer);
+      voiceEndPollTimer=0;
     }
   }
 
@@ -2485,6 +2836,17 @@
     const voiceVoskModelLabel=$('voiceVoskModelLabel'); if(voiceVoskModelLabel) voiceVoskModelLabel.textContent=d.voiceVoskModelLabel;
     const voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
     const voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
+    const voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;
+    const voiceEndDesc=$('voiceEndDesc'); if(voiceEndDesc) voiceEndDesc.textContent=d.voiceEndDesc;
+    const voiceEndLabel=$('voiceEndLabel'); if(voiceEndLabel) voiceEndLabel.textContent=d.voiceEndLabel;
+    const voiceEndVoskWarn=$('voiceEndVoskWarn'); if(voiceEndVoskWarn) voiceEndVoskWarn.textContent=d.voiceEndVoskWarn;
+    const voiceEndCompatWarn=$('voiceEndCompatWarn'); if(voiceEndCompatWarn) voiceEndCompatWarn.textContent=d.voiceEndCompatWarn;
+    const voiceEndPresetsZhLabel=$('voiceEndPresetsZhLabel'); if(voiceEndPresetsZhLabel) voiceEndPresetsZhLabel.textContent=d.voiceEndPresetsZhLabel;
+    const voiceEndPresetsEnLabel=$('voiceEndPresetsEnLabel'); if(voiceEndPresetsEnLabel) voiceEndPresetsEnLabel.textContent=d.voiceEndPresetsEnLabel;
+    const voiceEndDelayLabel=$('voiceEndDelayLabel'); if(voiceEndDelayLabel) voiceEndDelayLabel.textContent=d.voiceEndDelay;
+    const voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
+    const btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
+    const btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;
     $('logTitle').textContent=d.logTitle;
     $('runtimeTitle').textContent=d.runtimeTitle;
     $('actionLabel').textContent=d.actionLabel;
@@ -4040,6 +4402,13 @@
   $('btnVoiceVoskTest').onclick=testVoiceVoskSend;
   $('voiceVoskPresetsWrap').onclick=addVoiceVoskPreset;
   $('voiceVoskModelPreset').onchange=changeVoiceVoskModelPreset;
+  $('btnVoiceEnd').onclick=toggleVoiceEnd;
+  $('btnVoiceEndAutoSend').onclick=toggleVoiceEndAutoSend;
+  $('voiceEndPresetsWrap').onclick=addVoiceEndPreset;
+  $('voiceEndDelayRange').oninput=onVoiceEndDelayInput;
+  $('voiceEndDelayRange').onchange=onVoiceEndDelayChange;
+  $('btnVoiceEndTestStop').onclick=testVoiceEndStop;
+  $('btnVoiceEndTestCommit').onclick=testVoiceEndCommit;
   $('voiceSapiConfidence').oninput=function(){updateVoiceSapiConfidence(false)};
   $('voiceSapiConfidence').onchange=function(){updateVoiceSapiConfidence(true)};
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
@@ -4534,7 +4903,7 @@
       if(recordingMode==='trigger' && runtime.lastAction==='recorded'){
         /* handled by mvp_key_captured */
       } else if(runtime.lastAction!=='scheme_select'&&runtime.lastAction!=='scheme_cycle'){
-        render();
+        scheduleRuntimeRender();
       }
     }
     if(msg.type==='mvp_scheme_switched'){
