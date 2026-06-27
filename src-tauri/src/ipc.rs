@@ -642,26 +642,30 @@ pub fn cmd_ready(
     state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,
     backdrop_mode: Option<String>,
-) {
+) -> serde_json::Value {
     let mode = backdrop_mode.unwrap_or_else(|| "unchanged".into());
-    push_mvp_init(&state, &window, &mode);
+    let payload = mvp_init_payload(&state, &mode);
+    emit_to_js_main(&window, payload.clone());
     push_runtime(&state, &window, "config_push", "");
+    payload
 }
 
 #[tauri::command]
 pub fn cmd_save(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow, json: String) {
-    if let Ok(mut cfg) = serde_json::from_str::<VoiceConfig>(&json) {
-        cfg.migrate();
-        cfg.normalize();
-        config::save_config(&cfg);
-        config::apply_config(&state, &cfg);
-        *state.cfg.lock() = cfg.clone();
-        sync_config_ui(&state, &window, "unchanged");
-        state.machine_pool.lock().reset_all();
-        push_runtime(&state, &window, "saved", "");
-        let ack = serde_json::json!({"type":"mvp_saved","ok":true});
-        window.emit("to_js", &ack).ok();
-    }
+    let existing = state.cfg.lock().clone();
+    let Some(mut cfg) = config::merge_save_payload(&existing, &json) else {
+        return;
+    };
+    cfg.migrate();
+    cfg.normalize();
+    config::save_config(&cfg);
+    config::apply_config(&state, &cfg);
+    *state.cfg.lock() = cfg.clone();
+    sync_config_ui(&state, &window, "unchanged");
+    state.machine_pool.lock().reset_all();
+    push_runtime(&state, &window, "saved", "");
+    let ack = serde_json::json!({"type":"mvp_saved","ok":true});
+    window.emit("to_js", &ack).ok();
 }
 
 #[tauri::command]
@@ -1240,8 +1244,10 @@ pub fn cmd_autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 }
 
 #[tauri::command]
-pub fn cmd_mic_list() -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
-    crate::audio_win::list_input_devices()
+pub async fn cmd_mic_list() -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
+    tauri::async_runtime::spawn_blocking(crate::audio_win::list_input_devices)
+        .await
+        .map_err(|e| format!("mic list task failed: {e}"))?
 }
 
 #[tauri::command]
@@ -1269,21 +1275,42 @@ pub fn cmd_mic_monitor_start(
     #[allow(non_snake_case)] deviceId: Option<String>,
     device_id: Option<String>,
 ) -> Result<(), String> {
-    // Voice engines hold the default capture device; starting a second stream freezes/hangs WASAPI.
     if state.voice_vosk.lock().is_some() || state.voice_sapi.lock().is_some() {
         return Ok(());
     }
-    crate::audio_win::start_mic_monitor(
-        app,
-        window,
-        device_id.or(deviceId),
-        &state.mic_monitor,
-        &state.mic_level,
-    )
+    let state = Arc::clone(state.inner());
+    let device_id = device_id.or(deviceId);
+    std::thread::Builder::new()
+        .name("mic-monitor-start".into())
+        .spawn(move || {
+            crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            state.mic_level.clear();
+            if let Err(err) = crate::audio_win::start_mic_monitor(
+                app,
+                window,
+                device_id,
+                &state.mic_monitor,
+                &state.mic_level,
+            ) {
+                eprintln!("mic monitor start: {err}");
+            }
+        })
+        .map_err(|e| format!("spawn mic monitor: {e}"))?;
+    Ok(())
 }
 
 #[tauri::command]
-pub fn cmd_mic_get_level(state: tauri::State<Arc<AppState>>) -> crate::audio_win::MicLevelSnapshot {
+pub fn cmd_mic_get_level(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] deviceId: Option<String>,
+    device_id: Option<String>,
+) -> crate::audio_win::MicLevelSnapshot {
+    let hinted_id = device_id.or(deviceId).unwrap_or_default();
+    if let Ok(snapshot) = crate::audio_win::read_mic_peak_level(Some(hinted_id.as_str())) {
+        state.mic_level.set(&snapshot.device_id, snapshot.level);
+        return snapshot;
+    }
     state.mic_level.snapshot()
 }
 
@@ -1298,12 +1325,17 @@ pub fn cmd_voice_sapi_status(state: tauri::State<Arc<AppState>>) -> serde_json::
 }
 
 #[tauri::command]
-pub fn cmd_voice_sapi_set_enabled(
-    state: tauri::State<Arc<AppState>>,
+pub async fn cmd_voice_sapi_set_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
     window: tauri::WebviewWindow,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_sapi_runtime::voice_sapi_set_enabled(&state, &window, enabled)
+    let state = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::voice_sapi_runtime::voice_sapi_set_enabled(&state, &window, enabled)
+    })
+    .await
+    .map_err(|e| format!("voice sapi toggle task failed: {e}"))?
 }
 
 #[tauri::command]
@@ -1344,18 +1376,20 @@ pub fn cmd_voice_vosk_status(
 }
 
 #[tauri::command]
-pub fn cmd_voice_vosk_set_enabled(
-    state: tauri::State<Arc<AppState>>,
+pub async fn cmd_voice_vosk_set_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
     window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_vosk_runtime::voice_vosk_set_enabled(
-        &state,
-        &window,
-        enabled,
-        app_resource_dir(&app),
-    )
+    let state = Arc::clone(state.inner());
+    let window = window.clone();
+    let resource_dir = app_resource_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::voice_vosk_runtime::voice_vosk_set_enabled(&state, &window, enabled, resource_dir)
+    })
+    .await
+    .map_err(|e| format!("voice vosk toggle task failed: {e}"))?
 }
 
 #[tauri::command]
@@ -1407,25 +1441,10 @@ pub fn cmd_voice_end_set_enabled(
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
     let status = crate::voice_end_runtime::voice_end_set_enabled(&state, &window, enabled);
-    if enabled {
-        let cfg = state.cfg.lock();
-        if cfg.voice_vosk.enabled {
-            let vosk = cfg.voice_vosk.clone();
-            drop(cfg);
-            crate::voice_vosk_runtime::spawn_voice_vosk_start(
-                Arc::clone(&state),
-                vosk,
-                app_resource_dir(&app),
-            );
-        }
-    } else if state.cfg.lock().voice_vosk.enabled {
-        let vosk = state.cfg.lock().voice_vosk.clone();
-        crate::voice_vosk_runtime::spawn_voice_vosk_start(
-            Arc::clone(&state),
-            vosk,
-            app_resource_dir(&app),
-        );
-    }
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(
+        Arc::clone(&state),
+        app_resource_dir(&app),
+    );
     Ok(status)
 }
 
@@ -1459,16 +1478,10 @@ pub fn cmd_voice_end_set_phrases(
     let zh = phrases_zh.or(phrasesZh).unwrap_or_default();
     let en = phrases_en.or(phrasesEn).unwrap_or_default();
     let status = crate::voice_end_runtime::voice_end_set_phrases(&state, zh, en);
-    let cfg = state.cfg.lock();
-    if cfg.voice_vosk.enabled && cfg.voice_end.enabled {
-        let vosk = cfg.voice_vosk.clone();
-        drop(cfg);
-        crate::voice_vosk_runtime::spawn_voice_vosk_start(
-            Arc::clone(&state),
-            vosk,
-            app_resource_dir(&app),
-        );
-    }
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(
+        Arc::clone(&state),
+        app_resource_dir(&app),
+    );
     Ok(status)
 }
 

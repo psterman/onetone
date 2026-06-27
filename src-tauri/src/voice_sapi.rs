@@ -32,7 +32,12 @@ impl Drop for VoiceSapiHandle {
     fn drop(&mut self) {
         let _ = self.stop_tx.send(());
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            std::thread::Builder::new()
+                .name("voice-sapi-join".into())
+                .spawn(move || {
+                    let _ = thread.join();
+                })
+                .ok();
         }
     }
 }

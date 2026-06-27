@@ -1,43 +1,98 @@
 //! Runtime integration for Vosk offline voice wake.
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tauri::WebviewWindow;
+use tauri::{Emitter, WebviewWindow};
 
 use crate::config::{
     save_config, vosk_grammar_phrases, vosk_preset_default_phrases, vosk_preset_model_path,
     VoiceVoskConfig,
 };
 use crate::voice_vosk::{
-    probe_vosk_resources, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent, VoskResourceProbe,
+    probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent,
+    VoskResourceProbe,
 };
 use crate::AppState;
+
+fn next_vosk_epoch(state: &AppState) -> u64 {
+    state.voice_vosk_epoch.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn vosk_epoch_matches(state: &AppState, epoch: u64) -> bool {
+    state.voice_vosk_epoch.load(Ordering::SeqCst) == epoch
+}
+
+/// Stop on a background thread (IPC-safe). Invalidates in-flight start workers.
+pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
+    let epoch = next_vosk_epoch(state.as_ref());
+    let _ = epoch;
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    *state.voice_vosk_cooldown_until.lock() = None;
+    *state.voice_vosk_last_error.lock() = String::new();
+    let handle = state.voice_vosk.lock().take();
+    if let Some(handle) = handle {
+        *state.voice_vosk_state.lock() = "stopping".into();
+        std::thread::Builder::new()
+            .name("voice-vosk-stop".into())
+            .spawn(move || {
+                stop_voice_vosk(handle);
+                *state.voice_vosk_state.lock() = "stopped".into();
+            })
+            .ok();
+    } else {
+        *state.voice_vosk_state.lock() = "stopped".into();
+    }
+}
+
+/// Block until the worker exits. Background start threads only.
+fn voice_vosk_stop_sync(state: &AppState) {
+    if let Some(handle) = state.voice_vosk.lock().take() {
+        shutdown_sync(handle);
+    }
+    *state.voice_vosk_state.lock() = "stopped".into();
+}
 
 pub fn voice_vosk_start(
     state: &AppState,
     cfg: &VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
+    epoch: u64,
 ) -> Result<(), String> {
+    if !vosk_epoch_matches(state, epoch) {
+        return Ok(());
+    }
+
     // Release mic level monitor so WASAPI default capture can reopen cleanly.
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    voice_vosk_stop(state);
+    voice_vosk_stop_sync(state);
     clear_vosk_recognition_state(state);
+
+    if !vosk_epoch_matches(state, epoch) {
+        return Ok(());
+    }
 
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
     *state.voice_vosk_probe.lock() = Some(probe);
 
     match start_voice_vosk(cfg.clone(), resource_dir, vosk_grammar_phrases(&state.cfg.lock())) {
         Ok(handle) => {
+            if !vosk_epoch_matches(state, epoch) {
+                stop_voice_vosk(handle);
+                return Ok(());
+            }
             *state.voice_vosk.lock() = Some(handle);
             *state.voice_vosk_last_error.lock() = String::new();
             *state.voice_vosk_state.lock() = "starting".into();
             Ok(())
         }
         Err(e) => {
-            *state.voice_vosk_last_error.lock() = e.clone();
-            *state.voice_vosk_state.lock() = "error".into();
+            if vosk_epoch_matches(state, epoch) {
+                *state.voice_vosk_last_error.lock() = e.clone();
+                *state.voice_vosk_state.lock() = "error".into();
+            }
             Err(e)
         }
     }
@@ -48,16 +103,32 @@ pub fn spawn_voice_vosk_start(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
 ) {
+    let epoch = next_vosk_epoch(state.as_ref());
     *state.voice_vosk_state.lock() = "starting".into();
     *state.voice_vosk_last_error.lock() = String::new();
     std::thread::Builder::new()
         .name("voice-vosk-start".into())
         .spawn(move || {
-            if let Err(e) = voice_vosk_start(state.as_ref(), &cfg, resource_dir) {
+            if let Err(e) = voice_vosk_start(state.as_ref(), &cfg, resource_dir, epoch) {
                 eprintln!("voice_vosk background start failed: {e}");
             }
         })
         .ok();
+}
+
+/// End-phrase changes apply live from config; only grammar mode needs a Vosk reload.
+pub fn maybe_restart_vosk_for_grammar(state: Arc<AppState>, resource_dir: Option<PathBuf>) {
+    let cfg = {
+        let lock = state.cfg.lock();
+        if !lock.voice_vosk.enabled {
+            return;
+        }
+        lock.voice_vosk.clone()
+    };
+    if *state.voice_vosk_grammar_mode.lock() != Some(true) {
+        return;
+    }
+    spawn_voice_vosk_start(state, cfg, resource_dir);
 }
 
 pub fn voice_vosk_stop(state: &AppState) {
@@ -79,7 +150,7 @@ fn clear_vosk_recognition_state(state: &AppState) {
 
 fn tick_cooldown_state(state: &AppState) {
     let mut current = state.voice_vosk_state.lock();
-    if *current == "error" || *current == "stopped" {
+    if *current == "error" || *current == "stopped" || *current == "stopping" {
         return;
     }
 
@@ -101,6 +172,15 @@ fn tick_cooldown_state(state: &AppState) {
     }
 }
 
+fn emit_vosk_mic_level(window: &WebviewWindow, level: u32) {
+    let payload = serde_json::json!({
+        "type": "mic_level",
+        "deviceId": "",
+        "level": level,
+    });
+    let _ = window.emit("to_js", payload);
+}
+
 pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
     let events: Vec<VoiceVoskEvent> = {
         let guard = state.voice_vosk.lock();
@@ -118,11 +198,21 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
     for ev in events {
         match ev {
             VoiceVoskEvent::StateChanged(s) => {
+                if s == "stopped" || s == "error" {
+                    state.mic_level.clear();
+                    emit_vosk_mic_level(window, 0);
+                }
                 *state.voice_vosk_state.lock() = s;
             }
             VoiceVoskEvent::Error(e) => {
+                state.mic_level.clear();
+                emit_vosk_mic_level(window, 0);
                 *state.voice_vosk_last_error.lock() = e;
                 *state.voice_vosk_state.lock() = "error".into();
+            }
+            VoiceVoskEvent::Level { level } => {
+                state.mic_level.set("", level);
+                emit_vosk_mic_level(window, level);
             }
             VoiceVoskEvent::Partial(text) => {
                 *state.voice_vosk_last_partial.lock() = text;
@@ -271,8 +361,7 @@ pub fn disable_vosk_for_sapi(state: &Arc<AppState>) {
         cfg.voice_vosk.enabled = false;
         save_config(&cfg);
     }
-    voice_vosk_stop(state);
-    *state.voice_vosk_cooldown_until.lock() = None;
+    spawn_voice_vosk_stop(Arc::clone(state));
 }
 
 fn disable_sapi(state: &Arc<AppState>) {
@@ -306,9 +395,7 @@ pub fn voice_vosk_set_enabled(
         let cfg = state.cfg.lock().voice_vosk.clone();
         spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     } else {
-        voice_vosk_stop(state);
-        *state.voice_vosk_cooldown_until.lock() = None;
-        *state.voice_vosk_last_error.lock() = String::new();
+        spawn_voice_vosk_stop(Arc::clone(state));
         refresh_vosk_probe_cache(state, resource_dir.as_deref());
     }
 

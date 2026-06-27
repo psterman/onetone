@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::AppState;
@@ -1215,43 +1215,102 @@ impl VoiceConfig {
     }
 }
 
-pub fn config_path() -> PathBuf {
-    let app_path = directories::ProjectDirs::from("com", "onetone", "onetone")
-        .map(|d| d.config_dir().join("settings.json"));
-    if let Some(ref p) = app_path {
-        if p.exists() {
-            return p.clone();
+static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+fn config_candidate_paths() -> Vec<PathBuf> {
+    [
+        directories::ProjectDirs::from("com", "onetone", "app")
+            .map(|d| d.config_dir().join("settings.json")),
+        directories::ProjectDirs::from("com", "onetone", "onetone")
+            .map(|d| d.config_dir().join("settings.json")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+fn canonical_config_path() -> PathBuf {
+    config_candidate_paths()
+        .first()
+        .cloned()
+        .unwrap_or_else(|| PathBuf::from("settings.json"))
+}
+
+fn resolve_config_path() -> PathBuf {
+    let canonical = canonical_config_path();
+    let mut best: Option<(PathBuf, VoiceConfig, usize)> = None;
+
+    let mut consider = |path: PathBuf, cfg: VoiceConfig| {
+        let score = cfg.mappings.len()
+            + if cfg.voice_vosk.enabled { 4 } else { 0 }
+            + if cfg.voice_sapi.enabled { 4 } else { 0 }
+            + if cfg.voice_end.enabled { 4 } else { 0 };
+        if best.as_ref().is_none_or(|(_, _, prev_score)| score > *prev_score) {
+            best = Some((path, cfg, score));
+        }
+    };
+
+    for path in config_candidate_paths() {
+        if path.exists() {
+            if let Ok(raw) = fs::read_to_string(&path) {
+                let mut cfg = serde_json::from_str::<VoiceConfig>(&raw).unwrap_or_default();
+                cfg.migrate();
+                consider(path, cfg);
+            }
         }
     }
+
     if let Some(voice_pilot_dirs) = directories::ProjectDirs::from("com", "VoicePilot", "Voice Pilot") {
         let legacy_vp = voice_pilot_dirs.config_dir().join("settings.json");
         if legacy_vp.exists() {
-            if let Some(ref dest) = app_path {
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent).ok();
-                }
-                if fs::copy(&legacy_vp, dest).is_ok() {
-                    return dest.clone();
-                }
+            if let Ok(raw) = fs::read_to_string(&legacy_vp) {
+                let mut cfg = serde_json::from_str::<VoiceConfig>(&raw).unwrap_or_default();
+                cfg.migrate();
+                consider(legacy_vp, cfg);
             }
-            return legacy_vp;
         }
     }
-    let legacy = legacy_config_candidates();
-    for p in &legacy {
-        if p.exists() {
-            if let Some(ref dest) = app_path {
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent).ok();
-                }
-                if fs::copy(p, dest).is_ok() {
-                    return dest.clone();
-                }
+
+    for path in legacy_config_candidates() {
+        if path.exists() {
+            if let Ok(raw) = fs::read_to_string(&path) {
+                let mut cfg = serde_json::from_str::<VoiceConfig>(&raw).unwrap_or_default();
+                cfg.migrate();
+                consider(path, cfg);
             }
-            return p.clone();
         }
     }
-    app_path.unwrap_or_else(|| PathBuf::from("settings.json"))
+
+    if let Some((source, cfg, _)) = best {
+        if source != canonical {
+            if let Some(parent) = canonical.parent() {
+                fs::create_dir_all(parent).ok();
+            }
+            let json = serde_json::to_string_pretty(&cfg).unwrap();
+            if fs::write(&canonical, json).is_ok() {
+                return canonical;
+            }
+        }
+        return source;
+    }
+
+    canonical
+}
+
+pub fn config_path() -> PathBuf {
+    CONFIG_PATH
+        .get_or_init(resolve_config_path)
+        .clone()
+}
+
+/// Apply a frontend mapping save. Voice sections always stay from `existing` because
+/// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
+pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceConfig> {
+    let mut cfg: VoiceConfig = serde_json::from_str(json).ok()?;
+    cfg.voice_vosk = existing.voice_vosk.clone();
+    cfg.voice_sapi = existing.voice_sapi.clone();
+    cfg.voice_end = existing.voice_end.clone();
+    Some(cfg)
 }
 
 fn legacy_config_candidates() -> Vec<PathBuf> {
@@ -1581,11 +1640,28 @@ mod tests {
         assert_eq!(bindings.len(), 2);
         assert!(bindings.iter().all(|(_, id)| id == &cfg.mappings[0].id));
     }
+    #[test]
+    fn merge_save_payload_preserves_voice_when_omitted() {
+        let mut existing = VoiceConfig::default();
+        existing.voice_vosk.enabled = true;
+        existing.voice_end.enabled = true;
+        let json = r#"{"version":5,"mappings":[],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(merged.voice_vosk.enabled);
+        assert!(merged.voice_end.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_ignores_stale_frontend_voice_flags() {
+        let mut existing = VoiceConfig::default();
+        existing.voice_vosk.enabled = true;
+        existing.voice_end.enabled = true;
+        let json = r#"{"version":5,"mappings":[],"trash":[],"voiceVosk":{"enabled":false},"voiceEnd":{"enabled":false}}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(merged.voice_vosk.enabled);
+        assert!(merged.voice_end.enabled);
+    }
 }
-
-
-
-
 
 
 

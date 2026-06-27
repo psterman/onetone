@@ -18,11 +18,13 @@ const TARGET_SAMPLE_RATE: u32 = 16_000;
 const AUDIO_CHANNEL_CAP: usize = 64;
 const EVENT_CHANNEL_CAP: usize = 64;
 const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(200);
+const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(70);
 
 #[derive(Debug, Clone)]
 pub enum VoiceVoskEvent {
     StateChanged(String),
     Error(String),
+    Level { level: u32 },
     Partial(String),
     Final(String),
     Detected { phrase: String, text: String },
@@ -46,8 +48,35 @@ impl Drop for VoiceVoskHandle {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(handle) = self.thread.take() {
-            let _ = handle.join();
+            std::thread::Builder::new()
+                .name("voice-vosk-join".into())
+                .spawn(move || {
+                    let _ = handle.join();
+                })
+                .ok();
         }
+    }
+}
+
+/// Block until the worker exits. Use only from background lifecycle threads.
+pub fn shutdown_sync(mut handle: VoiceVoskHandle) {
+    handle.stop.store(true, Ordering::SeqCst);
+    if let Some(thread) = handle.thread.take() {
+        let _ = thread.join();
+    }
+    thread::sleep(Duration::from_millis(150));
+}
+
+pub fn stop_voice_vosk(mut handle: VoiceVoskHandle) {
+    handle.stop.store(true, Ordering::SeqCst);
+    if let Some(thread) = handle.thread.take() {
+        std::thread::Builder::new()
+            .name("voice-vosk-join".into())
+            .spawn(move || {
+                let _ = thread.join();
+                thread::sleep(Duration::from_millis(150));
+            })
+            .ok();
     }
 }
 
@@ -161,12 +190,6 @@ pub fn start_voice_vosk(
     {
         start_voice_vosk_impl(cfg, resource_dir, grammar_phrases)
     }
-}
-
-pub fn stop_voice_vosk(handle: VoiceVoskHandle) {
-    drop(handle);
-    // Windows WASAPI may need a beat before reopening the default capture device.
-    thread::sleep(Duration::from_millis(150));
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]
@@ -381,6 +404,7 @@ fn run_worker(
     let mut resampler = ResamplerState::new(sample_rate, TARGET_SAMPLE_RATE);
     let mut last_partial_text = String::new();
     let mut last_partial_at = Instant::now() - PARTIAL_MIN_INTERVAL;
+    let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
     let mut last_detected_norm = String::new();
 
     while !stop.load(Ordering::Relaxed) {
@@ -390,6 +414,7 @@ fn run_worker(
                 if pcm.is_empty() {
                     continue;
                 }
+                emit_level_if_due(&event_tx, &pcm, &mut last_level_at);
                 let state = recognizer
                     .accept_waveform(&pcm)
                     .unwrap_or(DecodingState::Running);
@@ -541,6 +566,7 @@ fn run_dual_worker(
     let mut resampler = ResamplerState::new(sample_rate, TARGET_SAMPLE_RATE);
     let mut last_partial_text = String::new();
     let mut last_partial_at = Instant::now() - PARTIAL_MIN_INTERVAL;
+    let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
     let mut last_detected_norm = String::new();
     let mut lang_lock: Option<(DualLangSide, Instant)> = None;
 
@@ -551,6 +577,7 @@ fn run_dual_worker(
                 if pcm.is_empty() {
                     continue;
                 }
+                emit_level_if_due(&event_tx, &pcm, &mut last_level_at);
 
                 let cn_state = cn_recognizer
                     .accept_waveform(&pcm)
@@ -1279,6 +1306,33 @@ fn emit_partial(
     *last_text = text.clone();
     *last_at = Instant::now();
     send_event_try_partial(event_tx, VoiceVoskEvent::Partial(text));
+}
+
+#[cfg(all(windows, not(vosk_disabled)))]
+fn emit_level_if_due(
+    event_tx: &Sender<VoiceVoskEvent>,
+    pcm: &[i16],
+    last_at: &mut Instant,
+) {
+    if last_at.elapsed() < LEVEL_MIN_INTERVAL {
+        return;
+    }
+    *last_at = Instant::now();
+    let level = pcm_level_percent(pcm);
+    send_event_try_partial(event_tx, VoiceVoskEvent::Level { level });
+}
+
+#[cfg(all(windows, not(vosk_disabled)))]
+fn pcm_level_percent(pcm: &[i16]) -> u32 {
+    let mut peak = 0.0f32;
+    for sample in pcm {
+        let amp = (f32::from(*sample) / i16::MAX as f32).abs();
+        if amp > peak {
+            peak = amp;
+        }
+    }
+    let shaped = peak.clamp(0.0, 1.0).sqrt();
+    (shaped * 100.0).round() as u32
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]

@@ -18,6 +18,7 @@ mod voice_end_runtime;
 mod hotkey_win;
 
 use parking_lot::Mutex;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tauri::Manager;
 use tokio::time::{sleep, Duration};
@@ -61,6 +62,7 @@ pub struct AppState {
     pub voice_session_mapping_id: Mutex<String>,
     pub voice_session_commit_token: Mutex<u64>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
+    pub voice_vosk_epoch: AtomicU64,
 }
 
 pub fn run() {
@@ -101,6 +103,7 @@ pub fn run() {
         voice_session_mapping_id: Mutex::new(String::new()),
         voice_session_commit_token: Mutex::new(0),
         voice_vosk_probe: Mutex::new(None),
+        voice_vosk_epoch: AtomicU64::new(0),
     });
 
     tauri::Builder::default()
@@ -148,19 +151,38 @@ pub fn run() {
             {
                 let cfg = app_state.cfg.lock();
                 if cfg.voice_sapi.enabled {
-                    if let Err(e) = voice_sapi_runtime::voice_sapi_start(&app_state, &cfg.voice_sapi) {
-                        eprintln!("voice_sapi start failed: {e}");
-                    }
+                    let state = app_state.clone();
+                    let sapi = cfg.voice_sapi.clone();
+                    std::thread::Builder::new()
+                        .name("voice-sapi-boot".into())
+                        .spawn(move || {
+                            if let Err(e) = voice_sapi_runtime::voice_sapi_start(&state, &sapi) {
+                                eprintln!("voice_sapi start failed: {e}");
+                            }
+                        })
+                        .ok();
                 } else if cfg.voice_vosk.enabled {
                     let resource_dir = app.path().resource_dir().ok();
                     let vosk = cfg.voice_vosk.clone();
                     let state = app_state.clone();
                     tauri::async_runtime::spawn(async move {
-                        tokio::time::sleep(Duration::from_millis(900)).await;
+                        tokio::time::sleep(Duration::from_millis(1200)).await;
                         voice_vosk_runtime::spawn_voice_vosk_start(state, vosk, resource_dir);
                     });
                 }
             }
+
+            let probe_state = app_state.clone();
+            let probe_dir = app.path().resource_dir().ok();
+            std::thread::Builder::new()
+                .name("vosk-probe-warm".into())
+                .spawn(move || {
+                    voice_vosk_runtime::refresh_vosk_probe_cache(
+                        &probe_state,
+                        probe_dir.as_deref(),
+                    );
+                })
+                .ok();
 
             let window_clone = window.clone();
             window.on_window_event(move |event| {

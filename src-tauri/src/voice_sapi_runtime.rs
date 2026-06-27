@@ -219,7 +219,15 @@ pub fn voice_sapi_set_enabled(
 
     if enabled {
         let cfg = state.cfg.lock().voice_sapi.clone();
-        voice_sapi_start(state, &cfg)?;
+        let state2 = Arc::clone(state);
+        std::thread::Builder::new()
+            .name("voice-sapi-start".into())
+            .spawn(move || {
+                if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
+                    eprintln!("voice_sapi start: {e}");
+                }
+            })
+            .map_err(|e| format!("spawn voice sapi start: {e}"))?;
     } else {
         voice_sapi_stop(state);
         *state.voice_sapi_cooldown_until.lock() = None;
@@ -248,7 +256,15 @@ pub fn voice_sapi_set_phrases(
 
     if enabled {
         let cfg = state.cfg.lock().voice_sapi.clone();
-        voice_sapi_start(state, &cfg)?;
+        let state2 = Arc::clone(state);
+        std::thread::Builder::new()
+            .name("voice-sapi-restart".into())
+            .spawn(move || {
+                if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
+                    eprintln!("voice_sapi restart: {e}");
+                }
+            })
+            .ok();
     }
 
     Ok(voice_sapi_status(state))

@@ -65,7 +65,12 @@ impl MicMonitorHandle {
     pub fn stop(mut self) {
         self.stop.store(true, Ordering::SeqCst);
         if let Some(handle) = self.thread.take() {
-            let _ = handle.join();
+            std::thread::Builder::new()
+                .name("mic-monitor-join".into())
+                .spawn(move || {
+                    let _ = handle.join();
+                })
+                .ok();
         }
     }
 }
@@ -82,6 +87,7 @@ mod imp {
         eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
         MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
@@ -200,6 +206,25 @@ mod imp {
             thread: Some(handle),
         });
         Ok(())
+    }
+
+    pub fn read_mic_peak_level(device_id_hint: Option<&str>) -> Result<MicLevelSnapshot, String> {
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let device = resolve_meter_device(&enumerator, device_id_hint)?;
+            let id = device_id(&device)?;
+            let meter: IAudioMeterInformation = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate meter: {e}"))?;
+            let peak = meter.GetPeakValue().map_err(|e| format!("peak value: {e}"))?;
+            Ok(MicLevelSnapshot {
+                level: peak_to_level(peak),
+                device_id: id,
+            })
+        }
     }
 
     fn run_cpal_monitor(
@@ -374,6 +399,11 @@ mod imp {
         let _ = app.emit("to_js", &payload);
     }
 
+    fn peak_to_level(peak: f32) -> u32 {
+        let shaped = peak.clamp(0.0, 1.0).sqrt();
+        (shaped * 100.0).round() as u32
+    }
+
     fn resolve_cpal_input(host: &cpal::Host, device_name: &str) -> Result<cpal::Device, String> {
         if let Some(default) = host.default_input_device() {
             if default
@@ -425,6 +455,21 @@ mod imp {
         Ok(raw.to_string().map_err(|e| e.to_string())?)
     }
 
+    unsafe fn resolve_meter_device(
+        enumerator: &IMMDeviceEnumerator,
+        device_id_hint: Option<&str>,
+    ) -> Result<IMMDevice, String> {
+        if let Some(id) = device_id_hint.map(str::trim).filter(|id| !id.is_empty()) {
+            let id = HSTRING::from(id);
+            if let Ok(device) = enumerator.GetDevice(&id) {
+                return Ok(device);
+            }
+        }
+        enumerator
+            .GetDefaultAudioEndpoint(eCapture, eConsole)
+            .map_err(|e| format!("default endpoint: {e}"))
+    }
+
     unsafe fn device_friendly_name(device: &IMMDevice) -> Result<String, String> {
         let store: IPropertyStore = device
             .OpenPropertyStore(STGM_READ)
@@ -448,7 +493,7 @@ mod imp {
 }
 
 #[cfg(windows)]
-pub use imp::{list_input_devices, set_default_input_device, start_mic_monitor};
+pub use imp::{list_input_devices, read_mic_peak_level, set_default_input_device, start_mic_monitor};
 
 pub fn stop_mic_monitor(slot: &Mutex<Option<MicMonitorHandle>>) {
     if let Some(handle) = slot.lock().take() {
@@ -475,6 +520,11 @@ pub fn start_mic_monitor(
     _level_state: &Arc<MicLevelState>,
 ) -> Result<(), String> {
     Err("microphone monitor is Windows-only".into())
+}
+
+#[cfg(not(windows))]
+pub fn read_mic_peak_level(_device_id: Option<&str>) -> Result<MicLevelSnapshot, String> {
+    Err("microphone peak meter is Windows-only".into())
 }
 
 #[cfg(all(test, windows))]
