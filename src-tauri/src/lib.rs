@@ -36,6 +36,8 @@ pub struct AppState {
     pub recording_target: Mutex<Option<RecordingTarget>>,
     pub record_hw_pending: Mutex<Option<String>>,
     pub record_started_at: Mutex<Option<std::time::Instant>>,
+    /// After volume/peripheral trigger capture, ignore stray modifier keys briefly.
+    pub record_guard_until: Mutex<Option<std::time::Instant>>,
     pub paused: Mutex<bool>,
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
@@ -77,6 +79,7 @@ pub fn run() {
         recording_target: Mutex::new(None),
         record_hw_pending: Mutex::new(None),
         record_started_at: Mutex::new(None),
+        record_guard_until: Mutex::new(None),
         paused: Mutex::new(false),
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),

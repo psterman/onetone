@@ -79,9 +79,6 @@ fn apply_trigger_capture(cfg: &mut VoiceConfig, mapping_id: &str, captured: &str
             m.source_key = canonical_trigger(raw);
             m.trigger_source = Some(make_peripheral_mixed_source(&[raw.to_string()]));
         }
-        if m.target_key.trim().is_empty() {
-            m.target_key = "RAlt".into();
-        }
         m.label = format!("{} -> {}", m.trigger_key, m.target_key);
     }
     cfg.normalize();
@@ -201,6 +198,59 @@ fn sanitize_trigger_capture(key: &str) -> String {
     parts.join("+")
 }
 
+fn is_spurious_target_capture(key: &str) -> bool {
+    use std::collections::HashSet;
+    let parts: Vec<String> = key
+        .split('+')
+        .map(|s| normalize_hardware_key(s.trim()))
+        .filter(|s| !s.is_empty())
+        .collect();
+    if parts.is_empty() {
+        return true;
+    }
+    let mut seen = HashSet::new();
+    for p in &parts {
+        if !seen.insert(p.clone()) {
+            return true;
+        }
+    }
+    parts.len() > 1 && parts.iter().all(|p| is_modifier_token(p))
+}
+
+fn is_recordable_target_hotkey(key: &str) -> bool {
+    is_volume_hotkey(key)
+        || matches!(
+            canonical_trigger(key).as_str(),
+            "Media_Next"
+                | "Media_Prev"
+                | "Media_Play_Pause"
+                | "Media_Stop"
+                | "Browser_Back"
+                | "Browser_Forward"
+                | "Browser_Refresh"
+                | "Launch_Mail"
+                | "Launch_App1"
+                | "Launch_App2"
+        )
+}
+
+fn record_guard_active(state: &AppState) -> bool {
+    state
+        .record_guard_until
+        .lock()
+        .as_ref()
+        .map(|t| t.elapsed() < Duration::from_millis(450))
+        .unwrap_or(false)
+}
+
+fn arm_record_guard(state: &AppState) {
+    *state.record_guard_until.lock() = Some(Instant::now());
+}
+
+fn clear_record_guard(state: &AppState) {
+    *state.record_guard_until.lock() = None;
+}
+
 fn is_mouse_button(key: &str) -> bool {
     matches!(
         key,
@@ -217,6 +267,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         return;
     };
     let is_trigger = matches!(target.mode, RecordMode::Trigger);
+    let is_target = matches!(target.mode, RecordMode::Target);
     let is_keyup = key_name.starts_with("keyup:");
     let raw = if is_keyup {
         &key_name[6..]
@@ -239,6 +290,20 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
 
     emit_record_seen(window, &normalized);
 
+    if is_trigger && record_guard_active(state) {
+        if is_modifier_token(&normalized) && !is_volume_hotkey(&normalized) {
+            return;
+        }
+    }
+
+    if is_target {
+        if is_recordable_target_hotkey(&normalized) && !is_keyup {
+            finish_hardware_capture(state, window, &normalized);
+        }
+        // Keyboard shortcuts for target are captured in the WebView only.
+        return;
+    }
+
     if is_keyup {
         if is_modifier_token(&normalized) {
             let should_finish = state
@@ -258,6 +323,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     if is_trigger && (is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized)) {
         *state.record_hw_pending.lock() = None;
         finish_hardware_capture(state, window, &normalized);
+        arm_record_guard(state);
         return;
     }
 
@@ -286,6 +352,9 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         return;
     }
     if is_trigger && is_spurious_trigger_capture(&combo) {
+        return;
+    }
+    if is_target && is_spurious_target_capture(&combo) {
         return;
     }
     finish_hardware_capture(state, window, &combo);
@@ -698,6 +767,7 @@ pub fn cmd_stop_recording(state: tauri::State<Arc<AppState>>) {
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
+    clear_record_guard(state.inner());
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
         let bindings = state.cfg.lock().bindings();
@@ -1012,6 +1082,7 @@ pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, 
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
+    clear_record_guard(state);
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
     }

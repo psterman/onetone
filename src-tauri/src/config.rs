@@ -532,8 +532,6 @@ pub fn is_peripheral_trigger_key(key: &str) -> bool {
             | "Launch_App1"
             | "Launch_App2"
             | "AppsKey"
-            | "RAlt"
-            | "RCtrl"
     ) || c.starts_with('F') && c[1..].chars().all(|ch| ch.is_ascii_digit())
 }
 
