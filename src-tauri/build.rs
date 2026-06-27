@@ -17,7 +17,7 @@ fn ensure_icons_exist() {
         return;
     }
 
-    // Generate placeholder icons only when the bundled oneTone assets are missing.
+    // Generate placeholder icons only when the bundled onetone assets are missing.
     let mut img = RgbaImage::new(32, 32);
     for (_, _, pixel) in img.enumerate_pixels_mut() {
         *pixel = Rgba([0x00, 0x7A, 0xFF, 0xFF]); // iOS blue

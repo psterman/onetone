@@ -7,7 +7,7 @@ use crate::config::{mapping_timing, MappingEntry, TriggerMode, VoiceConfig};
 pub enum Action {
     SendKey { key: String },
     SendEsc,
-    ScheduleEnter { delay_ms: u32 },
+    ScheduleEnter { delay_ms: u32, token: u64 },
     SendEnter,
     None,
 }
@@ -27,6 +27,7 @@ pub struct StateMachine {
     last_tick: Option<Instant>,
     last_trigger: Option<Instant>,
     enter_timer_active: bool,
+    enter_timer_gen: u64,
     toggle_armed: bool,
 }
 
@@ -37,7 +38,15 @@ impl StateMachine {
             last_tick: None,
             last_trigger: None,
             enter_timer_active: false,
+            enter_timer_gen: 0,
             toggle_armed: false,
+        }
+    }
+
+    fn invalidate_enter_timer(&mut self) {
+        if self.enter_timer_active {
+            self.enter_timer_gen = self.enter_timer_gen.wrapping_add(1);
+            self.enter_timer_active = false;
         }
     }
 
@@ -76,7 +85,7 @@ impl StateMachine {
             }
             self.count = 0;
             self.last_tick = None;
-            self.enter_timer_active = false;
+            self.invalidate_enter_timer();
             return vec![Action::SendEsc];
         }
 
@@ -95,12 +104,12 @@ impl StateMachine {
         if self.last_tick.is_some() && delta < interval_ms as u64 && cancel_enabled {
             self.count = 0;
             self.last_tick = Some(now);
-            self.enter_timer_active = false;
+            self.invalidate_enter_timer();
             return vec![Action::SendEsc];
         }
 
         if self.enter_timer_active {
-            self.enter_timer_active = false;
+            self.invalidate_enter_timer();
         }
 
         self.last_tick = Some(now);
@@ -112,16 +121,22 @@ impl StateMachine {
         let mut actions = vec![Action::SendKey { key: target }];
 
         if self.count == 2 && auto_enter_enabled {
+            self.enter_timer_gen = self.enter_timer_gen.wrapping_add(1);
+            let token = self.enter_timer_gen;
             self.enter_timer_active = true;
             actions.push(Action::ScheduleEnter {
                 delay_ms: enter_delay_ms,
+                token,
             });
         }
 
         actions
     }
 
-    pub fn on_enter_timer(&mut self) -> Action {
+    pub fn on_enter_timer(&mut self, token: u64) -> Action {
+        if !self.enter_timer_active || self.enter_timer_gen != token {
+            return Action::None;
+        }
         self.enter_timer_active = false;
         self.count = 0;
         self.last_tick = None;
@@ -131,7 +146,7 @@ impl StateMachine {
     pub fn reset(&mut self) {
         self.count = 0;
         self.last_tick = None;
-        self.enter_timer_active = false;
+        self.invalidate_enter_timer();
         self.toggle_armed = false;
     }
 
@@ -173,5 +188,76 @@ impl StateMachinePool {
 
     pub fn any_timer_active(&self) -> bool {
         self.machines.values().any(|m| m.enter_timer_active)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{MappingEntry, TriggerMode};
+
+    fn tap_mapping() -> MappingEntry {
+        MappingEntry {
+            id: "m1".into(),
+            label: String::new(),
+            group: "默认".into(),
+            trigger_key: "Volume_Down".into(),
+            target_key: "LAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+        }
+    }
+
+    fn cfg() -> VoiceConfig {
+        VoiceConfig::default()
+    }
+
+    #[test]
+    fn cancel_invalidates_scheduled_enter() {
+        let mut sm = StateMachine::new();
+        let mapping = tap_mapping();
+        let cfg = cfg();
+        let t0 = Instant::now();
+
+        sm.trigger(&cfg, &mapping, "Volume_Down", t0);
+
+        let a2 = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1300));
+        let token = match a2.last() {
+            Some(Action::ScheduleEnter { token, .. }) => *token,
+            other => panic!("expected ScheduleEnter, got {other:?}"),
+        };
+
+        let a3 = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1400));
+        assert!(matches!(a3.last(), Some(Action::SendEsc)));
+
+        assert!(matches!(sm.on_enter_timer(token), Action::None));
+    }
+
+    #[test]
+    fn enter_timer_fires_when_still_valid() {
+        let mut sm = StateMachine::new();
+        let mapping = tap_mapping();
+        let cfg = cfg();
+        let t0 = Instant::now();
+
+        sm.trigger(&cfg, &mapping, "Volume_Down", t0);
+        let actions = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1300));
+        let token = match actions.last() {
+            Some(Action::ScheduleEnter { token, .. }) => *token,
+            other => panic!("expected ScheduleEnter, got {other:?}"),
+        };
+
+        assert!(matches!(sm.on_enter_timer(token), Action::SendEnter));
+        assert!(matches!(sm.on_enter_timer(token), Action::None));
     }
 }

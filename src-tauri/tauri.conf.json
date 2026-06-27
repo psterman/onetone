@@ -1,18 +1,18 @@
 {
-  "productName": "织音",
+  "productName": "一声",
   "version": "1.0.0",
   "identifier": "com.onetone.app",
   "build": {
     "devUrl": "http://localhost:1420",
     "frontendDist": "../src",
     "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "beforeBuildCommand": "python scripts/generate_onetone_icon.py"
   },
   "app": {
     "windows": [
       {
         "label": "main",
-        "title": "织音",
+        "title": "一声",
         "width": 760,
         "height": 820,
         "resizable": true,
@@ -20,6 +20,20 @@
         "minHeight": 680,
         "decorations": true,
         "transparent": false
+      },
+      {
+        "label": "tray_menu",
+        "title": "",
+        "url": "tray-menu.html",
+        "width": 264,
+        "height": 360,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "security": {

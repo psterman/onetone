@@ -5,6 +5,9 @@ mod keyboard;
 mod send_guard;
 mod ipc;
 mod backdrop;
+mod tray;
+mod policy_config;
+mod audio_win;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -14,6 +17,7 @@ use std::sync::Arc;
 use tauri::Manager;
 use tokio::time::{sleep, Duration};
 
+use crate::audio_win::{MicLevelState, MicMonitorHandle};
 use crate::config::{load_config, VoiceConfig};
 use crate::ipc::RecordingTarget;
 use crate::state::StateMachinePool;
@@ -27,6 +31,8 @@ pub struct AppState {
     pub record_hw_pending: Mutex<Option<String>>,
     pub record_started_at: Mutex<Option<std::time::Instant>>,
     pub paused: Mutex<bool>,
+    pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
+    pub mic_level: Arc<MicLevelState>,
 }
 
 pub fn run() {
@@ -42,10 +48,16 @@ pub fn run() {
         record_hw_pending: Mutex::new(None),
         record_started_at: Mutex::new(None),
         paused: Mutex::new(false),
+        mic_monitor: Mutex::new(None),
+        mic_level: Arc::new(MicLevelState::new()),
     });
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(app_state.clone())
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();
@@ -79,9 +91,23 @@ pub fn run() {
 
             config::start_watcher(app_state.clone(), window.clone());
 
+            tray::setup(app.handle(), app_state.clone())?;
+
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window_clone.hide();
+                }
+            });
+
             let state2 = app_state.clone();
             let win2 = window.clone();
             tauri::async_runtime::spawn(async move {
+                let mut last_key: Option<String> = None;
+                let mut last_at: Option<std::time::Instant> = None;
+                const DEDUP_MS: u64 = 80;
+
                 loop {
                     sleep(Duration::from_millis(20)).await;
 
@@ -97,6 +123,16 @@ pub fn run() {
                     let Some(key_name) = key_name else {
                         continue;
                     };
+
+                    let now = std::time::Instant::now();
+                    if let (Some(ref prev), Some(at)) = (&last_key, last_at) {
+                        if prev == &key_name && now.duration_since(at) < Duration::from_millis(DEDUP_MS)
+                        {
+                            continue;
+                        }
+                    }
+                    last_key = Some(key_name.clone());
+                    last_at = Some(now);
 
                     if *state2.recording.lock() {
                         ipc::handle_hardware_record_key(&state2, &win2, &key_name);
@@ -148,6 +184,16 @@ pub fn run() {
             ipc::cmd_window_minimize,
             ipc::cmd_window_close,
             ipc::cmd_sync_theme_backdrop,
+            ipc::cmd_tray_menu_ready,
+            ipc::cmd_tray_action,
+            ipc::cmd_tray_menu_present,
+            ipc::cmd_autostart_get,
+            ipc::cmd_autostart_set,
+            ipc::cmd_mic_list,
+            ipc::cmd_mic_set_default,
+            ipc::cmd_mic_monitor_start,
+            ipc::cmd_mic_monitor_stop,
+            ipc::cmd_mic_get_level,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

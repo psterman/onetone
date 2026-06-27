@@ -4,7 +4,7 @@ projectRoot = fso.GetParentFolderName(WScript.ScriptFullName)
 launcher = projectRoot & "\run_onetone.ps1"
 
 If Not fso.FileExists(launcher) Then
-  MsgBox "找不到启动脚本: " & launcher, 16, "织音 oneTone"
+  MsgBox "找不到启动脚本: " & launcher, 16, "一声 onetone"
   WScript.Quit 1
 End If
 

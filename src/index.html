@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>织音 oneTone</title>
+  <title>一声 onetone</title>
   <link rel="icon" type="image/png" href="icon.png" />
   <style>
     :root{
@@ -38,8 +38,10 @@
       --dur-fast:160ms;
       --dur-med:260ms;
       --ease-standard:cubic-bezier(.2,.8,.2,1);
+      --ui-font-scale:1;
       font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
     }
+    html{zoom:var(--ui-font-scale)}
     html[data-theme="dark"]{
       --primary:#5ec8e8;
       --primary-strong:#3eb8dc;
@@ -102,6 +104,17 @@
       height:36px;padding:0 16px;border-radius:var(--radius-pill);
       border:1px solid var(--outline-variant);background:var(--surface-high);
       color:var(--btn-label);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    }
+    .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .header-listen-chip{
+      font-size:12px;font-weight:600;padding:5px 12px;border-radius:var(--radius-pill);
+      background:var(--primary-soft);color:var(--primary);
+    }
+    .header-listen-chip.is-paused{
+      background:rgba(220,120,40,.12);color:#c86a12;
+    }
+    html[data-theme="dark"] .header-listen-chip.is-paused{
+      background:rgba(255,170,80,.14);color:#ffb366;
     }
     #btnSettings:hover{background:var(--primary-soft);transform:translateY(-1px)}
     #btnSettings:active{transform:scale(0.97)}
@@ -625,7 +638,7 @@
     }
     .settings-overlay.open{opacity:1;pointer-events:auto}
     .settings-drawer{
-      position:fixed;top:0;right:0;width:min(400px,92vw);height:100%;z-index:401;
+      position:fixed;top:0;right:0;width:min(440px,92vw);height:100%;z-index:401;
       background:var(--surface-high);border-left:1px solid var(--outline-variant);
       transform:translateX(100%);transition:transform var(--dur-med) var(--ease-standard);
       display:flex;flex-direction:column;overflow:hidden;
@@ -641,6 +654,70 @@
       background:var(--surface-high);font:inherit;font-size:15px;font-weight:700;cursor:pointer;color:var(--on-surface);
     }
     .appearance-pill:hover{background:var(--primary-soft)}
+    .font-scale-block{margin-bottom:14px}
+    .font-scale-head{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:14px;font-weight:700;color:var(--on-surface)}
+    .font-scale-head svg{width:18px;height:18px;color:var(--on-surface-muted);flex-shrink:0}
+    .font-scale-track{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;
+      padding:0 4px 22px;border-radius:var(--radius-pill);background:var(--surface-soft);
+      border:1px solid var(--outline-variant);
+    }
+    .font-scale-track::before{
+      content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;margin-top:-11px;
+      background:var(--outline-variant);border-radius:1px;pointer-events:none;
+    }
+    .font-scale-option{
+      position:relative;z-index:1;border:none;background:transparent;
+      padding:14px 4px 0;font:inherit;font-size:11px;font-weight:600;color:var(--on-surface-muted);
+      cursor:pointer;text-align:center;
+    }
+    .font-scale-option::before{
+      content:"";display:block;width:12px;height:12px;margin:0 auto 6px;border-radius:50%;
+      background:var(--surface-high);border:2px solid var(--outline-variant);transition:all var(--dur-fast) var(--ease-standard);
+    }
+    .font-scale-option.is-active{color:var(--primary)}
+    .font-scale-option.is-active::before{
+      background:var(--primary);border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);
+    }
+    .setting-section-label{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--on-surface-muted);letter-spacing:.02em}
+    .setting-row{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px 14px;border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
+    }
+    .setting-row-main{display:flex;align-items:center;gap:10px;min-width:0}
+    .setting-row-main svg{width:20px;height:20px;color:var(--on-surface);flex-shrink:0}
+    .setting-row-text{font-size:13px;font-weight:600;color:var(--on-surface);line-height:1.35}
+    .toggle-switch{
+      position:relative;width:44px;height:24px;border-radius:999px;border:none;padding:0;flex-shrink:0;
+      background:var(--toggle-off);cursor:pointer;transition:background var(--dur-fast) var(--ease-standard);
+    }
+    .toggle-switch::after{
+      content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18);transition:transform var(--dur-fast) var(--ease-standard);
+    }
+    .toggle-switch.is-on{background:var(--primary)}
+    .toggle-switch.is-on::after{transform:translateX(20px)}
+    html[data-theme="dark"] .toggle-switch::after{background:var(--surface-high)}
+    .mic-desc{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .mic-device-list{display:grid;gap:8px}
+    .mic-device-card{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:11px 12px;border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      cursor:pointer;text-align:left;font:inherit;color:inherit;transition:border-color var(--dur-fast),background var(--dur-fast);
+    }
+    .mic-device-card:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
+    .mic-device-card.is-active{border-color:var(--primary);background:var(--primary-soft)}
+    .mic-device-body{min-width:0;flex:1}
+    .mic-device-name{font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35;word-break:break-word}
+    .mic-device-sub{font-size:11px;color:var(--on-surface-muted);margin-top:3px;line-height:1.35}
+    .mic-level-bars{display:flex;align-items:flex-end;gap:2px;height:18px;flex-shrink:0}
+    .mic-level-bars span{
+      width:3px;border-radius:2px;background:var(--outline-variant);height:6px;transition:height .08s ease,background .08s ease;
+    }
+    .mic-level-bars span.on{background:var(--primary);height:18px}
+    .mic-level-bars span.mid{background:var(--primary);height:12px}
+    .mic-level-bars span.lo{background:var(--primary);height:8px}
+    .mic-empty{font-size:12px;color:var(--on-surface-muted);margin:0}
     .control-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
     .control-row.three{grid-template-columns:1fr 1fr 1fr}
     .control-btn{
@@ -746,11 +823,14 @@
       <div class="app-brand">
         <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" />
         <div class="app-title-wrap">
-          <h1 class="app-title" id="appTitle">织音</h1>
+          <h1 class="app-title" id="appTitle">一声</h1>
           <p class="app-subtitle" id="appSubtitle">按两步设置：先选启动键，再选语音输入快捷键。</p>
         </div>
       </div>
-      <button type="button" id="btnSettings">设置</button>
+      <div class="header-actions">
+        <span class="chip header-listen-chip" id="headerListenState" role="status">监听中</span>
+        <button type="button" id="btnSettings">设置</button>
+      </div>
     </header>
 
     <main class="main-scroll">
@@ -825,11 +905,35 @@
       <button type="button" class="drawer-close" id="btnDrawerClose" aria-label="关闭">×</button>
     </div>
     <div class="drawer-body">
-      <div class="appearance-row">
-        <button type="button" class="appearance-pill" id="btnTheme">☀ 浅色</button>
-        <button type="button" class="appearance-pill" id="btnLang">中</button>
-      </div>
       <div class="drawer-section" style="border-top:0;padding-top:0">
+        <div class="font-scale-block">
+          <div class="font-scale-head" id="fontSizeTitle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7V5h4M4 17v-2h4M14 5h6M14 19h6"/><path d="M10 9l-3 6h6l-3-6zM17 9h4M17 12h4M17 15h4"/></svg>
+            <span id="fontSizeTitleText">字号大小</span>
+          </div>
+          <div class="font-scale-track" id="fontScaleTrack" role="radiogroup" aria-labelledby="fontSizeTitleText">
+            <button type="button" class="font-scale-option" data-scale="sm" id="fontScaleSm">更小</button>
+            <button type="button" class="font-scale-option is-active" data-scale="md" id="fontScaleMd">标准</button>
+            <button type="button" class="font-scale-option" data-scale="lg" id="fontScaleLg">更大</button>
+            <button type="button" class="font-scale-option" data-scale="xl" id="fontScaleXl">超大</button>
+          </div>
+        </div>
+        <div class="appearance-row">
+          <button type="button" class="appearance-pill" id="btnTheme">☀ 浅色</button>
+          <button type="button" class="appearance-pill" id="btnLang">中</button>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <div class="setting-section-label" id="autostartTitle">自启动</div>
+        <div class="setting-row">
+          <div class="setting-row-main">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4"/></svg>
+            <span class="setting-row-text" id="autostartLabel">开机自启动</span>
+          </div>
+          <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+      <div class="drawer-section">
         <div class="mini-title" id="listenTitle">监听状态</div>
         <span class="chip" id="listenState">监听中</span>
         <div class="control-row three">
@@ -837,6 +941,12 @@
           <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
           <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
         </div>
+      </div>
+      <div class="drawer-section">
+        <div class="mini-title" id="micTitle">麦克风</div>
+        <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
+        <p class="mic-empty" id="micEmpty" hidden></p>
+        <div class="mic-device-list" id="micDeviceList"></div>
       </div>
       <div class="drawer-section">
         <div class="helper-note" id="quickTips">
@@ -1009,6 +1119,8 @@
   </script>
 
   <script>
+  const invoke=window.__vp_invoke__||function(){return Promise.reject(new Error('invoke unavailable'));};
+  const vpInvoke=function(cmd,args){return invoke(cmd,window.__vp_tauri_args__?window.__vp_tauri_args__(args||{}):(args||{}));};
   const $=id=>document.getElementById(id);
   const state={config:null,selectedMappingId:null};
   const runtime={lastAction:'-',timerActive:false,paused:false};
@@ -1018,6 +1130,12 @@
   let openMenuId=null;
   let menuAnchorBtn=null;
   let theme='light';
+  let fontScale='md';
+  const FONT_SCALE_VALUES={sm:0.88,md:1,lg:1.12,xl:1.24};
+  let micDevices=[];
+  let activeMicId='';
+  let micMonitorDeviceId='';
+  let micPollTimer=0;
   let lang='zh';
   let testSendState='idle';
   let testSendTimer=0;
@@ -1040,7 +1158,7 @@
   const targetCapture={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
   const I18N={
     zh:{
-      appTitle:'织音',
+      appTitle:'一声',
       appSubtitle:'按两步设置：先选启动键，再选语音输入快捷键。',
       welcomeKicker:'首次使用',
       welcomeTitle:'两步就能开始语音启动',
@@ -1056,9 +1174,9 @@
       guideTitle1:'先设置',
       guideDesc1:'以后按一下启动键，就能更快进入语音输入。',
       guideTitle2:'再录一次',
-      guideDesc2:'',
+      guideDesc2:'先录启动键，再录语音快捷键，两步完成即可使用。',
       guideTitle3:'马上用',
-      guideDesc3:'',
+      guideDesc3:'可在「我的方案」里管理多套输入法映射，并用开关启用当前要用的方案。',
       mappingListTitle:'我的方案',addMapping:'新增方案',
       triggerTitle:'选择启动键',targetTitle:'选择语音快捷键',
       btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
@@ -1080,12 +1198,12 @@
       movedToTrash:'已移入回收站，可在「设置」中恢复',
       trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
       settingsTitle:'设置',listenTitle:'监听状态',
-      listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启织音？',
+      listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启一声？',
       testSendDisabled:'设置语音快捷键后可测试',
       testSendTarget:'试一下语音快捷键',testSending:'发送中…',testSent:'已发送',
       testShort:'测试',shortcutHintEmpty:'无切换键',shortcutHintTitle:'按下可切换到此方案',
       testModalTitle:'测试语音快捷键',testModalOk:'知道了',
-      testModalSendingTitle:'正在发送测试按键…',testModalSendingSummary:'织音会自动模拟语音快捷键，你无需按键。请先切换到要输入文字的窗口，再查看是否出现语音输入。',
+      testModalSendingTitle:'正在发送测试按键…',testModalSendingSummary:'一声会自动模拟语音快捷键，你无需按键。请先切换到要输入文字的窗口，再查看是否出现语音输入。',
       testModalOkTitle:'按键已发送',testModalOkSummary:'已向系统发送 <b>{key}</b>。请查看当前窗口是否出现语音输入。',
       testModalOkHint:'若语音没有出现，通常不是启动键的问题，请检查：① 当前窗口是否支持该快捷键 ② 输入法语音功能是否已开启 ③ 快捷键是否与输入法设置一致。可重新录制「语音快捷键」后再测。',
       testModalFailTitle:'测试未通过',testModalTimeoutTitle:'测试超时',
@@ -1107,13 +1225,21 @@
       debugTitle:'开发者信息',
       debugKeyLabel:'按键',
       debugCodeLabel:'编码',
+      mappingAutoEnabled:'方案已自动启用，可以开始使用',
       listenOn:'监听中',listenPaused:'已暂停监听',
       themeLight:'☀ 浅色',themeDark:'🌙 深色',
+      fontSizeTitle:'字号大小',fontSizeSmaller:'更小',fontSizeStandard:'标准',fontSizeLarger:'更大',fontSizeXL:'超大',
+      autostartTitle:'自启动',autostartLabel:'开机自启动',autostartFail:'无法设置开机自启动',
+      micTitle:'麦克风',
+      micDesc:'选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。',
+      micAutoDetect:'自动检测（系统默认）',micAutoDetectSub:'使用系统默认麦克风',micExternal:'外部麦克风',
+      micWindowsOnly:'麦克风切换与监测仅支持 Windows',micEmpty:'未检测到可用麦克风',
+      micSwitchFail:'切换麦克风失败',
       quickTipsTitle:'怎么设置最省心',
       quickTipsBody:'先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。',
       replayWelcome:'重新查看首次引导',
       welcomePathLabel:'设置路径',
-      noteText:'织音只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
+      noteText:'一声只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
       clearAll:'清除全部映射',waitLog:'等待录制…',
       triggerRejected:'未能识别该按键，请再试一次',
       whitelistRejected:'未能识别该按键，请再试一次',conflictDisabled:'已停用冲突映射',
@@ -1123,7 +1249,7 @@
       logTimeout:'设置超时',logTriggerDone:'已设置启动按键: ',logTargetDone:'已设置语音快捷键: ',logWaitMain:'等待按下主键...',
       comboHint:'等待组合键…',triggerRecordHint:'请按下你想用来启动语音的按键',targetRecordHint:'请按下语音输入法的快捷键',
       triggerModeTitle:'启动方式',
-      triggerModeTap:'智能连按',triggerModeHold:'即按即用',triggerModeToggle:'开/关切换',
+      triggerModeTap:'智能连按',triggerModeHold:'每按即发',triggerModeToggle:'开/关切换',
       triggerModeTapDesc:'第 1 次按开语音；短时间内再按可取消，或等待后自动确认',
       triggerModeHoldDesc:'每按一次启动键，立刻唤起一次语音',
       triggerModeToggleDesc:'按一次开启语音，再按一次关闭（只发 Esc，不再开语音）',
@@ -1153,7 +1279,7 @@
       schemeSwitched:'已切换至：'
     },
     en:{
-      appTitle:'oneTone',
+      appTitle:'onetone',
       appSubtitle:'Set it up in two steps: choose a launch key, then choose the voice input shortcut.',
       welcomeKicker:'First launch',
       welcomeTitle:'Start voice launch in two steps',
@@ -1169,9 +1295,9 @@
       guideTitle1:'Set it up',
       guideDesc1:'One press gets you into voice input faster.',
       guideTitle2:'Record once',
-      guideDesc2:'',
+      guideDesc2:'Record a launch key, then your voice shortcut — two steps to get started.',
       guideTitle3:'Use it',
-      guideDesc3:'',
+      guideDesc3:'Manage multiple profiles under My profiles and use the toggle to enable the one you need.',
       mappingListTitle:'My profiles',addMapping:'Add profile',
       triggerTitle:'Record launch key',targetTitle:'Record IME key',
       btnRecordTrigger:'Set launch key',btnRecordTarget:'Record voice input key',
@@ -1193,12 +1319,12 @@
       movedToTrash:'Moved to recycle bin (see Settings)',
       trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
       settingsTitle:'Settings',listenTitle:'Listen status',
-      listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart oneTone?',
+      listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart onetone?',
       testSendDisabled:'Set a voice shortcut first',
       testSendTarget:'Test voice shortcut',testSending:'Sending…',testSent:'Sent',
       testShort:'Test',shortcutHintEmpty:'No switch key',shortcutHintTitle:'Press to switch to this profile',
       testModalTitle:'Test voice shortcut',testModalOk:'Got it',
-      testModalSendingTitle:'Sending test key…',testModalSendingSummary:'oneTone will simulate your voice shortcut once. Watch whether voice input appears in the current window.',
+      testModalSendingTitle:'Sending test key…',testModalSendingSummary:'onetone will simulate your voice shortcut once. Watch whether voice input appears in the current window.',
       testModalOkTitle:'Key sent',testModalOkSummary:'Sent <b>{key}</b> to the system. Check whether voice input appeared in the current window.',
       testModalOkHint:'If voice did not appear, the launch key is usually not the problem. Check: ① Does the focused app support this shortcut? ② Is voice input enabled in your IME? ③ Does the shortcut match IME settings? Re-record the voice shortcut and test again.',
       testModalFailTitle:'Test failed',testModalTimeoutTitle:'Test timed out',
@@ -1220,8 +1346,16 @@
       debugTitle:'Developer Info',
       debugKeyLabel:'Key',
       debugCodeLabel:'Code',
+      mappingAutoEnabled:'Profile enabled — ready to use',
       listenOn:'Listening',listenPaused:'Paused',
       themeLight:'☀ Light',themeDark:'🌙 Dark',
+      fontSizeTitle:'Font size',fontSizeSmaller:'Smaller',fontSizeStandard:'Standard',fontSizeLarger:'Larger',fontSizeXL:'Extra large',
+      autostartTitle:'Auto-start',autostartLabel:'Start at login',autostartFail:'Could not change auto-start setting',
+      micTitle:'Microphone',
+      micDesc:'Choose a microphone that captures your voice. If the meter does not move, try another device.',
+      micAutoDetect:'Auto-detect (system default)',micAutoDetectSub:'Use the system default microphone',micExternal:'External microphone',
+      micWindowsOnly:'Microphone switching and monitoring are Windows-only',micEmpty:'No microphones detected',
+      micSwitchFail:'Failed to switch microphone',
       quickTipsTitle:'Easiest setup',
       quickTipsBody:'Set a launch key first, then record the voice shortcut. You can ignore advanced options at first.',
       replayWelcome:'Replay first-run guide',
@@ -1236,7 +1370,7 @@
       logTimeout:'Recording timed out',logTriggerDone:'Trigger recorded: ',logTargetDone:'Target recorded: ',logWaitMain:'Waiting for main key...',
       comboHint:'Waiting for combo…',triggerRecordHint:'Press launch key (side modifiers & combos supported)',targetRecordHint:'Press voice shortcut',
       triggerModeTitle:'Trigger style',
-      triggerModeTap:'Smart repeat',triggerModeHold:'Instant press',triggerModeToggle:'On / Off',
+      triggerModeTap:'Smart repeat',triggerModeHold:'Per press',triggerModeToggle:'On / Off',
       triggerModeTapDesc:'1st press opens voice; quick 2nd press cancels, or wait for auto-confirm',
       triggerModeHoldDesc:'Each press on the launch key triggers voice once',
       triggerModeToggleDesc:'Press to start voice; press again to stop (Esc only, no re-open)',
@@ -1514,6 +1648,14 @@
     return mappingById(recordingMappingId)||selectedMapping();
   }
 
+  function maybeEnableMappingAfterComplete(m){
+    if(!m||!isSavedMapping(m)||m.enabled) return;
+    try{
+      window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true});
+    }catch(_){}
+    toast(t('mappingAutoEnabled'));
+  }
+
   function mappingTargetKey(id){
     const m=mappingById(id);
     return editorTargetForMapping(m)||'?';
@@ -1569,11 +1711,191 @@
     try{window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme});}catch(_){ }
   }
 
+  function applyFontScale(){
+    const val=FONT_SCALE_VALUES[fontScale]||1;
+    document.documentElement.style.setProperty('--ui-font-scale',String(val));
+    document.querySelectorAll('.font-scale-option').forEach(function(btn){
+      btn.classList.toggle('is-active',btn.getAttribute('data-scale')===fontScale);
+    });
+    try{ localStorage.setItem('vp_font_scale',fontScale); }catch(_){ }
+  }
+
+  function setFontScale(scale){
+    if(!FONT_SCALE_VALUES[scale]) return;
+    fontScale=scale;
+    applyFontScale();
+  }
+
+  function syncAutostartToggle(enabled){
+    const btn=$('btnAutostart');
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
+  function loadAutostartState(){
+    invoke('cmd_autostart_get',{}).then(function(enabled){
+      syncAutostartToggle(!!enabled);
+    }).catch(function(){ syncAutostartToggle(false); });
+  }
+
+  function toggleAutostart(){
+    const btn=$('btnAutostart');
+    const next=!btn.classList.contains('is-on');
+    syncAutostartToggle(next);
+    invoke('cmd_autostart_set',{enabled:next}).then(function(){
+      syncAutostartToggle(next);
+    }).catch(function(err){
+      loadAutostartState();
+      toast(t('autostartFail'));
+      console.error('autostart',err);
+    });
+  }
+
+  function buildMicLevelBars(){
+    let html='';
+    for(let i=0;i<8;i++) html+='<span></span>';
+    return html;
+  }
+
+  function findMicDeviceCard(deviceId){
+    const cards=document.querySelectorAll('.mic-device-card');
+    for(let i=0;i<cards.length;i++){
+      if(cards[i].getAttribute('data-id')===deviceId) return cards[i];
+    }
+    return null;
+  }
+
+  function updateMicLevelBars(deviceId,level){
+    const card=findMicDeviceCard(deviceId);
+    if(!card) return;
+    const bars=card.querySelectorAll('.mic-level-bars span');
+    const active=level<=0?0:Math.max(1,Math.min(8,Math.ceil(level/8)));
+    bars.forEach(function(bar,i){
+      bar.className='';
+      if(i<active){
+        if(i>=active-2) bar.classList.add('on');
+        else if(i>=active-4) bar.classList.add('mid');
+        else bar.classList.add('lo');
+      }
+    });
+  }
+
+  function pollMicLevel(){
+    if(!ui.drawerOpen) return;
+    vpInvoke('cmd_mic_get_level',{}).then(function(res){
+      if(!res) return;
+      const id=res.deviceId||res.device_id||'';
+      if(id) updateMicLevelBars(id,Number(res.level)||0);
+    }).catch(function(){});
+  }
+
+  function startMicLevelPoll(){
+    stopMicLevelPoll();
+    pollMicLevel();
+    micPollTimer=setInterval(pollMicLevel,80);
+  }
+
+  function stopMicLevelPoll(){
+    if(micPollTimer){
+      clearInterval(micPollTimer);
+      micPollTimer=0;
+    }
+  }
+
+  function renderMicDevices(){
+    const list=$('micDeviceList');
+    const emptyEl=$('micEmpty');
+    if(!list) return;
+    list.replaceChildren();
+    if(!micDevices.length){
+      if(emptyEl){
+        emptyEl.hidden=false;
+        emptyEl.textContent=t('micEmpty');
+      }
+      return;
+    }
+    if(emptyEl) emptyEl.hidden=true;
+    micDevices.forEach(function(dev){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='mic-device-card'+(dev.isDefault?' is-active':'');
+      btn.setAttribute('data-id',dev.id);
+      const sub=dev.isDefault?t('micAutoDetectSub'):t('micExternal');
+      btn.innerHTML=
+        '<span class="mic-device-body">'+
+          '<div class="mic-device-name"></div>'+
+          '<div class="mic-device-sub"></div>'+
+        '</span>'+
+        '<span class="mic-level-bars" aria-hidden="true">'+buildMicLevelBars()+'</span>';
+      btn.querySelector('.mic-device-name').textContent=dev.name;
+      btn.querySelector('.mic-device-sub').textContent=sub;
+      btn.addEventListener('click',function(){ selectMicDevice(dev.id); });
+      list.appendChild(btn);
+      if(dev.isDefault) activeMicId=dev.id;
+    });
+  }
+
+  function startMicMonitor(deviceId){
+    const payload=deviceId?{device_id:deviceId}:{};
+    micMonitorDeviceId=deviceId||'';
+    return vpInvoke('cmd_mic_monitor_start',payload).catch(function(err){
+      console.error('mic monitor start',err);
+    });
+  }
+
+  function stopMicMonitor(){
+    micMonitorDeviceId='';
+    return vpInvoke('cmd_mic_monitor_stop',{}).catch(function(){});
+  }
+
+  function loadMicDevices(){
+    vpInvoke('cmd_mic_list',{}).then(function(devices){
+      micDevices=Array.isArray(devices)?devices:[];
+      renderMicDevices();
+      if(!micDevices.length) return;
+      const target=micDevices.find(function(d){ return d.isDefault; })||micDevices[0];
+      activeMicId=target?target.id:'';
+      startMicMonitor(activeMicId||null);
+    }).catch(function(err){
+      micDevices=[];
+      renderMicDevices();
+      const emptyEl=$('micEmpty');
+      if(emptyEl){
+        emptyEl.hidden=false;
+        const msg=err&&err.message?String(err.message):'';
+        emptyEl.textContent=msg||t('micWindowsOnly');
+      }
+      console.error('mic list',err);
+    });
+  }
+
+  function selectMicDevice(deviceId){
+    if(!deviceId) return;
+    vpInvoke('cmd_mic_set_default',{device_id:deviceId}).then(function(){
+      activeMicId=deviceId;
+      return vpInvoke('cmd_mic_list',{});
+    }).then(function(devices){
+      micDevices=Array.isArray(devices)?devices:[];
+      renderMicDevices();
+      return stopMicMonitor();
+    }).then(function(){
+      return startMicMonitor(activeMicId);
+    }).catch(function(err){
+      console.error('mic switch',err);
+      const detail=err&&(err.message||String(err))||'';
+      toast(detail?(t('micSwitchFail')+'：'+detail):t('micSwitchFail'));
+    });
+  }
+
   function openDrawer(){
     ui.drawerOpen=true;
     $('settingsDrawer').classList.add('open');
     $('drawerOverlay').classList.add('open');
     $('settingsDrawer').setAttribute('aria-hidden','false');
+    loadAutostartState();
+    loadMicDevices();
+    startMicLevelPoll();
   }
 
   function closeDrawer(){
@@ -1581,6 +1903,8 @@
     $('settingsDrawer').classList.remove('open');
     $('drawerOverlay').classList.remove('open');
     $('settingsDrawer').setAttribute('aria-hidden','true');
+    stopMicLevelPoll();
+    stopMicMonitor();
   }
 
   function applyLang(){
@@ -1630,8 +1954,12 @@
     if(guideDesc1) guideDesc1.textContent=d.guideDesc1;
     const guideTitle2=$('guideTitle2');
     if(guideTitle2) guideTitle2.textContent=d.guideTitle2;
+    const guideDesc2=$('guideDesc2');
+    if(guideDesc2) guideDesc2.textContent=d.guideDesc2;
     const guideTitle3=$('guideTitle3');
     if(guideTitle3) guideTitle3.textContent=d.guideTitle3;
+    const guideDesc3=$('guideDesc3');
+    if(guideDesc3) guideDesc3.textContent=d.guideDesc3;
     $('btnSettings').textContent=d.settingsTitle;
     $('settingsTitle').textContent=d.settingsTitle;
     $('mappingListTitle').textContent=d.mappingListTitle;
@@ -1654,6 +1982,16 @@
     $('triggerHelp').innerHTML=d.triggerHelp;
     $('targetHelp').innerHTML=d.targetHelp;
     $('listenTitle').textContent=d.listenTitle;
+    const fontSizeTitleText=$('fontSizeTitleText');
+    if(fontSizeTitleText) fontSizeTitleText.textContent=d.fontSizeTitle;
+    const fontScaleSm=$('fontScaleSm'); if(fontScaleSm) fontScaleSm.textContent=d.fontSizeSmaller;
+    const fontScaleMd=$('fontScaleMd'); if(fontScaleMd) fontScaleMd.textContent=d.fontSizeStandard;
+    const fontScaleLg=$('fontScaleLg'); if(fontScaleLg) fontScaleLg.textContent=d.fontSizeLarger;
+    const fontScaleXl=$('fontScaleXl'); if(fontScaleXl) fontScaleXl.textContent=d.fontSizeXL;
+    const autostartTitle=$('autostartTitle'); if(autostartTitle) autostartTitle.textContent=d.autostartTitle;
+    const autostartLabel=$('autostartLabel'); if(autostartLabel) autostartLabel.textContent=d.autostartLabel;
+    const micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
+    const micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;
     $('logTitle').textContent=d.logTitle;
     $('runtimeTitle').textContent=d.runtimeTitle;
     $('actionLabel').textContent=d.actionLabel;
@@ -1675,6 +2013,7 @@
     $('menuActDel').textContent=d.delete;
     $('btnLang').textContent=lang==='zh'?'中':'EN';
     applyTheme();
+    applyFontScale();
     if(recordingMode==='none') setRecording('none');
     render();
     try{ localStorage.setItem('vp_lang',lang); }catch(_){ }
@@ -1703,7 +2042,7 @@
     if(document.visibilityState==='visible'&&document.hasFocus()) return;
     try{
       if(!window.Notification||Notification.permission!=='granted') return;
-      new Notification(t('appTitle')||'织音',{body:msg,silent:true});
+      new Notification(t('appTitle')||'一声',{body:msg,silent:true});
     }catch(_){}
   }
 
@@ -2029,8 +2368,7 @@
       autoEnterEnabled:state.config.autoEnterEnabled!==false,
       debounceMs:state.config.debounceMs||80,
       keyPressDurationMs:state.config.keyPressDurationMs||250,
-      schemeSwitchKey:state.config.schemeSwitchKey||'',
-      scenes:state.config.scenes||null
+      schemeSwitchKey:state.config.schemeSwitchKey||''
     });
   }
 
@@ -3051,6 +3389,11 @@
     renderDebugPanel();
     $('listenState').textContent=runtime.paused?t('listenPaused'):t('listenOn');
     $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
+    const headerListen=$('headerListenState');
+    if(headerListen){
+      headerListen.textContent=runtime.paused?t('listenPaused'):t('listenOn');
+      headerListen.classList.toggle('is-paused',!!runtime.paused);
+    }
     $('liveAction').textContent=runtime.lastAction||'-';
     $('liveTimer').textContent=runtime.timerActive?'⏳':'-';
   }
@@ -3142,6 +3485,7 @@
     setRecording('none');
     save();
     render();
+    maybeEnableMappingAfterComplete(m);
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
   }
 
@@ -3186,11 +3530,16 @@
     resetTargetCapture();
     save();
     render();
+    maybeEnableMappingAfterComplete(m);
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
   }
 
   $('btnTheme').onclick=function(){ theme=theme==='light'?'dark':'light'; applyTheme(); };
   $('btnLang').onclick=function(){ lang=lang==='zh'?'en':'zh'; applyLang(); };
+  document.querySelectorAll('.font-scale-option').forEach(function(btn){
+    btn.addEventListener('click',function(){ setFontScale(btn.getAttribute('data-scale')); });
+  });
+  $('btnAutostart').onclick=toggleAutostart;
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeLater').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeStart').onclick=function(){ closeWelcome(true); };
@@ -3613,6 +3962,11 @@
   window.chrome?.webview?.addEventListener?.('message',function(e){
     const msg=e&&e.data;
     if(!msg||typeof msg!=='object') return;
+    if(msg.type==='mic_level'){
+      const id=msg.deviceId!=null?String(msg.deviceId):(msg.device_id!=null?String(msg.device_id):'');
+      if(id&&typeof msg.level==='number') updateMicLevelBars(id,msg.level);
+      return;
+    }
     if(msg.type==='mvp_init'){
       const keepTrigger=editorTriggerKey, keepTarget=editorTargetKey;
       if(msg.config) state.config=msg.config;
@@ -3697,9 +4051,11 @@
   try{
     const savedTheme=localStorage.getItem('vp_theme');
     const savedLang=localStorage.getItem('vp_lang');
+    const savedFontScale=localStorage.getItem('vp_font_scale');
     const seenWelcome=localStorage.getItem('vp_welcome_seen');
     if(savedTheme==='dark'||savedTheme==='light') theme=savedTheme;
     if(savedLang==='zh'||savedLang==='en') lang=savedLang;
+    if(savedFontScale&&FONT_SCALE_VALUES[savedFontScale]) fontScale=savedFontScale;
     if(seenWelcome!=='1') welcomeOpen=true;
   }catch(_){}
   state.config=defaultConfig();

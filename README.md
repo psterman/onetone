@@ -1,4 +1,4 @@
-# 织音 · oneTone
+# 一声 · onetone
 
 独立的 Windows 桌面应用：把硬件启动键（音量键、侧键、组合键等）映射到语音输入法的激活快捷键。
 
@@ -44,7 +44,7 @@ cargo tauri build
 用户配置保存在：
 
 ```
-%APPDATA%\oneTone\config\settings.json
+%APPDATA%\onetone\config\settings.json
 ```
 
 首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录下的旧配置文件存在，会自动迁移到新路径。

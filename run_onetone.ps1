@@ -19,6 +19,7 @@ if (-not (Test-Path $cargoTauri)) {
 
 Push-Location $tauri
 try {
+  python (Join-Path $root 'scripts\generate_onetone_icon.py')
   & $cargoTauri build
 } finally {
   Pop-Location

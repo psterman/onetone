@@ -1,13 +1,13 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 use crate::config::{
     self, canonical_trigger, is_allowed_trigger, is_volume_hotkey, is_peripheral_trigger_key,
     make_combo_trigger_source,
     apply_peripheral_autotrigger, make_peripheral_mixed_source, now_source_time,
-    new_mapping_id, ConflictReport,
+    new_mapping_id, mapping_is_complete, ConflictReport,
     MappingEntry, RawEvent, TriggerSource, VoiceConfig,
 };
 use crate::key_chord::parse_chord;
@@ -350,14 +350,19 @@ fn dispatch_trigger_action(
             keyboard::send_escape();
             push_runtime(state.as_ref(), window, "esc", mapping_id);
         }
-        state::Action::ScheduleEnter { delay_ms } => {
+        state::Action::ScheduleEnter { delay_ms, token } => {
             let s3 = Arc::clone(state);
             let w3 = window.clone();
             let mid = mapping_id.to_string();
             let d = delay_ms;
+            let timer_token = token;
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(d as u64)).await;
-                let action = s3.machine_pool.lock().get_or_create(&mid).on_enter_timer();
+                let action = s3
+                    .machine_pool
+                    .lock()
+                    .get_or_create(&mid)
+                    .on_enter_timer(timer_token);
                 if matches!(action, state::Action::SendEnter) {
                     keyboard::send_enter();
                     push_runtime(&s3, &w3, "enter", &mid);
@@ -434,10 +439,83 @@ fn persist_and_rebind(state: &AppState, window: &tauri::WebviewWindow, last_acti
     config::apply_config(state, &cfg);
     sync_config_ui(state, window, "unchanged");
     push_runtime(state, window, last_action, "");
+    crate::tray::refresh_menu(window.app_handle());
+}
+
+pub fn pause_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
+    state.machine_pool.lock().reset_all();
+    *state.recording.lock() = false;
+    *state.recording_target.lock() = None;
+    *state.record_hw_pending.lock() = None;
+    *state.record_started_at.lock() = None;
+    if let Some(ref mgr) = *state.hotkey_mgr.lock() {
+        mgr.stop_recording();
+    }
+    *state.paused.lock() = true;
+    let ack = serde_json::json!({"type":"mvp_paused","ok":true});
+    window.emit("to_js", &ack).ok();
+    push_runtime(state.as_ref(), window, "paused", "");
+    crate::tray::refresh_menu(window.app_handle());
+}
+
+pub fn resume_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
+    *state.paused.lock() = false;
+    let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
+    window.emit("to_js", &ack).ok();
+    push_runtime(state.as_ref(), window, "resumed", "");
+    crate::tray::refresh_menu(window.app_handle());
+}
+
+pub fn set_active_trigger_mode(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    mode: crate::config::TriggerMode,
+) {
+    let changed = {
+        let mut cfg = state.cfg.lock();
+        let active_id = cfg
+            .active_mappings()
+            .first()
+            .map(|m| m.id.clone())
+            .or_else(|| {
+                cfg.mappings
+                    .iter()
+                    .find(|m| mapping_is_complete(m))
+                    .map(|m| m.id.clone())
+            });
+        let Some(id) = active_id else {
+            return;
+        };
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            if m.trigger_mode != mode {
+                m.trigger_mode = mode;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    };
+    if !changed {
+        return;
+    }
+    state.machine_pool.lock().reset_all();
+    persist_and_rebind(state, window, "mode_changed");
+    let ack = serde_json::json!({
+        "type": "mvp_mode_changed",
+        "ok": true,
+        "mode": match mode {
+            crate::config::TriggerMode::Tap => "tap",
+            crate::config::TriggerMode::Hold => "hold",
+            crate::config::TriggerMode::Toggle => "toggle",
+        },
+    });
+    window.emit("to_js", &ack).ok();
 }
 
 pub fn handle_scheme_cycle(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
-    if *state.paused.lock() || *state.recording.lock() {
+    if *state.recording.lock() {
         return;
     }
     let switched = {
@@ -456,7 +534,7 @@ pub fn handle_scheme_select(
     window: &tauri::WebviewWindow,
     mapping_id: &str,
 ) {
-    if *state.paused.lock() || *state.recording.lock() {
+    if *state.recording.lock() {
         return;
     }
     let switched = {
@@ -506,6 +584,7 @@ fn finish_scheme_switch(
             .eval(&format!("window.__vp_bridge__('mvp_scheme_switched', {json})"))
             .ok();
     }
+    crate::tray::refresh_menu(window.app_handle());
 }
 
 #[tauri::command]
@@ -590,26 +669,12 @@ pub fn cmd_stop_recording(state: tauri::State<Arc<AppState>>) {
 
 #[tauri::command]
 pub fn cmd_pause(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
-    state.machine_pool.lock().reset_all();
-    *state.recording.lock() = false;
-    *state.recording_target.lock() = None;
-    *state.record_hw_pending.lock() = None;
-    *state.record_started_at.lock() = None;
-    if let Some(ref mgr) = *state.hotkey_mgr.lock() {
-        mgr.stop_recording();
-    }
-    *state.paused.lock() = true;
-    let ack = serde_json::json!({"type":"mvp_paused","ok":true});
-    window.emit("to_js", &ack).ok();
-    push_runtime(&state, &window, "paused", "");
+    pause_listen(&state, &window);
 }
 
 #[tauri::command]
 pub fn cmd_resume(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
-    *state.paused.lock() = false;
-    let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
-    window.emit("to_js", &ack).ok();
-    push_runtime(&state, &window, "resumed", "");
+    resume_listen(&state, &window);
 }
 
 #[tauri::command]
@@ -1089,11 +1154,93 @@ pub fn cmd_sync_theme_backdrop(window: tauri::WebviewWindow, theme: String) {
     crate::backdrop::sync_backdrop_theme(&window, &theme);
 }
 
+#[tauri::command]
+pub fn cmd_tray_menu_ready(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) {
+    let json = crate::tray::tray_menu_init_json(state.inner());
+    window
+        .eval(&format!("window.__tray_init__({json})"))
+        .ok();
+}
 
+#[tauri::command]
+pub fn cmd_tray_action(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    action: String,
+    payload: Option<serde_json::Value>,
+) {
+    crate::tray::handle_tray_action(&app, state.inner(), &action, payload);
+}
 
+#[tauri::command]
+pub fn cmd_tray_menu_present(
+    window: tauri::WebviewWindow,
+    width: f64,
+    height: f64,
+    cursor_x: i32,
+    cursor_y: i32,
+) -> Result<(), String> {
+    crate::tray::present_tray_menu(&window, width, height, cursor_x, cursor_y)
+        .map_err(|e| e.to_string())
+}
 
+#[tauri::command]
+pub fn cmd_autostart_get(app: tauri::AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|e| e.to_string())
+}
 
+#[tauri::command]
+pub fn cmd_autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    if enabled {
+        app.autolaunch().enable().map_err(|e| e.to_string())
+    } else {
+        app.autolaunch().disable().map_err(|e| e.to_string())
+    }
+}
 
+#[tauri::command]
+pub fn cmd_mic_list() -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
+    crate::audio_win::list_input_devices()
+}
 
+#[tauri::command]
+pub fn cmd_mic_set_default(#[allow(non_snake_case)] deviceId: Option<String>, device_id: Option<String>) -> Result<(), String> {
+    let id = device_id
+        .or(deviceId)
+        .ok_or_else(|| "missing device id".to_string())?;
+    crate::audio_win::set_default_input_device(&id)
+}
 
+#[tauri::command]
+pub fn cmd_mic_monitor_start(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] deviceId: Option<String>,
+    device_id: Option<String>,
+) -> Result<(), String> {
+    crate::audio_win::start_mic_monitor(
+        app,
+        window,
+        device_id.or(deviceId),
+        &state.mic_monitor,
+        &state.mic_level,
+    )
+}
 
+#[tauri::command]
+pub fn cmd_mic_get_level(state: tauri::State<Arc<AppState>>) -> crate::audio_win::MicLevelSnapshot {
+    state.mic_level.snapshot()
+}
+
+#[tauri::command]
+pub fn cmd_mic_monitor_stop(state: tauri::State<Arc<AppState>>) {
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+}

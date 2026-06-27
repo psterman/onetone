@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>一声托盘菜单</title>
+  <style>
+    :root{
+      --primary:#2a9cc4;
+      --primary-soft:#e6f7fc;
+      --surface:#f4f9fc;
+      --on-surface:#152238;
+      --on-surface-muted:#5a7086;
+      --outline-variant:rgba(26,45,74,.10);
+      --danger:#dc2626;
+      --radius:12px;
+      --radius-row:8px;
+      --shadow:0 10px 28px rgba(26,45,74,.18);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    @media (prefers-color-scheme:dark){
+      :root{
+        --primary:#5ec8e8;
+        --primary-soft:rgba(94,200,232,.14);
+        --surface:#1e2838;
+        --on-surface:#e8f0f8;
+        --on-surface-muted:#9aa8b8;
+        --outline-variant:rgba(148,163,184,.16);
+        --shadow:0 12px 32px rgba(0,0,0,.45);
+      }
+    }
+    *{box-sizing:border-box}
+    html{
+      margin:0;
+      height:100%;
+      background:transparent !important;
+    }
+    body{
+      margin:0;
+      padding:8px;
+      min-height:100%;
+      background:transparent !important;
+      overflow:hidden;
+      user-select:none;
+    }
+    .menu{
+      width:248px;
+      background:var(--surface);
+      border:1px solid var(--outline-variant);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:6px;
+      color:var(--on-surface);
+    }
+    .item{
+      display:flex;align-items:center;gap:10px;
+      width:100%;padding:9px 10px;
+      border:none;border-radius:var(--radius-row);
+      background:transparent;
+      color:inherit;font:inherit;text-align:left;
+      cursor:pointer;transition:background .14s ease;
+    }
+    .item:hover,.item:focus-visible{background:var(--primary-soft);outline:none}
+    .item .ico{
+      flex:0 0 18px;width:18px;height:18px;
+      color:var(--primary);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .item .ico svg{display:block;width:18px;height:18px}
+    .item .ico.muted{color:var(--on-surface-muted)}
+    .item .label{flex:1;font-size:13px;line-height:1.2}
+    .item .check{
+      flex:0 0 14px;width:14px;height:14px;
+      color:var(--primary);opacity:0;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .item .check svg{width:14px;height:14px}
+    .item.is-active .check{opacity:1}
+    .item.danger{color:var(--danger)}
+    .item.danger .ico{color:var(--danger)}
+    .item.danger:hover{background:rgba(220,38,38,.08)}
+    .sep{height:1px;margin:5px 8px;background:var(--outline-variant)}
+    .section{padding:4px 10px 2px;font-size:11px;font-weight:600;color:var(--on-surface-muted)}
+    .item.disabled{opacity:.45;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div class="menu" id="menu" role="menu" aria-label="一声托盘菜单"></div>
+  <script>
+    const invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
+
+    const ICONS={
+      open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg>',
+      pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+      play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
+      mode:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>',
+      scheme:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>',
+      cycle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4h4"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-4H3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>',
+      quit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
+      check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>'
+    };
+
+    function el(tag,cls,html){
+      const n=document.createElement(tag);
+      if(cls)n.className=cls;
+      if(html!==undefined)n.innerHTML=html;
+      return n;
+    }
+
+    function row(opts){
+      const b=el('button','item'+(opts.active?' is-active':'')+(opts.danger?' danger':'')+(opts.disabled?' disabled':''));
+      b.innerHTML='<span class="ico'+(opts.mutedIco?' muted':'')+'">'+opts.icon+'</span><span class="label"></span><span class="check">'+ICONS.check+'</span>';
+      b.querySelector('.label').textContent=opts.label;
+      if(!opts.disabled&&opts.action)b.addEventListener('click',function(){ invoke('cmd_tray_action',{action:opts.action,payload:opts.payload||null}).catch(function(){}); });
+      return b;
+    }
+
+    function sep(){ return el('div','sep'); }
+    function section(title){ return el('div','section',title); }
+
+    function render(data){
+      const root=document.getElementById('menu');
+      root.replaceChildren();
+      root.appendChild(row({icon:ICONS.open,label:'打开一声',action:'show'}));
+      root.appendChild(sep());
+      root.appendChild(row({
+        icon:data.paused?ICONS.play:ICONS.pause,
+        label:data.listenLabel,
+        action:'listen_toggle'
+      }));
+      root.appendChild(sep());
+      root.appendChild(section('触发模式'));
+      (data.modes||[]).forEach(function(m){
+        root.appendChild(row({
+          icon:ICONS.mode,
+          mutedIco:true,
+          label:m.label,
+          active:m.id===data.activeMode,
+          action:'set_mode',
+          payload:{mode:m.id}
+        }));
+      });
+      root.appendChild(sep());
+      root.appendChild(section('切换方案'));
+      const schemes=data.schemes||[];
+      if(!schemes.length){
+        root.appendChild(row({icon:ICONS.scheme,mutedIco:true,label:'（暂无可用方案）',disabled:true}));
+      }else{
+        schemes.forEach(function(s){
+          root.appendChild(row({
+            icon:ICONS.scheme,
+            mutedIco:true,
+            label:s.label,
+            active:!!s.enabled,
+            action:'select_scheme',
+            payload:{id:s.id}
+          }));
+        });
+        if(data.canCycle){
+          root.appendChild(row({icon:ICONS.cycle,label:'轮换到下一方案',action:'cycle_scheme'}));
+        }
+      }
+      root.appendChild(sep());
+      root.appendChild(row({icon:ICONS.quit,label:'退出一声',action:'quit',danger:true}));
+    }
+
+    window.__tray_init__=function(data){ render(data||{}); };
+  </script>
+</body>
+</html>

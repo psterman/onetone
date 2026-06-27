@@ -97,6 +97,7 @@ pub struct TriggerSource {
     pub raw_events: Vec<RawEvent>,
 }
 
+/// Legacy migrate-only; not used at runtime.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ActionConfig {
     #[serde(default)]
@@ -107,6 +108,7 @@ pub struct ActionConfig {
     pub send: String,
 }
 
+/// Legacy / reserved; not used at runtime.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SceneConfig {
     #[serde(default)]
@@ -150,7 +152,7 @@ pub struct VoiceConfig {
     #[serde(default = "default_key_press_duration_ms")]
     #[serde(rename = "keyPressDurationMs")]
     pub key_press_duration_ms: u32,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
     pub scheme_switch_key: String,
@@ -539,6 +541,10 @@ fn is_mapping_complete(m: &MappingEntry) -> bool {
     !m.trigger_key.trim().is_empty() && !m.target_key.trim().is_empty()
 }
 
+pub fn mapping_is_complete(m: &MappingEntry) -> bool {
+    is_mapping_complete(m)
+}
+
 pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, bool) {
     let interval = if m.interval_ms >= 200 {
         m.interval_ms
@@ -889,7 +895,7 @@ impl VoiceConfig {
 }
 
 pub fn config_path() -> PathBuf {
-    let app_path = directories::ProjectDirs::from("com", "oneTone", "oneTone")
+    let app_path = directories::ProjectDirs::from("com", "onetone", "onetone")
         .map(|d| d.config_dir().join("settings.json"));
     if let Some(ref p) = app_path {
         if p.exists() {
@@ -1262,7 +1268,6 @@ mod tests {
         assert!(bindings.iter().all(|(_, id)| id == &cfg.mappings[0].id));
     }
 }
-
 
 
 
