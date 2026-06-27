@@ -248,6 +248,11 @@
     }
     .home-adv-link:hover{background:var(--primary-soft)}
     .mapping-section{margin-top:8px;opacity:.98}
+    .settings-panel .mapping-section{
+      margin:0 0 20px;padding:0 0 16px;border-bottom:1px solid var(--outline-variant);
+    }
+    .settings-panel .mapping-section .list-head-row{margin-bottom:10px}
+    .settings-panel .mapping-section .status-section{margin-top:12px}
     .drawer-shell{flex:1;display:flex;min-height:0;overflow:hidden}
     .settings-nav{
       width:168px;flex-shrink:0;border-right:1px solid var(--outline-variant);
@@ -1021,28 +1026,6 @@
           </details>
         </div>
       </div>
-
-      <section class="bubble-card mapping-section">
-        <div class="list-head-row">
-          <h2 id="mappingListTitle">我的方案</h2>
-          <div class="list-head-actions">
-            <span class="list-head-hint" id="mappingListHint">需要多个输入法时，再添加方案</span>
-            <button class="list-add" id="btnAddMapping" type="button">新增方案</button>
-          </div>
-        </div>
-        <div class="draft-hint" id="mappingDraftHint"></div>
-        <div class="mapping-empty" id="mappingEmpty" hidden>
-          <strong id="mappingEmptyTitle">还没有方案</strong>
-          <span id="mappingEmptyHint">在设置中录制按键；语音结束为可选增强。</span>
-        </div>
-        <div id="mappingList"></div>
-        <div class="status-section">
-          <div class="status-left">
-            <div class="conflict-pill" id="conflictBanner" role="status"></div>
-          </div>
-          <button type="button" class="btn-test-send" id="btnTestSend" disabled>请先设置语音快捷键</button>
-        </div>
-      </section>
     </main>
   </div>
 
@@ -1131,7 +1114,28 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">麦克风与语音唤醒引擎</p>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">我的方案、麦克风与语音唤醒引擎</p>
+          <div class="mapping-section" id="voiceWakeMappingSection">
+            <div class="list-head-row">
+              <h2 id="mappingListTitle">我的方案</h2>
+              <div class="list-head-actions">
+                <span class="list-head-hint" id="mappingListHint">需要多个输入法时，再添加方案</span>
+                <button class="list-add" id="btnAddMapping" type="button">新增方案</button>
+              </div>
+            </div>
+            <div class="draft-hint" id="mappingDraftHint"></div>
+            <div class="mapping-empty" id="mappingEmpty" hidden>
+              <strong id="mappingEmptyTitle">还没有方案</strong>
+              <span id="mappingEmptyHint">在「按键唤醒」中录制启动键与语音快捷键，或点下方新增方案。</span>
+            </div>
+            <div id="mappingList"></div>
+            <div class="status-section">
+              <div class="status-left">
+                <div class="conflict-pill" id="conflictBanner" role="status"></div>
+              </div>
+              <button type="button" class="btn-test-send" id="btnTestSend" disabled>请先设置语音快捷键</button>
+            </div>
+          </div>
           <div class="mini-title" id="micTitle">麦克风</div>
           <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
           <p class="mic-empty" id="micEmpty" hidden></p>
@@ -1515,7 +1519,7 @@
       guideTitle2:'再录一次',
       guideDesc2:'先录启动键，再录语音快捷键，两步完成即可使用。',
       guideTitle3:'马上用',
-      guideDesc3:'可在「我的方案」里管理多套输入法映射，并用开关启用当前要用的方案。',
+      guideDesc3:'可在「设置 → 语音唤醒」的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
       mappingListTitle:'我的方案',addMapping:'新增方案',
       triggerTitle:'启动键',targetTitle:'语音快捷键',
       btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
@@ -1525,7 +1529,7 @@
       targetHelp:'这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。',
       badgeNotRecorded:'未设置',badgeRecording:'录制中',badgeRecorded:'已设置',
       badgeNotSet:'未设置',badgeSet:'已设置',
-      mappingEmptyTitle:'还没有方案',mappingEmptyHint:'在设置中录制按键；语音结束为可选增强。',
+      mappingEmptyTitle:'还没有方案',mappingEmptyHint:'在「按键唤醒」中录制启动键与语音快捷键，或点下方新增方案。',
       draftHint:'在设置中完成按键录制后，可新增更多方案。',
       addNeedComplete:'请先完成当前方案的设置',
       cancelRecord:'取消录制',cancelDraft:'取消新方案',
@@ -1644,7 +1648,7 @@
       capGoSettings:'去设置 →',
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
-      homeAdvMic:'麦克风',homeAdvEngine:'唤醒引擎',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
+      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'唤醒引擎',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
       homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音唤醒已就绪',
       homeStatusIdle:'先配置按键或语音唤醒',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
@@ -1658,7 +1662,7 @@
       settingsNavBasic:'基础',settingsNavKeyWake:'按键唤醒',settingsNavVoiceWake:'语音唤醒',
       settingsNavVoiceEnd:'结束与发送',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
       settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'录制启动键与语音快捷键',
-      settingsPanelVoiceWakeDesc:'麦克风与语音唤醒引擎',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
+      settingsPanelVoiceWakeDesc:'我的方案、麦克风与语音唤醒引擎',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
       settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
       debugOverviewSession:'会话',debugOverviewWake:'唤醒',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'未启用',
@@ -1702,7 +1706,7 @@
       schemeSwitchCancel:'取消录制',schemeSwitchClear:'清除',schemeSwitchCleared:'已清除轮换快捷键',
       cycleSwitchTitle:'方案轮换键（可选）',
       cycleSwitchDesc:'有多个方案时，可用一个快捷键在它们之间轮换。',
-      mappingListHint:'语音结束为全局设置；多个输入法可新增方案',
+      mappingListHint:'多个输入法时可新增方案；按键在「按键唤醒」中录制',
       switchKeysTitle:'直接切到这个方案',switchKeysDesc:'可添加一个或多个快捷键，按下后立即启用本方案。',
       switchKeysAdd:'+ 添加快捷键',switchKeysRecording:'录制中…',switchKeysRemoved:'已移除快捷键',
       nativeKeyTitle:'保留原本功能',nativeKeyDesc:'开启后，<b>{keys}</b> 仍保留系统原本功能；如果需要，可另外设置方案切换键。',
@@ -1733,7 +1737,7 @@
       guideTitle2:'Record once',
       guideDesc2:'Record a launch key, then your voice shortcut — two steps to get started.',
       guideTitle3:'Use it',
-      guideDesc3:'Manage multiple profiles under My profiles and use the toggle to enable the one you need.',
+      guideDesc3:'Manage profiles under Settings → Voice wake and use the toggle to enable the one you need.',
       mappingListTitle:'My profiles',addMapping:'Add profile',
       triggerTitle:'Launch key',targetTitle:'Voice shortcut',
       btnRecordTrigger:'Set launch key',btnRecordTarget:'Record voice input key',
@@ -1743,7 +1747,7 @@
       targetHelp:'Record your voice-IME activation shortcut. Exit or switch IME first to avoid conflicts or missed keys.',
       badgeNotRecorded:'Not set',badgeRecording:'Recording',badgeRecorded:'Set',
       badgeNotSet:'Not set',badgeSet:'Set',
-      mappingEmptyTitle:'No profiles yet',mappingEmptyHint:'Record keys in Settings; voice end is optional.',
+      mappingEmptyTitle:'No profiles yet',mappingEmptyHint:'Record keys under Key wake, or tap Add profile below.',
       draftHint:'Record keys in settings, then add more profiles.',
       addNeedComplete:'Complete the current profile first',
       cancelRecord:'Cancel recording',cancelDraft:'Cancel new profile',
@@ -1862,7 +1866,7 @@
       capGoSettings:'Settings →',
       homeCapKeyUnset:'Not set',homeCapVoiceOff:'Off',
       homeAdvancedSummary:'Advanced tweaks',
-      homeAdvMic:'Microphone',homeAdvEngine:'Wake engine',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
+      homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Wake engine',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
       homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice wake is ready',
       homeStatusIdle:'Set up key or voice wake first',homeStatusNeedTarget:'Voice shortcut still needed',
       homeStatusPaused:'Listening paused',
@@ -1876,7 +1880,7 @@
       settingsNavBasic:'Basic',settingsNavKeyWake:'Key wake',settingsNavVoiceWake:'Voice wake',
       settingsNavVoiceEnd:'End & send',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
       settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Record launch key & voice shortcut',
-      settingsPanelVoiceWakeDesc:'Microphone & wake engines',settingsPanelVoiceEndDesc:'End phrases & auto-send',
+      settingsPanelVoiceWakeDesc:'Profiles, microphone & wake engines',settingsPanelVoiceEndDesc:'End phrases & auto-send',
       settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
       debugOverviewSession:'Session',debugOverviewWake:'Wake',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'Off',
@@ -1920,7 +1924,7 @@
       schemeSwitchCancel:'Cancel recording',schemeSwitchClear:'Clear',schemeSwitchCleared:'Cycle shortcut cleared',
       cycleSwitchTitle:'Cycle shortcut (optional)',
       cycleSwitchDesc:'Rotate among profiles with the same trigger; or set direct shortcuts per profile below.',
-      mappingListHint:'Voice end is global; add mappings for multiple IMEs',
+      mappingListHint:'Add profiles for multiple IMEs; record keys under Key wake',
       switchKeysTitle:'Switch to this profile',switchKeysDesc:'Add multiple shortcuts; any activates this profile',
       switchKeysAdd:'+ Add shortcut',switchKeysRecording:'Recording…',switchKeysRemoved:'Shortcut removed',
       nativeKeyTitle:'Native keys',nativeKeyDesc:'When on, <b>{keys}</b> work normally; use switch shortcuts to activate',
@@ -2491,7 +2495,8 @@
     return {engine,voskEnabled:voskOn,sapiEnabled:sapiOn,phrase,state,sapi:sapiRes,vosk:voskRes};
   }
 
-  function syncHomeFromVoiceSettings(voskRes,sapiRes,endRes){
+  function syncHomeFromVoiceSettings(voskRes,sapiRes,endRes,opts){
+    opts=opts||{};
     if(state.config){
       if(voskRes){
         syncVoiceVoskConfigFromStatus(voskRes);
@@ -2510,7 +2515,7 @@
       );
     }
     if(endRes) voiceUiSnapshot.end=Object.assign({},voiceUiSnapshot.end||{},endRes);
-    renderMappingList();
+    if(!opts.homeOnly) renderMappingList();
     renderHome();
   }
 
@@ -2725,6 +2730,7 @@
     const body=$('homeAdvancedBody');
     if(!body) return;
     const links=[
+      {label:t('homeAdvProfiles'),panel:'voiceWake',focus:'mappings'},
       {label:t('homeAdvMic'),panel:'voiceWake',focus:'mic'},
       {label:t('homeAdvEngine'),panel:'voiceWake',focus:'engine'},
       {label:t('homeAdvAutoSend'),panel:'voiceEnd',focus:'autoSend'},
@@ -2776,6 +2782,7 @@
     const map={
       trigger:['btnRecordTrigger','keyWakeSettings'],
       target:['btnRecordTarget','keyWakeSettings'],
+      mappings:['voiceWakeMappingSection','mappingListTitle'],
       mic:['micDeviceList','micTitle'],
       engine:['voiceSapiTitle','voiceVoskTitle'],
       wakePhrases:['voiceSapiPresets','voiceVoskPresetsCn'],
@@ -2911,6 +2918,7 @@
 
   let voiceStatusPollStarted=false;
   let configLoadedFromBackend=false;
+  let mvpInitRenderSerial=0;
 
   function applyMvpInit(msg){
     const keepTrigger=editorTriggerKey, keepTarget=editorTargetKey;
@@ -2929,8 +2937,17 @@
     configLoadedFromBackend=true;
     syncVoiceSettingsFromConfig();
     ensureNotificationPermission();
-    render();
-    startVoiceStatusPoll();
+    mvpInitRenderSerial++;
+    const serial=mvpInitRenderSerial;
+    requestAnimationFrame(function(){
+      if(serial!==mvpInitRenderSerial) return;
+      render();
+    });
+    if(!voiceStatusPollStarted){
+      setTimeout(function(){
+        if(!voiceStatusPollStarted) startVoiceStatusPoll();
+      },1200);
+    }
   }
 
   function syncVoiceSettingsFromConfig(){
@@ -2946,21 +2963,36 @@
     syncHomeFromVoiceSettings(
       {enabled:!!vosk.enabled,phrases:vosk.phrases||[],state:'stopped'},
       {enabled:!!sapi.enabled,phrases:sapi.phrases||[],state:'stopped'},
-      {enabled:!!end.enabled,autoSendEnabled:!!end.autoSendEnabled,phrasesZh:end.phrasesZh||end.phrases_zh||[],phrasesEn:end.phrasesEn||end.phrases_en||[],state:'idle'}
+      {enabled:!!end.enabled,autoSendEnabled:!!end.autoSendEnabled,phrasesZh:end.phrasesZh||end.phrases_zh||[],phrasesEn:end.phrasesEn||end.phrases_en||[],state:'idle'},
+      {homeOnly:true}
     );
   }
 
   function requestBackendConfig(retry){
+    if(!window.__TAURI_INTERNALS__){
+      if(retry>0) setTimeout(function(){ requestBackendConfig(retry-1); }, 120);
+      else setTimeout(fallbackConfigLoaded,1500);
+      return;
+    }
     vpInvoke('cmd_ready',{}).then(function(msg){
-      if(msg&&msg.type==='mvp_init'){
-        applyMvpInit(msg);
-      }
-    }).catch(function(){});
+      if(msg&&(msg.type==='mvp_init'||msg.config)) applyMvpInit(msg);
+    }).catch(function(err){
+      console.error('cmd_ready',err);
+      try{ window.chrome?.webview?.postMessage({type:'mvp_ready'}); }catch(_){}
+    });
     if(retry>0){
       setTimeout(function(){
         if(!configLoadedFromBackend) requestBackendConfig(retry-1);
       },800);
+    }else{
+      setTimeout(fallbackConfigLoaded,1500);
     }
+  }
+
+  function fallbackConfigLoaded(){
+    if(configLoadedFromBackend) return;
+    configLoadedFromBackend=true;
+    renderHome();
   }
 
   function voiceWakeEnabledInConfig(){
@@ -2997,6 +3029,7 @@
     if(sessionActiveState(endSnap.state||'idle')) return 300;
     if(ui.drawerOpen&&!settingsPanelNeedsVoicePoll()) return 2000;
     if(ui.drawerOpen&&(ui.settingsPanel==='debug'||ui.settingsPanel==='voiceWake')) return 350;
+    if(!ui.drawerOpen&&(voiceWakeEnabledInConfig()||voiceEndEnabledInConfig())) return 2000;
     if(runtime.paused) return 1000;
     return 1200;
   }
@@ -5875,12 +5908,13 @@
   ensureConfig();
   syncEditorFromSelection();
   applyLang(true);
-  render();
-  if(welcomeOpen) openWelcome();
+  requestAnimationFrame(function(){
+    renderHome();
+    if(welcomeOpen) openWelcome();
+  });
   setRecording('none');
   pushLog(t('waitLog'));
-  setTimeout(function(){ if(!voiceStatusPollStarted) startVoiceStatusPoll(); }, 2500);
-  requestBackendConfig(2);
+  setTimeout(function(){ requestBackendConfig(4); }, 80);
 </script>
 </body>
 </html>

@@ -116,7 +116,7 @@ pub fn run() {
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();
 
-            let backdrop_mode = backdrop::apply_native_backdrop(&window, None);
+            let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
 
             let mgr = hotkey_win::HotkeyManager::new();
             {
@@ -138,9 +138,9 @@ pub fn run() {
 
             let window_init = window.clone();
             let state_init = app_state.clone();
-            let mode_init = backdrop_mode.clone();
+            let mode_init = _backdrop_mode.clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(Duration::from_millis(300)).await;
+                tokio::time::sleep(Duration::from_millis(400)).await;
                 ipc::push_mvp_init(&state_init, &window_init, &mode_init);
             });
 
