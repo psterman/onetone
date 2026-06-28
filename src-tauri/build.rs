@@ -14,8 +14,65 @@ const VOSK_RUNTIME_DLLS: &[&str] = &[
 fn main() {
     ensure_icons_exist();
     link_vosk_if_present();
-    tauri_build::try_build(tauri_build::Attributes::new())
-        .expect("failed to run tauri build");
+
+    const COMMANDS: &[&str] = &[
+        "cmd_ready",
+        "cmd_save",
+        "cmd_start_recording",
+        "cmd_stop_recording",
+        "cmd_pause",
+        "cmd_resume",
+        "cmd_request_runtime",
+        "cmd_capture_source",
+        "cmd_frontend_keydown",
+        "cmd_physical_trigger",
+        "cmd_test_send",
+        "cmd_mapping_toggle",
+        "cmd_mapping_delete",
+        "cmd_mapping_duplicate",
+        "cmd_mapping_reorder",
+        "cmd_mapping_set_group",
+        "cmd_mapping_set_source_key",
+        "cmd_mapping_conflicts",
+        "cmd_reload_latest",
+        "cmd_window_minimize",
+        "cmd_window_close",
+        "cmd_sync_theme_backdrop",
+        "cmd_tray_menu_ready",
+        "cmd_tray_action",
+        "cmd_tray_menu_present",
+        "cmd_autostart_get",
+        "cmd_autostart_set",
+        "cmd_mic_list",
+        "cmd_mic_set_default",
+        "cmd_mic_monitor_start",
+        "cmd_mic_monitor_stop",
+        "cmd_mic_get_level",
+        "cmd_voice_sapi_status",
+        "cmd_voice_sapi_set_enabled",
+        "cmd_voice_sapi_set_phrases",
+        "cmd_voice_sapi_set_min_confidence",
+        "cmd_voice_sapi_test_send",
+        "cmd_voice_vosk_status",
+        "cmd_voice_vosk_set_enabled",
+        "cmd_voice_vosk_set_phrases",
+        "cmd_voice_vosk_set_model_preset",
+        "cmd_voice_vosk_set_model_path",
+        "cmd_voice_vosk_test_send",
+        "cmd_voice_end_status",
+        "cmd_voice_end_set_enabled",
+        "cmd_voice_end_set_auto_send",
+        "cmd_voice_end_set_commit_delay",
+        "cmd_voice_end_set_phrases",
+        "cmd_voice_end_test_stop",
+        "cmd_voice_end_test_commit",
+    ];
+
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
+    )
+    .expect("failed to run tauri build");
 }
 
 fn link_vosk_if_present() {

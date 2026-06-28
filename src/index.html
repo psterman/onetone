@@ -1037,7 +1037,7 @@
         <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" />
         <div class="app-title-wrap">
           <h1 class="app-title" id="appTitle">一声</h1>
-          <p class="app-subtitle" id="appSubtitle">按键与语音可并用，结束与发送为可选增强。</p>
+          <p class="app-subtitle" id="appSubtitle">言出即行 · 万象成形</p>
         </div>
       </div>
       <div class="header-actions">
@@ -1781,7 +1781,7 @@
   const I18N={
     zh:{
       appTitle:'一声',
-      appSubtitle:'按键与语音可并用，结束与发送为可选增强。',
+      appSubtitle:'言出即行 · 万象成形',
       welcomeKicker:'首次使用',
       welcomeTitle:'两步就能开始语音启动',
       welcomeDesc:'先定一个启动方式，再录一次语音快捷键。以后你一按启动键，它就会帮你唤起语音输入。',
@@ -1969,10 +1969,10 @@
       soundPreview:'试听',
       soundPickRecord:'录制按键',soundPickVoiceWake:'语音启动',soundPickKeyWake:'按键启动',
       soundPickSendSuccess:'发送成功',soundPickSendFail:'失败提示',
-      soundNameTinyTick:'极短提示 · 轻点',soundNameInputReady:'开始输入 · 柔和',
-      soundNameVoiceSignal:'语音已启动 · 信号',soundNameVoiceGate:'语音已启动 · 门闸',
-      soundNameVoiceSip:'语音已启动 · 轻吸气',soundNameSendConfirm:'发送确认 · 极短',
-      soundNameErrorSubtle:'失败提示 · 克制',
+      soundNameTinyTick:'轻点',soundNameInputReady:'柔和',
+      soundNameVoiceSignal:'信号',soundNameVoiceGate:'门闸',
+      soundNameVoiceSip:'轻吸气',soundNameSendConfirm:'极短确认',
+      soundNameErrorSubtle:'克制',
       debugOverviewSession:'会话',debugOverviewWake:'唤醒',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'未启用',
       endCardTitle:'结束',endEnableLabel:'语音结束',endPhrasesLabel:'结束词',
@@ -2029,7 +2029,7 @@
     },
     en:{
       appTitle:'onetone',
-      appSubtitle:'Key and voice wake work together; end & send is optional.',
+      appSubtitle:'Speak to Create.',
       welcomeKicker:'First launch',
       welcomeTitle:'Start voice launch in two steps',
       welcomeDesc:'Choose how you want to start, then record the voice shortcut once. After that, pressing the launch key will open voice input faster.',
@@ -2217,10 +2217,10 @@
       soundPreview:'Preview',
       soundPickRecord:'Recording',soundPickVoiceWake:'Voice wake',soundPickKeyWake:'Key wake',
       soundPickSendSuccess:'Send success',soundPickSendFail:'Failure',
-      soundNameTinyTick:'Tiny tick',soundNameInputReady:'Input ready · soft',
-      soundNameVoiceSignal:'Voice open · signal',soundNameVoiceGate:'Voice open · gate',
-      soundNameVoiceSip:'Voice open · sip',soundNameSendConfirm:'Send confirm',
-      soundNameErrorSubtle:'Error · subtle',
+      soundNameTinyTick:'Tiny tick',soundNameInputReady:'Soft',
+      soundNameVoiceSignal:'Signal',soundNameVoiceGate:'Gate',
+      soundNameVoiceSip:'Sip',soundNameSendConfirm:'Short confirm',
+      soundNameErrorSubtle:'Subtle',
       debugOverviewSession:'Session',debugOverviewWake:'Wake',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'Off',
       endCardTitle:'End',endEnableLabel:'Voice end',endPhrasesLabel:'End phrases',
@@ -4829,6 +4829,7 @@
 
   function ensureMappingExtras(m){
     if(!m) return;
+    if((m.triggerMode||'').toLowerCase()==='toggle') m.triggerMode='tap';
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
@@ -4940,14 +4941,6 @@
         +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeHoldAnimVoice')+'</span>'
         +'</div></div>';
     }
-    if(opt==='toggle'){
-      return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-toggle">'
-        +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
-        +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeToggleAnimOn')+'</span>'
-        +'<span class="ma-arrow">→</span><span class="ma-chip ma-key ma-k2">2</span><span class="ma-arrow">→</span>'
-        +'<span class="ma-chip ma-esc ma-esc1">'+t('triggerModeToggleAnimOff')+'</span>'
-        +'</div></div>';
-    }
     return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-tap">'
       +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
       +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeTapAnimVoice')+'</span>'
@@ -4987,25 +4980,23 @@
       html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsTap')+'</span></div>';
       html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsTapTip')+'</p>';
       html+=renderTapTimingSettings(m,id);
-    }else if(mode==='hold'){
+    }else{
       html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsHold')+'</span></div>';
       html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsHoldTip')+'</p>';
-    }else{
-      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsToggle')+'</span></div>';
-      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsToggleTip')+'</p>';
     }
     html+='</div>';
     return html;
   }
 
   function renderTriggerModeBlock(m,id){
-    const mode=(m.triggerMode||'tap').toLowerCase();
+    const raw=(m.triggerMode||'tap').toLowerCase();
+    const mode=raw==='toggle'?'tap':raw;
     let html='<div class="map-trigger-mode">';
     html+='<div class="map-timing-head"><span>'+t('triggerModeTitle')+'</span></div>';
     html+='<div class="map-mode-cards">';
-    ['hold','toggle','tap'].forEach(function(opt){
-      const titleKey='triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle');
-      const descKey='triggerMode'+(opt==='tap'?'Tap':opt==='hold'?'Hold':'Toggle')+'Desc';
+    ['hold','tap'].forEach(function(opt){
+      const titleKey='triggerMode'+(opt==='tap'?'Tap':'Hold');
+      const descKey='triggerMode'+(opt==='tap'?'Tap':'Hold')+'Desc';
       html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
       html+=renderModeAnim(opt);
       html+='<span class="mode-card-title">'+t(titleKey)+'</span>';
@@ -6448,15 +6439,22 @@
   $('btnDrawerClose').onclick=closeDrawer;
   $('drawerOverlay').onclick=closeDrawer;
   $('btnListenToggle').onclick=function(){
-    try{window.chrome?.webview?.postMessage({type:runtime.paused?'mvp_resume':'mvp_pause'});}catch(_){ }
+    vpInvoke(runtime.paused?'cmd_resume':'cmd_pause',{}).catch(function(err){
+      console.error('pause/resume',err);
+    });
   };
   $('btnRefreshRuntime').onclick=function(){
-    try{window.chrome?.webview?.postMessage({type:'mvp_request_runtime'});}catch(_){ }
-    toast(t('runtimeRefreshed'));
+    vpInvoke('cmd_request_runtime',{}).then(function(){
+      toast(t('runtimeRefreshed'));
+    }).catch(function(err){
+      console.error('request_runtime',err);
+    });
   };
   $('btnRestartApp').onclick=function(){
     if(!confirm(t('restartConfirm'))) return;
-    try{window.chrome?.webview?.postMessage({type:'mvp_reload_latest'});}catch(_){ }
+    vpInvoke('cmd_reload_latest',{}).catch(function(err){
+      console.error('reload_latest',err);
+    });
   };
   $('btnTestModalOk').onclick=function(){ closeTestModal(); };
   $('btnTestModalClose').onclick=function(){ closeTestModal(); };

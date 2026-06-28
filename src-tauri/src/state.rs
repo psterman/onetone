@@ -28,7 +28,6 @@ pub struct StateMachine {
     last_trigger: Option<Instant>,
     enter_timer_active: bool,
     enter_timer_gen: u64,
-    toggle_armed: bool,
 }
 
 impl StateMachine {
@@ -39,7 +38,6 @@ impl StateMachine {
             last_trigger: None,
             enter_timer_active: false,
             enter_timer_gen: 0,
-            toggle_armed: false,
         }
     }
 
@@ -70,23 +68,6 @@ impl StateMachine {
             }
             self.last_trigger = Some(now);
             return vec![Action::SendKey { key: target }];
-        }
-
-        if mapping.trigger_mode == TriggerMode::Toggle {
-            if let Some(last) = self.last_trigger {
-                if now.duration_since(last) < Duration::from_millis(debounce_ms) {
-                    return vec![];
-                }
-            }
-            self.last_trigger = Some(now);
-            self.toggle_armed = !self.toggle_armed;
-            if self.toggle_armed {
-                return vec![Action::SendKey { key: target }];
-            }
-            self.count = 0;
-            self.last_tick = None;
-            self.invalidate_enter_timer();
-            return vec![Action::SendEsc];
         }
 
         let delta = self
@@ -147,7 +128,6 @@ impl StateMachine {
         self.count = 0;
         self.last_tick = None;
         self.invalidate_enter_timer();
-        self.toggle_armed = false;
     }
 
     pub fn runtime_info(&self) -> RuntimeInfo {

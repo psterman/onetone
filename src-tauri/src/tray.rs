@@ -132,7 +132,6 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         "modes": [
             {"id": "hold", "label": "每按即发"},
             {"id": "tap", "label": "智能连按"},
-            {"id": "toggle", "label": "开/关切换"},
         ],
         "schemes": schemes,
         "canCycle": complete_count > 1,
@@ -351,17 +350,15 @@ fn compute_tray_menu_position(
 
 fn mode_id(mode: TriggerMode) -> &'static str {
     match mode {
-        TriggerMode::Tap => "tap",
+        TriggerMode::Tap | TriggerMode::Toggle => "tap",
         TriggerMode::Hold => "hold",
-        TriggerMode::Toggle => "toggle",
     }
 }
 
 fn parse_mode_id(raw: &str) -> Option<TriggerMode> {
     match raw {
-        "tap" => Some(TriggerMode::Tap),
+        "tap" | "toggle" => Some(TriggerMode::Tap),
         "hold" => Some(TriggerMode::Hold),
-        "toggle" => Some(TriggerMode::Toggle),
         _ => None,
     }
 }

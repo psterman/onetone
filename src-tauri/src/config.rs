@@ -1157,6 +1157,9 @@ impl VoiceConfig {
             if m.enter_delay_ms < 1000 {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
+            if m.trigger_mode == TriggerMode::Toggle {
+                m.trigger_mode = TriggerMode::Tap;
+            }
         }
         self.mappings.sort_by_key(|m| m.order);
     }

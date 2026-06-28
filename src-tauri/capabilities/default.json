@@ -4,6 +4,7 @@
   "windows": ["main", "tray_menu"],
   "permissions": [
     "core:default",
+    "app-ipc",
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled"
