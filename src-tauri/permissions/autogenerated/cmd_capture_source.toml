@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-capture-source"
+description = "Enables the cmd_capture_source command without any pre-configured scope."
+commands.allow = ["cmd_capture_source"]
+
+[[permission]]
+identifier = "deny-cmd-capture-source"
+description = "Denies the cmd_capture_source command without any pre-configured scope."
+commands.deny = ["cmd_capture_source"]

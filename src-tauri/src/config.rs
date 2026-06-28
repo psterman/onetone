@@ -163,6 +163,10 @@ pub struct VoiceConfig {
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
     pub scheme_switch_key: String,
+    #[serde(default, rename = "keyWakeSoundEnabled")]
+    pub key_wake_sound_enabled: bool,
+    #[serde(default, rename = "sounds")]
+    pub sounds: SoundsConfig,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -305,6 +309,143 @@ impl Default for VoiceEndConfig {
             auto_send_enabled: false,
             target_key: default_voice_end_target_key(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoundSlot {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub id: String,
+}
+
+fn default_sound_id_record() -> String {
+    "tiny-tick".into()
+}
+fn default_sound_id_voice_wake() -> String {
+    "voice-open-signal".into()
+}
+fn default_sound_id_key_wake() -> String {
+    "input-ready-soft".into()
+}
+fn default_sound_id_send_success() -> String {
+    "send-confirm-click".into()
+}
+fn default_sound_id_send_fail() -> String {
+    "error-subtle".into()
+}
+
+impl Default for SoundSlot {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            id: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoundsConfig {
+    #[serde(default = "default_true", rename = "masterEnabled")]
+    pub master_enabled: bool,
+    #[serde(default = "default_sound_slot_record")]
+    pub record: SoundSlot,
+    #[serde(default = "default_sound_slot_voice_wake", rename = "voiceWake")]
+    pub voice_wake: SoundSlot,
+    #[serde(default = "default_sound_slot_key_wake", rename = "keyWake")]
+    pub key_wake: SoundSlot,
+    #[serde(default = "default_sound_slot_send_success", rename = "sendSuccess")]
+    pub send_success: SoundSlot,
+    #[serde(default = "default_sound_slot_send_fail", rename = "sendFail")]
+    pub send_fail: SoundSlot,
+}
+
+fn default_sound_slot_record() -> SoundSlot {
+    SoundSlot {
+        enabled: true,
+        id: default_sound_id_record(),
+    }
+}
+fn default_sound_slot_voice_wake() -> SoundSlot {
+    SoundSlot {
+        enabled: true,
+        id: default_sound_id_voice_wake(),
+    }
+}
+fn default_sound_slot_key_wake() -> SoundSlot {
+    SoundSlot {
+        enabled: false,
+        id: default_sound_id_key_wake(),
+    }
+}
+fn default_sound_slot_send_success() -> SoundSlot {
+    SoundSlot {
+        enabled: true,
+        id: default_sound_id_send_success(),
+    }
+}
+fn default_sound_slot_send_fail() -> SoundSlot {
+    SoundSlot {
+        enabled: true,
+        id: default_sound_id_send_fail(),
+    }
+}
+
+impl Default for SoundsConfig {
+    fn default() -> Self {
+        Self {
+            master_enabled: true,
+            record: default_sound_slot_record(),
+            voice_wake: default_sound_slot_voice_wake(),
+            key_wake: default_sound_slot_key_wake(),
+            send_success: default_sound_slot_send_success(),
+            send_fail: default_sound_slot_send_fail(),
+        }
+    }
+}
+
+impl SoundsConfig {
+    pub fn normalize(&mut self) {
+        if self.record.id.trim().is_empty() {
+            self.record.id = default_sound_id_record();
+        }
+        if self.voice_wake.id.trim().is_empty() {
+            self.voice_wake.id = default_sound_id_voice_wake();
+        }
+        if self.key_wake.id.trim().is_empty() {
+            self.key_wake.id = default_sound_id_key_wake();
+        }
+        if self.send_success.id.trim().is_empty() {
+            self.send_success.id = default_sound_id_send_success();
+        }
+        if self.send_fail.id.trim().is_empty() {
+            self.send_fail.id = default_sound_id_send_fail();
+        }
+    }
+
+    pub fn cue_enabled(&self, cue: &str) -> bool {
+        if !self.master_enabled {
+            return false;
+        }
+        match cue {
+            "record" => self.record.enabled,
+            "voice_wake" => self.voice_wake.enabled,
+            "key_wake" => self.key_wake.enabled,
+            "send_success" => self.send_success.enabled,
+            "send_fail" => self.send_fail.enabled,
+            _ => false,
+        }
+    }
+}
+
+pub fn runtime_sound_cue(cfg: &VoiceConfig, cue: &str) -> Option<String> {
+    if cfg.sounds.cue_enabled(cue) {
+        Some(cue.to_string())
+    } else {
+        None
     }
 }
 
@@ -748,6 +889,8 @@ impl Default for VoiceConfig {
             voice_end: VoiceEndConfig::default(),
             scenes: None,
             scheme_switch_key: String::new(),
+            key_wake_sound_enabled: false,
+            sounds: SoundsConfig::default(),
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -979,6 +1122,10 @@ impl VoiceConfig {
         if self.voice_end.dictation_timeout_ms < 10000 {
             self.voice_end.dictation_timeout_ms = default_voice_end_dictation_timeout_ms();
         }
+        if self.key_wake_sound_enabled && !self.sounds.key_wake.enabled {
+            self.sounds.key_wake.enabled = true;
+        }
+        self.sounds.normalize();
         for (i, m) in self.mappings.iter_mut().enumerate() {
             if m.id.is_empty() {
                 m.id = new_mapping_id();
@@ -1220,6 +1367,13 @@ fn config_candidate_paths() -> Vec<PathBuf> {
         directories::ProjectDirs::from("com", "onetone", "app")
             .map(|d| d.config_dir().join("settings.json")),
         directories::ProjectDirs::from("com", "onetone", "onetone")
+            .map(|d| d.config_dir().join("settings.json")),
+        // Legacy oneTone branding (pre-com.onetone.* layout)
+        directories::ProjectDirs::from("", "oneTone", "app")
+            .map(|d| d.config_dir().join("settings.json")),
+        directories::ProjectDirs::from("", "oneTone", "oneTone")
+            .map(|d| d.config_dir().join("settings.json")),
+        directories::ProjectDirs::from("com", "oneTone", "oneTone")
             .map(|d| d.config_dir().join("settings.json")),
     ]
     .into_iter()
@@ -1660,10 +1814,6 @@ mod tests {
         assert!(merged.voice_end.enabled);
     }
 }
-
-
-
-
 
 
 

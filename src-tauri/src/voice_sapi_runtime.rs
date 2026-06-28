@@ -182,7 +182,15 @@ fn process_detected(
         } else {
             "voice_sapi_send_failed"
         };
-        crate::ipc::push_runtime(state2.as_ref(), &window2, label, "");
+        let cue = if sent { "voice_wake" } else { "send_fail" };
+        let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
+        crate::ipc::push_runtime_with_cue(
+            state2.as_ref(),
+            &window2,
+            label,
+            "",
+            sound_cue.as_deref(),
+        );
     });
 }
 

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-mapping-duplicate"
+description = "Enables the cmd_mapping_duplicate command without any pre-configured scope."
+commands.allow = ["cmd_mapping_duplicate"]
+
+[[permission]]
+identifier = "deny-cmd-mapping-duplicate"
+description = "Denies the cmd_mapping_duplicate command without any pre-configured scope."
+commands.deny = ["cmd_mapping_duplicate"]

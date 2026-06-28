@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-mapping-toggle"
+description = "Enables the cmd_mapping_toggle command without any pre-configured scope."
+commands.allow = ["cmd_mapping_toggle"]
+
+[[permission]]
+identifier = "deny-cmd-mapping-toggle"
+description = "Denies the cmd_mapping_toggle command without any pre-configured scope."
+commands.deny = ["cmd_mapping_toggle"]

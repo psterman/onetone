@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-mic-monitor-start"
+description = "Enables the cmd_mic_monitor_start command without any pre-configured scope."
+commands.allow = ["cmd_mic_monitor_start"]
+
+[[permission]]
+identifier = "deny-cmd-mic-monitor-start"
+description = "Denies the cmd_mic_monitor_start command without any pre-configured scope."
+commands.deny = ["cmd_mic_monitor_start"]

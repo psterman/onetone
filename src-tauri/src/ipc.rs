@@ -376,6 +376,8 @@ struct RuntimePayload {
     #[serde(rename = "timerActive")]
     timer_active: bool,
     paused: bool,
+    #[serde(rename = "soundCue", skip_serializing_if = "Option::is_none")]
+    sound_cue: Option<String>,
 }
 
 /// Emit to the webview on the main thread (safe from hotkey/voice/watcher threads).
@@ -420,6 +422,16 @@ pub fn push_runtime(
     last_action: &str,
     last_mapping_id: &str,
 ) {
+    push_runtime_with_cue(state, window, last_action, last_mapping_id, None);
+}
+
+pub fn push_runtime_with_cue(
+    state: &AppState,
+    window: &tauri::WebviewWindow,
+    last_action: &str,
+    last_mapping_id: &str,
+    sound_cue: Option<&str>,
+) {
     let (bindings, mapping_count, enabled_count, paused) = {
         let cfg = state.cfg.lock();
         let paused = *state.paused.lock();
@@ -441,6 +453,7 @@ pub fn push_runtime(
         enabled_count,
         timer_active,
         paused,
+        sound_cue: sound_cue.map(str::to_string),
     };
     emit_to_js_main_t(window, payload);
 }
@@ -479,7 +492,18 @@ fn dispatch_trigger_action(
                 }
             }
             let label = if sent { key.as_str() } else { "send_failed" };
-            push_runtime(state.as_ref(), window, label, mapping_id);
+            let sound_cue = if sent {
+                crate::config::runtime_sound_cue(&state.cfg.lock(), "key_wake")
+            } else {
+                crate::config::runtime_sound_cue(&state.cfg.lock(), "send_fail")
+            };
+            push_runtime_with_cue(
+                state.as_ref(),
+                window,
+                label,
+                mapping_id,
+                sound_cue.as_deref(),
+            );
         }
         state::Action::SendEsc => {
             keyboard::send_escape();

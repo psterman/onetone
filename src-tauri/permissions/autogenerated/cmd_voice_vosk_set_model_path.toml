@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-vosk-set-model-path"
+description = "Enables the cmd_voice_vosk_set_model_path command without any pre-configured scope."
+commands.allow = ["cmd_voice_vosk_set_model_path"]
+
+[[permission]]
+identifier = "deny-cmd-voice-vosk-set-model-path"
+description = "Denies the cmd_voice_vosk_set_model_path command without any pre-configured scope."
+commands.deny = ["cmd_voice_vosk_set_model_path"]

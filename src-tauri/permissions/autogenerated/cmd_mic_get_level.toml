@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-mic-get-level"
+description = "Enables the cmd_mic_get_level command without any pre-configured scope."
+commands.allow = ["cmd_mic_get_level"]
+
+[[permission]]
+identifier = "deny-cmd-mic-get-level"
+description = "Denies the cmd_mic_get_level command without any pre-configured scope."
+commands.deny = ["cmd_mic_get_level"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-menu-present"
+description = "Enables the cmd_tray_menu_present command without any pre-configured scope."
+commands.allow = ["cmd_tray_menu_present"]
+
+[[permission]]
+identifier = "deny-cmd-tray-menu-present"
+description = "Denies the cmd_tray_menu_present command without any pre-configured scope."
+commands.deny = ["cmd_tray_menu_present"]

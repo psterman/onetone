@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-end-test-stop"
+description = "Enables the cmd_voice_end_test_stop command without any pre-configured scope."
+commands.allow = ["cmd_voice_end_test_stop"]
+
+[[permission]]
+identifier = "deny-cmd-voice-end-test-stop"
+description = "Denies the cmd_voice_end_test_stop command without any pre-configured scope."
+commands.deny = ["cmd_voice_end_test_stop"]

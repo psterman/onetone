@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-mapping-conflicts"
+description = "Enables the cmd_mapping_conflicts command without any pre-configured scope."
+commands.allow = ["cmd_mapping_conflicts"]
+
+[[permission]]
+identifier = "deny-cmd-mapping-conflicts"
+description = "Denies the cmd_mapping_conflicts command without any pre-configured scope."
+commands.deny = ["cmd_mapping_conflicts"]

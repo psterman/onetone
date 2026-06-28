@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-frontend-keydown"
+description = "Enables the cmd_frontend_keydown command without any pre-configured scope."
+commands.allow = ["cmd_frontend_keydown"]
+
+[[permission]]
+identifier = "deny-cmd-frontend-keydown"
+description = "Denies the cmd_frontend_keydown command without any pre-configured scope."
+commands.deny = ["cmd_frontend_keydown"]

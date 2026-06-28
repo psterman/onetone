@@ -242,7 +242,7 @@
       overflow:hidden;max-height:0;opacity:0;margin-bottom:0;
       transition:max-height .32s var(--ease-standard),opacity .22s ease,margin .28s ease;
     }
-    .home-live-zone.is-open{max-height:520px;opacity:1;margin-bottom:14px}
+    .home-live-zone.is-open{max-height:960px;opacity:1;margin-bottom:14px;overflow:visible}
     .home-live-panel{
       border:1px solid rgba(42,156,196,.22);border-radius:16px;padding:14px 14px 12px;
       background:linear-gradient(180deg,rgba(230,247,252,.28),var(--surface-high));
@@ -264,6 +264,8 @@
     .home-live-row{display:grid;grid-template-columns:minmax(72px,34%) 1fr;gap:8px;align-items:start;font-size:12px;line-height:1.45}
     .home-live-row dt{margin:0;font-weight:600;color:var(--on-surface-muted)}
     .home-live-row dd{margin:0;font-weight:700;color:var(--on-surface);word-break:break-word;text-align:right}
+    .home-live-row-sound{align-items:center}
+    .home-live-row-sound dd{display:flex;justify-content:flex-end;align-items:center}
     .home-live-val.is-off{color:var(--on-surface-muted);font-weight:600}
     .home-live-val.is-warn{color:#ea580c}
     .home-live-val.is-on{color:var(--primary)}
@@ -891,6 +893,23 @@
     .toggle-switch.is-on{background:var(--primary)}
     .toggle-switch.is-on::after{transform:translateX(20px)}
     html[data-theme="dark"] .toggle-switch::after{background:var(--surface-high)}
+    .sound-settings-block{display:grid;gap:10px;margin-top:4px}
+    .sound-slot{
+      border:1px solid var(--outline-variant);border-radius:14px;padding:12px 14px;background:var(--surface-high);
+    }
+    .sound-slot-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .sound-slot-title{margin:0;font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35}
+    .sound-slot-desc{margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .sound-slot-pick{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+    .sound-slot-pick select{
+      min-width:0;border:1px solid var(--outline-variant);border-radius:10px;padding:8px 10px;
+      font:inherit;font-size:12px;font-weight:600;background:var(--surface);color:var(--on-surface);
+    }
+    .sound-preview-btn{
+      border:1px solid var(--outline-variant);border-radius:10px;background:var(--surface);
+      padding:8px 12px;font:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;
+    }
+    .sound-preview-btn:hover{background:var(--primary-soft)}
     .mic-desc{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
     .mic-device-list{display:grid;gap:8px}
     .mic-device-card{
@@ -1075,6 +1094,10 @@
                 <div class="home-live-row"><dt id="homeLiveKeyTriggerLbl">启动键</dt><dd class="home-live-val" id="homeLiveKeyTrigger">—</dd></div>
                 <div class="home-live-row"><dt id="homeLiveKeyTargetLbl">语音快捷键</dt><dd class="home-live-val" id="homeLiveKeyTarget">—</dd></div>
                 <div class="home-live-row"><dt id="homeLiveKeySchemeLbl">当前方案</dt><dd class="home-live-val" id="homeLiveKeyScheme">—</dd></div>
+                <div class="home-live-row home-live-row-sound">
+                  <dt id="homeLiveKeySoundLbl">激活提示音</dt>
+                  <dd><button type="button" class="toggle-switch" id="btnHomeKeyWakeSound" role="switch" aria-checked="false" aria-labelledby="homeLiveKeySoundLbl"></button></dd>
+                </div>
               </dl>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
               <div class="home-live-actions">
@@ -1136,6 +1159,7 @@
         <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键唤醒</button>
         <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音唤醒</button>
         <button type="button" class="settings-nav-item" data-panel="voiceEnd" id="settingsNavVoiceEnd">结束与发送</button>
+        <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
         <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
         <div class="settings-nav-foot">
           <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
@@ -1358,6 +1382,83 @@
             <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
           </div>
         </section>
+        <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
+          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒与发送配置提示音</p>
+          <div class="setting-row">
+            <div class="setting-row-main">
+              <span class="setting-row-text" id="soundsMasterLabel">启用音效</span>
+            </div>
+            <button type="button" class="toggle-switch" id="btnSoundsMaster" role="switch" aria-checked="true"></button>
+          </div>
+          <p class="help" id="soundsMasterHelp" style="margin-top:8px">关闭后所有提示音静音；各场景仍可单独配置。</p>
+          <div class="sound-settings-block" id="soundSettingsBlock">
+            <div class="sound-slot" data-slot="record">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotRecordTitle">录制按键</p>
+                  <p class="sound-slot-desc" id="soundSlotRecordDesc">录制启动键或快捷键时，检测到按键的反馈音。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="record" role="switch" aria-checked="true"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="record" id="soundSelectRecord" aria-labelledby="soundSlotRecordTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="record" id="soundPreviewRecord">试听</button>
+              </div>
+            </div>
+            <div class="sound-slot" data-slot="voiceWake">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotVoiceWakeTitle">语音启动</p>
+                  <p class="sound-slot-desc" id="soundSlotVoiceWakeDesc">说出唤醒词并成功唤起语音输入时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="voiceWake" role="switch" aria-checked="true"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="voiceWake" id="soundSelectVoiceWake" aria-labelledby="soundSlotVoiceWakeTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="voiceWake" id="soundPreviewVoiceWake">试听</button>
+              </div>
+            </div>
+            <div class="sound-slot" data-slot="keyWake">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotKeyWakeTitle">按键启动</p>
+                  <p class="sound-slot-desc" id="soundSlotKeyWakeDesc">按启动键唤起语音输入时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="keyWake" id="soundSelectKeyWake" aria-labelledby="soundSlotKeyWakeTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="keyWake" id="soundPreviewKeyWake">试听</button>
+              </div>
+            </div>
+            <div class="sound-slot" data-slot="sendSuccess">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotSendSuccessTitle">发送成功</p>
+                  <p class="sound-slot-desc" id="soundSlotSendSuccessDesc">听写结束并自动发送成功时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="sendSuccess" role="switch" aria-checked="true"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="sendSuccess" id="soundSelectSendSuccess" aria-labelledby="soundSlotSendSuccessTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="sendSuccess" id="soundPreviewSendSuccess">试听</button>
+              </div>
+            </div>
+            <div class="sound-slot" data-slot="sendFail">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotSendFailTitle">失败提示</p>
+                  <p class="sound-slot-desc" id="soundSlotSendFailDesc">快捷键发送失败或操作取消时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="sendFail" role="switch" aria-checked="true"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="sendFail" id="soundSelectSendFail" aria-labelledby="soundSlotSendFailTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="sendFail" id="soundPreviewSendFail">试听</button>
+              </div>
+            </div>
+          </div>
+        </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
           <p class="settings-panel-desc" id="settingsPanelDebugDesc">运行状态与调试信息</p>
           <div class="debug-overview" id="debugOverview"></div>
@@ -1499,8 +1600,18 @@
   <script>
   (function(){
     const listeners={message:[]};
-    const invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
-    window.__vp_invoke__=invoke;
+    function vpInvokeInternal(cmd,args){
+      const core=window.__TAURI__&&window.__TAURI__.core;
+      if(core&&typeof core.invoke==='function'){
+        return core.invoke(cmd,args);
+      }
+      const internals=window.__TAURI_INTERNALS__;
+      if(internals&&typeof internals.invoke==='function'){
+        return internals.invoke(cmd,args);
+      }
+      return Promise.reject(new Error('tauri invoke unavailable'));
+    }
+    window.__vp_invoke__=vpInvokeInternal;
     function tauriArgs(args){
       const out=Object.assign({},args||{});
       Object.keys(args||{}).forEach(function(k){
@@ -1514,38 +1625,82 @@
     window.chrome={webview:{}};
     window.chrome.webview.postMessage=function(msg){
       const type=msg&&msg.type;
-      if(type==='mvp_ready')invoke('cmd_ready',{});
-      else if(type==='mvp_save')invoke('cmd_save',{json:msg.json||'{}'});
-      else if(type==='mvp_start_recording')invoke('cmd_start_recording',{mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
-      else if(type==='mvp_stop_recording')invoke('cmd_stop_recording',{});
-      else if(type==='mvp_mapping_toggle')invoke('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
-      else if(type==='mvp_mapping_delete')invoke('cmd_mapping_delete',{id:msg.id});
-      else if(type==='mvp_mapping_duplicate')invoke('cmd_mapping_duplicate',{id:msg.id});
-      else if(type==='mvp_mapping_reorder')invoke('cmd_mapping_reorder',{ordered_ids:msg.orderedIds||[]});
-      else if(type==='mvp_mapping_set_group')invoke('cmd_mapping_set_group',{id:msg.id,group:msg.group||''});
-      else if(type==='mvp_pause')invoke('cmd_pause',{});
-      else if(type==='mvp_resume')invoke('cmd_resume',{});
-      else if(type==='mvp_request_runtime')invoke('cmd_request_runtime',{});
-      else if(type==='mvp_reload_latest')invoke('cmd_reload_latest',{});
-      else if(type==='mvp_sync_theme_backdrop')invoke('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
-      else if(type==='mvp_frontend_keydown')invoke('cmd_frontend_keydown',{key:msg.key||'',mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
-      else if(type==='mvp_physical_trigger')invoke('cmd_physical_trigger',{key:msg.key||''});
-      else if(type==='mvp_test_send')invoke('cmd_test_send',{mapping_id:msg.mappingId||null,target_key:msg.targetKey||null});
+      if(type==='mvp_ready')vpInvokeInternal('cmd_ready',{});
+      else if(type==='mvp_save')vpInvokeInternal('cmd_save',{json:msg.json||'{}'});
+      else if(type==='mvp_start_recording')vpInvokeInternal('cmd_start_recording',{mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_stop_recording')vpInvokeInternal('cmd_stop_recording',{});
+      else if(type==='mvp_mapping_toggle')vpInvokeInternal('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
+      else if(type==='mvp_mapping_delete')vpInvokeInternal('cmd_mapping_delete',{id:msg.id});
+      else if(type==='mvp_mapping_duplicate')vpInvokeInternal('cmd_mapping_duplicate',{id:msg.id});
+      else if(type==='mvp_mapping_reorder')vpInvokeInternal('cmd_mapping_reorder',{ordered_ids:msg.orderedIds||[]});
+      else if(type==='mvp_mapping_set_group')vpInvokeInternal('cmd_mapping_set_group',{id:msg.id,group:msg.group||''});
+      else if(type==='mvp_pause')vpInvokeInternal('cmd_pause',{});
+      else if(type==='mvp_resume')vpInvokeInternal('cmd_resume',{});
+      else if(type==='mvp_request_runtime')vpInvokeInternal('cmd_request_runtime',{});
+      else if(type==='mvp_reload_latest')vpInvokeInternal('cmd_reload_latest',{});
+      else if(type==='mvp_sync_theme_backdrop')vpInvokeInternal('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
+      else if(type==='mvp_frontend_keydown')vpInvokeInternal('cmd_frontend_keydown',{key:msg.key||'',mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_physical_trigger')vpInvokeInternal('cmd_physical_trigger',{key:msg.key||''});
+      else if(type==='mvp_test_send')vpInvokeInternal('cmd_test_send',{mapping_id:msg.mappingId||null,target_key:msg.targetKey||null});
     };
     window.chrome.webview.addEventListener=function(event,cb){ if(!listeners[event]) listeners[event]=[]; listeners[event].push(cb); };
     window.__vp_bridge__=function(type,data){ const event={data:Object.assign({type:type},data||{})}; (listeners.message||[]).forEach(function(cb){ try{cb(event);}catch(e){} }); };
-    if(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen){
-      window.__TAURI_INTERNALS__.listen('to_js',function(event){
-        const payload=event.payload;
-        if(payload&&typeof payload==='object') (listeners.message||[]).forEach(function(cb){ try{cb({data:payload});}catch(e){} });
-      });
+    function dispatchToJs(payload){
+      if(!payload||typeof payload!=='object') return;
+      (listeners.message||[]).forEach(function(cb){ try{cb({data:payload});}catch(e){} });
     }
+    function ensureToJsListener(){
+      if(ensureToJsListener.ready) return !!ensureToJsListener.ready;
+      const eventApi=window.__TAURI__&&window.__TAURI__.event;
+      if(!eventApi||typeof eventApi.listen!=='function') return false;
+      ensureToJsListener.ready=true;
+      eventApi.listen('to_js',function(event){
+        dispatchToJs(event&&event.payload);
+      }).then(function(){
+        if(typeof window.__vp_on_to_js_ready__==='function') window.__vp_on_to_js_ready__();
+      }).catch(function(err){
+        console.error('to_js listen',err);
+        ensureToJsListener.ready=false;
+      });
+      return true;
+    }
+    ensureToJsListener.ready=false;
+    window.__vp_ensure_to_js__=ensureToJsListener;
+    window.__vp_dispatch_to_js__=dispatchToJs;
+    ensureToJsListener();
+    let listenPoll=0;
+    listenPoll=setInterval(function(){
+      if(ensureToJsListener()) clearInterval(listenPoll);
+    },80);
+    setTimeout(function(){ clearInterval(listenPoll); },12000);
   })();
   </script>
 
   <script>
   const invoke=window.__vp_invoke__||function(){return Promise.reject(new Error('invoke unavailable'));};
   const vpInvoke=function(cmd,args){return invoke(cmd,window.__vp_tauri_args__?window.__vp_tauri_args__(args||{}):(args||{}));};
+  function vpInvokeTimeout(cmd,args,ms){
+    const timeoutMs=ms||4000;
+    return new Promise(function(resolve,reject){
+      let settled=false;
+      const timer=setTimeout(function(){
+        if(settled) return;
+        settled=true;
+        reject(new Error('invoke timeout: '+cmd));
+      },timeoutMs);
+      vpInvoke(cmd,args).then(function(res){
+        if(settled) return;
+        settled=true;
+        clearTimeout(timer);
+        resolve(res);
+      }).catch(function(err){
+        if(settled) return;
+        settled=true;
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  }
   const $=id=>document.getElementById(id);
   const state={config:null,selectedMappingId:null};
   let runtime={lastAction:'-',timerActive:false,paused:false};
@@ -1773,6 +1928,7 @@
       homeCapExpand:'查看状态',homeCapCollapse:'收起',
       homeLiveKeyTitle:'按键唤醒',homeLiveVoiceTitle:'语音唤醒',homeLiveEndTitle:'结束与发送',
       homeLiveTrigger:'启动键',homeLiveTarget:'语音快捷键',homeLiveScheme:'当前方案',
+      homeLiveKeySound:'激活提示音',
       homeLiveEngine:'引擎',homeLiveMic:'麦克风',homeLiveWakeWord:'唤醒词',homeLiveLastHeard:'最近识别',
       homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',homeLiveEndDelay:'发送延迟',homeLiveEndLast:'最近状态',
       homeLiveRetrigger:'重录启动键',homeLiveRetarget:'重录快捷键',homeLiveTestSend:'测试发送',
@@ -1802,7 +1958,21 @@
       settingsNavVoiceEnd:'结束与发送',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
       settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'录制按键与管理我的方案',
       settingsPanelVoiceWakeDesc:'麦克风与语音唤醒引擎',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
-      settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
+      settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
+      settingsNavSounds:'音效',
+      soundsMasterLabel:'启用音效',soundsMasterHelp:'关闭后所有提示音静音；各场景仍可单独配置。',
+      soundSlotRecordTitle:'录制按键',soundSlotRecordDesc:'录制启动键或快捷键时，检测到按键的反馈音。',
+      soundSlotVoiceWakeTitle:'语音启动',soundSlotVoiceWakeDesc:'说出唤醒词并成功唤起语音输入时播放。',
+      soundSlotKeyWakeTitle:'按键启动',soundSlotKeyWakeDesc:'按启动键唤起语音输入时播放。',
+      soundSlotSendSuccessTitle:'发送成功',soundSlotSendSuccessDesc:'听写结束并自动发送成功时播放。',
+      soundSlotSendFailTitle:'失败提示',soundSlotSendFailDesc:'快捷键发送失败或操作取消时播放。',
+      soundPreview:'试听',
+      soundPickRecord:'录制按键',soundPickVoiceWake:'语音启动',soundPickKeyWake:'按键启动',
+      soundPickSendSuccess:'发送成功',soundPickSendFail:'失败提示',
+      soundNameTinyTick:'极短提示 · 轻点',soundNameInputReady:'开始输入 · 柔和',
+      soundNameVoiceSignal:'语音已启动 · 信号',soundNameVoiceGate:'语音已启动 · 门闸',
+      soundNameVoiceSip:'语音已启动 · 轻吸气',soundNameSendConfirm:'发送确认 · 极短',
+      soundNameErrorSubtle:'失败提示 · 克制',
       debugOverviewSession:'会话',debugOverviewWake:'唤醒',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'未启用',
       endCardTitle:'结束',endEnableLabel:'语音结束',endPhrasesLabel:'结束词',
@@ -2006,6 +2176,7 @@
       homeCapExpand:'Status',homeCapCollapse:'Collapse',
       homeLiveKeyTitle:'Key wake',homeLiveVoiceTitle:'Voice wake',homeLiveEndTitle:'End & send',
       homeLiveTrigger:'Launch key',homeLiveTarget:'Voice shortcut',homeLiveScheme:'Active profile',
+      homeLiveKeySound:'Activation sound',
       homeLiveEngine:'Engine',homeLiveMic:'Microphone',homeLiveWakeWord:'Wake phrase',homeLiveLastHeard:'Last heard',
       homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',homeLiveEndDelay:'Send delay',homeLiveEndLast:'Last status',
       homeLiveRetrigger:'Re-record launch',homeLiveRetarget:'Re-record shortcut',homeLiveTestSend:'Test send',
@@ -2035,7 +2206,21 @@
       settingsNavVoiceEnd:'End & send',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
       settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Record keys & manage profiles',
       settingsPanelVoiceWakeDesc:'Microphone & wake engines',settingsPanelVoiceEndDesc:'End phrases & auto-send',
-      settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
+      settingsPanelSoundsDesc:'Sounds for recording, wake and send',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
+      settingsNavSounds:'Sounds',
+      soundsMasterLabel:'Enable sounds',soundsMasterHelp:'Master mute; each scene can still be configured.',
+      soundSlotRecordTitle:'Key recording',soundSlotRecordDesc:'Plays when a key is detected while recording.',
+      soundSlotVoiceWakeTitle:'Voice wake',soundSlotVoiceWakeDesc:'Plays when a wake phrase successfully activates input.',
+      soundSlotKeyWakeTitle:'Key wake',soundSlotKeyWakeDesc:'Plays when the trigger key activates voice input.',
+      soundSlotSendSuccessTitle:'Send success',soundSlotSendSuccessDesc:'Plays when dictation ends and auto-send succeeds.',
+      soundSlotSendFailTitle:'Failure',soundSlotSendFailDesc:'Plays when shortcut send fails or action is cancelled.',
+      soundPreview:'Preview',
+      soundPickRecord:'Recording',soundPickVoiceWake:'Voice wake',soundPickKeyWake:'Key wake',
+      soundPickSendSuccess:'Send success',soundPickSendFail:'Failure',
+      soundNameTinyTick:'Tiny tick',soundNameInputReady:'Input ready · soft',
+      soundNameVoiceSignal:'Voice open · signal',soundNameVoiceGate:'Voice open · gate',
+      soundNameVoiceSip:'Voice open · sip',soundNameSendConfirm:'Send confirm',
+      soundNameErrorSubtle:'Error · subtle',
       debugOverviewSession:'Session',debugOverviewWake:'Wake',
       wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'Off',
       endCardTitle:'End',endEnableLabel:'Voice end',endPhrasesLabel:'End phrases',
@@ -2456,6 +2641,209 @@
     applyFontScale();
   }
 
+  const SOUND_CATALOG=[
+    {id:'tiny-tick',labelKey:'soundNameTinyTick'},
+    {id:'input-ready-soft',labelKey:'soundNameInputReady'},
+    {id:'voice-open-signal',labelKey:'soundNameVoiceSignal'},
+    {id:'voice-open-gate',labelKey:'soundNameVoiceGate'},
+    {id:'voice-open-sip',labelKey:'soundNameVoiceSip'},
+    {id:'send-confirm-click',labelKey:'soundNameSendConfirm'},
+    {id:'error-subtle',labelKey:'soundNameErrorSubtle'}
+  ];
+  const SOUND_SLOT_KEYS=['record','voiceWake','keyWake','sendSuccess','sendFail'];
+  const SOUND_SLOT_DEFAULTS={
+    record:{enabled:true,id:'tiny-tick'},
+    voiceWake:{enabled:true,id:'voice-open-signal'},
+    keyWake:{enabled:false,id:'input-ready-soft'},
+    sendSuccess:{enabled:true,id:'send-confirm-click'},
+    sendFail:{enabled:true,id:'error-subtle'}
+  };
+  const SOUND_CUE_TO_SLOT={
+    record:'record',
+    voice_wake:'voiceWake',
+    key_wake:'keyWake',
+    send_success:'sendSuccess',
+    send_fail:'sendFail'
+  };
+
+  function defaultSoundsConfig(){
+    return {
+      masterEnabled:true,
+      record:Object.assign({},SOUND_SLOT_DEFAULTS.record),
+      voiceWake:Object.assign({},SOUND_SLOT_DEFAULTS.voiceWake),
+      keyWake:Object.assign({},SOUND_SLOT_DEFAULTS.keyWake),
+      sendSuccess:Object.assign({},SOUND_SLOT_DEFAULTS.sendSuccess),
+      sendFail:Object.assign({},SOUND_SLOT_DEFAULTS.sendFail)
+    };
+  }
+
+  function ensureSoundsConfig(){
+    if(!state.config) state.config=defaultConfig();
+    if(!state.config.sounds) state.config.sounds=defaultSoundsConfig();
+    SOUND_SLOT_KEYS.forEach(function(key){
+      if(!state.config.sounds[key]) state.config.sounds[key]=Object.assign({},SOUND_SLOT_DEFAULTS[key]);
+      if(state.config.sounds[key].enabled===undefined) state.config.sounds[key].enabled=!!SOUND_SLOT_DEFAULTS[key].enabled;
+      if(!state.config.sounds[key].id) state.config.sounds[key].id=SOUND_SLOT_DEFAULTS[key].id;
+    });
+    if(state.config.sounds.masterEnabled===undefined) state.config.sounds.masterEnabled=true;
+    if(state.config.keyWakeSoundEnabled&&!state.config.sounds.keyWake.enabled){
+      state.config.sounds.keyWake.enabled=true;
+    }
+    return state.config.sounds;
+  }
+
+  function soundLabel(id){
+    const item=SOUND_CATALOG.find(function(x){ return x.id===id; });
+    return item?t(item.labelKey):id;
+  }
+
+  const soundAudioCache={};
+  function playSoundFile(fileId,ignoreMaster){
+    if(!fileId) return;
+    const src='sounds/'+fileId+'.wav';
+    let audio=soundAudioCache[src];
+    if(!audio){
+      audio=new Audio(src);
+      audio.volume=0.65;
+      soundAudioCache[src]=audio;
+    }
+    audio.currentTime=0;
+    audio.play().catch(function(){});
+  }
+
+  function playSoundCue(cue,forcePreview){
+    const slotKey=SOUND_CUE_TO_SLOT[cue];
+    if(!slotKey&&!forcePreview) return;
+    const sounds=ensureSoundsConfig();
+    if(!forcePreview){
+      if(!sounds.masterEnabled) return;
+      const slot=sounds[slotKey];
+      if(!slot||!slot.enabled) return;
+      playSoundFile(slot.id);
+      return;
+    }
+    playSoundFile(forcePreview);
+  }
+
+  function previewSoundSlot(slotKey){
+    const sounds=ensureSoundsConfig();
+    const slot=sounds[slotKey];
+    if(slot&&slot.id) playSoundFile(slot.id,true);
+  }
+
+  function syncKeyWakeSoundToggle(enabled){
+    ['btnHomeKeyWakeSound'].forEach(function(id){
+      const btn=$(id);
+      if(!btn) return;
+      btn.classList.toggle('is-on',!!enabled);
+      btn.setAttribute('aria-checked',enabled?'true':'false');
+    });
+    const slotBtn=document.querySelector('.sound-slot-toggle[data-slot="keyWake"]');
+    if(slotBtn){
+      slotBtn.classList.toggle('is-on',!!enabled);
+      slotBtn.setAttribute('aria-checked',enabled?'true':'false');
+    }
+  }
+
+  function syncSoundsSettingsUi(){
+    const sounds=ensureSoundsConfig();
+    const master=$('btnSoundsMaster');
+    if(master){
+      master.classList.toggle('is-on',!!sounds.masterEnabled);
+      master.setAttribute('aria-checked',sounds.masterEnabled?'true':'false');
+    }
+    SOUND_SLOT_KEYS.forEach(function(key){
+      const slot=sounds[key]||SOUND_SLOT_DEFAULTS[key];
+      const toggle=document.querySelector('.sound-slot-toggle[data-slot="'+key+'"]');
+      if(toggle){
+        toggle.classList.toggle('is-on',!!slot.enabled);
+        toggle.setAttribute('aria-checked',slot.enabled?'true':'false');
+      }
+      const select=$('soundSelect'+key.charAt(0).toUpperCase()+key.slice(1));
+      if(select){
+        if(!select.options.length){
+          SOUND_CATALOG.forEach(function(item){
+            const opt=document.createElement('option');
+            opt.value=item.id;
+            opt.textContent=soundLabel(item.id);
+            select.appendChild(opt);
+          });
+        }
+        select.value=slot.id||SOUND_SLOT_DEFAULTS[key].id;
+        select.disabled=!sounds.masterEnabled;
+      }
+      const preview=document.querySelector('.sound-slot-preview[data-slot="'+key+'"]');
+      if(preview) preview.disabled=!sounds.masterEnabled;
+    });
+    syncKeyWakeSoundToggle(!!sounds.keyWake.enabled);
+    document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
+      btn.disabled=!sounds.masterEnabled;
+    });
+  }
+
+  function renderSoundSettingsPanel(){
+    syncSoundsSettingsUi();
+    const d=I18N[lang];
+    const sp=$('settingsPanelSoundsDesc'); if(sp) sp.textContent=d.settingsPanelSoundsDesc;
+    const nav=$('settingsNavSounds'); if(nav) nav.textContent=d.settingsNavSounds;
+    [
+      ['soundsMasterLabel',d.soundsMasterLabel],['soundsMasterHelp',d.soundsMasterHelp],
+      ['soundSlotRecordTitle',d.soundSlotRecordTitle],['soundSlotRecordDesc',d.soundSlotRecordDesc],
+      ['soundSlotVoiceWakeTitle',d.soundSlotVoiceWakeTitle],['soundSlotVoiceWakeDesc',d.soundSlotVoiceWakeDesc],
+      ['soundSlotKeyWakeTitle',d.soundSlotKeyWakeTitle],['soundSlotKeyWakeDesc',d.soundSlotKeyWakeDesc],
+      ['soundSlotSendSuccessTitle',d.soundSlotSendSuccessTitle],['soundSlotSendSuccessDesc',d.soundSlotSendSuccessDesc],
+      ['soundSlotSendFailTitle',d.soundSlotSendFailTitle],['soundSlotSendFailDesc',d.soundSlotSendFailDesc]
+    ].forEach(function(pair){
+      const el=$(pair[0]); if(el) el.textContent=pair[1];
+    });
+    document.querySelectorAll('.sound-slot-preview').forEach(function(btn){
+      btn.textContent=d.soundPreview;
+    });
+    SOUND_CATALOG.forEach(function(item){
+      document.querySelectorAll('.sound-slot-select option[value="'+item.id+'"]').forEach(function(opt){
+        opt.textContent=soundLabel(item.id);
+      });
+    });
+  }
+
+  function setSoundSlotEnabled(slotKey,enabled){
+    ensureSoundsConfig();
+    state.config.sounds[slotKey].enabled=!!enabled;
+    if(slotKey==='keyWake') state.config.keyWakeSoundEnabled=!!enabled;
+    syncSoundsSettingsUi();
+    save();
+  }
+
+  function setSoundSlotId(slotKey,id){
+    ensureSoundsConfig();
+    state.config.sounds[slotKey].id=id;
+    save();
+  }
+
+  function toggleSoundsMaster(){
+    ensureSoundsConfig();
+    const btn=$('btnSoundsMaster');
+    if(!btn) return;
+    state.config.sounds.masterEnabled=!btn.classList.contains('is-on');
+    syncSoundsSettingsUi();
+    save();
+  }
+
+  function toggleKeyWakeSound(){
+    ensureSoundsConfig();
+    const btn=$('btnHomeKeyWakeSound');
+    const next=!(btn&&btn.classList.contains('is-on'));
+    state.config.sounds.keyWake.enabled=next;
+    state.config.keyWakeSoundEnabled=next;
+    syncSoundsSettingsUi();
+    save();
+  }
+
+  function syncKeyWakeSettingsFromConfig(){
+    ensureSoundsConfig();
+    syncSoundsSettingsUi();
+  }
+
   function syncAutostartToggle(enabled){
     const btn=$('btnAutostart');
     if(!btn) return;
@@ -2771,7 +3159,7 @@
 
   const SETTINGS_PANEL_IDS={
     basic:'settingsPanelBasic',keyWake:'settingsPanelKeyWake',voiceWake:'settingsPanelVoiceWake',
-    voiceEnd:'settingsPanelVoiceEnd',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
+    voiceEnd:'settingsPanelVoiceEnd',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
   };
 
   function computeHomeState(){
@@ -3010,6 +3398,7 @@
       }
     }
     setHomeLiveBadge('homeLiveKeyBadge',loading?t('homeLiveLoading'):(ready?t('homeLiveBadgeReady'):t('homeLiveBadgeWarn')),loading?'':(ready?'on':'warn'));
+    if(!loading) syncKeyWakeSoundToggle(!!(state.config&&state.config.sounds&&state.config.sounds.keyWake&&state.config.sounds.keyWake.enabled));
     const testBtn=$('btnHomeKeyTestSend');
     if(testBtn){
       const target=loading?null:resolveTestTarget(null);
@@ -3124,6 +3513,7 @@
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],['homeLiveEndTitle',d.homeLiveEndTitle],
       ['homeLiveKeyTriggerLbl',d.homeLiveTrigger],['homeLiveKeyTargetLbl',d.homeLiveTarget],['homeLiveKeySchemeLbl',d.homeLiveScheme],
+      ['homeLiveKeySoundLbl',d.homeLiveKeySound],
       ['homeLiveVoiceEngineLbl',d.homeLiveEngine],['homeLiveVoiceMicLbl',d.homeLiveMic],['homeLiveVoicePhraseLbl',d.homeLiveWakeWord],
       ['homeLiveVoiceHeardLbl',d.homeLiveLastHeard],['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
       ['homeLiveEndDelayLbl',d.homeLiveEndDelay],['homeLiveEndStateLbl',d.homeLiveEndLast],
@@ -3266,6 +3656,8 @@
       });
     }else if(panel==='general'){
       renderTrashList();
+    }else if(panel==='sounds'){
+      renderSoundSettingsPanel();
     }
     if(panel==='voiceWake'||panel==='voiceEnd'||panel==='debug'){
       setTimeout(function(){
@@ -3354,6 +3746,7 @@
 
   let voiceStatusPollStarted=false;
   let configLoadedFromBackend=false;
+  let configBootstrapWatchdog=0;
   let mvpInitRenderSerial=0;
   let lastMvpInitKey='';
   let lastMvpInitAt=0;
@@ -3362,53 +3755,72 @@
     const c=msg&&msg.config;
     if(!c) return '';
     const maps=Array.isArray(c.mappings)?c.mappings:[];
+    const vosk=!!((c.voiceVosk||c.voice_vosk||{}).enabled);
+    const sapi=!!((c.voiceSapi||c.voice_sapi||{}).enabled);
     return maps.length+'|'+maps.map(function(m){
       return String(m.id||'')+':'+(m.enabled?1:0)+':'+String(m.triggerKey||'')+':'+String(m.targetKey||'');
-    }).join(';');
+    }).join(';')+'|v'+(vosk?1:0)+'|s'+(sapi?1:0);
   }
 
   function applyMvpInit(msg){
-    const fp=mvpInitFingerprint(msg);
-    const now=Date.now();
-    if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<600) return;
-    if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
-    if(msg.config) state.config=msg.config;
-    if(Array.isArray(msg.conflicts)) conflictRows=msg.conflicts;
-    ensureConfig();
-    const m=selectedMapping();
-    const keepTrigger=editorTriggerKey, keepTarget=editorTargetKey;
-    const guardLocal=Date.now()<localCaptureGuardUntil;
-    if(guardLocal&&m){
-      if(keepTrigger) m.triggerKey=keepTrigger;
-      if(keepTarget) m.targetKey=keepTarget;
-      if(keepTrigger||keepTarget){
-        m.label=(keepTrigger||'?')+' → '+(keepTarget||'?');
+    try{
+      const fp=mvpInitFingerprint(msg);
+      const now=Date.now();
+      if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<600){
+        if(configLoadedFromBackend) return;
+      }else if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
+      if(msg.config) state.config=msg.config;
+      if(Array.isArray(msg.conflicts)) conflictRows=msg.conflicts;
+      ensureConfig();
+      const voiceToggleBusy=voiceVoskTogglePending||voiceSapiTogglePending;
+      const m=selectedMapping();
+      const keepTrigger=editorTriggerKey, keepTarget=editorTargetKey;
+      const guardLocal=Date.now()<localCaptureGuardUntil;
+      if(guardLocal&&m){
+        if(keepTrigger) m.triggerKey=keepTrigger;
+        if(keepTarget) m.targetKey=keepTarget;
+        if(keepTrigger||keepTarget){
+          m.label=(keepTrigger||'?')+' → '+(keepTarget||'?');
+        }
+      }else if(m){
+        if(keepTrigger&&!(m.triggerKey||'').trim()) m.triggerKey=keepTrigger;
+        if(keepTarget&&!(m.targetKey||'').trim()){
+          m.targetKey=keepTarget;
+          m.label=(m.triggerKey||'?')+' → '+keepTarget;
+        }
       }
-    }else if(m){
-      if(keepTrigger&&!(m.triggerKey||'').trim()) m.triggerKey=keepTrigger;
-      if(keepTarget&&!(m.targetKey||'').trim()){
-        m.targetKey=keepTarget;
-        m.label=(m.triggerKey||'?')+' → '+keepTarget;
+      syncEditorFromSelection();
+      configLoadedFromBackend=true;
+      clearTimeout(configBootstrapWatchdog);
+      if(!voiceToggleBusy) syncVoiceSettingsFromConfig();
+      syncKeyWakeSettingsFromConfig();
+      setTimeout(function(){ ensureNotificationPermission(); }, 3000);
+      mvpInitRenderSerial++;
+      const serial=mvpInitRenderSerial;
+      requestAnimationFrame(function(){
+        if(serial!==mvpInitRenderSerial) return;
+        renderEditor();
+        renderHome();
+        renderListenRuntime();
+        if(mappingListUiActive()) renderMappingChrome();
+        if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
+        if(!voiceToggleBusy&&ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
+          renderVoiceSapiStatus({enabled:!!((state.config.voiceSapi||state.config.voice_sapi||{}).enabled),state:'stopped'});
+          renderVoiceVoskStatus({enabled:!!((state.config.voiceVosk||state.config.voice_vosk||{}).enabled),state:'stopped'});
+        }
+      });
+      if(!voiceStatusPollStarted){
+        setTimeout(function(){
+          if(!voiceStatusPollStarted) startVoiceStatusPoll();
+        },1200);
       }
-    }
-    syncEditorFromSelection();
-    configLoadedFromBackend=true;
-    syncVoiceSettingsFromConfig();
-    setTimeout(function(){ ensureNotificationPermission(); }, 3000);
-    mvpInitRenderSerial++;
-    const serial=mvpInitRenderSerial;
-    requestAnimationFrame(function(){
-      if(serial!==mvpInitRenderSerial) return;
-      renderEditor();
-      renderHome();
-      renderListenRuntime();
-      if(mappingListUiActive()) renderMappingChrome();
-      if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
-    });
-    if(!voiceStatusPollStarted){
-      setTimeout(function(){
-        if(!voiceStatusPollStarted) startVoiceStatusPoll();
-      },1200);
+    }catch(err){
+      console.error('applyMvpInit',err);
+      if(!configLoadedFromBackend){
+        configLoadedFromBackend=true;
+        clearTimeout(configBootstrapWatchdog);
+        renderHome();
+      }
     }
   }
 
@@ -3430,32 +3842,75 @@
     );
   }
 
+  function tauriBridgeReady(){
+    const core=window.__TAURI__&&window.__TAURI__.core;
+    if(core&&typeof core.invoke==='function') return true;
+    const internals=window.__TAURI_INTERNALS__;
+    return !!(internals&&typeof internals.invoke==='function');
+  }
+
+  function unlockConfigUi(){
+    if(configLoadedFromBackend) return;
+    configLoadedFromBackend=true;
+    clearTimeout(configBootstrapWatchdog);
+    renderHome();
+  }
+
+  function scheduleConfigBootstrapWatchdog(ms){
+    clearTimeout(configBootstrapWatchdog);
+    configBootstrapWatchdog=setTimeout(function(){
+      unlockConfigUi();
+    },ms||5000);
+  }
+
   function requestBackendConfig(retry){
-    if(!window.__TAURI_INTERNALS__){
+    scheduleConfigBootstrapWatchdog(5000);
+    if(window.__vp_ensure_to_js__) window.__vp_ensure_to_js__();
+    if(!tauriBridgeReady()){
       if(retry>0) setTimeout(function(){ requestBackendConfig(retry-1); }, 120);
-      else setTimeout(fallbackConfigLoaded,1500);
+      else setTimeout(unlockConfigUi,1500);
       return;
     }
-    vpInvoke('cmd_ready',{}).then(function(msg){
-      if(msg&&(msg.type==='mvp_init'||msg.config)) applyMvpInit(msg);
+    vpInvokeTimeout('cmd_ready',{},4000).then(function(msg){
+      if(msg&&(msg.type==='mvp_init'||msg.config)){
+        applyMvpInit(msg);
+        return;
+      }
+      if(!configLoadedFromBackend&&retry>0){
+        setTimeout(function(){ requestBackendConfig(retry-1); }, 400);
+      }
     }).catch(function(err){
       console.error('cmd_ready',err);
-      try{ window.chrome?.webview?.postMessage({type:'mvp_ready'}); }catch(_){}
+      if(!configLoadedFromBackend&&retry>0){
+        setTimeout(function(){ requestBackendConfig(retry-1); }, 400);
+      }
     });
-    if(retry>0){
-      setTimeout(function(){
-        if(!configLoadedFromBackend) requestBackendConfig(retry-1);
-      },800);
-    }else{
-      setTimeout(fallbackConfigLoaded,1500);
-    }
   }
 
   function fallbackConfigLoaded(){
     if(configLoadedFromBackend) return;
-    configLoadedFromBackend=true;
-    renderHome();
+    if(window.__vp_ensure_to_js__) window.__vp_ensure_to_js__();
+    if(tauriBridgeReady()){
+      vpInvokeTimeout('cmd_ready',{},3000).then(function(msg){
+        if(configLoadedFromBackend) return;
+        if(msg&&(msg.type==='mvp_init'||msg.config)) applyMvpInit(msg);
+      }).catch(function(err){
+        console.error('fallback cmd_ready',err);
+      });
+    }
+    setTimeout(unlockConfigUi,2000);
   }
+
+  window.__vp_on_to_js_ready__=function(){
+    if(configLoadedFromBackend) return;
+    if(!tauriBridgeReady()) return;
+    vpInvokeTimeout('cmd_ready',{},3000).then(function(msg){
+      if(configLoadedFromBackend) return;
+      if(msg&&(msg.type==='mvp_init'||msg.config)) applyMvpInit(msg);
+    }).catch(function(err){
+      console.error('to_js ready cmd_ready',err);
+    });
+  };
 
   function voiceWakeEnabledInConfig(){
     const cfg=state.config||{};
@@ -3662,7 +4117,8 @@
     stopMicMonitor();
     vpInvoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
       renderVoiceSapiStatus(res);
-      syncHomeFromVoiceSettings(null,res);
+      if(next) syncVoiceVoskToggle(false);
+      syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
       scheduleVoiceToggleRefresh();
     }).catch(function(err){
       loadVoiceSapiStatus();
@@ -3836,7 +4292,8 @@
     }
     vpInvoke('cmd_voice_vosk_set_enabled',{enabled:next}).then(function(res){
       renderVoiceVoskStatus(res);
-      syncHomeFromVoiceSettings(res,null);
+      if(next) syncVoiceSapiToggle(false);
+      syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'});
       stopMicMonitor();
       scheduleVoiceToggleRefresh();
       if(!next) refreshDrawerMicAfterVoiceToggle();
@@ -4204,9 +4661,11 @@
     const spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
     const spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
     const spEnd=$('settingsPanelVoiceEndDesc'); if(spEnd) spEnd.textContent=d.settingsPanelVoiceEndDesc;
+    const spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
     const spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
     const spGen=$('settingsPanelGeneralDesc'); if(spGen) spGen.textContent=d.settingsPanelGeneralDesc;
     const keyWakeSettingsTitle=$('keyWakeSettingsTitle'); if(keyWakeSettingsTitle) keyWakeSettingsTitle.textContent=d.keyWakeSettingsTitle;
+    const settingsNavSounds=$('settingsNavSounds'); if(settingsNavSounds) settingsNavSounds.textContent=d.settingsNavSounds;
     const voiceAdvancedSummary=$('voiceAdvancedSummary'); if(voiceAdvancedSummary) voiceAdvancedSummary.textContent=d.voiceAdvancedSummary;
     $('triggerTitle').textContent=d.triggerTitle;
     $('targetTitle').textContent=d.targetTitle;
@@ -4360,7 +4819,8 @@
       mappings:[{id:id,label:'AutoTrigger → RAlt',group:'默认',triggerKey:'AutoTrigger',targetKey:'RAlt',enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,
+      sounds:defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:['开始输入','开始听写','开启输入','开始说话'],targetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:'RAlt',cooldownMs:2000,modelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:'cn-light'},
       voiceEnd:{enabled:false,phrasesZh:['结束输入','发出去'],phrasesEn:['end dictation','send it'],commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:'RAlt'}
@@ -4618,6 +5078,8 @@
     }
     if(!state.selectedMappingId) state.selectedMappingId=state.config.mappings[0].id;
     if(state.config.schemeSwitchKey===undefined||state.config.schemeSwitchKey===null) state.config.schemeSwitchKey='';
+    if(state.config.keyWakeSoundEnabled===undefined) state.config.keyWakeSoundEnabled=false;
+    ensureSoundsConfig();
     state.config.mappings.forEach(ensureMappingExtras);
     (state.config.trash||[]).forEach(ensureMappingExtras);
   }
@@ -4649,6 +5111,18 @@
       debounceMs:state.config.debounceMs||80,
       keyPressDurationMs:state.config.keyPressDurationMs||250,
       schemeSwitchKey:state.config.schemeSwitchKey||'',
+      keyWakeSoundEnabled:!!(state.config.sounds&&state.config.sounds.keyWake&&state.config.sounds.keyWake.enabled),
+      sounds:(function(){
+        const s=ensureSoundsConfig();
+        return {
+          masterEnabled:!!s.masterEnabled,
+          record:{enabled:!!s.record.enabled,id:String(s.record.id||SOUND_SLOT_DEFAULTS.record.id)},
+          voiceWake:{enabled:!!s.voiceWake.enabled,id:String(s.voiceWake.id||SOUND_SLOT_DEFAULTS.voiceWake.id)},
+          keyWake:{enabled:!!s.keyWake.enabled,id:String(s.keyWake.id||SOUND_SLOT_DEFAULTS.keyWake.id)},
+          sendSuccess:{enabled:!!s.sendSuccess.enabled,id:String(s.sendSuccess.id||SOUND_SLOT_DEFAULTS.sendSuccess.id)},
+          sendFail:{enabled:!!s.sendFail.enabled,id:String(s.sendFail.id||SOUND_SLOT_DEFAULTS.sendFail.id)}
+        };
+      })(),
       voiceSapi:(function(){
         const cfg=state.config.voiceSapi||state.config.voice_sapi||{};
         return {
@@ -5312,9 +5786,11 @@
     renderMappingList();
     if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
     if(msg.ok){
+      playSoundCue('send_success');
       setTestModalView('ok',{mappingId:mappingId,key:targetKey,targetKey:targetKey});
       return;
     }
+    playSoundCue('send_fail');
     const reason=msg.reason||'send_failed';
     setTestModalView('fail',{
       mappingId:mappingId,
@@ -5728,6 +6204,7 @@
     else if(ui.drawerOpen&&ui.settingsPanel==='general') renderTrashList();
     renderEditor();
     renderRecordCancelBar();
+    if(ui.drawerOpen&&ui.settingsPanel==='sounds') renderSoundSettingsPanel();
     if(ui.drawerOpen&&ui.settingsPanel==='debug') renderDebugPanel();
     renderHome();
     renderListenRuntime();
@@ -5889,6 +6366,29 @@
     btn.addEventListener('click',function(){ setFontScale(btn.getAttribute('data-scale')); });
   });
   $('btnAutostart').onclick=toggleAutostart;
+  $('btnSoundsMaster').onclick=toggleSoundsMaster;
+  $('btnHomeKeyWakeSound').onclick=toggleKeyWakeSound;
+  document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
+    btn.onclick=function(){
+      const slot=btn.getAttribute('data-slot');
+      if(!slot) return;
+      setSoundSlotEnabled(slot,!btn.classList.contains('is-on'));
+    };
+  });
+  document.querySelectorAll('.sound-slot-select').forEach(function(sel){
+    sel.onchange=function(){
+      const slot=sel.getAttribute('data-slot');
+      if(!slot) return;
+      setSoundSlotId(slot,sel.value);
+    };
+  });
+  document.querySelectorAll('.sound-slot-preview').forEach(function(btn){
+    btn.onclick=function(){
+      const slot=btn.getAttribute('data-slot');
+      if(!slot) return;
+      previewSoundSlot(slot);
+    };
+  });
   $('btnVoiceSapi').onclick=toggleVoiceSapi;
   $('btnVoiceSapiTest').onclick=testVoiceSapiSend;
   $('voiceSapiPresets').onclick=addVoiceSapiPreset;
@@ -6383,6 +6883,7 @@
       cancelRecording();
     }
     if(msg.type==='mvp_record_seen'){
+      if(recordingMode!=='none') playSoundCue('record');
       const seen=msg.key||'?';
       if(recordingMode==='trigger'){
         const preview=previewCaptureKey('trigger',seen);
@@ -6435,6 +6936,8 @@
       runtime.lastAction=msg.lastAction||'-';
       runtime.timerActive=!!msg.timerActive;
       runtime.paused=!!msg.paused;
+      if(msg.soundCue) playSoundCue(msg.soundCue);
+      else if(runtime.lastAction==='send_failed'||String(runtime.lastAction||'').indexOf('_send_failed')>=0) playSoundCue('send_fail');
       if(recordingMode==='trigger' && runtime.lastAction==='recorded'){
         /* handled by mvp_key_captured */
       } else if(runtime.lastAction!=='scheme_select'&&runtime.lastAction!=='scheme_cycle'){
@@ -6468,13 +6971,15 @@
   ensureConfig();
   syncEditorFromSelection();
   applyLang(true);
+  syncKeyWakeSettingsFromConfig();
   requestAnimationFrame(function(){
     renderHome();
     if(welcomeOpen) openWelcome();
   });
   setRecording('none');
   pushLog(t('waitLog'));
-  setTimeout(function(){ requestBackendConfig(4); }, 200);
+  setTimeout(function(){ requestBackendConfig(8); }, 200);
+  setTimeout(function(){ fallbackConfigLoaded(); }, 3500);
 </script>
 </body>
 </html>

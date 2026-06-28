@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone 音效试听</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #202124;
+      background: #f6f7f9;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 650;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: #5f6368;
+      line-height: 1.6;
+    }
+
+    .sound {
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 320px);
+      gap: 16px;
+      align-items: center;
+      padding: 16px 0;
+      border-top: 1px solid #dfe3e8;
+    }
+
+    .sound:last-child {
+      border-bottom: 1px solid #dfe3e8;
+    }
+
+    .name {
+      font-size: 16px;
+      font-weight: 620;
+    }
+
+    .hint {
+      margin-top: 4px;
+      color: #6f7782;
+      font-size: 13px;
+    }
+
+    audio {
+      width: 100%;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 20px;
+      }
+
+      .sound {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OneTone 音效试听</h1>
+    <p>这组音效都很短，适合测试“开始输入”和“发送确认”的存在感。建议用真实设备音量试听。</p>
+
+    <section class="sound">
+      <div>
+        <div class="name">开始输入 · 柔和</div>
+        <div class="hint">按键唤醒用，轻微上扬。</div>
+      </div>
+      <audio controls src="./input-ready-soft.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">语音已启动 · 信号</div>
+        <div class="hint">语音通道打开时用，和按键音区分更明显。</div>
+      </div>
+      <audio controls src="./voice-open-signal.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">语音已启动 · 门闸</div>
+        <div class="hint">更像放行，不像普通提示音。</div>
+      </div>
+      <audio controls src="./voice-open-gate.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">语音已启动 · 轻吸气</div>
+        <div class="hint">更短一点，贴近“准备说话”的感觉。</div>
+      </div>
+      <audio controls src="./voice-open-sip.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">发送确认 · 极短</div>
+        <div class="hint">发送成功时用，轻到几乎不打扰。</div>
+      </div>
+      <audio controls src="./send-confirm-click.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">极短提示 · 轻点</div>
+        <div class="hint">更短的基础版本。</div>
+      </div>
+      <audio controls src="./tiny-tick.wav"></audio>
+    </section>
+
+    <section class="sound">
+      <div>
+        <div class="name">失败提示 · 克制</div>
+        <div class="hint">下行提示，只适合失败或取消。</div>
+      </div>
+      <audio controls src="./error-subtle.wav"></audio>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-pause"
+description = "Enables the cmd_pause command without any pre-configured scope."
+commands.allow = ["cmd_pause"]
+
+[[permission]]
+identifier = "deny-cmd-pause"
+description = "Denies the cmd_pause command without any pre-configured scope."
+commands.deny = ["cmd_pause"]

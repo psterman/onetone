@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-resume"
+description = "Enables the cmd_resume command without any pre-configured scope."
+commands.allow = ["cmd_resume"]
+
+[[permission]]
+identifier = "deny-cmd-resume"
+description = "Denies the cmd_resume command without any pre-configured scope."
+commands.deny = ["cmd_resume"]

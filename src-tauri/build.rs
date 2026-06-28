@@ -14,8 +14,8 @@ const VOSK_RUNTIME_DLLS: &[&str] = &[
 fn main() {
     ensure_icons_exist();
     link_vosk_if_present();
-
-    tauri_build::build();
+    tauri_build::try_build(tauri_build::Attributes::new())
+        .expect("failed to run tauri build");
 }
 
 fn link_vosk_if_present() {

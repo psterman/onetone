@@ -230,6 +230,14 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
             *state2.voice_session_state.lock() = "error".into();
             *state2.voice_session_last_action.lock() =
                 format!("targetKey send failed: {target_key}");
+            let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
+            crate::ipc::push_runtime_with_cue(
+                state2.as_ref(),
+                &window2,
+                "send_failed",
+                &session_mapping_id,
+                sound_cue.as_deref(),
+            );
             return;
         }
 
@@ -259,10 +267,26 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
             if ok {
                 *state2.voice_session_state.lock() = "sent".into();
                 *state2.voice_session_last_action.lock() = "commitKey sent".into();
+                let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_success");
+                crate::ipc::push_runtime_with_cue(
+                    state2.as_ref(),
+                    &window2,
+                    "voice_commit_sent",
+                    &mapping_snapshot,
+                    sound_cue.as_deref(),
+                );
             } else {
                 *state2.voice_session_state.lock() = "error".into();
                 *state2.voice_session_last_action.lock() =
                     format!("commitKey send failed: {commit_key}");
+                let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
+                crate::ipc::push_runtime_with_cue(
+                    state2.as_ref(),
+                    &window2,
+                    "send_failed",
+                    &mapping_snapshot,
+                    sound_cue.as_deref(),
+                );
             }
             std::thread::sleep(Duration::from_millis(500));
         } else {
@@ -273,7 +297,7 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
             *state2.voice_session_state.lock() = "idle".into();
             *state2.voice_session_started_at.lock() = None;
         }
-        let _ = (window2, phrase2);
+        let _ = phrase2;
     });
 }
 

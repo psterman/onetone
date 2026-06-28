@@ -6,7 +6,7 @@
     "devUrl": "http://localhost:1420",
     "frontendDist": "../src",
     "beforeDevCommand": "",
-    "beforeBuildCommand": "python scripts/generate_onetone_icon.py"
+    "beforeBuildCommand": ""
   },
   "app": {
     "windows": [
@@ -36,6 +36,7 @@
         "visible": false
       }
     ],
+    "withGlobalTauri": true,
     "security": {
       "csp": null
     }

@@ -307,7 +307,15 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         } else {
             "voice_vosk_send_failed"
         };
-        crate::ipc::push_runtime(state2.as_ref(), &window2, label, "");
+        let cue = if sent { "voice_wake" } else { "send_fail" };
+        let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
+        crate::ipc::push_runtime_with_cue(
+            state2.as_ref(),
+            &window2,
+            label,
+            "",
+            sound_cue.as_deref(),
+        );
     });
 }
 
@@ -359,7 +367,7 @@ pub fn disable_vosk_for_sapi(state: &Arc<AppState>) {
     {
         let mut cfg = state.cfg.lock();
         cfg.voice_vosk.enabled = false;
-        save_config(&cfg);
+        // Caller persists in one save to avoid intermediate mvp_init racing the UI toggle.
     }
     spawn_voice_vosk_stop(Arc::clone(state));
 }
@@ -368,7 +376,7 @@ fn disable_sapi(state: &Arc<AppState>) {
     {
         let mut cfg = state.cfg.lock();
         cfg.voice_sapi.enabled = false;
-        save_config(&cfg);
+        // Caller persists in one save to avoid intermediate mvp_init racing the UI toggle.
     }
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     *state.voice_sapi_cooldown_until.lock() = None;
