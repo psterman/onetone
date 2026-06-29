@@ -186,18 +186,24 @@
     }
     .map-wf-chip.is-active{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.22)}
     .map-row.is-dictating{box-shadow:inset 3px 0 0 var(--primary)}
-    .home-zone{max-width:520px;margin:0 auto;padding:4px 0 8px}
-    .home-status{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;min-height:28px}
+    .home-zone{width:100%;max-width:100%;margin:0;padding:4px 0 8px}
+    .home-status-wrap{
+      background:var(--surface-soft);border:1px solid var(--outline-variant);border-radius:14px;
+      padding:10px 12px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center
+    }
+    .home-status-block{display:grid;gap:4px}
+    .home-status{display:flex;align-items:flex-start;gap:10px;min-height:24px}
     .home-status-icon{width:22px;height:22px;border-radius:999px;flex-shrink:0;margin-top:2px;background:var(--primary-soft)}
     .home-status-icon.is-ready{background:rgba(34,197,94,.15);box-shadow:inset 0 0 0 2px rgba(34,197,94,.35)}
     .home-status-icon.is-warn{background:rgba(249,115,22,.12)}
     .home-status-icon.is-active{background:var(--primary-soft);animation:card-pulse 1.6s ease-in-out infinite}
     .home-status-icon.is-error{background:rgba(220,38,38,.1)}
-    .home-status-title{margin:0;font-size:15px;font-weight:700;line-height:1.45;color:var(--indigo)}
+    .home-status-title{margin:0;font-size:14px;font-weight:700;line-height:1.35;color:var(--indigo)}
+    .home-status-summary{margin:0 0 0 32px;font-size:12px;color:var(--on-surface-muted);font-weight:600}
     .home-cta{
-      width:100%;min-height:92px;border:none;border-radius:20px;cursor:pointer;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-      padding:18px 20px;margin-bottom:22px;
+      width:auto;min-width:168px;min-height:56px;border:none;border-radius:12px;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+      padding:10px 14px;
       background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);
       color:var(--on-primary);box-shadow:var(--shadow-button);
       transition:transform var(--dur-fast) var(--ease-standard),filter var(--dur-fast);
@@ -206,43 +212,33 @@
     .home-cta:active{transform:scale(0.98)}
     .home-cta.is-dictating{background:linear-gradient(180deg,#5ec8e8 0%,#2a9cc4 100%)}
     .home-cta.is-config{background:var(--surface-high);color:var(--btn-label);border:1px solid var(--outline-variant);box-shadow:var(--shadow-card)}
-    .home-cta-icon{font-size:28px;line-height:1;opacity:.95}
-    .home-cta-main{font-size:20px;font-weight:800;letter-spacing:-.02em}
-    .home-cta-sub{font-size:13px;font-weight:600;opacity:.88}
-    .home-capabilities{padding:16px 16px 14px;margin-bottom:14px}
-    .home-cap-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-    .home-cap-head h2{margin:0;font-size:15px;font-weight:800;color:var(--indigo)}
-    .home-cap-compat{font-size:11px;font-weight:700;color:var(--primary);background:var(--primary-soft);padding:4px 10px;border-radius:999px}
-    .home-cap-grid-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-    .home-cap-tile{
-      display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;
-      padding:12px 12px 10px;border-radius:16px;border:1px solid var(--outline-variant);
-      background:var(--surface-high);cursor:pointer;font:inherit;color:inherit;
-      transition:border-color var(--dur-fast),background var(--dur-fast);
+    .home-cta-icon{font-size:22px;line-height:1;opacity:.95}
+    .home-cta-main{font-size:16px;font-weight:800;letter-spacing:-.01em}
+    .home-cta-sub{font-size:12px;font-weight:600;opacity:.88}
+    .home-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .home-finish-zone{margin-bottom:4px}
+    .home-finish-bar{
+      border:1px solid var(--outline-variant);border-radius:14px;padding:12px 14px;
+      background:var(--surface-soft);
     }
-    .home-cap-tile:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
-    .home-cap-tile-end{width:100%;background:var(--surface-soft)}
-    .home-cap-tile-end .home-cap-status{font-size:11px}
-    .home-cap-name{font-size:13px;font-weight:800;color:var(--on-surface)}
-    .home-cap-desc{font-size:11px;line-height:1.4;color:var(--on-surface-muted);margin:0}
-    .home-cap-status{
-      display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--on-surface);
+    .home-finish-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .home-finish-head h3{margin:0;font-size:12px;font-weight:800;color:var(--on-surface-muted);text-transform:none;letter-spacing:.02em}
+    .home-finish-status{font-size:12px;font-weight:600;color:var(--on-surface-muted);text-align:right;flex:1;min-width:0;word-break:break-word}
+    .home-finish-body{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+    .home-finish-controls{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center;flex:1 1 280px}
+    .home-finish-ctrl{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--on-surface-muted)}
+    .home-finish-ctrl-delay{flex:1 1 180px;min-width:140px;max-width:min(360px,42vw)}
+    .home-finish-ctrl-delay .voice-sapi-range{width:100%;margin-top:4px}
+    .home-finish-actions{display:flex;flex-wrap:wrap;gap:8px;flex:0 0 auto}
+    .home-finish-actions .home-live-btn{flex:0 1 auto;min-width:108px;margin-bottom:0}
+    .voice-key-finish-section{
+      margin:16px 0;padding:14px;border-radius:16px;border:1px solid var(--outline-variant);
+      background:var(--surface-soft);
     }
-    .home-cap-dot{width:7px;height:7px;border-radius:999px;background:var(--outline-variant);flex-shrink:0}
-    .home-cap-dot.is-ready{background:#22c55e}
-    .home-cap-dot.is-on{background:var(--primary)}
-    .home-cap-dot.is-off{background:var(--outline-variant)}
-    .home-cap-enter{align-self:flex-end;font-size:11px;font-weight:700;color:var(--primary);margin-top:2px}
-    .home-cap-tile.is-expanded{
-      border-color:rgba(42,156,196,.4);background:var(--primary-soft);
-      box-shadow:inset 0 0 0 1px rgba(42,156,196,.1);
-    }
-    .home-cap-enter.is-active{color:var(--on-surface-muted);font-weight:600}
-    .home-live-zone{
-      overflow:hidden;max-height:0;opacity:0;margin-bottom:0;
-      transition:max-height .32s var(--ease-standard),opacity .22s ease,margin .28s ease;
-    }
-    .home-live-zone.is-open{max-height:960px;opacity:1;margin-bottom:14px;overflow:visible}
+    .voice-key-finish-section .map-trigger-mode{margin:0}
+    .key-finish-empty{margin:8px 0 0}
+    .voice-end-test-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .voice-end-test-actions .control-btn{flex:1 1 calc(50% - 4px);min-width:140px}
     .home-live-panel{
       border:1px solid rgba(42,156,196,.22);border-radius:16px;padding:14px 14px 12px;
       background:linear-gradient(180deg,rgba(230,247,252,.28),var(--surface-high));
@@ -260,12 +256,63 @@
     }
     .home-live-badge.is-on{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.22)}
     .home-live-badge.is-warn{background:rgba(249,115,22,.1);color:#ea580c;border-color:rgba(249,115,22,.22)}
+    .home-live-subtitle{margin:0 0 8px;font-size:12px;color:var(--on-surface-muted)}
     .home-live-stats{display:grid;gap:7px;margin:0 0 10px}
     .home-live-row{display:grid;grid-template-columns:minmax(72px,34%) 1fr;gap:8px;align-items:start;font-size:12px;line-height:1.45}
     .home-live-row dt{margin:0;font-weight:600;color:var(--on-surface-muted)}
     .home-live-row dd{margin:0;font-weight:700;color:var(--on-surface);word-break:break-word;text-align:right}
     .home-live-row-sound{align-items:center}
     .home-live-row-sound dd{display:flex;justify-content:flex-end;align-items:center}
+    .home-live-row-scheme{align-items:start}
+    .home-live-scheme-dd{margin:0;min-width:0;display:flex;justify-content:flex-end}
+    .home-scheme-switcher{position:relative;width:100%;max-width:100%}
+    .home-scheme-switcher[hidden]{display:none!important}
+    .home-scheme-switcher-btn{
+      width:100%;min-height:40px;padding:8px 32px 8px 10px;border-radius:12px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      cursor:pointer;text-align:left;display:grid;gap:2px;position:relative;font:inherit;
+    }
+    .home-scheme-switcher-btn:hover:not(:disabled){border-color:var(--outline);background:var(--surface)}
+    .home-scheme-switcher-btn:disabled{opacity:.6;cursor:not-allowed}
+    .home-scheme-switcher-btn.is-readonly{cursor:default}
+    .home-scheme-switcher-btn.is-readonly:hover:not(:disabled){border-color:var(--outline-variant);background:var(--surface-high)}
+    .home-scheme-switcher-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word;line-height:1.35}
+    .home-scheme-switcher-pair{font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.35}
+    .home-scheme-switcher-chevron{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;opacity:.55}
+    .home-scheme-backdrop{
+      position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:55;
+    }
+    .home-scheme-backdrop[hidden]{display:none!important}
+    .home-scheme-menu{
+      position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:60;
+      border:1px solid var(--outline-variant);border-radius:14px;
+      background:var(--surface-high);box-shadow:var(--shadow-card);
+      padding:6px;max-height:min(280px,42vh);overflow:auto;
+    }
+    .home-scheme-menu[hidden]{display:none!important}
+    .home-scheme-item{
+      display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+      padding:8px;border-radius:10px;cursor:pointer;
+    }
+    .home-scheme-item:hover{background:var(--surface-soft)}
+    .home-scheme-item.is-selected{background:var(--primary-soft)}
+    .home-scheme-item-dot{font-size:10px;color:var(--primary);width:14px;text-align:center;flex-shrink:0}
+    .home-scheme-item:not(.is-selected) .home-scheme-item-dot{color:var(--on-surface-muted);opacity:.55}
+    .home-scheme-item-text{min-width:0;display:grid;gap:1px;text-align:left}
+    .home-scheme-item-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word}
+    .home-scheme-item-pair{font-size:11px;color:var(--on-surface-muted);font-weight:600}
+    .home-scheme-item-tag{
+      font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;white-space:nowrap;
+      background:rgba(249,115,22,.1);color:#c2410c;border:1px solid rgba(249,115,22,.16);
+    }
+    .home-scheme-item-toggle{flex-shrink:0}
+    .home-scheme-manage{
+      width:calc(100% - 4px);margin:4px 2px 2px;padding:10px 8px;border:none;border-top:1px solid var(--outline-variant);
+      background:transparent;font:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;border-radius:0 0 10px 10px;
+    }
+    .home-scheme-manage:hover{background:var(--surface-soft)}
+    .home-live-hint.is-clickable{cursor:pointer}
+    .home-live-hint.is-clickable:hover{filter:brightness(.98)}
     .home-live-val.is-off{color:var(--on-surface-muted);font-weight:600}
     .home-live-val.is-warn{color:#ea580c}
     .home-live-val.is-on{color:var(--primary)}
@@ -275,7 +322,7 @@
       background:rgba(249,115,22,.08);color:#c2410c;border:1px solid rgba(249,115,22,.18);
     }
     .home-live-hint[hidden]{display:none!important}
-    .home-live-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+    .home-live-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0}
     .home-live-btn{
       flex:1 1 calc(50% - 4px);min-width:120px;min-height:36px;padding:0 12px;border-radius:12px;
       border:1px solid var(--outline-variant);background:var(--surface-high);
@@ -290,6 +337,23 @@
       font:inherit;font-size:11px;font-weight:600;color:var(--on-surface-muted);cursor:pointer;text-align:center;
     }
     .home-live-more:hover{color:var(--primary)}
+    .home-live-inline{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .home-mini-toggle{
+      border:1px solid var(--outline-variant);background:#fff;border-radius:10px;padding:6px 10px;
+      font-size:12px;font-weight:700;color:var(--on-surface);cursor:pointer
+    }
+    .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.3)}
+    .home-inline-input{margin-bottom:10px}
+    .home-inline-input .voice-sapi-range{margin-top:4px}
+    .home-mic-wrap{margin:8px 0 10px}
+    .home-mic-current{
+      margin-top:6px;padding:10px 12px;border-radius:12px;border:1px solid var(--outline-variant);
+      background:var(--surface-high);display:flex;align-items:center;justify-content:space-between;gap:8px;
+    }
+    .home-mic-current.is-clickable{cursor:pointer}
+    .home-mic-current.is-clickable:hover{border-color:var(--outline);background:var(--surface)}
+    .home-mic-current-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word;line-height:1.4}
+    .home-mic-current-hint{font-size:11px;font-weight:600;color:var(--on-surface-muted);white-space:nowrap;flex-shrink:0}
     .home-live-panel[hidden]{display:none!important}
     .mapping-section{margin-top:8px;opacity:.98}
     .settings-panel .mapping-section{
@@ -314,19 +378,42 @@
     .settings-panel{display:block}
     .settings-panel[hidden]{display:none!important}
     .settings-panel-desc{margin:0 0 14px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .settings-secondary{
+      margin:0 0 14px;border:1px solid var(--outline-variant);border-radius:12px;background:var(--surface-soft);
+      padding:0 10px 10px;
+    }
+    .settings-secondary>summary{
+      list-style:none;cursor:pointer;padding:10px 0;font-size:12px;font-weight:700;color:var(--on-surface);
+    }
+    .settings-secondary>summary::-webkit-details-marker{display:none}
+    .settings-secondary-hint{margin:-4px 0 8px;font-size:11px;color:var(--on-surface-muted)}
     .debug-overview{
       padding:12px 14px;border-radius:14px;border:1px solid var(--outline-variant);
       background:var(--surface-soft);font-size:12px;line-height:1.55;color:var(--on-surface-muted);margin-bottom:12px;
     }
     .debug-overview b{color:var(--on-surface);font-weight:700}
+    @media (min-width:960px){
+      .home-main-grid{gap:12px}
+      .home-finish-body{flex-wrap:nowrap;align-items:center}
+      .home-finish-controls{flex:1 1 auto}
+      .home-finish-ctrl-delay{max-width:min(420px,36%)}
+      .home-live-actions .home-live-btn{flex:1 1 calc(33.33% - 6px)}
+    }
     @media (max-width:720px){
       .settings-nav{width:100%;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--outline-variant);padding:8px}
       .settings-nav-item{flex-shrink:0;min-height:36px}
       .drawer-shell{flex-direction:column}
-      .home-cap-grid-top{grid-template-columns:1fr}
+      .home-status-wrap{grid-template-columns:1fr}
+      .home-main-grid{grid-template-columns:1fr}
+      .home-finish-body{flex-direction:column;align-items:stretch}
+      .home-finish-actions .home-live-btn{flex:1 1 100%}
       .home-live-row{grid-template-columns:minmax(64px,38%) 1fr}
+      .home-scheme-menu{
+        position:fixed;left:12px;right:12px;bottom:12px;top:auto;
+        max-height:min(360px,58vh);padding:8px;
+      }
       .home-live-btn{flex:1 1 100%}
-      .home-live-zone.is-open{max-height:640px}
+      .home-cta{width:100%;min-width:0}
     }
     .editor-zone{margin-bottom:20px}
     .welcome-overlay{
@@ -608,7 +695,7 @@
     }
     .map-test:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.2);transform:translateY(-1px)}
     .map-test:active:not(:disabled){transform:scale(0.96)}
-    .map-test:disabled{opacity:.5;cursor:not-allowed;color:var(--btn-label-muted)}
+    .map-test:disabled{opacity:.5;cursor:not-allowed;color:var(--btn-label-muted);pointer-events:none}
     .map-test.sending{
       pointer-events:none;border-color:rgba(42,156,196,.35);color:var(--key-soft);
       animation:test-pulse .75s ease-in-out infinite;
@@ -646,12 +733,14 @@
     .map-trigger-meta-time{font-size:11px;color:var(--on-surface-muted);line-height:1.4}
     .map-native-keys-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
     .map-trigger-mode{padding:10px 0;border-top:1px solid var(--outline-variant)}
-    .map-mode-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+    .map-mode-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
     @media(max-width:640px){.map-mode-cards{grid-template-columns:1fr}}
+    .voice-key-finish-section .map-mode-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
     .map-mode-card{
       display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px 10px 12px;
       border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
       font:inherit;text-align:left;cursor:pointer;color:inherit;transition:border-color .16s,box-shadow .16s,background .16s;
+      overflow:visible;min-width:0;
     }
     .map-mode-card:hover{background:var(--primary-soft)}
     .map-mode-card.is-active{
@@ -659,13 +748,18 @@
       box-shadow:0 8px 20px rgba(42,156,196,.12);
     }
     .mode-anim{
-      position:relative;height:52px;border-radius:10px;background:var(--surface-soft);
-      border:1px solid var(--outline-variant);overflow:hidden;
+      position:relative;min-height:56px;border-radius:10px;background:var(--surface-soft);
+      border:1px solid var(--outline-variant);overflow:visible;
+      display:flex;align-items:center;justify-content:center;
     }
     .map-mode-card.is-active .mode-anim{border-color:rgba(42,156,196,.2);background:rgba(255,255,255,.7)}
     .mode-anim-inner{
-      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;
+      display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;
+      flex-wrap:nowrap;max-width:100%;
     }
+    .mode-anim-inner.mode-anim-tap{gap:3px;padding:6px 4px}
+    .mode-anim-inner.mode-anim-tap .ma-chip{font-size:9px;min-width:24px;height:20px;padding:0 5px}
+    .mode-anim-inner.mode-anim-tap .ma-arrow{font-size:10px}
     .ma-chip{
       display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:22px;padding:0 7px;
       border-radius:999px;font-size:10px;font-weight:800;line-height:1;white-space:nowrap;
@@ -689,7 +783,7 @@
     .map-mode-card.is-active .mode-anim-tap .ma-a1{animation:modeTapA1 2.8s ease-in-out infinite}
     .map-mode-card.is-active .mode-anim-tap .ma-out-cancel{animation:modeTapOutCancel 2.8s ease-in-out infinite}
     .map-mode-card.is-active .mode-anim-tap .ma-out-enter{animation:modeTapOutEnter 2.8s ease-in-out infinite}
-    .ma-out-stack{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px}
+    .ma-out-stack{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:22px;flex-shrink:0}
     .ma-out-stack .ma-chip{position:absolute;inset:0;margin:auto}
     @keyframes modeTapOutCancel{0%,58%{opacity:.12;transform:scale(.92)}66%,78%{opacity:1;transform:scale(1)}86%,100%{opacity:.12}}
     @keyframes modeTapOutEnter{0%,78%{opacity:.12;transform:scale(.92)}86%,96%{opacity:1;transform:scale(1)}100%{opacity:.12}}
@@ -1118,7 +1212,7 @@
     .trash-restore{height:30px;padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);background:var(--surface-high);font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--on-surface)}
     .map-menu-float{
       position:fixed;min-width:152px;background:var(--surface-high);border:1px solid var(--outline-variant);
-      border-radius:14px;box-shadow:var(--shadow-card);padding:6px;z-index:300;display:none;
+      border-radius:14px;box-shadow:var(--shadow-card);padding:6px;z-index:460;display:none;
     }
     .map-menu-float.open{display:block}
     .map-menu-float button{
@@ -1197,97 +1291,110 @@
     <main class="main-scroll">
       <div class="editor-zone">
         <div class="home-zone" id="homeZone">
-          <div class="home-status" id="homeStatus">
-            <span class="home-status-icon" id="homeStatusIcon" aria-hidden="true"></span>
-            <p class="home-status-title" id="homeStatusTitle">准备就绪，可以开始输入</p>
-          </div>
-          <button type="button" class="home-cta" id="btnHomeCta">
-            <span class="home-cta-icon" aria-hidden="true">🎤</span>
-            <span class="home-cta-main" id="homeCtaMain">继续配置</span>
-            <span class="home-cta-sub" id="homeCtaSub">先设置启动键</span>
-          </button>
-          <section class="bubble-card home-capabilities" id="homeCapabilities">
-            <div class="home-cap-head">
-              <h2 id="homeCapabilitiesTitle">核心能力概览</h2>
-              <span class="home-cap-compat" id="homeCapCompat">可同时使用</span>
+          <div class="home-status-wrap">
+            <div class="home-status-block">
+              <div class="home-status" id="homeStatus">
+                <span class="home-status-icon" id="homeStatusIcon" aria-hidden="true"></span>
+                <p class="home-status-title" id="homeStatusTitle">准备就绪，可以开始输入</p>
+              </div>
+              <p class="home-status-summary" id="homeStatusSummary">未启用任何入口</p>
             </div>
-            <div class="home-cap-grid-top">
-              <button type="button" class="home-cap-tile" id="capKeyWake" data-module="keyWake" aria-expanded="false">
-                <span class="home-cap-name" id="capKeyWakeName">按键唤醒</span>
-                <p class="home-cap-desc" id="capKeyWakeDesc">按启动键唤起语音输入</p>
-                <span class="home-cap-status"><span class="home-cap-dot" id="capKeyWakeDot"></span><span id="capKeyWakeStatus">未设置</span></span>
-                <span class="home-cap-enter" id="capKeyWakeEnter">查看状态</span>
-              </button>
-              <button type="button" class="home-cap-tile" id="capVoiceWake" data-module="voiceWake" aria-expanded="false">
-                <span class="home-cap-name" id="capVoiceWakeName">语音唤醒</span>
-                <p class="home-cap-desc" id="capVoiceWakeDesc">说出唤醒词即可开始</p>
-                <span class="home-cap-status"><span class="home-cap-dot" id="capVoiceWakeDot"></span><span id="capVoiceWakeStatus">未开启</span></span>
-                <span class="home-cap-enter" id="capVoiceWakeEnter">查看状态</span>
-              </button>
-            </div>
-            <button type="button" class="home-cap-tile home-cap-tile-end" id="capVoiceEnd" data-module="voiceEnd" aria-expanded="false">
-              <span class="home-cap-name" id="capVoiceEndName">结束与发送</span>
-              <p class="home-cap-desc" id="capVoiceEndDesc">听写中说结束词，可选自动发送</p>
-              <span class="home-cap-status"><span class="home-cap-dot" id="capVoiceEndDot"></span><span id="capVoiceEndStatus">未启用</span></span>
-              <span class="home-cap-enter" id="capVoiceEndEnter">查看状态</span>
+            <button type="button" class="home-cta" id="btnHomeCta">
+              <span class="home-cta-icon" aria-hidden="true">🎤</span>
+              <span class="home-cta-main" id="homeCtaMain">继续配置</span>
+              <span class="home-cta-sub" id="homeCtaSub">先设置启动键</span>
             </button>
-          </section>
-          <div class="home-live-zone" id="homeLiveZone" aria-live="polite">
-            <div class="home-live-panel" id="homeLivePanelKey" data-module="keyWake" hidden>
+          </div>
+          <div class="home-main-grid" id="homeMainGrid" aria-live="polite">
+            <div class="home-live-panel is-active" id="homeLivePanelKey" data-module="keyWake">
               <header class="home-live-head">
-                <h3 id="homeLiveKeyTitle">按键唤醒</h3>
+                <h3 id="homeLiveKeyTitle">按键激活</h3>
                 <span class="home-live-badge" id="homeLiveKeyBadge">—</span>
               </header>
+              <div class="home-live-row home-live-row-sound" style="margin-bottom:8px">
+                <span class="mic-desc" id="homeLiveKeyEnableLbl">启用按键激活</span>
+                <button type="button" class="toggle-switch" id="btnHomeKeyEnable" role="switch" aria-checked="false" aria-labelledby="homeLiveKeyEnableLbl"></button>
+              </div>
               <dl class="home-live-stats">
-                <div class="home-live-row"><dt id="homeLiveKeyTriggerLbl">启动键</dt><dd class="home-live-val" id="homeLiveKeyTrigger">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveKeyTargetLbl">语音快捷键</dt><dd class="home-live-val" id="homeLiveKeyTarget">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveKeySchemeLbl">当前方案</dt><dd class="home-live-val" id="homeLiveKeyScheme">—</dd></div>
-                <div class="home-live-row home-live-row-sound">
-                  <dt id="homeLiveKeySoundLbl">激活提示音</dt>
-                  <dd><button type="button" class="toggle-switch" id="btnHomeKeyWakeSound" role="switch" aria-checked="false" aria-labelledby="homeLiveKeySoundLbl"></button></dd>
+                <div class="home-live-row home-live-row-scheme" id="homeLiveKeySchemeRow">
+                  <dt id="homeLiveKeySchemeLbl">当前方案</dt>
+                  <dd class="home-live-scheme-dd">
+                    <span class="home-live-val" id="homeLiveKeyScheme" hidden>—</span>
+                    <div class="home-scheme-switcher" id="homeSchemeSwitcher">
+                      <button type="button" class="home-scheme-switcher-btn" id="btnHomeSchemeSwitcher" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="homeLiveKeySchemeLbl homeSchemeSwitcherName">
+                        <span class="home-scheme-switcher-name" id="homeSchemeSwitcherName">—</span>
+                        <span class="home-scheme-switcher-pair" id="homeSchemeSwitcherPair">—</span>
+                        <span class="home-scheme-switcher-chevron" id="homeSchemeSwitcherChevron" aria-hidden="true">▼</span>
+                      </button>
+                      <div class="home-scheme-backdrop" id="homeSchemeBackdrop" hidden></div>
+                      <div class="home-scheme-menu" id="homeSchemeMenu" role="listbox" aria-labelledby="homeLiveKeySchemeLbl" hidden>
+                        <div id="homeSchemeMenuList"></div>
+                        <button type="button" class="home-scheme-manage" id="btnHomeManageSchemes">管理全部方案…</button>
+                      </div>
+                    </div>
+                  </dd>
                 </div>
               </dl>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn" id="btnHomeKeyRetrigger">重录启动键</button>
-                <button type="button" class="home-live-btn" id="btnHomeKeyRetarget">重录快捷键</button>
-                <button type="button" class="home-live-btn primary" id="btnHomeKeyTestSend">测试发送</button>
+                <button type="button" class="home-live-btn primary" id="btnHomeKeyRecord">录制按键</button>
               </div>
-              <button type="button" class="home-live-more" id="btnHomeKeySettings">更多设置</button>
             </div>
-            <div class="home-live-panel" id="homeLivePanelVoice" data-module="voiceWake" hidden>
+            <div class="home-live-panel is-active" id="homeLivePanelVoice" data-module="voiceWake">
               <header class="home-live-head">
-                <h3 id="homeLiveVoiceTitle">语音唤醒</h3>
+                <h3 id="homeLiveVoiceTitle">语音激活</h3>
                 <span class="home-live-badge" id="homeLiveVoiceBadge">—</span>
               </header>
+              <div class="home-mic-wrap">
+                <div class="mini-title" id="homeMicTitle">当前麦克风</div>
+                <p class="mic-desc" id="homeMicDesc">语音入口使用的共享输入源</p>
+                <p class="mic-empty" id="homeMicEmpty" hidden></p>
+                <button type="button" class="home-mic-current is-clickable" id="btnHomeMicSettings" hidden>
+                  <span class="home-mic-current-name" id="homeMicCurrentName">—</span>
+                  <span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span>
+                  <span class="home-mic-current-hint" id="homeMicChangeHint">更改</span>
+                </button>
+              </div>
+              <div class="home-live-inline" id="homeVoiceModeSwitch">
+                <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
+                <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">高级版</button>
+              </div>
               <dl class="home-live-stats">
                 <div class="home-live-row"><dt id="homeLiveVoiceEngineLbl">引擎</dt><dd class="home-live-val" id="homeLiveVoiceEngine">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveVoiceMicLbl">麦克风</dt><dd class="home-live-val" id="homeLiveVoiceMic">—</dd></div>
                 <div class="home-live-row"><dt id="homeLiveVoicePhraseLbl">唤醒词</dt><dd class="home-live-val" id="homeLiveVoicePhrase">—</dd></div>
                 <div class="home-live-row"><dt id="homeLiveVoiceHeardLbl">最近识别</dt><dd class="home-live-val" id="homeLiveVoiceHeard">—</dd></div>
               </dl>
+              <div class="home-inline-input" id="homeVoiceSapiQuick" hidden>
+                <span class="mic-desc" id="homeVoiceSapiConfidenceLabel">灵敏度 0.35</span>
+                <input type="range" class="voice-sapi-range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35">
+              </div>
               <div class="home-live-actions">
                 <button type="button" class="home-live-btn primary" id="btnHomeVoiceToggle">启用</button>
-                <button type="button" class="home-live-btn" id="btnHomeVoiceSwitch">切换引擎</button>
               </div>
-              <button type="button" class="home-live-more" id="btnHomeVoiceSettings">更多设置</button>
             </div>
-            <div class="home-live-panel" id="homeLivePanelEnd" data-module="voiceEnd" hidden>
-              <header class="home-live-head">
-                <h3 id="homeLiveEndTitle">结束与发送</h3>
-                <span class="home-live-badge" id="homeLiveEndBadge">—</span>
-              </header>
-              <dl class="home-live-stats">
-                <div class="home-live-row"><dt id="homeLiveEndEnabledLbl">结束词</dt><dd class="home-live-val" id="homeLiveEndEnabled">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveEndAutoLbl">自动发送</dt><dd class="home-live-val" id="homeLiveEndAuto">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveEndDelayLbl">发送延迟</dt><dd class="home-live-val" id="homeLiveEndDelay">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveEndStateLbl">最近状态</dt><dd class="home-live-val" id="homeLiveEndState">—</dd></div>
-              </dl>
-              <div class="home-live-actions">
-                <button type="button" class="home-live-btn primary" id="btnHomeEndToggle">启用</button>
-                <button type="button" class="home-live-btn" id="btnHomeEndTestSend">测试发送</button>
+          </div>
+          <div class="home-finish-zone" id="homeFinishZone">
+            <div class="home-finish-bar" id="homeLivePanelEnd" data-module="voiceEnd">
+              <div class="home-finish-head">
+                <h3 id="homeLiveEndTitle">完成动作</h3>
+                <span class="home-finish-status" id="homeFinishStatus">—</span>
               </div>
-              <button type="button" class="home-live-more" id="btnHomeEndSettings">更多设置</button>
+              <div class="home-finish-body">
+                <div class="home-finish-controls">
+                  <div class="home-finish-ctrl">
+                    <span id="homeLiveEndEnabledLbl">结束词</span>
+                    <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
+                  </div>
+                  <div class="home-finish-ctrl">
+                    <span id="homeLiveEndAutoLbl">自动发送</span>
+                    <button type="button" class="toggle-switch" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
+                  </div>
+                  <div class="home-finish-ctrl home-finish-ctrl-delay">
+                    <span class="mic-desc" id="homeVoiceEndDelayLine">发送延迟：4000ms</span>
+                    <input type="range" class="voice-sapi-range" id="homeVoiceEndDelayRange" min="1000" max="10000" step="500" value="4000">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1304,9 +1411,9 @@
     <div class="drawer-shell">
       <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
         <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
-        <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键唤醒</button>
-        <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音唤醒</button>
-        <button type="button" class="settings-nav-item" data-panel="voiceEnd" id="settingsNavVoiceEnd">结束与发送</button>
+        <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键激活（深度）</button>
+        <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音激活（深度）</button>
+        <button type="button" class="settings-nav-item" data-panel="voiceEnd" id="settingsNavVoiceEnd">完成动作（深度）</button>
         <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
         <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
         <div class="settings-nav-foot">
@@ -1353,32 +1460,36 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeyWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">录制按键与管理我的方案</p>
-          <div class="key-wake-settings" id="keyWakeSettings">
-            <div class="mini-title" id="keyWakeSettingsTitle">按键唤醒设置</div>
-            <p class="mic-desc" id="triggerTitle">启动键</p>
-            <div class="display empty" id="triggerDisplay">
-              <span class="display-value" id="triggerView">未设置</span>
+          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">首页负责高频操作；这里保留方案管理与完整编辑</p>
+          <details class="settings-secondary" id="quickKeyWakeSection">
+            <summary id="quickKeyWakeSummary">首页快捷操作（按键录制）</summary>
+            <p class="settings-secondary-hint" id="quickKeyWakeHint">建议在首页主操作台完成，必要时再用这里的完整录制面板。</p>
+            <div class="key-wake-settings" id="keyWakeSettings">
+              <div class="mini-title" id="keyWakeSettingsTitle">按键激活设置</div>
+              <p class="mic-desc" id="triggerTitle">启动键</p>
+              <div class="display empty" id="triggerDisplay">
+                <span class="display-value" id="triggerView">未设置</span>
+              </div>
+              <p class="trigger-trace" id="triggerTrace" hidden></p>
+              <div class="actions">
+                <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的启动键</button>
+              </div>
+              <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
+              <p class="mic-desc" id="targetTitle" style="margin-top:12px">语音快捷键</p>
+              <div class="display empty" id="targetDisplay">
+                <span class="display-value" id="targetView">未设置</span>
+              </div>
+              <div class="actions">
+                <button class="btn secondary record-btn" id="btnRecordTarget" type="button">按一下语音输入快捷键</button>
+              </div>
+              <p class="help" id="targetHelp">这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。</p>
+              <span class="sr-only" id="triggerState" aria-live="polite"></span>
+              <span class="sr-only" id="targetState" aria-live="polite"></span>
+              <div class="record-cancel-bar" id="recordCancelBar">
+                <button type="button" class="btn-cancel-record" id="btnCancelRecord">取消录制</button>
+              </div>
             </div>
-            <p class="trigger-trace" id="triggerTrace" hidden></p>
-            <div class="actions">
-              <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的启动键</button>
-            </div>
-            <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
-            <p class="mic-desc" id="targetTitle" style="margin-top:12px">语音快捷键</p>
-            <div class="display empty" id="targetDisplay">
-              <span class="display-value" id="targetView">未设置</span>
-            </div>
-            <div class="actions">
-              <button class="btn secondary record-btn" id="btnRecordTarget" type="button">按一下语音输入快捷键</button>
-            </div>
-            <p class="help" id="targetHelp">这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。</p>
-            <span class="sr-only" id="triggerState" aria-live="polite"></span>
-            <span class="sr-only" id="targetState" aria-live="polite"></span>
-            <div class="record-cancel-bar" id="recordCancelBar">
-              <button type="button" class="btn-cancel-record" id="btnCancelRecord">取消录制</button>
-            </div>
-          </div>
+          </details>
           <div class="mapping-section" id="keyWakeMappingSection">
             <div class="list-head-row">
               <h2 id="mappingListTitle">我的方案</h2>
@@ -1402,54 +1513,58 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">麦克风与语音模式</p>
-          <div class="mini-title" id="micTitle">麦克风</div>
-          <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
-          <p class="mic-empty" id="micEmpty" hidden></p>
-          <div class="mic-device-list" id="micDeviceList"></div>
-          <section class="voice-mode-panel" id="voiceModePanel">
-            <div class="mini-title" id="voiceModeTitle">语音模式</div>
-            <p class="mic-desc" id="voiceModeDesc">轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。</p>
-            <div class="voice-mode-grid">
-              <button type="button" class="voice-mode-card" id="btnVoiceModeSapi">
-                <div class="voice-mode-head">
-                  <div>
-                    <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
-                    <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">首页可快速切换与启停；这里保留完整语音配置与高级参数</p>
+          <details class="settings-secondary" id="quickVoiceWakeSection">
+            <summary id="quickVoiceWakeSummary">首页快捷操作（模式与麦克风）</summary>
+            <p class="settings-secondary-hint" id="quickVoiceWakeHint">该区默认折叠，避免与首页主操作台重复。</p>
+            <div class="mini-title" id="micTitle">麦克风</div>
+            <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
+            <p class="mic-empty" id="micEmpty" hidden></p>
+            <div class="mic-device-list" id="micDeviceList"></div>
+            <section class="voice-mode-panel" id="voiceModePanel">
+              <div class="mini-title" id="voiceModeTitle">语音模式</div>
+              <p class="mic-desc" id="voiceModeDesc">轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。</p>
+              <div class="voice-mode-grid">
+                <button type="button" class="voice-mode-card" id="btnVoiceModeSapi">
+                  <div class="voice-mode-head">
+                    <div>
+                      <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
+                      <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
+                    </div>
+                    <span class="chip" id="voiceModeLiteBadge">低资源</span>
                   </div>
-                  <span class="chip" id="voiceModeLiteBadge">低资源</span>
-                </div>
-                <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速启动。</p>
-                <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
-                <div class="voice-mode-points">
-                  <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
-                  <span class="voice-mode-point" id="voiceModeLitePoint2">启动更快</span>
-                  <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
-                </div>
-              </button>
-              <button type="button" class="voice-mode-card" id="btnVoiceModeVosk">
-                <div class="voice-mode-head">
-                  <div>
-                    <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
-                    <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
+                  <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速启动。</p>
+                  <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
+                  <div class="voice-mode-points">
+                    <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
+                    <span class="voice-mode-point" id="voiceModeLitePoint2">启动更快</span>
+                    <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
                   </div>
-                  <span class="chip" id="voiceModeProBadge">完整链路</span>
-                </div>
-                <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
-                <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
-                <div class="voice-mode-points">
-                  <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
-                  <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
-                  <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
-                </div>
-              </button>
-            </div>
-            <div class="voice-mode-status" id="voiceModeCurrent">当前未启用语音模式</div>
-            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
-          </section>
+                </button>
+                <button type="button" class="voice-mode-card" id="btnVoiceModeVosk">
+                  <div class="voice-mode-head">
+                    <div>
+                      <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
+                      <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
+                    </div>
+                    <span class="chip" id="voiceModeProBadge">完整链路</span>
+                  </div>
+                  <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
+                  <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
+                  <div class="voice-mode-points">
+                    <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
+                    <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
+                    <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
+                  </div>
+                </button>
+              </div>
+              <div class="voice-mode-status" id="voiceModeCurrent">当前未启用语音模式</div>
+              <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
+            </section>
+          </details>
           <div class="voice-hub-block voice-mode-detail" id="voiceSapiBlock" style="margin-top:16px">
             <div class="mini-title" id="voiceSapiTitle">轻量版细项</div>
-            <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。测试与即时记录已集中到「状态与调试」页底部。</p>
+            <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。</p>
             <div class="setting-row">
               <div class="setting-row-main">
                 <span class="setting-row-text" id="voiceSapiLabel">开启轻量版</span>
@@ -1514,23 +1629,43 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceEnd" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceEndDesc">听写结束词与自动发送</p>
-          <div class="mini-title" id="voiceEndTitle">语音结束与发送</div>
-          <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。测试与即时记录已集中到「状态与调试」页底部。</p>
-          <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
-          <div class="setting-row">
-            <div class="setting-row-main">
-              <span class="setting-row-text" id="voiceEndLabel">启用语音结束</span>
+          <p class="settings-panel-desc" id="settingsPanelVoiceEndDesc">规划结束词、按键完成流程与深度参数；首页保留高频开关</p>
+          <details class="settings-secondary" id="quickVoiceEndSection">
+            <summary id="quickVoiceEndSummary">首页快捷操作（完成动作开关与延迟）</summary>
+            <p class="settings-secondary-hint" id="quickVoiceEndHint">该区默认折叠，首页用于高频控制；这里保留完整参数链路。</p>
+            <div class="mini-title" id="voiceEndTitle">完成动作</div>
+            <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。</p>
+            <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
+            <div class="setting-row">
+              <div class="setting-row-main">
+                <span class="setting-row-text" id="voiceEndLabel">启用语音结束</span>
+              </div>
+              <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
             </div>
-            <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
+            <div class="control-row" style="margin-top:8px">
+              <span class="chip" id="voiceEndState">待命</span>
+            </div>
+            <p class="mic-desc" id="voiceEndPhrasesLine" style="margin-top:6px"></p>
+            <p class="mic-desc" id="voiceEndAutoSendLine"></p>
+            <p class="mic-desc" id="voiceEndDelayLine"></p>
+            <p class="mic-empty" id="voiceEndAutoSendWarn" hidden></p>
+            <div class="voice-sapi-row" style="margin-top:10px">
+              <span class="mic-desc" id="voiceEndDelayLabel">发送延迟</span>
+              <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000" style="width:100%;margin-top:4px">
+            </div>
+            <div class="setting-row" style="margin-top:8px">
+              <div class="setting-row-main">
+                <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
+              </div>
+              <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
+            </div>
+          </details>
+          <div class="voice-key-finish-section" id="voiceEndKeyFinishSection">
+            <div class="mini-title" id="keyFinishFlowTitle">按键完成流程</div>
+            <p class="mic-desc" id="keyFinishFlowDesc">规划用启动键开始听写后，如何取消或自动确认。按键只负责唤起，结束节奏在这里配置。</p>
+            <p class="mic-desc" id="keyFinishFlowSchemeLine"></p>
+            <div id="voiceEndKeyFinishPanel"></div>
           </div>
-          <div class="control-row" style="margin-top:8px">
-            <span class="chip" id="voiceEndState">待命</span>
-          </div>
-          <p class="mic-desc" id="voiceEndPhrasesLine" style="margin-top:6px"></p>
-          <p class="mic-desc" id="voiceEndAutoSendLine"></p>
-          <p class="mic-desc" id="voiceEndDelayLine"></p>
-          <p class="mic-empty" id="voiceEndAutoSendWarn" hidden></p>
           <div class="voice-sapi-box" id="voiceEndPresetsWrap">
             <p class="mic-desc" id="voiceEndPresetsZhLabel">中文结束词</p>
             <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
@@ -1549,15 +1684,9 @@
               <button type="button" class="voice-sapi-preset" data-phrase="done">done</button>
             </div>
           </div>
-          <div class="voice-sapi-row" style="margin-top:10px">
-            <span class="mic-desc" id="voiceEndDelayLabel">发送延迟</span>
-            <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000" style="width:100%;margin-top:4px">
-          </div>
-          <div class="setting-row" style="margin-top:8px">
-            <div class="setting-row-main">
-              <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
-            </div>
-            <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
+          <div class="voice-end-test-actions">
+            <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
+            <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
@@ -1599,7 +1728,7 @@
             <div class="sound-slot" data-slot="keyWake">
               <div class="sound-slot-head">
                 <div>
-                  <p class="sound-slot-title" id="soundSlotKeyWakeTitle">按键启动</p>
+                  <p class="sound-slot-title" id="soundSlotKeyWakeTitle">按键激活提示音</p>
                   <p class="sound-slot-desc" id="soundSlotKeyWakeDesc">按启动键唤起语音输入时播放。</p>
                 </div>
                 <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false"></button>
@@ -1682,7 +1811,7 @@
               <section class="voice-diagnostics-section">
                 <div class="voice-diagnostics-head">
                   <div>
-                    <p class="voice-diagnostics-title" id="voiceDiagEndTitle">语音结束与发送</p>
+                    <p class="voice-diagnostics-title" id="voiceDiagEndTitle">完成动作</p>
                     <p class="voice-diagnostics-desc" id="voiceDiagEndDesc">结束词、结束动作与发送测试</p>
                   </div>
                   <span class="chip">End</span>
@@ -1690,10 +1819,6 @@
                 <p class="mic-desc" id="voiceEndDebugSummary"></p>
                 <p class="mic-desc" id="voiceEndLastPhraseLine"></p>
                 <p class="mic-desc" id="voiceEndLastActionLine"></p>
-                <div class="voice-diagnostics-actions">
-                  <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
-                  <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
-                </div>
                 <div class="voice-diagnostics-log" id="voiceEndLog">等待语音状态…</div>
               </section>
               <section class="voice-diagnostics-section">
@@ -2075,21 +2200,21 @@
       appSubtitle:'言出即行 · 万象成形',
       welcomeKicker:'首次使用',
       welcomeTitle:'两步就能开始语音启动',
-      welcomeDesc:'先定一个启动方式，再录一次语音快捷键。以后你一按启动键，它就会帮你唤起语音输入。',
+      welcomeDesc:'先录好启动键与语音快捷键；听写如何结束、取消或自动确认，在「完成动作」里规划。',
       welcomeHint:'这个引导只会在首次启动时出现一次。',
       welcomeStart:'开始设置',
       welcomeLater:'稍后再看',
       demoLabel:'动画演示',
       demoCardTitle1:'你来按',
       demoCardTitle2:'帮你触发',
-      demoCaptionLeft:'选一个你觉得顺手的启动方式。',
+      demoCaptionLeft:'按键只负责唤起；完成节奏稍后在「完成动作」里设置。',
       demoCaptionRight:'它只会帮你触发录好的语音快捷键。',
       guideTitle1:'先设置',
       guideDesc1:'以后按一下启动键，就能更快进入语音输入。',
       guideTitle2:'再录一次',
       guideDesc2:'先录启动键，再录语音快捷键，两步完成即可使用。',
       guideTitle3:'马上用',
-      guideDesc3:'可在「设置 → 按键唤醒」最下方的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
+      guideDesc3:'可在「设置 → 按键激活（深度）」最下方的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
       mappingListTitle:'我的方案',addMapping:'新增方案',
       triggerTitle:'启动键',targetTitle:'语音快捷键',
       btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
@@ -2149,7 +2274,7 @@
       micWindowsOnly:'麦克风切换与监测仅支持 Windows',micEmpty:'未检测到可用麦克风',
       micSwitchFail:'切换麦克风失败',
       voiceSapiTitle:'轻量版细项',
-      voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。测试与即时记录已集中到「状态与调试」页底部。',
+      voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。',
       voiceSapiLabel:'开启轻量版',
       voiceSapiTest:'测试快捷键（不走麦克风）',
       voiceSapiFail:'无法启动轻量版，请检查 Windows 语音组件是否可用',
@@ -2183,9 +2308,9 @@
       voiceModeCurrentLite:'当前：轻量版',
       voiceModeCurrentPro:'当前：高级版',
       voiceModeHintOff:'轻量版更适合常驻待机；高级版更适合完整语音流程和结束词。',
-      voiceModeHintLite:'当前是轻量版：更适合待机与快速启动，但不能使用语音结束与发送。',
+      voiceModeHintLite:'当前是轻量版：更适合待机与快速启动，但不能使用完成动作中的语音结束。',
       voiceModeHintPro:'当前是高级版：支持离线识别、结束词和更完整的语音链路。',
-      voiceModeHintProWithEnd:'当前高级版已可配合「语音结束与发送」一起工作。',
+      voiceModeHintProWithEnd:'当前高级版已可配合「完成动作」一起工作。',
       voiceModeMetricLoading:'实时占用读取中…',
       voiceModeMetricSwitch:'切换到该模式后显示实时占用',
       voiceModeMetricInactive:'当前未启用，启用后显示实时占用',
@@ -2218,8 +2343,8 @@
       voiceVoskPresetsEnLabel:'英文唤醒词',
       voiceVoskPresetUpdated:'已更新唤醒词',
       voiceVoskModelUpdated:'已更新识别语言',
-      voiceEndTitle:'语音结束与发送',
-      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。测试与即时记录已集中到「状态与调试」页底部。',
+      voiceEndTitle:'完成动作',
+      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。',
       voiceEndLabel:'启用语音结束',
       voiceEndVoskWarn:'需要启用高级版才能语音结束',
       voiceEndCompatWarn:'外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。',
@@ -2251,7 +2376,7 @@
       voiceDiagSapiDesc:'快速唤醒的最近状态与测试记录',
       voiceDiagVoskTitle:'高级版唤醒日志',
       voiceDiagVoskDesc:'完整识别流程、命中结果与测试记录',
-      voiceDiagEndTitle:'语音结束与发送',
+      voiceDiagEndTitle:'完成动作',
       voiceDiagEndDesc:'结束词、结束动作与发送测试',
       voiceDiagUsageTitle:'资源采样日志',
       voiceDiagUsageDesc:'每次轮询当前进程的内存与 CPU，方便判断是采样失败还是界面没刷新。',
@@ -2272,22 +2397,24 @@
       voiceDiagLogUsageStatus:'采样',
       voiceDiagUsageUnsupported:'当前环境暂不支持读取实时占用',
       voiceDiagUsageError:'读取失败',
-      wakeCardTitle:'唤醒',wakeKeyLabel:'按键唤醒',wakeVoiceLabel:'语音唤醒',
-      homeCapabilitiesTitle:'核心能力概览',homeCapCompat:'可同时使用',
-      capKeyWakeName:'按键唤醒',capKeyWakeDesc:'按启动键唤起语音输入',
-      capVoiceWakeName:'语音唤醒',capVoiceWakeDesc:'说出唤醒词即可开始',
-      capVoiceEndName:'结束与发送',capVoiceEndDesc:'听写中说结束词，可选自动发送',
-      capGoSettings:'去设置 →',
-      homeCapExpand:'查看状态',homeCapCollapse:'收起',
-      homeLiveKeyTitle:'按键唤醒',homeLiveVoiceTitle:'语音唤醒',homeLiveEndTitle:'结束与发送',
+      wakeCardTitle:'唤醒',wakeKeyLabel:'按键激活',wakeVoiceLabel:'语音激活',
+      homeLiveKeyTitle:'按键激活',homeLiveVoiceTitle:'语音激活',homeLiveEndTitle:'完成动作',
+      homeLiveKeyEnableLbl:'启用按键激活',
+      homeMicTitle:'当前麦克风',homeMicDesc:'仅显示当前选用设备；切换请进语音激活设置',
+      homeMicChangeHint:'更改',
       homeLiveTrigger:'启动键',homeLiveTarget:'语音快捷键',homeLiveScheme:'当前方案',
       homeLiveKeySound:'激活提示音',
-      homeLiveEngine:'引擎',homeLiveMic:'麦克风',homeLiveWakeWord:'唤醒词',homeLiveLastHeard:'最近识别',
-      homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',homeLiveEndDelay:'发送延迟',homeLiveEndLast:'最近状态',
-      homeLiveRetrigger:'重录启动键',homeLiveRetarget:'重录快捷键',homeLiveTestSend:'测试发送',
+      homeLiveEngine:'引擎',homeLiveWakeWord:'唤醒词',homeLiveLastHeard:'最近识别',
+      homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',
+      homeEntryKeyOnly:'已启用：按键激活',homeEntryVoiceOnly:'已启用：语音激活',
+      homeEntryBoth:'已启用：按键 + 语音',homeEntryNone:'未启用任何入口',
+      homeSchemeManage:'管理全部方案…',homeSchemeToggleLbl:'启用此方案',
+      homeSchemeSwitchAria:'切换当前方案',
+      homeFinishHint:'无论通过按键还是语音开始，结束时都走这套规则',
+      homeLiveRetrigger:'重录启动键',homeLiveRetarget:'重录快捷键',homeLiveRecordKeys:'录制按键',homeLiveTestSend:'测试发送',
       homeLiveToggleWakeOn:'停用',homeLiveToggleWakeOff:'启用',
       homeLiveSwitchEngine:'切换模式',homeLiveToggleEndOn:'停用',homeLiveToggleEndOff:'启用',
-      homeLiveTestEndSend:'测试发送',homeLiveMoreSettings:'更多设置',
+      homeLiveTestEndSend:'测试发送',
       homeLiveUnset:'未设置',homeLiveLoading:'读取中…',homeLiveOff:'未启用',
       homeLiveMicUnknown:'未检测',homeLiveMicUnset:'未选择',
       homeLiveHeardWaiting:'等待说话…',homeLiveHeardOff:'—',
@@ -2297,8 +2424,8 @@
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
       homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
-      homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音唤醒已就绪',
-      homeStatusIdle:'先配置按键或语音唤醒',homeStatusNeedTarget:'还差语音快捷键',
+      homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音激活已就绪',
+      homeStatusIdle:'先配置按键或语音激活',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
       homeCtaStart:'开始输入',homeCtaUse:'开始使用',homeCtaContinue:'继续配置',
       homeCtaDictating:'听写进行中',homeCtaDictatingSub:'可说结束词或去设置',
@@ -2307,16 +2434,19 @@
       homeCtaSubKey:'按 {key}',homeCtaSubVoice:'说出唤醒词开始',
       homeCtaSubKeyOrVoice:'按 {key} 或说唤醒词',homeCtaSubNeedTrigger:'先设置启动键',
       homeCtaSubNeedTarget:'再设置语音快捷键',
-      settingsNavBasic:'基础',settingsNavKeyWake:'按键唤醒',settingsNavVoiceWake:'语音唤醒',
-      settingsNavVoiceEnd:'结束与发送',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
-      settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'录制按键与管理我的方案',
-      settingsPanelVoiceWakeDesc:'麦克风与语音模式',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
+      settingsNavBasic:'基础',settingsNavKeyWake:'按键激活（深度）',settingsNavVoiceWake:'语音激活（深度）',
+      settingsNavVoiceEnd:'完成动作（深度）',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
+      settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'首页负责高频操作；这里保留方案管理与完整编辑',
+      settingsPanelVoiceWakeDesc:'首页可快速切换与启停；这里保留完整语音配置与高级参数',settingsPanelVoiceEndDesc:'规划结束词、按键完成流程与深度参数；首页保留高频开关',
+      quickKeyWakeSummary:'首页快捷操作（按键录制）',quickKeyWakeHint:'建议在首页主操作台完成，必要时再用这里的完整录制面板。',
+      quickVoiceWakeSummary:'首页快捷操作（模式与麦克风）',quickVoiceWakeHint:'该区默认折叠，避免与首页主操作台重复。',
+      quickVoiceEndSummary:'首页快捷操作（完成动作开关与延迟）',quickVoiceEndHint:'该区默认折叠，首页用于高频控制；这里保留完整参数链路。',
       settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
       settingsNavSounds:'音效',
       soundsMasterLabel:'启用音效',soundsMasterHelp:'关闭后所有提示音静音；各场景仍可单独配置。',
       soundSlotRecordTitle:'录制按键',soundSlotRecordDesc:'录制启动键或快捷键时，检测到按键的反馈音。',
       soundSlotVoiceWakeTitle:'语音启动',soundSlotVoiceWakeDesc:'说出唤醒词并成功唤起语音输入时播放。',
-      soundSlotKeyWakeTitle:'按键启动',soundSlotKeyWakeDesc:'按启动键唤起语音输入时播放。',
+      soundSlotKeyWakeTitle:'按键激活提示音',soundSlotKeyWakeDesc:'按启动键唤起语音输入时播放。',
       soundSlotSendSuccessTitle:'发送成功',soundSlotSendSuccessDesc:'听写结束并自动发送成功时播放。',
       soundSlotSendFailTitle:'失败提示',soundSlotSendFailDesc:'快捷键发送失败或操作取消时播放。',
       soundPreview:'试听',
@@ -2334,11 +2464,11 @@
       endPhrasesEmpty:'—',endPhrasesMore:'等 {n} 个',
       sessionUnbound:'未绑定方案',sessionSelectedMapping:'当前方案',
       btnMoreSettings:'更多设置',voiceHubTitle:'语音',voiceHubTabWake:'唤醒',voiceHubTabEnd:'结束',
-      keyWakeSettingsTitle:'按键唤醒设置',voiceAdvancedSummary:'兼容说明',
-      chipKeyWake:'按键',chipVoiceWake:'语音唤醒',chipVoiceEnd:'结束词',chipDictating:'听写中',
+      keyWakeSettingsTitle:'按键激活设置',voiceAdvancedSummary:'兼容说明',
+      chipKeyWake:'按键',chipVoiceWake:'语音激活',chipVoiceEnd:'结束词',chipDictating:'听写中',
       chipVoiceSend:'语音发送',chipTimedSend:'定时发送',
       quickTipsTitle:'怎么设置最省心',
-      quickTipsBody:'按键与语音可并列使用；结束与发送在「结束与发送」里配置。',
+      quickTipsBody:'按键与语音可并列使用；完成动作在首页共享区配置。',
       replayWelcome:'重新查看首次引导',
       welcomePathLabel:'设置路径',
       noteText:'一声只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
@@ -2351,6 +2481,19 @@
       logTimeout:'设置超时',logTriggerDone:'已设置启动按键: ',logTargetDone:'已设置语音快捷键: ',logWaitMain:'等待按下主键...',
       comboHint:'等待组合键…',triggerRecordHint:'请按下你想用来启动语音的按键',targetRecordHint:'请按下语音输入法的快捷键',
       triggerModeTitle:'启动方式',
+      keyFinishFlowTitle:'按键完成流程',
+      keyFinishFlowDesc:'规划用启动键开始听写后，如何取消或自动确认。按键只负责唤起，结束节奏在这里配置。',
+      keyFinishFlowScheme:'当前方案：{name}',
+      keyFinishFlowSchemeDraft:'当前方案尚未录完按键',
+      keyFinishFlowNeedKeys:'请先在「按键激活」中录好启动键与语音快捷键，再配置完成流程。',
+      keyFinishFlowInstant:'即时触发',keyFinishFlowConfirm:'确认窗口',
+      keyFinishFlowInstantDesc:'每次按键独立唤起语音；不设取消/确认窗口，结束交给结束词或手动操作',
+      keyFinishFlowConfirmDesc:'开始后短时间内再按可取消；超时后自动确认发送',
+      keyFinishFlowAnimVoice:'听写',keyFinishFlowAnimCancel:'取消',keyFinishFlowAnimConfirm:'确认',
+      keyFinishFlowInstantSettings:'即时触发说明',
+      keyFinishFlowInstantTip:'每次按下启动键都会立刻模拟语音快捷键，没有取消窗口和自动确认。',
+      keyFinishFlowConfirmSettings:'确认窗口设置',
+      keyFinishFlowConfirmTip:'窗口内再次按下启动键发送 Esc 取消；超过等待时间后自动发送 Enter 确认。',
       triggerModeTap:'智能连按',triggerModeHold:'每按即发',triggerModeToggle:'开/关切换',
       triggerModeTapDesc:'第 1 次按开语音；短时间内再按可取消，或等待后自动确认',
       triggerModeHoldDesc:'每按一次启动键，立刻唤起一次语音',
@@ -2376,8 +2519,8 @@
       nativeKeysUnset:'尚未录制物理键',nativeRestoreRecord:'录制物理键',nativeRestoreRecording:'录制中…',
       nativeKeyRestore:'保留原本功能',traceRecorded:'来源',
       advSummary:'更多设置',
-      cancelTimingTitle:'取消按键时长',cancelTimingDesc:'在 <b>{n}</b> 秒内再次按下 → 发送 Esc 取消',
-      sendTimingTitle:'自动发送等待',sendTimingDesc:'第二次启动后等待 <b>{n}</b> 秒 → 自动发送 Enter',
+      cancelTimingTitle:'取消窗口',cancelTimingDesc:'再按启动键的 <b>{n}</b> 秒内 → Esc 取消听写',
+      sendTimingTitle:'自动确认',sendTimingDesc:'开始后等待 <b>{n}</b> 秒 → 自动 Enter 确认',
       schemeSwitched:'已切换至：'
     },
     en:{
@@ -2385,14 +2528,14 @@
       appSubtitle:'Speak to Create.',
       welcomeKicker:'First launch',
       welcomeTitle:'Start voice launch in two steps',
-      welcomeDesc:'Choose how you want to start, then record the voice shortcut once. After that, pressing the launch key will open voice input faster.',
+      welcomeDesc:'Record launch key and voice shortcut first; plan cancel/auto-confirm finish flow under Finish actions.',
       welcomeHint:'This guide only appears once on first launch.',
       welcomeStart:'Start setup',
       welcomeLater:'Maybe later',
       demoLabel:'Quick demo',
       demoCardTitle1:'You press',
       demoCardTitle2:'It triggers',
-      demoCaptionLeft:'Pick a launch method that feels natural.',
+      demoCaptionLeft:'Keys only launch voice; finish timing is set under Finish actions.',
       demoCaptionRight:'It only triggers the voice shortcut you recorded.',
       guideTitle1:'Set it up',
       guideDesc1:'One press gets you into voice input faster.',
@@ -2459,7 +2602,7 @@
       micWindowsOnly:'Microphone switching and monitoring are Windows-only',micEmpty:'No microphones detected',
       micSwitchFail:'Failed to switch microphone',
       voiceSapiTitle:'Light mode details',
-      voiceSapiDesc:'Say one of the selected phrases into the mic to press your voice shortcut once. Testing and live records are now grouped at the bottom of Status & Debug.',
+      voiceSapiDesc:'Say one of the selected phrases into the mic to trigger your voice shortcut once.',
       voiceSapiLabel:'Enable Light mode',
       voiceSapiTest:'Test shortcut (no mic)',
       voiceSapiFail:'Could not start Light mode. Check that the Windows speech component is available.',
@@ -2528,8 +2671,8 @@
       voiceVoskPresetsEnLabel:'English phrases',
       voiceVoskPresetUpdated:'Wake phrases updated',
       voiceVoskModelUpdated:'Recognition language updated',
-      voiceEndTitle:'Voice end & send',
-      voiceEndDesc:'Say an end phrase while dictating to stop recording via the voice shortcut. Testing and live records are now grouped at the bottom of Status & Debug.',
+      voiceEndTitle:'Finish actions',
+      voiceEndDesc:'Say an end phrase while dictating to stop recording through the voice shortcut.',
       voiceEndLabel:'Enable voice end',
       voiceEndVoskWarn:'Enable Advanced mode to use voice end phrases',
       voiceEndCompatWarn:'External IME may exclusive-lock the mic; end phrases may not work (compat mode).',
@@ -2561,7 +2704,7 @@
       voiceDiagSapiDesc:'Recent status and test records for quick wake',
       voiceDiagVoskTitle:'Advanced mode wake logs',
       voiceDiagVoskDesc:'Full recognition flow, matches, and test records',
-      voiceDiagEndTitle:'Voice end & send',
+      voiceDiagEndTitle:'Finish actions',
       voiceDiagEndDesc:'End phrases, stop actions, and send tests',
       voiceDiagUsageTitle:'Resource usage log',
       voiceDiagUsageDesc:'Each poll records current-process RAM and CPU so we can tell sampling failures from UI refresh issues.',
@@ -2582,22 +2725,24 @@
       voiceDiagLogUsageStatus:'Sampling',
       voiceDiagUsageUnsupported:'Live usage is not supported in this environment',
       voiceDiagUsageError:'Read failed',
-      wakeCardTitle:'Wake',wakeKeyLabel:'Key wake',wakeVoiceLabel:'Voice wake',
-      homeCapabilitiesTitle:'Capabilities',homeCapCompat:'Can use together',
-      capKeyWakeName:'Key wake',capKeyWakeDesc:'Press launch key for voice input',
-      capVoiceWakeName:'Voice wake',capVoiceWakeDesc:'Say wake phrase to start',
-      capVoiceEndName:'End & send',capVoiceEndDesc:'End phrase while dictating; optional auto-send',
-      capGoSettings:'Settings →',
-      homeCapExpand:'Status',homeCapCollapse:'Collapse',
-      homeLiveKeyTitle:'Key wake',homeLiveVoiceTitle:'Voice wake',homeLiveEndTitle:'End & send',
+      wakeCardTitle:'Wake',wakeKeyLabel:'Key activation',wakeVoiceLabel:'Voice activation',
+      homeLiveKeyTitle:'Key activation',homeLiveVoiceTitle:'Voice activation',homeLiveEndTitle:'Finish actions',
+      homeLiveKeyEnableLbl:'Enable key activation',
+      homeMicTitle:'Current microphone',homeMicDesc:'Shows the active device only; switch in voice activation settings',
+      homeMicChangeHint:'Change',
       homeLiveTrigger:'Launch key',homeLiveTarget:'Voice shortcut',homeLiveScheme:'Active profile',
       homeLiveKeySound:'Activation sound',
-      homeLiveEngine:'Engine',homeLiveMic:'Microphone',homeLiveWakeWord:'Wake phrase',homeLiveLastHeard:'Last heard',
-      homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',homeLiveEndDelay:'Send delay',homeLiveEndLast:'Last status',
-      homeLiveRetrigger:'Re-record launch',homeLiveRetarget:'Re-record shortcut',homeLiveTestSend:'Test send',
+      homeLiveEngine:'Engine',homeLiveWakeWord:'Wake phrase',homeLiveLastHeard:'Last heard',
+      homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',
+      homeEntryKeyOnly:'Enabled: key activation',homeEntryVoiceOnly:'Enabled: voice activation',
+      homeEntryBoth:'Enabled: key + voice',homeEntryNone:'No entry enabled',
+      homeSchemeManage:'Manage all profiles…',homeSchemeToggleLbl:'Enable this profile',
+      homeSchemeSwitchAria:'Switch active profile',
+      homeFinishHint:'Whether you start by key or voice, finishing uses these rules',
+      homeLiveRetrigger:'Re-record launch',homeLiveRetarget:'Re-record shortcut',homeLiveRecordKeys:'Record keys',homeLiveTestSend:'Test send',
       homeLiveToggleWakeOn:'Turn off',homeLiveToggleWakeOff:'Turn on',
       homeLiveSwitchEngine:'Switch mode',homeLiveToggleEndOn:'Turn off',homeLiveToggleEndOff:'Turn on',
-      homeLiveTestEndSend:'Test send',homeLiveMoreSettings:'More settings',
+      homeLiveTestEndSend:'Test send',
       homeLiveUnset:'Not set',homeLiveLoading:'Loading…',homeLiveOff:'Off',
       homeLiveMicUnknown:'Not detected',homeLiveMicUnset:'Not selected',
       homeLiveHeardWaiting:'Waiting…',homeLiveHeardOff:'—',
@@ -2607,8 +2752,8 @@
       homeCapKeyUnset:'Not set',homeCapVoiceOff:'Off',
       homeAdvancedSummary:'Advanced tweaks',
       homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Voice mode',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
-      homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice wake is ready',
-      homeStatusIdle:'Set up key or voice wake first',homeStatusNeedTarget:'Voice shortcut still needed',
+      homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice activation is ready',
+      homeStatusIdle:'Set up key or voice activation first',homeStatusNeedTarget:'Voice shortcut still needed',
       homeStatusPaused:'Listening paused',
       homeCtaStart:'Start input',homeCtaUse:'Get started',homeCtaContinue:'Continue setup',
       homeCtaDictating:'Dictating',homeCtaDictatingSub:'Say end phrase or open settings',
@@ -2617,16 +2762,19 @@
       homeCtaSubKey:'Press {key}',homeCtaSubVoice:'Say wake phrase',
       homeCtaSubKeyOrVoice:'Press {key} or say wake phrase',homeCtaSubNeedTrigger:'Set launch key first',
       homeCtaSubNeedTarget:'Then set voice shortcut',
-      settingsNavBasic:'Basic',settingsNavKeyWake:'Key wake',settingsNavVoiceWake:'Voice wake',
-      settingsNavVoiceEnd:'End & send',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
-      settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Record keys & manage profiles',
-      settingsPanelVoiceWakeDesc:'Microphone & voice modes',settingsPanelVoiceEndDesc:'End phrases & auto-send',
+      settingsNavBasic:'Basic',settingsNavKeyWake:'Key activation (advanced)',settingsNavVoiceWake:'Voice activation (advanced)',
+      settingsNavVoiceEnd:'Finish actions (advanced)',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
+      settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Homepage handles quick actions; this page keeps full profile editing',
+      settingsPanelVoiceWakeDesc:'Homepage offers quick toggle and switch; this page keeps complete voice settings',settingsPanelVoiceEndDesc:'Plan end phrases, key finish flow and advanced options; homepage keeps quick toggles',
+      quickKeyWakeSummary:'Homepage quick actions (key recording)',quickKeyWakeHint:'Use the homepage console for frequent changes; keep this full editor as needed.',
+      quickVoiceWakeSummary:'Homepage quick actions (mode and microphone)',quickVoiceWakeHint:'Collapsed by default to avoid duplicate primary entry points.',
+      quickVoiceEndSummary:'Homepage quick actions (finish actions toggle and delay)',quickVoiceEndHint:'Collapsed by default; homepage stays the high-frequency control surface.',
       settingsPanelSoundsDesc:'Sounds for recording, wake and send',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
       settingsNavSounds:'Sounds',
       soundsMasterLabel:'Enable sounds',soundsMasterHelp:'Master mute; each scene can still be configured.',
       soundSlotRecordTitle:'Key recording',soundSlotRecordDesc:'Plays when a key is detected while recording.',
       soundSlotVoiceWakeTitle:'Voice wake',soundSlotVoiceWakeDesc:'Plays when a wake phrase successfully activates input.',
-      soundSlotKeyWakeTitle:'Key wake',soundSlotKeyWakeDesc:'Plays when the trigger key activates voice input.',
+      soundSlotKeyWakeTitle:'Key activation sound',soundSlotKeyWakeDesc:'Plays when the launch key activates voice input.',
       soundSlotSendSuccessTitle:'Send success',soundSlotSendSuccessDesc:'Plays when dictation ends and auto-send succeeds.',
       soundSlotSendFailTitle:'Failure',soundSlotSendFailDesc:'Plays when shortcut send fails or action is cancelled.',
       soundPreview:'Preview',
@@ -2644,11 +2792,11 @@
       endPhrasesEmpty:'—',endPhrasesMore:'+{n} more',
       sessionUnbound:'Session · unbound',sessionSelectedMapping:'Current mapping',
       btnMoreSettings:'More settings',voiceHubTitle:'Voice',voiceHubTabWake:'Wake',voiceHubTabEnd:'End',
-      keyWakeSettingsTitle:'Key wake settings',voiceAdvancedSummary:'Compatibility notes',
-      chipKeyWake:'Key',chipVoiceWake:'Voice wake',chipVoiceEnd:'End phrase',chipDictating:'Dictating',
+      keyWakeSettingsTitle:'Key activation settings',voiceAdvancedSummary:'Compatibility notes',
+      chipKeyWake:'Key',chipVoiceWake:'Voice activation',chipVoiceEnd:'End phrase',chipDictating:'Dictating',
       chipVoiceSend:'Voice send',chipTimedSend:'Timed send',
       quickTipsTitle:'Easiest setup',
-      quickTipsBody:'Key and voice wake work in parallel; configure end & send in its panel.',
+      quickTipsBody:'Key and voice activation work in parallel; configure finish actions in the shared homepage zone.',
       replayWelcome:'Replay first-run guide',
       welcomePathLabel:'Setup path',
       noteText:'Record the real button; the state machine handles actions, not naming.',
@@ -2661,6 +2809,19 @@
       logTimeout:'Recording timed out',logTriggerDone:'Trigger recorded: ',logTargetDone:'Target recorded: ',logWaitMain:'Waiting for main key...',
       comboHint:'Waiting for combo…',triggerRecordHint:'Press launch key (side modifiers & combos supported)',targetRecordHint:'Press voice shortcut',
       triggerModeTitle:'Trigger style',
+      keyFinishFlowTitle:'Key finish flow',
+      keyFinishFlowDesc:'Plan how key-started dictation ends: cancel or auto-confirm. Keys only launch voice; finish timing lives here.',
+      keyFinishFlowScheme:'Profile: {name}',
+      keyFinishFlowSchemeDraft:'Current profile keys are incomplete',
+      keyFinishFlowNeedKeys:'Record launch key and voice shortcut under Key activation before configuring finish flow.',
+      keyFinishFlowInstant:'Instant',keyFinishFlowConfirm:'Confirm window',
+      keyFinishFlowInstantDesc:'Each press triggers voice independently; no cancel/confirm window — use end phrases or manual finish',
+      keyFinishFlowConfirmDesc:'Press again soon to cancel; auto-confirm after the wait',
+      keyFinishFlowAnimVoice:'Dictate',keyFinishFlowAnimCancel:'Cancel',keyFinishFlowAnimConfirm:'Confirm',
+      keyFinishFlowInstantSettings:'Instant mode',
+      keyFinishFlowInstantTip:'Each launch-key press sends the voice shortcut immediately — no cancel window or auto-confirm.',
+      keyFinishFlowConfirmSettings:'Confirm window settings',
+      keyFinishFlowConfirmTip:'A second press within the window sends Esc to cancel; after the wait, Enter confirms automatically.',
       triggerModeTap:'Smart repeat',triggerModeHold:'Per press',triggerModeToggle:'On / Off',
       triggerModeTapDesc:'1st press opens voice; quick 2nd press cancels, or wait for auto-confirm',
       triggerModeHoldDesc:'Each press on the launch key triggers voice once',
@@ -2686,8 +2847,8 @@
       nativeKeysUnset:'No physical keys recorded',nativeRestoreRecord:'Record physical keys',nativeRestoreRecording:'Recording…',
       nativeKeyRestore:'Restore system keys',traceRecorded:'Recorded at',
       advSummary:'Adjust',
-      cancelTimingTitle:'Cancel window',cancelTimingDesc:'Press again within <b>{n}</b>s → send Esc to cancel',
-      sendTimingTitle:'Auto-send wait',sendTimingDesc:'After 2nd start, wait <b>{n}</b>s → auto Enter',
+      cancelTimingTitle:'Cancel window',cancelTimingDesc:'Press launch key again within <b>{n}</b>s → Esc cancels dictation',
+      sendTimingTitle:'Auto-confirm',sendTimingDesc:'Wait <b>{n}</b>s after start → auto Enter to confirm',
       schemeSwitched:'Switched to: '
     }
   };
@@ -3147,12 +3308,6 @@
   }
 
   function syncKeyWakeSoundToggle(enabled){
-    ['btnHomeKeyWakeSound'].forEach(function(id){
-      const btn=$(id);
-      if(!btn) return;
-      btn.classList.toggle('is-on',!!enabled);
-      btn.setAttribute('aria-checked',enabled?'true':'false');
-    });
     const slotBtn=document.querySelector('.sound-slot-toggle[data-slot="keyWake"]');
     if(slotBtn){
       slotBtn.classList.toggle('is-on',!!enabled);
@@ -3244,16 +3399,6 @@
     save();
   }
 
-  function toggleKeyWakeSound(){
-    ensureSoundsConfig();
-    const btn=$('btnHomeKeyWakeSound');
-    const next=!(btn&&btn.classList.contains('is-on'));
-    state.config.sounds.keyWake.enabled=next;
-    state.config.keyWakeSoundEnabled=next;
-    syncSoundsSettingsUi();
-    save();
-  }
-
   function syncKeyWakeSettingsFromConfig(){
     ensureSoundsConfig();
     syncSoundsSettingsUi();
@@ -3299,34 +3444,43 @@
     return null;
   }
 
-  function resolveMicLevelCard(deviceId){
-    if(deviceId){
-      const card=findMicDeviceCard(deviceId);
-      if(card) return card;
+  function resolveMicLevelTargets(deviceId){
+    const targets=[];
+    function pushTarget(el){
+      if(el&&targets.indexOf(el)<0) targets.push(el);
     }
-    if(activeMicId){
-      const card=findMicDeviceCard(activeMicId);
-      if(card) return card;
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
+      if(deviceId) pushTarget(findMicDeviceCard(deviceId));
+      if(activeMicId) pushTarget(findMicDeviceCard(activeMicId));
+      if(micMonitorDeviceId) pushTarget(findMicDeviceCard(micMonitorDeviceId));
+      pushTarget(document.querySelector('.mic-device-card.is-active'));
     }
-    if(micMonitorDeviceId){
-      const card=findMicDeviceCard(micMonitorDeviceId);
-      if(card) return card;
+    const homeBtn=$('btnHomeMicSettings');
+    if(homeBtn&&!homeBtn.hidden){
+      const homeId=homeBtn.getAttribute('data-id')||'';
+      if(!deviceId||!homeId||homeId===deviceId) pushTarget(homeBtn);
     }
-    return document.querySelector('.mic-device-card.is-active');
+    if(deviceId) pushTarget(findMicDeviceCard(deviceId));
+    if(activeMicId) pushTarget(findMicDeviceCard(activeMicId));
+    if(micMonitorDeviceId) pushTarget(findMicDeviceCard(micMonitorDeviceId));
+    pushTarget(document.querySelector('.mic-device-card.is-active'));
+    return targets;
   }
 
   function updateMicLevelBars(deviceId,level){
-    const card=resolveMicLevelCard(deviceId);
-    if(!card) return;
-    const bars=card.querySelectorAll('.mic-level-bars span');
+    const targets=resolveMicLevelTargets(deviceId);
+    if(!targets.length) return;
     const active=level<=0?0:Math.max(1,Math.min(8,Math.ceil(level/8)));
-    bars.forEach(function(bar,i){
-      bar.className='';
-      if(i<active){
-        if(i>=active-2) bar.classList.add('on');
-        else if(i>=active-4) bar.classList.add('mid');
-        else bar.classList.add('lo');
-      }
+    targets.forEach(function(card){
+      const bars=card.querySelectorAll('.mic-level-bars span');
+      bars.forEach(function(bar,i){
+        bar.className='';
+        if(i<active){
+          if(i>=active-2) bar.classList.add('on');
+          else if(i>=active-4) bar.classList.add('mid');
+          else bar.classList.add('lo');
+        }
+      });
     });
   }
 
@@ -3351,7 +3505,16 @@
   }
 
   function micLevelUiVisible(){
-    return ui.drawerOpen&&ui.settingsPanel==='voiceWake';
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return true;
+    return !ui.drawerOpen;
+  }
+
+  function syncHomeMicMonitor(){
+    if(!micLevelUiVisible()||voiceCaptureActive()) return Promise.resolve();
+    const devId=activeMicId||'';
+    return ensureMicMonitor(devId||null).then(function(){
+      if(micLevelUiVisible()) startMicLevelPoll();
+    });
   }
 
   function pollMicLevel(){
@@ -3377,7 +3540,7 @@
   }
 
   function ensureMicMonitor(deviceId){
-    if(!ui.drawerOpen||ui.settingsPanel!=='voiceWake') return Promise.resolve();
+    if(!micLevelUiVisible()) return Promise.resolve();
     if(voiceCaptureActive()) return Promise.resolve();
     const payload=deviceId?{device_id:deviceId}:{};
     micMonitorDeviceId=deviceId||'';
@@ -3390,24 +3553,25 @@
   }
 
   function renderMicDevices(){
+    const recordingBusy=recordingMode!=='none';
     const list=$('micDeviceList');
-    const emptyEl=$('micEmpty');
-    if(!list) return;
-    list.replaceChildren();
+    const empty=$('micEmpty');
+    if(list) list.replaceChildren();
     if(!micDevices.length){
-      if(emptyEl){
-        emptyEl.hidden=false;
-        emptyEl.textContent=t('micEmpty');
+      if(empty){
+        empty.hidden=false;
+        empty.textContent=t('micEmpty');
       }
+      renderHomeMicCurrent();
       return;
     }
-    if(emptyEl) emptyEl.hidden=true;
+    if(empty) empty.hidden=true;
     micDevices.forEach(function(dev){
+      if(!list) return;
       const btn=document.createElement('button');
       btn.type='button';
       btn.className='mic-device-card'+(dev.isDefault?' is-active':'');
       btn.setAttribute('data-id',dev.id);
-      const sub=dev.isDefault?t('micAutoDetectSub'):t('micExternal');
       btn.innerHTML=
         '<span class="mic-device-body">'+
           '<div class="mic-device-name"></div>'+
@@ -3415,11 +3579,36 @@
         '</span>'+
         '<span class="mic-level-bars" aria-hidden="true">'+buildMicLevelBars()+'</span>';
       btn.querySelector('.mic-device-name').textContent=dev.name;
-      btn.querySelector('.mic-device-sub').textContent=sub;
+      btn.querySelector('.mic-device-sub').textContent=dev.isDefault?t('micAutoDetectSub'):t('micExternal');
+      btn.disabled=recordingBusy;
       btn.addEventListener('click',function(){ selectMicDevice(dev.id); });
       list.appendChild(btn);
       if(dev.isDefault) activeMicId=dev.id;
     });
+    renderHomeMicCurrent();
+  }
+
+  function renderHomeMicCurrent(){
+    const nameEl=$('homeMicCurrentName');
+    const emptyEl=$('homeMicEmpty');
+    const wrap=$('btnHomeMicSettings');
+    const hintEl=$('homeMicChangeHint');
+    if(hintEl) hintEl.textContent=t('homeMicChangeHint');
+    if(!nameEl&&!wrap) return;
+    if(!micDevices.length){
+      if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('micEmpty'); }
+      if(wrap) wrap.hidden=true;
+      return;
+    }
+    if(emptyEl) emptyEl.hidden=true;
+    if(wrap) wrap.hidden=false;
+    const dev=micDevices.find(function(d){ return d.id===activeMicId; })
+      ||micDevices.find(function(d){ return d.isDefault; })
+      ||micDevices[0];
+    if(nameEl) nameEl.textContent=dev?(dev.name||dev.label||dev.id):homeMicStatusLabel();
+    if(wrap&&dev) wrap.setAttribute('data-id',dev.id);
+    const barsEl=$('homeMicLevelBars');
+    if(barsEl&&!barsEl.children.length) barsEl.innerHTML=buildMicLevelBars();
   }
 
   function startMicMonitor(deviceId){
@@ -3438,7 +3627,9 @@
       if(!micDevices.length) return;
       const target=micDevices.find(function(d){ return d.isDefault; })||micDevices[0];
       activeMicId=target?target.id:'';
-      return ensureMicMonitor(activeMicId||null);
+      return ensureMicMonitor(activeMicId||null).then(function(){
+        if(micLevelUiVisible()) startMicLevelPoll();
+      });
     }).catch(function(err){
       micDevices=[];
       renderMicDevices();
@@ -3513,7 +3704,7 @@
     if(endRes) voiceUiSnapshot.end=Object.assign({},voiceUiSnapshot.end||{},endRes);
     if(!opts.homeOnly) renderMappingList();
     renderHome();
-    if(activeHomeModule) renderHomeLiveZone();
+    renderHomeLiveZone();
   }
 
   function cloneStringList(list){
@@ -3779,12 +3970,14 @@
     if(mode==='sapi'){
       vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
         renderVoiceSapiStatus(res);
+        if(!handleVoiceSapiEnableResult(res,true)) return;
         syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null);
         toast(t('voiceModeSwitchedLite'));
         scheduleVoiceToggleRefresh();
       }).catch(function(err){
         loadVoiceSapiStatus();
-        toast(t('voiceSapiFail'));
+        const msg=err&&err.message?String(err.message).trim():'';
+        toast(msg||t('voiceSapiFail'));
         console.error('voice_mode_sapi',err);
       }).finally(done);
       return;
@@ -3835,13 +4028,19 @@
         voiceStatus:t('homeCapLoading'),
         voiceDot:'off',
         endStatus:t('homeCapLoading'),
-        endDot:'off'
+        endDot:'off',
+        entrySummary:t('homeCapLoading'),
+        entryMode:'loading',
+        keyActive:false,
+        voiceActive:false
       };
     }
     const m=selectedMapping();
     const trig=editorTriggerForMapping(m);
     const tgt=editorTargetForMapping(m);
     const keyReady=!!(trig&&tgt);
+    const keyEnabled=!!(m&&m.enabled);
+    const keyActive=keyEnabled&&keyReady;
     const cfg=state.config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk;
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi;
@@ -3850,6 +4049,7 @@
     const voiceOnLive=w.engine==='vosk'||w.engine==='sapi';
     const voiceOnCfg=!!(voskCfg&&voskCfg.enabled)||!!(sapiCfg&&sapiCfg.enabled);
     const voiceOn=voiceOnLive||voiceOnCfg;
+    const voiceActive=voiceOn;
     const endSnap=voiceUiSnapshot.end||{};
     const endEnabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const stateRaw=endSnap.state||'idle';
@@ -3877,14 +4077,21 @@
       ctaMain=t('homeCtaResume');
       ctaSub=t('homeCtaResumeSub');
       ctaPanel='basic';
-    }else if(keyReady){
+    }else if(keyActive&&voiceActive){
       statusMode='ready';
       statusLine=t('homeStatusReady');
       ctaMode='ready';
       ctaMain=t('homeCtaStart');
-      ctaSub=voiceOn?t('homeCtaSubKeyOrVoice').replace('{key}',friendlyKeyName(trig)):t('homeCtaSubKey').replace('{key}',friendlyKeyName(trig));
+      ctaSub=t('homeCtaSubKeyOrVoice').replace('{key}',friendlyKeyName(trig));
       ctaPanel='keyWake';
-    }else if(voiceOn){
+    }else if(keyActive){
+      statusMode='ready';
+      statusLine=t('homeStatusReady');
+      ctaMode='ready';
+      ctaMain=t('homeCtaStart');
+      ctaSub=t('homeCtaSubKey').replace('{key}',friendlyKeyName(trig));
+      ctaPanel='keyWake';
+    }else if(voiceActive){
       statusMode='ready';
       statusLine=t('homeStatusVoiceReady');
       ctaMode='ready';
@@ -3926,34 +4133,15 @@
       if(endSnap.autoSendEnabled||(endCfg&&endCfg.autoSendEnabled)) endStatus+=' · '+t('voiceEndAutoSendOn');
       endDot='ready';
     }else{ endStatus=t('voiceEndDisabledShort'); endDot='off'; }
-    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot};
+    let entrySummary,entryMode;
+    if(keyActive&&voiceActive){ entrySummary=t('homeEntryBoth'); entryMode='both'; }
+    else if(keyActive){ entrySummary=t('homeEntryKeyOnly'); entryMode='key'; }
+    else if(voiceActive){ entrySummary=t('homeEntryVoiceOnly'); entryMode='voice'; }
+    else{ entrySummary=t('homeEntryNone'); entryMode='none'; }
+    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot,entrySummary,entryMode,keyActive,voiceActive};
   }
 
   let homeUiState=null;
-  let activeHomeModule=null;
-
-  function toggleHomeModule(module){
-    activeHomeModule=activeHomeModule===module?null:module;
-    if(activeHomeModule){
-      onHomeModuleExpanded(activeHomeModule);
-      requestAnimationFrame(function(){
-        const zone=$('homeLiveZone');
-        if(zone&&zone.classList.contains('is-open')) zone.scrollIntoView({behavior:'smooth',block:'nearest'});
-      });
-    }
-    renderHomeLiveZone();
-    renderHomeCapTiles();
-  }
-
-  function onHomeModuleExpanded(module){
-    if(module==='voiceWake'){
-      voiceStatusPollTick();
-      if(!micDevices.length) loadMicDevices().catch(function(){});
-      if(!voiceStatusPollStarted) startVoiceStatusPoll();
-    }else if(module==='voiceEnd'){
-      voiceStatusPollTick();
-    }
-  }
 
   function setHomeLiveVal(id,text,kind){
     const el=$(id);
@@ -3978,6 +4166,137 @@
     if(m.triggerKey&&m.targetKey) return friendlyPair(m.triggerKey,m.targetKey);
     if(m.group) return m.group;
     return t('homeLiveUnset');
+  }
+
+  function escHtml(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  }
+
+  function homeMappingShortName(m){
+    if(!m) return t('homeLiveUnset');
+    if(isDraftMapping(m)) return t('homeLiveSchemeDraft');
+    if((m.group||'').trim()) return m.group.trim();
+    const lbl=(m.label||'').trim();
+    if(lbl){
+      const idx=lbl.indexOf(' → ');
+      if(idx>0) return lbl.slice(0,idx).trim();
+      return lbl;
+    }
+    const trig=editorTriggerForMapping(m);
+    if(trig) return friendlyKeyName(trig);
+    return t('homeLiveUnset');
+  }
+
+  function homeMappingPairLine(m){
+    const trig=editorTriggerForMapping(m);
+    const tgt=editorTargetForMapping(m);
+    if(trig||tgt) return friendlyPair(trig||'',tgt||'');
+    return t('homeLiveUnset');
+  }
+
+  let homeSchemeMenuOpen=false;
+
+  function setHomeSchemeMenuOpen(open){
+    homeSchemeMenuOpen=!!open;
+    const menu=$('homeSchemeMenu');
+    const backdrop=$('homeSchemeBackdrop');
+    const btn=$('btnHomeSchemeSwitcher');
+    if(menu) menu.hidden=!open;
+    if(backdrop) backdrop.hidden=!open;
+    if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
+  }
+
+  function closeHomeSchemeMenu(){
+    setHomeSchemeMenuOpen(false);
+  }
+
+  function toggleHomeSchemeMenu(){
+    if(recordingMode!=='none') return;
+    ensureConfig();
+    if(sortedMappings().length<2) return;
+    setHomeSchemeMenuOpen(!homeSchemeMenuOpen);
+  }
+
+  function selectHomeMapping(id){
+    if(recordingMode!=='none') return;
+    if(!id||state.selectedMappingId===id){
+      closeHomeSchemeMenu();
+      return;
+    }
+    flushAllEditorToMappings();
+    state.selectedMappingId=id;
+    syncEditorFromSelection();
+    closeHomeSchemeMenu();
+    render();
+  }
+
+  function toggleHomeSchemeMappingEnabled(id){
+    if(recordingMode!=='none') return;
+    const m=mappingById(id);
+    if(!m||isDraftMapping(m)) return;
+    const next=!m.enabled;
+    try{
+      window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id,enabled:next});
+    }catch(_){}
+  }
+
+  function renderHomeSchemeSwitcher(loading){
+    ensureConfig();
+    const schemes=sortedMappings();
+    const multi=schemes.length>=2;
+    const switcher=$('homeSchemeSwitcher');
+    const chevron=$('homeSchemeSwitcherChevron');
+    if(switcher) switcher.hidden=!!loading;
+    const m=selectedMapping();
+    const nameEl=$('homeSchemeSwitcherName');
+    const pairEl=$('homeSchemeSwitcherPair');
+    if(loading){
+      if(nameEl) nameEl.textContent=t('homeLiveLoading');
+      if(pairEl) pairEl.textContent='';
+      closeHomeSchemeMenu();
+      return;
+    }
+    if(nameEl) nameEl.textContent=homeMappingShortName(m);
+    if(pairEl) pairEl.textContent=homeMappingPairLine(m);
+    const btn=$('btnHomeSchemeSwitcher');
+    if(btn){
+      btn.disabled=recordingBusySchemeSwitcher();
+      btn.classList.toggle('is-readonly',!multi);
+      btn.setAttribute('aria-haspopup',multi?'listbox':'false');
+      btn.setAttribute('aria-label',multi?t('homeSchemeSwitchAria'):t('homeLiveScheme'));
+    }
+    if(chevron) chevron.hidden=!multi;
+    if(!multi){
+      closeHomeSchemeMenu();
+      return;
+    }
+    const manageBtn=$('btnHomeManageSchemes');
+    if(manageBtn) manageBtn.textContent=t('homeSchemeManage');
+    const listEl=$('homeSchemeMenuList');
+    if(!listEl) return;
+    let html='';
+    schemes.forEach(function(item){
+      const sel=item.id===state.selectedMappingId;
+      const draft=isDraftMapping(item);
+      const on=!!item.enabled;
+      html+='<div class="home-scheme-item'+(sel?' is-selected':'')+(draft?' is-draft':'')+'" data-id="'+item.id+'" role="option" aria-selected="'+(sel?'true':'false')+'">';
+      html+='<span class="home-scheme-item-dot" aria-hidden="true">'+(sel?'●':'○')+'</span>';
+      html+='<div class="home-scheme-item-text">';
+      html+='<span class="home-scheme-item-name">'+escHtml(homeMappingShortName(item))+'</span>';
+      html+='<span class="home-scheme-item-pair">'+escHtml(homeMappingPairLine(item))+'</span>';
+      html+='</div>';
+      if(draft){
+        html+='<span class="home-scheme-item-tag">'+escHtml(t('homeLiveSchemeDraft'))+'</span>';
+      }else{
+        html+='<button type="button" class="toggle-switch home-scheme-item-toggle'+(on?' is-on':'')+'" data-home-scheme-toggle="'+item.id+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="'+escHtml(t('homeSchemeToggleLbl'))+'"></button>';
+      }
+      html+='</div>';
+    });
+    listEl.innerHTML=html;
+  }
+
+  function recordingBusySchemeSwitcher(){
+    return recordingMode!=='none';
   }
 
   function homeMicStatusLabel(){
@@ -4017,55 +4336,58 @@
     return 'off';
   }
 
-  function renderHomeCapTiles(){
-    [
-      {id:'capKeyWake',mod:'keyWake'},
-      {id:'capVoiceWake',mod:'voiceWake'},
-      {id:'capVoiceEnd',mod:'voiceEnd'}
-    ].forEach(function(item){
-      const el=$(item.id);
-      if(!el) return;
-      const expanded=activeHomeModule===item.mod;
-      el.classList.toggle('is-expanded',expanded);
-      el.setAttribute('aria-expanded',expanded?'true':'false');
-      const enter=el.querySelector('.home-cap-enter');
-      if(enter){
-        enter.textContent=expanded?t('homeCapCollapse'):t('homeCapExpand');
-        enter.classList.toggle('is-active',expanded);
-      }
-    });
-  }
-
   function renderHomeLiveKeyPanel(loading){
+    const recordingBusy=recordingMode!=='none';
     const m=selectedMapping();
+    const recordBtn=$('btnHomeKeyRecord');
     const trig=editorTriggerForMapping(m);
     const tgt=editorTargetForMapping(m);
     const ready=!!(trig&&tgt);
-    setHomeLiveVal('homeLiveKeyTrigger',loading?t('homeLiveLoading'):(trig?friendlyKeyName(trig):t('homeLiveUnset')),loading?'loading':(trig?'on':'off'));
-    setHomeLiveVal('homeLiveKeyTarget',loading?t('homeLiveLoading'):(tgt?friendlyKeyName(tgt):t('homeLiveUnset')),loading?'loading':(tgt?'on':'off'));
-    setHomeLiveVal('homeLiveKeyScheme',loading?t('homeLiveLoading'):homeSchemeLabel(),loading?'loading':'');
+    const enabled=!!(m&&m.enabled);
+    const isDraft=m&&isDraftMapping(m);
+    renderHomeSchemeSwitcher(loading);
     const conflictEl=$('homeLiveKeyConflict');
     const n=loading?0:countConflictPairs();
     if(conflictEl){
       if(n>0){
         conflictEl.hidden=false;
         conflictEl.textContent=t('homeLiveConflictHint').replace('{n}',String(n));
+        conflictEl.classList.add('is-clickable');
+        conflictEl.title=t('homeSchemeManage');
       }else{
         conflictEl.hidden=true;
         conflictEl.textContent='';
+        conflictEl.classList.remove('is-clickable');
+        conflictEl.removeAttribute('title');
       }
     }
-    setHomeLiveBadge('homeLiveKeyBadge',loading?t('homeLiveLoading'):(ready?t('homeLiveBadgeReady'):t('homeLiveBadgeWarn')),loading?'':(ready?'on':'warn'));
-    if(!loading) syncKeyWakeSoundToggle(!!(state.config&&state.config.sounds&&state.config.sounds.keyWake&&state.config.sounds.keyWake.enabled));
-    const testBtn=$('btnHomeKeyTestSend');
-    if(testBtn){
-      const target=loading?null:resolveTestTarget(null);
-      testBtn.disabled=!target||testSendState==='sending';
-      testBtn.textContent=testSendState==='sending'?t('testSending'):t('homeLiveTestSend');
+    let badgeText,badgeKind;
+    if(loading){ badgeText=t('homeLiveLoading'); badgeKind=''; }
+    else if(isDraft){ badgeText=t('homeLiveSchemeDraft'); badgeKind='warn'; }
+    else if(n>0){ badgeText=t('homeLiveBadgeWarn'); badgeKind='warn'; }
+    else if(enabled&&ready){ badgeText=t('homeLiveBadgeReady'); badgeKind='on'; }
+    else if(enabled&&!ready){ badgeText=t('homeLiveBadgeWarn'); badgeKind='warn'; }
+    else{ badgeText=t('homeLiveBadgeOff'); badgeKind='off'; }
+    setHomeLiveBadge('homeLiveKeyBadge',badgeText,badgeKind);
+    const enableBtn=$('btnHomeKeyEnable');
+    if(enableBtn){
+      enableBtn.classList.toggle('is-on',!!enabled);
+      enableBtn.setAttribute('aria-checked',enabled?'true':'false');
+      enableBtn.disabled=recordingBusy||loading||!m||isDraft;
+    }
+    if(recordBtn){
+      recordBtn.textContent=t('homeLiveRecordKeys');
+      recordBtn.disabled=recordingBusy||loading;
     }
   }
 
   function renderHomeLiveVoicePanel(loading){
+    if(!micDevices.length&&!loading) loadMicDevices().catch(function(){});
+    else{
+      renderHomeMicCurrent();
+      if(!loading&&!voiceCaptureActive()) syncHomeMicMonitor().catch(function(){});
+    }
+    const recordingBusy=recordingMode!=='none';
     const eng=homeVoiceEngineOn();
     const cfg=state.config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
@@ -4075,67 +4397,113 @@
     if(eng==='vosk') engineText=t('wakeEngineVosk');
     else if(eng==='sapi') engineText=t('wakeEngineSapi');
     setHomeLiveVal('homeLiveVoiceEngine',loading?t('homeLiveLoading'):engineText,loading?'loading':(eng==='off'?'off':'on'));
-    setHomeLiveVal('homeLiveVoiceMic',loading?t('homeLiveLoading'):homeMicStatusLabel(),loading?'loading':'');
     const phrase=w.phrase
       ||((eng==='vosk'&&voskCfg.phrases&&voskCfg.phrases[0])||(eng==='sapi'&&sapiCfg.phrases&&sapiCfg.phrases[0])||'');
     setHomeLiveVal('homeLiveVoicePhrase',loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset')),loading?'loading':(phrase?'on':'off'));
     setHomeLiveVal('homeLiveVoiceHeard',loading?t('homeLiveLoading'):homeWakeHeardLabel(),loading?'loading':'');
     const running=w.state==='listening'||w.state==='triggered';
     setHomeLiveBadge('homeLiveVoiceBadge',loading?t('homeLiveLoading'):(eng==='off'?t('homeLiveBadgeOff'):(running?t('homeLiveBadgeOn'):t('homeLiveBadgeReady'))),loading?'':(eng==='off'?'':(running?'on':'on')));
+    const modeSapiBtn=$('btnHomeVoiceModeSapi');
+    const modeVoskBtn=$('btnHomeVoiceModeVosk');
+    if(modeSapiBtn){
+      modeSapiBtn.classList.toggle('is-active',eng!=='vosk');
+      modeSapiBtn.disabled=recordingBusy||!!voiceModeSwitchPending;
+    }
+    if(modeVoskBtn){
+      modeVoskBtn.classList.toggle('is-active',eng==='vosk');
+      modeVoskBtn.disabled=recordingBusy||!!voiceModeSwitchPending;
+    }
+    const sapiQuick=$('homeVoiceSapiQuick');
+    if(sapiQuick) sapiQuick.hidden=eng==='vosk';
+    const conf=Number(sapiCfg.minConfidence==null?0.35:sapiCfg.minConfidence);
+    const homeConf=$('homeVoiceSapiConfidence');
+    const homeConfLabel=$('homeVoiceSapiConfidenceLabel');
+    if(homeConf){
+      if(document.activeElement!==homeConf) homeConf.value=String(conf);
+      homeConf.disabled=recordingBusy;
+    }
+    if(homeConfLabel) homeConfLabel.textContent=t('voiceSapiSensitivity')+' '+conf.toFixed(2);
     const toggleBtn=$('btnHomeVoiceToggle');
     if(toggleBtn){
       toggleBtn.textContent=eng==='off'?t('homeLiveToggleWakeOff'):t('homeLiveToggleWakeOn');
-      toggleBtn.disabled=!!voiceSapiTogglePending||!!voiceVoskTogglePending;
+      toggleBtn.disabled=!!voiceSapiTogglePending||!!voiceVoskTogglePending||recordingBusy;
     }
-    const switchBtn=$('btnHomeVoiceSwitch');
-    if(switchBtn) switchBtn.disabled=loading||!!voiceSapiTogglePending||!!voiceVoskTogglePending;
   }
 
-  function renderHomeLiveEndPanel(loading){
+  function renderHomeFinishZone(loading){
+    const recordingBusy=recordingMode!=='none';
     const cfg=state.config||{};
     const endCfg=cfg.voiceEnd||cfg.voice_end||{};
     const endSnap=voiceUiSnapshot.end||{};
     const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const autoOn=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
-    setHomeLiveVal('homeLiveEndEnabled',loading?t('homeLiveLoading'):(enabled?t('voiceEndEnabledShort'):t('voiceEndDisabledShort')),loading?'loading':(enabled?'on':'off'));
-    setHomeLiveVal('homeLiveEndAuto',loading?t('homeLiveLoading'):(autoOn?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff')),loading?'loading':(autoOn?'on':'off'));
-    setHomeLiveVal('homeLiveEndDelay',loading?t('homeLiveLoading'):t('voiceEndDelayMs').replace('{n}',String(delayMs)),loading?'loading':'');
     const stateRaw=endSnap.state||'idle';
-    setHomeLiveVal('homeLiveEndState',loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw)),loading?'loading':(sessionActiveState(stateRaw)?'on':''));
-    setHomeLiveBadge('homeLiveEndBadge',loading?t('homeLiveLoading'):(enabled?t('homeLiveBadgeReady'):t('homeLiveBadgeOff')),loading?'':(enabled?'on':''));
-    const toggleBtn=$('btnHomeEndToggle');
-    if(toggleBtn) toggleBtn.textContent=enabled?t('homeLiveToggleEndOn'):t('homeLiveToggleEndOff');
+    const statusEl=$('homeFinishStatus');
+    if(statusEl) statusEl.textContent=loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw));
+    if(!loading){
+      syncVoiceEndToggle(enabled);
+      syncVoiceEndAutoSendToggle(autoOn);
+    }
+    const endToggle=$('btnHomeEndToggle');
+    if(endToggle) endToggle.disabled=recordingBusy||loading;
+    const autoToggle=$('btnHomeEndAutoSend');
+    if(autoToggle) autoToggle.disabled=recordingBusy||loading;
+    const delayLine=$('homeVoiceEndDelayLine');
+    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
+    const delayRange=$('homeVoiceEndDelayRange');
+    if(delayRange && document.activeElement!==delayRange){
+      delayRange.value=String(delayMs);
+      delayRange.style.setProperty('--range-pct',((delayMs-1000)/9000*100)+'%');
+    }
+    if(delayRange) delayRange.disabled=recordingBusy||loading;
   }
 
   function renderHomeLiveZone(){
-    const zone=$('homeLiveZone');
-    const panels={
-      keyWake:$('homeLivePanelKey'),
-      voiceWake:$('homeLivePanelVoice'),
-      voiceEnd:$('homeLivePanelEnd')
-    };
     const loading=!configLoadedFromBackend;
-    const open=!!activeHomeModule;
-    if(zone) zone.classList.toggle('is-open',open);
-    Object.keys(panels).forEach(function(key){
-      const panel=panels[key];
-      if(!panel) return;
-      const active=activeHomeModule===key;
-      panel.hidden=!active;
-      panel.classList.toggle('is-active',active);
-    });
-    if(!open) return;
-    if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(loading);
-    else if(activeHomeModule==='voiceWake') renderHomeLiveVoicePanel(loading);
-    else if(activeHomeModule==='voiceEnd') renderHomeLiveEndPanel(loading);
+    renderHomeLiveKeyPanel(loading);
+    renderHomeLiveVoicePanel(loading);
+    renderHomeFinishZone(loading);
+  }
+
+  function homePreferredVoiceEngine(){
+    const voskTab=$('btnHomeVoiceModeVosk');
+    if(voskTab&&voskTab.classList.contains('is-active')) return 'vosk';
+    return 'sapi';
   }
 
   function homeToggleVoiceWake(){
     const eng=homeVoiceEngineOn();
-    if(eng==='vosk') toggleVoiceVosk();
-    else if(eng==='sapi') toggleVoiceSapi();
-    else toggleVoiceSapi();
+    if(eng==='vosk') toggleVoiceVosk(false);
+    else if(eng==='sapi') toggleVoiceSapi(false);
+    else if(homePreferredVoiceEngine()==='vosk') toggleVoiceVosk(true);
+    else toggleVoiceSapi(true);
+  }
+
+  function openHomeKeyRecord(){
+    openSettings({panel:'keyWake',focus:'trigger'});
+  }
+
+  function toggleHomeKeyEnable(){
+    if(recordingMode!=='none') return;
+    const m=selectedMapping();
+    if(!m){
+      toast(t('homeLiveUnset'));
+      return;
+    }
+    if(isDraftMapping(m)){
+      toast(t('addNeedComplete'));
+      return;
+    }
+    const next=!m.enabled;
+    const enableBtn=$('btnHomeKeyEnable');
+    if(enableBtn){
+      enableBtn.classList.toggle('is-on',next);
+      enableBtn.setAttribute('aria-checked',next?'true':'false');
+    }
+    try{
+      window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:next});
+    }catch(_){}
   }
 
   function homeSwitchWakeEngine(){
@@ -4170,24 +4538,15 @@
     const d=I18N[lang];
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],['homeLiveEndTitle',d.homeLiveEndTitle],
-      ['homeLiveKeyTriggerLbl',d.homeLiveTrigger],['homeLiveKeyTargetLbl',d.homeLiveTarget],['homeLiveKeySchemeLbl',d.homeLiveScheme],
-      ['homeLiveKeySoundLbl',d.homeLiveKeySound],
-      ['homeLiveVoiceEngineLbl',d.homeLiveEngine],['homeLiveVoiceMicLbl',d.homeLiveMic],['homeLiveVoicePhraseLbl',d.homeLiveWakeWord],
+      ['homeLiveKeyEnableLbl',d.homeLiveKeyEnableLbl],
+      ['homeMicTitle',d.homeMicTitle],['homeMicDesc',d.homeMicDesc],['homeMicChangeHint',d.homeMicChangeHint],
+      ['homeLiveKeySchemeLbl',d.homeLiveScheme],
+      ['homeLiveVoiceEngineLbl',d.homeLiveEngine],['homeLiveVoicePhraseLbl',d.homeLiveWakeWord],
       ['homeLiveVoiceHeardLbl',d.homeLiveLastHeard],['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
-      ['homeLiveEndDelayLbl',d.homeLiveEndDelay],['homeLiveEndStateLbl',d.homeLiveEndLast],
-      ['btnHomeKeyRetrigger',d.homeLiveRetrigger],['btnHomeKeyRetarget',d.homeLiveRetarget],
-      ['btnHomeVoiceSwitch',d.homeLiveSwitchEngine],['btnHomeEndTestSend',d.homeLiveTestEndSend]
+      ['btnHomeKeyRecord',d.homeLiveRecordKeys],['btnHomeManageSchemes',d.homeSchemeManage]
     ].forEach(function(pair){
       const el=$(pair[0]); if(el) el.textContent=pair[1];
     });
-    ['btnHomeKeySettings','btnHomeVoiceSettings','btnHomeEndSettings'].forEach(function(id){
-      const el=$(id); if(el) el.textContent=d.homeLiveMoreSettings;
-    });
-  }
-
-  function setCapDot(el,kind){
-    if(!el) return;
-    el.className='home-cap-dot'+(kind&&kind!=='off'?' is-'+kind:'');
   }
 
   function renderHome(){
@@ -4212,13 +4571,8 @@
     }
     if(ctaMain) ctaMain.textContent=hs.ctaMain;
     if(ctaSub) ctaSub.textContent=hs.ctaSub;
-    const ks=$('capKeyWakeStatus'); if(ks) ks.textContent=hs.keyStatus;
-    setCapDot($('capKeyWakeDot'),hs.keyDot);
-    const vs=$('capVoiceWakeStatus'); if(vs) vs.textContent=hs.voiceStatus;
-    setCapDot($('capVoiceWakeDot'),hs.voiceDot);
-    const es=$('capVoiceEndStatus'); if(es) es.textContent=hs.endStatus;
-    setCapDot($('capVoiceEndDot'),hs.endDot);
-    renderHomeCapTiles();
+    const summary=$('homeStatusSummary');
+    if(summary) summary.textContent=hs.entrySummary;
     renderHomeLiveZone();
   }
 
@@ -4254,10 +4608,24 @@
 
   function focusSettingsField(focus){
     if(!focus) return;
+    const detailByFocus={
+      trigger:'quickKeyWakeSection',
+      target:'quickKeyWakeSection',
+      mic:'quickVoiceWakeSection',
+      engine:'quickVoiceWakeSection',
+      autoSend:'quickVoiceEndSection',
+      delay:'quickVoiceEndSection'
+    };
+    const detailId=detailByFocus[focus];
+    if(detailId){
+      const detail=$(detailId);
+      if(detail&&detail.tagName==='DETAILS') detail.open=true;
+    }
     const map={
       trigger:['btnRecordTrigger','keyWakeSettings'],
       target:['btnRecordTarget','keyWakeSettings'],
       mappings:['keyWakeMappingSection','mappingListTitle'],
+      keyFinishFlow:['voiceEndKeyFinishSection','voiceEndKeyFinishPanel'],
       mic:['micDeviceList','micTitle'],
       engine:['voiceSapiTitle','voiceVoskTitle'],
       wakePhrases:['voiceSapiPresets','voiceVoskPresetsCn'],
@@ -4316,6 +4684,8 @@
       renderTrashList();
     }else if(panel==='sounds'){
       renderSoundSettingsPanel();
+    }else if(panel==='voiceEnd'){
+      renderKeyFinishFlowPanel();
     }
     if(panel==='voiceWake'||panel==='voiceEnd'||panel==='debug'){
       setTimeout(function(){
@@ -4461,7 +4831,7 @@
         renderHome();
         renderListenRuntime();
         if(mappingListUiActive()) renderMappingChrome();
-        if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
+        renderHomeLiveZone();
         if(!voiceToggleBusy&&ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
           renderVoiceSapiStatus({enabled:!!((state.config.voiceSapi||state.config.voice_sapi||{}).enabled),state:'stopped'});
           renderVoiceVoskStatus({enabled:!!((state.config.voiceVosk||state.config.voice_vosk||{}).enabled),state:'stopped'});
@@ -4594,17 +4964,15 @@
     return voiceWakeEnabledInConfig()
       ||voiceEndEnabledInConfig()
       ||sessionActiveState(snap.state||'idle')
-      ||settingsPanelNeedsVoicePoll()
-      ||activeHomeModule==='voiceWake'
-      ||activeHomeModule==='voiceEnd';
+      ||settingsPanelNeedsVoicePoll();
   }
 
   function voicePollIntervalMs(){
     if(!voiceStatusPollNeeded()) return 2500;
-    if(document.hidden&&!ui.drawerOpen&&!activeHomeModule) return 2000;
+    if(document.hidden&&!ui.drawerOpen) return 2000;
     const endSnap=voiceUiSnapshot.end||{};
     if(sessionActiveState(endSnap.state||'idle')) return 300;
-    if(activeHomeModule==='voiceWake'||activeHomeModule==='voiceEnd') return 600;
+    if(!ui.drawerOpen) return 600;
     if(ui.drawerOpen&&!settingsPanelNeedsVoicePoll()) return 2000;
     if(ui.drawerOpen&&(ui.settingsPanel==='debug'||ui.settingsPanel==='voiceWake')) return 350;
     if(!ui.drawerOpen&&(voiceWakeEnabledInConfig()||voiceEndEnabledInConfig())) return 2000;
@@ -4628,8 +4996,8 @@
     const snap=voiceUiSnapshot.end||{};
     const panel=ui.settingsPanel;
     const drawerVoice=ui.drawerOpen&&settingsPanelNeedsVoicePoll();
-    const homeVoice=activeHomeModule==='voiceWake';
-    const homeEnd=activeHomeModule==='voiceEnd';
+    const homeVoice=true;
+    const homeEnd=true;
     const needEnd=voiceEndEnabledInConfig()
       ||sessionActiveState(snap.state||'idle')
       ||(drawerVoice&&(panel==='voiceEnd'||panel==='debug'))
@@ -4662,6 +5030,7 @@
 
   function openDrawer(opts){
     opts=opts||{};
+    closeHomeSchemeMenu();
     if(opts.voiceTab==='end') opts.panel='voiceEnd';
     else if(opts.voiceTab==='wake') opts.panel=opts.keyWakeFocus?'keyWake':'voiceWake';
     ui.drawerOpen=true;
@@ -4688,18 +5057,24 @@
     $('settingsDrawer').setAttribute('aria-hidden','true');
     stopMicLevelPoll();
     stopMicMonitor();
+    setTimeout(function(){
+      if(!ui.drawerOpen&&micLevelUiVisible()) syncHomeMicMonitor().catch(function(){});
+    },120);
   }
 
   function refreshDrawerMicAfterVoiceToggle(){
-    if(!ui.drawerOpen||ui.settingsPanel!=='voiceWake') return;
     if(voiceCaptureActive()){
       stopMicMonitor();
-      if(!micPollTimer) startMicLevelPoll();
-    }else{
+      if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
+      return;
+    }
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
       loadMicDevices().then(function(){
         if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') startMicLevelPoll();
       });
+      return;
     }
+    syncHomeMicMonitor().catch(function(){});
   }
 
   function syncVoiceSapiToggle(enabled){
@@ -4765,31 +5140,76 @@
 
   let voiceSapiTogglePending=false;
 
-  function scheduleVoiceToggleRefresh(){
-    setTimeout(function(){ voiceStatusPollTick(); },400);
+  function voiceSapiEnabledNow(){
+    const w=voiceUiSnapshot.wake||{};
+    if(w.sapi&&w.sapi.enabled) return true;
+    const cfg=state.config||{};
+    const sapi=cfg.voiceSapi||cfg.voice_sapi;
+    return !!(sapi&&sapi.enabled);
   }
 
-  function toggleVoiceSapi(){
+  function voiceVoskEnabledNow(){
+    const w=voiceUiSnapshot.wake||{};
+    if(w.vosk&&w.vosk.enabled) return true;
+    const cfg=state.config||{};
+    const vosk=cfg.voiceVosk||cfg.voice_vosk;
+    return !!(vosk&&vosk.enabled);
+  }
+
+  function voiceSapiErrorMessage(res){
+    const err=res&&(res.lastError||res.last_error||'');
+    if(String(err||'').trim()) return String(err).trim();
+    return t('voiceSapiFail');
+  }
+
+  function handleVoiceSapiEnableResult(res,next){
+    if(next&&res&&res.state==='error'){
+      syncVoiceSapiToggle(false);
+      toast(voiceSapiErrorMessage(res));
+      return false;
+    }
+    return true;
+  }
+
+  function scheduleVoiceToggleRefresh(){
+    setTimeout(function(){
+      voiceStatusPollTick();
+      const w=voiceUiSnapshot.wake||{};
+      const sapi=w.sapi||{};
+      if(sapi.enabled&&sapi.state==='error'){
+        syncVoiceSapiToggle(false);
+        toast(voiceSapiErrorMessage(sapi));
+      }
+    },400);
+  }
+
+  function toggleVoiceSapi(explicitNext){
     if(voiceSapiTogglePending) return;
+    const next=explicitNext!=null?!!explicitNext:!voiceSapiEnabledNow();
     const btn=$('btnVoiceSapi');
-    if(!btn) return;
-    const next=!btn.classList.contains('is-on');
+    const homeBtn=$('btnHomeVoiceToggle');
     voiceSapiTogglePending=true;
-    btn.disabled=true;
+    if(btn) btn.disabled=true;
+    if(homeBtn) homeBtn.disabled=true;
     syncVoiceSapiToggle(next);
     stopMicMonitor();
     vpInvoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
       renderVoiceSapiStatus(res);
+      if(!handleVoiceSapiEnableResult(res,next)) return;
       if(next) syncVoiceVoskToggle(false);
       syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+      if(!next) syncHomeMicMonitor().catch(function(){});
       scheduleVoiceToggleRefresh();
     }).catch(function(err){
       loadVoiceSapiStatus();
-      toast(t('voiceSapiFail'));
+      const msg=err&&err.message?String(err.message).trim():'';
+      toast(msg||t('voiceSapiFail'));
       console.error('voice_sapi',err);
     }).finally(function(){
       voiceSapiTogglePending=false;
       if(btn) btn.disabled=false;
+      if(homeBtn) homeBtn.disabled=false;
+      renderHomeLiveZone();
     });
   }
 
@@ -4972,13 +5392,14 @@
 
   let voiceVoskTogglePending=false;
 
-  function toggleVoiceVosk(){
+  function toggleVoiceVosk(explicitNext){
     if(voiceVoskTogglePending) return;
+    const next=explicitNext!=null?!!explicitNext:!voiceVoskEnabledNow();
     const btn=$('btnVoiceVosk');
-    if(!btn) return;
-    const next=!btn.classList.contains('is-on');
+    const homeBtn=$('btnHomeVoiceToggle');
     voiceVoskTogglePending=true;
-    btn.disabled=true;
+    if(btn) btn.disabled=true;
+    if(homeBtn) homeBtn.disabled=true;
     syncVoiceVoskToggle(next);
     if(next){
       stopMicMonitor();
@@ -4989,14 +5410,17 @@
       syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'});
       stopMicMonitor();
       scheduleVoiceToggleRefresh();
-      if(!next) refreshDrawerMicAfterVoiceToggle();
+      if(!next) syncHomeMicMonitor().catch(function(){});
     }).catch(function(err){
       loadVoiceVoskStatus();
-      toast(t('voiceVoskFail'));
+      const msg=err&&err.message?String(err.message).trim():'';
+      toast(msg||t('voiceVoskFail'));
       console.error('voice_vosk',err);
     }).finally(function(){
       voiceVoskTogglePending=false;
       if(btn) btn.disabled=false;
+      if(homeBtn) homeBtn.disabled=false;
+      renderHomeLiveZone();
     });
   }
 
@@ -5143,21 +5567,25 @@
   }
 
   function syncVoiceEndToggle(enabled){
-    const btn=$('btnVoiceEnd');
-    if(!btn) return;
-    btn.classList.toggle('is-on',!!enabled);
-    btn.setAttribute('aria-checked',enabled?'true':'false');
+    ['btnVoiceEnd','btnHomeEndToggle'].forEach(function(id){
+      const btn=$(id);
+      if(!btn) return;
+      btn.classList.toggle('is-on',!!enabled);
+      btn.setAttribute('aria-checked',enabled?'true':'false');
+    });
   }
 
   function syncVoiceEndAutoSendToggle(enabled){
-    const btn=$('btnVoiceEndAutoSend');
-    if(!btn) return;
-    btn.classList.toggle('is-on',!!enabled);
-    btn.setAttribute('aria-checked',enabled?'true':'false');
+    ['btnVoiceEndAutoSend','btnHomeEndAutoSend'].forEach(function(id){
+      const btn=$(id);
+      if(!btn) return;
+      btn.classList.toggle('is-on',!!enabled);
+      btn.setAttribute('aria-checked',enabled?'true':'false');
+    });
   }
 
   function toggleVoiceEnd(){
-    const btn=$('btnVoiceEnd');
+    const btn=$('btnHomeEndToggle')||$('btnVoiceEnd');
     if(!btn) return;
     const next=!btn.classList.contains('is-on');
     syncVoiceEndToggle(next);
@@ -5173,7 +5601,7 @@
   }
 
   function toggleVoiceEndAutoSend(){
-    const btn=$('btnVoiceEndAutoSend');
+    const btn=$('btnHomeEndAutoSend')||$('btnVoiceEndAutoSend');
     if(!btn) return;
     const next=!btn.classList.contains('is-on');
     syncVoiceEndAutoSendToggle(next);
@@ -5200,6 +5628,48 @@
     if(!el) return;
     const ms=parseInt(el.value,10)||4000;
     onVoiceEndDelayInput();
+    vpInvoke('cmd_voice_end_set_commit_delay',{commitDelayMs:ms}).then(function(res){
+      renderVoiceEndStatus(res);
+      syncHomeFromVoiceSettings(null,null,res);
+    }).catch(function(){
+      loadVoiceEndStatus();
+    });
+  }
+
+  function updateHomeVoiceSapiConfidence(saveNow){
+    const el=$('homeVoiceSapiConfidence');
+    const label=$('homeVoiceSapiConfidenceLabel');
+    if(!el) return;
+    const value=Number(el.value||0.35);
+    if(label) label.textContent=t('voiceSapiSensitivity')+' '+value.toFixed(2);
+    if(!saveNow) return;
+    vpInvoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
+      renderVoiceSapiStatus(res);
+      syncHomeFromVoiceSettings(null,res);
+    }).catch(function(err){
+      console.error('home_voice_sapi_confidence',err);
+      loadVoiceSapiStatus();
+    });
+  }
+
+  function toggleHomeVoiceEndAutoSend(){
+    toggleVoiceEndAutoSend();
+  }
+
+  function onHomeVoiceEndDelayInput(){
+    const el=$('homeVoiceEndDelayRange');
+    if(!el) return;
+    const ms=parseInt(el.value,10)||4000;
+    el.style.setProperty('--range-pct',((ms-1000)/9000*100)+'%');
+    const delayLine=$('homeVoiceEndDelayLine');
+    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(ms));
+  }
+
+  function onHomeVoiceEndDelayChange(){
+    const el=$('homeVoiceEndDelayRange');
+    if(!el) return;
+    const ms=parseInt(el.value,10)||4000;
+    onHomeVoiceEndDelayInput();
     vpInvoke('cmd_voice_end_set_commit_delay',{commitDelayMs:ms}).then(function(res){
       renderVoiceEndStatus(res);
       syncHomeFromVoiceSettings(null,null,res);
@@ -5356,19 +5826,7 @@
     $('btnAddMapping').textContent=d.addMapping;
     $('btnCancelRecord').textContent=d.cancelRecord;
     const wakeCardTitle=$('wakeCardTitle'); if(wakeCardTitle) wakeCardTitle.textContent=d.wakeCardTitle;
-    const homeCapTitle=$('homeCapabilitiesTitle'); if(homeCapTitle) homeCapTitle.textContent=d.homeCapabilitiesTitle;
-    const homeCapCompat=$('homeCapCompat'); if(homeCapCompat) homeCapCompat.textContent=d.homeCapCompat;
-    const capKeyWakeName=$('capKeyWakeName'); if(capKeyWakeName) capKeyWakeName.textContent=d.capKeyWakeName;
-    const capKeyWakeDesc=$('capKeyWakeDesc'); if(capKeyWakeDesc) capKeyWakeDesc.textContent=d.capKeyWakeDesc;
-    const capVoiceWakeName=$('capVoiceWakeName'); if(capVoiceWakeName) capVoiceWakeName.textContent=d.capVoiceWakeName;
-    const capVoiceWakeDesc=$('capVoiceWakeDesc'); if(capVoiceWakeDesc) capVoiceWakeDesc.textContent=d.capVoiceWakeDesc;
-    const capVoiceEndName=$('capVoiceEndName'); if(capVoiceEndName) capVoiceEndName.textContent=d.capVoiceEndName;
-    const capVoiceEndDesc=$('capVoiceEndDesc'); if(capVoiceEndDesc) capVoiceEndDesc.textContent=d.capVoiceEndDesc;
-    ['capKeyWakeEnter','capVoiceWakeEnter','capVoiceEndEnter'].forEach(function(id){
-      const el=$(id); if(el&&!el.classList.contains('is-active')) el.textContent=d.homeCapExpand;
-    });
     applyHomeLiveLang();
-    renderHomeCapTiles();
     const settingsNavBasic=$('settingsNavBasic'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     const settingsNavKeyWake=$('settingsNavKeyWake'); if(settingsNavKeyWake) settingsNavKeyWake.textContent=d.settingsNavKeyWake;
     const settingsNavVoiceWake=$('settingsNavVoiceWake'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
@@ -5379,6 +5837,12 @@
     const spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
     const spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
     const spEnd=$('settingsPanelVoiceEndDesc'); if(spEnd) spEnd.textContent=d.settingsPanelVoiceEndDesc;
+    const quickKeyWakeSummary=$('quickKeyWakeSummary'); if(quickKeyWakeSummary) quickKeyWakeSummary.textContent=d.quickKeyWakeSummary;
+    const quickKeyWakeHint=$('quickKeyWakeHint'); if(quickKeyWakeHint) quickKeyWakeHint.textContent=d.quickKeyWakeHint;
+    const quickVoiceWakeSummary=$('quickVoiceWakeSummary'); if(quickVoiceWakeSummary) quickVoiceWakeSummary.textContent=d.quickVoiceWakeSummary;
+    const quickVoiceWakeHint=$('quickVoiceWakeHint'); if(quickVoiceWakeHint) quickVoiceWakeHint.textContent=d.quickVoiceWakeHint;
+    const quickVoiceEndSummary=$('quickVoiceEndSummary'); if(quickVoiceEndSummary) quickVoiceEndSummary.textContent=d.quickVoiceEndSummary;
+    const quickVoiceEndHint=$('quickVoiceEndHint'); if(quickVoiceEndHint) quickVoiceEndHint.textContent=d.quickVoiceEndHint;
     const spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
     const spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
     const spGen=$('settingsPanelGeneralDesc'); if(spGen) spGen.textContent=d.settingsPanelGeneralDesc;
@@ -5453,6 +5917,8 @@
     const voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
     const voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
     const voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;
+    const keyFinishFlowTitle=$('keyFinishFlowTitle'); if(keyFinishFlowTitle) keyFinishFlowTitle.textContent=d.keyFinishFlowTitle;
+    const keyFinishFlowDesc=$('keyFinishFlowDesc'); if(keyFinishFlowDesc) keyFinishFlowDesc.textContent=d.keyFinishFlowDesc;
     const voiceEndDesc=$('voiceEndDesc'); if(voiceEndDesc) voiceEndDesc.textContent=d.voiceEndDesc;
     const voiceEndLabel=$('voiceEndLabel'); if(voiceEndLabel) voiceEndLabel.textContent=d.voiceEndLabel;
     const voiceEndVoskWarn=$('voiceEndVoskWarn'); if(voiceEndVoskWarn) voiceEndVoskWarn.textContent=d.voiceEndVoskWarn;
@@ -5690,16 +6156,16 @@
     if(opt==='hold'){
       return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-hold">'
         +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
-        +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeHoldAnimVoice')+'</span>'
+        +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
         +'</div></div>';
     }
     return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-tap">'
       +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
-      +'<span class="ma-chip ma-voice ma-v1">'+t('triggerModeTapAnimVoice')+'</span>'
+      +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
       +'<span class="ma-arrow">→</span><span class="ma-chip ma-key ma-k2">2</span><span class="ma-arrow ma-a1">→</span>'
       +'<span class="ma-out-stack">'
-      +'<span class="ma-chip ma-esc ma-out-cancel">'+t('triggerModeTapAnimCancel')+'</span>'
-      +'<span class="ma-chip ma-enter ma-out-enter">'+t('triggerModeTapAnimEnter')+'</span>'
+      +'<span class="ma-chip ma-esc ma-out-cancel">'+t('keyFinishFlowAnimCancel')+'</span>'
+      +'<span class="ma-chip ma-enter ma-out-enter">'+t('keyFinishFlowAnimConfirm')+'</span>'
       +'</span></div></div>';
   }
 
@@ -5726,29 +6192,28 @@
     return html;
   }
 
-  function renderModeSettingsPanel(m,id,mode){
+  function renderKeyFinishSettingsPanel(m,id,mode){
     let html='<div class="map-mode-settings">';
     if(mode==='tap'){
-      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsTap')+'</span></div>';
-      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsTapTip')+'</p>';
+      html+='<div class="map-timing-head"><span>'+t('keyFinishFlowConfirmSettings')+'</span></div>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowConfirmTip')+'</p>';
       html+=renderTapTimingSettings(m,id);
     }else{
-      html+='<div class="map-timing-head"><span>'+t('triggerModeSettingsHold')+'</span></div>';
-      html+='<p class="map-mode-settings-tip">'+t('triggerModeSettingsHoldTip')+'</p>';
+      html+='<div class="map-timing-head"><span>'+t('keyFinishFlowInstantSettings')+'</span></div>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowInstantTip')+'</p>';
     }
     html+='</div>';
     return html;
   }
 
-  function renderTriggerModeBlock(m,id){
+  function renderKeyFinishFlowBlock(m,id){
     const raw=(m.triggerMode||'tap').toLowerCase();
     const mode=raw==='toggle'?'tap':raw;
     let html='<div class="map-trigger-mode">';
-    html+='<div class="map-timing-head"><span>'+t('triggerModeTitle')+'</span></div>';
     html+='<div class="map-mode-cards">';
     ['hold','tap'].forEach(function(opt){
-      const titleKey='triggerMode'+(opt==='tap'?'Tap':'Hold');
-      const descKey='triggerMode'+(opt==='tap'?'Tap':'Hold')+'Desc';
+      const titleKey=opt==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant';
+      const descKey=titleKey+'Desc';
       html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
       html+=renderModeAnim(opt);
       html+='<span class="mode-card-title">'+t(titleKey)+'</span>';
@@ -5756,13 +6221,74 @@
       html+='</button>';
     });
     html+='</div>';
-    html+=renderModeSettingsPanel(m,id,mode);
+    html+=renderKeyFinishSettingsPanel(m,id,mode);
     html+='</div>';
     return html;
   }
 
-  function renderTimingBlock(m,id,prefix){
+  function renderKeyFinishFlowPanel(){
+    const panel=$('voiceEndKeyFinishPanel');
+    const schemeLine=$('keyFinishFlowSchemeLine');
+    if(!panel) return;
+    ensureConfig();
+    const m=selectedMapping();
+    if(schemeLine){
+      if(m&&isSavedMapping(m)) schemeLine.textContent=t('keyFinishFlowScheme').replace('{name}',homeSchemeLabel());
+      else if(m&&isDraftMapping(m)) schemeLine.textContent=t('keyFinishFlowSchemeDraft');
+      else schemeLine.textContent='';
+    }
+    if(!m||!isSavedMapping(m)){
+      panel.innerHTML='<p class="mic-desc key-finish-empty">'+escHtml(t('keyFinishFlowNeedKeys'))+'</p>';
+      return;
+    }
+    panel.innerHTML=renderKeyFinishFlowBlock(m,m.id);
+    syncAllTimingRanges(panel);
+  }
+
+  function renderTriggerModeBlock(m,id){
+    return renderKeyFinishFlowBlock(m,id);
+  }
+
+  function renderTimingBlock(m,id){
     return renderTapTimingSettings(m,id);
+  }
+
+  function handleKeyFinishFlowInput(e){
+    const range=e.target.closest&&e.target.closest('[data-timing-range]');
+    if(!range) return;
+    e.stopPropagation();
+    liveUpdateTimingRange(range);
+  }
+
+  function handleKeyFinishFlowClick(e){
+    const el=e.target;
+    const modeBtn=el.closest&&el.closest('[data-trigger-mode]');
+    if(modeBtn){
+      e.stopPropagation();
+      const id=modeBtn.dataset.triggerMode;
+      const mode=modeBtn.dataset.mode;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m||!mode) return true;
+      m.triggerMode=mode;
+      save();
+      renderKeyFinishFlowPanel();
+      renderMappingList();
+      return true;
+    }
+    const timingToggle=el.closest&&el.closest('[data-timing-toggle]');
+    if(timingToggle){
+      e.stopPropagation();
+      const id=timingToggle.dataset.timingToggle;
+      const field=timingToggle.dataset.field;
+      const m=state.config.mappings.find(function(x){return x.id===id;});
+      if(!m) return true;
+      m[field]=!m[field];
+      scheduleTimingSave();
+      renderKeyFinishFlowPanel();
+      renderMappingList();
+      return true;
+    }
+    return false;
   }
 
   function scheduleTimingSave(){
@@ -5809,7 +6335,10 @@
     if(!m) return;
     m[field]=value;
     scheduleTimingSave();
-    if(!skipRender) renderMappingList();
+    if(!skipRender){
+      renderMappingList();
+      if(ui.drawerOpen&&ui.settingsPanel==='voiceEnd') renderKeyFinishFlowPanel();
+    }
   }
 
   function ensureConfig(){
@@ -6195,10 +6724,10 @@
     const i=list.findIndex(function(m){return m.id===id;});
     const m=state.config.mappings.find(function(x){return x.id===id;});
     const isDraft=m&&isDraftMapping(m);
-    $('menuActDup').disabled=!!isDraft;
-    $('menuActTest').disabled=!!isDraft||!editorTargetForMapping(m);
-    $('menuActUp').disabled=!!isDraft||i<=0;
-    $('menuActDown').disabled=!!isDraft||i<0||i>=list.length-1;
+    $('menuActDup').disabled=!m;
+    $('menuActTest').disabled=!m||!editorTargetForMapping(m);
+    $('menuActUp').disabled=!m||i<=0;
+    $('menuActDown').disabled=!m||i<0||i>=list.length-1;
     $('menuActDel').disabled=false;
   }
 
@@ -6213,6 +6742,34 @@
       return;
     }
     softDeleteMapping(id);
+  }
+
+  function duplicateMapping(id){
+    ensureConfig();
+    const src=state.config.mappings.find(function(x){return x.id===id;});
+    if(!src) return;
+    const copy=JSON.parse(JSON.stringify(src));
+    const newId=newMappingId();
+    copy.id=newId;
+    copy.enabled=false;
+    copy.order=state.config.mappings.length;
+    copy.label=(copy.label||'').trim();
+    state.config.mappings.push(copy);
+    state.selectedMappingId=newId;
+    syncEditorFromSelection();
+    closeFloatMenu();
+    save();
+    render();
+  }
+
+  function setMappingEnabled(id,enabled){
+    ensureConfig();
+    const m=state.config.mappings.find(function(x){return x.id===id;});
+    if(!m||isDraftMapping(m)) return;
+    m.enabled=!!enabled;
+    save();
+    render();
+    try{window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:id,enabled:!!enabled});}catch(_){ }
   }
 
   function reorderMapping(id, dir){
@@ -6323,8 +6880,9 @@
   }
 
   function isCurrentDraftComplete(){
-    const m=selectedMapping();
-    return !!(editorTriggerForMapping(m)&&editorTargetForMapping(m));
+    return sortedMappings().some(function(item){
+      return !!(editorTriggerForMapping(item)&&editorTargetForMapping(item));
+    });
   }
 
   function renderAddButton(){
@@ -6527,7 +7085,7 @@
     resetTestSendState();
     renderTestSendButton();
     renderMappingList();
-    if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
+    renderHomeLiveKeyPanel(false);
     if(msg.ok){
       playSoundCue('send_success');
       setTestModalView('ok',{mappingId:mappingId,key:targetKey,targetKey:targetKey});
@@ -6631,7 +7189,7 @@
     },8000);
     renderTestSendButton();
     renderMappingList();
-    if(activeHomeModule==='keyWake') renderHomeLiveKeyPanel(false);
+    renderHomeLiveKeyPanel(false);
     const invoke=window.__vp_invoke__;
     if(!invoke){
       resetTestSendState();
@@ -6876,7 +7434,6 @@
       html+='<summary>'+t('advSummary')+'</summary>';
       if(!isAutoTriggerMapping(m)) html+=renderTriggerMetaBlock(m,m.id);
       html+=renderNativeRestoreBlock(m,m.id);
-      html+=renderTriggerModeBlock(m,m.id);
       html+=renderSwitchKeysBlock(m,m.id);
       html+='</details></div>';
     });
@@ -6949,6 +7506,7 @@
     renderRecordCancelBar();
     if(ui.drawerOpen&&ui.settingsPanel==='sounds') renderSoundSettingsPanel();
     if(ui.drawerOpen&&ui.settingsPanel==='debug') renderDebugPanel();
+    if(ui.drawerOpen&&ui.settingsPanel==='voiceEnd') renderKeyFinishFlowPanel();
     renderVoiceModeSwitch();
     renderHome();
     renderListenRuntime();
@@ -6979,6 +7537,8 @@
     }
     updatePrimaryCTA();
     renderHeroBadges();
+    renderHome();
+    renderMicDevices();
     renderRecordCancelBar();
   }
 
@@ -7111,7 +7671,6 @@
   });
   $('btnAutostart').onclick=toggleAutostart;
   $('btnSoundsMaster').onclick=toggleSoundsMaster;
-  $('btnHomeKeyWakeSound').onclick=toggleKeyWakeSound;
   document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
     btn.onclick=function(){
       const slot=btn.getAttribute('data-slot');
@@ -7165,26 +7724,71 @@
   });
   $('btnSettings').onclick=function(){ openSettings({panel:'basic'}); };
   $('btnHomeCta').onclick=handleHomeCtaClick;
-  ['capKeyWake','capVoiceWake','capVoiceEnd'].forEach(function(id){
-    const el=$(id);
-    if(el) el.onclick=function(e){
-      e.preventDefault();
-      toggleHomeModule(el.dataset.module||'');
+  const btnHomeKeyRecord=$('btnHomeKeyRecord');
+  if(btnHomeKeyRecord) btnHomeKeyRecord.onclick=openHomeKeyRecord;
+  const btnHomeKeyEnable=$('btnHomeKeyEnable');
+  if(btnHomeKeyEnable) btnHomeKeyEnable.onclick=toggleHomeKeyEnable;
+  const btnHomeSchemeSwitcher=$('btnHomeSchemeSwitcher');
+  if(btnHomeSchemeSwitcher){
+    btnHomeSchemeSwitcher.onclick=function(e){
+      e.stopPropagation();
+      toggleHomeSchemeMenu();
     };
+  }
+  const btnHomeManageSchemes=$('btnHomeManageSchemes');
+  if(btnHomeManageSchemes){
+    btnHomeManageSchemes.onclick=function(e){
+      e.stopPropagation();
+      closeHomeSchemeMenu();
+      openSettings({panel:'keyWake',focus:'mappings'});
+    };
+  }
+  const homeSchemeMenuList=$('homeSchemeMenuList');
+  if(homeSchemeMenuList){
+    homeSchemeMenuList.onclick=function(e){
+      const toggle=e.target.closest&&e.target.closest('[data-home-scheme-toggle]');
+      if(toggle){
+        e.stopPropagation();
+        toggleHomeSchemeMappingEnabled(toggle.getAttribute('data-home-scheme-toggle')||'');
+        return;
+      }
+      const item=e.target.closest&&e.target.closest('.home-scheme-item');
+      if(item&&item.dataset.id) selectHomeMapping(item.dataset.id);
+    };
+  }
+  const homeSchemeBackdrop=$('homeSchemeBackdrop');
+  if(homeSchemeBackdrop) homeSchemeBackdrop.onclick=closeHomeSchemeMenu;
+  const homeLiveKeyConflict=$('homeLiveKeyConflict');
+  if(homeLiveKeyConflict){
+    homeLiveKeyConflict.onclick=function(){
+      if(homeLiveKeyConflict.hidden) return;
+      openSettings({panel:'keyWake',focus:'mappings'});
+    };
+  }
+  document.addEventListener('click',function(e){
+    if(!homeSchemeMenuOpen) return;
+    const sw=$('homeSchemeSwitcher');
+    if(sw&&sw.contains(e.target)) return;
+    closeHomeSchemeMenu();
   });
-  $('btnHomeKeyRetrigger').onclick=function(){ startTriggerRecord(); };
-  $('btnHomeKeyRetarget').onclick=function(){ startTargetRecord(); };
-  $('btnHomeKeyTestSend').onclick=function(){
-    testSendFromFooter=true;
-    fireTestSend(null);
-  };
-  $('btnHomeKeySettings').onclick=function(){ openSettings({panel:'keyWake'}); };
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&homeSchemeMenuOpen) closeHomeSchemeMenu();
+  });
+  $('btnHomeVoiceModeSapi').onclick=function(){ switchVoiceMode('sapi'); };
+  $('btnHomeVoiceModeVosk').onclick=function(){ switchVoiceMode('vosk'); };
   $('btnHomeVoiceToggle').onclick=homeToggleVoiceWake;
-  $('btnHomeVoiceSwitch').onclick=homeSwitchWakeEngine;
-  $('btnHomeVoiceSettings').onclick=function(){ openSettings({panel:'voiceWake'}); };
+  const btnHomeMicSettings=$('btnHomeMicSettings');
+  if(btnHomeMicSettings){
+    btnHomeMicSettings.onclick=function(){
+      openSettings({panel:'voiceWake',focus:'mic'});
+    };
+  }
+  $('homeVoiceSapiConfidence').oninput=function(){ updateHomeVoiceSapiConfidence(false); };
+  $('homeVoiceSapiConfidence').onchange=function(){ updateHomeVoiceSapiConfidence(true); };
   $('btnHomeEndToggle').onclick=toggleVoiceEnd;
-  $('btnHomeEndTestSend').onclick=testVoiceEndCommit;
-  $('btnHomeEndSettings').onclick=function(){ openSettings({panel:'voiceEnd'}); };
+  $('btnHomeEndAutoSend').onclick=toggleHomeVoiceEndAutoSend;
+  $('homeVoiceEndDelayRange').oninput=onHomeVoiceEndDelayInput;
+  $('homeVoiceEndDelayRange').onchange=onHomeVoiceEndDelayChange;
   document.querySelectorAll('.settings-nav-item').forEach(function(btn){
     btn.addEventListener('click',function(){
       setSettingsPanel(btn.dataset.panel||'basic');
@@ -7246,6 +7850,14 @@
     liveUpdateTimingRange(range);
   });
 
+  const voiceEndKeyFinishPanel=$('voiceEndKeyFinishPanel');
+  if(voiceEndKeyFinishPanel){
+    voiceEndKeyFinishPanel.addEventListener('input',handleKeyFinishFlowInput);
+    voiceEndKeyFinishPanel.addEventListener('click',function(e){
+      if(handleKeyFinishFlowClick(e)) e.stopPropagation();
+    });
+  }
+
   $('mappingList').addEventListener('click',function(e){
     const el=e.target;
     if(el.closest&&el.closest('.map-adv')){ e.stopPropagation(); }
@@ -7269,30 +7881,6 @@
         return;
       }
       startNativeRestoreRecord(id);
-      return;
-    }
-    const modeBtn=el.closest&&el.closest('[data-trigger-mode]');
-    if(modeBtn){
-      e.stopPropagation();
-      const id=modeBtn.dataset.triggerMode;
-      const mode=modeBtn.dataset.mode;
-      const m=state.config.mappings.find(function(x){return x.id===id;});
-      if(!m||!mode) return;
-      m.triggerMode=mode;
-      save();
-      renderMappingList();
-      return;
-    }
-    const timingToggle=el.closest&&el.closest('[data-timing-toggle]');
-    if(timingToggle){
-      e.stopPropagation();
-      const id=timingToggle.dataset.timingToggle;
-      const field=timingToggle.dataset.field;
-      const m=state.config.mappings.find(function(x){return x.id===id;});
-      if(!m) return;
-      m[field]=!m[field];
-      scheduleTimingSave();
-      renderMappingList();
       return;
     }
     const nativeToggle=el.closest&&el.closest('[data-native-restore]');
@@ -7332,7 +7920,7 @@
       const m=state.config.mappings.find(function(x){return x.id===id;});
       if(!m) return;
       const next=!m.enabled;
-      try{window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:id,enabled:next});}catch(_){ }
+      setMappingEnabled(id,next);
       return;
     }
     const testBtn=el.closest&&el.closest('[data-test]');
@@ -7341,16 +7929,10 @@
       if(!testBtn.disabled) fireTestSend(testBtn.dataset.test);
       return;
     }
-    const delBtn=el.closest&&el.closest('[data-del]');
-    if(delBtn){
-      e.stopPropagation();
-      softDeleteMapping(delBtn.dataset.del);
-      return;
-    }
     const menuBtn=el.closest&&el.closest('[data-menu]');
     if(menuBtn){
       e.stopPropagation();
-      openFloatMenu(menuBtn.dataset.menu, menuBtn);
+      // The menu is opened on pointerdown; the following click should not toggle it closed.
       return;
     }
     const row=el.closest&&el.closest('.map-row');
@@ -7404,15 +7986,41 @@
     const act=actBtn.dataset.act;
     if(!id) return;
     if(act==='test'){ closeFloatMenu(); fireTestSend(id); return; }
-    if(act==='dup'){ closeFloatMenu(); try{window.chrome?.webview?.postMessage({type:'mvp_mapping_duplicate',id:id});}catch(_){ } return; }
+    if(act==='dup'){ duplicateMapping(id); return; }
     if(act==='del'){ closeFloatMenu(); deleteMappingFromMenu(id); return; }
     if(act==='up'||act==='down'){ reorderMapping(id, act); return; }
   });
+
+  function triggerOpenMenuAction(act){
+    const pop=$('mapMenuFloat');
+    if(!pop||!pop.dataset.id) return;
+    const id=pop.dataset.id;
+    if(act==='test'){ closeFloatMenu(); fireTestSend(id); return; }
+    if(act==='dup'){ duplicateMapping(id); return; }
+    if(act==='del'){ closeFloatMenu(); deleteMappingFromMenu(id); return; }
+    if(act==='up'||act==='down'){ reorderMapping(id, act); }
+  }
+
+  $('menuActTest').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('test'); };
+  $('menuActDup').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('dup'); };
+  $('menuActUp').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('up'); };
+  $('menuActDown').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('down'); };
+  $('menuActDel').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('del'); };
 
   $('trashList').addEventListener('click',function(e){
     const btn=e.target.closest&&e.target.closest('[data-restore]');
     if(btn) restoreFromTrash(btn.dataset.restore);
   });
+
+  // Capture menu-button pointer first so row selection does not swallow the menu opener.
+  document.addEventListener('pointerdown',function(e){
+    const menuBtn=e.target.closest&&e.target.closest('.map-menu-btn[data-menu]');
+    if(!menuBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id=menuBtn.getAttribute('data-menu')||'';
+    openFloatMenu(id, menuBtn);
+  }, true);
 
   document.addEventListener('click',function(e){
     if(openMenuId){
@@ -7449,13 +8057,13 @@
       }
     }
     if(recordingMode==='trigger'){
+      const code=String(e.code||'');
+      const key=String(e.key||'');
       if(Date.now()<triggerPeripheralGuardUntil&&isTargetModifierToken(normalizeStandaloneModifier(code)||normalizeKeyFromCode(code,key)||key)){
         return;
       }
       e.preventDefault();
       e.stopPropagation();
-      const code=String(e.code||'');
-      const key=String(e.key||'');
       if(isHardwareDelegatedTriggerKey(key,code)){
         const physical=webEventToPhysicalKey(key,code)||key;
         $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(physical);

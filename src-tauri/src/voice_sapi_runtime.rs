@@ -227,15 +227,13 @@ pub fn voice_sapi_set_enabled(
 
     if enabled {
         let cfg = state.cfg.lock().voice_sapi.clone();
-        let state2 = Arc::clone(state);
-        std::thread::Builder::new()
-            .name("voice-sapi-start".into())
-            .spawn(move || {
-                if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
-                    eprintln!("voice_sapi start: {e}");
-                }
-            })
-            .map_err(|e| format!("spawn voice sapi start: {e}"))?;
+        if let Err(e) = voice_sapi_start(state.as_ref(), &cfg) {
+            eprintln!("voice_sapi start: {e}");
+            let mut cfg = state.cfg.lock();
+            cfg.voice_sapi.enabled = false;
+            cfg.normalize();
+            save_config(&cfg);
+        }
     } else {
         voice_sapi_stop(state);
         *state.voice_sapi_cooldown_until.lock() = None;
