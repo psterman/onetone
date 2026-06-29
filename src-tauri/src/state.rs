@@ -60,7 +60,9 @@ impl StateMachine {
             mapping_timing(mapping, cfg);
         let target = mapping.target_key.clone();
 
-        if mapping.trigger_mode == TriggerMode::Hold {
+        if mapping.trigger_mode == TriggerMode::Hold
+            || mapping.trigger_mode == TriggerMode::LongPress
+        {
             if let Some(last) = self.last_trigger {
                 if now.duration_since(last) < Duration::from_millis(debounce_ms) {
                     return vec![];
@@ -211,13 +213,23 @@ mod tests {
 
         sm.trigger(&cfg, &mapping, "Volume_Down", t0);
 
-        let a2 = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1300));
+        let a2 = sm.trigger(
+            &cfg,
+            &mapping,
+            "Volume_Down",
+            t0 + Duration::from_millis(1300),
+        );
         let token = match a2.last() {
             Some(Action::ScheduleEnter { token, .. }) => *token,
             other => panic!("expected ScheduleEnter, got {other:?}"),
         };
 
-        let a3 = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1400));
+        let a3 = sm.trigger(
+            &cfg,
+            &mapping,
+            "Volume_Down",
+            t0 + Duration::from_millis(1400),
+        );
         assert!(matches!(a3.last(), Some(Action::SendEsc)));
 
         assert!(matches!(sm.on_enter_timer(token), Action::None));
@@ -231,7 +243,12 @@ mod tests {
         let t0 = Instant::now();
 
         sm.trigger(&cfg, &mapping, "Volume_Down", t0);
-        let actions = sm.trigger(&cfg, &mapping, "Volume_Down", t0 + Duration::from_millis(1300));
+        let actions = sm.trigger(
+            &cfg,
+            &mapping,
+            "Volume_Down",
+            t0 + Duration::from_millis(1300),
+        );
         let token = match actions.last() {
             Some(Action::ScheduleEnter { token, .. }) => *token,
             other => panic!("expected ScheduleEnter, got {other:?}"),

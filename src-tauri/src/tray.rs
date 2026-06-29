@@ -352,6 +352,8 @@ fn mode_id(mode: TriggerMode) -> &'static str {
     match mode {
         TriggerMode::Tap | TriggerMode::Toggle => "tap",
         TriggerMode::Hold => "hold",
+        TriggerMode::LongPress => "longpress",
+        TriggerMode::Double => "double",
     }
 }
 
@@ -359,6 +361,8 @@ fn parse_mode_id(raw: &str) -> Option<TriggerMode> {
     match raw {
         "tap" | "toggle" => Some(TriggerMode::Tap),
         "hold" => Some(TriggerMode::Hold),
+        "longpress" | "long_press" => Some(TriggerMode::LongPress),
+        "double" | "doubleclick" => Some(TriggerMode::Double),
         _ => None,
     }
 }

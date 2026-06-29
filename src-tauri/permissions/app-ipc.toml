@@ -10,6 +10,7 @@ permissions = [
   "allow-cmd-pause",
   "allow-cmd-resume",
   "allow-cmd-request-runtime",
+  "allow-cmd-process-usage",
   "allow-cmd-capture-source",
   "allow-cmd-frontend-keydown",
   "allow-cmd-physical-trigger",

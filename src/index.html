@@ -911,7 +911,75 @@
     }
     .sound-preview-btn:hover{background:var(--primary-soft)}
     .mic-desc{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
-    .mic-device-list{display:grid;gap:8px}
+    .voice-mode-panel{
+      margin-top:14px;
+      padding:14px;
+      border:1px solid var(--outline-variant);
+      border-radius:20px;
+      background:linear-gradient(180deg,rgba(42,156,196,.08),var(--surface-high));
+    }
+    html[data-theme="dark"] .voice-mode-panel{
+      background:linear-gradient(180deg,rgba(94,200,232,.1),rgba(28,38,54,.98));
+    }
+    .voice-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .voice-mode-card{
+      border:1px solid var(--outline-variant);
+      border-radius:18px;
+      background:var(--surface-high);
+      padding:14px;
+      text-align:left;
+      color:inherit;
+      cursor:pointer;
+      transition:border-color var(--dur-fast),transform var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast);
+    }
+    .voice-mode-card:hover{transform:translateY(-1px);border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
+    .voice-mode-card.is-active{
+      border-color:var(--primary);
+      background:linear-gradient(180deg,rgba(42,156,196,.12),var(--surface-high));
+      box-shadow:0 0 0 3px rgba(42,156,196,.12);
+    }
+    .voice-mode-card:disabled{opacity:.72;cursor:progress;transform:none}
+    .voice-mode-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+    .voice-mode-kicker{margin:0;font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--primary)}
+    .voice-mode-name{margin:3px 0 0;font-size:15px;font-weight:800;color:var(--on-surface)}
+    .voice-mode-copy{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .voice-mode-metric{
+      margin:10px 0 0;
+      padding:8px 10px;
+      border-radius:12px;
+      background:var(--surface);
+      border:1px solid var(--outline-variant);
+      font-size:12px;
+      font-weight:700;
+      color:var(--on-surface);
+    }
+    .voice-mode-points{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .voice-mode-point{
+      display:inline-flex;
+      padding:4px 9px;
+      border-radius:999px;
+      border:1px solid var(--outline-variant);
+      background:var(--surface);
+      font-size:11px;
+      font-weight:700;
+      color:var(--on-surface-muted);
+    }
+    .voice-mode-status{
+      margin:12px 0 0;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--outline-variant);
+      background:var(--surface);
+      font-size:12px;
+      font-weight:700;
+      color:var(--on-surface);
+    }
+    .voice-mode-hint{margin:8px 0 0;font-size:12px;line-height:1.6;color:var(--on-surface-muted)}
+    .voice-hub-block.is-active-mode{border-color:rgba(42,156,196,.28);box-shadow:0 0 0 2px rgba(42,156,196,.08)}
+    @media (max-width:560px){
+      .voice-mode-grid{grid-template-columns:1fr}
+    }
+    .mic-device-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .mic-device-card{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
       padding:11px 12px;border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
@@ -940,6 +1008,86 @@
     .control-btn:active{transform:scale(0.97)}
     .control-btn.warning{color:#9a3412;background:#fff7ed;border-color:#fed7aa}
     html[data-theme="dark"] .control-btn.warning{color:#fed7aa;background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.32)}
+    .voice-diagnostics-card{
+      margin-top:14px;
+      padding:14px;
+      border:1px solid var(--outline-variant);
+      border-radius:20px;
+      background:linear-gradient(180deg,rgba(230,247,252,.22),var(--surface-high));
+    }
+    html[data-theme="dark"] .voice-diagnostics-card{
+      background:linear-gradient(180deg,rgba(94,200,232,.08),rgba(28,38,54,.98));
+    }
+    .voice-diagnostics-grid{display:grid;gap:12px;margin-top:12px}
+    .voice-diagnostics-section{
+      padding:12px;
+      border:1px solid var(--outline-variant);
+      border-radius:16px;
+      background:var(--surface-high);
+    }
+    .voice-diagnostics-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:8px;
+    }
+    .voice-diagnostics-title{margin:0;font-size:13px;font-weight:800;color:var(--on-surface)}
+    .voice-diagnostics-desc{margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .voice-diagnostics-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+    .voice-diagnostics-log{
+      margin-top:10px;
+      padding:10px 12px;
+      min-height:72px;
+      max-height:176px;
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid var(--outline-variant);
+      background:var(--surface);
+      white-space:pre-wrap;
+      word-break:break-word;
+      font:12px/1.55 Consolas,monospace;
+      color:var(--on-surface-muted);
+    }
+    .voice-mode-detail{
+      margin-top:14px;
+      border:1px solid var(--outline-variant);
+      border-radius:18px;
+      background:var(--surface-high);
+      padding:14px;
+    }
+    .voice-mode-detail[hidden]{display:none!important}
+    .voice-segment{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:6px;
+    }
+    .voice-segment-btn{
+      min-height:42px;
+      padding:0 12px;
+      border-radius:16px;
+      border:1px solid var(--outline-variant);
+      background:var(--surface-high);
+      color:var(--on-surface-muted);
+      font:inherit;
+      font-size:13px;
+      font-weight:800;
+      text-align:left;
+      cursor:pointer;
+      transition:border-color var(--dur-fast),background var(--dur-fast),color var(--dur-fast),transform var(--dur-fast);
+    }
+    .voice-segment-btn:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft);color:var(--on-surface)}
+    .voice-segment-btn.is-active{
+      border-color:var(--primary);
+      background:linear-gradient(180deg,rgba(42,156,196,.12),var(--surface-high));
+      color:var(--on-surface);
+      box-shadow:0 0 0 2px rgba(42,156,196,.1);
+    }
+    .voice-segment-btn:disabled{opacity:.7;cursor:progress;transform:none}
+    @media (max-width:860px){
+      .mic-device-list{grid-template-columns:1fr}
+    }
     .drawer-section{border-top:1px solid var(--outline-variant);padding-top:14px}
     .mini-title{margin:0 0 8px;font-size:14px;font-weight:700}
     .mini{margin:0;color:var(--on-surface-muted);font-size:13px;line-height:1.65}
@@ -1254,17 +1402,57 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">麦克风与语音唤醒引擎</p>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">麦克风与语音模式</p>
           <div class="mini-title" id="micTitle">麦克风</div>
           <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
           <p class="mic-empty" id="micEmpty" hidden></p>
           <div class="mic-device-list" id="micDeviceList"></div>
-          <div class="voice-hub-block" style="margin-top:16px">
-            <div class="mini-title" id="voiceSapiTitle">语音唤醒</div>
-            <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。下面「测试快捷键」只测按键，不走麦克风。</p>
+          <section class="voice-mode-panel" id="voiceModePanel">
+            <div class="mini-title" id="voiceModeTitle">语音模式</div>
+            <p class="mic-desc" id="voiceModeDesc">轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。</p>
+            <div class="voice-mode-grid">
+              <button type="button" class="voice-mode-card" id="btnVoiceModeSapi">
+                <div class="voice-mode-head">
+                  <div>
+                    <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
+                    <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
+                  </div>
+                  <span class="chip" id="voiceModeLiteBadge">低资源</span>
+                </div>
+                <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速启动。</p>
+                <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
+                <div class="voice-mode-points">
+                  <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
+                  <span class="voice-mode-point" id="voiceModeLitePoint2">启动更快</span>
+                  <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
+                </div>
+              </button>
+              <button type="button" class="voice-mode-card" id="btnVoiceModeVosk">
+                <div class="voice-mode-head">
+                  <div>
+                    <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
+                    <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
+                  </div>
+                  <span class="chip" id="voiceModeProBadge">完整链路</span>
+                </div>
+                <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
+                <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
+                <div class="voice-mode-points">
+                  <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
+                  <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
+                  <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
+                </div>
+              </button>
+            </div>
+            <div class="voice-mode-status" id="voiceModeCurrent">当前未启用语音模式</div>
+            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
+          </section>
+          <div class="voice-hub-block voice-mode-detail" id="voiceSapiBlock" style="margin-top:16px">
+            <div class="mini-title" id="voiceSapiTitle">轻量版细项</div>
+            <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。测试与即时记录已集中到「状态与调试」页底部。</p>
             <div class="setting-row">
               <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceSapiLabel">开启语音唤醒</span>
+                <span class="setting-row-text" id="voiceSapiLabel">开启轻量版</span>
               </div>
               <button type="button" class="toggle-switch" id="btnVoiceSapi" role="switch" aria-checked="false"></button>
             </div>
@@ -1284,16 +1472,13 @@
                 <input class="voice-sapi-range" id="voiceSapiConfidence" type="range" min="0" max="1" step="0.05" value="0.35">
               </div>
             </div>
-            <div style="margin-top:8px">
-              <button type="button" class="control-btn" id="btnVoiceSapiTest">测试快捷键（不走麦克风）</button>
-            </div>
           </div>
-          <div class="voice-hub-block" style="margin-top:16px">
-            <div class="mini-title" id="voiceVoskTitle">Vosk 离线语音</div>
-            <p class="mic-desc" id="voiceVoskDesc">与上方「语音唤醒」只能开一个；开启后会自动关闭 SAPI。模型需自行下载，不随安装包分发。</p>
+          <div class="voice-hub-block voice-mode-detail" id="voiceVoskBlock" style="margin-top:16px">
+            <div class="mini-title" id="voiceVoskTitle">高级版细项</div>
+            <p class="mic-desc" id="voiceVoskDesc">与上方轻量版只能开一个；切换语言后识别资源与唤醒词会自动更新，测试与即时记录集中在底部诊断区。</p>
             <div class="setting-row">
               <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceVoskLabel">开启 Vosk 离线语音</span>
+                <span class="setting-row-text" id="voiceVoskLabel">开启高级版</span>
               </div>
               <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false"></button>
             </div>
@@ -1302,10 +1487,10 @@
             </div>
             <div class="voice-sapi-row" style="margin-top:8px">
               <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
-              <select class="control-select" id="voiceVoskModelPreset" style="width:100%;margin-top:4px">
-                <option value="cn-light">中文语音（small-cn，默认）</option>
-                <option value="en-light">英文语音（small-en-us）</option>
-              </select>
+              <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
+                <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
+                <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
+              </div>
             </div>
             <p class="mic-empty" id="voiceVoskError" hidden></p>
             <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
@@ -1326,16 +1511,13 @@
                 <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
               </div>
             </div>
-            <div style="margin-top:8px">
-              <button type="button" class="control-btn" id="btnVoiceVoskTest">测试快捷键（不走麦克风）</button>
-            </div>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceEnd" hidden>
           <p class="settings-panel-desc" id="settingsPanelVoiceEndDesc">听写结束词与自动发送</p>
           <div class="mini-title" id="voiceEndTitle">语音结束与发送</div>
-          <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。结束词识别依赖 Vosk。</p>
-          <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用 Vosk 才能语音结束</p>
+          <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。测试与即时记录已集中到「状态与调试」页底部。</p>
+          <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
           <div class="setting-row">
             <div class="setting-row-main">
               <span class="setting-row-text" id="voiceEndLabel">启用语音结束</span>
@@ -1376,10 +1558,6 @@
               <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
             </div>
             <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
-          </div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
-            <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
@@ -1463,16 +1641,74 @@
           <p class="settings-panel-desc" id="settingsPanelDebugDesc">运行状态与调试信息</p>
           <div class="debug-overview" id="debugOverview"></div>
           <details class="drawer-collapsible" id="voiceAdvancedState">
-            <summary id="voiceAdvancedSummary">展开详情</summary>
+            <summary id="voiceAdvancedSummary">兼容说明</summary>
             <div class="drawer-collapsible-body">
               <p class="mic-desc" id="voiceEndCompatWarn">外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。</p>
-              <p class="mic-desc" id="voiceEndLastPhraseLine"></p>
-              <p class="mic-desc" id="voiceEndLastActionLine"></p>
-              <p class="mic-desc" id="voiceSapiDebug" style="margin-top:6px"></p>
-              <p class="mic-empty" id="voiceSapiError" hidden></p>
-              <p class="mic-desc" id="voiceVoskDebug" style="margin-top:6px"></p>
             </div>
           </details>
+          <section class="voice-diagnostics-card" id="voiceDiagnosticsCard">
+            <div class="mini-title" id="voiceDiagnosticsTitle">语音测试与日志</div>
+            <p class="mic-desc" id="voiceDiagnosticsDesc">上面负责配置，这里集中展示最近状态、测试按钮和即时记录，方便观察与调试。</p>
+            <div class="voice-diagnostics-grid">
+              <section class="voice-diagnostics-section">
+                <div class="voice-diagnostics-head">
+                  <div>
+                    <p class="voice-diagnostics-title" id="voiceDiagSapiTitle">轻量版唤醒日志</p>
+                    <p class="voice-diagnostics-desc" id="voiceDiagSapiDesc">快速唤醒的最近状态与测试记录</p>
+                  </div>
+                  <span class="chip">轻量版</span>
+                </div>
+                <p class="mic-desc" id="voiceSapiDebug"></p>
+                <p class="mic-empty" id="voiceSapiError" hidden></p>
+                <div class="voice-diagnostics-actions">
+                  <button type="button" class="control-btn" id="btnVoiceSapiTest">测试快捷键（不走麦克风）</button>
+                </div>
+                <div class="voice-diagnostics-log" id="voiceSapiLog">等待语音状态…</div>
+              </section>
+              <section class="voice-diagnostics-section">
+                <div class="voice-diagnostics-head">
+                  <div>
+                    <p class="voice-diagnostics-title" id="voiceDiagVoskTitle">高级版唤醒日志</p>
+                    <p class="voice-diagnostics-desc" id="voiceDiagVoskDesc">完整识别流程、命中结果与测试记录</p>
+                  </div>
+                  <span class="chip">高级版</span>
+                </div>
+                <p class="mic-desc" id="voiceVoskDebug"></p>
+                <div class="voice-diagnostics-actions">
+                  <button type="button" class="control-btn" id="btnVoiceVoskTest">测试快捷键（不走麦克风）</button>
+                </div>
+                <div class="voice-diagnostics-log" id="voiceVoskLog">等待语音状态…</div>
+              </section>
+              <section class="voice-diagnostics-section">
+                <div class="voice-diagnostics-head">
+                  <div>
+                    <p class="voice-diagnostics-title" id="voiceDiagEndTitle">语音结束与发送</p>
+                    <p class="voice-diagnostics-desc" id="voiceDiagEndDesc">结束词、结束动作与发送测试</p>
+                  </div>
+                  <span class="chip">End</span>
+                </div>
+                <p class="mic-desc" id="voiceEndDebugSummary"></p>
+                <p class="mic-desc" id="voiceEndLastPhraseLine"></p>
+                <p class="mic-desc" id="voiceEndLastActionLine"></p>
+                <div class="voice-diagnostics-actions">
+                  <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
+                  <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
+                </div>
+                <div class="voice-diagnostics-log" id="voiceEndLog">等待语音状态…</div>
+              </section>
+              <section class="voice-diagnostics-section">
+                <div class="voice-diagnostics-head">
+                  <div>
+                    <p class="voice-diagnostics-title" id="voiceDiagUsageTitle">资源采样日志</p>
+                    <p class="voice-diagnostics-desc" id="voiceDiagUsageDesc">每次轮询当前进程的内存与 CPU，方便判断是采样失败还是界面没刷新。</p>
+                  </div>
+                  <span class="chip">Usage</span>
+                </div>
+                <p class="mic-desc" id="voiceUsageSummary">当前软件占用读取中…</p>
+                <div class="voice-diagnostics-log" id="voiceUsageLog">等待资源采样…</div>
+              </section>
+            </div>
+          </section>
           <details class="drawer-collapsible" id="debugPanel" style="margin-top:14px">
             <summary id="debugTitle">开发者信息</summary>
             <div class="drawer-collapsible-body">
@@ -1755,6 +1991,13 @@
   let voiceListRenderTimer=0;
   let lastVoiceListKey='';
   const voiceUiSnapshot={end:{},wake:{engine:'none',phrase:'',state:'off'},listen:{paused:false}};
+  let voiceWakeExpandedMode='sapi';
+  const processUsageSnapshot={supported:false,memoryBytes:0,memoryMb:0,cpuPercent:0,coreCount:1,loaded:false,errorMessage:'',sampleAt:0};
+  const processUsageHistory={sapi:null,vosk:null};
+  const VOICE_DIAG_LOG_LIMIT=18;
+  const voiceDiagLogs={sapi:[],vosk:[],end:[],usage:[]};
+  const voiceDiagLast={sapi:{},vosk:{},end:{},usage:{}};
+  let voiceDiagNonce=0;
   let lang='zh';
   let testSendState='idle';
   let testSendTimer=0;
@@ -1778,6 +2021,54 @@
   let triggerPeripheralGuardUntil=0;
   let recordCaptureGen=0;
   let localCaptureGuardUntil=0;
+
+  function voiceDiagElementId(kind){
+    if(kind==='sapi') return 'voiceSapiLog';
+    if(kind==='vosk') return 'voiceVoskLog';
+    if(kind==='end') return 'voiceEndLog';
+    if(kind==='usage') return 'voiceUsageLog';
+    return '';
+  }
+
+  function voiceDiagTimestamp(){
+    const now=new Date();
+    return [now.getHours(),now.getMinutes(),now.getSeconds()].map(function(n){
+      return String(n).padStart(2,'0');
+    }).join(':');
+  }
+
+  function renderVoiceDiagLog(kind){
+    const el=$(voiceDiagElementId(kind));
+    if(!el) return;
+    const list=voiceDiagLogs[kind]||[];
+    const emptyKey=kind==='usage'?'voiceDiagUsageEmpty':'voiceDiagLogEmpty';
+    el.textContent=list.length?list.join('\n'):t(emptyKey);
+  }
+
+  function pushVoiceDiagLog(kind,label,text,signature){
+    if(!kind||!label||!text) return;
+    const bucket=voiceDiagLast[kind]||(voiceDiagLast[kind]={});
+    const sig=String(signature==null?(label+'|'+text):signature);
+    if(sig && bucket.__lastSig===sig) return;
+    bucket.__lastSig=sig;
+    const list=voiceDiagLogs[kind]||(voiceDiagLogs[kind]=[]);
+    list.unshift(voiceDiagTimestamp()+'  '+label+': '+text);
+    if(list.length>VOICE_DIAG_LOG_LIMIT) list.length=VOICE_DIAG_LOG_LIMIT;
+    renderVoiceDiagLog(kind);
+  }
+
+  function forceVoiceDiagLog(kind,label,text){
+    pushVoiceDiagLog(kind,label,text,kind+'|'+(voiceDiagNonce++));
+  }
+
+  function updateVoiceDiagMetric(kind,name,value,label){
+    const bucket=voiceDiagLast[kind]||(voiceDiagLast[kind]={});
+    const next=String(value==null?'':value).trim();
+    if(bucket[name]===next) return;
+    bucket[name]=next;
+    if(!next) return;
+    pushVoiceDiagLog(kind,label,next,kind+'|'+name+'|'+next);
+  }
   const I18N={
     zh:{
       appTitle:'一声',
@@ -1857,11 +2148,11 @@
       micAutoDetect:'自动检测（系统默认）',micAutoDetectSub:'使用系统默认麦克风',micExternal:'外部麦克风',
       micWindowsOnly:'麦克风切换与监测仅支持 Windows',micEmpty:'未检测到可用麦克风',
       micSwitchFail:'切换麦克风失败',
-      voiceSapiTitle:'语音唤醒',
-      voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。下面「测试快捷键」只测按键，不走麦克风。',
-      voiceSapiLabel:'开启语音唤醒',
+      voiceSapiTitle:'轻量版细项',
+      voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。测试与即时记录已集中到「状态与调试」页底部。',
+      voiceSapiLabel:'开启轻量版',
       voiceSapiTest:'测试快捷键（不走麦克风）',
-      voiceSapiFail:'无法启动语音识别，请检查 Windows 是否已安装中文语音包',
+      voiceSapiFail:'无法启动轻量版，请检查 Windows 语音组件是否可用',
       voiceSapiWakeWord:'你要说的词',
       voiceSapiHeard:'刚才听到',
       voiceSapiSkip:'没触发',
@@ -1870,11 +2161,46 @@
       voiceSapiNone:'—',
       voiceSapiSensitivity:'识别灵敏度（越低越容易触发）',
       voiceSapiPresetUpdated:'已更新唤醒词',
-      voiceVoskTitle:'Vosk 离线语音',
-      voiceVoskDesc:'与上方「语音唤醒」只能开一个。请选「中文语音」或「英文语音」，切换后模型与唤醒词会自动更新。',
-      voiceVoskLabel:'开启 Vosk 离线语音',
+      voiceModeTitle:'语音模式',
+      voiceModeDesc:'轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。',
+      voiceModeLiteTitle:'轻量版',
+      voiceModeLiteEngine:'系统快速识别',
+      voiceModeLiteBadge:'低资源',
+      voiceModeLiteDesc:'更省资源，适合常驻待机和快速启动。',
+      voiceModeLiteMetric:'实时占用读取中…',
+      voiceModeLitePoint1:'资源占用低',
+      voiceModeLitePoint2:'启动更快',
+      voiceModeLitePoint3:'不支持结束词',
+      voiceModeProTitle:'高级版',
+      voiceModeProEngine:'离线完整识别',
+      voiceModeProBadge:'完整链路',
+      voiceModeProDesc:'支持离线识别、结束词和更完整的语音链路。',
+      voiceModeProMetric:'实时占用读取中…',
+      voiceModeProPoint1:'支持结束词',
+      voiceModeProPoint2:'离线可用',
+      voiceModeProPoint3:'资源更高',
+      voiceModeCurrentOff:'当前未启用语音模式',
+      voiceModeCurrentLite:'当前：轻量版',
+      voiceModeCurrentPro:'当前：高级版',
+      voiceModeHintOff:'轻量版更适合常驻待机；高级版更适合完整语音流程和结束词。',
+      voiceModeHintLite:'当前是轻量版：更适合待机与快速启动，但不能使用语音结束与发送。',
+      voiceModeHintPro:'当前是高级版：支持离线识别、结束词和更完整的语音链路。',
+      voiceModeHintProWithEnd:'当前高级版已可配合「语音结束与发送」一起工作。',
+      voiceModeMetricLoading:'实时占用读取中…',
+      voiceModeMetricSwitch:'切换到该模式后显示实时占用',
+      voiceModeMetricInactive:'当前未启用，启用后显示实时占用',
+      voiceModeMetricLive:'实时占用：内存 {memory} · CPU {cpu}',
+      voiceModeMetricLast:'上次记录：内存 {memory} · CPU {cpu}',
+      voiceModeLiveLoading:'当前软件占用读取中…',
+      voiceModeLiveSummary:'当前软件占用：内存 {memory} · CPU {cpu}',
+      voiceModeLiveUnsupported:'当前环境暂不支持读取实时占用',
+      voiceModeSwitchedLite:'已切换到轻量版',
+      voiceModeSwitchedPro:'已切换到高级版',
+      voiceVoskTitle:'高级版细项',
+      voiceVoskDesc:'与上方轻量版只能开一个。请选「中文语音」或「英文语音」，切换后识别资源与唤醒词会自动更新；测试与即时记录集中在底部诊断区。',
+      voiceVoskLabel:'开启高级版',
       voiceVoskTest:'测试快捷键（不走麦克风）',
-      voiceVoskFail:'无法启动 Vosk，请检查 libvosk.dll 与模型目录',
+      voiceVoskFail:'无法启动高级版，请检查离线语音资源是否完整',
       voiceVoskWakeWord:'当前候选',
       voiceVoskPartial:'实时识别',
       voiceVoskFinal:'最终识别',
@@ -1883,19 +2209,19 @@
       voiceVoskWaiting:'等待说话…',
       voiceVoskOff:'未开启',
       voiceVoskNone:'—',
-      voiceVoskModel:'模型路径',
-      voiceVoskDll:'DLL',
-      voiceVoskGrammar:'识别模式',
-      voiceVoskLoad:'加载耗时',
+      voiceVoskModel:'资源路径',
+      voiceVoskDll:'组件状态',
+      voiceVoskGrammar:'识别方式',
+      voiceVoskLoad:'准备耗时',
       voiceVoskModelLabel:'识别语言',
       voiceVoskPresetsCnLabel:'中文唤醒词',
       voiceVoskPresetsEnLabel:'英文唤醒词',
       voiceVoskPresetUpdated:'已更新唤醒词',
-      voiceVoskModelUpdated:'已切换模型预设',
+      voiceVoskModelUpdated:'已更新识别语言',
       voiceEndTitle:'语音结束与发送',
-      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。结束词识别依赖 Vosk。',
+      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。测试与即时记录已集中到「状态与调试」页底部。',
       voiceEndLabel:'启用语音结束',
-      voiceEndVoskWarn:'需要启用 Vosk 才能语音结束',
+      voiceEndVoskWarn:'需要启用高级版才能语音结束',
       voiceEndCompatWarn:'外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。',
       voiceEndPhrases:'结束词',
       voiceEndLastPhrase:'最后结束词',
@@ -1908,7 +2234,7 @@
       voiceEndPresetsZhLabel:'中文结束词',
       voiceEndPresetsEnLabel:'英文结束词',
       voiceEndAutoSendLabel:'自动发送（Enter）',
-      voiceEndAutoSendWarn:'与方案「自动发送等待」二选一，建议关闭 mapping 的 autoEnterEnabled',
+      voiceEndAutoSendWarn:'请和方案里的自动发送二选一，建议关闭方案中的自动发送等待。',
       voiceEndTestStop:'测试结束录音',
       voiceEndTestCommit:'测试发送',
       voiceEndPresetUpdated:'已更新结束词',
@@ -1919,6 +2245,33 @@
       voiceEndStateCommitting:'等待输入法上屏',
       voiceEndStateSent:'已发送',
       voiceEndStateError:'出错',
+      voiceDiagnosticsTitle:'语音测试与日志',
+      voiceDiagnosticsDesc:'上面负责配置，这里集中展示最近状态、测试按钮和即时记录，方便观察与调试。',
+      voiceDiagSapiTitle:'轻量版唤醒日志',
+      voiceDiagSapiDesc:'快速唤醒的最近状态与测试记录',
+      voiceDiagVoskTitle:'高级版唤醒日志',
+      voiceDiagVoskDesc:'完整识别流程、命中结果与测试记录',
+      voiceDiagEndTitle:'语音结束与发送',
+      voiceDiagEndDesc:'结束词、结束动作与发送测试',
+      voiceDiagUsageTitle:'资源采样日志',
+      voiceDiagUsageDesc:'每次轮询当前进程的内存与 CPU，方便判断是采样失败还是界面没刷新。',
+      voiceDiagLogEmpty:'等待语音状态…',
+      voiceDiagUsageEmpty:'等待资源采样…',
+      voiceDiagLogState:'状态',
+      voiceDiagLogHeard:'听到',
+      voiceDiagLogFinal:'最终识别',
+      voiceDiagLogHit:'命中',
+      voiceDiagLogSkip:'未触发',
+      voiceDiagLogError:'错误',
+      voiceDiagLogPhrase:'结束词',
+      voiceDiagLogAction:'动作',
+      voiceDiagLogModel:'模型',
+      voiceDiagLogTest:'测试',
+      voiceDiagLogUsage:'占用',
+      voiceDiagLogUsageMode:'模式',
+      voiceDiagLogUsageStatus:'采样',
+      voiceDiagUsageUnsupported:'当前环境暂不支持读取实时占用',
+      voiceDiagUsageError:'读取失败',
       wakeCardTitle:'唤醒',wakeKeyLabel:'按键唤醒',wakeVoiceLabel:'语音唤醒',
       homeCapabilitiesTitle:'核心能力概览',homeCapCompat:'可同时使用',
       capKeyWakeName:'按键唤醒',capKeyWakeDesc:'按启动键唤起语音输入',
@@ -1933,7 +2286,7 @@
       homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',homeLiveEndDelay:'发送延迟',homeLiveEndLast:'最近状态',
       homeLiveRetrigger:'重录启动键',homeLiveRetarget:'重录快捷键',homeLiveTestSend:'测试发送',
       homeLiveToggleWakeOn:'停用',homeLiveToggleWakeOff:'启用',
-      homeLiveSwitchEngine:'切换引擎',homeLiveToggleEndOn:'停用',homeLiveToggleEndOff:'启用',
+      homeLiveSwitchEngine:'切换模式',homeLiveToggleEndOn:'停用',homeLiveToggleEndOff:'启用',
       homeLiveTestEndSend:'测试发送',homeLiveMoreSettings:'更多设置',
       homeLiveUnset:'未设置',homeLiveLoading:'读取中…',homeLiveOff:'未启用',
       homeLiveMicUnknown:'未检测',homeLiveMicUnset:'未选择',
@@ -1943,7 +2296,7 @@
       homeLiveSchemeDraft:'未完成方案',
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
-      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'唤醒引擎',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
+      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
       homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音唤醒已就绪',
       homeStatusIdle:'先配置按键或语音唤醒',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
@@ -1957,7 +2310,7 @@
       settingsNavBasic:'基础',settingsNavKeyWake:'按键唤醒',settingsNavVoiceWake:'语音唤醒',
       settingsNavVoiceEnd:'结束与发送',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
       settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'录制按键与管理我的方案',
-      settingsPanelVoiceWakeDesc:'麦克风与语音唤醒引擎',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
+      settingsPanelVoiceWakeDesc:'麦克风与语音模式',settingsPanelVoiceEndDesc:'听写结束词与自动发送',
       settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
       settingsNavSounds:'音效',
       soundsMasterLabel:'启用音效',soundsMasterHelp:'关闭后所有提示音静音；各场景仍可单独配置。',
@@ -1973,15 +2326,15 @@
       soundNameVoiceSignal:'信号',soundNameVoiceGate:'门闸',
       soundNameVoiceSip:'轻吸气',soundNameSendConfirm:'极短确认',
       soundNameErrorSubtle:'克制',
-      debugOverviewSession:'会话',debugOverviewWake:'唤醒',
-      wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'未启用',
+      debugOverviewSession:'会话',debugOverviewWake:'语音模式',
+      wakeEngineVosk:'高级版',wakeEngineSapi:'轻量版',wakeEngineOff:'未启用',
       endCardTitle:'结束',endEnableLabel:'语音结束',endPhrasesLabel:'结束词',
-      voiceEndEnabledShort:'已启用',voiceEndDisabledShort:'未启用',voiceEndNeedVoskShort:'需 Vosk',
+      voiceEndEnabledShort:'已启用',voiceEndDisabledShort:'未启用',voiceEndNeedVoskShort:'需高级版',
       homeStatusLoading:'正在读取设置…',homeCapLoading:'读取中',
       endPhrasesEmpty:'—',endPhrasesMore:'等 {n} 个',
       sessionUnbound:'未绑定方案',sessionSelectedMapping:'当前方案',
       btnMoreSettings:'更多设置',voiceHubTitle:'语音',voiceHubTabWake:'唤醒',voiceHubTabEnd:'结束',
-      keyWakeSettingsTitle:'按键唤醒设置',voiceAdvancedSummary:'展开详情',
+      keyWakeSettingsTitle:'按键唤醒设置',voiceAdvancedSummary:'兼容说明',
       chipKeyWake:'按键',chipVoiceWake:'语音唤醒',chipVoiceEnd:'结束词',chipDictating:'听写中',
       chipVoiceSend:'语音发送',chipTimedSend:'定时发送',
       quickTipsTitle:'怎么设置最省心',
@@ -2105,11 +2458,11 @@
       micAutoDetect:'Auto-detect (system default)',micAutoDetectSub:'Use the system default microphone',micExternal:'External microphone',
       micWindowsOnly:'Microphone switching and monitoring are Windows-only',micEmpty:'No microphones detected',
       micSwitchFail:'Failed to switch microphone',
-      voiceSapiTitle:'Voice wake',
-      voiceSapiDesc:'Say one of the selected phrases into the mic to press your voice shortcut once. “Test shortcut” skips the mic.',
-      voiceSapiLabel:'Enable voice wake',
+      voiceSapiTitle:'Light mode details',
+      voiceSapiDesc:'Say one of the selected phrases into the mic to press your voice shortcut once. Testing and live records are now grouped at the bottom of Status & Debug.',
+      voiceSapiLabel:'Enable Light mode',
       voiceSapiTest:'Test shortcut (no mic)',
-      voiceSapiFail:'Could not start speech recognition. Check that a Chinese speech pack is installed.',
+      voiceSapiFail:'Could not start Light mode. Check that the Windows speech component is available.',
       voiceSapiWakeWord:'Wake phrase',
       voiceSapiHeard:'Last heard',
       voiceSapiSkip:'Not triggered',
@@ -2118,11 +2471,46 @@
       voiceSapiNone:'—',
       voiceSapiSensitivity:'Sensitivity (lower = easier to trigger)',
       voiceSapiPresetUpdated:'Wake phrases updated',
-      voiceVoskTitle:'Vosk offline voice',
-      voiceVoskDesc:'Only one of SAPI or Vosk can run. Choose Chinese or English voice; model and wake phrases update when you switch.',
-      voiceVoskLabel:'Enable Vosk offline voice',
+      voiceModeTitle:'Voice mode',
+      voiceModeDesc:'Light mode is better for low-load standby. Advanced mode supports offline recognition and end phrases. Pick a mode first, then fine-tune below.',
+      voiceModeLiteTitle:'Light mode',
+      voiceModeLiteEngine:'System quick recognition',
+      voiceModeLiteBadge:'Low load',
+      voiceModeLiteDesc:'Uses fewer resources and is better for always-on standby.',
+      voiceModeLiteMetric:'Reading live usage…',
+      voiceModeLitePoint1:'Lower resource use',
+      voiceModeLitePoint2:'Starts faster',
+      voiceModeLitePoint3:'No end phrases',
+      voiceModeProTitle:'Advanced mode',
+      voiceModeProEngine:'Offline full recognition',
+      voiceModeProBadge:'Full pipeline',
+      voiceModeProDesc:'Supports offline wake, end phrases, and a fuller speech workflow.',
+      voiceModeProMetric:'Reading live usage…',
+      voiceModeProPoint1:'Supports end phrases',
+      voiceModeProPoint2:'Works offline',
+      voiceModeProPoint3:'Higher resource use',
+      voiceModeCurrentOff:'Voice mode is currently off',
+      voiceModeCurrentLite:'Current: Light mode',
+      voiceModeCurrentPro:'Current: Advanced mode',
+      voiceModeHintOff:'Light mode is better for standby; Advanced mode is better for the full voice workflow and end phrases.',
+      voiceModeHintLite:'Light mode is better for standby and faster startup, but Voice End & Send is unavailable.',
+      voiceModeHintPro:'Advanced mode supports offline recognition, end phrases, and the fuller speech workflow.',
+      voiceModeHintProWithEnd:'Advanced mode can now work together with Voice End & Send.',
+      voiceModeMetricLoading:'Reading live usage…',
+      voiceModeMetricSwitch:'Switch to this mode to see live usage',
+      voiceModeMetricInactive:'Mode is off. Enable it to see live usage',
+      voiceModeMetricLive:'Live usage: {memory} RAM · CPU {cpu}',
+      voiceModeMetricLast:'Last seen: {memory} RAM · CPU {cpu}',
+      voiceModeLiveLoading:'Reading current app usage…',
+      voiceModeLiveSummary:'Current app usage: {memory} RAM · CPU {cpu}',
+      voiceModeLiveUnsupported:'Live usage is not available in this environment',
+      voiceModeSwitchedLite:'Switched to Light mode',
+      voiceModeSwitchedPro:'Switched to Advanced mode',
+      voiceVoskTitle:'Advanced mode details',
+      voiceVoskDesc:'Only one of the two modes can run at once. Choose Chinese or English; recognition resources and wake phrases update when you switch, and testing lives in the bottom diagnostics area.',
+      voiceVoskLabel:'Enable Advanced mode',
       voiceVoskTest:'Test shortcut (no mic)',
-      voiceVoskFail:'Could not start Vosk. Check libvosk.dll and model folder.',
+      voiceVoskFail:'Could not start Advanced mode. Check that offline speech resources are complete.',
       voiceVoskWakeWord:'Phrases',
       voiceVoskPartial:'Partial',
       voiceVoskFinal:'Final',
@@ -2131,19 +2519,19 @@
       voiceVoskWaiting:'Waiting…',
       voiceVoskOff:'Off',
       voiceVoskNone:'—',
-      voiceVoskModel:'Model path',
-      voiceVoskDll:'DLL',
-      voiceVoskGrammar:'Mode',
-      voiceVoskLoad:'Load time',
+      voiceVoskModel:'Resource path',
+      voiceVoskDll:'Component status',
+      voiceVoskGrammar:'Recognition style',
+      voiceVoskLoad:'Ready time',
       voiceVoskModelLabel:'Voice language',
       voiceVoskPresetsCnLabel:'Chinese phrases',
       voiceVoskPresetsEnLabel:'English phrases',
       voiceVoskPresetUpdated:'Wake phrases updated',
-      voiceVoskModelUpdated:'Model preset updated',
+      voiceVoskModelUpdated:'Recognition language updated',
       voiceEndTitle:'Voice end & send',
-      voiceEndDesc:'Say an end phrase while dictating to stop recording via the voice shortcut. End phrases require Vosk.',
+      voiceEndDesc:'Say an end phrase while dictating to stop recording via the voice shortcut. Testing and live records are now grouped at the bottom of Status & Debug.',
       voiceEndLabel:'Enable voice end',
-      voiceEndVoskWarn:'Enable Vosk to use voice end phrases',
+      voiceEndVoskWarn:'Enable Advanced mode to use voice end phrases',
       voiceEndCompatWarn:'External IME may exclusive-lock the mic; end phrases may not work (compat mode).',
       voiceEndPhrases:'End phrases',
       voiceEndLastPhrase:'Last end phrase',
@@ -2156,7 +2544,7 @@
       voiceEndPresetsZhLabel:'Chinese end phrases',
       voiceEndPresetsEnLabel:'English end phrases',
       voiceEndAutoSendLabel:'Auto send (Enter)',
-      voiceEndAutoSendWarn:'Pick one: voice-end auto send OR mapping auto-enter — disable mapping autoEnterEnabled',
+      voiceEndAutoSendWarn:'Choose one: voice-end auto send or the profile auto-send wait. We recommend turning off the profile auto-send wait.',
       voiceEndTestStop:'Test stop recording',
       voiceEndTestCommit:'Test send key',
       voiceEndPresetUpdated:'End phrases updated',
@@ -2167,6 +2555,33 @@
       voiceEndStateCommitting:'Waiting for text on screen',
       voiceEndStateSent:'Sent',
       voiceEndStateError:'Error',
+      voiceDiagnosticsTitle:'Voice tests & logs',
+      voiceDiagnosticsDesc:'Configuration stays above. This area keeps recent status, test actions, and live records together for easier observation and debugging.',
+      voiceDiagSapiTitle:'Light mode wake logs',
+      voiceDiagSapiDesc:'Recent status and test records for quick wake',
+      voiceDiagVoskTitle:'Advanced mode wake logs',
+      voiceDiagVoskDesc:'Full recognition flow, matches, and test records',
+      voiceDiagEndTitle:'Voice end & send',
+      voiceDiagEndDesc:'End phrases, stop actions, and send tests',
+      voiceDiagUsageTitle:'Resource usage log',
+      voiceDiagUsageDesc:'Each poll records current-process RAM and CPU so we can tell sampling failures from UI refresh issues.',
+      voiceDiagLogEmpty:'Waiting for voice status…',
+      voiceDiagUsageEmpty:'Waiting for usage samples…',
+      voiceDiagLogState:'State',
+      voiceDiagLogHeard:'Heard',
+      voiceDiagLogFinal:'Final',
+      voiceDiagLogHit:'Matched',
+      voiceDiagLogSkip:'Skipped',
+      voiceDiagLogError:'Error',
+      voiceDiagLogPhrase:'End phrase',
+      voiceDiagLogAction:'Action',
+      voiceDiagLogModel:'Model',
+      voiceDiagLogTest:'Test',
+      voiceDiagLogUsage:'Usage',
+      voiceDiagLogUsageMode:'Mode',
+      voiceDiagLogUsageStatus:'Sampling',
+      voiceDiagUsageUnsupported:'Live usage is not supported in this environment',
+      voiceDiagUsageError:'Read failed',
       wakeCardTitle:'Wake',wakeKeyLabel:'Key wake',wakeVoiceLabel:'Voice wake',
       homeCapabilitiesTitle:'Capabilities',homeCapCompat:'Can use together',
       capKeyWakeName:'Key wake',capKeyWakeDesc:'Press launch key for voice input',
@@ -2181,7 +2596,7 @@
       homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',homeLiveEndDelay:'Send delay',homeLiveEndLast:'Last status',
       homeLiveRetrigger:'Re-record launch',homeLiveRetarget:'Re-record shortcut',homeLiveTestSend:'Test send',
       homeLiveToggleWakeOn:'Turn off',homeLiveToggleWakeOff:'Turn on',
-      homeLiveSwitchEngine:'Switch engine',homeLiveToggleEndOn:'Turn off',homeLiveToggleEndOff:'Turn on',
+      homeLiveSwitchEngine:'Switch mode',homeLiveToggleEndOn:'Turn off',homeLiveToggleEndOff:'Turn on',
       homeLiveTestEndSend:'Test send',homeLiveMoreSettings:'More settings',
       homeLiveUnset:'Not set',homeLiveLoading:'Loading…',homeLiveOff:'Off',
       homeLiveMicUnknown:'Not detected',homeLiveMicUnset:'Not selected',
@@ -2191,7 +2606,7 @@
       homeLiveSchemeDraft:'Incomplete profile',
       homeCapKeyUnset:'Not set',homeCapVoiceOff:'Off',
       homeAdvancedSummary:'Advanced tweaks',
-      homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Wake engine',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
+      homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Voice mode',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
       homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice wake is ready',
       homeStatusIdle:'Set up key or voice wake first',homeStatusNeedTarget:'Voice shortcut still needed',
       homeStatusPaused:'Listening paused',
@@ -2205,7 +2620,7 @@
       settingsNavBasic:'Basic',settingsNavKeyWake:'Key wake',settingsNavVoiceWake:'Voice wake',
       settingsNavVoiceEnd:'End & send',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
       settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Record keys & manage profiles',
-      settingsPanelVoiceWakeDesc:'Microphone & wake engines',settingsPanelVoiceEndDesc:'End phrases & auto-send',
+      settingsPanelVoiceWakeDesc:'Microphone & voice modes',settingsPanelVoiceEndDesc:'End phrases & auto-send',
       settingsPanelSoundsDesc:'Sounds for recording, wake and send',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
       settingsNavSounds:'Sounds',
       soundsMasterLabel:'Enable sounds',soundsMasterHelp:'Master mute; each scene can still be configured.',
@@ -2221,15 +2636,15 @@
       soundNameVoiceSignal:'Signal',soundNameVoiceGate:'Gate',
       soundNameVoiceSip:'Sip',soundNameSendConfirm:'Short confirm',
       soundNameErrorSubtle:'Subtle',
-      debugOverviewSession:'Session',debugOverviewWake:'Wake',
-      wakeEngineVosk:'Vosk',wakeEngineSapi:'SAPI',wakeEngineOff:'Off',
+      debugOverviewSession:'Session',debugOverviewWake:'Voice mode',
+      wakeEngineVosk:'Advanced mode',wakeEngineSapi:'Light mode',wakeEngineOff:'Off',
       endCardTitle:'End',endEnableLabel:'Voice end',endPhrasesLabel:'End phrases',
-      voiceEndEnabledShort:'On',voiceEndDisabledShort:'Off',voiceEndNeedVoskShort:'Needs Vosk',
+      voiceEndEnabledShort:'On',voiceEndDisabledShort:'Off',voiceEndNeedVoskShort:'Needs Advanced mode',
       homeStatusLoading:'Loading settings…',homeCapLoading:'Loading',
       endPhrasesEmpty:'—',endPhrasesMore:'+{n} more',
       sessionUnbound:'Session · unbound',sessionSelectedMapping:'Current mapping',
       btnMoreSettings:'More settings',voiceHubTitle:'Voice',voiceHubTabWake:'Wake',voiceHubTabEnd:'End',
-      keyWakeSettingsTitle:'Key wake settings',voiceAdvancedSummary:'Show details',
+      keyWakeSettingsTitle:'Key wake settings',voiceAdvancedSummary:'Compatibility notes',
       chipKeyWake:'Key',chipVoiceWake:'Voice wake',chipVoiceEnd:'End phrase',chipDictating:'Dictating',
       chipVoiceSend:'Voice send',chipTimedSend:'Timed send',
       quickTipsTitle:'Easiest setup',
@@ -3141,6 +3556,249 @@
     if(res.commitKey!=null) cfg.commitKey=String(res.commitKey||'').trim();
     if(res.dictationTimeoutMs!=null) cfg.dictationTimeoutMs=Number(res.dictationTimeoutMs)||60000;
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
+  }
+
+  let voiceModeSwitchPending=false;
+  let processUsagePollTimer=0;
+
+  function formatProcessMemory(memoryMb){
+    const value=Number(memoryMb);
+    if(!(value>=0)) return '0 MB';
+    if(value>=1024) return value.toFixed(1)+' GB';
+    return Math.round(value)+' MB';
+  }
+
+  function formatProcessCpu(cpuPercent){
+    const value=Number(cpuPercent);
+    if(!(value>=0)) return '0%';
+    if(value<10) return value.toFixed(1)+'%';
+    return Math.round(value)+'%';
+  }
+
+  function processUsageLine(){
+    return t('voiceModeMetricLive')
+      .replace('{memory}',formatProcessMemory(processUsageSnapshot.memoryMb))
+      .replace('{cpu}',formatProcessCpu(processUsageSnapshot.cpuPercent));
+  }
+
+  function processUsageUnavailableLine(){
+    if(processUsageSnapshot.errorMessage) return t('voiceDiagUsageError')+': '+processUsageSnapshot.errorMessage;
+    return t('voiceModeLiveUnsupported');
+  }
+
+  function formatProcessSampleTime(ts){
+    if(!ts) return '—';
+    const d=new Date(ts);
+    if(isNaN(d.getTime())) return '—';
+    return [d.getHours(),d.getMinutes(),d.getSeconds()].map(function(n){
+      return String(n).padStart(2,'0');
+    }).join(':');
+  }
+
+  function processUsageHistoryLine(mode){
+    const snap=processUsageHistory[mode];
+    if(!snap) return t('voiceModeMetricSwitch');
+    return t('voiceModeMetricLast')
+      .replace('{memory}',formatProcessMemory(snap.memoryMb))
+      .replace('{cpu}',formatProcessCpu(snap.cpuPercent));
+  }
+
+  function processUsageSummaryLine(){
+    if(!processUsageSnapshot.loaded) return t('voiceModeLiveLoading');
+    if(!processUsageSnapshot.supported&&!processUsageSnapshot.memoryBytes) return processUsageUnavailableLine();
+    return processUsageLine();
+  }
+
+  function processUsageModeLabel(mode){
+    if(mode==='sapi') return t('voiceModeCurrentLite');
+    if(mode==='vosk') return t('voiceModeCurrentPro');
+    return t('voiceModeCurrentOff');
+  }
+
+  function processUsageStatusLabel(){
+    if(!processUsageSnapshot.loaded) return t('voiceModeMetricLoading');
+    if(!processUsageSnapshot.supported&&!processUsageSnapshot.memoryBytes) return processUsageUnavailableLine();
+    return processUsageLine();
+  }
+
+  function renderVoiceUsageSummary(){
+    const summary=$('voiceUsageSummary');
+    if(!summary) return;
+    if(!processUsageSnapshot.loaded){
+      summary.textContent=t('voiceModeLiveLoading');
+      return;
+    }
+    const parts=[];
+    parts.push(t('voiceDiagLogUsageStatus')+'：'+(processUsageSnapshot.supported||processUsageSnapshot.memoryBytes>0?t('voiceDiagLogUsage') : processUsageUnavailableLine()));
+    parts.push('采样时间：'+formatProcessSampleTime(processUsageSnapshot.sampleAt));
+    summary.textContent=parts.join(' · ');
+  }
+
+  function renderVoiceModeUsage(){
+    const mode=currentVoiceMode();
+    const liteMetric=$('voiceModeLiteMetric');
+    const proMetric=$('voiceModeProMetric');
+    const liveReady=!!processUsageSnapshot.loaded&&(!!processUsageSnapshot.supported||processUsageSnapshot.memoryBytes>0);
+    const activeMetricText=liveReady
+      ? processUsageLine()
+      : (processUsageSnapshot.loaded ? processUsageUnavailableLine() : t('voiceModeMetricLoading'));
+    if(liteMetric){
+      if(mode==='sapi') liteMetric.textContent=activeMetricText;
+      else if(mode==='off') liteMetric.textContent=t('voiceModeMetricInactive');
+      else liteMetric.textContent=processUsageHistoryLine('sapi');
+    }
+    if(proMetric){
+      if(mode==='vosk') proMetric.textContent=activeMetricText;
+      else if(mode==='off') proMetric.textContent=t('voiceModeMetricInactive');
+      else proMetric.textContent=processUsageHistoryLine('vosk');
+    }
+    renderVoiceUsageSummary();
+  }
+
+  function refreshProcessUsage(){
+    return vpInvoke('cmd_process_usage',{}).then(function(res){
+      res=res||{};
+      processUsageSnapshot.supported=!!res.supported||Number(res.memoryBytes)>0;
+      processUsageSnapshot.memoryBytes=Number(res.memoryBytes)||0;
+      processUsageSnapshot.memoryMb=Number(res.memoryMb)||0;
+      processUsageSnapshot.cpuPercent=Number(res.cpuPercent)||0;
+      processUsageSnapshot.coreCount=Number(res.coreCount)||1;
+      processUsageSnapshot.sampleAt=Date.now();
+      processUsageSnapshot.loaded=true;
+      processUsageSnapshot.errorMessage='';
+      const mode=currentVoiceMode();
+      if(processUsageSnapshot.supported&&(mode==='sapi'||mode==='vosk')){
+        processUsageHistory[mode]={
+          memoryMb:processUsageSnapshot.memoryMb,
+          cpuPercent:processUsageSnapshot.cpuPercent,
+          at:Date.now()
+        };
+      }
+      updateVoiceDiagMetric('usage','mode',processUsageModeLabel(mode),t('voiceDiagLogUsageMode'));
+      updateVoiceDiagMetric('usage','sample',processUsageSummaryLine(),t('voiceDiagLogUsage'));
+      updateVoiceDiagMetric('usage','status',processUsageStatusLabel(),t('voiceDiagLogUsageStatus'));
+      renderVoiceModeUsage();
+      return res;
+    }).catch(function(err){
+      processUsageSnapshot.loaded=true;
+      processUsageSnapshot.supported=processUsageSnapshot.memoryBytes>0;
+      const message=(err&&err.message)?err.message:String(err||t('voiceDiagUsageError'));
+      processUsageSnapshot.errorMessage=message;
+      processUsageSnapshot.sampleAt=Date.now();
+      updateVoiceDiagMetric('usage','status',t('voiceDiagUsageError'),t('voiceDiagLogUsageStatus'));
+      forceVoiceDiagLog('usage',t('voiceDiagUsageError'),message);
+      renderVoiceModeUsage();
+      console.error('process_usage',err);
+      return null;
+    });
+  }
+
+  function startProcessUsagePoll(){
+    if(processUsagePollTimer) return;
+    refreshProcessUsage();
+    processUsagePollTimer=setInterval(refreshProcessUsage,2500);
+  }
+
+  function currentVoiceMode(){
+    const w=voiceUiSnapshot.wake||{};
+    if(w.engine==='vosk'||w.voskEnabled) return 'vosk';
+    if(w.engine==='sapi'||w.sapiEnabled) return 'sapi';
+    const cfg=state.config||{};
+    const vosk=cfg.voiceVosk||cfg.voice_vosk;
+    const sapi=cfg.voiceSapi||cfg.voice_sapi;
+    if(vosk&&vosk.enabled) return 'vosk';
+    if(sapi&&sapi.enabled) return 'sapi';
+    return 'off';
+  }
+
+  function setVoiceModeCardBusy(busy){
+    ['btnVoiceModeSapi','btnVoiceModeVosk'].forEach(function(id){
+      const btn=$(id);
+      if(btn) btn.disabled=!!busy;
+    });
+  }
+
+  function setVoiceWakeExpandedMode(mode){
+    if(mode!=='sapi'&&mode!=='vosk') return;
+    voiceWakeExpandedMode=mode;
+    const sapiBlock=$('voiceSapiBlock');
+    const voskBlock=$('voiceVoskBlock');
+    if(sapiBlock) sapiBlock.hidden=mode!=='sapi';
+    if(voskBlock) voskBlock.hidden=mode!=='vosk';
+  }
+
+  function renderVoiceModeSwitch(){
+    const mode=currentVoiceMode();
+    const endEnabled=voiceEndEnabledInConfig();
+    const sapiCard=$('btnVoiceModeSapi');
+    const voskCard=$('btnVoiceModeVosk');
+    const currentEl=$('voiceModeCurrent');
+    const hintEl=$('voiceModeHint');
+    const sapiBlock=$('voiceSapiBlock');
+    const voskBlock=$('voiceVoskBlock');
+    if(sapiCard){
+      sapiCard.classList.toggle('is-active',mode==='sapi');
+      sapiCard.setAttribute('aria-pressed',mode==='sapi'?'true':'false');
+    }
+    if(voskCard){
+      voskCard.classList.toggle('is-active',mode==='vosk');
+      voskCard.setAttribute('aria-pressed',mode==='vosk'?'true':'false');
+    }
+    if(sapiBlock) sapiBlock.classList.toggle('is-active-mode',mode==='sapi');
+    if(voskBlock) voskBlock.classList.toggle('is-active-mode',mode==='vosk');
+    if(mode==='sapi'||mode==='vosk') setVoiceWakeExpandedMode(mode);
+    else setVoiceWakeExpandedMode(voiceWakeExpandedMode||'sapi');
+    if(currentEl){
+      if(mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
+      else if(mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
+      else currentEl.textContent=t('voiceModeCurrentOff');
+    }
+    if(hintEl){
+      if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
+      else if(mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
+      else hintEl.textContent=t('voiceModeHintOff');
+    }
+    renderVoiceModeUsage();
+    setVoiceModeCardBusy(voiceModeSwitchPending);
+  }
+
+  function switchVoiceMode(mode){
+    if(voiceModeSwitchPending) return;
+    if(mode!=='sapi'&&mode!=='vosk') return;
+    setVoiceWakeExpandedMode(mode);
+    if(currentVoiceMode()===mode){
+      toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
+      return;
+    }
+    voiceModeSwitchPending=true;
+    renderVoiceModeSwitch();
+    const done=function(){
+      voiceModeSwitchPending=false;
+      renderVoiceModeSwitch();
+    };
+    if(mode==='sapi'){
+      vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
+        renderVoiceSapiStatus(res);
+        syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null);
+        toast(t('voiceModeSwitchedLite'));
+        scheduleVoiceToggleRefresh();
+      }).catch(function(err){
+        loadVoiceSapiStatus();
+        toast(t('voiceSapiFail'));
+        console.error('voice_mode_sapi',err);
+      }).finally(done);
+      return;
+    }
+    vpInvoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
+      renderVoiceVoskStatus(res);
+      syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null);
+      toast(t('voiceModeSwitchedPro'));
+      scheduleVoiceToggleRefresh();
+    }).catch(function(err){
+      loadVoiceVoskStatus();
+      toast(t('voiceVoskFail'));
+      console.error('voice_mode_vosk',err);
+    }).finally(done);
   }
 
   function endPhrasesSummary(snap){
@@ -4055,6 +4713,9 @@
     if(!res) return;
     syncVoiceSapiConfigFromStatus(res);
     syncVoiceSapiToggle(!!res.enabled);
+    const heard=res.lastHeard||'';
+    const skip=res.lastSkip||'';
+    const phrases=Array.isArray(res.phrases)?res.phrases:[];
     const stateEl=$('voiceSapiState');
     if(stateEl){
       const raw=res.state||'stopped';
@@ -4062,10 +4723,7 @@
       stateEl.textContent=lang==='zh'? (labels[raw]||raw) : raw;
     }
     const debugEl=$('voiceSapiDebug');
-    if(debugEl&&voiceAdvancedDetailsOpen()){
-      const heard=res.lastHeard||'';
-      const skip=res.lastSkip||'';
-      const phrases=Array.isArray(res.phrases)?res.phrases:[];
+    if(debugEl){
       const parts=[];
       parts.push(t('voiceSapiWakeWord')+'：'+(phrases.length?phrases.join(' / '):t('voiceSapiNone')));
       parts.push(t('voiceSapiHeard')+'：'+(heard || (res.enabled ? t('voiceSapiWaiting') : t('voiceSapiOff'))));
@@ -4093,6 +4751,11 @@
         errEl.textContent='';
       }
     }
+    updateVoiceDiagMetric('sapi','state',stateEl?stateEl.textContent:(res.state||'stopped'),t('voiceDiagLogState'));
+    updateVoiceDiagMetric('sapi','heard',heard,t('voiceDiagLogHeard'));
+    updateVoiceDiagMetric('sapi','skip',skip,t('voiceDiagLogSkip'));
+    updateVoiceDiagMetric('sapi','error',res.lastError||'',t('voiceDiagLogError'));
+    renderVoiceModeSwitch();
   }
 
   function loadVoiceSapiStatus(){
@@ -4132,10 +4795,15 @@
 
   function testVoiceSapiSend(){
     vpInvoke('cmd_voice_sapi_test_send',{}).then(function(res){
-      if(res&&res.ok) toast(t('testSent'));
-      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
-      else toast(t('testFailed'));
-    }).catch(function(){ toast(t('testFailed')); });
+      let msg=t('testFailed');
+      if(res&&res.ok) msg=t('testSent');
+      else if(res&&res.reason==='paused') msg=t('testCheckListenFail');
+      toast(msg);
+      forceVoiceDiagLog('sapi',t('voiceDiagLogTest'),msg);
+    }).catch(function(){
+      toast(t('testFailed'));
+      forceVoiceDiagLog('sapi',t('voiceDiagLogTest'),t('testFailed'));
+    });
   }
 
   function addVoiceSapiPreset(ev){
@@ -4191,13 +4859,31 @@
     return String(preset||'')==='en-light';
   }
 
+  function currentVoiceVoskPreset(){
+    const host=$('voiceVoskModelPreset');
+    if(!host) return 'cn-light';
+    const active=host.querySelector('[data-preset].is-active');
+    return active?(active.getAttribute('data-preset')||'cn-light'):'cn-light';
+  }
+
+  function syncVoiceVoskPresetButtons(preset, disabled){
+    const host=$('voiceVoskModelPreset');
+    if(!host) return;
+    host.querySelectorAll('[data-preset]').forEach(function(btn){
+      const active=(btn.getAttribute('data-preset')||'')===preset;
+      btn.classList.toggle('is-active',active);
+      btn.setAttribute('aria-selected',active?'true':'false');
+      btn.disabled=!!disabled;
+    });
+  }
+
   function activeVoiceVoskPresetRoots(){
-    const preset=($('voiceVoskModelPreset')||{}).value||'cn-light';
+    const preset=currentVoiceVoskPreset();
     return [isEnglishVoskPreset(preset)?'#voiceVoskPresetsEn':'#voiceVoskPresetsCn'];
   }
 
   function updateVoiceVoskPresetPanel(preset){
-    const p=preset||($('voiceVoskModelPreset')||{}).value||'cn-light';
+    const p=preset||currentVoiceVoskPreset();
     const cn=$('voiceVoskPresetsCn');
     const en=$('voiceVoskPresetsEn');
     const cnLabel=$('voiceVoskPresetsCnLabel');
@@ -4214,6 +4900,16 @@
     if(!res) return;
     syncVoiceVoskConfigFromStatus(res);
     syncVoiceVoskToggle(!!res.enabled);
+    const partial=res.lastPartial||'';
+    const finalText=res.lastFinal||'';
+    const skip=res.lastSkip||'';
+    const hit=res.lastDetectedPhrase||'';
+    const phrases=Array.isArray(res.phrases)?res.phrases:[];
+    const modelPath=res.resolvedModelPath||res.modelPath||'';
+    const dllOk=res.dllExists?'OK':'缺失';
+    const modelOk=res.modelExists?'OK':'缺失';
+    const grammar=res.grammarMode===true?'语法限制':(res.grammarMode===false?'自由识别':'—');
+    const loadMs=res.modelLoadTimeMs!=null? (res.modelLoadTimeMs+'ms') : '—';
     const stateEl=$('voiceVoskState');
     if(stateEl){
       const raw=res.state||'stopped';
@@ -4221,24 +4917,14 @@
       stateEl.textContent=lang==='zh'? (labels[raw]||raw) : raw;
     }
     const presetEl=$('voiceVoskModelPreset');
-    if(presetEl && document.activeElement!==presetEl){
+    if(presetEl){
       const preset=res.modelPreset||'cn-light';
       const uiPreset=(preset==='auto'||preset==='custom')?'cn-light':preset;
-      if(presetEl.value!==uiPreset) presetEl.value=uiPreset;
+      syncVoiceVoskPresetButtons(uiPreset,voiceVoskTogglePending);
       updateVoiceVoskPresetPanel(uiPreset);
     }
     const debugEl=$('voiceVoskDebug');
-    if(debugEl&&voiceAdvancedDetailsOpen()){
-      const partial=res.lastPartial||'';
-      const finalText=res.lastFinal||'';
-      const skip=res.lastSkip||'';
-      const hit=res.lastDetectedPhrase||'';
-      const phrases=Array.isArray(res.phrases)?res.phrases:[];
-      const modelPath=res.resolvedModelPath||res.modelPath||'';
-      const dllOk=res.dllExists?'OK':'缺失';
-      const modelOk=res.modelExists?'OK':'缺失';
-      const grammar=res.grammarMode===true?'语法限制':(res.grammarMode===false?'自由识别':'—');
-      const loadMs=res.modelLoadTimeMs!=null? (res.modelLoadTimeMs+'ms') : '—';
+    if(debugEl){
       const parts=[];
       parts.push(t('voiceVoskModel')+'：'+modelPath+' ('+modelOk+')');
       parts.push(t('voiceVoskDll')+'：'+dllOk);
@@ -4263,6 +4949,13 @@
         errEl.textContent='';
       }
     }
+    updateVoiceDiagMetric('vosk','state',stateEl?stateEl.textContent:(res.state||'stopped'),t('voiceDiagLogState'));
+    updateVoiceDiagMetric('vosk','model',modelPath?modelPath+' ('+modelOk+')':'',t('voiceDiagLogModel'));
+    updateVoiceDiagMetric('vosk','final',finalText,t('voiceDiagLogFinal'));
+    updateVoiceDiagMetric('vosk','hit',hit,t('voiceDiagLogHit'));
+    updateVoiceDiagMetric('vosk','skip',skip,t('voiceDiagLogSkip'));
+    updateVoiceDiagMetric('vosk','error',res.lastError||'',t('voiceDiagLogError'));
+    renderVoiceModeSwitch();
   }
 
   function loadVoiceVoskStatus(){
@@ -4309,10 +5002,15 @@
 
   function testVoiceVoskSend(){
     vpInvoke('cmd_voice_vosk_test_send',{}).then(function(res){
-      if(res&&res.ok) toast(t('testSent'));
-      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
-      else toast(t('testFailed'));
-    }).catch(function(){ toast(t('testFailed')); });
+      let msg=t('testFailed');
+      if(res&&res.ok) msg=t('testSent');
+      else if(res&&res.reason==='paused') msg=t('testCheckListenFail');
+      toast(msg);
+      forceVoiceDiagLog('vosk',t('voiceDiagLogTest'),msg);
+    }).catch(function(){
+      toast(t('testFailed'));
+      forceVoiceDiagLog('vosk',t('voiceDiagLogTest'),t('testFailed'));
+    });
   }
 
   function addVoiceVoskPreset(ev){
@@ -4352,12 +5050,10 @@
 
   function changeVoiceVoskModelPreset(){
     if(voiceVoskTogglePending) return;
-    const el=$('voiceVoskModelPreset');
-    if(!el) return;
-    const preset=el.value||'cn-light';
+    const preset=currentVoiceVoskPreset();
     updateVoiceVoskPresetPanel(preset);
     voiceVoskTogglePending=true;
-    el.disabled=true;
+    syncVoiceVoskPresetButtons(preset,true);
     vpInvoke('cmd_voice_vosk_set_model_preset',{preset:preset}).then(function(res){
       renderVoiceVoskStatus(res);
       syncHomeFromVoiceSettings(res,null);
@@ -4370,7 +5066,7 @@
       loadVoiceVoskStatus();
     }).finally(function(){
       voiceVoskTogglePending=false;
-      if(el) el.disabled=false;
+      syncVoiceVoskPresetButtons(currentVoiceVoskPreset(),false);
     });
   }
 
@@ -4391,9 +5087,10 @@
     syncVoiceEndConfigFromStatus(res);
     syncVoiceEndToggle(!!res.enabled);
     syncVoiceEndAutoSendToggle(!!res.autoSendEnabled);
+    const stateLabel=res.statusLabel||voiceEndStateLabel(res.state||'idle');
     const stateEl=$('voiceEndState');
     if(stateEl){
-      stateEl.textContent=res.statusLabel||voiceEndStateLabel(res.state||'idle');
+      stateEl.textContent=stateLabel;
     }
     const voskWarn=$('voiceEndVoskWarn');
     if(voskWarn) voskWarn.hidden=!(res.enabled&&res.voskRequired);
@@ -4404,21 +5101,27 @@
     }
     const zh=Array.isArray(res.phrasesZh)?res.phrasesZh:[];
     const en=Array.isArray(res.phrasesEn)?res.phrasesEn:[];
+    const delayMs=res.commitDelayMs!=null?res.commitDelayMs:4000;
     const phrasesLine=$('voiceEndPhrasesLine');
     if(phrasesLine) phrasesLine.textContent=t('voiceEndPhrases')+'：'+(zh.concat(en).join(' / ')||'—');
+    const summaryEl=$('voiceEndDebugSummary');
+    if(summaryEl){
+      const summaryParts=[];
+      summaryParts.push(t('voiceDiagLogState')+'：'+stateLabel);
+      summaryParts.push(t('voiceEndAutoSend')+'：'+(res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff')));
+      summaryParts.push(t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs)));
+      summaryEl.textContent=summaryParts.join(' · ');
+    }
     const lastPhrase=$('voiceEndLastPhraseLine');
     if(lastPhrase){
-      if(voiceAdvancedDetailsOpen()) lastPhrase.textContent=t('voiceEndLastPhrase')+'：'+(res.lastEndPhrase||'—');
-      else lastPhrase.textContent='';
+      lastPhrase.textContent=t('voiceEndLastPhrase')+'：'+(res.lastEndPhrase||'—');
     }
     const lastAction=$('voiceEndLastActionLine');
     if(lastAction){
-      if(voiceAdvancedDetailsOpen()) lastAction.textContent=t('voiceEndLastAction')+'：'+(res.lastAction||'—');
-      else lastAction.textContent='';
+      lastAction.textContent=t('voiceEndLastAction')+'：'+(res.lastAction||'—');
     }
     const autoLine=$('voiceEndAutoSendLine');
     if(autoLine) autoLine.textContent=t('voiceEndAutoSend')+'：'+(res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'));
-    const delayMs=res.commitDelayMs!=null?res.commitDelayMs:4000;
     const delayLine=$('voiceEndDelayLine');
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
     const range=$('voiceEndDelayRange');
@@ -4427,6 +5130,11 @@
       range.style.setProperty('--range-pct',((delayMs-1000)/9000*100)+'%');
     }
     syncVoiceEndPresets(zh,en);
+    updateVoiceDiagMetric('end','state',stateLabel,t('voiceDiagLogState'));
+    updateVoiceDiagMetric('end','phrase',res.lastEndPhrase||'',t('voiceDiagLogPhrase'));
+    updateVoiceDiagMetric('end','action',res.lastAction||'',t('voiceDiagLogAction'));
+    updateVoiceDiagMetric('end','auto',res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'),t('voiceEndAutoSend'));
+    renderVoiceModeSwitch();
   }
 
   function loadVoiceEndStatus(){
@@ -4559,18 +5267,28 @@
 
   function testVoiceEndStop(){
     vpInvoke('cmd_voice_end_test_stop',{}).then(function(res){
-      if(res&&res.ok) toast(t('testSent')+(res.targetKey||''));
-      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
-      else toast(t('testFailed'));
-    }).catch(function(){ toast(t('testFailed')); });
+      let msg=t('testFailed');
+      if(res&&res.ok) msg=t('testSent')+(res.targetKey||'');
+      else if(res&&res.reason==='paused') msg=t('testCheckListenFail');
+      toast(msg);
+      forceVoiceDiagLog('end',t('voiceDiagLogTest'),msg);
+    }).catch(function(){
+      toast(t('testFailed'));
+      forceVoiceDiagLog('end',t('voiceDiagLogTest'),t('testFailed'));
+    });
   }
 
   function testVoiceEndCommit(){
     vpInvoke('cmd_voice_end_test_commit',{}).then(function(res){
-      if(res&&res.ok) toast(t('testSent')+(res.commitKey||''));
-      else if(res&&res.reason==='paused') toast(t('testCheckListenFail'));
-      else toast(t('testFailed'));
-    }).catch(function(){ toast(t('testFailed')); });
+      let msg=t('testFailed');
+      if(res&&res.ok) msg=t('testSent')+(res.commitKey||'');
+      else if(res&&res.reason==='paused') msg=t('testCheckListenFail');
+      toast(msg);
+      forceVoiceDiagLog('end',t('voiceDiagLogTest'),msg);
+    }).catch(function(){
+      toast(t('testFailed'));
+      forceVoiceDiagLog('end',t('voiceDiagLogTest'),t('testFailed'));
+    });
   }
 
   function applyLang(skipRender){
@@ -4667,6 +5385,21 @@
     const keyWakeSettingsTitle=$('keyWakeSettingsTitle'); if(keyWakeSettingsTitle) keyWakeSettingsTitle.textContent=d.keyWakeSettingsTitle;
     const settingsNavSounds=$('settingsNavSounds'); if(settingsNavSounds) settingsNavSounds.textContent=d.settingsNavSounds;
     const voiceAdvancedSummary=$('voiceAdvancedSummary'); if(voiceAdvancedSummary) voiceAdvancedSummary.textContent=d.voiceAdvancedSummary;
+    const voiceDiagnosticsTitle=$('voiceDiagnosticsTitle'); if(voiceDiagnosticsTitle) voiceDiagnosticsTitle.textContent=d.voiceDiagnosticsTitle;
+    const voiceDiagnosticsDesc=$('voiceDiagnosticsDesc'); if(voiceDiagnosticsDesc) voiceDiagnosticsDesc.textContent=d.voiceDiagnosticsDesc;
+    const voiceDiagSapiTitle=$('voiceDiagSapiTitle'); if(voiceDiagSapiTitle) voiceDiagSapiTitle.textContent=d.voiceDiagSapiTitle;
+    const voiceDiagSapiDesc=$('voiceDiagSapiDesc'); if(voiceDiagSapiDesc) voiceDiagSapiDesc.textContent=d.voiceDiagSapiDesc;
+    const voiceDiagVoskTitle=$('voiceDiagVoskTitle'); if(voiceDiagVoskTitle) voiceDiagVoskTitle.textContent=d.voiceDiagVoskTitle;
+    const voiceDiagVoskDesc=$('voiceDiagVoskDesc'); if(voiceDiagVoskDesc) voiceDiagVoskDesc.textContent=d.voiceDiagVoskDesc;
+    const voiceDiagEndTitle=$('voiceDiagEndTitle'); if(voiceDiagEndTitle) voiceDiagEndTitle.textContent=d.voiceDiagEndTitle;
+    const voiceDiagEndDesc=$('voiceDiagEndDesc'); if(voiceDiagEndDesc) voiceDiagEndDesc.textContent=d.voiceDiagEndDesc;
+    const voiceDiagUsageTitle=$('voiceDiagUsageTitle'); if(voiceDiagUsageTitle) voiceDiagUsageTitle.textContent=d.voiceDiagUsageTitle;
+    const voiceDiagUsageDesc=$('voiceDiagUsageDesc'); if(voiceDiagUsageDesc) voiceDiagUsageDesc.textContent=d.voiceDiagUsageDesc;
+    const voiceUsageSummary=$('voiceUsageSummary'); if(voiceUsageSummary) voiceUsageSummary.textContent=processUsageSummaryLine();
+    renderVoiceDiagLog('sapi');
+    renderVoiceDiagLog('vosk');
+    renderVoiceDiagLog('end');
+    renderVoiceDiagLog('usage');
     $('triggerTitle').textContent=d.triggerTitle;
     $('targetTitle').textContent=d.targetTitle;
     const trig=selectedDisplayTriggerKey();
@@ -4690,6 +5423,24 @@
     const autostartLabel=$('autostartLabel'); if(autostartLabel) autostartLabel.textContent=d.autostartLabel;
     const micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
     const micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;
+    const voiceModeTitle=$('voiceModeTitle'); if(voiceModeTitle) voiceModeTitle.textContent=d.voiceModeTitle;
+    const voiceModeDesc=$('voiceModeDesc'); if(voiceModeDesc) voiceModeDesc.textContent=d.voiceModeDesc;
+    const voiceModeLiteTitle=$('voiceModeLiteTitle'); if(voiceModeLiteTitle) voiceModeLiteTitle.textContent=d.voiceModeLiteTitle;
+    const voiceModeLiteEngine=$('voiceModeLiteEngine'); if(voiceModeLiteEngine) voiceModeLiteEngine.textContent=d.voiceModeLiteEngine;
+    const voiceModeLiteBadge=$('voiceModeLiteBadge'); if(voiceModeLiteBadge) voiceModeLiteBadge.textContent=d.voiceModeLiteBadge;
+    const voiceModeLiteDesc=$('voiceModeLiteDesc'); if(voiceModeLiteDesc) voiceModeLiteDesc.textContent=d.voiceModeLiteDesc;
+    const voiceModeLiteMetric=$('voiceModeLiteMetric'); if(voiceModeLiteMetric) voiceModeLiteMetric.textContent=d.voiceModeLiteMetric;
+    const voiceModeLitePoint1=$('voiceModeLitePoint1'); if(voiceModeLitePoint1) voiceModeLitePoint1.textContent=d.voiceModeLitePoint1;
+    const voiceModeLitePoint2=$('voiceModeLitePoint2'); if(voiceModeLitePoint2) voiceModeLitePoint2.textContent=d.voiceModeLitePoint2;
+    const voiceModeLitePoint3=$('voiceModeLitePoint3'); if(voiceModeLitePoint3) voiceModeLitePoint3.textContent=d.voiceModeLitePoint3;
+    const voiceModeProTitle=$('voiceModeProTitle'); if(voiceModeProTitle) voiceModeProTitle.textContent=d.voiceModeProTitle;
+    const voiceModeProEngine=$('voiceModeProEngine'); if(voiceModeProEngine) voiceModeProEngine.textContent=d.voiceModeProEngine;
+    const voiceModeProBadge=$('voiceModeProBadge'); if(voiceModeProBadge) voiceModeProBadge.textContent=d.voiceModeProBadge;
+    const voiceModeProDesc=$('voiceModeProDesc'); if(voiceModeProDesc) voiceModeProDesc.textContent=d.voiceModeProDesc;
+    const voiceModeProMetric=$('voiceModeProMetric'); if(voiceModeProMetric) voiceModeProMetric.textContent=d.voiceModeProMetric;
+    const voiceModeProPoint1=$('voiceModeProPoint1'); if(voiceModeProPoint1) voiceModeProPoint1.textContent=d.voiceModeProPoint1;
+    const voiceModeProPoint2=$('voiceModeProPoint2'); if(voiceModeProPoint2) voiceModeProPoint2.textContent=d.voiceModeProPoint2;
+    const voiceModeProPoint3=$('voiceModeProPoint3'); if(voiceModeProPoint3) voiceModeProPoint3.textContent=d.voiceModeProPoint3;
     const voiceSapiTitle=$('voiceSapiTitle'); if(voiceSapiTitle) voiceSapiTitle.textContent=d.voiceSapiTitle;
     const voiceSapiDesc=$('voiceSapiDesc'); if(voiceSapiDesc) voiceSapiDesc.textContent=d.voiceSapiDesc;
     const voiceSapiLabel=$('voiceSapiLabel'); if(voiceSapiLabel) voiceSapiLabel.textContent=d.voiceSapiLabel;
@@ -4712,6 +5463,7 @@
     const voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
     const btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
     const btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;
+    renderVoiceModeSwitch();
     $('logTitle').textContent=d.logTitle;
     $('runtimeTitle').textContent=d.runtimeTitle;
     $('actionLabel').textContent=d.actionLabel;
@@ -6197,6 +6949,7 @@
     renderRecordCancelBar();
     if(ui.drawerOpen&&ui.settingsPanel==='sounds') renderSoundSettingsPanel();
     if(ui.drawerOpen&&ui.settingsPanel==='debug') renderDebugPanel();
+    renderVoiceModeSwitch();
     renderHome();
     renderListenRuntime();
   }
@@ -6381,12 +7134,19 @@
     };
   });
   $('btnVoiceSapi').onclick=toggleVoiceSapi;
+  $('btnVoiceModeSapi').onclick=function(){ switchVoiceMode('sapi'); };
   $('btnVoiceSapiTest').onclick=testVoiceSapiSend;
   $('voiceSapiPresets').onclick=addVoiceSapiPreset;
   $('btnVoiceVosk').onclick=toggleVoiceVosk;
+  $('btnVoiceModeVosk').onclick=function(){ switchVoiceMode('vosk'); };
   $('btnVoiceVoskTest').onclick=testVoiceVoskSend;
   $('voiceVoskPresetsWrap').onclick=addVoiceVoskPreset;
-  $('voiceVoskModelPreset').onchange=changeVoiceVoskModelPreset;
+  $('voiceVoskModelPreset').onclick=function(ev){
+    const btn=ev.target.closest&&ev.target.closest('[data-preset]');
+    if(!btn||btn.disabled) return;
+    syncVoiceVoskPresetButtons(btn.getAttribute('data-preset')||'cn-light',false);
+    changeVoiceVoskModelPreset();
+  };
   $('btnVoiceEnd').onclick=toggleVoiceEnd;
   $('btnVoiceEndAutoSend').onclick=toggleVoiceEndAutoSend;
   $('voiceEndPresetsWrap').onclick=addVoiceEndPreset;
@@ -6976,6 +7736,7 @@
   });
   setRecording('none');
   pushLog(t('waitLog'));
+  setTimeout(startProcessUsagePoll, 600);
   setTimeout(function(){ requestBackendConfig(8); }, 200);
   setTimeout(function(){ fallbackConfigLoaded(); }, 3500);
 </script>

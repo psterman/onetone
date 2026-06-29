@@ -2,7 +2,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $tauri = Join-Path $root 'src-tauri'
-$releaseExe = Join-Path $tauri 'target\release\onetone.exe'
+$buildRoot = Join-Path $tauri 'target-release-live'
+$releaseExe = Join-Path $buildRoot 'release\onetone.exe'
 $logDir = Join-Path $root 'logs'
 $logFile = Join-Path $logDir 'launch.log'
 $voskDir = Join-Path $tauri 'resources\vosk'
@@ -44,11 +45,6 @@ foreach ($name in @('onetone', 'voice-pilot')) {
   }
 }
 
-$cargoTauri = Join-Path $env:USERPROFILE '.cargo\bin\cargo-tauri.exe'
-if (-not (Test-Path $cargoTauri)) {
-  throw "找不到 cargo-tauri.exe: $cargoTauri"
-}
-
 $iconIco = Join-Path $tauri 'icons\icon.ico'
 $iconPng = Join-Path $tauri 'icons\icon.png'
 $iconScript = Join-Path $root 'scripts\generate_onetone_icon.py'
@@ -62,7 +58,7 @@ if ((-not (Test-Path $iconIco)) -or (-not (Test-Path $iconPng))) {
 
 Push-Location $tauri
 try {
-  & $cargoTauri build --no-bundle
+  & cargo tauri build --no-bundle -- --target-dir $buildRoot
 }
 finally {
   Pop-Location
@@ -77,4 +73,4 @@ Write-LaunchLog 'build ok'
 Copy-VoskRuntimeDlls -DestDir (Split-Path -Parent $releaseExe)
 
 Start-Process -FilePath $releaseExe -WorkingDirectory (Split-Path -Parent $releaseExe)
-Write-LaunchLog 'launched onetone.exe'
+Write-LaunchLog "launched onetone.exe from $releaseExe"

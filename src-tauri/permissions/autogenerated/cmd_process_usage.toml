@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-process-usage"
+description = "Enables the cmd_process_usage command without any pre-configured scope."
+commands.allow = ["cmd_process_usage"]
+
+[[permission]]
+identifier = "deny-cmd-process-usage"
+description = "Denies the cmd_process_usage command without any pre-configured scope."
+commands.deny = ["cmd_process_usage"]

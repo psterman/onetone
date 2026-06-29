@@ -1,11 +1,13 @@
-use crate::key_chord::{is_left_alt_only, is_right_alt_only, parse_chord, MouseButton, SendToken, VkKey};
+use crate::key_chord::{
+    is_left_alt_only, is_right_alt_only, parse_chord, MouseButton, SendToken, VkKey,
+};
 use crate::send_guard;
 use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
     KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
     MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU,
-    XBUTTON1, XBUTTON2,
+    MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
+    XBUTTON2,
 };
 
 fn make_key_input(vk: u16, extended: bool, keyup: bool) -> INPUT {

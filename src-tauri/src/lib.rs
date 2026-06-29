@@ -1,18 +1,20 @@
+mod audio_win;
+mod backdrop;
 mod config;
-mod state;
+mod ipc;
 mod key_chord;
 mod keyboard;
-mod send_guard;
-mod ipc;
-mod backdrop;
-mod tray;
 mod policy_config;
-mod audio_win;
+mod press_gesture;
+mod resource_monitor;
+mod send_guard;
+mod state;
+mod tray;
+mod voice_end_runtime;
 mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
-mod voice_end_runtime;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -65,6 +67,9 @@ pub struct AppState {
     pub voice_session_commit_token: Mutex<u64>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
+    pub gesture: Mutex<press_gesture::GestureTracker>,
+    pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
+    pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
 }
 
 pub fn run() {
@@ -107,6 +112,9 @@ pub fn run() {
         voice_session_commit_token: Mutex::new(0),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
+        gesture: Mutex::new(press_gesture::GestureTracker::new()),
+        record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
+        process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
     });
 
     tauri::Builder::default()
@@ -213,6 +221,32 @@ pub fn run() {
                         continue;
                     }
 
+                    {
+                        let cfg = state2.cfg.lock();
+                        let mut gesture = state2.gesture.lock();
+                        gesture.expire_double_waits(std::time::Instant::now());
+                        let long_fires = gesture.poll_long_press(&cfg, std::time::Instant::now());
+                        drop(gesture);
+                        drop(cfg);
+                        for key in long_fires {
+                            ipc::handle_physical_key(&state2, &win2, &key);
+                        }
+                    }
+
+                    if *state2.recording.lock() {
+                        let mut detector = state2.record_gesture.lock();
+                        if let Some(done) = detector.poll(std::time::Instant::now()) {
+                            drop(detector);
+                            ipc::finish_trigger_gesture_capture(
+                                &state2,
+                                &win2,
+                                &done.key,
+                                done.device.as_deref(),
+                                done.gesture,
+                            );
+                        }
+                    }
+
                     let key_name = {
                         let mgr_opt = state2.hotkey_mgr.lock();
                         mgr_opt.as_ref().and_then(|mgr| mgr.try_recv())
@@ -224,7 +258,8 @@ pub fn run() {
 
                     let now = std::time::Instant::now();
                     if let (Some(ref prev), Some(at)) = (&last_key, last_at) {
-                        if prev == &key_name && now.duration_since(at) < Duration::from_millis(DEDUP_MS)
+                        if prev == &key_name
+                            && now.duration_since(at) < Duration::from_millis(DEDUP_MS)
                         {
                             continue;
                         }
@@ -253,7 +288,7 @@ pub fn run() {
                         continue;
                     }
 
-                    ipc::handle_physical_key(&state2, &win2, &key_name);
+                    ipc::dispatch_physical_event(&state2, &win2, &key_name);
                 }
             });
 
@@ -297,6 +332,7 @@ pub fn run() {
             ipc::cmd_voice_sapi_set_phrases,
             ipc::cmd_voice_sapi_set_min_confidence,
             ipc::cmd_voice_sapi_test_send,
+            ipc::cmd_process_usage,
             ipc::cmd_voice_vosk_status,
             ipc::cmd_voice_vosk_set_enabled,
             ipc::cmd_voice_vosk_set_phrases,

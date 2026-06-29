@@ -21,7 +21,7 @@ crossbeam-channel = "0.5"
 
 [target.'cfg(windows)'.dependencies]
 vosk = "0.3.1"
-winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi"] }
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi"] }
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",

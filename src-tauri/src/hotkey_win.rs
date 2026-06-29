@@ -10,28 +10,27 @@ macro_rules! w {
     }};
 }
 
-use crate::send_guard;
 use crate::config::{SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX};
 use crate::key_chord::{build_pressed_chord, chord_to_register_hotkey};
-use winapi::shared::minwindef::{UINT, WPARAM, LPARAM, LRESULT};
+use crate::press_gesture::format_device_key;
+use crate::send_guard;
+use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
+use winapi::shared::ntdef::HANDLE;
 use winapi::shared::windef::HWND;
 use winapi::um::winuser::{
-    self, RegisterHotKey, UnregisterHotKey, CreateWindowExW, DefWindowProcW,
-    TranslateMessage, DispatchMessageW,
-    MSG, WNDCLASSEXW, WM_HOTKEY, WM_DESTROY, CS_HREDRAW, CS_VREDRAW,
-    MOD_NOREPEAT, SetWindowsHookExW, UnhookWindowsHookEx, CallNextHookEx,
-    WH_KEYBOARD_LL, WH_MOUSE_LL, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT,
-    WM_KEYDOWN, WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP,
-    WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_XBUTTONDOWN,
-    RegisterRawInputDevices, RAWINPUTDEVICE, RIDEV_INPUTSINK, WM_INPUT,
-    GetRawInputData, RAWINPUT, RID_INPUT, WM_APPCOMMAND,
-    GET_APPCOMMAND_LPARAM, APPCOMMAND_VOLUME_UP,
-    APPCOMMAND_VOLUME_DOWN, APPCOMMAND_VOLUME_MUTE, APPCOMMAND_MEDIA_NEXTTRACK,
-    APPCOMMAND_MEDIA_PREVIOUSTRACK, APPCOMMAND_MEDIA_PLAY_PAUSE,
-    APPCOMMAND_MEDIA_STOP, APPCOMMAND_BROWSER_BACKWARD, APPCOMMAND_BROWSER_FORWARD,
-    APPCOMMAND_BROWSER_REFRESH, APPCOMMAND_LAUNCH_MAIL, APPCOMMAND_LAUNCH_APP1,
-    APPCOMMAND_LAUNCH_APP2, RIM_TYPEKEYBOARD, RIM_TYPEHID, RI_KEY_BREAK,
-    MapVirtualKeyW, MAPVK_VSC_TO_VK_EX, CallWindowProcW, GWLP_WNDPROC,
+    self, CallNextHookEx, CallWindowProcW, CreateWindowExW, DefWindowProcW, DispatchMessageW,
+    GetRawInputData, GetRawInputDeviceInfoW, MapVirtualKeyW, RegisterHotKey,
+    RegisterRawInputDevices, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
+    UnregisterHotKey, APPCOMMAND_BROWSER_BACKWARD, APPCOMMAND_BROWSER_FORWARD,
+    APPCOMMAND_BROWSER_REFRESH, APPCOMMAND_LAUNCH_APP1, APPCOMMAND_LAUNCH_APP2,
+    APPCOMMAND_LAUNCH_MAIL, APPCOMMAND_MEDIA_NEXTTRACK, APPCOMMAND_MEDIA_PLAY_PAUSE,
+    APPCOMMAND_MEDIA_PREVIOUSTRACK, APPCOMMAND_MEDIA_STOP, APPCOMMAND_VOLUME_DOWN,
+    APPCOMMAND_VOLUME_MUTE, APPCOMMAND_VOLUME_UP, CS_HREDRAW, CS_VREDRAW, GET_APPCOMMAND_LPARAM,
+    GWLP_WNDPROC, KBDLLHOOKSTRUCT, MAPVK_VSC_TO_VK_EX, MOD_NOREPEAT, MSG, MSLLHOOKSTRUCT, RAWINPUT,
+    RAWINPUTDEVICE, RIDEV_INPUTSINK, RIDI_DEVICENAME, RID_INPUT, RIM_TYPEHID, RIM_TYPEKEYBOARD,
+    RI_KEY_BREAK, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_APPCOMMAND, WM_DESTROY, WM_HOTKEY, WM_INPUT,
+    WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_RBUTTONDOWN, WM_SYSKEYDOWN,
+    WM_SYSKEYUP, WM_XBUTTONDOWN, WNDCLASSEXW,
 };
 
 struct WndCtx {
@@ -52,6 +51,11 @@ static ACTIVE_BINDINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
 static ACTIVE_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::new();
 static FORWARD_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
 static FORWARD_PREV_WNDPROC: OnceLock<Mutex<isize>> = OnceLock::new();
+static DEVICE_NAME_CACHE: OnceLock<Mutex<HashMap<isize, String>>> = OnceLock::new();
+
+fn device_cache() -> &'static Mutex<HashMap<isize, String>> {
+    DEVICE_NAME_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
 
 fn forward_hwnd() -> &'static Mutex<isize> {
     FORWARD_HWND.get_or_init(|| Mutex::new(0))
@@ -134,14 +138,27 @@ fn key_to_vk(name: &str) -> Option<UINT> {
         "Launch_Mail" => Some(0xB4),
         "Launch_App1" => Some(0xB6),
         "Launch_App2" => Some(0xB7),
-        "F13" => Some(0x7C), "F14" => Some(0x7D),
-        "F15" => Some(0x7E), "F16" => Some(0x7F),
-        "F17" => Some(0x80), "F18" => Some(0x81),
-        "F19" => Some(0x82), "F20" => Some(0x83),
+        "F13" => Some(0x7C),
+        "F14" => Some(0x7D),
+        "F15" => Some(0x7E),
+        "F16" => Some(0x7F),
+        "F17" => Some(0x80),
+        "F18" => Some(0x81),
+        "F19" => Some(0x82),
+        "F20" => Some(0x83),
         "CapsLock" => Some(0x14),
-        "F1" => Some(0x70), "F2" => Some(0x71), "F3" => Some(0x72), "F4" => Some(0x73),
-        "F5" => Some(0x74), "F6" => Some(0x75), "F7" => Some(0x76), "F8" => Some(0x77),
-        "F9" => Some(0x78), "F10" => Some(0x79), "F11" => Some(0x7A), "F12" => Some(0x7B),
+        "F1" => Some(0x70),
+        "F2" => Some(0x71),
+        "F3" => Some(0x72),
+        "F4" => Some(0x73),
+        "F5" => Some(0x74),
+        "F6" => Some(0x75),
+        "F7" => Some(0x76),
+        "F8" => Some(0x77),
+        "F9" => Some(0x78),
+        "F10" => Some(0x79),
+        "F11" => Some(0x7A),
+        "F12" => Some(0x7B),
         other if other.len() == 1 => {
             let b = other.as_bytes()[0];
             if b.is_ascii_alphanumeric() {
@@ -167,13 +184,31 @@ fn resolve_active_binding(name: &str) -> Option<String> {
 }
 
 const RECORD_KEYS: &[&str] = &[
-    "Volume_Up", "Volume_Down", "Volume_Mute",
-    "Media_Next", "Media_Prev", "Media_Play_Pause", "Media_Stop",
-    "Browser_Back", "Browser_Forward", "Browser_Refresh",
-    "Launch_App1", "Launch_App2", "Launch_Mail",
-    "RAlt", "RControl", "AppsKey",
+    "Volume_Up",
+    "Volume_Down",
+    "Volume_Mute",
+    "Media_Next",
+    "Media_Prev",
+    "Media_Play_Pause",
+    "Media_Stop",
+    "Browser_Back",
+    "Browser_Forward",
+    "Browser_Refresh",
+    "Launch_App1",
+    "Launch_App2",
+    "Launch_Mail",
+    "RAlt",
+    "RControl",
+    "AppsKey",
     "F1",
-    "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20",
+    "F13",
+    "F14",
+    "F15",
+    "F16",
+    "F17",
+    "F18",
+    "F19",
+    "F20",
 ];
 
 pub struct HotkeyManager {
@@ -225,27 +260,33 @@ impl Drop for HotkeyManager {
 }
 
 fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
-    let _class_name = unsafe { winapi::um::winuser::RegisterClassExW(&WNDCLASSEXW {
-        cbSize: std::mem::size_of::<WNDCLASSEXW>() as UINT,
-        style: CS_HREDRAW | CS_VREDRAW,
-        lpfnWndProc: Some(wnd_proc),
-        hInstance: std::ptr::null_mut(),
-        lpszClassName: w!("OneToneHotkey"),
-        cbClsExtra: 0,
-        cbWndExtra: 0,
-        hIcon: std::ptr::null_mut(),
-        hCursor: std::ptr::null_mut(),
-        hbrBackground: std::ptr::null_mut(),
-        lpszMenuName: std::ptr::null(),
-        hIconSm: std::ptr::null_mut(),
-    }) };
+    let _class_name = unsafe {
+        winapi::um::winuser::RegisterClassExW(&WNDCLASSEXW {
+            cbSize: std::mem::size_of::<WNDCLASSEXW>() as UINT,
+            style: CS_HREDRAW | CS_VREDRAW,
+            lpfnWndProc: Some(wnd_proc),
+            hInstance: std::ptr::null_mut(),
+            lpszClassName: w!("OneToneHotkey"),
+            cbClsExtra: 0,
+            cbWndExtra: 0,
+            hIcon: std::ptr::null_mut(),
+            hCursor: std::ptr::null_mut(),
+            hbrBackground: std::ptr::null_mut(),
+            lpszMenuName: std::ptr::null(),
+            hIconSm: std::ptr::null_mut(),
+        })
+    };
 
     let hwnd = unsafe {
         CreateWindowExW(
             0,
             w!("OneToneHotkey"),
             w!("VP"),
-            0, 0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
+            0,
             winuser::HWND_MESSAGE,
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -323,9 +364,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                 break;
             }
             if try_register_hotkey(hwnd, id as i32, combo) {
-                (*ctx)
-                    .scheme_select_ids
-                    .insert(id, mapping_id.clone());
+                (*ctx).scheme_select_ids.insert(id, mapping_id.clone());
                 id += 1;
             }
         }
@@ -365,56 +404,82 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
             match cmd {
                 Cmd::BindAll(bindings) => {
                     *active_bindings().lock().unwrap() = bindings.clone();
-                    unsafe { install_raw_input(hwnd); }
+                    unsafe {
+                        install_raw_input(hwnd);
+                    }
                     if bindings.is_empty() {
-                        unsafe { remove_keyboard_hook(); }
+                        unsafe {
+                            remove_keyboard_hook();
+                        }
                     } else {
-                        unsafe { install_keyboard_hook(); }
+                        unsafe {
+                            install_keyboard_hook();
+                        }
                     }
                     if !recording_mode {
-                        unsafe { register_list(ctx_ptr, hwnd, &bindings); }
-                    }
-                }
-                Cmd::BindSchemeSwitch(combo) => {
-                    unsafe {
-                        if let Some(ref key) = combo {
-                            if !key.trim().is_empty() {
-                                register_scheme_switch(ctx_ptr, hwnd, key.trim());
-                            } else {
-                                unregister_scheme_switch(ctx_ptr, hwnd);
-                            }
-                        } else {
-                            unregister_scheme_switch(ctx_ptr, hwnd);
+                        unsafe {
+                            register_list(ctx_ptr, hwnd, &bindings);
                         }
                     }
                 }
-                Cmd::BindSchemeSelect(bindings) => {
-                    unsafe { register_scheme_selects(ctx_ptr, hwnd, &bindings); }
-                }
+                Cmd::BindSchemeSwitch(combo) => unsafe {
+                    if let Some(ref key) = combo {
+                        if !key.trim().is_empty() {
+                            register_scheme_switch(ctx_ptr, hwnd, key.trim());
+                        } else {
+                            unregister_scheme_switch(ctx_ptr, hwnd);
+                        }
+                    } else {
+                        unregister_scheme_switch(ctx_ptr, hwnd);
+                    }
+                },
+                Cmd::BindSchemeSelect(bindings) => unsafe {
+                    register_scheme_selects(ctx_ptr, hwnd, &bindings);
+                },
                 Cmd::StartRecording => {
                     recording_mode = true;
                     *recording_sender().lock().unwrap() = Some(event_tx.clone());
-                    unsafe { install_raw_input(hwnd); }
-                    unsafe { install_keyboard_hook(); }
-                    unsafe { install_mouse_hook(); }
-                    unsafe { register_record_keys(ctx_ptr, hwnd); }
+                    unsafe {
+                        install_raw_input(hwnd);
+                    }
+                    unsafe {
+                        install_keyboard_hook();
+                    }
+                    unsafe {
+                        install_mouse_hook();
+                    }
+                    unsafe {
+                        register_record_keys(ctx_ptr, hwnd);
+                    }
                 }
                 Cmd::StopRecording => {
                     recording_mode = false;
                     *recording_sender().lock().unwrap() = None;
-                    unsafe { install_raw_input(hwnd); }
-                    unsafe { remove_mouse_hook(); }
+                    unsafe {
+                        install_raw_input(hwnd);
+                    }
+                    unsafe {
+                        remove_mouse_hook();
+                    }
                     let bindings = active_bindings().lock().unwrap().clone();
                     if bindings.is_empty() {
-                        unsafe { remove_keyboard_hook(); }
+                        unsafe {
+                            remove_keyboard_hook();
+                        }
                     } else {
-                        unsafe { install_keyboard_hook(); }
+                        unsafe {
+                            install_keyboard_hook();
+                        }
                     }
-                    unsafe { register_list(ctx_ptr, hwnd, &bindings); }
+                    unsafe {
+                        register_list(ctx_ptr, hwnd, &bindings);
+                    }
                 }
                 Cmd::AttachAppHwnd(app_hwnd) => {
                     if app_hwnd != 0 {
-                        unsafe { install_forward_wndproc(app_hwnd as HWND); }
+                        unsafe {
+                            install_forward_wndproc(app_hwnd as HWND);
+                        }
                     }
                 }
                 Cmd::Shutdown => {
@@ -433,9 +498,9 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
         }
 
         // 低级键盘钩子依赖本线程消息泵；不能只 Peek 单一 hwnd，否则钩子/WM_HOTKEY 会饿死。
-        let has_msg =
-            unsafe { winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE) }
-                != 0;
+        let has_msg = unsafe {
+            winuser::PeekMessageW(&mut msg, std::ptr::null_mut(), 0, 0, winuser::PM_REMOVE)
+        } != 0;
         if has_msg {
             if msg.message == winuser::WM_QUIT {
                 break;
@@ -493,18 +558,28 @@ unsafe fn remove_raw_input() {
     );
 }
 
-fn dispatch_media_key(name: &str) -> bool {
+fn dispatch_key_event(name: &str, is_keyup: bool, device: Option<&str>) -> bool {
+    let body = format_device_key(device.unwrap_or(""), name);
+    let payload = if is_keyup {
+        format!("keyup:{body}")
+    } else {
+        body
+    };
     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-        sender.send(name.to_string()).ok();
+        sender.send(payload).ok();
         return true;
     }
-    if let Some(dispatch) = resolve_active_binding(name) {
+    if resolve_active_binding(name).is_some() {
         if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-            sender.send(dispatch).ok();
+            sender.send(payload).ok();
         }
         return true;
     }
     false
+}
+
+fn dispatch_media_key(name: &str) -> bool {
+    dispatch_key_event(name, false, None)
 }
 
 fn dispatch_appcommand(cmd: i32) -> bool {
@@ -531,13 +606,7 @@ unsafe extern "system" fn forward_wnd_proc(
         }
     }
     let prev = *forward_prev_wndproc().lock().unwrap();
-    CallWindowProcW(
-        std::mem::transmute(prev),
-        hwnd,
-        msg,
-        wparam,
-        lparam,
-    )
+    CallWindowProcW(std::mem::transmute(prev), hwnd, msg, wparam, lparam)
 }
 
 unsafe fn install_forward_wndproc(hwnd: HWND) {
@@ -545,11 +614,8 @@ unsafe fn install_forward_wndproc(hwnd: HWND) {
     if *stored == hwnd as isize {
         return;
     }
-    let prev = winuser::SetWindowLongPtrW(
-        hwnd,
-        GWLP_WNDPROC,
-        forward_wnd_proc as *const () as isize,
-    );
+    let prev =
+        winuser::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, forward_wnd_proc as *const () as isize);
     *forward_prev_wndproc().lock().unwrap() = prev;
     *stored = hwnd as isize;
 }
@@ -638,10 +704,15 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }
             if let Some(dispatch) = resolve_active_binding(&name) {
-                if is_key_down {
-                    if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-                        sender.send(dispatch).ok();
-                    }
+                let payload = if is_key_down {
+                    dispatch.clone()
+                } else if is_key_up {
+                    format!("keyup:{dispatch}")
+                } else {
+                    return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+                };
+                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                    sender.send(payload).ok();
                 }
                 return 1;
             }
@@ -808,6 +879,49 @@ fn scan_consumer_bytes(data: &[u8]) -> Option<String> {
     None
 }
 
+unsafe fn raw_input_device_id(hdevice: isize) -> Option<String> {
+    if hdevice == 0 {
+        return None;
+    }
+    {
+        let cache = device_cache().lock().unwrap();
+        if let Some(name) = cache.get(&hdevice) {
+            return Some(name.clone());
+        }
+    }
+    // RIDI_DEVICENAME: pcbSize 单位是字符数（wchar），不是字节数。
+    let mut char_count: u32 = 0;
+    if GetRawInputDeviceInfoW(
+        hdevice as HANDLE,
+        RIDI_DEVICENAME,
+        std::ptr::null_mut(),
+        &mut char_count,
+    ) == u32::MAX
+    {
+        return None;
+    }
+    if char_count == 0 {
+        return None;
+    }
+    let mut buf = vec![0u16; char_count as usize];
+    let wrote = GetRawInputDeviceInfoW(
+        hdevice as HANDLE,
+        RIDI_DEVICENAME,
+        buf.as_mut_ptr() as *mut _,
+        &mut char_count,
+    );
+    if wrote == u32::MAX || wrote == 0 {
+        return None;
+    }
+    let end = buf.iter().position(|&c| c == 0).unwrap_or(wrote as usize);
+    let name = String::from_utf16_lossy(&buf[..end]);
+    if name.is_empty() {
+        return None;
+    }
+    device_cache().lock().unwrap().insert(hdevice, name.clone());
+    Some(name)
+}
+
 unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
     let mut size: u32 = 0;
     GetRawInputData(
@@ -832,25 +946,24 @@ unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
         return false;
     }
     let raw = &*(buf.as_ptr() as *const RAWINPUT);
-    if let Some(name) = raw_input_to_name(raw) {
-        return dispatch_media_key(&name);
+    let device = raw_input_device_id(raw.header.hDevice as isize);
+    if let Some((name, is_up)) = raw_input_to_event(raw) {
+        return dispatch_key_event(&name, is_up, device.as_deref());
     }
     false
 }
 
-fn raw_input_to_name(raw: &RAWINPUT) -> Option<String> {
+fn raw_input_to_event(raw: &RAWINPUT) -> Option<(String, bool)> {
     unsafe {
         if raw.header.dwType == RIM_TYPEKEYBOARD {
             let kb = raw.data.keyboard();
-            if kb.Flags & (RI_KEY_BREAK as u16) != 0 {
-                return None;
-            }
+            let is_up = kb.Flags & (RI_KEY_BREAK as u16) != 0;
             if let Some(name) = vk_to_name(kb.VKey as u32) {
-                return Some(name);
+                return Some((name, is_up));
             }
             if kb.VKey == 0 {
                 let vk = MapVirtualKeyW(kb.MakeCode as u32, MAPVK_VSC_TO_VK_EX);
-                return vk_to_name(vk as u32);
+                return vk_to_name(vk as u32).map(|n| (n, is_up));
             }
             return None;
         }
@@ -861,7 +974,7 @@ fn raw_input_to_name(raw: &RAWINPUT) -> Option<String> {
                 return None;
             }
             let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
-            return scan_consumer_bytes(data);
+            return scan_consumer_bytes(data).map(|n| (n, false));
         }
     }
     None
@@ -885,4 +998,3 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
         _ => None,
     }
 }
-

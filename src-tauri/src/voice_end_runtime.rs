@@ -142,7 +142,11 @@ fn phrase_matches_end(norm_text: &str, phrase: &str) -> bool {
     norm_text == norm_phrase || norm_text.contains(&norm_phrase)
 }
 
-pub fn matches_end_phrase(text: &str, phrases_zh: &[String], phrases_en: &[String]) -> Option<String> {
+pub fn matches_end_phrase(
+    text: &str,
+    phrases_zh: &[String],
+    phrases_en: &[String],
+) -> Option<String> {
     let norm = normalize_end_text(text);
     if norm.len() < 3 {
         return None;
@@ -159,11 +163,7 @@ pub fn matches_end_phrase(text: &str, phrases_zh: &[String], phrases_en: &[Strin
     best.map(|(phrase, _)| phrase)
 }
 
-pub fn try_match_end_phrase_on_final(
-    state: &Arc<AppState>,
-    window: &WebviewWindow,
-    text: &str,
-) {
+pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, window: &WebviewWindow, text: &str) {
     if !should_match_end_phrase(state) {
         return;
     }
@@ -267,7 +267,8 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
             if ok {
                 *state2.voice_session_state.lock() = "sent".into();
                 *state2.voice_session_last_action.lock() = "commitKey sent".into();
-                let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_success");
+                let sound_cue =
+                    crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_success");
                 crate::ipc::push_runtime_with_cue(
                     state2.as_ref(),
                     &window2,
@@ -458,6 +459,9 @@ mod tests {
         let en = vec!["send".into(), "send it".into()];
         let zh: Vec<String> = vec![];
         assert_eq!(matches_end_phrase("sending", &zh, &en), None);
-        assert_eq!(matches_end_phrase("send it", &zh, &en), Some("send it".into()));
+        assert_eq!(
+            matches_end_phrase("send it", &zh, &en),
+            Some("send it".into())
+        );
     }
 }

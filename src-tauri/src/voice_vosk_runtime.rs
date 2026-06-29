@@ -77,7 +77,11 @@ pub fn voice_vosk_start(
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
     *state.voice_vosk_probe.lock() = Some(probe);
 
-    match start_voice_vosk(cfg.clone(), resource_dir, vosk_grammar_phrases(&state.cfg.lock())) {
+    match start_voice_vosk(
+        cfg.clone(),
+        resource_dir,
+        vosk_grammar_phrases(&state.cfg.lock()),
+    ) {
         Ok(handle) => {
             if !vosk_epoch_matches(state, epoch) {
                 stop_voice_vosk(handle);

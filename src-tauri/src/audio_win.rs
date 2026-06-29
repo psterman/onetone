@@ -82,12 +82,12 @@ mod imp {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
     use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
-    use windows::core::{PCWSTR, HSTRING};
+    use windows::core::{HSTRING, PCWSTR};
+    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
         MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
     };
-    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
@@ -118,15 +118,11 @@ mod imp {
             let collection = enumerator
                 .EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)
                 .map_err(|e| format!("enum endpoints: {e}"))?;
-            let count = collection
-                .GetCount()
-                .map_err(|e| format!("count: {e}"))?;
+            let count = collection.GetCount().map_err(|e| format!("count: {e}"))?;
 
             let mut out = Vec::new();
             for i in 0..count {
-                let device = collection
-                    .Item(i)
-                    .map_err(|e| format!("item {i}: {e}"))?;
+                let device = collection.Item(i).map_err(|e| format!("item {i}: {e}"))?;
                 let id = device_id(&device)?;
                 let name = device_friendly_name(&device).unwrap_or_else(|_| id.clone());
                 out.push(MicDeviceInfo {
@@ -148,8 +144,7 @@ mod imp {
         unsafe {
             init_com_apartment()?;
             let id = HSTRING::from(device_id);
-            set_default_endpoint(&id, eConsole)
-                .map_err(|e| format!("set default console: {e}"))?;
+            set_default_endpoint(&id, eConsole).map_err(|e| format!("set default console: {e}"))?;
             if let Err(err) = set_default_endpoint(&id, eCommunications) {
                 eprintln!("set default communications (non-fatal): {err}");
             }
@@ -194,9 +189,14 @@ mod imp {
         let level_state = level_state.clone();
 
         let handle = thread::spawn(move || {
-            if let Err(err) =
-                run_cpal_monitor(app, window, device_name, device_id_out, stop_thread, level_state)
-            {
+            if let Err(err) = run_cpal_monitor(
+                app,
+                window,
+                device_name,
+                device_id_out,
+                stop_thread,
+                level_state,
+            ) {
                 eprintln!("mic monitor: {err}");
             }
         });
@@ -219,7 +219,9 @@ mod imp {
             let meter: IAudioMeterInformation = device
                 .Activate(CLSCTX_ALL, None)
                 .map_err(|e| format!("activate meter: {e}"))?;
-            let peak = meter.GetPeakValue().map_err(|e| format!("peak value: {e}"))?;
+            let peak = meter
+                .GetPeakValue()
+                .map_err(|e| format!("peak value: {e}"))?;
             Ok(MicLevelSnapshot {
                 level: peak_to_level(peak),
                 device_id: id,
@@ -382,8 +384,7 @@ mod imp {
         for i in 0..frames {
             let mut frame_peak = 0.0f32;
             for c in 0..step {
-                frame_peak =
-                    frame_peak.max((data[i * step + c] as f32 / i32::MAX as f32).abs());
+                frame_peak = frame_peak.max((data[i * step + c] as f32 / i32::MAX as f32).abs());
             }
             peak = peak.max(frame_peak);
         }
@@ -419,10 +420,17 @@ mod imp {
         find_cpal_input_by_name(host, device_name)
     }
 
-    fn find_cpal_input_by_name(host: &cpal::Host, device_name: &str) -> Result<cpal::Device, String> {
+    fn find_cpal_input_by_name(
+        host: &cpal::Host,
+        device_name: &str,
+    ) -> Result<cpal::Device, String> {
         host.input_devices()
             .map_err(|e| e.to_string())?
-            .find(|d| d.name().map(|n| names_match(&n, device_name)).unwrap_or(false))
+            .find(|d| {
+                d.name()
+                    .map(|n| names_match(&n, device_name))
+                    .unwrap_or(false)
+            })
             .ok_or_else(|| format!("cpal device not found: {device_name}"))
     }
 
@@ -493,7 +501,9 @@ mod imp {
 }
 
 #[cfg(windows)]
-pub use imp::{list_input_devices, read_mic_peak_level, set_default_input_device, start_mic_monitor};
+pub use imp::{
+    list_input_devices, read_mic_peak_level, set_default_input_device, start_mic_monitor,
+};
 
 pub fn stop_mic_monitor(slot: &Mutex<Option<MicMonitorHandle>>) {
     if let Some(handle) = slot.lock().take() {

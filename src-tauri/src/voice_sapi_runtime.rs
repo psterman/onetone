@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tauri::WebviewWindow;
 
 use crate::config::{save_config, VoiceSapiConfig};
-use crate::voice_sapi::{stop_voice_sapi, start_voice_sapi, VoiceSapiEvent};
+use crate::voice_sapi::{start_voice_sapi, stop_voice_sapi, VoiceSapiEvent};
 use crate::AppState;
 
 pub fn voice_sapi_start(state: &AppState, cfg: &VoiceSapiConfig) -> Result<(), String> {

@@ -4,13 +4,15 @@ use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 
 use crate::config::{
-    self, canonical_trigger, is_allowed_trigger, is_volume_hotkey, is_peripheral_trigger_key,
-    make_combo_trigger_source,
-    apply_peripheral_autotrigger, make_peripheral_mixed_source, now_source_time,
-    new_mapping_id, mapping_is_complete, ConflictReport,
-    MappingEntry, RawEvent, TriggerSource, VoiceConfig,
+    self, apply_peripheral_autotrigger_with_device, canonical_trigger, is_allowed_trigger,
+    is_peripheral_trigger_key, is_volume_hotkey, make_combo_trigger_source,
+    make_peripheral_mixed_source_with_device, mapping_is_complete, new_mapping_id, now_source_time,
+    ConflictReport, MappingEntry, RawEvent, TriggerSource, VoiceConfig,
 };
 use crate::key_chord::parse_chord;
+use crate::press_gesture::{
+    parse_physical_event, short_device_label, RecordGestureHint, RecordedGesture,
+};
 use crate::AppState;
 
 #[derive(Debug, Clone)]
@@ -54,7 +56,14 @@ fn build_source_from_raw_events(raw_events: Vec<RawEvent>) -> TriggerSource {
     }
 }
 
-fn apply_trigger_capture(cfg: &mut VoiceConfig, mapping_id: &str, captured: &str, physical_key: &str) {
+fn apply_trigger_capture(
+    cfg: &mut VoiceConfig,
+    mapping_id: &str,
+    captured: &str,
+    physical_key: &str,
+    device: &str,
+    gesture: RecordedGesture,
+) {
     if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) {
         let raw = if physical_key.trim().is_empty() {
             captured
@@ -62,8 +71,12 @@ fn apply_trigger_capture(cfg: &mut VoiceConfig, mapping_id: &str, captured: &str
             physical_key
         };
         m.source_time = now_source_time();
+        m.trigger_mode = gesture.to_trigger_mode();
+        if !device.trim().is_empty() {
+            m.trigger_device = device.trim().to_string();
+        }
         if is_peripheral_trigger_key(raw) || is_volume_hotkey(raw) {
-            apply_peripheral_autotrigger(m, raw);
+            apply_peripheral_autotrigger_with_device(m, raw, device);
         } else if captured.contains('+') || raw.contains('+') {
             let stored = if captured.contains('+') {
                 captured.to_string()
@@ -77,7 +90,13 @@ fn apply_trigger_capture(cfg: &mut VoiceConfig, mapping_id: &str, captured: &str
             let canon = canonical_trigger(captured);
             m.trigger_key = canon.clone();
             m.source_key = canonical_trigger(raw);
-            m.trigger_source = Some(make_peripheral_mixed_source(&[raw.to_string()]));
+            m.trigger_source = Some(make_peripheral_mixed_source_with_device(
+                &[raw.to_string()],
+                device,
+            ));
+        }
+        if let Some(src) = &mut m.trigger_source {
+            src.mode = gesture.source_mode_id().into();
         }
         m.label = format!("{} -> {}", m.trigger_key, m.target_key);
     }
@@ -85,10 +104,79 @@ fn apply_trigger_capture(cfg: &mut VoiceConfig, mapping_id: &str, captured: &str
     enable_mapping_if_complete(cfg, mapping_id);
 }
 
-fn emit_record_seen(window: &tauri::WebviewWindow, key: &str) {
+fn emit_record_gesture_hint(window: &tauri::WebviewWindow, hint: &RecordGestureHint) {
+    let (phase, key) = match hint {
+        RecordGestureHint::Holding { key } => ("holding", key.as_str()),
+        RecordGestureHint::WaitingDouble { key } => ("waiting_double", key.as_str()),
+    };
+    let payload = serde_json::json!({
+        "type": "mvp_record_gesture",
+        "phase": phase,
+        "key": key,
+    });
+    window.emit("to_js", &payload).ok();
+}
+
+fn gesture_mode_label(gesture: RecordedGesture) -> &'static str {
+    match gesture {
+        RecordedGesture::Tap => "tap",
+        RecordedGesture::LongPress => "longpress",
+        RecordedGesture::Double => "double",
+    }
+}
+
+fn handle_record_gesture_event(
+    state: &AppState,
+    window: &tauri::WebviewWindow,
+    key: &str,
+    device: Option<&str>,
+    is_keyup: bool,
+) -> bool {
+    let now = Instant::now();
+    let mut detector = state.record_gesture.lock();
+    let result = if is_keyup {
+        detector.on_keyup(key, device, now)
+    } else {
+        detector.on_keydown(key, device, now)
+    };
+    drop(detector);
+
+    match result {
+        Ok(Some(done)) => {
+            finish_trigger_gesture_capture(
+                state,
+                window,
+                &done.key,
+                done.device.as_deref(),
+                done.gesture,
+            );
+            true
+        }
+        Ok(None) => false,
+        Err(hint) => {
+            emit_record_gesture_hint(window, &hint);
+            true
+        }
+    }
+}
+
+pub fn finish_trigger_gesture_capture(
+    state: &AppState,
+    window: &tauri::WebviewWindow,
+    key: &str,
+    device: Option<&str>,
+    gesture: RecordedGesture,
+) {
+    state.record_gesture.lock().reset();
+    finish_hardware_capture(state, window, key, device, Some(gesture));
+}
+
+fn emit_record_seen(window: &tauri::WebviewWindow, key: &str, device: Option<&str>) {
     let payload = serde_json::json!({
         "type": "mvp_record_seen",
         "key": key,
+        "device": device.unwrap_or(""),
+        "deviceLabel": device.map(short_device_label).unwrap_or_default(),
     });
     window.emit("to_js", &payload).ok();
 }
@@ -258,6 +346,10 @@ fn is_mouse_button(key: &str) -> bool {
     )
 }
 
+fn uses_gesture_trigger_recording(state: &AppState, key: &str) -> bool {
+    state.record_hw_pending.lock().is_none() && !is_modifier_token(key)
+}
+
 pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindow, key_name: &str) {
     if !*state.recording.lock() {
         return;
@@ -266,15 +358,12 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     let Some(target) = target else {
         return;
     };
+    let event = parse_physical_event(key_name);
     let is_trigger = matches!(target.mode, RecordMode::Trigger);
     let is_target = matches!(target.mode, RecordMode::Target);
-    let is_keyup = key_name.starts_with("keyup:");
-    let raw = if is_keyup {
-        &key_name[6..]
-    } else {
-        key_name
-    };
-    let normalized = normalize_hardware_key(raw);
+    let is_keyup = event.is_keyup;
+    let normalized = normalize_hardware_key(&event.key);
+    let device = event.device.as_deref();
 
     if is_trigger && is_mouse_button(&normalized) {
         let ignore = state
@@ -288,7 +377,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         }
     }
 
-    emit_record_seen(window, &normalized);
+    emit_record_seen(window, &normalized, device);
 
     if is_trigger && record_guard_active(state) {
         if is_modifier_token(&normalized) && !is_volume_hotkey(&normalized) {
@@ -298,7 +387,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
 
     if is_target {
         if is_recordable_target_hotkey(&normalized) && !is_keyup {
-            finish_hardware_capture(state, window, &normalized);
+            finish_hardware_capture(state, window, &normalized, None, None);
         }
         // Keyboard shortcuts for target are captured in the WebView only.
         return;
@@ -313,23 +402,58 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
                 .map(|p| p == &normalized)
                 .unwrap_or(false);
             if should_finish {
-                let pending = state.record_hw_pending.lock().take().unwrap_or(normalized.clone());
-                finish_hardware_capture(state, window, &pending);
+                let pending = state
+                    .record_hw_pending
+                    .lock()
+                    .take()
+                    .unwrap_or(normalized.clone());
+                finish_hardware_capture(state, window, &pending, device, None);
             }
+            return;
+        }
+        if is_trigger && uses_gesture_trigger_recording(state, &normalized) {
+            handle_record_gesture_event(state, window, &normalized, device, true);
         }
         return;
     }
 
+    if is_trigger
+        && uses_gesture_trigger_recording(state, &normalized)
+        && (is_peripheral_trigger_key(&normalized)
+            || is_volume_hotkey(&normalized)
+            || is_mouse_button(&normalized)
+            || !is_spurious_trigger_capture(&normalized))
+    {
+        if handle_record_gesture_event(state, window, &normalized, device, false) {
+            if is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized) {
+                arm_record_guard(state);
+            }
+            return;
+        }
+    }
+
     if is_trigger && (is_peripheral_trigger_key(&normalized) || is_volume_hotkey(&normalized)) {
         *state.record_hw_pending.lock() = None;
-        finish_hardware_capture(state, window, &normalized);
+        finish_hardware_capture(
+            state,
+            window,
+            &normalized,
+            device,
+            Some(RecordedGesture::Tap),
+        );
         arm_record_guard(state);
         return;
     }
 
     if is_trigger && !is_modifier_token(&normalized) && !is_spurious_trigger_capture(&normalized) {
         *state.record_hw_pending.lock() = None;
-        finish_hardware_capture(state, window, &normalized);
+        finish_hardware_capture(
+            state,
+            window,
+            &normalized,
+            device,
+            Some(RecordedGesture::Tap),
+        );
         return;
     }
 
@@ -357,7 +481,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     if is_target && is_spurious_target_capture(&combo) {
         return;
     }
-    finish_hardware_capture(state, window, &combo);
+    finish_hardware_capture(state, window, &combo, device, None);
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -537,15 +661,40 @@ fn dispatch_trigger_action(
     }
 }
 
+/// 解析物理按键事件，处理长按/双击手势后触发语音。
+pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWindow, raw: &str) {
+    if *state.paused.lock() || *state.recording.lock() || crate::send_guard::is_active() {
+        return;
+    }
+    let event = parse_physical_event(raw);
+    if event.is_keyup {
+        state.gesture.lock().on_keyup(&event);
+        return;
+    }
+    let now = std::time::Instant::now();
+    let fire_key = {
+        let cfg = state.cfg.lock();
+        let Some(mapping) = cfg.find_mapping_for_event(&event) else {
+            return;
+        };
+        let mut gesture = state.gesture.lock();
+        gesture.on_keydown(&event, mapping, now)
+    };
+    if let Some(key) = fire_key {
+        handle_physical_key(state, window, &key);
+    }
+}
+
 ///            / RawInput /         ?
 pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow, key_name: &str) {
     if *state.paused.lock() || *state.recording.lock() || crate::send_guard::is_active() {
         return;
     }
+    let event = parse_physical_event(key_name);
     let now = std::time::Instant::now();
     let (mapping_id, duration_ms, actions) = {
         let cfg = state.cfg.lock();
-        let Some(mapping) = cfg.find_mapping_by_physical(key_name) else {
+        let Some(mapping) = cfg.find_mapping_for_event(&event) else {
             return;
         };
         let mapping_id = mapping.id.clone();
@@ -553,7 +702,7 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         let actions = {
             let mut pool = state.machine_pool.lock();
             pool.get_or_create(&mapping_id)
-                .trigger(&cfg, mapping, key_name, now)
+                .trigger(&cfg, mapping, &event.key, now)
         };
         (mapping_id, duration_ms, actions)
     };
@@ -591,6 +740,8 @@ fn persist_and_rebind(state: &AppState, window: &tauri::WebviewWindow, last_acti
 
 pub fn pause_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
     state.machine_pool.lock().reset_all();
+    state.gesture.lock().reset();
+    state.record_gesture.lock().reset();
     *state.recording.lock() = false;
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
@@ -655,6 +806,8 @@ pub fn set_active_trigger_mode(
         "mode": match mode {
             crate::config::TriggerMode::Tap | crate::config::TriggerMode::Toggle => "tap",
             crate::config::TriggerMode::Hold => "hold",
+            crate::config::TriggerMode::LongPress => "longpress",
+            crate::config::TriggerMode::Double => "double",
         },
     });
     window.emit("to_js", &ack).ok();
@@ -761,11 +914,7 @@ pub fn cmd_save(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow
 }
 
 #[tauri::command]
-pub fn cmd_start_recording(
-    state: tauri::State<Arc<AppState>>,
-    mapping_id: String,
-    mode: String,
-) {
+pub fn cmd_start_recording(state: tauri::State<Arc<AppState>>, mapping_id: String, mode: String) {
     state.machine_pool.lock().reset_all();
     let record_mode = if mode == "target" {
         RecordMode::Target
@@ -779,6 +928,7 @@ pub fn cmd_start_recording(
     *state.recording.lock() = true;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = Some(Instant::now());
+    state.record_gesture.lock().reset();
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.start_recording();
     }
@@ -790,6 +940,7 @@ pub fn cmd_stop_recording(state: tauri::State<Arc<AppState>>) {
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
     *state.record_started_at.lock() = None;
+    state.record_gesture.lock().reset();
     clear_record_guard(state.inner());
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
@@ -844,7 +995,8 @@ pub fn cmd_mapping_delete(
 ) {
     let mut cfg = state.cfg.lock();
     if cfg.mappings.len() <= 1 {
-        let ack = serde_json::json!({"type":"mvp_mapping_delete","ok":false,"reason":"last_mapping"});
+        let ack =
+            serde_json::json!({"type":"mvp_mapping_delete","ok":false,"reason":"last_mapping"});
         window.emit("to_js", &ack).ok();
         return;
     }
@@ -886,6 +1038,9 @@ pub fn cmd_mapping_duplicate(
                 auto_enter_enabled: src.auto_enter_enabled,
                 switch_keys: src.switch_keys.clone(),
                 native_key_restore: src.native_key_restore,
+                trigger_device: src.trigger_device.clone(),
+                long_press_ms: src.long_press_ms,
+                double_click_ms: src.double_click_ms,
             });
             cfg.normalize();
         }
@@ -944,7 +1099,11 @@ pub fn cmd_mapping_set_source_key(
         let mut cfg = state.cfg.lock();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             m.source_key = source_key.trim().to_string();
-            m.source_time = if m.source_key.is_empty() { String::new() } else { crate::config::now_source_time() };
+            m.source_time = if m.source_key.is_empty() {
+                String::new()
+            } else {
+                crate::config::now_source_time()
+            };
         }
         cfg.normalize();
     }
@@ -1054,7 +1213,14 @@ pub fn cmd_frontend_keydown(
     window.emit("to_js", &ack).ok();
 }
 
-pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, key: &str) {
+pub fn finish_hardware_capture(
+    state: &AppState,
+    window: &tauri::WebviewWindow,
+    key: &str,
+    device: Option<&str>,
+    gesture: Option<RecordedGesture>,
+) {
+    state.record_gesture.lock().reset();
     let target = state.recording_target.lock().clone();
     let Some(target) = target else {
         return;
@@ -1089,7 +1255,14 @@ pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, 
         }
         {
             let mut cfg = state.cfg.lock();
-            apply_trigger_capture(&mut cfg, &target.mapping_id, &captured, &physical_key);
+            apply_trigger_capture(
+                &mut cfg,
+                &target.mapping_id,
+                &captured,
+                &physical_key,
+                device.unwrap_or(""),
+                gesture.unwrap_or(RecordedGesture::Tap),
+            );
         }
     } else {
         let mut cfg = state.cfg.lock();
@@ -1116,7 +1289,7 @@ pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, 
     } else {
         "trigger"
     };
-    let (display_key, target_key, trigger_source, source_key, source_time) = {
+    let (display_key, target_key, trigger_source, source_key, source_time, trigger_mode) = {
         let cfg = state.cfg.lock();
         let mapping = cfg.find_mapping_by_id(&target.mapping_id);
         if matches!(target.mode, RecordMode::Target) {
@@ -1128,18 +1301,30 @@ pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, 
                 None,
                 String::new(),
                 String::new(),
+                String::new(),
             )
         } else {
+            let tm = mapping
+                .map(|m| match m.trigger_mode {
+                    crate::config::TriggerMode::Tap | crate::config::TriggerMode::Toggle => {
+                        "tap".to_string()
+                    }
+                    crate::config::TriggerMode::Hold => "hold".to_string(),
+                    crate::config::TriggerMode::LongPress => "longpress".to_string(),
+                    crate::config::TriggerMode::Double => "double".to_string(),
+                })
+                .unwrap_or_else(|| {
+                    gesture_mode_label(gesture.unwrap_or(RecordedGesture::Tap)).to_string()
+                });
             (
                 mapping
                     .map(|m| m.trigger_key.clone())
                     .unwrap_or_else(|| captured.clone()),
-                mapping
-                    .map(|m| m.target_key.clone())
-                    .unwrap_or_default(),
+                mapping.map(|m| m.target_key.clone()).unwrap_or_default(),
                 mapping.and_then(|m| m.trigger_source.clone()),
                 mapping.map(|m| m.source_key.clone()).unwrap_or_default(),
                 mapping.map(|m| m.source_time.clone()).unwrap_or_default(),
+                tm,
             )
         }
     };
@@ -1150,6 +1335,7 @@ pub fn finish_hardware_capture(state: &AppState, window: &tauri::WebviewWindow, 
         "source": trigger_source,
         "sourceKey": source_key,
         "sourceTime": source_time,
+        "triggerMode": trigger_mode,
         "mappingId": target.mapping_id,
         "mode": mode,
     });
@@ -1287,14 +1473,9 @@ pub fn cmd_sync_theme_backdrop(window: tauri::WebviewWindow, theme: String) {
 }
 
 #[tauri::command]
-pub fn cmd_tray_menu_ready(
-    state: tauri::State<Arc<AppState>>,
-    window: tauri::WebviewWindow,
-) {
+pub fn cmd_tray_menu_ready(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
     let json = crate::tray::tray_menu_init_json(state.inner());
-    window
-        .eval(&format!("window.__tray_init__({json})"))
-        .ok();
+    window.eval(&format!("window.__tray_init__({json})")).ok();
 }
 
 #[tauri::command]
@@ -1322,9 +1503,7 @@ pub fn cmd_tray_menu_present(
 #[tauri::command]
 pub fn cmd_autostart_get(app: tauri::AppHandle) -> Result<bool, String> {
     use tauri_plugin_autostart::ManagerExt;
-    app.autolaunch()
-        .is_enabled()
-        .map_err(|e| e.to_string())
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1457,6 +1636,11 @@ pub fn cmd_voice_sapi_test_send(state: tauri::State<Arc<AppState>>) -> serde_jso
     crate::voice_sapi_runtime::voice_sapi_test_send(&state)
 }
 
+#[tauri::command]
+pub fn cmd_process_usage(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
+    crate::resource_monitor::process_usage_status(&state)
+}
+
 fn app_resource_dir(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
     app.path().resource_dir().ok()
 }
@@ -1501,11 +1685,7 @@ pub fn cmd_voice_vosk_set_model_preset(
     app: tauri::AppHandle,
     preset: String,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_vosk_runtime::voice_vosk_set_model_preset(
-        &state,
-        preset,
-        app_resource_dir(&app),
-    )
+    crate::voice_vosk_runtime::voice_vosk_set_model_preset(&state, preset, app_resource_dir(&app))
 }
 
 #[tauri::command]

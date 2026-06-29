@@ -9,8 +9,16 @@ const ZH_CN_LANGID: u16 = 0x0804;
 
 #[derive(Debug, Clone)]
 pub enum VoiceSapiEvent {
-    Detected { phrase: String, confidence: f32, exact: bool },
-    Heard { text: String, confidence: f32, final_result: bool },
+    Detected {
+        phrase: String,
+        confidence: f32,
+        exact: bool,
+    },
+    Heard {
+        text: String,
+        confidence: f32,
+        final_result: bool,
+    },
     Trace(String),
     Error(String),
     StateChanged(String),
@@ -52,19 +60,21 @@ mod imp {
     use std::ffi::c_void;
     use std::time::{Duration, Instant};
 
-    use windows::core::{Interface, HSTRING, IUnknown, PWSTR};
+    use windows::core::{IUnknown, Interface, HSTRING, PWSTR};
     use windows::Win32::Foundation::{CloseHandle, BOOL, HANDLE, WAIT_OBJECT_0};
     use windows::Win32::Globalization::GetUserDefaultUILanguage;
     use windows::Win32::Media::Speech::{
-        SpInprocRecognizer, SpMMAudioIn, ISpGrammarBuilder, ISpRecoContext, ISpRecoGrammar, ISpRecognizer,
-        ISpRecoResult, SPEI_FALSE_RECOGNITION, SPEI_HYPOTHESIS, SPEI_INTERFERENCE,
-        SPEI_PHRASE_START, SPEI_RECOGNITION, SPEI_SOUND_END, SPEI_SOUND_START,
-        SPEI_SR_AUDIO_LEVEL, SPEVENT, SPGRAMMARWORDTYPE,
-        SPGS_ENABLED, SPLO_STATIC, SPRAF_Active, SPRAF_TopLevel, SPRS_ACTIVE,
-        SPRST_ACTIVE_ALWAYS, SPRST_INACTIVE, SPRULESTATE, SPSTATEHANDLE, SPWT_LEXICAL,
+        ISpGrammarBuilder, ISpRecoContext, ISpRecoGrammar, ISpRecoResult, ISpRecognizer,
+        SPRAF_Active, SPRAF_TopLevel, SpInprocRecognizer, SpMMAudioIn, SPEI_FALSE_RECOGNITION,
+        SPEI_HYPOTHESIS, SPEI_INTERFERENCE, SPEI_PHRASE_START, SPEI_RECOGNITION, SPEI_SOUND_END,
+        SPEI_SOUND_START, SPEI_SR_AUDIO_LEVEL, SPEVENT, SPGRAMMARWORDTYPE, SPGS_ENABLED,
+        SPLO_STATIC, SPRST_ACTIVE_ALWAYS, SPRST_INACTIVE, SPRS_ACTIVE, SPRULESTATE, SPSTATEHANDLE,
+        SPWT_LEXICAL,
     };
-    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL};
     use windows::Win32::System::Com::COINIT_APARTMENTTHREADED;
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL,
+    };
     use windows::Win32::System::Threading::WaitForSingleObject;
 
     fn send_event(tx: &Sender<VoiceSapiEvent>, event: VoiceSapiEvent) {
@@ -116,9 +126,7 @@ mod imp {
     }
 
     fn normalize_phrase(s: &str) -> String {
-        s.chars()
-            .filter(|c| c.is_alphanumeric())
-            .collect()
+        s.chars().filter(|c| c.is_alphanumeric()).collect()
     }
 
     fn matches_wake_phrase(text: &str, phrases: &[String]) -> Option<(String, bool)> {

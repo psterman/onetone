@@ -48,6 +48,7 @@ fn main() {
         "cmd_mic_monitor_start",
         "cmd_mic_monitor_stop",
         "cmd_mic_get_level",
+        "cmd_process_usage",
         "cmd_voice_sapi_status",
         "cmd_voice_sapi_set_enabled",
         "cmd_voice_sapi_set_phrases",
@@ -129,7 +130,10 @@ fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
         match fs::copy(&src, &dst) {
             Ok(_) => copied += 1,
             Err(e) => {
-                println!("cargo:warning=Vosk: failed to copy {name} -> {}: {e}", dst.display());
+                println!(
+                    "cargo:warning=Vosk: failed to copy {name} -> {}: {e}",
+                    dst.display()
+                );
             }
         }
     }

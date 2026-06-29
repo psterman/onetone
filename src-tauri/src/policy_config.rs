@@ -3,7 +3,7 @@
 #![allow(non_snake_case, non_camel_case_types, clippy::missing_safety_doc)]
 
 use std::ffi::c_void;
-use windows::core::{Interface, IUnknown, Param, Result, GUID, HRESULT, PCWSTR, PROPVARIANT};
+use windows::core::{IUnknown, Interface, Param, Result, GUID, HRESULT, PCWSTR, PROPVARIANT};
 use windows::Win32::Media::Audio::{ERole, WAVEFORMATEX};
 use windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY;
 

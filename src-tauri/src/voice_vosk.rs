@@ -92,7 +92,10 @@ pub struct VoskResourceProbe {
     pub resolved_dll_path: String,
 }
 
-pub fn probe_vosk_resources(cfg: &VoiceVoskConfig, resource_dir: Option<&Path>) -> VoskResourceProbe {
+pub fn probe_vosk_resources(
+    cfg: &VoiceVoskConfig,
+    resource_dir: Option<&Path>,
+) -> VoskResourceProbe {
     let resolved_dll = resolve_vosk_dll_dir(resource_dir).join("libvosk.dll");
     let lib_exists = manifest_vosk_dir().join("libvosk.lib").exists();
 
@@ -231,14 +234,9 @@ fn start_voice_vosk_impl(
         thread::Builder::new()
             .name("voice-vosk".into())
             .spawn(move || {
-                if let Err(e) = run_dual_worker(
-                    cn_path,
-                    en_path,
-                    dll_dir,
-                    phrases,
-                    stop_thread,
-                    event_tx,
-                ) {
+                if let Err(e) =
+                    run_dual_worker(cn_path, en_path, dll_dir, phrases, stop_thread, event_tx)
+                {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
                 }
@@ -284,20 +282,13 @@ fn run_worker(
     use cpal::SampleFormat;
     use vosk::{CompleteResult, DecodingState, Model, Recognizer};
 
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("starting".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("starting".into()));
 
     set_dll_directory(&dll_dir)?;
 
     let load_start = Instant::now();
-    let model = Model::new(model_path.display().to_string()).ok_or_else(|| {
-        format!(
-            "load model failed: {}",
-            model_path.display()
-        )
-    })?;
+    let model = Model::new(model_path.display().to_string())
+        .ok_or_else(|| format!("load model failed: {}", model_path.display()))?;
     let load_ms = load_start.elapsed().as_millis() as u64;
     let _ = send_event_blocking(
         &event_tx,
@@ -319,15 +310,9 @@ fn run_worker(
         {
             (r, true, "语法限制模式".into())
         } else if let Some(r) = Recognizer::new(&model, TARGET_SAMPLE_RATE as f32) {
-            (
-                r,
-                false,
-                "已切换为自由识别模式（grammar 不可用）".into(),
-            )
+            (r, false, "已切换为自由识别模式（grammar 不可用）".into())
         } else {
-            return Err(
-                "create recognizer failed: grammar failed; free mode also failed".into(),
-            );
+            return Err("create recognizer failed: grammar failed; free mode also failed".into());
         }
     } else if let Some(r) = Recognizer::new(&model, TARGET_SAMPLE_RATE as f32) {
         (
@@ -392,13 +377,12 @@ fn run_worker(
     }
     .map_err(|e| format!("build input stream: {e}"))?;
 
-    stream.play().map_err(|e| format!("play input stream: {e}"))?;
+    stream
+        .play()
+        .map_err(|e| format!("play input stream: {e}"))?;
     drop(audio_tx);
 
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("listening".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("listening".into()));
 
     let mut recognizer = recognizer;
     let mut resampler = ResamplerState::new(sample_rate, TARGET_SAMPLE_RATE);
@@ -435,10 +419,7 @@ fn run_worker(
                                 last_detected_norm = norm;
                                 send_event_blocking(
                                     &event_tx,
-                                    VoiceVoskEvent::Detected {
-                                        phrase,
-                                        text,
-                                    },
+                                    VoiceVoskEvent::Detected { phrase, text },
                                 );
                             }
                         }
@@ -453,10 +434,7 @@ fn run_worker(
     }
 
     drop(stream);
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("stopped".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("stopped".into()));
     Ok(())
 }
 
@@ -473,20 +451,15 @@ fn run_dual_worker(
     use cpal::SampleFormat;
     use vosk::{DecodingState, Model, Recognizer};
 
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("starting".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("starting".into()));
 
     set_dll_directory(&dll_dir)?;
 
     let load_start = Instant::now();
-    let cn_model = Model::new(cn_model_path.display().to_string()).ok_or_else(|| {
-        format!("load Chinese model failed: {}", cn_model_path.display())
-    })?;
-    let en_model = Model::new(en_model_path.display().to_string()).ok_or_else(|| {
-        format!("load English model failed: {}", en_model_path.display())
-    })?;
+    let cn_model = Model::new(cn_model_path.display().to_string())
+        .ok_or_else(|| format!("load Chinese model failed: {}", cn_model_path.display()))?;
+    let en_model = Model::new(en_model_path.display().to_string())
+        .ok_or_else(|| format!("load English model failed: {}", en_model_path.display()))?;
     let load_ms = load_start.elapsed().as_millis() as u64;
     let _ = send_event_blocking(
         &event_tx,
@@ -553,13 +526,12 @@ fn run_dual_worker(
     }
     .map_err(|e| format!("build input stream: {e}"))?;
 
-    stream.play().map_err(|e| format!("play input stream: {e}"))?;
+    stream
+        .play()
+        .map_err(|e| format!("play input stream: {e}"))?;
     drop(audio_tx);
 
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("listening".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("listening".into()));
 
     let mut cn_recognizer = cn_recognizer;
     let mut en_recognizer = en_recognizer;
@@ -653,10 +625,7 @@ fn run_dual_worker(
     }
 
     drop(stream);
-    let _ = send_event_blocking(
-        &event_tx,
-        VoiceVoskEvent::StateChanged("stopped".into()),
-    );
+    let _ = send_event_blocking(&event_tx, VoiceVoskEvent::StateChanged("stopped".into()));
     Ok(())
 }
 
@@ -687,9 +656,8 @@ fn emit_dual_partial(
 }
 
 fn text_has_cjk(text: &str) -> bool {
-    text.chars().any(|c| {
-        ('\u{4e00}'..='\u{9fff}').contains(&c) || ('\u{3400}'..='\u{4dbf}').contains(&c)
-    })
+    text.chars()
+        .any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c) || ('\u{3400}'..='\u{4dbf}').contains(&c))
 }
 
 fn text_has_latin(text: &str) -> bool {
@@ -927,18 +895,12 @@ fn resolve_dual_finalization(
             .filter(|w| w.chars().any(|c| c.is_ascii_alphabetic()))
             .count();
         if en_word_count >= 2 && en_partial_score >= PHRASE_MATCH_STRONG {
-            if let Some(text) = en_commit
-                .clone()
-                .or_else(|| sanitize_vosk_text(en_partial))
-            {
+            if let Some(text) = en_commit.clone().or_else(|| sanitize_vosk_text(en_partial)) {
                 return DualResolution::Commit(text);
             }
         }
         if cn_partial_score >= PHRASE_MATCH_STRONG && text_has_cjk(cn_partial) {
-            if let Some(text) = cn_commit
-                .clone()
-                .or_else(|| sanitize_vosk_text(cn_partial))
-            {
+            if let Some(text) = cn_commit.clone().or_else(|| sanitize_vosk_text(cn_partial)) {
                 return DualResolution::Commit(text);
             }
         }
@@ -1100,9 +1062,9 @@ fn pick_input_config(
         }
     }
 
-    let chosen = preferred.or(fallback).ok_or_else(|| {
-        String::from("no supported input config (F32/I16/U16)")
-    })?;
+    let chosen = preferred
+        .or(fallback)
+        .ok_or_else(|| String::from("no supported input config (F32/I16/U16)"))?;
 
     let sample_format = chosen.sample_format();
     let sample_rate = if (chosen.min_sample_rate().0..=chosen.max_sample_rate().0)
@@ -1113,7 +1075,9 @@ fn pick_input_config(
         chosen.min_sample_rate().0
     };
 
-    let config = chosen.with_sample_rate(cpal::SampleRate(sample_rate)).into();
+    let config = chosen
+        .with_sample_rate(cpal::SampleRate(sample_rate))
+        .into();
     Ok((config, sample_format, sample_rate))
 }
 
@@ -1141,10 +1105,7 @@ impl ResamplerState {
             return Vec::new();
         }
         if (self.src_rate - self.dst_rate).abs() < 1.0 {
-            return input
-                .iter()
-                .map(|&s| f32_to_i16(s))
-                .collect();
+            return input.iter().map(|&s| f32_to_i16(s)).collect();
         }
 
         let ratio = self.src_rate / self.dst_rate;
@@ -1309,11 +1270,7 @@ fn emit_partial(
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]
-fn emit_level_if_due(
-    event_tx: &Sender<VoiceVoskEvent>,
-    pcm: &[i16],
-    last_at: &mut Instant,
-) {
+fn emit_level_if_due(event_tx: &Sender<VoiceVoskEvent>, pcm: &[i16], last_at: &mut Instant) {
     if last_at.elapsed() < LEVEL_MIN_INTERVAL {
         return;
     }
@@ -1376,7 +1333,10 @@ pub fn matches_final(text: &str, phrases: &[String]) -> Option<String> {
     for phrase in phrases {
         let score = phrase_match_score(text, phrase);
         if score >= PHRASE_MATCH_STRONG {
-            if best.as_ref().is_none_or(|(_, best_score)| score > *best_score) {
+            if best
+                .as_ref()
+                .is_none_or(|(_, best_score)| score > *best_score)
+            {
                 best = Some((phrase.clone(), score));
             }
         }
@@ -1391,10 +1351,7 @@ mod tests {
     #[test]
     fn matches_final_exact() {
         let phrases = vec!["开始输入".into()];
-        assert_eq!(
-            matches_final("开始输入", &phrases),
-            Some("开始输入".into())
-        );
+        assert_eq!(matches_final("开始输入", &phrases), Some("开始输入".into()));
     }
 
     #[test]
@@ -1505,10 +1462,7 @@ mod tests {
     fn matches_final_rejects_cross_script() {
         let phrases = vec!["start dictation".into(), "开始输入".into()];
         assert_eq!(matches_final("kaisersure", &phrases), None);
-        assert_eq!(
-            matches_final("开始输入", &phrases),
-            Some("开始输入".into())
-        );
+        assert_eq!(matches_final("开始输入", &phrases), Some("开始输入".into()));
         assert_eq!(
             matches_final("start dictation", &phrases),
             Some("start dictation".into())
@@ -1537,9 +1491,6 @@ mod tests {
 
     #[test]
     fn sanitize_keeps_chinese() {
-        assert_eq!(
-            sanitize_vosk_text("开始输入").as_deref(),
-            Some("开始输入")
-        );
+        assert_eq!(sanitize_vosk_text("开始输入").as_deref(), Some("开始输入"));
     }
 }

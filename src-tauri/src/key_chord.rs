@@ -43,7 +43,11 @@ pub fn parse_chord(combo: &str) -> Result<Vec<SendToken>, String> {
         return Err("empty chord".into());
     }
 
-    let parts: Vec<&str> = trimmed.split('+').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+    let parts: Vec<&str> = trimmed
+        .split('+')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
     if parts.is_empty() {
         return Err("empty chord".into());
     }
@@ -189,7 +193,10 @@ pub fn is_right_alt_only(combo: &str) -> bool {
         Ok(tokens) if tokens.len() == 1 => {
             matches!(
                 tokens[0],
-                SendToken::Key(VkKey { vk: 0xA5, extended: true })
+                SendToken::Key(VkKey {
+                    vk: 0xA5,
+                    extended: true
+                })
             )
         }
         _ => false,
@@ -201,7 +208,10 @@ pub fn is_left_alt_only(combo: &str) -> bool {
         Ok(tokens) if tokens.len() == 1 => {
             matches!(
                 tokens[0],
-                SendToken::Key(VkKey { vk: 0xA4, extended: false })
+                SendToken::Key(VkKey {
+                    vk: 0xA4,
+                    extended: false
+                })
             )
         }
         _ => false,
@@ -260,9 +270,7 @@ fn token_def_special(candidate: &str) -> Option<TokenDef> {
 }
 
 fn parse_u16(s: &str) -> Option<u16> {
-    u16::from_str_radix(s, 16)
-        .ok()
-        .or_else(|| s.parse().ok())
+    u16::from_str_radix(s, 16).ok().or_else(|| s.parse().ok())
 }
 
 fn mod_or_key(vk: u16, extended: bool) -> TokenDef {
@@ -328,10 +336,7 @@ fn token_def_exact(upper: &str) -> Option<TokenDef> {
     if matches!(upper, "RCTRL" | "RIGHTCTRL" | "CONTROLRIGHT") {
         return modifier(0xA3, true);
     }
-    if matches!(
-        upper,
-        "SHIFT" | "LSHIFT" | "LEFTSHIFT" | "SHIFTLEFT"
-    ) {
+    if matches!(upper, "SHIFT" | "LSHIFT" | "LEFTSHIFT" | "SHIFTLEFT") {
         return modifier(0xA0, false);
     }
     if matches!(upper, "RSHIFT" | "RIGHTSHIFT" | "SHIFTRIGHT") {
@@ -372,24 +377,15 @@ fn token_def_exact(upper: &str) -> Option<TokenDef> {
     ) {
         return mouse(MouseButton::Middle);
     }
-    if matches!(
-        upper,
-        "XBUTTON1" | "MOUSE4" | "MOUSEX1" | "X1" | "MBUTTON4"
-    ) {
+    if matches!(upper, "XBUTTON1" | "MOUSE4" | "MOUSEX1" | "X1" | "MBUTTON4") {
         return mouse(MouseButton::X1);
     }
-    if matches!(
-        upper,
-        "XBUTTON2" | "MOUSE5" | "MOUSEX2" | "X2" | "MBUTTON5"
-    ) {
+    if matches!(upper, "XBUTTON2" | "MOUSE5" | "MOUSEX2" | "X2" | "MBUTTON5") {
         return mouse(MouseButton::X2);
     }
 
     // --- 媒体 / 浏览器 / 启动键（与 hotkey_win 触发名对齐）---
-    if matches!(
-        upper,
-        "VOLUMEUP" | "AUDIOVOLUMEUP" | "VOLUME_UP" | "VOLUP"
-    ) {
+    if matches!(upper, "VOLUMEUP" | "AUDIOVOLUMEUP" | "VOLUME_UP" | "VOLUP") {
         return ext_key(0xAF);
     }
     if matches!(

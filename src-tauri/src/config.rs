@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::AppState;
 use crate::ipc;
+use crate::AppState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -15,6 +15,8 @@ pub enum TriggerMode {
     #[default]
     Tap,
     Hold,
+    LongPress,
+    Double,
     Toggle,
 }
 
@@ -55,6 +57,21 @@ pub struct MappingEntry {
     /// 为 true 时不拦截物理启动键，恢复系统原生功能。
     #[serde(rename = "nativeKeyRestore", default)]
     pub native_key_restore: bool,
+    /// 录制时绑定的输入设备（Raw Input 路径）；空表示任意设备。
+    #[serde(rename = "triggerDevice", default)]
+    pub trigger_device: String,
+    #[serde(rename = "longPressMs", default = "default_long_press_ms")]
+    pub long_press_ms: u32,
+    #[serde(rename = "doubleClickMs", default = "default_double_click_ms")]
+    pub double_click_ms: u32,
+}
+
+fn default_long_press_ms() -> u32 {
+    500
+}
+
+fn default_double_click_ms() -> u32 {
+    400
 }
 
 pub const SCHEME_CYCLE_MARKER: &str = "__scheme_cycle__";
@@ -609,8 +626,12 @@ pub fn canonical_trigger(key: &str) -> String {
         "AltRight" | "RMenu" => "RAlt".into(),
         "ControlRight" | "RControl" => "RCtrl".into(),
         "AudioVolumeUp" | "VolumeUp" | "Volume_Up" | "Audio_Volume_Up" => "Volume_Up".into(),
-        "AudioVolumeDown" | "VolumeDown" | "Volume_Down" | "Audio_Volume_Down" => "Volume_Down".into(),
-        "AudioVolumeMute" | "VolumeMute" | "Volume_Mute" | "Audio_Volume_Mute" => "Volume_Mute".into(),
+        "AudioVolumeDown" | "VolumeDown" | "Volume_Down" | "Audio_Volume_Down" => {
+            "Volume_Down".into()
+        }
+        "AudioVolumeMute" | "VolumeMute" | "Volume_Mute" | "Audio_Volume_Mute" => {
+            "Volume_Mute".into()
+        }
         other => other.to_string(),
     }
 }
@@ -635,7 +656,7 @@ pub fn is_volume_hotkey(key: &str) -> bool {
     )
 }
 
-fn volume_raw_event(hotkey: &str, label: &str) -> RawEvent {
+fn volume_raw_event_with_device(hotkey: &str, label: &str, device: &str) -> RawEvent {
     let (key, code) = match hotkey {
         "Volume_Down" => ("AudioVolumeDown", "AudioVolumeDown"),
         "Volume_Up" => ("AudioVolumeUp", "AudioVolumeUp"),
@@ -643,7 +664,11 @@ fn volume_raw_event(hotkey: &str, label: &str) -> RawEvent {
         other => (other, other),
     };
     RawEvent {
-        device: "keyboard".into(),
+        device: if device.trim().is_empty() {
+            "keyboard".into()
+        } else {
+            device.into()
+        },
         key: key.into(),
         code: code.into(),
         location: 0,
@@ -652,6 +677,10 @@ fn volume_raw_event(hotkey: &str, label: &str) -> RawEvent {
         label: label.into(),
         button: None,
     }
+}
+
+fn volume_raw_event(hotkey: &str, label: &str) -> RawEvent {
+    volume_raw_event_with_device(hotkey, label, "")
 }
 
 ///     /        ?
@@ -676,7 +705,7 @@ pub fn is_peripheral_trigger_key(key: &str) -> bool {
     ) || c.starts_with('F') && c[1..].chars().all(|ch| ch.is_ascii_digit())
 }
 
-fn peripheral_raw_event(hotkey: &str) -> RawEvent {
+fn peripheral_raw_event_with_device(hotkey: &str, device: &str) -> RawEvent {
     if is_volume_hotkey(hotkey) {
         let hk = canonical_trigger(hotkey);
         let label = match hk.as_str() {
@@ -685,10 +714,14 @@ fn peripheral_raw_event(hotkey: &str) -> RawEvent {
             "Volume_Mute" => "Volume Mute",
             _ => hotkey,
         };
-        return volume_raw_event(&hk, label);
+        return volume_raw_event_with_device(&hk, label, device);
     }
     RawEvent {
-        device: "keyboard".into(),
+        device: if device.trim().is_empty() {
+            "keyboard".into()
+        } else {
+            device.into()
+        },
         key: hotkey.into(),
         code: hotkey.into(),
         location: 0,
@@ -697,6 +730,10 @@ fn peripheral_raw_event(hotkey: &str) -> RawEvent {
         label: hotkey.into(),
         button: None,
     }
+}
+
+fn peripheral_raw_event(hotkey: &str) -> RawEvent {
+    peripheral_raw_event_with_device(hotkey, "")
 }
 
 ///                + F1 ?
@@ -720,6 +757,10 @@ pub fn make_combo_trigger_source(combo: &str) -> TriggerSource {
 }
 
 pub fn make_peripheral_mixed_source(extra: &[String]) -> TriggerSource {
+    make_peripheral_mixed_source_with_device(extra, "")
+}
+
+pub fn make_peripheral_mixed_source_with_device(extra: &[String], device: &str) -> TriggerSource {
     let mut keys = default_peripheral_hotkeys();
     for k in extra {
         let c = canonical_trigger(k);
@@ -731,11 +772,7 @@ pub fn make_peripheral_mixed_source(extra: &[String]) -> TriggerSource {
             }
             continue;
         }
-        let hotkey = if c == "AutoTrigger" {
-            k.to_string()
-        } else {
-            c
-        };
+        let hotkey = if c == "AutoTrigger" { k.to_string() } else { c };
         if !hotkey.is_empty() && !keys.iter().any(|x| x == &hotkey) {
             keys.push(hotkey);
         }
@@ -745,7 +782,10 @@ pub fn make_peripheral_mixed_source(extra: &[String]) -> TriggerSource {
         label: "      ".into(),
         mode: "single_press".into(),
         grouping: "same_source_group".into(),
-        raw_events: keys.iter().map(|k| peripheral_raw_event(k)).collect(),
+        raw_events: keys
+            .iter()
+            .map(|k| peripheral_raw_event_with_device(k, device))
+            .collect(),
     }
 }
 
@@ -766,6 +806,18 @@ pub fn hotkey_from_raw_event(r: &RawEvent) -> Option<String> {
         k if !k.is_empty() && k != "AutoTrigger" => Some(k.to_string()),
         _ => None,
     }
+}
+
+fn mapping_matches_device(m: &MappingEntry, event_device: Option<&str>) -> bool {
+    let filter = m.trigger_device.trim();
+    if filter.is_empty() {
+        return true;
+    }
+    let incoming = event_device.unwrap_or("").trim();
+    if incoming.is_empty() {
+        return false;
+    }
+    crate::press_gesture::devices_match(filter, incoming)
 }
 
 pub fn effective_physical_bindings(m: &MappingEntry) -> Vec<String> {
@@ -837,12 +889,23 @@ pub fn apply_autotrigger_source(m: &mut MappingEntry) {
 }
 
 pub fn apply_peripheral_autotrigger(m: &mut MappingEntry, captured: &str) {
+    apply_peripheral_autotrigger_with_device(m, captured, "");
+}
+
+pub fn apply_peripheral_autotrigger_with_device(
+    m: &mut MappingEntry,
+    captured: &str,
+    device: &str,
+) {
     m.trigger_key = "AutoTrigger".into();
     let extra = if captured.trim().is_empty() || canonical_trigger(captured) == "AutoTrigger" {
         vec![]
     } else {
         vec![captured.to_string()]
     };
+    if !device.trim().is_empty() {
+        m.trigger_device = device.trim().to_string();
+    }
     if m.source_key.trim().is_empty() {
         m.source_key = if extra.is_empty() {
             "AutoTrigger".into()
@@ -850,7 +913,7 @@ pub fn apply_peripheral_autotrigger(m: &mut MappingEntry, captured: &str) {
             canonical_trigger(&extra[0])
         };
     }
-    m.trigger_source = Some(make_peripheral_mixed_source(&extra));
+    m.trigger_source = Some(make_peripheral_mixed_source_with_device(&extra, device));
 }
 
 impl Default for VoiceConfig {
@@ -876,6 +939,9 @@ impl Default for VoiceConfig {
                 auto_enter_enabled: true,
                 switch_keys: vec![],
                 native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: default_long_press_ms(),
+                double_click_ms: default_double_click_ms(),
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -958,7 +1024,12 @@ pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, b
     } else {
         cfg.enter_delay_ms
     };
-    (interval, enter_delay, m.cancel_enabled, m.auto_enter_enabled)
+    (
+        interval,
+        enter_delay,
+        m.cancel_enabled,
+        m.auto_enter_enabled,
+    )
 }
 
 impl VoiceConfig {
@@ -1041,6 +1112,9 @@ impl VoiceConfig {
                 auto_enter_enabled: self.auto_enter_enabled,
                 switch_keys: vec![],
                 native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: default_long_press_ms(),
+                double_click_ms: default_double_click_ms(),
             });
         }
 
@@ -1102,10 +1176,20 @@ impl VoiceConfig {
         } else if self.voice_vosk.model_path.trim().is_empty() {
             self.voice_vosk.model_path = default_voice_vosk_model_path();
         }
-        if self.voice_end.phrases_zh.iter().all(|p| p.trim().is_empty()) {
+        if self
+            .voice_end
+            .phrases_zh
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
             self.voice_end.phrases_zh = default_voice_end_phrases_zh();
         }
-        if self.voice_end.phrases_en.iter().all(|p| p.trim().is_empty()) {
+        if self
+            .voice_end
+            .phrases_en
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
             self.voice_end.phrases_en = default_voice_end_phrases_en();
         }
         if self.voice_end.commit_key.trim().is_empty() {
@@ -1244,13 +1328,27 @@ impl VoiceConfig {
     }
 
     pub fn find_mapping_by_physical(&self, physical_key: &str) -> Option<&MappingEntry> {
-        let canonical = canonical_trigger(physical_key);
+        self.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: physical_key.to_string(),
+        })
+    }
+
+    pub fn find_mapping_for_event(
+        &self,
+        event: &crate::press_gesture::PhysicalKeyEvent,
+    ) -> Option<&MappingEntry> {
+        let canonical = canonical_trigger(&event.key);
         for m in self.active_mappings() {
+            if !mapping_matches_device(m, event.device.as_deref()) {
+                continue;
+            }
             if canonical_trigger(&m.trigger_key) == canonical {
                 return Some(m);
             }
             for pb in mapping_physical_bindings(m) {
-                if pb == physical_key || pb == canonical {
+                if pb == event.key || pb == canonical {
                     return Some(m);
                 }
             }
@@ -1284,7 +1382,10 @@ impl VoiceConfig {
                 conflicts.push(Conflict {
                     kind: ConflictKind::CanonicalTrigger,
                     other_id: other.id.clone(),
-                    detail: format!("{other_canonical} is already used by {}", other.display_label()),
+                    detail: format!(
+                        "{other_canonical} is already used by {}",
+                        other.display_label()
+                    ),
                 });
             }
             for pb in mapping_physical_bindings(other) {
@@ -1292,7 +1393,10 @@ impl VoiceConfig {
                     conflicts.push(Conflict {
                         kind: ConflictKind::PhysicalKey,
                         other_id: other.id.clone(),
-                        detail: format!("physical key {pb} is already used by {}", other.display_label()),
+                        detail: format!(
+                            "physical key {pb} is already used by {}",
+                            other.display_label()
+                        ),
                     });
                     break;
                 }
@@ -1400,7 +1504,10 @@ fn resolve_config_path() -> PathBuf {
             + if cfg.voice_vosk.enabled { 4 } else { 0 }
             + if cfg.voice_sapi.enabled { 4 } else { 0 }
             + if cfg.voice_end.enabled { 4 } else { 0 };
-        if best.as_ref().is_none_or(|(_, _, prev_score)| score > *prev_score) {
+        if best
+            .as_ref()
+            .is_none_or(|(_, _, prev_score)| score > *prev_score)
+        {
             best = Some((path, cfg, score));
         }
     };
@@ -1415,7 +1522,9 @@ fn resolve_config_path() -> PathBuf {
         }
     }
 
-    if let Some(voice_pilot_dirs) = directories::ProjectDirs::from("com", "VoicePilot", "Voice Pilot") {
+    if let Some(voice_pilot_dirs) =
+        directories::ProjectDirs::from("com", "VoicePilot", "Voice Pilot")
+    {
         let legacy_vp = voice_pilot_dirs.config_dir().join("settings.json");
         if legacy_vp.exists() {
             if let Ok(raw) = fs::read_to_string(&legacy_vp) {
@@ -1453,9 +1562,7 @@ fn resolve_config_path() -> PathBuf {
 }
 
 pub fn config_path() -> PathBuf {
-    CONFIG_PATH
-        .get_or_init(resolve_config_path)
-        .clone()
+    CONFIG_PATH.get_or_init(resolve_config_path).clone()
 }
 
 /// Apply a frontend mapping save. Voice sections always stay from `existing` because
@@ -1589,6 +1696,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -1617,6 +1727,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -1657,6 +1770,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -1685,6 +1801,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
                 label: "      ".into(),
@@ -1726,10 +1845,16 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
-        assert_eq!(bindings, vec!["Volume_Down".to_string(), "Volume_Up".to_string()]);
+        assert_eq!(
+            bindings,
+            vec!["Volume_Down".to_string(), "Volume_Up".to_string()]
+        );
     }
 
     #[test]
@@ -1754,6 +1879,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec!["Ctrl+Alt+1".into()],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -1817,14 +1945,3 @@ mod tests {
         assert!(merged.voice_end.enabled);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
