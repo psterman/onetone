@@ -221,7 +221,9 @@
       border:1px solid var(--outline-variant);border-radius:14px;padding:12px 14px;
       background:var(--surface-soft);
     }
-    .home-finish-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .home-finish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .home-finish-head-main{flex:1;min-width:0;position:relative}
+    .home-finish-head-main .home-help-popover{left:0;right:auto}
     .home-finish-head h3{margin:0;font-size:12px;font-weight:800;color:var(--on-surface-muted);text-transform:none;letter-spacing:.02em}
     .home-finish-status{font-size:12px;font-weight:600;color:var(--on-surface-muted);text-align:right;flex:1;min-width:0;word-break:break-word}
     .home-finish-body{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
@@ -247,7 +249,8 @@
       background:linear-gradient(180deg,rgba(28,48,62,.55),var(--surface-high));
       border-color:rgba(94,200,232,.18);
     }
-    .home-live-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .home-live-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .home-live-head-title{display:flex;align-items:center;gap:5px;min-width:0}
     .home-live-head h3{margin:0;font-size:13px;font-weight:800;color:var(--indigo)}
     .home-live-badge{
       font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
@@ -257,7 +260,6 @@
     .home-live-badge.is-on{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.22)}
     .home-live-badge.is-warn{background:rgba(249,115,22,.1);color:#ea580c;border-color:rgba(249,115,22,.22)}
     .home-live-subtitle{margin:0 0 8px;font-size:12px;color:var(--on-surface-muted)}
-    .home-live-stats{display:grid;gap:7px;margin:0 0 10px}
     .home-live-row{display:grid;grid-template-columns:minmax(72px,34%) 1fr;gap:8px;align-items:start;font-size:12px;line-height:1.45}
     .home-live-row dt{margin:0;font-weight:600;color:var(--on-surface-muted)}
     .home-live-row dd{margin:0;font-weight:700;color:var(--on-surface);word-break:break-word;text-align:right}
@@ -279,6 +281,10 @@
     .home-scheme-switcher-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word;line-height:1.35}
     .home-scheme-switcher-pair{font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.35}
     .home-scheme-switcher-chevron{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;opacity:.55}
+    .home-scheme-switcher-chevron[hidden]{display:none!important}
+    .home-scheme-menu.is-floating{
+      position:fixed;right:auto;z-index:70;
+    }
     .home-scheme-backdrop{
       position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:55;
     }
@@ -311,6 +317,296 @@
       background:transparent;font:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;border-radius:0 0 10px 10px;
     }
     .home-scheme-manage:hover{background:var(--surface-soft)}
+    .home-key-map-card{
+      margin:8px 0 10px;padding:12px;border-radius:14px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+    }
+    .home-key-map-card.is-recording{border-color:rgba(42,156,196,.28)}
+    .home-key-map-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .home-key-map-head-text{min-width:0;flex:1}
+    .home-title-row{display:inline-flex;align-items:center;gap:5px;max-width:100%}
+    .home-title-row .mini-title{margin:0;line-height:1.35}
+    .home-help-wrap{position:relative;display:inline-flex;align-items:center;flex-shrink:0}
+    .home-help-btn{
+      flex-shrink:0;width:16px;height:16px;min-width:16px;min-height:16px;padding:0;margin:0;
+      border-radius:50%;border:1px solid var(--outline-variant);background:var(--surface-soft);
+      color:var(--on-surface-muted);font:inherit;font-size:10px;font-weight:800;line-height:1;
+      cursor:help;display:inline-flex;align-items:center;justify-content:center;
+      transform:translateY(0.5px);transition:border-color .12s,background .12s,color .12s;
+    }
+    .home-help-btn.is-active,
+    .home-help-wrap:hover .home-help-btn{
+      color:var(--primary);border-color:rgba(42,156,196,.35);background:var(--primary-soft);
+    }
+    .home-guide-layer{
+      position:fixed;inset:0;z-index:240;pointer-events:none;
+    }
+    .home-guide-layer.is-open .home-guide-veil{animation:homeGuideVeilIn .28s ease both}
+    .home-guide-layer.is-open .home-guide-banner{animation:homeGuideBannerIn .32s ease both}
+    .home-guide-layer[hidden]{display:none!important}
+    @keyframes homeGuideVeilIn{
+      from{opacity:0}
+      to{opacity:1}
+    }
+    @keyframes homeGuideBannerIn{
+      from{opacity:0;transform:translateY(-8px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+    @keyframes homeGuideCalloutIn{
+      from{opacity:0;transform:translateY(6px) scale(.96)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+    .home-guide-veil{
+      position:fixed;z-index:241;pointer-events:none;border-radius:16px;
+      background:rgba(237,245,250,.55);
+      box-shadow:inset 0 0 0 2px rgba(42,156,196,.22);
+      backdrop-filter:blur(1px);
+    }
+    .home-guide-layer.is-open .home-guide-veil{
+      pointer-events:auto;cursor:default;
+    }
+    html[data-theme="dark"] .home-guide-veil{
+      background:rgba(15,23,42,.42);
+      box-shadow:inset 0 0 0 2px rgba(94,200,232,.18);
+    }
+    .home-guide-lines{
+      position:fixed;inset:0;width:100%;height:100%;
+      overflow:visible;pointer-events:none;z-index:244;
+    }
+    .home-guide-line{
+      stroke:rgba(42,156,196,.5);stroke-width:1.5;fill:none;stroke-linecap:round;
+    }
+    html[data-theme="dark"] .home-guide-line{stroke:rgba(94,200,232,.45)}
+    .home-guide-callouts{
+      position:fixed;inset:0;z-index:245;overflow:visible;pointer-events:none;
+    }
+    .home-guide-callout{
+      position:fixed;z-index:245;max-width:min(220px,42vw);
+      padding:5px 8px;border-radius:10px;
+      background:rgba(255,255,255,.98);border:1px solid rgba(42,156,196,.42);
+      box-shadow:0 8px 22px rgba(15,23,42,.14),0 0 0 1px rgba(255,255,255,.6) inset;
+      font-size:10px;line-height:1.45;pointer-events:none;
+    }
+    .home-guide-layer.is-opening .home-guide-callout{
+      animation:homeGuideCalloutIn .34s ease both;
+      animation-delay:calc(var(--guide-i,0) * 55ms);
+    }
+    .home-guide-callout.is-settled{animation:none!important}
+    .home-guide-callout::before{display:none}
+    .home-guide-callout[data-placement="bottom"]::before{
+      top:-5px;left:var(--arrow-x,50%);transform:translateX(-50%) rotate(45deg);
+      border-bottom:none;border-right:none;
+    }
+    .home-guide-callout[data-placement="top"]::before{
+      bottom:-5px;left:var(--arrow-x,50%);transform:translateX(-50%) rotate(45deg);
+      border-top:none;border-left:none;
+    }
+    .home-guide-callout[data-placement="left"]::before{
+      right:-5px;top:var(--arrow-y,50%);transform:translateY(-50%) rotate(45deg);
+      border-bottom:none;border-left:none;
+    }
+    .home-guide-callout[data-placement="right"]::before{
+      left:-5px;top:var(--arrow-y,50%);transform:translateY(-50%) rotate(45deg);
+      border-top:none;border-right:none;
+    }
+    html[data-theme="dark"] .home-guide-callout{
+      background:rgba(28,36,48,.98);border-color:rgba(94,200,232,.36);
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+    }
+    .home-guide-callout-head{display:flex;align-items:flex-start;gap:6px}
+    .home-guide-callout-step{
+      flex-shrink:0;width:17px;height:17px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:9px;font-weight:800;color:#fff;background:var(--primary);
+      box-shadow:0 2px 6px rgba(42,156,196,.35);
+    }
+    .home-guide-callout-label{display:block;font-size:11px;font-weight:800;color:var(--on-surface);line-height:1.35}
+    .home-guide-callout-detail{display:block;margin-top:3px;font-size:10px;color:var(--on-surface-muted);line-height:1.48}
+    .home-guide-banner{
+      position:fixed;z-index:246;padding:0;border-radius:13px;overflow:hidden;
+      max-width:min(380px,calc(100vw - 20px));
+      background:rgba(255,255,255,.97);border:1px solid rgba(42,156,196,.32);
+      box-shadow:0 12px 32px rgba(15,23,42,.14);
+      font-size:10px;line-height:1.5;pointer-events:auto;color:var(--on-surface);
+    }
+    html[data-theme="dark"] .home-guide-banner{
+      background:rgba(24,32,44,.97);border-color:rgba(94,200,232,.28);
+      box-shadow:0 12px 32px rgba(0,0,0,.4);
+    }
+    .home-guide-banner.is-inline{
+      position:relative;left:auto!important;top:auto!important;z-index:auto;width:auto!important;
+      max-width:none;margin:0 0 12px;border-radius:12px;
+      box-shadow:0 8px 22px rgba(15,23,42,.08);
+      font-size:11px;line-height:1.55;
+    }
+    html[data-theme="dark"] .home-guide-banner.is-inline{
+      box-shadow:0 8px 22px rgba(0,0,0,.24);
+    }
+    .home-guide-banner-head{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      padding:8px 10px 7px;border-bottom:1px solid var(--outline-variant);
+      background:linear-gradient(180deg,var(--surface-soft),rgba(255,255,255,0));
+    }
+    .home-guide-banner-kicker{
+      font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.02em;
+    }
+    .home-guide-close{
+      flex-shrink:0;width:22px;height:22px;padding:0;margin:0;border-radius:50%;
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      color:var(--on-surface-muted);font:inherit;font-size:14px;line-height:1;
+      cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+      transition:background .12s,border-color .12s,color .12s,transform .12s;
+    }
+    .home-guide-close:hover{
+      color:var(--primary);border-color:rgba(42,156,196,.4);background:var(--primary-soft);
+      transform:scale(1.05);
+    }
+    .home-guide-banner-body{padding:8px 10px 9px;display:grid;gap:8px}
+    .home-guide-flow-track{
+      display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;
+    }
+    .home-guide-flow-item{
+      display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;
+      background:var(--primary-soft);border:1px solid rgba(42,156,196,.18);
+      font-size:10px;font-weight:700;color:var(--on-surface);
+    }
+    .home-guide-flow-num{
+      width:16px;height:16px;border-radius:50%;flex-shrink:0;
+      display:inline-flex;align-items:center;justify-content:center;
+      font-size:9px;font-weight:800;color:#fff;background:var(--primary);
+    }
+    .home-guide-flow-sep{color:var(--on-surface-muted);font-size:11px;font-weight:700;opacity:.7}
+    .home-guide-banner.is-inline .home-guide-banner-body{padding:9px 10px 10px;gap:9px}
+    .home-guide-banner.is-inline .home-guide-flow-track{display:grid;gap:6px}
+    .home-guide-banner.is-inline .home-guide-flow-item{
+      display:grid;grid-template-columns:18px minmax(0,1fr);align-items:start;width:100%;
+      border-radius:10px;padding:6px 8px;font-size:11px;line-height:1.45;white-space:normal;
+    }
+    .home-guide-banner.is-inline .home-guide-flow-item > span:last-child{min-width:0;overflow-wrap:anywhere}
+    .home-guide-banner.is-inline .home-guide-flow-num{width:18px;height:18px;font-size:10px}
+    .home-guide-banner.is-inline .home-guide-flow-sep{display:none}
+    .home-guide-banner.is-inline .home-guide-banner-kicker,
+    .home-guide-banner.is-inline .home-guide-caution-title,
+    .home-guide-banner.is-inline .home-guide-caution-text{font-size:11px}
+    .home-guide-area-list{display:grid;gap:6px}
+    .home-guide-section-title{
+      font-size:11px;font-weight:800;color:var(--on-surface);line-height:1.35;
+    }
+    .home-guide-area-item{
+      display:grid;grid-template-columns:minmax(68px,30%) minmax(0,1fr);gap:8px;
+      padding:7px 8px;border-radius:10px;border:1px solid var(--outline-variant);
+      background:var(--surface-soft);cursor:default;outline:none;
+    }
+    .home-guide-area-item:hover,
+    .home-guide-area-item:focus-visible{
+      border-color:rgba(42,156,196,.32);background:var(--primary-soft);
+    }
+    .home-guide-area-label{
+      min-width:0;font-size:11px;font-weight:800;line-height:1.4;color:var(--on-surface);
+      overflow-wrap:anywhere;
+    }
+    .home-guide-area-detail{
+      min-width:0;font-size:11px;font-weight:600;line-height:1.45;color:var(--on-surface-muted);
+      overflow-wrap:anywhere;
+    }
+    .home-guide-caution-box{
+      padding:7px 9px;border-radius:10px;
+      background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);
+    }
+    .home-guide-caution-title{
+      display:block;font-size:10px;font-weight:800;color:#c2410c;margin-bottom:3px;
+    }
+    .home-guide-caution-text{margin:0;font-size:10px;line-height:1.5;color:var(--on-surface-muted)}
+    html[data-theme="dark"] .home-guide-caution-title{color:#fb923c}
+    .home-guide-has-tip{
+      cursor:help;
+      transition:box-shadow .14s ease,filter .14s ease;
+    }
+    .home-guide-has-tip:hover,
+    .home-guide-has-tip.is-guide-hovered{
+      outline:1px dashed rgba(42,156,196,.62);
+      outline-offset:3px;
+      box-shadow:0 0 0 3px rgba(42,156,196,.5),0 8px 22px rgba(42,156,196,.16)!important;
+      filter:brightness(1.02);
+    }
+    .home-guide-hover-tip{
+      position:fixed;z-index:9998;max-width:min(280px,calc(100vw - 18px));
+      padding:9px 10px;border-radius:12px;
+      background:rgba(255,255,255,.98);border:1px solid rgba(42,156,196,.36);
+      box-shadow:0 12px 30px rgba(15,23,42,.16);
+      color:var(--on-surface);font-size:11px;line-height:1.45;pointer-events:none;
+      opacity:0;transform:translateY(4px);transition:opacity .12s ease,transform .12s ease;
+    }
+    .home-guide-hover-tip.is-show{opacity:1;transform:translateY(0)}
+    html[data-theme="dark"] .home-guide-hover-tip{
+      background:rgba(24,32,44,.98);border-color:rgba(94,200,232,.32);
+      box-shadow:0 12px 30px rgba(0,0,0,.38);
+    }
+    .home-guide-hover-tip-title{
+      display:flex;align-items:center;gap:6px;margin-bottom:3px;
+      font-size:11px;font-weight:800;color:var(--on-surface);
+    }
+    .home-guide-hover-tip-step{
+      width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+      flex-shrink:0;background:var(--primary);color:#fff;font-size:10px;font-weight:800;
+    }
+    .home-guide-hover-tip-detail{
+      font-size:11px;font-weight:600;color:var(--on-surface-muted);overflow-wrap:anywhere;
+    }
+    .home-guide-hover-tip-flow{display:grid;gap:5px;margin-top:2px}
+    .home-guide-hover-tip-flow-item{
+      display:grid;grid-template-columns:18px minmax(0,1fr);gap:6px;align-items:start;
+      font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.45;
+    }
+    .home-guide-spotlight{
+      position:relative;z-index:243!important;
+      outline:1px dashed rgba(42,156,196,.62);
+      outline-offset:3px;
+      box-shadow:0 0 0 3px rgba(42,156,196,.65),0 8px 22px rgba(42,156,196,.2)!important;
+    }
+    .home-guide-layer.is-opening .home-guide-spotlight{animation:homeGuideSpotIn .3s ease both}
+    @keyframes homeGuideSpotIn{
+      from{box-shadow:0 0 0 0 rgba(42,156,196,0),0 0 0 rgba(42,156,196,0)!important}
+      to{box-shadow:0 0 0 3px rgba(42,156,196,.65),0 8px 22px rgba(42,156,196,.2)!important}
+    }
+    .home-live-panel.is-guide-active,.home-finish-zone.is-guide-active{position:relative;z-index:239}
+    .home-live-panel.is-guide-active :is(button,input,select,textarea,a,.home-mic-current,.home-key-map-key,.home-scheme-switcher-btn):not(.home-help-btn),
+    .home-finish-zone.is-guide-active :is(button,input,select,textarea,a,.toggle-switch):not(.home-help-btn){
+      pointer-events:none!important;
+    }
+    .home-live-panel.is-guide-active .home-help-wrap,
+    .home-finish-zone.is-guide-active .home-help-wrap{
+      position:relative;z-index:1;pointer-events:auto;
+    }
+    .home-key-map-step-hint[hidden]{display:none!important}
+    .home-key-map-scheme{flex-shrink:0;min-width:0;max-width:46%;display:flex;flex-direction:column;align-items:flex-end;gap:4px;position:relative}
+    .home-key-map-scheme-lbl{font-size:10px;font-weight:700;color:var(--on-surface-muted);align-self:flex-end}
+    .home-key-map-scheme .home-scheme-switcher{max-width:100%}
+    .home-key-map-scheme .home-scheme-switcher-btn{min-height:34px;padding:6px 28px 6px 10px}
+    .home-key-map-flow{
+      display:grid;grid-template-columns:1fr auto 1fr;gap:6px 8px;align-items:center;margin-bottom:10px;
+    }
+    .home-key-map-step{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0}
+    .home-key-map-step-label{font-size:10px;font-weight:700;letter-spacing:.02em;color:var(--on-surface-muted);text-align:center}
+    .home-key-map-key{
+      min-height:52px;padding:10px 8px;border-radius:12px;
+      border:1px dashed var(--outline-variant);background:var(--surface-soft);
+      display:flex;align-items:center;justify-content:center;text-align:center;
+      font-size:15px;font-weight:800;color:var(--key-soft);line-height:1.25;word-break:break-word;
+    }
+    .home-key-map-key.is-set{border-style:solid;background:var(--surface);border-color:rgba(42,156,196,.22)}
+    .home-key-map-key.is-empty{font-size:12px;font-weight:600;color:var(--on-surface-muted)}
+    .home-key-map-key.is-recording{
+      border-color:var(--primary);background:var(--primary-soft);color:var(--primary);
+      animation:home-key-rec-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes home-key-rec-pulse{0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,.35)}50%{box-shadow:0 0 0 4px rgba(42,156,196,.12)}}
+    .home-key-map-step-hint{font-size:10px;line-height:1.35;color:var(--on-surface-muted);text-align:center}
+    .home-key-map-arrow{display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;flex-shrink:0}
+    .home-key-map-arrow-icon{font-size:18px;font-weight:800;color:var(--primary);line-height:1}
+    .home-key-map-arrow-text{font-size:9px;font-weight:700;color:var(--on-surface-muted);white-space:nowrap}
+    .home-key-map-actions{margin-top:0}
+    .home-key-map-actions .home-live-btn.is-primary-slot{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
     .home-live-hint.is-clickable{cursor:pointer}
     .home-live-hint.is-clickable:hover{filter:brightness(.98)}
     .home-live-val.is-off{color:var(--on-surface-muted);font-weight:600}
@@ -332,6 +628,10 @@
     .home-live-btn:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.24)}
     .home-live-btn:disabled{opacity:.45;cursor:not-allowed}
     .home-live-btn.primary{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
+    .home-live-btn.is-turn-on{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
+    .home-live-btn.is-turn-on:hover:not(:disabled){background:rgba(42,156,196,.16);border-color:rgba(42,156,196,.36)}
+    .home-live-btn.is-turn-off{background:var(--surface-high);color:var(--on-surface-muted);border-color:var(--outline-variant)}
+    .home-live-btn.is-turn-off:hover:not(:disabled){background:rgba(249,115,22,.08);color:#c2410c;border-color:rgba(249,115,22,.28)}
     .home-live-more{
       display:block;width:100%;border:none;background:transparent;padding:4px 0 0;
       font:inherit;font-size:11px;font-weight:600;color:var(--on-surface-muted);cursor:pointer;text-align:center;
@@ -346,6 +646,22 @@
     .home-inline-input{margin-bottom:10px}
     .home-inline-input .voice-sapi-range{margin-top:4px}
     .home-mic-wrap{margin:8px 0 10px}
+    .home-voice-meta{display:flex;flex-direction:column;gap:8px;margin:0 0 8px}
+    .home-voice-meta .home-mic-wrap{margin:0;flex:1;min-width:0}
+    .home-voice-meta-side{display:flex;flex-direction:column;justify-content:center;gap:6px;flex-shrink:0}
+    .home-voice-meta-side .home-live-inline{margin-bottom:0}
+    .home-voice-meta-side .home-inline-input{margin-bottom:0}
+    @media (min-width:520px){
+      .home-voice-meta{flex-direction:row;align-items:flex-start}
+    }
+    .home-live-panel-voice .home-voice-wake-float{
+      margin:0 0 10px;padding:10px 8px 8px;min-height:0;gap:6px;
+      border-radius:12px;background:rgba(255,255,255,.45);
+      border:1px solid rgba(42,156,196,.14);
+    }
+    html[data-theme="dark"] .home-live-panel-voice .home-voice-wake-float{
+      background:rgba(15,23,42,.22);border-color:rgba(94,200,232,.12);
+    }
     .home-mic-current{
       margin-top:6px;padding:10px 12px;border-radius:12px;border:1px solid var(--outline-variant);
       background:var(--surface-high);display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -354,6 +670,54 @@
     .home-mic-current.is-clickable:hover{border-color:var(--outline);background:var(--surface)}
     .home-mic-current-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word;line-height:1.4}
     .home-mic-current-hint{font-size:11px;font-weight:600;color:var(--on-surface-muted);white-space:nowrap;flex-shrink:0}
+    .home-voice-wake-float{
+      position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:8px;margin:4px 0 12px;padding:14px 10px 10px;min-height:88px;text-align:center;
+    }
+    .home-voice-wake-float-hint{
+      margin:0;font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.4;
+    }
+    .home-voice-wake-float-chip{
+      display:inline-flex;align-items:center;justify-content:center;max-width:100%;
+      padding:10px 18px;border-radius:999px;
+      background:linear-gradient(180deg,#fff,rgba(230,247,252,.92));
+      border:1px solid rgba(42,156,196,.28);
+      box-shadow:0 10px 28px rgba(42,156,196,.14),0 2px 8px rgba(15,23,42,.06);
+      animation:home-voice-wake-float 3.2s ease-in-out infinite;
+    }
+    html[data-theme="dark"] .home-voice-wake-float-chip{
+      background:linear-gradient(180deg,rgba(36,58,74,.95),rgba(28,48,62,.88));
+      border-color:rgba(94,200,232,.24);
+      box-shadow:0 10px 28px rgba(0,0,0,.28),0 0 0 1px rgba(94,200,232,.08);
+    }
+    .home-voice-wake-float-phrase{
+      font-size:clamp(18px,4.2vw,24px);font-weight:800;line-height:1.25;color:var(--primary);
+      letter-spacing:.02em;word-break:break-word;
+    }
+    .home-voice-wake-float-sub{
+      margin:0;font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.4;
+      max-width:100%;word-break:break-word;
+    }
+    .home-voice-wake-float.is-off .home-voice-wake-float-chip{
+      opacity:.72;animation:none;box-shadow:0 4px 14px rgba(15,23,42,.05);
+    }
+    .home-voice-wake-float.is-off .home-voice-wake-float-phrase{color:var(--on-surface-muted)}
+    .home-voice-wake-float.is-unset .home-voice-wake-float-phrase{
+      font-size:14px;font-weight:700;color:var(--on-surface-muted);
+    }
+    .home-voice-wake-float.is-listening .home-voice-wake-float-chip{
+      border-color:rgba(42,156,196,.45);
+      box-shadow:0 0 0 3px rgba(42,156,196,.12),0 12px 32px rgba(42,156,196,.18);
+      animation:home-voice-wake-float 2.4s ease-in-out infinite,home-voice-wake-glow 1.8s ease-in-out infinite;
+    }
+    @keyframes home-voice-wake-float{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-4px)}
+    }
+    @keyframes home-voice-wake-glow{
+      0%,100%{filter:brightness(1)}
+      50%{filter:brightness(1.04)}
+    }
     .home-live-panel[hidden]{display:none!important}
     .mapping-section{margin-top:8px;opacity:.98}
     .settings-panel .mapping-section{
@@ -408,6 +772,12 @@
       .home-finish-body{flex-direction:column;align-items:stretch}
       .home-finish-actions .home-live-btn{flex:1 1 100%}
       .home-live-row{grid-template-columns:minmax(64px,38%) 1fr}
+      .home-key-map-head{flex-direction:column;align-items:stretch}
+      .home-key-map-scheme{max-width:100%;align-items:stretch}
+      .home-key-map-scheme-lbl{align-self:flex-start}
+      .home-key-map-flow{grid-template-columns:1fr;gap:8px}
+      .home-key-map-arrow{flex-direction:row;justify-content:center;padding:2px 0}
+      .home-key-map-arrow-text{display:none}
       .home-scheme-menu{
         position:fixed;left:12px;right:12px;bottom:12px;top:auto;
         max-height:min(360px,58vh);padding:8px;
@@ -1308,88 +1678,124 @@
           <div class="home-main-grid" id="homeMainGrid" aria-live="polite">
             <div class="home-live-panel is-active" id="homeLivePanelKey" data-module="keyWake">
               <header class="home-live-head">
-                <h3 id="homeLiveKeyTitle">按键激活</h3>
+                <div class="home-live-head-title">
+                  <h3 id="homeLiveKeyTitle">按键激活</h3>
+                  <span class="home-help-wrap">
+                    <button type="button" class="home-help-btn" id="btnHomeKeyHelp" data-home-guide-card="key" aria-label="查看说明"><span aria-hidden="true">?</span></button>
+                  </span>
+                </div>
                 <span class="home-live-badge" id="homeLiveKeyBadge">—</span>
               </header>
-              <div class="home-live-row home-live-row-sound" style="margin-bottom:8px">
-                <span class="mic-desc" id="homeLiveKeyEnableLbl">启用按键激活</span>
-                <button type="button" class="toggle-switch" id="btnHomeKeyEnable" role="switch" aria-checked="false" aria-labelledby="homeLiveKeyEnableLbl"></button>
-              </div>
-              <dl class="home-live-stats">
-                <div class="home-live-row home-live-row-scheme" id="homeLiveKeySchemeRow">
-                  <dt id="homeLiveKeySchemeLbl">当前方案</dt>
-                  <dd class="home-live-scheme-dd">
-                    <span class="home-live-val" id="homeLiveKeyScheme" hidden>—</span>
-                    <div class="home-scheme-switcher" id="homeSchemeSwitcher">
-                      <button type="button" class="home-scheme-switcher-btn" id="btnHomeSchemeSwitcher" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="homeLiveKeySchemeLbl homeSchemeSwitcherName">
-                        <span class="home-scheme-switcher-name" id="homeSchemeSwitcherName">—</span>
-                        <span class="home-scheme-switcher-pair" id="homeSchemeSwitcherPair">—</span>
-                        <span class="home-scheme-switcher-chevron" id="homeSchemeSwitcherChevron" aria-hidden="true">▼</span>
-                      </button>
-                      <div class="home-scheme-backdrop" id="homeSchemeBackdrop" hidden></div>
-                      <div class="home-scheme-menu" id="homeSchemeMenu" role="listbox" aria-labelledby="homeLiveKeySchemeLbl" hidden>
-                        <div id="homeSchemeMenuList"></div>
-                        <button type="button" class="home-scheme-manage" id="btnHomeManageSchemes">管理全部方案…</button>
-                      </div>
+              <section class="home-key-map-card" id="homeKeyMapCard" aria-labelledby="homeKeyMapTitle">
+                <div class="home-key-map-head">
+                  <div class="home-key-map-head-text">
+                    <div class="mini-title" id="homeKeyMapTitle">按键对应</div>
+                  </div>
+                  <div class="home-key-map-scheme" id="homeSchemeSwitcher" data-home-guide-target>
+                    <span class="home-key-map-scheme-lbl" id="homeKeyMapSchemeLbl">方案</span>
+                    <button type="button" class="home-scheme-switcher-btn" id="btnHomeSchemeSwitcher" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="homeKeyMapSchemeLbl homeSchemeSwitcherName">
+                      <span class="home-scheme-switcher-name" id="homeSchemeSwitcherName">—</span>
+                      <span class="home-scheme-switcher-chevron" id="homeSchemeSwitcherChevron" aria-hidden="true">▼</span>
+                    </button>
+                    <div class="home-scheme-backdrop" id="homeSchemeBackdrop" hidden></div>
+                    <div class="home-scheme-menu" id="homeSchemeMenu" role="listbox" aria-labelledby="homeKeyMapSchemeLbl" hidden>
+                      <div id="homeSchemeMenuList"></div>
+                      <button type="button" class="home-scheme-manage" id="btnHomeManageSchemes">管理全部方案…</button>
                     </div>
-                  </dd>
+                  </div>
                 </div>
-              </dl>
+                <div class="home-key-map-flow" id="homeKeyMapFlow">
+                  <div class="home-key-map-step" id="homeKeyMapTrigger">
+                    <span class="home-key-map-step-label" id="homeKeyMapTriggerLbl">启动键</span>
+                    <div class="home-key-map-key is-empty" id="homeKeyMapTriggerKey">未设置</div>
+                    <span class="home-key-map-step-hint" id="homeKeyMapTriggerHint">如音量键、鼠标侧键</span>
+                  </div>
+                  <div class="home-key-map-arrow" id="homeKeyMapArrow" aria-hidden="true">
+                    <span class="home-key-map-arrow-icon">→</span>
+                    <span class="home-key-map-arrow-text" id="homeKeyMapArrowText">替你按下</span>
+                  </div>
+                  <div class="home-key-map-step" id="homeKeyMapTarget">
+                    <span class="home-key-map-step-label" id="homeKeyMapTargetLbl">语音快捷键</span>
+                    <div class="home-key-map-key is-empty" id="homeKeyMapTargetKey">未设置</div>
+                    <span class="home-key-map-step-hint" id="homeKeyMapTargetHint">输入法的语音输入快捷键</span>
+                  </div>
+                </div>
+                <div class="home-live-actions home-key-map-actions">
+                  <button type="button" class="home-live-btn is-primary-slot" id="btnHomeKeySettings">前往按键设置</button>
+                </div>
+              </section>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn primary" id="btnHomeKeyRecord">录制按键</button>
+                <button type="button" class="home-live-btn is-turn-on" id="btnHomeKeyToggle">启用</button>
               </div>
             </div>
-            <div class="home-live-panel is-active" id="homeLivePanelVoice" data-module="voiceWake">
+            <div class="home-live-panel is-active home-live-panel-voice" id="homeLivePanelVoice" data-module="voiceWake">
               <header class="home-live-head">
-                <h3 id="homeLiveVoiceTitle">语音激活</h3>
+                <div class="home-live-head-title">
+                  <h3 id="homeLiveVoiceTitle">语音激活</h3>
+                  <span class="home-help-wrap">
+                    <button type="button" class="home-help-btn" id="btnHomeVoiceHelp" data-home-guide-card="voice" aria-label="查看说明"><span aria-hidden="true">?</span></button>
+                  </span>
+                </div>
                 <span class="home-live-badge" id="homeLiveVoiceBadge">—</span>
               </header>
-              <div class="home-mic-wrap">
-                <div class="mini-title" id="homeMicTitle">当前麦克风</div>
-                <p class="mic-desc" id="homeMicDesc">语音入口使用的共享输入源</p>
-                <p class="mic-empty" id="homeMicEmpty" hidden></p>
-                <button type="button" class="home-mic-current is-clickable" id="btnHomeMicSettings" hidden>
-                  <span class="home-mic-current-name" id="homeMicCurrentName">—</span>
-                  <span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span>
-                  <span class="home-mic-current-hint" id="homeMicChangeHint">更改</span>
-                </button>
+              <div class="home-voice-wake-float" id="homeVoiceWakeFloat" role="status" aria-live="polite">
+                <p class="home-voice-wake-float-hint" id="homeVoiceWakeFloatHint">说出唤醒词</p>
+                <div class="home-voice-wake-float-chip" id="homeVoiceWakeChip">
+                  <span class="home-voice-wake-float-phrase" id="homeVoiceWakePhrase">—</span>
+                </div>
+                <p class="home-voice-wake-float-sub" id="homeVoiceWakeSub" hidden></p>
               </div>
-              <div class="home-live-inline" id="homeVoiceModeSwitch">
-                <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
-                <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">高级版</button>
-              </div>
-              <dl class="home-live-stats">
-                <div class="home-live-row"><dt id="homeLiveVoiceEngineLbl">引擎</dt><dd class="home-live-val" id="homeLiveVoiceEngine">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveVoicePhraseLbl">唤醒词</dt><dd class="home-live-val" id="homeLiveVoicePhrase">—</dd></div>
-                <div class="home-live-row"><dt id="homeLiveVoiceHeardLbl">最近识别</dt><dd class="home-live-val" id="homeLiveVoiceHeard">—</dd></div>
-              </dl>
-              <div class="home-inline-input" id="homeVoiceSapiQuick" hidden>
-                <span class="mic-desc" id="homeVoiceSapiConfidenceLabel">灵敏度 0.35</span>
-                <input type="range" class="voice-sapi-range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35">
+              <div class="home-voice-meta" id="homeVoiceMeta">
+                <div class="home-mic-wrap" id="homeMicWrap">
+                  <div class="mini-title" id="homeMicTitle">当前麦克风</div>
+                  <p class="mic-empty" id="homeMicEmpty" hidden></p>
+                  <button type="button" class="home-mic-current is-clickable" id="btnHomeMicSettings" hidden>
+                    <span class="home-mic-current-name" id="homeMicCurrentName">—</span>
+                    <span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span>
+                    <span class="home-mic-current-hint" id="homeMicChangeHint">更改</span>
+                  </button>
+                </div>
+                <div class="home-voice-meta-side">
+                  <div class="home-live-inline" id="homeVoiceModeSwitch">
+                    <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
+                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">高级版</button>
+                  </div>
+                  <div class="home-inline-input" id="homeVoiceSapiQuick" hidden>
+                    <span class="mic-desc" id="homeVoiceSapiConfidenceLabel">灵敏度 0.35</span>
+                    <input type="range" class="voice-sapi-range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35">
+                  </div>
+                </div>
               </div>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn primary" id="btnHomeVoiceToggle">启用</button>
+                <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">启用</button>
               </div>
             </div>
           </div>
           <div class="home-finish-zone" id="homeFinishZone">
             <div class="home-finish-bar" id="homeLivePanelEnd" data-module="voiceEnd">
               <div class="home-finish-head">
-                <h3 id="homeLiveEndTitle">完成动作</h3>
+                <div class="home-finish-head-main">
+                  <div class="home-title-row">
+                    <h3 id="homeLiveEndTitle">完成动作</h3>
+                    <span class="home-help-wrap">
+                      <button type="button" class="home-help-btn" id="btnHomeFinishHelp" data-home-guide-card="finish" aria-label="查看说明"><span aria-hidden="true">?</span></button>
+                    </span>
+                  </div>
+                </div>
                 <span class="home-finish-status" id="homeFinishStatus">—</span>
               </div>
               <div class="home-finish-body">
                 <div class="home-finish-controls">
-                  <div class="home-finish-ctrl">
+                  <div class="home-finish-ctrl" id="homeFinishCtrlEnd">
                     <span id="homeLiveEndEnabledLbl">结束词</span>
                     <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
                   </div>
-                  <div class="home-finish-ctrl">
+                  <div class="home-finish-ctrl" id="homeFinishCtrlAuto">
                     <span id="homeLiveEndAutoLbl">自动发送</span>
                     <button type="button" class="toggle-switch" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
                   </div>
-                  <div class="home-finish-ctrl home-finish-ctrl-delay">
+                  <div class="home-finish-ctrl home-finish-ctrl-delay" id="homeFinishCtrlDelay">
                     <span class="mic-desc" id="homeVoiceEndDelayLine">发送延迟：4000ms</span>
                     <input type="range" class="voice-sapi-range" id="homeVoiceEndDelayRange" min="1000" max="10000" step="500" value="4000">
                   </div>
@@ -1411,7 +1817,7 @@
     <div class="drawer-shell">
       <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
         <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
-        <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键激活（深度）</button>
+        <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键设置</button>
         <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音激活（深度）</button>
         <button type="button" class="settings-nav-item" data-panel="voiceEnd" id="settingsNavVoiceEnd">完成动作（深度）</button>
         <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
@@ -1460,10 +1866,10 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeyWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">首页负责高频操作；这里保留方案管理与完整编辑</p>
+          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">首页查看键位对应与启用；在此录制按键并管理方案</p>
           <details class="settings-secondary" id="quickKeyWakeSection">
-            <summary id="quickKeyWakeSummary">首页快捷操作（按键录制）</summary>
-            <p class="settings-secondary-hint" id="quickKeyWakeHint">建议在首页主操作台完成，必要时再用这里的完整录制面板。</p>
+            <summary id="quickKeyWakeSummary">按键设置（录制启动键与快捷键）</summary>
+            <p class="settings-secondary-hint" id="quickKeyWakeHint">按键录制请在本页完成；首页仅查看对应关系与启用。</p>
             <div class="key-wake-settings" id="keyWakeSettings">
               <div class="mini-title" id="keyWakeSettingsTitle">按键激活设置</div>
               <p class="mic-desc" id="triggerTitle">启动键</p>
@@ -1958,6 +2364,12 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
 
+  <div class="home-guide-layer" id="homeGuideLayer" hidden>
+    <div class="home-guide-veil" id="homeGuideVeil"></div>
+    <svg class="home-guide-lines" id="homeGuideLines" aria-hidden="true"></svg>
+    <div class="home-guide-callouts" id="homeGuideCallouts"></div>
+    <div class="home-guide-banner" id="homeGuideBanner" hidden></div>
+  </div>
   <script>
   (function(){
     const listeners={message:[]};
@@ -2214,7 +2626,7 @@
       guideTitle2:'再录一次',
       guideDesc2:'先录启动键，再录语音快捷键，两步完成即可使用。',
       guideTitle3:'马上用',
-      guideDesc3:'可在「设置 → 按键激活（深度）」最下方的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
+      guideDesc3:'可在「设置 → 按键设置」最下方的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
       mappingListTitle:'我的方案',addMapping:'新增方案',
       triggerTitle:'启动键',targetTitle:'语音快捷键',
       btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
@@ -2399,19 +2811,68 @@
       voiceDiagUsageError:'读取失败',
       wakeCardTitle:'唤醒',wakeKeyLabel:'按键激活',wakeVoiceLabel:'语音激活',
       homeLiveKeyTitle:'按键激活',homeLiveVoiceTitle:'语音激活',homeLiveEndTitle:'完成动作',
-      homeLiveKeyEnableLbl:'启用按键激活',
+      homeLiveToggleKeyOff:'启用',homeLiveToggleKeyOn:'停用',
       homeMicTitle:'当前麦克风',homeMicDesc:'仅显示当前选用设备；切换请进语音激活设置',
       homeMicChangeHint:'更改',
       homeLiveTrigger:'启动键',homeLiveTarget:'语音快捷键',homeLiveScheme:'当前方案',
+      homeKeyMapTitle:'按键对应',homeKeyMapDesc:'按下左侧启动键后，程序会替你发送右侧语音快捷键',
+      homeKeyMapSchemeLbl:'方案',homeKeyMapArrowText:'替你按下',
+      homeKeyMapTriggerHint:'如音量键、鼠标侧键',homeKeyMapTargetHint:'输入法的语音输入快捷键',
+      homeKeyMapEmptyKey:'未设置',
+      homeHelpAria:'点击查看本页说明',
+      homeGuideClose:'关闭说明',
+      homeGuideKicker:'操作指引',
+      homeGuideSteps:'操作步骤',
+      homeGuideAreas:'界面对应',
+      homeGuideHoverHint:'悬浮任一按键或区域查看对应功能提示。',
+      homeKeyGuideIntro:'配置「按一颗键 → 自动发送语音快捷键」；悬停下列条目可在左侧界面看到对应位置。',
+      homeKeyGuideFlowGoSettings:'点击「前往按键设置」进入按键设置页。',
+      homeKeyGuideFlowRecordInSettings:'在按键设置页录制启动键与语音输入快捷键。',
+      homeKeyGuideFlowEnable:'回到首页后点「启用」，程序开始监听启动键。',
+      homeKeyGuideBadge:'角标：已就绪 / 未启用 / 待配置 / 未完成方案 等当前状态。',
+      homeKeyGuideScheme:'点击下拉切换方案，或进入「管理全部方案」新增、编辑。',
+      homeKeyGuideMapTitle:'本区展示当前方案的键位对应关系。',
+      homeKeyGuideTrigger:'左侧：你按下的启动键；未录时为虚线「未设置」。',
+      homeKeyGuideArrow:'表示按下启动键后，由程序替你发送右侧快捷键。',
+      homeKeyGuideTarget:'右侧：将被代按的语音快捷键。',
+      homeKeyGuideCaution:'语音快捷键必须与输入法设置一致；启用前确认顶部未显示「监听已暂停」；多套方案避免启用冲突键位。',
+      homeVoiceGuideIntro:'用语音唤起听写：确认唤醒词 → 检查麦克风 → 点启用。',
+      homeVoiceGuideFlowWake:'说出上方唤醒词，即可拉起语音输入法。',
+      homeVoiceGuideFlowMic:'电平条应随声音跳动；无信号可点「更改」换麦克风。',
+      homeVoiceGuideFlowMode:'轻量版走系统识别；高级版离线 Vosk，能力更全。',
+      homeVoiceGuideModeLbl:'轻量版 / 高级版',
+      homeVoiceGuideFlowEnable:'控制是否监听唤醒词。未启用显示「启用」，监听中显示「停用」。',
+      homeVoiceGuideBadge:'角标显示是否已启用、是否在监听。',
+      homeVoiceGuideMic:'显示当前麦克风与电平条。电平应随说话跳动；无信号时点「更改」换设备。',
+      homeVoiceGuideWake:'对着麦克风说出上方唤醒词，程序会拉起语音输入法；可先在此试用是否正确。',
+      homeVoiceGuideModeSapi:'系统内置识别，占用较低。',
+      homeVoiceGuideModeVosk:'离线识别，支持更多高级能力。',
+      homeVoiceWakeFloatHint:'说出唤醒词',
+      homeVoiceWakeFloatHintOff:'启用后，说出唤醒词即可试用',
+      homeVoiceWakeFloatLbl:'唤醒词',
+      homeVoiceWakeFloatWaiting:'正在听…',
+      homeVoiceGuideCaution:'唤醒词需与设置一致；轻量版依赖 Windows 语音；勿与按键入口抢同一快捷键。',
+      homeFinishGuideIntro:'听写如何结束并发送；按键与语音入口共用此规则。',
+      homeFinishGuideFlowStart:'先通过按键或语音唤醒开始听写（见上方两卡）。',
+      homeFinishGuideFlowStartLbl:'上方：按键 / 语音唤醒',
+      homeFinishGuideFlowEnd:'说完后说结束词，或依赖下方「自动发送」。',
+      homeFinishGuideFlowSend:'程序再次按下快捷键，结束录音并提交文字。',
+      homeFinishGuideFlowSendLbl:'本区：结束并发送',
+      homeFinishGuideEnd:'开关：是否启用结束词识别来触发完成。',
+      homeFinishGuideAuto:'开关：静音达到延迟后是否自动完成。',
+      homeFinishGuideDelay:'滑块：自动发送前需持续静音多久（毫秒）。',
+      homeFinishGuideStatus:'右侧显示的听写/完成状态摘要。',
+      homeFinishGuideCaution:'结束词与自动发送可同时开启；发送延迟过短可能截断尾音；外部输入法独占麦克风时结束词可能失效。',
+      homeGuideCautionTitle:'注意事项',
+      homeKeyGoSettings:'前往按键设置',homeKeyEditSettings:'修改按键设置',
       homeLiveKeySound:'激活提示音',
       homeLiveEngine:'引擎',homeLiveWakeWord:'唤醒词',homeLiveLastHeard:'最近识别',
       homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',
       homeEntryKeyOnly:'已启用：按键激活',homeEntryVoiceOnly:'已启用：语音激活',
       homeEntryBoth:'已启用：按键 + 语音',homeEntryNone:'未启用任何入口',
       homeSchemeManage:'管理全部方案…',homeSchemeToggleLbl:'启用此方案',
-      homeSchemeSwitchAria:'切换当前方案',
+      homeSchemeSwitchAria:'切换当前方案',homeSchemeMenuAria:'打开方案菜单',
       homeFinishHint:'无论通过按键还是语音开始，结束时都走这套规则',
-      homeLiveRetrigger:'重录启动键',homeLiveRetarget:'重录快捷键',homeLiveRecordKeys:'录制按键',homeLiveTestSend:'测试发送',
       homeLiveToggleWakeOn:'停用',homeLiveToggleWakeOff:'启用',
       homeLiveSwitchEngine:'切换模式',homeLiveToggleEndOn:'停用',homeLiveToggleEndOff:'启用',
       homeLiveTestEndSend:'测试发送',
@@ -2434,11 +2895,11 @@
       homeCtaSubKey:'按 {key}',homeCtaSubVoice:'说出唤醒词开始',
       homeCtaSubKeyOrVoice:'按 {key} 或说唤醒词',homeCtaSubNeedTrigger:'先设置启动键',
       homeCtaSubNeedTarget:'再设置语音快捷键',
-      settingsNavBasic:'基础',settingsNavKeyWake:'按键激活（深度）',settingsNavVoiceWake:'语音激活（深度）',
+      settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音激活（深度）',
       settingsNavVoiceEnd:'完成动作（深度）',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
-      settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'首页负责高频操作；这里保留方案管理与完整编辑',
+      settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'首页查看键位对应与启用；在此录制按键并管理方案',
       settingsPanelVoiceWakeDesc:'首页可快速切换与启停；这里保留完整语音配置与高级参数',settingsPanelVoiceEndDesc:'规划结束词、按键完成流程与深度参数；首页保留高频开关',
-      quickKeyWakeSummary:'首页快捷操作（按键录制）',quickKeyWakeHint:'建议在首页主操作台完成，必要时再用这里的完整录制面板。',
+      quickKeyWakeSummary:'按键设置（录制启动键与快捷键）',quickKeyWakeHint:'按键录制请在本页完成；首页仅查看对应关系与启用。',
       quickVoiceWakeSummary:'首页快捷操作（模式与麦克风）',quickVoiceWakeHint:'该区默认折叠，避免与首页主操作台重复。',
       quickVoiceEndSummary:'首页快捷操作（完成动作开关与延迟）',quickVoiceEndHint:'该区默认折叠，首页用于高频控制；这里保留完整参数链路。',
       settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
@@ -2464,7 +2925,7 @@
       endPhrasesEmpty:'—',endPhrasesMore:'等 {n} 个',
       sessionUnbound:'未绑定方案',sessionSelectedMapping:'当前方案',
       btnMoreSettings:'更多设置',voiceHubTitle:'语音',voiceHubTabWake:'唤醒',voiceHubTabEnd:'结束',
-      keyWakeSettingsTitle:'按键激活设置',voiceAdvancedSummary:'兼容说明',
+      keyWakeSettingsTitle:'按键设置',voiceAdvancedSummary:'兼容说明',
       chipKeyWake:'按键',chipVoiceWake:'语音激活',chipVoiceEnd:'结束词',chipDictating:'听写中',
       chipVoiceSend:'语音发送',chipTimedSend:'定时发送',
       quickTipsTitle:'怎么设置最省心',
@@ -2485,7 +2946,7 @@
       keyFinishFlowDesc:'规划用启动键开始听写后，如何取消或自动确认。按键只负责唤起，结束节奏在这里配置。',
       keyFinishFlowScheme:'当前方案：{name}',
       keyFinishFlowSchemeDraft:'当前方案尚未录完按键',
-      keyFinishFlowNeedKeys:'请先在「按键激活」中录好启动键与语音快捷键，再配置完成流程。',
+      keyFinishFlowNeedKeys:'请先在「按键设置」中录好启动键与语音快捷键，再配置完成流程。',
       keyFinishFlowInstant:'即时触发',keyFinishFlowConfirm:'确认窗口',
       keyFinishFlowInstantDesc:'每次按键独立唤起语音；不设取消/确认窗口，结束交给结束词或手动操作',
       keyFinishFlowConfirmDesc:'开始后短时间内再按可取消；超时后自动确认发送',
@@ -2542,7 +3003,7 @@
       guideTitle2:'Record once',
       guideDesc2:'Record a launch key, then your voice shortcut — two steps to get started.',
       guideTitle3:'Use it',
-      guideDesc3:'Manage profiles at the bottom of Settings → Key wake and use the toggle to enable the one you need.',
+      guideDesc3:'Manage profiles at the bottom of Settings → Key settings and use the toggle to enable the one you need.',
       mappingListTitle:'My profiles',addMapping:'Add profile',
       triggerTitle:'Launch key',targetTitle:'Voice shortcut',
       btnRecordTrigger:'Set launch key',btnRecordTarget:'Record voice input key',
@@ -2727,19 +3188,68 @@
       voiceDiagUsageError:'Read failed',
       wakeCardTitle:'Wake',wakeKeyLabel:'Key activation',wakeVoiceLabel:'Voice activation',
       homeLiveKeyTitle:'Key activation',homeLiveVoiceTitle:'Voice activation',homeLiveEndTitle:'Finish actions',
-      homeLiveKeyEnableLbl:'Enable key activation',
+      homeLiveToggleKeyOff:'Turn on',homeLiveToggleKeyOn:'Turn off',
       homeMicTitle:'Current microphone',homeMicDesc:'Shows the active device only; switch in voice activation settings',
       homeMicChangeHint:'Change',
       homeLiveTrigger:'Launch key',homeLiveTarget:'Voice shortcut',homeLiveScheme:'Active profile',
+      homeKeyMapTitle:'Key mapping',homeKeyMapDesc:'When you press the launch key on the left, the app sends the voice shortcut on the right',
+      homeKeyMapSchemeLbl:'Profile',homeKeyMapArrowText:'sends',
+      homeKeyMapTriggerHint:'e.g. volume key, mouse side button',homeKeyMapTargetHint:'Your input method voice shortcut',
+      homeKeyMapEmptyKey:'Not set',
+      homeHelpAria:'Click for section help',
+      homeGuideClose:'Close guide',
+      homeGuideKicker:'Quick guide',
+      homeGuideSteps:'Steps',
+      homeGuideAreas:'On this screen',
+      homeGuideHoverHint:'Hover any button or area to see its exact function.',
+      homeKeyGuideIntro:'Set up press a key → app sends the voice shortcut. Hover items below to locate them on the card.',
+      homeKeyGuideFlowGoSettings:'Tap Go to key settings to open the key settings page.',
+      homeKeyGuideFlowRecordInSettings:'Record the launch key and voice shortcut on that page.',
+      homeKeyGuideFlowEnable:'Back on home, tap Enable to start listening for the launch key.',
+      homeKeyGuideBadge:'Badge: Ready / Off / Needs setup / Incomplete profile, etc.',
+      homeKeyGuideScheme:'Open to switch profiles or manage all profiles.',
+      homeKeyGuideMapTitle:'Shows the key mapping for the active profile.',
+      homeKeyGuideTrigger:'Left: your launch key; dashed box when not set.',
+      homeKeyGuideArrow:'Press launch key → app sends the shortcut on the right.',
+      homeKeyGuideTarget:'Right: the voice shortcut that will be sent.',
+      homeKeyGuideCaution:'Voice shortcut must match your IME; ensure listening is not paused; avoid conflicting keys across profiles.',
+      homeVoiceGuideIntro:'Start dictation by voice: check wake phrase → mic → enable.',
+      homeVoiceGuideFlowWake:'Say the wake phrase above to start voice input.',
+      homeVoiceGuideFlowMic:'Level bars should move when you speak; tap Change to switch mic.',
+      homeVoiceGuideFlowMode:'Light uses system speech; Advanced uses offline Vosk.',
+      homeVoiceGuideModeLbl:'Light / Advanced',
+      homeVoiceGuideFlowEnable:'Turns wake listening on or off. Shows Enable when off, Disable while listening.',
+      homeVoiceGuideBadge:'Badge shows enabled / listening state.',
+      homeVoiceGuideMic:'Shows the active mic and level bars. Bars should move when you speak; tap Change to switch device.',
+      homeVoiceGuideWake:'Say the wake phrase above into the mic to start voice input; try it here first.',
+      homeVoiceGuideModeSapi:'Built-in recognition, lower resource use.',
+      homeVoiceGuideModeVosk:'Offline recognition with more options.',
+      homeVoiceWakeFloatHint:'Say wake phrase',
+      homeVoiceWakeFloatHintOff:'After enabling, say the wake phrase to test',
+      homeVoiceWakeFloatLbl:'Wake phrase',
+      homeVoiceWakeFloatWaiting:'Listening…',
+      homeVoiceGuideCaution:'Wake phrase must match settings; Light needs Windows speech; avoid shortcut conflicts with key entry.',
+      homeFinishGuideIntro:'How dictation ends and sends; shared by key and voice entry.',
+      homeFinishGuideFlowStart:'Start dictation from the key or voice card above.',
+      homeFinishGuideFlowStartLbl:'Above: key / voice wake',
+      homeFinishGuideFlowEnd:'Say an end phrase or use auto-send below.',
+      homeFinishGuideFlowSend:'App sends the shortcut again to stop and submit.',
+      homeFinishGuideFlowSendLbl:'This zone: finish and send',
+      homeFinishGuideEnd:'Toggle end-phrase recognition for finish.',
+      homeFinishGuideAuto:'Toggle finish after silence.',
+      homeFinishGuideDelay:'Slider: silence duration before auto-send (ms).',
+      homeFinishGuideStatus:'Status summary on the right.',
+      homeFinishGuideCaution:'End phrases and auto-send can both be on; short delay may cut trailing words; external IME may block end phrases.',
+      homeGuideCautionTitle:'Notes',
+      homeKeyGoSettings:'Key settings',homeKeyEditSettings:'Edit key settings',
       homeLiveKeySound:'Activation sound',
       homeLiveEngine:'Engine',homeLiveWakeWord:'Wake phrase',homeLiveLastHeard:'Last heard',
       homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',
       homeEntryKeyOnly:'Enabled: key activation',homeEntryVoiceOnly:'Enabled: voice activation',
       homeEntryBoth:'Enabled: key + voice',homeEntryNone:'No entry enabled',
       homeSchemeManage:'Manage all profiles…',homeSchemeToggleLbl:'Enable this profile',
-      homeSchemeSwitchAria:'Switch active profile',
+      homeSchemeSwitchAria:'Switch active profile',homeSchemeMenuAria:'Open profile menu',
       homeFinishHint:'Whether you start by key or voice, finishing uses these rules',
-      homeLiveRetrigger:'Re-record launch',homeLiveRetarget:'Re-record shortcut',homeLiveRecordKeys:'Record keys',homeLiveTestSend:'Test send',
       homeLiveToggleWakeOn:'Turn off',homeLiveToggleWakeOff:'Turn on',
       homeLiveSwitchEngine:'Switch mode',homeLiveToggleEndOn:'Turn off',homeLiveToggleEndOff:'Turn on',
       homeLiveTestEndSend:'Test send',
@@ -2762,11 +3272,11 @@
       homeCtaSubKey:'Press {key}',homeCtaSubVoice:'Say wake phrase',
       homeCtaSubKeyOrVoice:'Press {key} or say wake phrase',homeCtaSubNeedTrigger:'Set launch key first',
       homeCtaSubNeedTarget:'Then set voice shortcut',
-      settingsNavBasic:'Basic',settingsNavKeyWake:'Key activation (advanced)',settingsNavVoiceWake:'Voice activation (advanced)',
+      settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice activation (advanced)',
       settingsNavVoiceEnd:'Finish actions (advanced)',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
-      settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Homepage handles quick actions; this page keeps full profile editing',
+      settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Home shows mapping and enable; record keys and manage profiles here',
       settingsPanelVoiceWakeDesc:'Homepage offers quick toggle and switch; this page keeps complete voice settings',settingsPanelVoiceEndDesc:'Plan end phrases, key finish flow and advanced options; homepage keeps quick toggles',
-      quickKeyWakeSummary:'Homepage quick actions (key recording)',quickKeyWakeHint:'Use the homepage console for frequent changes; keep this full editor as needed.',
+      quickKeyWakeSummary:'Key settings (record keys)',quickKeyWakeHint:'Record keys here; the homepage only shows mapping and enable.',
       quickVoiceWakeSummary:'Homepage quick actions (mode and microphone)',quickVoiceWakeHint:'Collapsed by default to avoid duplicate primary entry points.',
       quickVoiceEndSummary:'Homepage quick actions (finish actions toggle and delay)',quickVoiceEndHint:'Collapsed by default; homepage stays the high-frequency control surface.',
       settingsPanelSoundsDesc:'Sounds for recording, wake and send',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
@@ -2792,7 +3302,7 @@
       endPhrasesEmpty:'—',endPhrasesMore:'+{n} more',
       sessionUnbound:'Session · unbound',sessionSelectedMapping:'Current mapping',
       btnMoreSettings:'More settings',voiceHubTitle:'Voice',voiceHubTabWake:'Wake',voiceHubTabEnd:'End',
-      keyWakeSettingsTitle:'Key activation settings',voiceAdvancedSummary:'Compatibility notes',
+      keyWakeSettingsTitle:'Key settings',voiceAdvancedSummary:'Compatibility notes',
       chipKeyWake:'Key',chipVoiceWake:'Voice activation',chipVoiceEnd:'End phrase',chipDictating:'Dictating',
       chipVoiceSend:'Voice send',chipTimedSend:'Timed send',
       quickTipsTitle:'Easiest setup',
@@ -2813,7 +3323,7 @@
       keyFinishFlowDesc:'Plan how key-started dictation ends: cancel or auto-confirm. Keys only launch voice; finish timing lives here.',
       keyFinishFlowScheme:'Profile: {name}',
       keyFinishFlowSchemeDraft:'Current profile keys are incomplete',
-      keyFinishFlowNeedKeys:'Record launch key and voice shortcut under Key activation before configuring finish flow.',
+      keyFinishFlowNeedKeys:'Record launch key and voice shortcut under Key settings before configuring finish flow.',
       keyFinishFlowInstant:'Instant',keyFinishFlowConfirm:'Confirm window',
       keyFinishFlowInstantDesc:'Each press triggers voice independently; no cancel/confirm window — use end phrases or manual finish',
       keyFinishFlowConfirmDesc:'Press again soon to cancel; auto-confirm after the wait',
@@ -3209,6 +3719,7 @@
       btn.classList.toggle('is-active',btn.getAttribute('data-scale')===fontScale);
     });
     try{ localStorage.setItem('vp_font_scale',fontScale); }catch(_){ }
+    if(homeGuideState) homeGuideScheduleLayout();
   }
 
   function setFontScale(scale){
@@ -4196,6 +4707,40 @@
 
   let homeSchemeMenuOpen=false;
 
+  function resetHomeSchemeMenuPosition(){
+    const menu=$('homeSchemeMenu');
+    if(!menu) return;
+    menu.classList.remove('is-floating');
+    menu.style.left='';
+    menu.style.top='';
+    menu.style.width='';
+    menu.style.maxWidth='';
+  }
+
+  function positionHomeSchemeMenu(){
+    const btn=$('btnHomeSchemeSwitcher');
+    const menu=$('homeSchemeMenu');
+    if(!btn||!menu||menu.hidden) return;
+    const r=btn.getBoundingClientRect();
+    const pad=12;
+    const width=Math.min(Math.max(r.width,168),window.innerWidth-pad*2);
+    let left=Math.min(Math.max(pad,r.left),window.innerWidth-pad-width);
+    let top=r.bottom+6;
+    const maxH=Math.min(280,window.innerHeight*0.42);
+    if(top+maxH>window.innerHeight-pad){
+      top=Math.max(pad,r.top-6-maxH);
+    }
+    menu.classList.add('is-floating');
+    menu.style.left=left+'px';
+    menu.style.top=top+'px';
+    menu.style.width=width+'px';
+    menu.style.maxWidth=(window.innerWidth-pad*2)+'px';
+  }
+
+  function onHomeSchemeMenuLayout(){
+    if(homeSchemeMenuOpen) positionHomeSchemeMenu();
+  }
+
   function setHomeSchemeMenuOpen(open){
     homeSchemeMenuOpen=!!open;
     const menu=$('homeSchemeMenu');
@@ -4204,6 +4749,15 @@
     if(menu) menu.hidden=!open;
     if(backdrop) backdrop.hidden=!open;
     if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
+    if(open){
+      positionHomeSchemeMenu();
+      window.addEventListener('resize',onHomeSchemeMenuLayout);
+      window.addEventListener('scroll',onHomeSchemeMenuLayout,true);
+    }else{
+      window.removeEventListener('resize',onHomeSchemeMenuLayout);
+      window.removeEventListener('scroll',onHomeSchemeMenuLayout,true);
+      resetHomeSchemeMenuPosition();
+    }
   }
 
   function closeHomeSchemeMenu(){
@@ -4213,7 +4767,7 @@
   function toggleHomeSchemeMenu(){
     if(recordingMode!=='none') return;
     ensureConfig();
-    if(sortedMappings().length<2) return;
+    if(!sortedMappings().length) return;
     setHomeSchemeMenuOpen(!homeSchemeMenuOpen);
   }
 
@@ -4249,27 +4803,20 @@
     if(switcher) switcher.hidden=!!loading;
     const m=selectedMapping();
     const nameEl=$('homeSchemeSwitcherName');
-    const pairEl=$('homeSchemeSwitcherPair');
     if(loading){
       if(nameEl) nameEl.textContent=t('homeLiveLoading');
-      if(pairEl) pairEl.textContent='';
       closeHomeSchemeMenu();
       return;
     }
     if(nameEl) nameEl.textContent=homeMappingShortName(m);
-    if(pairEl) pairEl.textContent=homeMappingPairLine(m);
     const btn=$('btnHomeSchemeSwitcher');
     if(btn){
       btn.disabled=recordingBusySchemeSwitcher();
-      btn.classList.toggle('is-readonly',!multi);
-      btn.setAttribute('aria-haspopup',multi?'listbox':'false');
-      btn.setAttribute('aria-label',multi?t('homeSchemeSwitchAria'):t('homeLiveScheme'));
+      btn.classList.remove('is-readonly');
+      btn.setAttribute('aria-haspopup','listbox');
+      btn.setAttribute('aria-label',multi?t('homeSchemeSwitchAria'):t('homeSchemeMenuAria'));
     }
-    if(chevron) chevron.hidden=!multi;
-    if(!multi){
-      closeHomeSchemeMenu();
-      return;
-    }
+    if(chevron) chevron.hidden=false;
     const manageBtn=$('btnHomeManageSchemes');
     if(manageBtn) manageBtn.textContent=t('homeSchemeManage');
     const listEl=$('homeSchemeMenuList');
@@ -4287,12 +4834,63 @@
       html+='</div>';
       if(draft){
         html+='<span class="home-scheme-item-tag">'+escHtml(t('homeLiveSchemeDraft'))+'</span>';
-      }else{
+      }else if(multi){
         html+='<button type="button" class="toggle-switch home-scheme-item-toggle'+(on?' is-on':'')+'" data-home-scheme-toggle="'+item.id+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="'+escHtml(t('homeSchemeToggleLbl'))+'"></button>';
       }
       html+='</div>';
     });
     listEl.innerHTML=html;
+  }
+
+  function renderHomeKeyMapCard(loading){
+    const titleEl=$('homeKeyMapTitle');
+    const schemeLbl=$('homeKeyMapSchemeLbl');
+    const trigLbl=$('homeKeyMapTriggerLbl');
+    const tgtLbl=$('homeKeyMapTargetLbl');
+    const trigHint=$('homeKeyMapTriggerHint');
+    const tgtHint=$('homeKeyMapTargetHint');
+    const arrowText=$('homeKeyMapArrowText');
+    if(titleEl) titleEl.textContent=t('homeKeyMapTitle');
+    if(schemeLbl) schemeLbl.textContent=t('homeKeyMapSchemeLbl');
+    if(trigLbl) trigLbl.textContent=t('homeLiveTrigger');
+    if(tgtLbl) tgtLbl.textContent=t('homeLiveTarget');
+    if(trigHint) trigHint.textContent=t('homeKeyMapTriggerHint');
+    if(tgtHint) tgtHint.textContent=t('homeKeyMapTargetHint');
+    if(arrowText) arrowText.textContent=t('homeKeyMapArrowText');
+    renderHomeSchemeSwitcher(loading);
+    ensureConfig();
+    const m=selectedMapping();
+    const trig=editorTriggerForMapping(m);
+    const tgt=editorTargetForMapping(m);
+    const trigEl=$('homeKeyMapTriggerKey');
+    const tgtEl=$('homeKeyMapTargetKey');
+    if(loading){
+      if(trigEl){ trigEl.textContent=t('homeLiveLoading'); trigEl.className='home-key-map-key is-empty'; }
+      if(tgtEl){ tgtEl.textContent=t('homeLiveLoading'); tgtEl.className='home-key-map-key is-empty'; }
+      if(trigHint) trigHint.hidden=true;
+      if(tgtHint) tgtHint.hidden=true;
+      return;
+    }
+    if(trigEl){
+      trigEl.textContent=trig?friendlyKeyName(trig):t('homeKeyMapEmptyKey');
+      trigEl.className='home-key-map-key'+(trig?' is-set':' is-empty');
+      trigEl.classList.toggle('is-recording',recordingMode==='trigger');
+    }
+    if(tgtEl){
+      tgtEl.textContent=tgt?friendlyKeyName(tgt):t('homeKeyMapEmptyKey');
+      tgtEl.className='home-key-map-key'+(tgt?' is-set':' is-empty');
+      tgtEl.classList.toggle('is-recording',recordingMode==='target');
+    }
+    if(trigHint) trigHint.hidden=!!trig;
+    if(tgtHint) tgtHint.hidden=!!tgt;
+    const btnSettings=$('btnHomeKeySettings');
+    const busy=recordingMode!=='none';
+    if(btnSettings){
+      const allSet=!!(trig&&tgt);
+      btnSettings.textContent=allSet?t('homeKeyEditSettings'):t('homeKeyGoSettings');
+      btnSettings.classList.toggle('is-primary-slot',!allSet);
+      btnSettings.disabled=busy;
+    }
   }
 
   function recordingBusySchemeSwitcher(){
@@ -4308,6 +4906,16 @@
     if(dev&&(dev.name||dev.label)) return dev.name||dev.label;
     if(activeMicId) return activeMicId;
     return t('homeLiveMicUnset');
+  }
+
+  function homeVoiceWakePhrase(){
+    const eng=homeVoiceEngineOn();
+    const cfg=state.config||{};
+    const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+    const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
+    const w=voiceUiSnapshot.wake||{};
+    return w.phrase
+      ||((eng==='vosk'&&voskCfg.phrases&&voskCfg.phrases[0])||(eng==='sapi'&&sapiCfg.phrases&&sapiCfg.phrases[0])||'');
   }
 
   function homeWakeHeardLabel(){
@@ -4336,16 +4944,22 @@
     return 'off';
   }
 
+  function syncHomeEntryToggleBtn(btn,isActive,offKey,onKey){
+    if(!btn) return;
+    btn.textContent=isActive?t(onKey):t(offKey);
+    btn.classList.remove('is-turn-on','is-turn-off');
+    btn.classList.add(isActive?'is-turn-off':'is-turn-on');
+  }
+
   function renderHomeLiveKeyPanel(loading){
     const recordingBusy=recordingMode!=='none';
     const m=selectedMapping();
-    const recordBtn=$('btnHomeKeyRecord');
     const trig=editorTriggerForMapping(m);
     const tgt=editorTargetForMapping(m);
     const ready=!!(trig&&tgt);
     const enabled=!!(m&&m.enabled);
     const isDraft=m&&isDraftMapping(m);
-    renderHomeSchemeSwitcher(loading);
+    renderHomeKeyMapCard(loading);
     const conflictEl=$('homeLiveKeyConflict');
     const n=loading?0:countConflictPairs();
     if(conflictEl){
@@ -4369,16 +4983,9 @@
     else if(enabled&&!ready){ badgeText=t('homeLiveBadgeWarn'); badgeKind='warn'; }
     else{ badgeText=t('homeLiveBadgeOff'); badgeKind='off'; }
     setHomeLiveBadge('homeLiveKeyBadge',badgeText,badgeKind);
-    const enableBtn=$('btnHomeKeyEnable');
-    if(enableBtn){
-      enableBtn.classList.toggle('is-on',!!enabled);
-      enableBtn.setAttribute('aria-checked',enabled?'true':'false');
-      enableBtn.disabled=recordingBusy||loading||!m||isDraft;
-    }
-    if(recordBtn){
-      recordBtn.textContent=t('homeLiveRecordKeys');
-      recordBtn.disabled=recordingBusy||loading;
-    }
+    syncHomeEntryToggleBtn($('btnHomeKeyToggle'),enabled,'homeLiveToggleKeyOff','homeLiveToggleKeyOn');
+    const toggleBtn=$('btnHomeKeyToggle');
+    if(toggleBtn) toggleBtn.disabled=recordingBusy||loading||!m||isDraft;
   }
 
   function renderHomeLiveVoicePanel(loading){
@@ -4393,16 +5000,36 @@
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const w=voiceUiSnapshot.wake||{};
-    let engineText=t('wakeEngineOff');
-    if(eng==='vosk') engineText=t('wakeEngineVosk');
-    else if(eng==='sapi') engineText=t('wakeEngineSapi');
-    setHomeLiveVal('homeLiveVoiceEngine',loading?t('homeLiveLoading'):engineText,loading?'loading':(eng==='off'?'off':'on'));
-    const phrase=w.phrase
-      ||((eng==='vosk'&&voskCfg.phrases&&voskCfg.phrases[0])||(eng==='sapi'&&sapiCfg.phrases&&sapiCfg.phrases[0])||'');
-    setHomeLiveVal('homeLiveVoicePhrase',loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset')),loading?'loading':(phrase?'on':'off'));
-    setHomeLiveVal('homeLiveVoiceHeard',loading?t('homeLiveLoading'):homeWakeHeardLabel(),loading?'loading':'');
+    const phrase=homeVoiceWakePhrase();
+    const voiceOn=eng!=='off';
     const running=w.state==='listening'||w.state==='triggered';
     setHomeLiveBadge('homeLiveVoiceBadge',loading?t('homeLiveLoading'):(eng==='off'?t('homeLiveBadgeOff'):(running?t('homeLiveBadgeOn'):t('homeLiveBadgeReady'))),loading?'':(eng==='off'?'':(running?'on':'on')));
+    const floatEl=$('homeVoiceWakeFloat');
+    const hintEl=$('homeVoiceWakeFloatHint');
+    const phraseEl=$('homeVoiceWakePhrase');
+    const subEl=$('homeVoiceWakeSub');
+    if(hintEl) hintEl.textContent=voiceOn?t('homeVoiceWakeFloatHint'):t('homeVoiceWakeFloatHintOff');
+    if(phraseEl) phraseEl.textContent=loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset'));
+    if(floatEl){
+      floatEl.classList.toggle('is-off',!loading&&!voiceOn);
+      floatEl.classList.toggle('is-listening',!loading&&voiceOn&&running);
+      floatEl.classList.toggle('is-unset',!loading&&!phrase);
+    }
+    if(subEl){
+      if(!loading&&voiceOn){
+        const heard=homeWakeHeardLabel();
+        if(running&&heard&&heard!==t('homeLiveHeardOff')){
+          subEl.hidden=false;
+          subEl.textContent=heard===t('homeLiveHeardWaiting')?t('homeVoiceWakeFloatWaiting'):('「'+heard+'」');
+        }else{
+          subEl.hidden=true;
+          subEl.textContent='';
+        }
+      }else{
+        subEl.hidden=true;
+        subEl.textContent='';
+      }
+    }
     const modeSapiBtn=$('btnHomeVoiceModeSapi');
     const modeVoskBtn=$('btnHomeVoiceModeVosk');
     if(modeSapiBtn){
@@ -4424,10 +5051,8 @@
     }
     if(homeConfLabel) homeConfLabel.textContent=t('voiceSapiSensitivity')+' '+conf.toFixed(2);
     const toggleBtn=$('btnHomeVoiceToggle');
-    if(toggleBtn){
-      toggleBtn.textContent=eng==='off'?t('homeLiveToggleWakeOff'):t('homeLiveToggleWakeOn');
-      toggleBtn.disabled=!!voiceSapiTogglePending||!!voiceVoskTogglePending||recordingBusy;
-    }
+    syncHomeEntryToggleBtn(toggleBtn,voiceOn,'homeLiveToggleWakeOff','homeLiveToggleWakeOn');
+    if(toggleBtn) toggleBtn.disabled=!!voiceSapiTogglePending||!!voiceVoskTogglePending||recordingBusy;
   }
 
   function renderHomeFinishZone(loading){
@@ -4464,6 +5089,7 @@
     renderHomeLiveKeyPanel(loading);
     renderHomeLiveVoicePanel(loading);
     renderHomeFinishZone(loading);
+    refreshHomeGuideIfOpen();
   }
 
   function homePreferredVoiceEngine(){
@@ -4480,10 +5106,6 @@
     else toggleVoiceSapi(true);
   }
 
-  function openHomeKeyRecord(){
-    openSettings({panel:'keyWake',focus:'trigger'});
-  }
-
   function toggleHomeKeyEnable(){
     if(recordingMode!=='none') return;
     const m=selectedMapping();
@@ -4496,11 +5118,7 @@
       return;
     }
     const next=!m.enabled;
-    const enableBtn=$('btnHomeKeyEnable');
-    if(enableBtn){
-      enableBtn.classList.toggle('is-on',next);
-      enableBtn.setAttribute('aria-checked',next?'true':'false');
-    }
+    syncHomeEntryToggleBtn($('btnHomeKeyToggle'),next,'homeLiveToggleKeyOff','homeLiveToggleKeyOn');
     try{
       window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:next});
     }catch(_){}
@@ -4534,19 +5152,1021 @@
     }
   }
 
+  function homeGuideEl(sel){
+    if(!sel) return null;
+    if(typeof sel!=='string') return sel;
+    if(sel.charAt(0)==='#') return document.getElementById(sel.slice(1));
+    return $(sel);
+  }
+
+  function homeGuideText(sel){
+    const el=typeof sel==='string'?homeGuideEl(sel):sel;
+    if(!el) return '';
+    return String(el.textContent||'').replace(/\s+/g,' ').trim();
+  }
+
+  function homeGuideItemLabel(item){
+    if(item.labelKey) return t(item.labelKey);
+    if(item.labelEl){
+      const txt=homeGuideText(item.labelEl);
+      if(txt) return txt;
+    }
+    if(item.target){
+      const el=homeGuideEl(item.target);
+      if(!el) return '';
+      if(item.labelFromTargetBtn||el.tagName==='BUTTON'){
+        return homeGuideText(el);
+      }
+      const row=el.closest&&el.closest('.home-live-row');
+      if(row){
+        const dt=row.querySelector('dt');
+        if(dt) return homeGuideText(dt);
+      }
+      const lbl=el.querySelector&&el.querySelector('.home-key-map-step-label,.mini-title');
+      if(lbl) return homeGuideText(lbl);
+      return homeGuideText(el);
+    }
+    if(item.labelFallback) return t(item.labelFallback);
+    return '';
+  }
+
+  function homeGuideTargetVisible(target){
+    const el=homeGuideEl(target);
+    if(!el) return false;
+    if(el.hidden) return false;
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0;
+  }
+
+  function homeKeyGuideDef(){
+    return{
+      panel:'homeLivePanelKey',
+      layout:'voice-lane',
+      flowKeys:['homeKeyGuideFlowGoSettings','homeKeyGuideFlowRecordInSettings','homeKeyGuideFlowEnable'],
+      cautionKey:'homeKeyGuideCaution',
+      pins:[
+        {target:'#btnHomeSchemeSwitcher',detailKey:'homeKeyGuideScheme',labelEl:'#homeKeyMapSchemeLbl',callout:false},
+        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideTrigger',labelEl:'#homeKeyMapTriggerLbl',callout:false},
+        {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideTarget',labelEl:'#homeKeyMapTargetLbl',callout:false},
+        {target:'#btnHomeKeySettings',detailKey:'homeKeyGuideFlowGoSettings',labelFromTargetBtn:true,step:1},
+        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideFlowRecordInSettings',labelEl:'#homeKeyMapTriggerLbl',step:2},
+        {target:'#btnHomeKeyToggle',detailKey:'homeKeyGuideFlowEnable',labelFromTargetBtn:true,step:3}
+      ]
+    };
+  }
+
+  function homeVoiceGuideDef(){
+    return{
+      panel:'homeLivePanelVoice',
+      layout:'voice-lane',
+      flowKeys:['homeVoiceGuideFlowWake','homeVoiceGuideFlowMic','homeVoiceGuideFlowEnable'],
+      cautionKey:'homeVoiceGuideCaution',
+      pins:[
+        {target:'#homeVoiceWakeChip',detailKey:'homeVoiceGuideWake',labelKey:'homeVoiceWakeFloatLbl',step:1},
+        {target:'#btnHomeMicSettings',detailKey:'homeVoiceGuideMic',labelEl:'#homeMicTitle',step:2},
+        {target:'#btnHomeVoiceModeSapi',detailKey:'homeVoiceGuideModeSapi',labelFromTargetBtn:true,callout:false},
+        {target:'#btnHomeVoiceModeVosk',detailKey:'homeVoiceGuideModeVosk',labelFromTargetBtn:true,callout:false},
+        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:3}
+      ]
+    };
+  }
+
+  function homeFinishGuideDef(){
+    return{
+      panel:'homeFinishZone',
+      flowKeys:['homeFinishGuideFlowStart','homeFinishGuideFlowEnd','homeFinishGuideFlowSend'],
+      cautionKey:'homeFinishGuideCaution',
+      pins:[
+        {target:'#btnHomeEndToggle',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',step:2},
+        {target:'#btnHomeEndAutoSend',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',step:3},
+        {target:'#homeVoiceEndDelayRange',detailKey:'homeFinishGuideDelay',labelEl:'#homeVoiceEndDelayLine'}
+      ]
+    };
+  }
+
+  function homeGuideDefForCard(card){
+    if(card==='key') return homeKeyGuideDef();
+    if(card==='voice') return homeVoiceGuideDef();
+    return homeFinishGuideDef();
+  }
+
+  let homeGuideState=null;
+  let homeGuideSpotlights=[];
+  let homeGuideOpenTick=0;
+  let homeGuidePanelRect=null;
+  const HOME_GUIDE_INLINE=false;
+  const HOME_GUIDE_HOVER=true;
+  const homeGuideDismissed={key:false,voice:false,finish:false};
+
+  function clearHomeGuideSpotlights(){
+    homeGuideSpotlights.forEach(function(el){ el.classList.remove('home-guide-spotlight'); });
+    homeGuideSpotlights=[];
+  }
+
+  function homeGuideUiZoom(){
+    const z=parseFloat(getComputedStyle(document.documentElement).zoom);
+    if(Number.isFinite(z)&&z>0) return z;
+    const cssZ=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-scale'));
+    return Number.isFinite(cssZ)&&cssZ>0?cssZ:1;
+  }
+
+  function homeGuideVpRect(rect){
+    const z=homeGuideUiZoom();
+    return{
+      left:rect.left/z,top:rect.top/z,width:rect.width/z,height:rect.height/z,
+      right:rect.right/z,bottom:rect.bottom/z
+    };
+  }
+
+  function positionHomeGuideVeil(panelEl){
+    const veil=$('homeGuideVeil');
+    if(!veil||!panelEl) return;
+    const r=homeGuideVpRect(panelEl.getBoundingClientRect());
+    const head=panelEl.querySelector('.home-live-head,.home-finish-head');
+    let top=r.top;
+    let height=r.height;
+    if(head){
+      const hr=homeGuideVpRect(head.getBoundingClientRect());
+      top=hr.bottom;
+      height=Math.max(0,r.bottom-hr.bottom);
+    }
+    veil.style.left=r.left+'px';
+    veil.style.top=top+'px';
+    veil.style.width=r.width+'px';
+    veil.style.height=height+'px';
+  }
+
+  function buildHomeGuideCalloutHtml(pin){
+    const label=homeGuideItemLabel(pin);
+    const stepHtml=pin.step?'<span class="home-guide-callout-step">'+String(pin.step)+'</span>':'';
+    const detail=pin.calloutBrief?'':('<span class="home-guide-callout-detail">'+escHtml(t(pin.detailKey))+'</span>');
+    return '<div class="home-guide-callout-head">'+stepHtml+
+      '<span><span class="home-guide-callout-label">'+escHtml(label)+'</span>'+detail+'</span></div>';
+  }
+
+  function homeGuidePinKey(pin){
+    return String(pin.target||'')+'|'+(pin.step||'')+'|'+(pin.detailKey||'');
+  }
+
+  function syncHomeGuidePanelRect(panelEl){
+    if(!panelEl) return null;
+    const r=homeGuideVpRect(panelEl.getBoundingClientRect());
+    homeGuidePanelRect={left:r.left,top:r.top,width:r.width,height:r.height};
+    return homeGuidePanelRect;
+  }
+
+  function homeGuideViewportBounds(){
+    const z=homeGuideUiZoom();
+    const pad=8/z;
+    return{minX:pad,minY:pad,maxX:window.innerWidth-pad,maxY:window.innerHeight-pad};
+  }
+
+  function homeGuideClampViewport(box){
+    const vp=homeGuideViewportBounds();
+    let left=box.left;
+    let top=box.top;
+    if(left<vp.minX) left=vp.minX;
+    if(top<vp.minY) top=vp.minY;
+    if(left+box.width>vp.maxX) left=vp.maxX-box.width;
+    if(top+box.height>vp.maxY) top=vp.maxY-box.height;
+    return Object.assign({},box,{left:left,top:top});
+  }
+
+  function homeGuideAvoidRects(){
+    const rects=[];
+    const bannerRect=getHomeGuideBannerRect();
+    if(bannerRect) rects.push(bannerRect);
+    return rects;
+  }
+
+  function homeGuideSortPins(pins){
+    return (pins||[]).slice().sort(function(a,b){
+      const as=a.step!=null?a.step:100;
+      const bs=b.step!=null?b.step:100;
+      if(as!==bs) return as-bs;
+      return 0;
+    });
+  }
+
+  function homeGuideTargetAvoidRects(pins,skipTarget){
+    const rects=[];
+    (pins||[]).forEach(function(pin){
+      if(pin.callout===false) return;
+      if(pin.target===skipTarget) return;
+      const el=homeGuideEl(pin.target);
+      if(!el||!homeGuideTargetVisible(pin.target)) return;
+      rects.push(homeGuideRectPad(homeGuideTargetRect(el),4));
+    });
+    return rects;
+  }
+
+  function homeGuideRectPad(rect,pad){
+    return {left:rect.left-pad,top:rect.top-pad,width:rect.width+pad*2,height:rect.height+pad*2};
+  }
+
+  function homeGuideRectsOverlap(a,b){
+    return !(a.left+a.width<b.left||b.left+b.width<a.left||a.top+a.height<b.top||b.top+b.height<a.top);
+  }
+
+  function homeGuideCalloutAnchor(targetRect,place){
+    const gap=10;
+    if(place==='top') return {x:targetRect.left+targetRect.width/2,y:targetRect.top-gap};
+    if(place==='left') return {x:targetRect.left-gap,y:targetRect.top+targetRect.height/2};
+    if(place==='right') return {x:targetRect.right+gap,y:targetRect.top+targetRect.height/2};
+    return {x:targetRect.left+targetRect.width/2,y:targetRect.bottom+gap};
+  }
+
+  function homeGuideCalloutEdgePoint(box,place,targetRect){
+    const tcx=targetRect.left+targetRect.width/2;
+    const tcy=targetRect.top+targetRect.height/2;
+    if(place==='top') return {x:Math.max(box.left+10,Math.min(box.left+box.width-10,tcx)),y:box.top+box.height};
+    if(place==='bottom') return {x:Math.max(box.left+10,Math.min(box.left+box.width-10,tcx)),y:box.top};
+    if(place==='left') return {x:box.left+box.width,y:Math.max(box.top+10,Math.min(box.top+box.height-10,tcy))};
+    return {x:box.left,y:Math.max(box.top+10,Math.min(box.top+box.height-10,tcy))};
+  }
+
+  function homeGuideTargetRect(el){
+    return homeGuideVpRect(el.getBoundingClientRect());
+  }
+
+  function homeGuideBoxForPlacement(targetRect,cw,ch,place,align){
+    const gap=10;
+    let left;
+    let top;
+    if(place==='top'){
+      top=targetRect.top-ch-gap;
+      if(align==='left') left=targetRect.left;
+      else if(align==='right') left=targetRect.right-cw;
+      else left=targetRect.left+(targetRect.width-cw)/2;
+    }else if(place==='left'){
+      left=targetRect.left-cw-gap;
+      top=targetRect.top+(targetRect.height-ch)/2;
+    }else if(place==='right'){
+      left=targetRect.right+gap;
+      top=targetRect.top+(targetRect.height-ch)/2;
+    }else{
+      top=targetRect.bottom+gap;
+      if(align==='left') left=targetRect.left;
+      else if(align==='right') left=targetRect.right-cw;
+      else left=targetRect.left+(targetRect.width-cw)/2;
+    }
+    return{left:left,top:top,width:cw,height:ch,place:place};
+  }
+
+  function homeGuidePlaceCallout(callout,targetRect,pin,avoidRects,placed){
+    const prefer=pin.placement||'bottom';
+    const align=pin.align||'center';
+    const order=[prefer,'left','right','bottom','top'].filter(function(p,i,a){ return a.indexOf(p)===i; });
+    const cw=callout.offsetWidth;
+    const ch=callout.offsetHeight;
+    const gapPad=12;
+    let best=null;
+    order.forEach(function(place){
+      const raw=homeGuideBoxForPlacement(targetRect,cw,ch,place,align);
+      const box=homeGuideClampViewport(raw);
+      const blocked=avoidRects.concat(placed).some(function(r){
+        return homeGuideRectsOverlap(homeGuideRectPad(box,gapPad),homeGuideRectPad(r,gapPad));
+      });
+      if(blocked) return;
+      const anchor=homeGuideCalloutAnchor(targetRect,place);
+      const dist=Math.hypot(box.left+box.width/2-anchor.x,box.top+box.height/2-anchor.y);
+      const score=dist+(place===prefer?0:20);
+      if(!best||score<best.score) best={box:box,score:score};
+    });
+    if(best) return best.box;
+    return homeGuideClampViewport(homeGuideBoxForPlacement(targetRect,cw,ch,prefer,align));
+  }
+
+  function homeGuideApplyCalloutPosition(callout,box,targetRect){
+    callout.setAttribute('data-placement',box.place);
+    callout.style.left=box.left+'px';
+    callout.style.top=box.top+'px';
+    const anchor=homeGuideCalloutAnchor(targetRect,box.place);
+    if(box.place==='left'||box.place==='right'){
+      const arrowY=anchor.y-box.top;
+      callout.style.setProperty('--arrow-y',Math.max(12,Math.min(box.height-12,arrowY))+'px');
+    }else{
+      const arrowX=anchor.x-box.left;
+      callout.style.setProperty('--arrow-x',Math.max(12,Math.min(box.width-12,arrowX))+'px');
+    }
+    return {
+      left:box.left,top:box.top,width:box.width,height:box.height,
+      place:box.place,targetRect:targetRect
+    };
+  }
+
+  function homeGuidePickLaneSide(panelRect){
+    const vpW=window.innerWidth;
+    const leftSpace=panelRect.left;
+    const rightSpace=vpW-panelRect.left-panelRect.width;
+    return leftSpace>=rightSpace?'left':'right';
+  }
+
+  function homeGuideLayoutVoiceLane(items,panelRect){
+    if(!items.length||!panelRect) return;
+    const side=homeGuidePickLaneSide(panelRect);
+    const gap=12;
+    const stackGap=10;
+    const sorted=items.slice().sort(function(a,b){
+      const as=a.pin&&a.pin.step!=null?a.pin.step:100;
+      const bs=b.pin&&b.pin.step!=null?b.pin.step:100;
+      if(as!==bs) return as-bs;
+      return a.targetRect.top-b.targetRect.top;
+    });
+    let laneEdge=side==='right'?panelRect.left+panelRect.width+gap:panelRect.left-gap;
+    let stackBottom=-Infinity;
+    sorted.forEach(function(item){
+      const callout=item.callout;
+      const cw=callout.offsetWidth;
+      const ch=callout.offsetHeight;
+      const tr=item.targetRect;
+      let left=side==='right'?laneEdge:laneEdge-cw;
+      let top=tr.top+(tr.height-ch)/2;
+      if(top<stackBottom+stackGap) top=stackBottom+stackGap;
+      const box=homeGuideClampViewport({left:left,top:top,width:cw,height:ch,place:side});
+      homeGuideApplyCalloutPosition(callout,box,tr);
+      item.box=box;
+      stackBottom=box.top+box.height;
+    });
+  }
+
+  function homeGuideSeparateCallouts(items){
+    const gapPad=12;
+    for(let iter=0;iter<24;iter++){
+      let moved=false;
+      for(let i=0;i<items.length;i++){
+        for(let j=i+1;j<items.length;j++){
+          const a=items[i].box;
+          const b=items[j].box;
+          if(!homeGuideRectsOverlap(homeGuideRectPad(a,gapPad),homeGuideRectPad(b,gapPad))) continue;
+          const overlapY=Math.min(a.top+a.height,b.top+b.height)-Math.max(a.top,b.top);
+          const overlapX=Math.min(a.left+a.width,b.left+b.width)-Math.max(a.left,b.left);
+          const moverIdx=j;
+          const mover=items[moverIdx];
+          const box=mover.box;
+          if(overlapX>0&&overlapY>0){
+            if(overlapY>=overlapX){
+              box.top+=(b.top>=a.top?1:-1)*(overlapY+gapPad);
+            }else{
+              box.left+=(b.left>=a.left?1:-1)*(overlapX+gapPad);
+            }
+          }else if(overlapY>0){
+            box.top+=(b.top>=a.top?1:-1)*(overlapY+gapPad);
+          }else if(overlapX>0){
+            box.left+=(b.left>=a.left?1:-1)*(overlapX+gapPad);
+          }
+          const clamped=homeGuideClampViewport(box);
+          box.left=clamped.left;
+          box.top=clamped.top;
+          homeGuideApplyCalloutPosition(mover.callout,box,mover.targetRect);
+          mover.box=box;
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+  }
+
+  function renderHomeGuideLines(items){
+    const svg=$('homeGuideLines');
+    if(!svg) return;
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+  }
+
+  function positionHomeGuideCallout(callout,el,pin,avoidRects,placed,pins){
+    const targetRect=homeGuideTargetRect(el);
+    const extraAvoid=homeGuideTargetAvoidRects(pins,pin.target);
+    const box=homeGuidePlaceCallout(callout,targetRect,pin,avoidRects.concat(extraAvoid),placed);
+    return homeGuideApplyCalloutPosition(callout,box,targetRect);
+  }
+
+  let homeGuideLayoutTimer=0;
+  function homeGuideScheduleLayout(){
+    clearTimeout(homeGuideLayoutTimer);
+    homeGuideLayoutTimer=setTimeout(function(){
+      if(!homeGuideState) return;
+      if(HOME_GUIDE_HOVER){
+        const hovered=document.querySelector('.is-guide-hovered[data-home-guide-bound="1"]');
+        const tip=$('homeGuideHoverTip');
+        if(hovered&&tip&&!tip.hidden) positionHomeGuideHoverTip(tip,hovered);
+        else if(homeGuideState.anchorBtn&&tip&&!tip.hidden) positionHomeGuideHoverTip(tip,homeGuideState.anchorBtn);
+        return;
+      }
+      layoutHomeGuide(homeGuideState.def,{repositionOnly:true});
+    },32);
+  }
+
+  function homeGuideBindObservers(panelEl,pins){
+    if(!window.ResizeObserver) return;
+    if(!homeGuideBindObservers._obs){
+      homeGuideBindObservers._obs=new ResizeObserver(function(){
+        homeGuideScheduleLayout();
+      });
+    }
+    homeGuideBindObservers._obs.disconnect();
+    if(panelEl) homeGuideBindObservers._obs.observe(panelEl);
+    (pins||[]).forEach(function(pin){
+      if(pin.callout===false) return;
+      const el=homeGuideEl(pin.target);
+      if(el) homeGuideBindObservers._obs.observe(el);
+    });
+    const grid=$('homeMainGrid');
+    if(grid) homeGuideBindObservers._obs.observe(grid);
+  }
+
+  function homeGuideUnbindObservers(){
+    if(homeGuideBindObservers._obs) homeGuideBindObservers._obs.disconnect();
+  }
+
+  function renderHomeGuideCallouts(pins,opts){
+    opts=opts||{};
+    const container=$('homeGuideCallouts');
+    const panelRect=homeGuidePanelRect;
+    if(!container||!panelRect) return;
+    if(!opts.repositionOnly){
+      clearHomeGuideSpotlights();
+      container.innerHTML='';
+      const lines=$('homeGuideLines');
+      if(lines) while(lines.firstChild) lines.removeChild(lines.firstChild);
+    }
+    const avoidRects=homeGuideAvoidRects();
+    const sortedPins=homeGuideSortPins(pins);
+    const placed=[];
+    const items=[];
+    let guideIndex=0;
+    sortedPins.forEach(function(pin){
+      if(pin.callout===false) return;
+      if(pin.optional&&!homeGuideTargetVisible(pin.target)) return;
+      if(!homeGuideTargetVisible(pin.target)) return;
+      const el=homeGuideEl(pin.target);
+      if(!el) return;
+      const pinKey=homeGuidePinKey(pin);
+      let callout=opts.repositionOnly?container.querySelector('[data-guide-pin="'+pinKey+'"]'):null;
+      if(!callout){
+        el.classList.add('home-guide-spotlight');
+        homeGuideSpotlights.push(el);
+        callout=document.createElement('div');
+        callout.className='home-guide-callout';
+        callout.setAttribute('data-guide-pin',pinKey);
+        callout.setAttribute('data-guide-target',pin.target);
+        callout.style.setProperty('--guide-i',String(guideIndex++));
+        callout.innerHTML=buildHomeGuideCalloutHtml(pin);
+        container.appendChild(callout);
+      }else if(homeGuideSpotlights.indexOf(el)<0){
+        el.classList.add('home-guide-spotlight');
+        homeGuideSpotlights.push(el);
+      }
+      callout.style.visibility='hidden';
+      let item;
+      if(opts.layout==='voice-lane'){
+        item={
+          callout:callout,pin:pin,
+          targetRect:homeGuideTargetRect(el),
+          box:null
+        };
+      }else{
+        item=positionHomeGuideCallout(callout,el,pin,avoidRects,placed,sortedPins);
+        item.callout=callout;
+        item.pin=pin;
+        placed.push(item);
+      }
+      callout.style.visibility='';
+      if(opts.layout!=='voice-lane'){
+        item.callout=callout;
+        item.pin=pin;
+      }
+      items.push(item);
+    });
+    if(opts.layout==='voice-lane'&&panelRect){
+      homeGuideLayoutVoiceLane(items,panelRect);
+    }else{
+      homeGuideSeparateCallouts(items);
+    }
+    renderHomeGuideLines(items);
+    if(!opts.repositionOnly){
+      requestAnimationFrame(function(){
+        container.querySelectorAll('.home-guide-callout').forEach(function(node){
+          node.classList.add('is-settled');
+        });
+      });
+      setTimeout(function(){
+        const layer=$('homeGuideLayer');
+        if(layer) layer.classList.remove('is-opening');
+      },520);
+    }
+  }
+
+  function repositionHomeGuideCallouts(pins,layout){
+    renderHomeGuideCallouts(pins,{repositionOnly:true,layout:layout});
+  }
+
+  function renderHomeGuideBanner(def){
+    const banner=$('homeGuideBanner');
+    if(!banner) return;
+    let flowTrack='';
+    if(def.flowKeys&&def.flowKeys.length){
+      flowTrack=def.flowKeys.map(function(key,i){
+        const item='<span class="home-guide-flow-item"><span class="home-guide-flow-num">'+String(i+1)+'</span>'+
+          '<span>'+escHtml(t(key))+'</span></span>';
+        return i<def.flowKeys.length-1?item+'<span class="home-guide-flow-sep" aria-hidden="true">→</span>':item;
+      }).join('');
+    }else{
+      const stepPins=(def.pins||[]).filter(function(pin){ return pin.step; })
+        .sort(function(a,b){ return a.step-b.step; });
+      flowTrack=stepPins.map(function(pin,i){
+        const label=homeGuideItemLabel(pin);
+        const item='<span class="home-guide-flow-item"><span class="home-guide-flow-num">'+String(pin.step)+'</span>'+
+          '<span>'+escHtml(label)+'</span></span>';
+        return i<stepPins.length-1?item+'<span class="home-guide-flow-sep" aria-hidden="true">→</span>':item;
+      }).join('');
+    }
+    const areas=(def.pins||[]).filter(function(pin){
+      return pin.target&&pin.detailKey&&homeGuideTargetVisible(pin.target);
+    }).map(function(pin){
+      return '<div class="home-guide-area-item" role="button" tabindex="0" data-guide-target="'+escHtml(pin.target)+'">'+
+        '<span class="home-guide-area-label">'+escHtml(homeGuideItemLabel(pin))+'</span>'+
+        '<span class="home-guide-area-detail">'+escHtml(t(pin.detailKey))+'</span>'+
+      '</div>';
+    }).join('');
+    banner.innerHTML=
+      '<div class="home-guide-banner-head">'+
+        '<span class="home-guide-banner-kicker">'+escHtml(t('homeGuideKicker'))+'</span>'+
+        '<button type="button" class="home-guide-close" id="btnHomeGuideClose" aria-label="'+escHtml(t('homeGuideClose'))+'">×</button>'+
+      '</div>'+
+      '<div class="home-guide-banner-body">'+
+        (flowTrack?'<div class="home-guide-flow-track">'+flowTrack+'</div>':'')+
+        (areas?'<div class="home-guide-area-list"><span class="home-guide-section-title">'+escHtml(t('homeGuideAreas'))+'</span>'+areas+'</div>':'')+
+        '<div class="home-guide-caution-box">'+
+          '<span class="home-guide-caution-title">'+escHtml(t('homeGuideCautionTitle'))+'</span>'+
+          '<p class="home-guide-caution-text">'+escHtml(t(def.cautionKey))+'</p>'+
+        '</div>'+
+      '</div>';
+    banner.hidden=false;
+    const closeBtn=$('btnHomeGuideClose');
+    if(closeBtn){
+      closeBtn.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        closeHomeGuide(true);
+      };
+    }
+    banner.querySelectorAll('.home-guide-area-item').forEach(function(item){
+      const target=item.getAttribute('data-guide-target');
+      const setOn=function(){
+        clearHomeGuideSpotlights();
+        const el=homeGuideEl(target);
+        if(el){
+          el.classList.add('home-guide-spotlight');
+          homeGuideSpotlights.push(el);
+        }
+      };
+      const setOff=function(){ clearHomeGuideSpotlights(); };
+      item.addEventListener('mouseenter',setOn);
+      item.addEventListener('focus',setOn);
+      item.addEventListener('mouseleave',setOff);
+      item.addEventListener('blur',setOff);
+    });
+  }
+
+  function homeGuideBannerOverlapsPanel(left,top,width,height,panelRect,pad){
+    if(!panelRect) return false;
+    const box={left:left,top:top,width:width,height:height};
+    return homeGuideRectsOverlap(box,homeGuideRectPad(panelRect,pad));
+  }
+
+  function positionHomeGuideBanner(panelEl){
+    const banner=$('homeGuideBanner');
+    if(!banner) return;
+    const z=homeGuideUiZoom();
+    const edge=10/z;
+    const gap=10/z;
+    const panelRect=panelEl?homeGuideVpRect(panelEl.getBoundingClientRect()):null;
+    const vpW=window.innerWidth;
+    const vpH=window.innerHeight;
+    const maxW=Math.min(320/z,vpW-edge*2);
+    banner.style.width='';
+    const bw=Math.min(maxW,Math.max(220/z,banner.scrollWidth/z+4));
+    banner.style.width=bw+'px';
+    const bh=banner.offsetHeight;
+    const candidates=[];
+    if(panelRect){
+      candidates.push({left:panelRect.left,top:panelRect.bottom+gap,score:0,place:'below'});
+      candidates.push({left:panelRect.right+gap,top:panelRect.top,score:1,place:'right'});
+      candidates.push({left:panelRect.left-bw-gap,top:panelRect.top,score:2,place:'left'});
+      candidates.push({left:panelRect.left,top:panelRect.top-bh-gap,score:3,place:'above'});
+      candidates.push({left:panelRect.right-bw,top:panelRect.bottom+gap,score:4,place:'below-right'});
+    }
+    candidates.push({left:vpW-bw-edge,top:vpH-bh-edge,score:20,place:'corner-br'});
+    candidates.push({left:vpW-bw-edge,top:edge,score:21,place:'corner-tr'});
+    let best=null;
+    candidates.forEach(function(c){
+      let left=c.left;
+      let top=c.top;
+      if(left<edge) left=edge;
+      if(left+bw>vpW-edge) left=vpW-bw-edge;
+      if(top<edge) top=edge;
+      if(top+bh>vpH-edge) top=vpH-bh-edge;
+      if(homeGuideBannerOverlapsPanel(left,top,bw,bh,panelRect,gap)) return;
+      if(!best||c.score<best.score) best={left:left,top:top,score:c.score};
+    });
+    if(!best){
+      let left=vpW-bw-edge;
+      let top=edge;
+      if(panelRect&&homeGuideBannerOverlapsPanel(left,top,bw,bh,panelRect,gap)){
+        left=panelRect.right+gap;
+        top=Math.max(edge,panelRect.top);
+        if(left+bw>vpW-edge) left=edge;
+        if(homeGuideBannerOverlapsPanel(left,top,bw,bh,panelRect,gap)){
+          left=edge;
+          top=panelRect.bottom+gap;
+        }
+      }
+      best={left:left,top:top,score:99};
+    }
+    banner.style.left=best.left+'px';
+    banner.style.top=best.top+'px';
+  }
+
+  function getHomeGuideBannerRect(){
+    const banner=$('homeGuideBanner');
+    if(!banner||banner.hidden) return null;
+    const r=homeGuideVpRect(banner.getBoundingClientRect());
+    if(r.width<1||r.height<1) return null;
+    return {left:r.left,top:r.top,width:r.width,height:r.height};
+  }
+
+  function homeGuideClearFloatingLayer(){
+    clearHomeGuideSpotlights();
+    const callouts=$('homeGuideCallouts');
+    if(callouts) callouts.innerHTML='';
+    const lines=$('homeGuideLines');
+    if(lines) while(lines.firstChild) lines.removeChild(lines.firstChild);
+    const layer=$('homeGuideLayer');
+    if(layer) layer.classList.remove('is-open','is-opening');
+  }
+
+  function attachHomeGuideBannerToLayer(){
+    const banner=$('homeGuideBanner');
+    const layer=$('homeGuideLayer');
+    if(!banner||!layer) return;
+    banner.classList.remove('is-inline');
+    banner.style.left='';
+    banner.style.top='';
+    banner.style.width='';
+    if(banner.parentNode!==layer) layer.appendChild(banner);
+  }
+
+  function clearHomeGuideTargetTips(){
+    document.querySelectorAll('[data-home-guide-bound="1"]').forEach(function(el){
+      el.classList.remove('home-guide-has-tip','is-guide-hovered');
+      delete el.dataset.homeGuideBound;
+      delete el.dataset.homeGuideLabel;
+      delete el.dataset.homeGuideDetail;
+      delete el.dataset.homeGuideStep;
+      if(el.dataset.homeGuideAddedTabindex==='1'){
+        el.removeAttribute('tabindex');
+        delete el.dataset.homeGuideAddedTabindex;
+      }
+    });
+  }
+
+  function bindHomeGuideTargetTips(def){
+    clearHomeGuideTargetTips();
+    (def.pins||[]).forEach(function(pin){
+      if(!pin.target||!pin.detailKey) return;
+      const el=homeGuideEl(pin.target);
+      if(!el||!homeGuideTargetVisible(el)) return;
+      el.dataset.homeGuideBound='1';
+      el.dataset.homeGuideLabel=homeGuideItemLabel(pin);
+      el.dataset.homeGuideDetail=t(pin.detailKey);
+      el.dataset.homeGuideStep=pin.step?String(pin.step):'';
+      el.classList.add('home-guide-has-tip');
+      const focusable=el.matches('button,a,input,select,textarea,[tabindex]');
+      if(!focusable){
+        el.setAttribute('tabindex','0');
+        el.dataset.homeGuideAddedTabindex='1';
+      }
+    });
+  }
+
+  function ensureHomeGuideHoverTip(){
+    let tip=$('homeGuideHoverTip');
+    if(tip) return tip;
+    tip=document.createElement('div');
+    tip.id='homeGuideHoverTip';
+    tip.className='home-guide-hover-tip';
+    tip.hidden=true;
+    document.body.appendChild(tip);
+    return tip;
+  }
+
+  function positionHomeGuideHoverTip(tip,el){
+    const target=homeGuideVpRect(el.getBoundingClientRect());
+    const vw=window.innerWidth;
+    const vh=window.innerHeight;
+    const edge=9;
+    const gap=10;
+    const tw=tip.offsetWidth;
+    const th=tip.offsetHeight;
+    const candidates=[
+      {left:target.left+(target.width-tw)/2,top:target.bottom+gap},
+      {left:target.left+(target.width-tw)/2,top:target.top-th-gap},
+      {left:target.right+gap,top:target.top+(target.height-th)/2},
+      {left:target.left-tw-gap,top:target.top+(target.height-th)/2}
+    ];
+    let best=candidates.find(function(c){
+      return c.left>=edge&&c.top>=edge&&c.left+tw<=vw-edge&&c.top+th<=vh-edge;
+    })||candidates[0];
+    best={
+      left:Math.max(edge,Math.min(vw-tw-edge,best.left)),
+      top:Math.max(edge,Math.min(vh-th-edge,best.top))
+    };
+    tip.style.left=best.left+'px';
+    tip.style.top=best.top+'px';
+  }
+
+  function showHomeGuideHoverTip(el){
+    if(!el||!el.dataset.homeGuideBound) return;
+    const tip=ensureHomeGuideHoverTip();
+    const label=el.dataset.homeGuideLabel||homeGuideText(el);
+    const detail=el.dataset.homeGuideDetail||'';
+    const step=el.dataset.homeGuideStep||'';
+    tip.innerHTML=
+      '<div class="home-guide-hover-tip-title">'+
+        (step?'<span class="home-guide-hover-tip-step">'+escHtml(step)+'</span>':'')+
+        '<span>'+escHtml(label)+'</span>'+
+      '</div>'+
+      '<div class="home-guide-hover-tip-detail">'+escHtml(detail)+'</div>';
+    tip.hidden=false;
+    tip.classList.remove('is-show');
+    document.querySelectorAll('.is-guide-hovered').forEach(function(node){
+      node.classList.remove('is-guide-hovered');
+    });
+    clearHomeGuideSpotlights();
+    el.classList.add('is-guide-hovered','home-guide-spotlight');
+    homeGuideSpotlights.push(el);
+    positionHomeGuideHoverTip(tip,el);
+    requestAnimationFrame(function(){ tip.classList.add('is-show'); });
+  }
+
+  function showHomeGuideIntroTip(def,anchorEl){
+    if(!anchorEl) return;
+    const tip=ensureHomeGuideHoverTip();
+    const flow=(def.flowKeys||[]).map(function(key,i){
+      return '<div class="home-guide-hover-tip-flow-item">'+
+        '<span class="home-guide-hover-tip-step">'+String(i+1)+'</span>'+
+        '<span>'+escHtml(t(key))+'</span>'+
+      '</div>';
+    }).join('');
+    tip.innerHTML=
+      '<div class="home-guide-hover-tip-title"><span>'+escHtml(t('homeGuideKicker'))+'</span></div>'+
+      (flow?'<div class="home-guide-hover-tip-flow">'+flow+'</div>':'')+
+      '<div class="home-guide-hover-tip-detail" style="margin-top:6px">'+escHtml(t('homeGuideHoverHint'))+'</div>';
+    tip.hidden=false;
+    tip.classList.remove('is-show');
+    document.querySelectorAll('.is-guide-hovered').forEach(function(node){
+      node.classList.remove('is-guide-hovered');
+    });
+    clearHomeGuideSpotlights();
+    positionHomeGuideHoverTip(tip,anchorEl);
+    requestAnimationFrame(function(){ tip.classList.add('is-show'); });
+  }
+
+  function hideHomeGuideHoverTip(){
+    const tip=$('homeGuideHoverTip');
+    if(tip){
+      tip.classList.remove('is-show');
+      tip.hidden=true;
+    }
+    document.querySelectorAll('.is-guide-hovered').forEach(function(el){
+      el.classList.remove('is-guide-hovered');
+    });
+    clearHomeGuideSpotlights();
+  }
+
+  function bindHomeGuideHoverEvents(){
+    if(bindHomeGuideHoverEvents.bound) return;
+    bindHomeGuideHoverEvents.bound=true;
+    document.addEventListener('pointerover',function(e){
+      const el=e.target&&e.target.closest&&e.target.closest('.home-guide-has-tip');
+      if(!el) return;
+      showHomeGuideHoverTip(el);
+    });
+    document.addEventListener('pointerout',function(e){
+      const el=e.target&&e.target.closest&&e.target.closest('.home-guide-has-tip');
+      if(!el) return;
+      if(e.relatedTarget&&el.contains(e.relatedTarget)) return;
+      hideHomeGuideHoverTip();
+    });
+    document.addEventListener('focusin',function(e){
+      const el=e.target&&e.target.closest&&e.target.closest('.home-guide-has-tip');
+      if(el) showHomeGuideHoverTip(el);
+    });
+    document.addEventListener('focusout',function(e){
+      const el=e.target&&e.target.closest&&e.target.closest('.home-guide-has-tip');
+      if(el) hideHomeGuideHoverTip();
+    });
+  }
+
+  function renderHomeGuideInline(def,panelEl,opts){
+    const banner=$('homeGuideBanner');
+    if(!banner||!panelEl) return;
+    if(opts&&opts.repositionOnly) return;
+    renderHomeGuideBanner(def);
+    const head=panelEl.querySelector('.home-live-head,.home-finish-head');
+    banner.classList.add('is-inline');
+    banner.style.left='';
+    banner.style.top='';
+    banner.style.width='';
+    if(head&&head.parentNode){
+      const host=head.parentNode;
+      if(head.nextSibling!==banner) host.insertBefore(banner,head.nextSibling);
+    }else if(panelEl.firstChild!==banner){
+      panelEl.insertBefore(banner,panelEl.firstChild);
+    }
+    homeGuideClearFloatingLayer();
+    const layer=$('homeGuideLayer');
+    if(layer) layer.hidden=true;
+  }
+
+  function layoutHomeGuide(def,opts){
+    opts=opts||{};
+    const panelEl=$(def.panel);
+    if(!panelEl) return;
+    if(HOME_GUIDE_INLINE){
+      renderHomeGuideInline(def,panelEl,opts);
+      return;
+    }
+    positionHomeGuideVeil(panelEl);
+    syncHomeGuidePanelRect(panelEl);
+    if(opts.repositionOnly){
+      positionHomeGuideBanner(panelEl);
+      repositionHomeGuideCallouts(def.pins,def.layout);
+      return;
+    }
+    renderHomeGuideBanner(def);
+    positionHomeGuideBanner(panelEl);
+    renderHomeGuideCallouts(def.pins,{layout:def.layout});
+  }
+
+  function homeGuidePointerBlocker(e){
+    if(!homeGuideState) return;
+    if(HOME_GUIDE_HOVER) return;
+    const t=e.target;
+    if(homeGuideState.anchorBtn&&homeGuideState.anchorBtn.contains(t)) return;
+    const banner=$('homeGuideBanner');
+    if(banner&&!banner.hidden&&banner.contains(t)) return;
+    const panel=homeGuideState.panelEl;
+    if(panel&&panel.contains(t)){
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof e.stopImmediatePropagation==='function') e.stopImmediatePropagation();
+    }
+  }
+
+  function homeGuideEnablePointerBlock(){
+    if(homeGuideEnablePointerBlock.bound) return;
+    homeGuideEnablePointerBlock.bound=true;
+    ['pointerdown','mousedown','click','touchstart'].forEach(function(type){
+      document.addEventListener(type,homeGuidePointerBlocker,true);
+    });
+  }
+
+  function setHomeGuideBtnActive(card,on){
+    const map={key:'btnHomeKeyHelp',voice:'btnHomeVoiceHelp',finish:'btnHomeFinishHelp'};
+    const btn=$(map[card]);
+    if(btn) btn.classList.toggle('is-active',!!on);
+  }
+
+  function openHomeGuide(card,anchorBtn){
+    if(homeGuideDismissed[card]) return;
+    const def=homeGuideDefForCard(card);
+    const panelEl=$(def.panel);
+    homeGuideState={card:card,anchorBtn:anchorBtn,def:def,panelEl:panelEl};
+    if(HOME_GUIDE_HOVER){
+      closeHomeSchemeMenu();
+      bindHomeGuideTargetTips(def);
+      const layer=$('homeGuideLayer');
+      if(layer){
+        layer.hidden=true;
+        layer.classList.remove('is-open','is-opening');
+      }
+      setHomeGuideBtnActive(card,true);
+      requestAnimationFrame(function(){
+        if(!homeGuideState||homeGuideState.card!==card) return;
+        showHomeGuideIntroTip(def,anchorBtn);
+      });
+      return;
+    }
+    const layer=$('homeGuideLayer');
+    if(layer){
+      layer.hidden=false;
+      layer.classList.add('is-open','is-opening');
+    }
+    if(panelEl) panelEl.classList.add('is-guide-active');
+    closeHomeSchemeMenu();
+    homeGuideBindObservers(panelEl,def.pins);
+    layoutHomeGuide(def);
+    setHomeGuideBtnActive(card,true);
+  }
+
+  function closeHomeGuide(userInitiated){
+    if(!homeGuideState) return;
+    if(userInitiated) homeGuideDismissed[homeGuideState.card]=true;
+    const panelEl=homeGuideState.panelEl;
+    setHomeGuideBtnActive(homeGuideState.card,false);
+    if(panelEl) panelEl.classList.remove('is-guide-active');
+    homeGuideUnbindObservers();
+    homeGuideState=null;
+    clearHomeGuideTargetTips();
+    hideHomeGuideHoverTip();
+    clearHomeGuideSpotlights();
+    const layer=$('homeGuideLayer');
+    if(layer){
+      layer.hidden=true;
+      layer.classList.remove('is-open','is-opening');
+    }
+    const callouts=$('homeGuideCallouts');
+    if(callouts) callouts.innerHTML='';
+    const lines=$('homeGuideLines');
+    if(lines) while(lines.firstChild) lines.removeChild(lines.firstChild);
+    homeGuidePanelRect=null;
+    const banner=$('homeGuideBanner');
+    if(banner){
+      banner.innerHTML='';
+      banner.hidden=true;
+      attachHomeGuideBannerToLayer();
+    }
+  }
+
+  function refreshHomeGuideIfOpen(rebuild){
+    if(!homeGuideState) return;
+    const def=homeGuideDefForCard(homeGuideState.card);
+    homeGuideState.def=def;
+    if(HOME_GUIDE_HOVER){
+      bindHomeGuideTargetTips(def);
+      return;
+    }
+    layoutHomeGuide(def,{repositionOnly:!rebuild});
+  }
+
+  function initHomeGuide(){
+    const aria=t('homeHelpAria');
+    document.querySelectorAll('[data-home-guide-card]').forEach(function(btn){
+      btn.setAttribute('aria-label',aria);
+      const card=btn.getAttribute('data-home-guide-card');
+      btn.onclick=function(e){
+        e.stopPropagation();
+        homeGuideOpenTick=Date.now();
+        if(homeGuideState&&homeGuideState.card===card){
+          closeHomeGuide(true);
+          return;
+        }
+        homeGuideDismissed[card]=false;
+        if(homeGuideState) closeHomeGuide(false);
+        openHomeGuide(card,btn);
+      };
+    });
+    if(initHomeGuide.bound) return;
+    initHomeGuide.bound=true;
+    bindHomeGuideHoverEvents();
+    homeGuideEnablePointerBlock();
+    document.addEventListener('click',function(e){
+      if(!homeGuideState) return;
+      if(Date.now()-homeGuideOpenTick<100) return;
+      const target=e.target;
+      if(homeGuideState.anchorBtn&&homeGuideState.anchorBtn.contains(target)) return;
+      const banner=$('homeGuideBanner');
+      if(banner&&banner.contains(target)) return;
+      if(homeGuideState.panelEl&&homeGuideState.panelEl.contains(target)) return;
+      closeHomeGuide(true);
+    });
+    window.addEventListener('resize',homeGuideScheduleLayout);
+    window.addEventListener('scroll',homeGuideScheduleLayout,true);
+    const mainScroll=document.querySelector('.main-scroll');
+    if(mainScroll) mainScroll.addEventListener('scroll',homeGuideScheduleLayout);
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape') closeHomeGuide(true);
+    });
+  }
+
   function applyHomeLiveLang(){
     const d=I18N[lang];
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],['homeLiveEndTitle',d.homeLiveEndTitle],
-      ['homeLiveKeyEnableLbl',d.homeLiveKeyEnableLbl],
-      ['homeMicTitle',d.homeMicTitle],['homeMicDesc',d.homeMicDesc],['homeMicChangeHint',d.homeMicChangeHint],
-      ['homeLiveKeySchemeLbl',d.homeLiveScheme],
-      ['homeLiveVoiceEngineLbl',d.homeLiveEngine],['homeLiveVoicePhraseLbl',d.homeLiveWakeWord],
-      ['homeLiveVoiceHeardLbl',d.homeLiveLastHeard],['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
-      ['btnHomeKeyRecord',d.homeLiveRecordKeys],['btnHomeManageSchemes',d.homeSchemeManage]
+      ['homeMicTitle',d.homeMicTitle],['homeMicChangeHint',d.homeMicChangeHint],
+      ['homeKeyMapTitle',d.homeKeyMapTitle],['homeKeyMapSchemeLbl',d.homeKeyMapSchemeLbl],
+      ['homeKeyMapTriggerLbl',d.homeLiveTrigger],['homeKeyMapTargetLbl',d.homeLiveTarget],
+      ['homeKeyMapTriggerHint',d.homeKeyMapTriggerHint],['homeKeyMapTargetHint',d.homeKeyMapTargetHint],
+      ['homeKeyMapArrowText',d.homeKeyMapArrowText],
+      ['homeVoiceWakeFloatHint',d.homeVoiceWakeFloatHint],
+      ['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
+      ['btnHomeManageSchemes',d.homeSchemeManage]
     ].forEach(function(pair){
       const el=$(pair[0]); if(el) el.textContent=pair[1];
     });
+    renderHomeLiveVoicePanel(!configLoadedFromBackend);
+    refreshHomeGuideIfOpen(true);
   }
 
   function renderHome(){
@@ -4594,6 +6214,17 @@
   function voiceAdvancedDetailsOpen(){
     const d=$('voiceAdvancedState');
     return !!(d&&d.open);
+  }
+
+  function openHomeKeySettings(){
+    closeHomeSchemeMenu();
+    if(homeGuideState) closeHomeGuide(true);
+    const m=selectedMapping();
+    const trig=editorTriggerForMapping(m);
+    const tgt=editorTargetForMapping(m);
+    let focus='trigger';
+    if(trig&&!tgt) focus='target';
+    openSettings({panel:'keyWake',focus:focus});
   }
 
   function handleHomeCtaClick(){
@@ -7485,8 +9116,10 @@
     const keySettings=$('keyWakeSettings');
     const triggerBtn=$('btnRecordTrigger');
     const targetBtn=$('btnRecordTarget');
+    const homeCard=$('homeKeyMapCard');
     const recording=recordingMode==='trigger'||recordingMode==='target';
     if(keySettings) keySettings.classList.toggle('is-recording',recording);
+    if(homeCard) homeCard.classList.toggle('is-recording',recording);
     if(triggerBtn){
       triggerBtn.classList.toggle('is-recording',recordingMode==='trigger');
     }
@@ -7724,10 +9357,11 @@
   });
   $('btnSettings').onclick=function(){ openSettings({panel:'basic'}); };
   $('btnHomeCta').onclick=handleHomeCtaClick;
-  const btnHomeKeyRecord=$('btnHomeKeyRecord');
-  if(btnHomeKeyRecord) btnHomeKeyRecord.onclick=openHomeKeyRecord;
-  const btnHomeKeyEnable=$('btnHomeKeyEnable');
-  if(btnHomeKeyEnable) btnHomeKeyEnable.onclick=toggleHomeKeyEnable;
+  initHomeGuide();
+  const btnHomeKeySettings=$('btnHomeKeySettings');
+  if(btnHomeKeySettings) btnHomeKeySettings.onclick=openHomeKeySettings;
+  const btnHomeKeyToggle=$('btnHomeKeyToggle');
+  if(btnHomeKeyToggle) btnHomeKeyToggle.onclick=toggleHomeKeyEnable;
   const btnHomeSchemeSwitcher=$('btnHomeSchemeSwitcher');
   if(btnHomeSchemeSwitcher){
     btnHomeSchemeSwitcher.onclick=function(e){
