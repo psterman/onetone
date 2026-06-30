@@ -54,6 +54,7 @@ fn main() {
         "cmd_voice_sapi_set_phrases",
         "cmd_voice_sapi_set_min_confidence",
         "cmd_voice_sapi_test_send",
+        "cmd_open_windows_speech_setup",
         "cmd_voice_vosk_status",
         "cmd_voice_vosk_set_enabled",
         "cmd_voice_vosk_set_phrases",

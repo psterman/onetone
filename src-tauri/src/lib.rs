@@ -332,6 +332,7 @@ pub fn run() {
             ipc::cmd_voice_sapi_set_phrases,
             ipc::cmd_voice_sapi_set_min_confidence,
             ipc::cmd_voice_sapi_test_send,
+            ipc::cmd_open_windows_speech_setup,
             ipc::cmd_process_usage,
             ipc::cmd_voice_vosk_status,
             ipc::cmd_voice_vosk_set_enabled,

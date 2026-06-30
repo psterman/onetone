@@ -67,7 +67,7 @@
       --shadow-button:0 8px 20px rgba(94,200,232,.18);
     }
     *{box-sizing:border-box}
-    html,body{margin:0;height:100%;overflow:hidden}
+    html,body{margin:0;height:100%;overflow:hidden;overflow-x:hidden}
     body{background:#edf2f8;color:var(--on-surface)}
     .app{
       height:100vh;display:flex;flex-direction:column;
@@ -75,6 +75,10 @@
         radial-gradient(circle at 14% 0%,rgba(94,200,232,.12),transparent 36%),
         radial-gradient(circle at 88% 8%,rgba(26,45,74,.05),transparent 28%),
         linear-gradient(180deg,#f9fbfd 0%,#edf2f8 100%);
+    }
+    .app,.editor-zone,.home-zone,.home-main-grid,.home-live-panel,
+    .home-voice-meta,.home-live-finish,.settings-page,.settings-shell,.settings-sidebar,.settings-panel-wrap,.settings-panel,.voice-key-finish-section,.voice-mode-panel,.voice-diagnostics-card{
+      min-width:0;
     }
     html[data-theme="dark"] .app{
       background:
@@ -126,13 +130,34 @@
       background:var(--primary);border-color:var(--primary);color:var(--on-primary);
       box-shadow:var(--shadow-button);
     }
+    .voice-end-phrases-panel,.voice-end-key-mode-panel,.voice-end-merged,.mic-settings-block{
+      margin-top:12px;display:grid;gap:10px;
+      padding:14px;border:1px solid var(--outline-variant);border-radius:14px;background:var(--surface-soft);
+    }
+    .voice-end-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:12px}
+    .voice-end-section-head .mini-title{margin:0 0 4px}
+    .voice-end-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+    @media(max-width:720px){.voice-end-settings-grid{grid-template-columns:1fr}}
+    .voice-end-setting-block{
+      display:grid;gap:8px;padding:10px;border:1px solid var(--outline-variant);border-radius:14px;background:var(--surface-high);
+    }
+    .voice-end-setting-block>.setting-row{padding:0;border:none;border-radius:0;background:transparent}
+    .voice-end-setting-block .map-timing-desc{margin:0}
+    .voice-end-card-lines{display:grid;gap:4px}
+    .voice-end-inline-range{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .voice-end-inline-range .voice-sapi-range,.voice-end-inline-range .map-timing-range{width:100%;flex:1 1 180px}
+    .voice-end-key-switches{display:grid;gap:10px;margin-top:12px}
+    .voice-end-key-switches .mini-title{margin-top:0}
+    .voice-end-test-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .voice-end-test-actions .control-btn{flex:1 1 calc(50% - 4px);min-width:140px}
     html[data-theme="dark"] .header-listen-chip.is-paused{
       background:rgba(255,170,80,.14);color:#ffb366;
     }
     #btnSettings:hover{background:var(--primary-soft);transform:translateY(-1px)}
     #btnSettings:active{transform:scale(0.97)}
     .main-scroll{
-      flex:1;overflow-y:auto;padding:12px 22px 28px;
+      flex:1;display:flex;flex-direction:column;min-height:0;
+      overflow-y:auto;overflow-x:hidden;padding:12px 22px 28px;
       scrollbar-width:thin;scrollbar-color:rgba(80,96,120,.32) transparent;
     }
     .main-scroll::-webkit-scrollbar{width:8px}
@@ -216,21 +241,21 @@
     .home-cta-main{font-size:16px;font-weight:800;letter-spacing:-.01em}
     .home-cta-sub{font-size:12px;font-weight:600;opacity:.88}
     .home-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-    .home-finish-zone{margin-bottom:4px}
-    .home-finish-bar{
-      border:1px solid var(--outline-variant);border-radius:14px;padding:12px 14px;
-      background:var(--surface-soft);
+    .home-live-finish{margin-top:12px;padding-top:12px;border-top:1px solid var(--outline-variant)}
+    .home-live-finish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .home-live-finish-head .mini-title{margin:0;font-size:12px;font-weight:800;color:var(--on-surface-muted)}
+    .home-finish-status{font-size:11px;font-weight:600;color:var(--on-surface-muted);text-align:right;flex:1;min-width:0;word-break:break-word}
+    .home-finish-body-inline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    @media(max-width:640px){.home-finish-body-inline{grid-template-columns:1fr}}
+    .home-finish-card{
+      display:grid;gap:8px;padding:12px;border:1px solid var(--outline-variant);border-radius:14px;
+      background:var(--surface-high);
     }
-    .home-finish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
-    .home-finish-head-main{flex:1;min-width:0;position:relative}
-    .home-finish-head-main .home-help-popover{left:0;right:auto}
-    .home-finish-head h3{margin:0;font-size:12px;font-weight:800;color:var(--on-surface-muted);text-transform:none;letter-spacing:.02em}
-    .home-finish-status{font-size:12px;font-weight:600;color:var(--on-surface-muted);text-align:right;flex:1;min-width:0;word-break:break-word}
-    .home-finish-body{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
-    .home-finish-controls{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center;flex:1 1 280px}
-    .home-finish-ctrl{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--on-surface-muted)}
-    .home-finish-ctrl-delay{flex:1 1 180px;min-width:140px;max-width:min(360px,42vw)}
-    .home-finish-ctrl-delay .voice-sapi-range{width:100%;margin-top:4px}
+    .home-finish-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .home-finish-card-title{font-size:14px;font-weight:800;color:var(--on-surface);line-height:1.3}
+    .home-finish-card-sub{font-size:12px;color:var(--on-surface-muted);line-height:1.6}
+    .home-finish-card-foot{font-size:11px;color:var(--on-surface-muted);line-height:1.55}
+    .home-finish-card-foot.is-warn{color:var(--danger)}
     .home-finish-actions{display:flex;flex-wrap:wrap;gap:8px;flex:0 0 auto}
     .home-finish-actions .home-live-btn{flex:0 1 auto;min-width:108px;margin-bottom:0}
     .voice-key-finish-section{
@@ -425,6 +450,7 @@
     .home-guide-banner{
       position:fixed;z-index:246;padding:0;border-radius:13px;overflow:hidden;
       max-width:min(380px,calc(100vw - 20px));
+      max-height:min(46vh,360px);
       background:rgba(255,255,255,.97);border:1px solid rgba(42,156,196,.32);
       box-shadow:0 12px 32px rgba(15,23,42,.14);
       font-size:10px;line-height:1.5;pointer-events:auto;color:var(--on-surface);
@@ -461,7 +487,7 @@
       color:var(--primary);border-color:rgba(42,156,196,.4);background:var(--primary-soft);
       transform:scale(1.05);
     }
-    .home-guide-banner-body{padding:8px 10px 9px;display:grid;gap:8px}
+    .home-guide-banner-body{padding:8px 10px 9px;display:grid;gap:8px;overflow:auto}
     .home-guide-flow-track{
       display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;
     }
@@ -469,6 +495,14 @@
       display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;
       background:var(--primary-soft);border:1px solid rgba(42,156,196,.18);
       font-size:10px;font-weight:700;color:var(--on-surface);
+      transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease,color .18s ease;
+    }
+    .home-guide-flow-item.is-demo-active{
+      background:rgba(42,156,196,.2);
+      border-color:rgba(42,156,196,.48);
+      box-shadow:0 0 0 2px rgba(42,156,196,.2),0 6px 16px rgba(42,156,196,.2);
+      transform:translateY(-1px);
+      color:var(--primary);
     }
     .home-guide-flow-num{
       width:16px;height:16px;border-radius:50%;flex-shrink:0;
@@ -534,7 +568,7 @@
       padding:9px 10px;border-radius:12px;
       background:rgba(255,255,255,.98);border:1px solid rgba(42,156,196,.36);
       box-shadow:0 12px 30px rgba(15,23,42,.16);
-      color:var(--on-surface);font-size:11px;line-height:1.45;pointer-events:none;
+      color:var(--on-surface);font-size:11px;line-height:1.45;pointer-events:auto;
       opacity:0;transform:translateY(4px);transition:opacity .12s ease,transform .12s ease;
     }
     .home-guide-hover-tip.is-show{opacity:1;transform:translateY(0)}
@@ -557,6 +591,15 @@
     .home-guide-hover-tip-flow-item{
       display:grid;grid-template-columns:18px minmax(0,1fr);gap:6px;align-items:start;
       font-size:11px;font-weight:600;color:var(--on-surface-muted);line-height:1.45;
+      padding:2px 4px;border-radius:8px;
+      transition:background .16s ease,box-shadow .16s ease,transform .16s ease,color .16s ease;
+      cursor:pointer;
+    }
+    .home-guide-hover-tip-flow-item.is-demo-active{
+      background:rgba(42,156,196,.14);
+      box-shadow:0 0 0 1px rgba(42,156,196,.3) inset;
+      transform:translateX(1px);
+      color:var(--on-surface);
     }
     .home-guide-spotlight{
       position:relative;z-index:243!important;
@@ -564,18 +607,27 @@
       outline-offset:3px;
       box-shadow:0 0 0 3px rgba(42,156,196,.65),0 8px 22px rgba(42,156,196,.2)!important;
     }
+    .home-guide-demo-focus{
+      position:relative;z-index:243!important;
+      outline:2px solid rgba(42,156,196,.72)!important;
+      outline-offset:3px;
+      box-shadow:0 0 0 4px rgba(42,156,196,.22),0 10px 24px rgba(42,156,196,.22)!important;
+      animation:homeGuideDemoPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes homeGuideDemoPulse{
+      0%,100%{filter:brightness(1)}
+      50%{filter:brightness(1.04)}
+    }
     .home-guide-layer.is-opening .home-guide-spotlight{animation:homeGuideSpotIn .3s ease both}
     @keyframes homeGuideSpotIn{
       from{box-shadow:0 0 0 0 rgba(42,156,196,0),0 0 0 rgba(42,156,196,0)!important}
       to{box-shadow:0 0 0 3px rgba(42,156,196,.65),0 8px 22px rgba(42,156,196,.2)!important}
     }
-    .home-live-panel.is-guide-active,.home-finish-zone.is-guide-active{position:relative;z-index:239}
-    .home-live-panel.is-guide-active :is(button,input,select,textarea,a,.home-mic-current,.home-key-map-key,.home-scheme-switcher-btn):not(.home-help-btn),
-    .home-finish-zone.is-guide-active :is(button,input,select,textarea,a,.toggle-switch):not(.home-help-btn){
+    .home-live-panel.is-guide-active{position:relative;z-index:239}
+    .home-live-panel.is-guide-active :is(button,input,select,textarea,a,.home-mic-current,.home-key-map-key,.home-scheme-switcher-btn,.toggle-switch):not(.home-help-btn){
       pointer-events:none!important;
     }
-    .home-live-panel.is-guide-active .home-help-wrap,
-    .home-finish-zone.is-guide-active .home-help-wrap{
+    .home-live-panel.is-guide-active .home-help-wrap{
       position:relative;z-index:1;pointer-events:auto;
     }
     .home-key-map-step-hint[hidden]{display:none!important}
@@ -643,17 +695,17 @@
       font-size:12px;font-weight:700;color:var(--on-surface);cursor:pointer
     }
     .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.3)}
-    .home-inline-input{margin-bottom:10px}
-    .home-inline-input .voice-sapi-range{margin-top:4px}
-    .home-mic-wrap{margin:8px 0 10px}
-    .home-voice-meta{display:flex;flex-direction:column;gap:8px;margin:0 0 8px}
-    .home-voice-meta .home-mic-wrap{margin:0;flex:1;min-width:0}
-    .home-voice-meta-side{display:flex;flex-direction:column;justify-content:center;gap:6px;flex-shrink:0}
-    .home-voice-meta-side .home-live-inline{margin-bottom:0}
-    .home-voice-meta-side .home-inline-input{margin-bottom:0}
-    @media (min-width:520px){
-      .home-voice-meta{flex-direction:row;align-items:flex-start}
+    .home-inline-input{display:grid;gap:6px;margin-bottom:10px;min-width:0}
+    .home-inline-input .mic-desc{display:block;margin:0;line-height:1.4}
+    .home-inline-input .voice-sapi-range{width:100%;min-width:0;margin-top:0}
+    .home-mic-wrap{margin:8px 0 10px;min-width:0}
+    .home-voice-meta{display:grid;gap:10px;margin:0 0 8px}
+    .home-voice-controls{display:grid;gap:8px;min-width:0}
+    .home-voice-controls .home-live-inline{
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:0;
     }
+    .home-voice-controls .home-inline-input{margin-bottom:0}
+    .home-voice-controls .home-mini-toggle{width:100%;min-width:0;min-height:36px}
     .home-live-panel-voice .home-voice-wake-float{
       margin:0 0 10px;padding:10px 8px 8px;min-height:0;gap:6px;
       border-radius:12px;background:rgba(255,255,255,.45);
@@ -668,8 +720,12 @@
     }
     .home-mic-current.is-clickable{cursor:pointer}
     .home-mic-current.is-clickable:hover{border-color:var(--outline);background:var(--surface)}
-    .home-mic-current-name{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word;line-height:1.4}
+    .home-mic-current-name{
+      flex:1 1 auto;min-width:0;font-size:12px;font-weight:700;color:var(--on-surface);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;
+    }
     .home-mic-current-hint{font-size:11px;font-weight:600;color:var(--on-surface-muted);white-space:nowrap;flex-shrink:0}
+    .mic-level-bars{flex:0 0 auto}
     .home-voice-wake-float{
       position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
       gap:8px;margin:4px 0 12px;padding:14px 10px 10px;min-height:88px;text-align:center;
@@ -725,20 +781,44 @@
     }
     .settings-panel .mapping-section .list-head-row{margin-bottom:10px}
     .settings-panel .mapping-section .status-section{margin-top:12px}
-    .drawer-shell{flex:1;display:flex;min-height:0;overflow:hidden}
+    .settings-page{
+      display:none;flex:1;flex-direction:column;min-height:0;min-width:0;width:100%;
+      max-width:none;margin:0;padding:0;
+    }
+    .app.is-settings .settings-page{display:flex}
+    .app.is-settings .editor-zone{display:none}
+    .app.is-settings .main-scroll{padding:0;overflow:hidden}
+    .settings-shell{
+      flex:1;display:flex;min-height:0;overflow:hidden;
+      border-top:1px solid var(--outline-variant);
+      background:var(--surface-high);
+    }
+    .settings-sidebar{
+      width:196px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;
+      border-right:1px solid var(--outline-variant);
+      background:linear-gradient(180deg,var(--surface-soft),var(--surface-high));
+      padding:16px 10px 14px;
+    }
+    html[data-theme="dark"] .settings-sidebar{
+      background:linear-gradient(180deg,rgba(28,38,54,.98),rgba(22,30,44,.98));
+    }
+    .settings-page-head{
+      flex-shrink:0;padding:0 8px 12px;margin-bottom:4px;
+    }
+    .settings-page-head h2{margin:0;font-size:17px;font-weight:800;color:var(--indigo)}
     .settings-nav{
-      width:168px;flex-shrink:0;border-right:1px solid var(--outline-variant);
-      padding:12px 8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;
+      flex:1;width:100%;min-height:0;display:flex;flex-direction:column;gap:4px;
+      padding:0;margin:0;border:none;overflow-y:auto;
     }
     .settings-nav-item{
       display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:0 12px;
       border:none;border-radius:12px;background:transparent;font:inherit;font-size:13px;font-weight:600;
-      color:var(--on-surface-muted);cursor:pointer;text-align:left;
+      color:var(--on-surface-muted);cursor:pointer;text-align:left;white-space:nowrap;
     }
     .settings-nav-item:hover{background:var(--primary-soft);color:var(--on-surface)}
     .settings-nav-item.is-active{background:var(--primary-soft);color:var(--primary);font-weight:700}
-    .settings-nav-foot{margin-top:auto;padding-top:12px}
-    .settings-panel-wrap{flex:1;overflow-y:auto;padding:16px 18px 24px}
+    .settings-nav-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--outline-variant)}
+    .settings-panel-wrap{flex:1;overflow-y:auto;padding:20px 24px 32px;min-height:0;min-width:0}
     .settings-panel{display:block}
     .settings-panel[hidden]{display:none!important}
     .settings-panel-desc{margin:0 0 14px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
@@ -756,20 +836,46 @@
       background:var(--surface-soft);font-size:12px;line-height:1.55;color:var(--on-surface-muted);margin-bottom:12px;
     }
     .debug-overview b{color:var(--on-surface);font-weight:700}
+    @media (max-width:960px){
+      .app-header{padding:14px 16px 8px}
+      .main-scroll{padding:10px 16px 22px}
+      .home-status-wrap{grid-template-columns:1fr}
+      .home-main-grid{grid-template-columns:1fr}
+      .home-finish-body-inline{grid-template-columns:1fr}
+      .home-live-actions .home-live-btn{flex:1 1 100%}
+      .home-live-row{grid-template-columns:minmax(64px,38%) 1fr}
+      .home-key-map-head{flex-direction:column;align-items:stretch}
+      .home-key-map-scheme{max-width:100%;align-items:stretch}
+      .home-key-map-scheme-lbl{align-self:flex-start}
+      .home-key-map-flow{grid-template-columns:1fr;gap:8px}
+      .home-key-map-arrow{flex-direction:row;justify-content:center;padding:2px 0}
+      .home-key-map-arrow-text{display:none}
+      .home-live-btn{flex:1 1 100%}
+      .voice-mode-grid{grid-template-columns:1fr}
+      .voice-segment{grid-template-columns:1fr}
+      .map-mode-cards{grid-template-columns:1fr}
+      .control-row,.control-row.three{grid-template-columns:1fr}
+      .sound-slot-pick{grid-template-columns:1fr}
+      .sound-slot-head,.voice-diagnostics-head{flex-direction:column;align-items:stretch}
+      .voice-diagnostics-actions,.voice-end-test-actions{flex-direction:column}
+      .voice-diagnostics-actions .control-btn,
+      .voice-end-test-actions .control-btn{flex:1 1 100%;min-width:0}
+      .mic-device-list{grid-template-columns:1fr}
+      .voice-segment-btn{width:100%}
+      .settings-panel-wrap{padding:16px 18px 24px}
+      .settings-sidebar{width:168px;padding:14px 8px 12px}
+    }
     @media (min-width:960px){
       .home-main-grid{gap:12px}
-      .home-finish-body{flex-wrap:nowrap;align-items:center}
-      .home-finish-controls{flex:1 1 auto}
-      .home-finish-ctrl-delay{max-width:min(420px,36%)}
       .home-live-actions .home-live-btn{flex:1 1 calc(33.33% - 6px)}
     }
     @media (max-width:720px){
-      .settings-nav{width:100%;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--outline-variant);padding:8px}
-      .settings-nav-item{flex-shrink:0;min-height:36px}
-      .drawer-shell{flex-direction:column}
+      .settings-sidebar{width:148px;padding:12px 6px 10px}
+      .settings-nav-item{min-height:36px;padding:0 10px;font-size:12px}
+      .settings-panel-wrap{padding:14px 14px 22px}
       .home-status-wrap{grid-template-columns:1fr}
       .home-main-grid{grid-template-columns:1fr}
-      .home-finish-body{flex-direction:column;align-items:stretch}
+      .home-finish-body-inline{grid-template-columns:1fr}
       .home-finish-actions .home-live-btn{flex:1 1 100%}
       .home-live-row{grid-template-columns:minmax(64px,38%) 1fr}
       .home-key-map-head{flex-direction:column;align-items:stretch}
@@ -1291,22 +1397,6 @@
       pointer-events:none;border-color:rgba(42,156,196,.35);color:var(--key-soft);
       animation:test-pulse .75s ease-in-out infinite;
     }
-    .settings-overlay{
-      position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:400;
-      opacity:0;pointer-events:none;transition:opacity var(--dur-med) var(--ease-standard);
-    }
-    .settings-overlay.open{opacity:1;pointer-events:auto}
-    .settings-drawer{
-      position:fixed;top:0;right:0;width:min(720px,96vw);height:100%;z-index:401;
-      background:var(--surface-high);border-left:1px solid var(--outline-variant);
-      transform:translateX(100%);transition:transform var(--dur-med) var(--ease-standard);
-      display:flex;flex-direction:column;overflow:hidden;
-    }
-    .settings-drawer.open{transform:translateX(0)}
-    .drawer-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--outline-variant)}
-    .drawer-head h2{margin:0;font-size:16px;font-weight:800}
-    .drawer-close{width:32px;height:32px;border-radius:10px;border:1px solid var(--outline-variant);background:var(--surface-high);cursor:pointer;font-size:18px;line-height:1;color:var(--on-surface)}
-    .drawer-body{display:none}
     .appearance-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .appearance-pill{
       height:48px;border-radius:var(--radius-pill);border:1px solid var(--outline-variant);
@@ -1387,6 +1477,8 @@
     }
     .voice-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
     .voice-mode-card{
+      display:flex;
+      flex-direction:column;
       border:1px solid var(--outline-variant);
       border-radius:18px;
       background:var(--surface-high);
@@ -1402,8 +1494,9 @@
       background:linear-gradient(180deg,rgba(42,156,196,.12),var(--surface-high));
       box-shadow:0 0 0 3px rgba(42,156,196,.12);
     }
-    .voice-mode-card:disabled{opacity:.72;cursor:progress;transform:none}
+    .voice-mode-card.is-busy{opacity:.72;cursor:progress;transform:none;pointer-events:none}
     .voice-mode-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+    .voice-mode-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
     .voice-mode-kicker{margin:0;font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--primary)}
     .voice-mode-name{margin:3px 0 0;font-size:15px;font-weight:800;color:var(--on-surface)}
     .voice-mode-copy{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
@@ -1439,7 +1532,13 @@
       color:var(--on-surface);
     }
     .voice-mode-hint{margin:8px 0 0;font-size:12px;line-height:1.6;color:var(--on-surface-muted)}
-    .voice-hub-block.is-active-mode{border-color:rgba(42,156,196,.28);box-shadow:0 0 0 2px rgba(42,156,196,.08)}
+    .voice-mode-card-body{
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid var(--outline-variant);
+      cursor:default;
+    }
+    .voice-mode-card-body[hidden]{display:none!important}
     @media (max-width:560px){
       .voice-mode-grid{grid-template-columns:1fr}
     }
@@ -1560,6 +1659,8 @@
       font-size:12px;line-height:1.6;color:var(--btn-label);
     }
     .helper-note strong{display:block;font-size:13px;color:var(--on-surface);margin-bottom:4px}
+    .helper-note[hidden]{display:none!important}
+    .voice-setup-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .drawer-collapsible{
       border:1px solid var(--outline-variant);border-radius:16px;background:rgba(255,255,255,.46);overflow:hidden;
     }
@@ -1654,7 +1755,7 @@
       </div>
       <div class="header-actions">
         <span class="chip header-listen-chip" id="headerListenState" role="status">监听中</span>
-        <button type="button" id="btnSettings">设置</button>
+        <button type="button" id="btnSettings">配置</button>
       </div>
     </header>
 
@@ -1665,21 +1766,21 @@
             <div class="home-status-block">
               <div class="home-status" id="homeStatus">
                 <span class="home-status-icon" id="homeStatusIcon" aria-hidden="true"></span>
-                <p class="home-status-title" id="homeStatusTitle">准备就绪，可以开始输入</p>
+                <p class="home-status-title" id="homeStatusTitle">已经准备好，可以开始输入</p>
               </div>
-              <p class="home-status-summary" id="homeStatusSummary">未启用任何入口</p>
+              <p class="home-status-summary" id="homeStatusSummary">还没有可用入口</p>
             </div>
             <button type="button" class="home-cta" id="btnHomeCta">
               <span class="home-cta-icon" aria-hidden="true">🎤</span>
               <span class="home-cta-main" id="homeCtaMain">继续配置</span>
-              <span class="home-cta-sub" id="homeCtaSub">先设置启动键</span>
+              <span class="home-cta-sub" id="homeCtaSub">先配好唤起键</span>
             </button>
           </div>
           <div class="home-main-grid" id="homeMainGrid" aria-live="polite">
             <div class="home-live-panel is-active" id="homeLivePanelKey" data-module="keyWake">
               <header class="home-live-head">
                 <div class="home-live-head-title">
-                  <h3 id="homeLiveKeyTitle">按键激活</h3>
+                  <h3 id="homeLiveKeyTitle">按键唤起</h3>
                   <span class="home-help-wrap">
                     <button type="button" class="home-help-btn" id="btnHomeKeyHelp" data-home-guide-card="key" aria-label="查看说明"><span aria-hidden="true">?</span></button>
                   </span>
@@ -1706,7 +1807,7 @@
                 </div>
                 <div class="home-key-map-flow" id="homeKeyMapFlow">
                   <div class="home-key-map-step" id="homeKeyMapTrigger">
-                    <span class="home-key-map-step-label" id="homeKeyMapTriggerLbl">启动键</span>
+                    <span class="home-key-map-step-label" id="homeKeyMapTriggerLbl">唤起键</span>
                     <div class="home-key-map-key is-empty" id="homeKeyMapTriggerKey">未设置</div>
                     <span class="home-key-map-step-hint" id="homeKeyMapTriggerHint">如音量键、鼠标侧键</span>
                   </div>
@@ -1721,18 +1822,41 @@
                   </div>
                 </div>
                 <div class="home-live-actions home-key-map-actions">
-                  <button type="button" class="home-live-btn is-primary-slot" id="btnHomeKeySettings">前往按键设置</button>
+                  <button type="button" class="home-live-btn is-primary-slot" id="btnHomeKeySettings">前往按键配置</button>
                 </div>
               </section>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
+              <div class="home-live-finish" id="homeKeyFinishBlock">
+                <div class="home-live-finish-head">
+                  <div class="mini-title" id="homeKeyFinishTitle">按键后续动作</div>
+                </div>
+                <div class="home-finish-body-inline">
+                  <div class="home-finish-card" id="homeFinishCtrlCancel">
+                    <div class="home-finish-card-head">
+                      <div class="home-finish-card-title" id="homeLiveCancelLbl">取消窗口</div>
+                      <button type="button" class="toggle-switch" id="btnHomeCancelToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveCancelLbl"></button>
+                    </div>
+                    <div class="home-finish-card-sub" id="homeFinishCancelSummary">—</div>
+                    <div class="home-finish-card-foot" id="homeFinishCancelDetail">—</div>
+                  </div>
+                  <div class="home-finish-card" id="homeFinishCtrlConfirm">
+                    <div class="home-finish-card-head">
+                      <div class="home-finish-card-title" id="homeLiveConfirmLbl">自动确认</div>
+                      <button type="button" class="toggle-switch" id="btnHomeConfirmToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveConfirmLbl"></button>
+                    </div>
+                    <div class="home-finish-card-sub" id="homeFinishConfirmSummary">—</div>
+                    <div class="home-finish-card-foot" id="homeFinishConfirmDetail">—</div>
+                  </div>
+                </div>
+              </div>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn is-turn-on" id="btnHomeKeyToggle">启用</button>
+                <button type="button" class="home-live-btn is-turn-on" id="btnHomeKeyToggle">开始</button>
               </div>
             </div>
             <div class="home-live-panel is-active home-live-panel-voice" id="homeLivePanelVoice" data-module="voiceWake">
               <header class="home-live-head">
                 <div class="home-live-head-title">
-                  <h3 id="homeLiveVoiceTitle">语音激活</h3>
+                  <h3 id="homeLiveVoiceTitle">语音唤起</h3>
                   <span class="home-help-wrap">
                     <button type="button" class="home-help-btn" id="btnHomeVoiceHelp" data-home-guide-card="voice" aria-label="查看说明"><span aria-hidden="true">?</span></button>
                   </span>
@@ -1756,7 +1880,7 @@
                     <span class="home-mic-current-hint" id="homeMicChangeHint">更改</span>
                   </button>
                 </div>
-                <div class="home-voice-meta-side">
+                <div class="home-voice-controls" id="homeVoiceControls">
                   <div class="home-live-inline" id="homeVoiceModeSwitch">
                     <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
                     <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">高级版</button>
@@ -1767,66 +1891,55 @@
                   </div>
                 </div>
               </div>
+              <div class="home-live-finish" id="homeVoiceFinishBlock">
+                <div class="home-live-finish-head">
+                  <div class="mini-title" id="homeVoiceFinishTitle">语音结束动作</div>
+                  <span class="home-finish-status" id="homeFinishStatus">—</span>
+                </div>
+                <div class="home-finish-body-inline">
+                  <div class="home-finish-card" id="homeFinishCtrlEnd">
+                    <div class="home-finish-card-head">
+                      <div class="home-finish-card-title" id="homeLiveEndEnabledLbl">结束词</div>
+                      <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
+                    </div>
+                    <div class="home-finish-card-sub" id="homeFinishEndSummary">—</div>
+                    <div class="home-finish-card-foot" id="homeFinishEndDetail">—</div>
+                  </div>
+                  <div class="home-finish-card" id="homeFinishCtrlAuto">
+                    <div class="home-finish-card-head">
+                      <div class="home-finish-card-title" id="homeLiveEndAutoLbl">自动发送</div>
+                      <button type="button" class="toggle-switch" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
+                    </div>
+                    <div class="home-finish-card-sub" id="homeFinishAutoSummary">—</div>
+                    <div class="home-finish-card-foot" id="homeVoiceEndDelayLine">—</div>
+                  </div>
+                </div>
+              </div>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">启用</button>
-              </div>
-            </div>
-          </div>
-          <div class="home-finish-zone" id="homeFinishZone">
-            <div class="home-finish-bar" id="homeLivePanelEnd" data-module="voiceEnd">
-              <div class="home-finish-head">
-                <div class="home-finish-head-main">
-                  <div class="home-title-row">
-                    <h3 id="homeLiveEndTitle">完成动作</h3>
-                    <span class="home-help-wrap">
-                      <button type="button" class="home-help-btn" id="btnHomeFinishHelp" data-home-guide-card="finish" aria-label="查看说明"><span aria-hidden="true">?</span></button>
-                    </span>
-                  </div>
-                </div>
-                <span class="home-finish-status" id="homeFinishStatus">—</span>
-              </div>
-              <div class="home-finish-body">
-                <div class="home-finish-controls">
-                  <div class="home-finish-ctrl" id="homeFinishCtrlEnd">
-                    <span id="homeLiveEndEnabledLbl">结束词</span>
-                    <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
-                  </div>
-                  <div class="home-finish-ctrl" id="homeFinishCtrlAuto">
-                    <span id="homeLiveEndAutoLbl">自动发送</span>
-                    <button type="button" class="toggle-switch" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
-                  </div>
-                  <div class="home-finish-ctrl home-finish-ctrl-delay" id="homeFinishCtrlDelay">
-                    <span class="mic-desc" id="homeVoiceEndDelayLine">发送延迟：4000ms</span>
-                    <input type="range" class="voice-sapi-range" id="homeVoiceEndDelayRange" min="1000" max="10000" step="500" value="4000">
-                  </div>
-                </div>
+                <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">开始</button>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </main>
-  </div>
-
-  <div class="settings-overlay" id="drawerOverlay"></div>
-  <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
-    <div class="drawer-head">
-      <h2 id="settingsTitle">设置</h2>
-      <button type="button" class="drawer-close" id="btnDrawerClose" aria-label="关闭">×</button>
-    </div>
-    <div class="drawer-shell">
-      <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
-        <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
-        <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键设置</button>
-        <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音激活（深度）</button>
-        <button type="button" class="settings-nav-item" data-panel="voiceEnd" id="settingsNavVoiceEnd">完成动作（深度）</button>
-        <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
-        <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
-        <div class="settings-nav-foot">
-          <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
-        </div>
-      </nav>
-      <div class="settings-panel-wrap" id="settingsPanelWrap">
+      <div class="settings-page" id="settingsDrawer" aria-hidden="true" hidden>
+        <div class="settings-shell">
+          <aside class="settings-sidebar">
+            <div class="settings-page-head">
+              <h2 id="settingsTitle">配置</h2>
+            </div>
+            <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
+              <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
+              <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键配置</button>
+              <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音</button>
+              <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
+              <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
+              <div class="settings-nav-foot">
+                <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
+              </div>
+            </nav>
+          </aside>
+          <div class="settings-panel-wrap" id="settingsPanelWrap">
         <section class="settings-panel drawer-section" id="settingsPanelBasic" style="border-top:0;padding-top:0">
           <p class="settings-panel-desc" id="settingsPanelBasicDesc">监听、自启动与外观</p>
           <div class="mini-title" id="listenTitle">监听状态</div>
@@ -1869,16 +1982,16 @@
           <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">首页查看键位对应与启用；在此录制按键并管理方案</p>
           <details class="settings-secondary" id="quickKeyWakeSection">
             <summary id="quickKeyWakeSummary">按键设置（录制启动键与快捷键）</summary>
-            <p class="settings-secondary-hint" id="quickKeyWakeHint">按键录制请在本页完成；首页仅查看对应关系与启用。</p>
+      <p class="settings-secondary-hint" id="quickKeyWakeHint">按键录制请在本页完成；首页只看对应关系和开关。</p>
             <div class="key-wake-settings" id="keyWakeSettings">
-              <div class="mini-title" id="keyWakeSettingsTitle">按键激活设置</div>
-              <p class="mic-desc" id="triggerTitle">启动键</p>
+              <div class="mini-title" id="keyWakeSettingsTitle">按键唤起配置</div>
+              <p class="mic-desc" id="triggerTitle">唤起键</p>
               <div class="display empty" id="triggerDisplay">
                 <span class="display-value" id="triggerView">未设置</span>
               </div>
               <p class="trigger-trace" id="triggerTrace" hidden></p>
               <div class="actions">
-                <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的启动键</button>
+                <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的唤起键</button>
               </div>
               <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
               <p class="mic-desc" id="targetTitle" style="margin-top:12px">语音快捷键</p>
@@ -1888,7 +2001,7 @@
               <div class="actions">
                 <button class="btn secondary record-btn" id="btnRecordTarget" type="button">按一下语音输入快捷键</button>
               </div>
-              <p class="help" id="targetHelp">这是你平时唤起语音输入的按键。录制前可先切到普通输入状态。</p>
+              <p class="help" id="targetHelp">这是你平时用来唤起语音输入的按键。录制前可先切到普通输入状态。</p>
               <span class="sr-only" id="triggerState" aria-live="polite"></span>
               <span class="sr-only" id="targetState" aria-live="polite"></span>
               <div class="record-cancel-bar" id="recordCancelBar">
@@ -1896,6 +2009,20 @@
               </div>
             </div>
           </details>
+          <div class="voice-key-finish-section" id="keyWakeFinishSection">
+            <div class="mini-title" id="keyWakeFinishTitle">按键后续动作</div>
+            <p class="mic-desc" id="keyWakeFinishDesc">按键启动后的取消与确认开关。</p>
+            <p class="mic-desc" id="keyFinishFlowSchemeLine"></p>
+            <div class="voice-end-settings-grid">
+              <div class="voice-end-setting-block" id="voiceEndCancelCard"></div>
+              <div class="voice-end-setting-block" id="voiceEndConfirmCard"></div>
+            </div>
+            <div class="voice-end-key-switches" id="voiceEndKeyFinishSection">
+              <div class="mini-title" id="keyFinishFlowTitle">按键完成流程</div>
+              <p class="mic-desc" id="keyFinishFlowDesc">选择即时触发或确认窗口模式。</p>
+              <div class="voice-end-key-mode-panel" id="voiceEndKeyModePanel"></div>
+            </div>
+          </div>
           <div class="mapping-section" id="keyWakeMappingSection">
             <div class="list-head-row">
               <h2 id="mappingListTitle">我的方案</h2>
@@ -1907,196 +2034,198 @@
             <div class="draft-hint" id="mappingDraftHint"></div>
             <div class="mapping-empty" id="mappingEmpty" hidden>
               <strong id="mappingEmptyTitle">还没有方案</strong>
-              <span id="mappingEmptyHint">先录好上方启动键与语音快捷键，或点下方新增方案。</span>
+              <span id="mappingEmptyHint">先录好上面的唤起键和语音快捷键，或点下面新增方案。</span>
             </div>
             <div id="mappingList"></div>
             <div class="status-section">
               <div class="status-left">
                 <div class="conflict-pill" id="conflictBanner" role="status"></div>
               </div>
-              <button type="button" class="btn-test-send" id="btnTestSend" disabled>请先设置语音快捷键</button>
+              <button type="button" class="btn-test-send" id="btnTestSend" disabled>请先录好语音快捷键</button>
             </div>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">首页可快速切换与启停；这里保留完整语音配置与高级参数</p>
-          <details class="settings-secondary" id="quickVoiceWakeSection">
-            <summary id="quickVoiceWakeSummary">首页快捷操作（模式与麦克风）</summary>
-            <p class="settings-secondary-hint" id="quickVoiceWakeHint">该区默认折叠，避免与首页主操作台重复。</p>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">配置语音激活、结束词与结束后自动发送</p>
+          <section class="voice-mode-panel" id="voiceModePanel">
+            <div class="mini-title" id="voiceModeTitle">语音模式</div>
+            <p class="mic-desc" id="voiceModeDesc">轻量版更适合低资源待机；高级版支持离线识别与结束词。点选卡片切换模式，在卡片内完成细项配置。</p>
+            <div class="voice-mode-grid">
+              <div class="voice-mode-card" id="btnVoiceModeSapi" role="button" tabindex="0" aria-pressed="false">
+                <div class="voice-mode-head">
+                  <div>
+                    <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
+                    <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
+                  </div>
+                  <div class="voice-mode-head-actions">
+                    <span class="chip" id="voiceModeLiteBadge">低资源</span>
+                    <button type="button" class="toggle-switch" id="btnVoiceSapi" role="switch" aria-checked="false" aria-labelledby="voiceSapiLabel"></button>
+                  </div>
+                </div>
+                <span class="sr-only" id="voiceSapiTitle">轻量版细项</span>
+                <span class="sr-only" id="voiceSapiLabel">打开轻量版</span>
+                <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速唤起。</p>
+                <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
+                <div class="voice-mode-points">
+                  <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
+                  <span class="voice-mode-point" id="voiceModeLitePoint2">唤起更快</span>
+                  <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
+                </div>
+                <div class="voice-mode-card-body" id="voiceSapiBlock">
+                  <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。</p>
+                  <div class="helper-note" id="voiceSapiSetupNotice" hidden>
+                    <strong id="voiceSapiSetupTitle">轻量版需要 Windows 语音组件</strong>
+                    <span id="voiceSapiSetupBody">如果这是第一次使用，请先安装或开启系统语音识别，并确认已装好对应语言的语音包。</span>
+                    <div class="voice-setup-actions">
+                      <button type="button" class="control-btn" id="btnVoiceSapiSetup">一键去安装</button>
+                    </div>
+                  </div>
+                  <div class="control-row" style="margin-top:8px">
+                    <span class="chip" id="voiceSapiState">stopped</span>
+                  </div>
+                  <div class="voice-sapi-box">
+                    <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
+                      <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+                    </div>
+                    <div class="voice-sapi-row">
+                      <span class="mic-desc" id="voiceSapiConfidenceLabel">识别灵敏度（越低越容易触发）0.35</span>
+                      <input class="voice-sapi-range" id="voiceSapiConfidence" type="range" min="0" max="1" step="0.05" value="0.35">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="voice-mode-card" id="btnVoiceModeVosk" role="button" tabindex="0" aria-pressed="false">
+                <div class="voice-mode-head">
+                  <div>
+                    <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
+                    <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
+                  </div>
+                  <div class="voice-mode-head-actions">
+                    <span class="chip" id="voiceModeProBadge">完整链路</span>
+                    <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false" aria-labelledby="voiceVoskLabel"></button>
+                  </div>
+                </div>
+                <span class="sr-only" id="voiceVoskTitle">高级版细项</span>
+                <span class="sr-only" id="voiceVoskLabel">打开高级版</span>
+                <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
+                <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
+                <div class="voice-mode-points">
+                  <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
+                  <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
+                  <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
+                </div>
+                <div class="voice-mode-card-body" id="voiceVoskBlock">
+                  <p class="mic-desc" id="voiceVoskDesc">与轻量版只能开一个；切换语言后识别资源与唤醒词会自动更新，测试与即时记录集中在底部诊断区。</p>
+                  <div class="control-row" style="margin-top:8px">
+                    <span class="chip" id="voiceVoskState">stopped</span>
+                  </div>
+                  <div class="voice-sapi-row" style="margin-top:8px">
+                    <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
+                    <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
+                      <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
+                      <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
+                    </div>
+                  </div>
+                  <p class="mic-empty" id="voiceVoskError" hidden></p>
+                  <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
+                    <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
+                    <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
+                      <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+                    </div>
+                    <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
+                    <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
+                      <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="voice input">voice input</button>
+                      <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="voice-mode-status" id="voiceModeCurrent">现在还没打开语音模式</div>
+            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
+          </section>
+          <div class="voice-hub-block voice-end-merged" id="voiceEndMergedSection" style="margin-top:16px">
+            <div class="voice-end-section-head">
+              <div>
+                <div class="mini-title" id="voiceEndTitle">语音结束动作</div>
+                <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词结束录音；可配置结束后自动发送。</p>
+              </div>
+              <span class="chip" id="voiceEndState">待命</span>
+            </div>
+            <div class="voice-end-settings-grid" id="voiceEndSwitchPanel">
+              <div class="voice-end-setting-block">
+                <div class="setting-row">
+                  <div class="setting-row-main">
+                    <span class="setting-row-text" id="voiceEndLabel">使用语音结束</span>
+                  </div>
+                  <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
+                </div>
+                <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
+                <div class="voice-end-card-lines">
+                  <p class="mic-desc" id="voiceEndPhrasesLine"></p>
+                  <p class="mic-desc" id="voiceEndPhrasesZhLine"></p>
+                  <p class="mic-desc" id="voiceEndPhrasesEnLine"></p>
+                </div>
+              </div>
+              <div class="voice-end-setting-block">
+                <div class="setting-row">
+                  <div class="setting-row-main">
+                    <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
+                  </div>
+                  <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
+                </div>
+                <p class="mic-empty" id="voiceEndAutoSendWarn" hidden></p>
+                <p class="mic-desc" id="voiceEndAutoSendLine"></p>
+                <div class="voice-end-inline-range">
+                  <span class="mic-desc" id="voiceEndDelayLabel">等待时间</span>
+                  <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000">
+                </div>
+                <p class="mic-desc" id="voiceEndDelayLine"></p>
+              </div>
+            </div>
+            <div class="voice-end-phrases-panel" id="voiceEndPresetsWrap">
+              <p class="mic-desc" id="voiceEndPresetsZhLabel">中文结束词</p>
+              <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
+                <button type="button" class="voice-sapi-preset" data-phrase="结束输入">结束输入</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="完成">完成</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="提交">提交</button>
+              </div>
+              <p class="mic-desc" id="voiceEndPresetsEnLabel" style="margin-top:8px">英文结束词</p>
+              <div class="voice-sapi-preset-grid" id="voiceEndPresetsEn">
+                <button type="button" class="voice-sapi-preset" data-phrase="end dictation">end dictation</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="send">send</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="finish">finish</button>
+                <button type="button" class="voice-sapi-preset" data-phrase="done">done</button>
+              </div>
+            </div>
+            <div class="voice-end-test-actions">
+              <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
+              <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
+            </div>
+          </div>
+        </section>
+        <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
+          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">麦克风与提示音</p>
+          <div class="mic-settings-block drawer-section" id="soundsMicSection" style="border-top:0;padding-top:0;margin-bottom:14px">
             <div class="mini-title" id="micTitle">麦克风</div>
             <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。如果指示条没有移动，请尝试其他麦克风。</p>
             <p class="mic-empty" id="micEmpty" hidden></p>
             <div class="mic-device-list" id="micDeviceList"></div>
-            <section class="voice-mode-panel" id="voiceModePanel">
-              <div class="mini-title" id="voiceModeTitle">语音模式</div>
-              <p class="mic-desc" id="voiceModeDesc">轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。</p>
-              <div class="voice-mode-grid">
-                <button type="button" class="voice-mode-card" id="btnVoiceModeSapi">
-                  <div class="voice-mode-head">
-                    <div>
-                      <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
-                      <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
-                    </div>
-                    <span class="chip" id="voiceModeLiteBadge">低资源</span>
-                  </div>
-                  <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速启动。</p>
-                  <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
-                  <div class="voice-mode-points">
-                    <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
-                    <span class="voice-mode-point" id="voiceModeLitePoint2">启动更快</span>
-                    <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
-                  </div>
-                </button>
-                <button type="button" class="voice-mode-card" id="btnVoiceModeVosk">
-                  <div class="voice-mode-head">
-                    <div>
-                      <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
-                      <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
-                    </div>
-                    <span class="chip" id="voiceModeProBadge">完整链路</span>
-                  </div>
-                  <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
-                  <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
-                  <div class="voice-mode-points">
-                    <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
-                    <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
-                    <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
-                  </div>
-                </button>
-              </div>
-              <div class="voice-mode-status" id="voiceModeCurrent">当前未启用语音模式</div>
-              <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
-            </section>
-          </details>
-          <div class="voice-hub-block voice-mode-detail" id="voiceSapiBlock" style="margin-top:16px">
-            <div class="mini-title" id="voiceSapiTitle">轻量版细项</div>
-            <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。</p>
-            <div class="setting-row">
-              <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceSapiLabel">开启轻量版</span>
-              </div>
-              <button type="button" class="toggle-switch" id="btnVoiceSapi" role="switch" aria-checked="false"></button>
-            </div>
-            <div class="control-row" style="margin-top:8px">
-              <span class="chip" id="voiceSapiState">stopped</span>
-            </div>
-            <div class="voice-sapi-box">
-              <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
-                <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
-              </div>
-              <div class="voice-sapi-row">
-                <span class="mic-desc" id="voiceSapiConfidenceLabel">识别灵敏度（越低越容易触发）0.35</span>
-                <input class="voice-sapi-range" id="voiceSapiConfidence" type="range" min="0" max="1" step="0.05" value="0.35">
-              </div>
-            </div>
           </div>
-          <div class="voice-hub-block voice-mode-detail" id="voiceVoskBlock" style="margin-top:16px">
-            <div class="mini-title" id="voiceVoskTitle">高级版细项</div>
-            <p class="mic-desc" id="voiceVoskDesc">与上方轻量版只能开一个；切换语言后识别资源与唤醒词会自动更新，测试与即时记录集中在底部诊断区。</p>
-            <div class="setting-row">
-              <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceVoskLabel">开启高级版</span>
-              </div>
-              <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false"></button>
-            </div>
-            <div class="control-row" style="margin-top:8px">
-              <span class="chip" id="voiceVoskState">stopped</span>
-            </div>
-            <div class="voice-sapi-row" style="margin-top:8px">
-              <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
-              <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
-                <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
-                <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
-              </div>
-            </div>
-            <p class="mic-empty" id="voiceVoskError" hidden></p>
-            <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
-              <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
-              <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
-                <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
-              </div>
-              <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
-              <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
-                <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="voice input">voice input</button>
-                <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section class="settings-panel drawer-section" id="settingsPanelVoiceEnd" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceEndDesc">规划结束词、按键完成流程与深度参数；首页保留高频开关</p>
-          <details class="settings-secondary" id="quickVoiceEndSection">
-            <summary id="quickVoiceEndSummary">首页快捷操作（完成动作开关与延迟）</summary>
-            <p class="settings-secondary-hint" id="quickVoiceEndHint">该区默认折叠，首页用于高频控制；这里保留完整参数链路。</p>
-            <div class="mini-title" id="voiceEndTitle">完成动作</div>
-            <p class="mic-desc" id="voiceEndDesc">听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。</p>
-            <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
-            <div class="setting-row">
-              <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceEndLabel">启用语音结束</span>
-              </div>
-              <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
-            </div>
-            <div class="control-row" style="margin-top:8px">
-              <span class="chip" id="voiceEndState">待命</span>
-            </div>
-            <p class="mic-desc" id="voiceEndPhrasesLine" style="margin-top:6px"></p>
-            <p class="mic-desc" id="voiceEndAutoSendLine"></p>
-            <p class="mic-desc" id="voiceEndDelayLine"></p>
-            <p class="mic-empty" id="voiceEndAutoSendWarn" hidden></p>
-            <div class="voice-sapi-row" style="margin-top:10px">
-              <span class="mic-desc" id="voiceEndDelayLabel">发送延迟</span>
-              <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000" style="width:100%;margin-top:4px">
-            </div>
-            <div class="setting-row" style="margin-top:8px">
-              <div class="setting-row-main">
-                <span class="setting-row-text" id="voiceEndAutoSendLabel">自动发送（Enter）</span>
-              </div>
-              <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false"></button>
-            </div>
-          </details>
-          <div class="voice-key-finish-section" id="voiceEndKeyFinishSection">
-            <div class="mini-title" id="keyFinishFlowTitle">按键完成流程</div>
-            <p class="mic-desc" id="keyFinishFlowDesc">规划用启动键开始听写后，如何取消或自动确认。按键只负责唤起，结束节奏在这里配置。</p>
-            <p class="mic-desc" id="keyFinishFlowSchemeLine"></p>
-            <div id="voiceEndKeyFinishPanel"></div>
-          </div>
-          <div class="voice-sapi-box" id="voiceEndPresetsWrap">
-            <p class="mic-desc" id="voiceEndPresetsZhLabel">中文结束词</p>
-            <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
-              <button type="button" class="voice-sapi-preset" data-phrase="结束输入">结束输入</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="完成">完成</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="提交">提交</button>
-            </div>
-            <p class="mic-desc" id="voiceEndPresetsEnLabel" style="margin-top:8px">英文结束词</p>
-            <div class="voice-sapi-preset-grid" id="voiceEndPresetsEn">
-              <button type="button" class="voice-sapi-preset" data-phrase="end dictation">end dictation</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="send">send</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="finish">finish</button>
-              <button type="button" class="voice-sapi-preset" data-phrase="done">done</button>
-            </div>
-          </div>
-          <div class="voice-end-test-actions">
-            <button type="button" class="control-btn" id="btnVoiceEndTestStop">测试结束录音</button>
-            <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
-          </div>
-        </section>
-        <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
-          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒与发送配置提示音</p>
           <div class="setting-row">
             <div class="setting-row-main">
               <span class="setting-row-text" id="soundsMasterLabel">启用音效</span>
@@ -2286,9 +2415,11 @@
             <div class="clear-panel"><button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button></div>
           </div>
         </section>
+          </div>
+        </div>
       </div>
-    </div>
-  </aside>
+    </main>
+  </div>
 
   <div class="map-menu-float" id="mapMenuFloat">
     <button type="button" data-act="test" id="menuActTest"></button>
@@ -2611,22 +2742,22 @@
       appTitle:'一声',
       appSubtitle:'言出即行 · 万象成形',
       welcomeKicker:'首次使用',
-      welcomeTitle:'两步就能开始语音启动',
-      welcomeDesc:'先录好启动键与语音快捷键；听写如何结束、取消或自动确认，在「完成动作」里规划。',
+      welcomeTitle:'两步就能开始语音唤起',
+      welcomeDesc:'先录好唤起键与语音快捷键；听写如何结束、取消或自动确认，在「结束动作」里规划。',
       welcomeHint:'这个引导只会在首次启动时出现一次。',
-      welcomeStart:'开始设置',
+      welcomeStart:'开始配置',
       welcomeLater:'稍后再看',
       demoLabel:'动画演示',
       demoCardTitle1:'你来按',
       demoCardTitle2:'帮你触发',
-      demoCaptionLeft:'按键只负责唤起；完成节奏稍后在「完成动作」里设置。',
+      demoCaptionLeft:'按键只负责唤起；收尾节奏稍后在「结束动作」里设置。',
       demoCaptionRight:'它只会帮你触发录好的语音快捷键。',
-      guideTitle1:'先设置',
-      guideDesc1:'以后按一下启动键，就能更快进入语音输入。',
+      guideTitle1:'先配置',
+      guideDesc1:'以后按一下唤起键，就能更快进入语音输入。',
       guideTitle2:'再录一次',
-      guideDesc2:'先录启动键，再录语音快捷键，两步完成即可使用。',
+      guideDesc2:'先录唤起键，再录语音快捷键，两步完成即可使用。',
       guideTitle3:'马上用',
-      guideDesc3:'可在「设置 → 按键设置」最下方的「我的方案」中管理多套输入法映射，并用开关启用当前要用的方案。',
+      guideDesc3:'可在「配置 → 按键配置」最下方的「我的方案」中管理多套输入法映射，并用开关打开当前要用的方案。',
       mappingListTitle:'我的方案',addMapping:'新增方案',
       triggerTitle:'启动键',targetTitle:'语音快捷键',
       btnRecordTrigger:'按一下要用的启动键',btnRecordTarget:'按一下语音输入快捷键',
@@ -2647,7 +2778,7 @@
       confirmClear:'确定清除全部映射并恢复默认？',
       movedToTrash:'已移入回收站，可在「设置」中恢复',
       trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
-      settingsTitle:'设置',listenTitle:'监听状态',
+      settingsTitle:'设置',settingsBack:'返回',listenTitle:'监听状态',
       listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启一声？',
       testSendDisabled:'设置语音快捷键后可测试',
       testSendTarget:'试一下语音快捷键',testSending:'发送中…',testSent:'已发送',
@@ -2688,6 +2819,11 @@
       voiceSapiTitle:'轻量版细项',
       voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。',
       voiceSapiLabel:'开启轻量版',
+      voiceSapiSetupTitle:'轻量版需要 Windows 语音组件',
+      voiceSapiSetupBody:'如果这是第一次使用，请先安装或开启系统语音识别，并确认已装好对应语言的语音包。',
+      voiceSapiSetupAction:'一键去安装',
+      voiceSapiSetupOpening:'正在打开 Windows 语音设置',
+      voiceSapiSetupOpenFail:'无法打开 Windows 语音设置，请手动前往系统设置',
       voiceSapiTest:'测试快捷键（不走麦克风）',
       voiceSapiFail:'无法启动轻量版，请检查 Windows 语音组件是否可用',
       voiceSapiWakeWord:'你要说的词',
@@ -2699,7 +2835,7 @@
       voiceSapiSensitivity:'识别灵敏度（越低越容易触发）',
       voiceSapiPresetUpdated:'已更新唤醒词',
       voiceModeTitle:'语音模式',
-      voiceModeDesc:'轻量版更适合低资源待机；高级版支持离线识别与结束词。先选模式，再看下方细项。',
+      voiceModeDesc:'轻量版更适合低资源待机；高级版支持离线识别与结束词。点选卡片切换模式，在卡片内完成细项配置。',
       voiceModeLiteTitle:'轻量版',
       voiceModeLiteEngine:'系统快速识别',
       voiceModeLiteBadge:'低资源',
@@ -2722,7 +2858,7 @@
       voiceModeHintOff:'轻量版更适合常驻待机；高级版更适合完整语音流程和结束词。',
       voiceModeHintLite:'当前是轻量版：更适合待机与快速启动，但不能使用完成动作中的语音结束。',
       voiceModeHintPro:'当前是高级版：支持离线识别、结束词和更完整的语音链路。',
-      voiceModeHintProWithEnd:'当前高级版已可配合「完成动作」一起工作。',
+      voiceModeHintProWithEnd:'当前高级版已可配合「语音结束动作」一起工作。',
       voiceModeMetricLoading:'实时占用读取中…',
       voiceModeMetricSwitch:'切换到该模式后显示实时占用',
       voiceModeMetricInactive:'当前未启用，启用后显示实时占用',
@@ -2734,7 +2870,7 @@
       voiceModeSwitchedLite:'已切换到轻量版',
       voiceModeSwitchedPro:'已切换到高级版',
       voiceVoskTitle:'高级版细项',
-      voiceVoskDesc:'与上方轻量版只能开一个。请选「中文语音」或「英文语音」，切换后识别资源与唤醒词会自动更新；测试与即时记录集中在底部诊断区。',
+      voiceVoskDesc:'与轻量版只能开一个。请选「中文语音」或「英文语音」，切换后识别资源与唤醒词会自动更新；测试与即时记录集中在底部诊断区。',
       voiceVoskLabel:'开启高级版',
       voiceVoskTest:'测试快捷键（不走麦克风）',
       voiceVoskFail:'无法启动高级版，请检查离线语音资源是否完整',
@@ -2755,22 +2891,22 @@
       voiceVoskPresetsEnLabel:'英文唤醒词',
       voiceVoskPresetUpdated:'已更新唤醒词',
       voiceVoskModelUpdated:'已更新识别语言',
-      voiceEndTitle:'完成动作',
-      voiceEndDesc:'听写过程中说出结束词，一声会自动再按一次语音快捷键结束录音。',
+      voiceEndTitle:'语音结束动作',
+      voiceEndDesc:'听写过程中说出结束词结束录音；可配置结束后自动发送。',
       voiceEndLabel:'启用语音结束',
       voiceEndVoskWarn:'需要启用高级版才能语音结束',
       voiceEndCompatWarn:'外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。',
       voiceEndPhrases:'结束词',
       voiceEndLastPhrase:'最后结束词',
       voiceEndLastAction:'最近动作',
-      voiceEndAutoSend:'自动发送',
+      voiceEndAutoSend:'语音结束后自动发送',
       voiceEndAutoSendOn:'开',
       voiceEndAutoSendOff:'关',
       voiceEndDelay:'发送延迟',
       voiceEndDelayMs:'{n}ms',
       voiceEndPresetsZhLabel:'中文结束词',
       voiceEndPresetsEnLabel:'英文结束词',
-      voiceEndAutoSendLabel:'自动发送（Enter）',
+      voiceEndAutoSendLabel:'语音结束后自动发送（Enter）',
       voiceEndAutoSendWarn:'请和方案里的自动发送二选一，建议关闭方案中的自动发送等待。',
       voiceEndTestStop:'测试结束录音',
       voiceEndTestCommit:'测试发送',
@@ -2827,8 +2963,9 @@
       homeGuideHoverHint:'悬浮任一按键或区域查看对应功能提示。',
       homeKeyGuideIntro:'配置「按一颗键 → 自动发送语音快捷键」；悬停下列条目可在左侧界面看到对应位置。',
       homeKeyGuideFlowGoSettings:'点击「前往按键设置」进入按键设置页。',
-      homeKeyGuideFlowRecordInSettings:'在按键设置页录制启动键与语音输入快捷键。',
-      homeKeyGuideFlowEnable:'回到首页后点「启用」，程序开始监听启动键。',
+      homeKeyGuideFlowSetTrigger:'先录制启动键（你按下的按键）。',
+      homeKeyGuideFlowSetTarget:'再录制输入法语音快捷键（程序将替你按下）。',
+      homeKeyGuideFlowEnable:'回到首页后点「启用」，建立「启动键 → 输入法语音快捷键」联动。',
       homeKeyGuideBadge:'角标：已就绪 / 未启用 / 待配置 / 未完成方案 等当前状态。',
       homeKeyGuideScheme:'点击下拉切换方案，或进入「管理全部方案」新增、编辑。',
       homeKeyGuideMapTitle:'本区展示当前方案的键位对应关系。',
@@ -2860,14 +2997,16 @@
       homeFinishGuideFlowSendLbl:'本区：结束并发送',
       homeFinishGuideEnd:'开关：是否启用结束词识别来触发完成。',
       homeFinishGuideAuto:'开关：静音达到延迟后是否自动完成。',
-      homeFinishGuideDelay:'滑块：自动发送前需持续静音多久（毫秒）。',
+      homeFinishGuideDelay:'查看自动发送当前使用的等待时间。',
+      homeFinishGuideCancel:'开关：是否允许在短窗口内再次按键发送 Esc 取消。',
+      homeFinishGuideConfirm:'开关：是否在等待后自动发送 Enter 确认。',
       homeFinishGuideStatus:'右侧显示的听写/完成状态摘要。',
       homeFinishGuideCaution:'结束词与自动发送可同时开启；发送延迟过短可能截断尾音；外部输入法独占麦克风时结束词可能失效。',
       homeGuideCautionTitle:'注意事项',
       homeKeyGoSettings:'前往按键设置',homeKeyEditSettings:'修改按键设置',
       homeLiveKeySound:'激活提示音',
       homeLiveEngine:'引擎',homeLiveWakeWord:'唤醒词',homeLiveLastHeard:'最近识别',
-      homeLiveEndWord:'结束词',homeLiveEndAuto:'自动发送',
+      homeLiveEndWord:'结束词',homeLiveEndAuto:'语音结束后自动发送',
       homeEntryKeyOnly:'已启用：按键激活',homeEntryVoiceOnly:'已启用：语音激活',
       homeEntryBoth:'已启用：按键 + 语音',homeEntryNone:'未启用任何入口',
       homeSchemeManage:'管理全部方案…',homeSchemeToggleLbl:'启用此方案',
@@ -2884,7 +3023,7 @@
       homeLiveSchemeDraft:'未完成方案',
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
-      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'自动发送',homeAdvDebug:'状态与调试',
+      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'语音结束后自动发送',homeAdvDebug:'状态与调试',
       homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音激活已就绪',
       homeStatusIdle:'先配置按键或语音激活',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
@@ -2895,14 +3034,15 @@
       homeCtaSubKey:'按 {key}',homeCtaSubVoice:'说出唤醒词开始',
       homeCtaSubKeyOrVoice:'按 {key} 或说唤醒词',homeCtaSubNeedTrigger:'先设置启动键',
       homeCtaSubNeedTarget:'再设置语音快捷键',
-      settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音激活（深度）',
-      settingsNavVoiceEnd:'完成动作（深度）',settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
+      settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音',
+      settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
       settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'首页查看键位对应与启用；在此录制按键并管理方案',
-      settingsPanelVoiceWakeDesc:'首页可快速切换与启停；这里保留完整语音配置与高级参数',settingsPanelVoiceEndDesc:'规划结束词、按键完成流程与深度参数；首页保留高频开关',
+      settingsPanelVoiceWakeDesc:'配置语音激活、结束词与结束后自动发送',
+      keyWakeFinishTitle:'按键后续动作',keyWakeFinishDesc:'按键启动后的取消与确认开关。',
+      homeKeyFinishTitle:'按键后续动作',homeVoiceFinishTitle:'语音结束动作',
       quickKeyWakeSummary:'按键设置（录制启动键与快捷键）',quickKeyWakeHint:'按键录制请在本页完成；首页仅查看对应关系与启用。',
-      quickVoiceWakeSummary:'首页快捷操作（模式与麦克风）',quickVoiceWakeHint:'该区默认折叠，避免与首页主操作台重复。',
-      quickVoiceEndSummary:'首页快捷操作（完成动作开关与延迟）',quickVoiceEndHint:'该区默认折叠，首页用于高频控制；这里保留完整参数链路。',
-      settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
+      quickVoiceWakeSummary:'首页快捷操作（语音模式）',quickVoiceWakeHint:'该区默认折叠，避免与首页主操作台重复。',
+      settingsPanelSoundsDesc:'麦克风与提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
       settingsNavSounds:'音效',
       soundsMasterLabel:'启用音效',soundsMasterHelp:'关闭后所有提示音静音；各场景仍可单独配置。',
       soundSlotRecordTitle:'录制按键',soundSlotRecordDesc:'录制启动键或快捷键时，检测到按键的反馈音。',
@@ -2929,7 +3069,7 @@
       chipKeyWake:'按键',chipVoiceWake:'语音激活',chipVoiceEnd:'结束词',chipDictating:'听写中',
       chipVoiceSend:'语音发送',chipTimedSend:'定时发送',
       quickTipsTitle:'怎么设置最省心',
-      quickTipsBody:'按键与语音可并列使用；完成动作在首页共享区配置。',
+      quickTipsBody:'按键与语音可并列使用；结束动作分别在对应卡片内配置。',
       replayWelcome:'重新查看首次引导',
       welcomePathLabel:'设置路径',
       noteText:'一声只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
@@ -2943,13 +3083,24 @@
       comboHint:'等待组合键…',triggerRecordHint:'请按下你想用来启动语音的按键',targetRecordHint:'请按下语音输入法的快捷键',
       triggerModeTitle:'启动方式',
       keyFinishFlowTitle:'按键完成流程',
-      keyFinishFlowDesc:'规划用启动键开始听写后，如何取消或自动确认。按键只负责唤起，结束节奏在这里配置。',
+      keyFinishFlowDesc:'选择即时触发或确认窗口模式。',
       keyFinishFlowScheme:'当前方案：{name}',
       keyFinishFlowSchemeDraft:'当前方案尚未录完按键',
       keyFinishFlowNeedKeys:'请先在「按键设置」中录好启动键与语音快捷键，再配置完成流程。',
+      keyFinishFlowModeTitle:'完成模式',
+      keyFinishFlowModeHint:'这里是二选一的模式切换，不是同时执行两套流程。',
+      keyFinishFlowCurrentMode:'当前模式：{mode}',
+      keyFinishFlowStatusOn:'已开启',
+      keyFinishFlowStatusOff:'已关闭',
+      keyFinishFlowDetailTitle:'当前模式细节',
+      keyFinishFlowDetailTrigger:'启动键行为：立刻触发输入法语音快捷键',
+      keyFinishFlowDetailCancel:'取消窗口：{state}（{n}s 内再按一次发送 Esc 取消）',
+      keyFinishFlowDetailConfirm:'自动确认：{state}（{n}s 后发送 Enter 确认）',
+      keyFinishFlowDetailNoCancel:'取消窗口：关闭（此模式不使用）',
+      keyFinishFlowDetailNoConfirm:'自动确认：关闭（此模式不使用）',
       keyFinishFlowInstant:'即时触发',keyFinishFlowConfirm:'确认窗口',
-      keyFinishFlowInstantDesc:'每次按键独立唤起语音；不设取消/确认窗口，结束交给结束词或手动操作',
-      keyFinishFlowConfirmDesc:'开始后短时间内再按可取消；超时后自动确认发送',
+      keyFinishFlowInstantDesc:'只负责立即唤起语音，不使用取消窗口和自动确认',
+      keyFinishFlowConfirmDesc:'可配置取消窗口与自动确认，适合需要防误触',
       keyFinishFlowAnimVoice:'听写',keyFinishFlowAnimCancel:'取消',keyFinishFlowAnimConfirm:'确认',
       keyFinishFlowInstantSettings:'即时触发说明',
       keyFinishFlowInstantTip:'每次按下启动键都会立刻模拟语音快捷键，没有取消窗口和自动确认。',
@@ -2981,7 +3132,7 @@
       nativeKeyRestore:'保留原本功能',traceRecorded:'来源',
       advSummary:'更多设置',
       cancelTimingTitle:'取消窗口',cancelTimingDesc:'再按启动键的 <b>{n}</b> 秒内 → Esc 取消听写',
-      sendTimingTitle:'自动确认',sendTimingDesc:'开始后等待 <b>{n}</b> 秒 → 自动 Enter 确认',
+      sendTimingTitle:'按键流程自动确认',sendTimingDesc:'开始后等待 <b>{n}</b> 秒 → 自动 Enter 确认',
       schemeSwitched:'已切换至：'
     },
     en:{
@@ -3024,7 +3175,7 @@
       confirmClear:'Clear all mappings and restore default?',
       movedToTrash:'Moved to recycle bin (see Settings)',
       trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
-      settingsTitle:'Settings',listenTitle:'Listen status',
+      settingsTitle:'Settings',settingsBack:'Back',listenTitle:'Listen status',
       listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart onetone?',
       testSendDisabled:'Set a voice shortcut first',
       testSendTarget:'Test voice shortcut',testSending:'Sending…',testSent:'Sent',
@@ -3065,6 +3216,11 @@
       voiceSapiTitle:'Light mode details',
       voiceSapiDesc:'Say one of the selected phrases into the mic to trigger your voice shortcut once.',
       voiceSapiLabel:'Enable Light mode',
+      voiceSapiSetupTitle:'Light mode needs Windows speech components',
+      voiceSapiSetupBody:'If this is your first time using it, install or enable Windows speech recognition and the matching language speech pack first.',
+      voiceSapiSetupAction:'Open setup',
+      voiceSapiSetupOpening:'Opening Windows speech settings',
+      voiceSapiSetupOpenFail:'Could not open Windows speech settings. Please open System Settings manually.',
       voiceSapiTest:'Test shortcut (no mic)',
       voiceSapiFail:'Could not start Light mode. Check that the Windows speech component is available.',
       voiceSapiWakeWord:'Wake phrase',
@@ -3076,7 +3232,7 @@
       voiceSapiSensitivity:'Sensitivity (lower = easier to trigger)',
       voiceSapiPresetUpdated:'Wake phrases updated',
       voiceModeTitle:'Voice mode',
-      voiceModeDesc:'Light mode is better for low-load standby. Advanced mode supports offline recognition and end phrases. Pick a mode first, then fine-tune below.',
+      voiceModeDesc:'Light mode suits low-load standby; Advanced mode supports offline recognition and end phrases. Pick a card to switch modes and configure details inside it.',
       voiceModeLiteTitle:'Light mode',
       voiceModeLiteEngine:'System quick recognition',
       voiceModeLiteBadge:'Low load',
@@ -3132,22 +3288,22 @@
       voiceVoskPresetsEnLabel:'English phrases',
       voiceVoskPresetUpdated:'Wake phrases updated',
       voiceVoskModelUpdated:'Recognition language updated',
-      voiceEndTitle:'Finish actions',
-      voiceEndDesc:'Say an end phrase while dictating to stop recording through the voice shortcut.',
+      voiceEndTitle:'Voice finish actions',
+      voiceEndDesc:'Say an end phrase to stop dictating; optionally auto-send after voice end.',
       voiceEndLabel:'Enable voice end',
       voiceEndVoskWarn:'Enable Advanced mode to use voice end phrases',
       voiceEndCompatWarn:'External IME may exclusive-lock the mic; end phrases may not work (compat mode).',
       voiceEndPhrases:'End phrases',
       voiceEndLastPhrase:'Last end phrase',
       voiceEndLastAction:'Last action',
-      voiceEndAutoSend:'Auto send',
+      voiceEndAutoSend:'Auto send after voice end',
       voiceEndAutoSendOn:'On',
       voiceEndAutoSendOff:'Off',
       voiceEndDelay:'Send delay',
       voiceEndDelayMs:'{n}ms',
       voiceEndPresetsZhLabel:'Chinese end phrases',
       voiceEndPresetsEnLabel:'English end phrases',
-      voiceEndAutoSendLabel:'Auto send (Enter)',
+      voiceEndAutoSendLabel:'Auto send after voice end (Enter)',
       voiceEndAutoSendWarn:'Choose one: voice-end auto send or the profile auto-send wait. We recommend turning off the profile auto-send wait.',
       voiceEndTestStop:'Test stop recording',
       voiceEndTestCommit:'Test send key',
@@ -3204,8 +3360,9 @@
       homeGuideHoverHint:'Hover any button or area to see its exact function.',
       homeKeyGuideIntro:'Set up press a key → app sends the voice shortcut. Hover items below to locate them on the card.',
       homeKeyGuideFlowGoSettings:'Tap Go to key settings to open the key settings page.',
-      homeKeyGuideFlowRecordInSettings:'Record the launch key and voice shortcut on that page.',
-      homeKeyGuideFlowEnable:'Back on home, tap Enable to start listening for the launch key.',
+      homeKeyGuideFlowSetTrigger:'Record the launch key first (the key you press).',
+      homeKeyGuideFlowSetTarget:'Then record the IME voice shortcut (the app will press it for you).',
+      homeKeyGuideFlowEnable:'Back on home, tap Enable to activate the launch-key-to-IME-shortcut link.',
       homeKeyGuideBadge:'Badge: Ready / Off / Needs setup / Incomplete profile, etc.',
       homeKeyGuideScheme:'Open to switch profiles or manage all profiles.',
       homeKeyGuideMapTitle:'Shows the key mapping for the active profile.',
@@ -3237,14 +3394,16 @@
       homeFinishGuideFlowSendLbl:'This zone: finish and send',
       homeFinishGuideEnd:'Toggle end-phrase recognition for finish.',
       homeFinishGuideAuto:'Toggle finish after silence.',
-      homeFinishGuideDelay:'Slider: silence duration before auto-send (ms).',
+      homeFinishGuideDelay:'Shows the current wait used by auto-send.',
+      homeFinishGuideCancel:'Toggle whether a quick second press can send Esc to cancel.',
+      homeFinishGuideConfirm:'Toggle whether Enter is sent automatically after waiting.',
       homeFinishGuideStatus:'Status summary on the right.',
       homeFinishGuideCaution:'End phrases and auto-send can both be on; short delay may cut trailing words; external IME may block end phrases.',
       homeGuideCautionTitle:'Notes',
       homeKeyGoSettings:'Key settings',homeKeyEditSettings:'Edit key settings',
       homeLiveKeySound:'Activation sound',
       homeLiveEngine:'Engine',homeLiveWakeWord:'Wake phrase',homeLiveLastHeard:'Last heard',
-      homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send',
+      homeLiveEndWord:'End phrases',homeLiveEndAuto:'Auto send after voice end',
       homeEntryKeyOnly:'Enabled: key activation',homeEntryVoiceOnly:'Enabled: voice activation',
       homeEntryBoth:'Enabled: key + voice',homeEntryNone:'No entry enabled',
       homeSchemeManage:'Manage all profiles…',homeSchemeToggleLbl:'Enable this profile',
@@ -3272,14 +3431,15 @@
       homeCtaSubKey:'Press {key}',homeCtaSubVoice:'Say wake phrase',
       homeCtaSubKeyOrVoice:'Press {key} or say wake phrase',homeCtaSubNeedTrigger:'Set launch key first',
       homeCtaSubNeedTarget:'Then set voice shortcut',
-      settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice activation (advanced)',
-      settingsNavVoiceEnd:'Finish actions (advanced)',settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
+      settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice',
+      settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
       settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Home shows mapping and enable; record keys and manage profiles here',
-      settingsPanelVoiceWakeDesc:'Homepage offers quick toggle and switch; this page keeps complete voice settings',settingsPanelVoiceEndDesc:'Plan end phrases, key finish flow and advanced options; homepage keeps quick toggles',
+      settingsPanelVoiceWakeDesc:'Configure voice activation, end phrases, and auto-send after voice end',
+      keyWakeFinishTitle:'Key follow-up actions',keyWakeFinishDesc:'Cancel window and auto-confirm after key launch.',
+      homeKeyFinishTitle:'Key follow-up actions',homeVoiceFinishTitle:'Voice finish actions',
       quickKeyWakeSummary:'Key settings (record keys)',quickKeyWakeHint:'Record keys here; the homepage only shows mapping and enable.',
-      quickVoiceWakeSummary:'Homepage quick actions (mode and microphone)',quickVoiceWakeHint:'Collapsed by default to avoid duplicate primary entry points.',
-      quickVoiceEndSummary:'Homepage quick actions (finish actions toggle and delay)',quickVoiceEndHint:'Collapsed by default; homepage stays the high-frequency control surface.',
-      settingsPanelSoundsDesc:'Sounds for recording, wake and send',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
+      quickVoiceWakeSummary:'Homepage quick actions (voice mode)',quickVoiceWakeHint:'Collapsed by default to avoid duplicate primary entry points.',
+      settingsPanelSoundsDesc:'Microphone and sounds',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
       settingsNavSounds:'Sounds',
       soundsMasterLabel:'Enable sounds',soundsMasterHelp:'Master mute; each scene can still be configured.',
       soundSlotRecordTitle:'Key recording',soundSlotRecordDesc:'Plays when a key is detected while recording.',
@@ -3320,13 +3480,24 @@
       comboHint:'Waiting for combo…',triggerRecordHint:'Press launch key (side modifiers & combos supported)',targetRecordHint:'Press voice shortcut',
       triggerModeTitle:'Trigger style',
       keyFinishFlowTitle:'Key finish flow',
-      keyFinishFlowDesc:'Plan how key-started dictation ends: cancel or auto-confirm. Keys only launch voice; finish timing lives here.',
+      keyFinishFlowDesc:'Choose instant trigger or confirm-window mode.',
       keyFinishFlowScheme:'Profile: {name}',
       keyFinishFlowSchemeDraft:'Current profile keys are incomplete',
       keyFinishFlowNeedKeys:'Record launch key and voice shortcut under Key settings before configuring finish flow.',
+      keyFinishFlowModeTitle:'Finish mode',
+      keyFinishFlowModeHint:'This is a mode switch (pick one), not two flows running together.',
+      keyFinishFlowCurrentMode:'Current mode: {mode}',
+      keyFinishFlowStatusOn:'On',
+      keyFinishFlowStatusOff:'Off',
+      keyFinishFlowDetailTitle:'Current mode details',
+      keyFinishFlowDetailTrigger:'Launch key action: trigger IME voice shortcut immediately',
+      keyFinishFlowDetailCancel:'Cancel window: {state} (press again within {n}s to send Esc)',
+      keyFinishFlowDetailConfirm:'Auto confirm: {state} (send Enter after {n}s)',
+      keyFinishFlowDetailNoCancel:'Cancel window: Off (not used in this mode)',
+      keyFinishFlowDetailNoConfirm:'Auto confirm: Off (not used in this mode)',
       keyFinishFlowInstant:'Instant',keyFinishFlowConfirm:'Confirm window',
-      keyFinishFlowInstantDesc:'Each press triggers voice independently; no cancel/confirm window — use end phrases or manual finish',
-      keyFinishFlowConfirmDesc:'Press again soon to cancel; auto-confirm after the wait',
+      keyFinishFlowInstantDesc:'Immediate voice trigger only; no cancel window or auto confirm',
+      keyFinishFlowConfirmDesc:'Configurable cancel window + auto confirm for safer control',
       keyFinishFlowAnimVoice:'Dictate',keyFinishFlowAnimCancel:'Cancel',keyFinishFlowAnimConfirm:'Confirm',
       keyFinishFlowInstantSettings:'Instant mode',
       keyFinishFlowInstantTip:'Each launch-key press sends the voice shortcut immediately — no cancel window or auto-confirm.',
@@ -3358,7 +3529,7 @@
       nativeKeyRestore:'Restore system keys',traceRecorded:'Recorded at',
       advSummary:'Adjust',
       cancelTimingTitle:'Cancel window',cancelTimingDesc:'Press launch key again within <b>{n}</b>s → Esc cancels dictation',
-      sendTimingTitle:'Auto-confirm',sendTimingDesc:'Wait <b>{n}</b>s after start → auto Enter to confirm',
+      sendTimingTitle:'Key-flow auto-confirm',sendTimingDesc:'Wait <b>{n}</b>s after start → auto Enter to confirm',
       schemeSwitched:'Switched to: '
     }
   };
@@ -4116,7 +4287,11 @@
     const dev=micDevices.find(function(d){ return d.id===activeMicId; })
       ||micDevices.find(function(d){ return d.isDefault; })
       ||micDevices[0];
-    if(nameEl) nameEl.textContent=dev?(dev.name||dev.label||dev.id):homeMicStatusLabel();
+    if(nameEl){
+      const name=dev?(dev.name||dev.label||dev.id):homeMicStatusLabel();
+      nameEl.textContent=name;
+      nameEl.title=name;
+    }
     if(wrap&&dev) wrap.setAttribute('data-id',dev.id);
     const barsEl=$('homeMicLevelBars');
     if(barsEl&&!barsEl.children.length) barsEl.innerHTML=buildMicLevelBars();
@@ -4413,10 +4588,30 @@
     return 'off';
   }
 
+  function isVoiceModeCardInteractiveTarget(target){
+    return !!(target&&target.closest&&target.closest('button, input, a, [role="tab"], .voice-sapi-preset, .voice-sapi-range, .control-btn, .toggle-switch'));
+  }
+  function bindVoiceModeCard(cardId,mode){
+    const card=$(cardId);
+    if(!card) return;
+    card.onclick=function(e){
+      if(isVoiceModeCardInteractiveTarget(e.target)) return;
+      switchVoiceMode(mode);
+    };
+    card.onkeydown=function(e){
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      if(isVoiceModeCardInteractiveTarget(e.target)) return;
+      e.preventDefault();
+      switchVoiceMode(mode);
+    };
+  }
   function setVoiceModeCardBusy(busy){
     ['btnVoiceModeSapi','btnVoiceModeVosk'].forEach(function(id){
-      const btn=$(id);
-      if(btn) btn.disabled=!!busy;
+      const card=$(id);
+      if(card){
+        card.classList.toggle('is-busy',!!busy);
+        card.setAttribute('aria-busy',busy?'true':'false');
+      }
     });
   }
 
@@ -4436,8 +4631,6 @@
     const voskCard=$('btnVoiceModeVosk');
     const currentEl=$('voiceModeCurrent');
     const hintEl=$('voiceModeHint');
-    const sapiBlock=$('voiceSapiBlock');
-    const voskBlock=$('voiceVoskBlock');
     if(sapiCard){
       sapiCard.classList.toggle('is-active',mode==='sapi');
       sapiCard.setAttribute('aria-pressed',mode==='sapi'?'true':'false');
@@ -4446,8 +4639,6 @@
       voskCard.classList.toggle('is-active',mode==='vosk');
       voskCard.setAttribute('aria-pressed',mode==='vosk'?'true':'false');
     }
-    if(sapiBlock) sapiBlock.classList.toggle('is-active-mode',mode==='sapi');
-    if(voskBlock) voskBlock.classList.toggle('is-active-mode',mode==='vosk');
     if(mode==='sapi'||mode==='vosk') setVoiceWakeExpandedMode(mode);
     else setVoiceWakeExpandedMode(voiceWakeExpandedMode||'sapi');
     if(currentEl){
@@ -4521,7 +4712,7 @@
 
   const SETTINGS_PANEL_IDS={
     basic:'settingsPanelBasic',keyWake:'settingsPanelKeyWake',voiceWake:'settingsPanelVoiceWake',
-    voiceEnd:'settingsPanelVoiceEnd',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
+    sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
   };
 
   function computeHomeState(){
@@ -4573,7 +4764,8 @@
       ctaMode='dictating';
       ctaMain=t('homeCtaDictating');
       ctaSub=t('homeCtaDictatingSub');
-      ctaPanel='voiceEnd';
+      ctaPanel='voiceWake';
+      ctaFocus='endPhrases';
     }else if(stateRaw==='error'){
       statusMode='error';
       statusLine=endSnap.statusLabel||voiceEndStateLabel(stateRaw);
@@ -5060,28 +5252,51 @@
     const cfg=state.config||{};
     const endCfg=cfg.voiceEnd||cfg.voice_end||{};
     const endSnap=voiceUiSnapshot.end||{};
+    const m=selectedMapping();
+    if(m) ensureMappingTiming(m);
     const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const autoOn=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
     const stateRaw=endSnap.state||'idle';
+    const cancelOn=!!(m&&m.cancelEnabled);
+    const confirmOn=!!(m&&m.autoEnterEnabled);
+    const cancelMs=m&&m.intervalMs!=null?m.intervalMs:(cfg.intervalMs!=null?cfg.intervalMs:1200);
+    const confirmMs=m&&m.enterDelayMs!=null?m.enterDelayMs:(cfg.enterDelayMs!=null?cfg.enterDelayMs:5000);
+    const hasSavedMapping=!!(m&&isSavedMapping(m));
     const statusEl=$('homeFinishStatus');
     if(statusEl) statusEl.textContent=loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw));
     if(!loading){
       syncVoiceEndToggle(enabled);
       syncVoiceEndAutoSendToggle(autoOn);
+      syncHomeKeyFinishToggle('btnHomeCancelToggle',cancelOn);
+      syncHomeKeyFinishToggle('btnHomeConfirmToggle',confirmOn);
     }
     const endToggle=$('btnHomeEndToggle');
     if(endToggle) endToggle.disabled=recordingBusy||loading;
     const autoToggle=$('btnHomeEndAutoSend');
     if(autoToggle) autoToggle.disabled=recordingBusy||loading;
+    const cancelToggle=$('btnHomeCancelToggle');
+    if(cancelToggle) cancelToggle.disabled=recordingBusy||loading||!hasSavedMapping;
+    const confirmToggle=$('btnHomeConfirmToggle');
+    if(confirmToggle) confirmToggle.disabled=recordingBusy||loading||!hasSavedMapping;
+    const endSummary=$('homeFinishEndSummary');
+    if(endSummary) endSummary.textContent=loading?t('homeLiveLoading'):(enabled?t('voiceEndEnabledShort'):t('voiceEndDisabledShort'));
+    const endDetail=$('homeFinishEndDetail');
+    if(endDetail) endDetail.textContent=loading?t('homeLiveLoading'):((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]).join(' / ')||t('endPhrasesEmpty'));
+    const autoSummary=$('homeFinishAutoSummary');
+    if(autoSummary) autoSummary.textContent=loading?t('homeLiveLoading'):(autoOn?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'));
     const delayLine=$('homeVoiceEndDelayLine');
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
-    const delayRange=$('homeVoiceEndDelayRange');
-    if(delayRange && document.activeElement!==delayRange){
-      delayRange.value=String(delayMs);
-      delayRange.style.setProperty('--range-pct',((delayMs-1000)/9000*100)+'%');
-    }
-    if(delayRange) delayRange.disabled=recordingBusy||loading;
+    const cancelSummary=$('homeFinishCancelSummary');
+    if(cancelSummary) cancelSummary.textContent=loading?t('homeLiveLoading'):(hasSavedMapping?(cancelOn?t('keyFinishFlowStatusOn'):t('keyFinishFlowStatusOff')):t('homeLiveUnset'));
+    const cancelDetail=$('homeFinishCancelDetail');
+    if(cancelDetail) cancelDetail.textContent=loading?t('homeLiveLoading'):(hasSavedMapping?t('cancelTimingDesc').replace('<b>','').replace('</b>','').replace('{n}',formatTimingSec(cancelMs)):t('keyFinishFlowNeedKeys'));
+    if(cancelDetail) cancelDetail.classList.toggle('is-warn',!loading&&!hasSavedMapping);
+    const confirmSummary=$('homeFinishConfirmSummary');
+    if(confirmSummary) confirmSummary.textContent=loading?t('homeLiveLoading'):(hasSavedMapping?(confirmOn?t('keyFinishFlowStatusOn'):t('keyFinishFlowStatusOff')):t('homeLiveUnset'));
+    const confirmDetail=$('homeFinishConfirmDetail');
+    if(confirmDetail) confirmDetail.textContent=loading?t('homeLiveLoading'):(hasSavedMapping?t('sendTimingDesc').replace('<b>','').replace('</b>','').replace('{n}',formatTimingSec(confirmMs)):t('keyFinishFlowNeedKeys'));
+    if(confirmDetail) confirmDetail.classList.toggle('is-warn',!loading&&!hasSavedMapping);
   }
 
   function renderHomeLiveZone(){
@@ -5202,15 +5417,18 @@
     return{
       panel:'homeLivePanelKey',
       layout:'voice-lane',
-      flowKeys:['homeKeyGuideFlowGoSettings','homeKeyGuideFlowRecordInSettings','homeKeyGuideFlowEnable'],
+      flowKeys:['homeKeyGuideFlowGoSettings','homeKeyGuideFlowSetTrigger','homeKeyGuideFlowSetTarget','homeKeyGuideFlowEnable'],
       cautionKey:'homeKeyGuideCaution',
       pins:[
         {target:'#btnHomeSchemeSwitcher',detailKey:'homeKeyGuideScheme',labelEl:'#homeKeyMapSchemeLbl',callout:false},
         {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideTrigger',labelEl:'#homeKeyMapTriggerLbl',callout:false},
         {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideTarget',labelEl:'#homeKeyMapTargetLbl',callout:false},
         {target:'#btnHomeKeySettings',detailKey:'homeKeyGuideFlowGoSettings',labelFromTargetBtn:true,step:1},
-        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideFlowRecordInSettings',labelEl:'#homeKeyMapTriggerLbl',step:2},
-        {target:'#btnHomeKeyToggle',detailKey:'homeKeyGuideFlowEnable',labelFromTargetBtn:true,step:3}
+        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideFlowSetTrigger',labelEl:'#homeKeyMapTriggerLbl',step:2},
+        {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideFlowSetTarget',labelEl:'#homeKeyMapTargetLbl',step:3},
+        {target:'#btnHomeKeyToggle',detailKey:'homeKeyGuideFlowEnable',labelFromTargetBtn:true,step:4},
+        {target:'#btnHomeCancelToggle',detailKey:'homeFinishGuideCancel',labelEl:'#homeLiveCancelLbl',step:5},
+        {target:'#btnHomeConfirmToggle',detailKey:'homeFinishGuideConfirm',labelEl:'#homeLiveConfirmLbl',step:6}
       ]
     };
   }
@@ -5226,20 +5444,9 @@
         {target:'#btnHomeMicSettings',detailKey:'homeVoiceGuideMic',labelEl:'#homeMicTitle',step:2},
         {target:'#btnHomeVoiceModeSapi',detailKey:'homeVoiceGuideModeSapi',labelFromTargetBtn:true,callout:false},
         {target:'#btnHomeVoiceModeVosk',detailKey:'homeVoiceGuideModeVosk',labelFromTargetBtn:true,callout:false},
-        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:3}
-      ]
-    };
-  }
-
-  function homeFinishGuideDef(){
-    return{
-      panel:'homeFinishZone',
-      flowKeys:['homeFinishGuideFlowStart','homeFinishGuideFlowEnd','homeFinishGuideFlowSend'],
-      cautionKey:'homeFinishGuideCaution',
-      pins:[
-        {target:'#btnHomeEndToggle',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',step:2},
-        {target:'#btnHomeEndAutoSend',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',step:3},
-        {target:'#homeVoiceEndDelayRange',detailKey:'homeFinishGuideDelay',labelEl:'#homeVoiceEndDelayLine'}
+        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:3},
+        {target:'#btnHomeEndToggle',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',step:4},
+        {target:'#btnHomeEndAutoSend',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',step:5}
       ]
     };
   }
@@ -5247,20 +5454,107 @@
   function homeGuideDefForCard(card){
     if(card==='key') return homeKeyGuideDef();
     if(card==='voice') return homeVoiceGuideDef();
-    return homeFinishGuideDef();
+    return homeKeyGuideDef();
   }
 
   let homeGuideState=null;
   let homeGuideSpotlights=[];
+  let homeGuideDemoTimer=0;
+  let homeGuideDemoTarget=null;
+  let homeGuideDemoStep=0;
+  let homeGuideDemoSig='';
+  let homeGuideDemoSteps=[];
+  let homeGuideDemoIndex=0;
+  let homeGuideManualStep=null;
   let homeGuideOpenTick=0;
   let homeGuidePanelRect=null;
   const HOME_GUIDE_INLINE=false;
   const HOME_GUIDE_HOVER=true;
-  const homeGuideDismissed={key:false,voice:false,finish:false};
+  const homeGuideDismissed={key:false,voice:false};
 
   function clearHomeGuideSpotlights(){
     homeGuideSpotlights.forEach(function(el){ el.classList.remove('home-guide-spotlight'); });
     homeGuideSpotlights=[];
+  }
+
+  function homeGuideStepPins(def){
+    return (def&&def.pins||[]).filter(function(pin){ return pin&&pin.step&&pin.target; })
+      .sort(function(a,b){ return a.step-b.step; });
+  }
+
+  function homeGuideStopStepDemo(){
+    clearInterval(homeGuideDemoTimer);
+    homeGuideDemoTimer=0;
+    homeGuideDemoStep=0;
+    homeGuideDemoSig='';
+    homeGuideDemoSteps=[];
+    homeGuideDemoIndex=0;
+    homeGuideManualStep=null;
+    if(homeGuideDemoTarget){
+      homeGuideDemoTarget.classList.remove('home-guide-demo-focus');
+      homeGuideDemoTarget=null;
+    }
+    document.querySelectorAll('.home-guide-flow-item.is-demo-active,.home-guide-hover-tip-flow-item.is-demo-active').forEach(function(el){
+      el.classList.remove('is-demo-active');
+    });
+  }
+
+  function homeGuideApplyStepDemo(def,step){
+    document.querySelectorAll('.home-guide-flow-item.is-demo-active,.home-guide-hover-tip-flow-item.is-demo-active').forEach(function(el){
+      el.classList.remove('is-demo-active');
+    });
+    document.querySelectorAll('[data-guide-step="'+String(step)+'"]').forEach(function(el){
+      el.classList.add('is-demo-active');
+    });
+    if(homeGuideDemoTarget){
+      homeGuideDemoTarget.classList.remove('home-guide-demo-focus');
+      homeGuideDemoTarget=null;
+    }
+    const pin=homeGuideStepPins(def).find(function(p){ return p.step===step; });
+    const target=pin&&homeGuideEl(pin.target);
+    if(target&&homeGuideTargetVisible(pin.target)){
+      target.classList.add('home-guide-demo-focus');
+      homeGuideDemoTarget=target;
+    }
+  }
+
+  function homeGuideStartStepDemo(def,startStep,manualHold){
+    const steps=homeGuideStepPins(def).map(function(pin){ return pin.step; })
+      .filter(function(s,i,a){ return a.indexOf(s)===i; });
+    const sig=(homeGuideState?homeGuideState.card:'')+'|'+steps.join(',');
+    const manualStep=manualHold?(Number(startStep)||null):homeGuideManualStep;
+    if(homeGuideDemoTimer&&homeGuideDemoSig===sig&&startStep==null&&!manualHold&&manualStep==null) return;
+    if(manualStep!=null&&startStep==null) startStep=manualStep;
+    homeGuideStopStepDemo();
+    homeGuideDemoSig=sig;
+    homeGuideManualStep=manualStep;
+    if(!steps.length) return;
+    homeGuideDemoSteps=steps.slice();
+    let idx=0;
+    if(startStep!=null){
+      const found=steps.indexOf(Number(startStep));
+      if(found>=0) idx=found;
+    }
+    homeGuideDemoIndex=idx;
+    homeGuideApplyStepDemo(def,steps[homeGuideDemoIndex]);
+    homeGuideDemoStep=steps[homeGuideDemoIndex];
+    if(homeGuideManualStep!=null) return;
+    homeGuideDemoTimer=setInterval(function(){
+      if(!homeGuideState||homeGuideState.def!==def){
+        homeGuideStopStepDemo();
+        return;
+      }
+      homeGuideDemoIndex=(homeGuideDemoIndex+1)%homeGuideDemoSteps.length;
+      homeGuideDemoStep=homeGuideDemoSteps[homeGuideDemoIndex];
+      homeGuideApplyStepDemo(def,homeGuideDemoStep);
+    },1400);
+  }
+
+  function homeGuideJumpToStep(step){
+    if(!homeGuideState) return;
+    const s=Number(step);
+    if(!Number.isFinite(s)) return;
+    homeGuideStartStepDemo(homeGuideState.def,s,true);
   }
 
   function homeGuideUiZoom(){
@@ -5666,7 +5960,8 @@
     let flowTrack='';
     if(def.flowKeys&&def.flowKeys.length){
       flowTrack=def.flowKeys.map(function(key,i){
-        const item='<span class="home-guide-flow-item"><span class="home-guide-flow-num">'+String(i+1)+'</span>'+
+        const stepNum=i+1;
+        const item='<span class="home-guide-flow-item" data-guide-step="'+String(stepNum)+'"><span class="home-guide-flow-num">'+String(stepNum)+'</span>'+
           '<span>'+escHtml(t(key))+'</span></span>';
         return i<def.flowKeys.length-1?item+'<span class="home-guide-flow-sep" aria-hidden="true">→</span>':item;
       }).join('');
@@ -5675,12 +5970,12 @@
         .sort(function(a,b){ return a.step-b.step; });
       flowTrack=stepPins.map(function(pin,i){
         const label=homeGuideItemLabel(pin);
-        const item='<span class="home-guide-flow-item"><span class="home-guide-flow-num">'+String(pin.step)+'</span>'+
+        const item='<span class="home-guide-flow-item" data-guide-step="'+String(pin.step)+'"><span class="home-guide-flow-num">'+String(pin.step)+'</span>'+
           '<span>'+escHtml(label)+'</span></span>';
         return i<stepPins.length-1?item+'<span class="home-guide-flow-sep" aria-hidden="true">→</span>':item;
       }).join('');
     }
-    const areas=(def.pins||[]).filter(function(pin){
+    const areas=(def.showAreas?(def.pins||[]):[]).filter(function(pin){
       return pin.target&&pin.detailKey&&homeGuideTargetVisible(pin.target);
     }).map(function(pin){
       return '<div class="home-guide-area-item" role="button" tabindex="0" data-guide-target="'+escHtml(pin.target)+'">'+
@@ -5749,15 +6044,15 @@
     banner.style.width=bw+'px';
     const bh=banner.offsetHeight;
     const candidates=[];
+    candidates.push({left:vpW-bw-edge,top:edge,score:0,place:'corner-tr'});
+    candidates.push({left:vpW-bw-edge,top:vpH-bh-edge,score:1,place:'corner-br'});
     if(panelRect){
-      candidates.push({left:panelRect.left,top:panelRect.bottom+gap,score:0,place:'below'});
-      candidates.push({left:panelRect.right+gap,top:panelRect.top,score:1,place:'right'});
-      candidates.push({left:panelRect.left-bw-gap,top:panelRect.top,score:2,place:'left'});
-      candidates.push({left:panelRect.left,top:panelRect.top-bh-gap,score:3,place:'above'});
-      candidates.push({left:panelRect.right-bw,top:panelRect.bottom+gap,score:4,place:'below-right'});
+      candidates.push({left:panelRect.right+gap,top:panelRect.top,score:10,place:'right'});
+      candidates.push({left:panelRect.left-bw-gap,top:panelRect.top,score:11,place:'left'});
+      candidates.push({left:panelRect.left,top:panelRect.bottom+gap,score:12,place:'below'});
+      candidates.push({left:panelRect.left,top:panelRect.top-bh-gap,score:13,place:'above'});
+      candidates.push({left:panelRect.right-bw,top:panelRect.bottom+gap,score:14,place:'below-right'});
     }
-    candidates.push({left:vpW-bw-edge,top:vpH-bh-edge,score:20,place:'corner-br'});
-    candidates.push({left:vpW-bw-edge,top:edge,score:21,place:'corner-tr'});
     let best=null;
     candidates.forEach(function(c){
       let left=c.left;
@@ -5913,8 +6208,9 @@
     if(!anchorEl) return;
     const tip=ensureHomeGuideHoverTip();
     const flow=(def.flowKeys||[]).map(function(key,i){
-      return '<div class="home-guide-hover-tip-flow-item">'+
-        '<span class="home-guide-hover-tip-step">'+String(i+1)+'</span>'+
+      const stepNum=i+1;
+      return '<div class="home-guide-hover-tip-flow-item" data-guide-step="'+String(stepNum)+'" role="button" tabindex="0">'+
+        '<span class="home-guide-hover-tip-step">'+String(stepNum)+'</span>'+
         '<span>'+escHtml(t(key))+'</span>'+
       '</div>';
     }).join('');
@@ -5929,6 +6225,21 @@
     });
     clearHomeGuideSpotlights();
     positionHomeGuideHoverTip(tip,anchorEl);
+    tip.querySelectorAll('.home-guide-hover-tip-flow-item').forEach(function(item){
+      const step=item.getAttribute('data-guide-step');
+      item.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        homeGuideJumpToStep(step);
+      };
+      item.onkeydown=function(e){
+        if(e.key==='Enter'||e.key===' '){
+          e.preventDefault();
+          e.stopPropagation();
+          homeGuideJumpToStep(step);
+        }
+      };
+    });
     requestAnimationFrame(function(){ tip.classList.add('is-show'); });
   }
 
@@ -6033,7 +6344,7 @@
   }
 
   function setHomeGuideBtnActive(card,on){
-    const map={key:'btnHomeKeyHelp',voice:'btnHomeVoiceHelp',finish:'btnHomeFinishHelp'};
+    const map={key:'btnHomeKeyHelp',voice:'btnHomeVoiceHelp'};
     const btn=$(map[card]);
     if(btn) btn.classList.toggle('is-active',!!on);
   }
@@ -6055,6 +6366,7 @@
       requestAnimationFrame(function(){
         if(!homeGuideState||homeGuideState.card!==card) return;
         showHomeGuideIntroTip(def,anchorBtn);
+        homeGuideStartStepDemo(def);
       });
       return;
     }
@@ -6067,11 +6379,13 @@
     closeHomeSchemeMenu();
     homeGuideBindObservers(panelEl,def.pins);
     layoutHomeGuide(def);
+    homeGuideStartStepDemo(def);
     setHomeGuideBtnActive(card,true);
   }
 
   function closeHomeGuide(userInitiated){
     if(!homeGuideState) return;
+    homeGuideStopStepDemo();
     if(userInitiated) homeGuideDismissed[homeGuideState.card]=true;
     const panelEl=homeGuideState.panelEl;
     setHomeGuideBtnActive(homeGuideState.card,false);
@@ -6105,9 +6419,11 @@
     homeGuideState.def=def;
     if(HOME_GUIDE_HOVER){
       bindHomeGuideTargetTips(def);
+      homeGuideStartStepDemo(def);
       return;
     }
     layoutHomeGuide(def,{repositionOnly:!rebuild});
+    homeGuideStartStepDemo(def);
   }
 
   function initHomeGuide(){
@@ -6138,6 +6454,8 @@
       if(homeGuideState.anchorBtn&&homeGuideState.anchorBtn.contains(target)) return;
       const banner=$('homeGuideBanner');
       if(banner&&banner.contains(target)) return;
+      const tip=$('homeGuideHoverTip');
+      if(tip&&tip.contains(target)) return;
       if(homeGuideState.panelEl&&homeGuideState.panelEl.contains(target)) return;
       closeHomeGuide(true);
     });
@@ -6153,7 +6471,8 @@
   function applyHomeLiveLang(){
     const d=I18N[lang];
     [
-      ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],['homeLiveEndTitle',d.homeLiveEndTitle],
+      ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],
+      ['homeKeyFinishTitle',d.homeKeyFinishTitle],['homeVoiceFinishTitle',d.homeVoiceFinishTitle],
       ['homeMicTitle',d.homeMicTitle],['homeMicChangeHint',d.homeMicChangeHint],
       ['homeKeyMapTitle',d.homeKeyMapTitle],['homeKeyMapSchemeLbl',d.homeKeyMapSchemeLbl],
       ['homeKeyMapTriggerLbl',d.homeLiveTrigger],['homeKeyMapTargetLbl',d.homeLiveTarget],
@@ -6161,6 +6480,7 @@
       ['homeKeyMapArrowText',d.homeKeyMapArrowText],
       ['homeVoiceWakeFloatHint',d.homeVoiceWakeFloatHint],
       ['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
+      ['homeLiveCancelLbl',d.cancelTimingTitle],['homeLiveConfirmLbl',d.sendTimingTitle],
       ['btnHomeManageSchemes',d.homeSchemeManage]
     ].forEach(function(pair){
       const el=$(pair[0]); if(el) el.textContent=pair[1];
@@ -6242,10 +6562,10 @@
     const detailByFocus={
       trigger:'quickKeyWakeSection',
       target:'quickKeyWakeSection',
-      mic:'quickVoiceWakeSection',
-      engine:'quickVoiceWakeSection',
-      autoSend:'quickVoiceEndSection',
-      delay:'quickVoiceEndSection'
+      mic:'soundsMicSection',
+      engine:'voiceModePanel',
+      autoSend:'voiceEndMergedSection',
+      delay:'voiceEndMergedSection'
     };
     const detailId=detailByFocus[focus];
     if(detailId){
@@ -6256,7 +6576,7 @@
       trigger:['btnRecordTrigger','keyWakeSettings'],
       target:['btnRecordTarget','keyWakeSettings'],
       mappings:['keyWakeMappingSection','mappingListTitle'],
-      keyFinishFlow:['voiceEndKeyFinishSection','voiceEndKeyFinishPanel'],
+      keyFinishFlow:['keyWakeFinishSection','voiceEndKeyModePanel'],
       mic:['micDeviceList','micTitle'],
       engine:['voiceSapiTitle','voiceVoskTitle'],
       wakePhrases:['voiceSapiPresets','voiceVoskPresetsCn'],
@@ -6278,11 +6598,11 @@
 
   function syncSettingsMicPoll(panel){
     if(!ui.drawerOpen) return;
-    if(panel==='voiceWake'){
+    if(panel==='sounds'){
       setTimeout(function(){
-        if(!ui.drawerOpen||ui.settingsPanel!=='voiceWake') return;
+        if(!ui.drawerOpen||ui.settingsPanel!=='sounds') return;
         loadMicDevices().then(function(){
-          if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
+          if(ui.drawerOpen&&ui.settingsPanel==='sounds'){
             startMicLevelPoll();
           }
         });
@@ -6294,6 +6614,7 @@
   }
 
   function setSettingsPanel(panel){
+    if(panel==='voiceEnd') panel='voiceWake';
     const ids=SETTINGS_PANEL_IDS;
     if(!ids[panel]) panel='basic';
     ui.settingsPanel=panel;
@@ -6306,6 +6627,7 @@
     syncSettingsMicPoll(panel);
     if(panel==='debug') renderDebugOverview();
     if(panel==='keyWake'){
+      renderKeyFinishFlowPanel();
       requestAnimationFrame(function(){
         if(!ui.drawerOpen||ui.settingsPanel!=='keyWake') return;
         renderMappingChrome();
@@ -6315,10 +6637,9 @@
       renderTrashList();
     }else if(panel==='sounds'){
       renderSoundSettingsPanel();
-    }else if(panel==='voiceEnd'){
-      renderKeyFinishFlowPanel();
+      loadMicDevices().catch(function(){});
     }
-    if(panel==='voiceWake'||panel==='voiceEnd'||panel==='debug'){
+    if(panel==='voiceWake'||panel==='debug'){
       setTimeout(function(){
         if(ui.drawerOpen&&ui.settingsPanel===panel) voiceStatusPollTick();
       },50);
@@ -6391,10 +6712,11 @@
         if(drawerPayload){
           if((panel==='voiceWake'||panel==='debug')&&drawerPayload.sapi) renderVoiceSapiStatus(drawerPayload.sapi);
           if((panel==='voiceWake'||panel==='debug')&&drawerPayload.vosk) renderVoiceVoskStatus(drawerPayload.vosk);
-          if((panel==='voiceEnd'||panel==='debug')&&drawerPayload.end) renderVoiceEndStatus(drawerPayload.end);
+          if((panel==='voiceWake'||panel==='debug')&&drawerPayload.end) renderVoiceEndStatus(drawerPayload.end);
         }
         if(panel==='voiceWake') maybeSyncMicLevelMonitor();
-        if(panel==='voiceEnd') maybeRenderMappingListFromVoice();
+        if(panel==='voiceWake') maybeRenderMappingListFromVoice();
+        if(panel==='keyWake') renderKeyFinishFlowPanel();
         renderHome();
         if(panel==='debug') renderDebugOverview();
       }else{
@@ -6587,7 +6909,7 @@
   function settingsPanelNeedsVoicePoll(){
     if(!ui.drawerOpen) return false;
     const p=ui.settingsPanel;
-    return p==='voiceWake'||p==='voiceEnd'||p==='debug';
+    return p==='voiceWake'||p==='debug';
   }
 
   function voiceStatusPollNeeded(){
@@ -6631,7 +6953,7 @@
     const homeEnd=true;
     const needEnd=voiceEndEnabledInConfig()
       ||sessionActiveState(snap.state||'idle')
-      ||(drawerVoice&&(panel==='voiceEnd'||panel==='debug'))
+      ||(drawerVoice&&(panel==='voiceWake'||panel==='debug'))
       ||homeEnd;
     const needSapi=(sapiCfg&&sapiCfg.enabled)
       &&(!ui.drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
@@ -6659,15 +6981,30 @@
     }, 500);
   }
 
+  function syncSettingsChrome(){
+    const app=document.querySelector('.app');
+    const btn=$('btnSettings');
+    const drawer=$('settingsDrawer');
+    if(app) app.classList.toggle('is-settings',!!ui.drawerOpen);
+    if(drawer){
+      drawer.hidden=!ui.drawerOpen;
+      drawer.setAttribute('aria-hidden',ui.drawerOpen?'false':'true');
+    }
+    if(btn) btn.textContent=ui.drawerOpen?t('settingsBack'):t('settingsTitle');
+    if(ui.drawerOpen){
+      const panelWrap=$('settingsPanelWrap');
+      if(panelWrap) panelWrap.scrollTop=0;
+    }
+  }
+
   function openDrawer(opts){
     opts=opts||{};
     closeHomeSchemeMenu();
-    if(opts.voiceTab==='end') opts.panel='voiceEnd';
+    if(opts.voiceTab==='end'){ opts.panel='voiceWake'; if(!opts.focus) opts.focus='endPhrases'; }
     else if(opts.voiceTab==='wake') opts.panel=opts.keyWakeFocus?'keyWake':'voiceWake';
+    if(opts.panel==='voiceEnd') opts.panel='voiceWake';
     ui.drawerOpen=true;
-    $('settingsDrawer').classList.add('open');
-    $('drawerOverlay').classList.add('open');
-    $('settingsDrawer').setAttribute('aria-hidden','false');
+    syncSettingsChrome();
     setSettingsPanel(opts.panel||'basic');
     setTimeout(function(){
       if(!ui.drawerOpen) return;
@@ -6683,9 +7020,7 @@
 
   function closeDrawer(){
     ui.drawerOpen=false;
-    $('settingsDrawer').classList.remove('open');
-    $('drawerOverlay').classList.remove('open');
-    $('settingsDrawer').setAttribute('aria-hidden','true');
+    syncSettingsChrome();
     stopMicLevelPoll();
     stopMicMonitor();
     setTimeout(function(){
@@ -6699,9 +7034,9 @@
       if(micLevelUiVisible()&&!micPollTimer) startMicLevelPoll();
       return;
     }
-    if(ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
+    if(ui.drawerOpen&&ui.settingsPanel==='sounds'){
       loadMicDevices().then(function(){
-        if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') startMicLevelPoll();
+        if(ui.drawerOpen&&ui.settingsPanel==='sounds') startMicLevelPoll();
       });
       return;
     }
@@ -6757,6 +7092,7 @@
         errEl.textContent='';
       }
     }
+    renderVoiceSapiSetupNotice(res);
     updateVoiceDiagMetric('sapi','state',stateEl?stateEl.textContent:(res.state||'stopped'),t('voiceDiagLogState'));
     updateVoiceDiagMetric('sapi','heard',heard,t('voiceDiagLogHeard'));
     updateVoiceDiagMetric('sapi','skip',skip,t('voiceDiagLogSkip'));
@@ -6791,6 +7127,34 @@
     const err=res&&(res.lastError||res.last_error||'');
     if(String(err||'').trim()) return String(err).trim();
     return t('voiceSapiFail');
+  }
+
+  function voiceSapiNeedsSetup(res){
+    const err=String((res&&(res.lastError||res.last_error||''))||'').toLowerCase();
+    if(!err) return false;
+    return /spinprocrecognizer|spmmaudioin|install windows speech|language pack|speech component|class not registered|windows-only/.test(err);
+  }
+
+  function renderVoiceSapiSetupNotice(res){
+    const box=$('voiceSapiSetupNotice');
+    if(!box) return;
+    const shouldShow=voiceSapiNeedsSetup(res);
+    box.hidden=!shouldShow;
+    const title=$('voiceSapiSetupTitle');
+    if(title) title.textContent=t('voiceSapiSetupTitle');
+    const body=$('voiceSapiSetupBody');
+    if(body) body.textContent=t('voiceSapiSetupBody');
+    const btn=$('btnVoiceSapiSetup');
+    if(btn) btn.textContent=t('voiceSapiSetupAction');
+  }
+
+  function openVoiceSapiSetup(){
+    vpInvoke('cmd_open_windows_speech_setup',{}).then(function(){
+      toast(t('voiceSapiSetupOpening'));
+    }).catch(function(err){
+      const msg=err&&err.message?String(err.message).trim():'';
+      toast(msg||t('voiceSapiSetupOpenFail'));
+    });
   }
 
   function handleVoiceSapiEnableResult(res,next){
@@ -7159,6 +7523,10 @@
     const delayMs=res.commitDelayMs!=null?res.commitDelayMs:4000;
     const phrasesLine=$('voiceEndPhrasesLine');
     if(phrasesLine) phrasesLine.textContent=t('voiceEndPhrases')+'：'+(zh.concat(en).join(' / ')||'—');
+    const zhLine=$('voiceEndPhrasesZhLine');
+    if(zhLine) zhLine.textContent=t('voiceEndPresetsZhLabel')+'：'+(zh.join(' / ')||'—');
+    const enLine=$('voiceEndPhrasesEnLine');
+    if(enLine) enLine.textContent=t('voiceEndPresetsEnLabel')+'：'+(en.join(' / ')||'—');
     const summaryEl=$('voiceEndDebugSummary');
     if(summaryEl){
       const summaryParts=[];
@@ -7215,6 +7583,13 @@
     });
   }
 
+  function syncHomeKeyFinishToggle(id,enabled){
+    const btn=$(id);
+    if(!btn) return;
+    btn.classList.toggle('is-on',!!enabled);
+    btn.setAttribute('aria-checked',enabled?'true':'false');
+  }
+
   function toggleVoiceEnd(){
     const btn=$('btnHomeEndToggle')||$('btnVoiceEnd');
     if(!btn) return;
@@ -7243,6 +7618,18 @@
       loadVoiceEndStatus();
       toast(t('voiceEndFail'));
     });
+  }
+
+  function toggleHomeKeyFinish(field){
+    const m=selectedMapping();
+    if(!m||!isSavedMapping(m)) return;
+    ensureMappingTiming(m);
+    if(field==='cancelEnabled'||field==='autoEnterEnabled') m.triggerMode='tap';
+    m[field]=!m[field];
+    save();
+    renderKeyFinishFlowPanel();
+    renderMappingList();
+    renderHomeLiveZone();
   }
 
   function onVoiceEndDelayInput(){
@@ -7445,8 +7832,8 @@
     if(guideTitle3) guideTitle3.textContent=d.guideTitle3;
     const guideDesc3=$('guideDesc3');
     if(guideDesc3) guideDesc3.textContent=d.guideDesc3;
-    $('btnSettings').textContent=d.settingsTitle;
-    $('settingsTitle').textContent=d.settingsTitle;
+    $('btnSettings').textContent=ui.drawerOpen?t('settingsBack'):t('settingsTitle');
+    const settingsTitle=$('settingsTitle'); if(settingsTitle) settingsTitle.textContent=d.settingsTitle;
     $('mappingListTitle').textContent=d.mappingListTitle;
     const listHint=$('mappingListHint');
     if(listHint) listHint.textContent=d.mappingListHint;
@@ -7461,19 +7848,13 @@
     const settingsNavBasic=$('settingsNavBasic'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     const settingsNavKeyWake=$('settingsNavKeyWake'); if(settingsNavKeyWake) settingsNavKeyWake.textContent=d.settingsNavKeyWake;
     const settingsNavVoiceWake=$('settingsNavVoiceWake'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
-    const settingsNavVoiceEnd=$('settingsNavVoiceEnd'); if(settingsNavVoiceEnd) settingsNavVoiceEnd.textContent=d.settingsNavVoiceEnd;
     const settingsNavDebug=$('settingsNavDebug'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
     const settingsNavGeneral=$('settingsNavGeneral'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;
     const spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
     const spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
     const spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
-    const spEnd=$('settingsPanelVoiceEndDesc'); if(spEnd) spEnd.textContent=d.settingsPanelVoiceEndDesc;
     const quickKeyWakeSummary=$('quickKeyWakeSummary'); if(quickKeyWakeSummary) quickKeyWakeSummary.textContent=d.quickKeyWakeSummary;
     const quickKeyWakeHint=$('quickKeyWakeHint'); if(quickKeyWakeHint) quickKeyWakeHint.textContent=d.quickKeyWakeHint;
-    const quickVoiceWakeSummary=$('quickVoiceWakeSummary'); if(quickVoiceWakeSummary) quickVoiceWakeSummary.textContent=d.quickVoiceWakeSummary;
-    const quickVoiceWakeHint=$('quickVoiceWakeHint'); if(quickVoiceWakeHint) quickVoiceWakeHint.textContent=d.quickVoiceWakeHint;
-    const quickVoiceEndSummary=$('quickVoiceEndSummary'); if(quickVoiceEndSummary) quickVoiceEndSummary.textContent=d.quickVoiceEndSummary;
-    const quickVoiceEndHint=$('quickVoiceEndHint'); if(quickVoiceEndHint) quickVoiceEndHint.textContent=d.quickVoiceEndHint;
     const spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
     const spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
     const spGen=$('settingsPanelGeneralDesc'); if(spGen) spGen.textContent=d.settingsPanelGeneralDesc;
@@ -7539,6 +7920,9 @@
     const voiceSapiTitle=$('voiceSapiTitle'); if(voiceSapiTitle) voiceSapiTitle.textContent=d.voiceSapiTitle;
     const voiceSapiDesc=$('voiceSapiDesc'); if(voiceSapiDesc) voiceSapiDesc.textContent=d.voiceSapiDesc;
     const voiceSapiLabel=$('voiceSapiLabel'); if(voiceSapiLabel) voiceSapiLabel.textContent=d.voiceSapiLabel;
+    const voiceSapiSetupTitle=$('voiceSapiSetupTitle'); if(voiceSapiSetupTitle) voiceSapiSetupTitle.textContent=d.voiceSapiSetupTitle;
+    const voiceSapiSetupBody=$('voiceSapiSetupBody'); if(voiceSapiSetupBody) voiceSapiSetupBody.textContent=d.voiceSapiSetupBody;
+    const btnVoiceSapiSetup=$('btnVoiceSapiSetup'); if(btnVoiceSapiSetup) btnVoiceSapiSetup.textContent=d.voiceSapiSetupAction;
     const btnVoiceSapiTest=$('btnVoiceSapiTest'); if(btnVoiceSapiTest) btnVoiceSapiTest.textContent=d.voiceSapiTest;
     const voiceVoskTitle=$('voiceVoskTitle'); if(voiceVoskTitle) voiceVoskTitle.textContent=d.voiceVoskTitle;
     const voiceVoskDesc=$('voiceVoskDesc'); if(voiceVoskDesc) voiceVoskDesc.textContent=d.voiceVoskDesc;
@@ -7547,6 +7931,8 @@
     const voiceVoskModelLabel=$('voiceVoskModelLabel'); if(voiceVoskModelLabel) voiceVoskModelLabel.textContent=d.voiceVoskModelLabel;
     const voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
     const voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
+    const keyWakeFinishTitle=$('keyWakeFinishTitle'); if(keyWakeFinishTitle) keyWakeFinishTitle.textContent=d.keyWakeFinishTitle;
+    const keyWakeFinishDesc=$('keyWakeFinishDesc'); if(keyWakeFinishDesc) keyWakeFinishDesc.textContent=d.keyWakeFinishDesc;
     const voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;
     const keyFinishFlowTitle=$('keyFinishFlowTitle'); if(keyFinishFlowTitle) keyFinishFlowTitle.textContent=d.keyFinishFlowTitle;
     const keyFinishFlowDesc=$('keyFinishFlowDesc'); if(keyFinishFlowDesc) keyFinishFlowDesc.textContent=d.keyFinishFlowDesc;
@@ -7804,6 +8190,8 @@
     ensureMappingTiming(m);
     const cancelSec=(m.intervalMs/1000).toFixed(1);
     const sendSec=(m.enterDelayMs/1000).toFixed(1);
+    const onTxt=t('keyFinishFlowStatusOn');
+    const offTxt=t('keyFinishFlowStatusOff');
     let html='';
     const snap=voiceUiSnapshot.end||{};
     if(snap.autoSendEnabled&&m.autoEnterEnabled){
@@ -7812,12 +8200,12 @@
     html+='<div class="map-timing-block">';
     html+='<div class="map-timing-head"><span>'+t('cancelTimingTitle')+'</span>';
     html+='<div class="toggle'+(m.cancelEnabled?' on':'')+'" data-timing-toggle="'+id+'" data-field="cancelEnabled" role="switch"></div></div>';
-    html+='<p class="map-timing-desc">'+t('cancelTimingDesc').replace('{n}',cancelSec)+'</p>';
+    html+='<p class="map-timing-desc">'+(m.cancelEnabled?onTxt:offTxt)+' · '+t('cancelTimingDesc').replace('{n}',cancelSec)+'</p>';
     html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="intervalMs" min="200" max="5000" step="100" value="'+m.intervalMs+'"'+(m.cancelEnabled?'':' disabled')+'>';
     html+='</div><div class="map-timing-block">';
     html+='<div class="map-timing-head"><span>'+t('sendTimingTitle')+'</span>';
     html+='<div class="toggle'+(m.autoEnterEnabled?' on':'')+'" data-timing-toggle="'+id+'" data-field="autoEnterEnabled" role="switch"></div></div>';
-    html+='<p class="map-timing-desc">'+t('sendTimingDesc').replace('{n}',sendSec)+'</p>';
+    html+='<p class="map-timing-desc">'+(m.autoEnterEnabled?onTxt:offTxt)+' · '+t('sendTimingDesc').replace('{n}',sendSec)+'</p>';
     html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+m.enterDelayMs+'"'+(m.autoEnterEnabled?'':' disabled')+'>';
     html+='</div>';
     return html;
@@ -7827,20 +8215,20 @@
     let html='<div class="map-mode-settings">';
     if(mode==='tap'){
       html+='<div class="map-timing-head"><span>'+t('keyFinishFlowConfirmSettings')+'</span></div>';
-      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowConfirmTip')+'</p>';
       html+=renderTapTimingSettings(m,id);
     }else{
       html+='<div class="map-timing-head"><span>'+t('keyFinishFlowInstantSettings')+'</span></div>';
-      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowInstantTip')+'</p>';
     }
     html+='</div>';
     return html;
   }
 
-  function renderKeyFinishFlowBlock(m,id){
+  function renderKeyFinishModeBlock(m,id){
     const raw=(m.triggerMode||'tap').toLowerCase();
     const mode=raw==='toggle'?'tap':raw;
+    const modeTitle=t(mode==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant');
     let html='<div class="map-trigger-mode">';
+    html+='<div class="map-timing-head"><span>'+t('keyFinishFlowModeTitle')+'</span><span class="chip">'+escHtml(t('keyFinishFlowCurrentMode').replace('{mode}',modeTitle))+'</span></div>';
     html+='<div class="map-mode-cards">';
     ['hold','tap'].forEach(function(opt){
       const titleKey=opt==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant';
@@ -7852,15 +8240,94 @@
       html+='</button>';
     });
     html+='</div>';
+    html+='<details class="settings-secondary" style="margin-top:8px">';
+    html+='<summary>'+t('keyFinishFlowDetailTitle')+'</summary>';
+    html+='<div class="settings-secondary-hint">';
+    html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailTrigger')+'</p>';
+    if(mode==='tap'){
+      const onTxt=t('keyFinishFlowStatusOn');
+      const offTxt=t('keyFinishFlowStatusOff');
+      const cancelSec=(Number(m.intervalMs||1200)/1000).toFixed(1);
+      const sendSec=(Number(m.enterDelayMs||2500)/1000).toFixed(1);
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailCancel').replace('{state}',m.cancelEnabled?onTxt:offTxt).replace('{n}',cancelSec)+'</p>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailConfirm').replace('{state}',m.autoEnterEnabled?onTxt:offTxt).replace('{n}',sendSec)+'</p>';
+    }else{
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailNoCancel')+'</p>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailNoConfirm')+'</p>';
+    }
+    html+='</div></details></div>';
+    return html;
+  }
+
+  function renderKeyTimingCard(m,id,kind){
+    ensureMappingTiming(m);
+    const onTxt=t('keyFinishFlowStatusOn');
+    const offTxt=t('keyFinishFlowStatusOff');
+    const isCancel=kind==='cancel';
+    const enabledField=isCancel?'cancelEnabled':'autoEnterEnabled';
+    const rangeField=isCancel?'intervalMs':'enterDelayMs';
+    const titleKey=isCancel?'cancelTimingTitle':'sendTimingTitle';
+    const descKey=isCancel?'cancelTimingDesc':'sendTimingDesc';
+    const rangeMin=isCancel?200:1000;
+    const rangeMax=isCancel?5000:15000;
+    const rangeStep=isCancel?100:500;
+    const seconds=((isCancel?m.intervalMs:m.enterDelayMs)/1000).toFixed(1);
+    const snap=voiceUiSnapshot.end||{};
+    let html='';
+    if(!isCancel&&snap.autoSendEnabled&&m.autoEnterEnabled){
+      html+='<p class="map-timing-desc map-send-mode-hint">'+t('voiceEndAutoSendWarn')+'</p>';
+    }
+    html+='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t(titleKey)+'</span></div>';
+    html+='<button type="button" class="toggle-switch'+(m[enabledField]?' is-on':'')+'" data-timing-toggle="'+id+'" data-field="'+enabledField+'" role="switch" aria-checked="'+(m[enabledField]?'true':'false')+'"></button></div>';
+    html+='<p class="map-timing-desc">'+(m[enabledField]?onTxt:offTxt)+' · '+t(descKey).replace('{n}',seconds)+'</p>';
+    html+='<div class="voice-end-inline-range"><input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="'+rangeField+'" min="'+rangeMin+'" max="'+rangeMax+'" step="'+rangeStep+'" value="'+m[rangeField]+'"'+(m[enabledField]?'':' disabled')+'></div>';
+    return html;
+  }
+
+  function renderKeyFinishFlowBlock(m,id){
+    const raw=(m.triggerMode||'tap').toLowerCase();
+    const mode=raw==='toggle'?'tap':raw;
+    const modeTitle=t(mode==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant');
+    const onTxt=t('keyFinishFlowStatusOn');
+    const offTxt=t('keyFinishFlowStatusOff');
+    const cancelSec=(Number(m.intervalMs||1200)/1000).toFixed(1);
+    const sendSec=(Number(m.enterDelayMs||2500)/1000).toFixed(1);
+    let html='<div class="map-trigger-mode">';
+    html+='<div class="map-timing-head"><span>'+t('keyFinishFlowModeTitle')+'</span><span class="chip">'+escHtml(t('keyFinishFlowCurrentMode').replace('{mode}',modeTitle))+'</span></div>';
+    html+='<div class="map-mode-cards">';
+    ['hold','tap'].forEach(function(opt){
+      const titleKey=opt==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant';
+      const descKey=titleKey+'Desc';
+      html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
+      html+=renderModeAnim(opt);
+      html+='<span class="mode-card-title">'+t(titleKey)+'</span>';
+      html+='<span class="mode-card-desc">'+t(descKey)+'</span>';
+      html+='</button>';
+    });
+    html+='</div>';
+    html+='<details class="settings-secondary" style="margin-top:8px">';
+    html+='<summary>'+t('keyFinishFlowDetailTitle')+'</summary>';
+    html+='<div class="settings-secondary-hint">';
+    html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailTrigger')+'</p>';
+    if(mode==='tap'){
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailCancel').replace('{state}',m.cancelEnabled?onTxt:offTxt).replace('{n}',cancelSec)+'</p>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailConfirm').replace('{state}',m.autoEnterEnabled?onTxt:offTxt).replace('{n}',sendSec)+'</p>';
+    }else{
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailNoCancel')+'</p>';
+      html+='<p class="map-mode-settings-tip">'+t('keyFinishFlowDetailNoConfirm')+'</p>';
+    }
+    html+='</div></details>';
     html+=renderKeyFinishSettingsPanel(m,id,mode);
     html+='</div>';
     return html;
   }
 
   function renderKeyFinishFlowPanel(){
-    const panel=$('voiceEndKeyFinishPanel');
+    const modePanel=$('voiceEndKeyModePanel');
+    const cancelCard=$('voiceEndCancelCard');
+    const confirmCard=$('voiceEndConfirmCard');
     const schemeLine=$('keyFinishFlowSchemeLine');
-    if(!panel) return;
+    if(!modePanel||!cancelCard||!confirmCard) return;
     ensureConfig();
     const m=selectedMapping();
     if(schemeLine){
@@ -7869,11 +8336,17 @@
       else schemeLine.textContent='';
     }
     if(!m||!isSavedMapping(m)){
-      panel.innerHTML='<p class="mic-desc key-finish-empty">'+escHtml(t('keyFinishFlowNeedKeys'))+'</p>';
+      const empty='<p class="mic-desc key-finish-empty">'+escHtml(t('keyFinishFlowNeedKeys'))+'</p>';
+      modePanel.innerHTML=empty;
+      cancelCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('cancelTimingTitle')+'</span></div></div>'+empty;
+      confirmCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('sendTimingTitle')+'</span></div></div>'+empty;
       return;
     }
-    panel.innerHTML=renderKeyFinishFlowBlock(m,m.id);
-    syncAllTimingRanges(panel);
+    modePanel.innerHTML=renderKeyFinishModeBlock(m,m.id);
+    cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
+    confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
+    syncAllTimingRanges(cancelCard);
+    syncAllTimingRanges(confirmCard);
   }
 
   function renderTriggerModeBlock(m,id){
@@ -7913,6 +8386,7 @@
       const field=timingToggle.dataset.field;
       const m=state.config.mappings.find(function(x){return x.id===id;});
       if(!m) return true;
+      if(field==='cancelEnabled'||field==='autoEnterEnabled') m.triggerMode='tap';
       m[field]=!m[field];
       scheduleTimingSave();
       renderKeyFinishFlowPanel();
@@ -7968,7 +8442,7 @@
     scheduleTimingSave();
     if(!skipRender){
       renderMappingList();
-      if(ui.drawerOpen&&ui.settingsPanel==='voiceEnd') renderKeyFinishFlowPanel();
+      if(ui.drawerOpen&&ui.settingsPanel==='keyWake') renderKeyFinishFlowPanel();
     }
   }
 
@@ -9139,7 +9613,7 @@
     renderRecordCancelBar();
     if(ui.drawerOpen&&ui.settingsPanel==='sounds') renderSoundSettingsPanel();
     if(ui.drawerOpen&&ui.settingsPanel==='debug') renderDebugPanel();
-    if(ui.drawerOpen&&ui.settingsPanel==='voiceEnd') renderKeyFinishFlowPanel();
+    if(ui.drawerOpen&&ui.settingsPanel==='keyWake') renderKeyFinishFlowPanel();
     renderVoiceModeSwitch();
     renderHome();
     renderListenRuntime();
@@ -9325,12 +9799,14 @@
       previewSoundSlot(slot);
     };
   });
-  $('btnVoiceSapi').onclick=toggleVoiceSapi;
-  $('btnVoiceModeSapi').onclick=function(){ switchVoiceMode('sapi'); };
+  $('btnVoiceSapi').onclick=function(e){ e.stopPropagation(); toggleVoiceSapi(); };
+  bindVoiceModeCard('btnVoiceModeSapi','sapi');
   $('btnVoiceSapiTest').onclick=testVoiceSapiSend;
+  const btnVoiceSapiSetup=$('btnVoiceSapiSetup');
+  if(btnVoiceSapiSetup) btnVoiceSapiSetup.onclick=openVoiceSapiSetup;
   $('voiceSapiPresets').onclick=addVoiceSapiPreset;
-  $('btnVoiceVosk').onclick=toggleVoiceVosk;
-  $('btnVoiceModeVosk').onclick=function(){ switchVoiceMode('vosk'); };
+  $('btnVoiceVosk').onclick=function(e){ e.stopPropagation(); toggleVoiceVosk(); };
+  bindVoiceModeCard('btnVoiceModeVosk','vosk');
   $('btnVoiceVoskTest').onclick=testVoiceVoskSend;
   $('voiceVoskPresetsWrap').onclick=addVoiceVoskPreset;
   $('voiceVoskModelPreset').onclick=function(ev){
@@ -9355,7 +9831,10 @@
   $('welcomeOverlay').addEventListener('click',function(e){
     if(e.target===this) closeWelcome(true);
   });
-  $('btnSettings').onclick=function(){ openSettings({panel:'basic'}); };
+  $('btnSettings').onclick=function(){
+    if(ui.drawerOpen) closeDrawer();
+    else openSettings({panel:'basic'});
+  };
   $('btnHomeCta').onclick=handleHomeCtaClick;
   initHomeGuide();
   const btnHomeKeySettings=$('btnHomeKeySettings');
@@ -9414,15 +9893,15 @@
   const btnHomeMicSettings=$('btnHomeMicSettings');
   if(btnHomeMicSettings){
     btnHomeMicSettings.onclick=function(){
-      openSettings({panel:'voiceWake',focus:'mic'});
+      openSettings({panel:'sounds',focus:'mic'});
     };
   }
   $('homeVoiceSapiConfidence').oninput=function(){ updateHomeVoiceSapiConfidence(false); };
   $('homeVoiceSapiConfidence').onchange=function(){ updateHomeVoiceSapiConfidence(true); };
   $('btnHomeEndToggle').onclick=toggleVoiceEnd;
   $('btnHomeEndAutoSend').onclick=toggleHomeVoiceEndAutoSend;
-  $('homeVoiceEndDelayRange').oninput=onHomeVoiceEndDelayInput;
-  $('homeVoiceEndDelayRange').onchange=onHomeVoiceEndDelayChange;
+  $('btnHomeCancelToggle').onclick=function(){ toggleHomeKeyFinish('cancelEnabled'); };
+  $('btnHomeConfirmToggle').onclick=function(){ toggleHomeKeyFinish('autoEnterEnabled'); };
   document.querySelectorAll('.settings-nav-item').forEach(function(btn){
     btn.addEventListener('click',function(){
       setSettingsPanel(btn.dataset.panel||'basic');
@@ -9434,8 +9913,6 @@
       if(voiceAdvState.open) voiceStatusPollTick();
     });
   }
-  $('btnDrawerClose').onclick=closeDrawer;
-  $('drawerOverlay').onclick=closeDrawer;
   $('btnListenToggle').onclick=function(){
     vpInvoke(runtime.paused?'cmd_resume':'cmd_pause',{}).catch(function(err){
       console.error('pause/resume',err);
@@ -9484,10 +9961,10 @@
     liveUpdateTimingRange(range);
   });
 
-  const voiceEndKeyFinishPanel=$('voiceEndKeyFinishPanel');
-  if(voiceEndKeyFinishPanel){
-    voiceEndKeyFinishPanel.addEventListener('input',handleKeyFinishFlowInput);
-    voiceEndKeyFinishPanel.addEventListener('click',function(e){
+  const keyWakeFinishSection=$('keyWakeFinishSection');
+  if(keyWakeFinishSection){
+    keyWakeFinishSection.addEventListener('input',handleKeyFinishFlowInput);
+    keyWakeFinishSection.addEventListener('click',function(e){
       if(handleKeyFinishFlowClick(e)) e.stopPropagation();
     });
   }

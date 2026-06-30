@@ -168,7 +168,7 @@ pub fn handle_tray_action(
 
     let Some(window) = app.get_webview_window("main") else {
         if action == "quit" {
-            app.exit(0);
+            exit_app(app);
         }
         return;
     };
@@ -203,9 +203,14 @@ pub fn handle_tray_action(
                 ipc::handle_scheme_select(state, &window, mapping_id);
             }
         }
-        "quit" => app.exit(0),
+        "quit" => exit_app(app),
         _ => {}
     }
+}
+
+fn exit_app(app: &AppHandle) {
+    let _ = app.remove_tray_by_id(TRAY_ID);
+    app.exit(0);
 }
 
 fn show_tray_menu(app: &AppHandle) {

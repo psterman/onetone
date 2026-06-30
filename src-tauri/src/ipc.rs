@@ -1454,6 +1454,7 @@ pub fn cmd_reload_latest(app: tauri::AppHandle) {
         if let Some(exe) = exe {
             let _ = std::process::Command::new(exe).spawn();
         }
+        let _ = app.remove_tray_by_id(crate::tray::TRAY_ID);
         app.exit(0);
     });
 }
@@ -1634,6 +1635,33 @@ pub fn cmd_voice_sapi_set_min_confidence(
 #[tauri::command]
 pub fn cmd_voice_sapi_test_send(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
     crate::voice_sapi_runtime::voice_sapi_test_send(&state)
+}
+
+#[tauri::command]
+pub fn cmd_open_windows_speech_setup() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let targets = ["ms-settings:speech", "ms-settings:regionlanguage"];
+        let mut last_err = String::new();
+        for target in targets {
+            match std::process::Command::new("cmd")
+                .args(["/C", "start", "", target])
+                .spawn()
+            {
+                Ok(_) => return Ok(()),
+                Err(err) => last_err = err.to_string(),
+            }
+        }
+        Err(if last_err.is_empty() {
+            "无法打开 Windows 语音设置页".into()
+        } else {
+            format!("无法打开 Windows 语音设置页: {last_err}")
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        Err("当前平台不支持打开 Windows 语音设置页".into())
+    }
 }
 
 #[tauri::command]
