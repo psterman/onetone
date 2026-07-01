@@ -1,10 +1,9 @@
-"""Generate onetone Windows icons: rich app assets + flat small/tray variants."""
+"""Generate onetone Windows icons from raster masters (squircle mask only)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,12 +14,11 @@ ICONS_DIR = ROOT / "src-tauri" / "icons"
 WEB_ICON = ROOT / "src" / "icon.png"
 
 SIZE = 1024
-C_BOT = (0x07, 0x8F, 0xBC)
+# Match the baked squircle in the 1024 master artwork.
+SQUIRCLE_INSET = 0
+SQUIRCLE_RADIUS = 208
 
-# Flat logo for tray + small bundle sizes (readable at 16px).
 TRAY_SIZES = (16, 24, 32, 48)
-SMALL_APP_SIZES = (16, 24, 32, 48, 64)
-LARGE_APP_SIZES = (128, 256, 512, 1024)
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 BUNDLE_FILES = {
@@ -32,56 +30,64 @@ BUNDLE_FILES = {
 }
 
 
-def _content_bbox(rgba: np.ndarray) -> tuple[int, int, int, int]:
-    light = (rgba[..., 0] > 220) & (rgba[..., 1] > 235) & (rgba[..., 2] > 240)
-    fg = (~light) & (rgba[..., 3] > 128)
-    ys, xs = np.where(fg)
-    if len(xs) == 0:
-        raise RuntimeError("reference icon has no foreground pixels")
-    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+def inside_rounded_rect(x: int, y: int, w: int, h: int, r: float) -> bool:
+    if x < 0 or y < 0 or x >= w or y >= h:
+        return False
+    r = min(r, w / 2, h / 2)
+    if x < r and y < r:
+        return (x - r) ** 2 + (y - r) ** 2 <= r * r
+    if x >= w - r and y < r:
+        return (x - (w - r)) ** 2 + (y - r) ** 2 <= r * r
+    if x < r and y >= h - r:
+        return (x - r) ** 2 + (y - (h - r)) ** 2 <= r * r
+    if x >= w - r and y >= h - r:
+        return (x - (w - r)) ** 2 + (y - (h - r)) ** 2 <= r * r
+    return True
 
 
-def crop_reference_full_bleed(src: Image.Image, size: int) -> Image.Image:
-    rgba = np.array(src.convert("RGBA"))
-    x0, y0, x1, y1 = _content_bbox(rgba)
-    crop = src.crop((x0, y0, x1, y1)).convert("RGBA")
-
-    side = max(crop.size)
-    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    ox = (side - crop.width) // 2
-    oy = (side - crop.height) // 2
-    square.paste(crop, (ox, oy), crop)
-    return square.resize((size, size), Image.Resampling.LANCZOS)
+def squircle_mask(size: int, inset: int, radius: int) -> Image.Image:
+    w = h = size
+    mask = Image.new("L", (size, size), 0)
+    px = mask.load()
+    for y in range(h):
+        for x in range(w):
+            if inside_rounded_rect(x - inset, y - inset, w - inset * 2, h - inset * 2, radius):
+                px[x, y] = 255
+    return mask
 
 
-def flatten_opaque(img: Image.Image, backdrop: tuple[int, int, int]) -> Image.Image:
-    base = Image.new("RGB", img.size, backdrop)
-    base.paste(img, mask=img.split()[3])
-    return base
+def apply_squircle_transparency(img: Image.Image) -> Image.Image:
+    """Only corner pixels outside the squircle become transparent; never flood-fill the artwork."""
+    size = img.size[0]
+    scale = size / SIZE
+    inset = max(0, int(round(SQUIRCLE_INSET * scale)))
+    radius = max(1, int(round(SQUIRCLE_RADIUS * scale)))
+    rgba = img.convert("RGBA")
+    mask = squircle_mask(size, inset, radius)
+    rgba.putalpha(mask)
+    return rgba
+
+
+def enhance_master(img: Image.Image) -> Image.Image:
+    return img.filter(ImageFilter.UnsharpMask(radius=1.0, percent=118, threshold=3))
+
+
+def load_master() -> Image.Image:
+    src = SOURCE_APP if SOURCE_APP.exists() else SOURCE_SMALL
+    if not src.exists():
+        raise FileNotFoundError(f"missing logo source: {SOURCE_APP}")
+    master = Image.open(src).convert("RGBA")
+    if master.size != (SIZE, SIZE):
+        master = master.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
+    master = enhance_master(master)
+    return apply_squircle_transparency(master)
 
 
 def resize_variant(img: Image.Image, size: int, sharpen: bool = False) -> Image.Image:
-  out = img.resize((size, size), Image.Resampling.LANCZOS)
-  if sharpen and size <= 32:
-      out = out.filter(ImageFilter.UnsharpMask(radius=0.8, percent=140, threshold=2))
-  return out.convert("RGBA")
-
-
-def load_sources() -> tuple[Image.Image, Image.Image]:
-    if not SOURCE_APP.exists():
-        raise FileNotFoundError(f"missing app source: {SOURCE_APP}")
-    if not SOURCE_SMALL.exists():
-        raise FileNotFoundError(f"missing small/tray source: {SOURCE_SMALL}")
-
-    app_master = crop_reference_full_bleed(Image.open(SOURCE_APP), SIZE)
-    small_master = Image.open(SOURCE_SMALL).convert("RGBA")
-    if small_master.size != (SIZE, SIZE):
-        small_master = small_master.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
-    return app_master, small_master
-
-
-def pick_master(size: int, app_master: Image.Image, small_master: Image.Image) -> Image.Image:
-    return small_master if size <= 64 else app_master
+    out = img.resize((size, size), Image.Resampling.LANCZOS)
+    if sharpen and size <= 48:
+        out = out.filter(ImageFilter.UnsharpMask(radius=0.9, percent=150, threshold=2))
+    return apply_squircle_transparency(out)
 
 
 def write_png(path: Path, img: Image.Image) -> None:
@@ -90,26 +96,19 @@ def write_png(path: Path, img: Image.Image) -> None:
     print(f"Wrote {path}")
 
 
-def generate_tray_icons(small_master: Image.Image) -> None:
+def generate_tray_icons(master: Image.Image) -> None:
     for size in TRAY_SIZES:
-        icon = resize_variant(small_master, size, sharpen=True)
-        write_png(ICONS_DIR / f"tray-{size}.png", icon)
+        write_png(ICONS_DIR / f"tray-{size}.png", resize_variant(master, size, sharpen=True))
 
 
-def generate_bundle_pngs(app_master: Image.Image, small_master: Image.Image) -> None:
+def generate_bundle_pngs(master: Image.Image) -> None:
     for name, size in BUNDLE_FILES.items():
-        master = pick_master(size, app_master, small_master)
-        icon = resize_variant(master, size, sharpen=size <= 32)
-        write_png(ICONS_DIR / name, icon)
-    write_png(WEB_ICON, resize_variant(app_master, 256))
+        write_png(ICONS_DIR / name, resize_variant(master, size, sharpen=size <= 32))
+    write_png(WEB_ICON, resize_variant(master, 256))
 
 
-def generate_ico(app_master: Image.Image, small_master: Image.Image) -> None:
-    frames: list[Image.Image] = []
-    for size in ICO_SIZES:
-        master = pick_master(size, app_master, small_master)
-        frames.append(resize_variant(master, size, sharpen=size <= 32))
-
+def generate_ico(master: Image.Image) -> None:
+    frames = [resize_variant(master, size, sharpen=size <= 32) for size in ICO_SIZES]
     out = ICONS_DIR / "icon.ico"
     frames[0].save(
         out,
@@ -120,21 +119,13 @@ def generate_ico(app_master: Image.Image, small_master: Image.Image) -> None:
     print(f"Wrote {out} ({', '.join(str(s) for s in ICO_SIZES)})")
 
 
-def generate_master_preview(app_master: Image.Image) -> None:
-    final = flatten_opaque(app_master, C_BOT)
-    OUT_MASTER.parent.mkdir(parents=True, exist_ok=True)
-    final.save(OUT_MASTER, "PNG")
-    print(f"Wrote {OUT_MASTER}")
-
-
 def generate() -> None:
-    app_master, small_master = load_sources()
+    master = load_master()
     ICONS_DIR.mkdir(parents=True, exist_ok=True)
-
-    generate_tray_icons(small_master)
-    generate_bundle_pngs(app_master, small_master)
-    generate_ico(app_master, small_master)
-    generate_master_preview(app_master)
+    generate_tray_icons(master)
+    generate_bundle_pngs(master)
+    generate_ico(master)
+    write_png(OUT_MASTER, master)
 
 
 if __name__ == "__main__":

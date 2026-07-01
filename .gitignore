@@ -1,19 +1,25 @@
-# Rust / Tauri
-src-tauri/target/
-src-tauri/target-release-live/
+# Rust / Tauri — Cargo 默认 target 与自定义 --target-dir（如 target-release-live、target-codex-check）
+src-tauri/target*/
 target/
 dist/
 build/
 src-tauri/gen/
 
+# Python 脚本缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
 # 本地配置与日志（用户数据在 %APPDATA%）
 settings.json
 voice_input_settings.json
 *.log
+logs/*.log
 
 # 编辑器与系统
 .idea/
 .vscode/
+.cursor/
 Thumbs.db
 Desktop.ini
 .DS_Store

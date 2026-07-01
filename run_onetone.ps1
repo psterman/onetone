@@ -53,7 +53,7 @@ if ((-not (Test-Path $iconIco)) -or (-not (Test-Path $iconPng))) {
     throw "缺少图标且找不到生成脚本: $iconScript"
   }
   Write-LaunchLog 'generating icons...'
-  python $iconScript
+  py -3 $iconScript
 }
 
 Push-Location $tauri

@@ -70,7 +70,7 @@
     html,body{margin:0;height:100%;overflow:hidden;overflow-x:hidden}
     body{background:#edf2f8;color:var(--on-surface)}
     .app{
-      height:100vh;display:flex;flex-direction:column;
+      height:100vh;display:flex;flex-direction:column;overflow:hidden;
       background:
         radial-gradient(circle at 14% 0%,rgba(94,200,232,.12),transparent 36%),
         radial-gradient(circle at 88% 8%,rgba(26,45,74,.05),transparent 28%),
@@ -96,6 +96,11 @@
     .app-header{
       display:flex;align-items:center;justify-content:space-between;
       padding:18px 22px 10px;flex-shrink:0;
+      position:sticky;top:0;z-index:40;
+      background:linear-gradient(180deg,#f9fbfd 0%,#f6f9fc 100%);
+    }
+    html[data-theme="dark"] .app-header{
+      background:linear-gradient(180deg,#0f1419 0%,#121822 100%);
     }
     .app-brand{display:flex;align-items:center;gap:12px;min-width:0}
     .app-logo{
@@ -831,17 +836,28 @@
     .app.is-settings .settings-page{display:flex}
     .app.is-settings .editor-zone{display:none}
     .app.is-settings .main-scroll{padding:0;overflow:hidden}
+    .app.is-settings{
+      height:calc(100vh / var(--ui-font-scale));
+    }
     .settings-shell{
       flex:1;display:flex;min-height:0;overflow:hidden;
       border-top:1px solid var(--outline-variant);
       background:var(--surface-high);
     }
     .settings-sidebar{
-      width:196px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;
+      width:196px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;
       border-right:1px solid var(--outline-variant);
       background:linear-gradient(180deg,var(--surface-soft),var(--surface-high));
-      padding:16px 10px 14px;
+      padding:16px 10px 10px;
     }
+    .settings-sidebar-body{
+      flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+      display:flex;flex-direction:column;gap:4px;
+      overscroll-behavior:contain;
+      scrollbar-width:thin;scrollbar-color:rgba(80,96,120,.28) transparent;
+    }
+    .settings-sidebar-body::-webkit-scrollbar{width:6px}
+    .settings-sidebar-body::-webkit-scrollbar-thumb{background:rgba(80,96,120,.28);border-radius:999px}
     html[data-theme="dark"] .settings-sidebar{
       background:linear-gradient(180deg,rgba(28,38,54,.98),rgba(22,30,44,.98));
     }
@@ -850,8 +866,8 @@
     }
     .settings-page-head h2{margin:0;font-size:17px;font-weight:800;color:var(--indigo)}
     .settings-nav{
-      flex:1;width:100%;min-height:0;display:flex;flex-direction:column;gap:4px;
-      padding:0;margin:0;border:none;overflow-y:auto;
+      flex:0 0 auto;width:100%;display:flex;flex-direction:column;gap:4px;
+      padding:0;margin:0;border:none;
     }
     .settings-nav-item{
       display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:0 12px;
@@ -866,63 +882,6 @@
       border-left:2px solid var(--outline-variant);
     }
     .settings-scheme-subnav[hidden]{display:none!important}
-    .settings-scheme-subnav-toolbar{
-      display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px 2px;
-    }
-    .settings-scheme-subnav-toolbar[hidden]{display:none!important}
-    .settings-scheme-subnav-selectall{
-      display:inline-flex;align-items:center;gap:7px;font-size:10px;font-weight:600;color:var(--on-surface-muted);cursor:pointer;
-    }
-    .scheme-lite-check{
-      position:relative;display:inline-flex;align-items:center;justify-content:center;
-      width:16px;height:16px;flex-shrink:0;cursor:pointer;
-    }
-    .scheme-lite-check-input{
-      position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1;
-    }
-    .scheme-lite-check-box{
-      position:relative;width:14px;height:14px;border-radius:4px;box-sizing:border-box;
-      border:1px solid rgba(80,110,130,.2);
-      background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(242,248,252,.88));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 1px 2px rgba(15,23,42,.04);
-      transition:border-color .14s ease,background .14s ease,box-shadow .14s ease,transform .12s ease;
-      pointer-events:none;
-    }
-    .scheme-lite-check:hover .scheme-lite-check-box{
-      border-color:rgba(42,156,196,.32);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 1px 3px rgba(42,156,196,.1);
-    }
-    .scheme-lite-check-input:active+.scheme-lite-check-box{transform:scale(.94)}
-    .scheme-lite-check-input:checked+.scheme-lite-check-box{
-      border-color:rgba(42,156,196,.5);
-      background:linear-gradient(180deg,rgba(110,210,240,.98),rgba(42,156,196,.94));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 1px 4px rgba(42,156,196,.22);
-    }
-    .scheme-lite-check-input:checked+.scheme-lite-check-box::after{
-      content:'';position:absolute;left:4px;top:1px;width:4px;height:7px;
-      border:1.5px solid #fff;border-top:none;border-left:none;transform:rotate(45deg);
-    }
-    .scheme-lite-check-input:indeterminate+.scheme-lite-check-box{
-      border-color:rgba(42,156,196,.42);
-      background:linear-gradient(180deg,rgba(230,247,252,.95),rgba(210,238,248,.9));
-      box-shadow:inset 0 0 0 1px rgba(42,156,196,.08);
-    }
-    .scheme-lite-check-input:indeterminate+.scheme-lite-check-box::after{
-      content:'';position:absolute;left:3px;right:3px;top:6px;height:1.5px;
-      background:var(--primary);border:none;transform:none;border-radius:1px;
-    }
-    .scheme-lite-check-input:disabled+.scheme-lite-check-box{opacity:.38}
-    html[data-theme="dark"] .scheme-lite-check-box{
-      border-color:rgba(148,163,184,.24);
-      background:linear-gradient(180deg,rgba(42,52,68,.95),rgba(30,40,54,.92));
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.18);
-    }
-    html[data-theme="dark"] .scheme-lite-check:hover .scheme-lite-check-box{border-color:rgba(94,200,232,.34)}
-    html[data-theme="dark"] .scheme-lite-check-input:checked+.scheme-lite-check-box{
-      border-color:rgba(94,200,232,.55);
-      background:linear-gradient(180deg,rgba(72,176,210,.95),rgba(42,140,176,.92));
-    }
-    .settings-scheme-subnav-picked{font-size:10px;color:var(--on-surface-muted)}
     .settings-scheme-subnav-list{display:flex;flex-direction:column;gap:4px;max-height:min(42vh,320px);overflow-y:auto}
     .settings-scheme-subnav-item{
       display:flex;align-items:flex-start;gap:8px;width:100%;padding:8px 9px;border:1px solid transparent;border-radius:11px;
@@ -936,10 +895,6 @@
       box-shadow:inset 3px 0 0 var(--primary);
     }
     .settings-scheme-subnav-item.is-selected .settings-scheme-subnav-pair{color:var(--on-surface);font-weight:700}
-    .settings-scheme-subnav-checkwrap{
-      flex:0 0 auto;align-self:flex-start;margin-top:1px;
-    }
-    .settings-scheme-subnav-checkwrap[hidden]{display:none!important}
     .settings-scheme-subnav-body{min-width:0;flex:1;display:grid;gap:4px}
     .settings-scheme-subnav-pair{font-size:11px;font-weight:600;line-height:1.35;color:var(--on-surface);word-break:break-word}
     .settings-scheme-subnav-tags{display:flex;flex-wrap:wrap;gap:4px}
@@ -955,15 +910,6 @@
     .settings-scheme-subnav-status{font-size:10px;line-height:1.35;color:var(--on-surface-muted);word-break:break-word}
     .settings-scheme-subnav-item.is-selected .settings-scheme-subnav-status{color:var(--on-surface-muted)}
     .settings-scheme-subnav-empty{margin:0;padding:4px 2px;font-size:10px;line-height:1.4;color:var(--on-surface-muted)}
-    .settings-scheme-subnav-batch{
-      display:flex;gap:6px;padding:2px 0;
-    }
-    .settings-scheme-subnav-batch[hidden]{display:none!important}
-    .settings-scheme-subnav-batch-btn{
-      flex:1;height:28px;border:1px solid var(--outline-variant);border-radius:8px;background:var(--surface-high);
-      font:inherit;font-size:11px;font-weight:700;color:var(--btn-label);cursor:pointer;
-    }
-    .settings-scheme-subnav-batch-btn:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.22);color:var(--primary)}
     .settings-scheme-subnav-add{
       align-self:flex-start;height:26px;padding:0 8px;border:none;border-radius:8px;background:transparent;
       font:inherit;font-size:11px;font-weight:700;color:var(--primary);cursor:pointer;
@@ -981,10 +927,20 @@
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section #mappingList,
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section .draft-hint,
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section .mapping-empty{display:none!important}
-    .settings-nav-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--outline-variant)}
-    .settings-panel-wrap{flex:1;overflow-y:auto;padding:20px 24px 32px;min-height:0;min-width:0}
+    .settings-nav-foot{
+      flex-shrink:0;margin-top:0;padding-top:10px;border-top:1px solid var(--outline-variant);
+      background:inherit;
+    }
+    .app.is-settings .app-header{zoom:calc(1 / var(--ui-font-scale))}
+    .settings-panel-wrap{
+      flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 24px 64px;min-height:0;min-width:0;
+      overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-bottom:96px;
+    }
     .settings-panel{display:block}
     .settings-panel[hidden]{display:none!important}
+    .settings-panel::after{
+      content:'';display:block;height:24px;flex-shrink:0;
+    }
     .settings-panel-desc{margin:0 0 14px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
     .settings-secondary{
       margin:0 0 14px;border:1px solid var(--outline-variant);border-radius:12px;background:var(--surface-soft);
@@ -1125,7 +1081,11 @@
       .voice-end-test-actions .control-btn{flex:1 1 100%;min-width:0}
       .mic-device-list{grid-template-columns:1fr}
       .voice-segment-btn{width:100%}
-      .settings-panel-wrap{padding:16px 18px 24px}
+      .settings-panel-wrap{padding:16px 18px 56px}
+      .pref-row{grid-template-columns:1fr;gap:10px}
+      .pref-row-control{align-items:stretch}
+      .pref-segmented.is-wide .pref-segmented-btn{flex:1}
+      .pref-runtime-actions .control-btn{flex:1 1 calc(50% - 4px)}
       .settings-sidebar{width:168px;padding:14px 8px 12px}
     }
     @media (min-width:960px){
@@ -1135,7 +1095,7 @@
     @media (max-width:720px){
       .settings-sidebar{width:148px;padding:12px 6px 10px}
       .settings-nav-item{min-height:36px;padding:0 10px;font-size:12px}
-      .settings-panel-wrap{padding:14px 14px 22px}
+      .settings-panel-wrap{padding:14px 14px 52px}
       .home-status-wrap{grid-template-columns:1fr}
       .home-main-grid{grid-template-columns:1fr}
       .home-finish-body-inline{grid-template-columns:1fr}
@@ -1665,6 +1625,75 @@
       background:var(--surface-high);font:inherit;font-size:15px;font-weight:700;cursor:pointer;color:var(--on-surface);
     }
     .appearance-pill:hover{background:var(--primary-soft)}
+    .pref-page{max-width:760px;padding-bottom:8px}
+    .pref-page-head{margin:0 0 4px}
+    .pref-page-title{margin:0;font-size:22px;font-weight:800;color:var(--indigo);line-height:1.25}
+    .pref-page-subtitle{margin:6px 0 0;font-size:13px;line-height:1.55;color:var(--on-surface-muted)}
+    .pref-section{padding:18px 0 0;border-top:1px solid var(--outline-variant);margin-top:18px}
+    .pref-section-title{margin:0 0 2px;font-size:12px;font-weight:700;color:var(--on-surface-muted);letter-spacing:.03em}
+    .pref-row{
+      display:grid;grid-template-columns:minmax(0,1fr) minmax(168px,280px);gap:12px 24px;
+      align-items:start;padding:16px 0;
+    }
+    .pref-row+.pref-row{border-top:1px solid var(--outline-variant)}
+    .pref-row-meta{min-width:0}
+    .pref-row-label{margin:0;font-size:14px;font-weight:700;color:var(--on-surface);line-height:1.35}
+    .pref-row-desc{margin:5px 0 0;font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .pref-row-control{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:10px;min-width:0;width:100%}
+    .pref-segmented{
+      display:inline-flex;max-width:100%;padding:3px;border-radius:10px;
+      background:var(--surface-soft);border:1px solid var(--outline-variant);
+    }
+    .pref-segmented.is-wide{width:100%}
+    .pref-segmented.is-wide .pref-segmented-btn{flex:1;min-width:0;padding-left:8px;padding-right:8px}
+    .pref-segmented-btn{
+      border:none;background:transparent;padding:7px 14px;border-radius:8px;
+      font:inherit;font-size:12px;font-weight:600;color:var(--on-surface-muted);
+      cursor:pointer;white-space:nowrap;
+    }
+    .pref-segmented-btn:hover{color:var(--on-surface)}
+    .pref-segmented-btn.is-active{
+      background:var(--surface-high);color:var(--on-surface);
+      box-shadow:0 1px 3px rgba(26,45,74,.08);
+    }
+    html[data-theme="dark"] .pref-segmented-btn.is-active{box-shadow:0 1px 4px rgba(0,0,0,.28)}
+    .pref-style-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+    .pref-style-card{
+      display:grid;gap:6px;padding:10px;border:2px solid var(--outline-variant);border-radius:12px;
+      background:var(--surface-high);cursor:pointer;text-align:left;font:inherit;color:inherit;
+      transition:border-color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast);
+    }
+    .pref-style-card:hover{border-color:var(--outline)}
+    .pref-style-card.is-active{border-color:var(--primary);background:var(--primary-soft);box-shadow:inset 0 0 0 1px rgba(42,156,196,.12)}
+    .pref-style-swatches{display:flex;gap:4px;height:30px}
+    .pref-style-swatches span{flex:1;border-radius:5px;border:1px solid rgba(0,0,0,.06)}
+    html[data-theme="dark"] .pref-style-swatches span{border-color:rgba(255,255,255,.08)}
+    .pref-style-name{font-size:11px;font-weight:700;color:var(--on-surface);line-height:1.3}
+    .pref-style-desc{font-size:10px;line-height:1.4;color:var(--on-surface-muted)}
+    .pref-runtime-actions{display:flex;flex-wrap:wrap;gap:8px;width:100%;justify-content:flex-end}
+    .pref-runtime-actions .control-btn{flex:1 1 calc(33.33% - 6px);min-width:72px;padding-left:8px;padding-right:8px}
+    .pref-row-control .chip{align-self:flex-end}
+    .pref-row-control .toggle-switch{align-self:flex-end}
+    html[data-font-scale="sm"] .pref-row,
+    html[data-font-scale="lg"] .pref-row,
+    html[data-font-scale="xl"] .pref-row{
+      grid-template-columns:1fr;gap:10px;
+    }
+    html[data-font-scale="sm"] .pref-row-control,
+    html[data-font-scale="lg"] .pref-row-control,
+    html[data-font-scale="xl"] .pref-row-control{
+      align-items:stretch;
+    }
+    html[data-font-scale="sm"] .pref-runtime-actions,
+    html[data-font-scale="lg"] .pref-runtime-actions,
+    html[data-font-scale="xl"] .pref-runtime-actions{
+      justify-content:flex-start;
+    }
+    html[data-font-scale="sm"] .pref-segmented,
+    html[data-font-scale="lg"] .pref-segmented,
+    html[data-font-scale="xl"] .pref-segmented{
+      width:100%;
+    }
     .font-scale-block{margin-bottom:14px}
     .font-scale-head{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:14px;font-weight:700;color:var(--on-surface)}
     .font-scale-head svg{width:18px;height:18px;color:var(--on-surface-muted);flex-shrink:0}
@@ -2203,79 +2232,142 @@
       <div class="settings-page" id="settingsDrawer" aria-hidden="true" hidden>
         <div class="settings-shell">
           <aside class="settings-sidebar">
-            <div class="settings-page-head">
-              <h2 id="settingsTitle">配置</h2>
+            <div class="settings-sidebar-body">
+              <div class="settings-page-head">
+                <h2 id="settingsTitle">配置</h2>
+              </div>
+              <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
+                <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
+                <div class="settings-nav-group" id="settingsNavKeyWakeGroup">
+                  <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键配置</button>
+                  <div class="settings-scheme-subnav" id="settingsSchemeSubnav" hidden>
+                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="方案列表"></div>
+                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新增方案</button>
+                  </div>
+                </div>
+                <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
+                  <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音</button>
+                  <div class="settings-scheme-subnav settings-voice-subnav" id="settingsVoiceSubnav" hidden>
+                    <div class="settings-scheme-subnav-list" id="settingsVoiceSubnavList" role="tablist" aria-label="语音模式"></div>
+                  </div>
+                </div>
+                <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
+                <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
+              </nav>
             </div>
-            <nav class="settings-nav" id="settingsNav" aria-label="设置分类">
-              <button type="button" class="settings-nav-item is-active" data-panel="basic" id="settingsNavBasic">基础</button>
-              <div class="settings-nav-group" id="settingsNavKeyWakeGroup">
-                <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">按键配置</button>
-                <div class="settings-scheme-subnav" id="settingsSchemeSubnav" hidden>
-                  <div class="settings-scheme-subnav-toolbar" id="settingsSchemeSubnavToolbar" hidden>
-                    <label class="settings-scheme-subnav-selectall scheme-lite-check" id="schemeNavSelectAllWrap">
-                      <input type="checkbox" id="schemeNavSelectAll" class="scheme-lite-check-input">
-                      <span class="scheme-lite-check-box" aria-hidden="true"></span>
-                      <span id="schemeNavSelectAllLabel">全选</span>
-                    </label>
-                    <span class="settings-scheme-subnav-picked" id="schemeNavPickedCount"></span>
-                  </div>
-                  <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="方案列表"></div>
-                  <div class="settings-scheme-subnav-batch" id="settingsSchemeSubnavBatch" hidden>
-                    <button type="button" class="settings-scheme-subnav-batch-btn" id="btnSchemeNavEnable">启用所选</button>
-                    <button type="button" class="settings-scheme-subnav-batch-btn" id="btnSchemeNavDisable">禁用所选</button>
-                  </div>
-                  <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新增方案</button>
-                </div>
-              </div>
-              <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
-                <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">语音</button>
-                <div class="settings-scheme-subnav settings-voice-subnav" id="settingsVoiceSubnav" hidden>
-                  <div class="settings-scheme-subnav-list" id="settingsVoiceSubnavList" role="tablist" aria-label="语音模式"></div>
-                </div>
-              </div>
-              <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
-              <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
-              <div class="settings-nav-foot">
-                <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
-              </div>
-            </nav>
+            <div class="settings-nav-foot">
+              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
+            </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
-        <section class="settings-panel drawer-section" id="settingsPanelBasic" style="border-top:0;padding-top:0">
-          <p class="settings-panel-desc" id="settingsPanelBasicDesc">监听、自启动与外观</p>
-          <div class="mini-title" id="listenTitle">监听状态</div>
-          <span class="chip" id="listenState">监听中</span>
-          <div class="control-row three">
-            <button type="button" class="control-btn" id="btnListenToggle">暂停</button>
-            <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
-            <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
-          </div>
-          <div class="drawer-section" style="border-top:1px solid var(--outline-variant);padding-top:14px;margin-top:14px">
-            <div class="setting-section-label" id="autostartTitle">自启动</div>
-            <div class="setting-row">
-              <div class="setting-row-main">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4"/></svg>
-                <span class="setting-row-text" id="autostartLabel">开机自启动</span>
+        <section class="settings-panel drawer-section pref-page" id="settingsPanelBasic" style="border-top:0;padding-top:0">
+          <header class="pref-page-head">
+            <h3 class="pref-page-title" id="prefBasicTitle">基础</h3>
+            <p class="pref-page-subtitle" id="settingsPanelBasicDesc">运行、外观、字体与语言</p>
+          </header>
+
+          <div class="pref-section">
+            <h4 class="pref-section-title" id="prefSectionRuntime">运行</h4>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="listenTitle">监听状态</p>
+                <p class="pref-row-desc" id="listenDesc">暂停后不会响应按键与语音唤起</p>
               </div>
-              <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
-            </div>
-          </div>
-          <div class="drawer-section">
-            <div class="font-scale-block">
-              <div class="font-scale-head" id="fontSizeTitle">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7V5h4M4 17v-2h4M14 5h6M14 19h6"/><path d="M10 9l-3 6h6l-3-6zM17 9h4M17 12h4M17 15h4"/></svg>
-                <span id="fontSizeTitleText">字号大小</span>
-              </div>
-              <div class="font-scale-track" id="fontScaleTrack" role="radiogroup" aria-labelledby="fontSizeTitleText">
-                <button type="button" class="font-scale-option" data-scale="sm" id="fontScaleSm">更小</button>
-                <button type="button" class="font-scale-option is-active" data-scale="md" id="fontScaleMd">标准</button>
-                <button type="button" class="font-scale-option" data-scale="lg" id="fontScaleLg">更大</button>
-                <button type="button" class="font-scale-option" data-scale="xl" id="fontScaleXl">超大</button>
+              <div class="pref-row-control">
+                <span class="chip" id="listenState">监听中</span>
+                <div class="pref-runtime-actions">
+                  <button type="button" class="control-btn" id="btnListenToggle">暂停</button>
+                  <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
+                  <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
+                </div>
               </div>
             </div>
-            <div class="appearance-row">
-              <button type="button" class="appearance-pill" id="btnTheme">☀ 浅色</button>
-              <button type="button" class="appearance-pill" id="btnLang">中</button>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="autostartLabel">开机自启动</p>
+                <p class="pref-row-desc" id="autostartDesc">登录 Windows 后自动启动一声</p>
+              </div>
+              <div class="pref-row-control">
+                <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pref-section">
+            <h4 class="pref-section-title" id="prefSectionAppearance">外观</h4>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="themeLabel">主题</p>
+                <p class="pref-row-desc" id="themeDesc">仅本机保存，与应用窗口同步</p>
+              </div>
+              <div class="pref-row-control">
+                <div class="pref-segmented" id="themeSegmented" role="radiogroup" aria-labelledby="themeLabel">
+                  <button type="button" class="pref-segmented-btn" data-theme-pick="dark" id="themePickDark">深色</button>
+                  <button type="button" class="pref-segmented-btn" data-theme-pick="light" id="themePickLight">浅色</button>
+                </div>
+              </div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="styleLabel">风格</p>
+                <p class="pref-row-desc" id="styleDesc">为界面选择具体视觉配色</p>
+              </div>
+              <div class="pref-row-control">
+                <div class="pref-style-grid" id="styleCardGrid" role="radiogroup" aria-labelledby="styleLabel">
+                  <button type="button" class="pref-style-card" data-style-pick="light" id="styleCardClear">
+                    <span class="pref-style-swatches" aria-hidden="true">
+                      <span style="background:#f9fbfd"></span>
+                      <span style="background:#2a9cc4"></span>
+                      <span style="background:#e6f7fc"></span>
+                    </span>
+                    <span class="pref-style-name" id="styleClearName">清澈</span>
+                    <span class="pref-style-desc" id="styleClearDesc">明亮浅色，青蓝强调色</span>
+                  </button>
+                  <button type="button" class="pref-style-card" data-style-pick="dark" id="styleCardGraphite">
+                    <span class="pref-style-swatches" aria-hidden="true">
+                      <span style="background:#1a2436"></span>
+                      <span style="background:#5ec8e8"></span>
+                      <span style="background:#0f1419"></span>
+                    </span>
+                    <span class="pref-style-name" id="styleGraphiteName">石墨</span>
+                    <span class="pref-style-desc" id="styleGraphiteDesc">中性深色，适合夜间使用</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pref-section">
+            <h4 class="pref-section-title" id="prefSectionTypography">字体</h4>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="fontSizeTitleText">字体大小</p>
+                <p class="pref-row-desc" id="fontSizeDesc">整体缩放，高分屏可选大档</p>
+              </div>
+              <div class="pref-row-control">
+                <div class="pref-segmented is-wide" id="fontScaleTrack" role="radiogroup" aria-labelledby="fontSizeTitleText">
+                  <button type="button" class="pref-segmented-btn" data-scale="sm" id="fontScaleSm">更小</button>
+                  <button type="button" class="pref-segmented-btn is-active" data-scale="md" id="fontScaleMd">标准</button>
+                  <button type="button" class="pref-segmented-btn" data-scale="lg" id="fontScaleLg">更大</button>
+                  <button type="button" class="pref-segmented-btn" data-scale="xl" id="fontScaleXl">特大</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pref-section">
+            <h4 class="pref-section-title" id="prefSectionLanguage">语言</h4>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="langLabel">语言</p>
+                <p class="pref-row-desc" id="langDesc">仅影响界面文案，不影响语音识别</p>
+              </div>
+              <div class="pref-row-control">
+                <div class="pref-segmented is-wide" id="langSegmented" role="radiogroup" aria-labelledby="langLabel">
+                  <button type="button" class="pref-segmented-btn" data-lang-pick="en" id="langPickEn">English</button>
+                  <button type="button" class="pref-segmented-btn" data-lang-pick="zh" id="langPickZh">简体中文</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -2978,7 +3070,11 @@
   }
 
   function schemeMappingHasConflict(m){
-    return !!(m&&isSavedMapping(m)&&conflictsForMapping(m.id).length>0);
+    if(!m||!isSavedMapping(m)||!m.enabled) return false;
+    return conflictsForMapping(m.id).some(function(c){
+      const other=mappingById(otherIdInConflict(c,m.id));
+      return !!(other&&other.enabled);
+    });
   }
 
   function schemeNavTags(m){
@@ -2996,44 +3092,6 @@
     return tags;
   }
 
-  function schemeNavStatusLine(m){
-    if(isDraftMapping(m)||!isSavedMapping(m)) return '';
-    const bits=[keyFinishPreviewText(m).summary];
-    const snap=voiceUiSnapshot.end||{};
-    if(sessionActiveState(snap.state)&&snap.mappingId===m.id) bits.push(t('chipDictating'));
-    return bits.join(' · ');
-  }
-
-  const schemeNavCheckedIds=new Set();
-
-  function toggleSchemeNavCheck(id, checked){
-    if(!id) return;
-    if(checked) schemeNavCheckedIds.add(id);
-    else schemeNavCheckedIds.delete(id);
-    renderSettingsSchemeSubnav();
-  }
-
-  function syncSchemeNavBatchUi(schemes){
-    const multi=schemes.length>=2;
-    const toolbar=$('settingsSchemeSubnavToolbar');
-    const batch=$('settingsSchemeSubnavBatch');
-    const picked=$('schemeNavPickedCount');
-    const selectAll=$('schemeNavSelectAll');
-    const savedIds=schemes.filter(isSavedMapping).map(function(m){return m.id;});
-    if(toolbar) toolbar.hidden=!multi;
-    if(batch) batch.hidden=schemeNavCheckedIds.size===0;
-    if(picked) picked.textContent=schemeNavCheckedIds.size?t('schemeNavPickedCount').replace('{n}',String(schemeNavCheckedIds.size)):'';
-    if(selectAll){
-      const allOn=savedIds.length>0&&savedIds.every(function(id){return schemeNavCheckedIds.has(id);});
-      selectAll.checked=allOn;
-      selectAll.indeterminate=schemeNavCheckedIds.size>0&&!allOn;
-    }
-    const enableBtn=$('btnSchemeNavEnable');
-    const disableBtn=$('btnSchemeNavDisable');
-    if(enableBtn) enableBtn.textContent=t('schemeNavEnableSelected');
-    if(disableBtn) disableBtn.textContent=t('schemeNavDisableSelected');
-  }
-
   function renderSettingsSchemeSubnav(){
     const subnav=$('settingsSchemeSubnav');
     const listEl=$('settingsSchemeSubnavList');
@@ -3046,44 +3104,29 @@
     if(listEl) listEl.setAttribute('aria-label',t('settingsSchemeSubnavLabel'));
     const addBtn=$('btnSettingsSchemeAdd');
     if(addBtn) addBtn.textContent='+ '+t('addMapping');
-    const selectAllLbl=$('schemeNavSelectAllLabel');
-    if(selectAllLbl) selectAllLbl.textContent=t('schemeNavSelectAll');
     if(!show||!listEl) return;
     ensureConfig();
     const schemes=sortedMappings();
-    schemes.forEach(function(m){
-      if(!mappingById(m.id)) schemeNavCheckedIds.delete(m.id);
-    });
     if(!schemes.length){
       listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+escHtml(t('mappingEmptyTitle'))+'</p>';
-      syncSchemeNavBatchUi(schemes);
       return;
     }
-    const multi=schemes.length>=2;
     let html='';
     schemes.forEach(function(m){
       const sel=m.id===state.selectedMappingId;
-      const checked=schemeNavCheckedIds.has(m.id);
       const pair=homeMappingPairLine(m);
-      const status=schemeNavStatusLine(m);
       const tags=schemeNavTags(m);
       let tagsHtml='';
       tags.forEach(function(tag){
         tagsHtml+='<span class="scheme-nav-tag '+tag.cls+'">'+escHtml(tag.text)+'</span>';
       });
       html+='<div class="settings-scheme-subnav-item'+(sel?' is-selected':'')+'" data-scheme-nav="'+m.id+'" role="option" aria-selected="'+(sel?'true':'false')+'" tabindex="0">';
-      html+='<label class="settings-scheme-subnav-checkwrap scheme-lite-check"'+(multi?'':' hidden')+'>';
-      html+='<input type="checkbox" class="scheme-lite-check-input" data-scheme-check="'+m.id+'"'+(checked?' checked':'')+(isSavedMapping(m)?'':' disabled')+' aria-label="'+escHtml(pair)+'">';
-      html+='<span class="scheme-lite-check-box" aria-hidden="true"></span>';
-      html+='</label>';
       html+='<span class="settings-scheme-subnav-body">';
       html+='<span class="settings-scheme-subnav-pair">'+escHtml(pair)+'</span>';
       html+='<span class="settings-scheme-subnav-tags">'+tagsHtml+'</span>';
-      if(status) html+='<span class="settings-scheme-subnav-status">'+escHtml(status)+'</span>';
       html+='</span></div>';
     });
     listEl.innerHTML=html;
-    syncSchemeNavBatchUi(schemes);
   }
 
   function voiceEndUiUsesLiteMode(forHome){
@@ -3412,9 +3455,18 @@
       debugCodeLabel:'编码',
       mappingAutoEnabled:'方案已自动启用，可以开始使用',
       listenOn:'监听中',listenPaused:'已暂停监听',
-      themeLight:'☀ 浅色',themeDark:'🌙 深色',
-      fontSizeTitle:'字号大小',fontSizeSmaller:'更小',fontSizeStandard:'标准',fontSizeLarger:'更大',fontSizeXL:'超大',
-      autostartTitle:'自启动',autostartLabel:'开机自启动',autostartFail:'无法设置开机自启动',
+      themeLight:'浅色',themeDark:'深色',
+      prefBasicTitle:'基础',
+      prefSectionRuntime:'运行',prefSectionAppearance:'外观',prefSectionTypography:'字体',prefSectionLanguage:'语言',
+      listenDesc:'暂停后不会响应按键与语音唤起',
+      themeLabel:'主题',themeDesc:'仅本机保存，与应用窗口同步',
+      styleLabel:'风格',styleDesc:'为界面选择具体视觉配色',
+      styleClearName:'清澈',styleClearDesc:'明亮浅色，青蓝强调色',
+      styleGraphiteName:'石墨',styleGraphiteDesc:'中性深色，适合夜间使用',
+      fontSizeTitle:'字体大小',fontSizeDesc:'整体缩放，高分屏可选大档',
+      fontSizeSmaller:'更小',fontSizeStandard:'标准',fontSizeLarger:'更大',fontSizeXL:'特大',
+      langLabel:'语言',langDesc:'仅影响界面文案，不影响语音识别',langEn:'English',langZh:'简体中文',
+      autostartLabel:'开机自启动',autostartDesc:'登录 Windows 后自动启动一声',autostartFail:'无法设置开机自启动',
       micTitle:'麦克风',
       micDesc:'选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。',
       micAutoDetect:'自动检测（系统默认）',micAutoDetectSub:'使用系统默认麦克风',micExternal:'外部麦克风',
@@ -3650,7 +3702,7 @@
       homeCtaSubNeedTarget:'再设置语音快捷键',
       settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音',
       settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
-      settingsPanelBasicDesc:'监听、自启动与外观',settingsPanelKeyWakeDesc:'在当前方案里设置唤起键、语音快捷键和最后一步',
+      settingsPanelBasicDesc:'运行、外观、字体与语言',settingsPanelKeyWakeDesc:'在当前方案里设置唤起键、语音快捷键和最后一步',
       settingsPanelVoiceWakeDesc:'先选麦克风并看实时识别，再配置语音唤起、结束与发送',
       homeKeyFinishTitle:'方案最后一步',homeVoiceFinishTitle:'语音结束动作',
       quickKeyWakeSummary:'方案按键设置',quickKeyWakeHint:'按下左侧唤起键后，程序代按右侧语音快捷键；按键收尾作为最后一步一起保存在当前方案中。',
@@ -3836,9 +3888,18 @@
       debugCodeLabel:'Code',
       mappingAutoEnabled:'Profile enabled — ready to use',
       listenOn:'Listening',listenPaused:'Paused',
-      themeLight:'☀ Light',themeDark:'🌙 Dark',
-      fontSizeTitle:'Font size',fontSizeSmaller:'Smaller',fontSizeStandard:'Standard',fontSizeLarger:'Larger',fontSizeXL:'Extra large',
-      autostartTitle:'Auto-start',autostartLabel:'Start at login',autostartFail:'Could not change auto-start setting',
+      themeLight:'Light',themeDark:'Dark',
+      prefBasicTitle:'Basic',
+      prefSectionRuntime:'Runtime',prefSectionAppearance:'Appearance',prefSectionTypography:'Typography',prefSectionLanguage:'Language',
+      listenDesc:'While paused, key and voice wake are ignored',
+      themeLabel:'Theme',themeDesc:'Saved locally and synced to the app window',
+      styleLabel:'Style',styleDesc:'Choose a visual palette for the interface',
+      styleClearName:'Clear',styleClearDesc:'Bright light theme with cyan accents',
+      styleGraphiteName:'Graphite',styleGraphiteDesc:'Neutral dark theme for night use',
+      fontSizeTitle:'Font size',fontSizeDesc:'Overall UI scale; pick a larger size on high-DPI screens',
+      fontSizeSmaller:'Small',fontSizeStandard:'Medium',fontSizeLarger:'Large',fontSizeXL:'Extra large',
+      langLabel:'Language',langDesc:'UI strings only; does not affect speech recognition',langEn:'English',langZh:'简体中文',
+      autostartLabel:'Start at login',autostartDesc:'Launch OneTone automatically when Windows starts',autostartFail:'Could not change auto-start setting',
       micTitle:'Microphone',
       micDesc:'Choose a microphone that captures your voice. When the level meter moves, recognition status and live text appear below.',
       micAutoDetect:'Auto-detect (system default)',micAutoDetectSub:'Use the system default microphone',micExternal:'External microphone',
@@ -4074,7 +4135,7 @@
       homeCtaSubNeedTarget:'Then set voice shortcut',
       settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice',
       settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
-      settingsPanelBasicDesc:'Listening, autostart & appearance',settingsPanelKeyWakeDesc:'Set the launch key, voice shortcut, and final step for the current profile',
+      settingsPanelBasicDesc:'Runtime, appearance, typography & language',settingsPanelKeyWakeDesc:'Set the launch key, voice shortcut, and final step for the current profile',
       settingsPanelVoiceWakeDesc:'Choose a microphone and check live recognition first, then configure voice activation, ending, and sending',
       homeKeyFinishTitle:'Profile final step',homeVoiceFinishTitle:'Voice finish actions',
       quickKeyWakeSummary:'Profile key setup',quickKeyWakeHint:'Pressing the left launch key makes the app send the voice shortcut on the right; key finish is saved with this profile as the final step.',
@@ -4519,8 +4580,15 @@
 
   function countConflictPairs(){
     const seen={};
-    conflictRows.forEach(function(c){
-      seen[[c.mappingId,c.otherId].sort().join('|')]=true;
+    ensureConfig();
+    sortedMappings().forEach(function(m){
+      if(!schemeMappingHasConflict(m)) return;
+      conflictsForMapping(m.id).forEach(function(c){
+        if(!m.enabled) return;
+        const other=mappingById(otherIdInConflict(c,m.id));
+        if(!other||!other.enabled) return;
+        seen[[m.id,other.id].sort().join('|')]=true;
+      });
     });
     return Object.keys(seen).length;
   }
@@ -4534,9 +4602,19 @@
     el.classList.add('show');
   }
 
+  function setTheme(next){
+    theme=next==='dark'?'dark':'light';
+    applyTheme();
+  }
+
   function applyTheme(){
     document.documentElement.setAttribute('data-theme',theme);
-    $('btnTheme').textContent=theme==='light'?t('themeLight'):t('themeDark');
+    document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
+      btn.classList.toggle('is-active',btn.getAttribute('data-theme-pick')===theme);
+    });
+    document.querySelectorAll('[data-style-pick]').forEach(function(btn){
+      btn.classList.toggle('is-active',btn.getAttribute('data-style-pick')===theme);
+    });
     try{ localStorage.setItem('vp_theme',theme); }catch(_){ }
     try{window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme});}catch(_){ }
   }
@@ -4544,7 +4622,8 @@
   function applyFontScale(){
     const val=FONT_SCALE_VALUES[fontScale]||1;
     document.documentElement.style.setProperty('--ui-font-scale',String(val));
-    document.querySelectorAll('.font-scale-option').forEach(function(btn){
+    document.documentElement.setAttribute('data-font-scale',fontScale);
+    document.querySelectorAll('.pref-segmented-btn[data-scale]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-scale')===fontScale);
     });
     try{ localStorage.setItem('vp_font_scale',fontScale); }catch(_){ }
@@ -7347,11 +7426,32 @@
       for(let i=0;i<ids.length;i++){
         const el=$(ids[i]);
         if(el){
-          el.scrollIntoView({behavior:'smooth',block:'center'});
+          const wrap=$('settingsPanelWrap');
+          if(wrap&&wrap.contains(el)){
+            const er=el.getBoundingClientRect();
+            const wr=wrap.getBoundingClientRect();
+            if(er.top<wr.top+8) wrap.scrollTop+=er.top-wr.top-12;
+            else if(er.bottom>wr.bottom-8) wrap.scrollTop+=er.bottom-wr.bottom+12;
+          }else{
+            el.scrollIntoView({behavior:'smooth',block:'nearest'});
+          }
           break;
         }
       }
     });
+  }
+
+  function resetSettingsLayoutScroll(opts){
+    opts=opts||{};
+    window.scrollTo(0,0);
+    document.documentElement.scrollTop=0;
+    document.body.scrollTop=0;
+    const mainScroll=document.querySelector('.main-scroll');
+    if(mainScroll) mainScroll.scrollTop=0;
+    if(opts.resetPanel){
+      const panelWrap=$('settingsPanelWrap');
+      if(panelWrap) panelWrap.scrollTop=0;
+    }
   }
 
   function syncSettingsMicPoll(panel){
@@ -7376,6 +7476,7 @@
     const ids=SETTINGS_PANEL_IDS;
     if(!ids[panel]) panel='basic';
     const enteringVoice=panel==='voiceWake'&&lastSettingsPanel!=='voiceWake';
+    const panelChanged=panel!==lastSettingsPanel;
     ui.settingsPanel=panel;
     Object.keys(ids).forEach(function(key){
       const sec=$(ids[key]);
@@ -7411,6 +7512,9 @@
     }
     renderSettingsSchemeSubnav();
     renderSettingsVoiceSubnav();
+    requestAnimationFrame(function(){
+      resetSettingsLayoutScroll({resetPanel:panelChanged});
+    });
   }
 
   function openSettings(opts){
@@ -7816,10 +7920,7 @@
       drawer.setAttribute('aria-hidden',ui.drawerOpen?'false':'true');
     }
     if(btn) btn.textContent=ui.drawerOpen?t('settingsBack'):t('settingsTitle');
-    if(ui.drawerOpen){
-      const panelWrap=$('settingsPanelWrap');
-      if(panelWrap) panelWrap.scrollTop=0;
-    }
+    if(ui.drawerOpen) resetSettingsLayoutScroll({resetPanel:true});
   }
 
   function openDrawer(opts){
@@ -7846,8 +7947,8 @@
   function closeDrawer(){
     ui.drawerOpen=false;
     lastSettingsPanel='basic';
-    schemeNavCheckedIds.clear();
     syncSettingsChrome();
+    resetSettingsLayoutScroll();
     renderSettingsSchemeSubnav();
     renderSettingsVoiceSubnav();
     stopMicLevelPoll();
@@ -8701,14 +8802,38 @@
     $('triggerHelp').innerHTML=d.triggerHelp;
     $('targetHelp').innerHTML=d.targetHelp;
     $('listenTitle').textContent=d.listenTitle;
+    const listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.listenDesc;
+    const prefBasicTitle=$('prefBasicTitle'); if(prefBasicTitle) prefBasicTitle.textContent=d.prefBasicTitle;
+    const prefSectionRuntime=$('prefSectionRuntime'); if(prefSectionRuntime) prefSectionRuntime.textContent=d.prefSectionRuntime;
+    const prefSectionAppearance=$('prefSectionAppearance'); if(prefSectionAppearance) prefSectionAppearance.textContent=d.prefSectionAppearance;
+    const prefSectionTypography=$('prefSectionTypography'); if(prefSectionTypography) prefSectionTypography.textContent=d.prefSectionTypography;
+    const prefSectionLanguage=$('prefSectionLanguage'); if(prefSectionLanguage) prefSectionLanguage.textContent=d.prefSectionLanguage;
+    const themeLabel=$('themeLabel'); if(themeLabel) themeLabel.textContent=d.themeLabel;
+    const themeDesc=$('themeDesc'); if(themeDesc) themeDesc.textContent=d.themeDesc;
+    const themePickDark=$('themePickDark'); if(themePickDark) themePickDark.textContent=d.themeDark;
+    const themePickLight=$('themePickLight'); if(themePickLight) themePickLight.textContent=d.themeLight;
+    const styleLabel=$('styleLabel'); if(styleLabel) styleLabel.textContent=d.styleLabel;
+    const styleDesc=$('styleDesc'); if(styleDesc) styleDesc.textContent=d.styleDesc;
+    const styleClearName=$('styleClearName'); if(styleClearName) styleClearName.textContent=d.styleClearName;
+    const styleClearDesc=$('styleClearDesc'); if(styleClearDesc) styleClearDesc.textContent=d.styleClearDesc;
+    const styleGraphiteName=$('styleGraphiteName'); if(styleGraphiteName) styleGraphiteName.textContent=d.styleGraphiteName;
+    const styleGraphiteDesc=$('styleGraphiteDesc'); if(styleGraphiteDesc) styleGraphiteDesc.textContent=d.styleGraphiteDesc;
     const fontSizeTitleText=$('fontSizeTitleText');
     if(fontSizeTitleText) fontSizeTitleText.textContent=d.fontSizeTitle;
+    const fontSizeDesc=$('fontSizeDesc'); if(fontSizeDesc) fontSizeDesc.textContent=d.fontSizeDesc;
     const fontScaleSm=$('fontScaleSm'); if(fontScaleSm) fontScaleSm.textContent=d.fontSizeSmaller;
     const fontScaleMd=$('fontScaleMd'); if(fontScaleMd) fontScaleMd.textContent=d.fontSizeStandard;
     const fontScaleLg=$('fontScaleLg'); if(fontScaleLg) fontScaleLg.textContent=d.fontSizeLarger;
     const fontScaleXl=$('fontScaleXl'); if(fontScaleXl) fontScaleXl.textContent=d.fontSizeXL;
-    const autostartTitle=$('autostartTitle'); if(autostartTitle) autostartTitle.textContent=d.autostartTitle;
     const autostartLabel=$('autostartLabel'); if(autostartLabel) autostartLabel.textContent=d.autostartLabel;
+    const autostartDesc=$('autostartDesc'); if(autostartDesc) autostartDesc.textContent=d.autostartDesc;
+    const langLabel=$('langLabel'); if(langLabel) langLabel.textContent=d.langLabel;
+    const langDesc=$('langDesc'); if(langDesc) langDesc.textContent=d.langDesc;
+    const langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;
+    const langPickZh=$('langPickZh'); if(langPickZh) langPickZh.textContent=d.langZh;
+    document.querySelectorAll('[data-lang-pick]').forEach(function(btn){
+      btn.classList.toggle('is-active',btn.getAttribute('data-lang-pick')===lang);
+    });
     const micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
     const micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;
     const voiceModeTitle=$('voiceModeTitle'); if(voiceModeTitle) voiceModeTitle.textContent=d.voiceModeTitle;
@@ -8776,7 +8901,6 @@
     $('menuActUp').textContent=d.moveUp;
     $('menuActDown').textContent=d.moveDown;
     $('menuActDel').textContent=d.delete;
-    $('btnLang').textContent=lang==='zh'?'中':'EN';
     applyTheme();
     applyFontScale();
     if(recordingMode==='none') setRecording('none');
@@ -10371,7 +10495,7 @@
       const on=!!m.enabled;
       const hasTarget=!!m.targetKey;
       const rowConflicts=conflictsForMapping(m.id);
-      const hasConflict=rowConflicts.length>0;
+      const hasConflict=schemeMappingHasConflict(m);
       const snap=voiceUiSnapshot.end||{};
       const isDictating=sessionActiveState(snap.state)&&snap.mappingId===m.id;
       html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(openMenuId===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
@@ -10615,9 +10739,23 @@
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
   }
 
-  $('btnTheme').onclick=function(){ theme=theme==='light'?'dark':'light'; applyTheme(); };
-  $('btnLang').onclick=function(){ lang=lang==='zh'?'en':'zh'; applyLang(); };
-  document.querySelectorAll('.font-scale-option').forEach(function(btn){
+  document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
+    btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+    btn.addEventListener('click',function(){ setTheme(btn.getAttribute('data-theme-pick')); });
+  });
+  document.querySelectorAll('[data-style-pick]').forEach(function(btn){
+    btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+    btn.addEventListener('click',function(){ setTheme(btn.getAttribute('data-style-pick')); });
+  });
+  document.querySelectorAll('[data-lang-pick]').forEach(function(btn){
+    btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+    btn.addEventListener('click',function(){
+      const next=btn.getAttribute('data-lang-pick');
+      if(next&&next!==lang){ lang=next; applyLang(); }
+    });
+  });
+  document.querySelectorAll('.pref-segmented-btn[data-scale]').forEach(function(btn){
+    btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
     btn.addEventListener('click',function(){ setFontScale(btn.getAttribute('data-scale')); });
   });
   $('btnAutostart').onclick=toggleAutostart;
@@ -10757,51 +10895,16 @@
     });
   }
   document.querySelectorAll('.settings-nav-item').forEach(function(btn){
+    btn.addEventListener('mousedown',function(e){
+      if(e.button===0) e.preventDefault();
+    });
     btn.addEventListener('click',function(){
       setSettingsPanel(btn.dataset.panel||'basic');
     });
   });
-  const schemeNavSelectAll=$('schemeNavSelectAll');
-  if(schemeNavSelectAll){
-    schemeNavSelectAll.onchange=function(){
-      ensureConfig();
-      const schemes=sortedMappings().filter(isSavedMapping);
-      if(schemeNavSelectAll.checked){
-        schemes.forEach(function(m){ schemeNavCheckedIds.add(m.id); });
-      }else{
-        schemeNavCheckedIds.clear();
-      }
-      renderSettingsSchemeSubnav();
-    };
-  }
-  const btnSchemeNavEnable=$('btnSchemeNavEnable');
-  if(btnSchemeNavEnable){
-    btnSchemeNavEnable.onclick=function(){
-      schemeNavCheckedIds.forEach(function(id){ setMappingEnabled(id,true); });
-      schemeNavCheckedIds.clear();
-      renderSettingsSchemeSubnav();
-      toast(t('schemeNavBatchEnabled'),'lite');
-    };
-  }
-  const btnSchemeNavDisable=$('btnSchemeNavDisable');
-  if(btnSchemeNavDisable){
-    btnSchemeNavDisable.onclick=function(){
-      schemeNavCheckedIds.forEach(function(id){ setMappingEnabled(id,false); });
-      schemeNavCheckedIds.clear();
-      renderSettingsSchemeSubnav();
-      toast(t('schemeNavBatchDisabled'),'lite');
-    };
-  }
   const settingsSchemeSubnavList=$('settingsSchemeSubnavList');
   if(settingsSchemeSubnavList){
-    settingsSchemeSubnavList.addEventListener('change',function(e){
-      const check=e.target;
-      if(!check||!check.matches||!check.matches('[data-scheme-check],.scheme-lite-check-input[data-scheme-check]')) return;
-      e.stopPropagation();
-      toggleSchemeNavCheck(check.dataset.schemeCheck, check.checked);
-    });
     settingsSchemeSubnavList.addEventListener('click',function(e){
-      if(e.target.closest&&e.target.closest('.scheme-lite-check')) return;
       const btn=e.target.closest&&e.target.closest('[data-scheme-nav]');
       if(!btn) return;
       e.stopPropagation();
