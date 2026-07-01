@@ -23,6 +23,8 @@ permissions = [
   "allow-cmd-mapping-set-source-key",
   "allow-cmd-mapping-conflicts",
   "allow-cmd-reload-latest",
+  "allow-cmd-update-check",
+  "allow-cmd-update-install",
   "allow-cmd-window-minimize",
   "allow-cmd-window-close",
   "allow-cmd-sync-theme-backdrop",

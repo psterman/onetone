@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>一声 onetone</title>
-  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <style>
     :root{
       --primary:#2a9cc4;
@@ -105,6 +105,7 @@
     .app-brand{display:flex;align-items:center;gap:12px;min-width:0}
     .app-logo{
       display:block;width:36px;height:36px;flex-shrink:0;
+      object-fit:contain;
     }
     .app-title-wrap{min-width:0}
     .app-title{margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em;color:var(--indigo)}
@@ -114,6 +115,16 @@
       border:1px solid var(--outline-variant);background:var(--surface-high);
       color:var(--btn-label);font:inherit;font-size:13px;font-weight:600;cursor:pointer;
     }
+    .header-update-chip{
+      height:36px;padding:0 14px;border-radius:var(--radius-pill);
+      border:1px solid rgba(42,156,196,.18);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+      transition:transform var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard);
+    }
+    .header-update-chip:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.26);transform:translateY(-1px)}
+    .header-update-chip:active{transform:scale(.97)}
+    .header-update-chip.is-hot{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
+    .header-update-chip.is-busy{opacity:.78;cursor:progress}
     .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
     .header-listen-chip{
       font-size:12px;font-weight:600;padding:5px 12px;border-radius:var(--radius-pill);
@@ -122,6 +133,40 @@
     .header-listen-chip.is-paused{
       background:rgba(220,120,40,.12);color:#c86a12;
     }
+    .update-banner{
+      display:none;
+      margin:0 0 14px;
+      padding:14px 16px;
+      border:1px solid rgba(42,156,196,.22);
+      border-radius:18px;
+      background:linear-gradient(180deg,rgba(42,156,196,.08),rgba(248,251,253,.96));
+      box-shadow:var(--shadow-soft);
+      gap:14px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    html[data-theme="dark"] .update-banner{
+      background:linear-gradient(180deg,rgba(42,156,196,.12),rgba(15,20,27,.96));
+    }
+    .update-banner.show{display:flex}
+    .update-banner-copy{display:grid;gap:4px;min-width:0;flex:1}
+    .update-banner-kicker{
+      font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--primary);
+    }
+    .update-banner-title{font-size:16px;line-height:1.35;font-weight:800;color:var(--indigo)}
+    .update-banner-body{font-size:12px;line-height:1.55;color:var(--on-surface-muted);word-break:break-word}
+    .update-banner-meta{font-size:11px;font-weight:700;color:var(--on-surface-muted)}
+    .update-banner-progress{
+      height:6px;border-radius:999px;overflow:hidden;background:rgba(42,156,196,.12);
+      margin-top:6px;display:none;
+    }
+    .update-banner-progress.show{display:block}
+    .update-banner-progress-fill{
+      width:0%;height:100%;border-radius:inherit;
+      background:linear-gradient(90deg,var(--primary),#67d6ff);
+      transition:width .18s linear;
+    }
+    .update-banner-actions{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;align-items:center;justify-content:flex-end}
     .voice-sapi-box{margin-top:10px;display:grid;gap:8px}
     .voice-sapi-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .voice-sapi-range{flex:1;min-width:150px}
@@ -2256,7 +2301,7 @@
   <div class="app">
     <header class="app-header">
       <div class="app-brand">
-        <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" />
+        <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" decoding="async" />
         <div class="app-title-wrap">
           <h1 class="app-title" id="appTitle">一声</h1>
           <p class="app-subtitle" id="appSubtitle">言出即行 · 万象成形</p>
@@ -2264,9 +2309,26 @@
       </div>
       <div class="header-actions">
         <span class="chip header-listen-chip" id="headerListenState" role="status">监听中</span>
+        <button type="button" class="header-update-chip" id="btnUpdateAction">检查更新</button>
         <button type="button" id="btnSettings">配置</button>
       </div>
     </header>
+
+    <section class="update-banner" id="updateBanner" hidden aria-live="polite">
+      <div class="update-banner-copy">
+        <div class="update-banner-kicker" id="updateBannerKicker">更新</div>
+        <div class="update-banner-title" id="updateBannerTitle">发现新版本</div>
+        <div class="update-banner-body" id="updateBannerBody">可以在线下载并安装，不会影响本地配置。</div>
+        <div class="update-banner-meta" id="updateBannerMeta">本地数据会保留在用户目录中。</div>
+        <div class="update-banner-progress" id="updateBannerProgress" hidden>
+          <div class="update-banner-progress-fill" id="updateBannerProgressFill"></div>
+        </div>
+      </div>
+      <div class="update-banner-actions">
+        <button type="button" class="control-btn" id="btnUpdatePrimary">立即更新</button>
+        <button type="button" class="control-btn" id="btnUpdateLater">稍后提醒</button>
+      </div>
+    </section>
 
     <main class="main-scroll">
       <div class="editor-zone">
@@ -3246,9 +3308,216 @@
     });
   }
   const $=id=>document.getElementById(id);
-  const state={config:null,selectedMappingId:null};
+  const state={config:null,selectedMappingId:null,update:null};
   let runtime={lastAction:'-',timerActive:false,paused:false};
   let runtimeRenderTimer=0;
+  let updateRequestMode='none';
+  let updateDismissedVersion='';
+
+  function defaultUpdateState(){
+    return {
+      phase:'idle',
+      available:false,
+      currentVersion:'',
+      latestVersion:'',
+      notes:'',
+      error:'',
+      progress:null,
+    };
+  }
+
+  function normalizeUpdateState(raw){
+    const base=defaultUpdateState();
+    if(!raw||typeof raw!=='object') return base;
+    const next=Object.assign({},base,raw);
+    next.phase=String(next.phase||'idle');
+    next.available=!!next.available;
+    next.currentVersion=String(next.currentVersion||next.current_version||'');
+    next.latestVersion=String(next.latestVersion||next.latest_version||'');
+    next.notes=String(next.notes||'');
+    next.error=String(next.error||'');
+    const progress=raw.progress;
+    if(progress&&typeof progress==='object'){
+      const downloaded=Number(progress.downloaded||0);
+      const total=Number(progress.total||0);
+      const percent=Number(progress.percent||((total>0?Math.min(100,Math.floor(downloaded*100/total)):0)));
+      next.progress={downloaded:downloaded,total:total,percent:percent};
+    }else{
+      next.progress=null;
+    }
+    return next;
+  }
+
+  function setUpdateState(raw){
+    state.update=normalizeUpdateState(raw);
+    renderUpdateUi();
+  }
+
+  function updateProgressPercent(update){
+    if(!update||!update.progress) return 0;
+    const p=update.progress;
+    if(typeof p.percent==='number'&&isFinite(p.percent)) return Math.max(0,Math.min(100,Math.round(p.percent)));
+    if(p.total>0) return Math.max(0,Math.min(100,Math.round((p.downloaded*100)/p.total)));
+    return 0;
+  }
+
+  function updateStateLabel(update){
+    if(!update) return t('updateCheck');
+    if(update.phase==='checking') return t('updateChecking');
+    if(update.phase==='available') return t('updateInstall');
+    if(update.phase==='downloading') return t('updateDownload').replace('{pct}',String(updateProgressPercent(update)));
+    if(update.phase==='installing') return t('updateInstalling');
+    if(update.phase==='restarting') return t('updateRestarting');
+    if(update.phase==='error') return t('updateCheck');
+    return t('updateCheck');
+  }
+
+  function updateBannerVisible(update){
+    if(!update) return false;
+    if(update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting') return true;
+    if(update.phase==='available'&&update.latestVersion&&update.latestVersion!==updateDismissedVersion) return true;
+    if(update.phase==='error'&&update.error) return true;
+    return false;
+  }
+
+  function renderUpdateUi(){
+    const update=state.update||defaultUpdateState();
+    const actionBtn=$('btnUpdateAction');
+    const banner=$('updateBanner');
+    const bannerTitle=$('updateBannerTitle');
+    const bannerBody=$('updateBannerBody');
+    const bannerMeta=$('updateBannerMeta');
+    const kicker=$('updateBannerKicker');
+    const primaryBtn=$('btnUpdatePrimary');
+    const laterBtn=$('btnUpdateLater');
+    const progressWrap=$('updateBannerProgress');
+    const progressFill=$('updateBannerProgressFill');
+
+    if(actionBtn){
+      actionBtn.textContent=updateStateLabel(update);
+      actionBtn.classList.toggle('is-hot',update.phase==='available'&&update.latestVersion&&update.latestVersion!==updateDismissedVersion);
+      actionBtn.classList.toggle('is-busy',update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting');
+      actionBtn.disabled=update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting';
+    }
+
+    const showBanner=updateBannerVisible(update);
+    if(banner){
+      banner.classList.toggle('show',showBanner);
+      banner.hidden=!showBanner;
+    }
+    if(!showBanner) return;
+
+    const versionLabel=update.latestVersion?('v'+update.latestVersion):'';
+    if(kicker) kicker.textContent=t('updateKicker');
+    if(bannerTitle){
+      bannerTitle.textContent=update.phase==='available'
+        ?t('updateTitle').replace('{version}',versionLabel||'')
+        :update.phase==='downloading'
+          ?t('updateInstalling')
+          :update.phase==='installing'
+            ?t('updateInstalling')
+            :update.phase==='restarting'
+              ?t('updateRestarting')
+              :t('updateError').replace('{msg}',update.error||'');
+    }
+    if(bannerBody){
+      if(update.phase==='available'){
+        bannerBody.textContent=update.notes||t('updateBody');
+      }else if(update.phase==='downloading'){
+        bannerBody.textContent=t('updateDownload').replace('{pct}',String(updateProgressPercent(update)));
+      }else if(update.phase==='installing'){
+        bannerBody.textContent=t('updateInstalling');
+      }else if(update.phase==='restarting'){
+        bannerBody.textContent=t('updateRestarting');
+      }else{
+        bannerBody.textContent=t('updateError').replace('{msg}',update.error||'');
+      }
+    }
+    if(bannerMeta){
+      bannerMeta.textContent=update.phase==='available'
+        ?(t('updateMeta')+' · '+(update.currentVersion?('v'+update.currentVersion):''))
+        :update.phase==='downloading'
+          ?(update.progress ? (String(update.progress.downloaded)+' / '+String(update.progress.total)+' bytes') : '')
+          :update.phase==='installing'
+            ?t('updateInstalling')
+            :update.phase==='restarting'
+              ?t('updateRestarting')
+              :update.error||'';
+    }
+    if(primaryBtn){
+      primaryBtn.textContent=update.phase==='available' ? t('updateInstall') : (update.phase==='error' ? t('updateCheck') : t('updateInstall'));
+      primaryBtn.disabled=update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting';
+    }
+    if(laterBtn){
+      laterBtn.textContent=t('updateLater');
+      laterBtn.disabled=update.phase!=='available';
+      laterBtn.hidden=update.phase!=='available';
+    }
+    if(progressWrap&&progressFill){
+      const showProgress=update.phase==='downloading'&&update.progress;
+      progressWrap.hidden=!showProgress;
+      progressWrap.classList.toggle('show',!!showProgress);
+      progressFill.style.width=showProgress ? String(updateProgressPercent(update))+'%' : '0%';
+    }
+  }
+
+  function handleUpdateCheckResult(result,manual){
+    if(result&&typeof result==='object'){
+      if(result.update) setUpdateState(result.update);
+      else setUpdateState(result);
+    }
+    if(manual){
+      const update=state.update||defaultUpdateState();
+      if(update.phase==='available'&&update.latestVersion){
+        updateDismissedVersion='';
+        try{ localStorage.removeItem('vp_update_dismissed_version'); }catch(_){}
+      }
+    }
+    if(!result||!result.update||result.update.phase!=='checking'){
+      updateRequestMode='none';
+    }
+  }
+
+  function checkForAppUpdate(manual){
+    if(updateRequestMode!=='none'&&(state.update&&state.update.phase!=='idle')) return Promise.resolve();
+    updateRequestMode=manual?'manual':'auto';
+    if(manual) toast(t('updateChecking'));
+    setUpdateState(Object.assign({},state.update||defaultUpdateState(),{phase:'checking',error:'',progress:null}));
+    return vpInvoke('cmd_update_check',{}).then(function(res){
+      handleUpdateCheckResult(res,manual);
+      if(manual&&state.update&&state.update.phase==='idle'){
+        toast(t('updateUpToDate'));
+      }
+    }).catch(function(err){
+      updateRequestMode='none';
+      const msg=(err&&err.message)?err.message:String(err||'');
+      setUpdateState(Object.assign({},state.update||defaultUpdateState(),{phase:'error',error:msg,progress:null,available:false}));
+      if(manual) toast(t('updateError').replace('{msg}',msg||''));
+    });
+  }
+
+  function installAppUpdate(){
+    const update=state.update||defaultUpdateState();
+    if(update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting') return Promise.resolve();
+    updateRequestMode='manual';
+    setUpdateState(Object.assign({},update,{phase:'checking',error:'',progress:null}));
+    return vpInvoke('cmd_update_install',{}).catch(function(err){
+      updateRequestMode='none';
+      const msg=(err&&err.message)?err.message:String(err||'');
+      setUpdateState(Object.assign({},state.update||defaultUpdateState(),{phase:'error',error:msg,progress:null,available:false}));
+      toast(t('updateError').replace('{msg}',msg||''));
+    });
+  }
+
+  function dismissAppUpdate(){
+    const update=state.update||defaultUpdateState();
+    if(update.latestVersion){
+      updateDismissedVersion=update.latestVersion;
+      try{ localStorage.setItem('vp_update_dismissed_version',update.latestVersion); }catch(_){}
+    }
+    renderUpdateUi();
+  }
+
   function mappingListUiActive(){
     return ui.drawerOpen&&ui.settingsPanel==='keyWake';
   }
@@ -3916,6 +4185,7 @@
       movedToTrash:'已移入回收站，可在「设置」中恢复',
       trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
       settingsTitle:'设置',settingsBack:'返回',listenTitle:'监听状态',
+      updateKicker:'更新',updateTitle:'发现新版本 {version}',updateBody:'可以在线下载并安装，不会影响本地配置。',updateMeta:'本地数据会保留在用户目录中。',updateCheck:'检查更新',updateChecking:'正在检查更新…',updateInstall:'立即更新',updateLater:'稍后提醒',updateDownload:'正在下载 {pct}%',updateInstalling:'正在安装更新…',updateRestarting:'更新已安装，正在重启…',updateUpToDate:'当前已经是最新版本',updateError:'暂时无法更新：{msg}',
       listenPause:'暂停',listenResume:'恢复',refreshRuntime:'刷新',restartApp:'重启',runtimeRefreshed:'运行状态已刷新',restartConfirm:'确定重启一声？',
       testSendDisabled:'设置语音快捷键后可测试',
       testSendTarget:'试一下语音快捷键',testSending:'发送中…',testSent:'已发送',
@@ -4381,6 +4651,7 @@
       movedToTrash:'Moved to recycle bin (see Settings)',
       trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
       settingsTitle:'Settings',settingsBack:'Back',listenTitle:'Listen status',
+      updateKicker:'Update',updateTitle:'New version {version} available',updateBody:'You can download and install it online without touching local data.',updateMeta:'Your local data stays in the user profile folder.',updateCheck:'Check for updates',updateChecking:'Checking for updates…',updateInstall:'Install update',updateLater:'Remind me later',updateDownload:'Downloading {pct}%',updateInstalling:'Installing update…',updateRestarting:'Update installed, restarting…',updateUpToDate:'You are already on the latest version',updateError:'Update is not available yet: {msg}',
       listenPause:'Pause',listenResume:'Resume',refreshRuntime:'Refresh',restartApp:'Restart',runtimeRefreshed:'Runtime refreshed',restartConfirm:'Restart onetone?',
       testSendDisabled:'Set a voice shortcut first',
       testSendTarget:'Test voice shortcut',testSending:'Sending…',testSent:'Sent',
@@ -8305,6 +8576,8 @@
       }else if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
       if(msg.config) state.config=msg.config;
       if(Array.isArray(msg.conflicts)) conflictRows=msg.conflicts;
+      if(msg.update) state.update=normalizeUpdateState(msg.update);
+      else if(!state.update) state.update=defaultUpdateState();
       ensureConfig();
       const voiceToggleBusy=voiceVoskTogglePending||voiceSapiTogglePending;
       const m=selectedMapping();
@@ -8336,6 +8609,7 @@
         renderEditor();
         renderHome();
         renderListenRuntime();
+        renderUpdateUi();
         if(mappingListUiActive()) renderMappingChrome();
         renderHomeLiveZone();
         if(!voiceToggleBusy&&ui.drawerOpen&&ui.settingsPanel==='voiceWake'){
@@ -11275,6 +11549,7 @@
     renderVoiceModeSwitch();
     renderHome();
     renderListenRuntime();
+    renderUpdateUi();
   }
 
   function renderRecordCancelBar(){
@@ -11507,6 +11782,31 @@
     if(ui.drawerOpen) closeDrawer();
     else openSettings({panel:'basic'});
   };
+  const btnUpdateAction=$('btnUpdateAction');
+  if(btnUpdateAction){
+    btnUpdateAction.onclick=function(){
+      const update=state.update||defaultUpdateState();
+      if(update.phase==='available'){
+        installAppUpdate();
+      }else if(update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting'){
+        return;
+      }else{
+        checkForAppUpdate(true);
+      }
+    };
+  }
+  const btnUpdatePrimary=$('btnUpdatePrimary');
+  if(btnUpdatePrimary){
+    btnUpdatePrimary.onclick=function(){
+      const update=state.update||defaultUpdateState();
+      if(update.phase==='available') installAppUpdate();
+      else if(update.phase==='error') checkForAppUpdate(true);
+    };
+  }
+  const btnUpdateLater=$('btnUpdateLater');
+  if(btnUpdateLater){
+    btnUpdateLater.onclick=dismissAppUpdate;
+  }
   $('btnHomeCta').onclick=handleHomeCtaClick;
   initHomeGuide();
   const btnHomeKeySettings=$('btnHomeKeySettings');
@@ -12237,6 +12537,21 @@
         scheduleRuntimeRender();
       }
     }
+    if(msg.type==='mvp_update_state'){
+      if(msg.update){
+        state.update=normalizeUpdateState(msg.update);
+        if(updateRequestMode==='manual'&&state.update.phase==='available'){
+          try{ updateDismissedVersion=''; localStorage.removeItem('vp_update_dismissed_version'); }catch(_){}
+        }
+        if(state.update.phase==='idle'&&updateRequestMode==='manual'){
+          toast(t('updateUpToDate'));
+        }else if(state.update.phase==='error'&&updateRequestMode==='manual'&&state.update.error){
+          toast(t('updateError').replace('{msg}',state.update.error));
+        }
+        if(state.update.phase!=='checking') updateRequestMode='none';
+        renderUpdateUi();
+      }
+    }
     if(msg.type==='mvp_scheme_switched'){
       if(msg.config) state.config=msg.config;
       else if(msg.toId){
@@ -12255,12 +12570,15 @@
     const savedLang=localStorage.getItem('vp_lang');
     const savedFontScale=localStorage.getItem('vp_font_scale');
     const seenWelcome=localStorage.getItem('vp_welcome_seen');
+    const dismissedUpdate=localStorage.getItem('vp_update_dismissed_version');
     if(savedTheme==='dark'||savedTheme==='light') theme=savedTheme;
     if(savedLang==='zh'||savedLang==='en') lang=savedLang;
     if(savedFontScale&&FONT_SCALE_VALUES[savedFontScale]) fontScale=savedFontScale;
     if(seenWelcome!=='1') welcomeOpen=true;
+    if(dismissedUpdate) updateDismissedVersion=dismissedUpdate;
   }catch(_){}
   state.config=defaultConfig();
+  state.update=defaultUpdateState();
   ensureConfig();
   syncEditorFromSelection();
   applyLang(true);

@@ -10,6 +10,7 @@ mod resource_monitor;
 mod send_guard;
 mod state;
 mod tray;
+mod update;
 mod voice_end_runtime;
 mod voice_sapi;
 mod voice_sapi_runtime;
@@ -67,6 +68,9 @@ pub struct AppState {
     pub voice_session_commit_token: Mutex<u64>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
+    pub update: Mutex<crate::update::UpdateUiState>,
+    pub update_checking: Mutex<bool>,
+    pub update_installing: Mutex<bool>,
     pub gesture: Mutex<press_gesture::GestureTracker>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
@@ -134,6 +138,9 @@ pub fn run() {
         voice_session_commit_token: Mutex::new(0),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
+        update: Mutex::new(crate::update::UpdateUiState::new()),
+        update_checking: Mutex::new(false),
+        update_installing: Mutex::new(false),
         gesture: Mutex::new(press_gesture::GestureTracker::new()),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
@@ -157,6 +164,12 @@ pub fn run() {
             let window = app.get_webview_window("main").unwrap();
 
             let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
+
+            #[cfg(desktop)]
+            {
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+            }
 
             let mgr = hotkey_win::HotkeyManager::new();
             {
@@ -185,6 +198,7 @@ pub fn run() {
             });
 
             config::start_watcher(app_state.clone(), window.clone());
+            update::start_background_checks(app.handle().clone(), app_state.clone());
 
             tray::setup(app.handle(), app_state.clone())?;
 
@@ -376,6 +390,8 @@ pub fn run() {
             ipc::cmd_voice_end_set_phrases,
             ipc::cmd_voice_end_test_stop,
             ipc::cmd_voice_end_test_commit,
+            ipc::cmd_update_check,
+            ipc::cmd_update_install,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

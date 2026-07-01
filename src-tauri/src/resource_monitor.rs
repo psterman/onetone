@@ -125,7 +125,11 @@ fn snapshot_impl(last: &mut Option<ProcessUsageSample>) -> ProcessUsageSnapshot 
             .map(|n| n.get() as u32)
             .unwrap_or(1);
         let now = Instant::now();
-        let memory_bytes = if memory_ok { counters.PrivateUsage as u64 } else { 0 };
+        let memory_bytes = if memory_ok {
+            counters.PrivateUsage as u64
+        } else {
+            0
+        };
         let cpu_time_100ns = if cpu_ok {
             filetime_to_u64(kernel).saturating_add(filetime_to_u64(user))
         } else {

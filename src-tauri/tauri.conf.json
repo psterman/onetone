@@ -43,19 +43,32 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
+      "icons/icon.ico",
+      "icons/icon.png",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.icns"
     ],
     "resources": {
       "resources/vosk/libvosk.dll": "resources/vosk/",
       "resources/vosk/libgcc_s_seh-1.dll": "resources/vosk/",
       "resources/vosk/libstdc++-6.dll": "resources/vosk/",
       "resources/vosk/libwinpthread-1.dll": "resources/vosk/"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0Qzc5NTMxNjgxRTQ4MQpSV1NCNUlFV1UzbE1Da2R3MFY2MWQrVjg4SUZod3JXSE1OSjV1akQwM2tCTSsrbEZadzhMWVRtWAo=",
+      "endpoints": [
+        "https://github.com/psterman/voice-pilot/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

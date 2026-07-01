@@ -49,6 +49,21 @@ cargo tauri build
 
 首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录下的旧配置文件存在，会自动迁移到新路径。
 
+应用会在启动后自动检查在线新版本，并在界面顶部提示可更新；更新只替换程序文件，不会覆盖本地配置数据。
+
+正式发布时需要为 Tauri updater 配置签名私钥和密码环境变量；本仓库已内置公钥和更新源地址，适合配合 GitHub Releases 发布。
+
+若界面提示“线上更新文件还没有发布”，说明 GitHub Release 中缺少 updater 需要的 `latest.json`。推送 `v1.0.1` 这类 tag 后，`.github/workflows/release.yml` 会自动构建 Windows 安装包，并上传安装包、`.sig` 签名文件和 `latest.json`。
+
+发布前需要在 GitHub 仓库 Secrets 中配置：
+
+```
+TAURI_SIGNING_PRIVATE_KEY
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+```
+
+其中 `TAURI_SIGNING_PRIVATE_KEY` 必须与 `src-tauri/tauri.conf.json` 中的 updater 公钥匹配，否则已安装用户无法校验并安装新版本。
+
 ## 从牛马仓库迁出
 
 本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/voice-pilot**

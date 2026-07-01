@@ -73,7 +73,7 @@ foreach ($name in @('onetone', 'voice-pilot')) {
 $iconIco = Join-Path $tauri 'icons\icon.ico'
 $iconPng = Join-Path $tauri 'icons\icon.png'
 $iconScript = Join-Path $root 'scripts\generate_onetone_icon.py'
-if ((-not (Test-Path $iconIco)) -or (-not (Test-Path $iconPng))) {
+if ((-not (Test-Path $iconIco)) -or (-not (Test-Path $iconPng)) -or ((Get-Item $iconScript).LastWriteTimeUtc -gt (Get-Item $iconIco).LastWriteTimeUtc)) {
   if (-not (Test-Path $iconScript)) {
     throw "缺少图标且找不到生成脚本: $iconScript"
   }

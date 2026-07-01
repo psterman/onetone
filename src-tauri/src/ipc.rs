@@ -529,6 +529,7 @@ pub fn mvp_init_payload(state: &AppState, backdrop_mode: &str) -> serde_json::Va
         "type": "mvp_init",
         "config": cfg,
         "conflicts": conflicts,
+        "update": crate::update::snapshot(state),
         "shell": {
             "customTitlebar": crate::backdrop::CUSTOM_TITLEBAR,
             "backdropMode": backdrop_mode,
@@ -1457,6 +1458,23 @@ pub fn cmd_reload_latest(app: tauri::AppHandle) {
         crate::graceful_exit(&app);
     });
 }
+
+#[tauri::command]
+pub async fn cmd_update_check(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<crate::update::UpdateUiState, String> {
+    crate::update::check_once(app, state.inner().clone(), false).await
+}
+
+#[tauri::command]
+pub async fn cmd_update_install(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<crate::update::UpdateUiState, String> {
+    crate::update::install_latest(app, state.inner().clone()).await
+}
+
 #[tauri::command]
 pub fn cmd_window_minimize(window: tauri::WebviewWindow) {
     let _ = window.minimize();

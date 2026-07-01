@@ -7,8 +7,10 @@ from pathlib import Path
 from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
+# Primary 1024×1024 master (mic + wing squircle on dark background).
 SOURCE_APP = ROOT / "assets" / "icons" / "onetone-icon-ui-primary-1024.png"
 SOURCE_SMALL = ROOT / "assets" / "icons" / "onetone-logo.png"
+WINDOWS_EXPORT = ROOT / "assets" / "icons" / "windows-export"
 OUT_MASTER = ROOT / "assets" / "icons" / "onetone-icon-refined-1024.png"
 ICONS_DIR = ROOT / "src-tauri" / "icons"
 WEB_ICON = ROOT / "src" / "icon.png"
@@ -19,7 +21,8 @@ SQUIRCLE_INSET = 0
 SQUIRCLE_RADIUS = 208
 
 TRAY_SIZES = (16, 24, 32, 48)
-ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
+# Windows taskbar / exe icon sizes (each embedded natively — no upscaling blur).
+ICO_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 
 BUNDLE_FILES = {
     "32x32.png": 32,
@@ -108,15 +111,42 @@ def generate_bundle_pngs(master: Image.Image) -> None:
 
 
 def generate_ico(master: Image.Image) -> None:
-    frames = [resize_variant(master, size, sharpen=size <= 32) for size in ICO_SIZES]
+    """Pillow only embeds ICO sizes <= the base image; use 256px as the primary frame."""
+    frames = {
+        size: resize_variant(master, size, sharpen=size <= 48)
+        for size in ICO_SIZES
+    }
     out = ICONS_DIR / "icon.ico"
-    frames[0].save(
+    base = frames[256]
+    append = [frames[size] for size in ICO_SIZES if size != 256]
+    base.save(
         out,
         format="ICO",
-        sizes=[(s, s) for s in ICO_SIZES],
-        append_images=frames[1:],
+        sizes=[(size, size) for size in ICO_SIZES],
+        append_images=append,
     )
     print(f"Wrote {out} ({', '.join(str(s) for s in ICO_SIZES)})")
+
+
+def generate_windows_export(master: Image.Image) -> None:
+    import shutil
+
+    WINDOWS_EXPORT.mkdir(parents=True, exist_ok=True)
+    mapping = {
+        "icon.png": 256,
+        "32x32.png": 32,
+        "64x64.png": 64,
+        "128x128.png": 128,
+        "128x128@2x.png": 256,
+        "app-1024.png": 1024,
+    }
+    for name, size in mapping.items():
+        write_png(WINDOWS_EXPORT / name, resize_variant(master, size, sharpen=size <= 48))
+    for size in TRAY_SIZES:
+        write_png(WINDOWS_EXPORT / f"tray-{size}.png", resize_variant(master, size, sharpen=True))
+    ico = ICONS_DIR / "icon.ico"
+    if ico.exists():
+        shutil.copy2(ico, WINDOWS_EXPORT / "icon.ico")
 
 
 def generate() -> None:
@@ -125,6 +155,7 @@ def generate() -> None:
     generate_tray_icons(master)
     generate_bundle_pngs(master)
     generate_ico(master)
+    generate_windows_export(master)
     write_png(OUT_MASTER, master)
 
 

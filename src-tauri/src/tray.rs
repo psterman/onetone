@@ -20,6 +20,7 @@ static TRAY_MENU_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
 static TRAY_MENU_OPEN_AT: AtomicU64 = AtomicU64::new(0);
 
 fn tray_icon() -> tauri::Result<Image<'static>> {
+    // 32px tray asset — crisp at 100%/125% DPI; OS scales down instead of up.
     let bytes = include_bytes!("../icons/tray-32.png");
     let img = image::load_from_memory(bytes)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;

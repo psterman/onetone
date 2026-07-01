@@ -35,6 +35,8 @@ fn main() {
         "cmd_mapping_set_source_key",
         "cmd_mapping_conflicts",
         "cmd_reload_latest",
+        "cmd_update_check",
+        "cmd_update_install",
         "cmd_window_minimize",
         "cmd_window_close",
         "cmd_sync_theme_backdrop",
