@@ -36,13 +36,38 @@ function Copy-VoskRuntimeDlls {
 
 Write-LaunchLog 'building...'
 
-foreach ($name in @('onetone', 'voice-pilot')) {
-  $procs = Get-Process $name -ErrorAction SilentlyContinue
-  if ($procs) {
-    Write-LaunchLog "stopping $name"
-    $procs | Stop-Process -Force
+function Stop-AppProcessGracefully {
+  param(
+    [string]$Name,
+    [int]$WaitMs = 2500
+  )
+  $procs = Get-Process $Name -ErrorAction SilentlyContinue
+  if (-not $procs) { return }
+  Write-LaunchLog "stopping $Name gracefully"
+  foreach ($p in $procs) {
+    try {
+      if ($p.MainWindowHandle -ne 0) {
+        [void]$p.CloseMainWindow()
+      } else {
+        Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
+      }
+    } catch {
+      Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
+    }
+  }
+
+  Start-Sleep -Milliseconds $WaitMs
+
+  $left = Get-Process $Name -ErrorAction SilentlyContinue
+  if ($left) {
+    Write-LaunchLog "forcing stop for $Name"
+    $left | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
   }
+}
+
+foreach ($name in @('onetone', 'voice-pilot')) {
+  Stop-AppProcessGracefully -Name $name
 }
 
 $iconIco = Join-Path $tauri 'icons\icon.ico'

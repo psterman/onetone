@@ -1454,8 +1454,7 @@ pub fn cmd_reload_latest(app: tauri::AppHandle) {
         if let Some(exe) = exe {
             let _ = std::process::Command::new(exe).spawn();
         }
-        let _ = app.remove_tray_by_id(crate::tray::TRAY_ID);
-        app.exit(0);
+        crate::graceful_exit(&app);
     });
 }
 #[tauri::command]

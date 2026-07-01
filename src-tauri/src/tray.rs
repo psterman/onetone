@@ -209,8 +209,7 @@ pub fn handle_tray_action(
 }
 
 fn exit_app(app: &AppHandle) {
-    let _ = app.remove_tray_by_id(TRAY_ID);
-    app.exit(0);
+    crate::graceful_exit(app);
 }
 
 fn show_tray_menu(app: &AppHandle) {

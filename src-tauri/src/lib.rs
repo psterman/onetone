@@ -72,6 +72,28 @@ pub struct AppState {
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
 }
 
+pub fn graceful_exit(app: &tauri::AppHandle) {
+    if let Some(menu_win) = app.get_webview_window("tray_menu") {
+        let _ = menu_win.hide();
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    if let Some(state) = app.try_state::<Arc<AppState>>() {
+        shutdown_runtime(state.inner());
+    }
+    let _ = app.remove_tray_by_id(tray::TRAY_ID);
+    app.exit(0);
+}
+
+fn shutdown_runtime(state: &Arc<AppState>) {
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    crate::voice_sapi_runtime::voice_sapi_stop(state);
+    crate::voice_vosk_runtime::voice_vosk_stop(state);
+    let _ = state.hotkey_mgr.lock().take();
+    *state.paused.lock() = true;
+}
+
 pub fn run() {
     let mut initial = load_config();
     initial.migrate();
@@ -118,6 +140,13 @@ pub fn run() {
     });
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,

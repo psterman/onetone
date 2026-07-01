@@ -917,6 +917,7 @@
     .settings-scheme-subnav-add:hover{background:var(--primary-soft)}
     .settings-sidebar.is-scheme-panel{width:220px}
     .settings-sidebar.is-voice-panel{width:220px}
+    .settings-sidebar.is-debug-panel{width:220px}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-grid{grid-template-columns:1fr;margin-top:8px}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-card[hidden]{display:none!important}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-card{
@@ -927,6 +928,7 @@
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section #mappingList,
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section .draft-hint,
     #settingsPanelKeyWake.is-scheme-subnav .mapping-section .mapping-empty{display:none!important}
+    #settingsPanelDebug.is-debug-subnav .debug-focus-section[hidden]{display:none!important}
     .settings-nav-foot{
       flex-shrink:0;margin-top:0;padding-top:10px;border-top:1px solid var(--outline-variant);
       background:inherit;
@@ -1055,6 +1057,34 @@
       background:var(--surface-soft);font-size:12px;line-height:1.55;color:var(--on-surface-muted);margin-bottom:12px;
     }
     .debug-overview b{color:var(--on-surface);font-weight:700}
+    .debug-overview-cards{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:10px;
+      margin:10px 0 12px;
+    }
+    .debug-overview-card{
+      min-width:0;
+      border:1px solid var(--outline-variant);
+      border-radius:14px;
+      background:var(--surface-high);
+      padding:10px 10px 9px;
+      display:grid;
+      gap:4px;
+    }
+    .debug-overview-card .lbl{font-size:10px;font-weight:800;letter-spacing:.02em;color:var(--on-surface-muted)}
+    .debug-overview-card .val{font-size:12px;font-weight:800;color:var(--on-surface);line-height:1.35;word-break:break-word}
+    .debug-overview-card .sub{font-size:10px;font-weight:700;color:var(--on-surface-muted);line-height:1.35}
+    .debug-overview-card.is-ok{border-color:rgba(42,156,196,.26);background:linear-gradient(180deg,rgba(42,156,196,.08),var(--surface-high))}
+    .debug-overview-card.is-warn{border-color:rgba(249,115,22,.28);background:linear-gradient(180deg,rgba(249,115,22,.09),var(--surface-high))}
+    .debug-overview-card.is-bad{border-color:rgba(220,38,38,.24);background:linear-gradient(180deg,rgba(220,38,38,.08),var(--surface-high))}
+    .debug-overview-card.is-off{opacity:.72}
+    @media(max-width:960px){
+      .debug-overview-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:860px){
+      .debug-overview-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
     @media (max-width:960px){
       .app-header{padding:14px 16px 8px}
       .main-scroll{padding:10px 16px 22px}
@@ -1140,6 +1170,24 @@
       transform:translateY(12px) scale(.98);transition:transform var(--dur-med) var(--ease-standard);
     }
     .test-overlay.open .test-modal{transform:translateY(0) scale(1)}
+    .confirm-overlay{
+      position:fixed;inset:0;z-index:820;background:rgba(237,245,250,.88);backdrop-filter:blur(14px);
+      display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;
+      transition:opacity var(--dur-med) var(--ease-standard);
+    }
+    html[data-theme="dark"] .confirm-overlay{background:rgba(15,20,25,.88)}
+    .confirm-overlay.open{opacity:1;pointer-events:auto}
+    .confirm-modal{
+      width:min(430px,96vw);background:rgba(255,255,255,.96);border:1px solid var(--outline-variant);
+      border-radius:22px;box-shadow:0 24px 60px rgba(26,45,74,.14);padding:20px;
+      transform:translateY(12px) scale(.98);transition:transform var(--dur-med) var(--ease-standard);
+    }
+    .confirm-overlay.open .confirm-modal{transform:translateY(0) scale(1)}
+    .confirm-title{margin:0;font-size:18px;font-weight:900;color:var(--indigo);line-height:1.35}
+    .confirm-body{margin:10px 0 0;font-size:13px;line-height:1.65;color:var(--on-surface-muted)}
+    .confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+    .confirm-actions .btn{width:auto;min-width:96px;height:40px;font-size:13px}
+    html[data-theme="dark"] .confirm-modal{background:rgba(28,38,54,.97)}
     .test-modal-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
     .test-status-icon{
       width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;
@@ -1746,9 +1794,49 @@
     .sound-slot-title{margin:0;font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35}
     .sound-slot-desc{margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
     .sound-slot-pick{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
-    .sound-slot-pick select{
-      min-width:0;border:1px solid var(--outline-variant);border-radius:10px;padding:8px 10px;
-      font:inherit;font-size:12px;font-weight:600;background:var(--surface);color:var(--on-surface);
+    .sound-slot-select{
+      min-width:0;
+      width:100%;
+      height:36px;
+      border:1px solid var(--outline-variant);
+      border-radius:10px;
+      padding:0 34px 0 12px;
+      font:inherit;
+      font-size:12px;
+      font-weight:600;
+      line-height:1.2;
+      background-color:var(--surface);
+      color:var(--on-surface);
+      appearance:none;
+      -webkit-appearance:none;
+      background-image:
+        linear-gradient(45deg,transparent 50%,var(--on-surface-muted) 50%),
+        linear-gradient(135deg,var(--on-surface-muted) 50%,transparent 50%);
+      background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 11px) calc(50% - 2px);
+      background-size:5px 5px,5px 5px;
+      background-repeat:no-repeat;
+      transition:border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard),background-color var(--dur-fast) var(--ease-standard);
+      color-scheme:light dark;
+    }
+    .sound-slot-select:hover{
+      border-color:var(--outline);
+      background-color:var(--surface-high);
+    }
+    .sound-slot-select:focus{
+      outline:none;
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px var(--primary-soft);
+      background-color:var(--surface-high);
+    }
+    .sound-slot-select:disabled{
+      opacity:.65;
+      cursor:not-allowed;
+    }
+    .sound-slot-select option{
+      background:var(--surface-high);
+      color:var(--on-surface);
     }
     .sound-preview-btn{
       border:1px solid var(--outline-variant);border-radius:10px;background:var(--surface);
@@ -1956,11 +2044,37 @@
     .mini-title{margin:0 0 8px;font-size:14px;font-weight:700}
     .mini{margin:0;color:var(--on-surface-muted);font-size:13px;line-height:1.65}
     .helper-note{
-      padding:12px 14px;border-radius:14px;background:var(--surface-soft);border:1px solid var(--outline-variant);
-      font-size:12px;line-height:1.6;color:var(--btn-label);
+      padding:12px 14px;
+      border-radius:14px;
+      background:var(--surface-soft);
+      border:1px solid var(--outline-variant);
+      font-size:12px;
+      line-height:1.6;
+      color:var(--btn-label);
     }
     .helper-note strong{display:block;font-size:13px;color:var(--on-surface);margin-bottom:4px}
     .helper-note[hidden]{display:none!important}
+    html[data-theme="dark"] .helper-note{
+      background:linear-gradient(180deg,rgba(94,200,232,.12),rgba(28,38,54,.85));
+      border-color:rgba(94,200,232,.24);
+      color:var(--on-surface);
+    }
+    .settings-page-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .settings-page-actions .control-btn{flex:0 1 auto;min-width:132px}
+    .developer-debug-panel{
+      margin-top:14px;padding:14px;border:1px solid var(--outline-variant);
+      border-radius:16px;background:rgba(255,255,255,.46);
+    }
+    html[data-theme="dark"] .developer-debug-panel{background:rgba(28,38,54,.46)}
+    .maintenance-danger{
+      border-color:rgba(220,38,38,.20);
+      background:linear-gradient(180deg,rgba(220,38,38,.05),rgba(220,38,38,.02));
+    }
+    html[data-theme="dark"] .maintenance-danger{
+      border-color:rgba(248,113,113,.30);
+      background:linear-gradient(180deg,rgba(220,38,38,.18),rgba(220,38,38,.10));
+      box-shadow:inset 0 0 0 1px rgba(248,113,113,.10);
+    }
     .voice-setup-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .drawer-collapsible{
       border:1px solid var(--outline-variant);border-radius:16px;background:rgba(255,255,255,.46);overflow:hidden;
@@ -1977,7 +2091,48 @@
     .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:8px 0;border-top:1px solid var(--outline-variant)}
     .clear-panel{margin-top:10px;display:flex;justify-content:flex-end}
-    .clear-btn{border:none;background:transparent;color:var(--error);font-weight:700;cursor:pointer;padding:0;font:inherit;font-size:13px}
+    .clear-btn{
+      border:none;
+      background:transparent;
+      color:var(--error);
+      font-weight:700;
+      cursor:pointer;
+      padding:0;
+      font:inherit;
+      font-size:13px;
+      text-decoration:underline;
+      text-underline-offset:2px;
+    }
+    .clear-btn:hover{filter:brightness(1.05)}
+    .clear-btn:focus-visible{
+      outline:2px solid rgba(248,113,113,.5);
+      outline-offset:3px;
+      border-radius:6px;
+    }
+    #settingsPanelGeneral{
+      display:grid;
+      gap:12px;
+    }
+    #settingsPanelGeneral .settings-panel-desc{
+      margin:0;
+    }
+    #settingsPanelGeneral .helper-note{
+      margin:0;
+    }
+    #settingsPanelGeneral .drawer-section{
+      margin:0;
+      border:1px solid var(--outline-variant);
+      border-radius:14px;
+      padding:14px;
+      background:var(--surface-high);
+    }
+    #settingsPanelGeneral .drawer-section.maintenance-danger{
+      border-color:rgba(220,38,38,.20);
+    }
+    html[data-theme="dark"] #settingsPanelGeneral .drawer-section{
+      background:rgba(28,38,54,.78);
+      border-color:rgba(148,163,184,.2);
+    }
     .trash-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--outline-variant);font-size:13px}
     .trash-row:last-child{border-bottom:none}
     .trash-empty{color:var(--on-surface-muted);font-size:13px;margin:0}
@@ -2189,7 +2344,7 @@
                 <div class="home-voice-controls" id="homeVoiceControls">
                   <div class="home-live-inline" id="homeVoiceModeSwitch">
                     <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
-                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">高级版</button>
+                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
                   </div>
                   <div class="home-inline-input" id="homeVoiceSapiQuick" hidden>
                     <span class="mic-desc" id="homeVoiceSapiConfidenceLabel">灵敏度 0.35</span>
@@ -2207,7 +2362,7 @@
                     <div class="home-finish-card-head">
                       <div class="home-finish-card-title" id="homeLiveEndEnabledLbl">结束词</div>
                       <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
-                      <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需高级版</span>
+                      <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
                     </div>
                     <div class="home-finish-card-sub" id="homeFinishEndSummary">—</div>
                     <div class="home-finish-card-foot" id="homeFinishEndDetail">—</div>
@@ -2252,11 +2407,16 @@
                   </div>
                 </div>
                 <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">音效</button>
-                <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">状态与调试</button>
+                <div class="settings-nav-group" id="settingsNavDebugGroup">
+                  <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">运行状态</button>
+                  <div class="settings-scheme-subnav settings-debug-subnav" id="settingsDebugSubnav" hidden>
+                    <div class="settings-scheme-subnav-list" id="settingsDebugSubnavList" role="tablist" aria-label="运行状态分组"></div>
+                  </div>
+                </div>
               </nav>
             </div>
             <div class="settings-nav-foot">
-              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">通用</button>
+              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">恢复与维护</button>
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
@@ -2474,6 +2634,9 @@
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
           <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">先选麦克风并看实时识别，再配置语音唤起、结束与发送</p>
+          <div class="settings-page-actions">
+            <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
+          </div>
           <div class="mic-settings-block drawer-section" id="voiceMicSection" style="border-top:0;padding-top:0;margin-bottom:14px">
             <div class="mini-title" id="micTitle">麦克风</div>
             <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
@@ -2492,7 +2655,7 @@
           </div>
           <section class="voice-mode-panel" id="voiceModePanel">
             <div class="mini-title" id="voiceModeTitle">语音唤起</div>
-            <p class="mic-desc" id="voiceModeDesc">在左侧选择轻量版或高级版，在此配置唤醒词与识别细项。</p>
+            <p class="mic-desc" id="voiceModeDesc">在左侧选择轻量版或离线版，在此配置唤醒词与识别细项。</p>
             <div class="voice-mode-grid">
               <div class="voice-mode-card" id="btnVoiceModeSapi" data-voice-mode="sapi">
                 <div class="voice-mode-head">
@@ -2541,7 +2704,7 @@
               <div class="voice-mode-card" id="btnVoiceModeVosk" data-voice-mode="vosk">
                 <div class="voice-mode-head">
                   <div>
-                    <p class="voice-mode-kicker" id="voiceModeProTitle">高级版</p>
+                    <p class="voice-mode-kicker" id="voiceModeProTitle">离线版</p>
                     <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
                   </div>
                   <div class="voice-mode-head-actions">
@@ -2549,8 +2712,8 @@
                     <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false" aria-labelledby="voiceVoskLabel"></button>
                   </div>
                 </div>
-                <span class="sr-only" id="voiceVoskTitle">高级版细项</span>
-                <span class="sr-only" id="voiceVoskLabel">打开高级版</span>
+                <span class="sr-only" id="voiceVoskTitle">离线版细项</span>
+                <span class="sr-only" id="voiceVoskLabel">打开离线版</span>
                 <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
                 <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
                 <div class="voice-mode-points">
@@ -2590,7 +2753,7 @@
               </div>
             </div>
             <div class="voice-mode-status" id="voiceModeCurrent">现在还没打开语音模式</div>
-            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；高级版更适合完整语音流程和结束词。</p>
+            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
           </section>
           <div class="voice-hub-block voice-end-merged" id="voiceEndMergedSection" style="margin-top:16px">
             <div class="voice-end-section-head">
@@ -2602,7 +2765,7 @@
             </div>
             <div class="helper-note voice-end-lite-notice" id="voiceEndLiteNotice" hidden>
               <strong id="voiceEndLiteNoticeTitle">轻量版不支持语音结束词</strong>
-              <span id="voiceEndLiteNoticeBody">切换到高级版后可配置结束词与完整结束流程；也可在「按键配置」里设置按键收尾。</span>
+              <span id="voiceEndLiteNoticeBody">切换到离线版后可配置结束词与完整结束流程；也可在「按键配置」里设置按键收尾。</span>
             </div>
             <div class="voice-end-settings-grid" id="voiceEndSwitchPanel">
               <div class="voice-end-setting-block" id="voiceEndPhraseBlock">
@@ -2612,7 +2775,7 @@
                   </div>
                   <button type="button" class="toggle-switch" id="btnVoiceEnd" role="switch" aria-checked="false"></button>
                 </div>
-                <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用高级版才能语音结束</p>
+                <p class="mic-empty" id="voiceEndVoskWarn" hidden>需要启用离线版才能语音结束</p>
                 <div class="voice-end-card-lines">
                   <p class="mic-desc" id="voiceEndPhrasesLine"></p>
                   <p class="mic-desc" id="voiceEndPhrasesZhLine"></p>
@@ -2633,7 +2796,7 @@
                   <input type="range" class="voice-sapi-range" id="voiceEndDelayRange" min="1000" max="10000" step="500" value="4000">
                 </div>
                 <p class="mic-desc" id="voiceEndDelayLine"></p>
-                <p class="mic-desc voice-end-lite-auto-hint" id="voiceEndLiteAutoHint" hidden>开启高级版并启用语音结束后，自动发送才会生效。</p>
+                <p class="mic-desc voice-end-lite-auto-hint" id="voiceEndLiteAutoHint" hidden>开启离线版并启用语音结束后，自动发送才会生效。</p>
               </div>
             </div>
             <div class="voice-end-phrases-panel" id="voiceEndPresetsWrap">
@@ -2738,16 +2901,27 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
-          <p class="settings-panel-desc" id="settingsPanelDebugDesc">运行状态与调试信息</p>
+          <p class="settings-panel-desc" id="settingsPanelDebugDesc">查看当前运行状态、语音诊断与开发者调试信息</p>
+          <section class="debug-focus-section" id="debugFocusOverviewSection">
+          <div class="helper-note">
+            <strong id="runtimeStatusGuideTitle">先看运行状态</strong>
+            <span id="runtimeStatusGuideBody">配置语音参数去语音页；异常排查先看本页状态。</span>
+            <div class="settings-page-actions">
+              <button type="button" class="control-btn" id="btnRuntimeGoVoice">前往语音配置</button>
+            </div>
+          </div>
+          <div class="mini-title" id="debugOverviewTitle">全局状态概览</div>
           <div class="debug-overview" id="debugOverview"></div>
+          <div class="debug-overview-cards" id="debugOverviewCards"></div>
           <details class="drawer-collapsible" id="voiceAdvancedState">
-            <summary id="voiceAdvancedSummary">兼容说明</summary>
+            <summary id="voiceAdvancedSummary">兼容与限制</summary>
             <div class="drawer-collapsible-body">
               <p class="mic-desc" id="voiceEndCompatWarn">外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。</p>
             </div>
           </details>
-          <section class="voice-diagnostics-card" id="voiceDiagnosticsCard">
-            <div class="mini-title" id="voiceDiagnosticsTitle">语音测试与日志</div>
+          </section>
+          <section class="voice-diagnostics-card debug-focus-section" id="debugFocusDiagnosticsSection">
+            <div class="mini-title" id="voiceDiagnosticsTitle">语音诊断</div>
             <p class="mic-desc" id="voiceDiagnosticsDesc">上面负责配置，这里集中展示最近状态、测试按钮和即时记录，方便观察与调试。</p>
             <div class="voice-diagnostics-grid">
               <section class="voice-diagnostics-section">
@@ -2768,10 +2942,10 @@
               <section class="voice-diagnostics-section">
                 <div class="voice-diagnostics-head">
                   <div>
-                    <p class="voice-diagnostics-title" id="voiceDiagVoskTitle">高级版唤醒日志</p>
+                    <p class="voice-diagnostics-title" id="voiceDiagVoskTitle">离线版唤醒日志</p>
                     <p class="voice-diagnostics-desc" id="voiceDiagVoskDesc">完整识别流程、命中结果与测试记录</p>
                   </div>
-                  <span class="chip">高级版</span>
+                  <span class="chip">离线版</span>
                 </div>
                 <p class="mic-desc" id="voiceVoskDebug"></p>
                 <div class="voice-diagnostics-actions">
@@ -2805,31 +2979,26 @@
               </section>
             </div>
           </section>
-          <details class="drawer-collapsible" id="debugPanel" style="margin-top:14px">
-            <summary id="debugTitle">开发者信息</summary>
-            <div class="drawer-collapsible-body">
-              <div class="mini-title" id="sourceTitle">当前源组</div>
-              <pre class="log" id="sourceExplain">等待录制后显示</pre>
-              <div class="mini-title" id="logTitle">事件日志</div>
-              <pre class="log" id="rawEventLog">等待录制…</pre>
-              <div class="mini-title" id="runtimeTitle">运行解释</div>
-              <div class="row2">
-                <div class="item"><span id="debugKeyLabel">按键</span><span id="dbKey">-</span></div>
-                <div class="item"><span id="debugCodeLabel">编码</span><span id="dbCode">-</span></div>
-                <div class="item"><span id="actionLabel">动作</span><span id="liveAction">-</span></div>
-                <div class="item"><span id="sendLabel">发送</span><span id="liveTimer">-</span></div>
-              </div>
+          <section class="developer-debug-panel debug-focus-section" id="debugFocusDeveloperSection">
+            <div class="mini-title" id="debugTitle">开发者调试</div>
+            <div class="mini-title" id="sourceTitle">当前源组</div>
+            <pre class="log" id="sourceExplain">等待录制后显示</pre>
+            <div class="mini-title" id="logTitle">事件日志</div>
+            <pre class="log" id="rawEventLog">等待录制…</pre>
+            <div class="mini-title" id="runtimeTitle">运行解释</div>
+            <div class="row2">
+              <div class="item"><span id="debugKeyLabel">按键</span><span id="dbKey">-</span></div>
+              <div class="item"><span id="debugCodeLabel">编码</span><span id="dbCode">-</span></div>
+              <div class="item"><span id="actionLabel">动作</span><span id="liveAction">-</span></div>
+              <div class="item"><span id="sendLabel">发送</span><span id="liveTimer">-</span></div>
             </div>
-          </details>
+          </section>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
-          <p class="settings-panel-desc" id="settingsPanelGeneralDesc">方案轮换、回收站与说明</p>
+          <p class="settings-panel-desc" id="settingsPanelGeneralDesc">方案辅助、恢复和危险维护操作</p>
           <div class="helper-note" id="quickTips">
-            <strong id="quickTipsTitle">怎么设置最省心</strong>
-            <span id="quickTipsBody">先设置启动键，再设置语音快捷键。看不懂的高级项可以先不动，默认就能用。</span>
-          </div>
-          <div style="margin-top:10px">
-            <button type="button" class="replay-link" id="btnReplayWelcome">重新查看首次引导</button>
+            <strong id="quickTipsTitle">恢复与维护</strong>
+            <span id="quickTipsBody">这里集中放置方案辅助、恢复和危险维护操作。</span>
           </div>
           <div class="drawer-section">
             <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
@@ -2846,9 +3015,18 @@
             <div id="trashList"></div>
           </div>
           <div class="drawer-section">
-            <div class="mini-title" id="noteTitle">说明</div>
-            <p class="mini" id="noteText">录制真实按钮，状态机只接管动作，不接管用户的命名方式。</p>
-            <div class="clear-panel"><button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button></div>
+            <div class="mini-title" id="guideReplayTitle">首次引导</div>
+            <p class="mini" id="guideReplayDesc">重新查看首次引导，快速回顾按键、语音与方案的基本流程。</p>
+            <div class="settings-page-actions">
+              <button type="button" class="replay-link" id="btnReplayWelcome">重新查看首次引导</button>
+            </div>
+          </div>
+          <div class="drawer-section maintenance-danger">
+            <div class="mini-title" id="maintenanceDangerTitle">危险操作</div>
+            <p class="mini" id="maintenanceDangerDesc">清除全部映射会移除当前配置，请只在需要重置时使用。</p>
+            <div class="clear-panel">
+              <button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button>
+            </div>
           </div>
         </section>
           </div>
@@ -2926,6 +3104,16 @@
       <div class="test-modal-hint" id="testModalHint" hidden></div>
       <div class="test-modal-actions">
         <button type="button" class="btn primary" id="btnTestModalOk">知道了</button>
+      </div>
+    </div>
+  </div>
+  <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+      <h3 class="confirm-title" id="confirmTitle">确认操作</h3>
+      <p class="confirm-body" id="confirmBody"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="btnConfirmCancel">取消</button>
+        <button type="button" class="btn primary" id="btnConfirmOk">确定</button>
       </div>
     </div>
   </div>
@@ -3275,6 +3463,81 @@
     });
     listEl.innerHTML=html;
   }
+  function syncDebugFocusSections(){
+    const show=ui.drawerOpen&&ui.settingsPanel==='debug';
+    const map={
+      overview:'debugFocusOverviewSection',
+      diagnostics:'debugFocusDiagnosticsSection',
+      developer:'debugFocusDeveloperSection'
+    };
+    Object.keys(map).forEach(function(key){
+      const section=$(map[key]);
+      if(!section) return;
+      section.hidden=show&&(debugFocusMode!==key);
+    });
+  }
+  function setDebugFocusMode(mode){
+    const allowed={overview:true,diagnostics:true,developer:true};
+    if(!allowed[mode]) mode='overview';
+    debugFocusMode=mode;
+    syncDebugFocusSections();
+    renderSettingsDebugSubnav();
+  }
+  function renderSettingsDebugSubnav(){
+    const subnav=$('settingsDebugSubnav');
+    const listEl=$('settingsDebugSubnavList');
+    const debugPanel=$('settingsPanelDebug');
+    const sidebar=document.querySelector('.settings-sidebar');
+    const show=ui.drawerOpen&&ui.settingsPanel==='debug';
+    if(subnav) subnav.hidden=!show;
+    if(debugPanel) debugPanel.classList.toggle('is-debug-subnav',show);
+    if(sidebar) sidebar.classList.toggle('is-debug-panel',show);
+    if(listEl) listEl.setAttribute('aria-label',t('settingsDebugSubnavLabel'));
+    if(!show||!listEl) return;
+    const items=[
+      {mode:'overview',title:t('debugFocusOverview'),sub:debugFocusDynamicSub('overview')||t('debugFocusOverviewStatus')},
+      {mode:'diagnostics',title:t('debugFocusDiagnostics'),sub:debugFocusDynamicSub('diagnostics')||t('debugFocusDiagnosticsStatus')},
+      {mode:'developer',title:t('debugFocusDeveloper'),sub:debugFocusDynamicSub('developer')||t('debugFocusDeveloperStatus')}
+    ];
+    let html='';
+    items.forEach(function(item){
+      const sel=debugFocusMode===item.mode;
+      html+='<button type="button" class="settings-scheme-subnav-item'+(sel?' is-selected':'')+'" data-debug-nav="'+item.mode+'" role="tab" aria-selected="'+(sel?'true':'false')+'">';
+      html+='<span class="settings-scheme-subnav-dot" aria-hidden="true"></span>';
+      html+='<span class="settings-scheme-subnav-text">';
+      html+='<span class="settings-scheme-subnav-pair">'+escHtml(item.title)+'</span>';
+      html+='<span class="settings-scheme-subnav-status">'+escHtml(item.sub)+'</span>';
+      html+='</span></button>';
+    });
+    listEl.innerHTML=html;
+  }
+
+  function debugFocusDynamicSub(mode){
+    try{
+      const paused=!!runtime.paused;
+      const endSnap=voiceUiSnapshot.end||{};
+      const w=voiceUiSnapshot.wake||{};
+      if(mode==='overview'){
+        if(paused) return t('listenPaused');
+        const stateRaw=endSnap.state||'idle';
+        if(sessionActiveState(stateRaw)) return t('chipDictating');
+        if(stateRaw==='error') return t('homeCtaError');
+        return t('listenOn');
+      }
+      if(mode==='diagnostics'){
+        const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
+        const status=(w.state?voiceWakeStateLabel(w.state):'');
+        const usage=processUsageSummaryLine();
+        return (eng+(status?' · '+status:''))+' · '+usage;
+      }
+      if(mode==='developer'){
+        const lines=(Array.isArray(logLines)?logLines.length:0);
+        const last=lines?String(logLines[lines.length-1]||'').slice(0,14):'—';
+        return (lines?('日志 '+lines+' 条'):'无日志')+' · '+last;
+      }
+    }catch(_){}
+    return '';
+  }
   function scheduleRuntimeRender(){
     if(runtimeRenderTimer) return;
     runtimeRenderTimer=setTimeout(function(){
@@ -3304,6 +3567,7 @@
   let lastVoiceListKey='';
   const voiceUiSnapshot={end:{},wake:{engine:'none',phrase:'',state:'off'},listen:{paused:false}};
   let voiceWakeExpandedMode='sapi';
+  let debugFocusMode='overview';
   const processUsageSnapshot={supported:false,memoryBytes:0,memoryMb:0,cpuPercent:0,coreCount:1,loaded:false,errorMessage:'',sampleAt:0};
   const processUsageHistory={sapi:null,vosk:null};
   const VOICE_DIAG_LOG_LIMIT=18;
@@ -3423,6 +3687,9 @@
       confirmDelete:'要删除这条快捷键吗？\n\n删除后会先放进「设置 → 回收站」，需要时还能恢复。',
       confirmDeleteDraft:'确定删除这个未完成的方案？',
       confirmClear:'确定清除全部映射并恢复默认？',
+      confirmDialogTitle:'确认操作',
+      confirmActionCancel:'取消',
+      confirmActionOk:'确定',
       movedToTrash:'已移入回收站，可在「设置」中恢复',
       trashTitle:'回收站',trashEmpty:'暂无已删除的映射',trashRestore:'恢复',
       settingsTitle:'设置',settingsBack:'返回',listenTitle:'监听状态',
@@ -3450,7 +3717,7 @@
       testSentToast:'已发送：',selectedLabel:'已选中',
       logTitle:'事件日志',runtimeTitle:'运行解释',actionLabel:'动作',sendLabel:'发送',
       sourceTitle:'按键来源',noteTitle:'说明',
-      debugTitle:'开发者信息',
+      debugTitle:'开发者调试',
       debugKeyLabel:'按键',
       debugCodeLabel:'编码',
       mappingAutoEnabled:'方案已自动启用，可以开始使用',
@@ -3491,7 +3758,7 @@
       voiceSapiSensitivity:'识别灵敏度（越低越容易触发）',
       voiceSapiPresetUpdated:'已更新唤醒词',
       voiceModeTitle:'语音唤起',
-      voiceModeDesc:'在左侧选择轻量版或高级版，在此配置唤醒词与识别细项。',
+      voiceModeDesc:'在左侧选择轻量版或离线版，在此配置唤醒词与识别细项。',
       voiceModeLiteTitle:'轻量版',
       voiceModeLiteEngine:'系统快速识别',
       voiceModeLiteBadge:'低资源',
@@ -3500,7 +3767,7 @@
       voiceModeLitePoint1:'资源占用低',
       voiceModeLitePoint2:'启动更快',
       voiceModeLitePoint3:'不支持结束词',
-      voiceModeProTitle:'高级版',
+      voiceModeProTitle:'离线版',
       voiceModeProEngine:'离线完整识别',
       voiceModeProBadge:'完整链路',
       voiceModeProDesc:'支持离线识别、结束词和更完整的语音链路。',
@@ -3510,11 +3777,11 @@
       voiceModeProPoint3:'资源更高',
       voiceModeCurrentOff:'当前未启用语音模式',
       voiceModeCurrentLite:'当前：轻量版',
-      voiceModeCurrentPro:'当前：高级版',
-      voiceModeHintOff:'轻量版更适合常驻待机；高级版更适合完整语音流程和结束词。',
+      voiceModeCurrentPro:'当前：离线版',
+      voiceModeHintOff:'轻量版更适合常驻待机；离线版更适合完整语音流程和结束词。',
       voiceModeHintLite:'当前是轻量版：更适合待机与快速启动，但不能使用完成动作中的语音结束。',
-      voiceModeHintPro:'当前是高级版：支持离线识别、结束词和更完整的语音链路。',
-      voiceModeHintProWithEnd:'当前高级版已可配合「语音结束动作」一起工作。',
+      voiceModeHintPro:'当前是离线版：支持离线识别、结束词和更完整的语音链路。',
+      voiceModeHintProWithEnd:'当前离线版已可配合「语音结束动作」一起工作。',
       voiceModeMetricLoading:'实时占用读取中…',
       voiceModeMetricSwitch:'切换到该模式后显示实时占用',
       voiceModeMetricInactive:'当前未启用，启用后显示实时占用',
@@ -3524,14 +3791,14 @@
       voiceModeLiveSummary:'当前软件占用：内存 {memory} · CPU {cpu}',
       voiceModeLiveUnsupported:'当前环境暂不支持读取实时占用',
       voiceModeSwitchedLite:'已切换到轻量版',
-      voiceModeSwitchedPro:'已切换到高级版',
+      voiceModeSwitchedPro:'已切换到离线版',
       voiceNavToastLite:'轻量版',
-      voiceNavToastPro:'高级版',
-      voiceVoskTitle:'高级版细项',
+      voiceNavToastPro:'离线版',
+      voiceVoskTitle:'离线版细项',
       voiceVoskDesc:'与轻量版只能开一个。请选「中文语音」或「英文语音」，切换后识别资源与唤醒词会自动更新。',
-      voiceVoskLabel:'开启高级版',
+      voiceVoskLabel:'开启离线版',
       voiceVoskTest:'测试快捷键（不走麦克风）',
-      voiceVoskFail:'无法启动高级版，请检查离线语音资源是否完整',
+      voiceVoskFail:'无法启动离线版，请检查离线语音资源是否完整',
       voiceVoskWakeWord:'当前候选',
       voiceVoskPartial:'实时识别',
       voiceVoskFinal:'最终识别',
@@ -3551,14 +3818,14 @@
       voiceVoskModelUpdated:'已更新识别语言',
       voiceEndTitle:'语音结束动作',
       voiceEndDesc:'听写过程中说出结束词结束录音；可配置结束后自动发送。',
-      voiceEndDescLite:'轻量版不支持语音结束词；可预先配置自动发送，完整结束流程请切换到高级版。',
+      voiceEndDescLite:'轻量版不支持语音结束词；可预先配置自动发送，完整结束流程请切换到离线版。',
       voiceEndLabel:'启用语音结束',
-      voiceEndVoskWarn:'需要启用高级版才能语音结束',
+      voiceEndVoskWarn:'需要启用离线版才能语音结束',
       voiceEndLiteNoticeTitle:'轻量版不支持语音结束词',
-      voiceEndLiteNoticeBody:'切换到高级版后可配置结束词与完整结束流程；也可在「按键配置」里设置按键收尾。',
-      voiceEndLiteAutoHint:'开启高级版并启用语音结束后，自动发送才会生效。',
+      voiceEndLiteNoticeBody:'切换到离线版后可配置结束词与完整结束流程；也可在「按键配置」里设置按键收尾。',
+      voiceEndLiteAutoHint:'开启离线版并启用语音结束后，自动发送才会生效。',
       homeFinishEndLiteSummary:'轻量版不可用',
-      homeFinishEndLiteDetail:'结束词仅高级版支持；可切换高级版，或在按键配置里设置按键收尾。',
+      homeFinishEndLiteDetail:'结束词仅离线版支持；可切换离线版，或在按键配置里设置按键收尾。',
       voiceEndCompatWarn:'外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。',
       voiceEndPhrases:'结束词',
       voiceEndLastPhrase:'最后结束词',
@@ -3582,11 +3849,11 @@
       voiceEndStateCommitting:'等待输入法上屏',
       voiceEndStateSent:'已发送',
       voiceEndStateError:'出错',
-      voiceDiagnosticsTitle:'语音测试与日志',
-      voiceDiagnosticsDesc:'上面负责配置，这里集中展示最近状态、测试按钮和即时记录，方便观察与调试。',
+      voiceDiagnosticsTitle:'语音诊断',
+      voiceDiagnosticsDesc:'这里集中展示最近状态、测试按钮和即时记录，方便观察与排查。',
       voiceDiagSapiTitle:'轻量版唤醒日志',
       voiceDiagSapiDesc:'快速唤醒的最近状态与测试记录',
-      voiceDiagVoskTitle:'高级版唤醒日志',
+      voiceDiagVoskTitle:'离线版唤醒日志',
       voiceDiagVoskDesc:'完整识别流程、命中结果与测试记录',
       voiceDiagEndTitle:'完成动作',
       voiceDiagEndDesc:'结束词、结束动作与发送测试',
@@ -3643,8 +3910,8 @@
       homeVoiceGuideIntro:'用语音唤起听写：确认唤醒词 → 检查麦克风 → 点启用。',
       homeVoiceGuideFlowWake:'说出上方唤醒词，即可拉起语音输入法。',
       homeVoiceGuideFlowMic:'电平条应随声音跳动；无信号可点「更改」换麦克风。',
-      homeVoiceGuideFlowMode:'轻量版走系统识别；高级版离线 Vosk，能力更全。',
-      homeVoiceGuideModeLbl:'轻量版 / 高级版',
+      homeVoiceGuideFlowMode:'轻量版走系统识别；离线版走本地离线识别，能力更全。',
+      homeVoiceGuideModeLbl:'轻量版 / 离线版',
       homeVoiceGuideFlowEnable:'控制是否监听唤醒词。未启用显示「启用」，监听中显示「停用」。',
       homeVoiceGuideBadge:'角标显示是否已启用、是否在监听。',
       homeVoiceGuideMic:'显示当前麦克风与电平条。电平应随说话跳动；无信号时点「更改」换设备。',
@@ -3689,19 +3956,19 @@
       homeLiveSchemeDraft:'未完成方案',
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
-      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'语音结束后自动发送',homeAdvDebug:'状态与调试',
+      homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'语音结束后自动发送',homeAdvDebug:'运行状态',
       homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音激活已就绪',
       homeStatusIdle:'先配置按键或语音激活',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
       homeCtaStart:'开始输入',homeCtaUse:'开始使用',homeCtaContinue:'继续配置',
       homeCtaDictating:'听写进行中',homeCtaDictatingSub:'可说结束词或去设置',
-      homeCtaError:'出现问题',homeCtaErrorSub:'查看状态与调试',
+      homeCtaError:'出现问题',homeCtaErrorSub:'查看运行状态',
       homeCtaResume:'恢复监听',homeCtaResumeSub:'监听暂停中',
       homeCtaSubKey:'按 {key}',homeCtaSubVoice:'说出唤醒词开始',
       homeCtaSubKeyOrVoice:'按 {key} 或说唤醒词',homeCtaSubNeedTrigger:'先设置启动键',
       homeCtaSubNeedTarget:'再设置语音快捷键',
       settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音',
-      settingsNavDebug:'状态与调试',settingsNavGeneral:'通用',
+      settingsNavDebug:'运行状态',settingsNavGeneral:'恢复与维护',
       settingsPanelBasicDesc:'运行、外观、字体与语言',settingsPanelKeyWakeDesc:'在当前方案里设置唤起键、语音快捷键和最后一步',
       settingsPanelVoiceWakeDesc:'先选麦克风并看实时识别，再配置语音唤起、结束与发送',
       homeKeyFinishTitle:'方案最后一步',homeVoiceFinishTitle:'语音结束动作',
@@ -3715,7 +3982,7 @@
       keyExecFinishTimingSummary:'取消与确认设置',
       keyExecFinishPerPressDetail:'每次按键只负责启动语音快捷键；不会自动取消或确认。',
       quickVoiceWakeSummary:'首页快捷操作（语音模式）',quickVoiceWakeHint:'该区默认折叠，避免与首页主操作台重复。',
-      settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'运行状态与调试信息',settingsPanelGeneralDesc:'方案轮换、回收站与说明',
+      settingsPanelSoundsDesc:'为录制、唤醒与发送配置提示音',settingsPanelDebugDesc:'查看当前运行状态、语音诊断与开发者调试信息',settingsPanelGeneralDesc:'方案辅助、恢复和危险维护操作',
       settingsNavSounds:'音效',
       soundsMasterLabel:'启用音效',soundsMasterHelp:'关闭后所有提示音静音；各场景仍可单独配置。',
       soundSlotRecordTitle:'录制按键',soundSlotRecordDesc:'录制启动键或快捷键时，检测到按键的反馈音。',
@@ -3731,21 +3998,28 @@
       soundNameVoiceSip:'轻吸气',soundNameSendConfirm:'极短确认',
       soundNameErrorSubtle:'克制',
       debugOverviewSession:'会话',debugOverviewWake:'语音模式',
-      wakeEngineVosk:'高级版',wakeEngineSapi:'轻量版',wakeEngineOff:'未启用',
+      wakeEngineVosk:'离线版',wakeEngineSapi:'轻量版',wakeEngineOff:'未启用',
       endCardTitle:'结束',endEnableLabel:'语音结束',endPhrasesLabel:'结束词',
-      voiceEndEnabledShort:'已启用',voiceEndDisabledShort:'未启用',voiceEndNeedVoskShort:'需高级版',
+      voiceEndEnabledShort:'已启用',voiceEndDisabledShort:'未启用',voiceEndNeedVoskShort:'需离线版',
       homeStatusLoading:'正在读取设置…',homeCapLoading:'读取中',
       endPhrasesEmpty:'—',endPhrasesMore:'等 {n} 个',
       sessionUnbound:'未绑定方案',sessionSelectedMapping:'当前方案',
       btnMoreSettings:'更多设置',voiceHubTitle:'语音',voiceHubTabWake:'唤醒',voiceHubTabEnd:'结束',
-      keyWakeSettingsTitle:'按键设置',voiceAdvancedSummary:'兼容说明',
+      keyWakeSettingsTitle:'按键设置',voiceAdvancedSummary:'兼容与限制',
+      runtimeStatusGuideTitle:'先看运行状态',
+      runtimeStatusGuideBody:'配置语音参数去语音页；异常排查先看本页状态。',
+      debugOverviewTitle:'全局状态概览',
+      btnVoiceGoRuntime:'查看实时状态',
+      btnRuntimeGoVoice:'前往语音配置',
       chipKeyWake:'按键',chipVoiceWake:'语音激活',chipVoiceEnd:'结束词',chipProfileKeyFinish:'按键确认',chipDictating:'听写中',
       chipVoiceSend:'语音发送',
       mapOverviewFinish:'收尾',mapOverviewSwitch:'切换键',
-      quickTipsTitle:'怎么设置最省心',
-      quickTipsBody:'按键与语音可并列使用；结束动作分别在对应卡片内配置。',
+      quickTipsTitle:'恢复与维护',
+      quickTipsBody:'这里集中放置方案辅助、恢复和危险维护操作。',
       replayWelcome:'重新查看首次引导',
       welcomePathLabel:'设置路径',
+      guideReplayTitle:'首次引导',guideReplayDesc:'重新查看首次引导，快速回顾按键、语音与方案的基本流程。',
+      maintenanceDangerTitle:'危险操作',maintenanceDangerDesc:'清除全部映射会移除当前配置，请只在需要重置时使用。',
       noteText:'一声只会在你按下启动键时，代你按出设置好的语音快捷键，不会修改输入法设置。',
       clearAll:'清除全部映射',waitLog:'等待录制…',
       triggerRejected:'未能识别该按键，请再试一次',
@@ -3798,6 +4072,13 @@
       mappingListHint:'多个输入法时可新增方案；按键请录于上方',
       settingsSchemeSubnavLabel:'方案列表',
       settingsSubnavBack:'返回分类',
+      settingsDebugSubnavLabel:'运行状态分组',
+      debugFocusOverview:'总览',
+      debugFocusDiagnostics:'语音诊断',
+      debugFocusDeveloper:'开发调试',
+      debugFocusOverviewStatus:'状态与引导',
+      debugFocusDiagnosticsStatus:'识别与资源',
+      debugFocusDeveloperStatus:'日志与事件',
       schemeNavSelectAll:'全选',
       schemeNavPickedCount:'已选 {n} 项',
       schemeNavEnableSelected:'启用所选',
@@ -3856,6 +4137,9 @@
       confirmDelete:'Remove this shortcut?\n\nIt will go to Settings → Recycle Bin and you can restore it later.',
       confirmDeleteDraft:'Delete this incomplete profile?',
       confirmClear:'Clear all mappings and restore default?',
+      confirmDialogTitle:'Confirm action',
+      confirmActionCancel:'Cancel',
+      confirmActionOk:'Confirm',
       movedToTrash:'Moved to recycle bin (see Settings)',
       trashTitle:'Recycle Bin',trashEmpty:'No deleted mappings',trashRestore:'Restore',
       settingsTitle:'Settings',settingsBack:'Back',listenTitle:'Listen status',
@@ -3883,7 +4167,7 @@
       testSentToast:'Sent: ',selectedLabel:'Selected',
       logTitle:'Event Log',runtimeTitle:'Live Status',actionLabel:'Action',sendLabel:'Send',
       sourceTitle:'Source Group',noteTitle:'Note',
-      debugTitle:'Developer Info',
+      debugTitle:'Developer Debug',
       debugKeyLabel:'Key',
       debugCodeLabel:'Code',
       mappingAutoEnabled:'Profile enabled — ready to use',
@@ -3933,7 +4217,7 @@
       voiceModeLitePoint1:'Lower resource use',
       voiceModeLitePoint2:'Starts faster',
       voiceModeLitePoint3:'No end phrases',
-      voiceModeProTitle:'Advanced mode',
+      voiceModeProTitle:'Offline mode',
       voiceModeProEngine:'Offline full recognition',
       voiceModeProBadge:'Full pipeline',
       voiceModeProDesc:'Supports offline wake, end phrases, and a fuller speech workflow.',
@@ -3943,11 +4227,11 @@
       voiceModeProPoint3:'Higher resource use',
       voiceModeCurrentOff:'Voice mode is currently off',
       voiceModeCurrentLite:'Current: Light mode',
-      voiceModeCurrentPro:'Current: Advanced mode',
-      voiceModeHintOff:'Light mode is better for standby; Advanced mode is better for the full voice workflow and end phrases.',
+      voiceModeCurrentPro:'Current: Offline mode',
+      voiceModeHintOff:'Light mode is better for standby; Offline mode is better for the full voice workflow and end phrases.',
       voiceModeHintLite:'Light mode is better for standby and faster startup, but Voice End & Send is unavailable.',
-      voiceModeHintPro:'Advanced mode supports offline recognition, end phrases, and the fuller speech workflow.',
-      voiceModeHintProWithEnd:'Advanced mode can now work together with Voice End & Send.',
+      voiceModeHintPro:'Offline mode supports offline recognition, end phrases, and the fuller speech workflow.',
+      voiceModeHintProWithEnd:'Offline mode can now work together with Voice End & Send.',
       voiceModeMetricLoading:'Reading live usage…',
       voiceModeMetricSwitch:'Switch to this mode to see live usage',
       voiceModeMetricInactive:'Mode is off. Enable it to see live usage',
@@ -3957,14 +4241,14 @@
       voiceModeLiveSummary:'Current app usage: {memory} RAM · CPU {cpu}',
       voiceModeLiveUnsupported:'Live usage is not available in this environment',
       voiceModeSwitchedLite:'Switched to Light mode',
-      voiceModeSwitchedPro:'Switched to Advanced mode',
+      voiceModeSwitchedPro:'Switched to Offline mode',
       voiceNavToastLite:'Light mode',
-      voiceNavToastPro:'Advanced mode',
-      voiceVoskTitle:'Advanced mode details',
+      voiceNavToastPro:'Offline mode',
+      voiceVoskTitle:'Offline mode details',
       voiceVoskDesc:'Only one of the two modes can run at once. Choose Chinese or English; recognition resources and wake phrases update when you switch.',
-      voiceVoskLabel:'Enable Advanced mode',
+      voiceVoskLabel:'Enable Offline mode',
       voiceVoskTest:'Test shortcut (no mic)',
-      voiceVoskFail:'Could not start Advanced mode. Check that offline speech resources are complete.',
+      voiceVoskFail:'Could not start Offline mode. Check that offline speech resources are complete.',
       voiceVoskWakeWord:'Phrases',
       voiceVoskPartial:'Partial',
       voiceVoskFinal:'Final',
@@ -3984,14 +4268,14 @@
       voiceVoskModelUpdated:'Recognition language updated',
       voiceEndTitle:'Voice finish actions',
       voiceEndDesc:'Say an end phrase to stop dictating; optionally auto-send after voice end.',
-      voiceEndDescLite:'Lite mode has no voice end phrases; you can preset auto-send — switch to Advanced for the full finish flow.',
+      voiceEndDescLite:'Lite mode has no voice end phrases; you can preset auto-send — switch to Offline for the full finish flow.',
       voiceEndLabel:'Enable voice end',
-      voiceEndVoskWarn:'Enable Advanced mode to use voice end phrases',
+      voiceEndVoskWarn:'Enable Offline mode to use voice end phrases',
       voiceEndLiteNoticeTitle:'Lite mode does not support voice end phrases',
       voiceEndLiteNoticeBody:'Switch to Advanced to configure end phrases and the full finish flow, or set key finish under Key settings.',
-      voiceEndLiteAutoHint:'Auto-send takes effect after you enable Advanced mode and voice end.',
+      voiceEndLiteAutoHint:'Auto-send takes effect after you enable Offline mode and voice end.',
       homeFinishEndLiteSummary:'Not available in Lite mode',
-      homeFinishEndLiteDetail:'End phrases require Advanced mode — switch engines or use key finish in Key settings.',
+      homeFinishEndLiteDetail:'End phrases require Offline mode — switch engines or use key finish in Key settings.',
       voiceEndCompatWarn:'External IME may exclusive-lock the mic; end phrases may not work (compat mode).',
       voiceEndPhrases:'End phrases',
       voiceEndLastPhrase:'Last end phrase',
@@ -4015,11 +4299,11 @@
       voiceEndStateCommitting:'Waiting for text on screen',
       voiceEndStateSent:'Sent',
       voiceEndStateError:'Error',
-      voiceDiagnosticsTitle:'Voice tests & logs',
-      voiceDiagnosticsDesc:'Configuration stays above. This area keeps recent status, test actions, and live records together for easier observation and debugging.',
+      voiceDiagnosticsTitle:'Voice diagnostics',
+      voiceDiagnosticsDesc:'Recent status, test actions, and live records are grouped here for observation and troubleshooting.',
       voiceDiagSapiTitle:'Light mode wake logs',
       voiceDiagSapiDesc:'Recent status and test records for quick wake',
-      voiceDiagVoskTitle:'Advanced mode wake logs',
+      voiceDiagVoskTitle:'Offline mode wake logs',
       voiceDiagVoskDesc:'Full recognition flow, matches, and test records',
       voiceDiagEndTitle:'Finish actions',
       voiceDiagEndDesc:'End phrases, stop actions, and send tests',
@@ -4076,7 +4360,7 @@
       homeVoiceGuideIntro:'Start dictation by voice: check wake phrase → mic → enable.',
       homeVoiceGuideFlowWake:'Say the wake phrase above to start voice input.',
       homeVoiceGuideFlowMic:'Level bars should move when you speak; tap Change to switch mic.',
-      homeVoiceGuideFlowMode:'Light uses system speech; Advanced uses offline Vosk.',
+      homeVoiceGuideFlowMode:'Light uses system speech; Offline uses local offline recognition.',
       homeVoiceGuideModeLbl:'Light / Advanced',
       homeVoiceGuideFlowEnable:'Turns wake listening on or off. Shows Enable when off, Disable while listening.',
       homeVoiceGuideBadge:'Badge shows enabled / listening state.',
@@ -4122,19 +4406,19 @@
       homeLiveSchemeDraft:'Incomplete profile',
       homeCapKeyUnset:'Not set',homeCapVoiceOff:'Off',
       homeAdvancedSummary:'Advanced tweaks',
-      homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Voice mode',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Status & debug',
+      homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Voice mode',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Runtime Status',
       homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice activation is ready',
       homeStatusIdle:'Set up key or voice activation first',homeStatusNeedTarget:'Voice shortcut still needed',
       homeStatusPaused:'Listening paused',
       homeCtaStart:'Start input',homeCtaUse:'Get started',homeCtaContinue:'Continue setup',
       homeCtaDictating:'Dictating',homeCtaDictatingSub:'Say end phrase or open settings',
-      homeCtaError:'Something went wrong',homeCtaErrorSub:'Check status & debug',
+      homeCtaError:'Something went wrong',homeCtaErrorSub:'Check runtime status',
       homeCtaResume:'Resume listening',homeCtaResumeSub:'Listening is paused',
       homeCtaSubKey:'Press {key}',homeCtaSubVoice:'Say wake phrase',
       homeCtaSubKeyOrVoice:'Press {key} or say wake phrase',homeCtaSubNeedTrigger:'Set launch key first',
       homeCtaSubNeedTarget:'Then set voice shortcut',
       settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice',
-      settingsNavDebug:'Status & debug',settingsNavGeneral:'General',
+      settingsNavDebug:'Runtime Status',settingsNavGeneral:'Recovery & Maintenance',
       settingsPanelBasicDesc:'Runtime, appearance, typography & language',settingsPanelKeyWakeDesc:'Set the launch key, voice shortcut, and final step for the current profile',
       settingsPanelVoiceWakeDesc:'Choose a microphone and check live recognition first, then configure voice activation, ending, and sending',
       homeKeyFinishTitle:'Profile final step',homeVoiceFinishTitle:'Voice finish actions',
@@ -4148,7 +4432,7 @@
       keyExecFinishTimingSummary:'Cancel & confirm settings',
       keyExecFinishPerPressDetail:'Each press only starts the voice shortcut; it will not cancel or confirm automatically.',
       quickVoiceWakeSummary:'Homepage quick actions (voice mode)',quickVoiceWakeHint:'Collapsed by default to avoid duplicate primary entry points.',
-      settingsPanelSoundsDesc:'Configure sounds for recording, wake, and send events',settingsPanelDebugDesc:'Runtime status & debug',settingsPanelGeneralDesc:'Rotation, trash & notes',
+      settingsPanelSoundsDesc:'Configure sounds for recording, wake, and send events',settingsPanelDebugDesc:'Check runtime status, voice diagnostics, and developer debug details',settingsPanelGeneralDesc:'Profile helpers, recovery, and maintenance actions',
       settingsNavSounds:'Sounds',
       soundsMasterLabel:'Enable sounds',soundsMasterHelp:'Master mute; each scene can still be configured.',
       soundSlotRecordTitle:'Key recording',soundSlotRecordDesc:'Plays when a key is detected while recording.',
@@ -4164,21 +4448,28 @@
       soundNameVoiceSip:'Sip',soundNameSendConfirm:'Short confirm',
       soundNameErrorSubtle:'Subtle',
       debugOverviewSession:'Session',debugOverviewWake:'Voice mode',
-      wakeEngineVosk:'Advanced mode',wakeEngineSapi:'Light mode',wakeEngineOff:'Off',
+      wakeEngineVosk:'Offline mode',wakeEngineSapi:'Light mode',wakeEngineOff:'Off',
       endCardTitle:'End',endEnableLabel:'Voice end',endPhrasesLabel:'End phrases',
-      voiceEndEnabledShort:'On',voiceEndDisabledShort:'Off',voiceEndNeedVoskShort:'Needs Advanced mode',
+      voiceEndEnabledShort:'On',voiceEndDisabledShort:'Off',voiceEndNeedVoskShort:'Needs Offline mode',
       homeStatusLoading:'Loading settings…',homeCapLoading:'Loading',
       endPhrasesEmpty:'—',endPhrasesMore:'+{n} more',
       sessionUnbound:'Session · unbound',sessionSelectedMapping:'Current mapping',
       btnMoreSettings:'More settings',voiceHubTitle:'Voice',voiceHubTabWake:'Wake',voiceHubTabEnd:'End',
-      keyWakeSettingsTitle:'Key settings',voiceAdvancedSummary:'Compatibility notes',
+      keyWakeSettingsTitle:'Key settings',voiceAdvancedSummary:'Compatibility & limits',
+      runtimeStatusGuideTitle:'Start with runtime status',
+      runtimeStatusGuideBody:'Configure voice parameters on the Voice page; start troubleshooting from this status page.',
+      debugOverviewTitle:'Global status overview',
+      btnVoiceGoRuntime:'View live status',
+      btnRuntimeGoVoice:'Go to voice settings',
       chipKeyWake:'Key',chipVoiceWake:'Voice activation',chipVoiceEnd:'End phrase',chipProfileKeyFinish:'Key confirm',chipDictating:'Dictating',
       chipVoiceSend:'Voice send',
       mapOverviewFinish:'Finish',mapOverviewSwitch:'Switch key',
-      quickTipsTitle:'Easiest setup',
-      quickTipsBody:'Key and voice activation work in parallel; configure finish actions in the shared homepage zone.',
+      quickTipsTitle:'Recovery & Maintenance',
+      quickTipsBody:'Profile helpers, recovery, and dangerous maintenance actions are grouped here.',
       replayWelcome:'Replay first-run guide',
       welcomePathLabel:'Setup path',
+      guideReplayTitle:'First-run guide',guideReplayDesc:'Replay the first-run guide to review the key, voice, and profile flow.',
+      maintenanceDangerTitle:'Danger zone',maintenanceDangerDesc:'Clearing all mappings removes the current configuration. Use this only when resetting.',
       noteText:'Record the real button; the state machine handles actions, not naming.',
       clearAll:'Clear all mappings',waitLog:'Waiting to record…',
       triggerRejected:'Could not recognize that key — please try again',
@@ -4231,6 +4522,13 @@
       mappingListHint:'Add profiles for multiple IMEs; record keys above',
       settingsSchemeSubnavLabel:'Profiles',
       settingsSubnavBack:'Back to categories',
+      settingsDebugSubnavLabel:'Runtime sections',
+      debugFocusOverview:'Overview',
+      debugFocusDiagnostics:'Diagnostics',
+      debugFocusDeveloper:'Developer',
+      debugFocusOverviewStatus:'Status and guide',
+      debugFocusDiagnosticsStatus:'Recognition and usage',
+      debugFocusDeveloperStatus:'Logs and events',
       schemeNavSelectAll:'Select all',
       schemeNavPickedCount:'{n} selected',
       schemeNavEnableSelected:'Enable selected',
@@ -7348,6 +7646,44 @@
     }
     if(runtime.paused) parts.push(t('listenPaused'));
     el.innerHTML=parts.join(' · ');
+    renderDebugOverviewCards();
+    renderSettingsDebugSubnav();
+  }
+
+  function renderDebugOverviewCards(){
+    const host=$('debugOverviewCards');
+    if(!host) return;
+    const endSnap=voiceUiSnapshot.end||{};
+    const w=voiceUiSnapshot.wake||{};
+    const paused=!!runtime.paused;
+    const m=selectedMapping&&selectedMapping();
+    const trig=m?editorTriggerForMapping(m):'';
+    const tgt=m?editorTargetForMapping(m):'';
+    const keyReady=!!(trig&&tgt);
+    const keyEnabled=!!(m&&m.enabled);
+    const keyOn=keyReady&&keyEnabled&&!paused;
+    const voiceOn=(w.engine==='sapi'||w.engine==='vosk')&&!paused;
+    const endEnabled=!!endSnap.enabled;
+    const stateRaw=endSnap.state||'idle';
+    const dictating=sessionActiveState(stateRaw);
+
+    function card(cls,label,val,sub){
+      return '<div class="debug-overview-card '+cls+'"><div class="lbl">'+escHtml(label)+'</div><div class="val">'+escHtml(val)+'</div><div class="sub">'+escHtml(sub||'')+'</div></div>';
+    }
+    const usage=processUsageSummaryLine();
+    const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
+    const voiceState=w.state?voiceWakeStateLabel(w.state):'';
+    const cards=[];
+    cards.push(card(paused?'is-warn':'is-ok','监听',paused?'已暂停':'监听中',paused?'按键/语音均不触发':'' ));
+    cards.push(card(keyOn?'is-ok':(keyReady?'is-warn':'is-off'),'按键入口',keyReady?('已配置'+(keyEnabled?'':'(未启用)')):'未配置',keyReady?(friendlyKeyName(trig)+' → '+friendlyKeyName(tgt)):'去「按键设置」录制'));
+    cards.push(card(voiceOn?'is-ok':(w.engine!=='none'?'is-warn':'is-off'),'语音入口',voiceOn?(eng+' · '+(w.phrase||'—')):eng,voiceOn?(voiceState||''):'去「语音」启用'));
+    cards.push(card(endEnabled?(dictating?'is-ok':'is-warn'):'is-off','结束动作',endEnabled?(dictating?'听写中':'已启用'):'未启用',endEnabled?('状态：'+voiceEndStateLabel(stateRaw)):'需要离线版/语音页开启'));
+    cards.push(card(processUsageSnapshot.loaded?'is-ok':'is-warn','资源占用',processUsageSnapshot.loaded?'已采样':'读取中',usage));
+    const mappingName=m?(m.label||friendlyPair(editorTriggerForMapping(m)||'',editorTargetForMapping(m)||'')):'未绑定方案';
+    const cCount=m?conflictsForMapping(m.id).length:0;
+    const cLine=cCount?('冲突 '+cCount+' 处'):'无明显冲突';
+    cards.push(card(m&&m.enabled?'is-ok':'is-warn','当前方案',mappingName,m?(m.enabled?'已启用 · ':'未启用 · ')+cLine:'去「按键设置」完成方案'));
+    host.innerHTML=cards.join('');
   }
 
   function voiceAdvancedDetailsOpen(){
@@ -7472,6 +7808,7 @@
   }
 
   function setSettingsPanel(panel){
+    // Keep the legacy voiceEnd alias working for older shortcuts and home links.
     if(panel==='voiceEnd') panel='voiceWake';
     const ids=SETTINGS_PANEL_IDS;
     if(!ids[panel]) panel='basic';
@@ -7485,7 +7822,10 @@
       if(nav) nav.classList.toggle('is-active',key===panel);
     });
     syncSettingsMicPoll(panel);
-    if(panel==='debug') renderDebugOverview();
+    if(panel==='debug'){
+      renderDebugOverview();
+      syncDebugFocusSections();
+    }
     if(panel==='keyWake'){
       renderKeyFinishFlowPanel();
       requestAnimationFrame(function(){
@@ -7512,6 +7852,7 @@
     }
     renderSettingsSchemeSubnav();
     renderSettingsVoiceSubnav();
+    renderSettingsDebugSubnav();
     requestAnimationFrame(function(){
       resetSettingsLayoutScroll({resetPanel:panelChanged});
     });
@@ -7951,6 +8292,7 @@
     resetSettingsLayoutScroll();
     renderSettingsSchemeSubnav();
     renderSettingsVoiceSubnav();
+    renderSettingsDebugSubnav();
     stopMicLevelPoll();
     stopMicMonitor();
     setTimeout(function(){
@@ -8771,6 +9113,11 @@
     const spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
     const spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
     const spGen=$('settingsPanelGeneralDesc'); if(spGen) spGen.textContent=d.settingsPanelGeneralDesc;
+    const runtimeStatusGuideTitle=$('runtimeStatusGuideTitle'); if(runtimeStatusGuideTitle) runtimeStatusGuideTitle.textContent=d.runtimeStatusGuideTitle;
+    const runtimeStatusGuideBody=$('runtimeStatusGuideBody'); if(runtimeStatusGuideBody) runtimeStatusGuideBody.textContent=d.runtimeStatusGuideBody;
+    const debugOverviewTitle=$('debugOverviewTitle'); if(debugOverviewTitle) debugOverviewTitle.textContent=d.debugOverviewTitle;
+    const btnVoiceGoRuntime=$('btnVoiceGoRuntime'); if(btnVoiceGoRuntime) btnVoiceGoRuntime.textContent=d.btnVoiceGoRuntime;
+    const btnRuntimeGoVoice=$('btnRuntimeGoVoice'); if(btnRuntimeGoVoice) btnRuntimeGoVoice.textContent=d.btnRuntimeGoVoice;
     const keyWakeSettingsTitle=$('keyWakeSettingsTitle'); if(keyWakeSettingsTitle) keyWakeSettingsTitle.textContent=d.keyWakeSettingsTitle;
     const settingsNavSounds=$('settingsNavSounds'); if(settingsNavSounds) settingsNavSounds.textContent=d.settingsNavSounds;
     const voiceAdvancedSummary=$('voiceAdvancedSummary'); if(voiceAdvancedSummary) voiceAdvancedSummary.textContent=d.voiceAdvancedSummary;
@@ -8831,6 +9178,10 @@
     const langDesc=$('langDesc'); if(langDesc) langDesc.textContent=d.langDesc;
     const langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;
     const langPickZh=$('langPickZh'); if(langPickZh) langPickZh.textContent=d.langZh;
+    const guideReplayTitle=$('guideReplayTitle'); if(guideReplayTitle) guideReplayTitle.textContent=d.guideReplayTitle;
+    const guideReplayDesc=$('guideReplayDesc'); if(guideReplayDesc) guideReplayDesc.textContent=d.guideReplayDesc;
+    const maintenanceDangerTitle=$('maintenanceDangerTitle'); if(maintenanceDangerTitle) maintenanceDangerTitle.textContent=d.maintenanceDangerTitle;
+    const maintenanceDangerDesc=$('maintenanceDangerDesc'); if(maintenanceDangerDesc) maintenanceDangerDesc.textContent=d.maintenanceDangerDesc;
     document.querySelectorAll('[data-lang-pick]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-lang-pick')===lang);
     });
@@ -8890,8 +9241,8 @@
     $('btnRefreshRuntime').textContent=t('refreshRuntime');
     $('btnRestartApp').textContent=t('restartApp');
     $('sourceTitle').textContent=d.sourceTitle;
-    $('noteTitle').textContent=d.noteTitle;
-    $('noteText').textContent=d.noteText;
+    const noteTitle=$('noteTitle'); if(noteTitle) noteTitle.textContent=d.noteTitle;
+    const noteText=$('noteText'); if(noteText) noteText.textContent=d.noteText;
     $('btnClearAll').textContent=d.clearAll;
     $('trashTitle').textContent=d.trashTitle;
     $('trashEmpty').textContent=d.trashEmpty;
@@ -10023,6 +10374,37 @@
     testModalMappingId=null;
   }
 
+  let confirmResolve=null;
+  function closeConfirmModal(result){
+    const overlay=$('confirmOverlay');
+    if(overlay){
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+    }
+    const done=confirmResolve;
+    confirmResolve=null;
+    if(done) done(!!result);
+  }
+  function openConfirmModal(message){
+    return new Promise(function(resolve){
+      const overlay=$('confirmOverlay');
+      const title=$('confirmTitle');
+      const body=$('confirmBody');
+      if(!overlay||!title||!body){
+        resolve(window.confirm(message));
+        return;
+      }
+      confirmResolve=resolve;
+      title.textContent=t('confirmDialogTitle');
+      body.textContent=message||'';
+      $('btnConfirmCancel').textContent=t('confirmActionCancel');
+      $('btnConfirmOk').textContent=t('confirmActionOk');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      $('btnConfirmCancel').focus();
+    });
+  }
+
   function mappingLabelForTest(mappingId){
     const m=mappingById(mappingId);
     if(!m) return '';
@@ -10894,6 +11276,10 @@
       openHomeKeySettings();
     });
   }
+  const btnVoiceGoRuntime=$('btnVoiceGoRuntime');
+  if(btnVoiceGoRuntime) btnVoiceGoRuntime.onclick=function(){ setSettingsPanel('debug'); };
+  const btnRuntimeGoVoice=$('btnRuntimeGoVoice');
+  if(btnRuntimeGoVoice) btnRuntimeGoVoice.onclick=function(){ setSettingsPanel('voiceWake'); };
   document.querySelectorAll('.settings-nav-item').forEach(function(btn){
     btn.addEventListener('mousedown',function(e){
       if(e.button===0) e.preventDefault();
@@ -10938,6 +11324,16 @@
       switchVoiceMode(mode,{toastKind:'lite'});
       const panel=$('voiceModePanel');
       if(panel) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  }
+  const settingsDebugSubnavList=$('settingsDebugSubnavList');
+  if(settingsDebugSubnavList){
+    settingsDebugSubnavList.addEventListener('click',function(e){
+      const btn=e.target.closest&&e.target.closest('[data-debug-nav]');
+      if(!btn) return;
+      e.stopPropagation();
+      setSettingsPanel('debug');
+      setDebugFocusMode(btn.dataset.debugNav||'overview');
     });
   }
   const voiceAdvState=$('voiceAdvancedState');
@@ -11141,8 +11537,9 @@
     openSettings({panel:'keyWake',focus:'trigger'});
   };
 
-  $('btnClearAll').onclick=function(){
-    if(!confirm(t('confirmClear'))) return;
+  $('btnClearAll').onclick=async function(){
+    const ok=await openConfirmModal(t('confirmClear'));
+    if(!ok) return;
     state.config=defaultConfig();
     state.selectedMappingId=state.config.mappings[0].id;
     syncEditorFromSelection();
@@ -11150,6 +11547,12 @@
     render();
     toast(t('restoredDefault'));
   };
+
+  $('btnConfirmCancel').onclick=function(){ closeConfirmModal(false); };
+  $('btnConfirmOk').onclick=function(){ closeConfirmModal(true); };
+  $('confirmOverlay').addEventListener('click',function(e){
+    if(e.target===this) closeConfirmModal(false);
+  });
 
   $('mapMenuFloat').addEventListener('click',function(e){
     e.stopPropagation();
@@ -11211,6 +11614,8 @@
     if(e.key==='Escape'){
       const testOpen=$('testOverlay')&&$('testOverlay').classList.contains('open');
       if(testOpen){ e.preventDefault(); closeTestModal(); return; }
+      const confirmOpen=$('confirmOverlay')&&$('confirmOverlay').classList.contains('open');
+      if(confirmOpen){ e.preventDefault(); closeConfirmModal(false); return; }
       if(recordingMode!=='none'){ e.preventDefault(); cancelRecording(); return; }
       const m=selectedMapping();
       if(m&&isDraftMapping(m)){ e.preventDefault(); removeDraftMapping(m.id); return; }
