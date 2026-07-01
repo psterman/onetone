@@ -1909,6 +1909,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: true,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());

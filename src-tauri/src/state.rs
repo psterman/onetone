@@ -197,6 +197,9 @@ mod tests {
             auto_enter_enabled: true,
             switch_keys: vec![],
             native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
         }
     }
 

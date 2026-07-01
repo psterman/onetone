@@ -1015,6 +1015,16 @@
     }
     .key-scheme-card-head{margin-bottom:4px}
     .key-scheme-card-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .key-scheme-card-head-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+    .key-scheme-card-btn{
+      height:28px;padding:0 10px;border:1px solid var(--outline-variant);border-radius:8px;background:var(--surface-high);
+      font:inherit;font-size:11px;font-weight:700;color:var(--btn-label);cursor:pointer;white-space:nowrap;
+    }
+    .key-scheme-card-btn:hover:not(:disabled){background:var(--primary-soft);border-color:rgba(42,156,196,.22);color:var(--primary)}
+    .key-scheme-card-btn:disabled{opacity:.5;cursor:not-allowed}
+    .key-scheme-card-btn.is-danger{color:#c2410c;border-color:rgba(249,115,22,.24);background:rgba(249,115,22,.06)}
+    .key-scheme-card-btn.is-danger:hover:not(:disabled){background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.32);color:#9a3412}
+    html[data-theme="dark"] .key-scheme-card-btn.is-danger{color:#fdba74}
     .key-scheme-card-kicker{font-size:10px;font-weight:700;color:var(--on-surface-muted);letter-spacing:.02em}
     .key-scheme-card-title{margin:4px 0 0;font-size:16px;font-weight:800;color:var(--on-surface);line-height:1.35}
     .key-scheme-card-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
@@ -1895,6 +1905,9 @@
     }
     .sound-preview-btn:hover{background:var(--primary-soft)}
     .mic-desc{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--on-surface-muted)}
+    .mic-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+    .mic-head-row .mini-title{margin:0}
+    .mic-head-row .control-btn{padding:4px 12px;font-size:12px;min-height:28px}
     .voice-mode-panel{
       margin-top:14px;
       padding:14px;
@@ -2650,7 +2663,11 @@
                       <div class="key-scheme-card-kicker" id="keySchemeCardKicker">当前方案</div>
                       <div id="keySchemeName" class="key-scheme-card-title">—</div>
                     </div>
-                    <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
+                    <div class="key-scheme-card-head-actions">
+                      <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增方案</button>
+                      <button type="button" class="key-scheme-card-btn is-danger" id="btnKeySchemeDelete">删除</button>
+                      <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
+                    </div>
                   </div>
                   <div class="key-scheme-card-meta">
                     <span id="keySchemeBindingLine" hidden></span>
@@ -2744,7 +2761,10 @@
             <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
           </div>
           <div class="mic-settings-block drawer-section" id="voiceMicSection" style="border-top:0;padding-top:0;margin-bottom:14px">
-            <div class="mini-title" id="micTitle">麦克风</div>
+            <div class="mic-head-row">
+              <div class="mini-title" id="micTitle">麦克风</div>
+              <button type="button" class="control-btn" id="btnMicRefresh">刷新设备</button>
+            </div>
             <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
             <p class="mic-empty" id="micEmpty" hidden></p>
             <div class="mic-device-list" id="micDeviceList"></div>
@@ -4017,6 +4037,9 @@
   let activeMicId='';
   let micMonitorDeviceId='';
   let micPollTimer=0;
+  let micDeviceRefreshTimer=0;
+  let micRecoveryTimer=0;
+  const MIC_DEVICE_REFRESH_MS=8000;
   let voiceStatusPollTimer=0;
   let voiceUiRenderTimer=0;
   let voiceListRenderTimer=0;
@@ -4232,6 +4255,9 @@
       micAutoDetect:'自动检测（系统默认）',micAutoDetectSub:'使用系统默认麦克风',micExternal:'外部麦克风',
       micWindowsOnly:'麦克风切换与监测仅支持 Windows',micEmpty:'未检测到可用麦克风',
       micSwitchFail:'切换麦克风失败',
+      micRefresh:'刷新设备',
+      micRefreshFail:'刷新麦克风列表失败',
+      micReconnected:'已重新连接麦克风',
       voiceSapiTitle:'轻量版细项',
       voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。',
       voiceSapiLabel:'开启轻量版',
@@ -4698,6 +4724,9 @@
       micAutoDetect:'Auto-detect (system default)',micAutoDetectSub:'Use the system default microphone',micExternal:'External microphone',
       micWindowsOnly:'Microphone switching and monitoring are Windows-only',micEmpty:'No microphones detected',
       micSwitchFail:'Failed to switch microphone',
+      micRefresh:'Refresh devices',
+      micRefreshFail:'Failed to refresh microphone list',
+      micReconnected:'Microphone reconnected',
       voiceSapiTitle:'Light mode details',
       voiceSapiDesc:'Say one of the selected phrases into the mic to trigger your voice shortcut once.',
       voiceSapiLabel:'Enable Light mode',
@@ -5771,6 +5800,7 @@
     if(!micLevelPollAllowed()) return;
     pollMicLevel();
     micPollTimer=setInterval(pollMicLevel,80);
+    startMicDeviceRefresh();
   }
 
   function stopMicLevelPoll(){
@@ -5778,6 +5808,63 @@
       clearInterval(micPollTimer);
       micPollTimer=0;
     }
+    stopMicDeviceRefresh();
+  }
+
+  function resolveActiveMicId(devices,preferredId){
+    devices=Array.isArray(devices)?devices:[];
+    const preferred=String(preferredId||'').trim();
+    if(preferred&&devices.some(function(d){ return d.id===preferred; })) return preferred;
+    const def=devices.find(function(d){ return d.isDefault; });
+    return def?def.id:(devices[0]?devices[0].id:'');
+  }
+
+  function scheduleMicRecovery(){
+    if(micRecoveryTimer) return;
+    micRecoveryTimer=setTimeout(function(){
+      micRecoveryTimer=0;
+      if(!micLevelUiVisible()||voiceCaptureActive()) return;
+      loadMicDevices({reconnect:true}).catch(function(){});
+    },400);
+  }
+
+  function startMicDeviceRefresh(){
+    stopMicDeviceRefresh();
+    if(!micLevelUiVisible()) return;
+    micDeviceRefreshTimer=setInterval(function(){
+      if(!micLevelUiVisible()||voiceCaptureActive()) return;
+      refreshMicDevicesQuiet().catch(function(){});
+    },MIC_DEVICE_REFRESH_MS);
+  }
+
+  function stopMicDeviceRefresh(){
+    if(micDeviceRefreshTimer){
+      clearInterval(micDeviceRefreshTimer);
+      micDeviceRefreshTimer=0;
+    }
+  }
+
+  function refreshMicDevicesQuiet(){
+    const prevId=activeMicId;
+    return vpInvoke('cmd_mic_list',{}).then(function(devices){
+      micDevices=Array.isArray(devices)?devices:[];
+      const nextId=resolveActiveMicId(micDevices,prevId);
+      const reconnect=nextId!==activeMicId||!micMonitorDeviceId||micMonitorDeviceId!==nextId;
+      activeMicId=nextId;
+      renderMicDevices();
+      if(!micDevices.length){
+        activeMicId='';
+        micMonitorDeviceId='';
+        return;
+      }
+      if(reconnect) return ensureMicMonitor(activeMicId||null);
+    });
+  }
+
+  function handleMicMonitorError(msg){
+    const detail=msg&&(msg.message||msg.reason||'');
+    if(detail) console.warn('mic monitor error',detail);
+    scheduleMicRecovery();
   }
 
   function ensureMicMonitor(deviceId){
@@ -5789,6 +5876,7 @@
       if(!micLevelPollAllowed()) return;
       return vpInvoke('cmd_mic_monitor_start',payload).catch(function(err){
         console.error('mic monitor start',err);
+        scheduleMicRecovery();
       });
     });
   }
@@ -5811,7 +5899,7 @@
       if(!list) return;
       const btn=document.createElement('button');
       btn.type='button';
-      btn.className='mic-device-card'+(dev.isDefault?' is-active':'');
+      btn.className='mic-device-card'+((dev.id===activeMicId||(!activeMicId&&dev.isDefault))?' is-active':'');
       btn.setAttribute('data-id',dev.id);
       btn.innerHTML=
         '<span class="mic-device-body">'+
@@ -5824,7 +5912,6 @@
       btn.disabled=recordingBusy;
       btn.addEventListener('click',function(){ selectMicDevice(dev.id); });
       list.appendChild(btn);
-      if(dev.isDefault) activeMicId=dev.id;
     });
     renderHomeMicCurrent();
   }
@@ -5865,15 +5952,22 @@
     return vpInvoke('cmd_mic_monitor_stop',{}).catch(function(){});
   }
 
-  function loadMicDevices(){
+  function loadMicDevices(opts){
+    opts=opts||{};
+    const prevId=activeMicId;
     return vpInvoke('cmd_mic_list',{}).then(function(devices){
       micDevices=Array.isArray(devices)?devices:[];
+      if(!micDevices.length){
+        activeMicId='';
+        micMonitorDeviceId='';
+        renderMicDevices();
+        return;
+      }
+      activeMicId=resolveActiveMicId(micDevices,prevId);
       renderMicDevices();
-      if(!micDevices.length) return;
-      const target=micDevices.find(function(d){ return d.isDefault; })||micDevices[0];
-      activeMicId=target?target.id:'';
       return ensureMicMonitor(activeMicId||null).then(function(){
         if(micLevelUiVisible()) startMicLevelPoll();
+        if(opts.reconnect) toast(t('micReconnected'));
       });
     }).catch(function(err){
       micDevices=[];
@@ -9703,6 +9797,7 @@
       btn.classList.toggle('is-active',btn.getAttribute('data-lang-pick')===lang);
     });
     const micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
+    const btnMicRefresh=$('btnMicRefresh'); if(btnMicRefresh) btnMicRefresh.textContent=d.micRefresh;
     const micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;
     const voiceModeTitle=$('voiceModeTitle'); if(voiceModeTitle) voiceModeTitle.textContent=d.voiceModeTitle;
     const voiceModeDesc=$('voiceModeDesc'); if(voiceModeDesc) voiceModeDesc.textContent=d.voiceModeDesc;
@@ -10110,6 +10205,19 @@
       }else{
         toggleEl.hidden=true;
       }
+    }
+    const addBtn=$('btnKeySchemeAdd');
+    const delBtn=$('btnKeySchemeDelete');
+    const busy=recordingMode!=='none';
+    if(addBtn){
+      addBtn.textContent=t('addMapping');
+      const ready=isCurrentDraftComplete();
+      addBtn.disabled=!ready||busy;
+      addBtn.title=(!ready&&!busy)?t('addNeedComplete'):'';
+    }
+    if(delBtn){
+      delBtn.textContent=t('delete');
+      delBtn.disabled=!m||busy;
     }
     const stepTriggerTitle=$('keySchemeStepTriggerTitle');
     const stepTargetTitle=$('keySchemeStepTargetTitle');
@@ -10897,10 +11005,21 @@
 
   function renderAddButton(){
     const btn=$('btnAddMapping');
-    if(!btn) return;
+    const keyAdd=$('btnKeySchemeAdd');
+    const keyDel=$('btnKeySchemeDelete');
     const ready=isCurrentDraftComplete();
-    btn.disabled=!ready;
-    btn.title=ready?'':t('addNeedComplete');
+    const busy=recordingMode!=='none';
+    if(btn){
+      btn.disabled=!ready;
+      btn.title=ready?'':t('addNeedComplete');
+    }
+    if(keyAdd){
+      keyAdd.disabled=!ready||busy;
+      keyAdd.title=(!ready&&!busy)?t('addNeedComplete'):'';
+    }
+    if(keyDel){
+      keyDel.disabled=!selectedMapping()||busy;
+    }
   }
 
   function renderDraftHint(){
@@ -11580,6 +11699,7 @@
     renderHome();
     renderMicDevices();
     renderRecordCancelBar();
+    renderAddButton();
   }
 
   function startTriggerRecord(){
@@ -11886,6 +12006,16 @@
   }
   const btnVoiceGoRuntime=$('btnVoiceGoRuntime');
   if(btnVoiceGoRuntime) btnVoiceGoRuntime.onclick=function(){ setSettingsPanel('debug'); };
+  const btnMicRefresh=$('btnMicRefresh');
+  if(btnMicRefresh) btnMicRefresh.onclick=function(){
+    btnMicRefresh.disabled=true;
+    loadMicDevices().catch(function(err){
+      const detail=err&&(err.message||String(err))||'';
+      toast(detail?(t('micRefreshFail')+'：'+detail):t('micRefreshFail'));
+    }).finally(function(){
+      btnMicRefresh.disabled=false;
+    });
+  };
   const debugOverviewActions=$('debugOverviewActions');
   if(debugOverviewActions){
     debugOverviewActions.addEventListener('click',function(e){
@@ -12003,6 +12133,21 @@
   $('btnRecordTrigger').onclick=startTriggerRecord;
   $('btnRecordTarget').onclick=startTargetRecord;
   $('btnCancelRecord').onclick=cancelDraftOrRecording;
+  const btnKeySchemeAdd=$('btnKeySchemeAdd');
+  if(btnKeySchemeAdd){
+    btnKeySchemeAdd.onclick=function(){
+      const addBtn=$('btnAddMapping');
+      if(addBtn) addBtn.click();
+    };
+  }
+  const btnKeySchemeDelete=$('btnKeySchemeDelete');
+  if(btnKeySchemeDelete){
+    btnKeySchemeDelete.onclick=function(){
+      const m=selectedMapping();
+      if(!m) return;
+      deleteMappingFromMenu(m.id);
+    };
+  }
   $('btnSchemeSwitchKey').onclick=function(){
     if(recordingMode==='schemeSwitch') return;
     startSchemeSwitchRecord();
@@ -12458,6 +12603,10 @@
       if(!micLevelUiVisible()) return;
       const id=msg.deviceId!=null?String(msg.deviceId):(msg.device_id!=null?String(msg.device_id):'');
       if(typeof msg.level==='number') updateMicLevelBars(id,msg.level);
+      return;
+    }
+    if(msg.type==='mic_monitor_error'){
+      handleMicMonitorError(msg);
       return;
     }
     if(msg.type==='mvp_init'){

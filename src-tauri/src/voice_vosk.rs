@@ -1,6 +1,7 @@
 //! Vosk offline speech worker: cpal → audio channel → recognizer loop.
 #![allow(dead_code, unused_imports)]
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -19,6 +20,7 @@ const AUDIO_CHANNEL_CAP: usize = 64;
 const EVENT_CHANNEL_CAP: usize = 64;
 const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(200);
 const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(70);
+const EN_WAKE_BUFFER_TTL: Duration = Duration::from_millis(2800);
 
 #[derive(Debug, Clone)]
 pub enum VoiceVoskEvent {
@@ -390,6 +392,7 @@ fn run_worker(
     let mut last_partial_at = Instant::now() - PARTIAL_MIN_INTERVAL;
     let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
     let mut last_detected_norm = String::new();
+    let mut en_wake_buffer = RecentEnWakeText::new();
 
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
@@ -408,20 +411,34 @@ fn run_worker(
                     &mut last_partial_text,
                     &mut last_partial_at,
                 );
+                if let Some(partial) = sanitize_vosk_text(&recognizer.partial_result().partial) {
+                    if let Some((phrase, text)) = try_wake_with_en_buffer(
+                        &mut en_wake_buffer,
+                        &partial,
+                        &phrases,
+                        &mut last_detected_norm,
+                    ) {
+                        send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
+                    }
+                }
 
                 if state == DecodingState::Finalized {
                     let raw = complete_result_text(recognizer.result());
                     if let Some(text) = sanitize_vosk_text(&raw) {
                         send_event_blocking(&event_tx, VoiceVoskEvent::Final(text.clone()));
-                        if let Some(phrase) = matches_final(&text, &phrases) {
-                            let norm = normalize_phrase(&text);
-                            if norm != last_detected_norm {
-                                last_detected_norm = norm;
-                                send_event_blocking(
-                                    &event_tx,
-                                    VoiceVoskEvent::Detected { phrase, text },
-                                );
-                            }
+                        if let Some((phrase, hit_text)) = try_wake_with_en_buffer(
+                            &mut en_wake_buffer,
+                            &text,
+                            &phrases,
+                            &mut last_detected_norm,
+                        ) {
+                            send_event_blocking(
+                                &event_tx,
+                                VoiceVoskEvent::Detected {
+                                    phrase,
+                                    text: hit_text,
+                                },
+                            );
                         }
                     }
                     recognizer.reset();
@@ -541,6 +558,7 @@ fn run_dual_worker(
     let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
     let mut last_detected_norm = String::new();
     let mut lang_lock: Option<(DualLangSide, Instant)> = None;
+    let mut en_wake_buffer = RecentEnWakeText::new();
 
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
@@ -573,6 +591,18 @@ fn run_dual_worker(
                 let cn_partial = cn_recognizer.partial_result().partial.trim().to_string();
                 let en_partial = en_recognizer.partial_result().partial.trim().to_string();
 
+                if let Some(partial) = sanitize_vosk_text(&en_partial) {
+                    if let Some((phrase, text)) = try_wake_with_en_buffer(
+                        &mut en_wake_buffer,
+                        &partial,
+                        &phrases,
+                        &mut last_detected_norm,
+                    ) {
+                        set_lang_lock_from_phrase(&mut lang_lock, &phrase);
+                        send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
+                    }
+                }
+
                 let cn_final = if cn_state == DecodingState::Finalized {
                     sanitize_vosk_text(&complete_result_text(cn_recognizer.result()))
                 } else {
@@ -595,16 +625,20 @@ fn run_dual_worker(
                     ) {
                         DualResolution::Commit(text) => {
                             send_event_blocking(&event_tx, VoiceVoskEvent::Final(text.clone()));
-                            if let Some(phrase) = matches_final(&text, &phrases) {
-                                let norm = normalize_phrase(&text);
-                                if norm != last_detected_norm {
-                                    last_detected_norm = norm;
-                                    set_lang_lock_from_phrase(&mut lang_lock, &phrase);
-                                    send_event_blocking(
-                                        &event_tx,
-                                        VoiceVoskEvent::Detected { phrase, text },
-                                    );
-                                }
+                            if let Some((phrase, hit_text)) = try_wake_with_en_buffer(
+                                &mut en_wake_buffer,
+                                &text,
+                                &phrases,
+                                &mut last_detected_norm,
+                            ) {
+                                set_lang_lock_from_phrase(&mut lang_lock, &phrase);
+                                send_event_blocking(
+                                    &event_tx,
+                                    VoiceVoskEvent::Detected {
+                                        phrase,
+                                        text: hit_text,
+                                    },
+                                );
                             }
                             cn_recognizer.reset();
                             en_recognizer.reset();
@@ -698,7 +732,163 @@ fn phrase_match_score(text: &str, phrase: &str) -> u32 {
             return 500 + norm_phrase.chars().count() as u32;
         }
     }
+    if text_has_latin(phrase) && !text_has_cjk(phrase) {
+        if let Some(score) = english_token_match_score(text, phrase) {
+            if score > 0 {
+                return score;
+            }
+        }
+    }
     0
+}
+
+fn latin_word_tokens(text: &str) -> Vec<String> {
+    text.split_whitespace()
+        .map(|w| normalize_phrase(w))
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
+fn tokens_in_subsequence_order(haystack: &[String], needle: &[String]) -> bool {
+    if needle.is_empty() {
+        return false;
+    }
+    let mut matched = 0;
+    for token in haystack {
+        if token == &needle[matched] {
+            matched += 1;
+            if matched >= needle.len() {
+                return true;
+            }
+        }
+    }
+    matched >= needle.len()
+}
+
+/// English multi-word phrases: match spaced tokens ("start dictation") and split finals.
+fn english_token_match_score(text: &str, phrase: &str) -> Option<u32> {
+    let phrase_tokens = latin_word_tokens(phrase);
+    if phrase_tokens.len() < 2 {
+        return None;
+    }
+    let text_tokens = latin_word_tokens(text);
+    let phrase_norm = normalize_phrase(phrase);
+    let collapsed = normalize_phrase(text);
+
+    if tokens_in_subsequence_order(&text_tokens, &phrase_tokens) {
+        let joined_norm = normalize_phrase(&text_tokens.join(" "));
+        if joined_norm == phrase_norm || collapsed == phrase_norm {
+            return Some(1000);
+        }
+        return Some(860 + phrase_tokens.len() as u32);
+    }
+
+    if let Some(score) = english_first_token_inflection_score(&collapsed, &phrase_tokens) {
+        return Some(score);
+    }
+
+    None
+}
+
+fn english_first_token_inflection_score(collapsed: &str, phrase_tokens: &[String]) -> Option<u32> {
+    let Some(first) = phrase_tokens.first() else {
+        return None;
+    };
+    if first.len() < 3 || first.ends_with('s') {
+        return None;
+    }
+
+    let mut variants = Vec::with_capacity(2);
+    variants.push(format!("{}s{}", first, phrase_tokens[1..].join("")));
+    if first.ends_with("ch")
+        || first.ends_with("sh")
+        || first.ends_with('x')
+        || first.ends_with('z')
+    {
+        variants.push(format!("{}es{}", first, phrase_tokens[1..].join("")));
+    }
+
+    for variant in variants {
+        if collapsed == variant {
+            return Some(960);
+        }
+        if collapsed.contains(&variant) {
+            return Some(540 + variant.chars().count() as u32);
+        }
+    }
+    None
+}
+
+struct RecentEnWakeText {
+    parts: VecDeque<(Instant, String)>,
+}
+
+impl RecentEnWakeText {
+    fn new() -> Self {
+        Self {
+            parts: VecDeque::new(),
+        }
+    }
+
+    fn ingest(&mut self, text: &str) {
+        let now = Instant::now();
+        self.parts
+            .retain(|(t, _)| now.duration_since(*t) < EN_WAKE_BUFFER_TTL);
+        let Some(s) = sanitize_vosk_text(text) else {
+            return;
+        };
+        if !text_has_latin(&s) || text_has_cjk(&s) {
+            return;
+        }
+        if self.parts.back().is_some_and(|(_, prev)| prev == &s) {
+            return;
+        }
+        self.parts.push_back((now, s));
+        while self.parts.len() > 6 {
+            self.parts.pop_front();
+        }
+    }
+
+    fn combined_spaced(&self) -> String {
+        self.parts
+            .iter()
+            .map(|(_, s)| s.as_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
+fn try_wake_from_text(
+    text: &str,
+    phrases: &[String],
+    last_detected_norm: &mut String,
+) -> Option<(String, String)> {
+    let Some(phrase) = matches_final(text, phrases) else {
+        return None;
+    };
+    let norm = normalize_phrase(text);
+    if norm.is_empty() || norm == *last_detected_norm {
+        return None;
+    }
+    *last_detected_norm = norm;
+    Some((phrase, text.to_string()))
+}
+
+fn try_wake_with_en_buffer(
+    buffer: &mut RecentEnWakeText,
+    text: &str,
+    phrases: &[String],
+    last_detected_norm: &mut String,
+) -> Option<(String, String)> {
+    buffer.ingest(text);
+    try_wake_from_text(text, phrases, last_detected_norm).or_else(|| {
+        let combined = buffer.combined_spaced();
+        if combined.is_empty() {
+            None
+        } else {
+            try_wake_from_text(&combined, phrases, last_detected_norm)
+        }
+    })
 }
 
 fn best_phrase_match_score(text: &str, phrases: &[String]) -> u32 {
@@ -1486,6 +1676,27 @@ mod tests {
         assert_eq!(
             pick_dual_final(&candidates, &phrases).as_deref(),
             Some("start dictation")
+        );
+    }
+
+    #[test]
+    fn matches_final_english_split_tokens() {
+        let phrases = vec!["start dictation".into(), "fast dictation".into()];
+        assert_eq!(
+            matches_final("start dictation", &phrases),
+            Some("start dictation".into())
+        );
+        assert_eq!(
+            matches_final("fast dictation", &phrases),
+            Some("fast dictation".into())
+        );
+        assert_eq!(
+            matches_final("fastdictation", &phrases),
+            Some("fast dictation".into())
+        );
+        assert_eq!(
+            matches_final("startsdictation", &phrases),
+            Some("start dictation".into())
         );
     }
 

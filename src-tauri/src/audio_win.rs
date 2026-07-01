@@ -187,10 +187,13 @@ mod imp {
         let device_name = target.name.clone();
         let device_id_out = target.id.clone();
         let level_state = level_state.clone();
+        let app_monitor = app.clone();
+        let app_err = app.clone();
+        let device_id_err = device_id_out.clone();
 
         let handle = thread::spawn(move || {
             if let Err(err) = run_cpal_monitor(
-                app,
+                app_monitor,
                 window,
                 device_name,
                 device_id_out,
@@ -198,6 +201,7 @@ mod imp {
                 level_state,
             ) {
                 eprintln!("mic monitor: {err}");
+                emit_mic_monitor_error(&app_err, &device_id_err, &err);
             }
         });
 
@@ -248,7 +252,12 @@ mod imp {
 
         let peak_bits = Arc::new(AtomicU32::new(0));
         let peak_cb = peak_bits.clone();
-        let err_fn = |err| eprintln!("cpal stream error: {err}");
+        let app_err = app.clone();
+        let device_id_err = device_id.clone();
+        let err_fn = move |err: cpal::StreamError| {
+            eprintln!("cpal stream error: {err}");
+            emit_mic_monitor_error(&app_err, &device_id_err, &err.to_string());
+        };
 
         let stream = match sample_format {
             SampleFormat::F32 => device.build_input_stream(
@@ -400,6 +409,15 @@ mod imp {
         let _ = app.emit("to_js", &payload);
     }
 
+    pub fn emit_mic_monitor_error(app: &AppHandle, device_id: &str, message: &str) {
+        let payload = serde_json::json!({
+            "type": "mic_monitor_error",
+            "deviceId": device_id,
+            "message": message,
+        });
+        let _ = app.emit("to_js", &payload);
+    }
+
     fn peak_to_level(peak: f32) -> u32 {
         let shaped = peak.clamp(0.0, 1.0).sqrt();
         (shaped * 100.0).round() as u32
@@ -502,8 +520,12 @@ mod imp {
 
 #[cfg(windows)]
 pub use imp::{
-    list_input_devices, read_mic_peak_level, set_default_input_device, start_mic_monitor,
+    emit_mic_monitor_error, list_input_devices, read_mic_peak_level, set_default_input_device,
+    start_mic_monitor,
 };
+
+#[cfg(not(windows))]
+pub fn emit_mic_monitor_error(_app: &AppHandle, _device_id: &str, _message: &str) {}
 
 pub fn stop_mic_monitor(slot: &Mutex<Option<MicMonitorHandle>>) {
     if let Some(handle) = slot.lock().take() {

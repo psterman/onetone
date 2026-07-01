@@ -1578,13 +1578,15 @@ pub fn cmd_mic_monitor_start(
             std::thread::sleep(std::time::Duration::from_millis(120));
             state.mic_level.clear();
             if let Err(err) = crate::audio_win::start_mic_monitor(
-                app,
+                app.clone(),
                 window,
-                device_id,
+                device_id.clone(),
                 &state.mic_monitor,
                 &state.mic_level,
             ) {
                 eprintln!("mic monitor start: {err}");
+                let device_hint = device_id.as_deref().unwrap_or("");
+                crate::audio_win::emit_mic_monitor_error(&app, device_hint, &err);
             }
         })
         .map_err(|e| format!("spawn mic monitor: {e}"))?;

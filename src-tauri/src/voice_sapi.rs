@@ -129,6 +129,43 @@ mod imp {
         s.chars().filter(|c| c.is_alphanumeric()).collect()
     }
 
+    fn latin_word_tokens(text: &str) -> Vec<String> {
+        text.split_whitespace()
+            .map(|w| normalize_phrase(w))
+            .filter(|w| !w.is_empty())
+            .collect()
+    }
+
+    fn tokens_in_subsequence_order(haystack: &[String], needle: &[String]) -> bool {
+        if needle.is_empty() {
+            return false;
+        }
+        let mut matched = 0;
+        for token in haystack {
+            if token == &needle[matched] {
+                matched += 1;
+                if matched >= needle.len() {
+                    return true;
+                }
+            }
+        }
+        matched >= needle.len()
+    }
+
+    fn english_wake_token_match(text: &str, phrase: &str) -> bool {
+        let phrase_tokens = latin_word_tokens(phrase);
+        if phrase_tokens.len() < 2 {
+            return false;
+        }
+        let text_tokens = latin_word_tokens(text);
+        let phrase_norm = normalize_phrase(phrase);
+        if tokens_in_subsequence_order(&text_tokens, &phrase_tokens) {
+            let joined_norm = normalize_phrase(&text_tokens.join(" "));
+            return joined_norm == phrase_norm || normalize_phrase(text) == phrase_norm;
+        }
+        false
+    }
+
     fn matches_wake_phrase(text: &str, phrases: &[String]) -> Option<(String, bool)> {
         let norm = normalize_phrase(text);
         if norm.is_empty() {
@@ -144,6 +181,9 @@ mod imp {
             }
             if norm.contains(&target) || target.contains(&norm) {
                 return Some((phrase.clone(), false));
+            }
+            if english_wake_token_match(text, phrase) {
+                return Some((phrase.clone(), norm == target));
             }
         }
         None
