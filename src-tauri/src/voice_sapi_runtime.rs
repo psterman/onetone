@@ -10,6 +10,7 @@ use crate::voice_sapi::{start_voice_sapi, stop_voice_sapi, VoiceSapiEvent};
 use crate::AppState;
 
 pub fn voice_sapi_start(state: &AppState, cfg: &VoiceSapiConfig) -> Result<(), String> {
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
     voice_sapi_stop(state);
 
     match start_voice_sapi(cfg.clone()) {

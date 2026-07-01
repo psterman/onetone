@@ -1535,10 +1535,48 @@ pub fn cmd_autostart_set(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 }
 
 #[tauri::command]
-pub async fn cmd_mic_list() -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
-    tauri::async_runtime::spawn_blocking(crate::audio_win::list_input_devices)
-        .await
-        .map_err(|e| format!("mic list task failed: {e}"))?
+pub async fn cmd_mic_list(
+    state: tauri::State<'_, Arc<AppState>>,
+    force: Option<bool>,
+) -> Result<Vec<crate::audio_win::MicDeviceInfo>, String> {
+    let force = force.unwrap_or(false);
+    if force {
+        state.audio_backoff.clear();
+    } else if state.audio_backoff.is_active() {
+        return Err(format!(
+            "audio stack cooling down ({}ms remaining)",
+            state.audio_backoff.remaining_ms()
+        ));
+    }
+    let timeout = std::time::Duration::from_millis(crate::audio_win::COM_OP_TIMEOUT_MS);
+    match tokio::time::timeout(timeout, tauri::async_runtime::spawn_blocking(
+        crate::audio_win::list_input_devices,
+    ))
+    .await
+    {
+        Ok(Ok(Ok(devices))) => Ok(devices),
+        Ok(Ok(Err(e))) => {
+            state
+                .audio_backoff
+                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            Err(e)
+        }
+        Ok(Err(e)) => {
+            state
+                .audio_backoff
+                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            Err(format!("mic list task failed: {e}"))
+        }
+        Err(_) => {
+            state
+                .audio_backoff
+                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            Err(format!(
+                "mic list timed out after {}ms",
+                crate::audio_win::COM_OP_TIMEOUT_MS
+            ))
+        }
+    }
 }
 
 #[tauri::command]
@@ -1546,16 +1584,43 @@ pub fn cmd_mic_set_default(
     state: tauri::State<Arc<AppState>>,
     #[allow(non_snake_case)] deviceId: Option<String>,
     device_id: Option<String>,
+    force: Option<bool>,
 ) -> Result<(), String> {
+    let force = force.unwrap_or(false);
+    if force {
+        state.audio_backoff.clear();
+    } else if state.audio_backoff.is_active() {
+        return Err(format!(
+            "audio stack cooling down ({}ms remaining)",
+            state.audio_backoff.remaining_ms()
+        ));
+    }
     let id = device_id
         .or(deviceId)
         .ok_or_else(|| "missing device id".to_string())?;
-    crate::audio_win::set_default_input_device(&id)?;
-    let cfg = state.cfg.lock().voice_sapi.clone();
-    if cfg.enabled {
-        crate::voice_sapi_runtime::voice_sapi_start(&state, &cfg)?;
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    std::thread::sleep(std::time::Duration::from_millis(
+        crate::audio_win::MIC_MONITOR_SETTLE_MS,
+    ));
+    let timeout = std::time::Duration::from_millis(crate::audio_win::COM_OP_TIMEOUT_MS);
+    let id_for_op = id.clone();
+    match crate::audio_win::run_with_timeout(timeout, move || {
+        crate::audio_win::set_default_input_device(&id_for_op)
+    }) {
+        Ok(()) => {
+            let cfg = state.cfg.lock().voice_sapi.clone();
+            if cfg.enabled {
+                crate::voice_sapi_runtime::voice_sapi_start(&state, &cfg)?;
+            }
+            Ok(())
+        }
+        Err(e) => {
+            state
+                .audio_backoff
+                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            Err(e)
+        }
     }
-    Ok(())
 }
 
 #[tauri::command]
@@ -1565,17 +1630,41 @@ pub fn cmd_mic_monitor_start(
     state: tauri::State<Arc<AppState>>,
     #[allow(non_snake_case)] deviceId: Option<String>,
     device_id: Option<String>,
+    force: Option<bool>,
 ) -> Result<(), String> {
     if state.voice_vosk.lock().is_some() || state.voice_sapi.lock().is_some() {
         return Ok(());
     }
+    let force = force.unwrap_or(false);
+    if force {
+        state.audio_backoff.clear();
+    } else if state.audio_backoff.is_active() {
+        return Err(format!(
+            "audio stack cooling down ({}ms remaining)",
+            state.audio_backoff.remaining_ms()
+        ));
+    }
+    {
+        let mut starting = state.mic_monitor_starting.lock();
+        if *starting {
+            return Ok(());
+        }
+        *starting = true;
+    }
     let state = Arc::clone(state.inner());
+    let state_on_err = Arc::clone(&state);
     let device_id = device_id.or(deviceId);
+    let settle_ms = if force {
+        crate::audio_win::MIC_MANUAL_REFRESH_SETTLE_MS
+    } else {
+        crate::audio_win::MIC_MONITOR_SETTLE_MS
+    };
     std::thread::Builder::new()
         .name("mic-monitor-start".into())
         .spawn(move || {
+            let _guard = MicMonitorStartGuard(&state.mic_monitor_starting);
             crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-            std::thread::sleep(std::time::Duration::from_millis(120));
+            std::thread::sleep(std::time::Duration::from_millis(settle_ms));
             state.mic_level.clear();
             if let Err(err) = crate::audio_win::start_mic_monitor(
                 app.clone(),
@@ -1585,25 +1674,40 @@ pub fn cmd_mic_monitor_start(
                 &state.mic_level,
             ) {
                 eprintln!("mic monitor start: {err}");
+                state.audio_backoff.enter(std::time::Duration::from_millis(
+                    crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
+                ));
                 let device_hint = device_id.as_deref().unwrap_or("");
-                crate::audio_win::emit_mic_monitor_error(&app, device_hint, &err);
+                crate::audio_win::emit_mic_monitor_error(
+                    &app,
+                    device_hint,
+                    &err,
+                    Some(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS),
+                );
             }
         })
-        .map_err(|e| format!("spawn mic monitor: {e}"))?;
+        .map_err(|e| {
+            *state_on_err.mic_monitor_starting.lock() = false;
+            format!("spawn mic monitor: {e}")
+        })?;
     Ok(())
+}
+
+struct MicMonitorStartGuard<'a>(&'a parking_lot::Mutex<bool>);
+
+impl Drop for MicMonitorStartGuard<'_> {
+    fn drop(&mut self) {
+        *self.0.lock() = false;
+    }
 }
 
 #[tauri::command]
 pub fn cmd_mic_get_level(
     state: tauri::State<Arc<AppState>>,
-    #[allow(non_snake_case)] deviceId: Option<String>,
-    device_id: Option<String>,
+    #[allow(non_snake_case)] _deviceId: Option<String>,
+    _device_id: Option<String>,
 ) -> crate::audio_win::MicLevelSnapshot {
-    let hinted_id = device_id.or(deviceId).unwrap_or_default();
-    if let Ok(snapshot) = crate::audio_win::read_mic_peak_level(Some(hinted_id.as_str())) {
-        state.mic_level.set(&snapshot.device_id, snapshot.level);
-        return snapshot;
-    }
+    // Prefer cached level from the cpal monitor thread; avoid hammering IAudioMeterInformation.
     state.mic_level.snapshot()
 }
 

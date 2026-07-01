@@ -2003,6 +2003,8 @@
     }
     .mic-device-card:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
     .mic-device-card.is-active{border-color:var(--primary);background:var(--primary-soft)}
+    .mic-device-card.is-unavailable{opacity:.62;cursor:not-allowed}
+    .mic-device-card.is-unavailable:hover{border-color:var(--outline-variant);background:var(--surface-high)}
     .mic-device-body{min-width:0;flex:1}
     .mic-device-name{font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35;word-break:break-word}
     .mic-device-sub{font-size:11px;color:var(--on-surface-muted);margin-top:3px;line-height:1.35}
@@ -4039,7 +4041,13 @@
   let micPollTimer=0;
   let micDeviceRefreshTimer=0;
   let micRecoveryTimer=0;
+  let micBackoffUntil=0;
+  let micRecoveryFailCount=0;
+  let micDeviceRefreshInFlight=false;
   const MIC_DEVICE_REFRESH_MS=8000;
+  const MIC_RECOVERY_BASE_MS=30000;
+  const MIC_RECOVERY_MAX_MS=120000;
+  const MIC_MANUAL_REFRESH_SETTLE_MS=800;
   let voiceStatusPollTimer=0;
   let voiceUiRenderTimer=0;
   let voiceListRenderTimer=0;
@@ -4258,6 +4266,8 @@
       micRefresh:'刷新设备',
       micRefreshFail:'刷新麦克风列表失败',
       micReconnected:'已重新连接麦克风',
+      micOffline:'已断开',
+      micOfflineHint:'设备暂时离线，请稍后再点刷新设备',
       voiceSapiTitle:'轻量版细项',
       voiceSapiDesc:'对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。',
       voiceSapiLabel:'开启轻量版',
@@ -4727,6 +4737,8 @@
       micRefresh:'Refresh devices',
       micRefreshFail:'Failed to refresh microphone list',
       micReconnected:'Microphone reconnected',
+      micOffline:'Disconnected',
+      micOfflineHint:'Device is offline — wait a moment, then tap Refresh devices',
       voiceSapiTitle:'Light mode details',
       voiceSapiDesc:'Say one of the selected phrases into the mic to trigger your voice shortcut once.',
       voiceSapiLabel:'Enable Light mode',
@@ -5759,6 +5771,45 @@
     const level=Number(res.level)||0;
     const id=String(res.deviceId||res.device_id||'').trim();
     updateMicLevelBars(id,level);
+    if(level>0||id) clearMicBackoff();
+  }
+
+  function micBackoffActive(){
+    return micBackoffUntil>Date.now();
+  }
+
+  function micRecoveryDelayMs(){
+    const exponent=Math.max(0,micRecoveryFailCount-1);
+    return Math.min(MIC_RECOVERY_MAX_MS,MIC_RECOVERY_BASE_MS*Math.pow(2,exponent));
+  }
+
+  function enterMicBackoff(retryAfterMs){
+    const hinted=retryAfterMs!=null?Number(retryAfterMs):0;
+    const scaled=Math.min(
+      MIC_RECOVERY_MAX_MS,
+      Math.max(MIC_RECOVERY_BASE_MS,hinted||micRecoveryDelayMs())
+    );
+    micRecoveryFailCount++;
+    micBackoffUntil=Date.now()+scaled;
+    stopMicLevelPoll();
+    if(micRecoveryTimer){
+      clearTimeout(micRecoveryTimer);
+      micRecoveryTimer=0;
+    }
+    scheduleMicRecovery();
+  }
+
+  function clearMicBackoff(){
+    micBackoffUntil=0;
+    micRecoveryFailCount=0;
+  }
+
+  function micAutoRefreshAllowed(){
+    return micLevelUiVisible()
+      &&!voiceCaptureActive()
+      &&recordingMode==='none'
+      &&!micBackoffActive()
+      &&!micDeviceRefreshInFlight;
   }
 
   function voiceCaptureActive(){
@@ -5811,28 +5862,45 @@
     stopMicDeviceRefresh();
   }
 
+  function micSettle(ms){
+    return new Promise(function(resolve){ setTimeout(resolve,ms); });
+  }
+
+  function micDeviceAvailable(dev){
+    return !!(dev&&dev.isAvailable!==false);
+  }
+
   function resolveActiveMicId(devices,preferredId){
     devices=Array.isArray(devices)?devices:[];
     const preferred=String(preferredId||'').trim();
     if(preferred&&devices.some(function(d){ return d.id===preferred; })) return preferred;
-    const def=devices.find(function(d){ return d.isDefault; });
-    return def?def.id:(devices[0]?devices[0].id:'');
+    const def=devices.find(function(d){ return d.isDefault&&micDeviceAvailable(d); });
+    if(def) return def.id;
+    const first=devices.find(function(d){ return micDeviceAvailable(d); });
+    return first?first.id:'';
   }
 
   function scheduleMicRecovery(){
     if(micRecoveryTimer) return;
+    const wait=micBackoffActive()
+      ?Math.max(0,micBackoffUntil-Date.now())
+      :micRecoveryDelayMs();
     micRecoveryTimer=setTimeout(function(){
       micRecoveryTimer=0;
       if(!micLevelUiVisible()||voiceCaptureActive()) return;
+      if(micBackoffActive()){
+        scheduleMicRecovery();
+        return;
+      }
       loadMicDevices({reconnect:true}).catch(function(){});
-    },400);
+    },wait);
   }
 
   function startMicDeviceRefresh(){
     stopMicDeviceRefresh();
-    if(!micLevelUiVisible()) return;
+    if(!micAutoRefreshAllowed()) return;
     micDeviceRefreshTimer=setInterval(function(){
-      if(!micLevelUiVisible()||voiceCaptureActive()) return;
+      if(!micAutoRefreshAllowed()) return;
       refreshMicDevicesQuiet().catch(function(){});
     },MIC_DEVICE_REFRESH_MS);
   }
@@ -5845,38 +5913,55 @@
   }
 
   function refreshMicDevicesQuiet(){
+    if(micDeviceRefreshInFlight||micBackoffActive()) return Promise.resolve();
     const prevId=activeMicId;
+    micDeviceRefreshInFlight=true;
     return vpInvoke('cmd_mic_list',{}).then(function(devices){
       micDevices=Array.isArray(devices)?devices:[];
       const nextId=resolveActiveMicId(micDevices,prevId);
       const reconnect=nextId!==activeMicId||!micMonitorDeviceId||micMonitorDeviceId!==nextId;
       activeMicId=nextId;
       renderMicDevices();
+      clearMicBackoff();
       if(!micDevices.length){
         activeMicId='';
         micMonitorDeviceId='';
         return;
       }
-      if(reconnect) return ensureMicMonitor(activeMicId||null);
+      if(reconnect){
+        const pick=micDevices.find(function(d){ return d.id===activeMicId; });
+        if(micDeviceAvailable(pick)) return ensureMicMonitor(activeMicId||null);
+      }
+    }).catch(function(err){
+      console.error('mic refresh',err);
+      enterMicBackoff();
+    }).finally(function(){
+      micDeviceRefreshInFlight=false;
     });
   }
 
   function handleMicMonitorError(msg){
     const detail=msg&&(msg.message||msg.reason||'');
     if(detail) console.warn('mic monitor error',detail);
-    scheduleMicRecovery();
+    const retryMs=msg&&(msg.retryAfterMs!=null?msg.retryAfterMs:msg.retry_after_ms);
+    enterMicBackoff(retryMs);
   }
 
-  function ensureMicMonitor(deviceId){
+  function ensureMicMonitor(deviceId,opts){
+    opts=opts||{};
     if(!micLevelUiVisible()) return Promise.resolve();
     if(voiceCaptureActive()) return Promise.resolve();
-    const payload=deviceId?{device_id:deviceId}:{};
+    if(micBackoffActive()&&!opts.force) return Promise.resolve();
+    const payload={};
+    if(deviceId) payload.device_id=deviceId;
+    if(opts.force) payload.force=true;
     micMonitorDeviceId=deviceId||'';
     return stopMicMonitor().then(function(){
       if(!micLevelPollAllowed()) return;
+      if(micBackoffActive()&&!opts.force) return;
       return vpInvoke('cmd_mic_monitor_start',payload).catch(function(err){
         console.error('mic monitor start',err);
-        scheduleMicRecovery();
+        if(!opts.force) enterMicBackoff();
       });
     });
   }
@@ -5897,9 +5982,10 @@
     if(empty) empty.hidden=true;
     micDevices.forEach(function(dev){
       if(!list) return;
+      const avail=micDeviceAvailable(dev);
       const btn=document.createElement('button');
       btn.type='button';
-      btn.className='mic-device-card'+((dev.id===activeMicId||(!activeMicId&&dev.isDefault))?' is-active':'');
+      btn.className='mic-device-card'+((dev.id===activeMicId||(!activeMicId&&dev.isDefault))?' is-active':'')+(avail?'':' is-unavailable');
       btn.setAttribute('data-id',dev.id);
       btn.innerHTML=
         '<span class="mic-device-body">'+
@@ -5908,8 +5994,10 @@
         '</span>'+
         '<span class="mic-level-bars" aria-hidden="true">'+buildMicLevelBars()+'</span>';
       btn.querySelector('.mic-device-name').textContent=dev.name;
-      btn.querySelector('.mic-device-sub').textContent=dev.isDefault?t('micAutoDetectSub'):t('micExternal');
-      btn.disabled=recordingBusy;
+      btn.querySelector('.mic-device-sub').textContent=avail
+        ?(dev.isDefault?t('micAutoDetectSub'):t('micExternal'))
+        :t('micOffline');
+      btn.disabled=recordingBusy||!avail;
       btn.addEventListener('click',function(){ selectMicDevice(dev.id); });
       list.appendChild(btn);
     });
@@ -5955,8 +6043,18 @@
   function loadMicDevices(opts){
     opts=opts||{};
     const prevId=activeMicId;
-    return vpInvoke('cmd_mic_list',{}).then(function(devices){
+    const manual=!!opts.manual;
+    if(manual) clearMicBackoff();
+    else if(micBackoffActive()) return Promise.resolve();
+    const listPayload=manual?{force:true}:{};
+    const prep=manual
+      ?stopMicMonitor().then(function(){ return micSettle(MIC_MANUAL_REFRESH_SETTLE_MS); })
+      :Promise.resolve();
+    return prep.then(function(){
+      return vpInvoke('cmd_mic_list',listPayload);
+    }).then(function(devices){
       micDevices=Array.isArray(devices)?devices:[];
+      clearMicBackoff();
       if(!micDevices.length){
         activeMicId='';
         micMonitorDeviceId='';
@@ -5965,7 +6063,14 @@
       }
       activeMicId=resolveActiveMicId(micDevices,prevId);
       renderMicDevices();
-      return ensureMicMonitor(activeMicId||null).then(function(){
+      const pick=micDevices.find(function(d){ return d.id===activeMicId; });
+      if(!micDeviceAvailable(pick)){
+        micMonitorDeviceId='';
+        if(micLevelUiVisible()) startMicLevelPoll();
+        if(manual&&prevId) toast(t('micOfflineHint'));
+        return;
+      }
+      return ensureMicMonitor(activeMicId||null,{force:manual}).then(function(){
         if(micLevelUiVisible()) startMicLevelPoll();
         if(opts.reconnect) toast(t('micReconnected'));
       });
@@ -5979,22 +6084,34 @@
         emptyEl.textContent=msg||t('micWindowsOnly');
       }
       console.error('mic list',err);
+      if(!manual) enterMicBackoff();
+      throw err;
     });
   }
 
   function selectMicDevice(deviceId){
     if(!deviceId) return;
-    vpInvoke('cmd_mic_set_default',{device_id:deviceId}).then(function(){
+    const dev=micDevices.find(function(d){ return d.id===deviceId; });
+    if(dev&&!micDeviceAvailable(dev)){
+      toast(t('micOfflineHint'));
+      return;
+    }
+    clearMicBackoff();
+    vpInvoke('cmd_mic_set_default',{device_id:deviceId,force:true}).then(function(){
       activeMicId=deviceId;
-      return vpInvoke('cmd_mic_list',{});
+      return vpInvoke('cmd_mic_list',{force:true});
     }).then(function(devices){
       micDevices=Array.isArray(devices)?devices:[];
+      clearMicBackoff();
       renderMicDevices();
-      return ensureMicMonitor(activeMicId);
+      const pick=micDevices.find(function(d){ return d.id===activeMicId; });
+      if(!micDeviceAvailable(pick)) return;
+      return ensureMicMonitor(activeMicId,{force:true});
     }).then(function(){
       if(micLevelPollAllowed()) startMicLevelPoll();
     }).catch(function(err){
       console.error('mic switch',err);
+      enterMicBackoff();
       const detail=err&&(err.message||String(err))||'';
       toast(detail?(t('micSwitchFail')+'：'+detail):t('micSwitchFail'));
     });
@@ -12009,7 +12126,12 @@
   const btnMicRefresh=$('btnMicRefresh');
   if(btnMicRefresh) btnMicRefresh.onclick=function(){
     btnMicRefresh.disabled=true;
-    loadMicDevices().catch(function(err){
+    if(micRecoveryTimer){
+      clearTimeout(micRecoveryTimer);
+      micRecoveryTimer=0;
+    }
+    clearMicBackoff();
+    loadMicDevices({manual:true}).catch(function(err){
       const detail=err&&(err.message||String(err))||'';
       toast(detail?(t('micRefreshFail')+'：'+detail):t('micRefreshFail'));
     }).finally(function(){
@@ -12602,7 +12724,10 @@
     if(msg.type==='mic_level'){
       if(!micLevelUiVisible()) return;
       const id=msg.deviceId!=null?String(msg.deviceId):(msg.device_id!=null?String(msg.device_id):'');
-      if(typeof msg.level==='number') updateMicLevelBars(id,msg.level);
+      if(typeof msg.level==='number'){
+        updateMicLevelBars(id,msg.level);
+        if(msg.level>0||id) clearMicBackoff();
+      }
       return;
     }
     if(msg.type==='mic_monitor_error'){

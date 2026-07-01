@@ -26,7 +26,7 @@ use std::sync::Arc;
 use tauri::Manager;
 use tokio::time::{sleep, Duration};
 
-use crate::audio_win::{MicLevelState, MicMonitorHandle};
+use crate::audio_win::{AudioBackoffState, MicLevelState, MicMonitorHandle};
 use crate::config::{load_config, VoiceConfig};
 use crate::ipc::RecordingTarget;
 use crate::state::StateMachinePool;
@@ -44,6 +44,8 @@ pub struct AppState {
     pub paused: Mutex<bool>,
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
+    pub audio_backoff: AudioBackoffState,
+    pub mic_monitor_starting: Mutex<bool>,
     pub voice_sapi: Mutex<Option<crate::voice_sapi::VoiceSapiHandle>>,
     pub voice_sapi_cooldown_until: Mutex<Option<std::time::Instant>>,
     pub voice_sapi_state: Mutex<String>,
@@ -114,6 +116,8 @@ pub fn run() {
         paused: Mutex::new(false),
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),
+        audio_backoff: AudioBackoffState::new(),
+        mic_monitor_starting: Mutex::new(false),
         voice_sapi: Mutex::new(None),
         voice_sapi_cooldown_until: Mutex::new(None),
         voice_sapi_state: Mutex::new("stopped".into()),

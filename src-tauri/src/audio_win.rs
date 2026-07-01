@@ -1,6 +1,7 @@
 //! Windows microphone enumeration, default-device switching, and level monitoring.
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -9,11 +10,53 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, WebviewWindow};
 
+/// Wait after stopping capture before reopening (device switch / monitor restart).
+pub const MIC_MONITOR_SETTLE_MS: u64 = 400;
+/// Wait after stopping capture before a user-initiated refresh (Bluetooth needs longer).
+pub const MIC_MANUAL_REFRESH_SETTLE_MS: u64 = 800;
+/// COM / WASAPI one-shot operations (list, set default, peak meter).
+pub const COM_OP_TIMEOUT_MS: u64 = 8000;
+/// Background join observation for a stuck cpal/WASAPI monitor thread.
+pub const MONITOR_JOIN_TIMEOUT_MS: u64 = 3000;
+/// Default audio-stack cooldown after timeout or monitor failure.
+pub const DEFAULT_AUDIO_BACKOFF_MS: u64 = 30_000;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MicLevelSnapshot {
     pub level: u32,
     pub device_id: String,
+}
+
+pub struct AudioBackoffState {
+    until: Mutex<Option<Instant>>,
+}
+
+impl AudioBackoffState {
+    pub fn new() -> Self {
+        Self {
+            until: Mutex::new(None),
+        }
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.remaining_ms() > 0
+    }
+
+    pub fn remaining_ms(&self) -> u64 {
+        let guard = self.until.lock();
+        guard
+            .map(|until| until.saturating_duration_since(Instant::now()).as_millis() as u64)
+            .unwrap_or(0)
+    }
+
+    pub fn enter(&self, duration: Duration) {
+        *self.until.lock() = Some(Instant::now() + duration);
+    }
+
+    pub fn clear(&self) {
+        *self.until.lock() = None;
+    }
 }
 
 pub struct MicLevelState {
@@ -54,6 +97,12 @@ pub struct MicDeviceInfo {
     pub name: String,
     pub is_default: bool,
     pub is_communications: bool,
+    #[serde(default = "default_true")]
+    pub is_available: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 pub struct MicMonitorHandle {
@@ -68,10 +117,46 @@ impl MicMonitorHandle {
             std::thread::Builder::new()
                 .name("mic-monitor-join".into())
                 .spawn(move || {
-                    let _ = handle.join();
+                    let (tx, rx) = mpsc::sync_channel(1);
+                    std::thread::Builder::new()
+                        .name("mic-monitor-join-wait".into())
+                        .spawn(move || {
+                            let _ = tx.send(handle.join());
+                        })
+                        .ok();
+                    match rx.recv_timeout(Duration::from_millis(MONITOR_JOIN_TIMEOUT_MS)) {
+                        Ok(Ok(())) => {}
+                        Ok(Err(e)) => eprintln!("mic monitor join error: {e:?}"),
+                        Err(_) => eprintln!(
+                            "mic monitor: join timed out after {}ms (WASAPI/cpal thread may be stuck)",
+                            MONITOR_JOIN_TIMEOUT_MS
+                        ),
+                    }
                 })
                 .ok();
         }
+    }
+}
+
+/// Run a blocking audio/COM operation on a worker thread with a hard timeout.
+pub fn run_with_timeout<T, F>(timeout: Duration, f: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    let (tx, rx) = mpsc::sync_channel(1);
+    thread::Builder::new()
+        .name("audio-op".into())
+        .spawn(move || {
+            let _ = tx.send(f());
+        })
+        .map_err(|e| format!("spawn audio op: {e}"))?;
+    match rx.recv_timeout(timeout) {
+        Ok(result) => result,
+        Err(_) => Err(format!(
+            "audio operation timed out after {}ms",
+            timeout.as_millis()
+        )),
     }
 }
 
@@ -86,7 +171,7 @@ mod imp {
     use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
-        MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
+        MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE, DEVICE_STATE_UNPLUGGED,
     };
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
@@ -115,8 +200,9 @@ mod imp {
                 .ok()
                 .and_then(|d| device_id(&d).ok());
 
+            let endpoint_mask = DEVICE_STATE(DEVICE_STATE_ACTIVE.0 | DEVICE_STATE_UNPLUGGED.0);
             let collection = enumerator
-                .EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)
+                .EnumAudioEndpoints(eCapture, endpoint_mask)
                 .map_err(|e| format!("enum endpoints: {e}"))?;
             let count = collection.GetCount().map_err(|e| format!("count: {e}"))?;
 
@@ -125,9 +211,12 @@ mod imp {
                 let device = collection.Item(i).map_err(|e| format!("item {i}: {e}"))?;
                 let id = device_id(&device)?;
                 let name = device_friendly_name(&device).unwrap_or_else(|_| id.clone());
+                let state = device.GetState().unwrap_or(DEVICE_STATE(0));
+                let is_available = state.0 & DEVICE_STATE_ACTIVE.0 != 0;
                 out.push(MicDeviceInfo {
                     is_default: default_console.as_ref() == Some(&id),
                     is_communications: default_comm.as_ref() == Some(&id),
+                    is_available,
                     id,
                     name,
                 });
@@ -176,11 +265,15 @@ mod imp {
         } else {
             devices
                 .iter()
-                .find(|d| d.is_default)
+                .find(|d| d.is_default && d.is_available)
                 .cloned()
-                .or_else(|| devices.first().cloned())
+                .or_else(|| devices.iter().find(|d| d.is_available).cloned())
                 .ok_or_else(|| "no input devices".to_string())?
         };
+
+        if !target.is_available {
+            return Err(format!("microphone unavailable: {}", target.name));
+        }
 
         let stop = Arc::new(AtomicBool::new(false));
         let stop_thread = stop.clone();
@@ -201,7 +294,12 @@ mod imp {
                 level_state,
             ) {
                 eprintln!("mic monitor: {err}");
-                emit_mic_monitor_error(&app_err, &device_id_err, &err);
+                emit_mic_monitor_error(
+                    &app_err,
+                    &device_id_err,
+                    &err,
+                    Some(DEFAULT_AUDIO_BACKOFF_MS),
+                );
             }
         });
 
@@ -256,7 +354,12 @@ mod imp {
         let device_id_err = device_id.clone();
         let err_fn = move |err: cpal::StreamError| {
             eprintln!("cpal stream error: {err}");
-            emit_mic_monitor_error(&app_err, &device_id_err, &err.to_string());
+            emit_mic_monitor_error(
+                &app_err,
+                &device_id_err,
+                &err.to_string(),
+                Some(DEFAULT_AUDIO_BACKOFF_MS),
+            );
         };
 
         let stream = match sample_format {
@@ -409,12 +512,20 @@ mod imp {
         let _ = app.emit("to_js", &payload);
     }
 
-    pub fn emit_mic_monitor_error(app: &AppHandle, device_id: &str, message: &str) {
-        let payload = serde_json::json!({
+    pub fn emit_mic_monitor_error(
+        app: &AppHandle,
+        device_id: &str,
+        message: &str,
+        retry_after_ms: Option<u64>,
+    ) {
+        let mut payload = serde_json::json!({
             "type": "mic_monitor_error",
             "deviceId": device_id,
             "message": message,
         });
+        if let Some(ms) = retry_after_ms {
+            payload["retryAfterMs"] = serde_json::json!(ms);
+        }
         let _ = app.emit("to_js", &payload);
     }
 
@@ -520,12 +631,18 @@ mod imp {
 
 #[cfg(windows)]
 pub use imp::{
-    emit_mic_monitor_error, list_input_devices, read_mic_peak_level, set_default_input_device,
+    emit_mic_monitor_error, list_input_devices, set_default_input_device,
     start_mic_monitor,
 };
 
 #[cfg(not(windows))]
-pub fn emit_mic_monitor_error(_app: &AppHandle, _device_id: &str, _message: &str) {}
+pub fn emit_mic_monitor_error(
+    _app: &AppHandle,
+    _device_id: &str,
+    _message: &str,
+    _retry_after_ms: Option<u64>,
+) {
+}
 
 pub fn stop_mic_monitor(slot: &Mutex<Option<MicMonitorHandle>>) {
     if let Some(handle) = slot.lock().take() {
