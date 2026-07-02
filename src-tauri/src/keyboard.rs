@@ -8,7 +8,7 @@ use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
     KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
     MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_XDOWN,     MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
+    MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
     XBUTTON2,
 };
 
@@ -52,8 +52,8 @@ pub fn track_foreground_for_send() {}
 pub fn restore_external_foreground() -> bool {
     use winapi::um::processthreadsapi::GetCurrentThreadId;
     use winapi::um::winuser::{
-        AllowSetForegroundWindow, AttachThreadInput, GetForegroundWindow,
-        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        AllowSetForegroundWindow, AttachThreadInput, GetForegroundWindow, GetWindowThreadProcessId,
+        IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
     const ASFW_ANY: u32 = 0xFFFF_FFFF;

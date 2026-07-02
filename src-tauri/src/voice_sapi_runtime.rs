@@ -148,17 +148,15 @@ fn process_detected(
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
     {
-        *state.voice_sapi_last_skip.lock() =
-            format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+        *state.voice_sapi_last_skip.lock() = format!("防连按冷却中，请 {remain_ms} ms 后再说。");
         *state.voice_sapi_last_trigger.lock() = String::new();
         *state.voice_sapi_state.lock() = "cooldown".into();
         return;
     }
 
     let now = Instant::now();
-    *state.voice_sapi_cooldown_until.lock() = Some(
-        now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)),
-    );
+    *state.voice_sapi_cooldown_until.lock() =
+        Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
 
     let state2 = Arc::clone(state);
     let window2 = window.clone();

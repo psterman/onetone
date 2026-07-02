@@ -369,7 +369,7 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             .record_started_at
             .lock()
             .as_ref()
-            .map(|t| t.elapsed() < Duration::from_millis(350))
+            .map(|t| t.elapsed() < Duration::from_millis(900))
             .unwrap_or(true);
         if ignore {
             return;
@@ -582,11 +582,33 @@ pub fn push_runtime_with_cue(
     emit_to_js_main_t(window, payload);
 }
 
+fn emit_onboarding_trigger_fired(
+    window: &tauri::WebviewWindow,
+    mapping_id: &str,
+    trigger_key: &str,
+    target_key: &str,
+    source_key: &str,
+    ok: bool,
+    reason: &str,
+) {
+    let payload = serde_json::json!({
+        "type": "mvp_onboarding_trigger_fired",
+        "mappingId": mapping_id,
+        "triggerKey": trigger_key,
+        "targetKey": target_key,
+        "sourceKey": source_key,
+        "ok": ok,
+        "reason": reason,
+    });
+    window.emit("to_js", &payload).ok();
+}
+
 fn dispatch_trigger_action(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
     mapping_id: &str,
     duration_ms: u32,
+    source_key: &str,
     action: crate::state::Action,
 ) {
     use crate::{keyboard, state};
@@ -598,28 +620,48 @@ fn dispatch_trigger_action(
                 &key,
                 duration_ms,
             );
+            let trigger_key = {
+                let cfg = state.cfg.lock();
+                cfg.find_mapping_by_id(mapping_id)
+                    .map(|m| m.trigger_key.clone())
+                    .unwrap_or_default()
+            };
             if sent {
-                let should_enter = {
-                    let cfg = state.cfg.lock();
-                    if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
-                        false
-                    } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
-                        !m.native_key_restore
-                            && !m.target_key.trim().is_empty()
-                            && key == m.target_key
-                    } else {
-                        false
+                if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+                    crate::voice_end_runtime::stop_dictation_after_trigger_key(state, window);
+                } else {
+                    let should_enter = {
+                        let cfg = state.cfg.lock();
+                        if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
+                            false
+                        } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
+                            !m.native_key_restore
+                                && !m.target_key.trim().is_empty()
+                                && key == m.target_key
+                        } else {
+                            false
+                        }
+                    };
+                    if should_enter {
+                        crate::voice_end_runtime::enter_dictating(
+                            state,
+                            window,
+                            mapping_id,
+                            "physical trigger",
+                        );
                     }
-                };
-                if should_enter {
-                    crate::voice_end_runtime::enter_dictating(
-                        state,
-                        window,
-                        mapping_id,
-                        "physical trigger",
-                    );
                 }
             }
+            let reason = if sent { "sent" } else { "send_failed" };
+            emit_onboarding_trigger_fired(
+                window,
+                mapping_id,
+                &trigger_key,
+                &key,
+                source_key,
+                sent,
+                reason,
+            );
             let label = if sent { key.as_str() } else { "send_failed" };
             let sound_cue = if sent {
                 crate::config::runtime_sound_cue(&state.cfg.lock(), "key_wake")
@@ -711,8 +753,9 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         };
         (mapping_id, duration_ms, actions)
     };
+    let source_key = event.key.clone();
     for action in actions {
-        dispatch_trigger_action(state, window, &mapping_id, duration_ms, action);
+        dispatch_trigger_action(state, window, &mapping_id, duration_ms, &source_key, action);
     }
 }
 
@@ -1432,7 +1475,12 @@ pub fn cmd_test_send(
         });
     }
 
-    let ok = crate::voice_end_runtime::send_wake_to_target(Some(state.inner()), &window, &key, duration_ms);
+    let ok = crate::voice_end_runtime::send_wake_to_target(
+        Some(state.inner()),
+        &window,
+        &key,
+        duration_ms,
+    );
     serde_json::json!({
         "type": "mvp_test_sent",
         "ok": ok,
@@ -1556,28 +1604,29 @@ pub async fn cmd_mic_list(
         ));
     }
     let timeout = std::time::Duration::from_millis(crate::audio_win::COM_OP_TIMEOUT_MS);
-    match tokio::time::timeout(timeout, tauri::async_runtime::spawn_blocking(
-        crate::audio_win::list_input_devices,
-    ))
+    match tokio::time::timeout(
+        timeout,
+        tauri::async_runtime::spawn_blocking(crate::audio_win::list_input_devices),
+    )
     .await
     {
         Ok(Ok(Ok(devices))) => Ok(devices),
         Ok(Ok(Err(e))) => {
-            state
-                .audio_backoff
-                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            state.audio_backoff.enter(std::time::Duration::from_millis(
+                crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
+            ));
             Err(e)
         }
         Ok(Err(e)) => {
-            state
-                .audio_backoff
-                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            state.audio_backoff.enter(std::time::Duration::from_millis(
+                crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
+            ));
             Err(format!("mic list task failed: {e}"))
         }
         Err(_) => {
-            state
-                .audio_backoff
-                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            state.audio_backoff.enter(std::time::Duration::from_millis(
+                crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
+            ));
             Err(format!(
                 "mic list timed out after {}ms",
                 crate::audio_win::COM_OP_TIMEOUT_MS
@@ -1622,9 +1671,9 @@ pub fn cmd_mic_set_default(
             Ok(())
         }
         Err(e) => {
-            state
-                .audio_backoff
-                .enter(std::time::Duration::from_millis(crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS));
+            state.audio_backoff.enter(std::time::Duration::from_millis(
+                crate::audio_win::DEFAULT_AUDIO_BACKOFF_MS,
+            ));
             Err(e)
         }
     }
@@ -1925,6 +1974,23 @@ pub fn cmd_voice_end_test_stop(
 }
 
 #[tauri::command]
+pub fn cmd_voice_end_ui_end(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    // UI-driven "结束输入" button: force stop current dictation session.
+    // Unlike trigger-key stop (where target key was already sent), UI stop always sends target shortcut.
+    if crate::voice_end_runtime::session_state(&state) != "dictating" {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "not dictating"
+        });
+    }
+    crate::voice_end_runtime::handle_end_phrase(&state, &window, "ui end input");
+    crate::voice_end_runtime::voice_end_status(&state)
+}
+
+#[tauri::command]
 pub fn cmd_voice_end_test_commit(
     state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,
@@ -1966,3 +2032,5 @@ pub fn cmd_open_url(url: String) -> Result<(), String> {
         Err("open url is only supported on Windows".into())
     }
 }
+
+// Coach HUD removed.

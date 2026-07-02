@@ -290,7 +290,26 @@ pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
     })
 }
 
+pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, window: &WebviewWindow) {
+    if session_state(state) != "dictating" {
+        return;
+    }
+    finish_dictation_session(state, window, "trigger key", true);
+}
+
 pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str) {
+    if session_state(state) != "dictating" {
+        return;
+    }
+    finish_dictation_session(state, window, phrase, false);
+}
+
+fn finish_dictation_session(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    phrase: &str,
+    target_key_already_sent: bool,
+) {
     if session_state(state) != "dictating" {
         return;
     }
@@ -325,24 +344,30 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
     let window2 = window.clone();
     let phrase2 = phrase.to_string();
     std::thread::spawn(move || {
-        let sent = crate::keyboard::send_chord(&target_key, duration_ms);
-        if !sent {
-            *state2.voice_session_state.lock() = "error".into();
-            *state2.voice_session_last_action.lock() =
-                format!("targetKey send failed: {target_key}");
-            let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
-            crate::ipc::push_runtime_with_cue(
-                state2.as_ref(),
-                &window2,
-                "send_failed",
-                &session_mapping_id,
-                sound_cue.as_deref(),
-            );
-            return;
+        if !target_key_already_sent {
+            let sent = crate::keyboard::send_chord(&target_key, duration_ms);
+            if !sent {
+                *state2.voice_session_state.lock() = "error".into();
+                *state2.voice_session_last_action.lock() =
+                    format!("targetKey send failed: {target_key}");
+                let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
+                crate::ipc::push_runtime_with_cue(
+                    state2.as_ref(),
+                    &window2,
+                    "send_failed",
+                    &session_mapping_id,
+                    sound_cue.as_deref(),
+                );
+                return;
+            }
         }
 
         *state2.voice_session_state.lock() = "committing".into();
-        *state2.voice_session_last_action.lock() = "sent targetKey to stop dictation".into();
+        *state2.voice_session_last_action.lock() = if target_key_already_sent {
+            "trigger key stopped dictation".into()
+        } else {
+            "sent targetKey to stop dictation".into()
+        };
         mark_voice_wake_key_sent(state2.as_ref());
 
         let now = Instant::now();
@@ -572,7 +597,10 @@ mod tests {
 
         let mut cfg = VoiceConfig::default();
         cfg.voice_vosk.phrases = vec!["start dictation".into()];
-        assert!(text_matches_wake_phrase(&cfg, "startdictating startsdictation"));
+        assert!(text_matches_wake_phrase(
+            &cfg,
+            "startdictating startsdictation"
+        ));
         let en = vec!["end dictation".into(), "send it".into()];
         assert_eq!(
             matches_end_phrase("startdictating startsdictation", &[], &en),
@@ -582,7 +610,7 @@ mod tests {
 
     #[test]
     fn wake_target_prefers_active_mapping() {
-        use crate::config::{MappingEntry, TriggerMode, VoiceConfig, new_mapping_id};
+        use crate::config::{new_mapping_id, MappingEntry, TriggerMode, VoiceConfig};
 
         let mut cfg = VoiceConfig::default();
         cfg.mappings = vec![MappingEntry {

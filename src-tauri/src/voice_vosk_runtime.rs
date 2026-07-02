@@ -274,17 +274,15 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
     {
-        *state.voice_vosk_last_skip.lock() =
-            format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+        *state.voice_vosk_last_skip.lock() = format!("防连按冷却中，请 {remain_ms} ms 后再说。");
         *state.voice_vosk_last_trigger.lock() = String::new();
         *state.voice_vosk_state.lock() = "cooldown".into();
         return;
     }
 
     let now = Instant::now();
-    *state.voice_vosk_cooldown_until.lock() = Some(
-        now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)),
-    );
+    *state.voice_vosk_cooldown_until.lock() =
+        Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
 
     let state2 = Arc::clone(state);
     let window2 = window.clone();
@@ -315,8 +313,7 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();
             *state2.voice_vosk_last_skip.lock() = String::new();
-            *state2.voice_vosk_last_trigger.lock() =
-                format!("{target_key}（命中「{phrase2}」）");
+            *state2.voice_vosk_last_trigger.lock() = format!("{target_key}（命中「{phrase2}」）");
             let mapping_id = {
                 let cfg = state2.cfg.lock();
                 crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)

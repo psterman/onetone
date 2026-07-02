@@ -69,6 +69,7 @@ fn main() {
         "cmd_voice_end_set_commit_delay",
         "cmd_voice_end_set_phrases",
         "cmd_voice_end_test_stop",
+        "cmd_voice_end_ui_end",
         "cmd_voice_end_test_commit",
     ];
 

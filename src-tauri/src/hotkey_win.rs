@@ -213,6 +213,7 @@ const RECORD_KEYS: &[&str] = &[
 
 pub struct HotkeyManager {
     cmd_tx: mpsc::Sender<Cmd>,
+    event_tx: mpsc::Sender<String>,
     event_rx: mpsc::Receiver<String>,
 }
 
@@ -220,8 +221,13 @@ impl HotkeyManager {
     pub fn new() -> Self {
         let (cmd_tx, cmd_rx) = mpsc::channel::<Cmd>();
         let (event_tx, event_rx) = mpsc::channel::<String>();
-        thread::spawn(move || hotkey_thread(cmd_rx, event_tx));
-        Self { cmd_tx, event_rx }
+        let thread_event_tx = event_tx.clone();
+        thread::spawn(move || hotkey_thread(cmd_rx, thread_event_tx));
+        Self {
+            cmd_tx,
+            event_tx,
+            event_rx,
+        }
     }
 
     pub fn bind_all(&self, bindings: &[String]) {
@@ -237,10 +243,12 @@ impl HotkeyManager {
     }
 
     pub fn start_recording(&self) {
+        *recording_sender().lock().unwrap() = Some(self.event_tx.clone());
         self.cmd_tx.send(Cmd::StartRecording).ok();
     }
 
     pub fn stop_recording(&self) {
+        *recording_sender().lock().unwrap() = None;
         self.cmd_tx.send(Cmd::StopRecording).ok();
     }
 
@@ -793,14 +801,21 @@ unsafe extern "system" fn wnd_proc(
             return 1;
         }
         let id = wparam as u32;
+        let ctx_ptr = winuser::GetWindowLongPtrW(hwnd, winuser::GWLP_USERDATA) as *mut WndCtx;
+        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+            if !ctx_ptr.is_null() {
+                if let Some(name) = (*ctx_ptr).names.get(&id) {
+                    sender.send(name.clone()).ok();
+                }
+            }
+            return 1;
+        }
         if id == SCHEME_SWITCH_HOTKEY_ID {
-            let ctx_ptr = winuser::GetWindowLongPtrW(hwnd, winuser::GWLP_USERDATA) as *mut WndCtx;
             if !ctx_ptr.is_null() && (*ctx_ptr).scheme_switch_id.is_some() {
                 (*ctx_ptr).tx.send(SCHEME_CYCLE_MARKER.to_string()).ok();
             }
             return 1;
         }
-        let ctx_ptr = winuser::GetWindowLongPtrW(hwnd, winuser::GWLP_USERDATA) as *mut WndCtx;
         if !ctx_ptr.is_null() {
             if let Some(mapping_id) = (*ctx_ptr).scheme_select_ids.get(&id) {
                 let marker = format!("{SCHEME_SELECT_PREFIX}{mapping_id}");

@@ -129,11 +129,13 @@ impl RecordGestureDetector {
             self.reset();
             return Ok(Some(complete));
         }
-        self.press_started = None;
-        self.first_release_at = Some(now);
-        Err(RecordGestureHint::WaitingDouble {
+        let complete = RecordGestureComplete {
             key: key.to_string(),
-        })
+            device: device.map(str::to_string),
+            gesture: RecordedGesture::Tap,
+        };
+        self.reset();
+        Ok(Some(complete))
     }
 
     pub fn poll(&mut self, now: Instant) -> Option<RecordGestureComplete> {
@@ -370,5 +372,29 @@ impl GestureTracker {
             now.duration_since(pending.first_at)
                 <= Duration::from_millis(pending.window_ms as u64 + 50)
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn record_short_press_completes_on_keyup() {
+        let mut detector = RecordGestureDetector::new();
+        let start = Instant::now();
+
+        assert!(matches!(
+            detector.on_keydown("RAlt", None, start),
+            Err(RecordGestureHint::Holding { .. })
+        ));
+
+        let complete = detector
+            .on_keyup("RAlt", None, start + Duration::from_millis(80))
+            .expect("keyup should not be a hint")
+            .expect("short press should complete");
+
+        assert_eq!(complete.key, "RAlt");
+        assert_eq!(complete.gesture, RecordedGesture::Tap);
     }
 }

@@ -414,14 +414,18 @@ fn run_worker(
                     &mut last_partial_at,
                 );
                 if wake_allows_partial(&phrases) {
-                    if let Some(partial) = sanitize_vosk_text(&recognizer.partial_result().partial) {
+                    if let Some(partial) = sanitize_vosk_text(&recognizer.partial_result().partial)
+                    {
                         if let Some((phrase, text)) = try_wake_with_en_buffer(
                             &mut en_wake_buffer,
                             &partial,
                             &phrases,
                             &mut wake_dedup,
                         ) {
-                            send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
+                            send_event_blocking(
+                                &event_tx,
+                                VoiceVoskEvent::Detected { phrase, text },
+                            );
                         }
                     }
                 }
@@ -1680,16 +1684,10 @@ mod tests {
     fn wake_dedup_allows_repeat_after_window() {
         let phrases = vec!["start dictation".into()];
         let mut dedup = WakePhraseDedup::new();
-        assert!(
-            try_wake_from_text("start dictation", &phrases, &mut dedup).is_some()
-        );
-        assert!(
-            try_wake_from_text("start dictation", &phrases, &mut dedup).is_none()
-        );
+        assert!(try_wake_from_text("start dictation", &phrases, &mut dedup).is_some());
+        assert!(try_wake_from_text("start dictation", &phrases, &mut dedup).is_none());
         dedup.clear();
-        assert!(
-            try_wake_from_text("start dictation", &phrases, &mut dedup).is_some()
-        );
+        assert!(try_wake_from_text("start dictation", &phrases, &mut dedup).is_some());
     }
 
     #[test]

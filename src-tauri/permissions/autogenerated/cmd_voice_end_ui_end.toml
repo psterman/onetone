@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-end-ui-end"
+description = "Enables the cmd_voice_end_ui_end command without any pre-configured scope."
+commands.allow = ["cmd_voice_end_ui_end"]
+
+[[permission]]
+identifier = "deny-cmd-voice-end-ui-end"
+description = "Denies the cmd_voice_end_ui_end command without any pre-configured scope."
+commands.deny = ["cmd_voice_end_ui_end"]

@@ -1,0 +1,7 @@
+[[set]]
+identifier = "coach-hud-ipc"
+description = "Minimal IPC for the coach HUD overlay window"
+permissions = [
+  "allow-cmd-coach-hud-dismiss",
+  "allow-cmd-coach-hud-get-state",
+]

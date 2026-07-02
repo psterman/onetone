@@ -1,0 +1,9 @@
+{
+  "identifier": "coach-hud",
+  "description": "Coach HUD overlay window",
+  "windows": ["coach_hud"],
+  "permissions": [
+    "core:default",
+    "coach-hud-ipc"
+  ]
+}

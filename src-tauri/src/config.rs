@@ -182,6 +182,8 @@ pub struct VoiceConfig {
     pub scheme_switch_key: String,
     #[serde(default, rename = "keyWakeSoundEnabled")]
     pub key_wake_sound_enabled: bool,
+    #[serde(default, rename = "coachHudEnabled")]
+    pub coach_hud_enabled: bool,
     #[serde(default, rename = "sounds")]
     pub sounds: SoundsConfig,
     // --- migrate-only (read, never serialize) ---
@@ -956,6 +958,7 @@ impl Default for VoiceConfig {
             scenes: None,
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
+            coach_hud_enabled: false,
             sounds: SoundsConfig::default(),
             record_key: String::new(),
             target_key: String::new(),
@@ -1639,8 +1642,7 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
             if let Some(parent) = path.parent() {
                 w.watch(parent, RecursiveMode::NonRecursive).ok();
             }
-            let mut last_emit = std::time::Instant::now()
-                - std::time::Duration::from_secs(10);
+            let mut last_emit = std::time::Instant::now() - std::time::Duration::from_secs(10);
             loop {
                 if rx.recv_timeout(Duration::from_millis(500)).is_ok() {
                     if last_emit.elapsed() < Duration::from_millis(1500) {

@@ -631,8 +631,7 @@ mod imp {
 
 #[cfg(windows)]
 pub use imp::{
-    emit_mic_monitor_error, list_input_devices, set_default_input_device,
-    start_mic_monitor,
+    emit_mic_monitor_error, list_input_devices, set_default_input_device, start_mic_monitor,
 };
 
 #[cfg(not(windows))]

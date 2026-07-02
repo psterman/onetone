@@ -135,6 +135,16 @@
     .header-update-chip:active{transform:scale(.97)}
     .header-update-chip.is-hot{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
     .header-update-chip.is-busy{opacity:.78;cursor:progress}
+    .header-habits-btn{
+      height:36px;padding:0 14px;border-radius:var(--radius-pill);
+      border:1px solid rgba(42,156,196,.18);background:var(--surface-high);
+      color:var(--btn-label);font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      transition:transform var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard);
+    }
+    .header-habits-btn:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.26);transform:translateY(-1px)}
+    .header-habits-btn:active{transform:scale(.97)}
+    .header-habits-btn .home-cta-icon,.header-habits-btn .home-cta-sub{display:none!important}
     .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
     .header-listen-chip{
       font-size:12px;font-weight:600;padding:5px 12px;border-radius:var(--radius-pill);
@@ -299,7 +309,22 @@
     .map-wf-chip-voice{background:rgba(120,96,200,.08);color:#6b57b8;border-color:rgba(120,96,200,.18)}
     .map-wf-chip-profile{background:rgba(42,156,196,.08);color:var(--primary);border-color:rgba(42,156,196,.18)}
     .map-row.is-dictating{box-shadow:inset 3px 0 0 var(--primary)}
-    .home-zone{width:100%;max-width:100%;margin:0;padding:4px 0 8px}
+    .home-zone{width:100%;max-width:100%;margin:0;padding:4px 0 8px;display:flex;flex-direction:column;gap:10px}
+    .home-hero{
+      display:flex;flex-direction:column;align-items:center;gap:12px;
+      padding:24px 20px 8px;text-align:center;order:0;
+    }
+    .home-hero.is-compact{padding-bottom:4px}
+    .home-hero .hero-map,
+    .home-hero .hero-map-caption,
+    .home-hero .home-phrase-strip,
+    .home-hero .home-hero-hint{display:none!important}
+    .home-hero-status{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:360px}
+    .home-hero-status .home-status{justify-content:center}
+    .home-hero-status .home-status-title{font-size:15px}
+    .home-hero-hint{margin:0;font-size:12px;line-height:1.55;color:var(--on-surface-muted);font-weight:600;max-width:320px}
+    .home-hero-hint.is-clickable{cursor:pointer;color:var(--primary)}
+    .home-hero-hint.is-clickable:hover{text-decoration:underline}
     .home-status-wrap{
       background:var(--surface-soft);border:1px solid var(--outline-variant);border-radius:14px;
       padding:10px 12px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center
@@ -325,10 +350,52 @@
     .home-cta:active{transform:scale(0.98)}
     .home-cta.is-dictating{background:linear-gradient(180deg,#5ec8e8 0%,#2a9cc4 100%)}
     .home-cta.is-config{background:var(--surface-high);color:var(--btn-label);border:1px solid var(--outline-variant);box-shadow:var(--shadow-card)}
+    .home-cta.is-hero{
+      width:100%;max-width:300px;min-height:80px;border-radius:20px;padding:16px 20px;
+    }
+    .home-cta.is-hero .home-cta-main{font-size:18px}
+    .home-cta.is-listening{
+      background:var(--surface-high);color:var(--btn-label);border:1px solid rgba(34,197,94,.28);
+      box-shadow:var(--shadow-card);
+    }
+    .home-cta.is-listening .home-cta-main{color:var(--primary-strong)}
+    html[data-theme="dark"] .home-cta.is-listening .home-cta-main{color:var(--primary-glow)}
+    .home-advanced{margin-top:4px;border:none}
+    .home-advanced>summary{
+      list-style:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--on-surface-muted);
+      padding:10px 4px;text-align:center;user-select:none;
+    }
+    .home-advanced>summary::-webkit-details-marker{display:none}
+    .home-advanced>summary::after{content:' ▾';opacity:.55}
+    .home-advanced[open]>summary::after{content:' ▴'}
+    .home-advanced>summary:hover{color:var(--primary)}
+    .home-advanced[open] .home-main-grid{margin-top:8px}
+    .home-advanced.is-unlocked .home-main-grid{display:grid}
+    .home-advanced.is-unlocked>summary{display:none}
+    .home-advanced.is-unlocked .home-main-grid{margin-top:0}
+    .home-advanced.is-unlocked{padding-top:4px}
+    .home-advanced.is-single-card>summary{display:none}
+    .home-advanced.is-single-card .home-main-grid{margin-top:0}
     .home-cta-icon{font-size:22px;line-height:1;opacity:.95}
     .home-cta-main{font-size:16px;font-weight:800;letter-spacing:-.01em}
     .home-cta-sub{font-size:12px;font-weight:600;opacity:.88}
     .home-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .home-main-grid.is-dual{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .home-main-grid.is-single{
+      grid-template-columns:minmax(0,1fr);
+      max-width:min(100%,560px);
+      margin-left:auto;margin-right:auto;
+    }
+    .home-main-grid.is-single .home-live-panel{width:100%}
+    .home-grid-cta{
+      grid-column:1 / -1;width:100%;max-width:none;margin:0 0 4px;
+    }
+    .home-grid-cta.is-hero{min-height:68px;border-radius:16px}
+    .home-grid-cta.is-listening .home-cta-sub{color:var(--primary);opacity:1;font-weight:700}
+    .home-hero.is-voice-only .hero-map,
+    .home-hero.is-voice-only .hero-map-caption{display:none!important}
+    .home-entry-section{order:2;width:100%}
+    .home-setup-bar{display:none!important}
     .home-live-finish{margin-top:12px;padding-top:12px;border-top:1px solid var(--outline-variant)}
     .home-live-finish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
     .home-live-finish-head .mini-title{margin:0;font-size:12px;font-weight:800;color:var(--on-surface-muted)}
@@ -877,7 +944,8 @@
       0%,100%{filter:brightness(1)}
       50%{filter:brightness(1.04)}
     }
-    .home-live-panel[hidden]{display:none!important}
+    .home-live-panel[hidden],
+    .home-live-panel.is-entry-hidden{display:none!important}
     .mapping-section{margin-top:8px;opacity:.98}
     .settings-panel .mapping-section{
       margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--outline-variant);
@@ -931,6 +999,11 @@
     }
     .settings-nav-item:hover{background:var(--primary-soft);color:var(--on-surface)}
     .settings-nav-item.is-active{background:var(--primary-soft);color:var(--primary);font-weight:700}
+    .settings-nav-badge{
+      width:8px;height:8px;border-radius:999px;background:#ef4444;flex-shrink:0;margin-left:auto;
+      box-shadow:0 0 0 2px var(--surface-high);
+    }
+    html[data-theme="dark"] .settings-nav-badge{box-shadow:0 0 0 2px var(--surface-soft)}
     .settings-nav-group{display:flex;flex-direction:column;gap:2px}
     .settings-scheme-subnav{
       display:flex;flex-direction:column;gap:6px;margin:0 0 6px 8px;padding:0 0 6px 10px;
@@ -1348,9 +1421,152 @@
       height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--outline);background:var(--surface-high);
       color:var(--btn-label);font:inherit;font-size:14px;font-weight:700;cursor:pointer;
     }
-    .welcome-btn.primary{background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);color:var(--on-primary);border:none;box-shadow:var(--shadow-button)}
-    .welcome-btn:hover{background:var(--primary-soft)}
-    .welcome-btn.primary:hover{filter:brightness(1.04)}
+    .welcome-btn.primary{background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);color:#fff;border:none;box-shadow:var(--shadow-button)}
+    html[data-theme="dark"] .welcome-btn.primary{color:var(--on-primary)}
+    .welcome-btn:not(.primary):hover{background:var(--primary-soft)}
+    .welcome-btn.primary:hover{background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);color:#fff;filter:brightness(1.06)}
+    html[data-theme="dark"] .welcome-btn.primary:hover{color:var(--on-primary)}
+    .onboard-progress{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px}
+    .onboard-progress-dot{
+      width:32px;height:32px;border-radius:999px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--btn-label-muted);
+    }
+    .onboard-progress-dot.is-active{border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 4px rgba(42,156,196,.12)}
+    .onboard-progress-dot.is-done{background:var(--primary-soft);color:var(--primary-strong);border-color:rgba(42,156,196,.2)}
+    .onboard-stage{min-height:220px}
+    .onboard-panel[hidden]{display:none!important}
+    .onboard-trigger-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .onboard-trigger-card{
+      border:1px solid var(--outline-variant);border-radius:16px;padding:14px 12px;background:var(--surface-high);
+      text-align:left;cursor:pointer;font:inherit;transition:border-color var(--dur-fast),box-shadow var(--dur-fast);
+    }
+    .onboard-trigger-card:hover{border-color:rgba(42,156,196,.35)}
+    .onboard-trigger-card.is-selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(42,156,196,.12)}
+    .onboard-trigger-card b{display:block;font-size:14px;color:var(--indigo);margin-bottom:4px}
+    .onboard-trigger-card span{font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .onboard-alt-warn{
+      margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(249,115,22,.08);
+      border:1px solid rgba(249,115,22,.18);font-size:12px;line-height:1.6;color:var(--on-surface-muted);
+    }
+    .onboard-alt-confirm{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:12px;line-height:1.5;color:var(--on-surface-muted)}
+    .onboard-try-center{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 4px}
+    .onboard-setup-center{display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 0 6px}
+    .onboard-setup-grid{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:18px;align-items:center;max-width:760px;width:100%}
+    .onboard-record-card{
+      border:1px solid var(--outline-variant);border-radius:22px;padding:18px 18px 16px;background:rgba(255,255,255,.74);
+      box-shadow:0 10px 30px rgba(32,76,126,.08);transition:.18s ease;text-align:center;
+    }
+    .onboard-record-btn{margin-top:12px;width:100%;max-width:240px}
+    .onboard-record-btn.is-recording{border-color:rgba(42,156,196,.35);color:var(--primary);background:var(--primary-soft);animation:btn-recording-pulse 1.4s ease-in-out infinite}
+    .onboard-record-card.is-recording{border-color:var(--primary); box-shadow:0 0 0 4px rgba(86,190,235,.16),0 16px 36px rgba(86,190,235,.16)}
+    .onboard-record-card.is-disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+    .onboard-record-card.is-recording .onboard-record-card-key::after{
+      content:'';display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--primary);margin-left:8px;vertical-align:middle;
+      animation:onboardPulse 1s ease-in-out infinite;
+    }
+    .onboard-record-card-step{font-size:11px;color:var(--primary-strong);font-weight:800;margin-bottom:6px}
+    .onboard-record-card-title{font-size:12px;color:var(--on-surface-muted);margin:0 0 10px}
+    .onboard-record-card-key{font-size:24px;font-weight:800;color:var(--primary-strong);line-height:1.2}
+    .onboard-record-card-hint{font-size:12px;color:var(--on-surface-muted);margin-top:10px;line-height:1.5}
+    .onboard-record-arrow{font-size:24px;color:var(--primary-strong);opacity:.8}
+    .onboard-setup-summary{font-size:13px;color:var(--on-surface-muted);text-align:center;max-width:620px;line-height:1.6}
+    .onboard-record-actions{display:flex;justify-content:center;gap:10px;margin-top:10px}
+    .onboard-record-flow-status{font-size:13px;color:var(--primary-strong);font-weight:700;text-align:center;min-height:20px}
+    @keyframes onboardPulse{
+      0%,100%{opacity:.35;transform:scale(.9)}
+      50%{opacity:1;transform:scale(1.15)}
+    }
+    @media (max-width: 760px){
+      .onboard-setup-grid{grid-template-columns:1fr;gap:12px}
+      .onboard-record-arrow{transform:rotate(90deg)}
+    }
+    .onboard-try-key-wrap{
+      display:inline-flex;align-items:center;justify-content:center;min-width:120px;height:64px;padding:0 20px;border-radius:18px;
+      background:#fff;border:1px solid rgba(42,156,196,.18);font-size:22px;font-weight:900;color:var(--key-soft);
+      box-shadow:0 12px 24px rgba(42,156,196,.10);animation:demo-key-pulse 2.8s ease-in-out infinite;
+    }
+    .onboard-try-key-wrap.is-success{animation:none;border-color:rgba(42,156,196,.35);box-shadow:0 0 0 8px rgba(42,156,196,.12)}
+    .onboard-try-desc{margin:0;font-size:13px;line-height:1.65;color:var(--on-surface-muted);text-align:center;max-width:420px}
+    .onboard-try-result{min-height:20px;font-size:12px;font-weight:700;text-align:center}
+    .onboard-try-result.is-ok{color:var(--primary-strong)}
+    .onboard-try-result.is-warn{color:var(--warning)}
+    .onboard-target-flow{
+      display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:12px 0;
+    }
+    .onboard-target-key,.onboard-target-arrow{font-size:14px;font-weight:800;color:var(--on-surface-muted)}
+    .onboard-target-key.is-key{
+      min-width:96px;height:54px;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;border-radius:16px;
+      background:#fff;border:1px solid rgba(42,156,196,.14);font-size:18px;font-weight:900;color:var(--key-soft);
+    }
+    .onboard-target-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+    .hero-map{
+      display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:4px 0 14px;
+      padding:14px 16px;border-radius:20px;border:1px solid var(--outline-variant);
+      background:linear-gradient(180deg,rgba(230,247,252,.7),rgba(247,251,253,.85));
+    }
+    .hero-map.is-listening .hero-map-key{animation:demo-key-pulse 2.8s ease-in-out infinite}
+    .hero-map-key{
+      min-width:88px;height:52px;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;border-radius:16px;
+      background:#fff;border:1px solid rgba(42,156,196,.14);font-size:17px;font-weight:900;color:var(--key-soft);
+      box-shadow:0 8px 18px rgba(42,156,196,.08);
+    }
+    .hero-map-arrow{font-size:22px;font-weight:900;color:var(--primary);opacity:.8}
+    .hero-map-caption{margin:-6px 0 12px;font-size:11px;line-height:1.45;color:var(--on-surface-muted);text-align:center;max-width:340px}
+    .home-phrase-strip{
+      display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;max-width:360px;
+    }
+    .home-phrase-chip{
+      display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);font-size:12px;font-weight:700;color:var(--btn-label);
+    }
+    .home-phrase-chip.is-action{
+      border:none;background:var(--primary-soft);color:var(--primary);cursor:pointer;font:inherit;
+    }
+    .home-phrase-chip.is-action:hover{filter:brightness(1.03)}
+    .onboard-progress-dot.is-optional::after{
+      content:'';position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);
+      width:4px;height:4px;border-radius:999px;background:var(--btn-label-muted);opacity:.7;
+    }
+    .onboard-progress-dot{position:relative}
+    .onboard-practice-optin,.onboard-practice-active{display:flex;flex-direction:column;gap:12px}
+    .onboard-practice-note,.onboard-practice-risk{margin:0;font-size:12px;line-height:1.6;color:var(--on-surface-muted)}
+    .onboard-practice-risk{
+      padding:10px 12px;border-radius:12px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.16);
+    }
+    .onboard-practice-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+    .phrase-practice-overlay{
+      position:fixed;inset:0;z-index:750;background:rgba(237,245,250,.88);backdrop-filter:blur(14px);
+      display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;
+      transition:opacity var(--dur-med) var(--ease-standard);
+    }
+    html[data-theme="dark"] .phrase-practice-overlay{background:rgba(15,20,25,.88)}
+    .phrase-practice-overlay.open{opacity:1;pointer-events:auto}
+    .phrase-practice-modal{
+      width:min(480px,96vw);background:rgba(255,255,255,.96);border:1px solid var(--outline-variant);
+      border-radius:24px;box-shadow:0 24px 60px rgba(26,45,74,.14);padding:22px;position:relative;
+    }
+    .phrase-practice-title{margin:0 0 8px;font-size:20px;font-weight:900;color:var(--indigo)}
+    .phrase-practice-hint{margin:0 0 14px;font-size:13px;line-height:1.6;color:var(--on-surface-muted)}
+    .phrase-practice-phrase{
+      min-height:52px;padding:14px 16px;border-radius:16px;border:1px solid rgba(42,156,196,.16);
+      background:linear-gradient(180deg,rgba(230,247,252,.85),rgba(247,251,253,.95));
+      font-size:22px;font-weight:900;line-height:1.5;text-align:center;color:var(--key-soft);margin-bottom:10px;
+    }
+    .phrase-practice-phrase.is-success{box-shadow:0 0 0 6px rgba(42,156,196,.12)}
+    .phrase-practice-char{display:inline-block;transition:color .18s ease, transform .18s ease}
+    .phrase-practice-char.is-done{color:var(--primary-strong)}
+    .phrase-practice-char.is-active{color:var(--primary);transform:scale(1.08)}
+    .phrase-practice-heard{min-height:18px;margin:0 0 12px;font-size:12px;text-align:center;color:var(--on-surface-muted)}
+    .phrase-practice-heard.is-live{color:var(--primary)}
+    .phrase-practice-heard.is-ok{color:var(--primary-strong);font-weight:800}
+    .phrase-practice-chip-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+    .phrase-practice-chip{
+      height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--outline-variant);background:var(--surface-high);
+      font:inherit;font-size:12px;font-weight:700;color:var(--btn-label);cursor:pointer;
+    }
+    .phrase-practice-chip.is-active{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+    .phrase-practice-actions{display:flex;justify-content:flex-end}
+    .phrase-practice-embedded .phrase-practice-phrase{font-size:20px}
     .replay-link{
       border:none;background:transparent;color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;
     }
@@ -2036,6 +2252,8 @@
     .control-btn:active{transform:scale(0.97)}
     .control-btn.warning{color:#9a3412;background:#fff7ed;border-color:#fed7aa}
     html[data-theme="dark"] .control-btn.warning{color:#fed7aa;background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.32)}
+    .control-btn.is-hot{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28)}
+    .control-btn.is-busy{opacity:.78;cursor:progress}
     .voice-diagnostics-card{
       padding:0;
       border:0;
@@ -2338,7 +2556,11 @@
       </div>
       <div class="header-actions">
         <span class="chip header-listen-chip" id="headerListenState" role="status">监听中</span>
-        <button type="button" class="header-update-chip" id="btnUpdateAction">检查更新</button>
+        <button type="button" class="header-habits-btn" id="btnHomeCta">
+          <span class="home-cta-icon" id="homeCtaIcon" aria-hidden="true" hidden>⌨</span>
+          <span id="homeCtaMain">我的习惯</span>
+          <span class="home-cta-sub" id="homeCtaSub" hidden></span>
+        </button>
         <button type="button" id="btnSettings">配置</button>
       </div>
     </header>
@@ -2362,21 +2584,29 @@
     <main class="main-scroll">
       <div class="editor-zone">
         <div class="home-zone" id="homeZone">
-          <div class="home-status-wrap">
-            <div class="home-status-block">
+          <section class="home-hero" hidden>
+            <div class="home-hero-status" hidden>
               <div class="home-status" id="homeStatus">
                 <span class="home-status-icon" id="homeStatusIcon" aria-hidden="true"></span>
-                <p class="home-status-title" id="homeStatusTitle">已经准备好，可以开始输入</p>
+                <p class="home-status-title" id="homeStatusTitle">点一下即可开始输入</p>
               </div>
-              <p class="home-status-summary" id="homeStatusSummary">还没有可用入口</p>
             </div>
-            <button type="button" class="home-cta" id="btnHomeCta">
-              <span class="home-cta-icon" aria-hidden="true">🎤</span>
-              <span class="home-cta-main" id="homeCtaMain">继续配置</span>
-              <span class="home-cta-sub" id="homeCtaSub">先配好唤起键</span>
-            </button>
-          </div>
-          <div class="home-main-grid" id="homeMainGrid" aria-live="polite">
+            <div class="hero-map" id="heroMap" aria-label="按键映射" hidden>
+              <div class="hero-map-key hero-map-trigger" id="heroMapTrigger">—</div>
+              <div class="hero-map-arrow" aria-hidden="true">→</div>
+              <div class="hero-map-key hero-map-target" id="heroMapTarget">—</div>
+            </div>
+            <p class="hero-map-caption" id="heroMapCaption" hidden></p>
+            <div class="home-phrase-strip" id="homePhraseStrip" hidden>
+              <span class="home-phrase-chip" id="homePhraseWakeChip" title=""></span>
+              <button type="button" class="home-phrase-chip is-action" id="btnHomePhrasePractice">练习</button>
+            </div>
+            <p class="home-hero-hint" id="homeHeroHint" hidden></p>
+            <p class="home-status-summary" id="homeStatusSummary" hidden aria-hidden="true"></p>
+          </section>
+          <details class="home-advanced home-entry-section" id="homeAdvanced">
+            <summary id="homeAdvancedSummary">高级微调（更多选项）</summary>
+            <div class="home-main-grid" id="homeMainGrid" aria-live="polite">
             <div class="home-live-panel is-active" id="homeLivePanelKey" data-module="keyWake">
               <header class="home-live-head">
                 <div class="home-live-head-title">
@@ -2430,21 +2660,8 @@
                     <span class="home-key-map-step-hint" id="homeKeyMapFinishHint">—</span>
                   </div>
                 </div>
-                <div class="home-live-actions home-key-map-actions">
-                  <button type="button" class="home-live-btn is-primary-slot" id="btnHomeKeySettings">前往按键配置</button>
-                </div>
               </section>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
-              <div class="home-live-finish" id="homeKeyFinishBlock">
-                <div class="home-live-finish-head">
-                  <div class="mini-title" id="homeKeyFinishTitle">方案最后一步</div>
-                </div>
-                <p class="home-key-finish-preview-line" id="homeKeyFinishPreviewLine">—</p>
-                <p class="home-key-finish-preview-detail" id="homeKeyFinishPreviewDetail">—</p>
-                <div class="home-live-actions home-key-finish-preview-actions">
-                  <button type="button" class="home-live-btn" id="btnHomeKeyFinishSettings">配置按键收尾</button>
-                </div>
-              </div>
               <div class="home-live-actions">
                 <button type="button" class="home-live-btn is-turn-on" id="btnHomeKeyToggle">开始</button>
               </div>
@@ -2516,7 +2733,8 @@
                 <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">开始</button>
               </div>
             </div>
-          </div>
+            </div>
+          </details>
         </div>
       </div>
       <div class="settings-page" id="settingsDrawer" aria-hidden="true" hidden>
@@ -2551,7 +2769,10 @@
               </nav>
             </div>
             <div class="settings-nav-foot">
-              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">恢复与维护</button>
+              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">
+                <span id="settingsNavGeneralLabel">恢复与维护</span>
+                <span class="settings-nav-badge" id="settingsNavGeneralBadge" hidden aria-hidden="true"></span>
+              </button>
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
@@ -3171,13 +3392,118 @@
     <button type="button" data-act="down" id="menuActDown"></button>
     <button type="button" class="danger" data-act="del" id="menuActDel"></button>
   </div>
-  <div class="welcome-overlay" id="welcomeOverlay" aria-hidden="true">
+  <div class="welcome-overlay onboard-overlay" id="onboardOverlay" aria-hidden="true">
+    <div class="welcome-modal onboard-modal" role="dialog" aria-modal="true" aria-labelledby="onboardTitle">
+      <div class="onboard-progress" id="onboardProgress" aria-hidden="true"></div>
+      <div class="welcome-top">
+        <div>
+          <div class="welcome-kicker" id="onboardKicker">首次使用</div>
+          <h2 class="welcome-title" id="onboardTitle">按一个键，开始语音输入</h2>
+          <p class="welcome-desc" id="onboardDesc">你按唤起键，一声会替你按下输入法的语音快捷键（默认 Right Alt）。</p>
+        </div>
+        <button type="button" class="welcome-close" id="btnOnboardClose" aria-label="关闭">×</button>
+      </div>
+      <div class="onboard-stage">
+        <section class="onboard-panel" id="onboardPanelSetup">
+          <p class="welcome-mini-note" id="onboardSetupNote">请直接录制你想用的启动键。</p>
+          <div class="onboard-setup-center">
+            <div class="onboard-setup-grid">
+              <div class="onboard-record-card" id="onboardTriggerCard">
+                <div class="onboard-record-card-step" id="onboardTriggerCardStep">第 1 步</div>
+                <p class="onboard-record-card-title" id="onboardTriggerCardTitle">启动键</p>
+                <div class="onboard-record-card-key" id="onboardTriggerCardKey">未设置</div>
+                <p class="onboard-record-card-hint" id="onboardTriggerCardHint">点击下方按钮后，按下你想用来启动输入的按键</p>
+                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTriggerRecord">按一下要用的启动键</button>
+                <div class="onboard-record-actions">
+                  <button type="button" class="welcome-btn" id="btnOnboardRecordTriggerAgain" hidden>重新录制</button>
+                </div>
+              </div>
+              <div class="onboard-record-arrow" aria-hidden="true">→</div>
+              <div class="onboard-record-card" id="onboardTargetCard">
+                <div class="onboard-record-card-step" id="onboardTargetCardStep">第 2 步</div>
+                <p class="onboard-record-card-title" id="onboardTargetCardTitle">输入法激活键</p>
+                <div class="onboard-record-card-key" id="onboardTargetKey">RAlt</div>
+                <p class="onboard-record-card-hint" id="onboardTargetCardHint">点击下方按钮后，按下你的输入法语音激活快捷键</p>
+                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTargetRecord">按一下语音输入快捷键</button>
+                <div class="onboard-record-actions">
+                  <button type="button" class="welcome-btn" id="btnOnboardRecordTargetAgain" hidden>重新录制</button>
+                </div>
+              </div>
+            </div>
+            <p class="onboard-record-flow-status" id="onboardRecordFlowStatus">先录制启动键，再录制输入法激活键。</p>
+            <p class="onboard-setup-summary" id="onboardTargetNote">左边是你按下的启动键，右边是程序替你发送给输入法的激活键。</p>
+          </div>
+        </section>
+        <section class="onboard-panel" id="onboardPanelTry" hidden>
+          <div class="onboard-try-center">
+            <div class="onboard-try-key-wrap" id="onboardTryKeyWrap">
+              <span id="onboardTryKey">音量减</span>
+            </div>
+            <p class="onboard-try-desc" id="onboardTryDesc">请现在按一下唤起键</p>
+            <p class="onboard-try-result" id="onboardTryResult"></p>
+            <div class="onboard-target-actions" style="justify-content:center">
+              <button type="button" class="welcome-btn" id="btnOnboardTryHelp">查看帮助</button>
+              <button type="button" class="welcome-btn" id="btnOnboardTryNoResponse">我按了没反应</button>
+            </div>
+          </div>
+        </section>
+        <section class="onboard-panel" id="onboardPanelPhrases" hidden>
+          <div class="onboard-try-center" style="gap:10px">
+            <div style="width:100%;max-width:520px">
+              <p class="welcome-mini-note" id="onboardWakeNote">唤醒词：说出唤醒词可以开始输入（可选）。</p>
+              <div class="onboard-target-flow" style="justify-content:flex-start">
+                <span class="onboard-target-key is-key" id="onboardWakePhrase">—</span>
+              </div>
+              <div class="onboard-target-actions" style="justify-content:flex-start">
+                <button type="button" class="welcome-btn" id="btnOnboardWakePractice">练习唤醒词</button>
+              </div>
+            </div>
+            <div style="width:100%;max-width:520px;margin-top:8px">
+              <p class="welcome-mini-note" id="onboardEndNote">结束词：听写中说出结束词结束输入（也可以点按钮结束）。</p>
+              <div class="onboard-target-flow" style="justify-content:flex-start">
+                <span class="onboard-target-key is-key" id="onboardEndPhrase">—</span>
+              </div>
+              <p class="welcome-mini-note" id="onboardEndHint">提示：主页上的「结束输入」按钮也能结束。</p>
+            </div>
+          </div>
+        </section>
+        <section class="onboard-panel" id="onboardPanelMode" hidden>
+          <div class="onboard-try-center" style="gap:10px">
+            <p class="welcome-mini-note" id="onboardModeNote">最后一步：选择你希望在首页看到的入口。</p>
+            <div class="onboard-trigger-grid" style="grid-template-columns:1fr;max-width:520px">
+              <button type="button" class="onboard-trigger-card" id="onboardModeKeys">
+                <b id="onboardModeKeysTitle">只用按键</b>
+                <span id="onboardModeKeysHint">按唤起键开始输入</span>
+              </button>
+              <button type="button" class="onboard-trigger-card" id="onboardModeVoice">
+                <b id="onboardModeVoiceTitle">只用语音</b>
+                <span id="onboardModeVoiceHint">说唤醒词开始输入</span>
+              </button>
+              <button type="button" class="onboard-trigger-card is-selected" id="onboardModeBoth">
+                <b id="onboardModeBothTitle">按键 + 语音</b>
+                <span id="onboardModeBothHint">两种方式都保留</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="welcome-actions">
+        <div class="welcome-hint" id="onboardHint">这个引导只会在首次启动时出现一次。</div>
+        <div class="welcome-btns">
+          <button type="button" class="welcome-btn" id="btnOnboardLater">稍后再看</button>
+          <button type="button" class="welcome-btn" id="btnOnboardBack" hidden>上一步</button>
+          <button type="button" class="welcome-btn primary" id="btnOnboardNext">下一步</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="welcome-overlay" id="welcomeOverlay" hidden aria-hidden="true" style="display:none">
     <div class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
       <div class="welcome-top">
         <div>
           <div class="welcome-kicker" id="welcomeKicker">首次使用</div>
-          <h2 class="welcome-title" id="welcomeTitle">两步就能开始语音启动</h2>
-          <p class="welcome-desc" id="welcomeDesc">先定一个启动方式，再录一次语音快捷键。以后你一按启动键，它就会帮你唤起语音输入。</p>
+          <h2 class="welcome-title" id="welcomeTitle">一键开启语音输入</h2>
+          <p class="welcome-desc" id="welcomeDesc">打开应用后点「开启语音」，说出唤醒词即可输入。按键唤起等可在高级选项里配置。</p>
         </div>
         <button type="button" class="welcome-close" id="btnWelcomeClose" aria-label="关闭">×</button>
       </div>
@@ -3216,8 +3542,21 @@
         <div class="welcome-hint" id="welcomeHint">这个引导只会在首次启动时出现一次。</div>
         <div class="welcome-btns">
           <button type="button" class="welcome-btn" id="btnWelcomeLater">稍后再看</button>
-          <button type="button" class="welcome-btn primary" id="btnWelcomeStart">开始设置</button>
+          <button type="button" class="welcome-btn primary" id="btnWelcomeStart">开启语音</button>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="phrase-practice-overlay" id="phrasePracticeOverlay" aria-hidden="true">
+    <div class="phrase-practice-modal" role="dialog" aria-modal="true" aria-labelledby="phrasePracticeTitle">
+      <button type="button" class="welcome-close" id="btnPhrasePracticeClose" aria-label="关闭">×</button>
+      <h3 class="phrase-practice-title" id="phrasePracticeTitle">跟读唤醒词</h3>
+      <p class="phrase-practice-hint" id="phrasePracticeHint">对着麦克风说出高亮词语</p>
+      <div class="phrase-practice-chip-row" id="phrasePracticeChips"></div>
+      <div class="phrase-practice-phrase" id="phrasePracticePhrase"></div>
+      <p class="phrase-practice-heard" id="phrasePracticeHeard"></p>
+      <div class="phrase-practice-actions">
+        <button type="button" class="welcome-btn" id="btnPhrasePracticeSkip">跳过</button>
       </div>
     </div>
   </div>
@@ -3252,8 +3591,11 @@
     <div class="home-guide-veil" id="homeGuideVeil"></div>
     <svg class="home-guide-lines" id="homeGuideLines" aria-hidden="true"></svg>
     <div class="home-guide-callouts" id="homeGuideCallouts"></div>
-    <div class="home-guide-banner" id="homeGuideBanner" hidden></div>
+    <div class="home-guide-banner" id="homeGuideBanner" hidden>    </div>
   </div>
+  <script src="js/key-labels.js"></script>
+  <script src="js/phrase-practice.js"></script>
+  <script src="js/onboarding.js"></script>
   <script>
   (function(){
     const listeners={message:[]};
@@ -3280,25 +3622,31 @@
     }
     window.__vp_tauri_args__=tauriArgs;
     window.chrome={webview:{}};
+    function bridgeInvoke(cmd,args){
+      return vpInvokeInternal(cmd,args).catch(function(err){
+        console.error('bridge invoke failed',cmd,err);
+        return null;
+      });
+    }
     window.chrome.webview.postMessage=function(msg){
       const type=msg&&msg.type;
-      if(type==='mvp_ready')vpInvokeInternal('cmd_ready',{});
-      else if(type==='mvp_save')vpInvokeInternal('cmd_save',{json:msg.json||'{}'});
-      else if(type==='mvp_start_recording')vpInvokeInternal('cmd_start_recording',{mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
-      else if(type==='mvp_stop_recording')vpInvokeInternal('cmd_stop_recording',{});
-      else if(type==='mvp_mapping_toggle')vpInvokeInternal('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
-      else if(type==='mvp_mapping_delete')vpInvokeInternal('cmd_mapping_delete',{id:msg.id});
-      else if(type==='mvp_mapping_duplicate')vpInvokeInternal('cmd_mapping_duplicate',{id:msg.id});
-      else if(type==='mvp_mapping_reorder')vpInvokeInternal('cmd_mapping_reorder',{ordered_ids:msg.orderedIds||[]});
-      else if(type==='mvp_mapping_set_group')vpInvokeInternal('cmd_mapping_set_group',{id:msg.id,group:msg.group||''});
-      else if(type==='mvp_pause')vpInvokeInternal('cmd_pause',{});
-      else if(type==='mvp_resume')vpInvokeInternal('cmd_resume',{});
-      else if(type==='mvp_request_runtime')vpInvokeInternal('cmd_request_runtime',{});
-      else if(type==='mvp_reload_latest')vpInvokeInternal('cmd_reload_latest',{});
-      else if(type==='mvp_sync_theme_backdrop')vpInvokeInternal('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
-      else if(type==='mvp_frontend_keydown')vpInvokeInternal('cmd_frontend_keydown',{key:msg.key||'',mapping_id:msg.mappingId||'',mode:msg.mode||'trigger'});
-      else if(type==='mvp_physical_trigger')vpInvokeInternal('cmd_physical_trigger',{key:msg.key||''});
-      else if(type==='mvp_test_send')vpInvokeInternal('cmd_test_send',{mapping_id:msg.mappingId||null,target_key:msg.targetKey||null});
+      if(type==='mvp_ready')bridgeInvoke('cmd_ready',{});
+      else if(type==='mvp_save')bridgeInvoke('cmd_save',{json:msg.json||'{}'});
+      else if(type==='mvp_start_recording')bridgeInvoke('cmd_start_recording',{mappingId:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_stop_recording')bridgeInvoke('cmd_stop_recording',{});
+      else if(type==='mvp_mapping_toggle')bridgeInvoke('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
+      else if(type==='mvp_mapping_delete')bridgeInvoke('cmd_mapping_delete',{id:msg.id});
+      else if(type==='mvp_mapping_duplicate')bridgeInvoke('cmd_mapping_duplicate',{id:msg.id});
+      else if(type==='mvp_mapping_reorder')bridgeInvoke('cmd_mapping_reorder',{orderedIds:msg.orderedIds||[]});
+      else if(type==='mvp_mapping_set_group')bridgeInvoke('cmd_mapping_set_group',{id:msg.id,group:msg.group||''});
+      else if(type==='mvp_pause')bridgeInvoke('cmd_pause',{});
+      else if(type==='mvp_resume')bridgeInvoke('cmd_resume',{});
+      else if(type==='mvp_request_runtime')bridgeInvoke('cmd_request_runtime',{});
+      else if(type==='mvp_reload_latest')bridgeInvoke('cmd_reload_latest',{});
+      else if(type==='mvp_sync_theme_backdrop')bridgeInvoke('cmd_sync_theme_backdrop',{theme:msg.theme||'light'});
+      else if(type==='mvp_frontend_keydown')bridgeInvoke('cmd_frontend_keydown',{key:msg.key||'',mappingId:msg.mappingId||'',mode:msg.mode||'trigger'});
+      else if(type==='mvp_physical_trigger')bridgeInvoke('cmd_physical_trigger',{key:msg.key||''});
+      else if(type==='mvp_test_send')bridgeInvoke('cmd_test_send',{mappingId:msg.mappingId||null,targetKey:msg.targetKey||null});
     };
     window.chrome.webview.addEventListener=function(event,cb){ if(!listeners[event]) listeners[event]=[]; listeners[event].push(cb); };
     window.__vp_bridge__=function(type,data){ const event={data:Object.assign({type:type},data||{})}; (listeners.message||[]).forEach(function(cb){ try{cb(event);}catch(e){} }); };
@@ -3378,11 +3726,66 @@
       last=now;
     },1000);
   })();
-  const state={config:null,selectedMappingId:null,update:null};
+  const state={config:null,selectedMappingId:null,update:null,firstSuccess:false};
   let runtime={lastAction:'-',timerActive:false,paused:false};
   let runtimeRenderTimer=0;
   let updateRequestMode='none';
   let updateDismissedVersion='';
+  function isFirstSuccessDone(){
+    try{ return localStorage.getItem('vp_first_success_done')==='1'; }catch(_){ return false; }
+  }
+  function markFirstSuccessDone(){
+    state.firstSuccess=true;
+    try{ localStorage.setItem('vp_first_success_done','1'); }catch(_){}
+    renderUpdateUi();
+    renderHome();
+  }
+  function isHomeAdvancedUnlocked(){
+    if(state.firstSuccess||isFirstSuccessDone()) return true;
+    if(window.OneToneOnboarding&&window.OneToneOnboarding.isV2Done&&window.OneToneOnboarding.isV2Done()) return true;
+    try{ return localStorage.getItem('vp_onboarding_v2_done')==='1'; }catch(_){ return false; }
+  }
+  function isHomeFirstRunFocusMode(){
+    return !isHomeAdvancedUnlocked();
+  }
+
+  function getHomeEntryMode(){
+    try{
+      const v=localStorage.getItem('vp_entry_mode');
+      if(v==='keys'||v==='voice'||v==='both') return v;
+    }catch(_){}
+    return 'both';
+  }
+
+  function homeEntryVisibility(mode){
+    mode=mode||getHomeEntryMode();
+    return {
+      mode:mode,
+      showKey:mode!=='voice',
+      showVoice:mode!=='keys'
+    };
+  }
+
+  function applyHomeEntryModeLayout(showKeyEntry,showVoiceEntry){
+    const mainGrid=$('homeMainGrid');
+    const panelCount=(showKeyEntry?1:0)+(showVoiceEntry?1:0);
+    if(mainGrid){
+      mainGrid.classList.toggle('is-dual',panelCount===2);
+      mainGrid.classList.toggle('is-single',panelCount===1);
+      mainGrid.dataset.entryMode=getHomeEntryMode();
+    }
+    const homeHero=document.querySelector('.home-hero');
+    if(homeHero){
+      homeHero.classList.toggle('is-voice-only',!showKeyEntry&&showVoiceEntry);
+      homeHero.classList.toggle('is-keys-only',showKeyEntry&&!showVoiceEntry);
+      homeHero.classList.toggle('is-both-entries',showKeyEntry&&showVoiceEntry);
+    }
+    const homeAdvanced=$('homeAdvanced');
+    if(homeAdvanced){
+      homeAdvanced.classList.toggle('is-single-card',panelCount===1);
+      homeAdvanced.dataset.entryMode=getHomeEntryMode();
+    }
+  }
 
   function defaultUpdateState(){
     return {
@@ -3450,9 +3853,14 @@
     return false;
   }
 
+  function updateAvailable(update){
+    return !!(update&&update.phase==='available'&&update.latestVersion&&update.latestVersion!==updateDismissedVersion);
+  }
+
   function renderUpdateUi(){
     const update=state.update||defaultUpdateState();
-    const actionBtn=$('btnUpdateAction');
+    const maintenanceBtn=$('btnAboutCheckUpdate');
+    const navBadge=$('settingsNavGeneralBadge');
     const banner=$('updateBanner');
     const bannerTitle=$('updateBannerTitle');
     const bannerBody=$('updateBannerBody');
@@ -3462,12 +3870,23 @@
     const laterBtn=$('btnUpdateLater');
     const progressWrap=$('updateBannerProgress');
     const progressFill=$('updateBannerProgressFill');
+    const focusMode=isHomeFirstRunFocusMode();
+    const hasUpdate=updateAvailable(update);
+    const updateBusy=update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting';
 
-    if(actionBtn){
-      actionBtn.textContent=updateStateLabel(update);
-      actionBtn.classList.toggle('is-hot',update.phase==='available'&&update.latestVersion&&update.latestVersion!==updateDismissedVersion);
-      actionBtn.classList.toggle('is-busy',update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting');
-      actionBtn.disabled=update.phase==='checking'||update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting';
+    if(maintenanceBtn){
+      maintenanceBtn.textContent=updateStateLabel(update);
+      maintenanceBtn.classList.toggle('is-hot',hasUpdate);
+      maintenanceBtn.classList.toggle('is-busy',updateBusy);
+      maintenanceBtn.disabled=updateBusy;
+    }
+    if(navBadge) navBadge.hidden=!hasUpdate;
+    if(focusMode){
+      if(banner){
+        banner.classList.remove('show');
+        banner.hidden=true;
+      }
+      return;
     }
 
     const showBanner=updateBannerVisible(update);
@@ -3596,6 +4015,9 @@
     $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
     const headerListen=$('headerListenState');
     if(headerListen){
+      // First-run focus mode: reduce homepage noise; hide runtime listen chip
+      const focusMode=isHomeFirstRunFocusMode();
+      headerListen.hidden=!!focusMode;
       headerListen.textContent=runtime.paused?t('listenPaused'):t('listenOn');
       headerListen.classList.toggle('is-paused',!!runtime.paused);
     }
@@ -4103,6 +4525,7 @@
   }
   const logLines=[];
   let recordingMode='none';
+  let recordingStartPending=false;
   let recordTimer=0;
   let openMenuId=null;
   let menuAnchorBtn=null;
@@ -4191,7 +4614,123 @@
   let schemeSwitchSnapshot='';
   let nativeRestoreSnapshot=null;
   let recordingMappingId='';
+  let recordMappingWasEnabled=null;
+  let triggerLeftClickIgnoreUntil=0;
+  let targetLeftClickIgnoreUntil=0;
   let welcomeOpen=false;
+  const onboardEventBus={};
+  function onboardEmit(event,payload){
+    (onboardEventBus[event]||[]).forEach(function(fn){
+      try{ fn(payload); }catch(_){}
+    });
+  }
+  function onboardIsOpen(){
+    return !!(window.OneToneOnboarding&&window.OneToneOnboarding.isOpen());
+  }
+  window.OneToneApp={
+    getActiveMapping:function(){ return selectedMapping(); },
+    getLang:function(){ return lang; },
+    saveConfigPatch:function(patchFn){
+      ensureConfig();
+      const m=selectedMapping();
+      if(m&&patchFn) patchFn(m,state.config);
+      save();
+      renderHome();
+    },
+    saveAsync:function(){ return saveAsync(); },
+    prepareMappingForRecording:function(){
+      ensureConfig();
+      const m=recordingMapping()||selectedMapping();
+      return disableMappingForRecordingAsync(m);
+    },
+    startTriggerRecording:function(){ return startTriggerRecord(); },
+    startTargetRecording:function(){ return startTargetRecord(); },
+    cancelRecording:function(){ cancelRecording(); },
+    openTestSendModal:function(){ fireTestSend(null); },
+    openHomeGuideCard:function(card){
+      try{
+        const c=(card==='voice')?'voice':'key';
+        openHomeGuide(c, $('btnHome'+(c==='voice'?'Voice':'Key')+'Help')||null);
+      }catch(_){}
+    },
+    openHomeSetupFlow:function(){ openHomeSetupFlow(); },
+    getHomeEntryMode:getHomeEntryMode,
+    renderHome:function(){ renderHome(); },
+    t:function(key){ return t(key); },
+    on:function(event,handler){
+      if(!onboardEventBus[event]) onboardEventBus[event]=[];
+      onboardEventBus[event].push(handler);
+    },
+    off:function(event,handler){
+      const list=onboardEventBus[event];
+      if(!list) return;
+      const i=list.indexOf(handler);
+      if(i>=0) list.splice(i,1);
+    },
+    playSoundCue:function(id){ playSoundCue(id); },
+    toast:function(msg){ toast(msg); },
+    isRecording:function(){ return recordingMode!=='none'; },
+    isRecordingPending:function(){ return recordingStartPending; },
+    homeOneClickStart:function(){ homeOneClickStart(); },
+    isVoiceWakeEnabled:function(){ return homeVoiceEngineOn()!=='off'; },
+    getWakePhrases:function(){
+      const cfg=state.config||{};
+      const eng=homeVoiceEngineOn();
+      const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+      const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
+      let list=[];
+      if(eng==='vosk'&&Array.isArray(voskCfg.phrases)) list=voskCfg.phrases.slice();
+      else if(eng==='sapi'&&Array.isArray(sapiCfg.phrases)) list=sapiCfg.phrases.slice();
+      else if(Array.isArray(voskCfg.phrases)&&voskCfg.phrases.length) list=voskCfg.phrases.slice();
+      else if(Array.isArray(sapiCfg.phrases)&&sapiCfg.phrases.length) list=sapiCfg.phrases.slice();
+      return list.filter(function(x){ return String(x||'').trim(); });
+    },
+    getEndPhrases:function(){
+      const cfg=state.config||{};
+      const end=cfg.voiceEnd||cfg.voice_end||{};
+      const zh=Array.isArray(end.phrasesZh||end.phrases_zh)?(end.phrasesZh||end.phrases_zh):[];
+      const en=Array.isArray(end.phrasesEn||end.phrases_en)?(end.phrasesEn||end.phrases_en):[];
+      return {
+        zh: zh.filter(function(x){ return String(x||'').trim(); }),
+        en: en.filter(function(x){ return String(x||'').trim(); })
+      };
+    },
+    getWakeHeardRaw:function(){
+      const w=voiceUiSnapshot.wake||{};
+      if(w.engine==='vosk'){
+        const vosk=w.vosk||{};
+        return vosk.lastDetectedPhrase||vosk.lastFinal||vosk.lastPartial||'';
+      }
+      const sapi=w.sapi||{};
+      return sapi.lastHeard||'';
+    },
+    enableVoiceWakeForPractice:function(){
+      if(homeVoiceEngineOn()!=='off') return Promise.resolve(true);
+      markVoiceEngineBootHandled();
+      voiceEngineBootDone=true;
+      clearTimeout(voiceEngineBootTimer);
+      return vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
+        renderVoiceSapiStatus(res);
+        if(!handleVoiceSapiEnableResult(res,true)) return false;
+        if(res&&res.enabled) syncVoiceVoskToggle(false);
+        syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+        renderHomeLiveZone();
+        renderHome();
+        return !!(res&&res.enabled);
+      });
+    },
+    openPhrasePractice:function(opts){
+      if(!window.OneTonePhrasePractice) return;
+      const phrases=opts&&opts.phrases?opts.phrases:this.getWakePhrases();
+      window.OneTonePhrasePractice.open(Object.assign({},opts||{},{phrases:phrases}));
+    },
+    onWelcomeClosed:function(){
+      welcomeOpen=false;
+      scheduleLangBootstrap();
+      maybeStartProcessUsagePoll();
+      if(configLoadedFromBackend) scheduleDeferredVoiceEngineBoot();
+    }
+  };
   const targetCapture={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
   let triggerPeripheralGuardUntil=0;
   let recordCaptureGen=0;
@@ -4253,10 +4792,10 @@
       appTitle:'一声',
       appSubtitle:'言出即行 · 万象成形',
       welcomeKicker:'首次使用',
-      welcomeTitle:'两步就能开始语音唤起',
-      welcomeDesc:'先录好唤起键与语音快捷键；听写如何结束、取消或自动确认，在「结束动作」里规划。',
+      welcomeTitle:'一键开启语音输入',
+      welcomeDesc:'打开应用后点「开启语音」，说出唤醒词即可输入。按键唤起、结束动作等可在高级选项里配置。',
       welcomeHint:'这个引导只会在首次启动时出现一次。',
-      welcomeStart:'开始配置',
+      welcomeStart:'开启语音',
       welcomeLater:'稍后再看',
       demoLabel:'动画演示',
       demoCardTitle1:'你来按',
@@ -4534,7 +5073,7 @@
       homeFinishGuideIntro:'听写如何结束并发送；按键与语音入口共用此规则。',
       homeFinishGuideFlowStart:'先通过按键或语音唤醒开始听写（见上方两卡）。',
       homeFinishGuideFlowStartLbl:'上方：按键 / 语音唤醒',
-      homeFinishGuideFlowEnd:'说完后说结束词，或依赖下方「自动发送」。',
+      homeFinishGuideFlowEnd:'说完后说结束词（如「结束输入」），或再按一次唤起键；也可开启下方「自动发送」。',
       homeFinishGuideFlowSend:'程序再次按下快捷键，结束录音并提交文字。',
       homeFinishGuideFlowSendLbl:'本区：结束并发送',
       homeFinishGuideEnd:'开关：是否启用结束词识别来触发完成。',
@@ -4564,11 +5103,80 @@
       homeLiveSchemeDraft:'未完成方案',
       homeCapKeyUnset:'未设置',homeCapVoiceOff:'未开启',
       homeAdvancedSummary:'高级微调（更多选项）',
+      homeSetupStart:'开始设置',homeSetupReplay:'学习与调整',homeMyHabits:'我的习惯',
+      homeStatusTapToStart:'点一下即可开始输入',
+      homeStatusFocus:'先完成一次按键唤起',
+      homeStatusListening:'已启用，随时可用',
+      homeCtaTurnOn:'开始输入',homeCtaTurnOnSub:'按一下即可使用',
+      homeCtaListening:'已启用',homeCtaListeningSub:'可按唤起键或说唤醒词',
+      homeStartedToast:'已启用，可以开始输入',
+      homeHeroHintKey:'也可按 {key} 唤起',
+      homeHeroHintDictating:'听写中 · 说「{phrase}」或再按 {key} 结束',
+      homeEndPhraseDefault:'结束输入',
+      homeHeroHintSetup:'需要按键唤起？展开下方高级选项',
+      homeHeroHintContinue:'继续完成首次引导',
+      homeHeroHintFocus:'先完成一次按键唤起，跑通后再看高级选项',
+      homeHeroHintReplayGuide:'查看新版引导',
+      homeHeroMapCaption:'按左侧键 → 自动触发右侧快捷键',
+      onboardKicker:'首次使用',
+      onboardTitleSetup:'录制两个按键',
+      onboardDescSetup:'点击中间两个按钮，分别录制启动键和输入法激活键。',
+      onboardSetupNote:'点击下方按钮即可进入录制状态。',
+      onboardStepSetup:'设置',onboardStepTry:'试一试',onboardStepPhrases:'唤醒/结束',onboardStepMode:'入口选择',
+      onboardTitle2:'按一下试试',onboardDesc2:'请真实按下唤起键；只有成功发送到系统才算完成。',
+      onboardTitlePhrases:'理解唤醒词与结束词',onboardDescPhrases:'你可以用语音开始输入，也可以用结束词结束听写。',
+      onboardTitleMode:'选择入口方式',onboardDescMode:'决定首页要显示哪些入口（可随时再改）。',
+      onboardTargetNote:'左边是你按下的启动键，右边是程序替你发送给输入法的激活键。',
+      onboardBtnNext:'下一步',onboardBtnBack:'上一步',onboardBtnLater:'稍后再看',onboardBtnStart:'开始使用',
+      onboardHintOnce:'这个引导只会在首次启动时出现一次。',
+      onboardTriggerCardStep:'第 1 步',onboardTargetCardStep:'第 2 步',
+      onboardTriggerCardTitle:'启动键',onboardTargetCardTitle:'输入法激活键',
+      onboardRecordCardEmpty:'点击录制',
+      onboardTriggerCardHint:'点击后按下你想用来启动输入的按键',
+      onboardTargetCardHint:'点击后按下你的输入法语音激活快捷键',
+      onboardTargetNeedTriggerFirst:'请先完成左侧启动键录制',
+      onboardTriggerCardDone:'已录制完成，可继续下一步',
+      onboardFlowIdle:'先录制启动键，再录制输入法激活键。',
+      onboardFlowRecordingTrigger:'正在录制启动键，请按下你想使用的按键。',
+      onboardFlowAfterTrigger:'启动键已录好，接下来点击右侧按钮录制输入法激活键。',
+      onboardFlowRecordingTarget:'正在录制输入法激活键，请按下输入法当前使用的快捷键。',
+      onboardTriggerVolumeTitle:'音量键',onboardTriggerVolumeHint:'推荐，开箱即用',
+      onboardTriggerMouseTitle:'鼠标侧键',onboardTriggerMouseHint:'需录制侧键 X1/X2',
+      onboardTriggerAltTitle:'Alt 键',onboardTriggerAltHint:'可能与系统/输入法冲突',
+      onboardTriggerCustomTitle:'自定义',onboardTriggerCustomHint:'录制任意硬件键',
+      onboardAltWarnText:'Alt 可能触发系统菜单或与输入法快捷键冲突，仅建议在熟悉风险后使用。',
+      onboardAltConfirmLbl:'我了解风险，继续使用 Alt',
+      onboardRecordPrompt:'请按下要用的启动键',onboardRecordWaiting:'正在等待按键…',onboardRecordDone:'已录制：{key}',
+      onboardTryDesc:'请现在按一下 {key}',
+      onboardTrySuccess:'已检测到按键并成功发送',onboardTryFail:'发送未成功，请重试或更换唤起方式',onboardTryTimeout:'没检测到？可换唤起方式或查看帮助',
+      onboardTryReason_sent:'已发送',onboardTryReason_send_failed:'快捷键未能发送',
+      onboardWakeNote:'唤醒词：说出唤醒词可以开始输入（可选）。',
+      onboardWakePractice:'练习唤醒词',
+      onboardEndNote:'结束词：听写中说出结束词结束输入（也可以点按钮结束）。',
+      onboardEndHint:'提示：主页上的「结束输入」按钮也能结束。',
+      onboardModeNote:'最后一步：选择你希望在首页看到的入口。',
+      onboardModeKeysTitle:'只用按键',onboardModeKeysHint:'按唤起键开始输入',
+      onboardModeVoiceTitle:'只用语音',onboardModeVoiceHint:'说唤醒词开始输入',
+      onboardModeBothTitle:'按键 + 语音',onboardModeBothHint:'两种方式都保留',
+      onboardBtnRecord:'重新录制',onboardRecordTrigger:'录制启动键',onboardTargetRecording:'请按下你的输入法激活键',onboardDoneToast:'按键唤起已就绪，在任意输入框按唤起键即可',
+      // Coach HUD removed
+      onboardStepPractice:'语音练习（可选）',onboardTitle4:'试试语音唤醒词（可选）',
+      onboardDesc4:'说出内置唤醒词即可触发语音输入。也可以跳过，继续只用按键。',
+      onboardPracticeOptionalHint:'这一步可选，跳过不影响按键唤起。',
+      onboardPracticeOptInNote:'也可以用语音唤醒词开始输入（可选）。',
+      onboardPracticeRisk:'开启后会使用麦克风，并加载语音识别组件。',
+      onboardPracticeEnable:'开启语音唤醒并练习',onboardPracticeEnabling:'正在开启…',
+      onboardPracticeEnableFail:'暂时无法开启语音唤醒',onboardPracticeSkip:'跳过，继续用按键',
+      phrasePracticeTitle:'跟读唤醒词',phrasePracticeHint:'对着麦克风说出高亮词语',
+      phrasePracticeListening:'正在听…',phrasePracticeHeard:'听到：{text}',
+      phrasePracticeMatched:'已识别：{phrase}',phrasePracticeSkip:'关闭',
+      homePhrasePractice:'练习',homePhraseWakeLabel:'唤醒词',
       homeAdvMic:'麦克风',homeAdvProfiles:'我的方案',homeAdvEngine:'语音模式',homeAdvAutoSend:'语音结束后自动发送',homeAdvDebug:'运行状态',
       homeStatusReady:'准备就绪，可以开始输入',homeStatusVoiceReady:'语音激活已就绪',
       homeStatusIdle:'先配置按键或语音激活',homeStatusNeedTarget:'还差语音快捷键',
       homeStatusPaused:'监听已暂停',
       homeCtaStart:'开始输入',homeCtaUse:'开始使用',homeCtaContinue:'继续配置',
+      homeCtaEnd:'结束输入',homeCtaEndSub:'点击“结束输入”按钮，或说“结束输入”',
       homeCtaDictating:'听写进行中',homeCtaDictatingSub:'可说结束词或去设置',
       homeCtaError:'出现问题',homeCtaErrorSub:'查看运行状态',
       homeCtaResume:'恢复监听',homeCtaResumeSub:'监听暂停中',
@@ -4735,10 +5343,10 @@
       appTitle:'onetone',
       appSubtitle:'Speak to Create.',
       welcomeKicker:'First launch',
-      welcomeTitle:'Start voice launch in two steps',
-      welcomeDesc:'Record launch key and voice shortcut first; plan cancel/auto-confirm finish flow under Finish actions.',
+      welcomeTitle:'Turn on voice in one tap',
+      welcomeDesc:'Tap Turn on voice, then say the wake phrase to type. Key launch and finish actions live under Advanced.',
       welcomeHint:'This guide only appears once on first launch.',
-      welcomeStart:'Start setup',
+      welcomeStart:'Turn on voice',
       welcomeLater:'Maybe later',
       demoLabel:'Quick demo',
       demoCardTitle1:'You press',
@@ -5016,7 +5624,7 @@
       homeFinishGuideIntro:'How dictation ends and sends; shared by key and voice entry.',
       homeFinishGuideFlowStart:'Start dictation from the key or voice card above.',
       homeFinishGuideFlowStartLbl:'Above: key / voice wake',
-      homeFinishGuideFlowEnd:'Say an end phrase or use auto-send below.',
+      homeFinishGuideFlowEnd:'When done, say an end phrase (e.g. “end input”) or press the trigger key again; or use Auto-send below.',
       homeFinishGuideFlowSend:'App sends the shortcut again to stop and submit.',
       homeFinishGuideFlowSendLbl:'This zone: finish and send',
       homeFinishGuideEnd:'Toggle end-phrase recognition for finish.',
@@ -5046,11 +5654,80 @@
       homeLiveSchemeDraft:'Incomplete profile',
       homeCapKeyUnset:'Not set',homeCapVoiceOff:'Off',
       homeAdvancedSummary:'Advanced tweaks',
+      homeSetupStart:'Start setup',homeSetupReplay:'Learn & adjust',homeMyHabits:'My habits',
+      homeStatusTapToStart:'Tap once to start input',
+      homeStatusFocus:'Complete one key trigger first',
+      homeStatusListening:'Enabled and ready',
+      homeCtaTurnOn:'Start input',homeCtaTurnOnSub:'One tap to use',
+      homeCtaListening:'Enabled',homeCtaListeningSub:'Press trigger or say wake phrase',
+      homeStartedToast:'Enabled — ready to start input',
+      homeHeroHintKey:'Or press {key}',
+      homeHeroHintDictating:'Dictating · say “{phrase}” or press {key} again to end',
+      homeEndPhraseDefault:'end input',
+      homeHeroHintSetup:'Need a hardware key? Expand advanced options below',
+      homeHeroHintContinue:'Continue first-time setup',
+      homeHeroHintFocus:'Complete one key-trigger success first, then explore advanced options',
+      homeHeroHintReplayGuide:'View new guide',
+      homeHeroMapCaption:'Press left key → triggers the shortcut on the right',
+      onboardKicker:'First time',
+      onboardTitleSetup:'Record two keys',
+      onboardDescSetup:'Click the two buttons below to record your trigger key and IME activation key.',
+      onboardSetupNote:'Click either button below to enter recording.',
+      onboardStepSetup:'Setup',onboardStepTry:'Try it',onboardStepPhrases:'Wake / End',onboardStepMode:'Entry mode',
+      onboardTitle2:'Press to try',onboardDesc2:'Press your trigger key now. Only a successful send counts.',
+      onboardTitlePhrases:'Understand wake & end phrases',onboardDescPhrases:'You can start with voice, and end dictation with an end phrase.',
+      onboardTitleMode:'Choose entry mode',onboardDescMode:'This controls what the home page shows (you can change it later).',
+      onboardTargetNote:'The left button is what you press. The right button is what OneTone sends to your IME.',
+      onboardBtnNext:'Next',onboardBtnBack:'Back',onboardBtnLater:'Later',onboardBtnStart:'Get started',
+      onboardHintOnce:'This guide appears only on first launch.',
+      onboardTriggerCardStep:'Step 1',onboardTargetCardStep:'Step 2',
+      onboardTriggerCardTitle:'Trigger key',onboardTargetCardTitle:'IME activation key',
+      onboardRecordCardEmpty:'Click to record',
+      onboardTriggerCardHint:'Click, then press the key you want to use to start input',
+      onboardTargetCardHint:'Click, then press your IME voice activation shortcut',
+      onboardTargetNeedTriggerFirst:'Record the trigger key on the left first',
+      onboardTriggerCardDone:'Recorded. Continue when ready',
+      onboardFlowIdle:'Record your trigger key first, then record the IME activation key.',
+      onboardFlowRecordingTrigger:'Recording trigger key. Press the key you want to use.',
+      onboardFlowAfterTrigger:'Trigger key recorded. Click the right button to record your IME activation key.',
+      onboardFlowRecordingTarget:'Recording IME activation key. Press the shortcut your IME uses.',
+      onboardTriggerVolumeTitle:'Volume keys',onboardTriggerVolumeHint:'Recommended, zero setup',
+      onboardTriggerMouseTitle:'Mouse side button',onboardTriggerMouseHint:'Record side button X1/X2',
+      onboardTriggerAltTitle:'Alt key',onboardTriggerAltHint:'May conflict with system / IME',
+      onboardTriggerCustomTitle:'Custom',onboardTriggerCustomHint:'Record any hardware key',
+      onboardAltWarnText:'Alt may open system menus or conflict with IME shortcuts. Use only if you understand the risk.',
+      onboardAltConfirmLbl:'I understand the risk — use Alt',
+      onboardRecordPrompt:'Press the key you want as trigger',onboardRecordWaiting:'Waiting for key…',onboardRecordDone:'Recorded: {key}',
+      onboardTryDesc:'Press {key} now',
+      onboardTrySuccess:'Key detected and shortcut sent',onboardTryFail:'Send failed — retry or change trigger',onboardTryTimeout:'No key detected? Try another trigger or see help',
+      onboardTryReason_sent:'Sent',onboardTryReason_send_failed:'Shortcut could not be sent',
+      onboardWakeNote:'Wake phrase: say a wake phrase to start input (optional).',
+      onboardWakePractice:'Practice wake phrase',
+      onboardEndNote:'End phrase: say an end phrase during dictation to end (or click the end button).',
+      onboardEndHint:'Tip: the “End input” button on Home can also end dictation.',
+      onboardModeNote:'Final step: choose what entry options you want on Home.',
+      onboardModeKeysTitle:'Keys only',onboardModeKeysHint:'Press your trigger key to start',
+      onboardModeVoiceTitle:'Voice only',onboardModeVoiceHint:'Say a wake phrase to start',
+      onboardModeBothTitle:'Keys + voice',onboardModeBothHint:'Keep both options',
+      onboardBtnRecord:'Record again',onboardRecordTrigger:'Record trigger key',onboardTargetRecording:'Press your IME activation key',onboardDoneToast:'Key trigger is ready — press it in any text field',
+      // Coach HUD removed
+      onboardStepPractice:'Voice practice (optional)',onboardTitle4:'Try wake phrases (optional)',
+      onboardDesc4:'Say a built-in wake phrase to start voice input. You can skip and keep using keys only.',
+      onboardPracticeOptionalHint:'This step is optional — skipping does not affect key triggers.',
+      onboardPracticeOptInNote:'You can also start input with spoken wake phrases (optional).',
+      onboardPracticeRisk:'Enabling uses the microphone and loads speech recognition.',
+      onboardPracticeEnable:'Enable voice wake & practice',onboardPracticeEnabling:'Enabling…',
+      onboardPracticeEnableFail:'Could not enable voice wake',onboardPracticeSkip:'Skip — keys only',
+      phrasePracticeTitle:'Read wake phrase aloud',phrasePracticeHint:'Say the highlighted phrase to your mic',
+      phrasePracticeListening:'Listening…',phrasePracticeHeard:'Heard: {text}',
+      phrasePracticeMatched:'Matched: {phrase}',phrasePracticeSkip:'Close',
+      homePhrasePractice:'Practice',homePhraseWakeLabel:'Wake phrase',
       homeAdvMic:'Microphone',homeAdvProfiles:'My profiles',homeAdvEngine:'Voice mode',homeAdvAutoSend:'Auto-send',homeAdvDebug:'Runtime Status',
       homeStatusReady:'Ready to start input',homeStatusVoiceReady:'Voice activation is ready',
       homeStatusIdle:'Set up key or voice activation first',homeStatusNeedTarget:'Voice shortcut still needed',
       homeStatusPaused:'Listening paused',
       homeCtaStart:'Start input',homeCtaUse:'Get started',homeCtaContinue:'Continue setup',
+      homeCtaEnd:'End input',homeCtaEndSub:'Click “End input” or say “end input”',
       homeCtaDictating:'Dictating',homeCtaDictatingSub:'Say end phrase or open settings',
       homeCtaError:'Something went wrong',homeCtaErrorSub:'Check runtime status',
       homeCtaResume:'Resume listening',homeCtaResumeSub:'Listening is paused',
@@ -5343,6 +6020,94 @@
     };
   }
 
+  function disableMappingForRecording(m){
+    if(!m||!m.id) return;
+    recordMappingWasEnabled={id:m.id,enabled:!!m.enabled};
+    if(!m.enabled) return;
+    m.enabled=false;
+    try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
+  }
+
+  function disableMappingForRecordingAsync(m){
+    return new Promise(function(resolve){
+      if(!m||!m.id){ resolve(); return; }
+      recordMappingWasEnabled={id:m.id,enabled:!!m.enabled};
+      if(!m.enabled){ resolve(); return; }
+      m.enabled=false;
+      const invoke=window.__vp_invoke__;
+      if(invoke){
+        invoke('cmd_mapping_toggle',{id:m.id,enabled:false}).then(function(){ resolve(); }).catch(function(){
+          try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
+          resolve();
+        });
+        return;
+      }
+      try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
+      resolve();
+    });
+  }
+
+  function notifyOnboardingCapture(mode,msg){
+    if(!window.OneToneOnboarding||!window.OneToneOnboarding.isOpen()) return;
+    const m=recordingMapping()||selectedMapping();
+    const payload=msg||{
+      mode:mode,
+      mappingId:m&&m.id||'',
+      key:mode==='target'?(m&&m.targetKey||''):(m&&m.triggerKey||''),
+      sourceKey:m&&m.sourceKey||'',
+      sourceTime:m&&m.sourceTime||'',
+      source:m&&m.triggerSource||null
+    };
+    if(mode==='target'){
+      if(window.OneToneOnboarding.onTargetCaptured) window.OneToneOnboarding.onTargetCaptured(payload);
+    }else if(window.OneToneOnboarding.onKeyCaptured){
+      window.OneToneOnboarding.onKeyCaptured(payload);
+    }
+  }
+
+  function notifyOnboardingRecordingPreview(mode,key){
+    if(!window.OneToneOnboarding||!window.OneToneOnboarding.onRecordingPreview) return;
+    window.OneToneOnboarding.onRecordingPreview(mode,key);
+  }
+
+  function clearRecordMappingGuard(){
+    recordMappingWasEnabled=null;
+  }
+
+  function restoreMappingEnabledAfterRecordCancel(m){
+    if(!recordMappingWasEnabled||!m||m.id!==recordMappingWasEnabled.id) return;
+    if(recordMappingWasEnabled.enabled&&!m.enabled){
+      m.enabled=true;
+      try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true}); }catch(_){}
+    }
+    clearRecordMappingGuard();
+  }
+
+  function applyBackendKeyCapture(msg){
+    const mappingId=msg.mappingId||'';
+    const m=mappingById(mappingId)||recordingMapping()||selectedMapping();
+    if(!m) return false;
+    const mode=msg.mode||'trigger';
+    const key=msg.key||'';
+    if(mode==='target'){
+      const combo=sanitizeTargetCombo(key);
+      if(!combo) return false;
+      m.targetKey=combo;
+      if(isSelectedMapping(m.id)) editorTargetKey=combo;
+    }else{
+      const trig=normalizeTriggerKey(key);
+      if(!isAllowedTriggerKey(trig)) return false;
+      m.triggerKey=trig;
+      if(msg.source) m.triggerSource=msg.source;
+      else if(trig!=='AutoTrigger') m.triggerSource=null;
+      m.sourceKey=msg.sourceKey||(msg.source&&msg.source.rawEvents&&msg.source.rawEvents[0]&&msg.source.rawEvents[0].hotkey)||trig;
+      m.sourceTime=msg.sourceTime||'';
+      if(isSelectedMapping(m.id)) editorTriggerKey=trig;
+    }
+    m.label=(editorTriggerForMapping(m)||'?')+' → '+(editorTargetForMapping(m)||'?');
+    return true;
+  }
+
   function cancelRecording(){
     if(recordingMode==='none') return;
     const draftId=state.selectedMappingId;
@@ -5397,6 +6162,7 @@
     recordingMappingId='';
     resetTargetCapture();
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
+    restoreMappingEnabledAfterRecordCancel(recordingMapping()||selectedMapping());
     setRecording('none');
     if(abandonDraftIfPristine(draftId)) return;
     render();
@@ -5502,7 +6268,7 @@
   }
 
   function maybeEnableMappingAfterComplete(m){
-    if(!m||!isSavedMapping(m)||m.enabled) return;
+    if(onboardIsOpen()||!m||!isSavedMapping(m)||m.enabled) return;
     try{
       window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true});
     }catch(_){}
@@ -5810,6 +6576,8 @@
       console.error('autostart',err);
     });
   }
+
+  // Coach HUD removed: no floating overlay window.
 
   function buildMicLevelBars(){
     let html='';
@@ -6632,7 +7400,12 @@
         entrySummary:t('homeCapLoading'),
         entryMode:'loading',
         keyActive:false,
-        voiceActive:false
+        voiceActive:false,
+        triggerLabel:'',
+        targetLabel:'',
+        triggerKey:'',
+        targetKey:'',
+        keyReady:false
       };
     }
     const m=selectedMapping();
@@ -6654,67 +7427,80 @@
     const endEnabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const stateRaw=endSnap.state||'idle';
     const dictating=sessionActiveState(stateRaw);
+    const focusMode=isHomeFirstRunFocusMode();
     const paused=!!runtime.paused;
     let statusMode='idle',statusLine='',ctaMode='config',ctaMain='',ctaSub='',ctaPanel='keyWake',ctaFocus=null;
     if(dictating){
       statusMode='active';
       statusLine=endSnap.statusLabel||voiceEndStateLabel(stateRaw);
       ctaMode='dictating';
-      ctaMain=t('homeCtaDictating');
-      ctaSub=t('homeCtaDictatingSub');
+      ctaMain=t('homeCtaEnd');
+      ctaSub=t('homeCtaEndSub');
       ctaPanel='voiceWake';
       ctaFocus='endPhrases';
     }else if(stateRaw==='error'){
       statusMode='error';
       statusLine=endSnap.statusLabel||voiceEndStateLabel(stateRaw);
-      ctaMode='config';
+      ctaMode='error';
       ctaMain=t('homeCtaError');
       ctaSub=t('homeCtaErrorSub');
       ctaPanel='debug';
     }else if(paused){
       statusMode='warn';
       statusLine=t('homeStatusPaused');
-      ctaMode='config';
+      ctaMode='paused';
       ctaMain=t('homeCtaResume');
       ctaSub=t('homeCtaResumeSub');
       ctaPanel='basic';
-    }else if(keyActive&&voiceActive){
+    }else if(keyActive||voiceActive){
       statusMode='ready';
-      statusLine=t('homeStatusReady');
-      ctaMode='ready';
-      ctaMain=t('homeCtaStart');
-      ctaSub=t('homeCtaSubKeyOrVoice').replace('{key}',friendlyKeyName(trig));
-      ctaPanel='keyWake';
-    }else if(keyActive){
-      statusMode='ready';
-      statusLine=t('homeStatusReady');
-      ctaMode='ready';
-      ctaMain=t('homeCtaStart');
-      ctaSub=t('homeCtaSubKey').replace('{key}',friendlyKeyName(trig));
-      ctaPanel='keyWake';
-    }else if(voiceActive){
-      statusMode='ready';
-      statusLine=t('homeStatusVoiceReady');
-      ctaMode='ready';
-      ctaMain=t('homeCtaUse');
-      ctaSub=t('homeCtaSubVoice');
-      ctaPanel='voiceWake';
-    }else if(trig&&!tgt){
-      statusMode='warn';
-      statusLine=t('homeStatusNeedTarget');
-      ctaMode='config';
-      ctaMain=t('homeCtaContinue');
-      ctaSub=t('homeCtaSubNeedTarget');
-      ctaPanel='keyWake';
-      ctaFocus='target';
+      statusLine=t('homeStatusListening');
+      ctaMode='listening';
+      ctaMain=t('homeCtaListening');
+      if(keyActive&&voiceActive){
+        ctaSub=t('homeCtaSubKeyOrVoice').replace('{key}',friendlyKeyName(trig));
+      }else if(keyActive){
+        ctaSub=t('homeCtaSubKey').replace('{key}',friendlyKeyName(trig));
+      }else{
+        ctaSub=t('homeCtaSubVoice');
+      }
+      ctaPanel=keyActive?'keyWake':'voiceWake';
     }else{
       statusMode='idle';
-      statusLine=t('homeStatusIdle');
-      ctaMode='config';
-      ctaMain=t('homeCtaContinue');
-      ctaSub=t('homeCtaSubNeedTrigger');
-      ctaPanel='keyWake';
-      ctaFocus='trigger';
+      statusLine=t('homeStatusTapToStart');
+      ctaMode='start';
+      ctaMain=t('homeCtaTurnOn');
+      ctaSub=t('homeCtaTurnOnSub');
+      if(trig&&tgt){
+        ctaPanel='keyWake';
+      }else if(trig&&!tgt){
+        ctaPanel='keyWake';
+        ctaFocus='target';
+      }else{
+        ctaPanel='voiceWake';
+      }
+    }
+    if(focusMode&&!dictating&&statusMode!=='error'&&statusMode!=='warn'){
+      statusMode='ready';
+      statusLine=t('homeStatusFocus');
+      if(keyReady){
+        ctaMode='start';
+        ctaMain=t('homeCtaStart');
+        ctaSub=t('homeCtaSubKey').replace('{key}',friendlyKeyName(trig));
+        ctaPanel='keyWake';
+      }else if(trig&&!tgt){
+        ctaMode='config';
+        ctaMain=t('homeCtaContinue');
+        ctaSub=t('homeCtaSubNeedTarget');
+        ctaPanel='keyWake';
+        ctaFocus='target';
+      }else{
+        ctaMode='config';
+        ctaMain=t('homeCtaContinue');
+        ctaSub=t('homeCtaSubNeedTrigger');
+        ctaPanel='keyWake';
+        ctaFocus='trigger';
+      }
     }
     let keyStatus,keyDot;
     if(keyReady){ keyStatus=friendlyKeyName(trig)+' → '+friendlyKeyName(tgt); keyDot='ready'; }
@@ -6739,7 +7525,8 @@
     else if(keyActive){ entrySummary=t('homeEntryKeyOnly'); entryMode='key'; }
     else if(voiceActive){ entrySummary=t('homeEntryVoiceOnly'); entryMode='voice'; }
     else{ entrySummary=t('homeEntryNone'); entryMode='none'; }
-    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot,entrySummary,entryMode,keyActive,voiceActive};
+    var mapLabels=window.OneToneKeyLabels?window.OneToneKeyLabels.labelsForMapping(m,lang):{triggerLabel:friendlyKeyName(trig),targetLabel:friendlyKeyName(tgt)};
+    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot,entrySummary,entryMode,keyActive,voiceActive,triggerLabel:mapLabels.triggerLabel||friendlyKeyName(trig),targetLabel:mapLabels.targetLabel||friendlyKeyName(tgt),triggerKey:trig,targetKey:tgt,keyReady};
   }
 
   let homeUiState=null;
@@ -6981,13 +7768,6 @@
     [triggerStep,targetStep,finishStep,finishArrow].forEach(function(el){
       if(el) el.classList.toggle('is-clickable',!loading&&!busy);
     });
-    const btnSettings=$('btnHomeKeySettings');
-    if(btnSettings){
-      const allSet=!!(trig&&tgt);
-      btnSettings.textContent=allSet?t('homeKeyEditSettings'):t('homeKeyGoSettings');
-      btnSettings.classList.toggle('is-primary-slot',!allSet);
-      btnSettings.disabled=busy;
-    }
   }
 
   function keyFinishPreviewText(m){
@@ -7021,27 +7801,16 @@
     const finishKey=$('homeKeyMapFinishKey');
     const finishHint=$('homeKeyMapFinishHint');
     const arrowFinishText=$('homeKeyMapArrowFinishText');
-    const titleEl=$('homeKeyFinishTitle');
-    const previewLine=$('homeKeyFinishPreviewLine');
-    const previewDetail=$('homeKeyFinishPreviewDetail');
-    const btn=$('btnHomeKeyFinishSettings');
     if(finishLbl) finishLbl.textContent=t('homeKeyMapFinishLbl');
     if(arrowFinishText) arrowFinishText.textContent=t('homeKeyMapArrowFinishText');
-    if(titleEl) titleEl.textContent=t('homeKeyFinishTitle');
     const busy=recordingMode!=='none';
     if(loading){
       if(finishKey){ finishKey.textContent=t('homeLiveLoading'); finishKey.className='home-key-map-key is-empty'; }
       if(finishHint){ finishHint.textContent=''; finishHint.hidden=true; }
-      if(previewLine) previewLine.textContent=t('homeLiveLoading');
-      if(previewDetail){ previewDetail.textContent=''; previewDetail.hidden=true; }
-      if(btn){ btn.textContent=t('homeKeyFinishPreviewBtn'); btn.disabled=true; }
       return;
     }
     const summary=preview?preview.summary:t('homeLiveUnset');
     const detail=preview?preview.detail:'';
-    const bindingLine=preview&&preview.bindingLine
-      ?preview.bindingLine
-      :(preview&&preview.mode?t('homeKeyFinishPreviewMode').replace('{mode}',preview.mode):t('homeLiveUnset'));
     if(finishKey){
       finishKey.textContent=summary;
       finishKey.className='home-key-map-key'+(preview&&preview.saved?' is-set':' is-empty');
@@ -7049,15 +7818,6 @@
     if(finishHint){
       finishHint.textContent=detail;
       finishHint.hidden=!detail;
-    }
-    if(previewLine) previewLine.textContent=bindingLine;
-    if(previewDetail){
-      previewDetail.textContent=detail;
-      previewDetail.hidden=!detail;
-    }
-    if(btn){
-      btn.textContent=t('homeKeyFinishPreviewBtn');
-      btn.disabled=busy;
     }
   }
 
@@ -7084,6 +7844,14 @@
     const w=voiceUiSnapshot.wake||{};
     return w.phrase
       ||((eng==='vosk'&&voskCfg.phrases&&voskCfg.phrases[0])||(eng==='sapi'&&sapiCfg.phrases&&sapiCfg.phrases[0])||'');
+  }
+
+  function homeEndPhrase(){
+    const end=state.config.voiceEnd||state.config.voice_end||{};
+    const zh=end.phrasesZh||end.phrases_zh||[];
+    const en=end.phrasesEn||end.phrases_en||[];
+    const list=(lang==='en'?en.concat(zh):zh.concat(en)).filter(function(x){ return String(x||'').trim(); });
+    return list[0]||t('homeEndPhraseDefault');
   }
 
   function homeWakeHeardLabel(){
@@ -7386,18 +8154,16 @@
     return{
       panel:'homeLivePanelKey',
       layout:'voice-lane',
-      flowKeys:['homeKeyGuideFlowGoSettings','homeKeyGuideFlowSetTrigger','homeKeyGuideFlowSetTarget','homeKeyGuideFlowFinish','homeKeyGuideFlowEnable'],
+      flowKeys:['homeKeyGuideFlowSetTrigger','homeKeyGuideFlowSetTarget','homeKeyGuideFlowFinish','homeKeyGuideFlowEnable'],
       cautionKey:'homeKeyGuideCaution',
       pins:[
         {target:'#btnHomeSchemeSwitcher',detailKey:'homeKeyGuideScheme',labelEl:'#homeKeyMapSchemeLbl',callout:false},
         {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideTrigger',labelEl:'#homeKeyMapTriggerLbl',callout:false},
         {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideTarget',labelEl:'#homeKeyMapTargetLbl',callout:false},
-        {target:'#btnHomeKeySettings',detailKey:'homeKeyGuideFlowGoSettings',labelFromTargetBtn:true,step:1},
-        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideFlowSetTrigger',labelEl:'#homeKeyMapTriggerLbl',step:2},
-        {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideFlowSetTarget',labelEl:'#homeKeyMapTargetLbl',step:3},
-        {target:'#homeKeyMapFinishKey',detailKey:'homeKeyGuideFlowFinish',labelEl:'#homeKeyMapFinishLbl',step:4},
-        {target:'#btnHomeKeyToggle',detailKey:'homeKeyGuideFlowEnable',labelFromTargetBtn:true,step:5},
-        {target:'#btnHomeKeyFinishSettings',detailKey:'homeFinishGuideKeyFinish',labelFromTargetBtn:true,step:6}
+        {target:'#homeKeyMapTriggerKey',detailKey:'homeKeyGuideFlowSetTrigger',labelEl:'#homeKeyMapTriggerLbl',step:1},
+        {target:'#homeKeyMapTargetKey',detailKey:'homeKeyGuideFlowSetTarget',labelEl:'#homeKeyMapTargetLbl',step:2},
+        {target:'#homeKeyMapFinishKey',detailKey:'homeKeyGuideFlowFinish',labelEl:'#homeKeyMapFinishLbl',step:3},
+        {target:'#btnHomeKeyToggle',detailKey:'homeKeyGuideFlowEnable',labelFromTargetBtn:true,step:4}
       ]
     };
   }
@@ -8441,7 +9207,7 @@
     const d=I18N[lang];
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],
-      ['homeKeyFinishTitle',d.homeKeyFinishTitle],['homeVoiceFinishTitle',d.homeVoiceFinishTitle],
+      ['homeVoiceFinishTitle',d.homeVoiceFinishTitle],
       ['homeMicTitle',d.homeMicTitle],['homeMicChangeHint',d.homeMicChangeHint],
       ['homeKeyMapTitle',d.homeKeyMapTitle],['homeKeyMapSchemeLbl',d.homeKeyMapSchemeLbl],
       ['homeKeyMapTriggerLbl',d.homeLiveTrigger],['homeKeyMapTargetLbl',d.homeLiveTarget],
@@ -8458,9 +9224,37 @@
     refreshHomeGuideIfOpen(true);
   }
 
+  function openHomeSetupFlow(){
+    if(window.OneToneOnboarding) window.OneToneOnboarding.open(true);
+  }
+
+  function placeHomeHabitsBtn(unlocked){
+    const cta=$('btnHomeCta');
+    const ctaMain=$('homeCtaMain');
+    const ctaIcon=$('homeCtaIcon');
+    const ctaSub=$('homeCtaSub');
+    const headerActions=document.querySelector('.header-actions');
+    const btnSettings=$('btnSettings');
+    if(!cta||!headerActions) return;
+    if(cta.parentElement!==headerActions){
+      headerActions.insertBefore(cta,btnSettings);
+    }
+    if(ctaMain) ctaMain.textContent=unlocked?t('homeMyHabits'):t('homeSetupStart');
+    if(ctaIcon) ctaIcon.hidden=true;
+    if(ctaSub) ctaSub.hidden=true;
+    cta.hidden=false;
+  }
+
   function renderHome(){
+    state.firstSuccess=isFirstSuccessDone();
+    const entryVis=homeEntryVisibility();
+    const userEntryMode=entryVis.mode;
+    const showKeyEntry=entryVis.showKey;
+    const showVoiceEntry=entryVis.showVoice;
+
     const hs=computeHomeState();
     homeUiState=hs;
+    const unlocked=isHomeAdvancedUnlocked();
     const icon=$('homeStatusIcon');
     const title=$('homeStatusTitle');
     if(icon){
@@ -8471,17 +9265,46 @@
       else if(hs.statusMode==='warn') icon.classList.add('is-warn');
     }
     if(title) title.textContent=hs.statusLine;
-    const cta=$('btnHomeCta');
-    const ctaMain=$('homeCtaMain');
-    const ctaSub=$('homeCtaSub');
-    if(cta){
-      cta.classList.toggle('is-dictating',hs.ctaMode==='dictating');
-      cta.classList.toggle('is-config',hs.ctaMode==='config');
+    const focusMode=isHomeFirstRunFocusMode();
+    placeHomeHabitsBtn(unlocked);
+    const btnSettingsGlobal=$('btnSettings');
+    if(btnSettingsGlobal){
+      btnSettingsGlobal.hidden=!!(focusMode&&!ui.drawerOpen);
     }
-    if(ctaMain) ctaMain.textContent=hs.ctaMain;
-    if(ctaSub) ctaSub.textContent=hs.ctaSub;
-    const summary=$('homeStatusSummary');
-    if(summary) summary.textContent=hs.entrySummary;
+
+    const keyMapCard=$('homeKeyMapCard');
+    if(keyMapCard) keyMapCard.hidden=!showKeyEntry;
+    const voiceMeta=$('homeVoiceMeta');
+    if(voiceMeta) voiceMeta.hidden=!showVoiceEntry;
+    const voiceWakeFloat=$('homeVoiceWakeFloat');
+    if(voiceWakeFloat) voiceWakeFloat.hidden=!showVoiceEntry;
+    const voiceFinish=$('homeVoiceFinishBlock');
+    if(voiceFinish) voiceFinish.hidden=!showVoiceEntry;
+    const keyPanel=$('homeLivePanelKey');
+    const voicePanel=$('homeLivePanelVoice');
+    if(keyPanel){
+      keyPanel.hidden=!showKeyEntry;
+      keyPanel.classList.toggle('is-entry-hidden',!showKeyEntry);
+    }
+    if(voicePanel){
+      voicePanel.hidden=!showVoiceEntry;
+      voicePanel.classList.toggle('is-entry-hidden',!showVoiceEntry);
+    }
+    applyHomeEntryModeLayout(showKeyEntry,showVoiceEntry);
+    const homeAdvanced=$('homeAdvanced');
+    const showAdvanced=unlocked&&(showKeyEntry||showVoiceEntry);
+    if(homeAdvanced){
+      homeAdvanced.hidden=!showAdvanced;
+      if(showAdvanced){
+        homeAdvanced.open=true;
+        homeAdvanced.classList.add('is-unlocked');
+      }else{
+        homeAdvanced.open=false;
+        homeAdvanced.classList.remove('is-unlocked');
+      }
+    }
+    const advSummary=$('homeAdvancedSummary');
+    if(advSummary) advSummary.textContent=t('homeAdvancedSummary');
     renderHomeLiveZone();
   }
 
@@ -8585,14 +9408,20 @@
     openSettings({panel:'keyWake',focus:'keyFinishFlow'});
   }
 
+  function homeOneClickStart(){
+    markVoiceEngineBootHandled();
+    const m=selectedMapping();
+    const trig=m?editorTriggerForMapping(m):'';
+    const tgt=m?editorTargetForMapping(m):'';
+    const keyReady=!!(trig&&tgt);
+    const keyEnabled=!!(m&&m.enabled);
+    if(keyReady&&!keyEnabled) toggleHomeKeyEnable();
+    if(homeVoiceEngineOn()==='off') toggleVoiceSapi(true);
+    toast(t('homeStartedToast'));
+  }
+
   function handleHomeCtaClick(){
-    const hs=homeUiState||computeHomeState();
-    if(hs.ctaMode==='ready'){
-      if(selectedDisplayTriggerKey()&&selectedDisplayTargetKey()) openSettings({panel:'keyWake'});
-      else openSettings({panel:'voiceWake'});
-      return;
-    }
-    openSettings({panel:hs.ctaPanel,focus:hs.ctaFocus||undefined});
+    openHomeSetupFlow();
   }
 
   function focusSettingsField(focus){
@@ -8943,6 +9772,7 @@
         },800);
       }
       setTimeout(function(){ syncKeyWakeSettingsFromConfig(); },1200);
+      // Coach HUD removed
       setTimeout(function(){ ensureNotificationPermission(); }, 3000);
       mvpInitRenderSerial++;
       const serial=mvpInitRenderSerial;
@@ -9989,10 +10819,10 @@
   }
 
   function scheduleDeferredVoiceEngineBoot(){
-    if(voiceEngineBootDone||voiceEngineBootTimer||welcomeOpen) return;
+    if(voiceEngineBootDone||voiceEngineBootTimer||welcomeOpen||onboardIsOpen()) return;
     voiceEngineBootTimer=setTimeout(function(){
       voiceEngineBootTimer=0;
-      if(voiceEngineBootDone||welcomeOpen||!configLoadedFromBackend) return;
+      if(voiceEngineBootDone||welcomeOpen||onboardIsOpen()||!configLoadedFromBackend) return;
       const cfg=state.config||{};
       const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
       const sapi=cfg.voiceSapi||cfg.voice_sapi||{};
@@ -10040,7 +10870,7 @@
 
   function maybeStartProcessUsagePoll(){
     if(processUsagePollTimer||!processUsagePollDeferred) return;
-    if(welcomeOpen) return;
+    if(welcomeOpen||onboardIsOpen()) return;
     processUsagePollDeferred=false;
     startProcessUsagePoll();
   }
@@ -10086,6 +10916,8 @@
       if(guideDesc3) guideDesc3.textContent=d.guideDesc3;
       applyTheme();
       applyFontScale();
+      if(window.OneToneOnboarding) window.OneToneOnboarding.applyLang();
+      if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.applyLang();
       langBootstrapPending=true;
       return;
     }
@@ -10153,11 +10985,13 @@
     $('btnCancelRecord').textContent=d.cancelRecord;
     const wakeCardTitle=$('wakeCardTitle'); if(wakeCardTitle) wakeCardTitle.textContent=d.wakeCardTitle;
     applyHomeLiveLang();
+    if(window.OneToneOnboarding) window.OneToneOnboarding.applyLang();
+    if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.applyLang();
     const settingsNavBasic=$('settingsNavBasic'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     const settingsNavKeyWake=$('settingsNavKeyWake'); if(settingsNavKeyWake) settingsNavKeyWake.textContent=d.settingsNavKeyWake;
     const settingsNavVoiceWake=$('settingsNavVoiceWake'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
     const settingsNavDebug=$('settingsNavDebug'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
-    const settingsNavGeneral=$('settingsNavGeneral'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;
+    const settingsNavGeneral=$('settingsNavGeneralLabel'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;
     const spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
     const spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
     const spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
@@ -10232,6 +11066,8 @@
     const langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;
     const langPickZh=$('langPickZh'); if(langPickZh) langPickZh.textContent=d.langZh;
     const guideReplayTitle=$('guideReplayTitle'); if(guideReplayTitle) guideReplayTitle.textContent=d.guideReplayTitle;
+    // Coach HUD removed
+    // Coach HUD removed
     const guideReplayDesc=$('guideReplayDesc'); if(guideReplayDesc) guideReplayDesc.textContent=d.guideReplayDesc;
     const maintenanceDangerTitle=$('maintenanceDangerTitle'); if(maintenanceDangerTitle) maintenanceDangerTitle.textContent=d.maintenanceDangerTitle;
     const maintenanceDangerDesc=$('maintenanceDangerDesc'); if(maintenanceDangerDesc) maintenanceDangerDesc.textContent=d.maintenanceDangerDesc;
@@ -10443,7 +11279,7 @@
       mappings:[{id:id,label:'AutoTrigger → RAlt',group:'默认',triggerKey:'AutoTrigger',targetKey:'RAlt',enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,
       sounds:defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:['开始输入','开始听写','开启输入','开始说话'],targetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:'RAlt',cooldownMs:2000,modelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:'cn-light'},
@@ -10897,6 +11733,8 @@
     if(!state.selectedMappingId) state.selectedMappingId=state.config.mappings[0].id;
     if(state.config.schemeSwitchKey===undefined||state.config.schemeSwitchKey===null) state.config.schemeSwitchKey='';
     if(state.config.keyWakeSoundEnabled===undefined) state.config.keyWakeSoundEnabled=false;
+    // coachHudEnabled removed from UI; keep config field for backward compatibility
+    if(state.config.coachHudEnabled===undefined) state.config.coachHudEnabled=false;
     ensureSoundsConfig();
     state.config.mappings.forEach(ensureMappingExtras);
     (state.config.trash||[]).forEach(ensureMappingExtras);
@@ -10930,6 +11768,7 @@
       keyPressDurationMs:state.config.keyPressDurationMs||250,
       schemeSwitchKey:state.config.schemeSwitchKey||'',
       keyWakeSoundEnabled:!!(state.config.sounds&&state.config.sounds.keyWake&&state.config.sounds.keyWake.enabled),
+      coachHudEnabled:!!state.config.coachHudEnabled,
       sounds:(function(){
         const s=ensureSoundsConfig();
         return {
@@ -11080,6 +11919,40 @@
     }
   }
 
+  function armTriggerLeftClickIgnore(ms){
+    const span=Number(ms)||350;
+    triggerLeftClickIgnoreUntil=Date.now()+Math.max(120,span);
+  }
+
+  function armTargetLeftClickIgnore(ms){
+    const span=Number(ms)||350;
+    targetLeftClickIgnoreUntil=Date.now()+Math.max(120,span);
+  }
+
+  function isLeftMouseToken(v){
+    const raw=String(v||'').trim().toLowerCase();
+    if(!raw) return false;
+    if(raw==='lbutton'||raw==='mouse_left'||raw==='mouseleft'||raw==='mouse left') return true;
+    if(raw==='leftmousebutton'||raw==='left mouse button') return true;
+    return false;
+  }
+
+  function shouldIgnoreTriggerLeftClickCapture(key, sourceKey, source){
+    if(Date.now()>triggerLeftClickIgnoreUntil) return false;
+    if(isLeftMouseToken(key)||isLeftMouseToken(sourceKey)) return true;
+    const evt=source&&Array.isArray(source.rawEvents)&&source.rawEvents[0];
+    if(evt&&isLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
+    return false;
+  }
+
+  function shouldIgnoreTargetLeftClickCapture(key, sourceKey, source){
+    if(Date.now()>targetLeftClickIgnoreUntil) return false;
+    if(isLeftMouseToken(key)||isLeftMouseToken(sourceKey)) return true;
+    const evt=source&&Array.isArray(source.rawEvents)&&source.rawEvents[0];
+    if(evt&&isLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
+    return false;
+  }
+
   function normalizeKeyFromCode(code, key){
     const c=String(code||'');
     const k=String(key||'');
@@ -11200,6 +12073,10 @@
 
   function openWelcome(){
     welcomeOpen=true;
+    if(window.OneToneOnboarding){
+      window.OneToneOnboarding.open(true);
+      return;
+    }
     const overlay=$('welcomeOverlay');
     if(!overlay) return;
     overlay.classList.add('open');
@@ -11208,6 +12085,10 @@
 
   function closeWelcome(markSeen){
     welcomeOpen=false;
+    if(window.OneToneOnboarding&&window.OneToneOnboarding.isOpen()){
+      window.OneToneOnboarding.setOpen(false);
+      return;
+    }
     const overlay=$('welcomeOverlay');
     if(!overlay) return;
     overlay.classList.remove('open');
@@ -12141,6 +13022,15 @@
     if(targetBtn){
       targetBtn.classList.toggle('is-recording',recordingMode==='target');
     }
+    const onboardTriggerBtn=$('btnOnboardStartTriggerRecord');
+    const onboardTargetBtn=$('btnOnboardStartTargetRecord');
+    const onboardTriggerCard=$('onboardTriggerCard');
+    const onboardTargetCard=$('onboardTargetCard');
+    if(onboardTriggerBtn) onboardTriggerBtn.classList.toggle('is-recording',recordingMode==='trigger');
+    if(onboardTargetBtn) onboardTargetBtn.classList.toggle('is-recording',recordingMode==='target');
+    if(onboardTriggerCard) onboardTriggerCard.classList.toggle('is-recording',recordingMode==='trigger');
+    if(onboardTargetCard) onboardTargetCard.classList.toggle('is-recording',recordingMode==='target');
+    if(window.OneToneOnboarding&&window.OneToneOnboarding.syncRecordingUi) window.OneToneOnboarding.syncRecordingUi();
     if(ui.drawerOpen&&ui.settingsPanel==='keyWake') syncKeySchemeTimeline(schemeStepFocus);
   }
 
@@ -12201,37 +13091,121 @@
     renderAddButton();
   }
 
+  function invokeRecordingCommand(cmd,args){
+    const invoke=window.__vp_invoke__;
+    const payload=window.__vp_tauri_args__?window.__vp_tauri_args__(args||{}):(args||{});
+    if(invoke){
+      try{
+        return invoke(cmd,payload).then(function(){ return true; }).catch(function(err){
+          pushLog('[record] '+cmd+' failed: '+String(err&&err.message||err||'unknown'));
+          return false;
+        });
+      }catch(err){
+        pushLog('[record] '+cmd+' failed: '+String(err&&err.message||err||'unknown'));
+        return Promise.resolve(false);
+      }
+    }
+    try{
+      if(cmd==='cmd_start_recording'){
+        window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:args.mappingId||'',mode:args.mode||'trigger'});
+      }else if(cmd==='cmd_stop_recording'){
+        window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});
+      }
+      return Promise.resolve(true);
+    }catch(err){
+      pushLog('[record] '+cmd+' failed: '+String(err&&err.message||err||'unknown'));
+      return Promise.resolve(false);
+    }
+  }
+
+  function invokeStartRecording(mappingId,mode){
+    return invokeRecordingCommand('cmd_start_recording',{mappingId:mappingId||'',mode:mode||'trigger'});
+  }
+
+  function invokeStopRecording(){
+    return invokeRecordingCommand('cmd_stop_recording',{});
+  }
+
   function startTriggerRecord(){
+    if(recordingMode!=='none'||recordingStartPending) return Promise.resolve(false);
     ensureConfig();
     beginRecordSnapshot();
     resetTargetCapture();
+    armTriggerLeftClickIgnore(900);
     recordCaptureGen++;
-    recordingMappingId=state.selectedMappingId||'';
+    const captureGen=recordCaptureGen;
+    const fallback=(selectedMapping()&&selectedMapping().id)
+      ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
+      ||'';
+    if(!state.selectedMappingId&&fallback) state.selectedMappingId=fallback;
+    recordingMappingId=state.selectedMappingId||fallback||'';
     const m=recordingMapping();
-    if(m){ m.triggerSource=null; m.sourceKey=''; m.sourceTime=''; }
-    setRecording('trigger');
-    updateRecordingPreview('trigger','');
-    try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:state.selectedMappingId,mode:'trigger'});}catch(_){ }
+    if(m){
+      m.triggerSource=null; m.sourceKey=''; m.sourceTime='';
+    }
+    recordingStartPending=true;
+    pushLog('[record] start trigger mapping='+String(recordingMappingId||''));
     pushLog(t('logStartTrigger'));
-    $('triggerState').textContent=t('triggerRecordHint');
-    recordTimer=setTimeout(function(){
-      if(recordingMode==='trigger'){ cancelRecording(); pushLog(t('logTimeout')); }
-    },30000);
+    return disableMappingForRecordingAsync(m).then(function(){
+      return invokeStartRecording(recordingMappingId,'trigger');
+    }).then(function(ok){
+      recordingStartPending=false;
+      if(!ok||captureGen!==recordCaptureGen){
+        if(captureGen===recordCaptureGen){
+          recordSnapshot=null;
+          recordingMappingId='';
+          renderRecordCancelBar();
+        }
+        return false;
+      }
+      setRecording('trigger');
+      updateRecordingPreview('trigger','');
+      notifyOnboardingRecordingPreview('trigger','');
+      $('triggerState').textContent=t('triggerRecordHint');
+      recordTimer=setTimeout(function(){
+        if(recordingMode==='trigger'){ cancelRecording(); pushLog(t('logTimeout')); }
+      },30000);
+      return true;
+    });
   }
 
   function startTargetRecord(){
+    if(recordingMode!=='none'||recordingStartPending) return Promise.resolve(false);
     ensureConfig();
     beginRecordSnapshot();
     resetTargetCapture();
     recordCaptureGen++;
-    recordingMappingId=state.selectedMappingId||'';
-    setRecording('target');
-    updateRecordingPreview('target','');
-    try{window.chrome?.webview?.postMessage({type:'mvp_start_recording',mappingId:state.selectedMappingId,mode:'target'});}catch(_){ }
+    const captureGen=recordCaptureGen;
+    const fallback=(selectedMapping()&&selectedMapping().id)
+      ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
+      ||'';
+    if(!state.selectedMappingId&&fallback) state.selectedMappingId=fallback;
+    recordingMappingId=state.selectedMappingId||fallback||'';
+    const m=recordingMapping();
+    recordingStartPending=true;
+    pushLog('[record] start target mapping='+String(recordingMappingId||''));
     pushLog(t('logStartTarget'));
-    recordTimer=setTimeout(function(){
-      if(recordingMode==='target'){ cancelRecording(); pushLog(t('logTimeout')); }
-    },30000);
+    return disableMappingForRecordingAsync(m).then(function(){
+      return invokeStartRecording(recordingMappingId,'target');
+    }).then(function(ok){
+      recordingStartPending=false;
+      if(!ok||captureGen!==recordCaptureGen){
+        if(captureGen===recordCaptureGen){
+          recordSnapshot=null;
+          recordingMappingId='';
+          renderRecordCancelBar();
+        }
+        return false;
+      }
+      setRecording('target');
+      armTargetLeftClickIgnore(360);
+      updateRecordingPreview('target','');
+      notifyOnboardingRecordingPreview('target','');
+      recordTimer=setTimeout(function(){
+        if(recordingMode==='target'){ cancelRecording(); pushLog(t('logTimeout')); }
+      },30000);
+      return true;
+    });
   }
 
   function isHardwareDelegatedTriggerKey(key,code){
@@ -12244,11 +13218,11 @@
   }
 
   function finishTriggerCapture(key, source, sourceKey, sourceTime){
-    if(recordingMode!=='trigger') return;
+    if(recordingMode!=='trigger') return false;
     const k=normalizeTriggerKey(key);
-    if(!isAllowedTriggerKey(k)){ toast(t('triggerRejected')); return; }
+    if(!isAllowedTriggerKey(k)){ toast(t('triggerRejected')); return false; }
     const m=recordingMapping();
-    if(!m) return;
+    if(!m) return false;
     m.triggerKey=k;
     if(source){
       m.triggerSource=source;
@@ -12264,12 +13238,22 @@
     pushLog(t('logTriggerDone')+friendlyKeyName(k));
     recordSnapshot=null;
     recordingMappingId='';
+    clearRecordMappingGuard();
     clearTimeout(recordTimer);
     setRecording('none');
     save();
     render();
+    notifyOnboardingCapture('trigger',{
+      mode:'trigger',
+      mappingId:m.id,
+      key:k,
+      source:source||null,
+      sourceKey:m.sourceKey,
+      sourceTime:m.sourceTime
+    });
     maybeEnableMappingAfterComplete(m);
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
+    return true;
   }
 
   function finishFrontendTriggerCapture(combo){
@@ -12293,6 +13277,10 @@
     const raw=String(key||'').trim();
     const physical=normalizeMediaTargetKey(raw,raw)||raw;
     if(!physical) return;
+    if(shouldIgnoreTriggerLeftClickCapture(physical, physical, null)){
+      pushLog('[record] ignore trigger-start left click');
+      return;
+    }
     triggerPeripheralGuardUntil=Date.now()+450;
     const source=buildPeripheralTriggerSource(physical);
     const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
@@ -12300,11 +13288,11 @@
   }
 
   function finishTargetCapture(combo, mappingId){
-    if(recordingMode!=='target') return;
+    if(recordingMode!=='target') return false;
     combo=sanitizeTargetCombo(combo);
-    if(!combo) return;
+    if(!combo) return false;
     const m=mappingById(mappingId)||recordingMapping();
-    if(!m) return;
+    if(!m) return false;
     m.targetKey=combo;
     if(isSelectedMapping(m.id)) editorTargetKey=combo;
     m.label=(editorTriggerForMapping(m)||'?')+' → '+combo;
@@ -12314,13 +13302,20 @@
     pushLog(t('logTargetDone')+friendlyKeyName(combo));
     recordSnapshot=null;
     recordingMappingId='';
+    clearRecordMappingGuard();
     clearTimeout(recordTimer);
     setRecording('none');
     resetTargetCapture();
     save();
     render();
+    notifyOnboardingCapture('target',{
+      mode:'target',
+      mappingId:m.id,
+      key:combo
+    });
     maybeEnableMappingAfterComplete(m);
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
+    return true;
   }
 
   document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
@@ -12343,6 +13338,7 @@
     btn.addEventListener('click',function(){ setFontScale(btn.getAttribute('data-scale')); });
   });
   $('btnAutostart').onclick=toggleAutostart;
+  // Coach HUD removed
   $('btnSoundsMaster').onclick=toggleSoundsMaster;
   document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
     btn.onclick=function(){
@@ -12392,28 +13388,25 @@
   $('voiceSapiConfidence').onchange=function(){updateVoiceSapiConfidence(true)};
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeLater').onclick=function(){ closeWelcome(true); };
-  $('btnWelcomeStart').onclick=function(){ closeWelcome(true); };
+  $('btnWelcomeStart').onclick=function(){ closeWelcome(true); homeOneClickStart(); };
   $('btnReplayWelcome').onclick=function(){ openWelcome(); };
+  const btnHomePhrasePractice=$('btnHomePhrasePractice');
+  if(btnHomePhrasePractice){
+    btnHomePhrasePractice.onclick=function(){
+      if(window.OneToneApp) window.OneToneApp.openPhrasePractice({});
+    };
+  }
   $('welcomeOverlay').addEventListener('click',function(e){
     if(e.target===this) closeWelcome(true);
   });
   $('btnSettings').onclick=function(){
+    if(isHomeFirstRunFocusMode()&&!ui.drawerOpen){
+      if(window.OneToneOnboarding) window.OneToneOnboarding.open(true);
+      return;
+    }
     if(ui.drawerOpen) closeDrawer();
     else openSettings({panel:'basic'});
   };
-  const btnUpdateAction=$('btnUpdateAction');
-  if(btnUpdateAction){
-    btnUpdateAction.onclick=function(){
-      const update=state.update||defaultUpdateState();
-      if(update.phase==='available'){
-        installAppUpdate();
-      }else if(update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting'){
-        return;
-      }else{
-        checkForAppUpdate(true);
-      }
-    };
-  }
   const btnUpdatePrimary=$('btnUpdatePrimary');
   if(btnUpdatePrimary){
     btnUpdatePrimary.onclick=function(){
@@ -12428,8 +13421,6 @@
   }
   $('btnHomeCta').onclick=handleHomeCtaClick;
   initHomeGuide();
-  const btnHomeKeySettings=$('btnHomeKeySettings');
-  if(btnHomeKeySettings) btnHomeKeySettings.onclick=openHomeKeySettings;
   const btnHomeKeyToggle=$('btnHomeKeyToggle');
   if(btnHomeKeyToggle) btnHomeKeyToggle.onclick=toggleHomeKeyEnable;
   const btnHomeSchemeSwitcher=$('btnHomeSchemeSwitcher');
@@ -12491,8 +13482,6 @@
   $('homeVoiceSapiConfidence').onchange=function(){ updateHomeVoiceSapiConfidence(true); };
   $('btnHomeEndToggle').onclick=toggleVoiceEnd;
   $('btnHomeEndAutoSend').onclick=toggleHomeVoiceEndAutoSend;
-  const btnHomeKeyFinishSettings=$('btnHomeKeyFinishSettings');
-  if(btnHomeKeyFinishSettings) btnHomeKeyFinishSettings.onclick=openHomeKeyFinishSettings;
   const homeKeyMapCardEl=$('homeKeyMapCard');
   if(homeKeyMapCardEl){
     homeKeyMapCardEl.addEventListener('click',function(e){
@@ -12567,7 +13556,14 @@
   const btnAboutCheckUpdate=$('btnAboutCheckUpdate');
   if(btnAboutCheckUpdate){
     btnAboutCheckUpdate.onclick=function(){
-      checkForAppUpdate(true);
+      const update=state.update||defaultUpdateState();
+      if(update.phase==='available'){
+        installAppUpdate();
+      }else if(update.phase==='downloading'||update.phase==='installing'||update.phase==='restarting'){
+        return;
+      }else{
+        checkForAppUpdate(true);
+      }
     };
   }
   document.querySelectorAll('.settings-nav-item').forEach(function(btn){
@@ -12914,11 +13910,14 @@
     if(e.key==='Escape'){
       const testOpen=$('testOverlay')&&$('testOverlay').classList.contains('open');
       if(testOpen){ e.preventDefault(); closeTestModal(); return; }
+      const phraseOpen=$('phrasePracticeOverlay')&&$('phrasePracticeOverlay').classList.contains('open');
+      if(phraseOpen&&window.OneTonePhrasePractice){ e.preventDefault(); window.OneTonePhrasePractice.close(); return; }
       const confirmOpen=$('confirmOverlay')&&$('confirmOverlay').classList.contains('open');
       if(confirmOpen){ e.preventDefault(); closeConfirmModal(false); return; }
       if(recordingMode!=='none'){ e.preventDefault(); cancelRecording(); return; }
       const m=selectedMapping();
       if(m&&isDraftMapping(m)){ e.preventDefault(); removeDraftMapping(m.id); return; }
+      if(onboardIsOpen()){ e.preventDefault(); closeWelcome(false); return; }
       if(welcomeOpen){ closeWelcome(true); return; }
       if(ui.drawerOpen){ closeDrawer(); return; }
     }
@@ -13153,12 +14152,20 @@
       if(recordingMode!=='none') playSoundCue('record');
       const seen=msg.key||'?';
       if(recordingMode==='trigger'){
+        if(shouldIgnoreTriggerLeftClickCapture(seen, seen, null)){
+          updateRecordingPreview('trigger','');
+          $('triggerState').textContent=t('triggerRecordHint');
+          pushLog('[record] ignore trigger-start left click');
+          return;
+        }
         const preview=previewCaptureKey('trigger',seen);
         updateRecordingPreview('trigger',preview);
+        notifyOnboardingRecordingPreview('trigger',preview);
         $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(preview);
       }else if(recordingMode==='target'){
         const preview=previewCaptureKey('target',seen);
         updateRecordingPreview('target',preview);
+        notifyOnboardingRecordingPreview('target',preview);
         $('targetState').textContent=t('triggerRecordDetected')+friendlyKeyName(preview);
       }else if(recordingMode==='nativeRestore'){
         $('triggerState').textContent=t('triggerRecordDetected')+friendlyKeyName(seen);
@@ -13175,23 +14182,61 @@
       if(recordingMode==='trigger'){
         const preview=previewCaptureKey('trigger',seen);
         updateRecordingPreview('trigger',preview);
+        notifyOnboardingRecordingPreview('trigger',preview);
         $('triggerState').textContent=t('comboHint')+friendlyKeyName(preview);
       }else if(recordingMode==='target'){
         const preview=previewCaptureKey('target',seen);
         updateRecordingPreview('target',preview);
+        notifyOnboardingRecordingPreview('target',preview);
         $('targetState').textContent=t('comboHint');
       }
     }
+    if(msg.type==='mvp_onboarding_trigger_fired'){
+      if(msg.ok) markFirstSuccessDone();
+      onboardEmit('onboarding_trigger_fired',msg);
+      if(msg.ok) renderHome();
+    }
     if(msg.type==='mvp_key_captured'){
       const key = msg.key || 'AutoTrigger';
-      if(recordingMode==='trigger'){
-        if(Date.now()<triggerPeripheralGuardUntil&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
-          return;
+      const captureMode=msg.mode||'trigger';
+      if(captureMode==='trigger'){
+        if(recordingMode==='trigger'){
+          if(shouldIgnoreTriggerLeftClickCapture(key, msg.sourceKey || '', msg.source || null)){
+            pushLog('[record] ignore transient left click');
+            return;
+          }
+          if(Date.now()<triggerPeripheralGuardUntil&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
+            return;
+          }
+          finishTriggerCapture(key, msg.source || null, msg.sourceKey || '', msg.sourceTime || '');
+        }else if(applyBackendKeyCapture(msg)){
+          clearRecordMappingGuard();
+          clearTimeout(recordTimer);
+          recordSnapshot=null;
+          recordingMappingId='';
+          setRecording('none');
+          save();
+          render();
+          notifyOnboardingCapture('trigger',msg);
         }
-        finishTriggerCapture(key, msg.source || null, msg.sourceKey || '', msg.sourceTime || '');
-      }else if(msg.mode==='target'&&recordingMode==='target'){
-        const sanitized=sanitizeTargetCombo(key);
-        if(sanitized) finishTargetCapture(sanitized, msg.mappingId||'');
+      }else if(captureMode==='target'){
+        if(recordingMode==='target'){
+          if(shouldIgnoreTargetLeftClickCapture(key, msg.sourceKey || '', msg.source || null)){
+            pushLog('[record] ignore transient left click');
+            return;
+          }
+          const sanitized=sanitizeTargetCombo(key);
+          if(sanitized) finishTargetCapture(sanitized, msg.mappingId||'');
+        }else if(applyBackendKeyCapture(msg)){
+          clearRecordMappingGuard();
+          clearTimeout(recordTimer);
+          recordSnapshot=null;
+          recordingMappingId='';
+          setRecording('none');
+          save();
+          render();
+          notifyOnboardingCapture('target',msg);
+        }
       }else if(recordingMode==='nativeRestore'){
         const physical=msg.sourceKey||key;
         finishNativeRestoreCapture(physical, msg.source || null);
@@ -13243,16 +14288,19 @@
   });
 
   markBoot('script init');
+  if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.init();
+  if(window.OneToneOnboarding) window.OneToneOnboarding.init();
+  // Coach HUD removed
   try{
     const savedTheme=localStorage.getItem('vp_theme');
     const savedLang=localStorage.getItem('vp_lang');
     const savedFontScale=localStorage.getItem('vp_font_scale');
-    const seenWelcome=localStorage.getItem('vp_welcome_seen');
     const dismissedUpdate=localStorage.getItem('vp_update_dismissed_version');
+    state.firstSuccess=isFirstSuccessDone();
     if(savedTheme==='dark'||savedTheme==='light') theme=savedTheme;
     if(savedLang==='zh'||savedLang==='en') lang=savedLang;
     if(savedFontScale&&FONT_SCALE_VALUES[savedFontScale]) fontScale=savedFontScale;
-    if(seenWelcome!=='1') welcomeOpen=true;
+    if(window.OneToneOnboarding&&window.OneToneOnboarding.shouldAutoOpen()) welcomeOpen=true;
     if(dismissedUpdate) updateDismissedVersion=dismissedUpdate;
   }catch(_){}
   markBoot('local preferences loaded');
@@ -13280,7 +14328,7 @@
   pushLog(t('waitLog'));
   deferProcessUsagePoll();
   setTimeout(function(){
-    if(!welcomeOpen) maybeStartProcessUsagePoll();
+    if(!welcomeOpen&&!onboardIsOpen()) maybeStartProcessUsagePoll();
   },4000);
   setTimeout(function(){ markBoot('requestBackendConfig begin'); requestBackendConfig(8); }, 200);
   setTimeout(function(){ markBoot('fallbackConfigLoaded begin'); fallbackConfigLoaded(); }, 3500);

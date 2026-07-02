@@ -31,20 +31,12 @@ fn now_label() -> String {
 }
 
 pub fn early_line(source: &str, message: &str) {
-    let line = format!(
-        "[{}] [{source}] {}",
-        now_label(),
-        sanitize_text(message)
-    );
+    let line = format!("[{}] [{source}] {}", now_label(), sanitize_text(message));
     append_live_log(&line);
 }
 
 pub fn log_line(state: &AppState, source: &str, message: &str) {
-    let line = format!(
-        "[{}] [{source}] {}",
-        now_label(),
-        sanitize_text(message)
-    );
+    let line = format!("[{}] [{source}] {}", now_label(), sanitize_text(message));
     let mut ring = state.log_ring.lock();
     if ring.len() >= LOG_RING_CAPACITY {
         ring.pop_front();

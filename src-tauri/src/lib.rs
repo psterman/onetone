@@ -1,4 +1,3 @@
-mod native_dll;
 mod app_log;
 mod audio_win;
 mod backdrop;
@@ -6,6 +5,7 @@ mod config;
 mod ipc;
 mod key_chord;
 mod keyboard;
+mod native_dll;
 mod policy_config;
 mod press_gesture;
 mod resource_monitor;
@@ -412,6 +412,7 @@ pub fn run() {
             ipc::cmd_voice_end_set_commit_delay,
             ipc::cmd_voice_end_set_phrases,
             ipc::cmd_voice_end_test_stop,
+            ipc::cmd_voice_end_ui_end,
             ipc::cmd_voice_end_test_commit,
             ipc::cmd_update_check,
             ipc::cmd_update_install,
