@@ -2,13 +2,119 @@ use crate::key_chord::{
     is_left_alt_only, is_right_alt_only, parse_chord, MouseButton, SendToken, VkKey,
 };
 use crate::send_guard;
+use std::sync::Mutex;
+use std::sync::OnceLock;
 use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
     KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
     MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
+    MOUSEEVENTF_XDOWN,     MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
     XBUTTON2,
 };
+
+static OUR_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
+static LAST_EXTERNAL_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
+
+pub fn set_our_hwnd(hwnd: isize) {
+    *OUR_HWND.get_or_init(|| Mutex::new(0)).lock().unwrap() = hwnd;
+}
+
+#[cfg(windows)]
+pub fn track_foreground_for_send() {
+    use winapi::um::processthreadsapi::GetCurrentProcessId;
+    use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId, IsWindow};
+
+    unsafe {
+        let fg = GetForegroundWindow();
+        if fg.is_null() || IsWindow(fg) == 0 {
+            return;
+        }
+        let our = *OUR_HWND.get_or_init(|| Mutex::new(0)).lock().unwrap();
+        if our != 0 && fg as isize == our {
+            return;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(fg, &mut pid);
+        if pid == GetCurrentProcessId() {
+            return;
+        }
+        *LAST_EXTERNAL_HWND
+            .get_or_init(|| Mutex::new(0))
+            .lock()
+            .unwrap() = fg as isize;
+    }
+}
+
+#[cfg(not(windows))]
+pub fn track_foreground_for_send() {}
+
+#[cfg(windows)]
+pub fn restore_external_foreground() -> bool {
+    use winapi::um::processthreadsapi::GetCurrentThreadId;
+    use winapi::um::winuser::{
+        AllowSetForegroundWindow, AttachThreadInput, GetForegroundWindow,
+        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
+    };
+
+    const ASFW_ANY: u32 = 0xFFFF_FFFF;
+
+    let target_hwnd = {
+        let hwnd = *LAST_EXTERNAL_HWND
+            .get_or_init(|| Mutex::new(0))
+            .lock()
+            .unwrap();
+        if hwnd == 0 {
+            return false;
+        }
+        hwnd as winapi::shared::windef::HWND
+    };
+    unsafe {
+        if IsWindow(target_hwnd) == 0 {
+            return false;
+        }
+        if IsIconic(target_hwnd) != 0 {
+            ShowWindow(target_hwnd, SW_RESTORE);
+        }
+        let fg = GetForegroundWindow();
+        if fg == target_hwnd {
+            return true;
+        }
+        let mut fg_pid = 0u32;
+        let mut target_pid = 0u32;
+        let fg_thread = GetWindowThreadProcessId(fg, &mut fg_pid);
+        let target_thread = GetWindowThreadProcessId(target_hwnd, &mut target_pid);
+        let current_thread = GetCurrentThreadId();
+        if fg_thread != 0 && fg_thread != target_thread {
+            AttachThreadInput(fg_thread, target_thread, 1);
+        }
+        if current_thread != target_thread {
+            AttachThreadInput(current_thread, target_thread, 1);
+        }
+        AllowSetForegroundWindow(ASFW_ANY);
+        let ok = SetForegroundWindow(target_hwnd) != 0;
+        if fg_thread != 0 && fg_thread != target_thread {
+            AttachThreadInput(fg_thread, target_thread, 0);
+        }
+        if current_thread != target_thread {
+            AttachThreadInput(current_thread, target_thread, 0);
+        }
+        ok
+    }
+}
+
+#[cfg(not(windows))]
+pub fn restore_external_foreground() -> bool {
+    false
+}
+
+/// Voice wake: restore the last external window, then send the IME shortcut there.
+pub fn send_voice_wake_chord(combo: &str, duration_ms: u32) -> bool {
+    let restored = restore_external_foreground();
+    if restored {
+        std::thread::sleep(std::time::Duration::from_millis(60));
+    }
+    send_chord(combo, duration_ms)
+}
 
 fn make_key_input(vk: u16, extended: bool, keyup: bool) -> INPUT {
     let mut input = INPUT {

@@ -188,6 +188,14 @@ pub fn build_pressed_chord(terminal: &str) -> String {
     terminal.trim().to_string()
 }
 
+pub fn chord_is_sendable(combo: &str) -> bool {
+    let trimmed = combo.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    is_right_alt_only(trimmed) || is_left_alt_only(trimmed) || parse_chord(trimmed).is_ok()
+}
+
 pub fn is_right_alt_only(combo: &str) -> bool {
     match parse_chord(combo) {
         Ok(tokens) if tokens.len() == 1 => {

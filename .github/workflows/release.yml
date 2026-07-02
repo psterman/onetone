@@ -32,11 +32,19 @@ jobs:
         with:
           tauriScript: cargo tauri
           tagName: v__VERSION__
-          releaseName: 一声 v__VERSION__
+          releaseName: "OneTone v__VERSION__"
           releaseBody: |
-            此版本支持应用内在线更新。
+            ## OneTone v__VERSION__
 
-            本地配置保存在用户目录中，安装更新只替换程序文件。
+            **Requirements:** Windows 10/11 x64
+
+            **First run:** Complete the welcome guide and map your hardware key to your voice-input shortcut.
+
+            **SmartScreen:** If Windows blocks the installer, click **More info** → **Run anyway** (unsigned binary).
+
+            **Config:** `%APPDATA%\onetone\config\settings.json` — updates replace the app only, not your settings.
+
+            Supports in-app auto-update via GitHub Releases.
           releaseDraft: false
           prerelease: false
           updaterJsonPreferNsis: true

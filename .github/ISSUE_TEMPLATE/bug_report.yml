@@ -1,0 +1,81 @@
+name: Bug report
+description: Report something that isn't working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as you can.
+
+  - type: input
+    id: version
+    attributes:
+      label: OneTone version
+      description: Settings → Recovery & Maintenance → About
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: windows-build
+    attributes:
+      label: Windows build (optional)
+      description: Run `winver` or Settings → System → About
+      placeholder: e.g. 23H2, build 22631
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do before the bug happened?
+      placeholder: |
+        1. Open OneTone
+        2. Map side button to Win+H
+        3. Press side button in Notepad
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Export logs via Settings → Runtime Status → Developer → Export logs (redacted zip). Paste relevant lines or attach the zip.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: smartscreen
+    attributes:
+      label: Did SmartScreen block the installer?
+      options:
+        - "No"
+        - "Yes — I used More info → Run anyway"
+        - "Yes — I could not install"
+    validations:
+      required: false

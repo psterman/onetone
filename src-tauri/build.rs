@@ -87,6 +87,10 @@ fn link_vosk_if_present() {
     if lib.exists() {
         println!("cargo:rustc-link-search=native={}", vosk_dir.display());
         println!("cargo:rustc-link-lib=dylib=libvosk");
+        // Installed NSIS builds also copy DLLs beside onetone.exe for early Windows loading.
+        // Delay-load so startup succeeds; native_dll::prime_vosk_dll_search sets the path first.
+        println!("cargo:rustc-link-arg=/DELAYLOAD:libvosk.dll");
+        println!("cargo:rustc-link-lib=delayimp");
         copy_vosk_runtime_dlls(&vosk_dir, &manifest_dir);
     } else {
         println!(

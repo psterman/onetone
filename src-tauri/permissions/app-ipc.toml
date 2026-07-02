@@ -57,4 +57,7 @@ permissions = [
   "allow-cmd-voice-end-set-phrases",
   "allow-cmd-voice-end-test-stop",
   "allow-cmd-voice-end-test-commit",
+  "allow-cmd-export-logs",
+  "allow-cmd-app-log",
+  "allow-cmd-open-url",
 ]

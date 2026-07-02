@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tauri::WebviewWindow;
 
 use crate::config::VoiceConfig;
-use crate::voice_vosk::normalize_phrase;
+use crate::voice_vosk::{matches_final, normalize_phrase};
 use crate::AppState;
 
 pub fn can_enter_dictating(cfg: &VoiceConfig) -> bool {
@@ -17,11 +17,13 @@ pub fn session_state(state: &AppState) -> String {
     state.voice_session_state.lock().clone()
 }
 
-pub fn should_skip_wake_phrase(state: &AppState) -> bool {
-    matches!(
-        session_state(state).as_str(),
-        "dictating" | "stopping" | "committing" | "sent"
-    )
+pub fn wake_phrase_skip_reason(state: &AppState) -> Option<&'static str> {
+    match session_state(state).as_str() {
+        "stopping" => Some("正在结束上一轮听写，请稍候再说。"),
+        "committing" => Some("正在等待上一轮上屏，请稍候再说。"),
+        "sent" => Some("上一轮刚发送完成，请稍候再说。"),
+        _ => None,
+    }
 }
 
 pub fn should_match_end_phrase(state: &AppState) -> bool {
@@ -39,6 +41,32 @@ pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
         .first()
         .map(|m| m.id.clone())
         .unwrap_or_default()
+}
+
+/// Voice wake should press the same shortcut as the active key-mapping scheme.
+pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
+    if let Some(m) = cfg.active_mappings().first() {
+        let key = m.target_key.trim();
+        if !key.is_empty() {
+            return key.to_string();
+        }
+    }
+    if let Some(m) = cfg
+        .mappings
+        .iter()
+        .find(|m| crate::config::mapping_is_complete(m))
+    {
+        let key = m.target_key.trim();
+        if !key.is_empty() {
+            return key.to_string();
+        }
+    }
+    let fb = fallback.trim();
+    if fb.is_empty() {
+        "RAlt".into()
+    } else {
+        fb.to_string()
+    }
 }
 
 fn resolve_stop_target_key(cfg: &VoiceConfig, session_mapping_id: &str) -> String {
@@ -68,6 +96,69 @@ fn status_label(state: &str) -> &'static str {
     }
 }
 
+/// Send the user-recorded voice shortcut to the target app, not OneTone itself.
+/// Minimum gap between physical wake/stop key sends (toggle keys like RAlt).
+pub const MIN_WAKE_KEY_GAP_MS: u64 = 2800;
+
+pub fn wake_key_gap_ms(cooldown_ms: u32) -> u64 {
+    cooldown_ms.max(MIN_WAKE_KEY_GAP_MS as u32).max(200) as u64
+}
+
+pub fn wake_key_cooldown_remaining_ms(state: &AppState, cooldown_ms: u32) -> Option<u64> {
+    let gap = Duration::from_millis(wake_key_gap_ms(cooldown_ms));
+    let at = *state.voice_wake_last_key_at.lock();
+    let at = at?;
+    let elapsed = Instant::now().saturating_duration_since(at);
+    if elapsed < gap {
+        Some((gap - elapsed).as_millis() as u64)
+    } else {
+        None
+    }
+}
+
+pub fn mark_voice_wake_key_sent(state: &AppState) {
+    *state.voice_wake_last_key_at.lock() = Some(Instant::now());
+}
+
+pub fn send_wake_to_target(
+    state: Option<&AppState>,
+    window: &WebviewWindow,
+    target_key: &str,
+    duration_ms: u32,
+) -> bool {
+    let restored = crate::keyboard::restore_external_foreground();
+    if restored {
+        std::thread::sleep(Duration::from_millis(50));
+    } else {
+        let _ = window.run_on_main_thread({
+            let w = window.clone();
+            move || {
+                let _ = w.hide();
+            }
+        });
+        std::thread::sleep(Duration::from_millis(80));
+        if !crate::keyboard::restore_external_foreground() {
+            std::thread::sleep(Duration::from_millis(40));
+        }
+    }
+    let sent = crate::keyboard::send_chord(target_key, duration_ms);
+    if sent {
+        if let Some(s) = state {
+            mark_voice_wake_key_sent(s);
+        }
+    }
+    if !restored {
+        std::thread::sleep(Duration::from_millis(60));
+        let _ = window.run_on_main_thread({
+            let w = window.clone();
+            move || {
+                let _ = w.show();
+            }
+        });
+    }
+    sent
+}
+
 pub fn enter_dictating(
     state: &Arc<AppState>,
     window: &WebviewWindow,
@@ -78,6 +169,8 @@ pub fn enter_dictating(
         return;
     }
     if session_state(state) == "dictating" {
+        *state.voice_session_started_at.lock() = Some(Instant::now());
+        *state.voice_session_last_action.lock() = reason.to_string();
         return;
     }
     bump_commit_token(state);
@@ -163,6 +256,10 @@ pub fn matches_end_phrase(
     best.map(|(phrase, _)| phrase)
 }
 
+pub fn text_matches_wake_phrase(cfg: &VoiceConfig, text: &str) -> bool {
+    matches_final(text, &cfg.voice_vosk.phrases).is_some()
+}
+
 pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, window: &WebviewWindow, text: &str) {
     if !should_match_end_phrase(state) {
         return;
@@ -170,6 +267,9 @@ pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, window: &WebviewWind
     let (phrases_zh, phrases_en) = {
         let cfg = state.cfg.lock();
         if !cfg.voice_end.enabled {
+            return;
+        }
+        if text_matches_wake_phrase(&cfg, text) {
             return;
         }
         (
@@ -243,10 +343,11 @@ pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: 
 
         *state2.voice_session_state.lock() = "committing".into();
         *state2.voice_session_last_action.lock() = "sent targetKey to stop dictation".into();
+        mark_voice_wake_key_sent(state2.as_ref());
 
         let now = Instant::now();
         *state2.voice_vosk_cooldown_until.lock() =
-            Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
+            Some(now + Duration::from_millis(wake_key_gap_ms(cooldown_ms)));
 
         let mapping_snapshot = session_mapping_id.clone();
         std::thread::sleep(Duration::from_millis(commit_delay_ms as u64));
@@ -463,5 +564,49 @@ mod tests {
             matches_end_phrase("send it", &zh, &en),
             Some("send it".into())
         );
+    }
+
+    #[test]
+    fn wake_text_does_not_match_end() {
+        use crate::config::VoiceConfig;
+
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.phrases = vec!["start dictation".into()];
+        assert!(text_matches_wake_phrase(&cfg, "startdictating startsdictation"));
+        let en = vec!["end dictation".into(), "send it".into()];
+        assert_eq!(
+            matches_end_phrase("startdictating startsdictation", &[], &en),
+            None
+        );
+    }
+
+    #[test]
+    fn wake_target_prefers_active_mapping() {
+        use crate::config::{MappingEntry, TriggerMode, VoiceConfig, new_mapping_id};
+
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![MappingEntry {
+            id: new_mapping_id(),
+            label: "test".into(),
+            group: "默认".into(),
+            trigger_key: "F13".into(),
+            target_key: "Win+H".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+        }];
+        assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
 }

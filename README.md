@@ -1,7 +1,15 @@
 # 一声 · onetone
 
-独立的 Windows 桌面应用：把硬件启动键（音量键、侧键、组合键等）映射到语音输入法的激活快捷键。
+[English](README.en.md) | 中文
 
+[![Release](https://img.shields.io/github/v/release/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/psterman/voice-pilot/release.yml)](https://github.com/psterman/voice-pilot/actions)
+[![Stars](https://img.shields.io/github/stars/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/stargazers)
+
+> ⚠️ v1.0.0 未做代码签名。Windows SmartScreen 可能在首次安装时拦截 — 请点击 **更多信息** → **仍要运行**。
+
+独立的 Windows 桌面应用：把硬件启动键（音量键、侧键、组合键等）映射到语音输入法的激活快捷键。
 **不依赖 AutoHotkey，不依赖牛马（niuma）主程序。**
 
 ## 技术栈
@@ -29,15 +37,22 @@ cargo tauri dev
 # 方式一：npm script
 npm run build
 
-# 方式二：脚本（会先结束旧进程再编译）
+# 方式二：脚本（默认直接启动已构建的 exe；需要重编译时加 -Rebuild）
 .\run_onetone.ps1
+.\run_onetone.ps1 -Rebuild
 
-# 方式三：直接 cargo
+# 方式三：直接 cargo（推荐 NSIS 安装包）
 cd src-tauri
-cargo tauri build
+cargo clean -p onetone
+cargo tauri build --bundles nsis
 ```
 
-产物：`src-tauri/target/release/onetone.exe`
+产物：
+
+- 可执行文件：`src-tauri/target/release/onetone.exe`
+- 安装包：`src-tauri/target/release/bundle/nsis/*-setup.exe`
+
+本地构建若提示 `TAURI_SIGNING_PRIVATE_KEY` 未设置，安装包仍会生成，但 updater 签名文件需在有 Secrets 的 CI 环境中产出。
 
 ## 配置位置
 
@@ -90,6 +105,15 @@ voice-pilot/
 └── Start-OneTone.vbs
 ```
 
+## 法律信息
+
+- [隐私政策](docs/PRIVACY.md)
+- [服务条款](docs/TERMS.md)
+- [更新日志](CHANGELOG.md)
+- [参与贡献](CONTRIBUTING.md)
+
 ## 许可证
 
-与上游项目保持一致（若未单独声明，请在使用前自行确认）。
+MIT License — 详见 [LICENSE](LICENSE)。
+
+Copyright (c) 2026 psterman

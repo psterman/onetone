@@ -19,8 +19,10 @@ const TARGET_SAMPLE_RATE: u32 = 16_000;
 const AUDIO_CHANNEL_CAP: usize = 64;
 const EVENT_CHANNEL_CAP: usize = 64;
 const PARTIAL_MIN_INTERVAL: Duration = Duration::from_millis(200);
-const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(70);
+const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(120);
 const EN_WAKE_BUFFER_TTL: Duration = Duration::from_millis(2800);
+/// Suppress partial+final double-fire within one utterance, not across repeats.
+const WAKE_PHRASE_DEDUP_MS: u64 = 1200;
 
 #[derive(Debug, Clone)]
 pub enum VoiceVoskEvent {
@@ -391,7 +393,7 @@ fn run_worker(
     let mut last_partial_text = String::new();
     let mut last_partial_at = Instant::now() - PARTIAL_MIN_INTERVAL;
     let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
-    let mut last_detected_norm = String::new();
+    let mut wake_dedup = WakePhraseDedup::new();
     let mut en_wake_buffer = RecentEnWakeText::new();
 
     while !stop.load(Ordering::Relaxed) {
@@ -411,14 +413,16 @@ fn run_worker(
                     &mut last_partial_text,
                     &mut last_partial_at,
                 );
-                if let Some(partial) = sanitize_vosk_text(&recognizer.partial_result().partial) {
-                    if let Some((phrase, text)) = try_wake_with_en_buffer(
-                        &mut en_wake_buffer,
-                        &partial,
-                        &phrases,
-                        &mut last_detected_norm,
-                    ) {
-                        send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
+                if wake_allows_partial(&phrases) {
+                    if let Some(partial) = sanitize_vosk_text(&recognizer.partial_result().partial) {
+                        if let Some((phrase, text)) = try_wake_with_en_buffer(
+                            &mut en_wake_buffer,
+                            &partial,
+                            &phrases,
+                            &mut wake_dedup,
+                        ) {
+                            send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
+                        }
                     }
                 }
 
@@ -430,7 +434,7 @@ fn run_worker(
                             &mut en_wake_buffer,
                             &text,
                             &phrases,
-                            &mut last_detected_norm,
+                            &mut wake_dedup,
                         ) {
                             send_event_blocking(
                                 &event_tx,
@@ -443,6 +447,7 @@ fn run_worker(
                     }
                     recognizer.reset();
                     last_partial_text.clear();
+                    en_wake_buffer.clear();
                 }
             }
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {}
@@ -556,7 +561,7 @@ fn run_dual_worker(
     let mut last_partial_text = String::new();
     let mut last_partial_at = Instant::now() - PARTIAL_MIN_INTERVAL;
     let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
-    let mut last_detected_norm = String::new();
+    let mut wake_dedup = WakePhraseDedup::new();
     let mut lang_lock: Option<(DualLangSide, Instant)> = None;
     let mut en_wake_buffer = RecentEnWakeText::new();
 
@@ -591,18 +596,6 @@ fn run_dual_worker(
                 let cn_partial = cn_recognizer.partial_result().partial.trim().to_string();
                 let en_partial = en_recognizer.partial_result().partial.trim().to_string();
 
-                if let Some(partial) = sanitize_vosk_text(&en_partial) {
-                    if let Some((phrase, text)) = try_wake_with_en_buffer(
-                        &mut en_wake_buffer,
-                        &partial,
-                        &phrases,
-                        &mut last_detected_norm,
-                    ) {
-                        set_lang_lock_from_phrase(&mut lang_lock, &phrase);
-                        send_event_blocking(&event_tx, VoiceVoskEvent::Detected { phrase, text });
-                    }
-                }
-
                 let cn_final = if cn_state == DecodingState::Finalized {
                     sanitize_vosk_text(&complete_result_text(cn_recognizer.result()))
                 } else {
@@ -629,7 +622,7 @@ fn run_dual_worker(
                                 &mut en_wake_buffer,
                                 &text,
                                 &phrases,
-                                &mut last_detected_norm,
+                                &mut wake_dedup,
                             ) {
                                 set_lang_lock_from_phrase(&mut lang_lock, &phrase);
                                 send_event_blocking(
@@ -643,6 +636,7 @@ fn run_dual_worker(
                             cn_recognizer.reset();
                             en_recognizer.reset();
                             last_partial_text.clear();
+                            en_wake_buffer.clear();
                         }
                         DualResolution::DropCnOnly => {
                             cn_recognizer.reset();
@@ -819,6 +813,35 @@ fn english_first_token_inflection_score(collapsed: &str, phrase_tokens: &[String
     None
 }
 
+struct WakePhraseDedup {
+    norm: String,
+    at: Instant,
+}
+
+impl WakePhraseDedup {
+    fn new() -> Self {
+        Self {
+            norm: String::new(),
+            at: Instant::now() - Duration::from_secs(10),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.norm.clear();
+    }
+
+    fn is_duplicate(&self, norm: &str) -> bool {
+        !norm.is_empty()
+            && norm == self.norm
+            && self.at.elapsed() < Duration::from_millis(WAKE_PHRASE_DEDUP_MS)
+    }
+
+    fn mark(&mut self, norm: String) {
+        self.norm = norm;
+        self.at = Instant::now();
+    }
+}
+
 struct RecentEnWakeText {
     parts: VecDeque<(Instant, String)>,
 }
@@ -856,21 +879,29 @@ impl RecentEnWakeText {
             .collect::<Vec<_>>()
             .join(" ")
     }
+
+    fn clear(&mut self) {
+        self.parts.clear();
+    }
+}
+
+fn wake_allows_partial(phrases: &[String]) -> bool {
+    phrases.iter().any(|p| text_has_cjk(p))
 }
 
 fn try_wake_from_text(
     text: &str,
     phrases: &[String],
-    last_detected_norm: &mut String,
+    dedup: &mut WakePhraseDedup,
 ) -> Option<(String, String)> {
     let Some(phrase) = matches_final(text, phrases) else {
         return None;
     };
-    let norm = normalize_phrase(text);
-    if norm.is_empty() || norm == *last_detected_norm {
+    let phrase_norm = normalize_phrase(&phrase);
+    if phrase_norm.is_empty() || dedup.is_duplicate(&phrase_norm) {
         return None;
     }
-    *last_detected_norm = norm;
+    dedup.mark(phrase_norm);
     Some((phrase, text.to_string()))
 }
 
@@ -878,17 +909,21 @@ fn try_wake_with_en_buffer(
     buffer: &mut RecentEnWakeText,
     text: &str,
     phrases: &[String],
-    last_detected_norm: &mut String,
+    dedup: &mut WakePhraseDedup,
 ) -> Option<(String, String)> {
     buffer.ingest(text);
-    try_wake_from_text(text, phrases, last_detected_norm).or_else(|| {
+    let hit = try_wake_from_text(text, phrases, dedup).or_else(|| {
         let combined = buffer.combined_spaced();
         if combined.is_empty() {
             None
         } else {
-            try_wake_from_text(&combined, phrases, last_detected_norm)
+            try_wake_from_text(&combined, phrases, dedup)
         }
-    })
+    });
+    if hit.is_some() {
+        buffer.clear();
+    }
+    hit
 }
 
 fn best_phrase_match_score(text: &str, phrases: &[String]) -> u32 {
@@ -1642,6 +1677,22 @@ mod tests {
     }
 
     #[test]
+    fn wake_dedup_allows_repeat_after_window() {
+        let phrases = vec!["start dictation".into()];
+        let mut dedup = WakePhraseDedup::new();
+        assert!(
+            try_wake_from_text("start dictation", &phrases, &mut dedup).is_some()
+        );
+        assert!(
+            try_wake_from_text("start dictation", &phrases, &mut dedup).is_none()
+        );
+        dedup.clear();
+        assert!(
+            try_wake_from_text("start dictation", &phrases, &mut dedup).is_some()
+        );
+    }
+
+    #[test]
     fn matches_final_rejects_garbage_cn() {
         let phrases = vec!["start dictation".into(), "开始输入".into()];
         assert_eq!(matches_final("他因铺子", &phrases), None);
@@ -1698,6 +1749,14 @@ mod tests {
             matches_final("startsdictation", &phrases),
             Some("start dictation".into())
         );
+    }
+
+    #[test]
+    fn wake_dedup_uses_phrase_not_text() {
+        let phrases = vec!["start dictation".into()];
+        let mut dedup = WakePhraseDedup::new();
+        assert!(try_wake_from_text("startsdictation", &phrases, &mut dedup).is_some());
+        assert!(try_wake_from_text("start dictation", &phrases, &mut dedup).is_none());
     }
 
     #[test]

@@ -101,7 +101,9 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
                 confidence,
                 exact,
             } => {
-                if crate::voice_end_runtime::should_skip_wake_phrase(state) {
+                if let Some(reason) = crate::voice_end_runtime::wake_phrase_skip_reason(state) {
+                    *state.voice_sapi_last_skip.lock() = reason.into();
+                    *state.voice_sapi_last_trigger.lock() = String::new();
                     continue;
                 }
                 process_detected(state, window, &phrase, confidence, exact);
@@ -123,7 +125,7 @@ fn process_detected(
         let cfg = state.cfg.lock();
         (
             cfg.voice_sapi.min_confidence,
-            cfg.voice_sapi.target_key.clone(),
+            crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_sapi.target_key),
             cfg.key_press_duration_ms,
             cfg.voice_sapi.cooldown_ms,
         )
@@ -132,36 +134,49 @@ fn process_detected(
     if confidence < min_confidence && !exact {
         *state.voice_sapi_last_skip.lock() =
             "听清了，但灵敏度设得太高。试试把下方滑块往左调一点。".into();
-        return;
-    }
-
-    // send_guard blocks actual key output but we still drain events above.
-    if crate::send_guard::is_active() {
-        *state.voice_sapi_last_skip.lock() = "正在发送快捷键，请稍候再试。".into();
+        *state.voice_sapi_last_trigger.lock() = String::new();
         return;
     }
 
     // paused = pause all key output including voice wake (events still drain).
     if *state.paused.lock() {
         *state.voice_sapi_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
+        *state.voice_sapi_last_trigger.lock() = String::new();
+        return;
+    }
+
+    if let Some(remain_ms) =
+        crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
+    {
+        *state.voice_sapi_last_skip.lock() =
+            format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+        *state.voice_sapi_last_trigger.lock() = String::new();
+        *state.voice_sapi_state.lock() = "cooldown".into();
         return;
     }
 
     let now = Instant::now();
-    if let Some(until) = *state.voice_sapi_cooldown_until.lock() {
-        if now < until {
-            *state.voice_sapi_last_skip.lock() = "说得太快了，等几秒再说一次。".into();
-            return;
-        }
-    }
+    *state.voice_sapi_cooldown_until.lock() = Some(
+        now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)),
+    );
 
     let state2 = Arc::clone(state);
     let window2 = window.clone();
     std::thread::spawn(move || {
-        let sent = crate::keyboard::send_chord(&target_key, duration_ms);
-        let now = Instant::now();
-        *state2.voice_sapi_cooldown_until.lock() =
-            Some(now + Duration::from_millis(cooldown_ms.max(200) as u64));
+        if crate::send_guard::is_active() {
+            *state2.voice_sapi_last_skip.lock() = "等待上一轮快捷键发送完成。".into();
+        }
+        if !crate::send_guard::wait_until_inactive(800) {
+            *state2.voice_sapi_last_skip.lock() = "快捷键发送通道忙，请再说一次。".into();
+            *state2.voice_sapi_last_trigger.lock() = String::new();
+            return;
+        }
+        let sent = crate::voice_end_runtime::send_wake_to_target(
+            Some(state2.as_ref()),
+            &window2,
+            &target_key,
+            duration_ms,
+        );
         *state2.voice_sapi_state.lock() = if sent {
             "triggered".into()
         } else {
@@ -169,8 +184,11 @@ fn process_detected(
         };
         if !sent {
             *state2.voice_sapi_last_error.lock() = format!("快捷键发送失败：{target_key}");
+            *state2.voice_sapi_last_trigger.lock() = String::new();
         } else {
-            *state2.voice_sapi_last_skip.lock() = "已触发语音快捷键。".into();
+            *state2.voice_sapi_last_error.lock() = String::new();
+            *state2.voice_sapi_last_skip.lock() = String::new();
+            *state2.voice_sapi_last_trigger.lock() = format!("{target_key}");
             let mapping_id = {
                 let cfg = state2.cfg.lock();
                 crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
@@ -197,14 +215,17 @@ fn process_detected(
 
 pub fn voice_sapi_status(state: &AppState) -> serde_json::Value {
     let cfg = state.cfg.lock();
+    let target_key =
+        crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_sapi.target_key);
     serde_json::json!({
         "enabled": cfg.voice_sapi.enabled,
         "state": state.voice_sapi_state.lock().clone(),
         "lastError": state.voice_sapi_last_error.lock().clone(),
         "lastHeard": state.voice_sapi_last_heard.lock().clone(),
         "lastSkip": state.voice_sapi_last_skip.lock().clone(),
+        "lastTrigger": state.voice_sapi_last_trigger.lock().clone(),
         "phrases": cfg.voice_sapi.phrases.clone(),
-        "targetKey": cfg.voice_sapi.target_key.clone(),
+        "targetKey": target_key,
         "cooldownMs": cfg.voice_sapi.cooldown_ms,
         "minConfidence": cfg.voice_sapi.min_confidence,
     })
@@ -215,30 +236,41 @@ pub fn voice_sapi_set_enabled(
     _window: &WebviewWindow,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    if enabled {
-        crate::voice_vosk_runtime::disable_vosk_for_sapi(state);
-    }
-
     {
         let mut cfg = state.cfg.lock();
         cfg.voice_sapi.enabled = enabled;
+        if enabled {
+            cfg.voice_vosk.enabled = false;
+        }
         cfg.normalize();
         save_config(&cfg);
     }
 
     if enabled {
-        let cfg = state.cfg.lock().voice_sapi.clone();
-        if let Err(e) = voice_sapi_start(state.as_ref(), &cfg) {
-            eprintln!("voice_sapi start: {e}");
-            let mut cfg = state.cfg.lock();
-            cfg.voice_sapi.enabled = false;
-            cfg.normalize();
-            save_config(&cfg);
-        }
+        *state.voice_sapi_state.lock() = "starting".into();
+        *state.voice_sapi_last_error.lock() = String::new();
+        let state2 = Arc::clone(state);
+        std::thread::Builder::new()
+            .name("voice-sapi-enable".into())
+            .spawn(move || {
+                crate::voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(&state2));
+                let cfg = state2.cfg.lock().voice_sapi.clone();
+                if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
+                    eprintln!("voice_sapi start: {e}");
+                    let mut cfg = state2.cfg.lock();
+                    cfg.voice_sapi.enabled = false;
+                    cfg.normalize();
+                    save_config(&cfg);
+                    *state2.voice_sapi_last_error.lock() = e;
+                    *state2.voice_sapi_state.lock() = "error".into();
+                }
+            })
+            .ok();
     } else {
         voice_sapi_stop(state);
         *state.voice_sapi_cooldown_until.lock() = None;
         *state.voice_sapi_last_error.lock() = String::new();
+        *state.voice_sapi_state.lock() = "stopped".into();
     }
 
     Ok(voice_sapi_status(state))
@@ -304,7 +336,7 @@ fn clean_phrases(phrases: Vec<String>) -> Vec<String> {
     out
 }
 
-pub fn voice_sapi_test_send(state: &AppState) -> serde_json::Value {
+pub fn voice_sapi_test_send(state: &AppState, window: &WebviewWindow) -> serde_json::Value {
     if *state.paused.lock() {
         return serde_json::json!({
             "type": "mvp_voice_sapi_test_sent",
@@ -322,7 +354,10 @@ pub fn voice_sapi_test_send(state: &AppState) -> serde_json::Value {
 
     let (key, duration_ms) = {
         let cfg = state.cfg.lock();
-        (cfg.voice_sapi.target_key.clone(), cfg.key_press_duration_ms)
+        (
+            crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_sapi.target_key),
+            cfg.key_press_duration_ms,
+        )
     };
 
     if key.trim().is_empty() {
@@ -333,7 +368,7 @@ pub fn voice_sapi_test_send(state: &AppState) -> serde_json::Value {
         });
     }
 
-    if crate::key_chord::parse_chord(key.trim()).is_err() {
+    if !crate::key_chord::chord_is_sendable(key.trim()) {
         return serde_json::json!({
             "type": "mvp_voice_sapi_test_sent",
             "ok": false,
@@ -342,7 +377,7 @@ pub fn voice_sapi_test_send(state: &AppState) -> serde_json::Value {
         });
     }
 
-    let ok = crate::keyboard::send_chord(&key, duration_ms);
+    let ok = crate::voice_end_runtime::send_wake_to_target(Some(state), window, &key, duration_ms);
     serde_json::json!({
         "type": "mvp_voice_sapi_test_sent",
         "ok": ok,

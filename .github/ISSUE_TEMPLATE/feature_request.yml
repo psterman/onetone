@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an idea for OneTone
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem you're trying to solve. Feature requests with clear use cases are easier to prioritize.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What workflow is painful today? Who benefits?
+      placeholder: e.g. I use three different IMEs and need per-app scheme switching...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like OneTone to behave?
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What alternatives have you tried?
+      description: Other tools, workarounds, or partial solutions
+      placeholder: e.g. AutoHotkey script, manual hotkey, different voice app...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you?
+      options:
+        - Nice to have
+        - Would use regularly
+        - Blocking my workflow
+    validations:
+      required: false

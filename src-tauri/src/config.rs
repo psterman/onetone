@@ -1639,8 +1639,13 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
             if let Some(parent) = path.parent() {
                 w.watch(parent, RecursiveMode::NonRecursive).ok();
             }
+            let mut last_emit = std::time::Instant::now()
+                - std::time::Duration::from_secs(10);
             loop {
                 if rx.recv_timeout(Duration::from_millis(500)).is_ok() {
+                    if last_emit.elapsed() < Duration::from_millis(1500) {
+                        continue;
+                    }
                     let mut new_cfg = load_config();
                     new_cfg.migrate();
                     {
@@ -1649,6 +1654,7 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
                     apply_config(&state, &new_cfg);
                     let payload = ipc::mvp_init_payload(&state, "unchanged");
                     ipc::emit_to_js_main(&window, payload);
+                    last_emit = std::time::Instant::now();
                 }
             }
         }

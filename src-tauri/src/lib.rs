@@ -1,3 +1,5 @@
+mod native_dll;
+mod app_log;
 mod audio_win;
 mod backdrop;
 mod config;
@@ -21,6 +23,7 @@ mod voice_vosk_runtime;
 mod hotkey_win;
 
 use parking_lot::Mutex;
+use std::collections::VecDeque;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tauri::Manager;
@@ -52,6 +55,7 @@ pub struct AppState {
     pub voice_sapi_last_error: Mutex<String>,
     pub voice_sapi_last_heard: Mutex<String>,
     pub voice_sapi_last_skip: Mutex<String>,
+    pub voice_sapi_last_trigger: Mutex<String>,
     pub voice_vosk: Mutex<Option<crate::voice_vosk::VoiceVoskHandle>>,
     pub voice_vosk_cooldown_until: Mutex<Option<std::time::Instant>>,
     pub voice_vosk_state: Mutex<String>,
@@ -59,6 +63,7 @@ pub struct AppState {
     pub voice_vosk_last_partial: Mutex<String>,
     pub voice_vosk_last_final: Mutex<String>,
     pub voice_vosk_last_skip: Mutex<String>,
+    pub voice_vosk_last_trigger: Mutex<String>,
     pub voice_vosk_last_detected_phrase: Mutex<String>,
     pub voice_vosk_grammar_mode: Mutex<Option<bool>>,
     pub voice_vosk_model_load_time_ms: Mutex<Option<u64>>,
@@ -68,6 +73,8 @@ pub struct AppState {
     pub voice_session_last_action: Mutex<String>,
     pub voice_session_mapping_id: Mutex<String>,
     pub voice_session_commit_token: Mutex<u64>,
+    /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
+    pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
     pub update: Mutex<crate::update::UpdateUiState>,
@@ -76,6 +83,7 @@ pub struct AppState {
     pub gesture: Mutex<press_gesture::GestureTracker>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
+    pub log_ring: Mutex<VecDeque<String>>,
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
@@ -101,8 +109,16 @@ fn shutdown_runtime(state: &Arc<AppState>) {
 }
 
 pub fn run() {
+    app_log::early_line("startup", "process run entered");
+    std::panic::set_hook(Box::new(|info| {
+        app_log::early_line("panic", &info.to_string());
+    }));
+    app_log::early_line("startup", "loading config");
     let mut initial = load_config();
+    app_log::early_line("startup", "config loaded");
     initial.migrate();
+    let safe_mode = std::env::var("ONETONE_SAFE_MODE").ok().as_deref() == Some("1");
+    app_log::early_line("startup", "building app state");
 
     let app_state = Arc::new(AppState {
         cfg: Mutex::new(initial),
@@ -124,6 +140,7 @@ pub fn run() {
         voice_sapi_last_error: Mutex::new(String::new()),
         voice_sapi_last_heard: Mutex::new(String::new()),
         voice_sapi_last_skip: Mutex::new(String::new()),
+        voice_sapi_last_trigger: Mutex::new(String::new()),
         voice_vosk: Mutex::new(None),
         voice_vosk_cooldown_until: Mutex::new(None),
         voice_vosk_state: Mutex::new("stopped".into()),
@@ -131,6 +148,7 @@ pub fn run() {
         voice_vosk_last_partial: Mutex::new(String::new()),
         voice_vosk_last_final: Mutex::new(String::new()),
         voice_vosk_last_skip: Mutex::new(String::new()),
+        voice_vosk_last_trigger: Mutex::new(String::new()),
         voice_vosk_last_detected_phrase: Mutex::new(String::new()),
         voice_vosk_grammar_mode: Mutex::new(None),
         voice_vosk_model_load_time_ms: Mutex::new(None),
@@ -140,6 +158,7 @@ pub fn run() {
         voice_session_last_action: Mutex::new(String::new()),
         voice_session_mapping_id: Mutex::new(String::new()),
         voice_session_commit_token: Mutex::new(0),
+        voice_wake_last_key_at: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
         update: Mutex::new(crate::update::UpdateUiState::new()),
@@ -148,7 +167,13 @@ pub fn run() {
         gesture: Mutex::new(press_gesture::GestureTracker::new()),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
+        log_ring: Mutex::new(VecDeque::new()),
     });
+
+    app_log::log_line(&app_state, "startup", "OneTone backend initialized");
+    if safe_mode {
+        app_log::log_line(&app_state, "startup", "safe mode enabled");
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -165,17 +190,29 @@ pub fn run() {
         ))
         .manage(app_state.clone())
         .setup(move |app| {
+            app_log::log_line(&app_state, "startup", "setup begin");
+
+            #[cfg(windows)]
+            if !safe_mode {
+                native_dll::prime_vosk_dll_search(app.handle());
+                app_log::log_line(&app_state, "startup", "dll search path primed");
+            }
+
             let window = app.get_webview_window("main").unwrap();
+            app_log::log_line(&app_state, "startup", "main window acquired");
 
             let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
+            app_log::log_line(&app_state, "startup", "native backdrop applied");
 
             #[cfg(desktop)]
             {
                 app.handle()
                     .plugin(tauri_plugin_updater::Builder::new().build())?;
+                app_log::log_line(&app_state, "startup", "updater plugin initialized");
             }
 
             let mgr = hotkey_win::HotkeyManager::new();
+            app_log::log_line(&app_state, "startup", "hotkey manager created");
             {
                 let cfg = app_state.cfg.lock();
                 mgr.bind_all(&cfg.bindings());
@@ -187,11 +224,14 @@ pub fn run() {
                     mgr.bind_scheme_switch(Some(switch_key.to_string()));
                 }
             }
+            app_log::log_line(&app_state, "startup", "hotkeys bound");
             #[cfg(windows)]
             if let Some(hwnd) = main_window_hwnd(&window) {
                 mgr.attach_app_window(hwnd as isize);
+                keyboard::set_our_hwnd(hwnd as isize);
             }
             *app_state.hotkey_mgr.lock() = Some(mgr);
+            app_log::log_line(&app_state, "startup", "hotkey manager installed");
 
             let window_init = window.clone();
             let state_init = app_state.clone();
@@ -202,45 +242,17 @@ pub fn run() {
             });
 
             config::start_watcher(app_state.clone(), window.clone());
-            update::start_background_checks(app.handle().clone(), app_state.clone());
-
-            tray::setup(app.handle(), app_state.clone())?;
-
-            {
-                let cfg = app_state.cfg.lock();
-                if cfg.voice_sapi.enabled {
-                    let state = app_state.clone();
-                    let sapi = cfg.voice_sapi.clone();
-                    std::thread::Builder::new()
-                        .name("voice-sapi-boot".into())
-                        .spawn(move || {
-                            if let Err(e) = voice_sapi_runtime::voice_sapi_start(&state, &sapi) {
-                                eprintln!("voice_sapi start failed: {e}");
-                            }
-                        })
-                        .ok();
-                } else if cfg.voice_vosk.enabled {
-                    let resource_dir = app.path().resource_dir().ok();
-                    let vosk = cfg.voice_vosk.clone();
-                    let state = app_state.clone();
-                    tauri::async_runtime::spawn(async move {
-                        tokio::time::sleep(Duration::from_millis(1200)).await;
-                        voice_vosk_runtime::spawn_voice_vosk_start(state, vosk, resource_dir);
-                    });
-                }
+            app_log::log_line(&app_state, "startup", "config watcher started");
+            if !safe_mode {
+                update::start_background_checks(app.handle().clone(), app_state.clone());
+                app_log::log_line(&app_state, "startup", "update background check scheduled");
+            } else {
+                app_log::log_line(&app_state, "startup", "update background check skipped");
             }
 
-            let probe_state = app_state.clone();
-            let probe_dir = app.path().resource_dir().ok();
-            std::thread::Builder::new()
-                .name("vosk-probe-warm".into())
-                .spawn(move || {
-                    voice_vosk_runtime::refresh_vosk_probe_cache(
-                        &probe_state,
-                        probe_dir.as_deref(),
-                    );
-                })
-                .ok();
+            tray::setup(app.handle(), app_state.clone())?;
+            app_log::log_line(&app_state, "startup", "tray initialized");
+            app_log::log_line(&app_state, "startup", "voice boot deferred to UI idle");
 
             let window_clone = window.clone();
             window.on_window_event(move |event| {
@@ -253,13 +265,20 @@ pub fn run() {
             let state2 = app_state.clone();
             let win2 = window.clone();
             tauri::async_runtime::spawn(async move {
+                app_log::log_line(&state2, "startup", "runtime loop started");
                 let mut last_key: Option<String> = None;
                 let mut last_at: Option<std::time::Instant> = None;
+                let mut last_fg_track = std::time::Instant::now();
                 const DEDUP_MS: u64 = 80;
+                const FG_TRACK_MS: u64 = 150;
 
                 loop {
-                    sleep(Duration::from_millis(20)).await;
+                    sleep(Duration::from_millis(40)).await;
 
+                    if last_fg_track.elapsed() >= Duration::from_millis(FG_TRACK_MS) {
+                        keyboard::track_foreground_for_send();
+                        last_fg_track = std::time::Instant::now();
+                    }
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &win2);
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &win2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &win2);
@@ -396,6 +415,9 @@ pub fn run() {
             ipc::cmd_voice_end_test_commit,
             ipc::cmd_update_check,
             ipc::cmd_update_install,
+            ipc::cmd_export_logs,
+            ipc::cmd_app_log,
+            ipc::cmd_open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

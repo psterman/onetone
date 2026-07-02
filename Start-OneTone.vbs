@@ -1,11 +1,34 @@
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
-projectRoot = fso.GetParentFolderName(WScript.ScriptFullName)
-launcher = projectRoot & "\run_onetone.ps1"
 
-If Not fso.FileExists(launcher) Then
-  MsgBox "找不到启动脚本: " & launcher, 16, "一声 onetone"
+Function ResolveProjectRoot(scriptDir)
+  Dim candidates(2), i, root
+  candidates(0) = scriptDir
+  candidates(1) = scriptDir & "\voice-pilot"
+  candidates(2) = shell.SpecialFolders("Desktop") & "\voice-pilot"
+  For i = 0 To 2
+    root = candidates(i)
+    If fso.FileExists(root & "\run_onetone.ps1") Then
+      ResolveProjectRoot = root
+      Exit Function
+    End If
+  Next
+  ResolveProjectRoot = ""
+End Function
+
+projectRoot = ResolveProjectRoot(fso.GetParentFolderName(WScript.ScriptFullName))
+launcher = projectRoot & "\run_onetone.ps1"
+logFile = projectRoot & "\logs\launch.log"
+
+If projectRoot = "" Or Not fso.FileExists(launcher) Then
+  MsgBox "Cannot find run_onetone.ps1." & vbCrLf & vbCrLf & "Keep this file on Desktop, or inside the voice-pilot folder.", 16, "OneTone"
   WScript.Quit 1
 End If
 
-shell.Run "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & launcher & """", 1, False
+cmd = "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & launcher & """"
+exitCode = shell.Run(cmd, 0, True)
+
+If exitCode <> 0 Then
+  MsgBox "OneTone launch failed (exit " & exitCode & ")." & vbCrLf & vbCrLf & "See log:" & vbCrLf & logFile, 16, "OneTone"
+  WScript.Quit exitCode
+End If

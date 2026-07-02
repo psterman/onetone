@@ -9,7 +9,6 @@ use crate::config::{
     make_peripheral_mixed_source_with_device, mapping_is_complete, new_mapping_id, now_source_time,
     ConflictReport, MappingEntry, RawEvent, TriggerSource, VoiceConfig,
 };
-use crate::key_chord::parse_chord;
 use crate::press_gesture::{
     parse_physical_event, short_device_label, RecordGestureHint, RecordedGesture,
 };
@@ -593,7 +592,12 @@ fn dispatch_trigger_action(
     use crate::{keyboard, state};
     match action {
         state::Action::SendKey { key } => {
-            let sent = keyboard::send_chord(&key, duration_ms);
+            let sent = crate::voice_end_runtime::send_wake_to_target(
+                Some(state.as_ref()),
+                window,
+                &key,
+                duration_ms,
+            );
             if sent {
                 let should_enter = {
                     let cfg = state.cfg.lock();
@@ -889,10 +893,12 @@ pub fn cmd_ready(
     window: tauri::WebviewWindow,
     backdrop_mode: Option<String>,
 ) -> serde_json::Value {
+    crate::app_log::log_line(&state, "ipc", "cmd_ready begin");
     let mode = backdrop_mode.unwrap_or_else(|| "unchanged".into());
     let payload = mvp_init_payload(&state, &mode);
     emit_to_js_main(&window, payload.clone());
     push_runtime(&state, &window, "config_push", "");
+    crate::app_log::log_line(&state, "ipc", "cmd_ready complete");
     payload
 }
 
@@ -1361,6 +1367,7 @@ pub fn cmd_physical_trigger(
 #[tauri::command]
 pub fn cmd_test_send(
     state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
     mapping_id: Option<String>,
     target_key: Option<String>,
 ) -> serde_json::Value {
@@ -1415,7 +1422,7 @@ pub fn cmd_test_send(
         });
     }
 
-    if parse_chord(key.trim()).is_err() {
+    if !crate::key_chord::chord_is_sendable(key.trim()) {
         return serde_json::json!({
             "type": "mvp_test_sent",
             "ok": false,
@@ -1425,7 +1432,7 @@ pub fn cmd_test_send(
         });
     }
 
-    let ok = crate::keyboard::send_chord(&key, duration_ms);
+    let ok = crate::voice_end_runtime::send_wake_to_target(Some(state.inner()), &window, &key, duration_ms);
     serde_json::json!({
         "type": "mvp_test_sent",
         "ok": ok,
@@ -1722,17 +1729,12 @@ pub fn cmd_voice_sapi_status(state: tauri::State<Arc<AppState>>) -> serde_json::
 }
 
 #[tauri::command]
-pub async fn cmd_voice_sapi_set_enabled(
-    state: tauri::State<'_, Arc<AppState>>,
+pub fn cmd_voice_sapi_set_enabled(
+    state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    let state = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        crate::voice_sapi_runtime::voice_sapi_set_enabled(&state, &window, enabled)
-    })
-    .await
-    .map_err(|e| format!("voice sapi toggle task failed: {e}"))?
+    crate::voice_sapi_runtime::voice_sapi_set_enabled(state.inner(), &window, enabled)
 }
 
 #[tauri::command]
@@ -1756,8 +1758,11 @@ pub fn cmd_voice_sapi_set_min_confidence(
 }
 
 #[tauri::command]
-pub fn cmd_voice_sapi_test_send(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
-    crate::voice_sapi_runtime::voice_sapi_test_send(&state)
+pub fn cmd_voice_sapi_test_send(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    crate::voice_sapi_runtime::voice_sapi_test_send(&state, &window)
 }
 
 #[tauri::command]
@@ -1805,20 +1810,18 @@ pub fn cmd_voice_vosk_status(
 }
 
 #[tauri::command]
-pub async fn cmd_voice_vosk_set_enabled(
-    state: tauri::State<'_, Arc<AppState>>,
+pub fn cmd_voice_vosk_set_enabled(
+    state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    let state = Arc::clone(state.inner());
-    let window = window.clone();
-    let resource_dir = app_resource_dir(&app);
-    tauri::async_runtime::spawn_blocking(move || {
-        crate::voice_vosk_runtime::voice_vosk_set_enabled(&state, &window, enabled, resource_dir)
-    })
-    .await
-    .map_err(|e| format!("voice vosk toggle task failed: {e}"))?
+    crate::voice_vosk_runtime::voice_vosk_set_enabled(
+        state.inner(),
+        &window,
+        enabled,
+        app_resource_dir(&app),
+    )
 }
 
 #[tauri::command]
@@ -1849,8 +1852,11 @@ pub fn cmd_voice_vosk_set_model_path(
 }
 
 #[tauri::command]
-pub fn cmd_voice_vosk_test_send(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
-    crate::voice_vosk_runtime::voice_vosk_test_send(&state)
+pub fn cmd_voice_vosk_test_send(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    crate::voice_vosk_runtime::voice_vosk_test_send(&state, &window)
 }
 
 #[tauri::command]
@@ -1924,4 +1930,39 @@ pub fn cmd_voice_end_test_commit(
     window: tauri::WebviewWindow,
 ) -> serde_json::Value {
     crate::voice_end_runtime::test_commit_key(&state, &window)
+}
+
+#[tauri::command]
+pub fn cmd_export_logs(
+    state: tauri::State<Arc<AppState>>,
+    frontend_lines: Option<Vec<String>>,
+) -> Result<serde_json::Value, String> {
+    let lines = frontend_lines.unwrap_or_default();
+    let path = crate::app_log::export_diagnostic_zip(state.inner(), &lines)?;
+    Ok(serde_json::json!({
+        "ok": true,
+        "path": crate::app_log::sanitize_path(&path),
+    }))
+}
+
+#[tauri::command]
+pub fn cmd_app_log(state: tauri::State<Arc<AppState>>, line: String) {
+    crate::app_log::log_line(state.inner(), "frontend", &line);
+}
+
+#[tauri::command]
+pub fn cmd_open_url(url: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = url;
+        Err("open url is only supported on Windows".into())
+    }
 }
