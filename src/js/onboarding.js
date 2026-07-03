@@ -13,6 +13,7 @@
     previewKey: '',
     tryPassed: false,
     tryTimer: 0,
+    tryHelpOpen: false,
     practiceStarted: false
   };
 
@@ -236,6 +237,45 @@
     if(targetHint) targetHint.textContent = (state.triggerRecorded || mappingTriggerReady()) ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
   }
 
+  function renderTryHelp(){
+    var box = $('onboardTryHelpBox');
+    var title = $('onboardTryHelpTitle');
+    var list = $('onboardTryHelpList');
+    if(title) title.textContent = t('onboardTryHelpTitle');
+    if(list){
+      list.innerHTML = ['onboardTryHelp1','onboardTryHelp2','onboardTryHelp3','onboardTryHelp4']
+        .map(function(key){ return '<li>'+escHtmlOnboard(t(key))+'</li>'; })
+        .join('');
+    }
+    if(box) box.hidden = !state.tryHelpOpen;
+  }
+
+  function escHtmlOnboard(s){
+    return String(s || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  function showTryHelp(){
+    state.tryHelpOpen = true;
+    renderTryHelp();
+    var result = $('onboardTryResult');
+    if(result && !state.tryPassed && !result.textContent){
+      result.textContent = t('onboardTryTimeout');
+      result.className = 'onboard-try-result is-warn';
+    }
+  }
+
+  function handleTryNoResponse(){
+    stopTryListen();
+    state.tryHelpOpen = false;
+    var a = app();
+    if(a && a.toast) a.toast(t('onboardTryNoResponseToast'));
+    goStep(-1);
+  }
+
   function renderTryStep(){
     var keyEl = $('onboardTryKey');
     var desc = $('onboardTryDesc');
@@ -258,6 +298,7 @@
     }
     var tryKey = $('onboardTryKeyWrap');
     if(tryKey) tryKey.classList.toggle('is-success', state.tryPassed);
+    renderTryHelp();
   }
 
   function renderTargetStep(){
@@ -452,6 +493,7 @@
   function startTryListen(){
     stopTryListen();
     state.tryPassed = false;
+    state.tryHelpOpen = false;
     renderTryStep();
     renderActions();
     var a = app();
@@ -496,6 +538,7 @@
     if(delta > 0 && state.step === 0){
       applyTriggerChoice();
     }
+    if(state.step === 1 && next !== 1) state.tryHelpOpen = false;
     state.step = next;
     render();
     if(state.step === 1) startTryListen();
@@ -544,15 +587,14 @@
       else goStep(1);
     };
     var helpTry = $('btnOnboardTryHelp');
-    if(helpTry) helpTry.onclick = function(){
-      var a = app();
-      if(a && a.openHomeGuideCard) a.openHomeGuideCard('key');
+    if(helpTry) helpTry.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      showTryHelp();
     };
     var noResp = $('btnOnboardTryNoResponse');
-    if(noResp) noResp.onclick = function(){
-      var a = app();
-      if(a && a.openHomeGuideCard) a.openHomeGuideCard('key');
-      goStep(-1);
+    if(noResp) noResp.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      handleTryNoResponse();
     };
     var startTrigger = $('btnOnboardStartTriggerRecord');
     if(startTrigger) startTrigger.onclick = function(ev){
@@ -601,6 +643,7 @@
       ['btnOnboardLater','onboardBtnLater'],['btnOnboardRecordTriggerAgain','onboardBtnRecord'],['btnOnboardRecordTargetAgain','onboardBtnRecord'],
       ['onboardWakeNote','onboardWakeNote'],
       ['btnOnboardWakePractice','onboardWakePractice'],
+      ['btnOnboardTryHelp','onboardTryHelpBtn'],['btnOnboardTryNoResponse','onboardTryNoResponseBtn'],
       ['onboardEndNote','onboardEndNote'],
       ['onboardEndHint','onboardEndHint'],
       ['onboardModeNote','onboardModeNote'],
