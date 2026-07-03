@@ -410,6 +410,7 @@ pub fn run() {
             ipc::cmd_voice_end_set_enabled,
             ipc::cmd_voice_end_set_auto_send,
             ipc::cmd_voice_end_set_commit_delay,
+            ipc::cmd_voice_end_set_commit_key,
             ipc::cmd_voice_end_set_phrases,
             ipc::cmd_voice_end_test_stop,
             ipc::cmd_voice_end_ui_end,

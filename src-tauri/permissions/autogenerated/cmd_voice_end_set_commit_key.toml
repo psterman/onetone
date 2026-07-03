@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-end-set-commit-key"
+description = "Enables the cmd_voice_end_set_commit_key command without any pre-configured scope."
+commands.allow = ["cmd_voice_end_set_commit_key"]
+
+[[permission]]
+identifier = "deny-cmd-voice-end-set-commit-key"
+description = "Denies the cmd_voice_end_set_commit_key command without any pre-configured scope."
+commands.deny = ["cmd_voice_end_set_commit_key"]

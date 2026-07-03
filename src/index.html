@@ -98,6 +98,47 @@
     }
     html[data-theme="dark"] body{background:#0f1419}
     html[data-theme="dark"] .welcome-overlay{background:rgba(15,20,25,.88)}
+    html[data-theme="dark"] .welcome-modal,
+    html[data-theme="dark"] .test-modal,
+    html[data-theme="dark"] .phrase-practice-modal{
+      background:rgba(28,38,54,.97);
+      border-color:var(--outline-variant);
+      box-shadow:0 24px 60px rgba(0,0,0,.42);
+    }
+    html[data-theme="dark"] .welcome-demo{
+      background:rgba(22,30,44,.72);
+      border-color:var(--outline-variant);
+    }
+    html[data-theme="dark"] .demo-track{
+      background:linear-gradient(180deg,rgba(94,200,232,.08),rgba(15,23,42,.55));
+    }
+    html[data-theme="dark"] .demo-card{
+      background:rgba(28,38,54,.88);
+      border-color:var(--outline-variant);
+    }
+    html[data-theme="dark"] .demo-card::after{background:rgba(94,200,232,.12)}
+    html[data-theme="dark"] .demo-key,
+    html[data-theme="dark"] .onboard-try-key-wrap,
+    html[data-theme="dark"] .onboard-target-key.is-key{
+      background:rgba(22,30,44,.95);
+      border-color:rgba(94,200,232,.22);
+      box-shadow:0 8px 20px rgba(0,0,0,.28);
+      color:var(--key-soft);
+    }
+    html[data-theme="dark"] .onboard-record-card{
+      background:rgba(28,38,54,.92);
+      border-color:var(--outline-variant);
+      box-shadow:0 10px 30px rgba(0,0,0,.32);
+    }
+    html[data-theme="dark"] .onboard-record-card.is-recording{
+      box-shadow:0 0 0 4px rgba(94,200,232,.18),0 16px 36px rgba(0,0,0,.36);
+    }
+    html[data-theme="dark"] .onboard-progress-dot.is-active{box-shadow:0 0 0 4px rgba(94,200,232,.16)}
+    html[data-theme="dark"] .phrase-practice-phrase{
+      background:linear-gradient(180deg,rgba(94,200,232,.10),rgba(22,30,44,.92));
+      border-color:rgba(94,200,232,.22);
+      color:var(--key-soft);
+    }
     html[data-theme="dark"] .display:not(.empty){
       background:linear-gradient(180deg,rgba(94,200,232,.10),rgba(28,38,54,.95));
       border-color:rgba(94,200,232,.24);
@@ -154,10 +195,10 @@
     .header-listen-toggle:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
     .header-listen-toggle:active{transform:scale(.98)}
     .header-listen-toggle-ui{
-      width:34px;height:20px;border-radius:999px;background:rgba(34,197,94,.42);position:relative;flex-shrink:0;
+      width:34px;height:20px;border-radius:999px;background:var(--primary);position:relative;flex-shrink:0;
       transition:background var(--dur-fast) var(--ease-standard);
     }
-    .header-listen-toggle.is-off .header-listen-toggle-ui{background:rgba(148,163,184,.42)}
+    .header-listen-toggle.is-off .header-listen-toggle-ui{background:var(--toggle-off)}
     .header-listen-toggle-thumb{
       position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff;
       box-shadow:0 1px 3px rgba(15,23,42,.18);transition:transform var(--dur-fast) var(--ease-standard);
@@ -370,6 +411,7 @@
     .map-wf-chip-profile{background:rgba(42,156,196,.08);color:var(--primary);border-color:rgba(42,156,196,.18)}
     .map-row.is-dictating{box-shadow:inset 3px 0 0 var(--primary)}
     .home-zone{width:100%;max-width:100%;margin:0;padding:4px 0 8px;display:flex;flex-direction:column;gap:10px}
+    .home-hero{display:none!important}
     .home-hero{
       display:flex;flex-direction:column;align-items:center;gap:12px;
       padding:24px 20px 8px;text-align:center;order:0;
@@ -439,7 +481,7 @@
     .home-cta-icon{font-size:22px;line-height:1;opacity:.95}
     .home-cta-main{font-size:16px;font-weight:800;letter-spacing:-.01em}
     .home-cta-sub{font-size:12px;font-weight:600;opacity:.88}
-    .home-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .home-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;align-items:stretch}
     .home-main-grid.is-dual{grid-template-columns:repeat(2,minmax(0,1fr))}
     .home-main-grid.is-single{
       grid-template-columns:minmax(0,1fr);
@@ -494,6 +536,7 @@
     .home-live-panel{
       border:1px solid rgba(42,156,196,.22);border-radius:16px;padding:14px 14px 12px;
       background:linear-gradient(180deg,rgba(230,247,252,.28),var(--surface-high));
+      display:flex;flex-direction:column;min-height:100%;
     }
     html[data-theme="dark"] .home-live-panel{
       background:linear-gradient(180deg,rgba(28,48,62,.55),var(--surface-high));
@@ -567,9 +610,11 @@
       background:transparent;font:inherit;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;border-radius:0 0 10px 10px;
     }
     .home-scheme-manage:hover{background:var(--surface-soft)}
-    .home-key-map-card{
+    .home-key-map-card,
+    .home-voice-map-card{
       margin:8px 0 10px;padding:12px;border-radius:14px;
       border:1px solid var(--outline-variant);background:var(--surface-high);
+      flex:1 1 auto;display:flex;flex-direction:column;min-height:0;
     }
     .home-key-map-card.is-recording{border-color:rgba(42,156,196,.28)}
     .home-key-map-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -861,7 +906,7 @@
     .home-key-map-scheme .home-scheme-switcher{max-width:100%}
     .home-key-map-scheme .home-scheme-switcher-btn{min-height:34px;padding:6px 28px 6px 10px}
     .home-key-map-flow{
-      display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:6px 8px;align-items:center;margin-bottom:10px;
+      display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:6px 8px;align-items:center;margin-bottom:0;flex:1 1 auto;min-height:0;
     }
     .home-key-map-step{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0}
     .home-key-map-step.is-clickable{cursor:pointer}
@@ -881,6 +926,30 @@
     }
     @keyframes home-key-rec-pulse{0%,100%{box-shadow:0 0 0 0 rgba(42,156,196,.35)}50%{box-shadow:0 0 0 4px rgba(42,156,196,.12)}}
     .home-key-map-step-hint{font-size:10px;line-height:1.35;color:var(--on-surface-muted);text-align:center}
+    .home-step-meta-chips{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:center;margin-top:2px}
+    .home-step-meta-item{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:10px;line-height:1.35;color:var(--on-surface-muted);
+    }
+    .home-step-meta-label{font-weight:600}
+    .home-step-meta-state{font-weight:500}
+    .home-step-meta-item.is-on .home-step-meta-state{color:var(--on-surface);font-weight:600}
+    .home-status-dot{
+      width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--outline-variant);
+    }
+    .home-status-dot.is-on{background:var(--primary);box-shadow:0 0 0 2px rgba(42,156,196,.18)}
+    html[data-theme="dark"] .home-status-dot.is-on{box-shadow:0 0 0 2px rgba(94,200,232,.2)}
+    .home-voice-end-auto-meta{
+      display:flex;justify-content:center;margin:0;padding:0;min-height:1.4em;
+    }
+    .voice-settings-auto-controls{display:grid;gap:8px;margin-top:4px}
+    .voice-settings-auto-controls .voice-end-inline-range{margin:0}
+    .voice-settings-commit-pills{
+      display:flex;justify-content:center;gap:2px;padding:2px;border-radius:999px;
+      background:var(--surface);border:1px solid var(--outline-variant);
+    }
+    .voice-settings-commit-pills .home-mini-toggle{min-height:24px;padding:3px 8px;font-size:10px;border-radius:999px;border:none;background:transparent}
+    .voice-settings-commit-pills .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary)}
     .home-key-map-arrow{display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;flex-shrink:0}
     .home-key-map-arrow-icon{font-size:18px;font-weight:800;color:var(--primary);line-height:1}
     .home-key-map-arrow-text{font-size:9px;font-weight:700;color:var(--on-surface-muted);white-space:nowrap}
@@ -900,7 +969,7 @@
       background:rgba(249,115,22,.08);color:#c2410c;border:1px solid rgba(249,115,22,.18);
     }
     .home-live-hint[hidden]{display:none!important}
-    .home-live-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0}
+    .home-live-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0;margin-top:auto;flex-shrink:0}
     .home-live-btn{
       flex:1 1 calc(50% - 4px);min-width:120px;min-height:36px;padding:0 12px;border-radius:12px;
       border:1px solid var(--outline-variant);background:var(--surface-high);
@@ -921,48 +990,75 @@
     .home-live-more:hover{color:var(--primary)}
     .home-live-inline{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
     .home-mini-toggle{
-      border:1px solid var(--outline-variant);background:#fff;border-radius:10px;padding:6px 10px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);border-radius:10px;padding:6px 10px;
       font-size:12px;font-weight:700;color:var(--on-surface);cursor:pointer
     }
+    .home-mini-toggle:hover:not(:disabled){background:var(--surface-soft);border-color:var(--outline)}
     .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.3)}
+    html[data-theme="dark"] .home-mini-toggle.is-active{border-color:rgba(94,200,232,.32)}
     .home-inline-input{display:grid;gap:6px;margin-bottom:10px;min-width:0}
     .home-inline-input .mic-desc{display:block;margin:0;line-height:1.4}
     .home-inline-input .voice-sapi-range{width:100%;min-width:0;margin-top:0}
     .home-mic-wrap{margin:8px 0 10px;min-width:0}
     .home-voice-map-flow{
       display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-      gap:10px;align-items:stretch;margin-bottom:10px;
+      gap:10px;align-items:stretch;margin-bottom:0;flex:1 1 auto;min-height:0;
     }
     @media(max-width:720px){.home-voice-map-flow{grid-template-columns:1fr}}
     .home-voice-engine-bar{
       display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
-      margin:0 0 8px;padding:0 2px;
+      margin:0 0 10px;padding:0 0 10px;border-bottom:1px solid var(--outline-variant);
     }
     .home-voice-engine-bar-lbl{
       font-size:10px;font-weight:700;color:var(--on-surface-muted);line-height:1.3;
     }
     .home-voice-engine-bar .home-voice-engine-compact{display:inline-flex;flex-shrink:0}
     .home-voice-map-foot{
-      grid-column:1 / -1;display:grid;gap:4px;margin-top:2px;padding-top:8px;
+      grid-column:1 / -1;display:grid;gap:3px;margin-top:4px;padding-top:10px;
       border-top:1px solid var(--outline-variant);
     }
-    .home-voice-map-foot .home-voice-wake-mic{margin-top:0}
-    .home-voice-map-foot .home-voice-wake-status{min-height:auto;margin-top:0}
-    .home-voice-mic-pick-item{
-      transition:border-color .2s ease,background .2s ease,box-shadow .2s ease;
+    .home-voice-map-foot .home-voice-wake-mic{margin:0}
+    .home-voice-map-foot .home-voice-wake-mic-lbl{
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
     }
-    .home-voice-mic-pick-item.is-mic-armed{
-      border-color:rgba(42,156,196,.22);background:rgba(42,156,196,.03);
+    .home-voice-map-foot .home-voice-mic-pick{width:100%}
+    .home-voice-map-foot .home-voice-mic-pick-item,
+    .home-voice-map-foot .home-voice-mic-pick-empty{
+      display:flex;align-items:center;gap:8px;width:100%;padding:4px 0;
+      border:none;background:transparent;border-radius:0;cursor:pointer;
+      font:inherit;text-align:left;color:var(--on-surface-muted);box-shadow:none;
+      min-height:24px;
     }
-    .home-voice-mic-pick-item.is-mic-live{
-      border-color:rgba(42,156,196,.34);background:rgba(42,156,196,.06);
-      box-shadow:0 0 0 1px rgba(42,156,196,.06) inset;
+    .home-voice-map-foot .home-voice-mic-pick-empty{
+      justify-content:center;font-size:11px;font-weight:600;border:none;
     }
-    .home-voice-mic-pick-item.is-mic-hit{
-      border-color:rgba(42,156,196,.42);background:rgba(42,156,196,.09);
+    .home-voice-map-foot .home-voice-mic-pick-item:hover:not(:disabled){
+      color:var(--primary);background:transparent;
     }
-    .home-voice-mic-pick-item.is-mic-off{opacity:.78}
-    #homeVoiceMapEndPhraseHint{display:none!important}
+    .home-voice-map-foot .home-voice-mic-pick-item.is-active{
+      border:none;background:transparent;color:var(--on-surface);
+    }
+    .home-voice-mic-dot{
+      width:6px;height:6px;border-radius:50%;flex-shrink:0;
+      background:var(--outline-variant);transition:background .2s ease,box-shadow .2s ease;
+    }
+    .home-voice-mic-pick-item.is-mic-armed .home-voice-mic-dot{background:rgba(42,156,196,.5)}
+    .home-voice-mic-pick-item.is-mic-live .home-voice-mic-dot{
+      background:rgba(42,156,196,.78);box-shadow:0 0 0 3px rgba(42,156,196,.1);
+    }
+    .home-voice-mic-pick-item.is-mic-hit .home-voice-mic-dot{
+      background:var(--primary);box-shadow:0 0 0 3px rgba(42,156,196,.14);
+    }
+    .home-voice-mic-pick-item.is-mic-off .home-voice-mic-dot{background:var(--outline-variant);opacity:.7}
+    .home-voice-map-foot .home-voice-mic-pick-name{
+      flex:1 1 auto;min-width:0;font-size:11px;font-weight:600;line-height:1.35;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .home-voice-map-foot .mic-level-bars{margin-left:auto;flex-shrink:0}
+    .home-voice-map-foot .home-voice-wake-status{min-height:auto;margin-top:0;padding:0}
+    #homeVoiceMapSwitches{display:none!important}
+    #homeVoiceMapTitle{display:none!important}
     .home-voice-end-switch-stack{
       display:flex;flex-direction:column;gap:2px;margin-top:6px;width:100%;
     }
@@ -1054,6 +1150,14 @@
     .home-live-panel.is-entry-disabled .home-live-head,
     .home-live-panel.is-entry-disabled .home-live-actions,
     .home-live-panel.is-entry-disabled .home-live-hint{opacity:1;filter:none;pointer-events:auto}
+    .home-main-grid.is-global-disabled .home-key-map-card,
+    .home-main-grid.is-global-disabled .home-voice-map-card,
+    .home-main-grid.is-global-disabled .home-voice-engine-bar{
+      opacity:.46;filter:grayscale(.4);pointer-events:none;user-select:none;
+    }
+    .home-main-grid.is-global-disabled .home-live-head,
+    .home-main-grid.is-global-disabled .home-live-actions,
+    .home-main-grid.is-global-disabled .home-live-hint{opacity:1;filter:none;pointer-events:auto}
     .home-voice-map-flow .home-key-map-step{grid-column:auto;grid-row:auto}
     .home-voice-map-flow .home-key-map-key{min-height:52px;font-size:13px;padding:8px 10px;line-height:1.35;display:flex;align-items:center;justify-content:center}
     .home-voice-map-flow .home-key-map-key .home-phrase-cloud{flex:1}
@@ -1426,6 +1530,18 @@
     .key-scheme-finish-row{display:grid;gap:6px}
     .key-scheme-finish-row .setting-row{
       margin:0;padding:0;border:none;border-radius:0;background:transparent;
+    }
+    html[data-theme="dark"] .key-scheme-finish-row .setting-row{
+      padding:10px 12px;border-radius:12px;border:1px solid var(--outline-variant);
+      background:rgba(22,30,44,.72);
+    }
+    html[data-theme="dark"] .voice-settings-commit-pills{
+      background:rgba(15,23,42,.55);
+      border-color:var(--outline-variant);
+    }
+    html[data-theme="dark"] .voice-settings-commit-pills .home-mini-toggle{color:var(--on-surface-muted)}
+    html[data-theme="dark"] .voice-settings-commit-pills .home-mini-toggle.is-active{
+      background:rgba(94,200,232,.16);color:var(--primary-glow);
     }
     .key-scheme-finish-row .setting-row-text{font-size:12px;font-weight:700}
     .key-scheme-finish-row .map-timing-desc{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
@@ -2040,12 +2156,30 @@
       border-color:rgba(42,156,196,.42);background:linear-gradient(180deg,rgba(230,247,252,.95),rgba(255,255,255,.98));
       box-shadow:0 8px 20px rgba(42,156,196,.12);
     }
+    html[data-theme="dark"] .map-mode-card.is-active{
+      border-color:rgba(94,200,232,.36);
+      background:linear-gradient(180deg,rgba(94,200,232,.12),rgba(22,30,44,.96));
+      box-shadow:0 8px 20px rgba(0,0,0,.28);
+    }
+    html[data-theme="dark"] .map-mode-card:hover{background:rgba(94,200,232,.10)}
+    html[data-theme="dark"] .map-mode-card.is-active:hover{
+      background:linear-gradient(180deg,rgba(94,200,232,.14),rgba(22,30,44,.96));
+    }
     .mode-anim{
       position:relative;min-height:56px;border-radius:10px;background:var(--surface-soft);
       border:1px solid var(--outline-variant);overflow:visible;
       display:flex;align-items:center;justify-content:center;
     }
     .map-mode-card.is-active .mode-anim{border-color:rgba(42,156,196,.2);background:rgba(255,255,255,.7)}
+    html[data-theme="dark"] .mode-anim{background:rgba(15,23,42,.55);border-color:rgba(94,200,232,.14)}
+    html[data-theme="dark"] .map-mode-card.is-active .mode-anim{
+      border-color:rgba(94,200,232,.22);
+      background:rgba(15,23,42,.72);
+    }
+    html[data-theme="dark"] .key-scheme-finish-panel .map-mode-card{background:rgba(22,30,44,.72)}
+    html[data-theme="dark"] .key-scheme-finish-panel .map-mode-card.is-active{
+      background:linear-gradient(180deg,rgba(94,200,232,.12),rgba(22,30,44,.92));
+    }
     .mode-anim-inner{
       display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;
       flex-wrap:nowrap;max-width:100%;
@@ -2061,6 +2195,11 @@
     .ma-voice{background:var(--primary);color:#fff}
     .ma-esc{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.2)}
     .ma-enter{background:rgba(42,156,196,.15);color:var(--primary-strong);border:1px solid rgba(42,156,196,.25)}
+    html[data-theme="dark"] .ma-key{background:rgba(94,200,232,.14);border-color:rgba(94,200,232,.28)}
+    html[data-theme="dark"] .ma-esc{background:rgba(248,113,113,.16);color:#fca5a5;border-color:rgba(248,113,113,.28)}
+    html[data-theme="dark"] .ma-enter{background:rgba(94,200,232,.18);color:var(--primary-glow);border-color:rgba(94,200,232,.32)}
+    html[data-theme="dark"] .map-mode-card:not(.is-active) .mode-anim-inner .ma-chip{opacity:.92}
+    html[data-theme="dark"] .map-mode-card:not(.is-active) .mode-anim-inner .ma-arrow{opacity:.55}
     .ma-arrow{font-size:11px;color:var(--on-surface-muted);font-weight:700;opacity:.55}
     .map-mode-card:not(.is-active) .mode-anim-inner .ma-chip,
     .map-mode-card:not(.is-active) .mode-anim-inner .ma-arrow{
@@ -2822,7 +2961,7 @@
       <div class="header-actions">
         <button type="button" class="header-listen-toggle" id="headerListenState" role="switch" aria-checked="true" aria-labelledby="headerListenLabel">
           <span class="header-listen-toggle-ui" aria-hidden="true"><span class="header-listen-toggle-thumb"></span></span>
-          <span class="header-listen-toggle-label" id="headerListenLabel">已开启</span>
+          <span class="header-listen-toggle-label" id="headerListenLabel">总开关</span>
         </button>
         <button type="button" class="header-habits-btn" id="btnHomeCta">
           <span class="home-cta-icon" id="homeCtaIcon" aria-hidden="true" hidden>⌨</span>
@@ -2944,17 +3083,12 @@
                 </div>
                 <span class="home-live-badge" id="homeLiveVoiceBadge">—</span>
               </header>
-              <div class="home-voice-engine-bar" id="homeVoiceEngineBar">
-                <span class="home-voice-engine-bar-lbl" id="homeVoiceEngineBarLbl">识别引擎</span>
-                <div class="home-voice-engine-compact" id="homeVoiceModeSwitch">
-                  <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
-                  <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
-                </div>
-              </div>
-              <section class="home-voice-map-card" id="homeVoiceMapCard" aria-labelledby="homeVoiceMapTitle">
-                <div class="home-key-map-head">
-                  <div class="home-key-map-head-text">
-                    <div class="mini-title" id="homeVoiceMapTitle">语音流程</div>
+              <section class="home-voice-map-card" id="homeVoiceMapCard" aria-labelledby="homeLiveVoiceTitle">
+                <div class="home-voice-engine-bar" id="homeVoiceEngineBar">
+                  <span class="home-voice-engine-bar-lbl" id="homeVoiceEngineBarLbl">识别引擎</span>
+                  <div class="home-voice-engine-compact" id="homeVoiceModeSwitch">
+                    <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
+                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
                   </div>
                 </div>
                 <div class="home-voice-map-flow home-key-map-flow" id="homeVoiceMapFlow">
@@ -2972,24 +3106,17 @@
                     <div class="home-key-map-key is-clickable" id="homeVoiceMapEndPhraseKey" role="button" tabindex="0">
                       <div class="home-phrase-cloud" id="homeVoiceEndPhraseCloud" aria-live="polite"></div>
                     </div>
-                    <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
-                    <span class="home-key-map-step-hint" id="homeVoiceMapEndPhraseHint" hidden aria-hidden="true"></span>
-                    <div class="home-voice-end-switch-stack" id="homeVoiceMapSwitches">
+                    <div class="home-voice-end-switch-stack" id="homeVoiceEndMeta">
+                      <p class="home-voice-end-auto-meta" id="homeVoiceEndAutoMeta" aria-live="polite"></p>
                       <div class="home-voice-gear-switch" id="homeFinishCtrlEnd">
                         <span class="home-voice-gear-switch-label" id="homeLiveEndEnabledLbl">结束词</span>
                         <div class="home-voice-gear-switch-actions">
-                          <button type="button" class="toggle-switch toggle-switch-lite" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
-                          <button type="button" class="home-voice-gear-btn" id="btnHomeEndSettings" aria-label="修改结束词"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.54 1Z"/></svg></button>
-                        </div>
-                      </div>
-                      <div class="home-voice-gear-switch" id="homeFinishCtrlAuto">
-                        <span class="home-voice-gear-switch-label" id="homeLiveEndAutoLbl">自动发送</span>
-                        <div class="home-voice-gear-switch-actions">
-                          <button type="button" class="toggle-switch toggle-switch-lite" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
-                          <button type="button" class="home-voice-gear-btn" id="btnHomeAutoSettings" aria-label="修改自动发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.54 1Z"/></svg></button>
+                          <button type="button" class="toggle-switch-lite" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
+                          <button type="button" class="home-voice-gear-btn" id="btnHomeEndSettings" aria-label="修改结束词"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button>
                         </div>
                       </div>
                     </div>
+                    <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
                   </div>
                   <div class="home-voice-map-foot" id="homeVoiceMapFoot">
                     <div class="home-voice-wake-mic" id="homeVoiceWakeMic">
@@ -3016,6 +3143,15 @@
                 <span id="homeFinishEndDetail"></span>
                 <span id="homeFinishAutoSummary"></span>
                 <span id="homeVoiceEndDelayLine"></span>
+                <div id="homeVoiceMapSwitches" hidden>
+                  <div id="homeFinishCtrlAuto">
+                    <span id="homeLiveEndAutoLbl">自动发送</span>
+                    <button type="button" id="btnHomeEndAutoSend" role="switch" aria-checked="false"></button>
+                    <button type="button" id="btnHomeAutoSettings" aria-label="修改自动发送"></button>
+                  </div>
+                </div>
+                <span id="homeVoiceMapEndPhraseHint" hidden></span>
+                <span id="homeVoiceMapTitle" hidden>语音流程</span>
               </div>
               <div class="home-live-actions">
                 <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">开始</button>
@@ -3312,6 +3448,17 @@
             <div class="voice-settings-card" id="voiceSettingsAutoCard">
               <span class="voice-settings-card-lbl" id="voiceSettingsAutoLbl">自动发送</span>
               <div class="voice-settings-card-val is-muted" id="voiceSettingsAutoStatus">—</div>
+              <div class="voice-settings-auto-controls" id="voiceSettingsAutoControls">
+                <div class="voice-end-inline-range">
+                  <span class="mic-desc" id="voiceSettingsDelayLbl">等待时间</span>
+                  <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000">
+                </div>
+                <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
+                  <span class="sr-only" id="voiceSettingsCommitLbl">发送快捷键</span>
+                  <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
+                  <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                </div>
+              </div>
             </div>
           </section>
           <details class="voice-settings-mic-details" id="voiceMicPickerDetails">
@@ -3656,12 +3803,7 @@
           </section>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
-          <p class="settings-panel-desc" id="settingsPanelGeneralDesc">方案辅助、恢复和危险维护操作</p>
-          <div class="helper-note" id="quickTips">
-            <strong id="quickTipsTitle">恢复与维护</strong>
-            <span id="quickTipsBody">这里集中放置方案辅助、恢复和危险维护操作。</span>
-          </div>
-          <div class="drawer-section">
+          <div class="drawer-section" id="cycleSwitchSection" hidden aria-hidden="true">
             <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
             <p class="map-switch-desc" id="cycleSwitchDesc">在同一启动键的多个方案间按顺序轮换；也可在下方每个方案里单独设置直达快捷键。</p>
             <div class="scheme-switch-ctrl">
@@ -3674,13 +3816,6 @@
             <div class="mini-title" id="trashTitle">回收站</div>
             <p class="trash-empty" id="trashEmpty">暂无已删除的映射</p>
             <div id="trashList"></div>
-          </div>
-          <div class="drawer-section">
-            <div class="mini-title" id="guideReplayTitle">首次引导</div>
-            <p class="mini" id="guideReplayDesc">重新查看首次引导，快速回顾按键、语音与方案的基本流程。</p>
-            <div class="settings-page-actions">
-              <button type="button" class="replay-link" id="btnReplayWelcome">重新查看首次引导</button>
-            </div>
           </div>
           <div class="drawer-section" id="aboutSection">
             <div class="mini-title" id="aboutTitle">关于</div>
@@ -3921,8 +4056,8 @@
     <div class="home-guide-banner" id="homeGuideBanner" hidden>    </div>
   </div>
   <script src="js/key-labels.js"></script>
-  <script src="js/phrase-practice.js"></script>
   <script src="js/onboarding.js"></script>
+  <script src="js/phrase-practice.js"></script>
   <script>
   (function(){
     const listeners={message:[]};
@@ -4348,19 +4483,25 @@
       if(headerListen) headerListen.classList.remove('is-busy');
     });
   }
-  function renderListenRuntime(){
-    $('listenState').textContent=runtime.paused?t('listenPaused'):t('listenOn');
-    $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
+  function syncGlobalMasterUi(){
+    const grid=$('homeMainGrid');
+    const paused=!!runtime.paused;
+    if(grid) grid.classList.toggle('is-global-disabled',paused);
     const headerListen=$('headerListenState');
     const headerLabel=$('headerListenLabel');
     if(headerListen){
-      const on=!runtime.paused;
+      const on=!paused;
       headerListen.hidden=false;
       headerListen.classList.toggle('is-off',!on);
       headerListen.setAttribute('aria-checked',on?'true':'false');
       headerListen.title=t(on?'headerListenTitleOn':'headerListenTitleOff');
-      if(headerLabel) headerLabel.textContent=t(on?'headerGlobalOn':'headerGlobalOff');
     }
+    if(headerLabel) headerLabel.textContent=t('headerGlobalOn');
+  }
+  function renderListenRuntime(){
+    $('listenState').textContent=runtime.paused?t('listenPaused'):t('listenOn');
+    $('btnListenToggle').textContent=runtime.paused?t('listenResume'):t('listenPause');
+    syncGlobalMasterUi();
     const liveAction=$('liveAction');
     if(liveAction) liveAction.textContent=runtime.lastAction||'-';
     const liveTimer=$('liveTimer');
@@ -4467,7 +4608,6 @@
     if(endBtn) endBtn.disabled=lite;
     const homeEndCard=$('homeFinishCtrlEnd');
     const endPhraseStep=$('homeVoiceMapEndPhrase');
-    if(homeEndCard) homeEndCard.hidden=lite;
     if(endPhraseStep) endPhraseStep.classList.toggle('is-lite-locked',lite);
     const homeEndToggle=$('btnHomeEndToggle');
     if(homeEndToggle) homeEndToggle.disabled=lite;
@@ -5204,7 +5344,7 @@
       debugCodeLabel:'编码',
       mappingAutoEnabled:'方案已自动启用，可以开始使用',
       listenOn:'监听中',listenPaused:'已暂停监听',
-      headerGlobalOn:'已开启',headerGlobalOff:'已关闭',
+      headerGlobalOn:'总开关',headerGlobalOff:'总开关',
       headerListenTitleOn:'点击关闭按键与语音唤起',headerListenTitleOff:'点击开启按键与语音唤起',
       themeLight:'浅色',themeDark:'深色',
       prefBasicTitle:'基础',
@@ -5326,6 +5466,7 @@
       voiceEndAutoSendOff:'关',
       voiceEndDelay:'发送延迟',
       voiceEndDelayMs:'{n}ms',
+      voiceEndCommitKeyLbl:'发送快捷键',
       voiceEndPresetsZhLabel:'中文结束词',
       voiceEndPresetsEnLabel:'英文结束词',
       voiceEndAutoSendLabel:'语音结束后自动发送（Enter）',
@@ -5788,7 +5929,7 @@
       debugCodeLabel:'Code',
       mappingAutoEnabled:'Profile enabled — ready to use',
       listenOn:'Listening',listenPaused:'Paused',
-      headerGlobalOn:'On',headerGlobalOff:'Off',
+      headerGlobalOn:'Master',headerGlobalOff:'Master',
       headerListenTitleOn:'Turn off key and voice wake',headerListenTitleOff:'Turn on key and voice wake',
       themeLight:'Light',themeDark:'Dark',
       prefBasicTitle:'Basic',
@@ -5910,6 +6051,7 @@
       voiceEndAutoSendOff:'Off',
       voiceEndDelay:'Send delay',
       voiceEndDelayMs:'{n}ms',
+      voiceEndCommitKeyLbl:'Send shortcut',
       voiceEndPresetsZhLabel:'Chinese end phrases',
       voiceEndPresetsEnLabel:'English end phrases',
       voiceEndAutoSendLabel:'Auto send after voice end (Enter)',
@@ -7367,7 +7509,7 @@
     btn.type='button';
     btn.className='home-voice-mic-pick-item is-active';
     btn.setAttribute('data-id',dev.id);
-    btn.innerHTML='<span class="home-voice-mic-pick-name"></span><span class="mic-level-bars" aria-hidden="true"></span>';
+    btn.innerHTML='<span class="home-voice-mic-dot" aria-hidden="true"></span><span class="home-voice-mic-pick-name"></span><span class="mic-level-bars" aria-hidden="true"></span>';
     btn.querySelector('.home-voice-mic-pick-name').textContent=dev.name||dev.label||dev.id;
     const bars=btn.querySelector('.mic-level-bars');
     if(bars) bars.innerHTML=buildMicLevelBars();
@@ -8273,8 +8415,8 @@
 
   function keyFinishPreviewText(m){
     const unset={
-      mode:'',detail:t('keyFinishFlowNeedKeys'),summary:t('homeLiveUnset'),
-      bindingLine:'',saved:false
+      mode:'',detail:'',summary:t('homeLiveUnset'),
+      bindingLine:'',saved:false,chips:[]
     };
     if(!m||!isSavedMapping(m)) return unset;
     ensureMappingTiming(m);
@@ -8283,16 +8425,33 @@
     const bindingLine=t('keyFinishFlowScheme').replace('{name}',homeSchemeLabel());
     if(mode==='tap'){
       const summary=t('keyFinishFlowConfirm');
-      const parts=[];
-      parts.push(t('cancelTimingTitle')+'：'+(m.cancelEnabled?t('keyFinishFlowStatusOn'):t('keyFinishFlowStatusOff')));
-      parts.push(t('sendTimingTitle')+'：'+(m.autoEnterEnabled?t('keyFinishFlowStatusOn'):t('keyFinishFlowStatusOff')));
-      return {mode:summary,detail:parts.join(' · '),summary:summary,bindingLine:bindingLine,saved:true};
+      const chips=[
+        {lbl:t('cancelTimingTitle'),on:!!m.cancelEnabled},
+        {lbl:t('sendTimingTitle'),on:!!m.autoEnterEnabled}
+      ];
+      return {mode:summary,detail:'',summary:summary,bindingLine:bindingLine,saved:true,chips:chips};
     }
     const summary=t('keyFinishFlowInstant');
     return {
       mode:summary,detail:t('keyExecFinishPerPressDetail'),summary:summary,
-      bindingLine:bindingLine,saved:true
+      bindingLine:bindingLine,saved:true,chips:[]
     };
+  }
+
+  function renderHomeStatusMetaItem(label,on,stateText){
+    const active=!!on;
+    stateText=stateText!=null?stateText:(active?t('keyFinishFlowStatusOn'):t('keyFinishFlowStatusOff'));
+    return '<span class="home-step-meta-item'+(active?' is-on':'')+'">'+
+      '<span class="home-status-dot'+(active?' is-on':'')+'" aria-hidden="true"></span>'+
+      '<span class="home-step-meta-label">'+escHtml(label)+'</span>'+
+      '<span class="home-step-meta-state">'+escHtml(stateText)+'</span></span>';
+  }
+
+  function renderHomeKeyFinishMetaChips(chips){
+    if(!chips||!chips.length) return '';
+    return '<div class="home-step-meta-chips">'+chips.map(function(chip){
+      return renderHomeStatusMetaItem(chip.lbl,!!chip.on);
+    }).join('')+'</div>';
   }
 
   function renderHomeKeyFinishPreview(loading){
@@ -8311,14 +8470,16 @@
       return;
     }
     const summary=preview?preview.summary:t('homeLiveUnset');
-    const detail=preview?preview.detail:'';
     if(finishKey){
       finishKey.textContent=summary;
       finishKey.className='home-key-map-key'+(preview&&preview.saved?' is-set':' is-empty');
     }
     if(finishHint){
-      finishHint.textContent=detail;
-      finishHint.hidden=!detail;
+      const chipsHtml=preview&&preview.chips&&preview.chips.length?renderHomeKeyFinishMetaChips(preview.chips):'';
+      const detailHtml=preview&&preview.detail?('<span class="home-key-map-step-hint-plain">'+escHtml(preview.detail)+'</span>'):'';
+      const html=chipsHtml||detailHtml;
+      finishHint.innerHTML=html;
+      finishHint.hidden=!html;
     }
   }
 
@@ -8641,12 +8802,12 @@
     const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const autoOn=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
+    const commitKey=String(endSnap.commitKey||endCfg.commitKey||endCfg.commit_key||'Enter').trim()||'Enter';
     const stateRaw=endSnap.state||'idle';
     const statusEl=$('homeFinishStatus');
     const endPhraseKey=$('homeVoiceMapEndPhraseKey');
     const endCloud=$('homeVoiceEndPhraseCloud');
     const endPhraseStep=$('homeVoiceMapEndPhrase');
-    const endSwitchRow=$('homeFinishCtrlEnd');
     const statusLabel=loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw));
     if(statusEl){
       statusEl.textContent=statusLabel;
@@ -8667,13 +8828,22 @@
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
     syncVoiceEndModeUi(true);
     const lite=voiceEndUiUsesLiteMode(true);
-    if(endSwitchRow) endSwitchRow.hidden=lite;
     const liteBadge=$('homeFinishEndLiteBadge');
     if(liteBadge){
       liteBadge.hidden=!lite;
       liteBadge.textContent=t('voiceEndNeedVoskShort');
     }
     if(endToggle) endToggle.disabled=recordingBusy||loading||lite;
+    const autoMeta=$('homeVoiceEndAutoMeta');
+    if(autoMeta){
+      if(loading) autoMeta.innerHTML='';
+      else{
+        const statusText=autoOn
+          ?(t('voiceEndAutoSendOn')+' · '+t('voiceEndDelayMs').replace('{n}',String(delayMs))+' · '+commitKey)
+          :t('voiceEndAutoSendOff');
+        autoMeta.innerHTML='<div class="home-step-meta-chips">'+renderHomeStatusMetaItem(t('homeLiveEndAutoShort'),autoOn,statusText)+'</div>';
+      }
+    }
     if(endPhraseStep){
       endPhraseStep.classList.toggle('is-lite-locked',lite);
       endPhraseStep.classList.toggle('is-clickable',!loading&&!recordingBusy);
@@ -8721,6 +8891,7 @@
     const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
     const autoOn=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
+    const commitKey=String(endSnap.commitKey||endCfg.commitKey||endCfg.commit_key||'Enter').trim()||'Enter';
     const detail=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]).join(' / ')||'');
     const lite=voiceEndUiUsesLiteMode(false);
     const wakePhraseEl=$('voiceSettingsWakePhrase');
@@ -8775,13 +8946,54 @@
     if(autoStatusEl){
       if(loading) autoStatusEl.textContent=t('homeLiveLoading');
       else autoStatusEl.textContent=autoOn
-        ?(t('voiceEndAutoSendOn')+' · '+t('voiceEndDelayMs').replace('{n}',String(delayMs)))
+        ?(t('voiceEndAutoSendOn')+' · '+t('voiceEndDelayMs').replace('{n}',String(delayMs))+' · '+commitKey)
         :t('voiceEndAutoSendOff');
     }
+    syncVoiceEndCommitKeyUi(commitKey);
+    syncVoiceEndDelayRanges(delayMs);
+  }
+
+  function normalizeVoiceEndCommitKey(raw){
+    const key=String(raw||'').trim();
+    return /^ctrl\+enter$/i.test(key)?'Ctrl+Enter':'Enter';
+  }
+
+  function syncVoiceEndCommitKeyUi(commitKey){
+    const key=normalizeVoiceEndCommitKey(commitKey);
+    const enterBtn=$('btnVoiceSettingsCommitEnter');
+    const ctrlBtn=$('btnVoiceSettingsCommitCtrlEnter');
+    if(enterBtn) enterBtn.classList.toggle('is-active',key==='Enter');
+    if(ctrlBtn) ctrlBtn.classList.toggle('is-active',key==='Ctrl+Enter');
+  }
+
+  function syncVoiceEndDelayRanges(ms,skipEl){
+    ['voiceEndDelayRange','voiceSettingsDelayRange'].forEach(function(id){
+      const el=$(id);
+      if(!el||el===skipEl) return;
+      if(document.activeElement!==el) el.value=String(ms);
+      el.style.setProperty('--range-pct',((ms-1000)/9000*100)+'%');
+    });
+    const delayLine=$('voiceEndDelayLine');
+    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(ms));
+  }
+
+  function setVoiceEndCommitKey(commitKey){
+    const key=normalizeVoiceEndCommitKey(commitKey);
+    syncVoiceEndCommitKeyUi(key);
+    return vpInvoke('cmd_voice_end_set_commit_key',{commitKey:key}).then(function(res){
+      renderVoiceEndStatus(res);
+      syncHomeFromVoiceSettings(null,null,res);
+      return res;
+    }).catch(function(err){
+      loadVoiceEndStatus();
+      toast(t('voiceEndFail'));
+      throw err;
+    });
   }
 
   function renderHomeLiveZone(){
     const loading=!configLoadedFromBackend;
+    syncGlobalMasterUi();
     renderHomeLiveKeyPanel(loading);
     renderHomeLiveVoicePanel(loading);
     renderHomeFinishZone(loading);
@@ -8929,8 +9141,6 @@
         {target:'#btnHomeVoiceModeSapi',detailKey:'homeVoiceGuideModeSapi',labelFromTargetBtn:true,callout:false},
         {target:'#btnHomeVoiceModeVosk',detailKey:'homeVoiceGuideModeVosk',labelFromTargetBtn:true,callout:false},
         {target:'#homeVoiceMapEndPhraseKey',detailKey:'homeFinishGuideEnd',labelEl:'#homeVoiceMapEndPhraseLblText',step:4},
-        {target:'#btnHomeEndSettings',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',callout:false},
-        {target:'#btnHomeAutoSettings',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',callout:false},
         {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:5}
       ]
     };
@@ -9957,7 +10167,6 @@
     const d=I18N[lang];
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],
-      ['homeVoiceMapTitle',d.homeVoiceMapTitle],
       ['homeVoiceMapWakeLbl',d.homeVoiceMapWakeLbl],['homeVoiceWakeMicLbl',d.homeVoiceWakeMicLbl],
       ['homeVoiceEngineBarLbl',d.homeVoiceMapEngineLbl],
       ['homeVoiceMapEngineLbl',d.homeVoiceMapEngineLbl],
@@ -10553,6 +10762,8 @@
           renderEditor();
           renderListenRuntime();
           if(mappingListUiActive()) renderMappingChrome();
+          if(ui.settingsPanel==='general') renderTrashList();
+          if(ui.settingsPanel==='general') renderTrashList();
           if(ui.settingsPanel==='voiceWake'&&!voiceToggleBusy){
             renderVoiceSapiStatus({enabled:!!((state.config.voiceSapi||state.config.voice_sapi||{}).enabled),state:'stopped'});
             renderVoiceVoskStatus({enabled:!!((state.config.voiceVosk||state.config.voice_vosk||{}).enabled),state:'stopped'});
@@ -11336,6 +11547,8 @@
       range.value=String(delayMs);
       range.style.setProperty('--range-pct',((delayMs-1000)/9000*100)+'%');
     }
+    syncVoiceEndDelayRanges(delayMs);
+    syncVoiceEndCommitKeyUi(res.commitKey);
     syncVoiceEndPresets(zh,en);
     updateVoiceDiagMetric('end','state',stateLabel,t('voiceDiagLogState'));
     updateVoiceDiagMetric('end','phrase',res.lastEndPhrase||'',t('voiceDiagLogPhrase'));
@@ -11406,16 +11619,18 @@
   }
 
   function onVoiceEndDelayInput(){
-    const el=$('voiceEndDelayRange');
+    const active=document.activeElement;
+    const el=(active&&(active.id==='voiceEndDelayRange'||active.id==='voiceSettingsDelayRange'))
+      ?active:($('voiceSettingsDelayRange')||$('voiceEndDelayRange'));
     if(!el) return;
     const ms=parseInt(el.value,10)||4000;
-    el.style.setProperty('--range-pct',((ms-1000)/9000*100)+'%');
-    const delayLine=$('voiceEndDelayLine');
-    if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(ms));
+    syncVoiceEndDelayRanges(ms,el);
   }
 
   function onVoiceEndDelayChange(){
-    const el=$('voiceEndDelayRange');
+    const active=document.activeElement;
+    const el=(active&&(active.id==='voiceEndDelayRange'||active.id==='voiceSettingsDelayRange'))
+      ?active:($('voiceSettingsDelayRange')||$('voiceEndDelayRange'));
     if(!el) return;
     const ms=parseInt(el.value,10)||4000;
     onVoiceEndDelayInput();
@@ -11886,6 +12101,8 @@
     const voiceEndPresetsZhLabel=$('voiceEndPresetsZhLabel'); if(voiceEndPresetsZhLabel) voiceEndPresetsZhLabel.textContent=d.voiceEndPresetsZhLabel;
     const voiceEndPresetsEnLabel=$('voiceEndPresetsEnLabel'); if(voiceEndPresetsEnLabel) voiceEndPresetsEnLabel.textContent=d.voiceEndPresetsEnLabel;
     const voiceEndDelayLabel=$('voiceEndDelayLabel'); if(voiceEndDelayLabel) voiceEndDelayLabel.textContent=d.voiceEndDelay;
+    const voiceSettingsDelayLbl=$('voiceSettingsDelayLbl'); if(voiceSettingsDelayLbl) voiceSettingsDelayLbl.textContent=d.voiceEndDelay;
+    const voiceSettingsCommitLbl=$('voiceSettingsCommitLbl'); if(voiceSettingsCommitLbl) voiceSettingsCommitLbl.textContent=d.voiceEndCommitKeyLbl;
     const voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
     const btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
     const btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;
@@ -12500,6 +12717,7 @@
     }
     if(!state.selectedMappingId) state.selectedMappingId=state.config.mappings[0].id;
     if(state.config.schemeSwitchKey===undefined||state.config.schemeSwitchKey===null) state.config.schemeSwitchKey='';
+    state.config.schemeSwitchKey='';
     if(state.config.keyWakeSoundEnabled===undefined) state.config.keyWakeSoundEnabled=false;
     // coachHudEnabled removed from UI; keep config field for backward compatibility
     if(state.config.coachHudEnabled===undefined) state.config.coachHudEnabled=false;
@@ -12534,7 +12752,7 @@
       autoEnterEnabled:state.config.autoEnterEnabled!==false,
       debounceMs:state.config.debounceMs||80,
       keyPressDurationMs:state.config.keyPressDurationMs||250,
-      schemeSwitchKey:state.config.schemeSwitchKey||'',
+      schemeSwitchKey:'',
       keyWakeSoundEnabled:!!(state.config.sounds&&state.config.sounds.keyWake&&state.config.sounds.keyWake.enabled),
       coachHudEnabled:!!state.config.coachHudEnabled,
       sounds:(function(){
@@ -13061,6 +13279,7 @@
     if(idx<0) return;
     const removed=Object.assign({}, state.config.mappings.splice(idx,1)[0]);
     removed.enabled=false;
+    if(!Array.isArray(state.config.trash)) state.config.trash=[];
     state.config.trash.unshift(removed);
     if(state.selectedMappingId===id){
       state.selectedMappingId=state.config.mappings[0]&&state.config.mappings[0].id;
@@ -13073,13 +13292,20 @@
     state.config.mappings.forEach(function(m,i){ m.order=i; });
     syncEditorFromSelection();
     closeFloatMenu();
-    save();
-    render();
-    toast(t('movedToTrash'));
+    saveAsync().then(function(){
+      renderTrashList();
+      render();
+      toast(t('movedToTrash'));
+    }).catch(function(){
+      renderTrashList();
+      render();
+      toast(t('movedToTrash'));
+    });
   }
 
   function restoreFromTrash(id){
     ensureConfig();
+    if(!Array.isArray(state.config.trash)) state.config.trash=[];
     const idx=state.config.trash.findIndex(function(m){return m.id===id;});
     if(idx<0) return;
     const item=state.config.trash.splice(idx,1)[0];
@@ -13088,8 +13314,13 @@
     state.config.mappings.push(item);
     state.selectedMappingId=item.id;
     syncEditorFromSelection();
-    save();
-    render();
+    saveAsync().then(function(){
+      renderTrashList();
+      render();
+    }).catch(function(){
+      renderTrashList();
+      render();
+    });
   }
 
   function renderTrashList(){
@@ -13528,36 +13759,7 @@
   }
 
   function renderSchemeSwitch(){
-    ensureConfig();
-    const key=(state.config.schemeSwitchKey||'').trim();
-    const btn=$('btnSchemeSwitchKey');
-    const clr=$('btnSchemeSwitchClear');
-    const cancel=$('btnSchemeSwitchCancel');
-    const lbl=$('schemeSwitchLabel');
-    if(lbl) lbl.textContent=t('schemeSwitchLabel');
-    if(!btn) return;
-    const rec=recordingMode==='schemeSwitch';
-    if(rec){
-      btn.textContent=t('schemeSwitchRecording');
-      btn.classList.add('recording');
-      btn.title='';
-    }else if(key){
-      btn.textContent=friendlyKeyName(key);
-      btn.title=friendlyKeyName(key);
-      btn.classList.remove('recording');
-    }else{
-      btn.textContent=t('schemeSwitchRecord');
-      btn.title='';
-      btn.classList.remove('recording');
-    }
-    if(cancel){
-      cancel.textContent=t('schemeSwitchCancel');
-      cancel.hidden=!rec;
-    }
-    if(clr){
-      clr.textContent=t('schemeSwitchClear');
-      clr.hidden=!key||rec;
-    }
+    return;
   }
 
   function startNativeRestoreRecord(mappingId){
@@ -14150,6 +14352,25 @@
   $('voiceEndPresetsWrap').onclick=addVoiceEndPreset;
   $('voiceEndDelayRange').oninput=onVoiceEndDelayInput;
   $('voiceEndDelayRange').onchange=onVoiceEndDelayChange;
+  const voiceSettingsDelayRange=$('voiceSettingsDelayRange');
+  if(voiceSettingsDelayRange){
+    voiceSettingsDelayRange.oninput=onVoiceEndDelayInput;
+    voiceSettingsDelayRange.onchange=onVoiceEndDelayChange;
+  }
+  const btnVoiceSettingsCommitEnter=$('btnVoiceSettingsCommitEnter');
+  if(btnVoiceSettingsCommitEnter){
+    btnVoiceSettingsCommitEnter.onclick=function(e){
+      e.stopPropagation();
+      setVoiceEndCommitKey('Enter');
+    };
+  }
+  const btnVoiceSettingsCommitCtrlEnter=$('btnVoiceSettingsCommitCtrlEnter');
+  if(btnVoiceSettingsCommitCtrlEnter){
+    btnVoiceSettingsCommitCtrlEnter.onclick=function(e){
+      e.stopPropagation();
+      setVoiceEndCommitKey('Ctrl+Enter');
+    };
+  }
   $('btnVoiceEndTestStop').onclick=testVoiceEndStop;
   $('btnVoiceEndTestCommit').onclick=testVoiceEndCommit;
   $('voiceSapiConfidence').oninput=function(){updateVoiceSapiConfidence(false)};
@@ -14157,7 +14378,6 @@
   $('btnWelcomeClose').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeLater').onclick=function(){ closeWelcome(true); };
   $('btnWelcomeStart').onclick=function(){ closeWelcome(true); homeOneClickStart(); };
-  $('btnReplayWelcome').onclick=function(){ openWelcome(); };
   const btnHomePhrasePractice=$('btnHomePhrasePractice');
   if(btnHomePhrasePractice){
     btnHomePhrasePractice.onclick=function(){
@@ -14279,10 +14499,11 @@
   const homeVoiceMapCardEl=$('homeVoiceMapCard');
   if(homeVoiceMapCardEl){
     homeVoiceMapCardEl.addEventListener('click',function(e){
-      if(e.target.closest('#homeVoiceMapFoot')||e.target.closest('#homeVoiceWakeMicList')||e.target.closest('#homeVoiceMapSwitches')||e.target.closest('.home-voice-gear-switch')) return;
+      if(e.target.closest('#homeVoiceMapFoot')||e.target.closest('#homeVoiceWakeMicList')) return;
       if(e.target.closest('button')||e.target.closest('input')) return;
       if(e.target.closest('#homeVoiceMapWake')){ openSettings({panel:'voiceWake',focus:'wakePhrases'}); return; }
       if(e.target.closest('#homeVoiceMapEndPhraseKey')) return;
+      if(e.target.closest('#homeVoiceEndMeta')) return;
       if(e.target.closest('#homeVoiceMapEndPhrase')){ openSettings({panel:'voiceWake',focus:'endPhrases'}); return; }
     });
   }

@@ -1137,7 +1137,9 @@ impl VoiceConfig {
             self.enter_delay_ms = 1000;
         }
         if self.mappings.is_empty() {
+            let preserved_trash = std::mem::take(&mut self.trash);
             *self = VoiceConfig::default();
+            self.trash = preserved_trash;
         }
         if self.voice_sapi.phrases.iter().all(|p| p.trim().is_empty()) {
             self.voice_sapi.phrases = default_voice_sapi_phrases();

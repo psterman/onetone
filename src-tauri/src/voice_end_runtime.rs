@@ -531,6 +531,22 @@ pub fn voice_end_set_commit_delay(state: &Arc<AppState>, delay_ms: u32) -> serde
     voice_end_status(state)
 }
 
+pub fn voice_end_set_commit_key(state: &Arc<AppState>, commit_key: String) -> serde_json::Value {
+    let trimmed = commit_key.trim();
+    let normalized = if trimmed.eq_ignore_ascii_case("ctrl+enter") {
+        "Ctrl+Enter".to_string()
+    } else {
+        "Enter".to_string()
+    };
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_end.commit_key = normalized;
+        cfg.normalize();
+        crate::config::save_config(&cfg);
+    }
+    voice_end_status(state)
+}
+
 pub fn voice_end_set_phrases(
     state: &Arc<AppState>,
     phrases_zh: Vec<String>,

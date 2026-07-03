@@ -54,6 +54,7 @@ permissions = [
   "allow-cmd-voice-end-set-enabled",
   "allow-cmd-voice-end-set-auto-send",
   "allow-cmd-voice-end-set-commit-delay",
+  "allow-cmd-voice-end-set-commit-key",
   "allow-cmd-voice-end-set-phrases",
   "allow-cmd-voice-end-test-stop",
   "allow-cmd-voice-end-ui-end",

@@ -1947,6 +1947,16 @@ pub fn cmd_voice_end_set_commit_delay(
 }
 
 #[tauri::command]
+pub fn cmd_voice_end_set_commit_key(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] commitKey: Option<String>,
+    commit_key: Option<String>,
+) -> serde_json::Value {
+    let key = commit_key.or(commitKey).unwrap_or_else(|| "Enter".to_string());
+    crate::voice_end_runtime::voice_end_set_commit_key(&state, key)
+}
+
+#[tauri::command]
 pub fn cmd_voice_end_set_phrases(
     state: tauri::State<Arc<AppState>>,
     app: tauri::AppHandle,

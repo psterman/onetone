@@ -67,6 +67,7 @@ fn main() {
         "cmd_voice_end_set_enabled",
         "cmd_voice_end_set_auto_send",
         "cmd_voice_end_set_commit_delay",
+        "cmd_voice_end_set_commit_key",
         "cmd_voice_end_set_phrases",
         "cmd_voice_end_test_stop",
         "cmd_voice_end_ui_end",
