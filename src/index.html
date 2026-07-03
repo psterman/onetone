@@ -217,6 +217,53 @@
       margin-top:12px;display:grid;gap:10px;
       padding:14px;border:1px solid var(--outline-variant);border-radius:14px;background:var(--surface-soft);
     }
+    .voice-settings-flow{
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;
+    }
+    @media(max-width:900px){.voice-settings-flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.voice-settings-flow{grid-template-columns:1fr}}
+    .voice-settings-card{
+      display:flex;flex-direction:column;gap:6px;min-width:0;
+      padding:12px 10px;border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface-high);
+    }
+    .voice-settings-card-lbl{font-size:10px;font-weight:700;color:var(--on-surface-muted);text-align:center}
+    .voice-settings-card-val{
+      font-size:13px;font-weight:800;line-height:1.35;color:var(--primary);text-align:center;
+      word-break:break-word;min-height:1.35em;
+    }
+    .voice-settings-card-val.is-muted{color:var(--on-surface-muted);font-weight:600;font-size:12px}
+    .voice-settings-card-sub{font-size:10px;font-weight:600;color:var(--on-surface-muted);text-align:center;line-height:1.35}
+    .voice-settings-card-hint{font-size:10px;line-height:1.4;color:var(--on-surface-muted);text-align:center;margin:0}
+    .voice-settings-mic-btn{
+      display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+      padding:5px 8px;border-radius:8px;border:1px solid var(--outline-variant);background:var(--surface);
+      font:inherit;font-size:10px;font-weight:600;color:var(--on-surface);cursor:pointer;text-align:center;
+    }
+    .voice-settings-mic-btn:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
+    .voice-settings-mic-btn .mic-level-bars{height:10px;flex-shrink:0}
+    .voice-settings-engine-pills{display:flex;justify-content:center;gap:2px;padding:2px;border-radius:999px;background:var(--surface);border:1px solid var(--outline-variant)}
+    .voice-settings-engine-pills .home-mini-toggle{min-height:24px;padding:3px 8px;font-size:10px;border-radius:999px;border:none;background:transparent}
+    .voice-settings-engine-pills .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary)}
+    .voice-settings-mic-details,.voice-settings-end-details{margin-bottom:14px;border:1px solid var(--outline-variant);border-radius:12px;background:var(--surface-soft)}
+    .voice-settings-mic-details>summary,.voice-settings-end-details>summary{
+      padding:10px 12px;font-size:12px;font-weight:700;color:var(--on-surface);cursor:pointer;list-style:none;
+    }
+    .voice-settings-mic-details>summary::-webkit-details-marker,.voice-settings-end-details>summary::-webkit-details-marker{display:none}
+    .voice-settings-mic-details[open]>summary,.voice-settings-end-details[open]>summary{border-bottom:1px solid var(--outline-variant)}
+    .voice-settings-mic-details .mic-settings-block,.voice-settings-end-details .voice-end-merged{margin:0;border:none;border-radius:0;background:transparent;padding:12px}
+    #settingsPanelVoiceWake .voice-mode-copy,
+    #settingsPanelVoiceWake .voice-mode-metric,
+    #settingsPanelVoiceWake .voice-mode-points,
+    #settingsPanelVoiceWake .voice-mode-status,
+    #settingsPanelVoiceWake .voice-mode-hint{display:none!important}
+    #settingsPanelVoiceWake .voice-sapi-row:has(#voiceSapiConfidence){display:none!important}
+    #settingsPanelVoiceWake #voiceSapiConfidence,
+    #settingsPanelVoiceWake #voiceSapiConfidenceLabel{display:none!important}
+    #settingsPanelVoiceWake #voiceEndSwitchPanel,
+    #settingsPanelVoiceWake #voiceEndAutoBlock .voice-end-inline-range,
+    #settingsPanelVoiceWake #voiceEndAutoBlock .setting-row{display:none!important}
+    #settingsPanelVoiceWake #voiceMicSection>.mic-head-row,
+    #settingsPanelVoiceWake #voiceMicSection>.mic-desc{display:none}
     .voice-end-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:12px}
     .voice-end-section-head .mini-title{margin:0 0 4px}
     .voice-end-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -882,7 +929,200 @@
     .home-inline-input .mic-desc{display:block;margin:0;line-height:1.4}
     .home-inline-input .voice-sapi-range{width:100%;min-width:0;margin-top:0}
     .home-mic-wrap{margin:8px 0 10px;min-width:0}
-    .home-voice-meta{display:grid;gap:10px;margin:0 0 8px}
+    .home-voice-map-flow{
+      display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:10px;align-items:stretch;margin-bottom:10px;
+    }
+    @media(max-width:720px){.home-voice-map-flow{grid-template-columns:1fr}}
+    .home-voice-engine-bar{
+      display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+      margin:0 0 8px;padding:0 2px;
+    }
+    .home-voice-engine-bar-lbl{
+      font-size:10px;font-weight:700;color:var(--on-surface-muted);line-height:1.3;
+    }
+    .home-voice-engine-bar .home-voice-engine-compact{display:inline-flex;flex-shrink:0}
+    .home-voice-map-foot{
+      grid-column:1 / -1;display:grid;gap:4px;margin-top:2px;padding-top:8px;
+      border-top:1px solid var(--outline-variant);
+    }
+    .home-voice-map-foot .home-voice-wake-mic{margin-top:0}
+    .home-voice-map-foot .home-voice-wake-status{min-height:auto;margin-top:0}
+    .home-voice-mic-pick-item{
+      transition:border-color .2s ease,background .2s ease,box-shadow .2s ease;
+    }
+    .home-voice-mic-pick-item.is-mic-armed{
+      border-color:rgba(42,156,196,.22);background:rgba(42,156,196,.03);
+    }
+    .home-voice-mic-pick-item.is-mic-live{
+      border-color:rgba(42,156,196,.34);background:rgba(42,156,196,.06);
+      box-shadow:0 0 0 1px rgba(42,156,196,.06) inset;
+    }
+    .home-voice-mic-pick-item.is-mic-hit{
+      border-color:rgba(42,156,196,.42);background:rgba(42,156,196,.09);
+    }
+    .home-voice-mic-pick-item.is-mic-off{opacity:.78}
+    #homeVoiceMapEndPhraseHint{display:none!important}
+    .home-voice-end-switch-stack{
+      display:flex;flex-direction:column;gap:2px;margin-top:6px;width:100%;
+    }
+    .home-voice-gear-switch{
+      display:flex;align-items:center;justify-content:space-between;gap:6px;
+      padding:2px 0;min-height:26px;
+    }
+    .home-voice-gear-switch-label{font-size:10px;font-weight:700;color:var(--on-surface-muted);line-height:1.3;flex:1;min-width:0}
+    .home-voice-gear-switch-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+    .home-voice-gear-btn{
+      width:20px;height:20px;padding:0;border:1px solid var(--outline-variant);
+      border-radius:6px;background:var(--surface-high);color:var(--on-surface-muted);
+      cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .home-voice-gear-btn svg{width:11px;height:11px;display:block}
+    .home-voice-gear-btn:hover{color:var(--primary);border-color:rgba(42,156,196,.3);background:var(--primary-soft)}
+    .home-voice-wake-status{
+      display:grid;gap:2px;padding:0 2px;min-height:1.4em;
+    }
+    .home-voice-wake-status-line{
+      font-size:10px;line-height:1.4;color:var(--on-surface-muted);text-align:center;
+    }
+    .home-voice-wake-status-line.is-heard{color:var(--on-surface);font-weight:600}
+    .home-voice-wake-status-line.is-ok{color:var(--primary);font-weight:700}
+    .home-voice-wake-status-line.is-warn{color:#c2410c;font-weight:700}
+    .home-phrase-cloud{
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:center;align-content:center;
+      gap:4px 6px;padding:4px 2px;width:100%;min-height:44px;
+    }
+    .home-phrase-chip{
+      display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
+      font-weight:700;line-height:1.25;white-space:nowrap;max-width:100%;
+      overflow:hidden;text-overflow:ellipsis;
+    }
+    .home-phrase-cloud.is-wake{
+      gap:5px 6px;padding:6px 4px;justify-content:center;
+    }
+    .home-phrase-cloud.is-wake .home-phrase-chip{
+      font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+      color:var(--primary);background:var(--primary-soft);
+      border:1px solid rgba(42,156,196,.14);max-width:calc(50% - 4px);
+    }
+    .home-phrase-cloud.is-wake .home-phrase-chip.is-primary{
+      font-size:12px;font-weight:800;border-color:rgba(42,156,196,.32);
+      box-shadow:0 0 0 1px rgba(42,156,196,.08) inset;
+    }
+    .home-phrase-cloud.is-wake .home-phrase-chip.is-secondary,
+    .home-phrase-cloud.is-wake .home-phrase-chip.is-tertiary{
+      font-size:11px;opacity:1;color:var(--primary);background:rgba(42,156,196,.08);
+      border-color:rgba(42,156,196,.1);font-weight:700;
+    }
+    .home-phrase-chip.is-primary{
+      font-size:clamp(13px,2.4vw,17px);font-weight:800;color:var(--primary);
+      padding:2px 6px;background:transparent;
+    }
+    .home-phrase-chip.is-secondary{
+      font-size:11px;color:var(--primary);background:var(--primary-soft);opacity:.92;
+    }
+    .home-phrase-chip.is-tertiary{
+      font-size:10px;color:var(--on-surface-muted);background:var(--surface-soft);
+      border:1px solid var(--outline-variant);font-weight:600;
+    }
+    .home-phrase-cloud-empty{
+      font-size:clamp(14px,2.8vw,18px);font-weight:800;color:var(--on-surface-muted);line-height:1.25;
+    }
+    .home-phrase-cloud.is-lite-locked .home-phrase-cloud-empty{color:var(--on-surface-muted);font-size:13px;font-weight:700}
+    #btnHomeMicSettings{display:none!important}
+    .home-voice-lite-switch{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      padding:8px 8px;border-radius:10px;background:var(--surface-high);
+      border:1px solid var(--outline-variant);min-height:38px;
+    }
+    .home-voice-lite-switch-label{font-size:11px;font-weight:700;color:var(--on-surface);line-height:1.3;flex:1;min-width:0}
+    .toggle-switch-lite{
+      position:relative;width:34px;height:18px;border-radius:999px;border:none;padding:0;flex-shrink:0;
+      background:var(--toggle-off);cursor:pointer;transition:background var(--dur-fast) var(--ease-standard);
+    }
+    .toggle-switch-lite::after{
+      content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.16);transition:transform var(--dur-fast) var(--ease-standard);
+    }
+    .toggle-switch-lite.is-on{background:var(--primary)}
+    .toggle-switch-lite.is-on::after{transform:translateX(16px);background:#fff}
+    .home-live-panel.is-entry-disabled .home-key-map-card,
+    .home-live-panel.is-entry-disabled .home-voice-map-card,
+    .home-live-panel.is-entry-disabled .home-voice-engine-bar{
+      opacity:.46;filter:grayscale(.4);pointer-events:none;user-select:none;
+    }
+    .home-live-panel.is-entry-disabled .home-live-head,
+    .home-live-panel.is-entry-disabled .home-live-actions,
+    .home-live-panel.is-entry-disabled .home-live-hint{opacity:1;filter:none;pointer-events:auto}
+    .home-voice-map-flow .home-key-map-step{grid-column:auto;grid-row:auto}
+    .home-voice-map-flow .home-key-map-key{min-height:52px;font-size:13px;padding:8px 10px;line-height:1.35;display:flex;align-items:center;justify-content:center}
+    .home-voice-map-flow .home-key-map-key .home-phrase-cloud{flex:1}
+    .home-voice-map-flow .home-key-map-step-label{
+      display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;
+      font-size:10px;line-height:1.3;
+    }
+    .home-voice-map-flow .home-key-map-step-hint{
+      font-size:10px;line-height:1.4;padding:0 2px;min-height:1.6em;
+    }
+    .home-voice-wake-mic{margin-top:6px}
+    .home-voice-wake-mic-lbl{
+      display:block;margin:0 0 4px;font-size:9px;font-weight:700;color:var(--on-surface-muted);text-align:center;
+    }
+    .home-voice-mic-pick{display:flex;flex-direction:column;gap:3px}
+    .home-voice-mic-pick-item.is-active-only{display:flex}
+    .home-voice-mic-pick-empty{
+      padding:6px 8px;border-radius:8px;border:1px dashed var(--outline-variant);
+      font-size:10px;font-weight:600;color:var(--on-surface-muted);text-align:center;
+    }
+    .home-voice-mic-pick-item{
+      display:flex;align-items:center;gap:6px;width:100%;padding:5px 8px;border-radius:8px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      font:inherit;font-size:10px;font-weight:600;color:var(--on-surface);cursor:pointer;text-align:left;
+    }
+    .home-voice-mic-pick-item:hover:not(:disabled){border-color:rgba(42,156,196,.28);background:var(--primary-soft)}
+    .home-voice-mic-pick-item.is-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+    .home-voice-mic-pick-item.is-unavailable{opacity:.55;cursor:not-allowed}
+    .home-voice-mic-pick-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .home-voice-mic-pick-item .mic-level-bars{height:14px;flex-shrink:0;min-width:34px}
+    .home-voice-map-step-compact .home-key-map-step-hint{min-height:0;margin-top:2px}
+    .home-voice-engine-head{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+    }
+    .home-voice-engine-head .home-key-map-step-label{margin:0;flex-shrink:0}
+    .home-voice-engine-compact{
+      display:inline-flex;gap:2px;padding:2px;border-radius:999px;
+      background:var(--surface-high);border:1px solid var(--outline-variant);flex-shrink:0;
+    }
+    .home-voice-engine-compact .home-mini-toggle{
+      min-height:26px;padding:3px 10px;font-size:10px;font-weight:700;width:auto;border-radius:999px;border:none;background:transparent;
+    }
+    .home-voice-engine-compact .home-mini-toggle.is-active{background:var(--primary-soft);color:var(--primary)}
+    .home-voice-sens-inline{margin-top:6px}
+    .home-voice-sens-inline .voice-sapi-range{width:100%;margin:4px 0 0}
+    .home-voice-sens-inline .mic-desc{display:block;font-size:10px;text-align:center;margin:0}
+    .home-voice-map-wake-echo{display:none!important}
+    .home-voice-end-status-only{display:none!important}
+    .home-voice-end-row-label{
+      display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;
+      font-size:12px;font-weight:700;color:var(--on-surface);line-height:1.35;
+    }
+    .home-voice-end-row .toggle-switch{flex-shrink:0}
+    .home-voice-end-state{
+      display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
+      font-size:9px;font-weight:700;background:var(--primary-soft);color:var(--primary);line-height:1.3;
+    }
+    .home-voice-end-state.is-idle{background:var(--surface-high);color:var(--on-surface-muted);border:1px solid var(--outline-variant)}
+    .home-voice-map-engine-key{display:none!important}
+    .home-voice-map-end-key{display:none!important}
+    .home-voice-map-flow .home-key-map-arrow{display:none!important}
+    .home-voice-map-step.is-listening .home-key-map-key{
+      border-color:var(--primary);background:var(--primary-soft);color:var(--primary);
+    }
+    .home-voice-map-step.is-off .home-key-map-key{color:var(--on-surface-muted)}
+    .home-voice-map-step.is-lite-locked .home-voice-end-row{opacity:.72}
+    .home-voice-map-flow .home-voice-wake-float-phrase{
+      font-size:clamp(14px,2.8vw,18px);font-weight:800;line-height:1.25;color:var(--primary);
+    }
     .home-voice-controls{display:grid;gap:8px;min-width:0}
     .home-voice-controls .home-live-inline{
       display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:0;
@@ -2091,8 +2331,9 @@
       background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18);transition:transform var(--dur-fast) var(--ease-standard);
     }
     .toggle-switch.is-on{background:var(--primary)}
-    .toggle-switch.is-on::after{transform:translateX(20px)}
-    html[data-theme="dark"] .toggle-switch::after{background:var(--surface-high)}
+    .toggle-switch.is-on::after{transform:translateX(20px);background:#fff}
+    html[data-theme="dark"] .toggle-switch::after{background:#fff}
+    html[data-theme="dark"] .toggle-switch.is-on::after{background:#fff}
     .sound-settings-block{display:grid;gap:10px;margin-top:4px}
     .sound-slot{
       border:1px solid var(--outline-variant);border-radius:14px;padding:12px 14px;background:var(--surface-high);
@@ -2254,10 +2495,14 @@
     .mic-device-body{min-width:0;flex:1}
     .mic-device-name{font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35;word-break:break-word}
     .mic-device-sub{font-size:11px;color:var(--on-surface-muted);margin-top:3px;line-height:1.35}
-    .mic-level-bars{display:flex;align-items:flex-end;gap:2px;height:18px;flex-shrink:0}
+    .mic-level-bars{display:flex;align-items:flex-end;gap:1.5px;height:16px;flex-shrink:0}
     .mic-level-bars span{
-      width:3px;border-radius:2px;background:var(--outline-variant);height:6px;transition:height .08s ease,background .08s ease;
+      width:2px;border-radius:999px;background:var(--outline-variant);height:14px;
+      transform-origin:center bottom;transform:scaleY(.12);
+      transition:transform .08s ease,background .12s ease;
     }
+    .mic-level-bars.is-active span{background:rgba(42,156,196,.55)}
+    .mic-level-bars.is-active span.is-hot{background:var(--primary)}
     .mic-level-bars span.on{background:var(--primary);height:18px}
     .mic-level-bars span.mid{background:var(--primary);height:12px}
     .mic-level-bars span.lo{background:var(--primary);height:8px}
@@ -2699,58 +2944,78 @@
                 </div>
                 <span class="home-live-badge" id="homeLiveVoiceBadge">—</span>
               </header>
-              <div class="home-voice-wake-float" id="homeVoiceWakeFloat" role="status" aria-live="polite">
-                <p class="home-voice-wake-float-hint" id="homeVoiceWakeFloatHint">说出唤醒词</p>
-                <div class="home-voice-wake-float-chip" id="homeVoiceWakeChip">
-                  <span class="home-voice-wake-float-phrase" id="homeVoiceWakePhrase">—</span>
-                </div>
-                <p class="home-voice-wake-float-sub" id="homeVoiceWakeSub" hidden></p>
-              </div>
-              <div class="home-voice-meta" id="homeVoiceMeta">
-                <div class="home-mic-wrap" id="homeMicWrap">
-                  <div class="mini-title" id="homeMicTitle">当前麦克风</div>
-                  <p class="mic-empty" id="homeMicEmpty" hidden></p>
-                  <button type="button" class="home-mic-current is-clickable" id="btnHomeMicSettings" hidden>
-                    <span class="home-mic-current-name" id="homeMicCurrentName">—</span>
-                    <span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span>
-                    <span class="home-mic-current-hint" id="homeMicChangeHint">更改</span>
-                  </button>
-                </div>
-                <div class="home-voice-controls" id="homeVoiceControls">
-                  <div class="home-live-inline" id="homeVoiceModeSwitch">
-                    <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
-                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
-                  </div>
-                  <div class="home-inline-input" id="homeVoiceSapiQuick" hidden>
-                    <span class="mic-desc" id="homeVoiceSapiConfidenceLabel">灵敏度 0.35</span>
-                    <input type="range" class="voice-sapi-range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35">
-                  </div>
+              <div class="home-voice-engine-bar" id="homeVoiceEngineBar">
+                <span class="home-voice-engine-bar-lbl" id="homeVoiceEngineBarLbl">识别引擎</span>
+                <div class="home-voice-engine-compact" id="homeVoiceModeSwitch">
+                  <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
+                  <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
                 </div>
               </div>
-              <div class="home-live-finish" id="homeVoiceFinishBlock">
-                <div class="home-live-finish-head">
-                  <div class="mini-title" id="homeVoiceFinishTitle">语音结束动作</div>
-                  <span class="home-finish-status" id="homeFinishStatus">—</span>
-                </div>
-                <div class="home-finish-body-inline">
-                  <div class="home-finish-card" id="homeFinishCtrlEnd">
-                    <div class="home-finish-card-head">
-                      <div class="home-finish-card-title" id="homeLiveEndEnabledLbl">结束词</div>
-                      <button type="button" class="toggle-switch" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
-                      <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
-                    </div>
-                    <div class="home-finish-card-sub" id="homeFinishEndSummary">—</div>
-                    <div class="home-finish-card-foot" id="homeFinishEndDetail">—</div>
-                  </div>
-                  <div class="home-finish-card" id="homeFinishCtrlAuto">
-                    <div class="home-finish-card-head">
-                      <div class="home-finish-card-title" id="homeLiveEndAutoLbl">自动发送</div>
-                      <button type="button" class="toggle-switch" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
-                    </div>
-                    <div class="home-finish-card-sub" id="homeFinishAutoSummary">—</div>
-                    <div class="home-finish-card-foot" id="homeVoiceEndDelayLine">—</div>
+              <section class="home-voice-map-card" id="homeVoiceMapCard" aria-labelledby="homeVoiceMapTitle">
+                <div class="home-key-map-head">
+                  <div class="home-key-map-head-text">
+                    <div class="mini-title" id="homeVoiceMapTitle">语音流程</div>
                   </div>
                 </div>
+                <div class="home-voice-map-flow home-key-map-flow" id="homeVoiceMapFlow">
+                  <div class="home-key-map-step home-voice-wake-col" id="homeVoiceMapWake">
+                    <span class="home-key-map-step-label" id="homeVoiceMapWakeLbl">唤醒词</span>
+                    <div class="home-key-map-key is-clickable" id="homeVoiceMapWakeKey" role="button" tabindex="0">
+                      <div class="home-phrase-cloud" id="homeVoiceWakePhraseCloud" aria-live="polite"></div>
+                    </div>
+                  </div>
+                  <div class="home-key-map-step" id="homeVoiceMapEndPhrase">
+                    <span class="home-key-map-step-label" id="homeVoiceMapEndPhraseLbl">
+                      <span id="homeVoiceMapEndPhraseLblText">结束词</span>
+                      <span class="home-voice-end-state is-idle" id="homeFinishStatus">—</span>
+                    </span>
+                    <div class="home-key-map-key is-clickable" id="homeVoiceMapEndPhraseKey" role="button" tabindex="0">
+                      <div class="home-phrase-cloud" id="homeVoiceEndPhraseCloud" aria-live="polite"></div>
+                    </div>
+                    <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
+                    <span class="home-key-map-step-hint" id="homeVoiceMapEndPhraseHint" hidden aria-hidden="true"></span>
+                    <div class="home-voice-end-switch-stack" id="homeVoiceMapSwitches">
+                      <div class="home-voice-gear-switch" id="homeFinishCtrlEnd">
+                        <span class="home-voice-gear-switch-label" id="homeLiveEndEnabledLbl">结束词</span>
+                        <div class="home-voice-gear-switch-actions">
+                          <button type="button" class="toggle-switch toggle-switch-lite" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
+                          <button type="button" class="home-voice-gear-btn" id="btnHomeEndSettings" aria-label="修改结束词"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.54 1Z"/></svg></button>
+                        </div>
+                      </div>
+                      <div class="home-voice-gear-switch" id="homeFinishCtrlAuto">
+                        <span class="home-voice-gear-switch-label" id="homeLiveEndAutoLbl">自动发送</span>
+                        <div class="home-voice-gear-switch-actions">
+                          <button type="button" class="toggle-switch toggle-switch-lite" id="btnHomeEndAutoSend" role="switch" aria-checked="false" aria-labelledby="homeLiveEndAutoLbl"></button>
+                          <button type="button" class="home-voice-gear-btn" id="btnHomeAutoSettings" aria-label="修改自动发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.54V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.54 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.54-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.54-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.54V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.54 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.54 1Z"/></svg></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="home-voice-map-foot" id="homeVoiceMapFoot">
+                    <div class="home-voice-wake-mic" id="homeVoiceWakeMic">
+                      <span class="home-voice-wake-mic-lbl" id="homeVoiceWakeMicLbl">麦克风</span>
+                      <div class="home-voice-mic-pick" id="homeVoiceWakeMicList" role="listbox" aria-labelledby="homeVoiceWakeMicLbl"></div>
+                    </div>
+                    <div class="home-voice-wake-status" id="homeVoiceMapWakeHint" aria-live="polite">
+                      <div class="home-voice-wake-status-line is-heard" id="homeVoiceWakeHintHeard" hidden></div>
+                      <div class="home-voice-wake-status-line is-ok" id="homeVoiceWakeHintResult" hidden></div>
+                    </div>
+                  </div>
+                  <div class="home-key-map-key is-set home-voice-map-end-key" id="homeVoiceMapEndKey" aria-hidden="true">—</div>
+                  <button type="button" class="home-voice-mic-pick-item" id="btnHomeMicSettings" hidden aria-hidden="true"><span class="home-mic-current-name" id="homeMicCurrentName">—</span><span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span></button>
+                </div>
+              </section>
+              <p class="mic-empty" id="homeMicEmpty" hidden></p>
+              <span id="homeVoiceWakeFloatHint" hidden aria-hidden="true"></span>
+              <span id="homeVoiceWakeSub" hidden aria-hidden="true"></span>
+              <div id="homeVoiceWakeFloat" hidden aria-hidden="true"><span id="homeVoiceWakeChip"></span></div>
+              <div id="homeVoiceMeta" hidden aria-hidden="true"><span id="homeMicTitle"></span><span id="homeMicChangeHint"></span><span id="homeVoiceControls"></span><div id="homeVoiceSapiQuick" hidden><span id="homeVoiceSapiConfidenceLabel"></span><input type="range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35"></div><span id="homeVoiceMapEngineLbl" hidden></span></div>
+              <div id="homeVoiceFinishBlock" hidden aria-hidden="true">
+                <span id="homeVoiceFinishTitle"></span>
+                <span id="homeFinishEndSummary"></span>
+                <span id="homeFinishEndDetail"></span>
+                <span id="homeFinishAutoSummary"></span>
+                <span id="homeVoiceEndDelayLine"></span>
               </div>
               <div class="home-live-actions">
                 <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">开始</button>
@@ -3016,11 +3281,42 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">先选麦克风并看实时识别，再配置语音唤起、结束与发送</p>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">横向查看语音流程；展开下方区块可改麦克风、唤醒词与结束词</p>
           <div class="settings-page-actions">
             <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
           </div>
-          <div class="mic-settings-block drawer-section" id="voiceMicSection" style="border-top:0;padding-top:0;margin-bottom:14px">
+          <section class="voice-settings-flow" id="voiceSettingsFlow" aria-label="语音流程">
+            <div class="voice-settings-card" id="voiceSettingsWakeCard">
+              <span class="voice-settings-card-lbl" id="voiceSettingsWakeLbl">唤醒词</span>
+              <div class="voice-settings-card-val" id="voiceSettingsWakePhrase">—</div>
+              <button type="button" class="voice-settings-mic-btn" id="btnVoiceSettingsMic">
+                <span id="voiceSettingsMicName">—</span>
+                <span class="mic-level-bars" id="voiceSettingsMicBars" aria-hidden="true"></span>
+              </button>
+              <p class="voice-settings-card-hint" id="voiceSettingsWakeHint"></p>
+            </div>
+            <div class="voice-settings-card" id="voiceSettingsEngineCard">
+              <span class="voice-settings-card-lbl" id="voiceSettingsEngineLbl">识别引擎</span>
+              <div class="voice-settings-engine-pills" id="voiceSettingsEnginePills">
+                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeSapi">轻量版</button>
+                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeVosk">离线版</button>
+              </div>
+              <div class="voice-settings-card-val is-muted" id="voiceSettingsEngineStatus">—</div>
+            </div>
+            <div class="voice-settings-card" id="voiceSettingsEndPhraseCard">
+              <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">结束词</span>
+              <p class="voice-settings-card-sub" id="voiceSettingsEndWakeEcho"></p>
+              <div class="voice-settings-card-val is-muted" id="voiceSettingsEndPhraseStatus">—</div>
+              <p class="voice-settings-card-hint" id="voiceSettingsEndPhraseHint"></p>
+            </div>
+            <div class="voice-settings-card" id="voiceSettingsAutoCard">
+              <span class="voice-settings-card-lbl" id="voiceSettingsAutoLbl">自动发送</span>
+              <div class="voice-settings-card-val is-muted" id="voiceSettingsAutoStatus">—</div>
+            </div>
+          </section>
+          <details class="voice-settings-mic-details" id="voiceMicPickerDetails">
+            <summary id="voiceMicPickerSummary">选择麦克风</summary>
+          <div class="mic-settings-block drawer-section" id="voiceMicSection" style="border-top:0;padding-top:0;margin-bottom:0">
             <div class="mic-head-row">
               <div class="mini-title" id="micTitle">麦克风</div>
               <button type="button" class="control-btn" id="btnMicRefresh">刷新设备</button>
@@ -3039,6 +3335,7 @@
               </div>
             </div>
           </div>
+          </details>
           <section class="voice-mode-panel" id="voiceModePanel">
             <div class="mini-title" id="voiceModeTitle">语音唤起</div>
             <p class="mic-desc" id="voiceModeDesc">在左侧选择轻量版或离线版，在此配置唤醒词与识别细项。</p>
@@ -3139,9 +3436,11 @@
               </div>
             </div>
             <div class="voice-mode-status" id="voiceModeCurrent">现在还没打开语音模式</div>
-            <p class="voice-mode-hint" id="voiceModeHint">轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
+            <p class="voice-mode-hint" id="voiceModeHint" hidden>轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
           </section>
-          <div class="voice-hub-block voice-end-merged" id="voiceEndMergedSection" style="margin-top:16px">
+          <details class="voice-settings-end-details" id="voiceEndEditDetails">
+            <summary id="voiceEndEditSummary">配置结束词与发送</summary>
+          <div class="voice-hub-block voice-end-merged" id="voiceEndMergedSection" style="margin-top:0">
             <div class="voice-end-section-head">
               <div>
                 <div class="mini-title" id="voiceEndTitle">语音结束动作</div>
@@ -3208,6 +3507,7 @@
               <button type="button" class="control-btn" id="btnVoiceEndTestCommit">测试发送</button>
             </div>
           </div>
+          </details>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒与发送配置提示音</p>
@@ -4166,9 +4466,11 @@
     const endBtn=$('btnVoiceEnd');
     if(endBtn) endBtn.disabled=lite;
     const homeEndCard=$('homeFinishCtrlEnd');
-    if(homeEndCard) homeEndCard.classList.toggle('is-lite-locked',lite);
+    const endPhraseStep=$('homeVoiceMapEndPhrase');
+    if(homeEndCard) homeEndCard.hidden=lite;
+    if(endPhraseStep) endPhraseStep.classList.toggle('is-lite-locked',lite);
     const homeEndToggle=$('btnHomeEndToggle');
-    if(homeEndToggle) homeEndToggle.hidden=lite;
+    if(homeEndToggle) homeEndToggle.disabled=lite;
     const homeLiteBadge=$('homeFinishEndLiteBadge');
     if(homeLiteBadge){
       homeLiteBadge.hidden=!lite;
@@ -5107,6 +5409,26 @@
       homeVoiceGuideWake:'对着麦克风说出上方唤醒词，程序会拉起语音输入法；可先在此试用是否正确。',
       homeVoiceGuideModeSapi:'系统内置识别，占用较低。',
       homeVoiceGuideModeVosk:'离线识别，支持更多高级能力。',
+      homeVoiceMapTitle:'语音流程',
+      homeVoiceMapWakeLbl:'唤醒词',homeVoiceMapMicLbl:'麦克风',homeVoiceWakeMicLbl:'麦克风',
+      homeVoiceMapEngineLbl:'识别引擎',homeVoiceMapEndLbl:'语音结束',homeVoiceMapEndPhraseLbl:'结束词',
+      homeVoiceMapArrowSay:'对着说',homeVoiceMapArrowListen:'识别',homeVoiceMapArrowEnd:'说完后',
+      homeVoiceMapMicHint:'点击切换设备',homeVoiceMapMicEmpty:'未选择',
+      homeVoiceMapEndPhraseOff:'未启用结束词',
+      homeLiveEndEnabledLbl:'结束词',
+      homeVoiceMapEngineSapi:'轻量版',homeVoiceMapEngineVosk:'离线版',
+      homeVoiceMapWakeHintOff:'启用后对着麦克风说唤醒词',
+      homeVoiceMapWakeHintOn:'对着麦克风说出唤醒词',
+      homeVoiceMapWakeHintListen:'正在监听唤醒词…',
+      homeVoiceWakeHintStatus:'状态：{state}',
+      homeVoiceWakeHintResultOk:'识别成功：{text}',
+      homeVoiceWakeHintResultMiss:'未命中唤醒词：{text}',
+      homeVoiceGearSettingsEnd:'修改结束词',
+      homeVoiceGearSettingsAuto:'修改自动发送',
+      homeVoiceMapEndLite:'轻量版不可用',
+      homeVoiceMapEndPhrases:'结束词：{phrases}',
+      homeVoiceMapEndDelay:'静音 {n}ms 后自动发送',
+      homeLiveEndAutoShort:'自动发送',
       homeVoiceWakeFloatHint:'说出唤醒词',
       homeVoiceWakeFloatHintOff:'启用后，说出唤醒词即可试用',
       homeVoiceWakeFloatLbl:'唤醒词',
@@ -5235,7 +5557,11 @@
       settingsNavBasic:'基础',settingsNavKeyWake:'按键设置',settingsNavVoiceWake:'语音',
       settingsNavDebug:'运行状态',settingsNavGeneral:'恢复与维护',
       settingsPanelBasicDesc:'运行、外观、字体与语言',settingsPanelKeyWakeDesc:'在当前方案里设置唤起键、语音快捷键和最后一步',
-      settingsPanelVoiceWakeDesc:'先选麦克风并看实时识别，再配置语音唤起、结束与发送',
+      settingsPanelVoiceWakeDesc:'横向查看语音流程；展开下方可改麦克风、唤醒词与结束词',
+      voiceSettingsMicPickerSummary:'选择麦克风',
+      voiceSettingsEndEditSummary:'配置结束词与发送',
+      voiceSettingsWakeEcho:'唤醒：{phrase}',
+      voiceSettingsEndWakeEcho:'唤醒：{phrase}',
       homeKeyFinishTitle:'方案最后一步',homeVoiceFinishTitle:'语音结束动作',
       quickKeyWakeSummary:'方案按键设置',quickKeyWakeHint:'按下左侧唤起键后，程序代按右侧语音快捷键；按键收尾作为最后一步一起保存在当前方案中。',
       keySchemeCardKicker:'当前方案',
@@ -5667,6 +5993,26 @@
       homeVoiceGuideWake:'Say the wake phrase above into the mic to start voice input; try it here first.',
       homeVoiceGuideModeSapi:'Built-in recognition, lower resource use.',
       homeVoiceGuideModeVosk:'Offline recognition with more options.',
+      homeVoiceMapTitle:'Voice flow',
+      homeVoiceMapWakeLbl:'Wake phrase',homeVoiceMapMicLbl:'Microphone',homeVoiceWakeMicLbl:'Microphone',
+      homeVoiceMapEngineLbl:'Engine',homeVoiceMapEndLbl:'After speech',homeVoiceMapEndPhraseLbl:'End phrases',
+      homeVoiceMapArrowSay:'say it',homeVoiceMapArrowListen:'listen',homeVoiceMapArrowEnd:'then',
+      homeVoiceMapMicHint:'Tap to switch device',homeVoiceMapMicEmpty:'Not selected',
+      homeVoiceMapEndPhraseOff:'End phrases off',
+      homeLiveEndEnabledLbl:'End phrases',
+      homeVoiceMapEngineSapi:'Light',homeVoiceMapEngineVosk:'Offline',
+      homeVoiceMapWakeHintOff:'Enable, then say the wake phrase',
+      homeVoiceMapWakeHintOn:'Say the wake phrase to your mic',
+      homeVoiceMapWakeHintListen:'Listening for wake phrase…',
+      homeVoiceWakeHintStatus:'Status: {state}',
+      homeVoiceWakeHintResultOk:'Matched: {text}',
+      homeVoiceWakeHintResultMiss:'Not matched: {text}',
+      homeVoiceGearSettingsEnd:'Edit end phrases',
+      homeVoiceGearSettingsAuto:'Edit auto-send',
+      homeVoiceMapEndLite:'Not available in Light mode',
+      homeVoiceMapEndPhrases:'End phrases: {phrases}',
+      homeVoiceMapEndDelay:'Auto-send after {n}ms silence',
+      homeLiveEndAutoShort:'Auto send',
       homeVoiceWakeFloatHint:'Say wake phrase',
       homeVoiceWakeFloatHintOff:'After enabling, say the wake phrase to test',
       homeVoiceWakeFloatLbl:'Wake phrase',
@@ -5795,7 +6141,11 @@
       settingsNavBasic:'Basic',settingsNavKeyWake:'Key settings',settingsNavVoiceWake:'Voice',
       settingsNavDebug:'Runtime Status',settingsNavGeneral:'Recovery & Maintenance',
       settingsPanelBasicDesc:'Runtime, appearance, typography & language',settingsPanelKeyWakeDesc:'Set the launch key, voice shortcut, and final step for the current profile',
-      settingsPanelVoiceWakeDesc:'Choose a microphone and check live recognition first, then configure voice activation, ending, and sending',
+      settingsPanelVoiceWakeDesc:'Voice flow at a glance; expand sections below to edit mic, wake phrases, and end rules',
+      voiceSettingsMicPickerSummary:'Choose microphone',
+      voiceSettingsEndEditSummary:'Edit end phrases & send',
+      voiceSettingsWakeEcho:'Wake: {phrase}',
+      voiceSettingsEndWakeEcho:'Wake: {phrase}',
       homeKeyFinishTitle:'Profile final step',homeVoiceFinishTitle:'Voice finish actions',
       quickKeyWakeSummary:'Profile key setup',quickKeyWakeHint:'Pressing the left launch key makes the app send the voice shortcut on the right; key finish is saved with this profile as the final step.',
       keySchemeCardKicker:'Current profile',
@@ -6637,16 +6987,27 @@
 
   // Coach HUD removed: no floating overlay window.
 
-  function buildMicLevelBars(){
+  function buildMicLevelBars(count){
+    count=count||12;
     let html='';
-    for(let i=0;i<8;i++) html+='<span></span>';
+    for(let i=0;i<count;i++) html+='<span></span>';
     return html;
   }
 
   function findMicDeviceCard(deviceId){
-    const cards=document.querySelectorAll('.mic-device-card');
+    const cards=document.querySelectorAll('.mic-device-card,.home-voice-mic-pick-item');
     for(let i=0;i<cards.length;i++){
       if(cards[i].getAttribute('data-id')===deviceId) return cards[i];
+    }
+    return null;
+  }
+
+  function findHomeWakeMicPickItem(deviceId){
+    const list=$('homeVoiceWakeMicList');
+    if(!list||!deviceId) return null;
+    const items=list.querySelectorAll('.home-voice-mic-pick-item');
+    for(let i=0;i<items.length;i++){
+      if(items[i].getAttribute('data-id')===deviceId) return items[i];
     }
     return null;
   }
@@ -6667,28 +7028,70 @@
       const homeId=homeBtn.getAttribute('data-id')||'';
       if(!deviceId||!homeId||homeId===deviceId) pushTarget(homeBtn);
     }
-    if(deviceId) pushTarget(findMicDeviceCard(deviceId));
-    if(activeMicId) pushTarget(findMicDeviceCard(activeMicId));
-    if(micMonitorDeviceId) pushTarget(findMicDeviceCard(micMonitorDeviceId));
-    pushTarget(document.querySelector('.mic-device-card.is-active'));
+    if(deviceId) pushTarget(findHomeWakeMicPickItem(deviceId));
+    if(activeMicId) pushTarget(findHomeWakeMicPickItem(activeMicId));
+    if(micMonitorDeviceId) pushTarget(findHomeWakeMicPickItem(micMonitorDeviceId));
+    pushTarget(document.querySelector('.home-voice-mic-pick-item.is-active'));
+    const settingsMicBtn=$('btnVoiceSettingsMic');
+    if(settingsMicBtn) pushTarget(settingsMicBtn);
     return targets;
+  }
+
+  let homeMicLastLevel=0;
+  let micWavePhase=0;
+
+  function syncHomeMicPickState(loading){
+    const item=document.querySelector('#homeVoiceWakeMicList .home-voice-mic-pick-item.is-active')
+      ||document.querySelector('.home-voice-mic-pick-item.is-active');
+    if(!item) return;
+    item.classList.remove('is-mic-off','is-mic-armed','is-mic-live','is-mic-hit');
+    const eng=homeVoiceEngineOn();
+    const voiceOn=eng!=='off';
+    if(loading||!voiceOn){
+      item.classList.add('is-mic-off');
+      return;
+    }
+    const w=voiceUiSnapshot.wake||{};
+    const res=eng==='vosk'?w.vosk:w.sapi;
+    const raw=(res&&res.state)||'stopped';
+    const trigger=(res&&res.lastTrigger)||'';
+    if(raw==='triggered'||trigger){
+      item.classList.add('is-mic-hit');
+    }else if(homeMicLastLevel>3){
+      item.classList.add('is-mic-live');
+    }else if(raw==='listening'||raw==='starting'){
+      item.classList.add('is-mic-armed');
+    }
   }
 
   function updateMicLevelBars(deviceId,level){
     const targets=resolveMicLevelTargets(deviceId);
     if(!targets.length) return;
-    const active=level<=0?0:Math.max(1,Math.min(8,Math.ceil(level/8)));
+    homeMicLastLevel=Number(level)||0;
+    micWavePhase+=0.38;
+    const norm=Math.max(0,Math.min(1,homeMicLastLevel/48));
     targets.forEach(function(card){
-      const bars=card.querySelectorAll('.mic-level-bars span');
+      const wrap=card.querySelector('.mic-level-bars');
+      if(!wrap) return;
+      let bars=wrap.querySelectorAll('span');
+      if(!bars.length){
+        wrap.innerHTML=buildMicLevelBars(12);
+        bars=wrap.querySelectorAll('span');
+      }
+      const n=bars.length;
+      const center=(n-1)/2;
+      wrap.classList.toggle('is-active',norm>0.03);
       bars.forEach(function(bar,i){
         bar.className='';
-        if(i<active){
-          if(i>=active-2) bar.classList.add('on');
-          else if(i>=active-4) bar.classList.add('mid');
-          else bar.classList.add('lo');
-        }
+        const dist=Math.abs(i-center)/Math.max(center,1);
+        const envelope=1-dist*0.48;
+        const wobble=norm>0.04?Math.sin(micWavePhase+i*0.85)*0.1:0;
+        const scale=norm<=0?0.12:Math.max(0.12,Math.min(1,norm*envelope+wobble));
+        bar.style.transform='scaleY('+scale.toFixed(3)+')';
+        if(scale>0.55) bar.classList.add('is-hot');
       });
     });
+    syncHomeMicPickState(false);
   }
 
   function applyMicLevelSnapshot(res){
@@ -6939,31 +7342,70 @@
     renderHomeMicCurrent();
   }
 
+  function renderHomeWakeMicList(){
+    const list=$('homeVoiceWakeMicList');
+    if(!list) return;
+    list.replaceChildren();
+    if(!micDevices.length){
+      const empty=document.createElement('button');
+      empty.type='button';
+      empty.className='home-voice-mic-pick-empty';
+      empty.textContent=t('homeVoiceMapMicEmpty');
+      empty.addEventListener('click',function(e){
+        e.stopPropagation();
+        openSettings({panel:'voiceWake',focus:'mic'});
+      });
+      list.appendChild(empty);
+      return;
+    }
+    const dev=micDevices.find(function(d){ return d.id===activeMicId; })
+      ||micDevices.find(function(d){ return d.isDefault; })
+      ||micDevices[0];
+    if(!dev) return;
+    const avail=micDeviceAvailable(dev);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='home-voice-mic-pick-item is-active';
+    btn.setAttribute('data-id',dev.id);
+    btn.innerHTML='<span class="home-voice-mic-pick-name"></span><span class="mic-level-bars" aria-hidden="true"></span>';
+    btn.querySelector('.home-voice-mic-pick-name').textContent=dev.name||dev.label||dev.id;
+    const bars=btn.querySelector('.mic-level-bars');
+    if(bars) bars.innerHTML=buildMicLevelBars();
+    btn.disabled=!avail;
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      openSettings({panel:'voiceWake',focus:'mic'});
+    });
+    list.appendChild(btn);
+  }
+
   function renderHomeMicCurrent(){
     const nameEl=$('homeMicCurrentName');
     const emptyEl=$('homeMicEmpty');
     const wrap=$('btnHomeMicSettings');
     const hintEl=$('homeMicChangeHint');
     if(hintEl) hintEl.textContent=t('homeMicChangeHint');
-    if(!nameEl&&!wrap) return;
     if(!micDevices.length){
       if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('micEmpty'); }
-      if(wrap) wrap.hidden=true;
+      if(wrap){ wrap.hidden=true; wrap.setAttribute('hidden',''); }
       return;
     }
     if(emptyEl) emptyEl.hidden=true;
-    if(wrap) wrap.hidden=false;
     const dev=micDevices.find(function(d){ return d.id===activeMicId; })
       ||micDevices.find(function(d){ return d.isDefault; })
       ||micDevices[0];
+    if(wrap&&dev){
+      wrap.setAttribute('data-id',dev.id);
+    }
     if(nameEl){
       const name=dev?(dev.name||dev.label||dev.id):homeMicStatusLabel();
       nameEl.textContent=name;
       nameEl.title=name;
     }
-    if(wrap&&dev) wrap.setAttribute('data-id',dev.id);
     const barsEl=$('homeMicLevelBars');
     if(barsEl&&!barsEl.children.length) barsEl.innerHTML=buildMicLevelBars();
+    renderHomeWakeMicList();
+    renderVoiceSettingsFlow();
   }
 
   function startMicMonitor(deviceId){
@@ -7369,6 +7811,7 @@
     setVoiceModeCardBusy(voiceModeSwitchPending);
     syncVoiceEndModeUi(false);
     renderSettingsVoiceSubnav();
+    renderVoiceSettingsFlow();
   }
 
   function switchVoiceMode(mode, opts){
@@ -7895,13 +8338,150 @@
   }
 
   function homeVoiceWakePhrase(){
+    const list=homeVoiceWakePhrases();
+    return list[0]||'';
+  }
+
+  function homeVoskModelPreset(){
+    const cfg=state.config||{};
+    const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+    const w=voiceUiSnapshot.wake||{};
+    const vosk=w.vosk||{};
+    return String(vosk.modelPreset||voskCfg.modelPreset||'cn-light').trim()||'cn-light';
+  }
+
+  function homeVoiceWakePhrases(){
     const eng=homeVoiceEngineOn();
     const cfg=state.config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const w=voiceUiSnapshot.wake||{};
-    return w.phrase
-      ||((eng==='vosk'&&voskCfg.phrases&&voskCfg.phrases[0])||(eng==='sapi'&&sapiCfg.phrases&&sapiCfg.phrases[0])||'');
+    if(eng==='vosk'){
+      const enOnly=isEnglishVoskPreset(homeVoskModelPreset());
+      const cn=Array.isArray(w.vosk&&w.vosk.phrasesCn)?cloneStringList(w.vosk.phrasesCn):[];
+      const en=Array.isArray(w.vosk&&w.vosk.phrasesEn)?cloneStringList(w.vosk.phrasesEn):[];
+      const fromSnap=enOnly?en:cn;
+      if(fromSnap.length) return fromSnap;
+      return cloneStringList(voskCfg.phrases||[]);
+    }
+    if(eng==='sapi'){
+      const fromSnap=Array.isArray(w.sapi&&w.sapi.phrases)?cloneStringList(w.sapi.phrases):[];
+      if(fromSnap.length) return fromSnap;
+      return cloneStringList(sapiCfg.phrases||[]);
+    }
+    const pref=homePreferredVoiceEngine();
+    if(pref==='vosk'){
+      const enOnly=isEnglishVoskPreset(homeVoskModelPreset());
+      const cn=Array.isArray(w.vosk&&w.vosk.phrasesCn)?cloneStringList(w.vosk.phrasesCn):[];
+      const en=Array.isArray(w.vosk&&w.vosk.phrasesEn)?cloneStringList(w.vosk.phrasesEn):[];
+      const fromSnap=enOnly?en:cn;
+      if(fromSnap.length) return fromSnap;
+      return cloneStringList(voskCfg.phrases||[]);
+    }
+    const fromSnap=Array.isArray(w.sapi&&w.sapi.phrases)?cloneStringList(w.sapi.phrases):[];
+    if(fromSnap.length) return fromSnap;
+    return cloneStringList(sapiCfg.phrases||[]);
+  }
+
+  function homeVoiceEndPhrases(){
+    const endSnap=voiceUiSnapshot.end||{};
+    const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
+    const zh=endSnap.phrasesZh||endCfg.phrasesZh||endCfg.phrases_zh||[];
+    const en=endSnap.phrasesEn||endCfg.phrasesEn||endCfg.phrases_en||[];
+    const zhList=cloneStringList(Array.isArray(zh)?zh:[]);
+    const enList=cloneStringList(Array.isArray(en)?en:[]);
+    if(lang==='en') return enList.length?enList:zhList;
+    return zhList.length?zhList:enList;
+  }
+
+  function setHomeWakeHintLine(el,text,kind){
+    if(!el) return;
+    const value=String(text||'').trim();
+    if(!value){
+      el.hidden=true;
+      el.textContent='';
+      el.classList.remove('is-heard','is-ok','is-warn');
+      return;
+    }
+    el.hidden=false;
+    el.textContent=value;
+    el.classList.toggle('is-heard',kind==='heard');
+    el.classList.toggle('is-ok',kind==='ok');
+    el.classList.toggle('is-warn',kind==='warn');
+  }
+
+  function renderHomeWakeStatusHint(loading){
+    const heardEl=$('homeVoiceWakeHintHeard');
+    const resultEl=$('homeVoiceWakeHintResult');
+    if(loading){
+      setHomeWakeHintLine(heardEl,'');
+      setHomeWakeHintLine(resultEl,'');
+      syncHomeMicPickState(true);
+      return;
+    }
+    const eng=homeVoiceEngineOn();
+    const voiceOn=eng!=='off';
+    const w=voiceUiSnapshot.wake||{};
+    if(!voiceOn){
+      setHomeWakeHintLine(heardEl,'');
+      setHomeWakeHintLine(resultEl,'');
+      syncHomeMicPickState(false);
+      return;
+    }
+    const res=eng==='vosk'?w.vosk:w.sapi;
+    const raw=(res&&res.state)||'stopped';
+    const trigger=(res&&res.lastTrigger)||'';
+    const isTriggered=raw==='triggered'||!!trigger;
+    if(isTriggered&&trigger){
+      setHomeWakeHintLine(heardEl,'');
+      setHomeWakeHintLine(resultEl,t('homeVoiceWakeHintResultOk').replace('{text}',trigger),'ok');
+      syncHomeMicPickState(false);
+      return;
+    }
+    if(eng==='sapi'){
+      const heard=(res&&res.lastHeard)||'';
+      if(heard&&(raw==='listening'||raw==='starting')){
+        setHomeWakeHintLine(heardEl,t('voiceSapiHeard')+'：'+heard,'heard');
+      }else{
+        setHomeWakeHintLine(heardEl,'');
+      }
+    }else{
+      const partial=(res&&res.lastPartial)||'';
+      if(partial&&(raw==='listening'||raw==='starting')){
+        setHomeWakeHintLine(heardEl,t('voiceVoskPartial')+'：'+partial,'heard');
+      }else{
+        setHomeWakeHintLine(heardEl,'');
+      }
+    }
+    setHomeWakeHintLine(resultEl,'');
+    syncHomeMicPickState(false);
+  }
+
+  function renderPhraseCloud(container,phrases,opts){
+    opts=opts||{};
+    if(!container) return;
+    container.replaceChildren();
+    container.classList.toggle('is-lite-locked',!!opts.liteLocked);
+    container.classList.toggle('is-wake',opts.mode==='wake');
+    const list=(phrases||[]).map(function(p){ return String(p||'').trim(); }).filter(Boolean);
+    if(!list.length){
+      const empty=document.createElement('span');
+      empty.className='home-phrase-cloud-empty';
+      empty.textContent=opts.emptyText||'—';
+      container.appendChild(empty);
+      return;
+    }
+    list.forEach(function(phrase,i){
+      const chip=document.createElement('span');
+      if(opts.mode==='wake'){
+        chip.className='home-phrase-chip'+(i===0?' is-primary':' is-secondary');
+      }else{
+        chip.className='home-phrase-chip'+(i===0?' is-primary':(i<3?' is-secondary':' is-tertiary'));
+      }
+      chip.textContent=phrase;
+      chip.title=phrase;
+      container.appendChild(chip);
+    });
   }
 
   function homeEndPhrase(){
@@ -7978,6 +8558,8 @@
     else{ badgeText=t('homeLiveBadgeOff'); badgeKind='off'; }
     setHomeLiveBadge('homeLiveKeyBadge',badgeText,badgeKind);
     syncHomeEntryToggleBtn($('btnHomeKeyToggle'),enabled,'homeLiveToggleKeyOff','homeLiveToggleKeyOn');
+    const keyPanel=$('homeLivePanelKey');
+    if(keyPanel) keyPanel.classList.toggle('is-entry-disabled',!loading&&!enabled);
     const toggleBtn=$('btnHomeKeyToggle');
     if(toggleBtn) toggleBtn.disabled=recordingBusy||loading||!m||isDraft;
     renderHomeKeyFinishPreview(loading);
@@ -7995,37 +8577,30 @@
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const w=voiceUiSnapshot.wake||{};
-    const phrase=homeVoiceWakePhrase();
     const voiceOn=eng!=='off';
     const running=w.state==='listening'||w.state==='triggered';
     const warming=voiceOn&&!voiceEngineBootDone&&configLoadedFromBackend;
     setHomeLiveBadge('homeLiveVoiceBadge',loading?t('homeLiveLoading'):(eng==='off'?t('homeLiveBadgeOff'):(warming?t('homeLiveLoading'):(running?t('homeLiveBadgeOn'):t('homeLiveBadgeReady')))),loading?'':(eng==='off'?'':(running?'on':'on')));
-    const floatEl=$('homeVoiceWakeFloat');
-    const hintEl=$('homeVoiceWakeFloatHint');
-    const phraseEl=$('homeVoiceWakePhrase');
-    const subEl=$('homeVoiceWakeSub');
-    if(hintEl) hintEl.textContent=voiceOn?t('homeVoiceWakeFloatHint'):t('homeVoiceWakeFloatHintOff');
-    if(phraseEl) phraseEl.textContent=loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset'));
-    if(floatEl){
-      floatEl.classList.toggle('is-off',!loading&&!voiceOn);
-      floatEl.classList.toggle('is-listening',!loading&&voiceOn&&running);
-      floatEl.classList.toggle('is-unset',!loading&&!phrase);
+    const wakeStep=$('homeVoiceMapWake');
+    const wakeKey=$('homeVoiceMapWakeKey');
+    const phraseList=homeVoiceWakePhrases();
+    const phrase=phraseList[0]||'';
+    const wakeCloud=$('homeVoiceWakePhraseCloud');
+    if(wakeCloud){
+      renderPhraseCloud(wakeCloud,loading?[]:phraseList,{
+        emptyText:loading?t('homeLiveLoading'):t('homeLiveUnset'),
+        mode:'wake'
+      });
     }
-    if(subEl){
-      if(!loading&&voiceOn){
-        const heard=homeWakeHeardLabel();
-        if(running&&heard&&heard!==t('homeLiveHeardOff')){
-          subEl.hidden=false;
-          subEl.textContent=heard===t('homeLiveHeardWaiting')?t('homeVoiceWakeFloatWaiting'):('「'+heard+'」');
-        }else{
-          subEl.hidden=true;
-          subEl.textContent='';
-        }
-      }else{
-        subEl.hidden=true;
-        subEl.textContent='';
-      }
+    if(wakeKey){
+      wakeKey.classList.toggle('is-set',!loading&&!!phrase);
+      wakeKey.classList.toggle('is-empty',!loading&&!phrase);
     }
+    if(wakeStep){
+      wakeStep.classList.toggle('is-listening',!loading&&voiceOn&&running);
+      wakeStep.classList.toggle('is-off',!loading&&!voiceOn);
+    }
+    renderHomeWakeStatusHint(loading);
     const modeSapiBtn=$('btnHomeVoiceModeSapi');
     const modeVoskBtn=$('btnHomeVoiceModeVosk');
     if(modeSapiBtn){
@@ -8037,8 +8612,8 @@
       modeVoskBtn.disabled=recordingBusy||!!voiceModeSwitchPending;
     }
     const sapiQuick=$('homeVoiceSapiQuick');
-    if(sapiQuick) sapiQuick.hidden=eng==='vosk';
     const conf=Number(sapiCfg.minConfidence==null?0.35:sapiCfg.minConfidence);
+    if(sapiQuick) sapiQuick.hidden=true;
     const homeConf=$('homeVoiceSapiConfidence');
     const homeConfLabel=$('homeVoiceSapiConfidenceLabel');
     if(homeConf){
@@ -8049,6 +8624,13 @@
     const toggleBtn=$('btnHomeVoiceToggle');
     syncHomeEntryToggleBtn(toggleBtn,voiceOn,'homeLiveToggleWakeOff','homeLiveToggleWakeOn');
     if(toggleBtn) toggleBtn.disabled=!!voiceSapiTogglePending||!!voiceVoskTogglePending||recordingBusy;
+    const voicePanel=$('homeLivePanelVoice');
+    if(voicePanel) voicePanel.classList.toggle('is-entry-disabled',!loading&&!voiceOn);
+    const endPhraseStep=$('homeVoiceMapEndPhrase');
+    [wakeStep,endPhraseStep].forEach(function(el){
+      if(!el) return;
+      el.classList.toggle('is-clickable',!loading&&!recordingBusy);
+    });
   }
 
   function renderHomeFinishZone(loading){
@@ -8061,7 +8643,15 @@
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
     const stateRaw=endSnap.state||'idle';
     const statusEl=$('homeFinishStatus');
-    if(statusEl) statusEl.textContent=loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw));
+    const endPhraseKey=$('homeVoiceMapEndPhraseKey');
+    const endCloud=$('homeVoiceEndPhraseCloud');
+    const endPhraseStep=$('homeVoiceMapEndPhrase');
+    const endSwitchRow=$('homeFinishCtrlEnd');
+    const statusLabel=loading?t('homeLiveLoading'):(endSnap.statusLabel||voiceEndStateLabel(stateRaw));
+    if(statusEl){
+      statusEl.textContent=statusLabel;
+      statusEl.classList.toggle('is-idle',!loading&&stateRaw==='idle');
+    }
     if(!loading){
       syncVoiceEndToggle(enabled);
       syncVoiceEndAutoSendToggle(autoOn);
@@ -8077,7 +8667,38 @@
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
     syncVoiceEndModeUi(true);
     const lite=voiceEndUiUsesLiteMode(true);
+    if(endSwitchRow) endSwitchRow.hidden=lite;
+    const liteBadge=$('homeFinishEndLiteBadge');
+    if(liteBadge){
+      liteBadge.hidden=!lite;
+      liteBadge.textContent=t('voiceEndNeedVoskShort');
+    }
     if(endToggle) endToggle.disabled=recordingBusy||loading||lite;
+    if(endPhraseStep){
+      endPhraseStep.classList.toggle('is-lite-locked',lite);
+      endPhraseStep.classList.toggle('is-clickable',!loading&&!recordingBusy);
+    }
+    const phraseList=homeVoiceEndPhrases();
+    const detail=phraseList.join(' / ');
+    if(endCloud){
+      if(loading){
+        renderPhraseCloud(endCloud,[],{emptyText:t('homeLiveLoading')});
+      }else if(lite){
+        renderPhraseCloud(endCloud,[],{emptyText:t('homeVoiceMapEndLite'),liteLocked:true});
+      }else if(enabled&&phraseList.length){
+        renderPhraseCloud(endCloud,phraseList);
+      }else if(enabled){
+        renderPhraseCloud(endCloud,[],{emptyText:t('homeLiveEndWord')});
+      }else{
+        renderPhraseCloud(endCloud,phraseList.length?phraseList:[],{
+          emptyText:t('homeVoiceMapEndPhraseOff')
+        });
+      }
+    }
+    if(endPhraseKey){
+      endPhraseKey.classList.toggle('is-set',!loading&&!lite&&enabled&&!!phraseList.length);
+      endPhraseKey.classList.toggle('is-empty',!loading&&(lite||!enabled||!phraseList.length));
+    }
     if(loading){
       if(endSummary) endSummary.textContent=t('homeLiveLoading');
       if(endDetail) endDetail.textContent=t('homeLiveLoading');
@@ -8086,7 +8707,76 @@
       if(endDetail) endDetail.textContent=t('homeFinishEndLiteDetail');
     }else{
       if(endSummary) endSummary.textContent=enabled?t('voiceEndEnabledShort'):t('voiceEndDisabledShort');
-      if(endDetail) endDetail.textContent=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]).join(' / ')||t('endPhrasesEmpty'));
+      if(endDetail) endDetail.textContent=detail||t('endPhrasesEmpty');
+    }
+    renderVoiceSettingsFlow(loading);
+  }
+
+  function renderVoiceSettingsFlow(loading){
+    loading=!!loading||!configLoadedFromBackend;
+    const eng=homeVoiceEngineOn();
+    const phrase=homeVoiceWakePhrase();
+    const endSnap=voiceUiSnapshot.end||{};
+    const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
+    const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
+    const autoOn=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
+    const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
+    const detail=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]).join(' / ')||'');
+    const lite=voiceEndUiUsesLiteMode(false);
+    const wakePhraseEl=$('voiceSettingsWakePhrase');
+    const wakeHintEl=$('voiceSettingsWakeHint');
+    const micNameEl=$('voiceSettingsMicName');
+    const engineStatusEl=$('voiceSettingsEngineStatus');
+    const endWakeEcho=$('voiceSettingsEndWakeEcho');
+    const endPhraseStatus=$('voiceSettingsEndPhraseStatus');
+    const endPhraseHint=$('voiceSettingsEndPhraseHint');
+    const autoStatusEl=$('voiceSettingsAutoStatus');
+    if(wakePhraseEl) wakePhraseEl.textContent=loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset'));
+    if(wakeHintEl){
+      if(loading) wakeHintEl.textContent='';
+      else if(eng!=='off') wakeHintEl.textContent=t('homeVoiceMapWakeHintOn');
+      else wakeHintEl.textContent=t('homeVoiceMapWakeHintOff');
+    }
+    if(micNameEl){
+      const dev=micDevices.find(function(d){ return d.id===activeMicId; })
+        ||micDevices.find(function(d){ return d.isDefault; })
+        ||micDevices[0];
+      micNameEl.textContent=loading?t('homeLiveLoading'):(dev?(dev.name||dev.id):t('homeVoiceMapMicEmpty'));
+    }
+    const barsEl=$('voiceSettingsMicBars');
+    if(barsEl&&!barsEl.children.length) barsEl.innerHTML=buildMicLevelBars();
+    const sapiBtn=$('btnVoiceSettingsModeSapi');
+    const voskBtn=$('btnVoiceSettingsModeVosk');
+    if(sapiBtn){
+      sapiBtn.classList.toggle('is-active',eng!=='vosk');
+      sapiBtn.disabled=!!voiceModeSwitchPending;
+    }
+    if(voskBtn){
+      voskBtn.classList.toggle('is-active',eng==='vosk');
+      voskBtn.disabled=!!voiceModeSwitchPending;
+    }
+    if(engineStatusEl){
+      if(loading) engineStatusEl.textContent=t('homeLiveLoading');
+      else if(eng==='sapi') engineStatusEl.textContent=t('voiceModeCurrentLite');
+      else if(eng==='vosk') engineStatusEl.textContent=t('voiceModeCurrentPro');
+      else engineStatusEl.textContent=t('voiceModeCurrentOff');
+    }
+    if(endWakeEcho){
+      endWakeEcho.textContent=loading?'':(phrase?t('voiceSettingsEndWakeEcho').replace('{phrase}',phrase):'');
+    }
+    if(endPhraseStatus){
+      if(loading) endPhraseStatus.textContent=t('homeLiveLoading');
+      else if(lite) endPhraseStatus.textContent=t('homeVoiceMapEndLite');
+      else endPhraseStatus.textContent=enabled
+        ?(t('voiceEndEnabledShort')+(detail?(' · '+detail):''))
+        :t('voiceEndDisabledShort');
+    }
+    if(endPhraseHint) endPhraseHint.textContent='';
+    if(autoStatusEl){
+      if(loading) autoStatusEl.textContent=t('homeLiveLoading');
+      else autoStatusEl.textContent=autoOn
+        ?(t('voiceEndAutoSendOn')+' · '+t('voiceEndDelayMs').replace('{n}',String(delayMs)))
+        :t('voiceEndAutoSendOff');
     }
   }
 
@@ -8230,16 +8920,18 @@
     return{
       panel:'homeLivePanelVoice',
       layout:'voice-lane',
-      flowKeys:['homeVoiceGuideFlowWake','homeVoiceGuideFlowMic','homeVoiceGuideFlowEnable'],
+      flowKeys:['homeVoiceGuideFlowWake','homeVoiceGuideFlowMic','homeVoiceGuideFlowMode','homeFinishGuideEnd','homeVoiceGuideFlowEnable'],
       cautionKey:'homeVoiceGuideCaution',
       pins:[
-        {target:'#homeVoiceWakeChip',detailKey:'homeVoiceGuideWake',labelKey:'homeVoiceWakeFloatLbl',step:1},
-        {target:'#btnHomeMicSettings',detailKey:'homeVoiceGuideMic',labelEl:'#homeMicTitle',step:2},
+        {target:'#homeVoiceMapWakeKey',detailKey:'homeVoiceGuideWake',labelKey:'homeVoiceWakeFloatLbl',step:1},
+        {target:'#homeVoiceMapFoot',detailKey:'homeVoiceGuideMic',labelEl:'#homeVoiceWakeMicLbl',step:2},
+        {target:'#homeVoiceModeSwitch',detailKey:'homeVoiceGuideFlowMode',labelEl:'#homeVoiceEngineBarLbl',step:3},
         {target:'#btnHomeVoiceModeSapi',detailKey:'homeVoiceGuideModeSapi',labelFromTargetBtn:true,callout:false},
         {target:'#btnHomeVoiceModeVosk',detailKey:'homeVoiceGuideModeVosk',labelFromTargetBtn:true,callout:false},
-        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:3},
-        {target:'#btnHomeEndToggle',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',step:4},
-        {target:'#btnHomeEndAutoSend',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',step:5}
+        {target:'#homeVoiceMapEndPhraseKey',detailKey:'homeFinishGuideEnd',labelEl:'#homeVoiceMapEndPhraseLblText',step:4},
+        {target:'#btnHomeEndSettings',detailKey:'homeFinishGuideEnd',labelEl:'#homeLiveEndEnabledLbl',callout:false},
+        {target:'#btnHomeAutoSettings',detailKey:'homeFinishGuideAuto',labelEl:'#homeLiveEndAutoLbl',callout:false},
+        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:5}
       ]
     };
   }
@@ -9265,19 +9957,32 @@
     const d=I18N[lang];
     [
       ['homeLiveKeyTitle',d.homeLiveKeyTitle],['homeLiveVoiceTitle',d.homeLiveVoiceTitle],
-      ['homeVoiceFinishTitle',d.homeVoiceFinishTitle],
-      ['homeMicTitle',d.homeMicTitle],['homeMicChangeHint',d.homeMicChangeHint],
+      ['homeVoiceMapTitle',d.homeVoiceMapTitle],
+      ['homeVoiceMapWakeLbl',d.homeVoiceMapWakeLbl],['homeVoiceWakeMicLbl',d.homeVoiceWakeMicLbl],
+      ['homeVoiceEngineBarLbl',d.homeVoiceMapEngineLbl],
+      ['homeVoiceMapEngineLbl',d.homeVoiceMapEngineLbl],
+      ['homeVoiceMapEndPhraseLblText',d.homeVoiceMapEndPhraseLbl],
+      ['voiceSettingsWakeLbl',d.homeVoiceMapWakeLbl],['voiceSettingsEngineLbl',d.homeVoiceMapEngineLbl],
+      ['voiceSettingsEndPhraseLbl',d.homeVoiceMapEndPhraseLbl],['voiceSettingsAutoLbl',d.homeLiveEndAutoShort],
+      ['voiceMicPickerSummary',d.voiceSettingsMicPickerSummary],['voiceEndEditSummary',d.voiceSettingsEndEditSummary],
+      ['btnVoiceSettingsModeSapi',d.homeVoiceMapEngineSapi],['btnVoiceSettingsModeVosk',d.homeVoiceMapEngineVosk],
+      ['homeVoiceMapArrowSayText',d.homeVoiceMapArrowSay],['homeVoiceMapArrowListenText',d.homeVoiceMapArrowListen],
+      ['homeVoiceMapArrowEndText',d.homeVoiceMapArrowEnd],
       ['homeKeyMapTitle',d.homeKeyMapTitle],['homeKeyMapSchemeLbl',d.homeKeyMapSchemeLbl],
       ['homeKeyMapTriggerLbl',d.homeLiveTrigger],['homeKeyMapTargetLbl',d.homeLiveTarget],
       ['homeKeyMapTriggerHint',d.homeKeyMapTriggerHint],['homeKeyMapTargetHint',d.homeKeyMapTargetHint],
       ['homeKeyMapArrowText',d.homeKeyMapArrowText],['homeKeyMapFinishLbl',d.homeKeyMapFinishLbl],
       ['homeKeyMapArrowFinishText',d.homeKeyMapArrowFinishText],
       ['homeVoiceWakeFloatHint',d.homeVoiceWakeFloatHint],
-      ['homeLiveEndEnabledLbl',d.homeLiveEndWord],['homeLiveEndAutoLbl',d.homeLiveEndAuto],
+      ['homeLiveEndEnabledLbl',d.homeLiveEndEnabledLbl],['homeLiveEndAutoLbl',d.homeLiveEndAutoShort],
       ['btnHomeManageSchemes',d.homeSchemeManage]
     ].forEach(function(pair){
       const el=$(pair[0]); if(el) el.textContent=pair[1];
     });
+    const gearEnd=$('btnHomeEndSettings');
+    if(gearEnd) gearEnd.setAttribute('aria-label',d.homeVoiceGearSettingsEnd);
+    const gearAuto=$('btnHomeAutoSettings');
+    if(gearAuto) gearAuto.setAttribute('aria-label',d.homeVoiceGearSettingsAuto);
     renderHomeLiveVoicePanel(!configLoadedFromBackend);
     refreshHomeGuideIfOpen(true);
   }
@@ -9332,12 +10037,8 @@
 
     const keyMapCard=$('homeKeyMapCard');
     if(keyMapCard) keyMapCard.hidden=!showKeyEntry;
-    const voiceMeta=$('homeVoiceMeta');
-    if(voiceMeta) voiceMeta.hidden=!showVoiceEntry;
-    const voiceWakeFloat=$('homeVoiceWakeFloat');
-    if(voiceWakeFloat) voiceWakeFloat.hidden=!showVoiceEntry;
-    const voiceFinish=$('homeVoiceFinishBlock');
-    if(voiceFinish) voiceFinish.hidden=!showVoiceEntry;
+    const voiceMapCard=$('homeVoiceMapCard');
+    if(voiceMapCard) voiceMapCard.hidden=!showVoiceEntry;
     const keyPanel=$('homeLivePanelKey');
     const voicePanel=$('homeLivePanelVoice');
     if(keyPanel){
@@ -9508,6 +10209,14 @@
     if(detailId){
       const detail=$(detailId);
       if(detail&&detail.tagName==='DETAILS') detail.open=true;
+    }
+    if(focus==='mic'){
+      const micDetails=$('voiceMicPickerDetails');
+      if(micDetails) micDetails.open=true;
+    }
+    if(focus==='endPhrases'||focus==='autoSend'||focus==='delay'){
+      const endDetails=$('voiceEndEditDetails');
+      if(endDetails) endDetails.open=true;
     }
     const map={
       trigger:['btnRecordTrigger','keySchemeEditTrigger'],
@@ -10635,6 +11344,7 @@
     updateVoiceDiagMetric('end','delay',t('voiceEndDelayMs').replace('{n}',String(delayMs)),t('voiceEndDelay'));
     syncVoiceEndModeUi(false);
     renderVoiceModeSwitch();
+    renderVoiceSettingsFlow();
   }
 
   function loadVoiceEndStatus(){
@@ -13538,8 +14248,65 @@
   }
   $('homeVoiceSapiConfidence').oninput=function(){ updateHomeVoiceSapiConfidence(false); };
   $('homeVoiceSapiConfidence').onchange=function(){ updateHomeVoiceSapiConfidence(true); };
-  $('btnHomeEndToggle').onclick=toggleVoiceEnd;
-  $('btnHomeEndAutoSend').onclick=toggleHomeVoiceEndAutoSend;
+  $('btnHomeEndToggle').onclick=function(e){ e.stopPropagation(); toggleVoiceEnd(); };
+  $('btnHomeEndAutoSend').onclick=function(e){ e.stopPropagation(); toggleHomeVoiceEndAutoSend(); };
+  const btnHomeEndSettings=$('btnHomeEndSettings');
+  if(btnHomeEndSettings){
+    btnHomeEndSettings.onclick=function(e){
+      e.stopPropagation();
+      openSettings({panel:'voiceWake',focus:'endPhrases'});
+    };
+  }
+  const btnHomeAutoSettings=$('btnHomeAutoSettings');
+  if(btnHomeAutoSettings){
+    btnHomeAutoSettings.onclick=function(e){
+      e.stopPropagation();
+      openSettings({panel:'voiceWake',focus:'autoSend'});
+    };
+  }
+  const btnVoiceSettingsModeSapi=$('btnVoiceSettingsModeSapi');
+  if(btnVoiceSettingsModeSapi) btnVoiceSettingsModeSapi.onclick=function(){ switchVoiceMode('sapi'); };
+  const btnVoiceSettingsModeVosk=$('btnVoiceSettingsModeVosk');
+  if(btnVoiceSettingsModeVosk) btnVoiceSettingsModeVosk.onclick=function(){ switchVoiceMode('vosk'); };
+  const btnVoiceSettingsMic=$('btnVoiceSettingsMic');
+  if(btnVoiceSettingsMic){
+    btnVoiceSettingsMic.onclick=function(){
+      const details=$('voiceMicPickerDetails');
+      if(details) details.open=true;
+      focusSettingsField('mic');
+    };
+  }
+  const homeVoiceMapCardEl=$('homeVoiceMapCard');
+  if(homeVoiceMapCardEl){
+    homeVoiceMapCardEl.addEventListener('click',function(e){
+      if(e.target.closest('#homeVoiceMapFoot')||e.target.closest('#homeVoiceWakeMicList')||e.target.closest('#homeVoiceMapSwitches')||e.target.closest('.home-voice-gear-switch')) return;
+      if(e.target.closest('button')||e.target.closest('input')) return;
+      if(e.target.closest('#homeVoiceMapWake')){ openSettings({panel:'voiceWake',focus:'wakePhrases'}); return; }
+      if(e.target.closest('#homeVoiceMapEndPhraseKey')) return;
+      if(e.target.closest('#homeVoiceMapEndPhrase')){ openSettings({panel:'voiceWake',focus:'endPhrases'}); return; }
+    });
+  }
+  const homeVoiceEngineBarLbl=$('homeVoiceEngineBarLbl');
+  if(homeVoiceEngineBarLbl){
+    homeVoiceEngineBarLbl.style.cursor='pointer';
+    homeVoiceEngineBarLbl.addEventListener('click',function(){
+      openSettings({panel:'voiceWake',focus:'engine'});
+    });
+  }
+  const wakeKeyEl=$('homeVoiceMapWakeKey');
+  if(wakeKeyEl){
+    wakeKeyEl.onclick=function(e){
+      e.stopPropagation();
+      openSettings({panel:'voiceWake',focus:'wakePhrases'});
+    };
+  }
+  const endPhraseKeyEl=$('homeVoiceMapEndPhraseKey');
+  if(endPhraseKeyEl){
+    endPhraseKeyEl.onclick=function(e){
+      e.stopPropagation();
+      openSettings({panel:'voiceWake',focus:'endPhrases'});
+    };
+  }
   const homeKeyMapCardEl=$('homeKeyMapCard');
   if(homeKeyMapCardEl){
     homeKeyMapCardEl.addEventListener('click',function(e){

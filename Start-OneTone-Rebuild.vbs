@@ -21,15 +21,14 @@ launcher = projectRoot & "\run_onetone.ps1"
 logFile = projectRoot & "\logs\launch.log"
 
 If projectRoot = "" Or Not fso.FileExists(launcher) Then
-  MsgBox "Cannot find run_onetone.ps1." & vbCrLf & vbCrLf & "Keep this file on Desktop, or inside the voice-pilot folder.", 16, "OneTone"
+  MsgBox "Cannot find run_onetone.ps1.", 16, "OneTone"
   WScript.Quit 1
 End If
 
-' Default: build when source changed; always launch project dev exe (not old installed copy).
-cmd = "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & launcher & """"
+cmd = "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & launcher & """ -Rebuild"
 exitCode = shell.Run(cmd, 0, True)
 
 If exitCode <> 0 Then
-  MsgBox "OneTone launch failed (exit " & exitCode & ")." & vbCrLf & vbCrLf & "See log:" & vbCrLf & logFile, 16, "OneTone"
+  MsgBox "OneTone rebuild failed (exit " & exitCode & ")." & vbCrLf & vbCrLf & "See log:" & vbCrLf & logFile, 16, "OneTone"
   WScript.Quit exitCode
 End If

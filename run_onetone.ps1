@@ -1,5 +1,6 @@
 param(
   [switch]$Rebuild,
+  [switch]$LaunchOnly,
   [switch]$Safe
 )
 
@@ -8,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $tauri = Join-Path $root 'src-tauri'
 $buildRoot = Join-Path $tauri 'target-release-live'
+$releaseExe = Join-Path $buildRoot 'release\onetone.exe'
 $logDir = Join-Path $root 'logs'
 $logFile = Join-Path $logDir 'launch.log'
 $voskDir = Join-Path $tauri 'resources\vosk'
@@ -102,9 +104,43 @@ function Start-OnetoneExe {
   Write-LaunchLog "launched onetone.exe from $ExePath"
 }
 
+function Get-DevSourceFiles {
+  $files = @()
+  foreach ($path in @(
+      (Join-Path $root 'src'),
+      (Join-Path $tauri 'src'),
+      (Join-Path $tauri 'Cargo.toml'),
+      (Join-Path $tauri 'Cargo.lock'),
+      (Join-Path $tauri 'tauri.conf.json'),
+      (Join-Path $tauri 'build.rs')
+    )) {
+    if (-not (Test-Path $path)) { continue }
+    $item = Get-Item -LiteralPath $path
+    if ($item.PSIsContainer) {
+      $files += Get-ChildItem -Path $item.FullName -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.FullName -notmatch '\\target\\' -and
+          $_.Extension -in @('.html', '.js', '.css', '.rs', '.toml', '.json')
+        }
+    } else {
+      $files += $item
+    }
+  }
+  return $files | Sort-Object FullName -Unique
+}
+
+function Test-DevBuildStale {
+  if (-not (Test-Path $releaseExe)) { return $true }
+  $exeTime = (Get-Item -LiteralPath $releaseExe).LastWriteTimeUtc
+  foreach ($file in (Get-DevSourceFiles)) {
+    if ($file.LastWriteTimeUtc -gt $exeTime) { return $true }
+  }
+  return $false
+}
+
 function Get-LaunchCandidates {
   $candidates = @(
-    (Join-Path $buildRoot 'release\onetone.exe'),
+    $releaseExe,
     (Join-Path $tauri 'target\release\onetone.exe')
   )
 
@@ -171,19 +207,37 @@ function Stop-AppProcessGracefully {
 }
 
 try {
-  $releaseExe = Join-Path $buildRoot 'release\onetone.exe'
+  $stale = Test-DevBuildStale
+  $needBuild = $Rebuild -or ($stale -and -not $LaunchOnly)
 
-  if (-not $Rebuild) {
+  if (-not $needBuild -and (Test-Path $releaseExe)) {
+    Write-LaunchLog "launch dev build (up to date): $releaseExe"
+    Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
+    exit 0
+  }
+
+  if ($LaunchOnly -and -not $Rebuild) {
     $existing = Resolve-LaunchExe
     if ($existing) {
       Write-LaunchLog "launch only: $existing"
       Start-OnetoneExe -ExePath $existing -Safe:$Safe
       exit 0
     }
-    Write-LaunchLog 'no exe found, building'
+    if (-not (Test-Path $releaseExe)) {
+      Write-LaunchLog 'no exe found, building'
+      $needBuild = $true
+    } else {
+      Write-LaunchLog "launch dev build: $releaseExe"
+      Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
+      exit 0
+    }
   }
 
-  Write-LaunchLog 'building...'
+  if ($stale -and -not $Rebuild) {
+    Write-LaunchLog 'source changed since last build, rebuilding...'
+  } else {
+    Write-LaunchLog 'building...'
+  }
 
   foreach ($name in @('onetone', 'voice-pilot')) {
     Stop-AppProcessGracefully -Name $name
