@@ -171,7 +171,7 @@ mod imp {
     use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
-        MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE, DEVICE_STATE_UNPLUGGED,
+        MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE,
     };
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
@@ -200,7 +200,7 @@ mod imp {
                 .ok()
                 .and_then(|d| device_id(&d).ok());
 
-            let endpoint_mask = DEVICE_STATE(DEVICE_STATE_ACTIVE.0 | DEVICE_STATE_UNPLUGGED.0);
+            let endpoint_mask = DEVICE_STATE_ACTIVE;
             let collection = enumerator
                 .EnumAudioEndpoints(eCapture, endpoint_mask)
                 .map_err(|e| format!("enum endpoints: {e}"))?;
