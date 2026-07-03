@@ -26,7 +26,7 @@
       mappings:[{id:id,label:'AutoTrigger → RAlt',group:'默认',triggerKey:'AutoTrigger',targetKey:'RAlt',enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
-      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,
+      debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:['开始输入','开始听写','开启输入','开始说话'],targetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:'RAlt',cooldownMs:2000,modelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:'cn-light'},
@@ -47,6 +47,7 @@
     st.config.schemeSwitchKey='';
     if(st.config.keyWakeSoundEnabled===undefined) st.config.keyWakeSoundEnabled=false;
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
+    if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     hooks().ensureSoundsConfig();
     st.config.mappings.forEach(hooks().ensureMappingExtras);
     (st.config.trash||[]).forEach(hooks().ensureMappingExtras);
@@ -78,6 +79,7 @@
       schemeSwitchKey:'',
       keyWakeSoundEnabled:!!(st.config.sounds&&st.config.sounds.keyWake&&st.config.sounds.keyWake.enabled),
       coachHudEnabled:!!st.config.coachHudEnabled,
+      startMinimizedToTray:!!st.config.startMinimizedToTray,
       sounds:(function(){
         const s=hooks().ensureSoundsConfig();
         return {
@@ -175,6 +177,7 @@
       hooks().syncEditorFromSelection();
       configLoadedFromBackend=true;
       clearTimeout(configBootstrapWatchdog);
+      if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
       hooks().scheduleBootMicReady();
       hooks().scheduleDeferredVoiceEngineBoot();
       if(global.OneToneVoiceWake.initSapiPresetsFromConfig) global.OneToneVoiceWake.initSapiPresetsFromConfig();

@@ -5,6 +5,7 @@
   function vs(){ return global.OneToneVoiceUiState; }
   function dbg(){ return global.OneToneAppDebugState; }
   function autostart(){ return global.OneToneAppAutostart; }
+  function startMinimized(){ return global.OneToneAppStartMinimized; }
 
   function register(deps){
     var voiceUiState=global.OneToneVoiceUiState;
@@ -37,6 +38,7 @@
       renderSettingsVoiceSubnav:deps.renderSettingsVoiceSubnav,
       renderSettingsDebugSubnav:deps.renderSettingsDebugSubnav,
       loadAutostartState:autostart().loadState,
+      loadStartMinimizedState:startMinimized().loadState,
       settingsPanelNeedsVoicePoll:deps.settingsPanelNeedsVoicePoll,
       voiceStatusPollTick:deps.voiceStatusPollTick,
       syncHomeMicMonitor:deps.syncHomeMicMonitor,

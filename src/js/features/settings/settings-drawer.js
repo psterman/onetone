@@ -197,6 +197,7 @@
     setTimeout(function(){
       if(!ui.drawerOpen) return;
       hooks().loadAutostartState();
+      if(hooks().loadStartMinimizedState) hooks().loadStartMinimizedState();
       if(hooks().settingsPanelNeedsVoicePoll()) hooks().voiceStatusPollTick();
     },200);
     requestAnimationFrame(function(){

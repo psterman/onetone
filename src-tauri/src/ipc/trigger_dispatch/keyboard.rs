@@ -1,14 +1,10 @@
 use std::sync::Arc;
 
 use crate::ipc::core::push_runtime;
-use crate::{keyboard, state};
 use crate::AppState;
+use crate::{keyboard, state};
 
-pub(super) fn dispatch_send_esc(
-    state: &AppState,
-    window: &tauri::WebviewWindow,
-    mapping_id: &str,
-) {
+pub(super) fn dispatch_send_esc(state: &AppState, window: &tauri::WebviewWindow, mapping_id: &str) {
     keyboard::send_escape();
     push_runtime(state, window, "esc", mapping_id);
 }

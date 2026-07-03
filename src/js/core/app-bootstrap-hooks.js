@@ -20,6 +20,7 @@
       setFontScale:deps.setFontScale,
       fontScaleValues:deps.fontScaleValues,
       toggleAutostart:global.OneToneAppAutostart.toggle,
+      toggleStartMinimized:global.OneToneAppStartMinimized.toggle,
       toggleSoundsMaster:deps.toggleSoundsMaster,
       setSoundSlotEnabled:deps.setSoundSlotEnabled,
       setSoundSlotId:deps.setSoundSlotId,

@@ -12,11 +12,11 @@ pub fn cmd_voice_end_status(state: tauri::State<Arc<AppState>>) -> serde_json::V
 #[tauri::command]
 pub fn cmd_voice_end_set_enabled(
     state: tauri::State<Arc<AppState>>,
-    window: tauri::WebviewWindow,
+    _window: tauri::WebviewWindow,
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    let status = crate::voice_end_runtime::voice_end_set_enabled(&state, &window, enabled);
+    let status = crate::voice_end_runtime::voice_end_set_enabled(&state, Some(&app), enabled);
     crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(
         Arc::clone(&state),
         app_resource_dir(&app),
@@ -48,7 +48,9 @@ pub fn cmd_voice_end_set_commit_key(
     #[allow(non_snake_case)] commitKey: Option<String>,
     commit_key: Option<String>,
 ) -> serde_json::Value {
-    let key = commit_key.or(commitKey).unwrap_or_else(|| "Enter".to_string());
+    let key = commit_key
+        .or(commitKey)
+        .unwrap_or_else(|| "Enter".to_string());
     crate::voice_end_runtime::voice_end_set_commit_key(&state, key)
 }
 
@@ -82,8 +84,10 @@ pub fn cmd_voice_end_test_stop(
 #[tauri::command]
 pub fn cmd_voice_end_ui_end(
     state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
     window: tauri::WebviewWindow,
 ) -> serde_json::Value {
+    let _ = window;
     // UI-driven "结束输入" button: force stop current dictation session.
     // Unlike trigger-key stop (where target key was already sent), UI stop always sends target shortcut.
     if crate::voice_end_runtime::session_state(&state) != "dictating" {
@@ -92,7 +96,7 @@ pub fn cmd_voice_end_ui_end(
             "reason": "not dictating"
         });
     }
-    crate::voice_end_runtime::handle_end_phrase(&state, &window, "ui end input");
+    crate::voice_end_runtime::handle_end_phrase(&state, &app, "ui end input");
     crate::voice_end_runtime::voice_end_status(&state)
 }
 

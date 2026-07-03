@@ -14,7 +14,9 @@ use crate::AppState;
 
 use super::finish::finish_hardware_capture;
 use super::guard::{arm_record_guard, emit_record_seen, record_guard_active};
-use super::normalize::{build_hardware_record_chord, is_recordable_target_hotkey, normalize_hardware_key};
+use super::normalize::{
+    build_hardware_record_chord, is_recordable_target_hotkey, normalize_hardware_key,
+};
 
 pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindow, key_name: &str) {
     if !*state.recording.lock() {

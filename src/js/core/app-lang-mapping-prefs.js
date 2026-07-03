@@ -42,6 +42,8 @@
     var fontScaleXl=$('fontScaleXl'); if(fontScaleXl) fontScaleXl.textContent=d.fontSizeXL;
     var autostartLabel=$('autostartLabel'); if(autostartLabel) autostartLabel.textContent=d.autostartLabel;
     var autostartDesc=$('autostartDesc'); if(autostartDesc) autostartDesc.textContent=d.autostartDesc;
+    var startMinimizedLabel=$('startMinimizedLabel'); if(startMinimizedLabel) startMinimizedLabel.textContent=d.startMinimizedLabel;
+    var startMinimizedDesc=$('startMinimizedDesc'); if(startMinimizedDesc) startMinimizedDesc.textContent=d.startMinimizedDesc;
     var langLabel=$('langLabel'); if(langLabel) langLabel.textContent=d.langLabel;
     var langDesc=$('langDesc'); if(langDesc) langDesc.textContent=d.langDesc;
     var langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;

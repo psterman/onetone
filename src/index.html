@@ -320,6 +320,15 @@
                 <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
               </div>
             </div>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="startMinimizedLabel">启动后最小化到托盘</p>
+                <p class="pref-row-desc" id="startMinimizedDesc">下次启动时隐藏主窗口，仅在托盘运行</p>
+              </div>
+              <div class="pref-row-control">
+                <button type="button" class="toggle-switch" id="btnStartMinimized" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
           </div>
 
           <div class="pref-section">
@@ -1092,6 +1101,7 @@
   <script src="js/core/config-persist.js"></script>
   <script src="js/core/app-text-utils.js"></script>
   <script src="js/core/app-autostart.js"></script>
+  <script src="js/core/app-start-minimized.js"></script>
   <script src="js/core/app-theme-prefs.js"></script>
   <script src="js/core/app-mic.js"></script>
   <script src="js/core/app-bridge.js"></script>

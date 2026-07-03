@@ -97,12 +97,7 @@ pub struct MicDeviceInfo {
     pub name: String,
     pub is_default: bool,
     pub is_communications: bool,
-    #[serde(default = "default_true")]
     pub is_available: bool,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 pub struct MicMonitorHandle {
@@ -168,7 +163,6 @@ mod imp {
     use cpal::SampleFormat;
     use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
     use windows::core::{HSTRING, PCWSTR};
-    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
         MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE,
@@ -308,27 +302,6 @@ mod imp {
             thread: Some(handle),
         });
         Ok(())
-    }
-
-    pub fn read_mic_peak_level(device_id_hint: Option<&str>) -> Result<MicLevelSnapshot, String> {
-        unsafe {
-            init_com_apartment()?;
-            let enumerator: IMMDeviceEnumerator =
-                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
-                    .map_err(|e| format!("enumerator: {e}"))?;
-            let device = resolve_meter_device(&enumerator, device_id_hint)?;
-            let id = device_id(&device)?;
-            let meter: IAudioMeterInformation = device
-                .Activate(CLSCTX_ALL, None)
-                .map_err(|e| format!("activate meter: {e}"))?;
-            let peak = meter
-                .GetPeakValue()
-                .map_err(|e| format!("peak value: {e}"))?;
-            Ok(MicLevelSnapshot {
-                level: peak_to_level(peak),
-                device_id: id,
-            })
-        }
     }
 
     fn run_cpal_monitor(
@@ -529,11 +502,6 @@ mod imp {
         let _ = app.emit("to_js", &payload);
     }
 
-    fn peak_to_level(peak: f32) -> u32 {
-        let shaped = peak.clamp(0.0, 1.0).sqrt();
-        (shaped * 100.0).round() as u32
-    }
-
     fn resolve_cpal_input(host: &cpal::Host, device_name: &str) -> Result<cpal::Device, String> {
         if let Some(default) = host.default_input_device() {
             if default
@@ -590,21 +558,6 @@ mod imp {
     unsafe fn device_id(device: &IMMDevice) -> Result<String, String> {
         let raw = device.GetId().map_err(|e| e.to_string())?;
         Ok(raw.to_string().map_err(|e| e.to_string())?)
-    }
-
-    unsafe fn resolve_meter_device(
-        enumerator: &IMMDeviceEnumerator,
-        device_id_hint: Option<&str>,
-    ) -> Result<IMMDevice, String> {
-        if let Some(id) = device_id_hint.map(str::trim).filter(|id| !id.is_empty()) {
-            let id = HSTRING::from(id);
-            if let Ok(device) = enumerator.GetDevice(&id) {
-                return Ok(device);
-            }
-        }
-        enumerator
-            .GetDefaultAudioEndpoint(eCapture, eConsole)
-            .map_err(|e| format!("default endpoint: {e}"))
     }
 
     unsafe fn device_friendly_name(device: &IMMDevice) -> Result<String, String> {
@@ -670,14 +623,10 @@ pub fn start_mic_monitor(
     Err("microphone monitor is Windows-only".into())
 }
 
-#[cfg(not(windows))]
-pub fn read_mic_peak_level(_device_id: Option<&str>) -> Result<MicLevelSnapshot, String> {
-    Err("microphone peak meter is Windows-only".into())
-}
-
 #[cfg(all(test, windows))]
 mod tests {
     #[test]
+    #[ignore = "requires audio hardware"]
     fn list_input_devices_returns_ok() {
         let devices = super::list_input_devices().expect("list_input_devices");
         eprintln!("mic devices: {devices:?}");
@@ -685,6 +634,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires audio hardware"]
     fn set_default_input_device_switches_non_default() {
         let devices = super::list_input_devices().expect("list");
         let original = devices
@@ -706,6 +656,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires audio hardware"]
     fn cpal_default_input_reports_format() {
         use cpal::traits::{DeviceTrait, HostTrait};
         let host = cpal::default_host();

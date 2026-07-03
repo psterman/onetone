@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tauri::{Emitter, WebviewWindow};
+use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{
     save_config, vosk_grammar_phrases, vosk_preset_default_phrases, vosk_preset_model_path,
@@ -176,16 +176,16 @@ fn tick_cooldown_state(state: &AppState) {
     }
 }
 
-fn emit_vosk_mic_level(window: &WebviewWindow, level: u32) {
+fn emit_vosk_mic_level(app: &AppHandle, state: &AppState, level: u32) {
     let payload = serde_json::json!({
         "type": "mic_level",
         "deviceId": "",
         "level": level,
     });
-    let _ = window.emit("to_js", payload);
+    crate::ipc::emit_to_main_if_available(app, Some(state), payload);
 }
 
-pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
+pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
     let events: Vec<VoiceVoskEvent> = {
         let guard = state.voice_vosk.lock();
         let Some(handle) = guard.as_ref() else {
@@ -204,26 +204,43 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
             VoiceVoskEvent::StateChanged(s) => {
                 if s == "stopped" || s == "error" {
                     state.mic_level.clear();
-                    emit_vosk_mic_level(window, 0);
+                    emit_vosk_mic_level(app, state.as_ref(), 0);
                 }
-                *state.voice_vosk_state.lock() = s;
+                *state.voice_vosk_state.lock() = s.clone();
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_STATE_CHANGED,
+                    &format!("vosk state: {s}"),
+                    Some(serde_json::json!({ "engine": "vosk", "state": s })),
+                );
             }
             VoiceVoskEvent::Error(e) => {
                 state.mic_level.clear();
-                emit_vosk_mic_level(window, 0);
-                *state.voice_vosk_last_error.lock() = e;
+                emit_vosk_mic_level(app, state.as_ref(), 0);
+                *state.voice_vosk_last_error.lock() = e.clone();
                 *state.voice_vosk_state.lock() = "error".into();
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_ERROR,
+                    &format!("vosk error: {e}"),
+                    Some(serde_json::json!({ "engine": "vosk", "error": e })),
+                );
+                crate::tray::refresh_menu(app);
             }
             VoiceVoskEvent::Level { level } => {
                 state.mic_level.set("", level);
-                emit_vosk_mic_level(window, level);
+                emit_vosk_mic_level(app, state.as_ref(), level);
             }
             VoiceVoskEvent::Partial(text) => {
                 *state.voice_vosk_last_partial.lock() = text;
             }
             VoiceVoskEvent::Final(text) => {
                 *state.voice_vosk_last_final.lock() = text.clone();
-                crate::voice_end_runtime::try_match_end_phrase_on_final(state, window, &text);
+                crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
             }
             VoiceVoskEvent::GrammarMode { grammar, note } => {
                 *state.voice_vosk_grammar_mode.lock() = Some(grammar);
@@ -247,7 +264,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
                 }
                 *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
                 *state.voice_vosk_last_final.lock() = text;
-                process_detected(state, window, &phrase);
+                process_detected(state, app, &phrase);
             }
         }
     }
@@ -255,7 +272,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, window: &WebviewWindow) {
     tick_cooldown_state(state);
 }
 
-fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str) {
+fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     let (target_key, duration_ms, cooldown_ms) = {
         let cfg = state.cfg.lock();
         (
@@ -285,7 +302,7 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
 
     let state2 = Arc::clone(state);
-    let window2 = window.clone();
+    let app2 = app.clone();
     let phrase2 = phrase.to_string();
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
@@ -298,7 +315,7 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         }
         let sent = crate::voice_end_runtime::send_wake_to_target(
             Some(state2.as_ref()),
-            &window2,
+            Some(&app2),
             &target_key,
             duration_ms,
         );
@@ -310,6 +327,14 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         if !sent {
             *state2.voice_vosk_last_error.lock() = format!("快捷键发送失败：{target_key}");
             *state2.voice_vosk_last_trigger.lock() = String::new();
+            crate::runtime_event::publish_runtime_event(
+                Some(&app2),
+                state2.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_SEND_FAILED,
+                &format!("vosk send failed: {target_key}"),
+                Some(serde_json::json!({ "engine": "vosk", "key": target_key })),
+            );
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();
             *state2.voice_vosk_last_skip.lock() = String::new();
@@ -318,7 +343,21 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
                 let cfg = state2.cfg.lock();
                 crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
             };
-            crate::voice_end_runtime::enter_dictating(&state2, &window2, &mapping_id, "vosk wake");
+            crate::voice_end_runtime::enter_dictating(
+                &state2,
+                Some(&app2),
+                &mapping_id,
+                "vosk wake",
+            );
+            crate::runtime_event::publish_runtime_event(
+                Some(&app2),
+                state2.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                &format!("vosk wake triggered: {target_key} (phrase: {phrase2})"),
+                Some(serde_json::json!({ "engine": "vosk", "key": target_key, "phrase": phrase2 })),
+            );
+            crate::tray::refresh_menu(&app2);
         }
 
         let label = if sent {
@@ -328,13 +367,7 @@ fn process_detected(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str)
         };
         let cue = if sent { "voice_wake" } else { "send_fail" };
         let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
-        crate::ipc::push_runtime_with_cue(
-            state2.as_ref(),
-            &window2,
-            label,
-            "",
-            sound_cue.as_deref(),
-        );
+        crate::ipc::push_runtime_via_app(&app2, state2.as_ref(), label, "", sound_cue.as_deref());
     });
 }
 
@@ -385,27 +418,9 @@ pub fn refresh_vosk_probe_cache(state: &AppState, resource_dir: Option<&std::pat
     *state.voice_vosk_probe.lock() = Some(probe_vosk_resources(&cfg, resource_dir));
 }
 
-pub fn disable_vosk_for_sapi(state: &Arc<AppState>) {
-    {
-        let mut cfg = state.cfg.lock();
-        cfg.voice_vosk.enabled = false;
-        // Caller persists in one save to avoid intermediate mvp_init racing the UI toggle.
-    }
-    spawn_voice_vosk_stop(Arc::clone(state));
-}
-
 fn stop_sapi_engine(state: &Arc<AppState>) {
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     *state.voice_sapi_cooldown_until.lock() = None;
-}
-
-fn disable_sapi(state: &Arc<AppState>) {
-    {
-        let mut cfg = state.cfg.lock();
-        cfg.voice_sapi.enabled = false;
-        // Caller persists in one save to avoid intermediate mvp_init racing the UI toggle.
-    }
-    stop_sapi_engine(state);
 }
 
 pub fn voice_vosk_set_enabled(
@@ -597,7 +612,12 @@ pub fn voice_vosk_test_send(state: &AppState, window: &WebviewWindow) -> serde_j
         });
     }
 
-    let ok = crate::voice_end_runtime::send_wake_to_target(Some(state), window, &key, duration_ms);
+    let ok = crate::voice_end_runtime::send_wake_to_target(
+        Some(state),
+        Some(&window.app_handle()),
+        &key,
+        duration_ms,
+    );
     serde_json::json!({
         "type": "mvp_voice_vosk_test_sent",
         "ok": ok,

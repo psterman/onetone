@@ -49,6 +49,24 @@
     },4000);
     setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);
     setTimeout(function(){ hooks.markBoot('fallbackConfigLoaded begin'); hooks.fallbackConfigLoaded(); }, 3500);
+    installRuntimeRefreshOnFocus();
+  }
+
+  var lastRuntimeRefreshAt=0;
+  function installRuntimeRefreshOnFocus(){
+    window.addEventListener('focus',function(){
+      var now=Date.now();
+      if(now-lastRuntimeRefreshAt<800) return;
+      lastRuntimeRefreshAt=now;
+      if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+      global.OneToneIpc.invoke('cmd_request_runtime',{}).then(function(snapshot){
+        if(snapshot&&snapshot.type==='mvp_runtime_snapshot'&&global.__vp_dispatch_to_js__){
+          global.__vp_dispatch_to_js__(snapshot);
+        }
+      }).catch(function(err){
+        console.error('request runtime on focus',err);
+      });
+    });
   }
   global.OneToneAppBoot={run:run};
 })((typeof window!=='undefined')?window:globalThis);

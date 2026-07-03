@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use tauri::Emitter;
+use tauri::AppHandle;
 
 use crate::config::mapping_is_complete;
-use crate::ipc::core::persist_and_rebind;
+use crate::ipc::core::persist_and_rebind_via_app;
 use crate::AppState;
 
 pub fn set_active_trigger_mode(
     state: &Arc<AppState>,
-    window: &tauri::WebviewWindow,
+    app: &AppHandle,
     mode: crate::config::TriggerMode,
 ) {
     let changed = {
@@ -41,7 +41,7 @@ pub fn set_active_trigger_mode(
         return;
     }
     state.machine_pool.lock().reset_all();
-    persist_and_rebind(state, window, "mode_changed");
+    persist_and_rebind_via_app(state, app, "mode_changed");
     let ack = serde_json::json!({
         "type": "mvp_mode_changed",
         "ok": true,
@@ -52,5 +52,5 @@ pub fn set_active_trigger_mode(
             crate::config::TriggerMode::Double => "double",
         },
     });
-    window.emit("to_js", &ack).ok();
+    crate::ipc::core::emit_to_main_if_available(app, Some(state), ack);
 }

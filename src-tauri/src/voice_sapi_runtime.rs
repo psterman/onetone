@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tauri::WebviewWindow;
+use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{save_config, VoiceSapiConfig};
 use crate::voice_sapi::{start_voice_sapi, stop_voice_sapi, VoiceSapiEvent};
@@ -59,7 +59,7 @@ fn tick_cooldown_state(state: &AppState) {
 }
 
 /// Drain SAPI events and apply cooldown tick. Always runs (not blocked by paused/send_guard).
-pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
+pub fn drain_voice_sapi_events(state: &Arc<AppState>, app: &AppHandle) {
     let events: Vec<VoiceSapiEvent> = {
         let guard = state.voice_sapi.lock();
         let Some(handle) = guard.as_ref() else {
@@ -76,11 +76,28 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
     for ev in events {
         match ev {
             VoiceSapiEvent::StateChanged(s) => {
-                *state.voice_sapi_state.lock() = s;
+                *state.voice_sapi_state.lock() = s.clone();
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_STATE_CHANGED,
+                    &format!("sapi state: {s}"),
+                    Some(serde_json::json!({ "engine": "sapi", "state": s })),
+                );
             }
             VoiceSapiEvent::Error(e) => {
-                *state.voice_sapi_last_error.lock() = e;
+                *state.voice_sapi_last_error.lock() = e.clone();
                 *state.voice_sapi_state.lock() = "error".into();
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_ERROR,
+                    &format!("sapi error: {e}"),
+                    Some(serde_json::json!({ "engine": "sapi", "error": e })),
+                );
+                crate::tray::refresh_menu(app);
             }
             VoiceSapiEvent::Heard {
                 text,
@@ -106,7 +123,7 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
                     *state.voice_sapi_last_trigger.lock() = String::new();
                     continue;
                 }
-                process_detected(state, window, &phrase, confidence, exact);
+                process_detected(state, app, &phrase, confidence, exact);
             }
         }
     }
@@ -116,7 +133,7 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, window: &WebviewWindow) {
 
 fn process_detected(
     state: &Arc<AppState>,
-    window: &WebviewWindow,
+    app: &AppHandle,
     _phrase: &str,
     confidence: f32,
     exact: bool,
@@ -159,7 +176,7 @@ fn process_detected(
         Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
 
     let state2 = Arc::clone(state);
-    let window2 = window.clone();
+    let app2 = app.clone();
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
             *state2.voice_sapi_last_skip.lock() = "等待上一轮快捷键发送完成。".into();
@@ -171,7 +188,7 @@ fn process_detected(
         }
         let sent = crate::voice_end_runtime::send_wake_to_target(
             Some(state2.as_ref()),
-            &window2,
+            Some(&app2),
             &target_key,
             duration_ms,
         );
@@ -183,6 +200,14 @@ fn process_detected(
         if !sent {
             *state2.voice_sapi_last_error.lock() = format!("快捷键发送失败：{target_key}");
             *state2.voice_sapi_last_trigger.lock() = String::new();
+            crate::runtime_event::publish_runtime_event(
+                Some(&app2),
+                state2.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_SEND_FAILED,
+                &format!("sapi send failed: {target_key}"),
+                Some(serde_json::json!({ "engine": "sapi", "key": target_key })),
+            );
         } else {
             *state2.voice_sapi_last_error.lock() = String::new();
             *state2.voice_sapi_last_skip.lock() = String::new();
@@ -191,7 +216,21 @@ fn process_detected(
                 let cfg = state2.cfg.lock();
                 crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
             };
-            crate::voice_end_runtime::enter_dictating(&state2, &window2, &mapping_id, "sapi wake");
+            crate::voice_end_runtime::enter_dictating(
+                &state2,
+                Some(&app2),
+                &mapping_id,
+                "sapi wake",
+            );
+            crate::runtime_event::publish_runtime_event(
+                Some(&app2),
+                state2.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                &format!("sapi wake triggered: {target_key}"),
+                Some(serde_json::json!({ "engine": "sapi", "key": target_key })),
+            );
+            crate::tray::refresh_menu(&app2);
         }
 
         let label = if sent {
@@ -201,13 +240,7 @@ fn process_detected(
         };
         let cue = if sent { "voice_wake" } else { "send_fail" };
         let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
-        crate::ipc::push_runtime_with_cue(
-            state2.as_ref(),
-            &window2,
-            label,
-            "",
-            sound_cue.as_deref(),
-        );
+        crate::ipc::push_runtime_via_app(&app2, state2.as_ref(), label, "", sound_cue.as_deref());
     });
 }
 
@@ -227,6 +260,81 @@ pub fn voice_sapi_status(state: &AppState) -> serde_json::Value {
         "cooldownMs": cfg.voice_sapi.cooldown_ms,
         "minConfidence": cfg.voice_sapi.min_confidence,
     })
+}
+
+fn sapi_state_is_busy(state: &str) -> bool {
+    matches!(
+        state,
+        "starting" | "listening" | "cooldown" | "triggered" | "stopping"
+    )
+}
+
+/// Startup bootstrap: start SAPI runtime only. Does not change config or save_config.
+pub fn bootstrap_voice_sapi_if_needed(state: &Arc<AppState>) -> bool {
+    let cfg = state.cfg.lock().voice_sapi.clone();
+    start_voice_sapi_runtime_only(state, cfg, "bootstrap")
+}
+
+/// Start SAPI runtime from explicit config. Does not save_config or mutate enabled flags.
+pub fn start_voice_sapi_runtime_only(
+    state: &Arc<AppState>,
+    cfg: VoiceSapiConfig,
+    reason: &str,
+) -> bool {
+    if state.voice_sapi.lock().is_some() {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("skip start sapi ({reason}): handle exists"),
+        );
+        return false;
+    }
+    let current = state.voice_sapi_state.lock().clone();
+    if sapi_state_is_busy(&current) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("skip start sapi ({reason}): state={current}"),
+        );
+        return false;
+    }
+
+    *state.voice_sapi_state.lock() = "starting".into();
+    *state.voice_sapi_last_error.lock() = String::new();
+    let state2 = Arc::clone(state);
+    let reason_owned = reason.to_string();
+    std::thread::Builder::new()
+        .name(format!("voice-sapi-{reason}"))
+        .spawn(move || {
+            crate::voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(&state2));
+            if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
+                *state2.voice_sapi_last_error.lock() = e.clone();
+                *state2.voice_sapi_state.lock() = "error".into();
+                crate::app_log::log_line(
+                    &state2,
+                    "voice",
+                    &format!("start failed sapi ({reason_owned}): {e}"),
+                );
+            } else {
+                crate::app_log::log_line(
+                    &state2,
+                    "voice",
+                    &format!("sapi runtime started ({reason_owned})"),
+                );
+            }
+        })
+        .ok();
+    true
+}
+
+pub fn restart_voice_sapi_runtime(state: &Arc<AppState>, cfg: VoiceSapiConfig, reason: &str) {
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!("voice config changed: sapi restart ({reason})"),
+    );
+    voice_sapi_stop(state);
+    start_voice_sapi_runtime_only(state, cfg, reason);
 }
 
 pub fn voice_sapi_set_enabled(
@@ -375,7 +483,12 @@ pub fn voice_sapi_test_send(state: &AppState, window: &WebviewWindow) -> serde_j
         });
     }
 
-    let ok = crate::voice_end_runtime::send_wake_to_target(Some(state), window, &key, duration_ms);
+    let ok = crate::voice_end_runtime::send_wake_to_target(
+        Some(state),
+        Some(&window.app_handle()),
+        &key,
+        duration_ms,
+    );
     serde_json::json!({
         "type": "mvp_voice_sapi_test_sent",
         "ok": ok,

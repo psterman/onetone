@@ -24,6 +24,8 @@
       btn.addEventListener('click',function(){ hooks.setFontScale(btn.getAttribute('data-scale')); });
     });
     $('btnAutostart').onclick=hooks.toggleAutostart;
+    var btnStartMinimized=$('btnStartMinimized');
+    if(btnStartMinimized) btnStartMinimized.onclick=hooks.toggleStartMinimized;
     $('btnSoundsMaster').onclick=hooks.toggleSoundsMaster;
     document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
       btn.onclick=function(){

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 use crate::ipc::core::push_runtime_with_cue;
 use crate::AppState;
@@ -36,7 +36,7 @@ pub(super) fn dispatch_send_key(
 ) {
     let sent = crate::voice_end_runtime::send_wake_to_target(
         Some(state.as_ref()),
-        window,
+        Some(&window.app_handle()),
         key,
         duration_ms,
     );
@@ -47,17 +47,16 @@ pub(super) fn dispatch_send_key(
             .unwrap_or_default()
     };
     if sent {
+        let app = window.app_handle();
         if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-            crate::voice_end_runtime::stop_dictation_after_trigger_key(state, window);
+            crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
         } else {
             let should_enter = {
                 let cfg = state.cfg.lock();
                 if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
                     false
                 } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
-                    !m.native_key_restore
-                        && !m.target_key.trim().is_empty()
-                        && key == m.target_key
+                    !m.native_key_restore && !m.target_key.trim().is_empty() && key == m.target_key
                 } else {
                     false
                 }
@@ -65,7 +64,7 @@ pub(super) fn dispatch_send_key(
             if should_enter {
                 crate::voice_end_runtime::enter_dictating(
                     state,
-                    window,
+                    Some(&app),
                     mapping_id,
                     "physical trigger",
                 );

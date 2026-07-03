@@ -3215,6 +3215,7 @@ dependencies = [
  "enigo",
  "image",
  "notify",
+ "onetone-logic",
  "parking_lot",
  "raw-window-handle",
  "regex",
@@ -3231,6 +3232,15 @@ dependencies = [
  "winapi",
  "windows 0.58.0",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "onetone-logic"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

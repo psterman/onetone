@@ -7,7 +7,7 @@ use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewWindow,
 };
 
-use crate::config::{mapping_is_complete, TriggerMode};
+use crate::config::{mapping_is_complete, TriggerMode, VoiceConfig};
 use crate::ipc;
 use crate::AppState;
 
@@ -126,6 +126,17 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         .collect();
 
     let complete_count = schemes.len();
+
+    let voice_engine = tray_voice_engine(&cfg);
+    let (voice_state, voice_error) = tray_voice_state_and_error(state, voice_engine);
+    let session_state = state.voice_session_state.lock().clone();
+    let (last_event_kind, last_event_message) = {
+        let ring = state.runtime_events.ring.lock();
+        ring.back()
+            .map(|e| (e.kind.clone(), e.message.clone()))
+            .unwrap_or_default()
+    };
+
     let payload = serde_json::json!({
         "paused": paused,
         "listenLabel": listen_label,
@@ -136,6 +147,12 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         ],
         "schemes": schemes,
         "canCycle": complete_count > 1,
+        "voiceEngine": voice_engine,
+        "voiceState": voice_state,
+        "voiceError": voice_error,
+        "sessionState": session_state,
+        "lastRuntimeEventKind": last_event_kind,
+        "lastRuntimeEventMessage": last_event_message,
     });
     serde_json::to_string(&payload).unwrap_or_else(|_| "{}".into())
 }
@@ -167,23 +184,16 @@ pub fn handle_tray_action(
 ) {
     hide_tray_menu(app);
 
-    let Some(window) = app.get_webview_window("main") else {
-        if action == "quit" {
-            exit_app(app);
-        }
-        return;
-    };
-
     match action {
         "show" => show_main_window(app),
         "listen_toggle" => {
             if *state.paused.lock() {
-                ipc::resume_listen(state, &window);
+                ipc::resume_listen(state, app);
             } else {
-                ipc::pause_listen(state, &window);
+                ipc::pause_listen(state, app);
             }
         }
-        "cycle_scheme" => ipc::handle_scheme_cycle(state, &window),
+        "cycle_scheme" => ipc::handle_scheme_cycle(state, app),
         "set_mode" => {
             let mode_key = payload
                 .as_ref()
@@ -191,7 +201,7 @@ pub fn handle_tray_action(
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if let Some(mode) = parse_mode_id(mode_key) {
-                ipc::set_active_trigger_mode(state, &window, mode);
+                ipc::set_active_trigger_mode(state, app, mode);
             }
         }
         "select_scheme" => {
@@ -201,7 +211,7 @@ pub fn handle_tray_action(
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if !mapping_id.is_empty() {
-                ipc::handle_scheme_select(state, &window, mapping_id);
+                ipc::handle_scheme_select(state, app, mapping_id);
             }
         }
         "quit" => exit_app(app),
@@ -255,7 +265,7 @@ fn estimate_menu_size(state: &AppState) -> (f64, f64) {
     } else {
         scheme_count + usize::from(scheme_count > 1)
     };
-    let item_rows = 2 + 3 + scheme_rows + 1;
+    let item_rows = 2 + 5 + 3 + scheme_rows + 1;
     let height = 16.0 + 12.0 + item_rows as f64 * 36.0 + 44.0 + 55.0;
     (264.0, height)
 }
@@ -274,6 +284,9 @@ fn show_main_window(app: &AppHandle) {
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
+        if let Some(state) = app.try_state::<Arc<AppState>>() {
+            crate::app_log::log_line(state.inner(), "window", "main window shown");
+        }
     }
 }
 
@@ -351,6 +364,30 @@ fn compute_tray_menu_position(
     y = y.max(work_y + margin).min(work_bottom - menu_h - margin);
 
     PhysicalPosition::new(x, y)
+}
+
+fn tray_voice_engine(cfg: &VoiceConfig) -> &'static str {
+    if cfg.voice_vosk.enabled {
+        "vosk"
+    } else if cfg.voice_sapi.enabled {
+        "sapi"
+    } else {
+        "off"
+    }
+}
+
+fn tray_voice_state_and_error(state: &AppState, engine: &str) -> (String, String) {
+    match engine {
+        "vosk" => (
+            state.voice_vosk_state.lock().clone(),
+            state.voice_vosk_last_error.lock().clone(),
+        ),
+        "sapi" => (
+            state.voice_sapi_state.lock().clone(),
+            state.voice_sapi_last_error.lock().clone(),
+        ),
+        _ => ("off".into(), String::new()),
+    }
 }
 
 fn mode_id(mode: TriggerMode) -> &'static str {

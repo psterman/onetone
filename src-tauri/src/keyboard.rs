@@ -107,15 +107,6 @@ pub fn restore_external_foreground() -> bool {
     false
 }
 
-/// Voice wake: restore the last external window, then send the IME shortcut there.
-pub fn send_voice_wake_chord(combo: &str, duration_ms: u32) -> bool {
-    let restored = restore_external_foreground();
-    if restored {
-        std::thread::sleep(std::time::Duration::from_millis(60));
-    }
-    send_chord(combo, duration_ms)
-}
-
 fn make_key_input(vk: u16, extended: bool, keyup: bool) -> INPUT {
     let mut input = INPUT {
         type_: INPUT_KEYBOARD,

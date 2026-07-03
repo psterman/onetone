@@ -83,6 +83,11 @@ fn main() {
 
 fn link_vosk_if_present() {
     println!("cargo::rustc-check-cfg=cfg(vosk_disabled)");
+    let vosk_engine = std::env::var("CARGO_FEATURE_VOSK_ENGINE").is_ok();
+    if !vosk_engine {
+        println!("cargo:rustc-cfg=vosk_disabled");
+        return;
+    }
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let vosk_dir = manifest_dir.join("resources/vosk");
     let lib = vosk_dir.join("libvosk.lib");
@@ -104,7 +109,8 @@ fn link_vosk_if_present() {
 }
 
 /// Windows loads link-time DLL dependencies from the exe directory before main().
-/// Copy Vosk + MinGW runtime DLLs next to onetone.exe (target/debug|release).
+/// Copy Vosk + MinGW runtime DLLs next to onetone.exe (target/debug|release) only.
+/// Do not copy into deps/ — test harness binaries live there and must not pick up MinGW DLLs.
 fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
     let dll_src = vosk_dir.join("libvosk.dll");
     if !dll_src.is_file() {
@@ -125,24 +131,22 @@ fn copy_vosk_runtime_dlls(vosk_dir: &Path, manifest_dir: &Path) {
         .unwrap_or_else(|_| manifest_dir.join("target"));
     let exe_dir = target_dir.join(&profile);
 
-    if fs::create_dir_all(&exe_dir).is_err() {
-        return;
-    }
-
     let mut copied = 0usize;
-    for name in VOSK_RUNTIME_DLLS {
-        let src = vosk_dir.join(name);
-        if !src.is_file() {
-            continue;
-        }
-        let dst = exe_dir.join(name);
-        match fs::copy(&src, &dst) {
-            Ok(_) => copied += 1,
-            Err(e) => {
-                println!(
-                    "cargo:warning=Vosk: failed to copy {name} -> {}: {e}",
-                    dst.display()
-                );
+    if fs::create_dir_all(&exe_dir).is_ok() {
+        for name in VOSK_RUNTIME_DLLS {
+            let src = vosk_dir.join(name);
+            if !src.is_file() {
+                continue;
+            }
+            let dst = exe_dir.join(name);
+            match fs::copy(&src, &dst) {
+                Ok(_) => copied += 1,
+                Err(e) => {
+                    println!(
+                        "cargo:warning=Vosk: failed to copy {name} -> {}: {e}",
+                        dst.display()
+                    );
+                }
             }
         }
     }

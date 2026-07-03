@@ -12,6 +12,20 @@
   var bootMicTimer=0;
   var uiBootstrapping=true;
 
+  var BUSY_VOICE_STATES={
+    starting:1,
+    listening:1,
+    cooldown:1,
+    triggered:1,
+    error:1,
+    stopping:1
+  };
+
+  function voiceStateBusy(st){
+    if(st==null||st==='') return false;
+    return !!BUSY_VOICE_STATES[String(st).toLowerCase()];
+  }
+
   function ensureFullLangApplied(){
     if(fullLangApplied) return;
     fullLangApplied=true;
@@ -35,6 +49,49 @@
     voiceEngineBootTimer=0;
   }
 
+  function pickFallbackEngine(cfg,snapshot){
+    var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+    var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    if(!vosk.enabled&&!sapi.enabled) return null;
+    var vSnap=snapshot&&(snapshot.voiceVosk||snapshot.voice_vosk);
+    var sSnap=snapshot&&(snapshot.voiceSapi||snapshot.voice_sapi);
+    if(vosk.enabled){
+      var vst=vSnap&&vSnap.state;
+      if(voiceStateBusy(vst)) return null;
+      if(vst==='stopped'||vst==null||vst==='') return 'vosk';
+      return null;
+    }
+    if(sapi.enabled){
+      var sst=sSnap&&sSnap.state;
+      if(voiceStateBusy(sst)) return null;
+      if(sst==='stopped'||sst==null||sst==='') return 'sapi';
+      return null;
+    }
+    return null;
+  }
+
+  function runVoiceFallback(which){
+    voiceEngineBootDone=true;
+    if(which==='vosk'){
+      hooks().vpInvoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
+        hooks().renderVoiceVoskStatus(res);
+        hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null,{homeOnly:true,lightOnly:true});
+        hooks().renderHomeLiveZone();
+      }).catch(function(){
+        voiceEngineBootDone=false;
+      });
+    }else{
+      hooks().vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
+        hooks().renderVoiceSapiStatus(res);
+        if(!hooks().handleVoiceSapiEnableResult(res,true)) voiceEngineBootDone=false;
+        hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null,{homeOnly:true,lightOnly:true});
+        hooks().renderHomeLiveZone();
+      }).catch(function(){
+        voiceEngineBootDone=false;
+      });
+    }
+  }
+
   function scheduleDeferredVoiceEngineBoot(){
     if(voiceEngineBootDone||voiceEngineBootTimer||hooks().welcomeOpen()||hooks().onboardIsOpen()) return;
     voiceEngineBootTimer=setTimeout(function(){
@@ -44,25 +101,23 @@
       var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
       var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
       if(!vosk.enabled&&!sapi.enabled) return;
-      voiceEngineBootDone=true;
-      if(vosk.enabled){
-        hooks().vpInvoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
-          hooks().renderVoiceVoskStatus(res);
-          hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null,{homeOnly:true,lightOnly:true});
-          hooks().renderHomeLiveZone();
-        }).catch(function(){
-          voiceEngineBootDone=false;
-        });
-      }else{
-        hooks().vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
-          hooks().renderVoiceSapiStatus(res);
-          if(!hooks().handleVoiceSapiEnableResult(res,true)) voiceEngineBootDone=false;
-          hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null,{homeOnly:true,lightOnly:true});
-          hooks().renderHomeLiveZone();
-        }).catch(function(){
-          voiceEngineBootDone=false;
-        });
+
+      if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+        markVoiceEngineBootHandled();
+        return;
       }
+
+      global.OneToneIpc.invoke('cmd_request_runtime',{}).then(function(snapshot){
+        var which=pickFallbackEngine(cfg,snapshot);
+        if(!which){
+          markVoiceEngineBootHandled();
+          return;
+        }
+        runVoiceFallback(which);
+      }).catch(function(err){
+        console.error('voice boot status check',err);
+        markVoiceEngineBootHandled();
+      });
     },10000);
   }
 

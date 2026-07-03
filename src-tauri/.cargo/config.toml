@@ -1,2 +1,6 @@
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=/DELAYLOAD:libvosk.dll", "-C", "link-arg=/DEFAULTLIB:delayimp"]
+# Pure-logic tests run in onetone-logic (no Tauri/native stack). Examples:
+#   cargo t runtime_event
+#   cargo t voice_bootstrap
+# Vosk integration (ignored hardware): cargo test -p onetone --features vosk-engine -- --ignored
+[alias]
+t = ["test", "-p", "onetone-logic"]

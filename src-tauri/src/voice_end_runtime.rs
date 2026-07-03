@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tauri::WebviewWindow;
+use tauri::{AppHandle, WebviewWindow};
 
 use crate::config::VoiceConfig;
 use crate::voice_vosk::{matches_final, normalize_phrase};
@@ -122,23 +122,25 @@ pub fn mark_voice_wake_key_sent(state: &AppState) {
 
 pub fn send_wake_to_target(
     state: Option<&AppState>,
-    window: &WebviewWindow,
+    app: Option<&AppHandle>,
     target_key: &str,
     duration_ms: u32,
 ) -> bool {
     let restored = crate::keyboard::restore_external_foreground();
     if restored {
         std::thread::sleep(Duration::from_millis(50));
-    } else {
-        let _ = window.run_on_main_thread({
-            let w = window.clone();
-            move || {
-                let _ = w.hide();
+    } else if let Some(app) = app {
+        if let Some(window) = crate::ipc::get_main_window(app) {
+            let _ = window.run_on_main_thread({
+                let w = window.clone();
+                move || {
+                    let _ = w.hide();
+                }
+            });
+            std::thread::sleep(Duration::from_millis(80));
+            if !crate::keyboard::restore_external_foreground() {
+                std::thread::sleep(Duration::from_millis(40));
             }
-        });
-        std::thread::sleep(Duration::from_millis(80));
-        if !crate::keyboard::restore_external_foreground() {
-            std::thread::sleep(Duration::from_millis(40));
         }
     }
     let sent = crate::keyboard::send_chord(target_key, duration_ms);
@@ -149,19 +151,23 @@ pub fn send_wake_to_target(
     }
     if !restored {
         std::thread::sleep(Duration::from_millis(60));
-        let _ = window.run_on_main_thread({
-            let w = window.clone();
-            move || {
-                let _ = w.show();
+        if let Some(app) = app {
+            if let Some(window) = crate::ipc::get_main_window(app) {
+                let _ = window.run_on_main_thread({
+                    let w = window.clone();
+                    move || {
+                        let _ = w.show();
+                    }
+                });
             }
-        });
+        }
     }
     sent
 }
 
 pub fn enter_dictating(
     state: &Arc<AppState>,
-    window: &WebviewWindow,
+    app: Option<&AppHandle>,
     mapping_id: &str,
     reason: &str,
 ) {
@@ -179,20 +185,39 @@ pub fn enter_dictating(
     *state.voice_session_mapping_id.lock() = mapping_id.to_string();
     *state.voice_session_last_end_phrase.lock() = String::new();
     *state.voice_session_last_action.lock() = reason.to_string();
-    // Session UI is polled via cmd_voice_end_status; avoid push_runtime here to reduce UI churn.
-    let _ = window;
+    if let Some(app) = app {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "session",
+            crate::runtime_event::kind::SESSION_STARTED,
+            reason,
+            Some(serde_json::json!({ "mappingId": mapping_id })),
+        );
+        crate::tray::refresh_menu(app);
+    }
 }
 
-pub fn reset_voice_session(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) {
+pub fn reset_voice_session(state: &Arc<AppState>, app: Option<&AppHandle>, reason: &str) {
     bump_commit_token(state);
     *state.voice_session_state.lock() = "idle".into();
     *state.voice_session_started_at.lock() = None;
     *state.voice_session_mapping_id.lock() = String::new();
     *state.voice_session_last_action.lock() = reason.to_string();
-    let _ = window;
+    if let Some(app) = app {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "session",
+            crate::runtime_event::kind::SESSION_ENDED,
+            reason,
+            None,
+        );
+        crate::tray::refresh_menu(app);
+    }
 }
 
-pub fn maybe_timeout_dictation(state: &Arc<AppState>, window: &WebviewWindow) {
+pub fn maybe_timeout_dictation(state: &Arc<AppState>, app: &AppHandle) {
     if session_state(state) != "dictating" {
         return;
     }
@@ -210,7 +235,7 @@ pub fn maybe_timeout_dictation(state: &Arc<AppState>, window: &WebviewWindow) {
     if started_at.elapsed() < Duration::from_millis(timeout_ms as u64) {
         return;
     }
-    reset_voice_session(state, window, "dictation timeout");
+    reset_voice_session(state, Some(app), "dictation timeout");
 }
 
 fn normalize_end_text(text: &str) -> String {
@@ -260,7 +285,7 @@ pub fn text_matches_wake_phrase(cfg: &VoiceConfig, text: &str) -> bool {
     matches_final(text, &cfg.voice_vosk.phrases).is_some()
 }
 
-pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, window: &WebviewWindow, text: &str) {
+pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
     if !should_match_end_phrase(state) {
         return;
     }
@@ -278,7 +303,7 @@ pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, window: &WebviewWind
         )
     };
     if let Some(phrase) = matches_end_phrase(text, &phrases_zh, &phrases_en) {
-        handle_end_phrase(state, window, &phrase);
+        handle_end_phrase(state, app, &phrase);
     }
 }
 
@@ -290,23 +315,31 @@ pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
     })
 }
 
-pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, window: &WebviewWindow) {
+pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) {
     if session_state(state) != "dictating" {
         return;
     }
-    finish_dictation_session(state, window, "trigger key", true);
+    finish_dictation_session(state, Some(app), "trigger key", true);
 }
 
-pub fn handle_end_phrase(state: &Arc<AppState>, window: &WebviewWindow, phrase: &str) {
+pub fn handle_end_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if session_state(state) != "dictating" {
         return;
     }
-    finish_dictation_session(state, window, phrase, false);
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "session",
+        crate::runtime_event::kind::END_PHRASE_MATCHED,
+        phrase,
+        None,
+    );
+    finish_dictation_session(state, Some(app), phrase, false);
 }
 
 fn finish_dictation_session(
     state: &Arc<AppState>,
-    window: &WebviewWindow,
+    app: Option<&AppHandle>,
     phrase: &str,
     target_key_already_sent: bool,
 ) {
@@ -341,7 +374,7 @@ fn finish_dictation_session(
     *state.voice_session_last_end_phrase.lock() = phrase.to_string();
 
     let state2 = Arc::clone(state);
-    let window2 = window.clone();
+    let app2 = app.cloned();
     let phrase2 = phrase.to_string();
     std::thread::spawn(move || {
         if !target_key_already_sent {
@@ -351,13 +384,23 @@ fn finish_dictation_session(
                 *state2.voice_session_last_action.lock() =
                     format!("targetKey send failed: {target_key}");
                 let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
-                crate::ipc::push_runtime_with_cue(
-                    state2.as_ref(),
-                    &window2,
-                    "send_failed",
-                    &session_mapping_id,
-                    sound_cue.as_deref(),
-                );
+                if let Some(ref app) = app2 {
+                    crate::ipc::push_runtime_via_app(
+                        app,
+                        state2.as_ref(),
+                        "send_failed",
+                        &session_mapping_id,
+                        sound_cue.as_deref(),
+                    );
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state2.as_ref(),
+                        "session",
+                        crate::runtime_event::kind::VOICE_SEND_FAILED,
+                        &format!("session targetKey send failed: {target_key}"),
+                        None,
+                    );
+                }
                 return;
             }
         }
@@ -395,25 +438,37 @@ fn finish_dictation_session(
                 *state2.voice_session_last_action.lock() = "commitKey sent".into();
                 let sound_cue =
                     crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_success");
-                crate::ipc::push_runtime_with_cue(
-                    state2.as_ref(),
-                    &window2,
-                    "voice_commit_sent",
-                    &mapping_snapshot,
-                    sound_cue.as_deref(),
-                );
+                if let Some(ref app) = app2 {
+                    crate::ipc::push_runtime_via_app(
+                        app,
+                        state2.as_ref(),
+                        "voice_commit_sent",
+                        &mapping_snapshot,
+                        sound_cue.as_deref(),
+                    );
+                }
             } else {
                 *state2.voice_session_state.lock() = "error".into();
                 *state2.voice_session_last_action.lock() =
                     format!("commitKey send failed: {commit_key}");
                 let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), "send_fail");
-                crate::ipc::push_runtime_with_cue(
-                    state2.as_ref(),
-                    &window2,
-                    "send_failed",
-                    &mapping_snapshot,
-                    sound_cue.as_deref(),
-                );
+                if let Some(ref app) = app2 {
+                    crate::ipc::push_runtime_via_app(
+                        app,
+                        state2.as_ref(),
+                        "send_failed",
+                        &mapping_snapshot,
+                        sound_cue.as_deref(),
+                    );
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state2.as_ref(),
+                        "session",
+                        crate::runtime_event::kind::VOICE_SEND_FAILED,
+                        &format!("session commitKey send failed: {commit_key}"),
+                        None,
+                    );
+                }
             }
             std::thread::sleep(Duration::from_millis(500));
         } else {
@@ -423,6 +478,17 @@ fn finish_dictation_session(
         if *state2.voice_session_commit_token.lock() == token {
             *state2.voice_session_state.lock() = "idle".into();
             *state2.voice_session_started_at.lock() = None;
+            if let Some(ref app) = app2 {
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state2.as_ref(),
+                    "session",
+                    crate::runtime_event::kind::SESSION_ENDED,
+                    "dictation finished",
+                    None,
+                );
+                crate::tray::refresh_menu(app);
+            }
         }
         let _ = phrase2;
     });
@@ -496,7 +562,7 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
 
 pub fn voice_end_set_enabled(
     state: &Arc<AppState>,
-    window: &WebviewWindow,
+    app: Option<&AppHandle>,
     enabled: bool,
 ) -> serde_json::Value {
     {
@@ -506,7 +572,7 @@ pub fn voice_end_set_enabled(
         crate::config::save_config(&cfg);
     }
     if !enabled {
-        reset_voice_session(state, window, "voice end disabled");
+        reset_voice_session(state, app, "voice end disabled");
     }
     voice_end_status(state)
 }

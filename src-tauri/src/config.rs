@@ -186,6 +186,8 @@ pub struct VoiceConfig {
     pub coach_hud_enabled: bool,
     #[serde(default, rename = "sounds")]
     pub sounds: SoundsConfig,
+    #[serde(default = "default_false", rename = "startMinimizedToTray")]
+    pub start_minimized_to_tray: bool,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -211,6 +213,9 @@ fn default_enter_delay_ms() -> u32 {
 }
 fn default_true() -> bool {
     true
+}
+fn default_false() -> bool {
+    false
 }
 fn default_debounce_ms() -> u32 {
     80
@@ -286,10 +291,6 @@ pub struct VoiceEndConfig {
     pub auto_send_enabled: bool,
     #[serde(default = "default_voice_end_target_key")]
     pub target_key: String,
-}
-
-fn default_false() -> bool {
-    false
 }
 
 pub fn default_voice_end_phrases_zh() -> Vec<String> {
@@ -681,10 +682,6 @@ fn volume_raw_event_with_device(hotkey: &str, label: &str, device: &str) -> RawE
     }
 }
 
-fn volume_raw_event(hotkey: &str, label: &str) -> RawEvent {
-    volume_raw_event_with_device(hotkey, label, "")
-}
-
 ///     /        ?
 pub fn is_peripheral_trigger_key(key: &str) -> bool {
     let c = canonical_trigger(key);
@@ -960,6 +957,7 @@ impl Default for VoiceConfig {
             key_wake_sound_enabled: false,
             coach_hud_enabled: false,
             sounds: SoundsConfig::default(),
+            start_minimized_to_tray: false,
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -1577,7 +1575,20 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.voice_vosk = existing.voice_vosk.clone();
     cfg.voice_sapi = existing.voice_sapi.clone();
     cfg.voice_end = existing.voice_end.clone();
+    cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
     Some(cfg)
+}
+
+pub fn should_show_main_on_startup(cfg: &VoiceConfig) -> bool {
+    !cfg.start_minimized_to_tray
+}
+
+pub fn prefer_vosk_when_both_voice_engines_enabled(cfg: &mut VoiceConfig) -> bool {
+    if cfg.voice_vosk.enabled && cfg.voice_sapi.enabled {
+        cfg.voice_sapi.enabled = false;
+        return true;
+    }
+    false
 }
 
 fn legacy_config_candidates() -> Vec<PathBuf> {
@@ -1627,7 +1638,7 @@ pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
     state.machine_pool.lock().prune(&cfg.mapping_ids());
 }
 
-pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
+pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
     let path = config_path();
     std::thread::spawn(move || {
         let (tx, rx) = std::sync::mpsc::channel();
@@ -1652,12 +1663,37 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
                     }
                     let mut new_cfg = load_config();
                     new_cfg.migrate();
+                    new_cfg.normalize();
+                    let normalized_voice_engine =
+                        prefer_vosk_when_both_voice_engines_enabled(&mut new_cfg);
+
+                    let old_cfg = state.cfg.lock().clone();
                     {
                         *state.cfg.lock() = new_cfg.clone();
                     }
                     apply_config(&state, &new_cfg);
+                    crate::voice_bootstrap::apply_voice_config_change(
+                        &app, &state, &old_cfg, &new_cfg,
+                    );
                     let payload = ipc::mvp_init_payload(&state, "unchanged");
-                    ipc::emit_to_js_main(&window, payload);
+                    ipc::emit_to_main_if_available(&app, Some(&state), payload);
+                    if normalized_voice_engine {
+                        crate::app_log::log_line(
+                            &state,
+                            "config",
+                            "voice config normalized in memory: vosk preferred over sapi",
+                        );
+                    }
+                    crate::app_log::log_line(&state, "config", "config file changed");
+                    crate::runtime_event::publish_runtime_event(
+                        Some(&app),
+                        &state,
+                        "config",
+                        crate::runtime_event::kind::CONFIG_CHANGED,
+                        "config file changed",
+                        None,
+                    );
+                    crate::tray::refresh_menu(&app);
                     last_emit = std::time::Instant::now();
                 }
             }
@@ -1668,6 +1704,44 @@ pub fn start_watcher(state: Arc<AppState>, window: tauri::WebviewWindow) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn start_minimized_to_tray_missing_field_means_show() {
+        let cfg: VoiceConfig =
+            serde_json::from_str(r#"{"version":5,"mappings":[],"trash":[]}"#).unwrap();
+        assert!(!cfg.start_minimized_to_tray);
+        assert!(should_show_main_on_startup(&cfg));
+    }
+
+    #[test]
+    fn start_minimized_to_tray_explicit_true_means_hide() {
+        let cfg: VoiceConfig = serde_json::from_str(
+            r#"{"version":5,"mappings":[],"trash":[],"startMinimizedToTray":true}"#,
+        )
+        .unwrap();
+        assert!(!should_show_main_on_startup(&cfg));
+    }
+
+    #[test]
+    fn hot_reload_voice_engine_prefers_vosk_in_memory() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_sapi.enabled = true;
+
+        assert!(prefer_vosk_when_both_voice_engines_enabled(&mut cfg));
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_sapi.enabled);
+    }
+
+    #[test]
+    fn hot_reload_voice_engine_keeps_sapi_when_vosk_off() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_sapi.enabled = true;
+
+        assert!(!prefer_vosk_when_both_voice_engines_enabled(&mut cfg));
+        assert!(!cfg.voice_vosk.enabled);
+        assert!(cfg.voice_sapi.enabled);
+    }
 
     #[test]
     fn migrate_v2_to_v3() {

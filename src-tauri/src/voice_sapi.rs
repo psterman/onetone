@@ -531,6 +531,7 @@ mod tests {
     use super::imp::spike_create_recognizer;
 
     #[test]
+    #[ignore = "requires Windows SAPI COM"]
     fn spike_create_recognizer_ok() {
         spike_create_recognizer().expect("SAPI COM spike");
     }

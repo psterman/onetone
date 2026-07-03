@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::AppHandle;
 
 use crate::config;
-use crate::ipc::core::{emit_to_js_main, push_runtime};
+use crate::ipc::core::{emit_to_main_if_available, get_main_window, push_runtime_via_app};
 use crate::AppState;
 
-pub fn handle_scheme_cycle(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
+pub fn handle_scheme_cycle(state: &Arc<AppState>, app: &AppHandle) {
     if *state.recording.lock() {
         return;
     }
@@ -15,17 +15,13 @@ pub fn handle_scheme_cycle(state: &Arc<AppState>, window: &tauri::WebviewWindow)
         cfg.cycle_scheme_same_trigger()
     };
     let Some((from_id, to_id)) = switched else {
-        push_runtime(state.as_ref(), window, "scheme_cycle_skip", "");
+        push_runtime_via_app(app, state.as_ref(), "scheme_cycle_skip", "", None);
         return;
     };
-    finish_scheme_switch(state, window, &from_id, &to_id, "scheme_cycle");
+    finish_scheme_switch(state, app, &from_id, &to_id, "scheme_cycle");
 }
 
-pub fn handle_scheme_select(
-    state: &Arc<AppState>,
-    window: &tauri::WebviewWindow,
-    mapping_id: &str,
-) {
+pub fn handle_scheme_select(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str) {
     if *state.recording.lock() {
         return;
     }
@@ -34,15 +30,15 @@ pub fn handle_scheme_select(
         cfg.select_scheme(mapping_id)
     };
     let Some((from_id, to_id)) = switched else {
-        push_runtime(state.as_ref(), window, "scheme_select_skip", "");
+        push_runtime_via_app(app, state.as_ref(), "scheme_select_skip", "", None);
         return;
     };
-    finish_scheme_switch(state, window, &from_id, &to_id, "scheme_select");
+    finish_scheme_switch(state, app, &from_id, &to_id, "scheme_select");
 }
 
 fn finish_scheme_switch(
     state: &Arc<AppState>,
-    window: &tauri::WebviewWindow,
+    app: &AppHandle,
     from_id: &str,
     to_id: &str,
     action: &str,
@@ -60,9 +56,11 @@ fn finish_scheme_switch(
             .unwrap_or_default()
     };
     let cfg_snapshot = state.cfg.lock().clone();
-    push_runtime(state.as_ref(), window, action, to_id);
-    if !window.is_focused().unwrap_or(false) {
-        let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+    push_runtime_via_app(app, state.as_ref(), action, to_id, None);
+    if let Some(window) = get_main_window(app) {
+        if !window.is_focused().unwrap_or(false) {
+            let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+        }
     }
     let payload = serde_json::json!({
         "type": "mvp_scheme_switched",
@@ -71,6 +69,14 @@ fn finish_scheme_switch(
         "label": label,
         "config": cfg_snapshot,
     });
-    emit_to_js_main(window, payload);
-    crate::tray::refresh_menu(window.app_handle());
+    emit_to_main_if_available(app, Some(state), payload);
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "scheme",
+        crate::runtime_event::kind::SCHEME_SWITCHED,
+        &format!("scheme switched: {from_id} -> {to_id}"),
+        Some(serde_json::json!({ "fromId": from_id, "toId": to_id, "action": action })),
+    );
+    crate::tray::refresh_menu(app);
 }

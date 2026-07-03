@@ -9,10 +9,12 @@ mod native_dll;
 mod policy_config;
 mod press_gesture;
 mod resource_monitor;
+mod runtime_event;
 mod send_guard;
 mod state;
 mod tray;
 mod update;
+mod voice_bootstrap;
 mod voice_end_runtime;
 mod voice_sapi;
 mod voice_sapi_runtime;
@@ -84,6 +86,7 @@ pub struct AppState {
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
+    pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
@@ -168,6 +171,7 @@ pub fn run() {
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
+        runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
     });
 
     app_log::log_line(&app_state, "startup", "OneTone backend initialized");
@@ -177,6 +181,9 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(state) = app.try_state::<Arc<AppState>>() {
+                app_log::log_line(state.inner(), "startup", "single instance show main window");
+            }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.unminimize();
@@ -198,7 +205,12 @@ pub fn run() {
                 app_log::log_line(&app_state, "startup", "dll search path primed");
             }
 
-            let window = app.get_webview_window("main").unwrap();
+            let Some(window) = app.get_webview_window("main") else {
+                app_log::log_line(&app_state, "startup", "main window not available at setup");
+                tray::setup(app.handle(), app_state.clone())?;
+                app_log::log_line(&app_state, "startup", "tray initialized");
+                return Ok(());
+            };
             app_log::log_line(&app_state, "startup", "main window acquired");
 
             let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
@@ -233,15 +245,15 @@ pub fn run() {
             *app_state.hotkey_mgr.lock() = Some(mgr);
             app_log::log_line(&app_state, "startup", "hotkey manager installed");
 
-            let window_init = window.clone();
             let state_init = app_state.clone();
             let mode_init = _backdrop_mode.clone();
+            let app_init = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(Duration::from_millis(400)).await;
-                ipc::push_mvp_init(&state_init, &window_init, &mode_init);
+                ipc::push_mvp_init_via_app(&state_init, &app_init, &mode_init);
             });
 
-            config::start_watcher(app_state.clone(), window.clone());
+            config::start_watcher(app_state.clone(), app.handle().clone());
             app_log::log_line(&app_state, "startup", "config watcher started");
             if !safe_mode {
                 update::start_background_checks(app.handle().clone(), app_state.clone());
@@ -252,18 +264,52 @@ pub fn run() {
 
             tray::setup(app.handle(), app_state.clone())?;
             app_log::log_line(&app_state, "startup", "tray initialized");
-            app_log::log_line(&app_state, "startup", "voice boot deferred to UI idle");
+
+            let should_show = {
+                let cfg = app_state.cfg.lock();
+                config::should_show_main_on_startup(&cfg)
+            };
+            if should_show {
+                app_log::log_line(&app_state, "startup", "startup policy: show main window");
+                let _ = window.show();
+                runtime_event::publish_runtime_event(
+                    Some(app.handle()),
+                    &app_state,
+                    "startup",
+                    runtime_event::kind::STARTUP_POLICY,
+                    "startup policy: show main window",
+                    Some(serde_json::json!({ "showMain": true })),
+                );
+            } else {
+                app_log::log_line(
+                    &app_state,
+                    "startup",
+                    "startup policy: hide main window (tray-first)",
+                );
+                let _ = window.hide();
+                runtime_event::publish_runtime_event(
+                    Some(app.handle()),
+                    &app_state,
+                    "startup",
+                    runtime_event::kind::STARTUP_POLICY,
+                    "startup policy: hide main window (tray-first)",
+                    Some(serde_json::json!({ "showMain": false })),
+                );
+            }
 
             let window_clone = window.clone();
+            let state_for_close = app_state.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window_clone.hide();
+                    app_log::log_line(&state_for_close, "window", "main window hidden");
                 }
             });
 
             let state2 = app_state.clone();
             let win2 = window.clone();
+            let app2 = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 app_log::log_line(&state2, "startup", "runtime loop started");
                 let mut last_key: Option<String> = None;
@@ -279,9 +325,9 @@ pub fn run() {
                         keyboard::track_foreground_for_send();
                         last_fg_track = std::time::Instant::now();
                     }
-                    voice_sapi_runtime::drain_voice_sapi_events(&state2, &win2);
-                    voice_vosk_runtime::drain_voice_vosk_events(&state2, &win2);
-                    voice_end_runtime::maybe_timeout_dictation(&state2, &win2);
+                    voice_sapi_runtime::drain_voice_sapi_events(&state2, &app2);
+                    voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
+                    voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
 
                     if crate::send_guard::is_active() {
                         continue;
@@ -343,13 +389,13 @@ pub fn run() {
                     }
 
                     if key_name == config::SCHEME_CYCLE_MARKER {
-                        ipc::handle_scheme_cycle(&state2, &win2);
+                        ipc::handle_scheme_cycle(&state2, &app2);
                         continue;
                     }
 
                     if let Some(mapping_id) = key_name.strip_prefix(config::SCHEME_SELECT_PREFIX) {
                         if !mapping_id.is_empty() {
-                            ipc::handle_scheme_select(&state2, &win2, mapping_id);
+                            ipc::handle_scheme_select(&state2, &app2, mapping_id);
                         }
                         continue;
                     }
@@ -357,6 +403,8 @@ pub fn run() {
                     ipc::dispatch_physical_event(&state2, &win2, &key_name);
                 }
             });
+
+            voice_bootstrap::bootstrap_voice_engines(app.handle(), &app_state, safe_mode);
 
             Ok(())
         })

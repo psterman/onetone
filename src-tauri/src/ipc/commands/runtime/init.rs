@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::ipc::core::{emit_to_js_main, mvp_init_payload, push_runtime};
+use crate::ipc::core::{build_runtime_snapshot, emit_to_js_main, mvp_init_payload, push_runtime};
 use crate::AppState;
 
 #[tauri::command]
@@ -19,6 +19,12 @@ pub fn cmd_ready(
 }
 
 #[tauri::command]
-pub fn cmd_request_runtime(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
+pub fn cmd_request_runtime(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    let snapshot = build_runtime_snapshot(&app, &state);
     push_runtime(&state, &window, "runtime_refresh", "");
+    snapshot
 }

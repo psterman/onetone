@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use tauri::{Emitter, Manager};
+use tauri::AppHandle;
 
 use crate::AppState;
 
-use super::core::push_runtime;
+use super::core::{emit_to_main_if_available, push_runtime_via_app};
 
-pub fn pause_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
+pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
     state.machine_pool.lock().reset_all();
     state.gesture.lock().reset();
     state.record_gesture.lock().reset();
@@ -19,15 +19,31 @@ pub fn pause_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
     }
     *state.paused.lock() = true;
     let ack = serde_json::json!({"type":"mvp_paused","ok":true});
-    window.emit("to_js", &ack).ok();
-    push_runtime(state.as_ref(), window, "paused", "");
-    crate::tray::refresh_menu(window.app_handle());
+    emit_to_main_if_available(app, Some(state), ack);
+    push_runtime_via_app(app, state.as_ref(), "paused", "", None);
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "listen",
+        crate::runtime_event::kind::LISTEN_PAUSED,
+        "listen paused",
+        None,
+    );
+    crate::tray::refresh_menu(app);
 }
 
-pub fn resume_listen(state: &Arc<AppState>, window: &tauri::WebviewWindow) {
+pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     *state.paused.lock() = false;
     let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
-    window.emit("to_js", &ack).ok();
-    push_runtime(state.as_ref(), window, "resumed", "");
-    crate::tray::refresh_menu(window.app_handle());
+    emit_to_main_if_available(app, Some(state), ack);
+    push_runtime_via_app(app, state.as_ref(), "resumed", "", None);
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "listen",
+        crate::runtime_event::kind::LISTEN_RESUMED,
+        "listen resumed",
+        None,
+    );
+    crate::tray::refresh_menu(app);
 }

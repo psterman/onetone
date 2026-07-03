@@ -1,7 +1,21 @@
+[workspace]
+members = ["crates/onetone-logic"]
+resolver = "2"
+
 [package]
 name = "onetone"
 version = "1.0.0"
 edition = "2021"
+
+[lib]
+# Unit tests in lib modules crash on Windows (STATUS_ENTRYPOINT_NOT_FOUND) when the Tauri
+# test harness loads the full native stack. Pure-logic tests live in tests/ instead.
+test = false
+
+[features]
+default = ["vosk-engine"]
+# Offline Vosk wake word (native libvosk). Disabled in `cargo test` via .cargo/config.toml alias.
+vosk-engine = ["dep:vosk"]
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
@@ -22,9 +36,10 @@ raw-window-handle = "0.6"
 image = "0.25"
 cpal = "0.15"
 crossbeam-channel = "0.5"
+onetone-logic = { path = "crates/onetone-logic" }
 
 [target.'cfg(windows)'.dependencies]
-vosk = "0.3.1"
+vosk = { version = "0.3.1", optional = true }
 winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi"] }
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",

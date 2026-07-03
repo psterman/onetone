@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tauri::Manager;
+
 use crate::AppState;
 
 /// 测试发送目标键；直接返回结果 JSON。
@@ -73,7 +75,7 @@ pub fn cmd_test_send(
 
     let ok = crate::voice_end_runtime::send_wake_to_target(
         Some(state.inner()),
-        &window,
+        Some(&window.app_handle()),
         &key,
         duration_ms,
     );

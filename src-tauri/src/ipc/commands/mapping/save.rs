@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 use crate::ipc::core::{push_runtime, sync_config_ui};
 use crate::AppState;
@@ -25,10 +25,10 @@ pub fn cmd_save(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow
 
 #[tauri::command]
 pub fn cmd_pause(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
-    crate::ipc::pause_listen(&state, &window);
+    crate::ipc::pause_listen(&state, window.app_handle());
 }
 
 #[tauri::command]
 pub fn cmd_resume(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow) {
-    crate::ipc::resume_listen(&state, &window);
+    crate::ipc::resume_listen(&state, window.app_handle());
 }

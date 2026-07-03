@@ -5,8 +5,12 @@ use crate::ipc::core::persist_and_rebind;
 use crate::press_gesture::RecordedGesture;
 use crate::AppState;
 
-use crate::ipc::recording::apply::{apply_trigger_capture, enable_mapping_if_complete, normalize_record_key};
-use crate::ipc::recording::gesture::{gesture_mode_label, is_spurious_trigger_capture, sanitize_trigger_capture};
+use crate::ipc::recording::apply::{
+    apply_trigger_capture, enable_mapping_if_complete, normalize_record_key,
+};
+use crate::ipc::recording::gesture::{
+    gesture_mode_label, is_spurious_trigger_capture, sanitize_trigger_capture,
+};
 use crate::ipc::recording::RecordMode;
 
 use super::guard::clear_record_guard;
