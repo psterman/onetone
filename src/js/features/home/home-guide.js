@@ -75,16 +75,12 @@
     return{
       panel:'homeLivePanelVoice',
       layout:'voice-lane',
-      flowKeys:['homeVoiceGuideFlowWake','homeVoiceGuideFlowMic','homeVoiceGuideFlowMode','homeFinishGuideEnd','homeVoiceGuideFlowEnable'],
+      flowKeys:['homeVoiceGuideFlowWake','homeVoiceGuideFlowEnable','homeVoiceGuideFlowLinks'],
       cautionKey:'homeVoiceGuideCaution',
       pins:[
-        {target:'#homeVoiceMapWakeKey',detailKey:'homeVoiceGuideWake',labelKey:'homeVoiceWakeFloatLbl',step:1},
-        {target:'#homeVoiceMapFoot',detailKey:'homeVoiceGuideMic',labelEl:'#homeVoiceWakeMicLbl',step:2},
-        {target:'#homeVoiceModeSwitch',detailKey:'homeVoiceGuideFlowMode',labelEl:'#homeVoiceEngineBarLbl',step:3},
-        {target:'#btnHomeVoiceModeSapi',detailKey:'homeVoiceGuideModeSapi',labelFromTargetBtn:true,callout:false},
-        {target:'#btnHomeVoiceModeVosk',detailKey:'homeVoiceGuideModeVosk',labelFromTargetBtn:true,callout:false},
-        {target:'#homeVoiceMapEndPhraseKey',detailKey:'homeFinishGuideEnd',labelEl:'#homeVoiceMapEndPhraseLblText',step:4},
-        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:5}
+        {target:'#homeVoiceSimplePhrase',detailKey:'homeVoiceGuideWake',labelKey:'homeVoiceMapWakeLbl',step:1},
+        {target:'#homeVoiceSimpleLinks',detailKey:'homeVoiceGuideFlowLinks',labelKey:'homeVoiceSimpleLinkWake',step:2},
+        {target:'#btnHomeVoiceToggle',detailKey:'homeVoiceGuideFlowEnable',labelFromTargetBtn:true,step:3}
       ]
     };
   }

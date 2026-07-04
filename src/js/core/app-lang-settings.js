@@ -12,6 +12,9 @@
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
+    var settingsVoiceCommonTitle=$('settingsVoiceCommonTitle'); if(settingsVoiceCommonTitle) settingsVoiceCommonTitle.textContent=d.settingsVoiceCommonTitle;
+    var settingsVoiceAdvancedSummary=$('settingsVoiceAdvancedSummary'); if(settingsVoiceAdvancedSummary) settingsVoiceAdvancedSummary.textContent=d.settingsVoiceAdvancedSummary;
+    var voiceSettingsEngineSub=$('voiceSettingsEngineSub'); if(voiceSettingsEngineSub) voiceSettingsEngineSub.textContent=d.settingsVoiceEngineSub;
     var quickKeyWakeSummary=$('quickKeyWakeSummary'); if(quickKeyWakeSummary) quickKeyWakeSummary.textContent=d.quickKeyWakeSummary;
     var quickKeyWakeHint=$('quickKeyWakeHint'); if(quickKeyWakeHint) quickKeyWakeHint.textContent=d.quickKeyWakeHint;
     var keyExecFinishTitle=$('keyExecFinishTitle'); if(keyExecFinishTitle) keyExecFinishTitle.textContent=d.keyExecFinishTitle;

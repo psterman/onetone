@@ -65,8 +65,6 @@
       toggleHomeSchemeMappingEnabled:deps.toggleHomeSchemeMappingEnabled,
       switchVoiceMode:deps.switchVoiceMode,
       homeToggleVoiceWake:H.homeToggleVoiceWake,
-      updateHomeVoiceSapiConfidence:deps.updateHomeVoiceSapiConfidence,
-      toggleHomeVoiceEndAutoSend:deps.toggleHomeVoiceEndAutoSend,
       focusSettingsField:deps.focusSettingsField,
       syncRecordingAudioUi:deps.syncRecordingAudioUi,
       openHomeKeyFinishSettings:H.openHomeKeyFinishSettings,

@@ -9,11 +9,46 @@
     sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
   };
   var lastPanel='basic';
+
+  function openVoiceAdvancedSection(){
+    const el=$('settingsVoiceAdvancedDetails');
+    if(el&&el.tagName==='DETAILS') el.open=true;
+  }
+
+  function scrollSettingsToTarget(ids){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        for(let i=0;i<ids.length;i++){
+          const el=$(ids[i]);
+          if(!el) continue;
+          const wrap=$('settingsPanelWrap');
+          if(wrap&&wrap.contains(el)){
+            const er=el.getBoundingClientRect();
+            const wr=wrap.getBoundingClientRect();
+            if(er.top<wr.top+8) wrap.scrollTop+=er.top-wr.top-12;
+            else if(er.bottom>wr.bottom-8) wrap.scrollTop+=er.bottom-wr.bottom+12;
+          }else{
+            el.scrollIntoView({behavior:'smooth',block:'nearest'});
+          }
+          break;
+        }
+      });
+    });
+  }
+
   function focusSettingsField(focus){
     if(!focus) return;
     if(focus==='trigger'||focus==='target'||focus==='keyFinishFlow'){
       hooks().focusSchemeEditStep(focus==='keyFinishFlow'?'finish':focus);
       return;
+    }
+    if(focus==='recordingAudio'){
+      if(ui.settingsPanel!=='sounds') setSettingsPanel('sounds');
+      scrollSettingsToTarget(['recordingAudioCard']);
+      return;
+    }
+    if(focus==='wakePhrases'||focus==='engine'){
+      openVoiceAdvancedSection();
     }
     if(focus==='wakePhrases'){
       hooks().setVoiceWakeExpandedMode(hooks().currentVoiceMode()==='vosk'?'vosk':'sapi');
@@ -29,8 +64,7 @@
       mic:'voiceMicSection',
       engine:'voiceModePanel',
       autoSend:'voiceSettingsAutoCard',
-      delay:'voiceSettingsAutoCard',
-      recordingAudio:'recordingAudioCard'
+      delay:'voiceSettingsAutoCard'
     };
     const detailId=detailByFocus[focus];
     if(detailId){
@@ -41,37 +75,20 @@
       const micDetails=$('voiceMicPickerDetails');
       if(micDetails) micDetails.open=true;
     }
+    const expanded=global.OneToneVoiceWake.getExpandedMode();
     const map={
       trigger:['btnRecordTrigger','keySchemeEditTrigger'],
       target:['btnRecordTarget','keySchemeEditTarget'],
       mappings:['keyWakeMappingSection','mappingListTitle'],
       keyFinishFlow:['keySchemeEditFinish','keySchemeStepFinish'],
       mic:['micDeviceList','micTitle'],
-      engine:global.OneToneVoiceWake.getExpandedMode()==='vosk'?['voiceVoskTitle']:['voiceSapiTitle'],
-      wakePhrases:global.OneToneVoiceWake.getExpandedMode()==='vosk'?['voiceVoskPresetsCn']:['voiceSapiPresets'],
+      engine:['voiceSettingsEngineCard','voiceModePanel'],
+      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceSettingsEngineCard']:['voiceSapiPresets','voiceSettingsEngineCard'],
       endPhrases:['voiceSettingsEndPhraseCard'],
       autoSend:['voiceSettingsAutoCard'],
-      delay:['voiceSettingsDelayRange'],
-      recordingAudio:['recordingAudioCard']
+      delay:['voiceSettingsDelayRange']
     };
-    const ids=map[focus]||[];
-    requestAnimationFrame(function(){
-      for(let i=0;i<ids.length;i++){
-        const el=$(ids[i]);
-        if(el){
-          const wrap=$('settingsPanelWrap');
-          if(wrap&&wrap.contains(el)){
-            const er=el.getBoundingClientRect();
-            const wr=wrap.getBoundingClientRect();
-            if(er.top<wr.top+8) wrap.scrollTop+=er.top-wr.top-12;
-            else if(er.bottom>wr.bottom-8) wrap.scrollTop+=er.bottom-wr.bottom+12;
-          }else{
-            el.scrollIntoView({behavior:'smooth',block:'nearest'});
-          }
-          break;
-        }
-      }
-    });
+    scrollSettingsToTarget(map[focus]||[]);
   }
   function resetSettingsLayoutScroll(opts){
     opts=opts||{};
@@ -212,6 +229,9 @@
       if(!ui.drawerOpen) return;
       const focus=opts.focus||(opts.keyWakeFocus?'trigger':null);
       if(focus) focusSettingsField(focus);
+      if(opts.debugMode&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
+        global.OneToneVoiceDiag.setFocusMode(opts.debugMode);
+      }
     });
   }
   function closeDrawer(){

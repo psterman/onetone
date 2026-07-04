@@ -2,6 +2,19 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+
+  function openVoiceLink(linkId){
+    var map=global.HOME_VOICE_LINK_MAP||{};
+    var action=map[linkId];
+    if(!action) return;
+    var hooks=h();
+    if(action.panel==='debug'){
+      hooks.openSettings({ panel:'debug', debugMode:action.debugMode||'diagnostics' });
+      return;
+    }
+    hooks.openSettings({ panel:action.panel, focus:action.focus });
+  }
+
   function bindEvents(){
     var hooks=h();
     $('btnWelcomeClose').onclick=function(){ hooks.closeWelcome(true); };
@@ -66,64 +79,16 @@
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'&&global.OneToneHomeScheme.isMenuOpen()) hooks.closeHomeSchemeMenu();
     });
-    $('btnHomeVoiceModeSapi').onclick=function(){ hooks.switchVoiceMode('sapi'); };
-    $('btnHomeVoiceModeVosk').onclick=function(){ hooks.switchVoiceMode('vosk'); };
-    $('btnHomeVoiceToggle').onclick=hooks.homeToggleVoiceWake;
-    var btnHomeMicSettings=$('btnHomeMicSettings');
-    if(btnHomeMicSettings){
-      btnHomeMicSettings.onclick=function(){
-        hooks.openSettings({panel:'voiceWake',focus:'mic'});
-      };
-    }
-    $('homeVoiceSapiConfidence').oninput=function(){ hooks.updateHomeVoiceSapiConfidence(false); };
-    $('homeVoiceSapiConfidence').onchange=function(){ hooks.updateHomeVoiceSapiConfidence(true); };
-    $('btnHomeEndToggle').onclick=function(e){ e.stopPropagation(); hooks.toggleVoiceEnd(); };
-    $('btnHomeEndAutoSend').onclick=function(e){ e.stopPropagation(); hooks.toggleHomeVoiceEndAutoSend(); };
-    var btnHomeEndSettings=$('btnHomeEndSettings');
-    if(btnHomeEndSettings){
-      btnHomeEndSettings.onclick=function(e){
-        e.stopPropagation();
-        hooks.openSettings({panel:'voiceWake',focus:'endPhrases'});
-      };
-    }
-    var btnHomeAutoSettings=$('btnHomeAutoSettings');
-    if(btnHomeAutoSettings){
-      btnHomeAutoSettings.onclick=function(e){
-        e.stopPropagation();
-        hooks.openSettings({panel:'voiceWake',focus:'autoSend'});
-      };
-    }
-    var homeVoiceMapCardEl=$('homeVoiceMapCard');
-    if(homeVoiceMapCardEl){
-      homeVoiceMapCardEl.addEventListener('click',function(e){
-        if(e.target.closest('#homeVoiceMapFoot')||e.target.closest('#homeVoiceWakeMicList')) return;
-        if(e.target.closest('button')||e.target.closest('input')) return;
-        if(e.target.closest('#homeVoiceMapWake')){ hooks.openSettings({panel:'voiceWake',focus:'wakePhrases'}); return; }
-        if(e.target.closest('#homeVoiceMapEndPhraseKey')) return;
-        if(e.target.closest('#homeVoiceEndMeta')) return;
-        if(e.target.closest('#homeVoiceMapEndPhrase')){ hooks.openSettings({panel:'voiceWake',focus:'endPhrases'}); return; }
+    var btnHomeVoiceToggle=$('btnHomeVoiceToggle');
+    if(btnHomeVoiceToggle) btnHomeVoiceToggle.onclick=hooks.homeToggleVoiceWake;
+    var homeVoiceSimpleLinks=$('homeVoiceSimpleLinks');
+    if(homeVoiceSimpleLinks){
+      homeVoiceSimpleLinks.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-link-id]');
+        if(!btn) return;
+        e.preventDefault();
+        openVoiceLink(btn.getAttribute('data-link-id')||'');
       });
-    }
-    var homeVoiceEngineBarLbl=$('homeVoiceEngineBarLbl');
-    if(homeVoiceEngineBarLbl){
-      homeVoiceEngineBarLbl.style.cursor='pointer';
-      homeVoiceEngineBarLbl.addEventListener('click',function(){
-        hooks.openSettings({panel:'voiceWake',focus:'engine'});
-      });
-    }
-    var wakeKeyEl=$('homeVoiceMapWakeKey');
-    if(wakeKeyEl){
-      wakeKeyEl.onclick=function(e){
-        e.stopPropagation();
-        hooks.openSettings({panel:'voiceWake',focus:'wakePhrases'});
-      };
-    }
-    var endPhraseKeyEl=$('homeVoiceMapEndPhraseKey');
-    if(endPhraseKeyEl){
-      endPhraseKeyEl.onclick=function(e){
-        e.stopPropagation();
-        hooks.openSettings({panel:'voiceWake',focus:'endPhrases'});
-      };
     }
     var homeKeyMapCardEl=$('homeKeyMapCard');
     if(homeKeyMapCardEl){
@@ -136,5 +101,5 @@
       });
     }
   }
-  global.OneToneHomeUiBindings={bindEvents:bindEvents};
+  global.OneToneHomeUiBindings={bindEvents:bindEvents,openVoiceLink:openVoiceLink};
 })((typeof window!=='undefined')?window:globalThis);

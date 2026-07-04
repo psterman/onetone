@@ -93,7 +93,7 @@
     var voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;
     if(hooks().ui().drawerOpen&&hooks().ui().settingsPanel==='keyWake') hooks().syncKeyExecFinishCard();
     var voiceEndDesc=$('voiceEndDesc'); if(voiceEndDesc) voiceEndDesc.textContent=d.voiceEndDesc;
-    hooks().syncVoiceEndModeUi(hooks().ui().drawerOpen&&hooks().ui().settingsPanel==='voiceWake'?false:true);
+    hooks().syncVoiceEndModeUi();
     var voiceEndLabel=$('voiceEndLabel'); if(voiceEndLabel) voiceEndLabel.textContent=d.voiceEndLabel;
     var voiceEndVoskWarn=$('voiceEndVoskWarn'); if(voiceEndVoskWarn) voiceEndVoskWarn.textContent=d.voiceEndVoskWarn;
     var voiceEndPresetsZhLabel=$('voiceEndPresetsZhLabel'); if(voiceEndPresetsZhLabel) voiceEndPresetsZhLabel.textContent=d.voiceEndPresetsZhLabel;

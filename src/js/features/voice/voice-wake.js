@@ -404,7 +404,7 @@
     voiceWakeExpandedMode=mode;
     syncVoiceWakeExpandedUi();
     renderVoiceMicLive();
-    global.OneToneVoiceEnd.syncModeUi(false);
+    global.OneToneVoiceEnd.syncModeUi();
   }
 
   function renderVoiceModeSwitch(){
@@ -433,7 +433,7 @@
     }
     hooks().renderVoiceModeUsage();
     setVoiceModeCardBusy(voiceModeSwitchInFlight);
-    global.OneToneVoiceEnd.syncModeUi(false);
+    global.OneToneVoiceEnd.syncModeUi();
     renderSettingsVoiceSubnav();
     hooks().renderVoiceSettingsFlow();
   }
@@ -461,7 +461,7 @@
   }
 
   function applyHomeVoiceModeSwitchUi(){
-    global.OneToneVoiceEnd.syncModeUi(true);
+    global.OneToneVoiceEnd.syncModeUi();
     if(ui().drawerOpen) renderVoiceModeSwitch();
     else if(hooks().renderHomeVoiceModeSwitchUi) hooks().renderHomeVoiceModeSwitchUi();
   }
@@ -1136,22 +1136,6 @@
     });
   }
 
-  function updateHomeVoiceSapiConfidence(saveNow){
-    const el=$('homeVoiceSapiConfidence');
-    const label=$('homeVoiceSapiConfidenceLabel');
-    if(!el) return;
-    const value=Number(el.value||0.35);
-    if(label) label.textContent=t('voiceSapiSensitivity')+' '+value.toFixed(2);
-    if(!saveNow) return;
-    global.OneToneIpc.invoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
-      renderVoiceSapiStatus(res);
-      hooks().syncHomeFromVoiceSettings(null,res);
-    }).catch(function(err){
-      console.error('home_voice_sapi_confidence',err);
-      loadVoiceSapiStatus();
-    });
-  }
-
   function voiceWakeEnabledInConfig(){
     const cfg=state().config||{};
     const vosk=cfg.voiceVosk||cfg.voice_vosk;
@@ -1196,7 +1180,6 @@
     syncSapiSensUi:syncVoiceSapiSensUi,
     applySapiSensLevel:applyVoiceSapiSensLevel,
     sapiSensLevels:function(){ return SAPI_SENS_LEVELS.slice(); },
-    updateHomeSapiConfidence:updateHomeVoiceSapiConfidence,
     renderVoskStatus:renderVoiceVoskStatus,
     loadVoskStatus:loadVoiceVoskStatus,
     syncVoskToggle:syncVoiceVoskToggle,

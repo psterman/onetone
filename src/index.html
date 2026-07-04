@@ -160,75 +160,17 @@
                 <span class="home-live-badge" id="homeLiveVoiceBadge">—</span>
               </header>
               <section class="home-voice-map-card" id="homeVoiceMapCard" aria-labelledby="homeLiveVoiceTitle">
-                <div class="home-voice-engine-bar" id="homeVoiceEngineBar">
-                  <span class="home-voice-engine-bar-lbl" id="homeVoiceEngineBarLbl">识别引擎</span>
-                  <div class="home-voice-engine-compact" id="homeVoiceModeSwitch">
-                    <button type="button" class="home-mini-toggle is-active" id="btnHomeVoiceModeSapi">轻量版</button>
-                    <button type="button" class="home-mini-toggle" id="btnHomeVoiceModeVosk">离线版</button>
+                <section class="home-voice-simple-card" id="homeVoiceSimpleCard" aria-live="polite">
+                  <p class="home-voice-simple-desc" id="homeVoiceSimpleDesc">对着麦克风说出唤醒词</p>
+                  <div class="home-voice-simple-hero" id="homeVoiceSimpleHero">
+                    <div class="home-voice-simple-phrase" id="homeVoiceSimplePhrase">—</div>
                   </div>
-                </div>
-                <div class="home-voice-map-flow home-key-map-flow" id="homeVoiceMapFlow">
-                  <div class="home-key-map-step home-voice-wake-col" id="homeVoiceMapWake">
-                    <span class="home-key-map-step-label" id="homeVoiceMapWakeLbl">唤醒词</span>
-                    <div class="home-key-map-key is-clickable" id="homeVoiceMapWakeKey" role="button" tabindex="0">
-                      <div class="home-phrase-cloud" id="homeVoiceWakePhraseCloud" aria-live="polite"></div>
-                    </div>
-                  </div>
-                  <div class="home-key-map-step" id="homeVoiceMapEndPhrase">
-                    <span class="home-key-map-step-label" id="homeVoiceMapEndPhraseLbl">
-                      <span id="homeVoiceMapEndPhraseLblText">结束词</span>
-                      <span class="home-voice-end-state is-idle" id="homeFinishStatus">—</span>
-                    </span>
-                    <div class="home-key-map-key is-clickable" id="homeVoiceMapEndPhraseKey" role="button" tabindex="0">
-                      <div class="home-phrase-cloud" id="homeVoiceEndPhraseCloud" aria-live="polite"></div>
-                    </div>
-                    <div class="home-voice-end-switch-stack" id="homeVoiceEndMeta">
-                      <p class="home-voice-end-auto-meta" id="homeVoiceEndAutoMeta" aria-live="polite"></p>
-                      <div class="home-voice-gear-switch" id="homeFinishCtrlEnd">
-                        <span class="home-voice-gear-switch-label" id="homeLiveEndEnabledLbl">结束词</span>
-                        <div class="home-voice-gear-switch-actions">
-                          <button type="button" class="toggle-switch-lite" id="btnHomeEndToggle" role="switch" aria-checked="false" aria-labelledby="homeLiveEndEnabledLbl"></button>
-                          <button type="button" class="home-voice-gear-btn" id="btnHomeEndSettings" aria-label="修改结束词"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></button>
-                        </div>
-                      </div>
-                    </div>
-                    <span class="home-finish-lite-badge" id="homeFinishEndLiteBadge" hidden>需离线版</span>
-                  </div>
-                  <div class="home-voice-map-foot" id="homeVoiceMapFoot">
-                    <div class="home-voice-wake-mic" id="homeVoiceWakeMic">
-                      <span class="home-voice-wake-mic-lbl" id="homeVoiceWakeMicLbl">麦克风</span>
-                      <div class="home-voice-mic-pick" id="homeVoiceWakeMicList" role="listbox" aria-labelledby="homeVoiceWakeMicLbl"></div>
-                    </div>
-                    <div class="home-voice-wake-status" id="homeVoiceMapWakeHint" aria-live="polite">
-                      <div class="home-voice-wake-status-line is-heard" id="homeVoiceWakeHintHeard" hidden></div>
-                      <div class="home-voice-wake-status-line is-ok" id="homeVoiceWakeHintResult" hidden></div>
-                    </div>
-                  </div>
-                  <div class="home-key-map-key is-set home-voice-map-end-key" id="homeVoiceMapEndKey" aria-hidden="true">—</div>
-                  <button type="button" class="home-voice-mic-pick-item" id="btnHomeMicSettings" hidden aria-hidden="true"><span class="home-mic-current-name" id="homeMicCurrentName">—</span><span class="mic-level-bars" id="homeMicLevelBars" aria-hidden="true"></span></button>
-                </div>
+                  <p class="home-voice-simple-heard" id="homeVoiceSimpleHeard" hidden></p>
+                  <p class="home-voice-simple-status" id="homeVoiceSimpleStatus">等待唤醒…</p>
+                  <p class="home-voice-simple-end-line" id="homeVoiceSimpleEndLine" hidden></p>
+                  <div class="home-voice-simple-links" id="homeVoiceSimpleLinks"></div>
+                </section>
               </section>
-              <p class="mic-empty" id="homeMicEmpty" hidden></p>
-              <span id="homeVoiceWakeFloatHint" hidden aria-hidden="true"></span>
-              <span id="homeVoiceWakeSub" hidden aria-hidden="true"></span>
-              <div id="homeVoiceWakeFloat" hidden aria-hidden="true"><span id="homeVoiceWakeChip"></span></div>
-              <div id="homeVoiceMeta" hidden aria-hidden="true"><span id="homeMicTitle"></span><span id="homeMicChangeHint"></span><span id="homeVoiceControls"></span><div id="homeVoiceSapiQuick" hidden><span id="homeVoiceSapiConfidenceLabel"></span><input type="range" id="homeVoiceSapiConfidence" min="0.1" max="0.9" step="0.01" value="0.35"></div><span id="homeVoiceMapEngineLbl" hidden></span></div>
-              <div id="homeVoiceFinishBlock" hidden aria-hidden="true">
-                <span id="homeVoiceFinishTitle"></span>
-                <span id="homeFinishEndSummary"></span>
-                <span id="homeFinishEndDetail"></span>
-                <span id="homeFinishAutoSummary"></span>
-                <span id="homeVoiceEndDelayLine"></span>
-                <div id="homeVoiceMapSwitches" hidden>
-                  <div id="homeFinishCtrlAuto">
-                    <span id="homeLiveEndAutoLbl">自动发送</span>
-                    <button type="button" id="btnHomeEndAutoSend" role="switch" aria-checked="false"></button>
-                    <button type="button" id="btnHomeAutoSettings" aria-label="修改自动发送"></button>
-                  </div>
-                </div>
-                <span id="homeVoiceMapEndPhraseHint" hidden></span>
-                <span id="homeVoiceMapTitle" hidden>语音流程</span>
-              </div>
               <div class="home-live-actions">
                 <button type="button" class="home-live-btn is-turn-on" id="btnHomeVoiceToggle">开始</button>
               </div>
@@ -511,23 +453,13 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">横向查看语音流程；展开下方区块可改麦克风、唤醒词与结束词</p>
-          <section class="voice-target-shortcut-block drawer-section">
-            <div class="mini-title" id="voiceTargetShortcutTitle">语音快捷键</div>
-            <p class="mic-desc" id="voiceTargetShortcutDesc">选你的输入法，自动填入默认快捷键</p>
-            <div class="voice-target-key-display target-key-display" id="voiceSettingsTargetKeyWrap">
-              <img class="target-ime-badge" id="voiceSettingsTargetImeIcon" alt="" hidden decoding="async">
-              <span id="voiceSettingsTargetKey">右 Alt</span>
-            </div>
-            <div class="ime-preset-block">
-              <p class="ime-preset-hint" id="imePresetHintVoice" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
-              <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice"></div>
-            </div>
-          </section>
+          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">在这里修改唤醒词、麦克风和结束词。引擎等高级选项在下方。</p>
           <div class="settings-page-actions">
             <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
           </div>
-          <section class="voice-settings-flow" id="voiceSettingsFlow" aria-label="语音流程">
+          <section class="settings-voice-common" id="settingsVoiceCommon">
+            <div class="mini-title" id="settingsVoiceCommonTitle">常用</div>
+          <section class="voice-settings-flow settings-voice-common-flow" id="voiceSettingsFlow" aria-label="语音流程">
             <div class="voice-settings-card" id="voiceSettingsWakeCard">
               <span class="voice-settings-card-lbl" id="voiceSettingsWakeLbl">唤醒词</span>
               <div class="voice-settings-card-val" id="voiceSettingsWakePhrase">—</div>
@@ -536,30 +468,6 @@
                 <span class="mic-level-bars" id="voiceSettingsMicBars" aria-hidden="true"></span>
               </button>
               <p class="voice-settings-card-hint" id="voiceSettingsWakeHint"></p>
-            </div>
-            <div class="voice-settings-card" id="voiceSettingsEngineCard">
-              <span class="voice-settings-card-lbl" id="voiceSettingsEngineLbl">识别引擎</span>
-              <div class="voice-settings-engine-pills" id="voiceSettingsEnginePills">
-                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeSapi">轻量版</button>
-                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeVosk">离线版</button>
-              </div>
-              <div class="voice-settings-card-val is-muted" id="voiceSettingsEngineStatus">—</div>
-            </div>
-            <div class="voice-settings-card voice-sapi-sens-card" id="voiceSettingsSapiSensCard" hidden>
-              <span class="voice-settings-card-lbl" id="voiceSettingsSapiSensTitle">语音转文字匹配</span>
-              <p class="voice-settings-card-sub" id="voiceSettingsSapiSensDesc">以下档位控制识别如何将你说的话匹配为文本</p>
-              <div class="recording-audio-strength-row">
-                <span class="setting-row-text" id="voiceSettingsSapiSensLbl">当前档位</span>
-                <span class="recording-audio-strength-current" id="voiceSettingsSapiSensCurrent">标准</span>
-              </div>
-              <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroupSettings" role="group" aria-labelledby="voiceSettingsSapiSensTitle">
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSettingsSapiSens0">最易</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSettingsSapiSens1">较易</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSettingsSapiSens2">标准</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSettingsSapiSens3">较严</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSettingsSapiSens4">严格</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSettingsSapiSens5">最严</button>
-              </div>
             </div>
             <div class="voice-settings-card" id="voiceSettingsEndPhraseCard">
               <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">结束词</span>
@@ -611,6 +519,48 @@
             </div>
           </div>
           </details>
+          </section>
+          <details class="settings-voice-advanced" id="settingsVoiceAdvancedDetails">
+            <summary id="settingsVoiceAdvancedSummary">高级</summary>
+          <section class="voice-target-shortcut-block drawer-section">
+            <div class="mini-title" id="voiceTargetShortcutTitle">语音快捷键</div>
+            <p class="mic-desc" id="voiceTargetShortcutDesc">选你的输入法，自动填入默认快捷键</p>
+            <div class="voice-target-key-display target-key-display" id="voiceSettingsTargetKeyWrap">
+              <img class="target-ime-badge" id="voiceSettingsTargetImeIcon" alt="" hidden decoding="async">
+              <span id="voiceSettingsTargetKey">右 Alt</span>
+            </div>
+            <div class="ime-preset-block">
+              <p class="ime-preset-hint" id="imePresetHintVoice" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
+              <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice"></div>
+            </div>
+          </section>
+          <section class="voice-settings-flow settings-voice-advanced-flow" id="voiceSettingsAdvancedFlow" aria-label="高级语音选项">
+            <div class="voice-settings-card" id="voiceSettingsEngineCard">
+              <span class="voice-settings-card-lbl" id="voiceSettingsEngineLbl">识别引擎</span>
+              <p class="voice-settings-card-sub" id="voiceSettingsEngineSub">一般用户用轻量版即可；需要结束词请用离线版</p>
+              <div class="voice-settings-engine-pills" id="voiceSettingsEnginePills">
+                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeSapi">轻量版</button>
+                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeVosk">离线版</button>
+              </div>
+              <div class="voice-settings-card-val is-muted" id="voiceSettingsEngineStatus">—</div>
+            </div>
+            <div class="voice-settings-card voice-sapi-sens-card" id="voiceSettingsSapiSensCard" hidden>
+              <span class="voice-settings-card-lbl" id="voiceSettingsSapiSensTitle">语音转文字匹配</span>
+              <p class="voice-settings-card-sub" id="voiceSettingsSapiSensDesc">以下档位控制识别如何将你说的话匹配为文本</p>
+              <div class="recording-audio-strength-row">
+                <span class="setting-row-text" id="voiceSettingsSapiSensLbl">当前档位</span>
+                <span class="recording-audio-strength-current" id="voiceSettingsSapiSensCurrent">标准</span>
+              </div>
+              <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroupSettings" role="group" aria-labelledby="voiceSettingsSapiSensTitle">
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSettingsSapiSens0">最易</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSettingsSapiSens1">较易</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSettingsSapiSens2">标准</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSettingsSapiSens3">较严</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSettingsSapiSens4">严格</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSettingsSapiSens5">最严</button>
+              </div>
+            </div>
+          </section>
           <section class="voice-mode-panel" id="voiceModePanel">
             <div class="mini-title" id="voiceModeTitle">语音唤起</div>
             <p class="mic-desc" id="voiceModeDesc">在左侧选择轻量版或离线版，在此配置唤醒词与识别细项。</p>
@@ -730,6 +680,7 @@
             <div class="voice-mode-status" id="voiceModeCurrent">现在还没打开语音模式</div>
             <p class="voice-mode-hint" id="voiceModeHint" hidden>轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
           </section>
+          </details>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
@@ -880,6 +831,7 @@
           <section class="developer-debug-panel debug-focus-section" id="debugFocusDeveloperSection">
             <div class="mini-title" id="debugTitle">开发者调试</div>
             <p class="developer-debug-desc" id="debugDeveloperDesc">实时运行时快照、映射源组与按键事件流。</p>
+            <div class="debug-developer-summary" id="debugDeveloperSummary"></div>
             <div class="dev-panel-block">
               <div class="dev-panel-head">
                 <div class="mini-title" id="listenTitle">监听状态</div>
@@ -1250,6 +1202,8 @@
   <script src="js/features/voice/voice-hooks.js"></script>
   <script src="js/features/voice/voice-end.js"></script>
   <script src="js/features/voice/voice-wake.js"></script>
+  <script src="js/features/voice/voice-home-summary.js"></script>
+  <script src="js/features/home/home-voice-link-map.js"></script>
   <script src="js/features/voice/voice-home-sync.js"></script>
   <script src="js/features/voice/voice-settings-flow.js"></script>
   <script src="js/features/voice/voice-ui-bindings.js"></script>

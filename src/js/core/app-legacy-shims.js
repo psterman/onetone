@@ -130,8 +130,8 @@
     function forceVoiceDiagLog(kind,label,text){ return OneToneVoiceDiag.forceLog(kind,label,text); }
     function updateVoiceDiagMetric(kind,name,value,label){ return OneToneVoiceDiag.updateMetric(kind,name,value,label); }
     function voiceEndStateLabel(raw){ return OneToneVoiceEnd.stateLabel(raw); }
-    function voiceEndUiUsesLiteMode(forHome){ return OneToneVoiceEnd.uiUsesLiteMode(forHome); }
-    function syncVoiceEndModeUi(forHome){ return OneToneVoiceEnd.syncModeUi(forHome); }
+    function voiceEndUiUsesLiteMode(){ return OneToneVoiceEnd.uiUsesLiteMode(); }
+    function syncVoiceEndModeUi(){ return OneToneVoiceEnd.syncModeUi(); }
     function syncVoiceEndConfigFromStatus(res){ return OneToneVoiceEnd.syncConfigFromStatus(res); }
     function normalizeVoiceEndCommitKey(raw){ return OneToneVoiceEnd.normalizeCommitKey(raw); }
     function syncVoiceEndCommitKeyUi(commitKey){ return OneToneVoiceEnd.syncCommitKeyUi(commitKey); }
@@ -146,9 +146,6 @@
     function toggleVoiceEndAutoSend(){ return OneToneVoiceEnd.toggleAutoSend(); }
     function onVoiceEndDelayInput(){ return OneToneVoiceEnd.onDelayInput(); }
     function onVoiceEndDelayChange(){ return OneToneVoiceEnd.onDelayChange(); }
-    function toggleHomeVoiceEndAutoSend(){ return OneToneVoiceEnd.toggleHomeAutoSend(); }
-    function onHomeVoiceEndDelayInput(){ return OneToneVoiceEnd.onHomeDelayInput(); }
-    function onHomeVoiceEndDelayChange(){ return OneToneVoiceEnd.onHomeDelayChange(); }
     function addVoiceEndPreset(ev){ return OneToneVoiceEnd.addPreset(ev); }
     function syncVoiceEndPresets(zh,en){ return OneToneVoiceEnd.syncPresets(zh,en); }
     function testVoiceEndStop(){ return OneToneVoiceEnd.testStop(); }
@@ -185,7 +182,6 @@
     function syncVoiceSapiPresets(phrases){ return OneToneVoiceWake.syncSapiPresets(phrases); }
     function updateVoiceSapiConfidence(saveNow){ return OneToneVoiceWake.updateSapiConfidence(saveNow); }
     function applyVoiceSapiSensLevel(index){ return OneToneVoiceWake.applySapiSensLevel(index); }
-    function updateHomeVoiceSapiConfidence(saveNow){ return OneToneVoiceWake.updateHomeSapiConfidence(saveNow); }
     function renderVoiceVoskStatus(res,opts){ return OneToneVoiceWake.renderVoskStatus(res,opts); }
     function loadVoiceVoskStatus(){ return OneToneVoiceWake.loadVoskStatus(); }
     function syncVoiceVoskToggle(enabled){ return OneToneVoiceWake.syncVoskToggle(enabled); }
@@ -302,11 +298,9 @@
     function syncHomeEntryToggleBtn(btn,isActive,offKey,onKey){ return OneToneHomeLive.syncEntryToggleBtn(btn,isActive,offKey,onKey); }
     function renderHomeLiveKeyPanel(loading){ return OneToneHomeLive.renderKeyPanel(loading); }
     function renderHomeLiveVoicePanel(loading){ return OneToneHomeLive.renderVoicePanel(loading); }
-    function renderHomeFinishZone(loading){ return OneToneHomeLive.renderFinishZone(loading); }
     function renderHomeLiveZone(){ return OneToneHomeLive.renderZone(); }
     function scheduleRenderHomeLiveZone(){ return OneToneHomeLive.scheduleRenderZone(); }
     function renderHomeVoiceModeSwitchUi(){ return OneToneHomeLive.renderVoiceModeSwitchUi(); }
-    function homeWakeHeardLabel(){ return OneToneHomeLive.wakeHeardLabel(); }
     function openHomeGuide(card,anchorBtn){ return OneToneHomeGuide.open(card,anchorBtn); }
     function closeHomeGuide(userInitiated){ return OneToneHomeGuide.close(userInitiated); }
     function refreshHomeGuideIfOpen(rebuild){ return OneToneHomeGuide.refresh(rebuild); }
@@ -661,14 +655,12 @@
       toggleGlobalListen:toggleGlobalListen,
       toggleHomeSchemeMappingEnabled:toggleHomeSchemeMappingEnabled,
       toggleHomeSchemeMenu:toggleHomeSchemeMenu,
-      toggleHomeVoiceEndAutoSend:toggleHomeVoiceEndAutoSend,
       toggleSoundsMaster:toggleSoundsMaster,
       toggleVoiceEnd:toggleVoiceEnd,
       toggleVoiceEndAutoSend:toggleVoiceEndAutoSend,
       toggleVoiceSapi:toggleVoiceSapi,
       toggleVoiceVosk:toggleVoiceVosk,
       ui:function(){ return ui; },
-      updateHomeVoiceSapiConfidence:updateHomeVoiceSapiConfidence,
       syncRecordingAudioUi:syncRecordingAudioUi,
       normalizeRecordingMuteStrength:normalizeRecordingMuteStrength,
       recordingMuteStrengthLabel:recordingMuteStrengthLabel,

@@ -9,8 +9,11 @@
     const uiState=global.OneToneState.ui;
     if(!uiState.drawerOpen||uiState.settingsPanel!=='voiceWake') return;
     loading=!!loading||!hooks().configLoadedFromBackend();
-    const eng=hooks().homeVoiceEngineOn();
-    const phrase=hooks().homeVoiceWakePhrase();
+    const summary=global.OneToneVoiceHomeSummary
+      ?global.OneToneVoiceHomeSummary.compute()
+      :null;
+    const eng=summary?summary.engine:hooks().homeVoiceEngineOn();
+    const phrase=summary?summary.wakePhrase:hooks().homeVoiceWakePhrase();
     const endSnap=hooks().voiceUiSnapshot().end||{};
     const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
     const enabled=!!endSnap.enabled||!!(endCfg&&endCfg.enabled);
@@ -18,7 +21,7 @@
     const delayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
     const commitKey=String(endSnap.commitKey||endCfg.commitKey||endCfg.commit_key||'Enter').trim()||'Enter';
     const detail=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]).join(' / ')||'');
-    const lite=hooks().voiceEndUiUsesLiteMode(false);
+    const lite=hooks().voiceEndUiUsesLiteMode();
     const wakePhraseEl=$('voiceSettingsWakePhrase');
     const wakeHintEl=$('voiceSettingsWakeHint');
     const micNameEl=$('voiceSettingsMicName');
@@ -30,16 +33,19 @@
     if(wakePhraseEl) wakePhraseEl.textContent=loading?t('homeLiveLoading'):(phrase||t('homeLiveUnset'));
     if(wakeHintEl){
       if(loading) wakeHintEl.textContent='';
+      else if(summary&&summary.voiceOn) wakeHintEl.textContent=summary.statusLine||t('homeVoiceMapWakeHintOn');
       else if(eng!=='off') wakeHintEl.textContent=t('homeVoiceMapWakeHintOn');
-      else wakeHintEl.textContent=t('homeVoiceMapWakeHintOff');
+      else wakeHintEl.textContent=t('homeVoiceSimpleStatusOff');
     }
     if(micNameEl){
-      const micDevices=hooks().micDevices();
-      const activeMicId=hooks().activeMicId();
-      const dev=micDevices.find(function(d){ return d.id===activeMicId; })
-        ||micDevices.find(function(d){ return d.isDefault; })
-        ||micDevices[0];
-      micNameEl.textContent=loading?t('homeLiveLoading'):(dev?(dev.name||dev.id):t('homeVoiceMapMicEmpty'));
+      micNameEl.textContent=loading?t('homeLiveLoading'):(summary?summary.micLabel:(function(){
+        const micDevices=hooks().micDevices();
+        const activeMicId=hooks().activeMicId();
+        const dev=micDevices.find(function(d){ return d.id===activeMicId; })
+          ||micDevices.find(function(d){ return d.isDefault; })
+          ||micDevices[0];
+        return dev?(dev.name||dev.id):t('homeVoiceMapMicEmpty');
+      })());
     }
     const barsEl=$('voiceSettingsMicBars');
     if(barsEl&&!barsEl.children.length) barsEl.innerHTML=hooks().buildMicLevelBars();
@@ -71,6 +77,7 @@
     if(endPhraseStatus){
       if(loading) endPhraseStatus.textContent=t('homeLiveLoading');
       else if(lite) endPhraseStatus.textContent=t('homeVoiceMapEndLite');
+      else if(summary&&summary.dictating&&summary.endLine) endPhraseStatus.textContent=summary.endLine;
       else endPhraseStatus.textContent=enabled
         ?(t('voiceEndEnabledShort')+(detail?(' · '+detail):''))
         :t('voiceEndDisabledShort');

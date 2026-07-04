@@ -68,22 +68,38 @@
     function card(cls,label,val,sub){
       return '<div class="debug-overview-card '+cls+'"><div class="lbl">'+hooks().escHtml(label)+'</div><div class="val">'+hooks().escHtml(val)+'</div><div class="sub">'+hooks().escHtml(sub||'')+'</div></div>';
     }
-    const usage=hooks().processUsageSummaryLine();
     const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
     const voiceState=w.state?hooks().voiceWakeStateLabel(w.state):'';
-    const mappingName=m?(m.label||hooks().friendlyPair(hooks().editorTriggerForMapping(m)||'',hooks().editorTargetForMapping(m)||'',m)):t('sessionUnbound');
-    const cCount=m?hooks().conflictsForMapping(m.id).length:0;
-    const cLine=cCount?t('debugCardConflict').replace('{n}',String(cCount)):t('debugCardNoConflict');
+    let voiceSub=voiceOn?(voiceState||''):t('debugCardVoiceHint');
+    if(endEnabled){
+      const endPart=dictating?t('chipDictating'):t('voiceEndEnabledShort');
+      voiceSub=(voiceSub?voiceSub+' · ':'')+t('debugCardEnd')+'：'+endPart;
+    }
     const cards=[];
     cards.push(card(paused?'is-warn':'is-ok',t('debugCardListen'),paused?t('listenPaused'):t('listenOn'),paused?t('debugCardListenPausedSub'):t('debugCardListenOnSub')));
     cards.push(card(keyOn?'is-ok':(keyReady?'is-warn':'is-off'),t('debugCardKey'),keyReady?(keyEnabled?t('debugCardKeyReady'):t('debugCardKeyDisabled')):t('debugCardKeyMissing'),keyReady?(hooks().friendlyKeyName(trig)+' → '+hooks().friendlyKeyName(tgt)):t('debugCardKeyHint')));
-    cards.push(card(voiceOn?'is-ok':(w.engine!=='none'?'is-warn':'is-off'),t('debugCardVoice'),voiceOn?(eng+(w.phrase?' · '+w.phrase:'')):eng,voiceOn?(voiceState||''):t('debugCardVoiceHint')));
-    cards.push(card(endEnabled?(dictating?'is-ok':'is-warn'):'is-off',t('debugCardEnd'),endEnabled?(dictating?t('chipDictating'):t('voiceEndEnabledShort')):t('voiceEndDisabledShort'),endEnabled?('状态：'+hooks().voiceEndStateLabel(stateRaw)):t('debugCardEndHint')));
+    cards.push(card(voiceOn?'is-ok':(w.engine!=='none'?'is-warn':'is-off'),t('debugCardVoice'),voiceOn?(eng+(w.phrase?' · '+w.phrase:'')):eng,voiceSub));
+    host.innerHTML=cards.join('');
+  }
+
+  function renderDebugDeveloperSummary(){
+    const host=$('debugDeveloperSummary');
+    if(!host) return;
+    const m=hooks().selectedMapping&&hooks().selectedMapping();
+    const usage=hooks().processUsageSummaryLine();
+    const mappingName=m?(m.label||hooks().friendlyPair(hooks().editorTriggerForMapping(m)||'',hooks().editorTargetForMapping(m)||'',m)):t('sessionUnbound');
+    const cCount=m?hooks().conflictsForMapping(m.id).length:0;
+    const cLine=cCount?t('debugCardConflict').replace('{n}',String(cCount)):t('debugCardNoConflict');
+    function card(cls,label,val,sub){
+      return '<div class="debug-overview-card '+cls+'"><div class="lbl">'+hooks().escHtml(label)+'</div><div class="val">'+hooks().escHtml(val)+'</div><div class="sub">'+hooks().escHtml(sub||'')+'</div></div>';
+    }
+    const cards=[];
     cards.push(card(hooks().processUsageSnapshot.loaded?'is-ok':'is-warn',t('debugCardUsage'),hooks().processUsageSnapshot.loaded?hooks().processUsageLine():t('voiceModeMetricLoading'),usage));
     cards.push(card(m&&m.enabled?'is-ok':'is-warn',t('debugCardScheme'),mappingName,m?(m.enabled?t('enabled')+' · ':'')+cLine:t('debugCardSchemeHint')));
     host.innerHTML=cards.join('');
   }
   function renderDebugDeveloperPanel(){
+    renderDebugDeveloperSummary();
     const grid=$('devRuntimeGrid');
     if(grid){
       const m=hooks().selectedMapping();

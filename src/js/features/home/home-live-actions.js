@@ -6,8 +6,12 @@
   function toast(msg,kind){ return global.OneToneAppToast.show(msg,kind); }
 
   function homePreferredVoiceEngine(){
-    var voskTab=$('btnHomeVoiceModeVosk');
-    if(voskTab&&voskTab.classList.contains('is-active')) return 'vosk';
+    var cfg=global.OneToneState.state.config||{};
+    var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+    var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    if(vosk.enabled) return 'vosk';
+    if(sapi.enabled) return 'sapi';
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.getExpandedMode()==='vosk') return 'vosk';
     return 'sapi';
   }
 

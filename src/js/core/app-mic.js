@@ -41,19 +41,9 @@
   }
 
   function findMicDeviceCard(deviceId){
-    var cards=document.querySelectorAll('.mic-device-card,.home-voice-mic-pick-item');
+    var cards=document.querySelectorAll('.mic-device-card');
     for(var i=0;i<cards.length;i++){
       if(cards[i].getAttribute('data-id')===deviceId) return cards[i];
-    }
-    return null;
-  }
-
-  function findHomeWakeMicPickItem(deviceId){
-    var list=$('homeVoiceWakeMicList');
-    if(!list||!deviceId) return null;
-    var items=list.querySelectorAll('.home-voice-mic-pick-item');
-    for(var i=0;i<items.length;i++){
-      if(items[i].getAttribute('data-id')===deviceId) return items[i];
     }
     return null;
   }
@@ -69,15 +59,6 @@
       if(micMonitorDeviceId) pushTarget(findMicDeviceCard(micMonitorDeviceId));
       pushTarget(document.querySelector('.mic-device-card.is-active'));
     }
-    var homeBtn=$('btnHomeMicSettings');
-    if(homeBtn&&!homeBtn.hidden){
-      var homeId=homeBtn.getAttribute('data-id')||'';
-      if(!deviceId||!homeId||homeId===deviceId) pushTarget(homeBtn);
-    }
-    if(deviceId) pushTarget(findHomeWakeMicPickItem(deviceId));
-    if(activeMicId) pushTarget(findHomeWakeMicPickItem(activeMicId));
-    if(micMonitorDeviceId) pushTarget(findHomeWakeMicPickItem(micMonitorDeviceId));
-    pushTarget(document.querySelector('.home-voice-mic-pick-item.is-active'));
     var settingsMicBtn=$('btnVoiceSettingsMic');
     if(settingsMicBtn) pushTarget(settingsMicBtn);
     var wakeCard=$('voiceSettingsWakeCard');
@@ -89,28 +70,7 @@
     return targets;
   }
 
-  function syncHomeMicPickState(loading){
-    var item=document.querySelector('#homeVoiceWakeMicList .home-voice-mic-pick-item.is-active')
-      ||document.querySelector('.home-voice-mic-pick-item.is-active');
-    if(!item) return;
-    item.classList.remove('is-mic-off','is-mic-armed','is-mic-live','is-mic-hit');
-    var eng=hooks().homeVoiceEngineOn();
-    var voiceOn=eng!=='off';
-    if(loading||!voiceOn){
-      item.classList.add('is-mic-off');
-      return;
-    }
-    var w=hooks().voiceUiSnapshot().wake||{};
-    var res=eng==='vosk'?w.vosk:w.sapi;
-    var raw=(res&&res.state)||'stopped';
-    var trigger=(res&&res.lastTrigger)||'';
-    if(raw==='triggered'||trigger){
-      item.classList.add('is-mic-hit');
-    }else if(homeMicLastLevel>3){
-      item.classList.add('is-mic-live');
-    }else if(raw==='listening'||raw==='starting'){
-      item.classList.add('is-mic-armed');
-    }
+  function syncHomeMicPickState(_loading){
   }
 
   function updateMicLevelBars(deviceId,level){
@@ -394,67 +354,7 @@
     renderHomeMicCurrent();
   }
 
-  function renderHomeWakeMicList(){
-    var list=$('homeVoiceWakeMicList');
-    if(!list) return;
-    list.replaceChildren();
-    if(!micDevices.length){
-      var empty=document.createElement('button');
-      empty.type='button';
-      empty.className='home-voice-mic-pick-empty';
-      empty.textContent=t('homeVoiceMapMicEmpty');
-      empty.addEventListener('click',function(e){
-        e.stopPropagation();
-        hooks().openSettings({panel:'voiceWake',focus:'mic'});
-      });
-      list.appendChild(empty);
-      return;
-    }
-    var dev=micDevices.find(function(d){ return d.id===activeMicId; })
-      ||micDevices.find(function(d){ return d.isDefault; })
-      ||micDevices[0];
-    if(!dev) return;
-    var avail=micDeviceAvailable(dev);
-    var btn=document.createElement('button');
-    btn.type='button';
-    btn.className='home-voice-mic-pick-item is-active';
-    btn.setAttribute('data-id',dev.id);
-    btn.innerHTML='<span class="home-voice-mic-dot" aria-hidden="true"></span><span class="home-voice-mic-pick-name"></span><span class="mic-level-bars" aria-hidden="true"></span>';
-    btn.querySelector('.home-voice-mic-pick-name').textContent=dev.name||dev.label||dev.id;
-    var bars=btn.querySelector('.mic-level-bars');
-    if(bars) bars.innerHTML=buildMicLevelBars();
-    btn.disabled=!avail;
-    btn.addEventListener('click',function(e){
-      e.stopPropagation();
-      hooks().openSettings({panel:'voiceWake',focus:'mic'});
-    });
-    list.appendChild(btn);
-  }
-
   function renderHomeMicCurrent(){
-    var nameEl=$('homeMicCurrentName');
-    var emptyEl=$('homeMicEmpty');
-    var wrap=$('btnHomeMicSettings');
-    var hintEl=$('homeMicChangeHint');
-    if(hintEl) hintEl.textContent=t('homeMicChangeHint');
-    if(!micDevices.length){
-      if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('micEmpty'); }
-      if(wrap){ wrap.hidden=true; wrap.setAttribute('hidden',''); }
-      return;
-    }
-    if(emptyEl) emptyEl.hidden=true;
-    var dev=micDevices.find(function(d){ return d.id===activeMicId; })
-      ||micDevices.find(function(d){ return d.isDefault; })
-      ||micDevices[0];
-    if(wrap&&dev) wrap.setAttribute('data-id',dev.id);
-    if(nameEl){
-      var name=dev?(dev.name||dev.label||dev.id):hooks().homeMicStatusLabel();
-      nameEl.textContent=name;
-      nameEl.title=name;
-    }
-    var barsEl=$('homeMicLevelBars');
-    if(barsEl&&!barsEl.children.length) barsEl.innerHTML=buildMicLevelBars();
-    renderHomeWakeMicList();
     hooks().renderVoiceSettingsFlow();
   }
 

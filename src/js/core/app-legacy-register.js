@@ -470,8 +470,6 @@
               selectHomeMapping:d.selectHomeMapping,
               toggleHomeSchemeMappingEnabled:d.toggleHomeSchemeMappingEnabled,
               switchVoiceMode:d.switchVoiceMode,
-              updateHomeVoiceSapiConfidence:d.updateHomeVoiceSapiConfidence,
-              toggleHomeVoiceEndAutoSend:d.toggleHomeVoiceEndAutoSend,
               focusSettingsField:d.focusSettingsField,
               setSettingsPanel:d.setSettingsPanel,
               loadMicDevices:d.loadMicDevices,
