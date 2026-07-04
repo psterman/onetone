@@ -190,6 +190,19 @@ pub struct VoiceConfig {
     pub sounds: SoundsConfig,
     #[serde(default = "default_false", rename = "startMinimizedToTray")]
     pub start_minimized_to_tray: bool,
+    /// false on fresh install (first launch maximizes); true when missing from JSON (upgrade).
+    #[serde(default = "default_true", rename = "windowLayoutSeen")]
+    pub window_layout_seen: bool,
+    #[serde(default, rename = "windowMaximized")]
+    pub window_maximized: bool,
+    #[serde(default = "default_window_width", rename = "windowWidth")]
+    pub window_width: f64,
+    #[serde(default = "default_window_height", rename = "windowHeight")]
+    pub window_height: f64,
+    #[serde(default, rename = "windowX")]
+    pub window_x: Option<f64>,
+    #[serde(default, rename = "windowY")]
+    pub window_y: Option<f64>,
     #[serde(rename = "imePresetId", default)]
     pub ime_preset_id: String,
     // --- migrate-only (read, never serialize) ---
@@ -205,6 +218,14 @@ pub struct VoiceConfig {
 
 fn default_version() -> u32 {
     5
+}
+
+fn default_window_width() -> f64 {
+    760.0
+}
+
+fn default_window_height() -> f64 {
+    820.0
 }
 fn default_scheme_switch_key() -> String {
     String::new()
@@ -992,6 +1013,12 @@ impl Default for VoiceConfig {
             coach_hud_enabled: false,
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
+            window_layout_seen: false,
+            window_maximized: false,
+            window_width: default_window_width(),
+            window_height: default_window_height(),
+            window_x: None,
+            window_y: None,
             ime_preset_id: String::new(),
             record_key: String::new(),
             target_key: String::new(),
@@ -1612,6 +1639,12 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.voice_sapi = existing.voice_sapi.clone();
     cfg.voice_end = existing.voice_end.clone();
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
+    cfg.window_layout_seen = existing.window_layout_seen;
+    cfg.window_maximized = existing.window_maximized;
+    cfg.window_width = existing.window_width;
+    cfg.window_height = existing.window_height;
+    cfg.window_x = existing.window_x;
+    cfg.window_y = existing.window_y;
     Some(cfg)
 }
 
@@ -2073,5 +2106,43 @@ mod tests {
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert!(merged.voice_vosk.enabled);
         assert!(merged.voice_end.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_window_layout() {
+        let mut existing = VoiceConfig::default();
+        existing.window_layout_seen = true;
+        existing.window_maximized = false;
+        existing.window_width = 900.0;
+        existing.window_height = 950.0;
+        existing.window_x = Some(120.0);
+        existing.window_y = Some(80.0);
+        let json = r#"{"version":5,"mappings":[],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(merged.window_layout_seen);
+        assert!(!merged.window_maximized);
+        assert!((merged.window_width - 900.0).abs() < f64::EPSILON);
+        assert!((merged.window_height - 950.0).abs() < f64::EPSILON);
+        assert_eq!(merged.window_x, Some(120.0));
+        assert_eq!(merged.window_y, Some(80.0));
+    }
+
+    #[test]
+    fn window_layout_serializes_to_json() {
+        let mut cfg = VoiceConfig::default();
+        cfg.window_layout_seen = true;
+        cfg.window_maximized = false;
+        cfg.window_width = 1024.0;
+        cfg.window_height = 768.0;
+        cfg.window_x = Some(40.0);
+        cfg.window_y = Some(20.0);
+        let json = serde_json::to_string(&cfg).expect("serialize");
+        assert!(json.contains("\"windowLayoutSeen\":true"));
+        assert!(json.contains("\"windowWidth\":1024"));
+        assert!(json.contains("\"windowX\":40"));
+        let loaded: VoiceConfig = serde_json::from_str(&json).expect("deserialize");
+        assert!(loaded.window_layout_seen);
+        assert!((loaded.window_width - 1024.0).abs() < f64::EPSILON);
+        assert_eq!(loaded.window_x, Some(40.0));
     }
 }

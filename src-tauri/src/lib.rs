@@ -21,6 +21,7 @@ mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
+mod window_layout;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -279,6 +280,11 @@ pub fn run() {
             tray::setup(app.handle(), app_state.clone())?;
             app_log::log_line(&app_state, "startup", "tray initialized");
 
+            let first_launch = {
+                let cfg = app_state.cfg.lock();
+                !cfg.window_layout_seen
+            };
+
             let should_show = {
                 let cfg = app_state.cfg.lock();
                 config::should_show_main_on_startup(&cfg)
@@ -311,13 +317,41 @@ pub fn run() {
                 );
             }
 
+            {
+                let cfg = app_state.cfg.lock().clone();
+                window_layout::apply_on_startup_logged(&window, &cfg, &app_state, "startup");
+            }
+            let win_layout = window.clone();
+            let cfg_layout = app_state.cfg.lock().clone();
+            let state_layout = app_state.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(Duration::from_millis(120)).await;
+                window_layout::apply_on_startup_logged(&win_layout, &cfg_layout, &state_layout, "deferred");
+            });
+
+            if first_launch {
+                let state_fl = app_state.clone();
+                let win_fl = window.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(600)).await;
+                    window_layout::finalize_first_launch(&state_fl, &win_fl);
+                });
+            }
+
             let window_clone = window.clone();
             let state_for_close = app_state.clone();
             window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window_clone.hide();
-                    app_log::log_line(&state_for_close, "window", "main window hidden");
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        window_layout::persist_now(&state_for_close, &window_clone);
+                        api.prevent_close();
+                        let _ = window_clone.hide();
+                        app_log::log_line(&state_for_close, "window", "main window hidden");
+                    }
+                    tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
+                        window_layout::schedule_save(state_for_close.clone(), window_clone.clone());
+                    }
+                    _ => {}
                 }
             });
 
