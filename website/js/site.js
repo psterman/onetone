@@ -140,23 +140,74 @@
       reduceMotion.addEventListener("change", start);
     }
     start();
+    return {
+      apply,
+      getIndex() {
+        return index;
+      },
+    };
   }
 
   function initFlowDemoCycle() {
     const root = document.querySelector('[data-cycle-group="flow"]');
     if (!root) return;
-    const cards = Array.from(root.querySelectorAll(".flow-card"));
-    const statuses = Array.from(root.querySelectorAll(".flow-status-panel li"));
-    const dots = Array.from(root.querySelectorAll("[data-cycle-dot]"));
-    createCycle({
-      items: cards,
-      dots,
-      interval: 2400,
-      onChange(index) {
-        statuses.forEach((status, statusIndex) => {
-          status.classList.toggle("is-active", statusIndex === index);
-        });
+    const items = Array.from(root.querySelectorAll(".command-item"));
+    const currentEl = root.querySelector("[data-flow-current]");
+    const statusEl = root.querySelector("[data-flow-status]");
+    const resultEl = root.querySelector("[data-flow-result]");
+    if (!items.length) return;
+
+    const fallbacks = {
+      zh: {
+        statuses: ["鼠标侧键已记录", "手柄按键已记录", "蓝牙戒指已记录", "麦克风口令已记录"],
+        results: [
+          "按下鼠标侧键后，说的话会进入当前输入框。",
+          "按下手柄按钮后，可以远距离口述文字。",
+          "轻点蓝牙戒指后，不离开当前动作也能输入。",
+          "说出口令后，麦克风也可以激活语音输入。",
+        ],
       },
+      en: {
+        statuses: ["Mouse button recorded", "Gamepad button recorded", "Bluetooth ring recorded", "Voice command recorded"],
+        results: [
+          "Press the mouse button and your speech lands in the focused field.",
+          "Press the gamepad button to dictate from farther away.",
+          "Tap the Bluetooth ring to type without leaving the current action.",
+          "Say the command and the microphone can wake voice input too.",
+        ],
+      },
+    };
+
+    function currentLang() {
+      if (window.OneToneSite?.getLang) return window.OneToneSite.getLang();
+      return document.documentElement.lang === "en" ? "en" : "zh";
+    }
+
+    function readList(key, fallbackKey) {
+      const lang = currentLang();
+      const list = window.OneToneSite?.strings?.[lang]?.[key];
+      if (Array.isArray(list) && list.length) return list;
+      return fallbacks[lang]?.[fallbackKey] || fallbacks.zh[fallbackKey];
+    }
+
+    function syncFlow(index) {
+      const activeItem = items[index % items.length];
+      const triggerName = activeItem?.querySelector("strong")?.textContent?.trim();
+      const statuses = readList("flowStatusLabels", "statuses");
+      const results = readList("flowResultTexts", "results");
+      if (currentEl && triggerName) currentEl.textContent = triggerName;
+      if (statusEl) statusEl.textContent = statuses[index % statuses.length];
+      if (resultEl) resultEl.textContent = results[index % results.length];
+    }
+
+    const cycle = createCycle({
+      items,
+      interval: 2400,
+      onChange: syncFlow,
+    });
+
+    document.addEventListener("onetone:langchange", () => {
+      window.requestAnimationFrame(() => syncFlow(cycle.getIndex()));
     });
   }
 
@@ -170,11 +221,29 @@
     });
   }
 
+  function initQuickstartSceneCycle() {
+    const root = document.querySelector('[data-cycle-group="quickstart-scene"]');
+    if (!root) return;
+    const items = Array.from(root.querySelectorAll("[data-scene-item]"));
+    const panels = Array.from(root.querySelectorAll("[data-scene-panel]"));
+    if (!items.length) return;
+    createCycle({
+      items,
+      interval: 2600,
+      onChange(index) {
+        panels.forEach((panel, panelIndex) => {
+          panel.classList.toggle("is-active", panelIndex === index);
+        });
+      },
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     initNavActive();
     initHeroWordCycle();
     initFlowDemoCycle();
+    initQuickstartSceneCycle();
     initContextCycle();
   });
 })();
