@@ -76,6 +76,14 @@
     }
     hooks().syncVoiceEndCommitKeyUi(commitKey);
     hooks().syncVoiceEndDelayRanges(delayMs);
+    var voiceTargetEl=$('voiceSettingsTargetKey');
+    if(voiceTargetEl){
+      const cfg=(state.config&&state.config.voiceSapi)||(state.config&&state.config.voice_sapi)||{};
+      const vosk=(state.config&&state.config.voiceVosk)||(state.config&&state.config.voice_vosk)||{};
+      const key=String(cfg.targetKey||vosk.targetKey||'RAlt').trim()||'RAlt';
+      voiceTargetEl.textContent=loading?t('homeLiveLoading'):(global.OneToneKeyLabels?global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang()):key);
+    }
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('voice');
   }
 
   global.OneToneVoiceSettingsFlow={ render:renderVoiceSettingsFlow };

@@ -106,6 +106,9 @@
       localStorage.setItem('vp_onboarding_v2_done', '1');
       localStorage.setItem('vp_welcome_seen', '1');
     }catch(_){}
+    if(global.OneToneImePresets && global.OneToneImePresets.refresh){
+      global.OneToneImePresets.refresh('onboarding');
+    }
     var a = app();
     if(a && a.renderHome) a.renderHome();
   }
@@ -187,7 +190,7 @@
     }
     if(recorded){
       btn.textContent = t(rerecordKey);
-      btn.className = 'onboard-record-link';
+      btn.className = 'btn secondary record-btn onboard-record-btn onboard-rerecord-btn rerecord-btn';
       return;
     }
     btn.textContent = t(recordKey);
@@ -272,6 +275,7 @@
     }
     if(triggerHint) triggerHint.textContent = triggerReady ? t('onboardTriggerCardDone') : t('onboardTriggerCardHint');
     if(targetHint) targetHint.textContent = triggerReady ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('onboarding');
   }
 
   function tryHelpKeys(reason){
@@ -554,6 +558,14 @@
   function onTargetCaptured(msg){
     clearRecordingPreview();
     state.targetRecording = false;
+    msg = msg || {};
+    if(global.OneToneImePresets){
+      if(msg.imePresetId){
+        global.OneToneImePresets.refresh('onboarding');
+      }else{
+        global.OneToneImePresets.clearSelectedForManualRecord('onboarding');
+      }
+    }
     render();
   }
 

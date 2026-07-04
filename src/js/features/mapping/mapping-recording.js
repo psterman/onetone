@@ -583,6 +583,7 @@
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
     m.targetKey=combo;
+    m.imePresetId='';
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(combo);
     m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+combo;
     armLocalCaptureGuard();
@@ -603,6 +604,7 @@
       key:combo
     });
     hooks().maybeEnableMappingAfterComplete(m);
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
     return true;
   }

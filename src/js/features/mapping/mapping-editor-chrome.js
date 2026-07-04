@@ -39,26 +39,38 @@
     if(incomplete&&!hideForDraft) el.textContent=t('draftHint');
   }
 
+  function recordBtnClass(isPrimary, recorded){
+    var cls='btn '+(isPrimary?'primary':'secondary')+' record-btn';
+    if(recorded&&!isPrimary) cls+=' rerecord-btn';
+    return cls;
+  }
+
   function updatePrimaryCTA(){
     var triggerBtn=$('btnRecordTrigger');
     var targetBtn=$('btnRecordTarget');
     if(!triggerBtn||!targetBtn) return;
-    triggerBtn.className='btn secondary record-btn';
-    targetBtn.className='btn secondary record-btn';
-    if(global.OneToneMappingRecording.mode()==='trigger'){
-      triggerBtn.className='btn primary record-btn';
-      return;
-    }
-    if(global.OneToneMappingRecording.mode()==='target'){
-      targetBtn.className='btn primary record-btn';
-      return;
-    }
+    var mode=global.OneToneMappingRecording.mode();
     var trig=core().editorTrigger(core().selected());
     var tgt=core().editorTarget(core().selected());
+    if(mode==='trigger'){
+      triggerBtn.className=recordBtnClass(true,!!trig);
+      targetBtn.className=recordBtnClass(false,!!tgt);
+      return;
+    }
+    if(mode==='target'){
+      triggerBtn.className=recordBtnClass(false,!!trig);
+      targetBtn.className=recordBtnClass(true,!!tgt);
+      return;
+    }
     if(!trig){
-      triggerBtn.className='btn primary record-btn';
+      triggerBtn.className=recordBtnClass(true,false);
+      targetBtn.className=recordBtnClass(false,!!tgt);
     }else if(!tgt){
-      targetBtn.className='btn primary record-btn';
+      triggerBtn.className=recordBtnClass(false,true);
+      targetBtn.className=recordBtnClass(true,false);
+    }else{
+      triggerBtn.className=recordBtnClass(false,true);
+      targetBtn.className=recordBtnClass(false,true);
     }
   }
 

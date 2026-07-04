@@ -187,6 +187,7 @@
     hooks().syncKeySchemeTimeline(hooks().schemeStepFocus());
     hooks().renderHome();
     hooks().renderRecordCancelBar();
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
   }
 
   global.OneToneMappingList={

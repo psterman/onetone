@@ -101,6 +101,12 @@
     var voiceEndDelayLabel=$('voiceEndDelayLabel'); if(voiceEndDelayLabel) voiceEndDelayLabel.textContent=d.voiceEndDelay;
     var voiceSettingsDelayLbl=$('voiceSettingsDelayLbl'); if(voiceSettingsDelayLbl) voiceSettingsDelayLbl.textContent=d.voiceEndDelay;
     var voiceSettingsCommitLbl=$('voiceSettingsCommitLbl'); if(voiceSettingsCommitLbl) voiceSettingsCommitLbl.textContent=d.voiceEndCommitKeyLbl;
+    var voiceTargetShortcutTitle=$('voiceTargetShortcutTitle'); if(voiceTargetShortcutTitle) voiceTargetShortcutTitle.textContent=d.voiceTargetShortcutTitle;
+    var voiceTargetShortcutDesc=$('voiceTargetShortcutDesc'); if(voiceTargetShortcutDesc) voiceTargetShortcutDesc.textContent=d.voiceTargetShortcutDesc;
+    var imePresetHintMapping=$('imePresetHintMapping'); if(imePresetHintMapping) imePresetHintMapping.textContent=d.imePresetHint;
+    var imePresetHintVoice=$('imePresetHintVoice'); if(imePresetHintVoice) imePresetHintVoice.textContent=d.imePresetHint;
+    var imePresetHintOnboard=$('imePresetHintOnboard'); if(imePresetHintOnboard) imePresetHintOnboard.textContent=d.imePresetHint;
+    if(global.OneToneImePresets) global.OneToneImePresets.applyLang();
     var voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
     var btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
     var btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;
