@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>下载 — 一声 OneTone</title>
+  <meta name="description" content="下载一声 Windows 安装包。适用于 Windows 10/11。">
+  <link rel="canonical" href="https://www.onetone.app/download.html">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100 transition-colors duration-300" data-page="download">
+
+  <header class="fixed top-0 w-full z-50 glass-header border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a class="flex items-center gap-3 group" href="index.html">
+        <img src="assets/logo.png" alt="" width="32" height="32" class="w-8 h-8 rounded-lg shadow-lg">
+        <span class="font-bold text-lg tracking-tight" data-i18n="siteName">一声 OneTone</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-8 font-medium text-sm text-slate-600 dark:text-slate-300">
+        <a href="download.html" data-nav="download" class="hover:text-brand-500 transition-colors" data-i18n="navDownload">下载</a>
+        <a href="quickstart.html" data-nav="quickstart" class="hover:text-brand-500 transition-colors" data-i18n="navQuickstart">上手</a>
+        <a href="faq.html" data-nav="faq" class="hover:text-brand-500 transition-colors" data-i18n="navFaq">常见问题</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <button type="button" id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"><i class="ph ph-moon text-xl block dark:hidden"></i><i class="ph ph-sun text-xl hidden dark:block"></i></button>
+        <button type="button" id="langToggle" class="text-xs font-bold uppercase px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700" data-i18n="langToggle">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pt-28 pb-16 max-w-3xl mx-auto px-6">
+    <div class="text-center mb-10">
+      <h1 class="text-4xl font-bold tracking-tight mb-3" data-i18n="dlTitle">下载一声</h1>
+      <p class="text-slate-500 dark:text-slate-400" data-i18n="dlSubtitle">Windows 安装包，免费使用</p>
+    </div>
+
+    <div class="glass-card rounded-3xl p-8 text-center shadow-xl mb-10" id="downloadMeta">
+      <a id="downloadBtn" href="https://github.com/psterman/voice-pilot/releases/latest" class="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg shadow-xl hover:-translate-y-0.5 transition-all">
+        <i class="ph-bold ph-download-simple"></i>
+        <span data-i18n="dlBtn">下载 Windows 安装包</span>
+      </a>
+      <div class="flex flex-wrap justify-center gap-4 mt-6 text-sm text-slate-500">
+        <span><span data-i18n="dlVersion">版本</span>: <strong id="metaVersion">—</strong></span>
+        <span><span data-i18n="dlDate">发布日期</span>: <strong id="metaDate">—</strong></span>
+        <span><span data-i18n="dlSize">大小</span>: <strong id="metaSize">—</strong></span>
+        <span><span data-i18n="dlSigned">代码签名</span>: <strong data-i18n="dlSignedNo">未签名（v1.0.0）</strong></span>
+      </div>
+      <p id="metaLoading" class="text-xs text-slate-400 mt-4" data-i18n="dlLoading">正在获取版本信息…</p>
+      <p class="mt-4 text-sm"><a href="https://github.com/psterman/voice-pilot/releases" class="text-brand-600 hover:underline" data-i18n="dlAllReleases">在 GitHub 查看所有版本</a></p>
+    </div>
+
+    <h2 class="text-xl font-bold mb-4" data-i18n="dlBeforeTitle">安装前你知道的 3 件事</h2>
+    <ul class="space-y-3 mb-10">
+      <li class="flex gap-3 items-start"><i class="ph-fill ph-check-circle text-brand-500 text-xl mt-0.5"></i><span data-i18n="dlBefore1">适用于 Windows 10 / 11</span></li>
+      <li class="flex gap-3 items-start"><i class="ph-fill ph-check-circle text-brand-500 text-xl mt-0.5"></i><span data-i18n="dlBefore2">设置保存在本机，更新不会覆盖你的配置</span></li>
+      <li class="flex gap-3 items-start"><i class="ph-fill ph-check-circle text-brand-500 text-xl mt-0.5"></i><span data-i18n="dlBefore3">不需要安装其他软件</span></li>
+    </ul>
+
+    <div id="smartscreen" class="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-6 mb-12">
+      <h3 class="font-bold mb-3 flex items-center gap-2"><i class="ph-fill ph-warning text-amber-600"></i><span data-i18n="smartscreenTitle">首次安装可能提示 SmartScreen</span></h3>
+      <ol class="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 text-sm">
+        <li data-i18n="smartscreen1">点击「更多信息」</li>
+        <li data-i18n="smartscreen2">再点「仍要运行」</li>
+        <li data-i18n="smartscreen3">安装包未做代码签名，这是 Windows 的正常提示</li>
+      </ol>
+    </div>
+  </main>
+
+  <section class="bg-gradient-to-br from-brand-600 to-blue-600 py-16 relative overflow-hidden animate-shine">
+    <div class="max-w-3xl mx-auto px-6 text-center text-white relative z-10">
+      <h2 class="text-3xl font-bold mb-4" data-i18n="continueTitle">装好了，下一步这样做</h2>
+      <ul class="space-y-2 text-brand-100 mb-8 text-sm md:text-base">
+        <li data-i18n="continue1">打开一声，跟着欢迎提示</li>
+        <li data-i18n="continue2">录「你的键」和 Win+H</li>
+        <li data-i18n="continue3">在输入框里按一下试一次</li>
+      </ul>
+      <a href="quickstart.html?from=download#step1" class="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-brand-600 font-bold text-lg shadow-xl hover:-translate-y-1 transition-all">
+        <span data-i18n="continueBtn">现在开始第 1 步</span>
+        <i class="ph-bold ph-arrow-right"></i>
+      </a>
+      <p class="mt-6"><a href="faq.html#no-response" class="text-brand-200 text-sm hover:text-white underline" data-i18n="continueFaq">按键不灵？查看常见问题</a></p>
+    </div>
+  </section>
+
+  <footer class="bg-slate-50 dark:bg-surface-dark border-t border-slate-200 dark:border-slate-800 py-12 text-sm text-slate-500">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+      <nav class="flex flex-wrap justify-center gap-x-8 gap-y-4">
+        <a href="features.html" data-i18n="footerFeatures">功能介绍</a>
+        <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+        <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+        <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+        <a href="https://github.com/psterman/voice-pilot" data-i18n="footerGithub">GitHub</a>
+        <a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="js/site.js"></script>
+  <script src="js/i18n.js"></script>
+</body>
+</html>
