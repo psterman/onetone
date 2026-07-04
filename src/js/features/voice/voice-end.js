@@ -9,9 +9,16 @@
   var voiceEndPresetSavePending=null;
   function voiceEndUiUsesLiteMode(forHome){
     if(forHome){
+      if(hooks().homeVoiceEngineUiMode){
+        return hooks().homeVoiceEngineUiMode()!=='vosk';
+      }
       const eng=hooks().homeVoiceEngineOn();
       if(eng==='vosk') return false;
       if(eng==='sapi') return true;
+      const voskTab=$('btnHomeVoiceModeVosk');
+      if(voskTab&&voskTab.classList.contains('is-active')) return false;
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending()
+        &&global.OneToneVoiceWake.getExpandedMode()==='vosk') return false;
       return hooks().homePreferredVoiceEngine()!=='vosk';
     }
     return hooks().getVoiceWakeExpandedMode()!=='vosk';

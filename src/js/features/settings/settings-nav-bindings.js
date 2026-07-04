@@ -20,12 +20,21 @@
         e.stopPropagation();
         var id=btn.dataset.schemeNav;
         if(!id) return;
+        hooks.flushAllEditorToMappings();
         state.selectedMappingId=id;
         hooks.syncEditorFromSelection();
         hooks.closeFloatMenu();
         hooks.setSettingsPanel('keyWake');
-        hooks.render();
-        hooks.focusMapping(id);
+        hooks.renderKeyFinishFlowPanel();
+        hooks.renderEditor();
+        hooks.renderSettingsSchemeSubnav();
+      });
+      settingsSchemeSubnavList.addEventListener('keydown',function(e){
+        if(e.key!=='Enter'&&e.key!==' ') return;
+        var btn=e.target.closest&&e.target.closest('[data-scheme-nav]');
+        if(!btn) return;
+        e.preventDefault();
+        btn.click();
       });
     }
     var btnSettingsSchemeAdd=$('btnSettingsSchemeAdd');

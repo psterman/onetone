@@ -6,6 +6,8 @@
   function hooks(){ return global.__vp_voice_settings_flow_hooks__ || {}; }
 
   function renderVoiceSettingsFlow(loading){
+    const uiState=global.OneToneState.ui;
+    if(!uiState.drawerOpen||uiState.settingsPanel!=='voiceWake') return;
     loading=!!loading||!hooks().configLoadedFromBackend();
     const eng=hooks().homeVoiceEngineOn();
     const phrase=hooks().homeVoiceWakePhrase();
@@ -56,6 +58,12 @@
       else if(eng==='sapi') engineStatusEl.textContent=t('voiceModeCurrentLite');
       else if(eng==='vosk') engineStatusEl.textContent=t('voiceModeCurrentPro');
       else engineStatusEl.textContent=t('voiceModeCurrentOff');
+    }
+    var sapiSensCard=$('voiceSettingsSapiSensCard');
+    if(sapiSensCard) sapiSensCard.hidden=loading||eng==='vosk';
+    if(!loading&&eng!=='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.syncSapiSensUi){
+      const cfg=(state.config&&state.config.voiceSapi)||(state.config&&state.config.voice_sapi)||{};
+      global.OneToneVoiceWake.syncSapiSensUi(cfg.minConfidence==null?0.35:cfg.minConfidence);
     }
     if(endWakeEcho){
       endWakeEcho.textContent=loading?'':(phrase?t('voiceSettingsEndWakeEcho').replace('{phrase}',phrase):'');

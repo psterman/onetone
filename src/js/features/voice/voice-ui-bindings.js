@@ -74,6 +74,13 @@
       voiceSapiConfidence.oninput=function(){ hooks.updateVoiceSapiConfidence(false); };
       voiceSapiConfidence.onchange=function(){ hooks.updateVoiceSapiConfidence(true); };
     }
+    document.querySelectorAll('.voice-sapi-sens-btn').forEach(function(btn){
+      btn.onclick=function(e){
+        e.stopPropagation();
+        var idx=btn.getAttribute('data-sapi-sens');
+        if(hooks.applyVoiceSapiSensLevel) hooks.applyVoiceSapiSensLevel(idx);
+      };
+    });
     var btnVoiceSettingsModeSapi=$('btnVoiceSettingsModeSapi');
     if(btnVoiceSettingsModeSapi) btnVoiceSettingsModeSapi.onclick=function(){ hooks.switchVoiceMode('sapi'); };
     var btnVoiceSettingsModeVosk=$('btnVoiceSettingsModeVosk');

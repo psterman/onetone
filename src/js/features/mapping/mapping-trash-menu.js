@@ -171,7 +171,7 @@
     if(!items.length){ box.innerHTML=''; return; }
     var html='';
     items.forEach(function(m){
-      html+='<div class="trash-row"><span>'+hooks.friendlyPair(m.triggerKey,m.targetKey)+'</span>';
+      html+='<div class="trash-row"><span>'+hooks.friendlyPair(m.triggerKey,m.targetKey,m)+'</span>';
       html+='<button type="button" class="trash-restore" data-restore="'+m.id+'">'+t('trashRestore')+'</button></div>';
     });
     box.innerHTML=html;

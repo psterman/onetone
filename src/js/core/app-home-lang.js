@@ -14,6 +14,9 @@
       ['voiceSettingsWakeLbl',d.homeVoiceMapWakeLbl],['voiceSettingsEngineLbl',d.homeVoiceMapEngineLbl],
       ['voiceSettingsEndPhraseLbl',d.homeVoiceMapEndPhraseLbl],['voiceSettingsAutoLbl',d.homeLiveEndAutoShort],
       ['voiceMicPickerSummary',d.voiceSettingsMicPickerSummary],
+      ['voiceSettingsSapiSensTitle',d.voiceSapiSensMatchTitle],['voiceSettingsSapiSensDesc',d.voiceSapiSensMatchNote],
+      ['voiceSettingsSapiSensLbl',d.voiceSapiSensCurrentLbl],['voiceSapiSensLbl',d.voiceSapiSensCurrentLbl],
+      ['voiceSapiSensSectionTitle',d.voiceSapiSensMatchTitle],['voiceSapiSensSectionNote',d.voiceSapiSensMatchNote],
       ['btnVoiceSettingsModeSapi',d.homeVoiceMapEngineSapi],['btnVoiceSettingsModeVosk',d.homeVoiceMapEngineVosk],
       ['homeVoiceMapArrowSayText',d.homeVoiceMapArrowSay],['homeVoiceMapArrowListenText',d.homeVoiceMapArrowListen],
       ['homeVoiceMapArrowEndText',d.homeVoiceMapArrowEnd],
@@ -28,6 +31,13 @@
     ].forEach(function(pair){
       var el=$(pair[0]); if(el) el.textContent=pair[1];
     });
+    for(var si=0;si<6;si++){
+      var lbl=d['voiceSapiSens'+si];
+      var btn=$('btnVoiceSapiSens'+si);
+      if(btn) btn.textContent=lbl;
+      var btn2=$('btnVoiceSettingsSapiSens'+si);
+      if(btn2) btn2.textContent=lbl;
+    }
     var gearEnd=$('btnHomeEndSettings');
     if(gearEnd) gearEnd.setAttribute('aria-label',d.homeVoiceGearSettingsEnd);
     var gearAuto=$('btnHomeAutoSettings');

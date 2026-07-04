@@ -75,7 +75,18 @@
     });
     listEl.innerHTML=html;
   }
-  function friendlyPair(triggerKey,targetKey){
+  function friendlyPair(triggerKey,targetKey,m){
+    const lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+    if(global.OneToneKeyLabels){
+      const labels=global.OneToneKeyLabels.labelsForMapping({
+        triggerKey:triggerKey||'',
+        targetKey:targetKey||'',
+        sourceKey:m&&m.sourceKey||''
+      },lang);
+      if(labels.triggerLabel||labels.targetLabel){
+        return (labels.triggerLabel||'?')+' → '+(labels.targetLabel||'?');
+      }
+    }
     return (hooks().friendlyKeyName(triggerKey)||'?')+' → '+(hooks().friendlyKeyName(targetKey)||'?');
   }
 
@@ -184,13 +195,17 @@
   }
 
   function conflictHintForRow(c,selfId){
+    if(!c) return '';
     const otherId=otherIdInConflict(c,selfId);
     const key=mappingTargetKey(otherId);
     return t('conflictRowHint').replace('{key}',key);
   }
 
   function focusMapping(id){
+    if(!id) return;
+    hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
+    hooks().syncEditorFromSelection();
     hooks().render();
     const row=document.querySelector('.map-row[data-id="'+id+'"]');
     if(row) row.scrollIntoView({block:'nearest',behavior:'smooth'});
@@ -273,6 +288,7 @@
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
+    if(m.imePresetId===undefined) m.imePresetId='';
   }
 
   function isAutoTriggerMapping(m){

@@ -216,6 +216,28 @@
       if(el) el.classList.toggle('is-clickable',!loading&&!busy);
     });
   }
+  function homeEndKeyPreview(m){
+    const unset={summary:t('homeLiveUnset'),saved:false,showIcon:false,preset:null};
+    if(!m||!hooks().isSavedMapping(m)) return unset;
+    hooks().ensureMappingExtras(m);
+    const presetId=String(m.imePresetId||'').trim();
+    let preset=null;
+    if(presetId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+      preset=global.OneToneImePresets.presetById(presetId);
+    }
+    const customTarget=String(hooks().editorTargetForMapping(m)||m.targetKey||'').trim();
+    const rawKey=preset
+      ?String((preset.endKey||preset.targetKey)||'').trim()
+      :customTarget;
+    if(!rawKey) return unset;
+    return {
+      summary:hooks().friendlyKeyName(rawKey),
+      saved:true,
+      showIcon:!!preset,
+      preset:preset
+    };
+  }
+
   function keyFinishPreviewText(m){
     const unset={
       mode:'',detail:'',summary:t('homeLiveUnset'),
@@ -259,30 +281,43 @@
 
   function renderHomeKeyFinishPreview(loading){
     const m=hooks().selectedMapping();
-    const preview=loading?null:keyFinishPreviewText(m);
+    const preview=loading?null:homeEndKeyPreview(m);
     const finishLbl=$('homeKeyMapFinishLbl');
     const finishKey=$('homeKeyMapFinishKey');
+    const finishKeyText=$('homeKeyMapFinishKeyText');
+    const finishImeIcon=$('homeKeyMapFinishImeIcon');
     const finishHint=$('homeKeyMapFinishHint');
     const arrowFinishText=$('homeKeyMapArrowFinishText');
     if(finishLbl) finishLbl.textContent=t('homeKeyMapFinishLbl');
     if(arrowFinishText) arrowFinishText.textContent=t('homeKeyMapArrowFinishText');
-    const busy=hooks().getRecordingMode()!=='none';
+    const summary=preview?preview.summary:t('homeLiveUnset');
     if(loading){
-      if(finishKey){ finishKey.textContent=t('homeLiveLoading'); finishKey.className='home-key-map-key is-empty'; }
+      if(finishKeyText) finishKeyText.textContent=t('homeLiveLoading');
+      else if(finishKey) finishKey.textContent=t('homeLiveLoading');
+      if(finishKey) finishKey.className='home-key-map-key is-empty';
+      if(finishImeIcon) finishImeIcon.hidden=true;
       if(finishHint){ finishHint.textContent=''; finishHint.hidden=true; }
       return;
     }
-    const summary=preview?preview.summary:t('homeLiveUnset');
+    if(finishKeyText) finishKeyText.textContent=summary;
+    else if(finishKey) finishKey.textContent=summary;
+    if(finishImeIcon){
+      if(preview&&preview.showIcon&&preview.preset){
+        finishImeIcon.src=preview.preset.icon;
+        finishImeIcon.alt=t(preview.preset.nameKey);
+        finishImeIcon.hidden=false;
+      }else{
+        finishImeIcon.hidden=true;
+        finishImeIcon.removeAttribute('src');
+      }
+    }
     if(finishKey){
-      finishKey.textContent=summary;
       finishKey.className='home-key-map-key'+(preview&&preview.saved?' is-set':' is-empty');
+      finishKey.classList.toggle('has-ime-badge',!!(preview&&preview.showIcon&&preview.preset));
     }
     if(finishHint){
-      const chipsHtml=preview&&preview.chips&&preview.chips.length?renderHomeKeyFinishMetaChips(preview.chips):'';
-      const detailHtml=preview&&preview.detail?('<span class="home-key-map-step-hint-plain">'+hooks().escHtml(preview.detail)+'</span>'):'';
-      const html=chipsHtml||detailHtml;
-      finishHint.innerHTML=html;
-      finishHint.hidden=!html;
+      finishHint.innerHTML='';
+      finishHint.hidden=true;
     }
   }
   function homeMicStatusLabel(){
@@ -346,10 +381,12 @@
   function homeVoiceEndPhrases(){
     const endSnap=hooks().voiceUiSnapshot.end||{};
     const endCfg=(state().config&&state().config.voiceEnd)||(state().config&&state().config.voice_end)||{};
-    const zh=endSnap.phrasesZh||endCfg.phrasesZh||endCfg.phrases_zh||[];
-    const en=endSnap.phrasesEn||endCfg.phrasesEn||endCfg.phrases_en||[];
-    const zhList=hooks().cloneStringList(Array.isArray(zh)?zh:[]);
-    const enList=hooks().cloneStringList(Array.isArray(en)?en:[]);
+    const zhSnap=Array.isArray(endSnap.phrasesZh)?endSnap.phrasesZh:[];
+    const enSnap=Array.isArray(endSnap.phrasesEn)?endSnap.phrasesEn:[];
+    const zhCfg=endCfg.phrasesZh||endCfg.phrases_zh||[];
+    const enCfg=endCfg.phrasesEn||endCfg.phrases_en||[];
+    const zhList=hooks().cloneStringList(zhSnap.length?zhSnap:zhCfg);
+    const enList=hooks().cloneStringList(enSnap.length?enSnap:enCfg);
     if(global.OneToneI18n.getLang()==='en') return enList.length?enList:zhList;
     return zhList.length?zhList:enList;
   }
@@ -423,14 +460,16 @@
     container.classList.toggle('is-lite-locked',!!opts.liteLocked);
     container.classList.toggle('is-wake',opts.mode==='wake');
     const list=(phrases||[]).map(function(p){ return String(p||'').trim(); }).filter(Boolean);
-    if(!list.length){
+    const maxVisible=Number(opts.maxVisible)||0;
+    const visible=maxVisible>0?list.slice(0,maxVisible):list;
+    if(!visible.length){
       const empty=document.createElement('span');
       empty.className='home-phrase-cloud-empty';
       empty.textContent=opts.emptyText||'—';
       container.appendChild(empty);
       return;
     }
-    list.forEach(function(phrase,i){
+    visible.forEach(function(phrase,i){
       const chip=document.createElement('span');
       if(opts.mode==='wake'){
         chip.className='home-phrase-chip'+(i===0?' is-primary':' is-secondary');
@@ -441,6 +480,13 @@
       chip.title=phrase;
       container.appendChild(chip);
     });
+    if(maxVisible>0&&list.length>maxVisible){
+      const more=document.createElement('span');
+      more.className='home-phrase-chip is-more';
+      more.textContent='+'+(list.length-maxVisible);
+      more.title=list.slice(maxVisible).join('、');
+      container.appendChild(more);
+    }
   }
 
   function homeEndPhrase(){
@@ -474,6 +520,27 @@
     if(w.engine==='vosk'||voskCfg.enabled) return 'vosk';
     if(w.engine==='sapi'||sapiCfg.enabled) return 'sapi';
     return 'off';
+  }
+  function homeVoiceEngineUiMode(){
+    const runtime=homeVoiceEngineOn();
+    if(runtime!=='off') return runtime;
+    if(global.OneToneVoiceWake){
+      if(global.OneToneVoiceWake.isModeSwitchPending()){
+        const pending=global.OneToneVoiceWake.getExpandedMode();
+        if(pending==='vosk'||pending==='sapi') return pending;
+      }
+    }
+    const voskTab=$('btnHomeVoiceModeVosk');
+    if(voskTab&&voskTab.classList.contains('is-active')) return 'vosk';
+    return 'sapi';
+  }
+
+  function syncHomeVoiceModeButtons(eng){
+    eng=eng||homeVoiceEngineUiMode();
+    const modeSapiBtn=$('btnHomeVoiceModeSapi');
+    const modeVoskBtn=$('btnHomeVoiceModeVosk');
+    if(modeSapiBtn) modeSapiBtn.classList.toggle('is-active',eng!=='vosk');
+    if(modeVoskBtn) modeVoskBtn.classList.toggle('is-active',eng==='vosk');
   }
 
   function syncHomeEntryToggleBtn(btn,isActive,offKey,onKey){
@@ -522,22 +589,33 @@
     renderHomeKeyFinishPreview(loading);
   }
 
-  function renderHomeLiveVoicePanel(loading){
+  function renderHomeLiveVoicePanel(loading,opts){
+    opts=opts||{};
+    const skipMic=!!opts.skipMic;
     const micDevices=hooks().micDevices;
-    if(!micDevices.length&&!loading&&!hooks().uiBootstrapping()) hooks().loadMicDevices().catch(function(){});
-    else{
-      hooks().renderHomeMicCurrent();
-      if(!loading&&!hooks().voiceCaptureActive()&&hooks().bootMicReady()) hooks().syncHomeMicMonitor().catch(function(){});
+    if(!skipMic){
+      if(!micDevices.length&&!loading&&!hooks().uiBootstrapping()) hooks().loadMicDevices().catch(function(){});
+      else{
+        hooks().renderHomeMicCurrent();
+        const switchPending=global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending();
+        if(!loading&&!hooks().voiceCaptureActive()&&hooks().bootMicReady()&&!switchPending){
+          hooks().syncHomeMicMonitor().catch(function(){});
+        }
+      }
     }
     const recordingBusy=hooks().getRecordingMode()!=='none';
     const eng=homeVoiceEngineOn();
+    const uiEng=homeVoiceEngineUiMode();
     const cfg=state().config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const w=hooks().voiceUiSnapshot.wake||{};
     const voiceOn=eng!=='off';
     const running=w.state==='listening'||w.state==='triggered';
-    const warming=voiceOn&&!hooks().voiceEngineBootDone()&&hooks().configLoadedFromBackend();
+    const voskState=(w.vosk&&w.vosk.state)||'';
+    const sapiState=(w.sapi&&w.sapi.state)||'';
+    const engineStarting=voskState==='starting'||sapiState==='starting';
+    const warming=voiceOn&&engineStarting&&!loading;
     setHomeLiveBadge('homeLiveVoiceBadge',loading?t('homeLiveLoading'):(eng==='off'?t('homeLiveBadgeOff'):(warming?t('homeLiveLoading'):(running?t('homeLiveBadgeOn'):t('homeLiveBadgeReady')))),loading?'':(eng==='off'?'':(running?'on':'on')));
     const wakeStep=$('homeVoiceMapWake');
     const wakeKey=$('homeVoiceMapWakeKey');
@@ -547,7 +625,8 @@
     if(wakeCloud){
       renderPhraseCloud(wakeCloud,loading?[]:phraseList,{
         emptyText:loading?t('homeLiveLoading'):t('homeLiveUnset'),
-        mode:'wake'
+        mode:'wake',
+        maxVisible:3
       });
     }
     if(wakeKey){
@@ -559,16 +638,14 @@
       wakeStep.classList.toggle('is-off',!loading&&!voiceOn);
     }
     renderHomeWakeStatusHint(loading);
+    syncHomeVoiceModeButtons(uiEng);
     const modeSapiBtn=$('btnHomeVoiceModeSapi');
     const modeVoskBtn=$('btnHomeVoiceModeVosk');
-    if(modeSapiBtn){
-      modeSapiBtn.classList.toggle('is-active',eng!=='vosk');
-      modeSapiBtn.disabled=recordingBusy||!!global.OneToneVoiceWake.isModeSwitchPending();
-    }
-    if(modeVoskBtn){
-      modeVoskBtn.classList.toggle('is-active',eng==='vosk');
-      modeVoskBtn.disabled=recordingBusy||!!global.OneToneVoiceWake.isModeSwitchPending();
-    }
+    const engineBar=$('homeVoiceEngineBar');
+    const switchBusy=!!global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending();
+    if(engineBar) engineBar.classList.toggle('is-switching',switchBusy);
+    if(modeSapiBtn) modeSapiBtn.disabled=recordingBusy;
+    if(modeVoskBtn) modeVoskBtn.disabled=recordingBusy;
     const sapiQuick=$('homeVoiceSapiQuick');
     const conf=Number(sapiCfg.minConfidence==null?0.35:sapiCfg.minConfidence);
     if(sapiQuick) sapiQuick.hidden=true;
@@ -624,7 +701,8 @@
     const delayLine=$('homeVoiceEndDelayLine');
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
     global.OneToneVoiceEnd.syncModeUi(true);
-    const lite=global.OneToneVoiceEnd.uiUsesLiteMode(true);
+    const uiEng=homeVoiceEngineUiMode();
+    const lite=uiEng!=='vosk';
     const liteBadge=$('homeFinishEndLiteBadge');
     if(liteBadge){
       liteBadge.hidden=!lite;
@@ -653,7 +731,7 @@
       }else if(lite){
         renderPhraseCloud(endCloud,[],{emptyText:t('homeVoiceMapEndLite'),liteLocked:true});
       }else if(enabled&&phraseList.length){
-        renderPhraseCloud(endCloud,phraseList);
+        renderPhraseCloud(endCloud,phraseList,{maxVisible:2});
       }else if(enabled){
         renderPhraseCloud(endCloud,[],{emptyText:t('homeLiveEndWord')});
       }else{
@@ -676,7 +754,19 @@
       if(endSummary) endSummary.textContent=enabled?t('voiceEndEnabledShort'):t('voiceEndDisabledShort');
       if(endDetail) endDetail.textContent=detail||t('endPhrasesEmpty');
     }
-    hooks().renderVoiceSettingsFlow(loading);
+  }
+  var homeLiveRenderTimer=0;
+  function scheduleRenderHomeLiveZone(){
+    clearTimeout(homeLiveRenderTimer);
+    homeLiveRenderTimer=setTimeout(function(){
+      homeLiveRenderTimer=0;
+      renderHomeLiveZone();
+    },100);
+  }
+  function renderHomeVoiceModeSwitchUi(){
+    const loading=!hooks().configLoadedFromBackend();
+    renderHomeLiveVoicePanel(loading,{skipMic:true});
+    renderHomeFinishZone(loading);
   }
   function renderHomeLiveZone(){
     try{
@@ -688,6 +778,9 @@
       hooks().refreshHomeGuideIfOpen();
     }catch(err){
       console.error('renderHomeLiveZone',err);
+      try{
+        syncHomeVoiceModeButtons(homeVoiceEngineUiMode());
+      }catch(_){}
     }
   }
 
@@ -702,11 +795,14 @@
     voiceWakePhrases:homeVoiceWakePhrases,
     voiceEndPhrases:homeVoiceEndPhrases,
     voiceEngineOn:homeVoiceEngineOn,
-  syncEntryToggleBtn:syncHomeEntryToggleBtn,
+    voiceEngineUiMode:homeVoiceEngineUiMode,
+    syncEntryToggleBtn:syncHomeEntryToggleBtn,
     renderKeyPanel:renderHomeLiveKeyPanel,
     renderVoicePanel:renderHomeLiveVoicePanel,
     renderFinishZone:renderHomeFinishZone,
     renderZone:renderHomeLiveZone,
+    scheduleRenderZone:scheduleRenderHomeLiveZone,
+    renderVoiceModeSwitchUi:renderHomeVoiceModeSwitchUi,
     wakeHeardLabel:homeWakeHeardLabel
   };
 })((typeof window!=='undefined')?window:globalThis);

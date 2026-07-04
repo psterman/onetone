@@ -15,6 +15,8 @@
       renderVoiceSettingsFlow:deps.renderVoiceSettingsFlow,
       renderVoiceModeUsage:deps.renderVoiceModeUsage,
       renderHomeLiveZone:deps.renderHomeLiveZone,
+      scheduleRenderHomeLiveZone:deps.scheduleRenderHomeLiveZone,
+      renderHomeVoiceModeSwitchUi:deps.renderHomeVoiceModeSwitchUi,
       markVoiceEngineBootHandled:deps.markVoiceEngineBootHandled,
       stopMicMonitor:deps.stopMicMonitor,
       stopMicLevelPoll:deps.stopMicLevelPoll,
@@ -44,6 +46,7 @@
     };
     global.__vp_voice_end_hooks__={
       homeVoiceEngineOn:deps.homeVoiceEngineOn,
+      homeVoiceEngineUiMode:deps.homeVoiceEngineUiMode,
       homePreferredVoiceEngine:H().homePreferredVoiceEngine,
       getVoiceWakeExpandedMode:deps.getVoiceWakeExpandedMode,
       cloneStringList:tx().cloneStringList,

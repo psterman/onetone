@@ -7,7 +7,8 @@
   function runtime(){ return global.OneToneState.runtime; }
   function hooks(){ return global.__vp_voice_wake_hooks__ || {}; }
   var voiceWakeExpandedMode='sapi';
-  var voiceModeSwitchPending=false;
+  var voiceModeSwitchSeq=0;
+  var voiceModeSwitchInFlight=false;
   var voiceSapiTogglePending=false;
   var voiceVoskTogglePending=false;
   var lastVoiceSapiLiveFp='';
@@ -20,6 +21,56 @@
   var voiceSapiPresetSaveSeq=0;
   var voiceSapiSelectedPhrases=[];
   var voiceSapiPresetSaveChain=Promise.resolve();
+  var SAPI_SENS_LEVELS=[0.15,0.25,0.35,0.50,0.65,0.80];
+
+  function nearestSapiSensIndex(value){
+    var v=Number(value);
+    if(!isFinite(v)) v=0.35;
+    var best=2;
+    var diff=Infinity;
+    for(var i=0;i<SAPI_SENS_LEVELS.length;i++){
+      var d=Math.abs(SAPI_SENS_LEVELS[i]-v);
+      if(d<diff){ diff=d; best=i; }
+    }
+    return best;
+  }
+
+  function sapiSensLabelForIndex(index){
+    return t('voiceSapiSens'+String(index));
+  }
+
+  function syncVoiceSapiSensUi(conf){
+    var idx=nearestSapiSensIndex(conf);
+    var label=sapiSensLabelForIndex(idx);
+    document.querySelectorAll('.voice-sapi-sens-btn').forEach(function(btn){
+      var bi=Number(btn.getAttribute('data-sapi-sens'));
+      btn.classList.toggle('is-active',bi===idx);
+    });
+    ['voiceSettingsSapiSensCurrent','voiceSapiSensCurrent'].forEach(function(id){
+      var el=$(id);
+      if(el) el.textContent=label;
+    });
+    var slider=$('voiceSapiConfidence');
+    if(slider && document.activeElement!==slider) slider.value=String(SAPI_SENS_LEVELS[idx]);
+    var legacyLabel=$('voiceSapiConfidenceLabel');
+    if(legacyLabel) legacyLabel.textContent=t('voiceSapiSensitivity')+' '+SAPI_SENS_LEVELS[idx].toFixed(2);
+  }
+
+  function applyVoiceSapiSensLevel(index){
+    index=Number(index);
+    if(index<0||index>=SAPI_SENS_LEVELS.length) return Promise.resolve();
+    var value=SAPI_SENS_LEVELS[index];
+    syncVoiceSapiSensUi(value);
+    return global.OneToneIpc.invoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
+      renderVoiceSapiStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,res);
+      return res;
+    }).catch(function(err){
+      console.error('voice_sapi_sens',err);
+      loadVoiceSapiStatus();
+      throw err;
+    });
+  }
 
   function normalizePhraseList(list){
     return (Array.isArray(list)?list:[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
@@ -89,6 +140,43 @@
     return t('homeLiveBadgeReady');
   }
 
+  function updateSapiHeardInline(primaryText, extraText){
+    const inlinePrimary=$('voiceSapiHeardPrimary');
+    const inlineExtra=$('voiceSapiHeardExtra');
+    if(inlinePrimary) inlinePrimary.textContent=primaryText||'—';
+    if(inlineExtra){
+      if(extraText){
+        inlineExtra.hidden=false;
+        inlineExtra.textContent=extraText;
+      }else{
+        inlineExtra.hidden=true;
+        inlineExtra.textContent='';
+      }
+    }
+  }
+
+  function renderSapiHeardInline(w, mode){
+    const previewMode=mode==='off'?(voiceWakeExpandedMode||'sapi'):mode;
+    if(previewMode!=='sapi'&&mode!=='sapi'){
+      updateSapiHeardInline('', '');
+      return;
+    }
+    const sapiRes=w.sapi;
+    if(!sapiRes||!sapiRes.enabled){
+      updateSapiHeardInline(t('voiceSapiHeard')+'：'+t('voiceSapiOff'), '');
+      return;
+    }
+    const raw=sapiRes.state||'stopped';
+    const heard=sapiRes.lastHeard||'';
+    const skip=sapiRes.lastSkip||'';
+    const trigger=sapiRes.lastTrigger||'';
+    const heardText=heard||(raw==='listening'?t('homeLiveHeardWaiting'):t('voiceSapiWaiting'));
+    let extraLine='';
+    if(trigger) extraLine=t('voiceWakeTriggered')+'：'+trigger;
+    else if(skip) extraLine=t('voiceWakeSkip')+'：'+skip;
+    updateSapiHeardInline(t('voiceSapiHeard')+'：'+heardText, extraLine);
+  }
+
   function renderVoiceMicLive(){
     const stateEl=$('voiceMicLiveState');
     const primary=$('voiceMicLivePrimary');
@@ -100,7 +188,10 @@
     if(barsEl&&!barsEl.children.length&&global.OneToneAppMic){
       barsEl.innerHTML=global.OneToneAppMic.buildMicLevelBars(12);
     }
-    if(!stateEl||!primary) return;
+    if(!stateEl||!primary){
+      renderSapiHeardInline(hooks().voiceUiSnapshot.wake||{}, currentVoiceMode());
+      return;
+    }
     const w=hooks().voiceUiSnapshot.wake||{};
     const mode=currentVoiceMode();
     const res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
@@ -113,6 +204,7 @@
       if(secondary){ secondary.hidden=true; secondary.textContent=''; }
       if(extra){ extra.hidden=true; extra.textContent=''; }
       if(progressEl) progressEl.hidden=true;
+      renderSapiHeardInline(w, mode);
       renderSettingsVoiceSubnav();
       return;
     }
@@ -180,6 +272,7 @@
         }
       }
     }
+    renderSapiHeardInline(w, mode);
     renderSettingsVoiceSubnav();
   }
 
@@ -339,10 +432,104 @@
       else hintEl.textContent=t('voiceModeHintOff');
     }
     hooks().renderVoiceModeUsage();
-    setVoiceModeCardBusy(voiceModeSwitchPending);
+    setVoiceModeCardBusy(voiceModeSwitchInFlight);
     global.OneToneVoiceEnd.syncModeUi(false);
     renderSettingsVoiceSubnav();
     hooks().renderVoiceSettingsFlow();
+  }
+
+  function optimisticVoiceEngineConfig(mode){
+    if(!state().config) return;
+    const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
+    const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+    state().config.voiceVosk=vosk;
+    state().config.voiceSapi=sapi;
+    if(mode==='vosk'){
+      vosk.enabled=true;
+      sapi.enabled=false;
+    }else{
+      sapi.enabled=true;
+      vosk.enabled=false;
+    }
+    const snap=hooks().voiceUiSnapshot;
+    if(snap){
+      if(!snap.wake) snap.wake={};
+      snap.wake.engine=mode;
+      snap.wake.voskEnabled=mode==='vosk';
+      snap.wake.sapiEnabled=mode==='sapi';
+    }
+  }
+
+  function applyHomeVoiceModeSwitchUi(){
+    global.OneToneVoiceEnd.syncModeUi(true);
+    if(ui().drawerOpen) renderVoiceModeSwitch();
+    else if(hooks().renderHomeVoiceModeSwitchUi) hooks().renderHomeVoiceModeSwitchUi();
+  }
+
+  function pumpVoiceModeSwitch(opts){
+    if(voiceModeSwitchInFlight) return;
+    const mode=voiceWakeExpandedMode;
+    if(mode!=='sapi'&&mode!=='vosk') return;
+    const seq=voiceModeSwitchSeq;
+    const toastKind=(opts&&opts.toastKind)||'default';
+    const toastLite=toastKind==='lite';
+    function modeToast(){
+      if(toastLite) hooks().toast(mode==='sapi'?t('voiceNavToastLite'):t('voiceNavToastPro'),'lite');
+      else hooks().toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
+    }
+    const homeOnly=!ui().drawerOpen;
+    const statusOpts={liveOnly:homeOnly};
+    const syncOpts={lightOnly:true,homeOnly:homeOnly};
+    voiceModeSwitchInFlight=true;
+    setVoiceModeCardBusy(true);
+    const finish=function(){
+      voiceModeSwitchInFlight=false;
+      setVoiceModeCardBusy(false);
+      if(seq!==voiceModeSwitchSeq){
+        pumpVoiceModeSwitch(opts);
+        return;
+      }
+      applyHomeVoiceModeSwitchUi();
+      if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+      else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+    };
+    if(mode==='sapi'){
+      global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
+        if(seq!==voiceModeSwitchSeq) return;
+        renderVoiceSapiStatus(res,statusOpts);
+        if(!handleVoiceSapiEnableResult(res,true)) return;
+        hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null,syncOpts);
+        modeToast();
+        scheduleVoiceToggleRefresh();
+      }).catch(function(err){
+        if(seq!==voiceModeSwitchSeq) return;
+        loadVoiceSapiStatus();
+        const msg=err&&err.message?String(err.message).trim():'';
+        hooks().toast(msg||t('voiceSapiFail'));
+        console.error('voice_mode_sapi',err);
+      }).finally(finish);
+      return;
+    }
+    global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
+      if(seq!==voiceModeSwitchSeq) return;
+      renderVoiceVoskStatus(res,statusOpts);
+      return global.OneToneIpc.invoke('cmd_voice_end_status',{}).catch(function(){return null;}).then(function(endRes){
+        if(seq!==voiceModeSwitchSeq) return;
+        if(endRes){
+          global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
+          const snap=hooks().voiceUiSnapshot;
+          if(snap) snap.end=Object.assign({},snap.end||{},endRes);
+        }
+        hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},endRes,syncOpts);
+        modeToast();
+        scheduleVoiceToggleRefresh();
+      });
+    }).catch(function(err){
+      if(seq!==voiceModeSwitchSeq) return;
+      loadVoiceVoskStatus();
+      hooks().toast(t('voiceVoskFail'));
+      console.error('voice_mode_vosk',err);
+    }).finally(finish);
   }
 
   function switchVoiceMode(mode, opts){
@@ -353,45 +540,17 @@
       if(toastLite) hooks().toast(mode==='sapi'?t('voiceNavToastLite'):t('voiceNavToastPro'),'lite');
       else hooks().toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
     }
-    if(voiceModeSwitchPending) return;
     if(mode!=='sapi'&&mode!=='vosk') return;
+    voiceModeSwitchSeq++;
     hooks().markVoiceEngineBootHandled();
     setVoiceWakeExpandedMode(mode);
-    if(currentVoiceMode()===mode){
-      modeToast();
+    if(currentVoiceMode()===mode&&!voiceModeSwitchInFlight){
+      applyHomeVoiceModeSwitchUi();
       return;
     }
-    voiceModeSwitchPending=true;
-    renderVoiceModeSwitch();
-    const done=function(){
-      voiceModeSwitchPending=false;
-      renderVoiceModeSwitch();
-    };
-    if(mode==='sapi'){
-      global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
-        renderVoiceSapiStatus(res);
-        if(!handleVoiceSapiEnableResult(res,true)) return;
-        hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null);
-        modeToast();
-        scheduleVoiceToggleRefresh();
-      }).catch(function(err){
-        loadVoiceSapiStatus();
-        const msg=err&&err.message?String(err.message).trim():'';
-        hooks().toast(msg||t('voiceSapiFail'));
-        console.error('voice_mode_sapi',err);
-      }).finally(done);
-      return;
-    }
-    global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
-      renderVoiceVoskStatus(res);
-      hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null,{lightOnly:true});
-      modeToast();
-      scheduleVoiceToggleRefresh();
-    }).catch(function(err){
-      loadVoiceVoskStatus();
-      hooks().toast(t('voiceVoskFail'));
-      console.error('voice_mode_vosk',err);
-    }).finally(done);
+    optimisticVoiceEngineConfig(mode);
+    applyHomeVoiceModeSwitchUi();
+    pumpVoiceModeSwitch(opts);
   }
 
   function settingsPanelNeedsVoicePoll(){
@@ -543,15 +702,8 @@
       }else if(serverPhrases.length){
         syncVoiceSapiPresets(serverPhrases);
       }
-      const confidenceEl=$('voiceSapiConfidence');
-      const confidenceLabel=$('voiceSapiConfidenceLabel');
       const conf=Number(res.minConfidence==null?0.35:res.minConfidence);
-      if(confidenceEl && document.activeElement!==confidenceEl){
-        confidenceEl.value=String(conf);
-      }
-      if(confidenceLabel){
-        confidenceLabel.textContent=t('voiceSapiSensitivity')+' '+conf.toFixed(2);
-      }
+      syncVoiceSapiSensUi(conf);
       renderVoiceSapiSetupNotice(res);
     }
     const heard=res.lastHeard||'';
@@ -576,7 +728,7 @@
       global.OneToneVoiceDiag.updateMetric('sapi','error',res.lastError||'',t('voiceDiagLogError'));
     }
     renderVoiceMicLive();
-    if(!liveOnly) renderVoiceModeSwitch();
+    if(!liveOnly&&ui().drawerOpen) renderVoiceModeSwitch();
   }
 
   function loadVoiceSapiStatus(){
@@ -761,12 +913,11 @@
 
   function updateVoiceSapiConfidence(saveNow){
     const el=$('voiceSapiConfidence');
-    const label=$('voiceSapiConfidenceLabel');
     if(!el) return;
     const value=Number(el.value||0);
-    if(label) label.textContent=t('voiceSapiSensitivity')+' '+value.toFixed(2);
+    syncVoiceSapiSensUi(value);
     if(!saveNow) return;
-    global.OneToneIpc.invoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
+    return global.OneToneIpc.invoke('cmd_voice_sapi_set_min_confidence',{minConfidence:value}).then(function(res){
       renderVoiceSapiStatus(res);
       hooks().syncHomeFromVoiceSettings(null,res);
     }).catch(function(err){
@@ -865,7 +1016,7 @@
       global.OneToneVoiceDiag.updateMetric('vosk','error',res.lastError||'',t('voiceDiagLogError'));
     }
     renderVoiceMicLive();
-    if(!liveOnly) renderVoiceModeSwitch();
+    if(!liveOnly&&ui().drawerOpen) renderVoiceModeSwitch();
   }
 
   function loadVoiceVoskStatus(){
@@ -1042,6 +1193,9 @@
     syncSapiPresets:syncVoiceSapiPresets,
     initSapiPresetsFromConfig:initSapiPresetsFromConfig,
     updateSapiConfidence:updateVoiceSapiConfidence,
+    syncSapiSensUi:syncVoiceSapiSensUi,
+    applySapiSensLevel:applyVoiceSapiSensLevel,
+    sapiSensLevels:function(){ return SAPI_SENS_LEVELS.slice(); },
     updateHomeSapiConfidence:updateHomeVoiceSapiConfidence,
     renderVoskStatus:renderVoiceVoskStatus,
     loadVoskStatus:loadVoiceVoskStatus,
@@ -1053,7 +1207,7 @@
     syncVoiceVoskPresetButtons:syncVoiceVoskPresetButtons,
     changeVoskModelPreset:changeVoiceVoskModelPreset,
     isEnglishVoskPreset:isEnglishVoskPreset,
-    isModeSwitchPending:function(){ return voiceModeSwitchPending; },
+    isModeSwitchPending:function(){ return voiceModeSwitchInFlight; },
     isSapiTogglePending:function(){ return voiceSapiTogglePending; },
     isVoskTogglePending:function(){ return voiceVoskTogglePending; },
     isPollStarted:function(){ return voiceStatusPollStarted; },

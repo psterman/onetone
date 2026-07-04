@@ -172,8 +172,14 @@
     const iconGear=$('btnSettingsIconGear');
     const open=!!ui.drawerOpen;
     if(btnLabel) btnLabel.textContent=open?t('homeNavTitle'):t('settingsTitle');
-    if(iconHome) iconHome.hidden=!open;
-    if(iconGear) iconGear.hidden=open;
+    if(iconHome){
+      iconHome.hidden=!open;
+      iconHome.classList.toggle('is-hidden',!open);
+    }
+    if(iconGear){
+      iconGear.hidden=open;
+      iconGear.classList.toggle('is-hidden',open);
+    }
   }
   function syncSettingsChrome(){
     const app=document.querySelector('.app');
@@ -230,4 +236,5 @@
     focusField:focusSettingsField,resetScroll:resetSettingsLayoutScroll,
     lastPanel:function(){ return lastPanel; }
   };
-})((typeof window!=='undefined')?window:globalThis);
+  syncHeaderSettingsBtn();
+})(typeof window!=='undefined'?window:globalThis);

@@ -205,7 +205,8 @@
       setEditorTriggerKey:ed().setEditorTriggerKey,
       getEditorTargetKey:ed().getEditorTargetKey,
       setEditorTargetKey:ed().setEditorTargetKey,
-      syncEditorFromSelection:deps.syncEditorFromSelection
+      syncEditorFromSelection:deps.syncEditorFromSelection,
+      flushAllEditorToMappings:deps.flushAllEditorToMappings
     };
     global.__vp_key_finish_flow_render_hooks__={
       ensureConfig:deps.ensureConfig,
@@ -224,7 +225,7 @@
       renderHomeKeyFinishPreview:deps.renderHomeKeyFinishPreview,
       renderMappingList:deps.renderMappingList,
       voiceUiSnapshot:vs().snapshot,
-      escHtml:deps.escHtml
+      escHtml:tx().escHtml
     };
   }
 

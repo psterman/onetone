@@ -59,7 +59,18 @@
       global.OneToneSettingsDrawer.syncHeaderBtn();
     }else{
       var btnLabel=$('btnSettingsLabel');
-      if(btnLabel) btnLabel.textContent=hooks().ui().drawerOpen?hooks().t('homeNavTitle'):hooks().t('settingsTitle');
+      var open=!!hooks().ui().drawerOpen;
+      if(btnLabel) btnLabel.textContent=open?hooks().t('homeNavTitle'):hooks().t('settingsTitle');
+      var iconHome=$('btnSettingsIconHome');
+      var iconGear=$('btnSettingsIconGear');
+      if(iconHome){
+        iconHome.hidden=!open;
+        iconHome.classList.toggle('is-hidden',!open);
+      }
+      if(iconGear){
+        iconGear.hidden=open;
+        iconGear.classList.toggle('is-hidden',open);
+      }
     }
     var settingsTitle=$('settingsTitle'); if(settingsTitle) settingsTitle.textContent=d.settingsTitle;
     $('mappingListTitle').textContent=d.mappingListTitle;

@@ -7,7 +7,8 @@
 
   function register(deps){
     global.__vp_home_guide_hooks__={
-      escHtml:tx().escHtml
+      escHtml:tx().escHtml,
+      closeHomeSchemeMenu:deps.closeHomeSchemeMenu
     };
     global.__vp_home_shell_hooks__={
       getHomeEntryMode:deps.getHomeEntryMode,
@@ -30,6 +31,7 @@
       isSavedMapping:deps.isSavedMapping,
       isDraftMapping:deps.isDraftMapping,
       ensureMappingTiming:deps.ensureMappingTiming,
+      ensureMappingExtras:deps.ensureMappingExtras,
       micDevices:deps.micDevices,
       activeMicId:deps.activeMicId,
       cloneStringList:tx().cloneStringList,

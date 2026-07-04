@@ -135,9 +135,12 @@
                     <span class="home-key-map-arrow-text" id="homeKeyMapArrowFinishText">说完后</span>
                   </div>
                   <div class="home-key-map-step" id="homeKeyMapFinish">
-                    <span class="home-key-map-step-label" id="homeKeyMapFinishLbl">方案最后一步</span>
-                    <div class="home-key-map-key is-empty" id="homeKeyMapFinishKey">—</div>
-                    <span class="home-key-map-step-hint" id="homeKeyMapFinishHint">—</span>
+                    <span class="home-key-map-step-label" id="homeKeyMapFinishLbl">结束键</span>
+                    <div class="home-key-map-key is-empty" id="homeKeyMapFinishKey">
+                      <img class="target-ime-badge home-key-finish-ime-badge" id="homeKeyMapFinishImeIcon" alt="" hidden decoding="async">
+                      <span class="home-key-map-finish-key-text" id="homeKeyMapFinishKeyText">—</span>
+                    </div>
+                    <span class="home-key-map-step-hint" id="homeKeyMapFinishHint" hidden>—</span>
                   </div>
                 </div>
               </section>
@@ -299,20 +302,6 @@
             <h4 class="pref-section-title" id="prefSectionRuntime">运行</h4>
             <div class="pref-row">
               <div class="pref-row-meta">
-                <p class="pref-row-label" id="listenTitle">监听状态</p>
-                <p class="pref-row-desc" id="listenDesc">暂停后不会响应按键与语音唤起</p>
-              </div>
-              <div class="pref-row-control">
-                <span class="chip" id="listenState">监听中</span>
-                <div class="pref-runtime-actions">
-                  <button type="button" class="control-btn" id="btnListenToggle">暂停</button>
-                  <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
-                  <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
-                </div>
-              </div>
-            </div>
-            <div class="pref-row">
-              <div class="pref-row-meta">
                 <p class="pref-row-label" id="autostartLabel">开机自启动</p>
                 <p class="pref-row-desc" id="autostartDesc">登录 Windows 后自动启动一声</p>
               </div>
@@ -464,10 +453,6 @@
                     <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
                   </section>
                   <section class="key-scheme-target-column">
-                    <div class="ime-preset-block ime-preset-block--above-card">
-                      <p class="ime-preset-hint" id="imePresetHintMapping" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
-                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
-                    </div>
                     <section class="key-scheme-edit-card" data-edit-step="target" id="keySchemeEditTarget">
                       <p class="mic-desc" id="targetTitle">语音快捷键</p>
                       <div class="display empty" id="targetDisplay">
@@ -479,6 +464,10 @@
                       </div>
                       <p class="help" id="targetHelp">这是你平时用来唤起语音输入的按键。录制前可先切到普通输入状态。</p>
                     </section>
+                    <div class="ime-preset-block ime-preset-block--below-card">
+                      <p class="ime-preset-hint" id="imePresetHintMapping" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
+                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                    </div>
                   </section>
                   <section class="key-scheme-edit-card key-scheme-finish-panel" data-edit-step="finish" id="keySchemeEditFinish">
                     <p class="mic-desc" id="keyExecFinishTitle">按键收尾</p>
@@ -555,6 +544,22 @@
                 <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeVosk">离线版</button>
               </div>
               <div class="voice-settings-card-val is-muted" id="voiceSettingsEngineStatus">—</div>
+            </div>
+            <div class="voice-settings-card voice-sapi-sens-card" id="voiceSettingsSapiSensCard" hidden>
+              <span class="voice-settings-card-lbl" id="voiceSettingsSapiSensTitle">语音转文字匹配</span>
+              <p class="voice-settings-card-sub" id="voiceSettingsSapiSensDesc">以下档位控制识别如何将你说的话匹配为文本</p>
+              <div class="recording-audio-strength-row">
+                <span class="setting-row-text" id="voiceSettingsSapiSensLbl">当前档位</span>
+                <span class="recording-audio-strength-current" id="voiceSettingsSapiSensCurrent">标准</span>
+              </div>
+              <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroupSettings" role="group" aria-labelledby="voiceSettingsSapiSensTitle">
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSettingsSapiSens0">最易</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSettingsSapiSens1">较易</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSettingsSapiSens2">标准</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSettingsSapiSens3">较严</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSettingsSapiSens4">严格</button>
+                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSettingsSapiSens5">最严</button>
+              </div>
             </div>
             <div class="voice-settings-card" id="voiceSettingsEndPhraseCard">
               <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">结束词</span>
@@ -647,9 +652,26 @@
                       <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
                       <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
                     </div>
-                    <div class="voice-sapi-row">
-                      <span class="mic-desc" id="voiceSapiConfidenceLabel">识别灵敏度（越低越容易触发）0.35</span>
-                      <input class="voice-sapi-range" id="voiceSapiConfidence" type="range" min="0" max="1" step="0.05" value="0.35">
+                    <div class="voice-sapi-heard-live" id="voiceSapiHeardLive">
+                      <p class="voice-sapi-heard-primary" id="voiceSapiHeardPrimary">—</p>
+                      <p class="voice-sapi-heard-extra" id="voiceSapiHeardExtra" hidden></p>
+                    </div>
+                    <div class="voice-sapi-sens-block">
+                      <p class="voice-sapi-sens-section-title" id="voiceSapiSensSectionTitle">语音转文字匹配</p>
+                      <p class="voice-sapi-sens-section-note" id="voiceSapiSensSectionNote">以下档位控制识别如何将你说的话匹配为文本</p>
+                      <div class="recording-audio-strength-row">
+                        <span class="setting-row-text" id="voiceSapiSensLbl">当前档位</span>
+                        <span class="recording-audio-strength-current" id="voiceSapiSensCurrent">标准</span>
+                      </div>
+                      <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroup" role="group" aria-labelledby="voiceSapiSensSectionTitle">
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSapiSens0">最易</button>
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSapiSens1">较易</button>
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSapiSens2">标准</button>
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSapiSens3">较严</button>
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSapiSens4">严格</button>
+                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSapiSens5">最严</button>
+                      </div>
+                      <input type="range" class="voice-sapi-range" id="voiceSapiConfidence" min="0" max="1" step="0.05" value="0.35" hidden aria-hidden="true">
                     </div>
                   </div>
                 </div>
@@ -858,6 +880,18 @@
           <section class="developer-debug-panel debug-focus-section" id="debugFocusDeveloperSection">
             <div class="mini-title" id="debugTitle">开发者调试</div>
             <p class="developer-debug-desc" id="debugDeveloperDesc">实时运行时快照、映射源组与按键事件流。</p>
+            <div class="dev-panel-block">
+              <div class="dev-panel-head">
+                <div class="mini-title" id="listenTitle">监听状态</div>
+                <span class="chip" id="listenState">监听中</span>
+              </div>
+              <p class="pref-row-desc" id="listenDesc">暂停后不会响应按键与语音唤起</p>
+              <div class="pref-runtime-actions">
+                <button type="button" class="control-btn" id="btnListenToggle">暂停</button>
+                <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
+                <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
+              </div>
+            </div>
             <div class="dev-runtime-grid" id="devRuntimeGrid"></div>
             <div class="dev-panel-block">
               <div class="dev-panel-head">
@@ -936,7 +970,10 @@
         <div>
           <div class="welcome-kicker" id="onboardKicker">首次使用</div>
           <h2 class="welcome-title" id="onboardTitle">录制两个按键</h2>
-          <p class="welcome-desc" id="onboardDesc">两步就好：先录你想按的键，再录「打开语音输入」的快捷键。</p>
+          <div class="welcome-desc-block">
+            <p class="welcome-desc" id="onboardDesc">两步就好：先录你想按的键，再录「打开语音输入」的快捷键。</p>
+            <p class="welcome-desc welcome-desc-sub" id="onboardDescSub" hidden></p>
+          </div>
         </div>
         <button type="button" class="welcome-close" id="btnOnboardClose" aria-label="关闭">×</button>
       </div>
@@ -944,23 +981,25 @@
         <section class="onboard-panel" id="onboardPanelSetup">
           <p class="welcome-mini-note" id="onboardSetupNote">请直接录制你想用的启动键。</p>
           <div class="onboard-setup-center">
-            <div class="onboard-setup-grid">
-              <div class="onboard-record-card" id="onboardTriggerCard">
-                <div class="onboard-record-card-step" id="onboardTriggerCardStep">第 1 步</div>
-                <p class="onboard-record-card-title" id="onboardTriggerCardTitle">① 你要按的键</p>
-                <div class="onboard-record-card-key" id="onboardTriggerCardKey">未设置</div>
-                <p class="onboard-record-card-hint" id="onboardTriggerCardHint">这个键以后用来启动语音输入</p>
-                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTriggerRecord">录这个键</button>
-                <div class="onboard-record-actions">
-                  <button type="button" class="welcome-btn" id="btnOnboardRecordTriggerAgain" hidden>重新录制</button>
-                </div>
-              </div>
-              <div class="onboard-record-arrow" aria-hidden="true">→</div>
-              <div class="onboard-target-column">
-                <div class="ime-preset-block ime-preset-block--above-card">
+            <div class="onboard-setup-stack">
+              <div class="onboard-setup-ime-row">
+                <div class="ime-preset-block ime-preset-block--onboard-top">
                   <p class="ime-preset-hint" id="imePresetHintOnboard">选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
                   <div class="ime-preset-strip" id="imePresetStripOnboard" data-ime-context="onboarding"></div>
                 </div>
+              </div>
+              <div class="onboard-setup-grid">
+                <div class="onboard-record-card" id="onboardTriggerCard">
+                  <div class="onboard-record-card-step" id="onboardTriggerCardStep">第 1 步</div>
+                  <p class="onboard-record-card-title" id="onboardTriggerCardTitle">① 你要按的键</p>
+                  <div class="onboard-record-card-key" id="onboardTriggerCardKey">未设置</div>
+                  <p class="onboard-record-card-hint" id="onboardTriggerCardHint">这个键以后用来启动语音输入</p>
+                  <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTriggerRecord">录这个键</button>
+                  <div class="onboard-record-actions">
+                    <button type="button" class="welcome-btn" id="btnOnboardRecordTriggerAgain" hidden>重新录制</button>
+                  </div>
+                </div>
+                <div class="onboard-record-arrow" aria-hidden="true">→</div>
                 <div class="onboard-record-card" id="onboardTargetCard">
                   <div class="onboard-record-card-step" id="onboardTargetCardStep">第 2 步</div>
                   <p class="onboard-record-card-title" id="onboardTargetCardTitle">② 打开语音输入的快捷键</p>
@@ -1003,22 +1042,25 @@
           </div>
         </section>
         <section class="onboard-panel" id="onboardPanelPhrases" hidden>
-          <div class="onboard-try-center" style="gap:10px">
-            <div style="width:100%;max-width:520px">
-              <p class="welcome-mini-note" id="onboardWakeNote">唤醒词：说出唤醒词可以开始输入（可选）。</p>
-              <div class="onboard-target-flow" style="justify-content:flex-start">
-                <span class="onboard-target-key is-key" id="onboardWakePhrase">—</span>
+          <div class="onboard-phrases-center">
+            <p class="onboard-phrases-flow-note" id="onboardPhrasesFlowNote">说出唤醒词打开听写，说完用结束词停止</p>
+            <div class="onboard-phrases-flow">
+              <div class="onboard-phrase-card onboard-phrase-card--start">
+                <p class="onboard-phrase-card-step" id="onboardWakeCardStep">① 开始</p>
+                <p class="onboard-phrase-card-title" id="onboardWakeCardTitle">唤醒词</p>
+                <p class="onboard-phrase-card-note" id="onboardWakeNote">说出唤醒词，即可打开语音输入</p>
+                <button type="button" class="welcome-btn onboard-phrase-practice-btn" id="btnOnboardWakePractice">练习唤醒词</button>
               </div>
-              <div class="onboard-target-actions" style="justify-content:flex-start">
-                <button type="button" class="welcome-btn" id="btnOnboardWakePractice">练习唤醒词</button>
+              <div class="onboard-phrases-connector" aria-hidden="true">
+                <span class="onboard-phrases-connector-arrow">→</span>
+                <span class="onboard-phrases-connector-label" id="onboardPhrasesFlowMid">听写中</span>
               </div>
-            </div>
-            <div style="width:100%;max-width:520px;margin-top:8px">
-              <p class="welcome-mini-note" id="onboardEndNote">结束词：听写中说出结束词结束输入（也可以点按钮结束）。</p>
-              <div class="onboard-target-flow" style="justify-content:flex-start">
-                <span class="onboard-target-key is-key" id="onboardEndPhrase">—</span>
+              <div class="onboard-phrase-card onboard-phrase-card--end">
+                <p class="onboard-phrase-card-step" id="onboardEndCardStep">② 结束</p>
+                <p class="onboard-phrase-card-title" id="onboardEndCardTitle">结束词</p>
+                <p class="onboard-phrase-card-note" id="onboardEndNote">说出结束词，即可停止语音输入</p>
+                <button type="button" class="welcome-btn onboard-phrase-practice-btn" id="btnOnboardEndPractice">练习结束词</button>
               </div>
-              <p class="welcome-mini-note" id="onboardEndHint">提示：主页上的「结束输入」按钮也能结束。</p>
             </div>
           </div>
         </section>
@@ -1106,11 +1148,24 @@
     </div>
   </div>
   <div class="phrase-practice-overlay" id="phrasePracticeOverlay" aria-hidden="true">
-    <div class="phrase-practice-modal" role="dialog" aria-modal="true" aria-labelledby="phrasePracticeTitle">
+    <div class="phrase-practice-modal" id="phrasePracticeModal" role="dialog" aria-modal="true" aria-labelledby="phrasePracticeTitle">
       <button type="button" class="welcome-close" id="btnPhrasePracticeClose" aria-label="关闭">×</button>
+      <p class="phrase-practice-kicker" id="phrasePracticeKicker" hidden>结束词</p>
       <h3 class="phrase-practice-title" id="phrasePracticeTitle">跟读唤醒词</h3>
       <p class="phrase-practice-hint" id="phrasePracticeHint">对着麦克风说出高亮词语</p>
+      <p class="phrase-practice-context" id="phrasePracticeContext" hidden></p>
+      <div class="phrase-practice-mic-row" id="phrasePracticeMicRow">
+        <div class="phrase-practice-mic-head">
+          <span class="phrase-practice-mic-lbl" id="phrasePracticeMicLbl">麦克风</span>
+          <span class="phrase-practice-mic-name" id="phrasePracticeMicName"></span>
+        </div>
+        <div class="phrase-practice-mic-level">
+          <span class="mic-level-bars" id="phrasePracticeMicBars" aria-hidden="true"></span>
+        </div>
+      </div>
+      <p class="phrase-practice-pick-hint" id="phrasePracticePickHint">可多选，选中的词将用于语音唤起</p>
       <div class="phrase-practice-chip-row" id="phrasePracticeChips"></div>
+      <p class="phrase-practice-selected-note" id="phrasePracticeSelectedNote"></p>
       <div class="phrase-practice-phrase" id="phrasePracticePhrase"></div>
       <p class="phrase-practice-heard" id="phrasePracticeHeard"></p>
       <div class="phrase-practice-actions">

@@ -3,6 +3,10 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_home_guide_hooks__ || {}; }
+  function closeHomeSchemeMenuSafe(){
+    if(hooks().closeHomeSchemeMenu) hooks().closeHomeSchemeMenu();
+    else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.closeMenu) global.OneToneHomeScheme.closeMenu();
+  }
   function homeGuideEl(sel){
     if(!sel) return null;
     if(typeof sel!=='string') return sel;
@@ -989,7 +993,7 @@
     const panelEl=$(def.panel);
     homeGuideState={card:card,anchorBtn:anchorBtn,def:def,panelEl:panelEl};
     if(HOME_GUIDE_HOVER){
-      closeHomeSchemeMenu();
+      closeHomeSchemeMenuSafe();
       bindHomeGuideTargetTips(def);
       const layer=$('homeGuideLayer');
       if(layer){
@@ -1010,7 +1014,7 @@
       layer.classList.add('is-open','is-opening');
     }
     if(panelEl) panelEl.classList.add('is-guide-active');
-    closeHomeSchemeMenu();
+    closeHomeSchemeMenuSafe();
     homeGuideBindObservers(panelEl,def.pins);
     layoutHomeGuide(def);
     homeGuideStartStepDemo(def);

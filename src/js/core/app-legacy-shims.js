@@ -184,6 +184,7 @@
     function addVoiceSapiPreset(ev){ return OneToneVoiceWake.addSapiPreset(ev); }
     function syncVoiceSapiPresets(phrases){ return OneToneVoiceWake.syncSapiPresets(phrases); }
     function updateVoiceSapiConfidence(saveNow){ return OneToneVoiceWake.updateSapiConfidence(saveNow); }
+    function applyVoiceSapiSensLevel(index){ return OneToneVoiceWake.applySapiSensLevel(index); }
     function updateHomeVoiceSapiConfidence(saveNow){ return OneToneVoiceWake.updateHomeSapiConfidence(saveNow); }
     function renderVoiceVoskStatus(res,opts){ return OneToneVoiceWake.renderVoskStatus(res,opts); }
     function loadVoiceVoskStatus(){ return OneToneVoiceWake.loadVoskStatus(); }
@@ -200,7 +201,7 @@
     function schemeMappingHasConflict(m){ return OneToneMappingCore.schemeHasConflict(m); }
     function schemeNavTags(m){ return OneToneMappingCore.schemeNavTags(m); }
     function renderSettingsSchemeSubnav(){ return OneToneMappingCore.renderSchemeSubnav(); }
-    function friendlyPair(triggerKey,targetKey){ return OneToneMappingCore.friendlyPair(triggerKey,targetKey); }
+    function friendlyPair(triggerKey,targetKey,m){ return OneToneMappingCore.friendlyPair(triggerKey,targetKey,m); }
     function isSavedMapping(m){ return OneToneMappingCore.isSaved(m); }
     function isDraftMapping(m){ return OneToneMappingCore.isDraft(m); }
     function hasDraftMappings(){ return OneToneMappingCore.hasDrafts(); }
@@ -297,11 +298,14 @@
     function homeVoiceWakePhrases(){ return OneToneHomeLive.voiceWakePhrases(); }
     function homeVoiceEndPhrases(){ return OneToneHomeLive.voiceEndPhrases(); }
     function homeVoiceEngineOn(){ return OneToneHomeLive.voiceEngineOn(); }
+    function homeVoiceEngineUiMode(){ return OneToneHomeLive.voiceEngineUiMode(); }
     function syncHomeEntryToggleBtn(btn,isActive,offKey,onKey){ return OneToneHomeLive.syncEntryToggleBtn(btn,isActive,offKey,onKey); }
     function renderHomeLiveKeyPanel(loading){ return OneToneHomeLive.renderKeyPanel(loading); }
     function renderHomeLiveVoicePanel(loading){ return OneToneHomeLive.renderVoicePanel(loading); }
     function renderHomeFinishZone(loading){ return OneToneHomeLive.renderFinishZone(loading); }
     function renderHomeLiveZone(){ return OneToneHomeLive.renderZone(); }
+    function scheduleRenderHomeLiveZone(){ return OneToneHomeLive.scheduleRenderZone(); }
+    function renderHomeVoiceModeSwitchUi(){ return OneToneHomeLive.renderVoiceModeSwitchUi(); }
     function homeWakeHeardLabel(){ return OneToneHomeLive.wakeHeardLabel(); }
     function openHomeGuide(card,anchorBtn){ return OneToneHomeGuide.open(card,anchorBtn); }
     function closeHomeGuide(userInitiated){ return OneToneHomeGuide.close(userInitiated); }
@@ -490,6 +494,7 @@
       homeOneClickStart:homeOneClickStart,
       homeSchemeLabel:homeSchemeLabel,
       homeVoiceEngineOn:homeVoiceEngineOn,
+      homeVoiceEngineUiMode:homeVoiceEngineUiMode,
       homeVoiceWakePhrase:homeVoiceWakePhrase,
       initHomeGuide:initHomeGuide,
       installAppUpdate:installAppUpdate,
@@ -556,6 +561,8 @@
       renderHomeLiveKeyPanel:renderHomeLiveKeyPanel,
       renderHomeLiveVoicePanel:renderHomeLiveVoicePanel,
       renderHomeLiveZone:renderHomeLiveZone,
+      scheduleRenderHomeLiveZone:scheduleRenderHomeLiveZone,
+      renderHomeVoiceModeSwitchUi:renderHomeVoiceModeSwitchUi,
       renderHomeMicCurrent:renderHomeMicCurrent,
       renderKeyFinishFlowPanel:renderKeyFinishFlowPanel,
       renderKeySchemeCardHeader:renderKeySchemeCardHeader,
@@ -670,6 +677,7 @@
       updatePrimaryCTA:updatePrimaryCTA,
       updateVoiceDiagMetric:updateVoiceDiagMetric,
       updateVoiceSapiConfidence:updateVoiceSapiConfidence,
+      applyVoiceSapiSensLevel:applyVoiceSapiSensLevel,
       voiceCaptureActive:voiceCaptureActive,
       voiceEndStateLabel:voiceEndStateLabel,
       voiceEndUiUsesLiteMode:voiceEndUiUsesLiteMode,

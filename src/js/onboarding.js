@@ -21,6 +21,10 @@
     practiceStarted: false
   };
 
+  var WAKE_PRESET_OPTIONS = ['开始输入','开始听写','打开听写','语音输入','开启输入'];
+  var END_PRESET_ZH = ['结束输入','发出去'];
+  var END_PRESET_EN = ['end dictation','send it'];
+
   function app(){
     return global.OneToneApp;
   }
@@ -410,20 +414,24 @@
     if(state.step === 0){
       next.textContent = t('onboardBtnNext');
       next.disabled = !canLeaveTriggerStep() || !targetOk();
+      next.classList.add('primary');
       return;
     }
     if(state.step === 1){
-      next.textContent = state.tryPassed ? t('onboardBtnFinish') : t('onboardBtnNext');
-      next.disabled = !state.tryPassed;
+      next.textContent = state.tryPassed ? t('onboardBtnNext') : t('onboardBtnSkip');
+      next.disabled = false;
+      next.classList.toggle('primary', !!state.tryPassed);
       return;
     }
     if(state.step === 2){
       next.textContent = t('onboardBtnNext');
       next.disabled = false;
+      next.classList.add('primary');
       return;
     }
-    next.textContent = t('onboardBtnStart');
+    next.textContent = t('onboardBtnFinish');
     next.disabled = false;
+    next.classList.add('primary');
   }
 
   function render(){
@@ -438,34 +446,146 @@
     renderFooterHint();
     var title = $('onboardTitle');
     var desc = $('onboardDesc');
+    var descSub = $('onboardDescSub');
     var kicker = $('onboardKicker');
     if(kicker) kicker.textContent = t('onboardKicker');
     var copy = stepCopy(state.step);
     if(title) title.textContent = copy.title;
     if(desc) desc.textContent = copy.desc;
+    if(descSub){
+      if(copy.descSub){
+        descSub.textContent = copy.descSub;
+        descSub.hidden = false;
+      }else{
+        descSub.hidden = true;
+        descSub.textContent = '';
+      }
+    }
   }
 
   function stepCopy(step){
     if(step === 0) return { title: t('onboardTitleSetup'), desc: t('onboardDescSetup') };
     if(step === 1) return { title: t('onboardTitle2'), desc: t('onboardDesc2') };
-    if(step === 2) return { title: t('onboardTitlePhrases'), desc: t('onboardDescPhrases') };
+    if(step === 2) return { title: t('onboardTitlePhrases'), desc: t('onboardDescPhrases1'), descSub: t('onboardDescPhrases2') };
     return { title: t('onboardTitleMode'), desc: t('onboardDescMode') };
   }
 
-  function renderPhrasesStep(){
+  function isPhrasesStepOpen(){
+    return !!(state.open && state.step === 2);
+  }
+
+  function escHtmlOnboardPhrase(s){
+    return String(s || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  function patchWakePhrases(phrases){
+    var st = global.OneToneState && global.OneToneState.state;
+    if(!st || !st.config) return;
+    if(!st.config.voiceSapi) st.config.voiceSapi = {};
+    if(!st.config.voiceVosk) st.config.voiceVosk = {};
+    st.config.voiceSapi.phrases = phrases.slice();
+    st.config.voiceVosk.phrases = phrases.slice();
+    var persist = global.OneToneConfigPersist;
+    if(persist && persist.save) persist.save();
+  }
+
+  function patchEndPhrases(zh, en){
+    var st = global.OneToneState && global.OneToneState.state;
+    if(!st || !st.config) return;
+    if(!st.config.voiceEnd) st.config.voiceEnd = {};
+    st.config.voiceEnd.phrasesZh = zh.slice();
+    st.config.voiceEnd.phrasesEn = en.slice();
+    var persist = global.OneToneConfigPersist;
+    if(persist && persist.save) persist.save();
+  }
+
+  function ensureDefaultPhrases(){
     var a = app();
-    var wakeEl = $('onboardWakePhrase');
-    var endEl = $('onboardEndPhrase');
-    if(wakeEl){
-      var list = (a && a.getWakePhrases) ? a.getWakePhrases() : [];
-      wakeEl.textContent = (list && list.length) ? String(list[0]) : '—';
+    var wake = (a && a.getWakePhrases) ? a.getWakePhrases() : [];
+    if(!wake.length) patchWakePhrases(WAKE_PRESET_OPTIONS.slice(0, 2));
+    var end = (a && a.getEndPhrases) ? a.getEndPhrases() : { zh: [], en: [] };
+    if(!(end.zh && end.zh.length) && !(end.en && end.en.length)){
+      patchEndPhrases(END_PRESET_ZH.slice(0, 1), END_PRESET_EN.slice(0, 1));
     }
-    if(endEl){
-      var end = (a && a.getEndPhrases) ? a.getEndPhrases() : { zh: [], en: [] };
-      var zh = end.zh && end.zh.length ? end.zh[0] : '';
-      var en = end.en && end.en.length ? end.en[0] : '';
-      endEl.textContent = zh || en || '—';
-    }
+  }
+
+  function renderPhrasesStep(){
+    ensureDefaultPhrases();
+    var flowNote = $('onboardPhrasesFlowNote');
+    if(flowNote) flowNote.textContent = t('onboardPhrasesFlowNote');
+  }
+
+  function refreshPhrasesStep(){
+    if(!state.open) return;
+    renderPhrasesStep();
+  }
+
+  function endPhraseOptions(){
+    var lang = app() && app().getLang ? app().getLang() : 'zh';
+    return lang === 'en' ? END_PRESET_EN.concat(END_PRESET_ZH) : END_PRESET_ZH.concat(END_PRESET_EN);
+  }
+
+  function wakePhrasesForPractice(){
+    var a = app();
+    var list = (a && a.getWakePhrases) ? a.getWakePhrases() : [];
+    list = list.filter(function(x){ return String(x || '').trim(); });
+    return list.length ? list : WAKE_PRESET_OPTIONS.slice(0, 1);
+  }
+
+  function endPhrasesForPractice(){
+    var a = app();
+    if(!a || !a.getEndPhrases) return END_PRESET_ZH.slice(0, 1);
+    var end = a.getEndPhrases();
+    var lang = a.getLang ? a.getLang() : 'zh';
+    var zh = end.zh || [];
+    var en = end.en || [];
+    var list = lang === 'en' ? en.concat(zh) : zh.concat(en);
+    list = list.filter(function(x){ return String(x || '').trim(); });
+    return list.length ? list : END_PRESET_ZH.slice(0, 1);
+  }
+
+  function patchEndPhrasesFromSelection(selected){
+    var zh = [];
+    var en = [];
+    (selected || []).forEach(function(p){
+      if(END_PRESET_ZH.indexOf(p) >= 0) zh.push(p);
+      else if(END_PRESET_EN.indexOf(p) >= 0) en.push(p);
+      else zh.push(p);
+    });
+    if(!zh.length) zh = END_PRESET_ZH.slice(0, 1);
+    if(!en.length) en = END_PRESET_EN.slice(0, 1);
+    patchEndPhrases(zh, en);
+  }
+
+  function openWakePhrasePractice(){
+    var a = app();
+    if(!a || !a.openPhrasePractice) return;
+    a.openPhrasePractice({
+      mode: 'wake',
+      multiSelect: true,
+      phraseOptions: WAKE_PRESET_OPTIONS,
+      phrases: wakePhrasesForPractice(),
+      onPhrasesChange: function(selected){
+        patchWakePhrases(selected);
+      }
+    });
+  }
+
+  function openEndPhrasePractice(){
+    var a = app();
+    if(!a || !a.openPhrasePractice) return;
+    a.openPhrasePractice({
+      mode: 'end',
+      multiSelect: true,
+      phraseOptions: endPhraseOptions(),
+      phrases: endPhrasesForPractice(),
+      onPhrasesChange: function(selected){
+        patchEndPhrasesFromSelection(selected);
+      }
+    });
   }
 
   function renderModeStep(){
@@ -713,10 +833,6 @@
     var next = $('btnOnboardNext');
     if(back) back.onclick = function(){ goStep(-1); };
     if(next) next.onclick = function(){
-      if(state.step === 1 && state.tryPassed){
-        finish();
-        return;
-      }
       if(state.step >= STEPS.length - 1) finish();
       else goStep(1);
     };
@@ -761,10 +877,9 @@
       jumpToStep(3);
     };
     var wakePractice = $('btnOnboardWakePractice');
-    if(wakePractice) wakePractice.onclick = function(){
-      var a = app();
-      if(a && a.openPhrasePractice) a.openPhrasePractice({});
-    };
+    if(wakePractice) wakePractice.onclick = function(){ openWakePhrasePractice(); };
+    var endPractice = $('btnOnboardEndPractice');
+    if(endPractice) endPractice.onclick = function(){ openEndPhrasePractice(); };
     var modeKeys = $('onboardModeKeys');
     if(modeKeys) modeKeys.onclick = function(){ setEntryMode('keys'); renderModeStep(); };
     var modeVoice = $('onboardModeVoice');
@@ -795,10 +910,14 @@
       ['onboardTriggerCardStep','onboardTriggerCardStep'],['onboardTargetCardStep','onboardTargetCardStep'],
       ['onboardTriggerCardTitle','onboardTriggerCardTitle'],['onboardTargetCardTitle','onboardTargetCardTitle'],
       ['btnOnboardLater','onboardBtnLater'],['btnOnboardBack','onboardBtnBack'],
+      ['onboardWakeCardStep','onboardWakeCardStep'],['onboardWakeCardTitle','onboardWakeCardTitle'],
       ['onboardWakeNote','onboardWakeNote'],
       ['btnOnboardWakePractice','onboardWakePractice'],
+      ['onboardPhrasesFlowMid','onboardPhrasesFlowMid'],
+      ['onboardEndCardStep','onboardEndCardStep'],['onboardEndCardTitle','onboardEndCardTitle'],
       ['onboardEndNote','onboardEndNote'],
-      ['onboardEndHint','onboardEndHint'],
+      ['onboardPhrasesFlowNote','onboardPhrasesFlowNote'],
+      ['btnOnboardEndPractice','onboardEndPractice'],
       ['onboardModeNote','onboardModeNote'],
       ['onboardModeKeysTitle','onboardModeKeysTitle'],['onboardModeKeysHint','onboardModeKeysHint'],
       ['onboardModeVoiceTitle','onboardModeVoiceTitle'],['onboardModeVoiceHint','onboardModeVoiceHint'],
@@ -829,6 +948,7 @@
     syncRecordedFlagsFromMapping();
     state.tryPassed = false;
     state.practiceStarted = false;
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('onboarding');
     setOpen(true);
   }
 
@@ -843,6 +963,8 @@
     onRecordingPreview: onRecordingPreview,
     syncRecordingUi: syncRecordingUi,
     setOpen: setOpen,
-    isOpen: function(){ return state.open; }
+    isOpen: function(){ return state.open; },
+    isPhrasesStepOpen: isPhrasesStepOpen,
+    refreshPhrasesStep: refreshPhrasesStep
   };
 })(typeof window !== 'undefined' ? window : globalThis);

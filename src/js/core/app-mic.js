@@ -84,6 +84,8 @@
     if(wakeCard) pushTarget(wakeCard);
     var micLive=$('voiceMicLive');
     if(micLive) pushTarget(micLive);
+    var practiceMic=$('phrasePracticeMicRow');
+    if(practiceMic) pushTarget(practiceMic);
     return targets;
   }
 
@@ -188,8 +190,13 @@
     return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled);
   }
 
+  function onboardingMicContextOpen(){
+    return !!(global.OneTonePhrasePractice && global.OneTonePhrasePractice.isOpen && global.OneTonePhrasePractice.isOpen());
+  }
+
   function micLevelUiVisible(){
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return true;
+    if(onboardingMicContextOpen()) return true;
     return !ui.drawerOpen;
   }
 
@@ -202,6 +209,7 @@
   }
 
   function micLevelPollAllowed(){
+    if(onboardingMicContextOpen()) return true;
     if(voiceCaptureActive()) return false;
     return micLevelUiVisible();
   }
@@ -536,6 +544,14 @@
     });
   }
 
+  function activeMicLabel(){
+    if(!micDevices.length) return '';
+    var dev=micDevices.find(function(d){ return d.id===activeMicId; })
+      ||micDevices.find(function(d){ return d.isDefault; })
+      ||micDevices[0];
+    return dev?(dev.name||dev.label||dev.id):'';
+  }
+
   global.OneToneAppMic={
     buildMicLevelBars:buildMicLevelBars,
     syncHomeMicPickState:syncHomeMicPickState,
@@ -554,6 +570,7 @@
     handleMicMonitorError:handleMicMonitorError,
     devices:function(){ return micDevices; },
     activeMicId:function(){ return activeMicId; },
+    activeMicLabel:activeMicLabel,
     micRecoveryTimer:function(){ return micRecoveryTimer; },
     clearMicRecoveryTimer:function(){ clearTimeout(micRecoveryTimer); micRecoveryTimer=0; },
     hasMicPollTimer:function(){ return !!micPollTimer; }

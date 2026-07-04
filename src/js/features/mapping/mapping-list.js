@@ -136,7 +136,7 @@
       const isDictating=hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id;
       html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(hooks().openMenuId()===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
       html+='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
-      html+='<div class="map-main"><div class="map-pair">'+hooks().friendlyPair(m.triggerKey,m.targetKey)+'</div>';
+      html+='<div class="map-main"><div class="map-pair">'+hooks().friendlyPair(m.triggerKey,m.targetKey,m)+'</div>';
       html+=mappingOverviewHtml(m);
       html+=mappingKeySwitchesHtml(m);
       html+=mappingRowExtrasHtml(m);

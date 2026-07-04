@@ -64,9 +64,9 @@
     if(!m) return '';
     var trig=hooks.editorTriggerForMapping(m);
     var tgt=hooks.editorTargetForMapping(m);
-    if(trig&&tgt) return m.label||hooks.friendlyPair(trig,tgt);
+    if(trig&&tgt) return m.label||hooks.friendlyPair(trig,tgt,m);
     if(m.label) return m.label;
-    return hooks.friendlyPair(trig,tgt);
+    return hooks.friendlyPair(trig,tgt,m);
   }
 
   function buildChecks(mappingId, targetKey, checkSendState){

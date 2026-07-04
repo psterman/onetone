@@ -14,7 +14,8 @@
     if(voskRes||sapiRes||endRes) global.OneToneVoiceUiState.applyStatusFromPoll(voskRes,sapiRes,endRes);
     if(!opts.homeOnly&&!opts.lightOnly) hooks().renderMappingList();
     if(!opts.lightOnly) hooks().renderHome();
-    hooks().renderHomeLiveZone();
+    if(opts.lightOnly&&hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+    else hooks().renderHomeLiveZone();
   }
 
   function registerHooks(deps){

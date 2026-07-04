@@ -175,6 +175,8 @@
     m.targetKey = combo;
     m.imePresetId = presetId || '';
     setSelectedId('mapping', presetId || '');
+    var st = global.OneToneState && global.OneToneState.state;
+    if(st && st.config) st.config.imePresetId = presetId || '';
     var trig = core.editorTrigger ? core.editorTrigger(m) : (m.triggerKey || '');
     m.label = (trig || '?') + ' → ' + combo;
     if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(combo);
@@ -193,10 +195,11 @@
     setSelectedId('onboarding', presetId);
     var a = global.OneToneApp;
     if(a && a.saveConfigPatch){
-      a.saveConfigPatch(function(m){
+      a.saveConfigPatch(function(m, cfg){
         m.targetKey = combo;
         m.enabled = true;
         m.imePresetId = presetId;
+        if(cfg) cfg.imePresetId = presetId;
       });
     }
     if(global.OneToneOnboarding && global.OneToneOnboarding.onTargetCaptured){
@@ -275,7 +278,6 @@
         : p.targetKey;
       return '<button type="button" class="ime-preset-item'+(selected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-id="'+esc(p.id)+'"'+(disabled?' disabled':'')+' title="'+esc(label+' · '+keyLabel)+'" aria-label="'+esc(label)+'" aria-pressed="'+(selected?'true':'false')+'">'
         +'<img class="ime-preset-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />'
-        +'<span class="ime-preset-tip">'+esc(label)+'</span>'
         +'</button>';
     }).join('');
     renderCardBadge(ctx);
@@ -301,6 +303,7 @@
         var context = btn.getAttribute('data-ime-context') || ctx;
         var preset = presetById(id);
         applyPreset(context, preset);
+        btn.blur();
       });
     });
   }

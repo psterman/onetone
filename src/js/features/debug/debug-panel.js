@@ -71,7 +71,7 @@
     const usage=hooks().processUsageSummaryLine();
     const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
     const voiceState=w.state?hooks().voiceWakeStateLabel(w.state):'';
-    const mappingName=m?(m.label||hooks().friendlyPair(hooks().editorTriggerForMapping(m)||'',hooks().editorTargetForMapping(m)||'')):t('sessionUnbound');
+    const mappingName=m?(m.label||hooks().friendlyPair(hooks().editorTriggerForMapping(m)||'',hooks().editorTargetForMapping(m)||'',m)):t('sessionUnbound');
     const cCount=m?hooks().conflictsForMapping(m.id).length:0;
     const cLine=cCount?t('debugCardConflict').replace('{n}',String(cCount)):t('debugCardNoConflict');
     const cards=[];

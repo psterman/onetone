@@ -64,6 +64,8 @@ pub struct MappingEntry {
     pub long_press_ms: u32,
     #[serde(rename = "doubleClickMs", default = "default_double_click_ms")]
     pub double_click_ms: u32,
+    #[serde(rename = "imePresetId", default)]
+    pub ime_preset_id: String,
 }
 
 fn default_long_press_ms() -> u32 {
@@ -188,6 +190,8 @@ pub struct VoiceConfig {
     pub sounds: SoundsConfig,
     #[serde(default = "default_false", rename = "startMinimizedToTray")]
     pub start_minimized_to_tray: bool,
+    #[serde(rename = "imePresetId", default)]
+    pub ime_preset_id: String,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -970,6 +974,7 @@ impl Default for VoiceConfig {
                 trigger_device: String::new(),
                 long_press_ms: default_long_press_ms(),
                 double_click_ms: default_double_click_ms(),
+                ime_preset_id: String::new(),
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -987,6 +992,7 @@ impl Default for VoiceConfig {
             coach_hud_enabled: false,
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
+            ime_preset_id: String::new(),
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -1145,6 +1151,7 @@ impl VoiceConfig {
                 trigger_device: String::new(),
                 long_press_ms: default_long_press_ms(),
                 double_click_ms: default_double_click_ms(),
+                ime_preset_id: String::new(),
             });
         }
 
@@ -1812,6 +1819,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -1843,6 +1851,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -1886,6 +1895,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -1917,6 +1927,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
                 label: "      ".into(),
@@ -1961,6 +1972,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -1995,6 +2007,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -2025,6 +2038,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());

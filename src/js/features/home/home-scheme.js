@@ -11,30 +11,47 @@
     if(!m) return t('homeLiveUnset');
     if(hooks().isDraftMapping(m)) return t('homeLiveSchemeDraft');
     if((m.label||'').trim()) return m.label.trim();
-    if(m.triggerKey&&m.targetKey) return hooks().friendlyPair(m.triggerKey,m.targetKey);
+    if(m.triggerKey&&m.targetKey) return hooks().friendlyPair(m.triggerKey,m.targetKey,m);
     if(m.group) return m.group;
     return t('homeLiveUnset');
   }
+  function mappingLabels(m){
+    const trig=hooks().editorTriggerForMapping(m);
+    const tgt=hooks().editorTargetForMapping(m);
+    const lang=global.OneToneI18n.getLang();
+    if(global.OneToneKeyLabels){
+      return global.OneToneKeyLabels.labelsForMapping({
+        triggerKey:trig||m.triggerKey||'',
+        targetKey:tgt||m.targetKey||'',
+        sourceKey:m.sourceKey||''
+      },lang);
+    }
+    return {
+      triggerLabel:hooks().friendlyKeyName(trig||''),
+      targetLabel:hooks().friendlyKeyName(tgt||'')
+    };
+  }
+
   function homeMappingShortName(m){
     if(!m) return t('homeLiveUnset');
     if(hooks().isDraftMapping(m)) return t('homeLiveSchemeDraft');
     if((m.group||'').trim()) return m.group.trim();
+    const labels=mappingLabels(m);
+    if(labels.triggerLabel) return labels.triggerLabel;
     const lbl=(m.label||'').trim();
     if(lbl){
       const idx=lbl.indexOf(' → ');
       if(idx>0) return lbl.slice(0,idx).trim();
       return lbl;
     }
-    const trig=hooks().editorTriggerForMapping(m);
-    if(trig) return hooks().friendlyKeyName(trig);
     return t('homeLiveUnset');
   }
 
   function homeMappingPairLine(m){
-    const trig=hooks().editorTriggerForMapping(m);
-    const tgt=hooks().editorTargetForMapping(m);
-    if(trig||tgt) return hooks().friendlyPair(trig||'',tgt||'');
-    return t('homeLiveUnset');
+    const labels=mappingLabels(m);
+    const trig=labels.triggerLabel||t('homeLiveUnset');
+    const tgt=labels.targetLabel||t('homeKeyMapEmptyKey');
+    return trig+' → '+tgt;
   }
 
   function resetHomeSchemeMenuPosition(){
@@ -112,6 +129,10 @@
     hooks().syncEditorFromSelection();
     closeHomeSchemeMenu();
     hooks().render();
+    if(global.OneToneImePresets){
+      global.OneToneImePresets.refresh('mapping');
+      global.OneToneImePresets.refresh('onboarding');
+    }
   }
 
   function toggleHomeSchemeMappingEnabled(id){

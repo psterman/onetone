@@ -13,7 +13,12 @@
     onMatch: null,
     onSkip: null,
     readOnly: false,
-    matched: false
+    matched: false,
+    mode: 'wake',
+    phraseOptions: [],
+    practiceIndex: 0,
+    onPhrasesChange: null,
+    multiSelect: false
   };
 
   function app(){
@@ -60,11 +65,153 @@
 
   function currentPhrase(){
     if(!state.phrases.length) return '';
-    return state.phrases[state.phraseIndex % state.phrases.length];
+    var idx = state.practiceIndex;
+    if(idx < 0 || idx >= state.phrases.length) idx = 0;
+    return state.phrases[idx];
   }
 
-  function overlayEl(){
-    return $('phrasePracticeOverlay');
+  function chipOptions(){
+    return state.phraseOptions.length ? state.phraseOptions : state.phrases;
+  }
+
+  function notifyPhrasesChange(){
+    if(typeof state.onPhrasesChange === 'function'){
+      state.onPhrasesChange(state.phrases.slice());
+    }
+    renderSelectedNote();
+  }
+
+  function renderSelectedNote(){
+    var note = $('phrasePracticeSelectedNote');
+    if(!note || state.embedded) return;
+    if(!state.multiSelect){
+      note.hidden = true;
+      return;
+    }
+    note.hidden = false;
+    var list = state.phrases.join('、');
+    note.textContent = t('phrasePracticeSelectedNote')
+      .replace('{n}', String(state.phrases.length))
+      .replace('{list}', list);
+  }
+
+  function modalEl(){
+    return $('phrasePracticeModal');
+  }
+
+  function isEndMode(){
+    return state.mode === 'end';
+  }
+
+  function skipButtonKey(){
+    if(state.matched) return 'phrasePracticeDone';
+    return isEndMode() ? 'phrasePracticeSkipEnd' : 'phrasePracticeSkip';
+  }
+
+  function ensurePracticeMicBars(){
+    var bars = $('phrasePracticeMicBars');
+    var mic = global.OneToneAppMic;
+    if(bars && mic && mic.buildMicLevelBars && !bars.innerHTML) bars.innerHTML = mic.buildMicLevelBars(12);
+  }
+
+  function renderPracticeMicRow(){
+    ensurePracticeMicBars();
+    var lbl = $('phrasePracticeMicLbl');
+    if(lbl) lbl.textContent = t('phrasePracticeMicLbl');
+    var nameEl = $('phrasePracticeMicName');
+    if(nameEl){
+      var mic = global.OneToneAppMic;
+      var name = mic && mic.activeMicLabel ? mic.activeMicLabel() : '';
+      nameEl.textContent = name || t('phrasePracticeMicChecking');
+      nameEl.title = name;
+    }
+  }
+
+  function bootPracticeUi(){
+    renderPracticeMicRow();
+    renderModalChrome();
+    renderChips($('phrasePracticeChips'));
+    startTimers();
+    if(global.OneToneAppMic && global.OneToneAppMic.syncHomeMicMonitor){
+      global.OneToneAppMic.syncHomeMicMonitor().catch(function(){});
+    }
+  }
+
+  function renderModalChrome(){
+    var a = app();
+    var modal = modalEl();
+    if(modal) modal.classList.toggle('is-end-mode', isEndMode());
+    var kicker = $('phrasePracticeKicker');
+    var context = $('phrasePracticeContext');
+    if(kicker){
+      if(isEndMode() && !state.embedded){
+        kicker.textContent = t('phrasePracticeKickerEnd');
+        kicker.hidden = false;
+      }else{
+        kicker.hidden = true;
+      }
+    }
+    if(context){
+      context.hidden = true;
+      context.classList.remove('is-success-note');
+    }
+    var pickHint = $('phrasePracticePickHint');
+    if(pickHint){
+      if(state.multiSelect && !state.embedded){
+        pickHint.textContent = t(isEndMode() ? 'phrasePracticePickHintEnd' : 'phrasePracticePickHint');
+        pickHint.hidden = false;
+      }else{
+        pickHint.hidden = true;
+      }
+    }
+    var title = $('phrasePracticeTitle');
+    if(title) title.textContent = t(isEndMode() ? 'phrasePracticeTitleEnd' : 'phrasePracticeTitle');
+    var hint = $('phrasePracticeHint');
+    if(hint){
+      hint.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
+      hint.classList.remove('is-success-note');
+    }
+    var skip = $('btnPhrasePracticeSkip');
+    if(skip){
+      skip.textContent = t(skipButtonKey());
+      skip.classList.toggle('primary', !!state.matched);
+    }
+    renderPracticeMicRow();
+  }
+
+  function togglePhraseSelection(phrase, host){
+    phrase = String(phrase || '').trim();
+    if(!phrase) return;
+    var idx = state.phrases.indexOf(phrase);
+    if(idx >= 0){
+      if(state.phrases.length <= 1) {
+        state.practiceIndex = 0;
+      }else{
+        state.phrases.splice(idx, 1);
+        if(state.practiceIndex >= state.phrases.length) state.practiceIndex = state.phrases.length - 1;
+      }
+    }else{
+      state.phrases.push(phrase);
+      state.practiceIndex = state.phrases.indexOf(phrase);
+    }
+    state.matched = false;
+    var pe = phraseEl();
+    if(pe) pe.classList.remove('is-success');
+    notifyPhrasesChange();
+    renderChips(host);
+    renderPhraseDisplay();
+    renderHeard('');
+  }
+
+  function focusPhrase(phrase, host){
+    var idx = state.phrases.indexOf(phrase);
+    if(idx < 0) return;
+    state.practiceIndex = idx;
+    state.matched = false;
+    var pe = phraseEl();
+    if(pe) pe.classList.remove('is-success');
+    renderChips(host);
+    renderPhraseDisplay();
   }
 
   function phraseEl(){
@@ -121,12 +268,26 @@
     }
     var h = heardEl();
     if(h){
-      h.textContent = t('phrasePracticeMatched').replace('{phrase}', matchedPhrase);
+      h.textContent = isEndMode()
+        ? t('phrasePracticeEndRecognized').replace('{phrase}', matchedPhrase)
+        : t('phrasePracticeWakeSuccess');
       h.className = 'phrase-practice-heard is-ok';
     }
+    var ctx = $('phrasePracticeContext');
     var a = app();
+    if(ctx){
+      ctx.hidden = true;
+      ctx.classList.remove('is-success-note');
+    }
+    var hint = $('phrasePracticeHint');
+    if(hint && isEndMode() && !state.embedded){
+      var keyLabel = (a && a.getImeTargetKeyLabel) ? a.getImeTargetKeyLabel() : 'Alt';
+      hint.textContent = t('phrasePracticeEndPracticeNote').replace('{key}', keyLabel);
+      hint.classList.add('is-success-note');
+    }
     if(a && a.playSoundCue) a.playSoundCue('voice_wake');
     if(typeof state.onMatch === 'function') state.onMatch(matchedPhrase);
+    renderModalChrome();
   }
 
   function pollHeard(){
@@ -169,33 +330,59 @@
 
   function renderChips(host){
     if(!host) return;
-    host.innerHTML = state.phrases.map(function(p, i){
-      var cls = 'phrase-practice-chip'+(i === state.phraseIndex ? ' is-active' : '');
-      return '<button type="button" class="'+cls+'" data-phrase-index="'+String(i)+'">'+escapeHtml(p)+'</button>';
+    var options = chipOptions();
+    var selected = {};
+    state.phrases.forEach(function(p){ selected[p] = true; });
+    var activePhrase = currentPhrase();
+    host.innerHTML = options.map(function(p){
+      var cls = 'phrase-practice-chip';
+      if(selected[p]) cls += ' is-selected';
+      if(p === activePhrase && selected[p]) cls += ' is-active';
+      return '<button type="button" class="'+cls+'" data-phrase="'+escapeHtml(p)+'">'+escapeHtml(p)+'</button>';
     }).join('');
-    host.querySelectorAll('[data-phrase-index]').forEach(function(btn){
+    host.querySelectorAll('[data-phrase]').forEach(function(btn){
       btn.onclick = function(){
-        state.phraseIndex = Number(btn.getAttribute('data-phrase-index')) || 0;
-        state.animIndex = 0;
-        state.matched = false;
-        var pe = phraseEl();
-        if(pe) pe.classList.remove('is-success');
-        renderChips(host);
-        renderPhraseDisplay();
+        var phrase = btn.getAttribute('data-phrase') || '';
+        if(!state.multiSelect){
+          var idx = state.phrases.indexOf(phrase);
+          if(idx < 0) return;
+          state.practiceIndex = idx;
+          state.matched = false;
+          var pe = phraseEl();
+          if(pe) pe.classList.remove('is-success');
+          renderChips(host);
+          renderPhraseDisplay();
+          return;
+        }
+        var selected = state.phrases.indexOf(phrase) >= 0;
+        if(selected && state.phrases.length > 1){
+          togglePhraseSelection(phrase, host);
+          return;
+        }
+        if(!selected){
+          togglePhraseSelection(phrase, host);
+          return;
+        }
+        focusPhrase(phrase, host);
       };
     });
+    renderSelectedNote();
   }
 
   function open(opts){
     opts = opts || {};
     close({ silent: true });
+    state.mode = opts.mode === 'end' ? 'end' : 'wake';
+    state.phraseOptions = Array.isArray(opts.phraseOptions) ? opts.phraseOptions.filter(Boolean) : [];
     state.phrases = Array.isArray(opts.phrases) ? opts.phrases.filter(Boolean) : [];
+    state.onPhrasesChange = opts.onPhrasesChange || null;
+    state.multiSelect = !!opts.multiSelect;
     state.onMatch = opts.onMatch || null;
     state.onSkip = opts.onSkip || null;
     state.readOnly = !!opts.readOnly;
     state.embedded = !!opts.embedded;
     state.mountEl = opts.mount || null;
-    state.phraseIndex = 0;
+    state.practiceIndex = 0;
     state.matched = false;
     state.open = true;
 
@@ -211,14 +398,27 @@
       overlay.classList.add('open');
       overlay.setAttribute('aria-hidden', 'false');
     }
-    var title = $('phrasePracticeTitle');
-    if(title) title.textContent = t('phrasePracticeTitle');
-    var hint = $('phrasePracticeHint');
-    if(hint) hint.textContent = t('phrasePracticeHint');
-    var skip = $('btnPhrasePracticeSkip');
-    if(skip) skip.textContent = t('phrasePracticeSkip');
-    renderChips($('phrasePracticeChips'));
-    startTimers();
+    var a = app();
+    if(a && a.enableVoiceWakeForPractice){
+      a.enableVoiceWakeForPractice().then(function(){
+        var mic = global.OneToneAppMic;
+        if(mic && mic.loadMicDevices){
+          return mic.loadMicDevices({manual:true}).catch(function(){}).then(bootPracticeUi);
+        }
+        bootPracticeUi();
+      }).catch(function(){ bootPracticeUi(); });
+      return;
+    }
+    var mic = global.OneToneAppMic;
+    if(mic && mic.loadMicDevices){
+      mic.loadMicDevices({manual:true}).catch(function(){}).then(bootPracticeUi);
+      return;
+    }
+    bootPracticeUi();
+  }
+
+  function overlayEl(){
+    return $('phrasePracticeOverlay');
   }
 
   function close(opts){
@@ -233,12 +433,22 @@
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
     }
+    var modal = modalEl();
+    if(modal) modal.classList.remove('is-end-mode');
     if(state.embedded && state.mountEl){
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount) mount.innerHTML = '';
     }
     state.embedded = false;
     state.mountEl = null;
+    state.mode = 'wake';
+    state.matched = false;
+    state.phraseOptions = [];
+    state.onPhrasesChange = null;
+    state.multiSelect = false;
+    if(global.OneToneOnboarding && global.OneToneOnboarding.refreshPhrasesStep){
+      global.OneToneOnboarding.refreshPhrasesStep();
+    }
   }
 
   function isOpen(){
@@ -247,12 +457,7 @@
 
   function applyLang(){
     if(!state.open) return;
-    var title = $('phrasePracticeTitle');
-    if(title) title.textContent = t('phrasePracticeTitle');
-    var hint = $('phrasePracticeHint');
-    if(hint) hint.textContent = t('phrasePracticeHint');
-    var skip = $('btnPhrasePracticeSkip');
-    if(skip) skip.textContent = t('phrasePracticeSkip');
+    renderModalChrome();
     if(state.embedded){
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount){

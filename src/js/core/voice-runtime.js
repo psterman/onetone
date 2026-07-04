@@ -56,7 +56,8 @@
           if(panel==='debug') hooks().scheduleDebugChromeRefresh();
         }else{
           homeLightRenderCounter++;
-          hooks().renderHomeLiveZone();
+          if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+          else hooks().renderHomeLiveZone();
           if(homeLightRenderCounter%5===0) hooks().renderHome();
         }
       }catch(err){

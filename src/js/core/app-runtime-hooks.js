@@ -110,6 +110,7 @@
       renderKeyFinishFlowPanel:deps.renderKeyFinishFlowPanel,
       scheduleDebugChromeRefresh:deps.scheduleDebugChromeRefresh,
       renderHomeLiveZone:deps.renderHomeLiveZone,
+      scheduleRenderHomeLiveZone:deps.scheduleRenderHomeLiveZone,
       renderHome:deps.renderHome,
       syncVoiceVoskToggle:deps.syncVoiceVoskToggle,
       syncVoiceSapiToggle:deps.syncVoiceSapiToggle,

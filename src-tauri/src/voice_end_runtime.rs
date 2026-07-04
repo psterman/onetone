@@ -723,6 +723,7 @@ mod tests {
             trigger_device: String::new(),
             long_press_ms: 500,
             double_click_ms: 400,
+            ime_preset_id: String::new(),
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }

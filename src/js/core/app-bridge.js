@@ -131,6 +131,21 @@
           en: en.filter(function(x){ return String(x||'').trim(); })
         };
       },
+      getImeTargetKeyLabel:function(){
+        var cfg=hooks().state().config||{};
+        var maps=Array.isArray(cfg.mappings)?cfg.mappings:[];
+        var m=maps.find(function(x){ return x && x.enabled; })||maps[0]||null;
+        var key=(m&&m.targetKey)?String(m.targetKey).trim():'RAlt';
+        if(m&&m.imePresetId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+          var preset=global.OneToneImePresets.presetById(m.imePresetId);
+          if(preset&&preset.targetKey) key=preset.targetKey;
+        }
+        var lang=this.getLang?this.getLang():'zh';
+        if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+          return global.OneToneKeyLabels.friendlyKeyName(key,lang)||key;
+        }
+        return key;
+      },
       getWakeHeardRaw:function(){
         var w=hooks().voiceUiSnapshot().wake||{};
         if(w.engine==='vosk'){
@@ -157,8 +172,21 @@
       },
       openPhrasePractice:function(opts){
         if(!global.OneTonePhrasePractice) return;
-        var phrases=opts&&opts.phrases?opts.phrases:this.getWakePhrases();
-        global.OneTonePhrasePractice.open(Object.assign({},opts||{},{phrases:phrases}));
+        opts=opts||{};
+        var phrases=opts.phrases;
+        if(!phrases||!phrases.length){
+          if(opts.mode==='end'){
+            var end=this.getEndPhrases();
+            var lang=this.getLang?this.getLang():'zh';
+            var zh=end.zh||[];
+            var en=end.en||[];
+            phrases=(lang==='en'?en.concat(zh):zh.concat(en)).filter(function(x){return String(x||'').trim();});
+            if(!phrases.length) phrases=[this.t('homeEndPhraseDefault')];
+          }else{
+            phrases=this.getWakePhrases();
+          }
+        }
+        global.OneTonePhrasePractice.open(Object.assign({},opts,{phrases:phrases}));
       },
       onWelcomeClosed:function(){
         welcomeOpen=false;
