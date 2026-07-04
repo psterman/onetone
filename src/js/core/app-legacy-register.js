@@ -69,6 +69,9 @@
               renderEditor:d.renderEditor,
               renderTrashList:d.renderTrashList,
               renderSoundSettingsPanel:d.renderSoundSettingsPanel,
+              setRecordingAudioMuteEnabled:d.setRecordingAudioMuteEnabled,
+              setRecordingAudioStrength:d.setRecordingAudioStrength,
+              syncRecordingAudioUi:d.syncRecordingAudioUi,
               renderVoiceSapiStatus:d.renderVoiceSapiStatus,
               renderVoiceVoskStatus:d.renderVoiceVoskStatus,
               renderSettingsSchemeSubnav:d.renderSettingsSchemeSubnav,
@@ -145,7 +148,8 @@
               getVoiceWakeExpandedMode:function(){ return OneToneVoiceWake.getExpandedMode(); },
               loadVoiceVoskStatus:d.loadVoiceVoskStatus,
               renderVoiceModeSwitch:d.renderVoiceModeSwitch,
-              voiceStatusPollTick:d.voiceStatusPollTick
+              voiceStatusPollTick:d.voiceStatusPollTick,
+              openSettings:d.openSettings
             });
           }
           function registerHomeHooks(){
@@ -374,7 +378,8 @@
               syncVoiceSapiToggle:d.syncVoiceSapiToggle,
               syncVoiceEndToggle:d.syncVoiceEndToggle,
               syncVoiceEndAutoSendToggle:d.syncVoiceEndAutoSendToggle,
-              syncVoiceEndPresets:d.syncVoiceEndPresets
+              syncVoiceEndPresets:d.syncVoiceEndPresets,
+              openSettings:d.openSettings
             });
           }
           function registerAppLangHooks(){
@@ -421,6 +426,9 @@
               setSoundSlotEnabled:d.setSoundSlotEnabled,
               setSoundSlotId:d.setSoundSlotId,
               previewSoundSlot:d.previewSoundSlot,
+              setRecordingAudioMuteEnabled:d.setRecordingAudioMuteEnabled,
+              setRecordingAudioStrength:d.setRecordingAudioStrength,
+              syncRecordingAudioUi:d.syncRecordingAudioUi,
               toggleVoiceSapi:d.toggleVoiceSapi,
               testVoiceSapiSend:d.testVoiceSapiSend,
               openVoiceSapiSetup:d.openVoiceSapiSetup,

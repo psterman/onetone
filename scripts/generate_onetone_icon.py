@@ -110,22 +110,48 @@ def generate_bundle_pngs(master: Image.Image) -> None:
     write_png(WEB_ICON, resize_variant(master, 256))
 
 
+def _ico_bmp_payload(img: Image.Image) -> bytes:
+    """Single BMP frame payload as stored inside a .ico file."""
+    import io
+
+    buf = io.BytesIO()
+    img.save(buf, format="ICO", sizes=[img.size], bitmap_format="bmp")
+    data = buf.getvalue()
+    # ICONDIR (6) + one ICONDIRENTRY (16) => image data starts at offset 22
+    return data[22:]
+
+
+def write_ico_bmp(path: Path, frames: list[Image.Image]) -> None:
+    """Pack BMP frames; directory order matches `frames` (largest first for Windows shell)."""
+    import struct
+
+    payloads = [_ico_bmp_payload(frame) for frame in frames]
+    count = len(payloads)
+    header = struct.pack("<HHH", 0, 1, count)
+    offset = 6 + 16 * count
+    entries = bytearray()
+    blobs = bytearray()
+    for frame, payload in zip(frames, payloads):
+        size = frame.size[0]
+        w = size if size < 256 else 0
+        h = size if size < 256 else 0
+        entries.extend(
+            struct.pack("<BBBBHHII", w, h, 0, 0, 1, 32, len(payload), offset)
+        )
+        blobs.extend(payload)
+        offset += len(payload)
+    path.write_bytes(header + entries + blobs)
+
+
 def generate_ico(master: Image.Image) -> None:
-    """Pillow only embeds ICO sizes <= the base image; use 256px as the primary frame."""
-    frames = {
-        size: resize_variant(master, size, sharpen=size <= 48)
-        for size in ICO_SIZES
-    }
+    """BMP frames, 256px listed first — better Windows taskbar / shell icon selection."""
+    sizes_desc = tuple(sorted(ICO_SIZES, reverse=True))
+    frames = [
+        resize_variant(master, size, sharpen=size <= 48) for size in sizes_desc
+    ]
     out = ICONS_DIR / "icon.ico"
-    base = frames[256]
-    append = [frames[size] for size in ICO_SIZES if size != 256]
-    base.save(
-        out,
-        format="ICO",
-        sizes=[(size, size) for size in ICO_SIZES],
-        append_images=append,
-    )
-    print(f"Wrote {out} ({', '.join(str(s) for s in ICO_SIZES)})")
+    write_ico_bmp(out, frames)
+    print(f"Wrote {out} BMP, order: {', '.join(str(s) for s in sizes_desc)}")
 
 
 def generate_windows_export(master: Image.Image) -> None:

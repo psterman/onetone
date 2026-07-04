@@ -14,8 +14,9 @@ pub fn cmd_save(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow
     cfg.migrate();
     cfg.normalize();
     crate::config::save_config(&cfg);
-    crate::config::apply_config(&state, &cfg);
     *state.cfg.lock() = cfg.clone();
+    crate::config::apply_config(&state, &cfg);
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state.inner()));
     sync_config_ui(&state, &window, "unchanged");
     state.machine_pool.lock().reset_all();
     push_runtime(&state, &window, "saved", "");

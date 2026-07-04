@@ -212,6 +212,7 @@ pub fn apply_voice_config_change(
                 );
             }
         }
+        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
         return;
     }
 
@@ -273,6 +274,8 @@ pub fn apply_voice_config_change(
         }
         _ => {}
     }
+
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }
 
 fn try_start_vosk_runtime(
@@ -303,6 +306,7 @@ fn try_start_vosk_runtime(
     voice_sapi_runtime::voice_sapi_stop(state);
     let resource_dir = app.path().resource_dir().ok();
     voice_vosk_runtime::spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir);
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     true
 }
 
@@ -320,4 +324,5 @@ fn restart_vosk_runtime(
     voice_sapi_runtime::voice_sapi_stop(state);
     let resource_dir = app.path().resource_dir().ok();
     voice_vosk_runtime::spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir);
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }

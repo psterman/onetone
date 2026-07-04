@@ -13,7 +13,11 @@
     previewKey: '',
     tryPassed: false,
     tryTimer: 0,
+    tryNoResponseTimer: 0,
+    tryNoResponseShown: false,
+    tryFailed: false,
     tryHelpOpen: false,
+    tryHelpReason: '',
     practiceStarted: false
   };
 
@@ -154,6 +158,7 @@
       var cls = 'onboard-progress-dot';
       if(i < state.step) cls += ' is-done';
       else if(i === state.step) cls += ' is-active';
+      if(i >= 2) cls += ' is-optional';
       return '<span class="'+cls+'" title="'+escapeHtml(title)+'"><span class="onboard-progress-num">'+(i+1)+'</span></span>';
     }).join('');
   }
@@ -173,11 +178,46 @@
     updateRecordStatus();
   }
 
+  function setRecordButtonState(btn, recorded, recording, recordKey, rerecordKey, recordingKey){
+    if(!btn) return;
+    if(recording){
+      btn.textContent = t(recordingKey);
+      btn.className = 'btn secondary record-btn onboard-record-btn is-recording';
+      return;
+    }
+    if(recorded){
+      btn.textContent = t(rerecordKey);
+      btn.className = 'onboard-record-link';
+      return;
+    }
+    btn.textContent = t(recordKey);
+    btn.className = 'btn secondary record-btn onboard-record-btn';
+  }
+
   function updateRecordButtonLabels(){
     var triggerBtn = $('btnOnboardStartTriggerRecord');
     var targetBtn = $('btnOnboardStartTargetRecord');
-    if(triggerBtn) triggerBtn.textContent = mappingTriggerReady() ? t('btnRerecordTrigger') : t('btnRecordTrigger');
-    if(targetBtn) targetBtn.textContent = mappingTargetReady() ? t('btnRerecordTarget') : t('btnRecordTarget');
+    var a = app();
+    var recordingNow = !!(a && a.isRecording && a.isRecording());
+    var pending = !!(a && a.isRecordingPending && a.isRecordingPending());
+    var recordingTrigger = (recordingNow || pending) && state.previewMode === 'trigger';
+    var recordingTarget = (recordingNow || pending) && state.previewMode === 'target';
+    setRecordButtonState(
+      triggerBtn,
+      mappingTriggerReady(),
+      recordingTrigger,
+      'btnRecordTrigger',
+      'btnRerecordTrigger',
+      'onboardBtnRecordingTrigger'
+    );
+    setRecordButtonState(
+      targetBtn,
+      mappingTargetReady(),
+      recordingTarget,
+      'btnRecordTarget',
+      'btnRerecordTarget',
+      'onboardBtnRecordingTarget'
+    );
   }
 
   function updateRecordStatus(){
@@ -188,14 +228,14 @@
     var triggerHint = $('onboardTriggerCardHint');
     var targetHint = $('onboardTargetCardHint');
     var flowStatus = $('onboardRecordFlowStatus');
-    var triggerAgain = $('btnOnboardRecordTriggerAgain');
-    var targetAgain = $('btnOnboardRecordTargetAgain');
     var lbl = labels();
     var a = app();
     var recordingNow = !!(a && a.isRecording && a.isRecording());
     var pending = !!(a && a.isRecordingPending && a.isRecordingPending());
     var recordingTrigger = (recordingNow || pending) && state.previewMode === 'trigger';
     var recordingTarget = (recordingNow || pending) && state.previewMode === 'target';
+    var triggerReady = state.triggerRecorded || mappingTriggerReady();
+    var targetReady = mappingTargetReady();
     if(!recordingNow){
       state.targetRecording = false;
       if(!state.previewMode) clearRecordingPreview();
@@ -203,47 +243,56 @@
     if(triggerCard) triggerCard.classList.toggle('is-recording', recordingTrigger);
     if(targetCard){
       targetCard.classList.toggle('is-recording', recordingTarget);
-      var triggerReady = state.triggerRecorded || mappingTriggerReady();
       targetCard.classList.toggle('is-disabled', !triggerReady && !recordingTarget);
     }
     var triggerStartBtn = $('btnOnboardStartTriggerRecord');
     var targetStartBtn = $('btnOnboardStartTargetRecord');
     if(targetStartBtn){
-      var targetReady = state.triggerRecorded || mappingTriggerReady();
-      targetStartBtn.disabled = !targetReady && !recordingTarget;
+      targetStartBtn.disabled = !triggerReady && !recordingTarget;
     }
     if(triggerCardKey) triggerCardKey.textContent = lbl.triggerLabel || t('onboardRecordCardEmpty');
     if(targetCardKey) targetCardKey.textContent = lbl.targetLabel || 'RAlt';
-    if(triggerAgain) triggerAgain.hidden = !(state.triggerRecorded || mappingTriggerReady());
-    if(targetAgain) targetAgain.hidden = !mappingTargetReady();
     updateRecordButtonLabels();
     if(flowStatus){
       if(recordingTarget) flowStatus.textContent = t('onboardFlowRecordingTarget');
       else if(recordingTrigger) flowStatus.textContent = t('onboardFlowRecordingTrigger');
-      else if(state.triggerRecorded || mappingTriggerReady()) flowStatus.textContent = t('onboardFlowAfterTrigger');
+      else if(triggerReady && targetReady) flowStatus.textContent = t('onboardFlowAllDone');
+      else if(triggerReady) flowStatus.textContent = t('onboardFlowAfterTrigger');
       else flowStatus.textContent = t('onboardFlowIdle');
     }
     if(recordingTrigger){
-      if(triggerHint) triggerHint.textContent = t('onboardRecordWaiting');
-      if(targetHint) targetHint.textContent = (state.triggerRecorded || mappingTriggerReady()) ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
+      if(triggerHint) triggerHint.textContent = t('onboardRecordListeningTrigger');
+      if(targetHint) targetHint.textContent = triggerReady ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
       return;
     }
     if(recordingTarget){
-      if(targetHint) targetHint.textContent = t('onboardTargetRecording');
+      if(targetHint) targetHint.textContent = t('onboardRecordListeningTarget');
       if(triggerHint) triggerHint.textContent = t('onboardTriggerCardDone');
       return;
     }
-    if(triggerHint) triggerHint.textContent = (state.triggerRecorded || mappingTriggerReady()) ? t('onboardTriggerCardDone') : t('onboardTriggerCardHint');
-    if(targetHint) targetHint.textContent = (state.triggerRecorded || mappingTriggerReady()) ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
+    if(triggerHint) triggerHint.textContent = triggerReady ? t('onboardTriggerCardDone') : t('onboardTriggerCardHint');
+    if(targetHint) targetHint.textContent = triggerReady ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
   }
 
-  function renderTryHelp(){
+  function tryHelpKeys(reason){
+    if(reason === 'send_failed'){
+      return ['onboardTrySendFailedHelp1','onboardTrySendFailedHelp2'];
+    }
+    return ['onboardTryHelp1','onboardTryHelp2','onboardTryHelp3'];
+  }
+
+  function renderTryHelp(reason){
     var box = $('onboardTryHelpBox');
     var title = $('onboardTryHelpTitle');
     var list = $('onboardTryHelpList');
-    if(title) title.textContent = t('onboardTryHelpTitle');
+    var helpReason = reason || state.tryHelpReason || 'timeout';
+    if(title){
+      title.textContent = helpReason === 'send_failed'
+        ? t('onboardTryReason_send_failed')
+        : t('onboardTryHelpTitle');
+    }
     if(list){
-      list.innerHTML = ['onboardTryHelp1','onboardTryHelp2','onboardTryHelp3','onboardTryHelp4']
+      list.innerHTML = tryHelpKeys(helpReason)
         .map(function(key){ return '<li>'+escHtmlOnboard(t(key))+'</li>'; })
         .join('');
     }
@@ -258,9 +307,10 @@
       .replace(/"/g,'&quot;');
   }
 
-  function showTryHelp(){
+  function showTryHelp(reason){
     state.tryHelpOpen = true;
-    renderTryHelp();
+    state.tryHelpReason = reason || 'timeout';
+    renderTryHelp(state.tryHelpReason);
     var result = $('onboardTryResult');
     if(result && !state.tryPassed && !result.textContent){
       result.textContent = t('onboardTryTimeout');
@@ -279,26 +329,60 @@
   function renderTryStep(){
     var keyEl = $('onboardTryKey');
     var desc = $('onboardTryDesc');
+    var mapNote = $('onboardTryMapNote');
     var result = $('onboardTryResult');
     var lbl = labels();
     if(keyEl) keyEl.textContent = lbl.triggerLabel || '—';
-    if(desc){
-      const trig=lbl.triggerLabel||'—';
-      const tgt=lbl.targetLabel||'RAlt';
-      desc.textContent = t('onboardTryDesc').replace('{key}', trig) + '（' + trig + ' → ' + tgt + '）';
-    }
+    if(desc) desc.textContent = t('onboardTryDesc');
+    if(mapNote) mapNote.textContent = t('onboardTryMapNote');
     if(result){
       if(state.tryPassed){
         result.textContent = t('onboardTrySuccess');
         result.className = 'onboard-try-result is-ok';
+      }else if(state.tryFailed){
+        if(!result.textContent || result.textContent === t('onboardTryWaiting')){
+          result.textContent = t('onboardTryFail');
+        }
+        result.className = 'onboard-try-result is-warn';
       }else{
-        result.textContent = '';
-        result.className = 'onboard-try-result';
+        result.textContent = t('onboardTryWaiting');
+        result.className = 'onboard-try-result is-pending';
       }
     }
     var tryKey = $('onboardTryKeyWrap');
     if(tryKey) tryKey.classList.toggle('is-success', state.tryPassed);
     renderTryHelp();
+  }
+
+  function renderFooterHint(){
+    var hint = $('onboardHint');
+    var links = $('onboardFooterLinks');
+    if(!hint && !links) return;
+    if(state.step !== 1){
+      if(hint){
+        hint.hidden = false;
+        hint.textContent = t('onboardHintOnce');
+      }
+      if(links) links.innerHTML = '';
+      return;
+    }
+    if(hint) hint.hidden = true;
+    if(!links) return;
+    if(state.tryPassed){
+      links.innerHTML = '';
+      return;
+    }
+    var sep = '<span class="onboard-footer-sep" aria-hidden="true">·</span>';
+    var helpLink = '<button type="button" class="onboard-footer-link" data-onboard-link="help">'+escHtmlOnboard(t('onboardTryHelpBtn'))+'</button>';
+    if(state.tryFailed){
+      links.innerHTML = '<button type="button" class="onboard-footer-link is-emphasis" data-onboard-link="help">'+escHtmlOnboard(t('onboardTryNoResponseFailed'))+'</button>';
+      return;
+    }
+    if(state.tryNoResponseShown){
+      links.innerHTML = helpLink + sep + '<button type="button" class="onboard-footer-link" data-onboard-link="noresponse">'+escHtmlOnboard(t('onboardTryNoResponseBtn'))+'</button>';
+      return;
+    }
+    links.innerHTML = helpLink;
   }
 
   function renderTargetStep(){
@@ -313,7 +397,10 @@
     var back = $('btnOnboardBack');
     var next = $('btnOnboardNext');
     var later = $('btnOnboardLater');
-    if(back) back.hidden = state.step <= 0;
+    if(back){
+      back.hidden = state.step <= 0;
+      back.textContent = t('onboardBtnBack');
+    }
     if(later) later.hidden = true;
     if(!next) return;
     if(state.step === 0){
@@ -322,7 +409,7 @@
       return;
     }
     if(state.step === 1){
-      next.textContent = t('onboardBtnNext');
+      next.textContent = state.tryPassed ? t('onboardBtnFinish') : t('onboardBtnNext');
       next.disabled = !state.tryPassed;
       return;
     }
@@ -344,6 +431,7 @@
     renderPhrasesStep();
     renderModeStep();
     renderActions();
+    renderFooterHint();
     var title = $('onboardTitle');
     var desc = $('onboardDesc');
     var kicker = $('onboardKicker');
@@ -351,8 +439,6 @@
     var copy = stepCopy(state.step);
     if(title) title.textContent = copy.title;
     if(desc) desc.textContent = copy.desc;
-    var hint = $('onboardHint');
-    if(hint) hint.textContent = t('onboardHintOnce');
   }
 
   function stepCopy(step){
@@ -485,7 +571,9 @@
 
   function stopTryListen(){
     clearTimeout(state.tryTimer);
+    clearTimeout(state.tryNoResponseTimer);
     state.tryTimer = 0;
+    state.tryNoResponseTimer = 0;
     var a = app();
     if(a && a.off) a.off('onboarding_trigger_fired', onTriggerFired);
   }
@@ -493,16 +581,27 @@
   function startTryListen(){
     stopTryListen();
     state.tryPassed = false;
+    state.tryFailed = false;
+    state.tryNoResponseShown = false;
     state.tryHelpOpen = false;
+    state.tryHelpReason = '';
     renderTryStep();
+    renderFooterHint();
     renderActions();
     var a = app();
     if(a && a.on) a.on('onboarding_trigger_fired', onTriggerFired);
+    state.tryNoResponseTimer = setTimeout(function(){
+      if(state.step !== 1 || state.tryPassed || state.tryFailed) return;
+      state.tryNoResponseShown = true;
+      renderFooterHint();
+    }, 4000);
     state.tryTimer = setTimeout(function(){
       var result = $('onboardTryResult');
       if(result && !state.tryPassed){
         result.textContent = t('onboardTryTimeout');
         result.className = 'onboard-try-result is-warn';
+        state.tryFailed = true;
+        renderFooterHint();
       }
     }, 10000);
   }
@@ -519,17 +618,36 @@
       var a = app();
       if(a && a.playSoundCue) a.playSoundCue('key_wake');
       renderTryStep();
+      renderFooterHint();
       renderActions();
       stopTryListen();
       return;
     }
     if(result && msg){
-      var reasonKey = 'onboardTryReason_' + (msg.reason || 'send_failed');
+      var reason = String(msg.reason || 'send_failed');
+      var reasonKey = 'onboardTryReason_' + reason;
       var txt = t(reasonKey);
       if(txt === reasonKey) txt = t('onboardTryFail');
       result.textContent = txt;
       result.className = 'onboard-try-result is-warn';
+      state.tryFailed = true;
+      renderFooterHint();
+      if(reason === 'send_failed'){
+        state.tryHelpOpen = true;
+        state.tryHelpReason = 'send_failed';
+        renderTryHelp('send_failed');
+      }
     }
+  }
+
+  function jumpToStep(stepIndex){
+    if(stepIndex < 0 || stepIndex >= STEPS.length) return;
+    if(stepIndex > 0 && state.step === 0 && (!canLeaveTriggerStep() || !targetOk())) return;
+    if(stepIndex > 1 && state.step < 1 && !state.tryPassed) return;
+    state.step = stepIndex;
+    render();
+    if(state.step === 1) startTryListen();
+    else stopTryListen();
   }
 
   function goStep(delta){
@@ -583,13 +701,17 @@
     var next = $('btnOnboardNext');
     if(back) back.onclick = function(){ goStep(-1); };
     if(next) next.onclick = function(){
+      if(state.step === 1 && state.tryPassed){
+        finish();
+        return;
+      }
       if(state.step >= STEPS.length - 1) finish();
       else goStep(1);
     };
     var helpTry = $('btnOnboardTryHelp');
     if(helpTry) helpTry.onclick = function(ev){
       if(ev) ev.stopPropagation();
-      showTryHelp();
+      showTryHelp('timeout');
     };
     var noResp = $('btnOnboardTryNoResponse');
     if(noResp) noResp.onclick = function(ev){
@@ -616,6 +738,16 @@
       if(ev) ev.stopPropagation();
       startTargetRecord();
     };
+    var tryToPhrases = $('btnOnboardTryToPhrases');
+    if(tryToPhrases) tryToPhrases.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      jumpToStep(2);
+    };
+    var tryToMode = $('btnOnboardTryToMode');
+    if(tryToMode) tryToMode.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      jumpToStep(3);
+    };
     var wakePractice = $('btnOnboardWakePractice');
     if(wakePractice) wakePractice.onclick = function(){
       var a = app();
@@ -627,6 +759,17 @@
     if(modeVoice) modeVoice.onclick = function(){ setEntryMode('voice'); renderModeStep(); };
     var modeBoth = $('onboardModeBoth');
     if(modeBoth) modeBoth.onclick = function(){ setEntryMode('both'); renderModeStep(); };
+    var footerLinks = $('onboardFooterLinks');
+    if(footerLinks){
+      footerLinks.onclick = function(ev){
+        var link = ev.target && ev.target.closest ? ev.target.closest('[data-onboard-link]') : null;
+        if(!link) return;
+        ev.stopPropagation();
+        var action = link.getAttribute('data-onboard-link');
+        if(action === 'help') showTryHelp(state.tryFailed ? 'send_failed' : 'timeout');
+        if(action === 'noresponse') handleTryNoResponse();
+      };
+    }
     var overlay = overlayEl();
     if(overlay){
       overlay.addEventListener('click', function(e){
@@ -637,13 +780,11 @@
 
   function syncStaticI18n(){
     var pairs = [
-      ['onboardSetupNote','onboardSetupNote'],
       ['onboardTriggerCardStep','onboardTriggerCardStep'],['onboardTargetCardStep','onboardTargetCardStep'],
       ['onboardTriggerCardTitle','onboardTriggerCardTitle'],['onboardTargetCardTitle','onboardTargetCardTitle'],
-      ['btnOnboardLater','onboardBtnLater'],['btnOnboardRecordTriggerAgain','onboardBtnRecord'],['btnOnboardRecordTargetAgain','onboardBtnRecord'],
+      ['btnOnboardLater','onboardBtnLater'],['btnOnboardBack','onboardBtnBack'],
       ['onboardWakeNote','onboardWakeNote'],
       ['btnOnboardWakePractice','onboardWakePractice'],
-      ['btnOnboardTryHelp','onboardTryHelpBtn'],['btnOnboardTryNoResponse','onboardTryNoResponseBtn'],
       ['onboardEndNote','onboardEndNote'],
       ['onboardEndHint','onboardEndHint'],
       ['onboardModeNote','onboardModeNote'],

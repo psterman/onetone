@@ -381,6 +381,13 @@ pub struct SoundsConfig {
     pub send_success: SoundSlot,
     #[serde(default = "default_sound_slot_send_fail", rename = "sendFail")]
     pub send_fail: SoundSlot,
+    #[serde(default = "default_false", rename = "recordingMuteEnabled")]
+    pub recording_mute_enabled: bool,
+    #[serde(
+        default = "default_recording_mute_strength",
+        rename = "recordingMuteStrength"
+    )]
+    pub recording_mute_strength: String,
 }
 
 fn default_sound_slot_record() -> SoundSlot {
@@ -414,6 +421,10 @@ fn default_sound_slot_send_fail() -> SoundSlot {
     }
 }
 
+fn default_recording_mute_strength() -> String {
+    "balanced".into()
+}
+
 impl Default for SoundsConfig {
     fn default() -> Self {
         Self {
@@ -423,6 +434,8 @@ impl Default for SoundsConfig {
             key_wake: default_sound_slot_key_wake(),
             send_success: default_sound_slot_send_success(),
             send_fail: default_sound_slot_send_fail(),
+            recording_mute_enabled: false,
+            recording_mute_strength: default_recording_mute_strength(),
         }
     }
 }
@@ -444,6 +457,12 @@ impl SoundsConfig {
         if self.send_fail.id.trim().is_empty() {
             self.send_fail.id = default_sound_id_send_fail();
         }
+        if !matches!(
+            self.recording_mute_strength.trim(),
+            "light" | "balanced" | "strong" | "mute"
+        ) {
+            self.recording_mute_strength = default_recording_mute_strength();
+        }
     }
 
     pub fn cue_enabled(&self, cue: &str) -> bool {
@@ -457,6 +476,16 @@ impl SoundsConfig {
             "send_success" => self.send_success.enabled,
             "send_fail" => self.send_fail.enabled,
             _ => false,
+        }
+    }
+
+    pub fn recording_mute_target_scale(&self) -> f32 {
+        match self.recording_mute_strength.trim() {
+            "light" => 0.7,
+            "balanced" => 0.45,
+            "strong" => 0.15,
+            "mute" => 0.0,
+            _ => 0.45,
         }
     }
 }

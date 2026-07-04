@@ -88,7 +88,9 @@
           voiceWake:{enabled:!!s.voiceWake.enabled,id:String(s.voiceWake.id||slots.voiceWake.id)},
           keyWake:{enabled:!!s.keyWake.enabled,id:String(s.keyWake.id||slots.keyWake.id)},
           sendSuccess:{enabled:!!s.sendSuccess.enabled,id:String(s.sendSuccess.id||slots.sendSuccess.id)},
-          sendFail:{enabled:!!s.sendFail.enabled,id:String(s.sendFail.id||slots.sendFail.id)}
+          sendFail:{enabled:!!s.sendFail.enabled,id:String(s.sendFail.id||slots.sendFail.id)},
+          recordingMuteEnabled:!!s.recordingMuteEnabled,
+          recordingMuteStrength:String(s.recordingMuteStrength||'balanced').trim()||'balanced'
         };
       })(),
       voiceSapi:(function(){

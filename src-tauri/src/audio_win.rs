@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, WebviewWindow};
+use crate::AppState;
 
 /// Wait after stopping capture before reopening (device switch / monitor restart).
 pub const MIC_MONITOR_SETTLE_MS: u64 = 400;
@@ -20,6 +21,45 @@ pub const COM_OP_TIMEOUT_MS: u64 = 8000;
 pub const MONITOR_JOIN_TIMEOUT_MS: u64 = 3000;
 /// Default audio-stack cooldown after timeout or monitor failure.
 pub const DEFAULT_AUDIO_BACKOFF_MS: u64 = 30_000;
+
+#[derive(Debug, Clone, Default)]
+pub struct RecordingAudioEndpointBackup {
+    pub role: String,
+    pub device_id: String,
+    pub muted: bool,
+    pub volume: f32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RecordingAudioBackup {
+    pub endpoints: Vec<RecordingAudioEndpointBackup>,
+}
+
+pub fn recording_audio_mute_active(state: &AppState) -> bool {
+    state.recording_audio.lock().is_some()
+}
+
+pub fn sync_recording_audio_policy_now(state: &AppState) {
+    #[cfg(windows)]
+    {
+        imp::sync_recording_audio_policy_now(state);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = state;
+    }
+}
+
+pub fn request_recording_audio_policy_sync(state: Arc<AppState>) {
+    #[cfg(windows)]
+    {
+        imp::request_recording_audio_policy_sync(state);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = state;
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -164,9 +204,10 @@ mod imp {
     use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
     use windows::core::{HSTRING, PCWSTR};
     use windows::Win32::Media::Audio::{
-        eCapture, eCommunications, eConsole, ERole, IMMDevice, IMMDeviceEnumerator,
-        MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE,
+        eCapture, eCommunications, eConsole, eMultimedia, eRender, ERole, IMMDevice,
+        IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
@@ -231,6 +272,274 @@ mod imp {
             if let Err(err) = set_default_endpoint(&id, eCommunications) {
                 eprintln!("set default communications (non-fatal): {err}");
             }
+            Ok(())
+        }
+    }
+
+    pub fn request_recording_audio_policy_sync(state: Arc<AppState>) {
+        state
+            .recording_audio_sync_pending
+            .store(true, Ordering::Release);
+        if state
+            .recording_audio_sync_running
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return;
+        }
+
+        let state2 = Arc::clone(&state);
+        if let Err(err) = std::thread::Builder::new()
+            .name("recording-audio-sync".into())
+            .spawn(move || {
+                loop {
+                    state2
+                        .recording_audio_sync_pending
+                        .store(false, Ordering::Release);
+                    sync_recording_audio_policy_now(state2.as_ref());
+                    if !state2
+                        .recording_audio_sync_pending
+                        .swap(false, Ordering::AcqRel)
+                    {
+                        break;
+                    }
+                }
+                state2
+                    .recording_audio_sync_running
+                    .store(false, Ordering::Release);
+                if state2
+                    .recording_audio_sync_pending
+                    .swap(false, Ordering::AcqRel)
+                    && state2
+                        .recording_audio_sync_running
+                        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                        .is_ok()
+                {
+                    request_recording_audio_policy_sync(state2);
+                }
+            })
+        {
+            state.recording_audio_sync_running.store(false, Ordering::Release);
+            eprintln!("recording audio sync spawn failed: {err}");
+            sync_recording_audio_policy_now(state.as_ref());
+        }
+    }
+
+    pub fn sync_recording_audio_policy_now(state: &AppState) {
+        let (enabled, strength, active) = {
+            let cfg = state.cfg.lock();
+            (
+                cfg.sounds.recording_mute_enabled,
+                cfg.sounds.recording_mute_strength.clone(),
+                state.voice_sapi.lock().is_some() || state.voice_vosk.lock().is_some(),
+            )
+        };
+        let result = if enabled && active {
+            apply_recording_audio_mute(state, &strength)
+        } else {
+            restore_recording_audio(state)
+        };
+        if let Err(err) = result {
+            eprintln!("recording audio policy sync failed: {err}");
+        }
+    }
+
+    fn apply_recording_audio_mute(state: &AppState, strength: &str) -> Result<(), String> {
+        let target_scale = recording_audio_target_scale(strength);
+        let mut guard = state.recording_audio.lock();
+        if let Some(snapshot) = guard.as_ref() {
+            apply_recording_audio_snapshot(snapshot, target_scale)?;
+            return Ok(());
+        }
+
+        let mut snapshot = RecordingAudioBackup::default();
+        for role in recording_audio_roles() {
+            if let Some(endpoint) = capture_render_endpoint(role)? {
+                snapshot.endpoints.push(endpoint);
+            }
+        }
+        if snapshot.endpoints.is_empty() {
+            return Err("no render endpoints found".into());
+        }
+        apply_recording_audio_snapshot(&snapshot, target_scale)?;
+        *guard = Some(snapshot);
+        Ok(())
+    }
+
+    fn restore_recording_audio(state: &AppState) -> Result<(), String> {
+        let mut guard = state.recording_audio.lock();
+        let Some(snapshot) = guard.take() else {
+            return Ok(());
+        };
+        let result = restore_recording_audio_snapshot(&snapshot);
+        if result.is_err() {
+            *guard = Some(snapshot);
+        }
+        result
+    }
+
+    fn apply_recording_audio_snapshot(
+        snapshot: &RecordingAudioBackup,
+        target_scale: f32,
+    ) -> Result<(), String> {
+        let mut errors = Vec::new();
+        for endpoint in &snapshot.endpoints {
+            if let Err(err) = apply_recording_audio_endpoint(endpoint, target_scale) {
+                errors.push(format!("{}: {err}", endpoint.role));
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
+    }
+
+    fn restore_recording_audio_snapshot(snapshot: &RecordingAudioBackup) -> Result<(), String> {
+        let mut errors = Vec::new();
+        for endpoint in &snapshot.endpoints {
+            if let Err(err) = restore_recording_audio_endpoint(endpoint) {
+                errors.push(format!("{}: {err}", endpoint.role));
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
+    }
+
+    fn recording_audio_roles() -> [ERole; 3] {
+        [eConsole, eMultimedia, eCommunications]
+    }
+
+    fn recording_audio_target_scale(strength: &str) -> f32 {
+        match strength.trim() {
+            "light" => 0.7,
+            "balanced" => 0.45,
+            "strong" => 0.15,
+            "mute" => 0.0,
+            _ => 0.45,
+        }
+    }
+
+    fn role_name(role: ERole) -> &'static str {
+        match role {
+            r if r == eConsole => "console",
+            r if r == eMultimedia => "multimedia",
+            r if r == eCommunications => "communications",
+            _ => "unknown",
+        }
+    }
+
+    fn role_from_name(role: &str) -> Option<ERole> {
+        match role.trim() {
+            "console" => Some(eConsole),
+            "multimedia" => Some(eMultimedia),
+            "communications" => Some(eCommunications),
+            _ => None,
+        }
+    }
+
+    fn capture_render_endpoint(role: ERole) -> Result<Option<RecordingAudioEndpointBackup>, String> {
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let Ok(device) = enumerator.GetDefaultAudioEndpoint(eRender, role) else {
+                return Ok(None);
+            };
+            let endpoint: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate endpoint volume: {e}"))?;
+            let id = device_id(&device)?;
+            let muted = endpoint
+                .GetMute()
+                .map_err(|e| format!("endpoint mute: {e}"))?
+                .as_bool();
+            let volume = endpoint
+                .GetMasterVolumeLevelScalar()
+                .map_err(|e| format!("endpoint volume: {e}"))?;
+            Ok(Some(RecordingAudioEndpointBackup {
+                role: role_name(role).to_string(),
+                device_id: id,
+                muted,
+                volume,
+            }))
+        }
+    }
+
+    fn apply_recording_audio_endpoint(
+        endpoint: &RecordingAudioEndpointBackup,
+        target_scale: f32,
+    ) -> Result<(), String> {
+        let Some(role) = role_from_name(&endpoint.role) else {
+            return Ok(());
+        };
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let device = enumerator
+                .GetDefaultAudioEndpoint(eRender, role)
+                .map_err(|e| format!("default endpoint: {e}"))?;
+            let id = device_id(&device)?;
+            if id != endpoint.device_id {
+                return Ok(());
+            }
+            let volume: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate endpoint volume: {e}"))?;
+            if endpoint.muted {
+                volume
+                    .SetMute(true, core::ptr::null())
+                    .map_err(|e| format!("set mute: {e}"))?;
+                return Ok(());
+            }
+            if target_scale <= 0.0 {
+                volume
+                    .SetMute(true, core::ptr::null())
+                    .map_err(|e| format!("set mute: {e}"))?;
+            } else {
+                let scale = (endpoint.volume * target_scale).clamp(0.0, 1.0);
+                volume
+                    .SetMute(false, core::ptr::null())
+                    .map_err(|e| format!("clear mute: {e}"))?;
+                volume
+                    .SetMasterVolumeLevelScalar(scale, core::ptr::null())
+                    .map_err(|e| format!("set volume: {e}"))?;
+            }
+            Ok(())
+        }
+    }
+
+    fn restore_recording_audio_endpoint(endpoint: &RecordingAudioEndpointBackup) -> Result<(), String> {
+        let Some(role) = role_from_name(&endpoint.role) else {
+            return Ok(());
+        };
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let device = enumerator
+                .GetDefaultAudioEndpoint(eRender, role)
+                .map_err(|e| format!("default endpoint: {e}"))?;
+            let id = device_id(&device)?;
+            if id != endpoint.device_id {
+                return Ok(());
+            }
+            let volume: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate endpoint volume: {e}"))?;
+            volume
+                .SetMasterVolumeLevelScalar(endpoint.volume.clamp(0.0, 1.0), core::ptr::null())
+                .map_err(|e| format!("restore volume: {e}"))?;
+            volume
+                .SetMute(endpoint.muted, core::ptr::null())
+                .map_err(|e| format!("restore mute: {e}"))?;
             Ok(())
         }
     }

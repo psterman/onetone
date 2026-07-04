@@ -59,6 +59,9 @@
     if(res.commitKey!=null) cfg.commitKey=String(res.commitKey||'').trim();
     if(res.dictationTimeoutMs!=null) cfg.dictationTimeoutMs=Number(res.dictationTimeoutMs)||60000;
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
+    const sounds=state().config.sounds||(state().config.sounds={});
+    if(res.recordingAudioEnabled!=null) sounds.recordingMuteEnabled=!!res.recordingAudioEnabled;
+    if(res.recordingAudioStrength!=null) sounds.recordingMuteStrength=String(res.recordingAudioStrength||'balanced').trim()||'balanced';
   }
   function normalizeVoiceEndCommitKey(raw){
     const key=String(raw||'').trim();
@@ -146,6 +149,21 @@
     if(autoLine) autoLine.textContent=t('voiceEndAutoSend')+'：'+(res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'));
     const delayLine=$('voiceEndDelayLine');
     if(delayLine) delayLine.textContent=t('voiceEndDelay')+'：'+t('voiceEndDelayMs').replace('{n}',String(delayMs));
+    const audioHint=$('voiceEndAudioHint');
+    if(audioHint){
+      const audioEnabled=!!res.recordingAudioEnabled;
+      const strength=String(res.recordingAudioStrength||'balanced').trim()||'balanced';
+      const strengthKey='recordingMuteStrength'+strength.charAt(0).toUpperCase()+strength.slice(1);
+      const targetScale=res.recordingAudioTargetScale!=null?Number(res.recordingAudioTargetScale):null;
+      const active=res.recordingAudioActive==null?audioEnabled:!!res.recordingAudioActive;
+      const strengthLabel=t(strengthKey);
+      const scaleText=targetScale==null?'':(' · '+Math.round(targetScale*100)+'%');
+      audioHint.textContent=audioEnabled
+        ?t('voiceEndAudioDiagHintOn').replace('{strength}',strengthLabel).replace('{state}',active?t('voiceEndAudioDiagStateActive'):t('voiceEndAudioDiagStateInactive'))+scaleText
+        :t('voiceEndAudioDiagHintOff');
+    }
+    const audioBtn=$('btnVoiceEndAudioSettings');
+    if(audioBtn) audioBtn.textContent=t('voiceEndAudioDiagAction');
     const range=$('voiceEndDelayRange');
     if(range&&document.activeElement!==range){
       range.value=String(delayMs);
@@ -159,6 +177,8 @@
     global.OneToneVoiceDiag.updateMetric('end','action',res.lastAction||'',t('voiceDiagLogAction'));
     global.OneToneVoiceDiag.updateMetric('end','auto',res.autoSendEnabled?t('voiceEndAutoSendOn'):t('voiceEndAutoSendOff'),t('voiceEndAutoSend'));
     global.OneToneVoiceDiag.updateMetric('end','delay',t('voiceEndDelayMs').replace('{n}',String(delayMs)),t('voiceEndDelay'));
+    global.OneToneVoiceDiag.updateMetric('end','audio',res.recordingAudioEnabled?t('voiceEndAudioDiagOn'):t('voiceEndAudioDiagOff'),t('voiceDiagLogAudioMute'));
+    global.OneToneVoiceDiag.updateMetric('end','audioStrength',t('recordingMuteStrength'+String(res.recordingAudioStrength||'balanced').trim().replace(/^[a-z]/,function(ch){ return ch.toUpperCase(); })),t('voiceDiagLogAudioStrength'));
     syncVoiceEndModeUi(false);
     hooks().renderVoiceModeSwitch();
     hooks().renderVoiceSettingsFlow();

@@ -64,6 +64,7 @@
     <main class="main-scroll">
       <div class="editor-zone">
         <div class="home-zone" id="homeZone">
+          <p class="home-status-summary home-entry-mode-summary" id="homeStatusSummary" hidden aria-hidden="true"></p>
           <section class="home-hero" hidden>
             <div class="home-hero-status" hidden>
               <div class="home-status" id="homeStatus">
@@ -82,7 +83,6 @@
               <button type="button" class="home-phrase-chip is-action" id="btnHomePhrasePractice">练习</button>
             </div>
             <p class="home-hero-hint" id="homeHeroHint" hidden></p>
-            <p class="home-status-summary" id="homeStatusSummary" hidden aria-hidden="true"></p>
           </section>
           <details class="home-advanced home-entry-section" id="homeAdvanced">
             <summary id="homeAdvancedSummary">高级微调（更多选项）</summary>
@@ -267,7 +267,7 @@
                 </div>
                 <button type="button" class="settings-nav-item" data-panel="sounds" id="settingsNavSounds">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                  <span id="settingsNavSoundsLabel">音效</span>
+                  <span id="settingsNavSoundsLabel">音效与音频</span>
                 </button>
                 <div class="settings-nav-group" id="settingsNavDebugGroup">
                   <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">
@@ -691,7 +691,7 @@
           </section>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
-          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒与发送配置提示音</p>
+          <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
           <div class="setting-row">
             <div class="setting-row-main">
               <span class="setting-row-text" id="soundsMasterLabel">启用音效</span>
@@ -699,6 +699,28 @@
             <button type="button" class="toggle-switch" id="btnSoundsMaster" role="switch" aria-checked="true"></button>
           </div>
           <p class="help" id="soundsMasterHelp" style="margin-top:8px">关闭后所有提示音静音；各场景仍可单独配置。</p>
+          <div class="recording-audio-card" id="recordingAudioCard">
+            <div class="sound-slot-head">
+              <div>
+                <p class="sound-slot-title" id="recordingAudioTitle">录音期间静音系统扬声器</p>
+                <p class="sound-slot-desc" id="recordingAudioDesc">录音期间自动降低系统扬声器音量，避免录入回放声音。</p>
+              </div>
+              <button type="button" class="toggle-switch" id="btnRecordingAudioMute" role="switch" aria-checked="false"></button>
+            </div>
+            <div class="recording-audio-strength-row">
+              <div class="setting-row-main">
+                <span class="setting-row-text" id="recordingAudioStrengthLbl">强度</span>
+              </div>
+              <span class="recording-audio-strength-current" id="recordingAudioStrengthCurrent">中等</span>
+            </div>
+            <div class="pref-segmented is-wide recording-audio-strengths" id="recordingAudioStrengthGroup" role="group" aria-label="录音静音强度">
+              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="light" id="btnRecordingAudioStrengthLight">轻度</button>
+              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="balanced" id="btnRecordingAudioStrengthBalanced">中等</button>
+              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="strong" id="btnRecordingAudioStrengthStrong">强力</button>
+              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="mute" id="btnRecordingAudioStrengthMute">全静音</button>
+            </div>
+            <p class="help recording-audio-hint" id="recordingAudioHint">如果仍然录入系统声音，先把强度调高；必要时到运行状态里检查是否已生效。</p>
+          </div>
           <div class="sound-settings-block" id="soundSettingsBlock">
             <div class="sound-slot" data-slot="record">
               <div class="sound-slot-head">
@@ -802,6 +824,10 @@
             </section>
             <section class="voice-diag-pane" id="voiceDiagPaneEnd" data-diag-tab="end" hidden>
               <div class="voice-diag-metrics" id="voiceDiagMetricsEnd"></div>
+              <div class="voice-diagnostics-actions">
+                <button type="button" class="control-btn" id="btnVoiceEndAudioSettings">去声音设置</button>
+              </div>
+              <p class="voice-end-audio-hint" id="voiceEndAudioHint">如果还是录进回放声音，先检查这里的录音静音开关和强度。</p>
               <div class="voice-diagnostics-log" id="voiceEndLog">等待语音状态…</div>
             </section>
             <section class="voice-diag-pane" id="voiceDiagPaneUsage" data-diag-tab="usage" hidden>
@@ -890,8 +916,8 @@
       <div class="welcome-top">
         <div>
           <div class="welcome-kicker" id="onboardKicker">首次使用</div>
-          <h2 class="welcome-title" id="onboardTitle">按一个键，开始语音输入</h2>
-          <p class="welcome-desc" id="onboardDesc">你按唤起键，一声会替你按下输入法的语音快捷键（默认 Right Alt）。</p>
+          <h2 class="welcome-title" id="onboardTitle">录制两个按键</h2>
+          <p class="welcome-desc" id="onboardDesc">两步就好：先录你想按的键，再录「打开语音输入」的快捷键。</p>
         </div>
         <button type="button" class="welcome-close" id="btnOnboardClose" aria-label="关闭">×</button>
       </div>
@@ -902,10 +928,10 @@
             <div class="onboard-setup-grid">
               <div class="onboard-record-card" id="onboardTriggerCard">
                 <div class="onboard-record-card-step" id="onboardTriggerCardStep">第 1 步</div>
-                <p class="onboard-record-card-title" id="onboardTriggerCardTitle">启动键</p>
+                <p class="onboard-record-card-title" id="onboardTriggerCardTitle">① 你要按的键</p>
                 <div class="onboard-record-card-key" id="onboardTriggerCardKey">未设置</div>
-                <p class="onboard-record-card-hint" id="onboardTriggerCardHint">点击下方按钮后，按下你想用来启动输入的按键</p>
-                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTriggerRecord">按一下要用的启动键</button>
+                <p class="onboard-record-card-hint" id="onboardTriggerCardHint">这个键以后用来启动语音输入</p>
+                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTriggerRecord">录这个键</button>
                 <div class="onboard-record-actions">
                   <button type="button" class="welcome-btn" id="btnOnboardRecordTriggerAgain" hidden>重新录制</button>
                 </div>
@@ -913,33 +939,38 @@
               <div class="onboard-record-arrow" aria-hidden="true">→</div>
               <div class="onboard-record-card" id="onboardTargetCard">
                 <div class="onboard-record-card-step" id="onboardTargetCardStep">第 2 步</div>
-                <p class="onboard-record-card-title" id="onboardTargetCardTitle">输入法激活键</p>
+                <p class="onboard-record-card-title" id="onboardTargetCardTitle">② 打开语音输入的快捷键</p>
                 <div class="onboard-record-card-key" id="onboardTargetKey">RAlt</div>
-                <p class="onboard-record-card-hint" id="onboardTargetCardHint">点击下方按钮后，按下你的输入法语音激活快捷键</p>
-                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTargetRecord">按一下语音输入快捷键</button>
+                <p class="onboard-record-card-hint" id="onboardTargetCardHint">请先录好左边的键</p>
+                <button type="button" class="btn secondary record-btn onboard-record-btn" id="btnOnboardStartTargetRecord">录这个键</button>
                 <div class="onboard-record-actions">
                   <button type="button" class="welcome-btn" id="btnOnboardRecordTargetAgain" hidden>重新录制</button>
                 </div>
               </div>
             </div>
-            <p class="onboard-record-flow-status" id="onboardRecordFlowStatus">先录制启动键，再录制输入法激活键。</p>
+            <p class="onboard-record-flow-status" id="onboardRecordFlowStatus">从左边开始：先录你要按的键</p>
             <p class="onboard-setup-summary" id="onboardTargetNote">左边是你按下的启动键，右边是程序替你发送给输入法的激活键。</p>
           </div>
         </section>
         <section class="onboard-panel" id="onboardPanelTry" hidden>
           <div class="onboard-try-center">
+            <p class="onboard-try-desc" id="onboardTryDesc">现在按一下这个键</p>
             <div class="onboard-try-key-wrap" id="onboardTryKeyWrap">
-              <span id="onboardTryKey">音量减</span>
+              <span id="onboardTryKey">—</span>
             </div>
-            <p class="onboard-try-desc" id="onboardTryDesc">请现在按一下唤起键</p>
-            <p class="onboard-try-result" id="onboardTryResult"></p>
+            <p class="onboard-try-map-note" id="onboardTryMapNote">它会帮你打开语音输入</p>
+            <p class="onboard-try-result" id="onboardTryResult">等待按键…</p>
             <div class="onboard-try-help" id="onboardTryHelpBox" hidden>
-              <p class="onboard-try-help-title" id="onboardTryHelpTitle">按键没反应？</p>
+              <p class="onboard-try-help-title" id="onboardTryHelpTitle">没有反应？</p>
               <ul class="onboard-try-help-body" id="onboardTryHelpList"></ul>
             </div>
             <div class="onboard-target-actions" style="justify-content:center">
-              <button type="button" class="welcome-btn" id="btnOnboardTryHelp">查看帮助</button>
-              <button type="button" class="welcome-btn" id="btnOnboardTryNoResponse">我按了没反应</button>
+              <button type="button" class="welcome-btn" id="btnOnboardTryHelp">需要帮助？</button>
+              <button type="button" class="welcome-btn" id="btnOnboardTryNoResponse">没反应？</button>
+            </div>
+            <div class="onboard-target-actions" id="onboardTryOptionalActions" hidden>
+              <button type="button" class="welcome-btn" id="btnOnboardTryToPhrases">自定义唤醒词/结束词</button>
+              <button type="button" class="welcome-btn" id="btnOnboardTryToMode">调整首页入口</button>
             </div>
           </div>
         </section>
@@ -984,7 +1015,10 @@
         </section>
       </div>
       <div class="welcome-actions">
-        <div class="welcome-hint" id="onboardHint">这个引导只会在首次启动时出现一次。</div>
+        <div class="onboard-footer-area" id="onboardFooterArea">
+          <p class="welcome-hint" id="onboardHint">完成后，你可以随时在首页或设置里再调整。</p>
+          <div class="onboard-footer-links" id="onboardFooterLinks"></div>
+        </div>
         <div class="welcome-btns">
           <button type="button" class="welcome-btn" id="btnOnboardLater">稍后再看</button>
           <button type="button" class="welcome-btn" id="btnOnboardBack" hidden>上一步</button>

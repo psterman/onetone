@@ -80,6 +80,7 @@ pub fn cmd_mic_set_default(
             let cfg = state.cfg.lock().voice_sapi.clone();
             if cfg.enabled {
                 crate::voice_sapi_runtime::voice_sapi_start(&state, &cfg)?;
+                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state.inner()));
             }
             Ok(())
         }

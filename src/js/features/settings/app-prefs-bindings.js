@@ -27,6 +27,18 @@
     var btnStartMinimized=$('btnStartMinimized');
     if(btnStartMinimized) btnStartMinimized.onclick=hooks.toggleStartMinimized;
     $('btnSoundsMaster').onclick=hooks.toggleSoundsMaster;
+    var btnRecordingAudioMute=$('btnRecordingAudioMute');
+    if(btnRecordingAudioMute) btnRecordingAudioMute.onclick=function(){
+      hooks.setRecordingAudioMuteEnabled(!btnRecordingAudioMute.classList.contains('is-on'));
+    };
+    document.querySelectorAll('[data-recording-mute-strength]').forEach(function(btn){
+      btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
+      btn.addEventListener('click',function(){
+        var strength=btn.getAttribute('data-recording-mute-strength');
+        if(!strength) return;
+        hooks.setRecordingAudioStrength(strength);
+      });
+    });
     document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
       btn.onclick=function(){
         var slot=btn.getAttribute('data-slot');

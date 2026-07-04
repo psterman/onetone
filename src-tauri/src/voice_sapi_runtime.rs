@@ -322,6 +322,7 @@ pub fn start_voice_sapi_runtime_only(
                     &format!("sapi runtime started ({reason_owned})"),
                 );
             }
+            crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));
         })
         .ok();
     true
@@ -370,6 +371,7 @@ pub fn voice_sapi_set_enabled(
                     *state2.voice_sapi_last_error.lock() = e;
                     *state2.voice_sapi_state.lock() = "error".into();
                 }
+                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));
             })
             .ok();
     } else {
@@ -377,6 +379,7 @@ pub fn voice_sapi_set_enabled(
         *state.voice_sapi_cooldown_until.lock() = None;
         *state.voice_sapi_last_error.lock() = String::new();
         *state.voice_sapi_state.lock() = "stopped".into();
+        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     }
 
     Ok(voice_sapi_status(state))
@@ -408,6 +411,7 @@ pub fn voice_sapi_set_phrases(
                 if let Err(e) = voice_sapi_start(state2.as_ref(), &cfg) {
                     eprintln!("voice_sapi restart: {e}");
                 }
+                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));
             })
             .ok();
     }

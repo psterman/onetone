@@ -40,8 +40,36 @@
       voiceWake:Object.assign({},SOUND_SLOT_DEFAULTS.voiceWake),
       keyWake:Object.assign({},SOUND_SLOT_DEFAULTS.keyWake),
       sendSuccess:Object.assign({},SOUND_SLOT_DEFAULTS.sendSuccess),
-      sendFail:Object.assign({},SOUND_SLOT_DEFAULTS.sendFail)
+      sendFail:Object.assign({},SOUND_SLOT_DEFAULTS.sendFail),
+      recordingMuteEnabled:false,
+      recordingMuteStrength:'balanced'
     };
+  }
+
+  function normalizeRecordingMuteStrength(raw){
+    var key=String(raw||'').trim().toLowerCase();
+    if(key==='light'||key==='balanced'||key==='strong'||key==='mute') return key;
+    return 'balanced';
+  }
+
+  function recordingMuteStrengthLabel(strength){
+    var key=normalizeRecordingMuteStrength(strength);
+    var dict={
+      light:t('recordingMuteStrengthLight'),
+      balanced:t('recordingMuteStrengthBalanced'),
+      strong:t('recordingMuteStrengthStrong'),
+      mute:t('recordingMuteStrengthMute')
+    };
+    return dict[key]||dict.balanced;
+  }
+
+  function recordingMuteStrengthOptions(){
+    return [
+      {id:'light',labelKey:'recordingMuteStrengthLight'},
+      {id:'balanced',labelKey:'recordingMuteStrengthBalanced'},
+      {id:'strong',labelKey:'recordingMuteStrengthStrong'},
+      {id:'mute',labelKey:'recordingMuteStrengthMute'}
+    ];
   }
 
   function ensureSoundsConfig(){
@@ -54,6 +82,8 @@
       if(!state().config.sounds[key].id) state().config.sounds[key].id=SOUND_SLOT_DEFAULTS[key].id;
     });
     if(state().config.sounds.masterEnabled===undefined) state().config.sounds.masterEnabled=true;
+    if(state().config.sounds.recordingMuteEnabled===undefined) state().config.sounds.recordingMuteEnabled=false;
+    state().config.sounds.recordingMuteStrength=normalizeRecordingMuteStrength(state().config.sounds.recordingMuteStrength);
     if(state().config.keyWakeSoundEnabled&&!state().config.sounds.keyWake.enabled){
       state().config.sounds.keyWake.enabled=true;
     }
@@ -140,6 +170,21 @@
     }
   }
 
+  function syncRecordingAudioUi(){
+    var sounds=ensureSoundsConfig();
+    var toggle=$('btnRecordingAudioMute');
+    if(toggle){
+      toggle.classList.toggle('is-on',!!sounds.recordingMuteEnabled);
+      toggle.setAttribute('aria-checked',sounds.recordingMuteEnabled?'true':'false');
+    }
+    document.querySelectorAll('.recording-audio-strength-btn').forEach(function(btn){
+      btn.classList.toggle('is-active',String(btn.getAttribute('data-recording-mute-strength')||'')===sounds.recordingMuteStrength);
+      btn.disabled=!sounds.recordingMuteEnabled;
+    });
+    var label=$('recordingAudioStrengthCurrent');
+    if(label) label.textContent=recordingMuteStrengthLabel(sounds.recordingMuteStrength);
+  }
+
   function syncSoundsSettingsUi(){
     var sounds=ensureSoundsConfig();
     var master=$('btnSoundsMaster');
@@ -171,6 +216,7 @@
       if(preview) preview.disabled=!sounds.masterEnabled;
     });
     syncKeyWakeSoundToggle(!!sounds.keyWake.enabled);
+    syncRecordingAudioUi();
     document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
       btn.disabled=!sounds.masterEnabled;
     });
@@ -187,7 +233,12 @@
       ['soundSlotVoiceWakeTitle',d.soundSlotVoiceWakeTitle],['soundSlotVoiceWakeDesc',d.soundSlotVoiceWakeDesc],
       ['soundSlotKeyWakeTitle',d.soundSlotKeyWakeTitle],['soundSlotKeyWakeDesc',d.soundSlotKeyWakeDesc],
       ['soundSlotSendSuccessTitle',d.soundSlotSendSuccessTitle],['soundSlotSendSuccessDesc',d.soundSlotSendSuccessDesc],
-      ['soundSlotSendFailTitle',d.soundSlotSendFailTitle],['soundSlotSendFailDesc',d.soundSlotSendFailDesc]
+      ['soundSlotSendFailTitle',d.soundSlotSendFailTitle],['soundSlotSendFailDesc',d.soundSlotSendFailDesc],
+      ['recordingAudioTitle',d.recordingAudioTitle],['recordingAudioDesc',d.recordingAudioDesc],
+      ['recordingAudioStrengthLbl',d.recordingAudioStrengthLbl],['recordingAudioHint',d.recordingAudioHint],
+      ['btnRecordingAudioStrengthLight',d.recordingMuteStrengthLight],['btnRecordingAudioStrengthBalanced',d.recordingMuteStrengthBalanced],
+      ['btnRecordingAudioStrengthStrong',d.recordingMuteStrengthStrong],['btnRecordingAudioStrengthMute',d.recordingMuteStrengthMute],
+      ['recordingAudioDiagHint',d.recordingAudioDiagHint],['recordingAudioDiagAction',d.recordingAudioDiagAction]
     ].forEach(function(pair){
       var el=$(pair[0]); if(el) el.textContent=pair[1];
     });
@@ -212,6 +263,20 @@
   function setSoundSlotId(slotKey,id){
     ensureSoundsConfig();
     state().config.sounds[slotKey].id=id;
+    hooks().save();
+  }
+
+  function setRecordingAudioMuteEnabled(enabled){
+    ensureSoundsConfig();
+    state().config.sounds.recordingMuteEnabled=!!enabled;
+    syncRecordingAudioUi();
+    hooks().save();
+  }
+
+  function setRecordingAudioStrength(strength){
+    ensureSoundsConfig();
+    state().config.sounds.recordingMuteStrength=normalizeRecordingMuteStrength(strength);
+    syncRecordingAudioUi();
     hooks().save();
   }
 
@@ -242,6 +307,12 @@
     renderSoundSettingsPanel:renderSoundSettingsPanel,
     setSoundSlotEnabled:setSoundSlotEnabled,
     setSoundSlotId:setSoundSlotId,
+    setRecordingAudioMuteEnabled:setRecordingAudioMuteEnabled,
+    setRecordingAudioStrength:setRecordingAudioStrength,
+    syncRecordingAudioUi:syncRecordingAudioUi,
+    normalizeRecordingMuteStrength:normalizeRecordingMuteStrength,
+    recordingMuteStrengthLabel:recordingMuteStrengthLabel,
+    recordingMuteStrengthOptions:recordingMuteStrengthOptions,
     toggleSoundsMaster:toggleSoundsMaster,
     ensureSoundsConfig:ensureSoundsConfig,
     syncSoundsSettingsUi:syncSoundsSettingsUi,

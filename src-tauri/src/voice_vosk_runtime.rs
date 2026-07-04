@@ -116,6 +116,7 @@ pub fn spawn_voice_vosk_start(
             if let Err(e) = voice_vosk_start(state.as_ref(), &cfg, resource_dir, epoch) {
                 eprintln!("voice_vosk background start failed: {e}");
             }
+            crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state));
         })
         .ok();
 }
@@ -449,7 +450,8 @@ pub fn voice_vosk_set_enabled(
             .spawn(move || {
                 stop_sapi_engine(&state2);
                 let cfg = state2.cfg.lock().voice_vosk.clone();
-                spawn_voice_vosk_start(state2, cfg, resource_dir_bg);
+                spawn_voice_vosk_start(Arc::clone(&state2), cfg, resource_dir_bg);
+                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));
             })
             .ok();
     } else {
@@ -462,6 +464,7 @@ pub fn voice_vosk_set_enabled(
                 refresh_vosk_probe_cache(state2.as_ref(), resource_dir2.as_deref());
             })
             .ok();
+        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     }
 
     Ok(voice_vosk_status(state, resource_dir))
@@ -489,6 +492,7 @@ pub fn voice_vosk_set_phrases(
         let cfg = state.cfg.lock().voice_vosk.clone();
         spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 
     Ok(voice_vosk_status(state, resource_dir))
 }
@@ -526,6 +530,7 @@ pub fn voice_vosk_set_model_preset(
         let cfg = state.cfg.lock().voice_vosk.clone();
         spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 
     Ok(voice_vosk_status(state, resource_dir))
 }
@@ -553,6 +558,7 @@ pub fn voice_vosk_set_model_path(
         let cfg = state.cfg.lock().voice_vosk.clone();
         spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 
     Ok(voice_vosk_status(state, resource_dir))
 }

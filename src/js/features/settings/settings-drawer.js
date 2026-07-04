@@ -29,7 +29,8 @@
       mic:'voiceMicSection',
       engine:'voiceModePanel',
       autoSend:'voiceSettingsAutoCard',
-      delay:'voiceSettingsAutoCard'
+      delay:'voiceSettingsAutoCard',
+      recordingAudio:'recordingAudioCard'
     };
     const detailId=detailByFocus[focus];
     if(detailId){
@@ -50,7 +51,8 @@
       wakePhrases:global.OneToneVoiceWake.getExpandedMode()==='vosk'?['voiceVoskPresetsCn']:['voiceSapiPresets'],
       endPhrases:['voiceSettingsEndPhraseCard'],
       autoSend:['voiceSettingsAutoCard'],
-      delay:['voiceSettingsDelayRange']
+      delay:['voiceSettingsDelayRange'],
+      recordingAudio:['recordingAudioCard']
     };
     const ids=map[focus]||[];
     requestAnimationFrame(function(){

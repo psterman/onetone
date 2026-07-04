@@ -182,6 +182,12 @@
         const delayMs=end.commitDelayMs!=null?end.commitDelayMs:4000;
         return t('voiceEndDelayMs').replace('{n}',String(delayMs));
       }
+      if(key==='audio') return end.recordingAudioEnabled?t('voiceEndAudioDiagOn'):t('voiceEndAudioDiagOff');
+      if(key==='audioStrength'){
+        const strength=String(end.recordingAudioStrength||'balanced').trim()||'balanced';
+        const labelKey='recordingMuteStrength'+strength.charAt(0).toUpperCase()+strength.slice(1);
+        return t(labelKey);
+      }
     }
     if(kind==='usage'){
       if(key==='mode') return hooks().processUsageModeLabel(hooks().currentVoiceMode());
@@ -273,7 +279,9 @@
       {key:'phrase',labelKey:'voiceDiagLogPhrase'},
       {key:'action',labelKey:'voiceDiagLogAction'},
       {key:'auto',labelKey:'voiceEndAutoSend'},
-      {key:'delay',labelKey:'voiceEndDelay'}
+      {key:'delay',labelKey:'voiceEndDelay'},
+      {key:'audio',labelKey:'voiceDiagLogAudioMute'},
+      {key:'audioStrength',labelKey:'voiceDiagLogAudioStrength'}
     ],
     usage:[
       {key:'mode',labelKey:'voiceDiagLogUsageMode'},

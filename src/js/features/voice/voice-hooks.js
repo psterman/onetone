@@ -53,7 +53,8 @@
       renderVoiceSettingsFlow:deps.renderVoiceSettingsFlow,
       voiceStatusPollTick:deps.voiceStatusPollTick,
       voiceUiSnapshot:voiceUiState.snapshot(),
-      toast:deps.toast
+      toast:deps.toast,
+      openSettings:deps.openSettings
     };
   }
 

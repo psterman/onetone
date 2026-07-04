@@ -541,6 +541,9 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
     let session = session_state(state);
     let vosk_enabled = cfg.voice_vosk.enabled;
     let voice_end_enabled = cfg.voice_end.enabled;
+    let recording_audio_enabled = cfg.sounds.recording_mute_enabled;
+    let recording_audio_strength = cfg.sounds.recording_mute_strength.clone();
+    let recording_audio_target_scale = cfg.sounds.recording_mute_target_scale();
     serde_json::json!({
         "enabled": voice_end_enabled,
         "voskEnabled": vosk_enabled,
@@ -557,6 +560,10 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
         "autoSendEnabled": cfg.voice_end.auto_send_enabled,
         "dictationTimeoutMs": cfg.voice_end.dictation_timeout_ms,
         "targetKey": cfg.voice_end.target_key,
+        "recordingAudioEnabled": recording_audio_enabled,
+        "recordingAudioStrength": recording_audio_strength,
+        "recordingAudioTargetScale": recording_audio_target_scale,
+        "recordingAudioActive": crate::audio_win::recording_audio_mute_active(state),
     })
 }
 

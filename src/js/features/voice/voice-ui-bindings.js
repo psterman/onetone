@@ -88,6 +88,10 @@
     }
     var btnVoiceGoRuntime=$('btnVoiceGoRuntime');
     if(btnVoiceGoRuntime) btnVoiceGoRuntime.onclick=function(){ hooks.setSettingsPanel('debug'); };
+    var btnVoiceEndAudioSettings=$('btnVoiceEndAudioSettings');
+    if(btnVoiceEndAudioSettings) btnVoiceEndAudioSettings.onclick=function(){
+      hooks.openSettings({panel:'sounds',focus:'recordingAudio'});
+    };
     var btnMicRefresh=$('btnMicRefresh');
     if(btnMicRefresh) btnMicRefresh.onclick=function(){
       btnMicRefresh.disabled=true;

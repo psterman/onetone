@@ -30,9 +30,15 @@
     function renderSoundSettingsPanel(){ return OneToneAppThemePrefs.renderSoundSettingsPanel(); }
     function setSoundSlotEnabled(slotKey,enabled){ return OneToneAppThemePrefs.setSoundSlotEnabled(slotKey,enabled); }
     function setSoundSlotId(slotKey,id){ return OneToneAppThemePrefs.setSoundSlotId(slotKey,id); }
+    function setRecordingAudioMuteEnabled(enabled){ return OneToneAppThemePrefs.setRecordingAudioMuteEnabled(enabled); }
+    function setRecordingAudioStrength(strength){ return OneToneAppThemePrefs.setRecordingAudioStrength(strength); }
+    function syncRecordingAudioUi(){ return OneToneAppThemePrefs.syncRecordingAudioUi(); }
     function toggleSoundsMaster(){ return OneToneAppThemePrefs.toggleSoundsMaster(); }
     function ensureSoundsConfig(){ return OneToneAppThemePrefs.ensureSoundsConfig(); }
     function syncSoundsSettingsUi(){ return OneToneAppThemePrefs.syncSoundsSettingsUi(); }
+    function normalizeRecordingMuteStrength(raw){ return OneToneAppThemePrefs.normalizeRecordingMuteStrength(raw); }
+    function recordingMuteStrengthLabel(strength){ return OneToneAppThemePrefs.recordingMuteStrengthLabel(strength); }
+    function recordingMuteStrengthOptions(){ return OneToneAppThemePrefs.recordingMuteStrengthOptions(); }
     function fontScaleValues(){ return OneToneAppThemePrefs.fontScaleValues(); }
     function buildMicLevelBars(count){ return OneToneAppMic.buildMicLevelBars(count); }
     function syncHomeMicPickState(loading){ return OneToneAppMic.syncHomeMicPickState(loading); }
@@ -600,6 +606,8 @@
       setSettingsPanel:setSettingsPanel,
       setSoundSlotEnabled:setSoundSlotEnabled,
       setSoundSlotId:setSoundSlotId,
+      setRecordingAudioMuteEnabled:setRecordingAudioMuteEnabled,
+      setRecordingAudioStrength:setRecordingAudioStrength,
       setTheme:setTheme,
       setVoiceDiagTab:setVoiceDiagTab,
       setVoiceEndCommitKey:setVoiceEndCommitKey,
@@ -654,6 +662,10 @@
       toggleVoiceVosk:toggleVoiceVosk,
       ui:function(){ return ui; },
       updateHomeVoiceSapiConfidence:updateHomeVoiceSapiConfidence,
+      syncRecordingAudioUi:syncRecordingAudioUi,
+      normalizeRecordingMuteStrength:normalizeRecordingMuteStrength,
+      recordingMuteStrengthLabel:recordingMuteStrengthLabel,
+      recordingMuteStrengthOptions:recordingMuteStrengthOptions,
       updateMicLevelBars:updateMicLevelBars,
       updatePrimaryCTA:updatePrimaryCTA,
       updateVoiceDiagMetric:updateVoiceDiagMetric,

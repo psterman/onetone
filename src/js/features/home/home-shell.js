@@ -74,6 +74,13 @@
       else if(hs.statusMode==='warn') icon.classList.add('is-warn');
     }
     if(title) title.textContent=hs.statusLine;
+    const statusSummary=$('homeStatusSummary');
+    if(statusSummary){
+      const modeKey=userEntryMode==='keys'?'homeEntryModeKeys':userEntryMode==='voice'?'homeEntryModeVoice':'homeEntryModeBoth';
+      statusSummary.textContent=t(modeKey);
+      statusSummary.hidden=false;
+      statusSummary.setAttribute('aria-hidden','false');
+    }
     const focusMode=hooks().isHomeFirstRunFocusMode();
     placeHomeHabitsBtn(unlocked);
     const btnSettingsGlobal=$('btnSettings');

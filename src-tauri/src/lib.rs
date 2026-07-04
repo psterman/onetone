@@ -1,3 +1,4 @@
+mod app_icon;
 mod app_log;
 mod audio_win;
 mod backdrop;
@@ -26,7 +27,7 @@ mod hotkey_win;
 
 use parking_lot::Mutex;
 use std::collections::VecDeque;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use tauri::Manager;
 use tokio::time::{sleep, Duration};
@@ -50,6 +51,9 @@ pub struct AppState {
     pub mic_monitor: Mutex<Option<MicMonitorHandle>>,
     pub mic_level: Arc<MicLevelState>,
     pub audio_backoff: AudioBackoffState,
+    pub recording_audio: Mutex<Option<crate::audio_win::RecordingAudioBackup>>,
+    pub recording_audio_sync_running: AtomicBool,
+    pub recording_audio_sync_pending: AtomicBool,
     pub mic_monitor_starting: Mutex<bool>,
     pub voice_sapi: Mutex<Option<crate::voice_sapi::VoiceSapiHandle>>,
     pub voice_sapi_cooldown_until: Mutex<Option<std::time::Instant>>,
@@ -107,6 +111,7 @@ fn shutdown_runtime(state: &Arc<AppState>) {
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     crate::voice_vosk_runtime::voice_vosk_stop(state);
+    crate::audio_win::sync_recording_audio_policy_now(state.as_ref());
     let _ = state.hotkey_mgr.lock().take();
     *state.paused.lock() = true;
 }
@@ -136,6 +141,9 @@ pub fn run() {
         mic_monitor: Mutex::new(None),
         mic_level: Arc::new(MicLevelState::new()),
         audio_backoff: AudioBackoffState::new(),
+        recording_audio: Mutex::new(None),
+        recording_audio_sync_running: AtomicBool::new(false),
+        recording_audio_sync_pending: AtomicBool::new(false),
         mic_monitor_starting: Mutex::new(false),
         voice_sapi: Mutex::new(None),
         voice_sapi_cooldown_until: Mutex::new(None),
@@ -212,6 +220,12 @@ pub fn run() {
                 return Ok(());
             };
             app_log::log_line(&app_state, "startup", "main window acquired");
+
+            if let Err(err) = app_icon::apply_window_icon(&window) {
+                app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));
+            } else {
+                app_log::log_line(&app_state, "startup", "window icon set (256px)");
+            }
 
             let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
             app_log::log_line(&app_state, "startup", "native backdrop applied");
