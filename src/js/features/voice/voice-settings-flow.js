@@ -99,6 +99,19 @@
       voiceTargetEl.textContent=loading?t('homeLiveLoading'):(global.OneToneKeyLabels?global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang()):key);
     }
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('voice');
+    var sceneNoteEl=$('voiceActiveSceneNote');
+    if(sceneNoteEl){
+      if(loading){
+        sceneNoteEl.hidden=true;
+      }else{
+        var activeId=state.config&&state.config.activeSceneId;
+        var mapping=activeId&&state.config&&Array.isArray(state.config.mappings)
+          ?state.config.mappings.find(function(m){return m.id===activeId;}):null;
+        var sceneLabel=mapping?(mapping.label||mapping.triggerKey||activeId):'—';
+        sceneNoteEl.textContent=t('voiceActiveSceneNote').replace('{scene}',sceneLabel);
+        sceneNoteEl.hidden=false;
+      }
+    }
   }
 
   global.OneToneVoiceSettingsFlow={ render:renderVoiceSettingsFlow };

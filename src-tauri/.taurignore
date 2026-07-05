@@ -1,0 +1,3 @@
+# Runtime logs written during dev would otherwise retrigger `tauri dev` rebuild loops.
+logs/
+target/

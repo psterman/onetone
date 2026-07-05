@@ -86,10 +86,11 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
 
     let cfg = state.cfg.lock().clone();
     let desired = desired_voice_engine(&cfg);
+    let boot_fingerprint = crate::scene_config::idle_voice_fingerprint(&cfg);
 
     match desired {
         DesiredVoiceEngine::Vosk => {
-            try_start_vosk_runtime(app, state, cfg.voice_vosk, "bootstrap");
+            try_start_vosk_runtime(app, state, cfg.voice_vosk.clone(), "bootstrap");
             crate::runtime_event::publish_runtime_event(
                 Some(app),
                 state.as_ref(),
@@ -124,6 +125,7 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
             );
         }
     }
+    *state.last_voice_fingerprint.lock() = boot_fingerprint;
 }
 
 pub fn apply_voice_config_change(
@@ -136,21 +138,23 @@ pub fn apply_voice_config_change(
     let new_desired = desired_voice_engine(new_cfg);
 
     if old_desired == new_desired {
+        let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
+        let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
         match old_desired {
             DesiredVoiceEngine::Vosk => {
-                if vosk_runtime_relevant_changed(old_cfg, new_cfg) {
+                if old_fp != new_fp {
                     restart_vosk_runtime(
                         app,
                         state,
                         new_cfg.voice_vosk.clone(),
-                        "phrases/model/grammar changed",
+                        "effective fingerprint changed",
                     );
                     crate::runtime_event::publish_runtime_event(
                         Some(app),
                         state.as_ref(),
                         "voice",
                         crate::runtime_event::kind::VOICE_RESTART,
-                        "voice config changed: vosk restart (phrases/model/grammar changed)",
+                        "voice config changed: vosk restart (fingerprint changed)",
                         Some(serde_json::json!({ "engine": "vosk" })),
                     );
                 } else {
@@ -170,18 +174,18 @@ pub fn apply_voice_config_change(
                 }
             }
             DesiredVoiceEngine::Sapi => {
-                if sapi_runtime_relevant_changed(old_cfg, new_cfg) {
+                if old_fp != new_fp {
                     voice_sapi_runtime::restart_voice_sapi_runtime(
                         state,
                         new_cfg.voice_sapi.clone(),
-                        "phrases changed",
+                        "effective fingerprint changed",
                     );
                     crate::runtime_event::publish_runtime_event(
                         Some(app),
                         state.as_ref(),
                         "voice",
                         crate::runtime_event::kind::VOICE_RESTART,
-                        "voice config changed: sapi restart (phrases changed)",
+                        "voice config changed: sapi restart (fingerprint changed)",
                         Some(serde_json::json!({ "engine": "sapi" })),
                     );
                 } else {
@@ -212,6 +216,7 @@ pub fn apply_voice_config_change(
                 );
             }
         }
+        *state.last_voice_fingerprint.lock() = new_fp;
         crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
         return;
     }
@@ -275,6 +280,8 @@ pub fn apply_voice_config_change(
         _ => {}
     }
 
+    *state.last_voice_fingerprint.lock() =
+        crate::scene_config::idle_voice_fingerprint(new_cfg);
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }
 

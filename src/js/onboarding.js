@@ -656,12 +656,19 @@
     return true;
   }
 
+  function ensureOnboardingScene(cfg, m){
+    if(!m) return;
+    m.voiceOverride = null;
+    if(cfg) cfg.activeSceneId = m.id;
+  }
+
   function applyTriggerChoice(){
     var a = app();
     if(!a || !a.saveConfigPatch) return;
-    a.saveConfigPatch(function(m){
+    a.saveConfigPatch(function(m, cfg){
       m.enabled = true;
       if(!m.targetKey) m.targetKey = defaultTargetKey();
+      ensureOnboardingScene(cfg, m);
     });
   }
 
@@ -850,9 +857,15 @@
 
   function finish(){
     setEntryMode(getEntryMode());
+    var a = app();
+    if(a && a.saveConfigPatch){
+      a.saveConfigPatch(function(m, cfg){
+        ensureOnboardingScene(cfg, m);
+        if(cfg) cfg.coachHudEnabled = true;
+      });
+    }
     markDone();
     setOpen(false);
-    var a = app();
     if(a && a.renderHome) a.renderHome();
     if(a && a.toast) a.toast(t('onboardDoneToast'));
   }

@@ -44,6 +44,12 @@
     if(hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id){
       items.push('<span class="map-overview-chip">'+t('chipDictating')+'</span>');
     }
+    const activeId=state().config&&state().config.activeSceneId;
+    if(activeId&&m.id===activeId){
+      items.push('<span class="map-overview-chip is-active-scene">'+t('sceneActiveBadge')+'</span>');
+    }else if(m.id===state().selectedMappingId&&OneToneMappingCore.isSaved(m)){
+      items.push('<button type="button" class="map-inline-btn map-scene-activate" data-scene-activate="'+m.id+'">'+t('sceneActivateBtn')+'</button>');
+    }
     return '<div class="map-overview">'+items.join('')+'</div>';
   }
 
@@ -138,7 +144,9 @@
       const hasConflict=OneToneMappingCore.schemeHasConflict(m);
       const snap=hooks().voiceUiSnapshot().end||{};
       const isDictating=hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id;
-      html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(hooks().openMenuId()===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
+      const activeId=state.config&&state.config.activeSceneId;
+      const isActiveScene=activeId&&m.id===activeId;
+      html+='<div class="map-row'+(sel?' selected':'')+(on?' is-on':'')+(isDictating?' is-dictating':'')+(isActiveScene?' is-active-scene':'')+(hooks().openMenuId()===m.id?' menu-open':'')+'" data-id="'+m.id+'">';
       html+='<div class="toggle'+(on?' on':'')+'" data-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'"></div>';
       html+='<div class="map-main"><div class="map-pair">'+hooks().friendlyPair(m.triggerKey,m.targetKey,m)+'</div>';
       html+=mappingOverviewHtml(m);

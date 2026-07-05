@@ -59,6 +59,11 @@ fn finish_send_key_dispatch(
         mapping_id,
         sound_cue.as_deref(),
     );
+    if ok {
+        crate::coach_hud::flash_success(&window.app_handle(), state.as_ref());
+    } else {
+        crate::coach_hud::push_state(&window.app_handle(), state.as_ref());
+    }
 }
 
 pub(super) fn dispatch_send_key(

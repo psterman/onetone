@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -260,6 +260,15 @@
                 <button type="button" class="toggle-switch" id="btnStartMinimized" role="switch" aria-checked="false"></button>
               </div>
             </div>
+            <div class="pref-row">
+              <div class="pref-row-meta">
+                <p class="pref-row-label" id="coachHudLabel">场景辅助提示</p>
+                <p class="pref-row-desc" id="coachHudDesc">在屏幕底部显示当前场景的按键提示，成功唤起后短暂确认</p>
+              </div>
+              <div class="pref-row-control">
+                <button type="button" class="toggle-switch" id="btnCoachHud" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
           </div>
 
           <div class="pref-section">
@@ -342,6 +351,13 @@
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeyWake" hidden>
           <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">在当前方案里设置唤起键、语音快捷键和最后一步</p>
+          <p class="scene-browse-note" id="sceneBrowseNote" hidden></p>
+          <div class="scene-tab-bar" id="sceneTabBar" role="tablist" hidden>
+            <button type="button" class="scene-tab is-active" data-scene-tab="keys" role="tab" id="sceneTabKeys" aria-selected="true"><span id="sceneTabKeysLabel">按键</span></button>
+            <button type="button" class="scene-tab" data-scene-tab="voice" role="tab" id="sceneTabVoice" aria-selected="false"><span id="sceneTabVoiceLabel">语音</span></button>
+            <button type="button" class="scene-tab" data-scene-tab="target" role="tab" id="sceneTabTarget" aria-selected="false"><span id="sceneTabTargetLabel">目标</span></button>
+            <button type="button" class="scene-tab" data-scene-tab="advanced" role="tab" id="sceneTabAdvanced" aria-selected="false"><span id="sceneTabAdvancedLabel">高级</span></button>
+          </div>
           <div class="key-flow-section" id="quickKeyWakeSection">
             <div class="setting-section-label" id="quickKeyWakeSummary">方案按键设置</div>
             <p class="settings-secondary-hint" id="quickKeyWakeHint">按下左侧唤起键后，程序代按右侧语音快捷键；按键收尾作为最后一步一起保存在当前方案中。</p>
@@ -354,6 +370,7 @@
                       <div id="keySchemeName" class="key-scheme-card-title">—</div>
                     </div>
                     <div class="key-scheme-card-head-actions">
+                      <button type="button" class="key-scheme-card-btn is-primary" id="btnKeySchemeActivate" hidden>设为当前场景</button>
                       <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增方案</button>
                       <button type="button" class="key-scheme-card-btn is-danger" id="btnKeySchemeDelete">删除</button>
                       <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
@@ -435,6 +452,20 @@
               <span class="sr-only" id="targetState" aria-live="polite"></span>
             </div>
           </div>
+          <section class="scene-voice-panel drawer-section" id="sceneVoicePanel" hidden>
+            <h3 class="scene-voice-panel-title" id="sceneVoicePanelTitle">场景语音覆盖</h3>
+            <div id="sceneVoicePanelBody"></div>
+          </section>
+          <div class="scene-global-footer" id="sceneGlobalVoiceFooter" hidden>
+            <div class="scene-global-footer-head">
+              <span class="scene-global-footer-title" id="sceneGlobalFooterTitle">全局语音设备</span>
+              <button type="button" class="scene-global-footer-link" id="btnSceneOpenGlobalVoice">前往全局语音设置</button>
+            </div>
+            <div class="scene-global-footer-grid">
+              <div class="scene-global-footer-item"><span id="sceneGlobalMicLabel">麦克风</span><b id="sceneGlobalMicValue">—</b></div>
+              <div class="scene-global-footer-item"><span id="sceneGlobalEngineLabel">引擎</span><b id="sceneGlobalEngineValue">—</b></div>
+            </div>
+          </div>
           <div class="mapping-section" id="keyWakeMappingSection">
             <div class="list-head-row">
               <h2 id="mappingListTitle">方案管理</h2>
@@ -459,6 +490,7 @@
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
           <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">在这里修改唤醒词、麦克风和结束词。引擎等高级选项在下方。</p>
+          <p class="settings-panel-note" id="voiceActiveSceneNote" hidden></p>
           <div class="settings-page-actions">
             <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
           </div>
@@ -885,6 +917,10 @@
           </section>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
+          <div class="drawer-section" id="settingsBackupSection">
+            <div class="mini-title" id="settingsBackupTitle">配置备份</div>
+            <p class="mini" id="settingsBackupDesc">升级前可复制 settings.json 备份。Windows 默认路径：%APPDATA%\com.onetone\app\settings.json（旧版可能位于 oneTone 目录）。</p>
+          </div>
           <div class="drawer-section" id="cycleSwitchSection" hidden aria-hidden="true">
             <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
             <p class="map-switch-desc" id="cycleSwitchDesc">在同一启动键的多个方案间按顺序轮换；也可在下方每个方案里单独设置直达快捷键。</p>
@@ -1171,6 +1207,7 @@
       <p class="confirm-body" id="confirmBody"></p>
       <div class="confirm-actions">
         <button type="button" class="btn secondary" id="btnConfirmCancel">取消</button>
+        <button type="button" class="btn secondary" id="btnConfirmAlt" hidden>清除场景覆盖</button>
         <button type="button" class="btn primary" id="btnConfirmOk">确定</button>
       </div>
     </div>
@@ -1193,12 +1230,14 @@
   <script src="js/core/state.js"></script>
   <script src="js/core/i18n.js?v=20260705-icons"></script>
   <script src="js/core/ipc.js"></script>
-  <script src="js/core/events.js"></script>
+  <script src="js/core/events.js?v=20260706-sync"></script>
   <script src="js/core/render-loop.js"></script>
-  <script src="js/core/config-persist.js"></script>
+  <script src="js/core/scene-config.js"></script>
+  <script src="js/core/config-persist.js?v=20260706-sync"></script>
   <script src="js/core/app-text-utils.js"></script>
   <script src="js/core/app-autostart.js"></script>
   <script src="js/core/app-start-minimized.js"></script>
+  <script src="js/core/app-coach-hud.js"></script>
   <script src="js/core/app-theme-prefs.js"></script>
   <script src="js/core/app-mic.js"></script>
   <script src="js/core/app-bridge.js"></script>
@@ -1239,6 +1278,10 @@
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
+  <script src="js/features/scene/scene-activate.js"></script>
+  <script src="js/features/scene/scene-tabs.js"></script>
+  <script src="js/features/scene/scene-voice-tab.js"></script>
+  <script src="js/features/scene/scene-sync-confirm.js"></script>
   <script src="js/features/mapping/mapping-conflict-state.js"></script>
   <script src="js/features/mapping/mapping-editor-state.js"></script>
   <script src="js/features/mapping/mapping-core.js"></script>

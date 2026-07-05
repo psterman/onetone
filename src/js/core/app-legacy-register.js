@@ -180,7 +180,7 @@
               isHomeFirstRunFocusMode:d.isHomeFirstRunFocusMode,
               configLoadedFromBackend:function(){ return OneToneConfigPersist.isLoaded(); },
               friendlyKeyName:d.friendlyKeyName,
-              selectedMapping:d.selectedMapping,
+              selectedMapping:d.activeSceneMapping,
               editorTriggerForMapping:d.editorTriggerForMapping,
               editorTargetForMapping:d.editorTargetForMapping,
               ensureConfig:d.ensureConfig,
@@ -557,14 +557,26 @@
           }
     
 
-    registerCoreHooks();
-    registerSettingsDebugHooks();
-    registerVoiceHooks();
-    registerHomeHooks();
-    registerMappingHooks();
-    registerRuntimeHooks();
-    registerAppLangHooks();
-    registerBootstrapHooks();
+    function registerStep(name,fn){
+      try{
+        fn();
+        if(global.OneToneEarlyLog) global.OneToneEarlyLog('legacy-register '+name+' ok');
+      }catch(err){
+        if(global.OneToneEarlyLog){
+          global.OneToneEarlyLog('legacy-register '+name+' failed: '+((err&&err.stack)||err&&err.message||String(err)));
+        }
+        try{ console.error('legacy-register '+name,err); }catch(_){}
+      }
+    }
+
+    registerStep('core',registerCoreHooks);
+    registerStep('settings-debug',registerSettingsDebugHooks);
+    registerStep('voice',registerVoiceHooks);
+    registerStep('home',registerHomeHooks);
+    registerStep('mapping',registerMappingHooks);
+    registerStep('runtime',registerRuntimeHooks);
+    registerStep('app-lang',registerAppLangHooks);
+    registerStep('bootstrap',registerBootstrapHooks);
   }
 
   global.OneToneAppLegacyRegister={registerAll:registerAll};

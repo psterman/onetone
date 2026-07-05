@@ -18,11 +18,13 @@ fn main() {
     const COMMANDS: &[&str] = &[
         "cmd_ready",
         "cmd_save",
+        "cmd_scheme_select",
         "cmd_start_recording",
         "cmd_stop_recording",
         "cmd_pause",
         "cmd_resume",
         "cmd_request_runtime",
+        "cmd_debug_effective_scene",
         "cmd_capture_source",
         "cmd_frontend_keydown",
         "cmd_physical_trigger",
@@ -74,6 +76,12 @@ fn main() {
         "cmd_voice_end_test_stop",
         "cmd_voice_end_ui_end",
         "cmd_voice_end_test_commit",
+        "cmd_export_logs",
+        "cmd_app_log",
+        "cmd_open_url",
+        "cmd_coach_hud_get_state",
+        "cmd_coach_hud_dismiss",
+        "cmd_coach_hud_set_enabled",
     ];
 
     tauri_build::try_build(

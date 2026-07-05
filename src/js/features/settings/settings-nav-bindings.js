@@ -28,6 +28,8 @@
         hooks.renderKeyFinishFlowPanel();
         hooks.renderEditor();
         hooks.renderSettingsSchemeSubnav();
+        if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+        if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
       });
       settingsSchemeSubnavList.addEventListener('keydown',function(e){
         if(e.key!=='Enter'&&e.key!==' ') return;

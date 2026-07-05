@@ -14,9 +14,13 @@
   function tauriArgs(args){
     const out=Object.assign({},args||{});
     Object.keys(args||{}).forEach(function(k){
-      if(k.indexOf('_')<0) return;
-      const camel=k.replace(/_([a-z])/g,function(_,c){return c.toUpperCase();});
-      if(out[camel]===undefined) out[camel]=args[k];
+      if(k.indexOf('_')>=0){
+        const camel=k.replace(/_([a-z])/g,function(_,c){return c.toUpperCase();});
+        if(out[camel]===undefined) out[camel]=args[k];
+        return;
+      }
+      const snake=k.replace(/([A-Z])/g,function(_,c){return '_'+c.toLowerCase();});
+      if(snake!==k&&out[snake]===undefined) out[snake]=args[k];
     });
     return out;
   }

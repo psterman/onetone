@@ -25,7 +25,11 @@
       if(msg.type==='mvp_init'){
         hooks.applyMvpInit(msg);
       }
-      if(msg.type==='mvp_saved'&&msg.ok){ /* persisted */ }
+      if(msg.type==='mvp_saved'&&msg.ok){
+        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
+          global.OneToneConfigPersist.pullBackendConfig();
+        }
+      }
       if(msg.type==='mvp_mapping_toggled'&&msg.ok){
         var m=state.config&&state.config.mappings.find(function(x){ return x.id===msg.id; });
         if(m) m.enabled=!!msg.enabled;
@@ -89,12 +93,17 @@
         global.OneToneUpdate.applyRuntimeMessage(msg);
       }
       if(msg.type==='mvp_scheme_switched'){
-        if(msg.config) state.config=msg.config;
-        else if(msg.toId){
-          hooks.ensureConfig();
+        if(hooks().applyMvpInit){
+          hooks().applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});
+        }else if(msg.config){
+          state.config=msg.config;
+        }else if(msg.toId){
+          hooks().ensureConfig();
           state.config.mappings.forEach(function(mapping){ mapping.enabled=(mapping.id===msg.toId); });
+          if(state.config) state.config.activeSceneId=msg.toId;
+          state.selectedMappingId=msg.toId;
         }
-        hooks.showSchemeSwitchFeedback(msg.toId, msg.label||'');
+        hooks().showSchemeSwitchFeedback(msg.toId, msg.label||'');
       }
       if(msg.type==='mvp_test_sent'){
         hooks.handleTestSendResult(msg);

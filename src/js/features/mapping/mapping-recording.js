@@ -329,13 +329,15 @@
     rec.mode=mode;
     clearRecTimer();
     const d=OneToneI18n.dict();
+    const triggerState=$('triggerState');
+    const targetState=$('targetState');
     if(mode==='trigger'){
-      $('triggerState').textContent=d.triggerRecordHint;
+      if(triggerState) triggerState.textContent=d.triggerRecordHint;
     }else if(mode==='target'){
-      $('targetState').textContent=d.targetRecordHint;
+      if(targetState) targetState.textContent=d.targetRecordHint;
     }else{
-      $('triggerState').textContent='';
-      $('targetState').textContent='';
+      if(triggerState) triggerState.textContent='';
+      if(targetState) targetState.textContent='';
     }
     if(opts.silent||hooks().uiBootstrapping()) return;
     hooks().updatePrimaryCTA();
@@ -416,7 +418,8 @@
       setRecording('trigger');
       updateRecordingPreview('trigger','');
       notifyOnboardingRecordingPreview('trigger','');
-      $('triggerState').textContent=t('triggerRecordHint');
+      var triggerState=$('triggerState');
+      if(triggerState) triggerState.textContent=t('triggerRecordHint');
       rec.timer=setTimeout(function(){
         if(rec.mode==='trigger'){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
       },30000);
@@ -600,7 +603,8 @@
     m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+labelTarget;
     armLocalCaptureGuard();
     updateRecordingPreview('target',combo);
-    if(hooks().getPendingNewDraftId()===m.id) hooks().setPendingNewDraftId(null);
+    var wasNewDraft=hooks().getPendingNewDraftId()===m.id;
+    if(wasNewDraft) hooks().setPendingNewDraftId(null);
     hooks().pushLog(t('logTargetDone')+hooks().friendlyKeyName(combo));
     rec.snapshot=null;
     rec.mappingId='';
@@ -616,6 +620,9 @@
       key:combo
     });
     hooks().maybeEnableMappingAfterComplete(m);
+    if(wasNewDraft&&OneToneMappingCore.isSaved(m)&&global.OneToneSceneActivate){
+      global.OneToneSceneActivate.activateScene(m.id);
+    }
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }

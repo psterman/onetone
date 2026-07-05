@@ -4,6 +4,7 @@ mod audio_win;
 mod backdrop;
 mod config;
 mod app_chat_workflow;
+mod coach_hud;
 mod cursor_workflow;
 mod device_identity;
 mod gesture_timing;
@@ -17,6 +18,7 @@ mod policy_config;
 mod press_gesture;
 mod resource_monitor;
 mod runtime_event;
+mod scene_config;
 mod send_guard;
 mod state;
 mod tray;
@@ -88,6 +90,9 @@ pub struct AppState {
     pub voice_session_last_end_phrase: Mutex<String>,
     pub voice_session_last_action: Mutex<String>,
     pub voice_session_mapping_id: Mutex<String>,
+    pub voice_session_snapshot: Mutex<Option<crate::scene_config::VoiceSessionSnapshot>>,
+    pub last_voice_fingerprint:
+        Mutex<Option<crate::scene_config::VoiceRuntimeFingerprint>>,
     pub voice_session_commit_token: Mutex<u64>,
     /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
@@ -101,6 +106,7 @@ pub struct AppState {
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
+    pub coach_hud_session_dismissed: Mutex<bool>,
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
@@ -178,6 +184,8 @@ pub fn run() {
         voice_session_last_end_phrase: Mutex::new(String::new()),
         voice_session_last_action: Mutex::new(String::new()),
         voice_session_mapping_id: Mutex::new(String::new()),
+        voice_session_snapshot: Mutex::new(None),
+        last_voice_fingerprint: Mutex::new(None),
         voice_session_commit_token: Mutex::new(0),
         voice_wake_last_key_at: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
@@ -190,6 +198,7 @@ pub fn run() {
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
+        coach_hud_session_dismissed: Mutex::new(false),
     });
 
     app_log::log_line(&app_state, "startup", "OneTone backend initialized");
@@ -289,6 +298,28 @@ pub fn run() {
 
             tray::setup(app.handle(), app_state.clone())?;
             app_log::log_line(&app_state, "startup", "tray initialized");
+
+            if let Err(err) = coach_hud::setup(app.handle()) {
+                app_log::log_line(&app_state, "startup", &format!("coach hud setup: {err}"));
+            } else {
+                coach_hud::reset_session_dismissed(&app_state);
+                app_log::log_line(&app_state, "startup", "coach hud initialized");
+                let app_hud_init = app.handle().clone();
+                let state_hud_init = app_state.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(900)).await;
+                    coach_hud::push_state(&app_hud_init, &state_hud_init);
+                });
+            }
+
+            let app_hud = app.handle().clone();
+            let state_hud = app_state.clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    coach_hud::maybe_tick(&app_hud, &state_hud);
+                }
+            });
 
             let first_launch = {
                 let cfg = app_state.cfg.lock();
@@ -474,11 +505,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::cmd_ready,
             ipc::cmd_save,
+            ipc::cmd_scheme_select,
             ipc::cmd_start_recording,
             ipc::cmd_stop_recording,
             ipc::cmd_pause,
             ipc::cmd_resume,
             ipc::cmd_request_runtime,
+            ipc::cmd_debug_effective_scene,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,
@@ -533,6 +566,9 @@ pub fn run() {
             ipc::cmd_export_logs,
             ipc::cmd_app_log,
             ipc::cmd_open_url,
+            ipc::cmd_coach_hud_get_state,
+            ipc::cmd_coach_hud_dismiss,
+            ipc::cmd_coach_hud_set_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

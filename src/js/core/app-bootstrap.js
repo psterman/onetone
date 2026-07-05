@@ -12,12 +12,21 @@
       global.OneToneHomeUiBindings,
       global.OneToneKeyFinishFlowUi,
       global.OneToneAppKeyboard,
-      global.OneToneMappingListUi
+      global.OneToneSceneSyncConfirm,
+      global.OneToneMappingListUi,
+      global.OneToneSceneTabs,
+      global.OneToneSceneVoiceTab
     ].forEach(function(mod){
       if(!mod) return;
       var fn=mod.bindEvents||mod.bindListeners;
       if(typeof fn!=='function') return;
-      try{ fn.call(mod); }catch(err){ console.error('bindUiEvents',mod,err); }
+      try{ fn.call(mod); }catch(err){
+        console.error('bindUiEvents',mod,err);
+        var h=hooks();
+        if(h&&typeof h.logGlobalError==='function'){
+          h.logGlobalError('bindUiEvents',(err&&err.stack)||err&&err.message||String(err));
+        }
+      }
     });
   }
   function bindWebViewBus(){
@@ -33,6 +42,9 @@
     bindGlobalErrorHandlers();
     bindUiEvents();
     bindWebViewBus();
+    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushPendingMvpInit==='function'){
+      global.OneToneConfigPersist.flushPendingMvpInit();
+    }
     bootApp();
   }
   global.OneToneBootstrap = {

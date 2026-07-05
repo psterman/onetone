@@ -30,6 +30,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
         None,
     );
     crate::tray::refresh_menu(app);
+    crate::coach_hud::push_state(app, state.as_ref());
 }
 
 pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
@@ -46,4 +47,5 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
         None,
     );
     crate::tray::refresh_menu(app);
+    crate::coach_hud::push_state(app, state.as_ref());
 }

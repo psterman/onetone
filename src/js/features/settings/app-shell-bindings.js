@@ -2,20 +2,24 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  function bindClick(id,handler){
+    var el=$(id);
+    if(el) el.onclick=handler;
+  }
   function bindEvents(){
     var hooks=h();
     var state=global.OneToneState.state;
     var ui=global.OneToneState.ui;
     var t=hooks.t;
     var vpInvoke=hooks.vpInvoke;
-    $('btnSettings').onclick=function(){
+    bindClick('btnSettings',function(){
       if(hooks.isHomeFirstRunFocusMode()&&!ui.drawerOpen){
         if(window.OneToneOnboarding) window.OneToneOnboarding.open(true);
         return;
       }
       if(ui.drawerOpen) hooks.closeDrawer();
       else hooks.openSettings({panel:'basic'});
-    };
+    });
     var btnUpdatePrimary=$('btnUpdatePrimary');
     if(btnUpdatePrimary){
       btnUpdatePrimary.onclick=function(){

@@ -4,7 +4,8 @@
   function hooks(){ return global.__vp_app_lang_bootstrap_hooks__ || {}; }
 
   function applyBootstrapTexts(d){
-    $('appTitle').textContent=d.appTitle;
+    var appTitle=$('appTitle');
+    if(appTitle) appTitle.textContent=d.appTitle;
     var subtitle=$('appSubtitle');
     if(subtitle) subtitle.textContent=d.appSubtitle||'';
     var welcomeKicker=$('welcomeKicker');

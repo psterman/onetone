@@ -743,7 +743,7 @@
   const QS_TRIGGER_FALLBACK = {
     zh: {
       mouse: "鼠标侧键",
-      volume: "音量键",
+      volume: "按键",
       gamepad: "手柄按键",
       ring: "蓝牙戒指",
       trackball: "轨迹球",
@@ -915,7 +915,7 @@
       host.innerHTML = QS_IME_PRESETS.map((preset, index) => {
         const label = qsT(preset.nameKey);
         const badge = lang === "en" ? preset.badgeEn : preset.badge;
-        return `<button type="button" class="qs-ime-preset${index === 0 ? " is-active" : ""}" data-ime-id="${preset.id}" data-target-key="${preset.targetKey}" data-ime-icon="${preset.icon}" aria-pressed="${index === 0 ? "true" : "false"}"><img class="qs-ime-logo" src="${preset.icon}" alt="" width="24" height="24" decoding="async"><span>${label}</span><kbd>${preset.targetKey}</kbd></button>`;
+        return `<button type="button" class="qs-ime-preset${index === 0 ? " is-active" : ""}" data-ime-id="${preset.id}" data-target-key="${preset.targetKey}" data-ime-icon="${preset.icon}" aria-pressed="${index === 0 ? "true" : "false"}"><img class="qs-ime-logo" src="${preset.icon}" alt="" width="24" height="24" decoding="async"><span>${label}</span></button>`;
       }).join("");
 
       host.querySelectorAll(".qs-ime-preset").forEach((btn) => {
@@ -1141,7 +1141,6 @@
     function showResult(phrase, preset) {
       if (resultPhrase) resultPhrase.textContent = `「${phrase}」`;
       if (resultIme) resultIme.textContent = qsT(preset.nameKey);
-      if (resultKey) resultKey.textContent = preset.targetKey;
       if (resultIcon && preset.icon) {
         resultIcon.src = preset.icon;
         resultIcon.alt = qsT(preset.nameKey);

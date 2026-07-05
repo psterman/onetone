@@ -9,24 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Onboarding v2**: 5-step first-run wizard (welcome → trigger choice → live key try → target review → optional voice phrase practice)
-- Home **hero** mapping strip and **Replay first-run guide** in Settings → General
-- **Phrase practice** overlay (karaoke highlight) when voice wake is enabled; optional in onboarding step 5
-- **Coach HUD**: bottom-center screen overlay for key / listening / dictating / success states
-- Coach HUD toggle in **Settings → General**; one-time migration prompt for existing users
-- `window.OneToneApp` JS API for onboarding modules (`key-labels.js`, `onboarding.js`, `phrase-practice.js`)
-
-### Fixed
-
-- Coach HUD migration primary button contrast on light theme
-- Physical trigger toggles dictation off when already dictating (second press ends session)
-- Coach HUD simplified to key hints + success flash only (voice flow guidance on home help)
+- **Usage scenes (config v6)**: `activeSceneId` as runtime truth; sparse per-scene `voiceOverride` for voice shortcut, wake phrases, and end phrases
+- **Settings → Usage scenes**: four tabs (Keys / Voice / Target / Advanced), effective preview, **Set as current scene** vs browse-only selection
+- **Settings → Global voice**: global engine/mic/phrases unchanged; scene bottom bar links here for device troubleshooting
+- **Coach HUD**: bottom-center overlay for trigger → target hints and brief success flash; toggle in **Settings → Basic → Scene coach overlay**
+- **Rule C sync confirm**: when changing global voice shortcut while the active scene has a `targetKey` override, a three-choice dialog (global only / global + clear override / cancel)
+- **Config backup note** in Settings → General (`settings.json` path hint)
+- **Onboarding**: first scene gets `voiceOverride: null` and `activeSceneId`; Coach HUD enabled on wizard completion
 
 ### Changed
 
+- Coach HUD, tray mode, and trigger-mode edits follow **active scene** keys (not first enabled mapping)
+- Coach HUD target display: scene `voiceOverride.targetKey` when set, otherwise mapping physical `targetKey`
+- Browsing a scene in the list no longer changes runtime voice until explicitly activated
+- Dictation stop/commit uses **session snapshot** frozen at start (switching scenes mid-dictation does not change end rules)
 - Physical trigger success in onboarding step 3 requires **successful target key send** (`mvp_onboarding_trigger_fired` with `ok: true`)
-- New users get Coach HUD enabled on onboarding finish; default config `coachHudEnabled: false` for upgrades until opted in
+- New users get Coach HUD enabled on onboarding finish; upgrades default `coachHudEnabled: false` until opted in
 - Home hero shows end-phrase hint (`结束输入`) while dictating
+
+### Fixed
+
+- Physical trigger toggles dictation off when already dictating (second press ends session)
 
 ## [1.0.0] - 2026-07-01
 

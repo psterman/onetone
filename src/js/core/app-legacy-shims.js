@@ -225,6 +225,7 @@
     function renderConflictBanner(){ return OneToneMappingCore.renderConflictBanner(); }
     function formatTriggerTrace(m){ return OneToneMappingCore.formatTriggerTrace(m); }
     function selectedMapping(){ return OneToneMappingCore.selected(); }
+    function activeSceneMapping(){ return OneToneMappingCore.activeScene(); }
     function sortedMappings(){ return OneToneMappingCore.sorted(); }
     function renderMappingList(){ return OneToneMappingList.renderList(); }
     function renderEditor(){ return OneToneMappingList.renderEditor(); }
@@ -607,6 +608,7 @@
       selectedDisplayTargetKey:selectedDisplayTargetKey,
       selectedDisplayTriggerKey:selectedDisplayTriggerKey,
       selectedMapping:selectedMapping,
+      activeSceneMapping:activeSceneMapping,
       setAppLang:setAppLang,
       setDebugFocusMode:setDebugFocusMode,
       setFontScale:setFontScale,

@@ -93,12 +93,24 @@ fn live_log_dirs() -> Vec<PathBuf> {
             }
         }
     }
-    if let Ok(cwd) = std::env::current_dir() {
+    if let Some(ws_logs) = workspace_logs_dir() {
+        out.push(ws_logs);
+    } else if let Ok(cwd) = std::env::current_dir() {
         out.push(cwd.join("logs"));
+    }
+    if let Some(manifest) = std::env::var_os("CARGO_MANIFEST_DIR") {
+        let manifest = PathBuf::from(manifest);
+        out.retain(|p| !p.starts_with(&manifest));
     }
     out.sort();
     out.dedup();
     out
+}
+
+/// Prefer repo-root `logs/` when building from `src-tauri` (cargo/tauri dev cwd).
+fn workspace_logs_dir() -> Option<PathBuf> {
+    let manifest = std::env::var_os("CARGO_MANIFEST_DIR").map(PathBuf::from)?;
+    manifest.parent().map(|p| p.join("logs"))
 }
 
 fn optional_launch_log() -> Option<PathBuf> {

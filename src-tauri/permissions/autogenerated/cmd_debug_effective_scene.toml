@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-debug-effective-scene"
+description = "Enables the cmd_debug_effective_scene command without any pre-configured scope."
+commands.allow = ["cmd_debug_effective_scene"]
+
+[[permission]]
+identifier = "deny-cmd-debug-effective-scene"
+description = "Denies the cmd_debug_effective_scene command without any pre-configured scope."
+commands.deny = ["cmd_debug_effective_scene"]

@@ -3344,13 +3344,20 @@ html {
   border-radius: 0.95rem;
   color: inherit;
   cursor: pointer;
-  display: grid;
-  gap: 0.25rem;
-  justify-items: center;
-  padding: 1rem 0.65rem 0.85rem;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 0.55rem;
+  justify-content: flex-start;
+  padding: 0.65rem 0.75rem;
   position: relative;
-  text-align: center;
+  text-align: left;
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.qs-device-check,
+.qs-device-detail {
+  display: none !important;
 }
 
 .dark .qs-device-card {
@@ -3359,8 +3366,13 @@ html {
 
 .qs-device-card strong {
   color: #0f172a;
+  flex: 1;
   font-size: 0.84rem;
   font-weight: 800;
+  line-height: 1.35;
+  min-width: 0;
+  white-space: normal;
+  writing-mode: horizontal-tb;
 }
 
 .dark .qs-device-card strong {
@@ -3392,28 +3404,13 @@ html {
 }
 
 .qs-device-check {
-  align-items: center;
-  background: #2563eb;
-  border-radius: 999px;
-  color: #fff;
-  display: none;
-  font-size: 0.65rem;
-  height: 1.15rem;
-  justify-content: center;
-  position: absolute;
-  right: 0.55rem;
-  top: 0.55rem;
-  width: 1.15rem;
+  display: none !important;
 }
 
 .qs-device-card.is-active {
   background: rgba(239, 246, 255, 0.95);
   border-color: rgba(59, 130, 246, 0.45);
   box-shadow: 0 0 0 0.12rem rgba(59, 130, 246, 0.08);
-}
-
-.qs-device-card.is-active .qs-device-check {
-  display: flex;
 }
 
 .qs-notepad-mock {
@@ -4118,24 +4115,38 @@ html {
 }
 
 .qs-ime-presets {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.55rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .qs-ime-preset {
   align-items: center;
   background: rgba(248, 250, 252, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 999px;
+  border-radius: 0.85rem;
   color: inherit;
   cursor: pointer;
-  display: inline-flex;
+  display: flex;
+  flex-direction: row;
   font-size: 0.82rem;
   font-weight: 600;
-  gap: 0.45rem;
-  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
   transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.qs-ime-preset span {
+  flex: 1;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.qs-ime-preset kbd {
+  display: none !important;
 }
 
 .qs-ime-logo {
@@ -4346,6 +4357,18 @@ html {
 .quickstart-scenario-lab.is-manual .quickstart-scenes button.is-active {
   animation: none;
   transform: none;
+}
+
+@media (max-width: 900px) {
+  .qs-ime-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .qs-ime-presets {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {

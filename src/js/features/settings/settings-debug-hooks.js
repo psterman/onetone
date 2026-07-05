@@ -6,6 +6,7 @@
   function dbg(){ return global.OneToneAppDebugState; }
   function autostart(){ return global.OneToneAppAutostart; }
   function startMinimized(){ return global.OneToneAppStartMinimized; }
+  function coachHud(){ return global.OneToneAppCoachHud; }
 
   function register(deps){
     var voiceUiState=global.OneToneVoiceUiState;
@@ -42,6 +43,7 @@
       renderSettingsDebugSubnav:deps.renderSettingsDebugSubnav,
       loadAutostartState:autostart().loadState,
       loadStartMinimizedState:startMinimized().loadState,
+      loadCoachHudState:coachHud().loadState,
       settingsPanelNeedsVoicePoll:deps.settingsPanelNeedsVoicePoll,
       voiceStatusPollTick:deps.voiceStatusPollTick,
       syncHomeMicMonitor:deps.syncHomeMicMonitor,

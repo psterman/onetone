@@ -2,19 +2,29 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  function bindClick(id,handler){
+    var el=$(id);
+    if(el) el.onclick=handler;
+    return el;
+  }
+  function bindEvent(id,type,handler){
+    var el=$(id);
+    if(el) el.addEventListener(type,handler);
+    return el;
+  }
   function bindEvents(){
     var hooks=h();
     var state=global.OneToneState.state;
     var t=hooks.t;
-    $('btnTestModalOk').onclick=function(){ hooks.closeTestModal(); };
-    $('btnTestModalClose').onclick=function(){ hooks.closeTestModal(); };
-    $('testOverlay').addEventListener('click',function(e){
+    bindClick('btnTestModalOk',function(){ hooks.closeTestModal(); });
+    bindClick('btnTestModalClose',function(){ hooks.closeTestModal(); });
+    bindEvent('testOverlay','click',function(e){
       if(e.target===$('testOverlay')) hooks.closeTestModal();
     });
-    $('btnTestSend').onclick=function(){ hooks.fireTestSend(null); };
-    $('btnRecordTrigger').onclick=hooks.startTriggerRecord;
-    $('btnRecordTarget').onclick=hooks.startTargetRecord;
-    $('btnCancelRecord').onclick=hooks.cancelDraftOrRecording;
+    bindClick('btnTestSend',function(){ hooks.fireTestSend(null); });
+    bindClick('btnRecordTrigger',hooks.startTriggerRecord);
+    bindClick('btnRecordTarget',hooks.startTargetRecord);
+    bindClick('btnCancelRecord',hooks.cancelDraftOrRecording);
     var btnKeySchemeAdd=$('btnKeySchemeAdd');
     if(btnKeySchemeAdd){
       btnKeySchemeAdd.onclick=function(){
@@ -30,19 +40,19 @@
         hooks.deleteMappingFromMenu(m.id);
       };
     }
-    $('btnSchemeSwitchKey').onclick=function(){
+    bindClick('btnSchemeSwitchKey',function(){
       if(global.OneToneMappingRecording.mode()==='schemeSwitch') return;
       hooks.startSchemeSwitchRecord();
-    };
-    $('btnSchemeSwitchCancel').onclick=function(e){
+    });
+    bindClick('btnSchemeSwitchCancel',function(e){
       e.stopPropagation();
       hooks.cancelRecording();
-    };
-    $('btnSchemeSwitchClear').onclick=function(e){
+    });
+    bindClick('btnSchemeSwitchClear',function(e){
       e.stopPropagation();
       hooks.clearSchemeSwitchKey();
-    };
-    $('btnClearAll').onclick=async function(){
+    });
+    bindClick('btnClearAll',async function(){
       var ok=await hooks.openConfirmModal(t('confirmClear'));
       if(!ok) return;
       state.config=hooks.defaultConfig();
@@ -51,13 +61,20 @@
       hooks.save();
       hooks.render();
       hooks.toast(t('restoredDefault'));
-    };
-    $('btnConfirmCancel').onclick=function(){ hooks.closeConfirmModal(false); };
-    $('btnConfirmOk').onclick=function(){ hooks.closeConfirmModal(true); };
-    $('confirmOverlay').addEventListener('click',function(e){
+    });
+    bindClick('btnConfirmCancel',function(){
+      if(global.OneToneSceneSyncConfirm&&global.OneToneSceneSyncConfirm.isChoiceMode()) return;
+      hooks.closeConfirmModal(false);
+    });
+    bindClick('btnConfirmOk',function(){
+      if(global.OneToneSceneSyncConfirm&&global.OneToneSceneSyncConfirm.isChoiceMode()) return;
+      hooks.closeConfirmModal(true);
+    });
+    bindEvent('confirmOverlay','click',function(e){
+      if(global.OneToneSceneSyncConfirm&&global.OneToneSceneSyncConfirm.isChoiceMode()) return;
       if(e.target===this) hooks.closeConfirmModal(false);
     });
-    $('trashList').addEventListener('click',function(e){
+    bindEvent('trashList','click',function(e){
       var btn=e.target.closest&&e.target.closest('[data-restore]');
       if(btn) hooks.restoreFromTrash(btn.dataset.restore);
     });

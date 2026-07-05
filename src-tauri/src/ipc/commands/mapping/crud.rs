@@ -90,6 +90,7 @@ pub fn cmd_mapping_duplicate(
                 double_click_ms: src.double_click_ms,
                 ime_preset_id: src.ime_preset_id.clone(),
                 app_target_id: src.app_target_id.clone(),
+                voice_override: src.voice_override.clone(),
             });
             cfg.normalize();
         }

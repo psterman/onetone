@@ -6,6 +6,7 @@
   function H(){ return global.OneToneHomeLiveActions; }
 
   function register(deps){
+    var selectedMapping=deps.activeSceneMapping||deps.selectedMapping;
     global.__vp_home_guide_hooks__={
       escHtml:tx().escHtml,
       closeHomeSchemeMenu:deps.closeHomeSchemeMenu
@@ -21,7 +22,7 @@
       isHomeFirstRunFocusMode:deps.isHomeFirstRunFocusMode,
       sessionActiveState:tx().sessionActiveState,
       friendlyKeyName:deps.friendlyKeyName,
-      selectedMapping:deps.selectedMapping,
+      selectedMapping:selectedMapping,
       editorTriggerForMapping:deps.editorTriggerForMapping,
       editorTargetForMapping:deps.editorTargetForMapping,
       voiceUiSnapshot:vs().snapshot(),
@@ -54,7 +55,7 @@
       friendlyKeyName:deps.friendlyKeyName,
       friendlyPair:deps.friendlyPair,
       ensureConfig:deps.ensureConfig,
-      selectedMapping:deps.selectedMapping,
+      selectedMapping:selectedMapping,
       sortedMappings:deps.sortedMappings,
       isDraftMapping:deps.isDraftMapping,
       flushAllEditorToMappings:deps.flushAllEditorToMappings,

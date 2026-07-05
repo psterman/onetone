@@ -2,16 +2,26 @@
   'use strict';
   var $ = function(id){ return global.OneToneDom.$(id); };
   function hooks(){ return global.__vp_mapping_list_ui_hooks__ || {}; }
+  function bindClick(id,handler){
+    var el=$(id);
+    if(el) el.onclick=handler;
+    return el;
+  }
+  function bindEvent(id,type,handler){
+    var el=$(id);
+    if(el) el.addEventListener(type,handler);
+    return el;
+  }
   function bindEvents(){
     var state = global.OneToneState.state;
     var t = hooks().t;
-    $('mappingList').addEventListener('input',function(e){
+    bindEvent('mappingList','input',function(e){
       const range=e.target.closest&&e.target.closest('[data-timing-range]');
       if(!range) return;
       e.stopPropagation();
       hooks().liveUpdateTimingRange(range);
     });
-    $('mappingList').addEventListener('click',function(e){
+    bindEvent('mappingList','click',function(e){
       const el=e.target;
       const listTiming=el.closest&&el.closest('[data-list-timing-toggle]');
       if(listTiming){
@@ -102,6 +112,12 @@
         // The menu is opened on pointerdown; the following click should not toggle it closed.
         return;
       }
+      const activateBtn=el.closest&&el.closest('[data-scene-activate]');
+      if(activateBtn){
+        e.stopPropagation();
+        if(global.OneToneSceneActivate) global.OneToneSceneActivate.activateScene(activateBtn.dataset.sceneActivate);
+        return;
+      }
       const row=el.closest&&el.closest('.map-row');
       if(row&&row.dataset.id){
         if(el.closest('.map-key-switches,.map-row-extras')) return;
@@ -112,7 +128,7 @@
         hooks().render();
       }
     });
-         $('btnAddMapping').onclick=function(){
+         bindClick('btnAddMapping',function(){
       if(!hooks().isCurrentDraftComplete()){
         hooks().toast(t('addNeedComplete'));
         hooks().renderDraftHint();
@@ -132,12 +148,13 @@
       const home=$('homeZone');
       if(home) home.scrollIntoView({behavior:'smooth',block:'start'});
       hooks().openSettings({panel:'keyWake',focus:'trigger'});
-    };
-    $('mapMenuFloat').addEventListener('click',function(e){
+    });
+    bindEvent('mapMenuFloat','click',function(e){
       e.stopPropagation();
       const actBtn=e.target.closest&&e.target.closest('[data-act]');
       if(!actBtn||actBtn.disabled) return;
-      const id=$('mapMenuFloat').dataset.id;
+      const menu=$('mapMenuFloat');
+      const id=menu&&menu.dataset.id;
       const act=actBtn.dataset.act;
       if(!id) return;
       if(act==='test'){ hooks().closeFloatMenu(); hooks().fireTestSend(id); return; }
@@ -154,11 +171,11 @@
       if(act==='del'){ hooks().closeFloatMenu(); hooks().deleteMappingFromMenu(id); return; }
       if(act==='up'||act==='down'){ hooks().reorderMapping(id, act); }
     }
-         $('menuActTest').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('test'); };
-    $('menuActDup').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('dup'); };
-    $('menuActUp').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('up'); };
-    $('menuActDown').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('down'); };
-    $('menuActDel').onclick=function(e){ e.stopPropagation(); triggerOpenMenuAction('del'); };
+         bindClick('menuActTest',function(e){ e.stopPropagation(); triggerOpenMenuAction('test'); });
+    bindClick('menuActDup',function(e){ e.stopPropagation(); triggerOpenMenuAction('dup'); });
+    bindClick('menuActUp',function(e){ e.stopPropagation(); triggerOpenMenuAction('up'); });
+    bindClick('menuActDown',function(e){ e.stopPropagation(); triggerOpenMenuAction('down'); });
+    bindClick('menuActDel',function(e){ e.stopPropagation(); triggerOpenMenuAction('del'); });
     document.addEventListener('pointerdown',function(e){
       const menuBtn=e.target.closest&&e.target.closest('.map-menu-btn[data-menu]');
       if(!menuBtn) return;
@@ -170,7 +187,7 @@
          document.addEventListener('click',function(e){
       if(hooks().openMenuId()){
         const pop=$('mapMenuFloat');
-        if(!pop.contains(e.target) && !(hooks().menuAnchorBtn()&&hooks().menuAnchorBtn().contains(e.target))){
+        if(pop&&!pop.contains(e.target) && !(hooks().menuAnchorBtn()&&hooks().menuAnchorBtn().contains(e.target))){
           hooks().closeFloatMenu();
           hooks().renderMappingList();
         }

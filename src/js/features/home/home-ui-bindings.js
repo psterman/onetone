@@ -2,6 +2,13 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  function on(id,type,handler){
+    var el=$(id);
+    if(!el) return null;
+    if(type==='click') el.onclick=handler;
+    else el.addEventListener(type,handler);
+    return el;
+  }
 
   function openVoiceLink(linkId){
     var map=global.HOME_VOICE_LINK_MAP||{};
@@ -17,20 +24,20 @@
 
   function bindEvents(){
     var hooks=h();
-    $('btnWelcomeClose').onclick=function(){ hooks.closeWelcome(true); };
-    $('btnWelcomeLater').onclick=function(){ hooks.closeWelcome(true); };
-    $('btnWelcomeStart').onclick=function(){ hooks.closeWelcome(true); hooks.homeOneClickStart(); };
+    on('btnWelcomeClose','click',function(){ hooks.closeWelcome(true); });
+    on('btnWelcomeLater','click',function(){ hooks.closeWelcome(true); });
+    on('btnWelcomeStart','click',function(){ hooks.closeWelcome(true); hooks.homeOneClickStart(); });
     var btnHomePhrasePractice=$('btnHomePhrasePractice');
     if(btnHomePhrasePractice){
       btnHomePhrasePractice.onclick=function(){
         if(window.OneToneApp) window.OneToneApp.openPhrasePractice({});
       };
     }
-    $('welcomeOverlay').addEventListener('click',function(e){
+    on('welcomeOverlay','click',function(e){
       if(e.target===this) hooks.closeWelcome(true);
     });
-    $('btnHomeCta').onclick=hooks.handleHomeCtaClick;
-    hooks.initHomeGuide();
+    on('btnHomeCta','click',hooks.handleHomeCtaClick);
+    if(typeof hooks.initHomeGuide==='function') hooks.initHomeGuide();
     var btnHomeKeyToggle=$('btnHomeKeyToggle');
     if(btnHomeKeyToggle) btnHomeKeyToggle.onclick=hooks.toggleHomeKeyEnable;
     var btnHomeSchemeSwitcher=$('btnHomeSchemeSwitcher');

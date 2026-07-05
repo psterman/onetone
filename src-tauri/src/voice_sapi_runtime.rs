@@ -255,7 +255,7 @@ pub fn voice_sapi_status(state: &AppState) -> serde_json::Value {
         "lastHeard": state.voice_sapi_last_heard.lock().clone(),
         "lastSkip": state.voice_sapi_last_skip.lock().clone(),
         "lastTrigger": state.voice_sapi_last_trigger.lock().clone(),
-        "phrases": cfg.voice_sapi.phrases.clone(),
+        "phrases": crate::voice_end_runtime::idle_wake_phrases(&cfg),
         "targetKey": target_key,
         "cooldownMs": cfg.voice_sapi.cooldown_ms,
         "minConfidence": cfg.voice_sapi.min_confidence,

@@ -4,7 +4,8 @@
   function hooks(){ return global.__vp_app_lang_core_hooks__ || {}; }
 
   function applyCoreTexts(d){
-    $('appTitle').textContent=d.appTitle;
+    var appTitle=$('appTitle');
+    if(appTitle) appTitle.textContent=d.appTitle;
     var subtitle=$('appSubtitle');
     if(subtitle) subtitle.textContent=d.appSubtitle||'';
     var welcomeKicker=$('welcomeKicker');
@@ -73,15 +74,18 @@
       }
     }
     var settingsTitle=$('settingsTitle'); if(settingsTitle) settingsTitle.textContent=d.settingsTitle;
-    $('mappingListTitle').textContent=d.mappingListTitle;
+    var mappingListTitle=$('mappingListTitle');
+    if(mappingListTitle) mappingListTitle.textContent=d.mappingListTitle;
     var listHint=$('mappingListHint');
     if(listHint) listHint.textContent=d.mappingListHint;
     var cycleTitle=$('cycleSwitchTitle');
     if(cycleTitle) cycleTitle.textContent=d.cycleSwitchTitle;
     var cycleDesc=$('cycleSwitchDesc');
     if(cycleDesc) cycleDesc.textContent=d.cycleSwitchDesc;
-    $('btnAddMapping').textContent=d.addMapping;
-    $('btnCancelRecord').textContent=d.cancelRecord;
+    var btnAddMapping=$('btnAddMapping');
+    if(btnAddMapping) btnAddMapping.textContent=d.addMapping;
+    var btnCancelRecord=$('btnCancelRecord');
+    if(btnCancelRecord) btnCancelRecord.textContent=d.cancelRecord;
     var wakeCardTitle=$('wakeCardTitle'); if(wakeCardTitle) wakeCardTitle.textContent=d.wakeCardTitle;
     hooks().applyHomeLiveLang();
     if(global.OneToneOnboarding) global.OneToneOnboarding.applyLang();

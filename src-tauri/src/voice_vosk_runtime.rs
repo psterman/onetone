@@ -8,8 +8,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{
-    save_config, vosk_grammar_phrases, vosk_preset_default_phrases, vosk_preset_model_path,
-    VoiceVoskConfig,
+    save_config, vosk_preset_default_phrases, vosk_preset_model_path, VoiceVoskConfig,
 };
 use crate::voice_vosk::{
     probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, vosk_resource_issue,
@@ -80,7 +79,7 @@ pub fn voice_vosk_start(
     match start_voice_vosk(
         cfg.clone(),
         resource_dir,
-        vosk_grammar_phrases(&state.cfg.lock()),
+        crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock()),
     ) {
         Ok(handle) => {
             if !vosk_epoch_matches(state, epoch) {
@@ -397,7 +396,7 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "lastSkip": state.voice_vosk_last_skip.lock().clone(),
         "lastTrigger": state.voice_vosk_last_trigger.lock().clone(),
         "lastDetectedPhrase": state.voice_vosk_last_detected_phrase.lock().clone(),
-        "phrases": cfg.voice_vosk.phrases.clone(),
+        "phrases": crate::voice_end_runtime::idle_wake_phrases(&cfg),
         "targetKey": target_key,
         "cooldownMs": cfg.voice_vosk.cooldown_ms,
         "modelPath": probe.model_path,

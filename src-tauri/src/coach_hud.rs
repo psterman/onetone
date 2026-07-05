@@ -7,6 +7,7 @@ use tauri::{
 };
 
 use crate::config::{mapping_is_complete, VoiceConfig};
+use crate::scene_config;
 use crate::AppState;
 
 pub const COACH_HUD_LABEL: &str = "coach_hud";
@@ -83,11 +84,27 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnaps
 }
 
 fn active_mapping_keys(cfg: &VoiceConfig) -> (String, String) {
+    if let Some(effective) = scene_config::resolve_idle_effective_scene(cfg) {
+        let trigger_key = effective.trigger_key;
+        let target_key = if let Some(m) = cfg.find_mapping_by_id(&effective.scene_id) {
+            if let Some(ov) = m.voice_override.as_ref() {
+                if let Some(k) = ov.target_key.as_ref() {
+                    let t = k.trim();
+                    if !t.is_empty() {
+                        return (trigger_key, t.to_string());
+                    }
+                }
+            }
+            m.target_key.clone()
+        } else {
+            effective.target_key
+        };
+        return (trigger_key, target_key);
+    }
     let m = cfg
-        .active_mappings()
-        .into_iter()
-        .find(|m| mapping_is_complete(m))
-        .or_else(|| cfg.mappings.iter().find(|m| mapping_is_complete(m)));
+        .mappings
+        .iter()
+        .find(|m| mapping_is_complete(m));
     match m {
         Some(m) => (m.trigger_key.clone(), m.target_key.clone()),
         None => (String::new(), String::new()),
@@ -96,7 +113,7 @@ fn active_mapping_keys(cfg: &VoiceConfig) -> (String, String) {
 
 pub fn push_state(app: &AppHandle, state: &AppState) {
     let snapshot = build_snapshot(state);
-    let Some(win) = app.get_webview_window(COACH_HUD_LABEL) else {
+    let Some(_win) = app.get_webview_window(COACH_HUD_LABEL) else {
         return;
     };
 
@@ -104,7 +121,7 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
     let payload = snapshot;
     let app_clone = app.clone();
 
-    let _ = win.run_on_main_thread(move || {
+    let _ = app.run_on_main_thread(move || {
         let Some(hud_win) = app_clone.get_webview_window(COACH_HUD_LABEL) else {
             return;
         };
@@ -161,10 +178,84 @@ pub fn dismiss_session(state: &AppState) {
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
-    let cfg = state.cfg.lock();
-    if !cfg.coach_hud_enabled {
+    if !state.cfg.lock().coach_hud_enabled {
         return;
     }
-    drop(cfg);
-    push_state(app, state);
+    let expired = if let Some(until) = *SUCCESS_UNTIL.lock() {
+        Instant::now() >= until
+    } else {
+        false
+    };
+    if expired {
+        *SUCCESS_UNTIL.lock() = None;
+        push_state(app, state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{MappingEntry, TriggerMode, VoiceConfig, VoiceOverride};
+
+    fn mapping(id: &str, trigger: &str, target: &str, ov: Option<VoiceOverride>) -> MappingEntry {
+        MappingEntry {
+            id: id.into(),
+            label: String::new(),
+            group: "默认".into(),
+            trigger_key: trigger.into(),
+            target_key: target.into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+            voice_override: ov,
+        }
+    }
+
+    fn sample_cfg(active: &str, other_target: &str) -> VoiceConfig {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![
+            mapping(
+                "a",
+                "F1",
+                "RAlt",
+                Some(VoiceOverride {
+                    target_key: Some("F2".into()),
+                    wake_phrases: None,
+                    end_phrases: None,
+                }),
+            ),
+            mapping("b", "F3", other_target, None),
+        ];
+        cfg.active_scene_id = active.to_string();
+        cfg
+    }
+
+    #[test]
+    fn active_mapping_keys_use_effective_scene_target() {
+        let cfg = sample_cfg("a", "RWin");
+        let (trigger, target) = active_mapping_keys(&cfg);
+        assert_eq!(trigger, "F1");
+        assert_eq!(target, "F2");
+    }
+
+    #[test]
+    fn active_mapping_keys_follow_active_scene_switch() {
+        let cfg = sample_cfg("b", "RWin");
+        let (_, target) = active_mapping_keys(&cfg);
+        assert_eq!(target, "RWin");
+    }
 }

@@ -2,6 +2,10 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
+  function bindClick(id,handler){
+    var el=$(id);
+    if(el) el.onclick=handler;
+  }
   function bindEvents(){
     var hooks=h();
     document.querySelectorAll('[data-theme-pick]').forEach(function(btn){
@@ -23,10 +27,12 @@
       btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });
       btn.addEventListener('click',function(){ hooks.setFontScale(btn.getAttribute('data-scale')); });
     });
-    $('btnAutostart').onclick=hooks.toggleAutostart;
+    bindClick('btnAutostart',hooks.toggleAutostart);
     var btnStartMinimized=$('btnStartMinimized');
     if(btnStartMinimized) btnStartMinimized.onclick=hooks.toggleStartMinimized;
-    $('btnSoundsMaster').onclick=hooks.toggleSoundsMaster;
+    var btnCoachHud=$('btnCoachHud');
+    if(btnCoachHud) btnCoachHud.onclick=hooks.toggleCoachHud;
+    bindClick('btnSoundsMaster',hooks.toggleSoundsMaster);
     var btnRecordingAudioMute=$('btnRecordingAudioMute');
     if(btnRecordingAudioMute) btnRecordingAudioMute.onclick=function(){
       hooks.setRecordingAudioMuteEnabled(!btnRecordingAudioMute.classList.contains('is-on'));

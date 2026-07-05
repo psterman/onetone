@@ -107,9 +107,13 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
     };
 
     let active_mode = cfg
-        .active_mappings()
-        .first()
+        .find_mapping_by_id(&cfg.active_scene_id)
         .map(|m| m.trigger_mode)
+        .or_else(|| {
+            cfg.active_mappings()
+                .first()
+                .map(|m| m.trigger_mode)
+        })
         .unwrap_or(TriggerMode::Tap);
 
     let schemes: Vec<serde_json::Value> = cfg

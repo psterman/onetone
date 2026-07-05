@@ -22,6 +22,58 @@ pub enum TriggerMode {
     Double,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PhraseBundle {
+    #[serde(default)]
+    pub zh: Vec<String>,
+    #[serde(default)]
+    pub en: Vec<String>,
+}
+
+impl PhraseBundle {
+    pub fn is_empty(&self) -> bool {
+        self.zh.iter().all(|p| p.trim().is_empty())
+            && self.en.iter().all(|p| p.trim().is_empty())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wake_phrases: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_phrases: Option<PhraseBundle>,
+}
+
+impl VoiceOverride {
+    pub fn is_empty(&self) -> bool {
+        match &self.target_key {
+            Some(s) if !s.trim().is_empty() => return false,
+            _ => {}
+        }
+        match &self.wake_phrases {
+            Some(p) if !p.is_empty() => return false,
+            _ => {}
+        }
+        match &self.end_phrases {
+            Some(b) if !b.is_empty() => return false,
+            _ => {}
+        }
+        true
+    }
+}
+
+pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverride> {
+    match ov {
+        Some(v) if v.is_empty() => None,
+        other => other,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MappingEntry {
     pub id: String,
@@ -70,6 +122,8 @@ pub struct MappingEntry {
     pub ime_preset_id: String,
     #[serde(rename = "appTargetId", default)]
     pub app_target_id: String,
+    #[serde(rename = "voiceOverride", default, skip_serializing_if = "Option::is_none")]
+    pub voice_override: Option<VoiceOverride>,
 }
 
 fn default_long_press_ms() -> u32 {
@@ -209,6 +263,9 @@ pub struct VoiceConfig {
     pub window_y: Option<f64>,
     #[serde(rename = "imePresetId", default)]
     pub ime_preset_id: String,
+    /// Current scene truth for voice/runtime (Rule A). Not the UI selection highlight.
+    #[serde(rename = "activeSceneId", default)]
+    pub active_scene_id: String,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -221,7 +278,7 @@ pub struct VoiceConfig {
 }
 
 fn default_version() -> u32 {
-    5
+    6
 }
 
 fn default_window_width() -> f64 {
@@ -527,31 +584,9 @@ pub fn runtime_sound_cue(cfg: &VoiceConfig, cue: &str) -> Option<String> {
     }
 }
 
-/// Start + end phrases merged for Vosk grammar (deduplicated).
+/// Start + end phrases merged for Vosk grammar (deduplicated, active scene effective).
 pub fn vosk_grammar_phrases(cfg: &VoiceConfig) -> Vec<String> {
-    let mut seen = HashSet::new();
-    let mut out = Vec::new();
-    let mut push = |p: &str| {
-        let t = p.trim();
-        if t.is_empty() {
-            return;
-        }
-        if seen.insert(t.to_string()) {
-            out.push(t.to_string());
-        }
-    };
-    for p in &cfg.voice_vosk.phrases {
-        push(p);
-    }
-    if cfg.voice_end.enabled {
-        for p in &cfg.voice_end.phrases_zh {
-            push(p);
-        }
-        for p in &cfg.voice_end.phrases_en {
-            push(p);
-        }
-    }
-    out
+    crate::scene_config::vosk_grammar_phrases_for_cfg(cfg)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1012,9 +1047,9 @@ impl Default for VoiceConfig {
     fn default() -> Self {
         let id = new_mapping_id();
         Self {
-            version: 5,
+            version: 6,
             mappings: vec![MappingEntry {
-                id,
+                id: id.clone(),
                 label: "AutoTrigger  ?RAlt".into(),
                 group: default_group(),
                 trigger_key: "AutoTrigger".into(),
@@ -1036,6 +1071,7 @@ impl Default for VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                voice_override: None,
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -1060,6 +1096,7 @@ impl Default for VoiceConfig {
             window_x: None,
             window_y: None,
             ime_preset_id: String::new(),
+            active_scene_id: id,
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -1144,7 +1181,13 @@ pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, b
 
 impl VoiceConfig {
     pub fn migrate(&mut self) {
+        if self.version >= 6 && !self.mappings.is_empty() {
+            self.normalize();
+            return;
+        }
+
         if self.version >= 5 && !self.mappings.is_empty() {
+            self.migrate_v5_to_v6();
             self.normalize();
             return;
         }
@@ -1161,6 +1204,7 @@ impl VoiceConfig {
                 }
             }
             self.version = 5;
+            self.migrate_v5_to_v6();
             self.normalize();
             return;
         }
@@ -1189,6 +1233,7 @@ impl VoiceConfig {
                 m.auto_enter_enabled = g_auto;
             }
             self.version = 5;
+            self.migrate_v5_to_v6();
             self.normalize();
             return;
         }
@@ -1227,15 +1272,56 @@ impl VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                voice_override: None,
             });
         }
 
         self.version = 5;
+        self.migrate_v5_to_v6();
         self.record_key.clear();
         self.target_key.clear();
         self.trigger_source = None;
         self.actions = None;
         self.normalize();
+    }
+
+    fn migrate_v5_to_v6(&mut self) {
+        for m in &mut self.mappings {
+            m.voice_override = normalize_voice_override(m.voice_override.take());
+        }
+        for m in &mut self.trash {
+            m.voice_override = normalize_voice_override(m.voice_override.take());
+        }
+        if self.active_scene_id.is_empty() {
+            self.active_scene_id = self.resolve_default_active_scene_id();
+        }
+        self.version = 6;
+    }
+
+    pub fn resolve_default_active_scene_id(&self) -> String {
+        let mut enabled: Vec<_> = self
+            .mappings
+            .iter()
+            .filter(|m| m.enabled && is_mapping_complete(m))
+            .collect();
+        enabled.sort_by_key(|m| m.order);
+        if let Some(m) = enabled.first() {
+            return m.id.clone();
+        }
+        self.mappings
+            .iter()
+            .find(|m| is_mapping_complete(m))
+            .map(|m| m.id.clone())
+            .or_else(|| self.mappings.first().map(|m| m.id.clone()))
+            .unwrap_or_default()
+    }
+
+    pub fn ensure_active_scene_id(&mut self) {
+        if self.active_scene_id.is_empty()
+            || self.find_mapping_by_id(&self.active_scene_id).is_none()
+        {
+            self.active_scene_id = self.resolve_default_active_scene_id();
+        }
     }
 
     pub fn normalize(&mut self) {
@@ -1355,6 +1441,7 @@ impl VoiceConfig {
             if m.enter_delay_ms < 1000 {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
+            m.voice_override = normalize_voice_override(m.voice_override.take());
             // Legacy configs may still carry triggerDevice full paths — migrate below.
             if !m.trigger_device.trim().is_empty() {
                 let stable = crate::device_identity::normalize_device_id(&m.trigger_device);
@@ -1364,6 +1451,7 @@ impl VoiceConfig {
             }
         }
         self.mappings.sort_by_key(|m| m.order);
+        self.ensure_active_scene_id();
     }
 
     /// 在同一 canonical trigger 的已完成方案间轮换 enabled；返回 (from_id, to_id)。
@@ -1411,6 +1499,7 @@ impl VoiceConfig {
             }
         }
         self.enable_mapping(target_id);
+        self.active_scene_id = target_id.to_string();
         Some((from_id, target_id.to_string()))
     }
 
@@ -1537,6 +1626,7 @@ impl VoiceConfig {
         }
         if let Some(entry) = self.mappings.iter_mut().find(|m| m.id == id) {
             entry.enabled = true;
+            self.active_scene_id = id.to_string();
         }
         disabled
     }
@@ -1874,7 +1964,7 @@ mod tests {
             ..Default::default()
         };
         cfg.migrate();
-        assert_eq!(cfg.version, 5);
+        assert_eq!(cfg.version, 6);
         assert_eq!(cfg.mappings.len(), 1);
         assert_eq!(cfg.mappings[0].trigger_key, "AutoTrigger");
         assert_eq!(cfg.mappings[0].target_key, "F2");
@@ -1906,6 +1996,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -1939,6 +2030,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -1984,6 +2076,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -2017,6 +2110,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
                 label: "      ".into(),
@@ -2063,6 +2157,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -2099,6 +2194,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -2131,6 +2227,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -2211,6 +2308,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -2245,6 +2343,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: None,
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,

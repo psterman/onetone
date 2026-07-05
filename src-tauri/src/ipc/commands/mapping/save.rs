@@ -16,10 +16,17 @@ pub fn cmd_save(state: tauri::State<Arc<AppState>>, window: tauri::WebviewWindow
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);
+    crate::voice_bootstrap::apply_voice_config_change(
+        window.app_handle(),
+        state.inner(),
+        &existing,
+        &cfg,
+    );
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state.inner()));
     sync_config_ui(&state, &window, "unchanged");
     state.machine_pool.lock().reset_all();
     push_runtime(&state, &window, "saved", "");
+    crate::coach_hud::push_state(window.app_handle(), state.inner());
     let ack = serde_json::json!({"type":"mvp_saved","ok":true});
     window.emit("to_js", &ack).ok();
 }

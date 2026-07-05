@@ -13,7 +13,7 @@
     if(!el) return;
     var st=global.OneToneState.state;
     var ver=st.update&&st.update.currentVersion;
-    el.textContent=ver||'鈥?;
+    el.textContent=ver||'-';
   }
 
   function exportDiagnosticLogs(){

@@ -25,7 +25,8 @@
 
   function bindListeners(){
     window.addEventListener('error',function(e){
-      var msg=(e.message||'error')+(e.filename?(' @ '+e.filename+':'+e.lineno):'');
+      var stack=e.error&&(e.error.stack||e.error.message);
+      var msg=(e.message||'error')+(e.filename?(' @ '+e.filename+':'+e.lineno+(e.colno?(':'+e.colno):'')):'')+(stack?('\n'+stack):'');
       logError('window.error',msg);
     });
     window.addEventListener('unhandledrejection',function(e){

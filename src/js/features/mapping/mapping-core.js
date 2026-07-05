@@ -16,6 +16,8 @@
     renderConflictBanner();
     hooks().renderAddButton();
     hooks().renderDraftHint();
+    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+    if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
   }
   function schemeMappingHasConflict(m){
     if(!m||!isSavedMapping(m)||!m.enabled) return false;
@@ -36,6 +38,8 @@
       return tags;
     }
     if(schemeMappingHasConflict(m)) tags.push({cls:'is-conflict',text:t('keySchemeConflict')});
+    var activeId=state().config&&state().config.activeSceneId;
+    if(activeId&&m.id===activeId) tags.push({cls:'is-active-scene',text:t('sceneActiveBadge')});
     tags.push({cls:m.enabled?'is-on':'is-off',text:m.enabled?t('homeLiveBadgeReady'):t('homeLiveBadgeOff')});
     return tags;
   }
@@ -269,6 +273,16 @@
     hooks().ensureConfig();
     return state().config.mappings.find(function(m){return m.id===state().selectedMappingId;})||state().config.mappings[0];
   }
+  function activeSceneMapping(){
+    hooks().ensureConfig();
+    const cfg=state().config||{};
+    const activeId=String(cfg.activeSceneId||'').trim();
+    if(activeId){
+      const hit=cfg.mappings.find(function(m){ return m.id===activeId; });
+      if(hit) return hit;
+    }
+    return selectedMapping();
+  }
   function sortedMappings(){
     return state().config.mappings.slice().sort(function(a,b){
       const ae=!!a.enabled, be=!!b.enabled;
@@ -299,6 +313,7 @@
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
     if(m.imePresetId===undefined) m.imePresetId='';
     if(m.appTargetId===undefined) m.appTargetId='';
+    if(m.voiceOverride===undefined) m.voiceOverride=null;
   }
 
   function isAutoTriggerMapping(m){
@@ -311,7 +326,7 @@
     renderSchemeSubnav:renderSettingsSchemeSubnav,friendlyPair:friendlyPair,
     isSaved:isSavedMapping,isDraft:isDraftMapping,hasDrafts:hasDraftMappings,
     isDraftPristine:isDraftPristine,removeDraft:removeDraftMapping,
-    abandonDraftIfPristine:abandonDraftIfPristine,byId:mappingById,
+    abandonDraftIfPristine:abandonDraftIfPristine,byId:mappingById,activeScene:activeSceneMapping,
     isSelected:isSelectedMapping,editorTrigger:editorTriggerForMapping,
     editorTarget:editorTargetForMapping,flushEditor:flushEditorToMapping,
     flushAllEditor:flushAllEditorToMappings,recording:recordingMapping,

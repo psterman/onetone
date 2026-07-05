@@ -88,7 +88,24 @@
     return null;
   }
 
-  function applyVoiceShortcutKeys(combo){
+  function applyVoiceShortcutKeys(combo, opts){
+    opts=opts||{};
+    combo=String(combo||'').trim();
+    if(!combo) return;
+    function write(){
+      applyVoiceShortcutKeysInner(combo);
+      if(opts.onWritten) opts.onWritten();
+    }
+    if(opts.skipConfirm||!global.OneToneSceneSyncConfirm){
+      write();
+      return;
+    }
+    global.OneToneSceneSyncConfirm.guardGlobalTargetWrite(function(){
+      write();
+    }, opts);
+  }
+
+  function applyVoiceShortcutKeysInner(combo){
     var st = global.OneToneState && global.OneToneState.state;
     if(!st || !st.config) return;
     var cfg = st.config;

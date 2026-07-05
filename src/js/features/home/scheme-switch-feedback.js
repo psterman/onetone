@@ -26,6 +26,7 @@
     var msg=t('schemeSwitched')+(label||'');
     if(toId){
       state.selectedMappingId=toId;
+      if(state.config) state.config.activeSceneId=toId;
       hooks.syncEditorFromSelection();
     }
     hooks.renderMappingList();

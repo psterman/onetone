@@ -152,6 +152,8 @@
     }
     if(panel==='keyWake'){
       hooks().renderKeyFinishFlowPanel();
+      if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+      if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
       requestAnimationFrame(function(){
         if(!ui.drawerOpen||ui.settingsPanel!=='keyWake') return;
         hooks().renderMappingChrome();
@@ -223,6 +225,7 @@
       if(!ui.drawerOpen) return;
       hooks().loadAutostartState();
       if(hooks().loadStartMinimizedState) hooks().loadStartMinimizedState();
+      if(hooks().loadCoachHudState) hooks().loadCoachHudState();
       if(hooks().settingsPanelNeedsVoicePoll()) hooks().voiceStatusPollTick();
     },200);
     requestAnimationFrame(function(){
@@ -244,6 +247,12 @@
     hooks().renderSettingsDebugSubnav();
     hooks().stopMicLevelPoll();
     hooks().stopMicMonitor();
+    if(global.OneToneMappingCore&&typeof global.OneToneMappingCore.flushAllEditor==='function'){
+      global.OneToneMappingCore.flushAllEditor();
+    }
+    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
+      global.OneToneConfigPersist.pullBackendConfig();
+    }
     setTimeout(function(){
       if(!ui.drawerOpen&&hooks().micLevelUiVisible()) hooks().syncHomeMicMonitor().catch(function(){});
     },120);

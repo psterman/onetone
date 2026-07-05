@@ -7,7 +7,7 @@
   function openConfirmModal(message){
     return new Promise(function(resolve){
       confirmResolve=resolve;
-      var msgEl=$('confirmMessage');
+      var msgEl=$('confirmBody')||$('confirmMessage');
       if(msgEl) msgEl.textContent=String(message||'');
       var overlay=$('confirmOverlay');
       if(overlay){

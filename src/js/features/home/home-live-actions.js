@@ -25,7 +25,7 @@
 
   function toggleHomeKeyEnable(){
     if(global.OneToneMappingRecording.mode()!=='none') return;
-    var m=global.OneToneMappingCore.selected();
+    var m=global.OneToneMappingCore.activeScene();
     if(!m){
       toast(t('homeLiveUnset'));
       return;

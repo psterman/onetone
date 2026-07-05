@@ -229,25 +229,32 @@
     combo = normalizeKey(combo);
     if(!combo) return;
     presetId = presetId || '';
-    setSelectedId('voice', presetId);
-    var st = global.OneToneState && global.OneToneState.state;
-    if(!st || !st.config) return;
-    var cfg = st.config;
-    if(!cfg.voiceSapi) cfg.voiceSapi = {};
-    if(!cfg.voiceVosk) cfg.voiceVosk = {};
-    if(!cfg.voiceEnd) cfg.voiceEnd = {};
-    cfg.voiceSapi.targetKey = combo;
-    cfg.voiceVosk.targetKey = combo;
-    cfg.voiceEnd.targetKey = combo;
-    cfg.imePresetId = presetId;
-    var persist = global.OneToneConfigPersist;
-    if(persist && persist.save) persist.save();
-    var display = $('voiceSettingsTargetKey');
-    if(display && global.OneToneKeyLabels){
-      display.textContent = global.OneToneKeyLabels.friendlyKeyName(combo, global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh') || combo;
+    function write(){
+      setSelectedId('voice', presetId);
+      var st = global.OneToneState && global.OneToneState.state;
+      if(!st || !st.config) return;
+      var cfg = st.config;
+      if(!cfg.voiceSapi) cfg.voiceSapi = {};
+      if(!cfg.voiceVosk) cfg.voiceVosk = {};
+      if(!cfg.voiceEnd) cfg.voiceEnd = {};
+      cfg.voiceSapi.targetKey = combo;
+      cfg.voiceVosk.targetKey = combo;
+      cfg.voiceEnd.targetKey = combo;
+      cfg.imePresetId = presetId;
+      var persist = global.OneToneConfigPersist;
+      if(persist && persist.save) persist.save();
+      var display = $('voiceSettingsTargetKey');
+      if(display && global.OneToneKeyLabels){
+        display.textContent = global.OneToneKeyLabels.friendlyKeyName(combo, global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh') || combo;
+      }
+      if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
+      refresh('voice');
     }
-    if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
-    refresh('voice');
+    if(global.OneToneSceneSyncConfirm){
+      global.OneToneSceneSyncConfirm.guardGlobalTargetWrite(write, {});
+      return;
+    }
+    write();
   }
 
   function clearSelectedForManualRecord(ctx){

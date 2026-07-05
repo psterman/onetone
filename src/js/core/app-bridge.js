@@ -134,7 +134,11 @@
       getImeTargetKeyLabel:function(){
         var cfg=hooks().state().config||{};
         var maps=Array.isArray(cfg.mappings)?cfg.mappings:[];
-        var m=maps.find(function(x){ return x && x.enabled; })||maps[0]||null;
+        var activeId=cfg.activeSceneId?String(cfg.activeSceneId):'';
+        var m=(activeId&&maps.find(function(x){ return x&&x.id===activeId; }))
+          ||maps.find(function(x){ return x&&x.enabled; })
+          ||maps[0]
+          ||null;
         var key=(m&&m.targetKey)?String(m.targetKey).trim():'RAlt';
         if(m&&m.imePresetId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
           var preset=global.OneToneImePresets.presetById(m.imePresetId);

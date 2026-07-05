@@ -1,7 +1,9 @@
+mod debug;
 mod init;
 mod test_send;
 mod trigger;
 
+pub use debug::*;
 pub use init::*;
 pub use test_send::*;
 pub use trigger::*;

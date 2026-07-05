@@ -4,19 +4,28 @@
   function hooks(){ return global.__vp_app_lang_mapping_prefs_hooks__ || {}; }
 
   function applyMappingAndPrefsTexts(d){
-    $('triggerTitle').textContent=d.triggerTitle;
-    $('targetTitle').textContent=d.targetTitle;
+    var triggerTitle=$('triggerTitle');
+    if(triggerTitle) triggerTitle.textContent=d.triggerTitle;
+    var targetTitle=$('targetTitle');
+    if(targetTitle) targetTitle.textContent=d.targetTitle;
     var trig=hooks().selectedDisplayTriggerKey();
     var tgt=hooks().selectedDisplayTargetKey();
-    $('btnRecordTrigger').textContent=trig?hooks().t('btnRerecordTrigger'):hooks().t('btnRecordTrigger');
-    $('btnRecordTarget').textContent=tgt?hooks().t('btnRerecordTarget'):hooks().t('btnRecordTarget');
-    $('mappingEmptyTitle').textContent=d.mappingEmptyTitle;
-    $('mappingEmptyHint').textContent=d.mappingEmptyHint;
+    var btnRecordTrigger=$('btnRecordTrigger');
+    if(btnRecordTrigger) btnRecordTrigger.textContent=trig?hooks().t('btnRerecordTrigger'):hooks().t('btnRecordTrigger');
+    var btnRecordTarget=$('btnRecordTarget');
+    if(btnRecordTarget) btnRecordTarget.textContent=tgt?hooks().t('btnRerecordTarget'):hooks().t('btnRecordTarget');
+    var mappingEmptyTitle=$('mappingEmptyTitle');
+    if(mappingEmptyTitle) mappingEmptyTitle.textContent=d.mappingEmptyTitle;
+    var mappingEmptyHint=$('mappingEmptyHint');
+    if(mappingEmptyHint) mappingEmptyHint.textContent=d.mappingEmptyHint;
     var draftHint=$('mappingDraftHint');
     if(draftHint) draftHint.textContent=d.draftHint;
-    $('triggerHelp').innerHTML=d.triggerHelp;
-    $('targetHelp').innerHTML=d.targetHelp;
-    $('listenTitle').textContent=d.listenTitle;
+    var triggerHelp=$('triggerHelp');
+    if(triggerHelp) triggerHelp.innerHTML=d.triggerHelp;
+    var targetHelp=$('targetHelp');
+    if(targetHelp) targetHelp.innerHTML=d.targetHelp;
+    var listenTitle=$('listenTitle');
+    if(listenTitle) listenTitle.textContent=d.listenTitle;
     var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.listenDesc;
     var prefBasicTitle=$('prefBasicTitle'); if(prefBasicTitle) prefBasicTitle.textContent=d.prefBasicTitle;
     var prefSectionRuntime=$('prefSectionRuntime'); if(prefSectionRuntime) prefSectionRuntime.textContent=d.prefSectionRuntime;
@@ -44,6 +53,8 @@
     var autostartDesc=$('autostartDesc'); if(autostartDesc) autostartDesc.textContent=d.autostartDesc;
     var startMinimizedLabel=$('startMinimizedLabel'); if(startMinimizedLabel) startMinimizedLabel.textContent=d.startMinimizedLabel;
     var startMinimizedDesc=$('startMinimizedDesc'); if(startMinimizedDesc) startMinimizedDesc.textContent=d.startMinimizedDesc;
+    var coachHudLabel=$('coachHudLabel'); if(coachHudLabel) coachHudLabel.textContent=d.coachHudLabel;
+    var coachHudDesc=$('coachHudDesc'); if(coachHudDesc) coachHudDesc.textContent=d.coachHudDesc;
     var langLabel=$('langLabel'); if(langLabel) langLabel.textContent=d.langLabel;
     var langDesc=$('langDesc'); if(langDesc) langDesc.textContent=d.langDesc;
     var langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;

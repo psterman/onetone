@@ -5,6 +5,7 @@
     var hooks=h();
     var state=global.OneToneState.state;
     var t=hooks.t;
+    var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
     if(window.OneToneLocaleDefaults) window.OneToneLocaleDefaults.applyUiLocaleBootstrap();
     if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.init();
@@ -24,9 +25,13 @@
       if(dismissedUpdate) global.OneToneUpdate.loadDismissedVersion(dismissedUpdate);
     }catch(_){}
     hooks.markBoot('local preferences loaded');
-    state.config=hooks.defaultConfig();
-    state.update=hooks.defaultUpdateState();
+    if(!hasBootConfig) state.config=hooks.defaultConfig();
+    if(!state.update) state.update=hooks.defaultUpdateState();
     hooks.ensureConfig();
+    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushPendingMvpInit==='function'){
+      global.OneToneConfigPersist.flushPendingMvpInit();
+      hooks.ensureConfig();
+    }
     hooks.syncEditorFromSelection();
     hooks.markBoot('default config prepared');
     hooks.markBoot('applyLang bootstrap begin');
@@ -52,6 +57,9 @@
     },4000);
     setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);
     setTimeout(function(){ hooks.markBoot('fallbackConfigLoaded begin'); hooks.fallbackConfigLoaded(); }, 3500);
+    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.startConfigSyncPoll==='function'){
+      global.OneToneConfigPersist.startConfigSyncPoll(2000,15);
+    }
     installRuntimeRefreshOnFocus();
   }
 
@@ -62,6 +70,9 @@
       if(now-lastRuntimeRefreshAt<800) return;
       lastRuntimeRefreshAt=now;
       if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
+        global.OneToneConfigPersist.pullBackendConfig();
+      }
       global.OneToneIpc.invoke('cmd_request_runtime',{}).then(function(snapshot){
         if(snapshot&&snapshot.type==='mvp_runtime_snapshot'&&global.__vp_dispatch_to_js__){
           global.__vp_dispatch_to_js__(snapshot);

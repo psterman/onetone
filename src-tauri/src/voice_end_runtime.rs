@@ -37,36 +37,13 @@ fn bump_commit_token(state: &AppState) -> u64 {
 }
 
 pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
-    cfg.active_mappings()
-        .first()
-        .map(|m| m.id.clone())
-        .unwrap_or_default()
+    cfg.active_scene_id.clone()
 }
 
-/// Voice wake should press the IME voice shortcut, not workflow open keys (e.g. Ctrl+L).
+/// Idle wake/stop target from effective scene (Rule A).
 pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
-    if let Some(m) = cfg.active_mappings().first() {
-        if crate::config::is_workflow_app_target(&m.app_target_id) {
-            if let Some(key) = resolve_voice_input_target_key(cfg) {
-                return key;
-            }
-        }
-        let key = m.target_key.trim();
-        if !key.is_empty() {
-            return key.to_string();
-        }
-    }
-    if let Some(m) = cfg
-        .mappings
-        .iter()
-        .find(|m| crate::config::mapping_is_complete(m))
-    {
-        if crate::config::is_workflow_app_target(&m.app_target_id) {
-            if let Some(key) = resolve_voice_input_target_key(cfg) {
-                return key;
-            }
-        }
-        let key = m.target_key.trim();
+    if let Some(eff) = crate::scene_config::resolve_idle_effective_scene(cfg) {
+        let key = eff.target_key.trim();
         if !key.is_empty() {
             return key.to_string();
         }
@@ -102,24 +79,30 @@ pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
 }
 
 fn resolve_stop_target_key(cfg: &VoiceConfig, session_mapping_id: &str) -> String {
-    if !session_mapping_id.is_empty() {
-        if let Some(m) = cfg.find_mapping_by_id(session_mapping_id) {
-            if crate::config::is_workflow_app_target(&m.app_target_id) {
-                if let Some(key) = resolve_voice_input_target_key(cfg) {
-                    return key;
-                }
-            }
-            if !m.target_key.trim().is_empty() {
-                return m.target_key.clone();
-            }
+    let ctx = crate::scene_config::SceneResolveContext {
+        active_scene_id: session_mapping_id,
+    };
+    if let Some(eff) = crate::scene_config::resolve_effective_scene(cfg, &ctx) {
+        let key = eff.target_key.trim();
+        if !key.is_empty() {
+            return key.to_string();
         }
     }
-    let fallback = cfg.voice_end.target_key.trim();
-    if fallback.is_empty() {
-        "RAlt".into()
-    } else {
-        fallback.to_string()
-    }
+    resolve_wake_target_key(cfg, &cfg.voice_end.target_key)
+}
+
+fn session_effective(state: &AppState) -> Option<crate::scene_config::EffectiveSceneConfig> {
+    state
+        .voice_session_snapshot
+        .lock()
+        .as_ref()
+        .map(|s| s.effective.clone())
+}
+
+pub fn idle_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
+    crate::scene_config::resolve_idle_effective_scene(cfg)
+        .map(|e| e.wake_phrases)
+        .unwrap_or_default()
 }
 
 fn status_label(state: &str) -> &'static str {
@@ -217,9 +200,19 @@ pub fn enter_dictating(
         return;
     }
     bump_commit_token(state);
+    let scene_id = if mapping_id.trim().is_empty() {
+        state.cfg.lock().active_scene_id.clone()
+    } else {
+        mapping_id.to_string()
+    };
+    if let Some(snapshot) =
+        crate::scene_config::freeze_session_snapshot(&state.cfg.lock(), &scene_id)
+    {
+        *state.voice_session_snapshot.lock() = Some(snapshot);
+    }
     *state.voice_session_state.lock() = "dictating".into();
     *state.voice_session_started_at.lock() = Some(Instant::now());
-    *state.voice_session_mapping_id.lock() = mapping_id.to_string();
+    *state.voice_session_mapping_id.lock() = scene_id.clone();
     *state.voice_session_last_end_phrase.lock() = String::new();
     *state.voice_session_last_action.lock() = reason.to_string();
     if let Some(app) = app {
@@ -229,7 +222,7 @@ pub fn enter_dictating(
             "session",
             crate::runtime_event::kind::SESSION_STARTED,
             reason,
-            Some(serde_json::json!({ "mappingId": mapping_id })),
+            Some(serde_json::json!({ "mappingId": scene_id })),
         );
         crate::tray::refresh_menu(app);
     }
@@ -240,6 +233,7 @@ pub fn reset_voice_session(state: &Arc<AppState>, app: Option<&AppHandle>, reaso
     *state.voice_session_state.lock() = "idle".into();
     *state.voice_session_started_at.lock() = None;
     *state.voice_session_mapping_id.lock() = String::new();
+    *state.voice_session_snapshot.lock() = None;
     *state.voice_session_last_action.lock() = reason.to_string();
     if let Some(app) = app {
         crate::runtime_event::publish_runtime_event(
@@ -319,26 +313,34 @@ pub fn matches_end_phrase(
 }
 
 pub fn text_matches_wake_phrase(cfg: &VoiceConfig, text: &str) -> bool {
-    matches_final(text, &cfg.voice_vosk.phrases).is_some()
+    matches_final(text, &idle_wake_phrases(cfg)).is_some()
+}
+
+pub fn text_matches_wake_phrases(phrases: &[String], text: &str) -> bool {
+    matches_final(text, phrases).is_some()
 }
 
 pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
     if !should_match_end_phrase(state) {
         return;
     }
-    let (phrases_zh, phrases_en) = {
-        let cfg = state.cfg.lock();
-        if !cfg.voice_end.enabled {
+    if !state.cfg.lock().voice_end.enabled {
+        return;
+    }
+    let (phrases_zh, phrases_en, wake_phrases) = {
+        let snapshot = state.voice_session_snapshot.lock();
+        let Some(snap) = snapshot.as_ref() else {
             return;
-        }
-        if text_matches_wake_phrase(&cfg, text) {
-            return;
-        }
+        };
         (
-            cfg.voice_end.phrases_zh.clone(),
-            cfg.voice_end.phrases_en.clone(),
+            snap.effective.end_phrases.zh.clone(),
+            snap.effective.end_phrases.en.clone(),
+            snap.effective.wake_phrases.clone(),
         )
     };
+    if text_matches_wake_phrases(&wake_phrases, text) {
+        return;
+    }
     if let Some(phrase) = matches_end_phrase(text, &phrases_zh, &phrases_en) {
         handle_end_phrase(state, app, &phrase);
     }
@@ -346,7 +348,7 @@ pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, tex
 
 pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
     let norm = normalize_end_text(phrase);
-    cfg.voice_vosk.phrases.iter().any(|p| {
+    idle_wake_phrases(cfg).iter().any(|p| {
         let np = normalize_end_text(p);
         !np.is_empty() && (norm == np || norm.contains(&np))
     })
@@ -393,10 +395,13 @@ fn finish_dictation_session(
     }
 
     let (target_key, duration_ms, commit_delay_ms, commit_key, auto_send, cooldown_ms) = {
+        let Some(eff) = session_effective(state) else {
+            *state.voice_session_last_action.lock() = "skipped: no session snapshot".into();
+            return;
+        };
         let cfg = state.cfg.lock();
-        let mapping_id = state.voice_session_mapping_id.lock().clone();
         (
-            resolve_stop_target_key(&cfg, &mapping_id),
+            eff.target_key,
             cfg.key_press_duration_ms,
             cfg.voice_end.commit_delay_ms,
             cfg.voice_end.commit_key.clone(),
@@ -735,12 +740,13 @@ mod tests {
     }
 
     #[test]
-    fn wake_target_prefers_active_mapping() {
-        use crate::config::{new_mapping_id, MappingEntry, TriggerMode, VoiceConfig};
+    fn wake_target_uses_scene_override() {
+        use crate::config::{new_mapping_id, MappingEntry, TriggerMode, VoiceConfig, VoiceOverride};
 
         let mut cfg = VoiceConfig::default();
+        let id = cfg.active_scene_id.clone();
         cfg.mappings = vec![MappingEntry {
-            id: new_mapping_id(),
+            id,
             label: "test".into(),
             group: "默认".into(),
             trigger_key: "F13".into(),
@@ -762,6 +768,11 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            voice_override: Some(VoiceOverride {
+                target_key: Some("Win+H".into()),
+                wake_phrases: None,
+                end_phrases: None,
+            }),
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -796,6 +807,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: "cursor-chat".into(),
+            voice_override: None,
         }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

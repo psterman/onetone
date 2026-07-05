@@ -13,19 +13,22 @@ pub fn set_active_trigger_mode(
 ) {
     let changed = {
         let mut cfg = state.cfg.lock();
-        let active_id = cfg
-            .active_mappings()
-            .first()
-            .map(|m| m.id.clone())
-            .or_else(|| {
+        let active_id = {
+            let id = cfg.active_scene_id.trim();
+            if !id.is_empty() && cfg.find_mapping_by_id(id).is_some() {
+                id.to_string()
+            } else {
                 cfg.mappings
                     .iter()
                     .find(|m| mapping_is_complete(m))
                     .map(|m| m.id.clone())
-            });
-        let Some(id) = active_id else {
-            return;
+                    .unwrap_or_default()
+            }
         };
+        if active_id.is_empty() {
+            return;
+        }
+        let id = active_id;
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             if m.trigger_mode != mode {
                 m.trigger_mode = mode;

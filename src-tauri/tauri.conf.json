@@ -1,5 +1,5 @@
-﻿{
-  "productName": "涓€澹?,
+{
+  "productName": "OneTone",
   "version": "1.0.0",
   "identifier": "com.onetone.app",
   "build": {
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "涓€澹?,
+        "title": "OneTone",
         "width": 760,
         "height": 820,
         "resizable": true,
@@ -27,6 +27,20 @@
         "url": "tray-menu.html",
         "width": 264,
         "height": 360,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
+      },
+      {
+        "label": "coach_hud",
+        "title": "",
+        "url": "coach-hud.html",
+        "width": 360,
+        "height": 88,
         "resizable": false,
         "decorations": false,
         "transparent": true,
