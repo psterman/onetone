@@ -1,18 +1,18 @@
-ï»¿<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-label="Record trigger and IME activation key">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-label="Record trigger and IME activation key">
   <rect width="640" height="400" fill="#f1f5f9"/>
   <rect x="24" y="24" width="592" height="352" rx="16" fill="#ffffff" stroke="#cbd5e1"/>
-  <text x="48" y="58" fill="#0f172a" font-family="Segoe UI, Inter, sans-serif" font-size="16" font-weight="600">OneTone Â· Settings â†’ Keys</text>
+  <text x="48" y="58" fill="#0f172a" font-family="Segoe UI, Inter, sans-serif" font-size="16" font-weight="600">OneTone ¡¤ Settings ¡ú Keys</text>
   <rect x="48" y="80" width="260" height="120" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
   <text x="64" y="108" fill="#64748b" font-family="Segoe UI, Inter, sans-serif" font-size="12">1. Record trigger</text>
   <rect x="64" y="120" width="120" height="36" rx="8" fill="#ffffff" stroke="#94a3b8"/>
   <text x="88" y="143" fill="#0f172a" font-family="Segoe UI, Inter, sans-serif" font-size="13" font-weight="600">Mouse side</text>
-  <rect x="336" y="80" width="256" height="120" rx="12" fill="#f0fdfa" stroke="#99f6e4"/>
+  <rect x="336" y="80" width="256" height="120" rx="12" fill="#e6f7fc" stroke="#a8dff0"/>
   <text x="352" y="108" fill="#64748b" font-family="Segoe UI, Inter, sans-serif" font-size="12">2. IME activation key</text>
-  <rect x="352" y="120" width="88" height="36" rx="8" fill="#ffffff" stroke="#14b8a6"/>
-  <text x="372" y="143" fill="#0f766e" font-family="Segoe UI, Inter, sans-serif" font-size="13" font-weight="600">RAlt</text>
+  <rect x="352" y="120" width="88" height="36" rx="8" fill="#ffffff" stroke="#45b0d4"/>
+  <text x="372" y="143" fill="#1f8fb8" font-family="Segoe UI, Inter, sans-serif" font-size="13" font-weight="600">RAlt</text>
   <text x="452" y="143" fill="#64748b" font-family="Segoe UI, Inter, sans-serif" font-size="12">Typeless preset</text>
   <rect x="48" y="230" width="544" height="110" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
   <text x="64" y="258" fill="#64748b" font-family="Segoe UI, Inter, sans-serif" font-size="12">Mapping preview</text>
-  <text x="64" y="292" fill="#0f172a" font-family="Segoe UI, Inter, sans-serif" font-size="15" font-weight="600">Mouse side â†’ OneTone â†’ Typeless Â· RAlt</text>
+  <text x="64" y="292" fill="#0f172a" font-family="Segoe UI, Inter, sans-serif" font-size="15" font-weight="600">Mouse side ¡ú OneTone ¡ú Typeless ¡¤ RAlt</text>
   <text x="64" y="318" fill="#64748b" font-family="Segoe UI, Inter, sans-serif" font-size="12">Or record any IME voice shortcut manually</text>
 </svg>

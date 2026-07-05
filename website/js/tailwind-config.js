@@ -7,11 +7,16 @@ tailwind.config = {
       },
       colors: {
         brand: {
-          50: "#f0fdfa",
-          100: "#ccfbf1",
-          500: "#14b8a6",
-          600: "#0d9488",
-          900: "#134e4a",
+          50: "#e6f7fc",
+          100: "#d4f0fa",
+          200: "#a8dff0",
+          300: "#7ec8e3",
+          400: "#5ec8e8",
+          500: "#45b0d4",
+          600: "#2a9cc4",
+          700: "#1f8fb8",
+          800: "#1f8fb8",
+          900: "#1a2d4a",
         },
         surface: {
           light: "#ffffff",

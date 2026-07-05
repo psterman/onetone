@@ -1,16 +1,16 @@
-/* Quickstart polish: tokens, entity devices, panel switch, scroll reveal */
+﻿/* Quickstart polish: tokens, entity devices, panel switch, scroll reveal */
 
 body[data-page="quickstart"] {
   --qs-blue: #0078d4;
   --qs-blue-hover: #106ebe;
   --qs-blue-soft: rgba(0, 120, 212, 0.1);
   --qs-blue-ring: rgba(0, 120, 212, 0.28);
-  --qs-accent: #0284c7;
-  --qs-accent-soft: rgba(2, 132, 199, 0.1);
-  --qs-accent-ring: rgba(2, 132, 199, 0.28);
-  --qs-green: #27ae60;
-  --qs-green-soft: rgba(39, 174, 96, 0.1);
-  --qs-green-ring: rgba(39, 174, 96, 0.28);
+  --qs-accent: #2a9cc4;
+  --qs-accent-soft: rgba(42, 156, 196, 0.1);
+  --qs-accent-ring: rgba(42, 156, 196, 0.28);
+  --qs-brand-deep: #1f8fb8;
+  --qs-brand-deep-soft: rgba(31, 143, 184, 0.1);
+  --qs-brand-deep-ring: rgba(31, 143, 184, 0.28);
   --qs-page-bg: #f8f9fa;
   background: var(--qs-page-bg);
 }
@@ -19,20 +19,20 @@ body[data-page="quickstart"] {
   --qs-page-bg: #0f172a;
 }
 
-/* ── P1 配色 ── */
+/* ?? P1 ?? ?? */
 
 .qs-success-banner {
-  background: rgba(39, 174, 96, 0.1);
-  border-color: rgba(39, 174, 96, 0.28);
-  color: #1e6b42;
+  background: rgba(var(--brand-rgb), 0.1);
+  border-color: rgba(var(--brand-rgb), 0.28);
+  color: var(--brand-strong);
 }
 
 .qs-success-banner i {
-  color: var(--qs-green);
+  color: var(--brand);
 }
 
 .qs-success-banner a {
-  color: #15803d;
+  color: var(--brand-strong);
 }
 
 .qs-zone-blue .qs-zone-badge {
@@ -48,9 +48,9 @@ body[data-page="quickstart"] {
 }
 
 .qs-zone-green .qs-zone-badge {
-  background: var(--qs-green-soft);
-  border-color: var(--qs-green-ring);
-  color: var(--qs-green);
+  background: var(--qs-brand-deep-soft);
+  border-color: var(--qs-brand-deep-ring);
+  color: var(--qs-brand-deep);
 }
 
 .qs-zone-blue .qs-zone-card-num {
@@ -62,7 +62,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-zone-green .qs-zone-card-num {
-  color: var(--qs-green);
+  color: var(--qs-brand-deep);
 }
 
 .qs-zone-blue .qs-zone-cards button.is-active {
@@ -76,8 +76,8 @@ body[data-page="quickstart"] {
 }
 
 .qs-zone-green .qs-zone-cards button.is-active {
-  border-color: var(--qs-green-ring);
-  box-shadow: 0 0 0 0.15rem var(--qs-green-soft);
+  border-color: var(--qs-brand-deep-ring);
+  box-shadow: 0 0 0 0.15rem var(--qs-brand-deep-soft);
 }
 
 .qs-chain-seg[data-chain-seg="0"].is-active {
@@ -91,8 +91,8 @@ body[data-page="quickstart"] {
 }
 
 .qs-chain-seg[data-chain-seg="2"].is-active {
-  border-color: var(--qs-green-ring);
-  box-shadow: 0 0 0 0.15rem var(--qs-green-soft);
+  border-color: var(--qs-brand-deep-ring);
+  box-shadow: 0 0 0 0.15rem var(--qs-brand-deep-soft);
 }
 
 .qs-stage-foot a,
@@ -129,16 +129,16 @@ body[data-page="quickstart"] {
 }
 
 .qs-settings-sidebar span.is-active {
-  background: var(--qs-green-soft);
-  color: var(--qs-green);
+  background: var(--qs-brand-deep-soft);
+  color: var(--qs-brand-deep);
 }
 
 .qs-slider-fill {
-  background: var(--qs-green);
+  background: var(--qs-brand-deep);
 }
 
 .qs-settings-toggle.is-on .qs-toggle-pill {
-  background: rgba(39, 174, 96, 0.55);
+  background: rgba(42, 156, 196, 0.55);
 }
 
 .qs-manual-kicker {
@@ -150,10 +150,10 @@ body[data-page="quickstart"] {
 }
 
 .qs-zone-green .qs-manual-kicker {
-  color: var(--qs-green);
+  color: var(--qs-brand-deep);
 }
 
-/* ── P2 实体外设照片 + 出框 3D ── */
+/* ?? P2 ?????? + ?? 3D ?? */
 
 .qs-device-grid {
   overflow: visible;
@@ -294,7 +294,7 @@ body[data-page="quickstart"] {
   display: none;
 }
 
-/* ── P3 面板切换动效 ── */
+/* ?? P3 ?????? ?? */
 
 .qs-zone-stage {
   display: grid;
@@ -345,7 +345,7 @@ body[data-page="quickstart"] {
   transform: translateX(3px);
 }
 
-/* ── Step2 口令绑定动画 ── */
+/* ?? Step2 ?????? ?? */
 
 .qs-voice-bind {
   display: grid;
@@ -353,20 +353,20 @@ body[data-page="quickstart"] {
 }
 
 .qs-voice-bind-scene {
-  background: linear-gradient(180deg, rgba(2, 132, 199, 0.06) 0%, rgba(255, 255, 255, 0.95) 42%);
-  border: 1px solid rgba(2, 132, 199, 0.18);
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.06) 0%, rgba(255, 255, 255, 0.95) 42%);
+  border: 1px solid rgba(42, 156, 196, 0.18);
   border-radius: 1rem;
   padding: 1.1rem 1rem 1rem;
   text-align: center;
 }
 
 .dark .qs-voice-bind-scene {
-  background: linear-gradient(180deg, rgba(2, 132, 199, 0.12) 0%, rgba(15, 23, 42, 0.85) 42%);
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.12) 0%, rgba(15, 23, 42, 0.85) 42%);
 }
 
 .qs-voice-bind-scene.is-listening {
-  border-color: rgba(2, 132, 199, 0.38);
-  box-shadow: 0 0 0 0.12rem rgba(2, 132, 199, 0.1);
+  border-color: rgba(42, 156, 196, 0.38);
+  box-shadow: 0 0 0 0.12rem rgba(42, 156, 196, 0.1);
 }
 
 .qs-voice-bind-scene.is-binding .qs-voice-bind-mic-ring {
@@ -384,7 +384,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-voice-bind-dot {
-  background: #7dd3fc;
+  background: #5ec8e8;
   border-radius: 999px;
   height: 0.45rem;
   width: 0.45rem;
@@ -396,7 +396,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-voice-bind-scene.is-bound .qs-voice-bind-dot {
-  background: var(--qs-green);
+  background: var(--qs-brand-deep);
 }
 
 @keyframes qsBindDotPulse {
@@ -415,9 +415,9 @@ body[data-page="quickstart"] {
 
 .qs-voice-bind-mic {
   align-items: center;
-  background: linear-gradient(145deg, #0ea5e9, #0369a1);
+  background: linear-gradient(145deg, #45b0d4, #0369a1);
   border-radius: 999px;
-  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.38);
+  box-shadow: 0 8px 20px rgba(42, 156, 196, 0.38);
   color: #fff;
   display: flex;
   font-size: 1.25rem;
@@ -429,7 +429,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-voice-bind-pulse {
-  border: 1px solid rgba(2, 132, 199, 0.35);
+  border: 1px solid rgba(42, 156, 196, 0.35);
   border-radius: 999px;
   inset: 0;
   opacity: 0;
@@ -467,7 +467,7 @@ body[data-page="quickstart"] {
 
 .qs-voice-bind-wave span {
   animation: qsVoiceWave 900ms ease-in-out infinite;
-  background: linear-gradient(180deg, #0ea5e9, #0284c7);
+  background: linear-gradient(180deg, #45b0d4, #2a9cc4);
   border-radius: 999px;
   display: block;
   height: 0.55rem;
@@ -515,7 +515,7 @@ body[data-page="quickstart"] {
 
 .qs-voice-bind-chips button {
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(2, 132, 199, 0.22);
+  border: 1px solid rgba(42, 156, 196, 0.22);
   border-radius: 999px;
   color: #0369a1;
   cursor: pointer;
@@ -527,8 +527,8 @@ body[data-page="quickstart"] {
 
 .qs-voice-bind-chips button.is-active,
 .qs-voice-bind-chips button:hover {
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.42);
+  background: rgba(42, 156, 196, 0.1);
+  border-color: rgba(42, 156, 196, 0.42);
   transform: translateY(-1px);
 }
 
@@ -542,7 +542,7 @@ body[data-page="quickstart"] {
 .qs-voice-bind-result {
   animation: qsBindResultIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   background: rgba(248, 250, 252, 0.95);
-  border: 1px dashed rgba(2, 132, 199, 0.28);
+  border: 1px dashed rgba(42, 156, 196, 0.28);
   border-radius: 0.85rem;
   padding: 0.95rem 0.85rem;
 }
@@ -600,7 +600,7 @@ body[data-page="quickstart"] {
 
 .qs-voice-bind-success {
   align-items: center;
-  color: #15803d;
+  color: #1f8fb8;
   display: flex;
   font-size: 0.82rem;
   font-weight: 650;
@@ -610,10 +610,10 @@ body[data-page="quickstart"] {
 }
 
 .qs-voice-bind-success i {
-  color: var(--qs-green);
+  color: var(--qs-brand-deep);
 }
 
-/* ── Step2 说完后：自动发送 / 取消 ── */
+/* ?? Step2 ?????????/ ?? ?? */
 
 .qs-after-speak-layout {
   display: grid;
@@ -692,8 +692,8 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-commit-pills button.is-active {
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.42);
+  background: rgba(42, 156, 196, 0.1);
+  border-color: rgba(42, 156, 196, 0.42);
   color: #0369a1;
 }
 
@@ -734,7 +734,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-flow-list li.is-current {
-  border-left-color: rgba(2, 132, 199, 0.65);
+  border-left-color: rgba(42, 156, 196, 0.65);
   color: #0369a1;
   font-weight: 650;
 }
@@ -765,7 +765,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-delay-fill {
-  background: linear-gradient(90deg, rgba(2, 132, 199, 0.55), rgba(2, 132, 199, 0.95));
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0.55), rgba(42, 156, 196, 0.95));
   border-radius: inherit;
   display: block;
   height: 100%;
@@ -805,9 +805,9 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-toggles .qs-settings-toggle.is-on {
-  background: rgba(2, 132, 199, 0.08);
-  border-color: rgba(2, 132, 199, 0.32);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.08);
+  background: rgba(42, 156, 196, 0.08);
+  border-color: rgba(42, 156, 196, 0.32);
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.08);
 }
 
 .qs-after-speak {
@@ -862,7 +862,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-draft {
-  background: rgba(2, 132, 199, 0.08);
+  background: rgba(42, 156, 196, 0.08);
   border-radius: 0.65rem;
   color: #475569;
   font-size: 0.78rem;
@@ -892,8 +892,8 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak.is-typing .qs-after-speak-compose {
-  border-color: rgba(2, 132, 199, 0.45);
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+  border-color: rgba(42, 156, 196, 0.45);
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.1);
 }
 
 .qs-after-speak-input {
@@ -943,14 +943,14 @@ body[data-page="quickstart"] {
 
 .qs-after-speak-send-btn:not(:disabled) {
   background: var(--qs-accent);
-  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.28);
+  box-shadow: 0 6px 14px rgba(42, 156, 196, 0.28);
   color: #fff;
   cursor: pointer;
 }
 
 .qs-after-speak.is-sent .qs-after-speak-send-btn {
-  background: var(--qs-green);
-  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.28);
+  background: var(--qs-brand-deep);
+  box-shadow: 0 6px 14px rgba(31, 143, 184, 0.28);
   color: #fff;
 }
 
@@ -984,7 +984,7 @@ body[data-page="quickstart"] {
 
 .qs-after-speak.is-sending .qs-after-speak-status-dot,
 .qs-after-speak.is-sent .qs-after-speak-status-dot {
-  background: var(--qs-green);
+  background: var(--qs-brand-deep);
 }
 
 @keyframes qsAfterSpeakPulse {
@@ -1025,8 +1025,8 @@ body[data-page="quickstart"] {
 }
 
 .qs-after-speak-modes button.is-active {
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.42);
+  background: rgba(42, 156, 196, 0.1);
+  border-color: rgba(42, 156, 196, 0.42);
   color: #0369a1;
   transform: translateY(-1px);
 }
@@ -1041,7 +1041,7 @@ body[data-page="quickstart"] {
   align-items: center;
   animation: qsAfterSpeakActionIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   background: rgba(248, 250, 252, 0.95);
-  border: 1px dashed rgba(2, 132, 199, 0.28);
+  border: 1px dashed rgba(42, 156, 196, 0.28);
   border-radius: 0.75rem;
   display: flex;
   gap: 0.65rem;
@@ -1083,8 +1083,8 @@ body[data-page="quickstart"] {
 
 .qs-after-speak-key.is-pulse {
   animation: qsAfterSpeakKeyPulse 520ms ease-in-out 2;
-  border-color: rgba(2, 132, 199, 0.55);
-  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.14);
+  border-color: rgba(42, 156, 196, 0.55);
+  box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.14);
 }
 
 @keyframes qsAfterSpeakKeyPulse {
@@ -1103,7 +1103,7 @@ body[data-page="quickstart"] {
   color: #cbd5e1;
 }
 
-/* ── P4 滚动 reveal ── */
+/* ?? P4 ?? reveal ?? */
 
 .qs-reveal {
   opacity: 0;
@@ -1191,7 +1191,7 @@ body[data-page="quickstart"] {
 }
 
 
-/* ── P2b 选中外设持续悬浮出框（translate 独立属性，与 transform 叠加不冲突） ── */
+/* ?? P2b ???????????translate ???????transform ?????? ?? */
 
 .qs-device-card.is-active .qs-device-photo img {
   animation: qsDeviceFloat 3.4s ease-in-out infinite;
@@ -1208,7 +1208,7 @@ body[data-page="quickstart"] {
 
 
 
-/* ── Step1 用起来 · 三段体验流（硬件 → OneTone → 结果） ── */
+/* ?? Step1 ????? ???????? ??OneTone ???????? */
 
 .qs-onboard-flow {
   align-items: stretch;
@@ -1224,7 +1224,7 @@ body[data-page="quickstart"] {
 .qs-onboard-step {
   align-items: center;
   background: rgba(255, 255, 255, 0.92);
-  border: 1.5px solid rgba(2, 132, 199, 0.18);
+  border: 1.5px solid rgba(42, 156, 196, 0.18);
   border-radius: 0.95rem;
   display: flex;
   flex: 1 1 0;
@@ -1245,11 +1245,11 @@ body[data-page="quickstart"] {
 }
 
 .qs-onboard-step[data-onboard-stage="sw"] {
-  border-color: rgba(2, 132, 199, 0.22);
-  background: linear-gradient(180deg, rgba(2, 132, 199, 0.05) 0%, rgba(255, 255, 255, 0.92) 55%);
+  border-color: rgba(42, 156, 196, 0.22);
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.05) 0%, rgba(255, 255, 255, 0.92) 55%);
 }
 .dark .qs-onboard-step[data-onboard-stage="sw"] {
-  background: linear-gradient(180deg, rgba(2, 132, 199, 0.1) 0%, rgba(15, 23, 42, 0.6) 55%);
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.1) 0%, rgba(15, 23, 42, 0.6) 55%);
 }
 
 .qs-onboard-step[data-onboard-stage="out"] {
@@ -1280,11 +1280,11 @@ body[data-page="quickstart"] {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-cap { color: #0284c7; }
+.qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-cap { color: #2a9cc4; }
 .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-cap { color: #059669; }
-.dark .qs-onboard-step-cap { color: #7dd3fc; }
+.dark .qs-onboard-step-cap { color: #5ec8e8; }
 .dark .qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-cap { color: #38bdf8; }
-.dark .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-cap { color: #6ee7b7; }
+.dark .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-cap { color: #5ec8e8; }
 
 .qs-onboard-step-art {
   align-items: center;
@@ -1297,7 +1297,7 @@ body[data-page="quickstart"] {
 
 .qs-onboard-step-art img { display: block; max-height: 4.5rem; max-width: 88%; object-fit: contain; }
 
-/* ── Stage 01：扁平图标（与右侧卡片画风统一） ── */
+/* ?? Stage 01??????????????????? */
 
 .qs-onboard-icon {
   align-items: center;
@@ -1318,7 +1318,7 @@ body[data-page="quickstart"] {
 .dark .qs-onboard-icon {
   background: linear-gradient(135deg, rgba(0, 120, 212, 0.28) 0%, rgba(56, 189, 248, 0.38) 100%);
   border-color: rgba(56, 189, 248, 0.55);
-  color: #7dd3fc;
+  color: #5ec8e8;
   box-shadow: 0 6px 18px rgba(0, 120, 212, 0.28);
 }
 
@@ -1328,7 +1328,7 @@ body[data-page="quickstart"] {
   18%           { transform: scale(1.04); }
 }
 
-/* ── Stage 01：按压光环（适配圆形图标） ── */
+/* ?? Stage 01???????????????? */
 
 .qs-onboard-press-ring {
   border: 2px solid rgba(0, 120, 212, 0.55);
@@ -1352,7 +1352,7 @@ body[data-page="quickstart"] {
   100% { transform: translate(-50%, -50%) scale(1.85); opacity: 0; }
 }
 
-/* ── Stage 02：语音波形 ── */
+/* ?? Stage 02???????? */
 
 .qs-onboard-step-art-sw {
   align-items: stretch;
@@ -1365,9 +1365,9 @@ body[data-page="quickstart"] {
 .qs-onboard-voice-head {
   align-items: center;
   align-self: center;
-  background: rgba(2, 132, 199, 0.08);
+  background: rgba(42, 156, 196, 0.08);
   border-radius: 999px;
-  color: #0284c7;
+  color: #2a9cc4;
   display: inline-flex;
   font-size: 0.7rem;
   font-weight: 600;
@@ -1393,7 +1393,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-onboard-wave span {
-  background: linear-gradient(180deg, #0284c7 0%, #06b6d4 100%);
+  background: linear-gradient(180deg, #2a9cc4 0%, #5ec8e8 100%);
   border-radius: 999px;
   display: block;
   height: 30%;
@@ -1414,7 +1414,7 @@ body[data-page="quickstart"] {
   50%      { height: 100%; }
 }
 
-/* ── Stage 03：编辑器 + 光标 + 文字上屏 ── */
+/* ?? Stage 03???? + ?? + ???? ?? */
 
 .qs-onboard-step-art-out { height: 5.2rem; }
 
@@ -1437,7 +1437,7 @@ body[data-page="quickstart"] {
 
 .qs-onboard-editor-ln { color: #64748b; }
 .qs-onboard-editor code {
-  color: #86efac;
+  color: #5ec8e8;
   display: inline-block;
   max-width: 9rem;
   min-width: 1ch;
@@ -1449,7 +1449,7 @@ body[data-page="quickstart"] {
 
 .qs-onboard-cursor {
   animation: qsOnboardBlink 1s steps(1) infinite;
-  color: #10b981;
+  color: #2a9cc4;
   display: inline-block;
   font-weight: 700;
   margin-left: -1px;
@@ -1460,7 +1460,7 @@ body[data-page="quickstart"] {
 }
 
 .qs-onboard-step-key {
-  background: rgba(2, 132, 199, 0.08);
+  background: rgba(42, 156, 196, 0.08);
   border-radius: 6px;
   color: #0369a1;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -1468,13 +1468,13 @@ body[data-page="quickstart"] {
   font-weight: 600;
   padding: 0.1rem 0.45rem;
 }
-.qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-key { color: #0284c7; background: rgba(2, 132, 199, 0.08); }
+.qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-key { color: #2a9cc4; background: rgba(42, 156, 196, 0.08); }
 .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-key { color: #059669; background: rgba(16, 185, 129, 0.08); }
-.dark .qs-onboard-step-key { color: #7dd3fc; }
+.dark .qs-onboard-step-key { color: #5ec8e8; }
 .dark .qs-onboard-step[data-onboard-stage="sw"] .qs-onboard-step-key { color: #38bdf8; }
-.dark .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-key { color: #6ee7b7; }
+.dark .qs-onboard-step[data-onboard-stage="out"] .qs-onboard-step-key { color: #5ec8e8; }
 
-/* ── 连接器：桥接 + 走马灯流光 ── */
+/* ?? ?????? + ???????? */
 
 .qs-onboard-bridge {
   align-items: center;
@@ -1496,11 +1496,11 @@ body[data-page="quickstart"] {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.qs-onboard-flow .qs-onboard-bridge:nth-of-type(2) .qs-onboard-bridge-label { color: #0284c7; }
-.dark .qs-onboard-bridge-label { color: #7dd3fc; }
+.qs-onboard-flow .qs-onboard-bridge:nth-of-type(2) .qs-onboard-bridge-label { color: #2a9cc4; }
+.dark .qs-onboard-bridge-label { color: #5ec8e8; }
 
 .qs-onboard-bridge-line {
-  background: linear-gradient(90deg, rgba(2, 132, 199, 0) 0%, rgba(2, 132, 199, 0.4) 50%, rgba(2, 132, 199, 0) 100%);
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0) 0%, rgba(42, 156, 196, 0.4) 50%, rgba(42, 156, 196, 0) 100%);
   border-radius: 999px;
   height: 2px;
   overflow: hidden;
@@ -1508,7 +1508,7 @@ body[data-page="quickstart"] {
   width: 100%;
 }
 .qs-onboard-flow .qs-onboard-bridge:nth-of-type(2) .qs-onboard-bridge-line {
-  background: linear-gradient(90deg, rgba(2, 132, 199, 0) 0%, rgba(2, 132, 199, 0.4) 50%, rgba(2, 132, 199, 0) 100%);
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0) 0%, rgba(42, 156, 196, 0.4) 50%, rgba(42, 156, 196, 0) 100%);
 }
 
 .qs-onboard-bridge-particle {
@@ -1524,8 +1524,8 @@ body[data-page="quickstart"] {
   animation: qsOnboardTravel 2.2s linear infinite;
 }
 .qs-onboard-flow .qs-onboard-bridge:nth-of-type(2) .qs-onboard-bridge-particle {
-  background: #0284c7;
-  box-shadow: 0 0 0.5rem #0284c7, 0 0 0.15rem #7dd3fc;
+  background: #2a9cc4;
+  box-shadow: 0 0 0.5rem #2a9cc4, 0 0 0.15rem #5ec8e8;
 }
 
 @keyframes qsOnboardTravel {
@@ -1535,7 +1535,7 @@ body[data-page="quickstart"] {
   100% { left: 100%; opacity: 0; }
 }
 
-/* ── 价值三件套 ── */
+/* ?? ????? ?? */
 
 .qs-onboard-value-row {
   align-items: center;
@@ -1550,8 +1550,8 @@ body[data-page="quickstart"] {
 
 .qs-onboard-value {
   align-items: center;
-  background: rgba(2, 132, 199, 0.06);
-  border: 1px solid rgba(2, 132, 199, 0.18);
+  background: rgba(42, 156, 196, 0.06);
+  border: 1px solid rgba(42, 156, 196, 0.18);
   border-radius: 999px;
   color: #075985;
   display: inline-flex;
@@ -1562,7 +1562,7 @@ body[data-page="quickstart"] {
 }
 .qs-onboard-value i { color: #0369a1; font-size: 0.95rem; }
 .dark .qs-onboard-value { color: #bae6fd; }
-.dark .qs-onboard-value i { color: #7dd3fc; }
+.dark .qs-onboard-value i { color: #5ec8e8; }
 
 .qs-onboard-foot {
   color: #64748b;
@@ -1572,7 +1572,7 @@ body[data-page="quickstart"] {
 }
 .dark .qs-onboard-foot { color: #94a3b8; }
 
-/* ── 动画减配保护 ── */
+/* ?? ?????? ?? */
 
 @media (prefers-reduced-motion: reduce) {
   .qs-onboard-press-ring,
@@ -1583,7 +1583,7 @@ body[data-page="quickstart"] {
   .qs-onboard-press-ring { opacity: 0; }
 }
 
-/* ── 窄屏堆叠：连接器变纵向，三段变列 ── */
+/* ?? ???????????????? ?? */
 
 @media (max-width: 720px) {
   .qs-onboard-flow {

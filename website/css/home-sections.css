@@ -1,4 +1,4 @@
-/* ‚îÄ‚îÄ Homepage experience sections (flow + fit) ‚îÄ‚îÄ */
+Ôªø/* È?π‚?¨È?π‚?¨ Homepage experience sections (flow + fit) È?π‚?¨È?π‚?¨ */
 
 .home-reveal {
   opacity: 0;
@@ -66,7 +66,7 @@
 }
 
 .home-bento-card.is-featured::before {
-  background: radial-gradient(circle at 85% 15%, rgba(13, 148, 136, 0.14), transparent 55%);
+  background: radial-gradient(circle at 85% 15%, rgba(42, 156, 196, 0.14), transparent 55%);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -74,7 +74,7 @@
 }
 
 .home-bento-tag {
-  color: #0d9488;
+  color: #2a9cc4;
   font-size: 0.78rem;
   font-weight: 850;
   letter-spacing: 0.06em;
@@ -172,7 +172,7 @@
 
 .home-moment-typed i {
   animation: homeCaret 1s step-end infinite;
-  background: #0d9488;
+  background: #2a9cc4;
   display: inline-block;
   height: 1em;
   margin-left: 1px;
@@ -183,7 +183,7 @@
 .home-moment-trigger {
   align-items: center;
   bottom: 1rem;
-  color: #0d9488;
+  color: #2a9cc4;
   display: inline-flex;
   font-size: 1.35rem;
   position: absolute;
@@ -192,7 +192,7 @@
 
 .home-moment-pulse {
   animation: homePulse 2.2s ease-out infinite;
-  background: rgba(13, 148, 136, 0.35);
+  background: rgba(42, 156, 196, 0.35);
   border-radius: 999px;
   height: 2.5rem;
   position: absolute;
@@ -215,7 +215,7 @@
   display: none;
 }
 
-/* ÂØπÊØîÁõíÂ≠ê - Áªü‰∏ÄÂ∞∫ÂØ∏ */
+/* Á?µËß?Á?ÆÈê©Ê??Á?? - ÁºÅÁ?∂Á´¥ÁÅèÂ??Ó?≠ */
 .home-compare-box {
   align-items: center;
   display: flex;
@@ -223,7 +223,7 @@
   gap: 0.4rem;
 }
 
-/* ÂõæÊ†á - Áªü‰∏ÄÂ∞∫ÂØ∏ */
+/* Èç•Á?¨Á?£ - ÁºÅÁ?∂Á´¥ÁÅèÂ??Ó?≠ */
 .home-compare-icon {
   align-items: center;
   background: rgba(148, 163, 184, 0.15);
@@ -245,13 +245,13 @@
   50% { transform: rotate(2deg); }
 }
 
-/* È∫¶ÂÖãÈ£éÂä®Áîª */
+/* Ê•πÔπ?Â?†Ê§?Â∫°Âß©Èê¢?*/
 .home-mic-icon-anim {
   align-items: center;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.2), rgba(20, 184, 166, 0.15));
-  border: 2px solid rgba(20, 184, 166, 0.5);
+  background: linear-gradient(135deg, rgba(42, 156, 196, 0.2), rgba(69, 176, 212, 0.15));
+  border: 2px solid rgba(69, 176, 212, 0.5);
   border-radius: 50%;
-  color: #0d9488;
+  color: #2a9cc4;
   display: flex;
   font-size: 1.8rem;
   height: 3.5rem;
@@ -261,11 +261,11 @@
 }
 
 @keyframes homeMicPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); }
-  50% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(20, 184, 166, 0); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(69, 176, 212, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(69, 176, 212, 0); }
 }
 
-/* Ê†áÁ≠æÂæΩÁ´† */
+/* ÈèçÂ?©Ó?∑ÂØ∞Á??Áè∑ */
 .home-compare-badge {
   font-size: 0.8rem;
   font-weight: 800;
@@ -276,10 +276,10 @@
 }
 
 .home-compare-good {
-  color: #0d9488;
+  color: #2a9cc4;
 }
 
-/* VS ÂàÜÈöî */
+/* VS Èç?Â??ÊÆß */
 .home-compare-vs {
   align-self: center;
   color: #94a3b8;
@@ -316,9 +316,9 @@
 }
 
 .home-shortcut-compare span.is-active {
-  background: rgba(13, 148, 136, 0.12);
-  border-color: rgba(13, 148, 136, 0.35);
-  color: #0d9488;
+  background: rgba(42, 156, 196, 0.12);
+  border-color: rgba(42, 156, 196, 0.35);
+  color: #2a9cc4;
   opacity: 1;
   text-decoration: none;
 }
@@ -332,8 +332,8 @@
 
 .home-bento-quote {
   align-items: center;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(59, 130, 246, 0.06));
-  border: 1px solid rgba(13, 148, 136, 0.14);
+  background: linear-gradient(135deg, rgba(42, 156, 196, 0.08), rgba(59, 130, 246, 0.06));
+  border: 1px solid rgba(42, 156, 196, 0.14);
   border-radius: 1.15rem;
   display: flex;
   gap: 0.85rem;
@@ -343,11 +343,11 @@
 }
 
 .dark .home-bento-quote {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(15, 23, 42, 0.85));
+  background: linear-gradient(135deg, rgba(42, 156, 196, 0.12), rgba(15, 23, 42, 0.85));
 }
 
 .home-bento-quote i {
-  color: #0d9488;
+  color: #2a9cc4;
   flex-shrink: 0;
   font-size: 1.5rem;
   opacity: 0.75;
@@ -366,7 +366,7 @@
   color: #e2e8f0;
 }
 
-/* ‚îÄ‚îÄ IME demo duo (wake + cancel) ‚îÄ‚îÄ */
+/* È?π‚?¨È?π‚?¨ IME demo duo (wake + cancel) È?π‚?¨È?π‚?¨ */
 
 .home-ime-duo {
   display: grid;
@@ -391,15 +391,15 @@
 }
 
 .home-bento-card.is-ime-normal-card {
-  border-color: rgba(13, 148, 136, 0.22);
+  border-color: rgba(42, 156, 196, 0.22);
 }
 
 .home-bento-card.is-ime-normal-card::before {
-  background: radial-gradient(circle at 88% 12%, rgba(13, 148, 136, 0.12), transparent 58%);
+  background: radial-gradient(circle at 88% 12%, rgba(42, 156, 196, 0.12), transparent 58%);
 }
 
 .home-bento-card.is-ime-normal-card .home-bento-tag {
-  color: #0d9488;
+  color: #2a9cc4;
 }
 
 .home-bento-card.is-ime-cancel-card {
@@ -430,7 +430,7 @@
   margin-top: 0.15rem;
 }
 
-/* ‚îÄ‚îÄ IME wake card (legacy shared stage) ‚îÄ‚îÄ */
+/* È?π‚?¨È?π‚?¨ IME wake card (legacy shared stage) È?π‚?¨È?π‚?¨ */
 
 .home-bento-card.is-ime-wake {
   align-items: center;
@@ -478,7 +478,7 @@
 
 .home-ime-listen-mic {
   align-items: center;
-  background: rgba(13, 148, 136, 0.12);
+  background: rgba(42, 156, 196, 0.12);
   border-radius: 999px;
   color: #64748b;
   display: inline-flex;
@@ -492,9 +492,9 @@
 
 .home-ime-wake-stage.is-listening .home-ime-listen-mic {
   animation: homeImeMicPulse 1.8s ease-in-out infinite;
-  background: rgba(13, 148, 136, 0.2);
-  box-shadow: 0 0 0 6px rgba(13, 148, 136, 0.1);
-  color: #0d9488;
+  background: rgba(42, 156, 196, 0.2);
+  box-shadow: 0 0 0 6px rgba(42, 156, 196, 0.1);
+  color: #2a9cc4;
 }
 
 .home-ime-phrase-transcript {
@@ -512,7 +512,7 @@
 
 .home-ime-phrase-transcript.is-typing::after {
   animation: homeCaret 1s step-end infinite;
-  background: #0d9488;
+  background: #2a9cc4;
   content: "";
   display: inline-block;
   height: 0.95em;
@@ -581,23 +581,23 @@
 }
 
 .home-ime-node.is-lit {
-  background: rgba(13, 148, 136, 0.12);
-  border-color: rgba(13, 148, 136, 0.35);
-  box-shadow: 0 0 18px rgba(13, 148, 136, 0.18);
-  color: #0f766e;
+  background: rgba(42, 156, 196, 0.12);
+  border-color: rgba(42, 156, 196, 0.35);
+  box-shadow: 0 0 18px rgba(42, 156, 196, 0.18);
+  color: #1f8fb8;
   transform: translateY(-1px);
 }
 
 .dark .home-ime-node.is-lit {
-  color: #5eead4;
+  color: #5ec8e8;
 }
 
 .home-ime-node.is-lit i {
-  color: #0d9488;
+  color: #2a9cc4;
 }
 
 .home-ime-onetone.is-lit {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.16), rgba(59, 130, 246, 0.1));
+  background: linear-gradient(135deg, rgba(42, 156, 196, 0.16), rgba(59, 130, 246, 0.1));
 }
 
 .home-ime-arrow {
@@ -626,9 +626,9 @@
 
 .home-ime-bar-mic {
   align-items: center;
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(42, 156, 196, 0.2);
   border-radius: 999px;
-  color: #4ade80;
+  color: #5ec8e8;
   display: flex;
   flex-shrink: 0;
   font-size: 0.9rem;
@@ -648,7 +648,7 @@
 
 .home-ime-wave span {
   animation: homeImeWave 900ms ease-in-out infinite;
-  background: #4ade80;
+  background: #5ec8e8;
   border-radius: 999px;
   display: block;
   height: 0.75rem;
@@ -713,7 +713,7 @@
 
 .home-ime-typed i {
   animation: homeCaret 1s step-end infinite;
-  background: #0d9488;
+  background: #2a9cc4;
   display: inline-block;
   height: 1em;
   margin-left: 1px;
@@ -779,16 +779,16 @@
 }
 
 .home-ime-typed-wrap.is-retrying {
-  border-color: rgba(13, 148, 136, 0.28);
+  border-color: rgba(42, 156, 196, 0.28);
 }
 
 .home-ime-typed-wrap.is-done {
-  border-color: rgba(13, 148, 136, 0.35);
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.08);
+  border-color: rgba(42, 156, 196, 0.35);
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.08);
 }
 
 .home-bento-card.is-ime-cancel-card .home-ime-typed-wrap.is-done {
-  border-color: rgba(13, 148, 136, 0.32);
+  border-color: rgba(42, 156, 196, 0.32);
 }
 
 @keyframes homeImeCancelPulse {
@@ -809,16 +809,16 @@
 }
 
 .home-ime-send-btn:not(:disabled) {
-  background: #0d9488;
-  border-color: #0d9488;
+  background: #2a9cc4;
+  border-color: #2a9cc4;
   color: #fff;
   cursor: pointer;
 }
 
 .home-ime-send-btn.is-sent {
-  background: rgba(34, 197, 94, 0.16);
-  border-color: rgba(34, 197, 94, 0.35);
-  color: #15803d;
+  background: rgba(42, 156, 196, 0.16);
+  border-color: rgba(42, 156, 196, 0.35);
+  color: #1f8fb8;
 }
 
 .home-ime-delay {
@@ -849,7 +849,7 @@
 }
 
 .home-ime-delay-fill {
-  background: linear-gradient(90deg, rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.95));
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0.45), rgba(42, 156, 196, 0.95));
   border-radius: inherit;
   display: block;
   height: 100%;
@@ -858,7 +858,7 @@
 }
 
 .home-ime-outcome-status {
-  color: #0f766e;
+  color: #1f8fb8;
   font-size: 0.74rem;
   font-weight: 750;
   line-height: 1.45;
@@ -866,7 +866,7 @@
 }
 
 .dark .home-ime-outcome-status {
-  color: #5eead4;
+  color: #5ec8e8;
 }
 
 .home-ime-outcome-status.is-muted {
@@ -898,13 +898,13 @@
 }
 
 .home-ime-flow-steps li.is-active {
-  background: rgba(13, 148, 136, 0.12);
-  border-color: rgba(13, 148, 136, 0.28);
-  color: #0f766e;
+  background: rgba(42, 156, 196, 0.12);
+  border-color: rgba(42, 156, 196, 0.28);
+  color: #1f8fb8;
 }
 
 .home-ime-flow-steps li.is-current {
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.1);
 }
 
 .home-ime-voice-bar.is-ending {
@@ -924,7 +924,7 @@
 
 .home-ime-typed-wrap.is-waiting,
 .home-ime-typed-wrap.is-committed {
-  border-color: rgba(13, 148, 136, 0.28);
+  border-color: rgba(42, 156, 196, 0.28);
 }
 
 .home-ime-typed-wrap.is-sending .home-ime-send-btn:not(:disabled) {
@@ -933,10 +933,10 @@
 
 @keyframes homeImeSendPulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04); box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.18); }
+  50% { transform: scale(1.04); box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.18); }
 }
 
-/* ‚îÄ‚îÄ Fit section ‚îÄ‚îÄ */
+/* È?π‚?¨È?π‚?¨ Fit section È?π‚?¨È?π‚?¨ */
 
 .home-fit-hero {
   align-items: center;
@@ -988,9 +988,9 @@
 }
 
 .home-layer-step.is-onetone {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(59, 130, 246, 0.08));
-  border-color: rgba(13, 148, 136, 0.28);
-  box-shadow: 0 12px 32px rgba(13, 148, 136, 0.12);
+  background: linear-gradient(135deg, rgba(42, 156, 196, 0.12), rgba(59, 130, 246, 0.08));
+  border-color: rgba(42, 156, 196, 0.28);
+  box-shadow: 0 12px 32px rgba(42, 156, 196, 0.12);
 }
 
 .home-layer-icon {
@@ -1008,7 +1008,7 @@
 }
 
 .home-layer-step.is-onetone .home-layer-icon {
-  background: #0d9488;
+  background: #2a9cc4;
   color: #fff;
 }
 
@@ -1029,7 +1029,7 @@
 }
 
 .home-layer-line {
-  background: linear-gradient(180deg, rgba(13, 148, 136, 0.45), rgba(13, 148, 136, 0.08));
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.45), rgba(42, 156, 196, 0.08));
   height: 1.1rem;
   margin-left: 1.85rem;
   width: 2px;
@@ -1053,12 +1053,12 @@
 }
 
 .home-fit-card.is-ime {
-  background: linear-gradient(155deg, #0f766e 0%, #0d9488 45%, #14b8a6 100%);
+  background: linear-gradient(155deg, #1f8fb8 0%, #2a9cc4 45%, #45b0d4 100%);
   color: #fff;
 }
 
 .home-fit-card.is-local {
-  background: linear-gradient(155deg, #1e293b 0%, #334155 55%, #0f766e 140%);
+  background: linear-gradient(155deg, #1e293b 0%, #334155 55%, #1f8fb8 140%);
   color: #fff;
 }
 
@@ -1143,7 +1143,7 @@
 
 .home-fit-tray-dot {
   animation: homeTrayPulse 2.4s ease-in-out infinite;
-  background: #4ade80;
+  background: #5ec8e8;
   border-radius: 999px;
   height: 0.45rem;
   width: 0.45rem;
@@ -1157,13 +1157,13 @@
 }
 
 .home-fit-foot a {
-  color: #0d9488;
+  color: #2a9cc4;
   font-size: 0.92rem;
   font-weight: 850;
 }
 
 .home-fit-foot a:hover {
-  color: #0f766e;
+  color: #1f8fb8;
 }
 
 @keyframes homeThoughtIn {
@@ -1182,8 +1182,8 @@
 }
 
 @keyframes homeSideGlow {
-  0%, 100% { box-shadow: 0 0 10px rgba(13, 148, 136, 0.35); }
-  50% { box-shadow: 0 0 22px rgba(13, 148, 136, 0.75); }
+  0%, 100% { box-shadow: 0 0 10px rgba(42, 156, 196, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(42, 156, 196, 0.75); }
 }
 
 @keyframes homeWave {
@@ -1193,7 +1193,7 @@
 
 @keyframes homeTrayPulse {
   0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; box-shadow: 0 0 8px rgba(74, 222, 128, 0.65); }
+  50% { opacity: 1; box-shadow: 0 0 8px rgba(94, 200, 232, 0.65); }
 }
 
 @keyframes homeImeWave {
@@ -1202,8 +1202,8 @@
 }
 
 @keyframes homeImeMicPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.08); }
-  50% { box-shadow: 0 0 0 10px rgba(13, 148, 136, 0.18); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.08); }
+  50% { box-shadow: 0 0 0 10px rgba(42, 156, 196, 0.18); }
 }
 
 @media (max-width: 960px) {
@@ -1266,8 +1266,8 @@
   .home-ime-node.home-ime-phrase-node,
   .home-ime-node.home-ime-onetone,
   .home-ime-node.home-ime-target {
-    background: rgba(13, 148, 136, 0.12);
-    border-color: rgba(13, 148, 136, 0.35);
-    color: #0f766e;
+    background: rgba(42, 156, 196, 0.12);
+    border-color: rgba(42, 156, 196, 0.35);
+    color: #1f8fb8;
   }
 }

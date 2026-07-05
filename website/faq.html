@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>常见问题 — 一声 OneTone</title>
+  <title>帮助与排错 — 一声 OneTone</title>
+  <meta name="description" content="一声 OneTone 常见问题：按键没反应、录键失败、麦克风、输入法快捷键与恢复设置。">
   <link rel="canonical" href="https://www.onetone.app/faq.html">
   <link rel="icon" href="assets/logo.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/faq.css">
 </head>
 <body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100" data-page="faq">
 
@@ -37,81 +39,294 @@
     </div>
   </header>
 
-  <main class="pb-16 max-w-3xl mx-auto px-6">
-    <div class="text-center mb-12">
-      <h1 class="text-4xl font-bold mb-3" data-i18n="faqPageTitle">常见问题</h1>
-      <p class="text-slate-500" data-i18n="faqPageIntro">按你遇到的问题往下找，先排第一层再读详细说明。</p>
-    </div>
+  <main class="faq-page pb-16 max-w-3xl mx-auto px-6">
+    <header class="faq-page-head">
+      <h1 data-i18n="faqPageTitle">帮助与排错</h1>
+      <p data-i18n="faqPageIntro">先选你的症状，再按步骤操作。多数情况是按键或输入法设置问题，不是软件坏了。</p>
+    </header>
 
-    <details id="no-response" open class="glass-card rounded-2xl mb-4 overflow-hidden scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center"><span data-i18n="faqQ1">为什么我按了没反应？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 border-t border-slate-200/50 dark:border-slate-700/50 pt-4 text-sm text-slate-600 dark:text-slate-300">
-        <ul class="rounded-xl bg-brand-50 dark:bg-brand-900/20 p-4 mb-4 space-y-2">
-          <li><strong data-i18n="faqTriage1">软件有没有开</strong> — <span data-i18n="faqTriage1Hint">看系统托盘</span></li>
-          <li><strong data-i18n="faqTriage2">按键有没有录对</strong> — <span data-i18n="faqTriage2Hint">设置里和测试时同一个键吗？</span></li>
-          <li><strong data-i18n="faqTriage3">输入法快捷键对不对</strong> — <span data-i18n="faqTriage3Hint">在记事本直接按输入法的激活键测试</span></li>
-        </ul>
-        <div class="space-y-2">
-          <p id="no-response-check-app" data-i18n="faqCheckApp">1. 软件在运行吗？ 看托盘「一声」图标，暂停则恢复监听。</p>
-          <p id="no-response-check-key" data-i18n="faqCheckKey">2. 键录对了吗？ 设置 → 按键，在记事本按同一触发键测试。</p>
-          <p id="no-response-check-shortcut" data-i18n="faqCheckShortcut">3. 输入法激活键能用吗？ 不用一声，在记事本直接按你录的激活键，看输入法是否进入听写。</p>
-          <p data-i18n="faqCheckStill">4. 仍无效： 打开运行状态；先在记事本测试，避开全屏游戏。</p>
+    <section class="faq-symptoms" aria-label="Quick links">
+      <h2 class="faq-symptoms-title" data-i18n="faqSymptomsTitle">先选你的问题</h2>
+      <div class="faq-symptom-grid">
+        <a href="#no-response" class="faq-symptom-card">
+          <strong data-i18n="faqSymNoResponse">按了没反应</strong>
+          <span data-i18n="faqSymNoResponseHint">触发键是否生效</span>
+        </a>
+        <a href="#ime-not-wake" class="faq-symptom-card">
+          <strong data-i18n="faqSymImeWake">输入法没唤醒</strong>
+          <span data-i18n="faqSymImeWakeHint">语音条不出现</span>
+        </a>
+        <a href="#record-failed" class="faq-symptom-card">
+          <strong data-i18n="faqSymRecordFail">录键失败</strong>
+          <span data-i18n="faqSymRecordFailHint">未能识别该按键</span>
+        </a>
+        <a href="#wrong-keys" class="faq-symptom-card">
+          <strong data-i18n="faqSymWrongKeys">按键设错了</strong>
+          <span data-i18n="faqSymWrongKeysHint">怎么改回来</span>
+        </a>
+        <a href="#no-mic" class="faq-symptom-card">
+          <strong data-i18n="faqSymNoMic">找不到麦克风</strong>
+          <span data-i18n="faqSymNoMicHint">权限与设备</span>
+        </a>
+        <a href="#key-conflict" class="faq-symptom-card">
+          <strong data-i18n="faqSymConflict">按键冲突</strong>
+          <span data-i18n="faqSymConflictHint">方案被自动关掉</span>
+        </a>
+        <a href="#error-messages" class="faq-symptom-card">
+          <strong data-i18n="faqSymErrors">软件提示</strong>
+          <span data-i18n="faqSymErrorsHint">看到报错怎么办</span>
+        </a>
+        <a href="download.html#smartscreen" class="faq-symptom-card">
+          <strong data-i18n="faqSymSmartScreen">安装被拦截</strong>
+          <span data-i18n="faqSymSmartScreenHint">SmartScreen 提示</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- 使用卡住 -->
+    <section class="faq-section" aria-labelledby="faq-sec-use">
+      <h2 class="faq-section-title" id="faq-sec-use" data-i18n="faqSectionUse">使用卡住</h2>
+
+      <details id="no-response" class="faq-item glass-card rounded-2xl group" open>
+        <summary><span data-i18n="faqQ1">为什么我按了没反应？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <ul class="faq-triage">
+            <li><strong data-i18n="faqTriage1">软件有没有开</strong> — <span data-i18n="faqTriage1Hint">看系统托盘，一声图标要在运行</span></li>
+            <li><strong data-i18n="faqTriage2">按键有没有录对</strong> — <span data-i18n="faqTriage2Hint">设置里「你的键」和测试时按的是同一个吗？</span></li>
+            <li><strong data-i18n="faqTriage3">输入法快捷键对不对</strong> — <span data-i18n="faqTriage3Hint">在记事本直接按输入法的激活键测试</span></li>
+          </ul>
+          <ol class="faq-steps">
+            <li id="no-response-check-app" data-i18n="faqCheckApp">软件在运行吗？看托盘「一声」图标；若显示「监听已暂停」，点首页恢复监听。</li>
+            <li id="no-response-check-key" data-i18n="faqCheckKey">键录对了吗？设置 → 按键，点「测试发送」或在记事本按同一触发键。</li>
+            <li id="no-response-check-shortcut" data-i18n="faqCheckShortcut">输入法激活键能用吗？不用一声，在记事本直接按你录的语音快捷键，看是否出现语音条。</li>
+            <li data-i18n="faqCheckStill">仍无效：设置 → 运行状态查看最近按键；先在记事本测试，避开全屏游戏。</li>
+          </ol>
+          <p class="faq-related" data-i18n-html="faqRelatedNoResponse"></p>
         </div>
-      </div>
-    </details>
+      </details>
 
-    <details id="no-mic" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ2">为什么检测不到麦克风？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300 space-y-2">
-        <div data-lang-content="zh"><p>设置 → 隐私 → 麦克风，允许桌面应用。设置 → 语音 刷新列表。USB 重插；蓝牙设为默认输入。</p></div>
-        <div data-lang-content="en"><p>Allow mic for desktop apps in Privacy. Refresh device list in Settings → Voice. Replug USB; set Bluetooth as default.</p></div>
-      </div>
-    </details>
+      <details id="ime-not-wake" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQImeWake">触发有反应，但输入法没被唤醒？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqImeWakeLead">说明一声收到了触发，但模拟的语音快捷键不对，或输入法未就绪。</p>
+          <ol class="faq-steps">
+            <li data-i18n="faqImeWake1">在输入法设置里确认「语音输入 / 听写」的快捷键（如 RAlt、Ctrl+Shift 等）。</li>
+            <li data-i18n="faqImeWake2">在 OneTone 设置 → 按键，重新录入<strong>同一组合</strong>，或点输入法预设自动填入。</li>
+            <li data-i18n="faqImeWake3">录快捷键前先退出听写状态；在普通英文输入状态下录制。</li>
+            <li data-i18n="faqImeWake4">在记事本里<strong>不用一声</strong>，手动按该快捷键，确认语音条会出现。</li>
+          </ol>
+          <p class="faq-related" data-i18n-html="faqRelatedImeWake"></p>
+        </div>
+      </details>
 
-    <details id="system-audio" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ3">为什么会录到电脑声音？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <div data-lang-content="zh"><p>开启「录音时自动降低系统声音」。关闭立体声混音录音设备。优先用耳机麦。</p></div>
-        <div data-lang-content="en"><p>Enable lower system volume while recording. Disable Stereo Mix. Use a headset mic.</p></div>
-      </div>
-    </details>
+      <details id="listening-paused" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQPaused">顶部显示「监听已暂停」？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqPausedBody">暂停时所有触发键都不会响应。在首页点「恢复监听」，或托盘菜单恢复。若正在录键，先结束录制再测试。</p>
+          <p class="faq-related" data-i18n-html="faqRelatedPaused"></p>
+        </div>
+      </details>
+    </section>
 
-    <details id="baidu-ime" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ4">百度输入法怎么设置快捷键？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <p data-i18n="faqBaiduBody">百度设置里查语音快捷键（常见 Alt+A，部分版本 F2/F1）。在一声设置 → 按键录入同一组合。</p>
-      </div>
-    </details>
+    <!-- 按键与方案 -->
+    <section class="faq-section" aria-labelledby="faq-sec-keys">
+      <h2 class="faq-section-title" id="faq-sec-keys" data-i18n="faqSectionKeys">按键与方案</h2>
 
-    <details id="other-ime" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ5">微信 / 搜狗输入法可以用吗？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <div data-lang-content="zh"><p>可以。在输入法里确认语音快捷键，在设置 → 按键录入同一组合。</p></div>
-        <div data-lang-content="en"><p>Yes. Confirm the IME voice shortcut and record the same combo in Settings → Keys.</p></div>
-      </div>
-    </details>
+      <details id="wrong-keys" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQWrongKeys">按键设错了，怎么改回来？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqWrongKeysLead">从轻到重，按需选择：</p>
+          <ol class="faq-steps">
+            <li data-i18n="faqWrongKeys1"><strong>只录错一个：</strong>设置 → 按键 → 重新点「录触发键」或「录语音快捷键」。</li>
+            <li data-i18n="faqWrongKeys2"><strong>多套方案搞混：</strong>只启用一个方案；或设置 → 恢复与维护 → 回收站恢复旧方案。</li>
+            <li data-i18n="faqWrongKeys3"><strong>全部重来：</strong>设置 → 恢复与维护 →「清除全部映射」。</li>
+            <li data-i18n-html="faqWrongKeys4"></li>
+          </ol>
+          <p class="faq-related" data-i18n-html="faqRelatedWrongKeys"></p>
+        </div>
+      </details>
 
-    <details id="reset" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ6">怎么恢复默认设置？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <div data-lang-content="zh"><p>设置 → 通用 → 恢复默认。或删除 <code class="bg-slate-100 dark:bg-slate-800 px-1 rounded">%APPDATA%\onetone\config\settings.json</code>（更新不会覆盖）。</p></div>
-        <div data-lang-content="en"><p>Settings → General → Reset. Or delete settings.json under %APPDATA%\onetone\config\ (updates preserve it).</p></div>
-      </div>
-    </details>
+      <details id="record-failed" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQRecordFail">录键失败 / 提示「未能识别该按键」？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqRecordFailLead">这是录制被拒绝，不代表键盘坏了。常见原因与处理：</p>
+          <ul class="faq-steps">
+            <li data-i18n="faqRecordFail1">换一颗键：音量键、鼠标侧键、F 区单键通常最稳。</li>
+            <li data-i18n="faqRecordFail2">录触发键时不要点桌面、开始菜单；避免只按 Ctrl/Alt/Shift 等修饰键。</li>
+            <li data-i18n="faqRecordFail3">组合键：先按住修饰键，再按主键，等界面显示完整组合后松开。</li>
+            <li data-i18n="faqRecordFail4">录语音快捷键前，先退出输入法的听写状态。</li>
+            <li data-i18n="faqRecordFail5">仍失败：重启一声；少数外设需先打开该外设配套软件。</li>
+          </ul>
+          <p class="faq-related" data-i18n-html="faqRelatedRecordFail"></p>
+        </div>
+      </details>
 
-    <details id="report" class="glass-card rounded-2xl mb-8 scroll-mt-28 group">
-      <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ7">还是不行，怎么反馈问题？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
-      <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <div data-lang-content="zh"><p>附上 Windows 版本、一声版本、触发键与语音键、输入法、复现步骤。<a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" class="text-brand-600">提交问题</a></p></div>
-        <div data-lang-content="en"><p>Include Windows &amp; app version, keys, IME, steps. <a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" class="text-brand-600">Report issue</a></p></div>
-      </div>
-    </details>
+      <details id="key-conflict" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQConflict">提示按键冲突 / 方案被自动关掉？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqConflictBody">两个已启用方案使用了相同触发键（或相同外设物理键）时，一声会停用其中一个，避免乱触发。处理：只保留一个启用的方案，或给不同方案换不同的触发键。顶部「冲突」提示可点进方案列表查看。</p>
+          <p class="faq-related" data-i18n-html="faqRelatedConflict"></p>
+        </div>
+      </details>
 
-    <p class="text-center text-slate-500"><span data-i18n="faqNext">下一步：按上面在软件里试一次</span> · <a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" class="text-brand-600" data-i18n="faqNextLink">仍不行？提交问题</a></p>
+      <details id="test-send-failed" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQTestFail">测试发送失败，但实际按键好像有反应？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <ol class="faq-steps">
+            <li data-i18n="faqTestFail1">测试前先点开记事本或聊天框，让光标在输入位置。</li>
+            <li data-i18n="faqTestFail2">确认未暂停监听，且未处于录键状态。</li>
+            <li data-i18n="faqTestFail3">若测试成功但外设不触发，检查触发模式是否为「长按」——轻按无效，需按住约 0.5 秒。</li>
+          </ol>
+          <p class="faq-related" data-i18n-html="faqRelatedTestFail"></p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 语音与麦克风 -->
+    <section class="faq-section" aria-labelledby="faq-sec-voice">
+      <h2 class="faq-section-title" id="faq-sec-voice" data-i18n="faqSectionVoice">语音与麦克风</h2>
+
+      <details id="no-mic" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ2">为什么检测不到麦克风？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <ol class="faq-steps">
+            <li data-i18n="faqMic1">Windows：设置 → 隐私 → 麦克风 → 允许桌面应用访问。</li>
+            <li data-i18n="faqMic2">OneTone：设置 → 语音 → 刷新设备列表。</li>
+            <li data-i18n="faqMic3">硬件：USB 麦克风重插；蓝牙麦在系统声音设置里设为默认输入。</li>
+            <li data-i18n="faqMic4">区分场景：<strong>一声语音唤起</strong>与<strong>输入法听写</strong>都需要麦——若按键能唤醒输入法但无声音，多半是输入法没拿到麦克风权限。</li>
+          </ol>
+          <p class="faq-note" data-i18n="faqMicNote">先在 Windows「声音」里试麦，再在输入法里试听写，最后才测一声。</p>
+          <p class="faq-related" data-i18n-html="faqRelatedMic"></p>
+        </div>
+      </details>
+
+      <details id="system-audio" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ3">为什么会录到电脑声音？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqSystemAudioBody">在设置 → 声音 开启「录音时自动降低系统声音」。在 Windows 声音设置里禁用「立体声混音」类录音设备。优先使用耳机麦克风，避免扬声器回授。</p>
+        </div>
+      </details>
+
+      <details id="voice-wake-fail" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQVoiceWake">说了唤醒词没反应？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <ol class="faq-steps">
+            <li data-i18n="faqVoiceWake1">确认已在设置 → 语音 开启语音唤起（轻量或离线模式）。</li>
+            <li data-i18n="faqVoiceWake2">唤醒词需与设置里勾选的短语一致，尽量在安静环境清晰说出。</li>
+            <li data-i18n="faqVoiceWake3">轻量模式依赖 Windows 语音识别，需已安装中文语音包。</li>
+            <li data-i18n="faqVoiceWake4">刚结束上一轮听写时，需等几秒再说唤醒词。</li>
+          </ol>
+          <p class="faq-related" data-i18n-html="faqRelatedVoiceWake"></p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 错误提示 -->
+    <section class="faq-section" aria-labelledby="faq-sec-errors">
+      <h2 class="faq-section-title" id="faq-sec-errors" data-i18n="faqSectionErrors">软件提示对照</h2>
+
+      <details id="error-messages" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQErrors">看到提示不知道什么意思？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <table class="faq-error-table">
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="faqErrColPrompt">提示</th>
+                <th scope="col" data-i18n="faqErrColMeaning">含义</th>
+                <th scope="col" data-i18n="faqErrColFix">怎么办</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n="faqErrWhitelist">未能识别该按键</td>
+                <td data-i18n="faqErrWhitelistMean">录键被拒绝</td>
+                <td data-i18n-html="faqErrWhitelistFix"></td>
+              </tr>
+              <tr>
+                <td data-i18n="faqErrPaused">监听已暂停</td>
+                <td data-i18n="faqErrPausedMean">全局不响应触发</td>
+                <td data-i18n-html="faqErrPausedFix"></td>
+              </tr>
+              <tr>
+                <td data-i18n="faqErrConflict">按键冲突</td>
+                <td data-i18n="faqErrConflictMean">两方案抢同一键</td>
+                <td data-i18n-html="faqErrConflictFix"></td>
+              </tr>
+              <tr>
+                <td data-i18n="faqErrSendFail">测试发送失败</td>
+                <td data-i18n="faqErrSendFailMean">快捷键未送到前台</td>
+                <td data-i18n-html="faqErrSendFailFix"></td>
+              </tr>
+              <tr>
+                <td data-i18n="faqErrRecording">正在录制…</td>
+                <td data-i18n="faqErrRecordingMean">录键模式占用</td>
+                <td data-i18n="faqErrRecordingFix">先点取消录制，再测试。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- 输入法 -->
+    <section class="faq-section" aria-labelledby="faq-sec-ime">
+      <h2 class="faq-section-title" id="faq-sec-ime" data-i18n="faqSectionIme">输入法</h2>
+
+      <details id="baidu-ime" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ4">百度输入法怎么设置快捷键？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqBaiduBody">在百度输入法设置里查找语音快捷键（常见 Alt+A，部分版本为 F2/F1）。在 OneTone 设置 → 按键录入同一组合，或选择百度预设。</p>
+        </div>
+      </details>
+
+      <details id="other-ime" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ5">微信 / 搜狗输入法可以用吗？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n="faqOtherImeBody">可以。在对应输入法里确认语音快捷键，在 OneTone 设置 → 按键录入同一组合，或点选输入法预设。</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- 重置与反馈 -->
+    <section class="faq-section" aria-labelledby="faq-sec-reset">
+      <h2 class="faq-section-title" id="faq-sec-reset" data-i18n="faqSectionReset">重置与反馈</h2>
+
+      <details id="reset" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ6">怎么恢复全部默认设置？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n-html="faqResetBody"></p>
+          <p class="faq-related" data-i18n-html="faqRelatedReset"></p>
+        </div>
+      </details>
+
+      <details id="report" class="faq-item glass-card rounded-2xl group">
+        <summary><span data-i18n="faqQ7">还是不行，怎么反馈问题？</span><i class="ph-bold ph-caret-down"></i></summary>
+        <div class="faq-body">
+          <p data-i18n-html="faqReportBody"></p>
+        </div>
+      </details>
+    </section>
+
+    <p class="faq-footer-cta">
+      <span data-i18n="faqNext">还没装好？</span>
+      <a href="quickstart.html?from=download#step1" data-i18n="faqNextQuickstart">看上手指南</a>
+      ·
+      <a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" data-i18n="faqNextLink">提交问题</a>
+    </p>
   </main>
 
-  <footer class="border-t py-10 text-sm text-slate-500 text-center">
-    <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+  <footer class="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-surface-dark py-10 text-sm text-slate-500">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
+      <nav class="flex flex-wrap justify-center gap-x-8 gap-y-4">
+        <a href="changelog.html" data-i18n="footerChangelog">更新日志</a>
+        <a href="privacy.html" data-i18n="footerPrivacy">隐私政策</a>
+        <a href="terms.html" data-i18n="footerTerms">服务条款</a>
+        <a href="https://github.com/psterman/voice-pilot" target="_blank" rel="noopener noreferrer" data-i18n="footerGithub">GitHub</a>
+        <a href="https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml" data-i18n="footerReport">反馈问题</a>
+        <a href="support.html" data-i18n="footerSupport">支持项目</a>
+      </nav>
+    </div>
   </footer>
   <script src="js/site.js"></script>
   <script src="js/i18n.js"></script>

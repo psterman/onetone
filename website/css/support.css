@@ -1,0 +1,114 @@
+.support-page {
+  overflow-x: hidden;
+}
+
+.support-hero {
+  margin: 0 auto 2rem;
+  max-width: 34rem;
+  text-align: center;
+}
+
+.support-hero h1 {
+  font-size: clamp(1.85rem, 4vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.support-hero p {
+  color: #64748b;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.dark .support-hero p {
+  color: #94a3b8;
+}
+
+.support-card {
+  margin: 0 auto 1.5rem;
+  max-width: 28rem;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+}
+
+.support-cta {
+  align-items: center;
+  background: #2a9cc4;
+  border-radius: 999px;
+  box-shadow: 0 14px 32px rgba(42, 156, 196, 0.26);
+  color: #fff;
+  display: inline-flex;
+  font-size: 1.05rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1.25rem;
+  min-height: 3.25rem;
+  padding: 0.8rem 1.6rem;
+  text-decoration: none;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.support-cta:hover {
+  background: #1f8fb8;
+  transform: translateY(-2px);
+}
+
+.support-uses {
+  list-style: none;
+  margin: 0 auto 1.5rem;
+  max-width: 28rem;
+  padding: 0;
+}
+
+.support-uses li {
+  align-items: flex-start;
+  color: #475569;
+  display: flex;
+  font-size: 0.92rem;
+  gap: 0.55rem;
+  line-height: 1.55;
+  margin-bottom: 0.65rem;
+}
+
+.support-uses li:last-child {
+  margin-bottom: 0;
+}
+
+.support-uses i {
+  color: #2a9cc4;
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+  margin-top: 0.1rem;
+}
+
+.dark .support-uses li {
+  color: #cbd5e1;
+}
+
+.support-disclaimer {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 0 auto;
+  max-width: 30rem;
+  text-align: center;
+}
+
+.support-back {
+  display: block;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.support-back a {
+  color: #2a9cc4;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.support-back a:hover {
+  text-decoration: underline;
+}
