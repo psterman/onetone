@@ -13,7 +13,9 @@ Open http://localhost:8080
 
 ## Deploy
 
-Pushes to `main` that touch `website/` deploy via GitHub Actions (`.github/workflows/pages.yml`).
+Pushes to `master` (or `main`) that touch `website/` deploy via GitHub Actions (`.github/workflows/pages.yml`).
+
+Preview URL (before custom domain): **https://psterman.github.io/onetone/**
 
 Custom domain: `www.onetone.app` (`website/CNAME`).
 
