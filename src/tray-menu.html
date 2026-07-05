@@ -189,10 +189,10 @@
         }));
       });
       root.appendChild(sep());
-      root.appendChild(section('切换方案'));
+      root.appendChild(section('切换习惯'));
       const schemes=data.schemes||[];
       if(!schemes.length){
-        root.appendChild(row({icon:ICONS.scheme,mutedIco:true,label:'（暂无可用方案）',disabled:true}));
+        root.appendChild(row({icon:ICONS.scheme,mutedIco:true,label:'（暂无可用习惯）',disabled:true}));
       }else{
         schemes.forEach(function(s){
           root.appendChild(row({
@@ -205,7 +205,7 @@
           }));
         });
         if(data.canCycle){
-          root.appendChild(row({icon:ICONS.cycle,label:'轮换到下一方案',action:'cycle_scheme'}));
+          root.appendChild(row({icon:ICONS.cycle,label:'轮换到下一习惯',action:'cycle_scheme'}));
         }
       }
       root.appendChild(sep());

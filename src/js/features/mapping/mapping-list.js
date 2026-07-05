@@ -44,10 +44,10 @@
     if(hooks().sessionActiveState(snap.state)&&snap.mappingId===m.id){
       items.push('<span class="map-overview-chip">'+t('chipDictating')+'</span>');
     }
-    const activeId=state().config&&state().config.activeSceneId;
+    const activeId=state.config&&state.config.activeSceneId;
     if(activeId&&m.id===activeId){
       items.push('<span class="map-overview-chip is-active-scene">'+t('sceneActiveBadge')+'</span>');
-    }else if(m.id===state().selectedMappingId&&OneToneMappingCore.isSaved(m)){
+    }else if(m.id===state.selectedMappingId&&OneToneMappingCore.isSaved(m)){
       items.push('<button type="button" class="map-inline-btn map-scene-activate" data-scene-activate="'+m.id+'">'+t('sceneActivateBtn')+'</button>');
     }
     return '<div class="map-overview">'+items.join('')+'</div>';

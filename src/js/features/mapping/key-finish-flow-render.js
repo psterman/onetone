@@ -113,7 +113,15 @@
     var completeEl=$('keySchemeCompletenessChip');
     var conflictEl=$('keySchemeConflictChip');
     var toggleEl=$('keySchemeEnabledToggle');
-    if(kicker) kicker.textContent=t('keySchemeCardKicker');
+    if(kicker){
+      var uiState=global.OneToneState.ui;
+      var st=global.OneToneState.state;
+      var panelActive=uiState.drawerOpen&&uiState.settingsPanel==='keyWake';
+      var selId=st.selectedMappingId;
+      var activeId=st.config&&st.config.activeSceneId;
+      var isDifferent=panelActive&&selId&&activeId&&selId!==activeId;
+      kicker.textContent=isDifferent?t('sceneEditingKicker'):t('keySchemeCardKicker');
+    }
     if(nameEl) nameEl.textContent=m?hooks().homeSchemeLabel():'—';
     if(bindingEl){
       var binding='';

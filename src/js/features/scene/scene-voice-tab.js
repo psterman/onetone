@@ -131,16 +131,7 @@
     html+=renderFieldRow('endPhrasesEn',t('sceneVoiceEndPhrasesEn'),
       fieldMode(ov,'endPhrasesEn')==='custom'&&ov&&ov.endPhrases?phrasesToText(ov.endPhrases.en):'',
       fieldMode(ov,'endPhrasesEn'));
-    var effective=global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:mapping.id});
-    html+='<div class="scene-voice-preview"><div class="scene-voice-preview-title">'+esc(t('sceneVoiceEffectivePreview'))+'</div>';
-    if(effective){
-      html+='<div class="scene-voice-preview-row"><span>'+esc(t('sceneVoiceEffectiveTarget'))+'</span><b>'+esc(effective.targetKey)+'</b></div>';
-      html+='<div class="scene-voice-preview-row"><span>'+esc(t('sceneVoiceEffectiveWake'))+'</span><b>'+esc((effective.wakePhrases||[]).join(' · '))+'</b></div>';
-      html+='<div class="scene-voice-preview-row"><span>'+esc(t('sceneVoiceEffectiveEnd'))+'</span><b>'+esc(((effective.endPhrases&&effective.endPhrases.zh)||[]).join(' · '))+'</b></div>';
-    }else{
-      html+='<p class="scene-voice-empty">—</p>';
-    }
-    html+='</div>';
+    html+='<p class="scene-voice-preview-hint">'+esc(t('sceneVoicePreviewHint'))+'</p>';
     root.innerHTML=html;
     var title=$('sceneVoicePanelTitle');
     if(title) title.textContent=t('sceneVoiceOverrideTitle');

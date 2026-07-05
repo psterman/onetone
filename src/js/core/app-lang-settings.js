@@ -21,7 +21,6 @@
     var keySchemeCardKicker=$('keySchemeCardKicker'); if(keySchemeCardKicker&&!(global.OneToneState.ui.drawerOpen&&global.OneToneState.ui.settingsPanel==='keyWake'&&global.OneToneState.state.selectedMappingId!==(global.OneToneState.state.config&&global.OneToneState.state.config.activeSceneId))) keySchemeCardKicker.textContent=d.keySchemeCardKicker;
     var sceneTabKeysLabel=$('sceneTabKeysLabel'); if(sceneTabKeysLabel) sceneTabKeysLabel.textContent=d.sceneTabKeys;
     var sceneTabVoiceLabel=$('sceneTabVoiceLabel'); if(sceneTabVoiceLabel) sceneTabVoiceLabel.textContent=d.sceneTabVoice;
-    var sceneTabTargetLabel=$('sceneTabTargetLabel'); if(sceneTabTargetLabel) sceneTabTargetLabel.textContent=d.sceneTabTarget;
     var sceneTabAdvancedLabel=$('sceneTabAdvancedLabel'); if(sceneTabAdvancedLabel) sceneTabAdvancedLabel.textContent=d.sceneTabAdvanced;
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
     var keySchemeStepTriggerTitle=$('keySchemeStepTriggerTitle'); if(keySchemeStepTriggerTitle) keySchemeStepTriggerTitle.textContent=d.keySchemeStepTriggerTitle;

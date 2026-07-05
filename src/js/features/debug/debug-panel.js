@@ -173,7 +173,7 @@
       const m=hooks().selectedMapping();
       const lines=[];
       if(m){
-        lines.push((getAppLang()==='zh'?'方案 ID: ':'Profile ID: ')+(m.id||'—'));
+        lines.push((getAppLang()==='zh'?'习惯 ID: ':'Profile ID: ')+(m.id||'—'));
         lines.push((getAppLang()==='zh'?'启用: ':'Enabled: ')+(m.enabled?t('enabled'):t('disabled')));
         if(m.label) lines.push((getAppLang()==='zh'?'名称: ':'Label: ')+m.label);
         if(m.triggerSource){
@@ -189,7 +189,7 @@
         if(tgt) lines.push((getAppLang()==='zh'?'快捷键: ':'Target: ')+hooks().friendlyKeyName(tgt));
         if(m.triggerMode) lines.push((getAppLang()==='zh'?'启动方式: ':'Trigger mode: ')+(m.triggerMode||'—'));
       }else{
-        lines.push(getAppLang()==='zh'?'未选中方案':'No profile selected');
+        lines.push(getAppLang()==='zh'?'未选中习惯':'No profile selected');
       }
       source.textContent=lines.join('\n');
     }

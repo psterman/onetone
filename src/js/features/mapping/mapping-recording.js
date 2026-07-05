@@ -241,7 +241,7 @@
     hooks().save();
     hooks().renderSchemeSwitch();
     renderRecordCancelBar();
-    hooks().pushLog((hooks().getAppLang()==='zh'?'方案轮换键: ':'scheme switch: ')+hooks().friendlyKeyName(combo));
+    hooks().pushLog((hooks().getAppLang()==='zh'?'习惯轮换键: ':'profile switch: ')+hooks().friendlyKeyName(combo));
   }
 
   function clearSchemeSwitchKey(){
@@ -285,7 +285,7 @@
     hooks().save();
     hooks().renderMappingList();
     renderRecordCancelBar();
-    hooks().pushLog((hooks().getAppLang()==='zh'?'方案直达键: ':'switch key: ')+hooks().friendlyKeyName(k));
+    hooks().pushLog((hooks().getAppLang()==='zh'?'习惯直达键: ':'profile switch: ')+hooks().friendlyKeyName(k));
   }
   function applyKeyWakeRecordingUi(){
     const keySettings=$('keyWakeSettings');

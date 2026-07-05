@@ -139,7 +139,7 @@
     var onboardHint = $('imePresetHintOnboard');
     if(onboardHint) onboardHint.hidden = !showOnboard;
     var mappingHint = $('imePresetHintMapping');
-    if(mappingHint) mappingHint.hidden = true;
+    if(mappingHint) mappingHint.hidden = false;
     var voiceHint = $('imePresetHintVoice');
     if(voiceHint) voiceHint.hidden = true;
   }

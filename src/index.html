@@ -103,7 +103,7 @@
                     <div class="mini-title" id="homeKeyMapTitle">按键对应</div>
                   </div>
                   <div class="home-key-map-scheme" id="homeSchemeSwitcher" data-home-guide-target>
-                    <span class="home-key-map-scheme-lbl" id="homeKeyMapSchemeLbl">方案</span>
+                    <span class="home-key-map-scheme-lbl" id="homeKeyMapSchemeLbl">习惯</span>
                     <button type="button" class="home-scheme-switcher-btn" id="btnHomeSchemeSwitcher" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="homeKeyMapSchemeLbl homeSchemeSwitcherName">
                       <span class="home-scheme-switcher-name" id="homeSchemeSwitcherName">—</span>
                       <span class="home-scheme-switcher-chevron" id="homeSchemeSwitcherChevron" aria-hidden="true">▼</span>
@@ -111,7 +111,7 @@
                     <div class="home-scheme-backdrop" id="homeSchemeBackdrop" hidden></div>
                     <div class="home-scheme-menu" id="homeSchemeMenu" role="listbox" aria-labelledby="homeKeyMapSchemeLbl" hidden>
                       <div id="homeSchemeMenuList"></div>
-                      <button type="button" class="home-scheme-manage" id="btnHomeManageSchemes">管理全部方案…</button>
+                      <button type="button" class="home-scheme-manage" id="btnHomeManageSchemes">管理全部习惯…</button>
                     </div>
                   </div>
                 </div>
@@ -194,11 +194,11 @@
                 <div class="settings-nav-group" id="settingsNavKeyWakeGroup">
                   <button type="button" class="settings-nav-item" data-panel="keyWake" id="settingsNavKeyWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
-                    <span id="settingsNavKeyWakeLabel">按键配置</span>
+                    <span id="settingsNavKeyWakeLabel">我的习惯</span>
                   </button>
                   <div class="settings-scheme-subnav" id="settingsSchemeSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="方案列表"></div>
-                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新增方案</button>
+                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="习惯列表"></div>
+                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新增习惯</button>
                   </div>
                 </div>
                 <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
@@ -262,8 +262,8 @@
             </div>
             <div class="pref-row">
               <div class="pref-row-meta">
-                <p class="pref-row-label" id="coachHudLabel">场景辅助提示</p>
-                <p class="pref-row-desc" id="coachHudDesc">在屏幕底部显示当前场景的按键提示，成功唤起后短暂确认</p>
+                <p class="pref-row-label" id="coachHudLabel">按键提示条</p>
+                <p class="pref-row-desc" id="coachHudDesc">在屏幕底部显示当前习惯的按键提示，成功唤起后短暂确认</p>
               </div>
               <div class="pref-row-control">
                 <button type="button" class="toggle-switch" id="btnCoachHud" role="switch" aria-checked="false"></button>
@@ -350,28 +350,40 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeyWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">在当前方案里设置唤起键、语音快捷键和最后一步</p>
-          <p class="scene-browse-note" id="sceneBrowseNote" hidden></p>
+          <p class="settings-panel-desc" id="settingsPanelKeyWakeDesc">管理习惯：怎么唤起、单独语音与全部习惯</p>
           <div class="scene-tab-bar" id="sceneTabBar" role="tablist" hidden>
-            <button type="button" class="scene-tab is-active" data-scene-tab="keys" role="tab" id="sceneTabKeys" aria-selected="true"><span id="sceneTabKeysLabel">按键</span></button>
-            <button type="button" class="scene-tab" data-scene-tab="voice" role="tab" id="sceneTabVoice" aria-selected="false"><span id="sceneTabVoiceLabel">语音</span></button>
-            <button type="button" class="scene-tab" data-scene-tab="target" role="tab" id="sceneTabTarget" aria-selected="false"><span id="sceneTabTargetLabel">目标</span></button>
-            <button type="button" class="scene-tab" data-scene-tab="advanced" role="tab" id="sceneTabAdvanced" aria-selected="false"><span id="sceneTabAdvancedLabel">高级</span></button>
+            <button type="button" class="scene-tab is-active" data-scene-tab="keys" role="tab" id="sceneTabKeys" aria-selected="true"><span id="sceneTabKeysLabel">怎么唤起</span></button>
+            <button type="button" class="scene-tab" data-scene-tab="voice" role="tab" id="sceneTabVoice" aria-selected="false"><span id="sceneTabVoiceLabel">单独语音</span></button>
+            <button type="button" class="scene-tab" data-scene-tab="advanced" role="tab" id="sceneTabAdvanced" aria-selected="false"><span id="sceneTabAdvancedLabel">全部习惯</span></button>
+          </div>
+          <div class="scene-status-bar" id="sceneStatusBar" hidden>
+            <div class="scene-status-row">
+              <span class="scene-status-label" id="sceneStatusActiveLabel">正在使用</span>
+              <span class="scene-status-value" id="sceneStatusActiveValue">—</span>
+            </div>
+            <div class="scene-status-row" id="sceneStatusEditingRow">
+              <span class="scene-status-label" id="sceneStatusEditingLabel">正在编辑</span>
+              <span class="scene-status-value" id="sceneStatusEditingValue">—</span>
+              <button type="button" class="key-scheme-card-btn is-primary scene-status-activate" id="btnKeySchemeActivate" hidden>切换到这套习惯</button>
+            </div>
+            <div class="scene-effective-preview" id="sceneEffectivePreview">
+              <div class="scene-effective-preview-title" id="sceneEffectivePreviewTitle">这套习惯会这样工作</div>
+              <div class="scene-effective-preview-body" id="sceneEffectivePreviewBody">—</div>
+            </div>
           </div>
           <div class="key-flow-section" id="quickKeyWakeSection">
-            <div class="setting-section-label" id="quickKeyWakeSummary">方案按键设置</div>
-            <p class="settings-secondary-hint" id="quickKeyWakeHint">按下左侧唤起键后，程序代按右侧语音快捷键；按键收尾作为最后一步一起保存在当前方案中。</p>
+            <div class="setting-section-label" id="quickKeyWakeSummary">怎么唤起</div>
+            <p class="settings-secondary-hint" id="quickKeyWakeHint">按下左侧唤起键后，程序代按右侧听写快捷键；说完怎么办作为最后一步一起保存在当前习惯中。</p>
             <div class="key-wake-settings" id="keyWakeSettings">
               <section id="keyWakeSchemeCard" class="key-scheme-card">
                 <header class="key-scheme-card-head">
                   <div class="key-scheme-card-title-row">
                     <div>
-                      <div class="key-scheme-card-kicker" id="keySchemeCardKicker">当前方案</div>
+                      <div class="key-scheme-card-kicker" id="keySchemeCardKicker">正在使用</div>
                       <div id="keySchemeName" class="key-scheme-card-title">—</div>
                     </div>
                     <div class="key-scheme-card-head-actions">
-                      <button type="button" class="key-scheme-card-btn is-primary" id="btnKeySchemeActivate" hidden>设为当前场景</button>
-                      <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增方案</button>
+                      <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增习惯</button>
                       <button type="button" class="key-scheme-card-btn is-danger" id="btnKeySchemeDelete">删除</button>
                       <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
                     </div>
@@ -424,12 +436,13 @@
                       </div>
                       <p class="help" id="targetHelp">这是你平时用来唤起语音输入的按键。录制前可先切到普通输入状态。</p>
                     </section>
+                    <p class="habit-software-section-title" id="habitSoftwareSectionTitle">配合的软件和输入方式</p>
                     <div class="ime-preset-block ime-preset-block--below-card">
-                      <p class="ime-preset-hint" id="imePresetHintMapping" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
+                      <p class="ime-preset-hint habit-subsection-title" id="imePresetHintMapping">输入方式</p>
                       <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
                     </div>
                     <div class="app-target-block app-target-block--below-card">
-                      <p class="app-target-hint" id="appTargetHintMapping">选择目标应用，点击即可选用</p>
+                      <p class="app-target-hint habit-subsection-title" id="appTargetHintMapping">适用软件</p>
                       <div class="app-target-strip" id="appTargetStripMapping" data-app-target-context="mapping"></div>
                     </div>
                   </section>
@@ -453,31 +466,31 @@
             </div>
           </div>
           <section class="scene-voice-panel drawer-section" id="sceneVoicePanel" hidden>
-            <h3 class="scene-voice-panel-title" id="sceneVoicePanelTitle">场景语音覆盖</h3>
+            <h3 class="scene-voice-panel-title" id="sceneVoicePanelTitle">单独语音设置</h3>
             <div id="sceneVoicePanelBody"></div>
           </section>
-          <div class="scene-global-footer" id="sceneGlobalVoiceFooter" hidden>
-            <div class="scene-global-footer-head">
-              <span class="scene-global-footer-title" id="sceneGlobalFooterTitle">全局语音设备</span>
-              <button type="button" class="scene-global-footer-link" id="btnSceneOpenGlobalVoice">前往全局语音设置</button>
-            </div>
+          <details class="scene-global-footer" id="sceneGlobalVoiceFooter" hidden>
+            <summary class="scene-global-footer-summary" id="sceneGlobalFooterSummary">
+              <span class="scene-global-footer-title" id="sceneGlobalFooterTitle">默认语音设备</span>
+              <button type="button" class="scene-global-footer-link" id="btnSceneOpenGlobalVoice">前往语音设置</button>
+            </summary>
             <div class="scene-global-footer-grid">
               <div class="scene-global-footer-item"><span id="sceneGlobalMicLabel">麦克风</span><b id="sceneGlobalMicValue">—</b></div>
               <div class="scene-global-footer-item"><span id="sceneGlobalEngineLabel">引擎</span><b id="sceneGlobalEngineValue">—</b></div>
             </div>
-          </div>
+          </details>
           <div class="mapping-section" id="keyWakeMappingSection">
             <div class="list-head-row">
-              <h2 id="mappingListTitle">方案管理</h2>
+              <h2 id="mappingListTitle">全部习惯</h2>
               <div class="list-head-actions">
-                <span class="list-head-hint" id="mappingListHint">需要多个输入法时，再添加方案</span>
-                <button class="list-add" id="btnAddMapping" type="button">新增方案</button>
+                <span class="list-head-hint" id="mappingListHint">新增、删除、冲突</span>
+                <button class="list-add" id="btnAddMapping" type="button">新增习惯</button>
               </div>
             </div>
             <div class="draft-hint" id="mappingDraftHint"></div>
             <div class="mapping-empty" id="mappingEmpty" hidden>
-              <strong id="mappingEmptyTitle">还没有方案</strong>
-              <span id="mappingEmptyHint">先录好上面的唤起键和语音快捷键，或点下面新增方案。</span>
+              <strong id="mappingEmptyTitle">还没有习惯</strong>
+              <span id="mappingEmptyHint">先录好上面的唤起键和听写快捷键，或点下面新增习惯。</span>
             </div>
             <div id="mappingList"></div>
             <div class="status-section">
@@ -735,7 +748,7 @@
             </div>
             <button type="button" class="toggle-switch" id="btnSoundsMaster" role="switch" aria-checked="true"></button>
           </div>
-          <p class="help" id="soundsMasterHelp" style="margin-top:8px">关闭后所有提示音静音；各场景仍可单独配置。</p>
+          <p class="help" id="soundsMasterHelp" style="margin-top:8px">关闭后所有提示音静音；各习惯仍可单独配置。</p>
           <div class="recording-audio-card" id="recordingAudioCard">
             <div class="sound-slot-head">
               <div>
@@ -923,7 +936,7 @@
           </div>
           <div class="drawer-section" id="cycleSwitchSection" hidden aria-hidden="true">
             <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
-            <p class="map-switch-desc" id="cycleSwitchDesc">在同一启动键的多个方案间按顺序轮换；也可在下方每个方案里单独设置直达快捷键。</p>
+            <p class="map-switch-desc" id="cycleSwitchDesc">在同一唤起键的多个习惯间按顺序轮换；也可在下方每个习惯里单独设置直达快捷键。</p>
             <div class="scheme-switch-ctrl">
               <button type="button" class="scheme-switch-key" id="btnSchemeSwitchKey" title="">Ctrl+Alt+`</button>
               <button type="button" class="scheme-switch-cancel" id="btnSchemeSwitchCancel" hidden>取消录制</button>
@@ -1207,7 +1220,7 @@
       <p class="confirm-body" id="confirmBody"></p>
       <div class="confirm-actions">
         <button type="button" class="btn secondary" id="btnConfirmCancel">取消</button>
-        <button type="button" class="btn secondary" id="btnConfirmAlt" hidden>清除场景覆盖</button>
+        <button type="button" class="btn secondary" id="btnConfirmAlt" hidden>清除单独语音设置</button>
         <button type="button" class="btn primary" id="btnConfirmOk">确定</button>
       </div>
     </div>
