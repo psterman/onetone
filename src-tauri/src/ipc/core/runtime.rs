@@ -123,6 +123,7 @@ pub fn build_runtime_snapshot(app: &AppHandle, state: &AppState) -> serde_json::
         "voiceSapi": crate::voice_sapi_runtime::voice_sapi_status(state),
         "voiceVosk": crate::voice_vosk_runtime::voice_vosk_status(state, resource_dir),
         "voiceEnd": crate::voice_end_runtime::voice_end_status(state),
+        "sendGuardBlockedCount": crate::send_guard::blocked_count(),
         "logs": logs,
         "recentEvents": crate::runtime_event::recent_runtime_events(state, 100),
     })

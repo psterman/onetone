@@ -11,8 +11,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100">
-  <header class="glass-header border-b py-4 px-6"><a href="index.html" class="font-bold flex items-center gap-2"><img src="assets/logo.png" class="w-7 h-7 rounded" alt="">一声 OneTone</a></header>
-  <main class="max-w-2xl mx-auto px-6 py-12">
+  <header class="site-nav-shell">
+    <div class="site-nav-card glass-header">
+      <div class="site-nav-inner">
+        <a class="site-nav-brand" href="index.html">
+          <img src="assets/logo.png" alt="" width="32" height="32">
+          <span>一声 OneTone</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main class="max-w-2xl mx-auto px-6 pb-12">
     <h1 class="text-3xl font-bold mb-4">更新日志</h1>
     <p class="text-slate-500 mb-8">完整记录见 <a href="https://github.com/psterman/voice-pilot/blob/main/CHANGELOG.md" class="text-brand-600">GitHub CHANGELOG</a></p>
     <h2 class="text-xl font-bold mb-2">1.0.0（2026-07-01）</h2>

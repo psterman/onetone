@@ -60,7 +60,7 @@ impl StateMachine {
             mapping_timing(mapping, cfg);
         let target = mapping.target_key.clone();
 
-        if mapping.trigger_mode == TriggerMode::Hold
+        if mapping.trigger_mode == TriggerMode::PerPress
             || mapping.trigger_mode == TriggerMode::LongPress
         {
             if let Some(last) = self.last_trigger {
@@ -201,6 +201,7 @@ mod tests {
             long_press_ms: 500,
             double_click_ms: 400,
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         }
     }
 

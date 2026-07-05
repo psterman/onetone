@@ -14,22 +14,30 @@
 </head>
 <body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100" data-page="faq">
 
-  <header class="fixed top-0 w-full z-50 glass-header border-b border-slate-200 dark:border-slate-800">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a class="flex items-center gap-3" href="index.html"><img src="assets/logo.png" alt="" class="w-8 h-8 rounded-lg"><span class="font-bold" data-i18n="siteName">一声 OneTone</span></a>
-      <nav class="hidden md:flex gap-8 text-sm font-medium text-slate-600 dark:text-slate-300">
-        <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
-        <a href="quickstart.html" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
-        <a href="faq.html" data-nav="faq" data-i18n="navFaq">常见问题</a>
-      </nav>
-      <div class="flex gap-3">
-        <button type="button" id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"><i class="ph ph-moon block dark:hidden"></i><i class="ph ph-sun hidden dark:block"></i></button>
-        <button type="button" id="langToggle" class="text-xs font-bold px-3 py-1.5 rounded-full border" data-i18n="langToggle">EN</button>
+  <header class="site-nav-shell">
+    <div class="site-nav-card glass-header">
+      <div class="site-nav-inner">
+        <a class="site-nav-brand" href="index.html">
+          <img src="assets/logo.png" alt="" width="32" height="32">
+          <span data-i18n="siteName">一声 OneTone</span>
+        </a>
+        <nav class="site-nav-links hidden md:flex" aria-label="Main">
+          <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
+          <a href="quickstart.html" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
+          <a href="faq.html" data-nav="faq" data-i18n="navFaq">帮助</a>
+        </nav>
+        <div class="site-nav-actions">
+          <button type="button" id="themeToggle" aria-label="Toggle theme">
+            <i class="ph ph-moon block dark:hidden"></i>
+            <i class="ph ph-sun hidden dark:block"></i>
+          </button>
+          <button type="button" id="langToggle" data-i18n="langToggle">EN</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="pt-28 pb-16 max-w-3xl mx-auto px-6">
+  <main class="pb-16 max-w-3xl mx-auto px-6">
     <div class="text-center mb-12">
       <h1 class="text-4xl font-bold mb-3" data-i18n="faqPageTitle">常见问题</h1>
       <p class="text-slate-500" data-i18n="faqPageIntro">按你遇到的问题往下找，先排第一层再读详细说明。</p>
@@ -41,19 +49,13 @@
         <ul class="rounded-xl bg-brand-50 dark:bg-brand-900/20 p-4 mb-4 space-y-2">
           <li><strong data-i18n="faqTriage1">软件有没有开</strong> — <span data-i18n="faqTriage1Hint">看系统托盘</span></li>
           <li><strong data-i18n="faqTriage2">按键有没有录对</strong> — <span data-i18n="faqTriage2Hint">设置里和测试时同一个键吗？</span></li>
-          <li><strong data-i18n="faqTriage3">输入法快捷键对不对</strong> — <span data-i18n="faqTriage3Hint">先试 Win+H</span></li>
+          <li><strong data-i18n="faqTriage3">输入法快捷键对不对</strong> — <span data-i18n="faqTriage3Hint">在记事本直接按输入法的激活键测试</span></li>
         </ul>
-        <div data-lang-content="zh">
-          <p id="no-response-check-app"><strong>1. 软件在运行吗？</strong> 看托盘「一声」图标，暂停则恢复监听。</p>
-          <p id="no-response-check-key"><strong>2. 键录对了吗？</strong> 设置 → 按键，在记事本按同一触发键测试。</p>
-          <p id="no-response-check-shortcut"><strong>3. Win+H 能用吗？</strong> 不用一声，在记事本直接按 Win+H 测试。</p>
-          <p><strong>4. 仍无效：</strong> 打开运行状态；先在记事本测试，避开全屏游戏。</p>
-        </div>
-        <div data-lang-content="en">
-          <p><strong>1. App running?</strong> Check tray icon; resume if paused.</p>
-          <p><strong>2. Key correct?</strong> Settings → Keys; test same key in Notepad.</p>
-          <p><strong>3. Win+H works?</strong> Test Win+H without OneTone first.</p>
-          <p><strong>4. Still stuck:</strong> Runtime status; test in Notepad first.</p>
+        <div class="space-y-2">
+          <p id="no-response-check-app" data-i18n="faqCheckApp">1. 软件在运行吗？ 看托盘「一声」图标，暂停则恢复监听。</p>
+          <p id="no-response-check-key" data-i18n="faqCheckKey">2. 键录对了吗？ 设置 → 按键，在记事本按同一触发键测试。</p>
+          <p id="no-response-check-shortcut" data-i18n="faqCheckShortcut">3. 输入法激活键能用吗？ 不用一声，在记事本直接按你录的激活键，看输入法是否进入听写。</p>
+          <p data-i18n="faqCheckStill">4. 仍无效： 打开运行状态；先在记事本测试，避开全屏游戏。</p>
         </div>
       </div>
     </details>
@@ -77,8 +79,7 @@
     <details id="baidu-ime" class="glass-card rounded-2xl mb-4 scroll-mt-28 group">
       <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between"><span data-i18n="faqQ4">百度输入法怎么设置快捷键？</span><i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i></summary>
       <div class="px-5 pb-5 text-sm text-slate-600 dark:text-slate-300">
-        <div data-lang-content="zh"><p>百度设置里查语音快捷键（常见 Alt+A，部分版本 F2/F1）。在一声设置 → 按键录入同一组合。建议先用 Win+H 跑通。</p></div>
-        <div data-lang-content="en"><p>Find Baidu voice shortcuts (often Alt+A; F2/F1 on some builds). Record in OneTone Settings → Keys. Get Win+H working first.</p></div>
+        <p data-i18n="faqBaiduBody">百度设置里查语音快捷键（常见 Alt+A，部分版本 F2/F1）。在一声设置 → 按键录入同一组合。</p>
       </div>
     </details>
 

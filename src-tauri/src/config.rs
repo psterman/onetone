@@ -13,11 +13,13 @@ use crate::AppState;
 #[serde(rename_all = "lowercase")]
 pub enum TriggerMode {
     #[default]
+    #[serde(alias = "toggle")]
     Tap,
-    Hold,
+    /// Each keydown fires once (UI: 每按即发). Formerly named `Hold`.
+    #[serde(alias = "hold")]
+    PerPress,
     LongPress,
     Double,
-    Toggle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +68,8 @@ pub struct MappingEntry {
     pub double_click_ms: u32,
     #[serde(rename = "imePresetId", default)]
     pub ime_preset_id: String,
+    #[serde(rename = "appTargetId", default)]
+    pub app_target_id: String,
 }
 
 fn default_long_press_ms() -> u32 {
@@ -736,8 +740,26 @@ fn volume_raw_event_with_device(hotkey: &str, label: &str, device: &str) -> RawE
     }
 }
 
+/// Mouse buttons usable as launch keys.
+pub fn is_mouse_button(key: &str) -> bool {
+    matches!(
+        canonical_trigger(key).as_str(),
+        "LButton" | "RButton" | "MButton" | "XButton1" | "XButton2"
+    )
+}
+
+pub fn bindings_need_mouse_hook(bindings: &[String]) -> bool {
+    bindings.iter().any(|b| is_mouse_button(b))
+}
+
 ///     /        ?
 pub fn is_peripheral_trigger_key(key: &str) -> bool {
+    if is_mouse_button(key) {
+        return true;
+    }
+    if key.starts_with("Gamepad_") || key.starts_with("HID_") {
+        return true;
+    }
     let c = canonical_trigger(key);
     if c.starts_with("VK_") && c.len() >= 4 {
         return true;
@@ -880,6 +902,23 @@ pub fn effective_physical_bindings(m: &MappingEntry) -> Vec<String> {
     mapping_physical_bindings(m)
 }
 
+/// Physical bindings registered with the hotkey thread, including device-prefixed wire keys.
+pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
+    let physical = effective_physical_bindings(m);
+    let device = m.trigger_device.trim();
+    if device.is_empty() {
+        return physical;
+    }
+    let mut out = physical.clone();
+    for pb in physical {
+        let prefixed = crate::press_gesture::format_device_key(device, &pb);
+        if !out.contains(&prefixed) {
+            out.push(prefixed);
+        }
+    }
+    out
+}
+
 pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     let tk = canonical_trigger(&m.trigger_key);
     if tk.contains('+') {
@@ -957,7 +996,7 @@ pub fn apply_peripheral_autotrigger_with_device(
         vec![captured.to_string()]
     };
     if !device.trim().is_empty() {
-        m.trigger_device = device.trim().to_string();
+        m.trigger_device = crate::device_identity::stable_id_from_path(device.trim());
     }
     if m.source_key.trim().is_empty() {
         m.source_key = if extra.is_empty() {
@@ -996,6 +1035,7 @@ impl Default for VoiceConfig {
                 long_press_ms: default_long_press_ms(),
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
+                app_target_id: String::new(),
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -1179,6 +1219,7 @@ impl VoiceConfig {
                 long_press_ms: default_long_press_ms(),
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
+                app_target_id: String::new(),
             });
         }
 
@@ -1307,8 +1348,12 @@ impl VoiceConfig {
             if m.enter_delay_ms < 1000 {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
-            if m.trigger_mode == TriggerMode::Toggle {
-                m.trigger_mode = TriggerMode::Tap;
+            // Legacy configs may still carry triggerDevice full paths — migrate below.
+            if !m.trigger_device.trim().is_empty() {
+                let stable = crate::device_identity::normalize_device_id(&m.trigger_device);
+                if stable.starts_with("dev:") {
+                    m.trigger_device = stable;
+                }
             }
         }
         self.mappings.sort_by_key(|m| m.order);
@@ -1425,7 +1470,7 @@ impl VoiceConfig {
     pub fn bindings(&self) -> Vec<String> {
         let mut out = Vec::new();
         for m in self.active_mappings() {
-            for pb in effective_physical_bindings(m) {
+            for pb in hotkey_registration_bindings(m) {
                 if !out.contains(&pb) {
                     out.push(pb);
                 }
@@ -1853,6 +1898,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -1885,6 +1931,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -1929,6 +1976,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -1961,6 +2009,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
                 label: "      ".into(),
@@ -2006,6 +2055,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -2041,6 +2091,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -2072,6 +2123,7 @@ mod tests {
             long_press_ms: default_long_press_ms(),
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -2125,6 +2177,80 @@ mod tests {
         assert!((merged.window_height - 950.0).abs() < f64::EPSILON);
         assert_eq!(merged.window_x, Some(120.0));
         assert_eq!(merged.window_y, Some(80.0));
+    }
+
+    #[test]
+    fn hotkey_registration_includes_device_prefixed_bindings() {
+        let m = MappingEntry {
+            id: "pad".into(),
+            label: String::new(),
+            group: String::new(),
+            trigger_key: "Gamepad_A".into(),
+            target_key: "F2".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: "xinput:0".into(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+        };
+        let bindings = hotkey_registration_bindings(&m);
+        assert!(bindings.contains(&"Gamepad_A".to_string()));
+        assert!(bindings.contains(&"dev:xinput:0::Gamepad_A".to_string()));
+    }
+
+    #[test]
+    fn find_mapping_respects_trigger_device() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].trigger_key = "Gamepad_A".into();
+        cfg.mappings[0].trigger_device = "xinput:0".into();
+        cfg.mappings.push(MappingEntry {
+            id: "pad1".into(),
+            label: String::new(),
+            group: String::new(),
+            trigger_key: "Gamepad_A".into(),
+            target_key: "F3".into(),
+            enabled: true,
+            order: 1,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: "xinput:1".into(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+        });
+        let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: Some("xinput:0".into()),
+            key: "Gamepad_A".into(),
+        });
+        let hit1 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: Some("xinput:1".into()),
+            key: "Gamepad_A".into(),
+        });
+        assert_eq!(hit0.map(|m| m.id.as_str()), Some(cfg.mappings[0].id.as_str()));
+        assert_eq!(hit1.map(|m| m.id.as_str()), Some("pad1"));
     }
 
     #[test]

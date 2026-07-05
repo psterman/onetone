@@ -156,6 +156,9 @@
       iconEl.hidden = false;
       iconEl.alt = t(preset.nameKey);
       if(wrap) wrap.classList.add('has-ime-badge');
+      if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.renderCardBadge){
+        global.OneToneAppTargetPresets.renderCardBadge(ctx);
+      }
       return;
     }
     iconEl.hidden = true;
@@ -172,19 +175,30 @@
     if(!m) return;
     combo = normalizeKey(combo);
     if(!combo) return;
-    m.targetKey = combo;
+    var appTargetId = String(m.appTargetId || '').trim();
     m.imePresetId = presetId || '';
+    if(appTargetId){
+      if(global.OneToneAppTargetPresets){
+        global.OneToneAppTargetPresets.applyVoiceShortcutKeys(combo);
+        var workflowKey = global.OneToneAppTargetPresets.presetById(appTargetId);
+        if(workflowKey && workflowKey.targetKey) m.targetKey = workflowKey.targetKey;
+      }
+    }else{
+      m.targetKey = combo;
+      m.appTargetId = '';
+    }
     setSelectedId('mapping', presetId || '');
     var st = global.OneToneState && global.OneToneState.state;
     if(st && st.config) st.config.imePresetId = presetId || '';
     var trig = core.editorTrigger ? core.editorTrigger(m) : (m.triggerKey || '');
     m.label = (trig || '?') + ' → ' + combo;
-    if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(combo);
+    if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(appTargetId ? (m.targetKey || combo) : combo);
     if(hooks.save) hooks.save();
     if(hooks.render) hooks.render();
     else if(core.renderChrome) core.renderChrome();
     if(core.maybeEnableMappingAfterComplete) core.maybeEnableMappingAfterComplete(m);
     if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     refresh('mapping');
   }
 
@@ -199,6 +213,7 @@
         m.targetKey = combo;
         m.enabled = true;
         m.imePresetId = presetId;
+        m.appTargetId = '';
         if(cfg) cfg.imePresetId = presetId;
       });
     }
@@ -206,6 +221,7 @@
       global.OneToneOnboarding.onTargetCaptured({ key: combo, imePresetId: presetId });
     }
     if(a && a.toast) a.toast(t('imePresetApplied'));
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('onboarding');
     refresh('onboarding');
   }
 

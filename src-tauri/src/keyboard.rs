@@ -50,14 +50,6 @@ pub fn track_foreground_for_send() {}
 
 #[cfg(windows)]
 pub fn restore_external_foreground() -> bool {
-    use winapi::um::processthreadsapi::GetCurrentThreadId;
-    use winapi::um::winuser::{
-        AllowSetForegroundWindow, AttachThreadInput, GetForegroundWindow, GetWindowThreadProcessId,
-        IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
-    };
-
-    const ASFW_ANY: u32 = 0xFFFF_FFFF;
-
     let target_hwnd = {
         let hwnd = *LAST_EXTERNAL_HWND
             .get_or_init(|| Mutex::new(0))
@@ -68,8 +60,22 @@ pub fn restore_external_foreground() -> bool {
         }
         hwnd as winapi::shared::windef::HWND
     };
+    focus_window(target_hwnd)
+}
+
+#[cfg(windows)]
+pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::processthreadsapi::GetCurrentThreadId;
+    use winapi::um::winuser::{
+        AllowSetForegroundWindow, AttachThreadInput, BringWindowToTop, GetForegroundWindow,
+        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow,
+        SwitchToThisWindow, SW_RESTORE,
+    };
+
+    const ASFW_ANY: u32 = 0xFFFF_FFFF;
+
     unsafe {
-        if IsWindow(target_hwnd) == 0 {
+        if target_hwnd.is_null() || IsWindow(target_hwnd) == 0 {
             return false;
         }
         if IsIconic(target_hwnd) != 0 {
@@ -91,6 +97,9 @@ pub fn restore_external_foreground() -> bool {
             AttachThreadInput(current_thread, target_thread, 1);
         }
         AllowSetForegroundWindow(ASFW_ANY);
+        ShowWindow(target_hwnd, SW_RESTORE);
+        BringWindowToTop(target_hwnd);
+        SwitchToThisWindow(target_hwnd, 1);
         let ok = SetForegroundWindow(target_hwnd) != 0;
         if fg_thread != 0 && fg_thread != target_thread {
             AttachThreadInput(fg_thread, target_thread, 0);
@@ -100,6 +109,11 @@ pub fn restore_external_foreground() -> bool {
         }
         ok
     }
+}
+
+#[cfg(not(windows))]
+pub fn focus_window(_target_hwnd: isize) -> bool {
+    false
 }
 
 #[cfg(not(windows))]
@@ -250,7 +264,9 @@ fn send_token_sequence(tokens: &[SendToken], hold_ms: u32) -> bool {
 /// Match AHK's `{vkA5sc138}` as closely as possible.
 pub fn send_right_alt(duration_ms: u32) {
     let hold_ms = duration_ms.max(250) as u64;
-    send_guard::run_guarded(hold_ms + 80, || {
+    let guard_ms = hold_ms + 80;
+    send_guard::arm_keys(&send_guard::guard_keys_from_combo("RAlt"));
+    send_guard::run_guarded(guard_ms, || {
         send_vk(VK_RMENU as u16, true, false);
         std::thread::sleep(std::time::Duration::from_millis(hold_ms));
         send_vk(VK_RMENU as u16, true, true);
@@ -263,7 +279,9 @@ pub fn send_right_alt(duration_ms: u32) {
 
 pub fn send_left_alt(duration_ms: u32) {
     let hold_ms = duration_ms.max(250) as u64;
-    send_guard::run_guarded(hold_ms + 80, || {
+    let guard_ms = hold_ms + 80;
+    send_guard::arm_keys(&send_guard::guard_keys_from_combo("LAlt"));
+    send_guard::run_guarded(guard_ms, || {
         send_vk(0xA4, false, false);
         std::thread::sleep(std::time::Duration::from_millis(hold_ms));
         send_vk(0xA4, false, true);
@@ -294,7 +312,9 @@ pub fn send_chord(combo: &str, duration_ms: u32) -> bool {
     match parse_chord(trimmed) {
         Ok(tokens) => {
             let hold = duration_ms.max(35) as u64;
-            send_guard::run_guarded(hold + 100, || {
+            let guard_ms = hold + 100;
+            send_guard::arm_keys(&send_guard::guard_keys_from_combo(trimmed));
+            send_guard::run_guarded(guard_ms, || {
                 send_token_sequence(&tokens, duration_ms);
             });
             true
@@ -304,6 +324,7 @@ pub fn send_chord(combo: &str, duration_ms: u32) -> bool {
 }
 
 pub fn send_escape() {
+    send_guard::arm_keys(&send_guard::guard_keys_from_combo("Escape"));
     send_guard::run_guarded(100, || {
         send_vk(VK_ESCAPE as u16, false, false);
         send_vk(VK_ESCAPE as u16, false, true);
@@ -311,10 +332,68 @@ pub fn send_escape() {
 }
 
 pub fn send_enter() {
+    send_guard::arm_keys(&send_guard::guard_keys_from_combo("Enter"));
     send_guard::run_guarded(100, || {
         send_vk(VK_RETURN as u16, false, false);
         send_vk(VK_RETURN as u16, false, true);
     });
+}
+
+/// Left-click a point inside `hwnd`'s client area using relative ratios (0.0–1.0).
+#[cfg(windows)]
+pub fn click_client_relative(
+    hwnd: winapi::shared::windef::HWND,
+    x_ratio: f32,
+    y_ratio: f32,
+) -> bool {
+    use winapi::shared::windef::{POINT, RECT};
+    use winapi::um::winuser::{ClientToScreen, GetClientRect, SetCursorPos};
+
+    unsafe {
+        if hwnd.is_null() {
+            return false;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetClientRect(hwnd, &mut rect) == 0 {
+            return false;
+        }
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        if width <= 0 || height <= 0 {
+            return false;
+        }
+
+        let x_ratio = x_ratio.clamp(0.08, 0.92);
+        let y_ratio = y_ratio.clamp(0.08, 0.95);
+        let client_x = rect.left + (width as f32 * x_ratio).round() as i32;
+        let client_y = rect.top + (height as f32 * y_ratio).round() as i32;
+        let mut pt = POINT {
+            x: client_x,
+            y: client_y,
+        };
+        if ClientToScreen(hwnd, &mut pt) == 0 {
+            return false;
+        }
+
+        send_guard::run_guarded(120, || {
+            SetCursorPos(pt.x, pt.y);
+            std::thread::sleep(std::time::Duration::from_millis(35));
+            let down = make_mouse_input(MouseButton::Left, false);
+            let up = make_mouse_input(MouseButton::Left, true);
+            send_inputs(&mut [down, up]);
+        });
+        true
+    }
+}
+
+#[cfg(not(windows))]
+pub fn click_client_relative(_hwnd: isize, _x_ratio: f32, _y_ratio: f32) -> bool {
+    false
 }
 
 #[cfg(test)]

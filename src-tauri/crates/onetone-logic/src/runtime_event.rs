@@ -24,6 +24,9 @@ pub mod kind {
     pub const SESSION_STARTED: &str = "session_started";
     pub const SESSION_ENDED: &str = "session_ended";
     pub const END_PHRASE_MATCHED: &str = "end_phrase_matched";
+    pub const INPUT_CAPTURED: &str = "input_captured";
+    pub const INPUT_IGNORED: &str = "input_ignored";
+    pub const INPUT_PARSE_MISS: &str = "input_parse_miss";
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

@@ -132,6 +132,53 @@ pub fn probe_vosk_resources(
     }
 }
 
+/// Parent directory where packaged / user Vosk assets live (`libvosk.dll`, models, …).
+pub fn vosk_resources_dir(resource_dir: Option<&Path>) -> PathBuf {
+    resolve_vosk_dll_dir(resource_dir)
+}
+
+pub fn vosk_model_download_url(preset: &str) -> Option<&'static str> {
+    match preset.trim() {
+        "cn-light" => Some("https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip"),
+        "en-light" => Some("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"),
+        _ => Some("https://alphacephei.com/vosk/models"),
+    }
+}
+
+pub fn vosk_resource_issue(probe: &VoskResourceProbe) -> Option<&'static str> {
+    if !probe.dll_exists {
+        return Some("dll_missing");
+    }
+    if !probe.model_exists {
+        return Some("model_missing");
+    }
+    None
+}
+
+pub fn open_path_in_explorer(path: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        if path.is_file() {
+            if let Some(parent) = path.parent() {
+                return open_path_in_explorer(parent);
+            }
+        }
+        if !path.exists() {
+            std::fs::create_dir_all(path).map_err(|e| e.to_string())?;
+        }
+        std::process::Command::new("explorer")
+            .arg(path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        Err("open folder is only supported on Windows".into())
+    }
+}
+
 fn manifest_vosk_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vosk")
 }

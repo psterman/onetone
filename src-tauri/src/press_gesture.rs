@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use crate::config::{MappingEntry, TriggerMode, VoiceConfig};
+use crate::gesture_timing::{self, clamp_double_click_ms, clamp_long_press_ms};
 
 pub const DEVICE_PREFIX: &str = "dev:";
 pub const DEVICE_SEP: &str = "::";
@@ -32,8 +33,8 @@ impl RecordedGesture {
     }
 }
 
-const RECORD_LONG_PRESS_MS: u64 = 400;
-const RECORD_DOUBLE_MS: u64 = 400;
+const RECORD_LONG_PRESS_MS: u64 = gesture_timing::RECORD_LONG_PRESS_MS;
+const RECORD_DOUBLE_MS: u64 = gesture_timing::RECORD_DOUBLE_MS;
 
 #[derive(Debug, Clone)]
 pub struct RecordGestureComplete {
@@ -216,15 +217,35 @@ pub fn format_device_key(device: &str, key: &str) -> String {
 }
 
 pub fn devices_match(stored: &str, incoming: &str) -> bool {
-    let stored = stored.trim();
-    let incoming = incoming.trim();
-    if stored.is_empty() || incoming.is_empty() {
-        return stored.is_empty() && incoming.is_empty();
+    crate::device_identity::devices_match(stored, incoming)
+}
+
+/// Resolve a physical binding against an active hotkey registration list.
+pub fn resolve_binding_in_list(
+    bindings: &[String],
+    name: &str,
+    device: Option<&str>,
+) -> Option<String> {
+    let body = format_device_key(device.unwrap_or(""), name);
+    if bindings.iter().any(|b| b == &body) {
+        return Some(body);
     }
-    if stored == incoming {
-        return true;
+    let has_device = !device.unwrap_or("").trim().is_empty();
+    if has_device && is_extension_binding_key(name) {
+        return None;
     }
-    stored.ends_with(incoming) || incoming.ends_with(stored)
+    let chord = crate::key_chord::build_pressed_chord(name);
+    if bindings.iter().any(|b| b == &chord) {
+        return Some(chord);
+    }
+    if bindings.iter().any(|b| b == name) {
+        return Some(name.to_string());
+    }
+    None
+}
+
+fn is_extension_binding_key(name: &str) -> bool {
+    name.starts_with("Gamepad_") || name.starts_with("HID_")
 }
 
 pub fn short_device_label(device: &str) -> String {
@@ -244,7 +265,13 @@ pub fn short_device_label(device: &str) -> String {
         }
         return "蓝牙设备".into();
     }
-    if device.contains("HID#") {
+    if device.contains("HID#") || device.starts_with("dev:") {
+        if let Some((vid, pid)) = crate::device_identity::parse_vid_pid(device) {
+            return format!("{vid:04X}:{pid:04X}");
+        }
+        if let Some(stable) = device.strip_prefix("dev:") {
+            return stable.to_string();
+        }
         if let Some(start) = device.find("HID#") {
             let rest = &device[start + 4..];
             if let Some(end) = rest.find('#') {
@@ -314,7 +341,7 @@ impl GestureTracker {
         let dispatch = event.dispatch_name();
         match mapping.trigger_mode {
             TriggerMode::LongPress => {
-                let threshold = mapping.long_press_ms.max(100);
+                let threshold = clamp_long_press_ms(mapping.long_press_ms);
                 self.long_press.insert(
                     lk,
                     PendingLong {
@@ -334,7 +361,7 @@ impl GestureTracker {
                         return Some(dispatch);
                     }
                 }
-                let window = mapping.double_click_ms.max(150);
+                let window = clamp_double_click_ms(mapping.double_click_ms);
                 self.double_wait.insert(
                     lk,
                     PendingDouble {
@@ -396,5 +423,28 @@ mod tests {
 
         assert_eq!(complete.key, "RAlt");
         assert_eq!(complete.gesture, RecordedGesture::Tap);
+    }
+
+    #[test]
+    fn resolve_binding_prefers_device_prefixed_key() {
+        let bindings = vec!["dev:xinput:0::Gamepad_A".into()];
+        let resolved = resolve_binding_in_list(&bindings, "Gamepad_A", Some("xinput:0"));
+        assert_eq!(resolved.as_deref(), Some("dev:xinput:0::Gamepad_A"));
+    }
+
+    #[test]
+    fn resolve_binding_blocks_bare_key_when_device_present() {
+        let bindings = vec!["Gamepad_A".into()];
+        let resolved = resolve_binding_in_list(&bindings, "Gamepad_A", Some("xinput:0"));
+        assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn format_device_key_roundtrip() {
+        let wire = format_device_key("xinput:0", "Gamepad_A");
+        assert_eq!(wire, "dev:xinput:0::Gamepad_A");
+        let event = parse_physical_event(&wire);
+        assert_eq!(event.key, "Gamepad_A");
+        assert_eq!(event.device.as_deref(), Some("xinput:0"));
     }
 }

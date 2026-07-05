@@ -348,7 +348,7 @@
     hooks().pushLog(t('triggerRecordDetected')+hooks().friendlyKeyName(seen));
     if(Rec().mode()==='trigger' && Rec().isHardwareCaptureToken(seen)){
     hooks().armTriggerPeripheralGuard(450);
-    Rec().finishDetectedHardwareTrigger(seen);
+    Rec().finishDetectedHardwareTrigger(seen, msg.device||'');
     }
     return true;
     }

@@ -17,7 +17,11 @@
     Browser_Back:'浏览器后退', Browser_Forward:'浏览器前进', Browser_Refresh:'浏览器刷新',
     Launch_Mail:'打开邮件', Launch_App1:'快捷应用 1', Launch_App2:'快捷应用 2',
     LButton:'鼠标左键', RButton:'鼠标右键', MButton:'鼠标中键',
-    XButton1:'鼠标侧键 1', XButton2:'鼠标侧键 2'
+    XButton1:'鼠标侧键 1', XButton2:'鼠标侧键 2',
+    Gamepad_A:'手柄 A', Gamepad_B:'手柄 B', Gamepad_X:'手柄 X', Gamepad_Y:'手柄 Y',
+    Gamepad_LB:'手柄 LB', Gamepad_RB:'手柄 RB', Gamepad_Back:'手柄 Back', Gamepad_Start:'手柄 Start',
+    Gamepad_LS:'手柄左摇杆按下', Gamepad_RS:'手柄右摇杆按下',
+    Gamepad_DpadUp:'手柄 上', Gamepad_DpadDown:'手柄 下', Gamepad_DpadLeft:'手柄 左', Gamepad_DpadRight:'手柄 右'
   };
 
   var DIRECT_EN = {
@@ -36,7 +40,11 @@
     Browser_Back:'Browser Back', Browser_Forward:'Browser Forward', Browser_Refresh:'Browser Refresh',
     Launch_Mail:'Launch Mail', Launch_App1:'Launch App 1', Launch_App2:'Launch App 2',
     LButton:'Left Mouse', RButton:'Right Mouse', MButton:'Middle Mouse',
-    XButton1:'Mouse Side Button 1', XButton2:'Mouse Side Button 2'
+    XButton1:'Mouse Side Button 1', XButton2:'Mouse Side Button 2',
+    Gamepad_A:'Gamepad A', Gamepad_B:'Gamepad B', Gamepad_X:'Gamepad X', Gamepad_Y:'Gamepad Y',
+    Gamepad_LB:'Gamepad LB', Gamepad_RB:'Gamepad RB', Gamepad_Back:'Gamepad Back', Gamepad_Start:'Gamepad Start',
+    Gamepad_LS:'Left Stick Press', Gamepad_RS:'Right Stick Press',
+    Gamepad_DpadUp:'D-pad Up', Gamepad_DpadDown:'D-pad Down', Gamepad_DpadLeft:'D-pad Left', Gamepad_DpadRight:'D-pad Right'
   };
 
   function directTable(lang){
@@ -48,6 +56,17 @@
     if(!raw) return '';
     var direct = directTable(lang);
     if(Object.prototype.hasOwnProperty.call(direct, raw)) return direct[raw];
+    if(raw.indexOf('HID_') === 0) {
+      if(/^HID_R\d{2}_/i.test(raw)) {
+        var parts=raw.split('_');
+        var rid=parts[1] ? parts[1].slice(1) : '';
+        var code=parts[2] || raw.slice(4);
+        return lang === 'zh'
+          ? ('HID 键 R' + rid + '-' + code)
+          : ('HID key R' + rid + '-' + code);
+      }
+      return lang === 'zh' ? ('HID 键 ' + raw.slice(4)) : ('HID key ' + raw.slice(4));
+    }
     if(/^F\d{1,2}$/.test(raw)) return raw;
     if(/^Numpad\d$/.test(raw)) {
       return lang === 'zh' ? ('小键盘 ' + raw.slice(6)) : ('Numpad ' + raw.slice(6));

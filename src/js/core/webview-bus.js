@@ -70,6 +70,9 @@
       }
       if(msg.type==='mvp_runtime_event'){
         appendRuntimeEvent(msg.event);
+        if(global.OneToneDebugPanel&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='developer'){
+          global.OneToneDebugPanel.renderDeveloper();
+        }
       }
       if(msg.type==='mvp_runtime_snapshot'){
         applyRuntimeFields(msg);

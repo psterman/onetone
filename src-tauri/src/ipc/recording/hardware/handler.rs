@@ -3,6 +3,7 @@ use std::time::Duration;
 use tauri::Emitter;
 
 use crate::config::{is_peripheral_trigger_key, is_volume_hotkey};
+use crate::gesture_timing::RECORD_MOUSE_SUPPRESS_MS;
 use crate::ipc::recording::gesture::{
     collect_pressed_side_modifiers, handle_record_gesture_event, is_modifier_token,
     is_mouse_button, is_spurious_target_capture, is_spurious_trigger_capture,
@@ -17,6 +18,20 @@ use super::guard::{arm_record_guard, emit_record_seen, record_guard_active};
 use super::normalize::{
     build_hardware_record_chord, is_recordable_target_hotkey, normalize_hardware_key,
 };
+
+fn record_report_hex(key: &str, device: Option<&str>) -> Option<String> {
+    let pending = crate::hotkey_win::take_pending_input_debug()?;
+    if pending.key != key {
+        return None;
+    }
+    if device.unwrap_or("") != pending.device.as_str() {
+        return None;
+    }
+    if pending.report_hex.is_empty() {
+        return None;
+    }
+    Some(pending.report_hex)
+}
 
 pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindow, key_name: &str) {
     if !*state.recording.lock() {
@@ -38,14 +53,19 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             .record_started_at
             .lock()
             .as_ref()
-            .map(|t| t.elapsed() < Duration::from_millis(900))
+            .map(|t| t.elapsed() < Duration::from_millis(RECORD_MOUSE_SUPPRESS_MS))
             .unwrap_or(true);
         if ignore {
             return;
         }
     }
 
-    emit_record_seen(window, &normalized, device);
+    emit_record_seen(
+        window,
+        &normalized,
+        device,
+        record_report_hex(&normalized, device).as_deref(),
+    );
 
     if is_trigger && record_guard_active(state) {
         if is_modifier_token(&normalized) && !is_volume_hotkey(&normalized) {

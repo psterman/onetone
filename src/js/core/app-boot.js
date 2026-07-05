@@ -6,9 +6,11 @@
     var state=global.OneToneState.state;
     var t=hooks.t;
     hooks.markBoot('script init');
+    if(window.OneToneLocaleDefaults) window.OneToneLocaleDefaults.applyUiLocaleBootstrap();
     if(window.OneTonePhrasePractice) window.OneTonePhrasePractice.init();
     if(window.OneToneOnboarding) window.OneToneOnboarding.init();
     if(window.OneToneImePresets) window.OneToneImePresets.init();
+    if(window.OneToneAppTargetPresets) window.OneToneAppTargetPresets.init();
     try{
       var savedTheme=localStorage.getItem('vp_theme');
       var savedLang=localStorage.getItem('vp_lang');

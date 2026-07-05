@@ -108,10 +108,8 @@ pub(crate) fn finish_hardware_capture(
         } else {
             let tm = mapping
                 .map(|m| match m.trigger_mode {
-                    crate::config::TriggerMode::Tap | crate::config::TriggerMode::Toggle => {
-                        "tap".to_string()
-                    }
-                    crate::config::TriggerMode::Hold => "hold".to_string(),
+                    crate::config::TriggerMode::Tap => "tap".to_string(),
+                    crate::config::TriggerMode::PerPress => "perpress".to_string(),
                     crate::config::TriggerMode::LongPress => "longpress".to_string(),
                     crate::config::TriggerMode::Double => "double".to_string(),
                 })

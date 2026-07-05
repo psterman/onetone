@@ -10,8 +10,25 @@ use crate::AppState;
 const MIN_W: f64 = 640.0;
 const MIN_H: f64 = 680.0;
 const SAVE_DEBOUNCE_MS: u64 = 400;
+/// Windows moves tray-hidden windows to about (-32000, -32000).
+const HIDDEN_POSITION_THRESHOLD: f64 = -10_000.0;
 
 static SAVE_GEN: AtomicU64 = AtomicU64::new(0);
+
+fn is_storable_position(x: f64, y: f64) -> bool {
+    x > HIDDEN_POSITION_THRESHOLD && y > HIDDEN_POSITION_THRESHOLD
+}
+
+pub fn ensure_on_screen(window: &WebviewWindow) {
+    if let Ok(pos) = window.outer_position() {
+        let scale = window.scale_factor().unwrap_or(1.0);
+        let logical = pos.to_logical::<f64>(scale);
+        if is_storable_position(logical.x, logical.y) {
+            return;
+        }
+    }
+    let _ = window.center();
+}
 
 pub fn apply_on_startup(window: &WebviewWindow, cfg: &VoiceConfig) {
     if !cfg.window_layout_seen {
@@ -26,7 +43,11 @@ pub fn apply_on_startup(window: &WebviewWindow, cfg: &VoiceConfig) {
     let h = cfg.window_height.max(MIN_H);
     let _ = window.set_size(Size::Logical(LogicalSize::new(w, h)));
     if let (Some(x), Some(y)) = (cfg.window_x, cfg.window_y) {
-        let _ = window.set_position(Position::Logical(LogicalPosition::new(x, y)));
+        if is_storable_position(x, y) {
+            let _ = window.set_position(Position::Logical(LogicalPosition::new(x, y)));
+        } else {
+            let _ = window.center();
+        }
     }
 }
 
@@ -91,8 +112,10 @@ fn capture_into(cfg: &mut VoiceConfig, window: &WebviewWindow) {
     }
     if let Ok(pos) = window.outer_position() {
         let logical = pos.to_logical::<f64>(scale);
-        cfg.window_x = Some(logical.x);
-        cfg.window_y = Some(logical.y);
+        if is_storable_position(logical.x, logical.y) {
+            cfg.window_x = Some(logical.x);
+            cfg.window_y = Some(logical.y);
+        }
     }
 }
 
@@ -127,4 +150,19 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
                 .unwrap_or_else(|| "-".into()),
         ),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_storable_position;
+
+    #[test]
+    fn rejects_windows_hidden_sentinel_position() {
+        assert!(!is_storable_position(-32000.0, -32000.0));
+    }
+
+    #[test]
+    fn accepts_normal_position() {
+        assert!(is_storable_position(120.0, 80.0));
+    }
 }

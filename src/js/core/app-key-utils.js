@@ -4,7 +4,7 @@
   var triggerLeftClickIgnoreUntil=0;
   var targetLeftClickIgnoreUntil=0;
 
-  function rawEventForHotkey(hotkey, label){
+  function rawEventForHotkey(hotkey, label, device){
     var keyCode={
       Volume_Down:['AudioVolumeDown','AudioVolumeDown'],
       Volume_Up:['AudioVolumeUp','AudioVolumeUp'],
@@ -21,16 +21,17 @@
       Launch_App2:['LaunchApp2','LaunchApp2']
     };
     var pair=keyCode[hotkey]||[hotkey,hotkey];
-    return {device:'keyboard',key:pair[0],code:pair[1],location:0,type:'keydown',hotkey:hotkey,label:label||hotkey,button:null};
+    var dev=String(device||'').trim()||'keyboard';
+    return {device:dev,key:pair[0],code:pair[1],location:0,type:'keydown',hotkey:hotkey,label:label||hotkey,button:null};
   }
 
-  function buildPeripheralTriggerSource(physical){
+  function buildPeripheralTriggerSource(physical, device){
     var events=[];
     if(physical==='Volume_Down'||physical==='Volume_Up'){
-      events.push(rawEventForHotkey('Volume_Down','Volume Down'));
-      events.push(rawEventForHotkey('Volume_Up','Volume Up'));
+      events.push(rawEventForHotkey('Volume_Down','Volume Down',device));
+      events.push(rawEventForHotkey('Volume_Up','Volume Up',device));
     }else{
-      events.push(rawEventForHotkey(physical,physical.replace(/_/g,' ')));
+      events.push(rawEventForHotkey(physical,physical.replace(/_/g,' '),device));
     }
     return {
       id:'source_peripheral_mixed',

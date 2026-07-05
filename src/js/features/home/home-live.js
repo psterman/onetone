@@ -6,6 +6,12 @@
   function ui(){ return global.OneToneState.ui; }
   function runtime(){ return global.OneToneState.runtime; }
   function hooks(){ return global.__vp_home_live_hooks__ || {}; }
+  function normalizeUiTriggerMode(raw){
+    raw=(raw||'tap').toLowerCase();
+    if(raw==='toggle') return 'tap';
+    if(raw==='hold'||raw==='longpress') return 'perpress';
+    return raw;
+  }
   function computeHomeState(){
     if(!hooks().configLoadedFromBackend()){
       return {
@@ -222,19 +228,33 @@
     hooks().ensureMappingExtras(m);
     const presetId=String(m.imePresetId||'').trim();
     let preset=null;
+    let isAppTarget=false;
+    const appTargetId=String(m.appTargetId||'').trim();
     if(presetId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
       preset=global.OneToneImePresets.presetById(presetId);
+    }
+    if(!preset){
+      if(appTargetId&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
+        preset=global.OneToneAppTargetPresets.presetById(appTargetId);
+        isAppTarget=!!preset;
+      }
     }
     const customTarget=String(hooks().editorTargetForMapping(m)||m.targetKey||'').trim();
     const rawKey=preset
       ?String((preset.endKey||preset.targetKey)||'').trim()
       :customTarget;
     if(!rawKey) return unset;
+    const summary=isAppTarget&&preset&&preset.nameKey
+      ?(appTargetId==='cursor-chat'||appTargetId==='codex-chat'
+        ?t(preset.nameKey)
+        :t(preset.nameKey)+' · '+hooks().friendlyKeyName(rawKey))
+      :hooks().friendlyKeyName(rawKey);
     return {
-      summary:hooks().friendlyKeyName(rawKey),
+      summary:summary,
       saved:true,
       showIcon:!!preset,
-      preset:preset
+      preset:preset,
+      isAppTarget:isAppTarget
     };
   }
 
@@ -245,8 +265,7 @@
     };
     if(!m||!hooks().isSavedMapping(m)) return unset;
     hooks().ensureMappingTiming(m);
-    const raw=(m.triggerMode||'tap').toLowerCase();
-    const mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    const mode=normalizeUiTriggerMode(m.triggerMode);
     const bindingLine=t('keyFinishFlowScheme').replace('{name}',global.OneToneHomeScheme.label());
     if(mode==='tap'){
       const summary=t('keyFinishFlowConfirm');
@@ -302,7 +321,7 @@
     if(finishKeyText) finishKeyText.textContent=summary;
     else if(finishKey) finishKey.textContent=summary;
     if(finishImeIcon){
-      if(preview&&preview.showIcon&&preview.preset){
+      if(preview&&preview.showIcon&&preview.preset&&!preview.isAppTarget){
         finishImeIcon.src=preview.preset.icon;
         finishImeIcon.alt=t(preview.preset.nameKey);
         finishImeIcon.hidden=false;
@@ -313,7 +332,8 @@
     }
     if(finishKey){
       finishKey.className='home-key-map-key'+(preview&&preview.saved?' is-set':' is-empty');
-      finishKey.classList.toggle('has-ime-badge',!!(preview&&preview.showIcon&&preview.preset));
+      finishKey.classList.toggle('has-ime-badge',!!(preview&&preview.showIcon&&preview.preset&&!preview.isAppTarget));
+      finishKey.classList.toggle('has-app-target-badge',!!(preview&&preview.showIcon&&preview.preset&&preview.isAppTarget));
     }
     if(finishHint){
       finishHint.innerHTML='';

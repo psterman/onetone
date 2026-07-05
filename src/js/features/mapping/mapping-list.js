@@ -9,6 +9,12 @@
   function hasCompleteMappings(){
     return OneToneMappingCore.sorted().some(OneToneMappingCore.isSaved);
   }
+  function normalizeUiTriggerMode(raw){
+    raw=(raw||'tap').toLowerCase();
+    if(raw==='toggle') return 'tap';
+    if(raw==='hold'||raw==='longpress') return 'perpress';
+    return raw;
+  }
   function mappingOverviewHtml(m){
     if(OneToneMappingCore.isDraft(m)){
       return '<div class="map-overview"><span class="map-overview-item"><b>'+hooks().escHtml(t('keySchemeCompletenessDraft'))+'</b></span></div>';
@@ -18,8 +24,7 @@
     const preview=hooks().keyFinishPreviewText(m);
     const items=[];
     items.push('<span class="map-overview-item"><span class="map-overview-lbl">'+t('mapOverviewFinish')+'</span> <b>'+hooks().escHtml(preview.summary)+'</b></span>');
-    const raw=(m.triggerMode||'tap').toLowerCase();
-    const mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    const mode=normalizeUiTriggerMode(m.triggerMode);
     if(mode==='tap'){
       const cancelSec=hooks().formatTimingSec(m.intervalMs);
       const confirmSec=hooks().formatTimingSec(m.enterDelayMs);
@@ -45,8 +50,7 @@
   function mappingKeySwitchesHtml(m){
     if(!OneToneMappingCore.isSaved(m)) return '';
     hooks().ensureMappingTiming(m);
-    const raw=(m.triggerMode||'tap').toLowerCase();
-    const mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    const mode=normalizeUiTriggerMode(m.triggerMode);
     const id=m.id;
     const parts=[];
     if(mode==='tap'){
@@ -188,6 +192,7 @@
     hooks().renderHome();
     hooks().renderRecordCancelBar();
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
   }
 
   global.OneToneMappingList={

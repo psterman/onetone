@@ -472,8 +472,12 @@
     if(mode==='target'){
       const combo=hooks().sanitizeTargetCombo(key);
       if(!combo) return false;
-      m.targetKey=combo;
-      if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(combo);
+      if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
+        global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m, combo);
+      }else{
+        m.targetKey=combo;
+      }
+      if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(m.targetKey);
     }else{
       const trig=hooks().normalizeTriggerKey(key);
       if(!hooks().isAllowedTriggerKey(trig)) return false;
@@ -553,6 +557,8 @@
   function isHardwareCaptureToken(key){
     const k=String(key||'');
     const physical=hooks().normalizeMediaTargetKey(k,k)||k;
+    if(k.startsWith('Gamepad_')||k.startsWith('HID_')) return true;
+    if(physical.startsWith('Gamepad_')||physical.startsWith('HID_')) return true;
     return k==='Volume_Up' || k==='Volume_Down' || k==='Volume_Mute'
       || k==='AudioVolumeUp' || k==='AudioVolumeDown' || k==='AudioVolumeMute'
       || k==='VolumeUp' || k==='VolumeDown' || k==='VolumeMute'
@@ -562,7 +568,7 @@
       || k==='Launch_Mail' || k==='Launch_App1' || k==='Launch_App2';
   }
 
-  function finishDetectedHardwareTriggerCapture(key){
+  function finishDetectedHardwareTriggerCapture(key, device){
     const raw=String(key||'').trim();
     const physical=hooks().normalizeMediaTargetKey(raw,raw)||raw;
     if(!physical) return;
@@ -571,7 +577,7 @@
       return;
     }
     hooks().armTriggerPeripheralGuard(450);
-    const source=hooks().buildPeripheralTriggerSource(physical);
+    const source=hooks().buildPeripheralTriggerSource(physical, device);
     const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
     finishTriggerCapture(display, source, physical, String(Date.now()));
   }
@@ -582,10 +588,16 @@
     if(!combo) return false;
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
-    m.targetKey=combo;
-    m.imePresetId='';
-    if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(combo);
-    m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+combo;
+    if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
+      global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m, combo);
+    }else{
+      m.targetKey=combo;
+      m.imePresetId='';
+      m.appTargetId='';
+    }
+    if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(m.targetKey);
+    var labelTarget=(global.OneToneMappingCore.editorTarget&&global.OneToneMappingCore.editorTarget(m))||combo;
+    m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+labelTarget;
     armLocalCaptureGuard();
     updateRecordingPreview('target',combo);
     if(hooks().getPendingNewDraftId()===m.id) hooks().setPendingNewDraftId(null);
@@ -605,6 +617,7 @@
     });
     hooks().maybeEnableMappingAfterComplete(m);
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
     return true;
   }

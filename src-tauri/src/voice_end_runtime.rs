@@ -10,7 +10,7 @@ use crate::voice_vosk::{matches_final, normalize_phrase};
 use crate::AppState;
 
 pub fn can_enter_dictating(cfg: &VoiceConfig) -> bool {
-    cfg.voice_end.enabled && cfg.voice_vosk.enabled
+    cfg.voice_end.enabled && (cfg.voice_vosk.enabled || cfg.voice_sapi.enabled)
 }
 
 pub fn session_state(state: &AppState) -> String {
@@ -67,6 +67,28 @@ pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
     } else {
         fb.to_string()
     }
+}
+
+/// IME / voice-engine shortcut for activating dictation in the foreground app.
+/// Unlike `resolve_wake_target_key`, this never falls back to mapping `target_key`
+/// (which for Cursor is Ctrl+L, not the voice shortcut).
+pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
+    let vosk_key = cfg.voice_vosk.target_key.trim();
+    let sapi_key = cfg.voice_sapi.target_key.trim();
+
+    if cfg.voice_vosk.enabled && !vosk_key.is_empty() {
+        return Some(vosk_key.to_string());
+    }
+    if cfg.voice_sapi.enabled && !sapi_key.is_empty() {
+        return Some(sapi_key.to_string());
+    }
+    if !vosk_key.is_empty() {
+        return Some(vosk_key.to_string());
+    }
+    if !sapi_key.is_empty() {
+        return Some(sapi_key.to_string());
+    }
+    None
 }
 
 fn resolve_stop_target_key(cfg: &VoiceConfig, session_mapping_id: &str) -> String {
@@ -724,7 +746,46 @@ mod tests {
             long_press_ms: 500,
             double_click_ms: 400,
             ime_preset_id: String::new(),
+            app_target_id: String::new(),
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
+    }
+
+    #[test]
+    fn voice_input_key_uses_engine_not_mapping_target() {
+        use crate::config::{new_mapping_id, MappingEntry, TriggerMode, VoiceConfig};
+
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_vosk.target_key = "RAlt".into();
+        cfg.mappings = vec![MappingEntry {
+            id: new_mapping_id(),
+            label: "cursor".into(),
+            group: "默认".into(),
+            trigger_key: "F13".into(),
+            target_key: "Ctrl+L".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_target_id: "cursor-chat".into(),
+        }];
+        assert_eq!(
+            resolve_voice_input_target_key(&cfg).as_deref(),
+            Some("RAlt")
+        );
+        assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Ctrl+L".to_string());
     }
 }

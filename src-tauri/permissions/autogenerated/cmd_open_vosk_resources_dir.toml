@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-open-vosk-resources-dir"
+description = "Enables the cmd_open_vosk_resources_dir command without any pre-configured scope."
+commands.allow = ["cmd_open_vosk_resources_dir"]
+
+[[permission]]
+identifier = "deny-cmd-open-vosk-resources-dir"
+description = "Denies the cmd_open_vosk_resources_dir command without any pre-configured scope."
+commands.deny = ["cmd_open_vosk_resources_dir"]

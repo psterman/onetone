@@ -146,6 +146,14 @@
 
   function editorTargetForMapping(m){
     if(!m) return '';
+    const appTargetId=String(m.appTargetId||'').trim();
+    if(appTargetId){
+      const cfg=state().config||{};
+      const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+      const sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+      const voiceKey=String(vosk.targetKey||sapi.targetKey||'').trim();
+      if(voiceKey) return voiceKey;
+    }
     const saved=(m.targetKey||'').trim();
     if(saved) return saved;
     if(isSelectedMapping(m.id)) return (hooks().getEditorTargetKey()||'').trim();
@@ -285,10 +293,12 @@
   function ensureMappingExtras(m){
     if(!m) return;
     if((m.triggerMode||'').toLowerCase()==='toggle') m.triggerMode='tap';
+    if((m.triggerMode||'').toLowerCase()==='hold') m.triggerMode='perpress';
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
     if(m.imePresetId===undefined) m.imePresetId='';
+    if(m.appTargetId===undefined) m.appTargetId='';
   }
 
   function isAutoTriggerMapping(m){

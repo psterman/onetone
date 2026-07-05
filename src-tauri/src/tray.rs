@@ -142,7 +142,7 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         "listenLabel": listen_label,
         "activeMode": mode_id(active_mode),
         "modes": [
-            {"id": "hold", "label": "每按即发"},
+            {"id": "perpress", "label": "每按即发"},
             {"id": "tap", "label": "智能连按"},
         ],
         "schemes": schemes,
@@ -281,6 +281,7 @@ fn hide_tray_menu(app: &AppHandle) {
 
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
+        crate::window_layout::ensure_on_screen(&window);
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -392,8 +393,8 @@ fn tray_voice_state_and_error(state: &AppState, engine: &str) -> (String, String
 
 fn mode_id(mode: TriggerMode) -> &'static str {
     match mode {
-        TriggerMode::Tap | TriggerMode::Toggle => "tap",
-        TriggerMode::Hold => "hold",
+        TriggerMode::Tap => "tap",
+        TriggerMode::PerPress => "perpress",
         TriggerMode::LongPress => "longpress",
         TriggerMode::Double => "double",
     }
@@ -402,7 +403,7 @@ fn mode_id(mode: TriggerMode) -> &'static str {
 fn parse_mode_id(raw: &str) -> Option<TriggerMode> {
     match raw {
         "tap" | "toggle" => Some(TriggerMode::Tap),
-        "hold" => Some(TriggerMode::Hold),
+        "perpress" | "hold" => Some(TriggerMode::PerPress),
         "longpress" | "long_press" => Some(TriggerMode::LongPress),
         "double" | "doubleclick" => Some(TriggerMode::Double),
         _ => None,

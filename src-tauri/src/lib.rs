@@ -3,6 +3,12 @@ mod app_log;
 mod audio_win;
 mod backdrop;
 mod config;
+mod app_chat_workflow;
+mod cursor_workflow;
+mod device_identity;
+mod gesture_timing;
+mod input_ext;
+mod input_obs;
 mod ipc;
 mod key_chord;
 mod keyboard;
@@ -15,6 +21,7 @@ mod send_guard;
 mod state;
 mod tray;
 mod update;
+mod vendor_hid;
 mod voice_bootstrap;
 mod voice_end_runtime;
 mod voice_sapi;
@@ -25,6 +32,8 @@ mod window_layout;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
+#[cfg(target_os = "windows")]
+mod xinput_win;
 
 use parking_lot::Mutex;
 use std::collections::VecDeque;
@@ -194,6 +203,7 @@ pub fn run() {
                 app_log::log_line(state.inner(), "startup", "single instance show main window");
             }
             if let Some(window) = app.get_webview_window("main") {
+                window_layout::ensure_on_screen(&window);
                 let _ = window.show();
                 let _ = window.unminimize();
                 let _ = window.set_focus();
@@ -377,8 +387,13 @@ pub fn run() {
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
 
-                    if crate::send_guard::is_active() {
-                        continue;
+                    {
+                        let mgr_opt = state2.hotkey_mgr.lock();
+                        if let Some(mgr) = mgr_opt.as_ref() {
+                            while let Some(obs) = mgr.try_recv_obs() {
+                                ipc::handle_input_obs_event(&state2, &app2, obs);
+                            }
+                        }
                     }
 
                     {
@@ -502,6 +517,8 @@ pub fn run() {
             ipc::cmd_voice_vosk_set_model_preset,
             ipc::cmd_voice_vosk_set_model_path,
             ipc::cmd_voice_vosk_test_send,
+            ipc::cmd_open_vosk_resources_dir,
+            ipc::cmd_voice_vosk_retry_start,
             ipc::cmd_voice_end_status,
             ipc::cmd_voice_end_set_enabled,
             ipc::cmd_voice_end_set_auto_send,

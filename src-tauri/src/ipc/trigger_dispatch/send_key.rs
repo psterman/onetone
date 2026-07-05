@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 
+use crate::app_chat_workflow;
 use crate::ipc::core::push_runtime_with_cue;
 use crate::AppState;
 
@@ -26,6 +27,40 @@ fn emit_onboarding_trigger_fired(
     window.emit("to_js", &payload).ok();
 }
 
+fn finish_send_key_dispatch(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    mapping_id: &str,
+    trigger_key: &str,
+    target_key: &str,
+    source_key: &str,
+    ok: bool,
+    reason: &str,
+    label: &str,
+) {
+    emit_onboarding_trigger_fired(
+        window,
+        mapping_id,
+        trigger_key,
+        target_key,
+        source_key,
+        ok,
+        reason,
+    );
+    let sound_cue = if ok {
+        crate::config::runtime_sound_cue(&state.cfg.lock(), "key_wake")
+    } else {
+        crate::config::runtime_sound_cue(&state.cfg.lock(), "send_fail")
+    };
+    push_runtime_with_cue(
+        state.as_ref(),
+        window,
+        label,
+        mapping_id,
+        sound_cue.as_deref(),
+    );
+}
+
 pub(super) fn dispatch_send_key(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
@@ -34,18 +69,77 @@ pub(super) fn dispatch_send_key(
     source_key: &str,
     key: &str,
 ) {
+    let mapping_snapshot = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_by_id(mapping_id).map(|m| {
+            (
+                m.trigger_key.clone(),
+                m.target_key.clone(),
+                m.app_target_id.clone(),
+            )
+        })
+    };
+
+    let Some((trigger_key, target_key, app_target_id)) = mapping_snapshot else {
+        finish_send_key_dispatch(
+            state,
+            window,
+            mapping_id,
+            "",
+            key,
+            source_key,
+            false,
+            "send_failed",
+            "send_failed",
+        );
+        return;
+    };
+
+    if app_chat_workflow::profile_for(&app_target_id).is_some() {
+        match app_chat_workflow::run_for_target_id(
+            state,
+            window,
+            mapping_id,
+            &app_target_id,
+            duration_ms,
+        ) {
+            Ok(label) => {
+                finish_send_key_dispatch(
+                    state,
+                    window,
+                    mapping_id,
+                    &trigger_key,
+                    &target_key,
+                    source_key,
+                    true,
+                    "sent",
+                    &label,
+                );
+            }
+            Err((prefix, err)) => {
+                let reason = err.reason(&prefix);
+                finish_send_key_dispatch(
+                    state,
+                    window,
+                    mapping_id,
+                    &trigger_key,
+                    &target_key,
+                    source_key,
+                    false,
+                    &reason,
+                    &reason,
+                );
+            }
+        }
+        return;
+    }
+
     let sent = crate::voice_end_runtime::send_wake_to_target(
         Some(state.as_ref()),
         Some(&window.app_handle()),
         key,
         duration_ms,
     );
-    let trigger_key = {
-        let cfg = state.cfg.lock();
-        cfg.find_mapping_by_id(mapping_id)
-            .map(|m| m.trigger_key.clone())
-            .unwrap_or_default()
-    };
     if sent {
         let app = window.app_handle();
         if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
@@ -72,7 +166,9 @@ pub(super) fn dispatch_send_key(
         }
     }
     let reason = if sent { "sent" } else { "send_failed" };
-    emit_onboarding_trigger_fired(
+    let label = if sent { key } else { "send_failed" };
+    finish_send_key_dispatch(
+        state,
         window,
         mapping_id,
         &trigger_key,
@@ -80,18 +176,6 @@ pub(super) fn dispatch_send_key(
         source_key,
         sent,
         reason,
-    );
-    let label = if sent { key } else { "send_failed" };
-    let sound_cue = if sent {
-        crate::config::runtime_sound_cue(&state.cfg.lock(), "key_wake")
-    } else {
-        crate::config::runtime_sound_cue(&state.cfg.lock(), "send_fail")
-    };
-    push_runtime_with_cue(
-        state.as_ref(),
-        window,
         label,
-        mapping_id,
-        sound_cue.as_deref(),
     );
 }

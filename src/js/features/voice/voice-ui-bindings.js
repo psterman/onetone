@@ -24,6 +24,12 @@
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeVosk','vosk');
     var btnVoiceVoskTest=$('btnVoiceVoskTest');
     if(btnVoiceVoskTest) btnVoiceVoskTest.onclick=hooks.testVoiceVoskSend;
+    var btnVoskOpenResources=$('btnVoskOpenResources');
+    if(btnVoskOpenResources) btnVoskOpenResources.onclick=function(e){ e.stopPropagation(); hooks.openVoskResourcesDir&&hooks.openVoskResourcesDir(); };
+    var btnVoskDownloadGuide=$('btnVoskDownloadGuide');
+    if(btnVoskDownloadGuide) btnVoskDownloadGuide.onclick=function(e){ e.stopPropagation(); hooks.downloadVoskModelGuide&&hooks.downloadVoskModelGuide(); };
+    var btnVoskRetry=$('btnVoskRetry');
+    if(btnVoskRetry) btnVoskRetry.onclick=function(e){ e.stopPropagation(); hooks.retryVoskStart&&hooks.retryVoskStart(); };
     var voiceVoskPresetsWrap=$('voiceVoskPresetsWrap');
     if(voiceVoskPresetsWrap) voiceVoskPresetsWrap.onclick=hooks.addVoiceVoskPreset;
     var voiceVoskModelPreset=$('voiceVoskModelPreset');

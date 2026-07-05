@@ -107,6 +107,10 @@
     var imePresetHintVoice=$('imePresetHintVoice'); if(imePresetHintVoice) imePresetHintVoice.textContent=d.imePresetHint;
     var imePresetHintOnboard=$('imePresetHintOnboard'); if(imePresetHintOnboard) imePresetHintOnboard.textContent=d.imePresetHint;
     if(global.OneToneImePresets) global.OneToneImePresets.applyLang();
+    var appTargetHintMapping=$('appTargetHintMapping'); if(appTargetHintMapping) appTargetHintMapping.textContent=d.appTargetHint;
+    var appTargetHintOnboard=$('appTargetHintOnboard'); if(appTargetHintOnboard) appTargetHintOnboard.textContent=d.appTargetHint;
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.applyLang();
+    if(global.OneToneVoiceWake && global.OneToneVoiceWake.applyVoskMissingLang) global.OneToneVoiceWake.applyVoskMissingLang();
     var voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
     var btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
     var btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;

@@ -140,6 +140,10 @@
           var preset=global.OneToneImePresets.presetById(m.imePresetId);
           if(preset&&preset.targetKey) key=preset.targetKey;
         }
+        if(m&&m.appTargetId&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
+          var appPreset=global.OneToneAppTargetPresets.presetById(m.appTargetId);
+          if(appPreset&&appPreset.targetKey) key=appPreset.targetKey;
+        }
         var lang=this.getLang?this.getLang():'zh';
         if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
           return global.OneToneKeyLabels.friendlyKeyName(key,lang)||key;

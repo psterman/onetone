@@ -134,7 +134,9 @@
       syncKeySchemeTimeline:deps.syncKeySchemeTimeline,
       schemeStepFocus:deps.schemeStepFocus,
       renderHome:deps.renderHome,
-      renderRecordCancelBar:deps.renderRecordCancelBar
+      renderRecordCancelBar:deps.renderRecordCancelBar,
+      save:deps.save,
+      render:deps.render
     };
     global.__vp_mapping_list_ui_hooks__={
       t:deps.t,

@@ -82,6 +82,37 @@
     host.innerHTML=cards.join('');
   }
 
+  function latestInputExtEvent(){
+    var events=(runtime().events||[]).slice().reverse();
+    for(var i=0;i<events.length;i++){
+      var kind=String(events[i].kind||'');
+      if(kind==='input_captured'||kind==='input_ignored'||kind==='input_parse_miss'){
+        return events[i];
+      }
+    }
+    return null;
+  }
+
+  function renderInputExtSummary(){
+    const host=$('devInputExtGrid');
+    if(!host) return;
+    const evt=latestInputExtEvent();
+    if(!evt){
+      host.innerHTML='<div class="dev-runtime-item"><div class="v">'+hooks().escHtml(t('debugInputExtEmpty'))+'</div></div>';
+      return;
+    }
+    const payload=evt.payload||{};
+    const items=[
+      [t('debugInputExtKey'),payload.key||evt.message||'—'],
+      [t('debugInputExtDevice'),payload.device||'—'],
+      [t('debugInputExtReason'),payload.reason||evt.kind||'—'],
+      [t('debugInputExtReport'),payload.reportHex||'—']
+    ];
+    host.innerHTML=items.map(function(pair){
+      return '<div class="dev-runtime-item"><div class="k">'+hooks().escHtml(pair[0])+'</div><div class="v">'+hooks().escHtml(String(pair[1]))+'</div></div>';
+    }).join('');
+  }
+
   function renderDebugDeveloperSummary(){
     const host=$('debugDeveloperSummary');
     if(!host) return;
@@ -100,6 +131,7 @@
   }
   function renderDebugDeveloperPanel(){
     renderDebugDeveloperSummary();
+    renderInputExtSummary();
     const grid=$('devRuntimeGrid');
     if(grid){
       const m=hooks().selectedMapping();

@@ -1,3 +1,6 @@
+# Node (Tauri dev frontend server)
+node_modules/
+
 # Rust / Tauri — Cargo 默认 target 与自定义 --target-dir（如 target-release-live、target-codex-check）
 src-tauri/target*/
 target/

@@ -4,8 +4,13 @@
   "version": "1.0.0",
   "description": "一声 onetone — 硬件启动键到语音输入法快捷键的映射工具（Tauri + Rust）",
   "scripts": {
+    "serve": "serve src -l 1420 --no-port-switching",
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "serve": "^14.2.4"
   }
 }

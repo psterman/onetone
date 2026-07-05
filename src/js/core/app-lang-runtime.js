@@ -7,6 +7,7 @@
     var setText=global.OneToneDom.setText;
     setText('logTitle',d.logTitle);
     setText('runtimeTitle',d.runtimeTitle);
+    setText('debugInputExtTitle',d.debugInputExtTitle);
     setText('actionLabel',d.actionLabel);
     setText('sendLabel',d.sendLabel);
     setText('btnListenToggle',hooks().runtimePaused()?hooks().t('listenResume'):hooks().t('listenPause'));

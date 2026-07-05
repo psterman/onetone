@@ -51,7 +51,7 @@ pub(crate) fn apply_trigger_capture(
         m.source_time = now_source_time();
         m.trigger_mode = gesture.to_trigger_mode();
         if !device.trim().is_empty() {
-            m.trigger_device = device.trim().to_string();
+            m.trigger_device = crate::device_identity::stable_id_from_path(device.trim());
         }
         if is_peripheral_trigger_key(raw) || is_volume_hotkey(raw) {
             apply_peripheral_autotrigger_with_device(m, raw, device);

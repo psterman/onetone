@@ -187,6 +187,9 @@
     function syncVoiceVoskToggle(enabled){ return OneToneVoiceWake.syncVoskToggle(enabled); }
     function toggleVoiceVosk(explicitNext){ return OneToneVoiceWake.toggleVosk(explicitNext); }
     function testVoiceVoskSend(){ return OneToneVoiceWake.testVoskSend(); }
+    function openVoskResourcesDir(){ return OneToneVoiceWake.openVoskResourcesDir(); }
+    function downloadVoskModelGuide(){ return OneToneVoiceWake.downloadVoskModelGuide(); }
+    function retryVoskStart(){ return OneToneVoiceWake.retryVoskStart(); }
     function addVoiceVoskPreset(ev){ return OneToneVoiceWake.addVoskPreset(ev); }
     function syncVoiceVoskPresets(phrases){ return OneToneVoiceWake.syncVoskPresets(phrases); }
     function changeVoiceVoskModelPreset(){ return OneToneVoiceWake.changeVoskModelPreset(); }
@@ -447,6 +450,7 @@
       currentVoiceMode:currentVoiceMode,
       defaultConfig:defaultConfig,
       defaultUpdateState:defaultUpdateState,
+      downloadVoskModelGuide:downloadVoskModelGuide,
       deferProcessUsagePoll:deferProcessUsagePoll,
       deleteMappingFromMenu:deleteMappingFromMenu,
       disableMappingForRecordingAsync:disableMappingForRecordingAsync,
@@ -529,6 +533,7 @@
       openHomeSetupFlow:openHomeSetupFlow,
       openSettings:openSettings,
       openVoiceSapiSetup:openVoiceSapiSetup,
+      openVoskResourcesDir:openVoskResourcesDir,
       openWelcome:openWelcome,
       otherIdInConflict:otherIdInConflict,
       playSoundCue:playSoundCue,
@@ -580,6 +585,8 @@
       renderVoiceModeUsage:renderVoiceModeUsage,
       renderVoiceSapiStatus:renderVoiceSapiStatus,
       renderVoiceVoskStatus:renderVoiceVoskStatus,
+      retryVoskStart:retryVoskStart,
+      retryVoskStart:retryVoskStart,
       reorderMapping:reorderMapping,
       requestBackendConfig:requestBackendConfig,
       resetTargetCapture:resetTargetCapture,

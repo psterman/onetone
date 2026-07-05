@@ -12,8 +12,8 @@ use crate::config::{
     VoiceVoskConfig,
 };
 use crate::voice_vosk::{
-    probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, VoiceVoskEvent,
-    VoskResourceProbe,
+    probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, vosk_resource_issue,
+    VoiceVoskEvent, VoskResourceProbe,
 };
 use crate::AppState;
 
@@ -75,7 +75,7 @@ pub fn voice_vosk_start(
     }
 
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
-    *state.voice_vosk_probe.lock() = Some(probe);
+    *state.voice_vosk_probe.lock() = Some(probe.clone());
 
     match start_voice_vosk(
         cfg.clone(),
@@ -94,7 +94,14 @@ pub fn voice_vosk_start(
         }
         Err(e) => {
             if vosk_epoch_matches(state, epoch) {
-                *state.voice_vosk_last_error.lock() = e.clone();
+                let issue = vosk_resource_issue(&probe).unwrap_or("start_failed");
+                *state.voice_vosk_last_error.lock() = if issue == "model_missing" {
+                    format!("model_missing:{}", probe.resolved_model_path)
+                } else if issue == "dll_missing" {
+                    format!("dll_missing:{}", probe.resolved_dll_path)
+                } else {
+                    e.clone()
+                };
                 *state.voice_vosk_state.lock() = "error".into();
             }
             Err(e)
@@ -377,6 +384,10 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
     let probe = cached_vosk_probe(state, &cfg.voice_vosk, resource_dir.as_deref());
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key);
+    let resources_dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());
+    let resource_issue = crate::voice_vosk::vosk_resource_issue(&probe);
+    let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
+        .unwrap_or("https://alphacephei.com/vosk/models");
     serde_json::json!({
         "enabled": cfg.voice_vosk.enabled,
         "state": state.voice_vosk_state.lock().clone(),
@@ -398,6 +409,9 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "libExists": probe.lib_exists,
         "grammarMode": state.voice_vosk_grammar_mode.lock().clone(),
         "modelLoadTimeMs": state.voice_vosk_model_load_time_ms.lock().clone(),
+        "resourceIssue": resource_issue,
+        "resourcesDir": resources_dir.display().to_string(),
+        "modelDownloadUrl": download_url,
     })
 }
 
@@ -630,4 +644,25 @@ pub fn voice_vosk_test_send(state: &AppState, window: &WebviewWindow) -> serde_j
         "reason": if ok { "sent" } else { "send_failed" },
         "key": key,
     })
+}
+
+pub fn voice_vosk_open_resources_dir(resource_dir: Option<PathBuf>) -> Result<(), String> {
+    let dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());
+    crate::voice_vosk::open_path_in_explorer(&dir)
+}
+
+pub fn voice_vosk_retry_start(
+    state: &Arc<AppState>,
+    resource_dir: Option<PathBuf>,
+) -> serde_json::Value {
+    refresh_vosk_probe_cache(state, resource_dir.as_deref());
+    let enabled = state.cfg.lock().voice_vosk.enabled;
+    if enabled {
+        *state.voice_vosk_state.lock() = "starting".into();
+        *state.voice_vosk_last_error.lock() = String::new();
+        let cfg = state.cfg.lock().voice_vosk.clone();
+        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
+        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    }
+    voice_vosk_status(state, resource_dir)
 }

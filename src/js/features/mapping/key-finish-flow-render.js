@@ -8,8 +8,15 @@
   var schemeStepHighlightTimer=0;
   var timingSaveTimer=0;
 
+  function normalizeUiTriggerMode(raw){
+    raw=(raw||'tap').toLowerCase();
+    if(raw==='toggle') return 'tap';
+    if(raw==='hold'||raw==='longpress') return 'perpress';
+    return raw;
+  }
+
   function renderModeAnim(opt){
-    if(opt==='hold'){
+    if(opt==='perpress'){
       return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-hold">'
         +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
         +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
@@ -26,11 +33,10 @@
   }
 
   function renderKeyFinishModeBlock(m,id){
-    var raw=(m.triggerMode||'tap').toLowerCase();
-    var mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    var mode=normalizeUiTriggerMode(m.triggerMode);
     var html='<div class="map-trigger-mode key-scheme-finish-mode">';
     html+='<div class="map-mode-cards">';
-    ['hold','tap'].forEach(function(opt){
+    ['perpress','tap'].forEach(function(opt){
       var titleKey=opt==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant';
       var descKey=titleKey+'Desc';
       html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
@@ -48,8 +54,7 @@
     var onTxt=t('keyFinishFlowStatusOn');
     var offTxt=t('keyFinishFlowStatusOff');
     var isCancel=kind==='cancel';
-    var raw=(m.triggerMode||'tap').toLowerCase();
-    var mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    var mode=normalizeUiTriggerMode(m.triggerMode);
     var active=mode==='tap';
     var enabledField=isCancel?'cancelEnabled':'autoEnterEnabled';
     var rangeField=isCancel?'intervalMs':'enterDelayMs';
@@ -212,8 +217,7 @@
       return;
     }
     hooks().ensureMappingTiming(m);
-    var raw=(m.triggerMode||'tap').toLowerCase();
-    var mode=(raw==='toggle')?'tap':(raw==='longpress'?'hold':raw);
+    var mode=normalizeUiTriggerMode(m.triggerMode);
     section.hidden=mode!=='tap';
   }
 

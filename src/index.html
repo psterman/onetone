@@ -399,6 +399,7 @@
                       <p class="mic-desc" id="targetTitle">语音快捷键</p>
                       <div class="display empty" id="targetDisplay">
                         <img class="target-ime-badge" id="targetImeIconMapping" alt="" hidden decoding="async">
+                        <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
                         <span class="display-value" id="targetView">未设置</span>
                       </div>
                       <div class="actions">
@@ -409,6 +410,10 @@
                     <div class="ime-preset-block ime-preset-block--below-card">
                       <p class="ime-preset-hint" id="imePresetHintMapping" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
                       <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                    </div>
+                    <div class="app-target-block app-target-block--below-card">
+                      <p class="app-target-hint" id="appTargetHintMapping">选择目标应用，点击即可选用</p>
+                      <div class="app-target-strip" id="appTargetStripMapping" data-app-target-context="mapping"></div>
                     </div>
                   </section>
                   <section class="key-scheme-edit-card key-scheme-finish-panel" data-edit-step="finish" id="keySchemeEditFinish">
@@ -656,6 +661,14 @@
                     </div>
                   </div>
                   <p class="mic-empty" id="voiceVoskError" hidden></p>
+                  <div class="voice-vosk-missing-panel" id="voiceVoskMissingPanel" hidden>
+                    <p class="voice-vosk-missing-body" id="voiceVoskMissingBody"></p>
+                    <div class="voice-vosk-missing-actions">
+                      <button type="button" class="btn secondary" id="btnVoskOpenResources">打开资源目录</button>
+                      <button type="button" class="btn secondary" id="btnVoskDownloadGuide">下载模型</button>
+                      <button type="button" class="btn secondary" id="btnVoskRetry">重试启动</button>
+                    </div>
+                  </div>
                   <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
                     <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
                     <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
@@ -862,6 +875,10 @@
               <pre class="dev-log dev-log-events" id="rawEventLog">等待录制…</pre>
             </div>
             <div class="dev-panel-block">
+              <div class="mini-title" id="debugInputExtTitle">扩展输入</div>
+              <div class="dev-runtime-grid" id="devInputExtGrid"></div>
+            </div>
+            <div class="dev-panel-block">
               <div class="mini-title" id="runtimeTitle">最近按键</div>
               <div class="dev-runtime-grid" id="devLastKeyGrid"></div>
             </div>
@@ -957,6 +974,7 @@
                   <p class="onboard-record-card-title" id="onboardTargetCardTitle">② 打开语音输入的快捷键</p>
                   <div class="target-key-display" id="onboardTargetKeyDisplay">
                     <img class="target-ime-badge" id="onboardTargetImeIcon" alt="" hidden decoding="async">
+                    <span class="app-target-card-badge" id="onboardTargetAppBadge" hidden aria-hidden="true"></span>
                     <div class="onboard-record-card-key" id="onboardTargetKey">RAlt</div>
                   </div>
                   <p class="onboard-record-card-hint" id="onboardTargetCardHint">请先录好左边的键</p>
@@ -964,6 +982,13 @@
                   <div class="onboard-record-actions">
                     <button type="button" class="welcome-btn" id="btnOnboardRecordTargetAgain" hidden>重新录制</button>
                   </div>
+                </div>
+              </div>
+              <div class="onboard-app-target-step" id="onboardAppTargetStep" hidden>
+                <p class="onboard-app-target-step-title" id="onboardAppTargetStepTitle">选择目标应用</p>
+                <div class="app-target-block app-target-block--onboard-step">
+                  <p class="app-target-hint" id="appTargetHintOnboard">推荐 Cursor，点击即可选择</p>
+                  <div class="app-target-strip" id="appTargetStripOnboard" data-app-target-context="onboarding"></div>
                 </div>
               </div>
             </div>
@@ -1159,12 +1184,14 @@
     <div class="home-guide-banner" id="homeGuideBanner" hidden>    </div>
   </div>
   <script src="js/key-labels.js"></script>
+  <script src="js/locale-defaults.js"></script>
   <script src="js/ime-presets.js"></script>
+  <script src="js/app-target-presets.js?v=20260705-codex"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/phrase-practice.js"></script>
   <script src="js/core/dom.js"></script>
   <script src="js/core/state.js"></script>
-  <script src="js/core/i18n.js"></script>
+  <script src="js/core/i18n.js?v=20260705-codex"></script>
   <script src="js/core/ipc.js"></script>
   <script src="js/core/events.js"></script>
   <script src="js/core/render-loop.js"></script>

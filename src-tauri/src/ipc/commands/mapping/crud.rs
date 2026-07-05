@@ -89,6 +89,7 @@ pub fn cmd_mapping_duplicate(
                 long_press_ms: src.long_press_ms,
                 double_click_ms: src.double_click_ms,
                 ime_preset_id: src.ime_preset_id.clone(),
+                app_target_id: src.app_target_id.clone(),
             });
             cfg.normalize();
         }

@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>一声 OneTone — 按一下键，打开语音输入</title>
-  <meta name="description" content="把音量键、侧键变成语音输入的启动键。适用于 Windows 10/11。">
+  <title>一声 OneTone — 外设一键开语音输入</title>
+  <meta name="description" content="OneTone 把鼠标侧键、音量键等外设变成语音输入开关。继续用 Typeless、讯飞等，按一下就能说。适用于 Windows 10/11。">
+  <meta property="og:title" content="一声 OneTone — 外设一键开语音输入">
   <meta property="og:url" content="https://www.onetone.app/">
-  <meta property="og:title" content="一声 OneTone — 按一下键，打开语音输入">
   <meta property="og:image" content="https://www.onetone.app/assets/logo.png">
   <link rel="canonical" href="https://www.onetone.app/">
   <link rel="icon" href="assets/logo.png" type="image/png">
@@ -18,31 +18,34 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/tailwind-config.js"></script>
   <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/home-sections.css">
 </head>
 <body class="bg-slate-50 dark:bg-surface-dark text-slate-900 dark:text-slate-100 transition-colors duration-300 relative overflow-x-hidden" data-page="home">
 
-  <header class="fixed top-0 w-full z-50 glass-header border-b border-slate-200 dark:border-slate-800 transition-all">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a class="flex items-center gap-3 group" href="index.html">
-        <img src="assets/logo.png" alt="" width="32" height="32" class="w-8 h-8 rounded-lg shadow-lg group-hover:shadow-brand-500/30 transition-all">
-        <span class="font-bold text-lg tracking-tight group-hover:text-brand-500 transition-colors" data-i18n="siteName">一声 OneTone</span>
-      </a>
-      <nav class="hidden md:flex items-center gap-8 font-medium text-sm text-slate-600 dark:text-slate-300" aria-label="Main">
-        <a href="download.html" class="hover:text-brand-500 transition-colors" data-nav="download" data-i18n="navDownload">下载</a>
-        <a href="quickstart.html" class="hover:text-brand-500 transition-colors" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
-        <a href="faq.html" class="hover:text-brand-500 transition-colors" data-nav="faq" data-i18n="navFaq">常见问题</a>
-      </nav>
-      <div class="flex items-center gap-3">
-        <button type="button" id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" aria-label="Toggle theme">
-          <i class="ph ph-moon text-xl block dark:hidden"></i>
-          <i class="ph ph-sun text-xl hidden dark:block"></i>
-        </button>
-        <button type="button" class="text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:text-brand-500 transition-all" id="langToggle" data-i18n="langToggle">EN</button>
+  <header class="site-nav-shell">
+    <div class="site-nav-card glass-header">
+      <div class="site-nav-inner">
+        <a class="site-nav-brand" href="index.html">
+          <img src="assets/logo.png" alt="" width="32" height="32">
+          <span data-i18n="siteName">一声 OneTone</span>
+        </a>
+        <nav class="site-nav-links hidden md:flex" aria-label="Main">
+          <a href="download.html" data-nav="download" data-i18n="navDownload">下载</a>
+          <a href="quickstart.html" data-nav="quickstart" data-i18n="navQuickstart">上手</a>
+          <a href="faq.html" data-nav="faq" data-i18n="navFaq">帮助</a>
+        </nav>
+        <div class="site-nav-actions">
+          <button type="button" id="themeToggle" aria-label="Toggle theme">
+            <i class="ph ph-moon text-xl block dark:hidden"></i>
+            <i class="ph ph-sun text-xl hidden dark:block"></i>
+          </button>
+          <button type="button" id="langToggle" data-i18n="langToggle">EN</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="relative z-10 pt-32">
+  <main class="relative z-10">
     <section class="hero-section max-w-6xl mx-auto px-6 pt-10 pb-10 md:pb-6">
       <div class="hero-grid">
         <div class="hero-copy">
@@ -51,71 +54,67 @@
             <span data-i18n="heroTrust">适用于 Windows 10 / 11</span>
           </div>
           <h1 class="hero-title">
-            <span class="hero-title-line hero-title-line-with-pill">
-              <span data-i18n="heroActionLine1">用</span>
-              <span class="hero-word-pill" aria-live="polite">
-                <span class="hero-word-dot" aria-hidden="true"></span>
-                <span data-hero-word>鼠标侧键</span>
-              </span>
+            <span class="hero-title-sentence">
+              <span class="hero-title-lead" data-i18n="heroActionLine1">把</span><span class="hero-word-pill hero-pill-theme-0" aria-live="polite"><span class="hero-word-dot" aria-hidden="true"></span><span data-hero-word>脑子里的吐槽</span></span><span class="hero-title-mid" data-i18n="heroActionLine2">说出来，</span><span class="hero-title-tail" data-i18n="heroActionLine3">用语音输入</span>
             </span>
-            <span class="hero-title-line" data-i18n="heroActionLine2">打开语音输入</span>
           </h1>
-          <p class="hero-tagline" data-i18n="heroTagline">把音量键、鼠标侧键或任何你不常用的按键，变成系统语音输入的超级启动键。</p>
+          <p class="hero-tagline" data-i18n="heroTagline">按心动按钮，我口说我心</p>
           <div class="hero-actions">
             <a href="download.html" class="hero-primary-cta" data-i18n="ctaDownload">
-              立即免费下载
+              我就试试
             </a>
-            <a href="quickstart.html" class="hero-secondary-cta">
+            <a href="quickstart.html#step1" class="hero-secondary-cta">
               <span data-i18n="ctaSeeHow">先看看怎么用</span>
               <i class="ph-bold ph-arrow-right"></i>
             </a>
           </div>
           <div class="hero-proof-row" aria-label="OneTone benefits">
-            <span><i class="ph ph-keyboard"></i><span data-i18n="heroProofKeyboard">键盘优先</span></span>
-            <span><i class="ph ph-globe-hemisphere-west"></i><span data-i18n="heroProofGlobal">全局触发</span></span>
-            <span><i class="ph ph-shield-check"></i><span data-i18n="heroProofLocal">本地可用</span></span>
+            <span><i class="ph ph-hand-pointing"></i><span data-i18n="heroProofKeyboard">外设随便选</span></span>
+            <span><i class="ph ph-globe-hemisphere-west"></i><span data-i18n="heroProofGlobal">在哪都能说</span></span>
+            <span><i class="ph ph-shield-check"></i><span data-i18n="heroProofLocal">话留本机</span></span>
           </div>
-          <span class="sr-only" data-hero-live>鼠标侧键</span>
+          <span class="sr-only" data-hero-live>脑子里的吐槽</span>
         </div>
 
         <div class="hero-demo hero-object-demo" aria-label="OneTone voice input demo">
+          <div class="hero-flow-connector" aria-hidden="true"></div>
+
           <div class="hero-object-stage" aria-hidden="true">
-            <div class="hero-object hero-object-mouse is-active" data-hero-device-object="0">
-              <span class="mouse-body"></span>
-              <span class="mouse-button"></span>
-              <span class="mouse-side"></span>
+            <div class="hero-object hero-object-photo is-active" data-hero-device-object="0" data-device-id="mouse">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/mouse.png" alt="" width="720" height="544" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
-            <div class="hero-object hero-object-gamepad" data-hero-device-object="1">
-              <span class="gamepad-body"></span>
-              <span class="gamepad-stick left"></span>
-              <span class="gamepad-stick right"></span>
-              <span class="gamepad-dpad"></span>
-              <span class="gamepad-button a"></span>
-              <span class="gamepad-button b"></span>
+            <div class="hero-object hero-object-photo" data-hero-device-object="1" data-device-id="volume">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/volume.png" alt="" width="720" height="551" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
-            <div class="hero-object hero-object-ring" data-hero-device-object="2">
-              <span class="ring-band"></span>
-              <span class="ring-module"></span>
-              <span class="ring-signal"></span>
+            <div class="hero-object hero-object-photo" data-hero-device-object="2" data-device-id="gamepad">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/gamepad.png" alt="" width="720" height="628" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
-            <div class="hero-object hero-object-trackball" data-hero-device-object="3">
-              <span class="trackball-base"></span>
-              <span class="trackball-ball"></span>
-              <span class="trackball-button left"></span>
-              <span class="trackball-button right"></span>
+            <div class="hero-object hero-object-photo" data-hero-device-object="3" data-device-id="ring">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/ring.png" alt="" width="624" height="720" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
-            <div class="hero-object hero-object-mic" data-hero-device-object="4">
-              <span class="mic-head"></span>
-              <span class="mic-grille"></span>
-              <span class="mic-stem"></span>
-              <span class="mic-base"></span>
+            <div class="hero-object hero-object-photo" data-hero-device-object="4" data-device-id="trackball">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/trackball.png" alt="" width="720" height="495" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
-            <div class="hero-object hero-object-remote" data-hero-device-object="5">
-              <span class="remote-body"></span>
-              <span class="remote-button main"></span>
-              <span class="remote-button small one"></span>
-              <span class="remote-button small two"></span>
-              <span class="remote-button small three"></span>
+            <div class="hero-object hero-object-photo" data-hero-device-object="5" data-device-id="mic">
+              <figure class="hero-device-photo">
+                <img src="assets/devices/mic.png" alt="" width="306" height="720" decoding="async" draggable="false">
+                <span class="hero-device-accent"></span>
+              </figure>
             </div>
             <div class="hero-object-glow"></div>
           </div>
@@ -123,65 +122,62 @@
           <div class="hero-listening-card">
             <div class="hero-card-title">
               <span class="hero-mic-dot"><i class="ph-fill ph-microphone"></i></span>
-              <span>OneTone</span>
+              <span data-i18n="heroDemoCardTitle">一声</span>
               <button type="button" aria-label="Close demo"><i class="ph-bold ph-x"></i></button>
             </div>
             <div class="hero-wave" aria-hidden="true">
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
             </div>
-            <p data-i18n="heroDemoListening">正在聆听...</p>
+            <p data-i18n="heroDemoListening">在听了，别怂…</p>
           </div>
 
           <div class="hero-text-demo">
             <div class="hero-text-line is-muted"></div>
             <div class="hero-text-line is-short"></div>
-            <p><span data-i18n="heroDemoTypedText">今天就用声音输入。</span><span class="hero-caret" aria-hidden="true"></span></p>
+            <p><span data-i18n="heroDemoTypedText">说啥都行，字会自己蹦到光标那。</span><span class="hero-caret" aria-hidden="true"></span></p>
           </div>
         </div>
       </div>
+      <blockquote class="hero-slogan home-reveal">
+        <i class="ph-fill ph-quotes" aria-hidden="true"></i>
+        <p data-i18n="heroSlogan">「小红书别再给我推299￥的vibecoding键盘了，穷是俺的问题」</p>
+      </blockquote>
     </section>
 
     <section id="quickstart" class="flow-section py-24 bg-white/60 dark:bg-slate-900/55 border-y border-slate-200/70 dark:border-slate-800/70">
       <div class="max-w-6xl mx-auto px-6">
         <div class="quickstart-layout" data-cycle-group="flow">
           <div class="quickstart-copy">
-            <span class="section-kicker" data-i18n="quickstartKicker">3 分钟上手</span>
-            <h2 data-i18n="stepsTitle">把任意外设，变成语音输入开关</h2>
-            <p data-i18n="stepsSubtitle">鼠标侧键、手柄、蓝牙戒指、轨迹球、遥控器、麦克风口令等 Windows 可识别输入，都可以用来唤醒语音输入。</p>
+            <span class="section-kicker" data-i18n="quickstartKicker">上手</span>
+            <h2 data-i18n="stepsTitle">三步，把万物变成「开麦键」</h2>
+            <p data-i18n="stepsSubtitle">鼠标侧键、音量键、戒指、手柄……会响会亮的东西，都能当你偷懒——啊不，高效开麦的开关。</p>
 
             <ol class="quickstart-steps">
               <li>
                 <span>1</span>
                 <div>
-                  <strong data-i18n="flowStep1Title">选择触发源</strong>
-                  <p data-i18n="flowStep1Desc">在 OneTone 里按一下你想用的外设动作。</p>
+                  <strong data-i18n="flowStep1Title">选个顺手的键</strong>
+                  <p data-i18n="flowStep1Desc">在 OneTone 里按一下你想绑定的外设——侧键、音量键，随便哪个顺手的。</p>
                 </div>
               </li>
               <li>
                 <span>2</span>
                 <div>
-                  <strong data-i18n="flowStep2Title">绑定语音输入</strong>
-                  <p data-i18n="flowStep2Desc">推荐先绑定 Windows 自带的 Win + H，最快确认流程跑通。</p>
+                  <strong data-i18n="flowStep2Title">告诉它怎么唤醒语音输入</strong>
+                  <p data-i18n="flowStep2Desc">选常用语音输入的预设，或录一下「原来要怎么按才能说话」——只做一次。</p>
                 </div>
               </li>
               <li>
                 <span>3</span>
                 <div>
                   <strong data-i18n="flowStep3Title">在任意输入框测试</strong>
-                  <p data-i18n="flowStep3Desc">打开聊天、邮件或文档，触发一下，说的话会进入当前光标位置。</p>
+                  <p data-i18n="flowStep3Desc">打开聊天、邮件或文档，按一下，说的话会出现在光标那——像魔法，但是真的。</p>
                 </div>
               </li>
             </ol>
 
-            <div class="quickstart-note">
-              <i class="ph-fill ph-check-circle"></i>
-              <div>
-                <strong data-i18n="quickstartSuccessTitle">成功标志</strong>
-                <p data-i18n="quickstartSuccessDesc">看到语音输入条或麦克风图标出现，就说明触发已经生效。</p>
-              </div>
-            </div>
-            <a href="faq.html#no-response" class="quickstart-help">
-              <span data-i18n="quickstartHelp">按了没反应？看 3 个排查点</span>
+            <a href="quickstart.html#step1" class="quickstart-help">
+              <span data-i18n="quickstartHelp">按了没反应？看排查入口</span>
               <i class="ph-bold ph-arrow-right"></i>
             </a>
           </div>
@@ -195,8 +191,8 @@
               </div>
               <div class="command-search">
                 <i class="ph-bold ph-magnifying-glass"></i>
-                <span data-i18n="quickstartSearch">搜索或按下一个触发源...</span>
-                <kbd>Win</kbd><kbd>H</kbd>
+                <span data-i18n="quickstartSearch">搜一搜，或直接按你想用的键…</span>
+                <kbd data-i18n="flowDemoShortcut">按外设试录</kbd>
               </div>
               <div class="command-body">
                 <div class="command-list" aria-label="Trigger sources">
@@ -240,9 +236,9 @@
                     <span data-flow-status data-i18n="flowStatusReady">触发源已记录</span>
                   </div>
                   <div class="mapping-card">
-                    <span data-i18n="quickstartMappingLabel">当前映射</span>
-                    <strong><span data-flow-current>鼠标侧键</span> -> Win + H</strong>
-                    <p data-i18n="quickstartMappingDesc">触发后打开系统语音输入，不改变当前应用。</p>
+                    <span data-i18n="quickstartMappingLabel">按了会怎样</span>
+                    <strong><span data-flow-current>鼠标侧键</span> → <span data-flow-target data-i18n="flowTargetLabel">语音唤醒键</span></strong>
+                    <p data-i18n="quickstartMappingDesc">按外设 → 该开的语音输入自己开。你继续装作在认真看屏幕。</p>
                   </div>
                   <div class="test-card">
                     <div>
@@ -258,88 +254,225 @@
           </div>
         </div>
 
-        <div class="quickstart-scenario-lab" data-cycle-group="quickstart-scene">
-          <div class="quickstart-scenario-copy">
-            <span class="section-kicker" data-i18n="quickstartScenarioKicker">场景说明</span>
-            <h3 data-i18n="quickstartScenarioTitle">一次设置，所有输入场景都能用</h3>
-            <p data-i18n="quickstartScenarioDesc">OneTone 不接管你的写作软件，只负责把“触发一下”变成“当前光标开始听写”。所以邮件、笔记、聊天、文档里都是同一套动作。</p>
+      </div>
+    </section>
+
+    <section id="experience" class="home-xp py-28">
+      <div class="max-w-6xl mx-auto px-6">
+        <header class="home-xp-head home-reveal">
+          <span class="section-kicker" data-i18n="homeFlowKicker">心流</span>
+          <h2 data-i18n="homeFlowTitle">少一次打断，就多留住一点思路</h2>
+          <p data-i18n="homeFlowDesc">好的语音输入，不该让你先离开思考。</p>
+        </header>
+
+        <div class="home-bento">
+          <div class="home-ime-duo home-reveal">
+            <article class="home-bento-card is-ime-demo is-ime-normal-card" data-home-ime-demo="normal">
+              <div class="home-ime-wake-copy">
+                <span class="home-bento-tag" data-i18n="homeFlowCard4Tag">不用按键也行</span>
+                <h3 data-i18n="homeFlowCard4Title">念句口令，OneTone 帮你叫醒语音输入</h3>
+                <p data-i18n="homeFlowCard4Desc">录一次专属关键词。张嘴说一声，它识别后替你唤醒——手可以继续忙别的。</p>
+              </div>
+              <div class="home-ime-wake-stage" aria-hidden="true">
+                <div class="home-ime-listen" data-home-ime-wake-block>
+                  <span class="home-ime-listen-mic"><i class="ph-fill ph-microphone"></i></span>
+                  <p class="home-ime-phrase-transcript" data-home-ime-phrase></p>
+                  <span class="home-ime-listen-status" data-home-ime-status data-i18n="homeImeWakeRecognizing">正在识别口令…</span>
+                </div>
+                <div class="home-ime-chain" data-home-ime-wake-block>
+                  <span class="home-ime-node home-ime-phrase-node" data-home-ime-phrase-node>
+                    <i class="ph-fill ph-quotes"></i>
+                    <span data-home-ime-phrase-label>「开始听写」</span>
+                  </span>
+                  <span class="home-ime-arrow" aria-hidden="true">→</span>
+                  <span class="home-ime-node home-ime-onetone" data-home-ime-onetone>
+                    <i class="ph-fill ph-lightning"></i>
+                    <span>OneTone</span>
+                  </span>
+                  <span class="home-ime-arrow" aria-hidden="true">→</span>
+                  <span class="home-ime-node home-ime-target" data-home-ime-target>
+                    <img data-home-ime-icon src="assets/icons/ime/typeless.png" alt="" width="20" height="20" decoding="async">
+                    <span data-home-ime-name>Typeless</span>
+                  </span>
+                </div>
+                <div class="home-ime-voice-bar" data-home-ime-bar>
+                  <span class="home-ime-bar-mic"><i class="ph-fill ph-microphone"></i></span>
+                  <span class="home-ime-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+                  <span class="home-ime-bar-text" data-home-ime-bar-text data-i18n="homeImeWakeListening">在听了，别怂…</span>
+                </div>
+                <div class="home-ime-typed-wrap" data-home-ime-editor>
+                  <div class="home-ime-typed-bar"><span></span><span></span><span></span></div>
+                  <p class="home-ime-typed"><span data-home-ime-typed></span><i></i></p>
+                  <div class="home-ime-compose" data-home-ime-compose>
+                    <button type="button" class="home-ime-send-btn" data-home-ime-send disabled>
+                      <span data-i18n="homeImeWakeSendBtn">发送</span>
+                    </button>
+                  </div>
+                  <div class="home-ime-delay" data-home-ime-delay hidden>
+                    <span class="home-ime-delay-label" data-i18n="homeImeWakeDelayLabel">等待上屏</span>
+                    <span class="home-ime-delay-track" aria-hidden="true"><span class="home-ime-delay-fill" data-home-ime-delay-fill></span></span>
+                  </div>
+                  <p class="home-ime-outcome-status" data-home-ime-outcome-status hidden></p>
+                  <ul class="home-ime-flow-steps" data-home-ime-flow-steps aria-hidden="true">
+                    <li data-home-ime-flow-step="1" data-i18n="homeImeWakeFlowEnd">结束听写</li>
+                    <li data-home-ime-flow-step="2" data-i18n="homeImeWakeFlowWait">等待上屏</li>
+                    <li data-home-ime-flow-step="3" data-i18n="homeImeWakeFlowSend">自动发送</li>
+                  </ul>
+                </div>
+              </div>
+            </article>
+
+            <article class="home-bento-card is-ime-demo is-ime-cancel-card" data-home-ime-demo="cancel">
+              <div class="home-ime-wake-copy">
+                <span class="home-bento-tag" data-i18n="homeFlowCard5Tag">说错了也能重来</span>
+                <h3 data-i18n="homeFlowCard5Title">输入一半，取消重说</h3>
+                <p data-i18n="homeFlowCard5Desc">快速再按一次，错字清掉，接着把想说的话重新说一遍。</p>
+              </div>
+              <div class="home-ime-wake-stage" aria-hidden="true">
+                <div class="home-ime-voice-bar" data-home-ime-bar>
+                  <span class="home-ime-bar-mic"><i class="ph-fill ph-microphone"></i></span>
+                  <span class="home-ime-wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span>
+                  <span class="home-ime-bar-text" data-home-ime-bar-text data-i18n="homeImeWakeListening">在听了，别怂…</span>
+                </div>
+                <div class="home-ime-typed-wrap" data-home-ime-editor>
+                  <div class="home-ime-typed-bar"><span></span><span></span><span></span></div>
+                  <p class="home-ime-typed"><span data-home-ime-typed></span><i></i></p>
+                  <div class="home-ime-compose" data-home-ime-compose>
+                    <span class="home-ime-cancel-chip" data-home-ime-cancel-chip hidden>
+                      <kbd>Esc</kbd>
+                      <span data-i18n="homeImeWakeCancelAction">取消听写</span>
+                    </span>
+                  </div>
+                  <p class="home-ime-outcome-status" data-home-ime-outcome-status hidden></p>
+                  <ul class="home-ime-flow-steps" data-home-ime-flow-steps aria-hidden="true">
+                    <li data-home-ime-flow-step="1" data-i18n="homeImeWakeFlow1">听写中</li>
+                    <li data-home-ime-flow-step="2" data-i18n="homeImeWakeFlow2">说错取消</li>
+                    <li data-home-ime-flow-step="3" data-i18n="homeImeWakeFlow3">重新听写</li>
+                  </ul>
+                </div>
+              </div>
+            </article>
           </div>
 
-          <div class="quickstart-scenes" role="tablist" aria-label="OneTone input scenarios">
-            <button type="button" class="is-active" data-scene-item>
-              <i class="ph-fill ph-envelope-simple"></i>
-              <strong data-i18n="contextMail">邮件</strong>
-              <span data-i18n="quickstartSceneMail">回复长邮件时，按一下外设，直接把想法说进正文。</span>
-            </button>
-            <button type="button" data-scene-item>
-              <i class="ph-fill ph-note-pencil"></i>
-              <strong data-i18n="contextNotes">笔记</strong>
-              <span data-i18n="quickstartSceneNotes">想法刚出现时，用声音先记下来，再慢慢整理。</span>
-            </button>
-            <button type="button" data-scene-item>
-              <i class="ph-fill ph-chat-circle-dots"></i>
-              <strong data-i18n="contextChat">聊天</strong>
-              <span data-i18n="quickstartSceneChat">双手忙着操作时，也能快速回复当前聊天框。</span>
-            </button>
-            <button type="button" data-scene-item>
-              <i class="ph-fill ph-file-text"></i>
-              <strong data-i18n="contextDocs">文档</strong>
-              <span data-i18n="quickstartSceneDocs">写段落、列提纲、补说明时，用口述先铺开内容。</span>
-            </button>
-          </div>
+          <article class="home-bento-card is-featured home-reveal">
+            <span class="home-bento-tag" data-i18n="homeFlowCard3Tag">想法还在脑子里</span>
+            <h3 data-i18n="homeFlowCard3Title">想到就说，比「想到再打字」快半拍</h3>
+            <p data-i18n="homeFlowCard3Desc">邮件、聊天、文档里都是同一套——字落到光标那，脑子不用搬家。</p>
+            <div class="home-moment-stage" aria-hidden="true">
+              <div class="home-moment-thought">
+                <i class="ph-fill ph-lightbulb"></i>
+                <span data-i18n="homeFlowThought">「刚才那句「废话」，我得赶紧记下来…」</span>
+              </div>
+              <div class="home-moment-editor">
+                <div class="home-moment-bar"><span></span><span></span><span></span></div>
+                <p class="home-moment-typed"><span data-i18n="homeFlowTyped">刚才那句「废话」，我得赶紧记下来。</span><i></i></p>
+              </div>
+              <div class="home-moment-trigger">
+                <span class="home-moment-pulse"></span>
+                <i class="ph-fill ph-mouse"></i>
+              </div>
+            </div>
+          </article>
 
-          <div class="quickstart-scene-stage" aria-label="Scenario preview">
-            <article class="quickstart-scene-panel is-active" data-scene-panel>
-              <div class="scene-window-bar">
-                <span></span><span></span><span></span>
-                <strong data-i18n="sceneMailApp">邮件回复</strong>
-              </div>
-              <div class="scene-mail-preview">
-                <p class="scene-field" data-i18n="sceneMailTo">收件人：团队</p>
-                <p class="scene-line long"></p>
-                <p class="scene-line medium"></p>
-                <p class="scene-typed"><span data-i18n="sceneMailText">我先把今天的进展说一下，稍后补上截图和链接。</span><i></i></p>
-              </div>
-            </article>
-            <article class="quickstart-scene-panel" data-scene-panel>
-              <div class="scene-window-bar">
-                <span></span><span></span><span></span>
-                <strong data-i18n="sceneNotesApp">灵感笔记</strong>
-              </div>
-              <div class="scene-note-preview">
-                <b data-i18n="sceneNotesTitle">会议后的想法</b>
-                <p class="scene-typed"><span data-i18n="sceneNotesText">先记录三个方向：入口更轻、反馈更快、失败时有明确提示。</span><i></i></p>
-                <p class="scene-line short"></p>
-              </div>
-            </article>
-            <article class="quickstart-scene-panel" data-scene-panel>
-              <div class="scene-window-bar">
-                <span></span><span></span><span></span>
-                <strong data-i18n="sceneChatApp">聊天窗口</strong>
-              </div>
-              <div class="scene-chat-preview">
-                <p data-i18n="sceneChatIncoming">这个方案今天能先给一版吗？</p>
-                <p class="scene-typed"><span data-i18n="sceneChatText">可以，我先发一个可运行版本，细节晚上再补。</span><i></i></p>
-              </div>
-            </article>
-            <article class="quickstart-scene-panel" data-scene-panel>
-              <div class="scene-window-bar">
-                <span></span><span></span><span></span>
-                <strong data-i18n="sceneDocsApp">文档编辑</strong>
-              </div>
-              <div class="scene-doc-preview">
-                <p class="scene-doc-title" data-i18n="sceneDocsTitle">产品说明</p>
-                <p class="scene-line long"></p>
-                <p class="scene-typed"><span data-i18n="sceneDocsText">这个功能适合需要频繁输入，但不想离开当前软件的人。</span><i></i></p>
-                <p class="scene-line medium"></p>
-              </div>
-            </article>
-            <div class="quickstart-voice-chip">
-              <i class="ph-fill ph-microphone"></i>
-              <span data-i18n="quickstartVoiceChip">触发后，文字进入当前光标</span>
-              <div class="mini-wave" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <article class="home-bento-card is-hands home-reveal">
+            <span class="home-bento-tag" data-i18n="homeFlowCard1Tag">手还在键盘上</span>
+            <h3 data-i18n="homeFlowCard1Title">拇指按一下，嘴接着说</h3>
+            <p data-i18n="homeFlowCard1Desc">侧键、音量键、戒指——顺手的动作，都能把麦克风递给你。</p>
+            <div class="home-hand-visual" aria-hidden="true">
+              <span class="home-hand-mouse">
+                <span class="home-hand-body"></span>
+                <span class="home-hand-side is-lit"></span>
+              </span>
+              <span class="home-hand-wave"><span></span><span></span><span></span><span></span></span>
+            </div>
+          </article>
+
+          <article class="home-bento-card is-eyes home-reveal">
+            <span class="home-bento-tag" data-i18n="homeFlowCard2Tag">眼睛还在屏幕上</span>
+            <h3 data-i18n="homeFlowCard2Title">不用背快捷键了，真的</h3>
+            <p data-i18n="homeFlowCard2Desc">谁记得住 Win 加啥、Alt 加啥？顺手按一下，光标那开始听写。记忆留给下周的周报吧。</p>
+            <div class="home-shortcut-compare" aria-hidden="true">
+              <span class="is-faded" data-i18n="homeFlowShortcutBad">翻设置找半天</span>
+              <span class="is-faded" data-i18n="homeFlowShortcutWorse">组合键盲猜</span>
+              <span class="is-active"><i class="ph-fill ph-lightning"></i><span data-i18n="homeFlowYourKey">顺手按一下</span></span>
+            </div>
+          </article>
+
+          <blockquote class="home-bento-quote home-reveal">
+            <i class="ph-fill ph-quotes" aria-hidden="true"></i>
+            <p data-i18n="homeFlowQuote">「大厂别再给我塞 KPI 了，我只想更快躺平。」</p>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section id="fit" class="home-fit py-28 bg-white/60 dark:bg-slate-900/55 border-y border-slate-200/70 dark:border-slate-800/70">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="home-fit-hero home-reveal">
+          <div class="home-fit-copy">
+            <span class="section-kicker" data-i18n="homeFitKicker">合拍</span>
+            <h2 data-i18n="homeFitTitle">优化语音输入法的饭碗</h2>
+            <p data-i18n="homeFitDesc">OneTone 不想再造一个语音输入法轮子，静静地做个工具人。你继续用 Typeless、讯飞们——我们只负责「怎么快速开口」。</p>
+          </div>
+          <div class="home-layer-rail" aria-hidden="true">
+            <div class="home-layer-step">
+              <span class="home-layer-icon"><i class="ph-fill ph-mouse"></i></span>
+              <strong data-i18n="homeFitLayerDevice">你的外设</strong>
+            </div>
+            <span class="home-layer-line"></span>
+            <div class="home-layer-step is-onetone">
+              <span class="home-layer-icon"><i class="ph-fill ph-lightning"></i></span>
+              <strong>OneTone</strong>
+              <em data-i18n="homeFitLayerOneToneHint">帮按一下</em>
+            </div>
+            <span class="home-layer-line"></span>
+            <div class="home-layer-step">
+              <span class="home-layer-icon"><i class="ph-fill ph-keyboard"></i></span>
+              <strong data-i18n="homeFitLayerIme">你的语音输入</strong>
+            </div>
+            <span class="home-layer-line"></span>
+            <div class="home-layer-step">
+              <span class="home-layer-icon"><i class="ph-fill ph-app-window"></i></span>
+              <strong data-i18n="homeFitLayerApp">任意软件</strong>
             </div>
           </div>
+        </div>
+
+        <div class="home-fit-grid home-reveal">
+          <article class="home-fit-card is-ime">
+            <div class="home-fit-card-top">
+              <i class="ph-fill ph-plugs-connected"></i>
+              <h3 data-i18n="homeFitCard1Title">继续用 Typeless、智谱、讯飞</h3>
+            </div>
+            <p data-i18n="homeFitCard1Desc">转字还是它们干。我们只负责把麦递过去，说完要不要帮你敲回车，也可以商量。</p>
+            <div class="home-fit-chip-row" aria-hidden="true">
+              <span>Typeless</span><span>智谱</span><span>讯飞</span><span>+</span>
+            </div>
+          </article>
+          <article class="home-fit-card is-local">
+            <div class="home-fit-card-top">
+              <i class="ph-fill ph-shield-check"></i>
+              <h3 data-i18n="homeFitCard2Title">本地运行，安心开口</h3>
+            </div>
+            <p data-i18n="homeFitCard2Desc">语音不上传 OneTone。设置与方案，住在你的电脑里。</p>
+            <a href="privacy.html" class="home-fit-card-link" data-i18n="homeFitLinkPrivacy">隐私说明 →</a>
+          </article>
+          <article class="home-fit-card is-windows">
+            <div class="home-fit-card-top">
+              <i class="ph-fill ph-windows-logo"></i>
+              <h3 data-i18n="homeFitCard3Title">贴在你的 Windows 桌面里</h3>
+            </div>
+            <p data-i18n="homeFitCard3Desc">后台轻量常驻。Win 10 / 11，不另起一套工作流。</p>
+            <div class="home-fit-tray" aria-hidden="true">
+              <span class="home-fit-tray-icon"><img src="assets/logo.png" alt=""></span>
+              <span class="home-fit-tray-dot"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="home-fit-foot home-reveal">
+          <a href="quickstart.html#step0" data-i18n="homeFitLinkQuickstart">想了解细节？看上手指南 →</a>
+          <a href="faq.html#other-ime" data-i18n="homeFitLinkIme">语音输入兼容说明 →</a>
         </div>
       </div>
     </section>
@@ -360,7 +493,7 @@
             <div class="context-metric">
               <i class="ph-fill ph-lightning"></i>
               <strong data-i18n="contextMetric">从想到说，少一步</strong>
-              <span data-i18n="contextMetricDesc">不打断思路，不切换工作流。</span>
+              <span data-i18n="contextMetricDesc">思路不断线，随时指挥ai</span>
             </div>
           </div>
 
@@ -378,7 +511,7 @@
                 <p class="context-line long"></p>
                 <p class="context-line medium"></p>
                 <p class="context-typed">
-                  <span data-i18n="contextTypedText">我先把想法说出来，文字就会跟上。</span><i></i>
+                  <span data-i18n="contextTypedText">我先把想法说出来，字会自己跟上来。</span><i></i>
                 </p>
               </div>
             </div>
@@ -420,8 +553,8 @@
 
     <section class="max-w-5xl mx-auto px-6 py-24" id="download">
       <div class="bg-gradient-to-br from-brand-600 to-blue-600 rounded-3xl p-12 text-center text-white shadow-2xl relative overflow-hidden animate-shine">
-        <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-6 relative z-10" data-i18n="ctaBannerTitle">准备好提升效率了吗？</h2>
-        <p class="text-brand-100 text-lg mb-10 max-w-xl mx-auto relative z-10" data-i18n="ctaBannerDesc">只需不到一分钟的设置，即可体验最快捷的语音输入方式。</p>
+        <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-6 relative z-10" data-i18n="ctaBannerTitle">周报可以拖，开麦不必</h2>
+        <p class="text-brand-100 text-lg mb-10 max-w-xl mx-auto relative z-10" data-i18n="ctaBannerDesc">不到一分钟设置，把「想说」变成「已经说了」。</p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
           <a href="download.html" class="px-8 py-4 rounded-full bg-white text-brand-600 font-bold text-lg shadow-xl hover:-translate-y-1 transition-all" data-i18n="ctaBannerBtn">下载安装包</a>
           <span class="text-brand-200 text-sm" id="ctaBannerMeta" data-i18n="ctaBannerMeta">v1.0.0 | Windows 10/11</span>
@@ -437,7 +570,6 @@
         <span data-i18n="footerCopy">© 2026 一声 OneTone</span>
       </div>
       <nav aria-label="Footer" class="flex flex-wrap justify-center gap-x-8 gap-y-4">
-        <a href="features.html" class="hover:text-slate-900 dark:hover:text-white transition-colors" data-i18n="footerFeatures">功能介绍</a>
         <a href="changelog.html" class="hover:text-slate-900 dark:hover:text-white transition-colors" data-i18n="footerChangelog">更新日志</a>
         <a href="privacy.html" class="hover:text-slate-900 dark:hover:text-white transition-colors" data-i18n="footerPrivacy">隐私政策</a>
         <a href="terms.html" class="hover:text-slate-900 dark:hover:text-white transition-colors" data-i18n="footerTerms">服务条款</a>

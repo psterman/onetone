@@ -994,10 +994,13 @@
     const hit=res.lastDetectedPhrase||'';
     const modelPath=res.resolvedModelPath||res.modelPath||'';
     const modelOk=res.modelExists?'OK':'缺失';
+    renderVoskMissingPanel(res);
     const errEl=$('voiceVoskError');
     if(errEl){
+      const panel=$('voiceVoskMissingPanel');
+      const showingPanel=panel&&!panel.hidden;
       const err=res.lastError||'';
-      if(err){
+      if(err&&!showingPanel){
         errEl.hidden=false;
         errEl.textContent=err;
       }else{
@@ -1062,6 +1065,76 @@
       if(btn) btn.disabled=false;
       if(homeBtn) homeBtn.disabled=false;
       hooks().renderHomeLiveZone();
+    });
+  }
+
+  function shouldShowVoskMissingPanel(res){
+    if(!res) return false;
+    const issue=String(res.resourceIssue||'');
+    if(issue==='model_missing'||issue==='dll_missing') return true;
+    if(res.enabled&&res.state==='error'){
+      if(res.modelExists===false) return true;
+      if(res.dllExists===false) return true;
+    }
+    return false;
+  }
+
+  function voskMissingBodyText(res){
+    const issue=String(res.resourceIssue||'');
+    if(issue==='dll_missing'||res.dllExists===false) return t('voiceVoskMissingDll');
+    if(issue==='model_missing'||res.modelExists===false) return t('voiceVoskMissingModel');
+    const err=String(res.lastError||'').trim();
+    if(err.indexOf('dll_missing:')===0) return t('voiceVoskMissingDll');
+    if(err.indexOf('model_missing:')===0) return t('voiceVoskMissingModel');
+    return err||t('voiceVoskFail');
+  }
+
+  function renderVoskMissingPanel(res){
+    const panel=$('voiceVoskMissingPanel');
+    const body=$('voiceVoskMissingBody');
+    if(!panel||!body) return;
+    const show=shouldShowVoskMissingPanel(res);
+    panel.hidden=!show;
+    if(!show) return;
+    const path=String(res.resolvedModelPath||res.resourcesDir||'').trim();
+    body.textContent=t('voiceVoskMissingTitle')+' — '+voskMissingBodyText(res)+(path?('\n'+path):'');
+  }
+
+  function applyVoskMissingLang(){
+    const openBtn=$('btnVoskOpenResources');
+    const dlBtn=$('btnVoskDownloadGuide');
+    const retryBtn=$('btnVoskRetry');
+    if(openBtn) openBtn.textContent=t('voiceVoskOpenResources');
+    if(dlBtn) dlBtn.textContent=t('voiceVoskDownloadGuide');
+    if(retryBtn) retryBtn.textContent=t('voiceVoskRetry');
+    const snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
+    const vosk=snap&&snap.vosk;
+    if(vosk) renderVoskMissingPanel(vosk);
+  }
+
+  function openVoskResourcesDir(){
+    global.OneToneIpc.invoke('cmd_open_vosk_resources_dir',{}).catch(function(err){
+      hooks().toast(err&&err.message?String(err.message):t('voiceVoskFail'));
+    });
+  }
+
+  function downloadVoskModelGuide(){
+    const snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
+    const vosk=snap&&snap.vosk;
+    const url=(vosk&&vosk.modelDownloadUrl)||'https://alphacephei.com/vosk/models';
+    global.OneToneIpc.invoke('cmd_open_url',{url:url}).catch(function(err){
+      hooks().toast(err&&err.message?String(err.message):t('voiceVoskFail'));
+    });
+  }
+
+  function retryVoskStart(){
+    global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).then(function(res){
+      renderVoiceVoskStatus(res);
+      hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
+      if(res&&res.state==='starting') hooks().toast(t('voiceVoskRetry'));
+    }).catch(function(err){
+      hooks().toast(err&&err.message?String(err.message):t('voiceVoskFail'));
+      loadVoiceVoskStatus();
     });
   }
 
@@ -1190,6 +1263,10 @@
     syncVoiceVoskPresetButtons:syncVoiceVoskPresetButtons,
     changeVoskModelPreset:changeVoiceVoskModelPreset,
     isEnglishVoskPreset:isEnglishVoskPreset,
+    openVoskResourcesDir:openVoskResourcesDir,
+    downloadVoskModelGuide:downloadVoskModelGuide,
+    retryVoskStart:retryVoskStart,
+    applyVoskMissingLang:applyVoskMissingLang,
     isModeSwitchPending:function(){ return voiceModeSwitchInFlight; },
     isSapiTogglePending:function(){ return voiceSapiTogglePending; },
     isVoskTogglePending:function(){ return voiceVoskTogglePending; },

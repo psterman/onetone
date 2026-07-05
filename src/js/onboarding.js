@@ -25,6 +25,24 @@
   var END_PRESET_ZH = ['结束输入','发出去'];
   var END_PRESET_EN = ['end dictation','send it'];
 
+  function contentPack(){
+    if(global.OneToneLocaleDefaults){
+      return global.OneToneLocaleDefaults.contentPack(global.OneToneLocaleDefaults.contentLocale());
+    }
+    return null;
+  }
+
+  function defaultTargetKey(){
+    var pack = contentPack();
+    return pack ? pack.mappingTargetKey : 'RAlt';
+  }
+
+  function wakePresetOptions(){
+    var pack = contentPack();
+    if(pack && pack.voiceVoskPhrases && pack.voiceVoskPhrases.length) return pack.voiceVoskPhrases.slice();
+    return WAKE_PRESET_OPTIONS.slice();
+  }
+
   function app(){
     return global.OneToneApp;
   }
@@ -227,6 +245,19 @@
     );
   }
 
+  function syncOnboardAppTargetStep(){
+    var step = $('onboardAppTargetStep');
+    if(!step) return;
+    var triggerReady = state.triggerRecorded || mappingTriggerReady();
+    var a = app();
+    var recordingNow = !!(a && a.isRecording && a.isRecording());
+    var pending = !!(a && a.isRecordingPending && a.isRecordingPending());
+    var recordingTrigger = (recordingNow || pending) && state.previewMode === 'trigger';
+    step.hidden = !triggerReady || recordingTrigger;
+    step.classList.toggle('is-visible', !step.hidden);
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('onboarding');
+  }
+
   function updateRecordStatus(){
     var triggerCard = $('onboardTriggerCard');
     var targetCard = $('onboardTargetCard');
@@ -258,7 +289,7 @@
       targetStartBtn.disabled = !triggerReady && !recordingTarget;
     }
     if(triggerCardKey) triggerCardKey.textContent = lbl.triggerLabel || t('onboardRecordCardEmpty');
-    if(targetCardKey) targetCardKey.textContent = lbl.targetLabel || 'RAlt';
+    if(targetCardKey) targetCardKey.textContent = lbl.targetLabel || defaultTargetKey();
     updateRecordButtonLabels();
     if(flowStatus){
       if(recordingTarget) flowStatus.textContent = t('onboardFlowRecordingTarget');
@@ -267,6 +298,7 @@
       else if(triggerReady) flowStatus.textContent = t('onboardFlowAfterTrigger');
       else flowStatus.textContent = t('onboardFlowIdle');
     }
+    syncOnboardAppTargetStep();
     if(recordingTrigger){
       if(triggerHint) triggerHint.textContent = t('onboardRecordListeningTrigger');
       if(targetHint) targetHint.textContent = triggerReady ? t('onboardTargetCardHint') : t('onboardTargetNeedTriggerFirst');
@@ -342,7 +374,15 @@
     var lbl = labels();
     if(keyEl) keyEl.textContent = lbl.triggerLabel || '—';
     if(desc) desc.textContent = t('onboardTryDesc');
-    if(mapNote) mapNote.textContent = t('onboardTryMapNote');
+    var a = app();
+    var m = a && a.getActiveMapping ? a.getActiveMapping() : null;
+    var appTargetId = m && String(m.appTargetId || '');
+    var mapNoteKey = (appTargetId === 'cursor-chat')
+      ? 'onboardTryMapNoteCursor'
+      : (appTargetId === 'codex-chat')
+        ? 'onboardTryMapNoteCodex'
+        : 'onboardTryMapNote';
+    if(mapNote) mapNote.textContent = t(mapNoteKey);
     if(result){
       if(state.tryPassed){
         result.textContent = t('onboardTrySuccess');
@@ -396,7 +436,7 @@
   function renderTargetStep(){
     var lbl = labels();
     var tgt = $('onboardTargetKey');
-    if(tgt) tgt.textContent = lbl.targetLabel || 'RAlt';
+    if(tgt) tgt.textContent = lbl.targetLabel || defaultTargetKey();
   }
 
   function renderPracticeStep(){}
@@ -505,10 +545,13 @@
   function ensureDefaultPhrases(){
     var a = app();
     var wake = (a && a.getWakePhrases) ? a.getWakePhrases() : [];
-    if(!wake.length) patchWakePhrases(WAKE_PRESET_OPTIONS.slice(0, 2));
+    if(!wake.length) patchWakePhrases(wakePresetOptions().slice(0, 2));
     var end = (a && a.getEndPhrases) ? a.getEndPhrases() : { zh: [], en: [] };
+    var pack = contentPack();
+    var endZh = pack ? pack.voiceEndPhrasesZh : END_PRESET_ZH;
+    var endEn = pack ? pack.voiceEndPhrasesEn : END_PRESET_EN;
     if(!(end.zh && end.zh.length) && !(end.en && end.en.length)){
-      patchEndPhrases(END_PRESET_ZH.slice(0, 1), END_PRESET_EN.slice(0, 1));
+      patchEndPhrases(endZh.slice(0, 1), endEn.slice(0, 1));
     }
   }
 
@@ -605,7 +648,7 @@
   function targetOk(){
     var lbl = labels();
     var trig = String((lbl.triggerLabel || '').trim());
-    var tgt = String((lbl.targetLabel || 'RAlt').trim() || 'RAlt');
+    var tgt = String((lbl.targetLabel || defaultTargetKey()).trim() || defaultTargetKey());
     if(!tgt) return false;
     if(trig && tgt && trig === tgt) return false;
     return true;
@@ -616,7 +659,7 @@
     if(!a || !a.saveConfigPatch) return;
     a.saveConfigPatch(function(m){
       m.enabled = true;
-      if(!m.targetKey) m.targetKey = 'RAlt';
+      if(!m.targetKey) m.targetKey = defaultTargetKey();
     });
   }
 
@@ -672,6 +715,7 @@
     clearRecordingPreview();
     state.triggerRecorded = true;
     state.targetRecording = false;
+    syncOnboardAppTargetStep();
     render();
   }
 
@@ -684,6 +728,13 @@
         global.OneToneImePresets.refresh('onboarding');
       }else{
         global.OneToneImePresets.clearSelectedForManualRecord('onboarding');
+      }
+    }
+    if(global.OneToneAppTargetPresets){
+      if(msg.appTargetId){
+        global.OneToneAppTargetPresets.refresh('onboarding');
+      }else{
+        global.OneToneAppTargetPresets.clearSelectedForManualRecord('onboarding');
       }
     }
     render();
@@ -908,6 +959,7 @@
   function syncStaticI18n(){
     var pairs = [
       ['onboardTriggerCardStep','onboardTriggerCardStep'],['onboardTargetCardStep','onboardTargetCardStep'],
+      ['onboardAppTargetStepTitle','onboardAppTargetStepTitle'],
       ['onboardTriggerCardTitle','onboardTriggerCardTitle'],['onboardTargetCardTitle','onboardTargetCardTitle'],
       ['btnOnboardLater','onboardBtnLater'],['btnOnboardBack','onboardBtnBack'],
       ['onboardWakeCardStep','onboardWakeCardStep'],['onboardWakeCardTitle','onboardWakeCardTitle'],
@@ -933,6 +985,8 @@
   function applyLang(){
     syncStaticI18n();
     if(global.OneTonePhrasePractice) global.OneTonePhrasePractice.applyLang();
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('onboarding');
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('onboarding');
     if(!state.open) return;
     render();
   }
@@ -949,6 +1003,7 @@
     state.tryPassed = false;
     state.practiceStarted = false;
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('onboarding');
+    if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('onboarding');
     setOpen(true);
   }
 

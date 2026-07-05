@@ -10,10 +10,14 @@ macro_rules! w {
     }};
 }
 
-use crate::config::{SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX};
-use crate::key_chord::{build_pressed_chord, chord_to_register_hotkey};
-use crate::press_gesture::format_device_key;
+use crate::config::{bindings_need_mouse_hook, SCHEME_CYCLE_MARKER, SCHEME_SELECT_PREFIX};
+use crate::device_identity;
+use crate::input_ext::InputExtensionBus;
+use crate::input_obs::{InputDebugMeta, InputObsEvent};
+use crate::key_chord::chord_to_register_hotkey;
+use crate::press_gesture::{format_device_key, parse_physical_event, resolve_binding_in_list};
 use crate::send_guard;
+use crate::vendor_hid;
 use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
 use winapi::shared::ntdef::HANDLE;
 use winapi::shared::windef::HWND;
@@ -52,9 +56,57 @@ static ACTIVE_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::
 static FORWARD_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
 static FORWARD_PREV_WNDPROC: OnceLock<Mutex<isize>> = OnceLock::new();
 static DEVICE_NAME_CACHE: OnceLock<Mutex<HashMap<isize, String>>> = OnceLock::new();
+static INPUT_EXT_BUS: OnceLock<Mutex<InputExtensionBus>> = OnceLock::new();
+static INPUT_OBS_SENDER: OnceLock<Mutex<Option<mpsc::Sender<InputObsEvent>>>> = OnceLock::new();
+static PENDING_INPUT_DEBUG: OnceLock<Mutex<Option<InputDebugMeta>>> = OnceLock::new();
+
+fn input_obs_sender() -> &'static Mutex<Option<mpsc::Sender<InputObsEvent>>> {
+    INPUT_OBS_SENDER.get_or_init(|| Mutex::new(None))
+}
+
+fn pending_input_debug() -> &'static Mutex<Option<InputDebugMeta>> {
+    PENDING_INPUT_DEBUG.get_or_init(|| Mutex::new(None))
+}
+
+pub fn take_pending_input_debug() -> Option<InputDebugMeta> {
+    pending_input_debug().lock().unwrap().take()
+}
+
+fn set_pending_input_debug(meta: InputDebugMeta) {
+    *pending_input_debug().lock().unwrap() = Some(meta);
+}
+
+fn emit_input_obs(
+    kind: &'static str,
+    key: &str,
+    device: Option<&str>,
+    report_hex: &str,
+    reason: &str,
+    source: &str,
+) {
+    let event = InputObsEvent {
+        kind,
+        key: key.to_string(),
+        device: device.unwrap_or("").to_string(),
+        report_hex: report_hex.to_string(),
+        reason: reason.to_string(),
+        source: source.to_string(),
+    };
+    if let Some(tx) = input_obs_sender().lock().unwrap().as_ref() {
+        let _ = tx.send(event);
+    }
+}
+
+fn is_extension_key(name: &str) -> bool {
+    name.starts_with("Gamepad_") || name.starts_with("HID_")
+}
 
 fn device_cache() -> &'static Mutex<HashMap<isize, String>> {
     DEVICE_NAME_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn input_ext_bus() -> &'static Mutex<InputExtensionBus> {
+    INPUT_EXT_BUS.get_or_init(|| Mutex::new(InputExtensionBus::with_defaults()))
 }
 
 fn forward_hwnd() -> &'static Mutex<isize> {
@@ -65,10 +117,11 @@ fn forward_prev_wndproc() -> &'static Mutex<isize> {
     FORWARD_PREV_WNDPROC.get_or_init(|| Mutex::new(0))
 }
 
-/// Raw Input 设备：标准键盘 + 蓝牙外设常用的 Consumer Control。
+/// Raw Input 设备：标准键盘 + Consumer Control + 鼠标（补充侧键等）。
 const RAW_INPUT_DEVICES: &[(u16, u16)] = &[
     (0x01, 0x06), // Keyboard
     (0x0C, 0x01), // Consumer Control
+    (0x01, 0x02), // Mouse
 ];
 
 enum Cmd {
@@ -146,6 +199,10 @@ fn key_to_vk(name: &str) -> Option<UINT> {
         "F18" => Some(0x81),
         "F19" => Some(0x82),
         "F20" => Some(0x83),
+        "F21" => Some(0x84),
+        "F22" => Some(0x85),
+        "F23" => Some(0x86),
+        "F24" => Some(0x87),
         "CapsLock" => Some(0x14),
         "F1" => Some(0x70),
         "F2" => Some(0x71),
@@ -171,16 +228,9 @@ fn key_to_vk(name: &str) -> Option<UINT> {
     }
 }
 
-fn resolve_active_binding(name: &str) -> Option<String> {
+fn resolve_active_binding(name: &str, device: Option<&str>) -> Option<String> {
     let bindings = active_bindings().lock().unwrap();
-    let chord = build_pressed_chord(name);
-    if bindings.iter().any(|b| b == &chord) {
-        return Some(chord);
-    }
-    if bindings.iter().any(|b| b == name) {
-        return Some(name.to_string());
-    }
-    None
+    resolve_binding_in_list(&bindings, name, device)
 }
 
 const RECORD_KEYS: &[&str] = &[
@@ -209,24 +259,32 @@ const RECORD_KEYS: &[&str] = &[
     "F18",
     "F19",
     "F20",
+    "F21",
+    "F22",
+    "F23",
+    "F24",
 ];
 
 pub struct HotkeyManager {
     cmd_tx: mpsc::Sender<Cmd>,
     event_tx: mpsc::Sender<String>,
     event_rx: mpsc::Receiver<String>,
+    obs_rx: mpsc::Receiver<InputObsEvent>,
 }
 
 impl HotkeyManager {
     pub fn new() -> Self {
         let (cmd_tx, cmd_rx) = mpsc::channel::<Cmd>();
         let (event_tx, event_rx) = mpsc::channel::<String>();
+        let (obs_tx, obs_rx) = mpsc::channel::<InputObsEvent>();
+        *input_obs_sender().lock().unwrap() = Some(obs_tx);
         let thread_event_tx = event_tx.clone();
         thread::spawn(move || hotkey_thread(cmd_rx, thread_event_tx));
         Self {
             cmd_tx,
             event_tx,
             event_rx,
+            obs_rx,
         }
     }
 
@@ -258,6 +316,10 @@ impl HotkeyManager {
 
     pub fn try_recv(&self) -> Option<String> {
         self.event_rx.try_recv().ok()
+    }
+
+    pub fn try_recv_obs(&self) -> Option<InputObsEvent> {
+        self.obs_rx.try_recv().ok()
     }
 }
 
@@ -429,6 +491,9 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                             register_list(ctx_ptr, hwnd, &bindings);
                         }
                     }
+                    unsafe {
+                        sync_runtime_mouse_hook(&bindings, recording_mode);
+                    }
                 }
                 Cmd::BindSchemeSwitch(combo) => unsafe {
                     if let Some(ref key) = combo {
@@ -482,6 +547,9 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                     unsafe {
                         register_list(ctx_ptr, hwnd, &bindings);
                     }
+                    unsafe {
+                        sync_runtime_mouse_hook(&bindings, false);
+                    }
                 }
                 Cmd::AttachAppHwnd(app_hwnd) => {
                     if app_hwnd != 0 {
@@ -520,6 +588,7 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
         } else {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
+        poll_input_extensions();
     }
 }
 
@@ -566,28 +635,97 @@ unsafe fn remove_raw_input() {
     );
 }
 
-fn dispatch_key_event(name: &str, is_keyup: bool, device: Option<&str>) -> bool {
+fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> bool {
+    let ev = parse_physical_event(payload);
+    if send_guard::blocks_key(&ev.key) {
+        send_guard::note_blocked();
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_IGNORED,
+            &ev.key,
+            ev.device.as_deref(),
+            report_hex,
+            "send_guard",
+            source,
+        );
+        return false;
+    }
+
+    let body = format_device_key(ev.device.as_deref().unwrap_or(""), &ev.key);
+    let wire = if ev.is_keyup {
+        format!("keyup:{body}")
+    } else {
+        body
+    };
+
+    if !report_hex.is_empty() || is_extension_key(&ev.key) {
+        set_pending_input_debug(InputDebugMeta {
+            key: ev.key.clone(),
+            device: ev.device.clone().unwrap_or_default(),
+            report_hex: report_hex.to_string(),
+            source: source.to_string(),
+        });
+    }
+
+    if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
+        sender.send(wire).ok();
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_CAPTURED,
+            &ev.key,
+            ev.device.as_deref(),
+            report_hex,
+            "recording",
+            source,
+        );
+        return true;
+    }
+
+    if resolve_active_binding(&ev.key, ev.device.as_deref()).is_some() {
+        if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+            sender.send(wire).ok();
+        }
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_CAPTURED,
+            &ev.key,
+            ev.device.as_deref(),
+            report_hex,
+            "binding",
+            source,
+        );
+        return true;
+    }
+
+    if is_extension_key(&ev.key) {
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_IGNORED,
+            &ev.key,
+            ev.device.as_deref(),
+            report_hex,
+            "no_binding",
+            source,
+        );
+    }
+    false
+}
+
+fn dispatch_key_event(name: &str, is_keyup: bool, device: Option<&str>, source: &str) -> bool {
     let body = format_device_key(device.unwrap_or(""), name);
     let payload = if is_keyup {
         format!("keyup:{body}")
     } else {
         body
     };
-    if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-        sender.send(payload).ok();
-        return true;
-    }
-    if resolve_active_binding(name).is_some() {
-        if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-            sender.send(payload).ok();
-        }
-        return true;
-    }
-    false
+    dispatch_physical_payload(&payload, source, "")
 }
 
 fn dispatch_media_key(name: &str) -> bool {
-    dispatch_key_event(name, false, None)
+    dispatch_key_event(name, false, None, "appcommand")
+}
+
+fn poll_input_extensions() {
+    let events = input_ext_bus().lock().unwrap().poll_all();
+    for payload in events {
+        dispatch_physical_payload(&payload, "xinput", "");
+    }
 }
 
 fn dispatch_appcommand(cmd: i32) -> bool {
@@ -636,6 +774,14 @@ unsafe fn remove_keyboard_hook() {
     }
 }
 
+unsafe fn sync_runtime_mouse_hook(bindings: &[String], recording: bool) {
+    if recording || bindings_need_mouse_hook(bindings) {
+        install_mouse_hook();
+    } else {
+        remove_mouse_hook();
+    }
+}
+
 unsafe fn install_mouse_hook() {
     let mut hook = recording_mouse_hook().lock().unwrap();
     if *hook != 0 {
@@ -660,26 +806,31 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
         return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
     }
     if code >= 0 {
-        if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
-            let btn = match wparam as u32 {
-                WM_LBUTTONDOWN => Some("LButton"),
-                WM_RBUTTONDOWN => Some("RButton"),
-                WM_MBUTTONDOWN => Some("MButton"),
-                WM_XBUTTONDOWN => {
-                    let info = *(lparam as *const MSLLHOOKSTRUCT);
-                    let xbtn = (info.mouseData >> 16) as u16;
-                    if xbtn == winapi::um::winuser::XBUTTON1 as u16 {
-                        Some("XButton1")
-                    } else if xbtn == winapi::um::winuser::XBUTTON2 as u16 {
-                        Some("XButton2")
-                    } else {
-                        None
-                    }
+        let btn = match wparam as u32 {
+            WM_LBUTTONDOWN => Some("LButton"),
+            WM_RBUTTONDOWN => Some("RButton"),
+            WM_MBUTTONDOWN => Some("MButton"),
+            WM_XBUTTONDOWN => {
+                let info = *(lparam as *const MSLLHOOKSTRUCT);
+                let xbtn = (info.mouseData >> 16) as u16;
+                if xbtn == winapi::um::winuser::XBUTTON1 as u16 {
+                    Some("XButton1")
+                } else if xbtn == winapi::um::winuser::XBUTTON2 as u16 {
+                    Some("XButton2")
+                } else {
+                    None
                 }
-                _ => None,
-            };
-            if let Some(name) = btn {
+            }
+            _ => None,
+        };
+        if let Some(name) = btn {
+            if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
                 sender.send(name.to_string()).ok();
+            } else if resolve_active_binding(name, None).is_some() {
+                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                    sender.send(name.to_string()).ok();
+                }
+                return 1;
             }
         }
     }
@@ -711,7 +862,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 }
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }
-            if let Some(dispatch) = resolve_active_binding(&name) {
+            if let Some(dispatch) = resolve_active_binding(&name, None) {
                 let payload = if is_key_down {
                     dispatch.clone()
                 } else if is_key_up {
@@ -769,7 +920,7 @@ fn vk_to_name(vk: u32) -> Option<String> {
         0x27 => Some("Right".into()),
         0x30..=0x39 => Some(((vk - 0x30) as u8 + b'0') as char).map(|c| c.to_string()),
         0x41..=0x5A => Some(((vk - 0x41) as u8 + b'A') as char).map(|c| c.to_string()),
-        0x7C..=0x83 => Some(format!("F{}", vk - 0x7C + 13)),
+        0x7C..=0x87 => Some(format!("F{}", vk - 0x7C + 13)),
         0x14 => Some("CapsLock".into()),
         0x70..=0x7B => Some(format!("F{}", vk - 0x70 + 1)),
         other => Some(format!("VK_{:02X}", other)),
@@ -933,8 +1084,9 @@ unsafe fn raw_input_device_id(hdevice: isize) -> Option<String> {
     if name.is_empty() {
         return None;
     }
-    device_cache().lock().unwrap().insert(hdevice, name.clone());
-    Some(name)
+    let stable = device_identity::stable_id_from_path(&name);
+    device_cache().lock().unwrap().insert(hdevice, stable.clone());
+    Some(stable)
 }
 
 unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
@@ -962,8 +1114,41 @@ unsafe fn try_dispatch_raw_input(lparam: LPARAM) -> bool {
     }
     let raw = &*(buf.as_ptr() as *const RAWINPUT);
     let device = raw_input_device_id(raw.header.hDevice as isize);
+    if raw.header.dwType == RIM_TYPEHID {
+        return dispatch_raw_hid_input(raw, device.as_deref());
+    }
     if let Some((name, is_up)) = raw_input_to_event(raw) {
-        return dispatch_key_event(&name, is_up, device.as_deref());
+        return dispatch_key_event(&name, is_up, device.as_deref(), "raw_input");
+    }
+    false
+}
+
+unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
+    let hid = raw.data.hid();
+    let len = hid.dwSizeHid as usize * hid.dwCount as usize;
+    if len == 0 {
+        return false;
+    }
+    let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
+    if let Some(name) = scan_consumer_bytes(data) {
+        return dispatch_key_event(&name, false, device, "raw_input");
+    }
+    if let Some(name) = scan_boot_keyboard_bytes(data) {
+        return dispatch_key_event(&name, false, device, "raw_input");
+    }
+    if let Some(scan) = vendor_hid::scan_vendor_hid_report(data) {
+        let payload = format_device_key(device.unwrap_or(""), &scan.key);
+        return dispatch_physical_payload(&payload, "raw_input", &scan.report_hex);
+    }
+    if vendor_hid::report_has_signal(data) {
+        emit_input_obs(
+            onetone_logic::runtime_event::kind::INPUT_PARSE_MISS,
+            "",
+            device,
+            &vendor_hid::report_hex(data),
+            "hid_parse_miss",
+            "raw_input",
+        );
     }
     false
 }
@@ -982,14 +1167,39 @@ fn raw_input_to_event(raw: &RAWINPUT) -> Option<(String, bool)> {
             }
             return None;
         }
-        if raw.header.dwType == RIM_TYPEHID {
-            let hid = raw.data.hid();
-            let len = hid.dwSizeHid as usize * hid.dwCount as usize;
-            if len == 0 {
-                return None;
+    }
+    None
+}
+
+fn hid_keyboard_usage_to_name(usage: u8) -> Option<String> {
+    match usage {
+        0x04..=0x1d => {
+            let c = (b'a' + (usage - 0x04)) as char;
+            Some(c.to_ascii_uppercase().to_string())
+        }
+        0x1e..=0x26 => Some(((usage - 0x1e + b'1') as char).to_string()),
+        0x27 => Some("0".into()),
+        0x3a..=0x45 => Some(format!("F{}", usage - 0x3a + 1)),
+        0x68..=0x73 => Some(format!("F{}", usage - 0x68 + 13)),
+        _ => None,
+    }
+}
+
+fn scan_boot_keyboard_bytes(data: &[u8]) -> Option<String> {
+    if data.len() >= 3 {
+        for &usage in &data[2..] {
+            if usage != 0 {
+                if let Some(name) = hid_keyboard_usage_to_name(usage) {
+                    return Some(name);
+                }
             }
-            let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
-            return scan_consumer_bytes(data).map(|n| (n, false));
+        }
+    }
+    for &usage in data {
+        if usage != 0 {
+            if let Some(name) = hid_keyboard_usage_to_name(usage) {
+                return Some(name);
+            }
         }
     }
     None

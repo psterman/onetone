@@ -46,8 +46,8 @@ pub fn set_active_trigger_mode(
         "type": "mvp_mode_changed",
         "ok": true,
         "mode": match mode {
-            crate::config::TriggerMode::Tap | crate::config::TriggerMode::Toggle => "tap",
-            crate::config::TriggerMode::Hold => "hold",
+            crate::config::TriggerMode::Tap => "tap",
+            crate::config::TriggerMode::PerPress => "perpress",
             crate::config::TriggerMode::LongPress => "longpress",
             crate::config::TriggerMode::Double => "double",
         },

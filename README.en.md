@@ -9,62 +9,63 @@ Website: **https://www.onetone.app**
 [![CI](https://img.shields.io/github/actions/workflow/status/psterman/voice-pilot/release.yml)](https://github.com/psterman/voice-pilot/actions)
 [![Stars](https://img.shields.io/github/stars/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/stargazers)
 
-> ⚠️ v1.0.0 is **unsigned**. Windows SmartScreen may block the installer on first launch — click **More info** → **Run anyway**.
+> v1.0.0 is unsigned. Windows SmartScreen may block the installer on first launch. Click **More info** -> **Run anyway**.
 
-OneTone maps hardware trigger keys (volume keys, mouse side buttons, combos, and more) to the keyboard shortcut that activates your voice-input method.
+OneTone is a Windows desktop utility that connects hardware triggers and voice commands to the voice-input or streaming IME you already use.
+
+It is not a new IME and it does not replace your dictation engine. OneTone is the trigger layer in the background: it records your trigger source, sends the IME activation shortcut, manages voice wake/end phrases, and runs after-speaking actions so you can start dictating in any text field faster.
 
 **No AutoHotkey. No external host app required.**
 
-## Quick start (5 minutes)
+## What It Solves
 
-1. **Download** the latest Windows installer from [GitHub Releases](https://github.com/psterman/voice-pilot/releases).
-2. If SmartScreen appears, choose **More info** → **Run anyway**.
-3. **Launch OneTone** and complete the welcome guide on first run.
-4. Open **Settings → Key mapping**, pick a hardware key, and record the shortcut your IME uses for voice input (e.g. `Win+H`, `Ctrl+Shift+Space`).
-5. Press your hardware key in any app — voice input should open. Use the tray icon to pause listening or open settings.
+Many voice-input tools still require you to switch windows, click a button, or press an awkward shortcut. OneTone shortens the path to:
+
+```
+device / voice trigger -> OneTone -> voice-input or streaming IME -> focused text field
+```
+
+Typical scenarios:
+
+- Your hand is on the mouse: press a side button and start dictating.
+- You are away from the keyboard: trigger with a gamepad, remote, Bluetooth ring, or trackball.
+- You want hands-free control: use a microphone phrase to wake voice input, then an end phrase to commit or send.
+- You type often: keep different schemes for email, notes, chat, and documents.
 
 ## Features
 
-- Hardware key → voice-input shortcut mapping (side buttons, volume keys, macro keyboards)
-- Optional voice wake and end-of-dictation phrases (Windows SAPI + offline Vosk)
-- Multiple schemes with quick switching
-- Bilingual UI (English / Chinese), light and dark themes
-- System tray, autostart, and in-app updates via GitHub Releases
+- **Trigger from many devices**: keyboard keys, mouse buttons, volume keys, key chords, gamepads, trackballs, Bluetooth devices, and other Windows-recognized inputs.
+- **IME shortcut mapping**: map your trigger source to the shortcut that activates your voice-input or streaming IME.
+- **IME presets**: built-in entries for Typeless, Zhipu, Qianwen, Shandianshuo, Sogou, Xunfei, WeChat IME, and manual shortcuts.
+- **Voice wake**: optional Windows SAPI or offline Vosk wake phrases.
+- **Voice end and after-speaking actions**: end phrases, delay, Enter/send behavior, and commit actions.
+- **Multiple schemes**: save and switch mappings for different devices, IMEs, or workflows.
+- **Coach HUD**: a small bottom overlay for current mapping, listening/dictation state, and success feedback.
+- **System tray workflow**: tray control, pause, settings, and autostart.
+- **Local-first behavior**: settings stay on your machine; voice wake can run through local SAPI/Vosk and is not uploaded to OneTone servers.
+
+## Quick Start
+
+1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/voice-pilot/releases).
+2. If SmartScreen appears, choose **More info** -> **Run anyway**.
+3. Launch OneTone and complete the first-run guide.
+4. Record a trigger source, such as a volume key, mouse side button, or Bluetooth device button.
+5. Pick an IME preset, or manually record the shortcut your voice-input method uses.
+6. Focus any text field and trigger once. If the IME starts listening or text lands in the field, the chain is working.
+
+Start with an IME preset, then enable voice wake, end phrases, or auto-send if you need them.
 
 ## Requirements
 
 - Windows 10 or 11 (x64)
-- A voice-input method that exposes a keyboard shortcut (built-in Windows voice typing, IME, third-party tools, etc.)
+- A voice-input method or streaming IME that exposes a keyboard shortcut
+- Optional: microphone for voice wake and end phrases
 
-### Build from source (developers)
+## Install and Updates
 
-- [Rust](https://rustup.rs/) with `cargo`
-- [Tauri CLI](https://v2.tauri.app/): `cargo install tauri-cli`
-
-## Development
-
-```powershell
-cd src-tauri
-cargo tauri dev
-```
-
-## Build release
-
-```powershell
-# Option 1: npm script
-npm run build
-
-# Option 2: helper script (stops old process, then builds)
-.\run_onetone.ps1
-
-# Option 3: cargo directly
-cd src-tauri
-cargo tauri build
-```
-
-Output: `src-tauri/target/release/onetone.exe` (installer under `src-tauri/target/release/bundle/`)
-
-## Configuration
+- Installer: [GitHub Releases](https://github.com/psterman/voice-pilot/releases)
+- The app checks for new versions on startup and shows an in-app update banner.
+- Updates replace application files only. Your local configuration is preserved.
 
 User settings are stored at:
 
@@ -74,15 +75,51 @@ User settings are stored at:
 
 On first launch, OneTone migrates legacy configs from `%APPDATA%\Voice Pilot\config\settings.json` or an exe-adjacent `settings.json` if present.
 
-Updates replace application files only — your local configuration is preserved.
+## Development
 
-## Auto-update
+Stack:
 
-The app checks for new versions on startup and shows an in-app banner when an update is available.
+- Frontend: `src/index.html` + plain JavaScript
+- Backend: Rust + Tauri 2
+- Hotkeys and device input: Windows low-level hooks + Raw Input + RegisterHotKey
+- Voice wake: Windows SAPI + optional offline Vosk
 
-Releases are published via GitHub Actions when you push a version tag (e.g. `v1.0.1`). The workflow uploads the installer, signature files, and `latest.json` for the Tauri updater.
+Requirements:
 
-Required GitHub repository secrets for maintainers:
+- [Rust](https://rustup.rs/) with `cargo`
+- [Tauri CLI](https://v2.tauri.app/): `cargo install tauri-cli`
+
+Run locally:
+
+```powershell
+cd src-tauri
+cargo tauri dev
+```
+
+Build release:
+
+```powershell
+# Option 1: npm script
+npm run build
+
+# Option 2: helper script
+.\run_onetone.ps1
+.\run_onetone.ps1 -Rebuild
+
+# Option 3: cargo directly, NSIS installer recommended
+cd src-tauri
+cargo clean -p onetone
+cargo tauri build --bundles nsis
+```
+
+Output:
+
+- Executable: `src-tauri/target/release/onetone.exe`
+- Installer: `src-tauri/target/release/bundle/nsis/*-setup.exe`
+
+If local builds warn that `TAURI_SIGNING_PRIVATE_KEY` is not set, the installer can still be generated. Updater signature files require CI with repository secrets.
+
+Maintainers need these GitHub repository secrets before publishing updater releases:
 
 ```
 TAURI_SIGNING_PRIVATE_KEY
@@ -91,30 +128,32 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 
 `TAURI_SIGNING_PRIVATE_KEY` must match the updater public key in `src-tauri/tauri.conf.json`.
 
-## Repository
-
-**https://github.com/psterman/voice-pilot**
-
-Forked from an experimental voice-pilot prototype; the legacy AutoHotkey implementation lives in a separate archive and is not part of this repo.
-
-## Project layout
+## Project Layout
 
 ```
 voice-pilot/
-├── assets/              # Brand icons and sounds
-├── src/                 # Settings UI (index.html, icon.png)
-├── src-tauri/           # Rust backend + Tauri config
+├── assets/              # Brand source assets
+├── src/                 # Desktop frontend, icons, sounds, IME presets
+├── src-tauri/           # Rust backend and Tauri config
 │   ├── icons/
 │   ├── src/
 │   │   ├── hotkey_win.rs
 │   │   ├── config.rs
 │   │   ├── key_chord.rs
-│   │   └── ipc.rs
+│   │   └── ipc/
 │   └── tauri.conf.json
-├── docs/                # Privacy policy, terms
+├── website/             # Static website
+├── docs/                # Privacy policy, terms, release notes
 ├── package.json
-└── run_onetone.ps1
+├── run_onetone.ps1
+└── Start-OneTone.vbs
 ```
+
+## Repository
+
+**https://github.com/psterman/voice-pilot**
+
+This repository was split out from an experimental voice-pilot prototype. The legacy AutoHotkey implementation lives in a separate archive and is not part of this repo.
 
 ## Legal
 
