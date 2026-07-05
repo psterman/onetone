@@ -3,22 +3,15 @@
 
   function initTheme() {
     const html = document.documentElement;
+    html.classList.remove("theme-init");
+
     const toggle = document.getElementById("themeToggle");
     if (!toggle) return;
 
-    if (
-      localStorage.theme === "dark" ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
-      html.classList.add("dark");
-    } else {
-      html.classList.remove("dark");
-    }
-
     toggle.addEventListener("click", () => {
-      html.classList.toggle("dark");
-      localStorage.theme = html.classList.contains("dark") ? "dark" : "light";
+      const dark = html.classList.toggle("dark");
+      localStorage.theme = dark ? "dark" : "light";
+      html.style.colorScheme = dark ? "dark" : "light";
     });
   }
 

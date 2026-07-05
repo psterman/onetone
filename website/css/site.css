@@ -1,4 +1,26 @@
-﻿:root {
+﻿/* Theme FOUC guard — works before Tailwind CDN parses */
+html {
+  color-scheme: light dark;
+  background-color: #f8fafc;
+}
+html.dark {
+  background-color: #0f172a;
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+html.dark .glass-header {
+  background: rgba(15, 23, 42, 0.78);
+}
+/* Skip color transition on first paint; site.js removes after DOM ready */
+html.theme-init body,
+html.theme-init body * {
+  transition-property: none !important;
+}
+
+:root {
   --brand: #2a9cc4;
   --brand-strong: #1f8fb8;
   --brand-muted: #45b0d4;

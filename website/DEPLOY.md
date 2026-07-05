@@ -54,11 +54,36 @@ python -m http.server 8080
 
 1. Cloudflare → **Workers & Pages** → Connect Git → 仓库 `psterman/onetone`
 2. Production branch：`master`
-3. Build command：留空；Output directory：`website`
-4. Custom domains：`onetone.app` + `www.onetone.app`
-5. 关闭 GitHub Pages 自定义域名，删除或停用 `pages.yml`，避免双部署
+3. **Build settings**（必须逐项核对）：
+   - Framework preset：**None**
+   - Build command：**留空**（静态 HTML，无需构建）
+   - **Build output directory：`website`**（不要填 `/`、`.` 或留空）
+   - Root directory：留空（仓库根目录即可）
+4. 仓库根目录已包含 [`wrangler.toml`](../wrangler.toml)，其中 `pages_build_output_dir = "website"`；重新连接 Git 或触发部署后 Cloudflare 会读取该路径
+5. Custom domains：`onetone.app` + `www.onetone.app`
+6. 关闭 GitHub Pages 自定义域名，删除或停用 `pages.yml`，避免双部署
 
 `website/` 内链接与 `canonical` 已指向 `https://www.onetone.app`，绑域名后无需改 HTML。
+
+#### 部署失败：`libstdc++-6.dll` 超过 25 MiB
+
+日志类似：
+
+```text
+Error: File .../src-tauri/resources/vosk/libstdc++-6.dll is 25.4 MiB which exceeds the 25 MiB limit
+```
+
+**原因**：输出目录设成了仓库根目录，把整个 Tauri 桌面应用（含 Vosk DLL）一起上传了。官网 **不需要** 也 **不应** 部署 `src-tauri/`。
+
+**处理**：
+
+1. Cloudflare → 你的 Pages 项目 → **Settings** → **Build**
+2. 把 **Build output directory** 改成 **`website`**，保存
+3. **Deployments** → **Retry deployment** 或 push 任意 `website/` 小改动触发重建
+
+确认成功后，部署日志里应只有 `website/*.html`、`website/css/` 等，不应出现 `src-tauri/`。
+
+**不要** 为绕过 25 MiB 限制去把 DLL 放进 R2——那是桌面端运行时依赖，与静态官网无关。
 
 ---
 
