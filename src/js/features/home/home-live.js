@@ -245,7 +245,7 @@
       :customTarget;
     if(!rawKey) return unset;
     const summary=isAppTarget&&preset&&preset.nameKey
-      ?(appTargetId==='cursor-chat'||appTargetId==='codex-chat'
+      ?((global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.isWorkflowAppTarget&&global.OneToneAppTargetPresets.isWorkflowAppTarget(appTargetId))
         ?t(preset.nameKey)
         :t(preset.nameKey)+' · '+hooks().friendlyKeyName(rawKey))
       :hooks().friendlyKeyName(rawKey);

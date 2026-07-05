@@ -40,7 +40,7 @@ onetone-logic = { path = "crates/onetone-logic" }
 
 [target.'cfg(windows)'.dependencies]
 vosk = { version = "0.3.1", optional = true }
-winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi", "xinput"] }
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi", "xinput", "shellapi"] }
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",

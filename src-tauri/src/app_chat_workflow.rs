@@ -9,6 +9,7 @@ use crate::AppState;
 
 pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
+pub const MINIMAX_APP_TARGET_ID: &str = "minimax-chat";
 
 #[derive(Debug, Clone, Copy)]
 pub struct AppChatProfile {
@@ -25,6 +26,8 @@ pub struct AppChatProfile {
     pub post_voice_key_ms: u64,
     /// Delay before restoring OneTone after workflow completes.
     pub restore_main_delay_ms: u64,
+    /// `%LOCALAPPDATA%`-relative exe paths; used to launch the app when no window is found.
+    pub launch_localappdata_rel: &'static [&'static str],
 }
 
 const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
@@ -34,9 +37,10 @@ const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
     path_marker: None,
     open_key: Some("Ctrl+L"),
     composer_anchor: (0.50, 0.88),
-    accept_click_without_uia: false,
+    accept_click_without_uia: true,
     post_voice_key_ms: 180,
     restore_main_delay_ms: 120,
+    launch_localappdata_rel: &[],
 };
 
 const CODEX_PROFILE: AppChatProfile = AppChatProfile {
@@ -49,12 +53,27 @@ const CODEX_PROFILE: AppChatProfile = AppChatProfile {
     accept_click_without_uia: true,
     post_voice_key_ms: 420,
     restore_main_delay_ms: 380,
+    launch_localappdata_rel: &[],
+};
+
+const MINIMAX_PROFILE: AppChatProfile = AppChatProfile {
+    id: MINIMAX_APP_TARGET_ID,
+    error_prefix: "minimax",
+    process_names: &["MiniMax Code.exe"],
+    path_marker: Some("MiniMax Code"),
+    open_key: None,
+    composer_anchor: (0.50, 0.91),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 450,
+    restore_main_delay_ms: 400,
+    launch_localappdata_rel: &["Programs\\MiniMax Code\\MiniMax Code.exe"],
 };
 
 pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
     match app_target_id {
         CURSOR_APP_TARGET_ID => Some(&CURSOR_PROFILE),
         CODEX_APP_TARGET_ID => Some(&CODEX_PROFILE),
+        MINIMAX_APP_TARGET_ID => Some(&MINIMAX_PROFILE),
         _ => None,
     }
 }
@@ -173,7 +192,11 @@ fn run_app_chat_workflow(
     let app = window.app_handle();
     let _hide_guard = MainWindowHideGuard::maybe_hide(&app, profile.restore_main_delay_ms);
 
-    let hwnd = find_app_window(profile).ok_or((prefix.to_string(), AppChatWorkflowError::NotFound))?;
+    let (hwnd, freshly_launched) = ensure_app_window(profile)
+        .ok_or((prefix.to_string(), AppChatWorkflowError::NotFound))?;
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(2200));
+    }
 
     if !crate::keyboard::focus_window(hwnd) {
         return Err((prefix.to_string(), AppChatWorkflowError::FocusFailed));
@@ -282,6 +305,67 @@ fn click_composer_anchor(
     anchor: (f32, f32),
 ) -> bool {
     crate::keyboard::click_client_relative(hwnd, anchor.0, anchor.1)
+}
+
+#[cfg(windows)]
+fn ensure_app_window(profile: &AppChatProfile) -> Option<(winapi::shared::windef::HWND, bool)> {
+    if let Some(hwnd) = find_app_window(profile) {
+        return Some((hwnd, false));
+    }
+    if profile.launch_localappdata_rel.is_empty() {
+        return None;
+    }
+    let local = std::env::var("LOCALAPPDATA").ok()?;
+    let exe = profile
+        .launch_localappdata_rel
+        .iter()
+        .map(|rel| std::path::PathBuf::from(&local).join(rel))
+        .find(|path| path.is_file())?;
+    if !launch_gui_exe(&exe) {
+        return None;
+    }
+    for _ in 0..60 {
+        std::thread::sleep(Duration::from_millis(250));
+        if let Some(hwnd) = find_app_window(profile) {
+            return Some((hwnd, true));
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn launch_gui_exe(path: &std::path::Path) -> bool {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use winapi::um::shellapi::ShellExecuteW;
+    use winapi::um::winuser::SW_SHOWDEFAULT;
+
+    fn wide(s: &str) -> Vec<u16> {
+        OsStr::new(s).encode_wide().chain(Some(0)).collect()
+    }
+
+    let file = wide(&path.to_string_lossy());
+    let op = wide("open");
+    let dir = path
+        .parent()
+        .map(|p| wide(&p.to_string_lossy()))
+        .unwrap_or_default();
+
+    unsafe {
+        let ret = ShellExecuteW(
+            std::ptr::null_mut(),
+            op.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(),
+            if dir.is_empty() {
+                std::ptr::null()
+            } else {
+                dir.as_ptr()
+            },
+            SW_SHOWDEFAULT,
+        );
+        (ret as isize) > 32
+    }
 }
 
 #[cfg(windows)]
@@ -538,6 +622,12 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
     }
     if lower.contains("prompt") {
         score += 25;
+    }
+    if lower.contains("minimax") {
+        score += 30;
+    }
+    if lower.contains("agent") {
+        score += 20;
     }
     if name.trim().is_empty() && control_type == UIA_DocumentControlTypeId.0 as i32 {
         score += 15;

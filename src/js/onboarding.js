@@ -381,7 +381,9 @@
       ? 'onboardTryMapNoteCursor'
       : (appTargetId === 'codex-chat')
         ? 'onboardTryMapNoteCodex'
-        : 'onboardTryMapNote';
+        : (appTargetId === 'minimax-chat')
+          ? 'onboardTryMapNoteMiniMax'
+          : 'onboardTryMapNote';
     if(mapNote) mapNote.textContent = t(mapNoteKey);
     if(result){
       if(state.tryPassed){

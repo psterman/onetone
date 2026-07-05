@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   let lang='zh';
   function getLang(){return lang;}
@@ -418,6 +418,7 @@
       appTargetHintCursor:'推荐 Cursor 工作流，点击即可选择',
       onboardTryMapNoteCursor:'会切到 Cursor、聚焦输入框并开始语音',
       onboardTryMapNoteCodex:'会切到 Codex、聚焦 Composer 并开始语音',
+      onboardTryMapNoteMiniMax:'会切到 MiniMax Code、聚焦输入框并开始语音',
       onboardFlowRecordingTarget:'正在听——请按一下语音输入快捷键',
       onboardFlowAllDone:'两个键都录好了，下一步试一下',
       onboardBtnRecordingTrigger:'请按一下你要用的键',
@@ -470,10 +471,11 @@
       imePresetApplied:'已填入该输入法的默认快捷键',
       imePresetTypeless:'Typeless',imePresetZhipu:'智谱输入法',imePresetQianwen:'千问输入法',imePresetShandianshuo:'闪电说',
       imePresetSogou:'搜狗输入法',imePresetWechat:'微信输入法',imePresetXunfei:'讯飞输入法',
-      appTargetHint:'选择目标应用（含 Cursor / Codex 工作流），点击即可选用',
+      appTargetHint:'选择目标应用（含 Cursor / Codex / MiniMax 工作流），点击即可选用',
       appTargetApplied:'已填入该应用的默认快捷键',
       appTargetCursor:'Cursor 工作流',appTargetCursorDesc:'切到 Cursor、打开对话输入并开始语音',
       appTargetCodex:'Codex 工作流',appTargetCodexDesc:'切到 Codex、聚焦 Composer 并开始语音',
+      appTargetMiniMax:'MiniMax 工作流',appTargetMiniMaxDesc:'切到 MiniMax Code、聚焦输入框并开始语音',
       appTargetClaudeCode:'Claude Code',appTargetClaudeCodeDesc:'Claude Code 终端中提交输入',
       appTargetCopilot:'Copilot 对话',appTargetCopilotDesc:'VS Code / IDE 中打开 Copilot 聊天',
       appTargetWinDictation:'Windows 听写',appTargetWinDictationDesc:'Windows 内置语音输入 Win+H',
@@ -1104,6 +1106,7 @@
       appTargetHintCursor:'Recommended: tap Cursor workflow to select',
       onboardTryMapNoteCursor:'Switches to Cursor, focuses the input, and starts voice',
       onboardTryMapNoteCodex:'Switches to Codex, focuses the composer, and starts voice',
+      onboardTryMapNoteMiniMax:'Switches to MiniMax Code, focuses the input, and starts voice',
       onboardFlowRecordingTarget:'Listening — press your voice input shortcut',
       onboardFlowAllDone:'Both keys recorded — try it next',
       onboardBtnRecordingTrigger:'Press your key…',
@@ -1156,10 +1159,11 @@
       imePresetApplied:'Default shortcut applied',
       imePresetTypeless:'Typeless',imePresetZhipu:'Zhipu IME',imePresetQianwen:'Qianwen IME',imePresetShandianshuo:'LightningSay',
       imePresetSogou:'Sogou IME',imePresetWechat:'WeChat IME',imePresetXunfei:'iFlytek IME',
-      appTargetHint:'Pick a target app — Cursor / Codex workflows included',
+      appTargetHint:'Pick a target app — Cursor / Codex / MiniMax workflows included',
       appTargetApplied:'Default app shortcut applied',
       appTargetCursor:'Cursor workflow',appTargetCursorDesc:'Switch to Cursor, open chat input, and start voice',
       appTargetCodex:'Codex workflow',appTargetCodexDesc:'Switch to Codex, focus composer, and start voice',
+      appTargetMiniMax:'MiniMax workflow',appTargetMiniMaxDesc:'Switch to MiniMax Code, focus input, and start voice',
       appTargetClaudeCode:'Claude Code',appTargetClaudeCodeDesc:'Submit input in Claude Code terminal',
       appTargetCopilot:'Copilot Chat',appTargetCopilotDesc:'Open Copilot chat in VS Code / IDE',
       appTargetWinDictation:'Windows Dictation',appTargetWinDictationDesc:'Built-in Windows voice input Win+H',

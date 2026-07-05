@@ -1,13 +1,19 @@
 (function(global){
   'use strict';
 
+  var WORKFLOW_APP_TARGET_IDS = {
+    'cursor-chat': true,
+    'codex-chat': true,
+    'minimax-chat': true
+  };
+
   var PRESETS = [
     {
       id: 'cursor-chat',
       nameKey: 'appTargetCursor',
       descKey: 'appTargetCursorDesc',
       targetKey: 'Ctrl+L',
-      icon: 'icons/app-target/cursor.svg',
+      icon: 'icons/app-target/cursor.png',
       badge: 'Cr',
       badgeEn: 'Cr'
     },
@@ -16,36 +22,27 @@
       nameKey: 'appTargetCodex',
       descKey: 'appTargetCodexDesc',
       targetKey: '',
-      icon: 'icons/app-target/codex.svg',
+      icon: 'icons/app-target/codex.png',
       badge: 'Cx',
       badgeEn: 'Cx'
+    },
+    {
+      id: 'minimax-chat',
+      nameKey: 'appTargetMiniMax',
+      descKey: 'appTargetMiniMaxDesc',
+      targetKey: '',
+      icon: 'icons/app-target/minimaxcode.png',
+      badge: 'Mx',
+      badgeEn: 'Mx'
     },
     {
       id: 'claude-code',
       nameKey: 'appTargetClaudeCode',
       descKey: 'appTargetClaudeCodeDesc',
       targetKey: 'Ctrl+Shift+Enter',
-      icon: 'icons/app-target/claude.svg',
+      icon: 'icons/app-target/claude.png',
       badge: 'Cc',
       badgeEn: 'Cc'
-    },
-    {
-      id: 'copilot-chat',
-      nameKey: 'appTargetCopilot',
-      descKey: 'appTargetCopilotDesc',
-      targetKey: 'Ctrl+Shift+I',
-      icon: 'icons/app-target/copilot.svg',
-      badge: 'Cp',
-      badgeEn: 'Cp'
-    },
-    {
-      id: 'win-dictation',
-      nameKey: 'appTargetWinDictation',
-      descKey: 'appTargetWinDictationDesc',
-      targetKey: 'Win+H',
-      icon: 'icons/app-target/windows.svg',
-      badge: 'Win',
-      badgeEn: 'Win'
     }
   ];
 
@@ -104,11 +101,33 @@
   }
 
 
+  function isWorkflowAppTarget(appTargetId){
+    return !!WORKFLOW_APP_TARGET_IDS[String(appTargetId || '').trim()];
+  }
+
   function mappingTargetKeyForAppTarget(appTargetId){
     var preset = presetById(appTargetId);
     if(preset && preset.targetKey) return preset.targetKey;
     if(appTargetId === 'cursor-chat') return 'Ctrl+L';
     return '';
+  }
+
+  function configuredVoiceShortcutKey(){
+    var st = global.OneToneState && global.OneToneState.state;
+    var cfg = st && st.config;
+    if(!cfg) return '';
+    var vosk = cfg.voiceVosk || cfg.voice_vosk || {};
+    var sapi = cfg.voiceSapi || cfg.voice_sapi || {};
+    return String(vosk.targetKey || sapi.targetKey || '').trim();
+  }
+
+  function resolveMappingVoiceTargetKey(m, presetId){
+    var voiceKey = configuredVoiceShortcutKey();
+    if(voiceKey) return voiceKey;
+    var prev = String(m && m.targetKey || '').trim();
+    var workflowKey = mappingTargetKeyForAppTarget(presetId);
+    if(prev && prev !== workflowKey) return prev;
+    return prev;
   }
 
   function applyRecordedVoiceShortcut(m, combo){
@@ -118,8 +137,7 @@
     var appTargetId = String(m.appTargetId || '').trim();
     if(appTargetId){
       applyVoiceShortcutKeys(combo);
-      var workflowKey = mappingTargetKeyForAppTarget(appTargetId);
-      if(workflowKey) m.targetKey = workflowKey;
+      m.targetKey = combo;
       return;
     }
     m.targetKey = combo;
@@ -267,25 +285,25 @@
     presetId = String(presetId || '').trim();
     if(!presetId && !combo) return;
     var prevVoice = String(m.targetKey || '').trim();
-    m.targetKey = combo;
+    var workflowKey = mappingTargetKeyForAppTarget(presetId);
+    var isWorkflow = isWorkflowAppTarget(presetId);
+    if(isWorkflow){
+      if(prevVoice && prevVoice !== workflowKey && !configuredVoiceShortcutKey()){
+        applyVoiceShortcutKeys(prevVoice);
+      }
+      m.targetKey = resolveMappingVoiceTargetKey(m, presetId);
+    }else{
+      m.targetKey = combo;
+    }
     m.appTargetId = presetId;
     m.imePresetId = '';
     setSelectedId('mapping', presetId);
     var st = global.OneToneState && global.OneToneState.state;
     if(st && st.config) st.config.imePresetId = '';
-    var workflowKey = mappingTargetKeyForAppTarget(presetId);
-    if(presetId && prevVoice && prevVoice !== combo && prevVoice !== workflowKey){
-      var cfg = st && st.config;
-      var vosk = cfg && (cfg.voiceVosk || cfg.voice_vosk || {});
-      var sapi = cfg && (cfg.voiceSapi || cfg.voice_sapi || {});
-      if(!String(vosk.targetKey || '').trim() && !String(sapi.targetKey || '').trim()){
-        applyVoiceShortcutKeys(prevVoice);
-      }
-    }
-    var displayTarget = core.editorTarget ? core.editorTarget(m) : combo;
+    var displayTarget = core.editorTarget ? core.editorTarget(m) : (m.targetKey || combo);
     var trig = core.editorTrigger ? core.editorTrigger(m) : (m.triggerKey || '');
-    m.label = (trig || '?') + ' → ' + (displayTarget || combo);
-    if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(displayTarget || combo);
+    m.label = (trig || '?') + ' → ' + (displayTarget || m.targetKey || combo || '?');
+    if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(displayTarget || m.targetKey || combo);
     persistMapping();
     renderMappingChrome();
     if(core.maybeEnableAfterComplete) core.maybeEnableAfterComplete(m);
@@ -305,7 +323,16 @@
     var a = global.OneToneApp;
     if(a && a.saveConfigPatch){
       a.saveConfigPatch(function(m){
-        m.targetKey = combo;
+        if(isWorkflowAppTarget(presetId)){
+          var prevVoice = String(m.targetKey || '').trim();
+          var workflowKey = mappingTargetKeyForAppTarget(presetId);
+          if(prevVoice && prevVoice !== workflowKey && !configuredVoiceShortcutKey()){
+            applyVoiceShortcutKeys(prevVoice);
+          }
+          m.targetKey = resolveMappingVoiceTargetKey(m, presetId);
+        }else{
+          m.targetKey = combo;
+        }
         m.enabled = true;
         m.appTargetId = presetId;
         m.imePresetId = '';
@@ -409,6 +436,7 @@
     applyLang: applyLang,
     presets: PRESETS,
     presetById: presetById,
+    isWorkflowAppTarget: isWorkflowAppTarget,
     applyRecordedVoiceShortcut: applyRecordedVoiceShortcut,
     applyVoiceShortcutKeys: applyVoiceShortcutKeys,
     clearSelectedForManualRecord: clearSelectedForManualRecord,

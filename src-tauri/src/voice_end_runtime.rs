@@ -43,9 +43,14 @@ pub fn resolve_wake_mapping_id(cfg: &VoiceConfig) -> String {
         .unwrap_or_default()
 }
 
-/// Voice wake should press the same shortcut as the active key-mapping scheme.
+/// Voice wake should press the IME voice shortcut, not workflow open keys (e.g. Ctrl+L).
 pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
     if let Some(m) = cfg.active_mappings().first() {
+        if crate::config::is_workflow_app_target(&m.app_target_id) {
+            if let Some(key) = resolve_voice_input_target_key(cfg) {
+                return key;
+            }
+        }
         let key = m.target_key.trim();
         if !key.is_empty() {
             return key.to_string();
@@ -56,6 +61,11 @@ pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
         .iter()
         .find(|m| crate::config::mapping_is_complete(m))
     {
+        if crate::config::is_workflow_app_target(&m.app_target_id) {
+            if let Some(key) = resolve_voice_input_target_key(cfg) {
+                return key;
+            }
+        }
         let key = m.target_key.trim();
         if !key.is_empty() {
             return key.to_string();
@@ -94,6 +104,11 @@ pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
 fn resolve_stop_target_key(cfg: &VoiceConfig, session_mapping_id: &str) -> String {
     if !session_mapping_id.is_empty() {
         if let Some(m) = cfg.find_mapping_by_id(session_mapping_id) {
+            if crate::config::is_workflow_app_target(&m.app_target_id) {
+                if let Some(key) = resolve_voice_input_target_key(cfg) {
+                    return key;
+                }
+            }
             if !m.target_key.trim().is_empty() {
                 return m.target_key.clone();
             }
@@ -786,6 +801,6 @@ mod tests {
             resolve_voice_input_target_key(&cfg).as_deref(),
             Some("RAlt")
         );
-        assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Ctrl+L".to_string());
+        assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "RAlt".to_string());
     }
 }

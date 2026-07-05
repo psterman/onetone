@@ -1116,6 +1116,13 @@ pub fn mapping_is_complete(m: &MappingEntry) -> bool {
     is_mapping_complete(m)
 }
 
+pub fn is_workflow_app_target(app_target_id: &str) -> bool {
+    matches!(
+        app_target_id.trim(),
+        "cursor-chat" | "codex-chat" | "minimax-chat"
+    )
+}
+
 pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, bool) {
     let interval = if m.interval_ms >= 200 {
         m.interval_ms
