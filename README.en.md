@@ -4,10 +4,10 @@ Website: **https://www.onetone.app**
 
 [English](README.en.md) | [中文](README.md)
 
-[![Release](https://img.shields.io/github/v/release/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/releases)
+[![Release](https://img.shields.io/github/v/release/psterman/onetone)](https://github.com/psterman/onetone/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/psterman/voice-pilot/release.yml)](https://github.com/psterman/voice-pilot/actions)
-[![Stars](https://img.shields.io/github/stars/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/stargazers)
+[![CI](https://img.shields.io/github/actions/workflow/status/psterman/onetone/release.yml)](https://github.com/psterman/onetone/actions)
+[![Stars](https://img.shields.io/github/stars/psterman/onetone)](https://github.com/psterman/onetone/stargazers)
 
 > v1.0.0 is unsigned. Windows SmartScreen may block the installer on first launch. Click **More info** -> **Run anyway**.
 
@@ -46,7 +46,7 @@ Typical scenarios:
 
 ## Quick Start
 
-1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/voice-pilot/releases).
+1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/onetone/releases).
 2. If SmartScreen appears, choose **More info** -> **Run anyway**.
 3. Launch OneTone and complete the first-run guide.
 4. Record a trigger source, such as a volume key, mouse side button, or Bluetooth device button.
@@ -63,7 +63,7 @@ Start with an IME preset, then enable voice wake, end phrases, or auto-send if y
 
 ## Install and Updates
 
-- Installer: [GitHub Releases](https://github.com/psterman/voice-pilot/releases)
+- Installer: [GitHub Releases](https://github.com/psterman/onetone/releases)
 - The app checks for new versions on startup and shows an in-app update banner.
 - Updates replace application files only. Your local configuration is preserved.
 
@@ -131,7 +131,7 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ## Project Layout
 
 ```
-voice-pilot/
+onetone/
 ├── assets/              # Brand source assets
 ├── src/                 # Desktop frontend, icons, sounds, IME presets
 ├── src-tauri/           # Rust backend and Tauri config
@@ -151,7 +151,7 @@ voice-pilot/
 
 ## Repository
 
-**https://github.com/psterman/voice-pilot**
+**https://github.com/psterman/onetone**
 
 This repository was split out from an experimental voice-pilot prototype. The legacy AutoHotkey implementation lives in a separate archive and is not part of this repo.
 

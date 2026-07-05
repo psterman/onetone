@@ -1,13 +1,13 @@
-# 一声 OneTone
+﻿# 一声 OneTone
 
 官网：**https://www.onetone.app**
 
 [English](README.en.md) | 中文
 
-[![Release](https://img.shields.io/github/v/release/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/releases)
+[![Release](https://img.shields.io/github/v/release/psterman/onetone)](https://github.com/psterman/onetone/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/psterman/voice-pilot/release.yml)](https://github.com/psterman/voice-pilot/actions)
-[![Stars](https://img.shields.io/github/stars/psterman/voice-pilot)](https://github.com/psterman/voice-pilot/stargazers)
+[![CI](https://img.shields.io/github/actions/workflow/status/psterman/onetone/release.yml)](https://github.com/psterman/onetone/actions)
+[![Stars](https://img.shields.io/github/stars/psterman/onetone)](https://github.com/psterman/onetone/stargazers)
 
 > v1.0.0 未做代码签名。Windows SmartScreen 可能在首次安装时拦截，请点击 **更多信息** -> **仍要运行**。
 
@@ -46,7 +46,7 @@
 
 ## 快速上手
 
-1. 从 [GitHub Releases](https://github.com/psterman/voice-pilot/releases) 下载 Windows 安装包。
+1. 从 [GitHub Releases](https://github.com/psterman/onetone/releases) 下载 Windows 安装包。
 2. 首次安装若出现 SmartScreen，点击 **更多信息** -> **仍要运行**。
 3. 打开 OneTone，完成首次引导。
 4. 录入一个触发源，例如音量键、鼠标侧键或蓝牙外设按键。
@@ -63,7 +63,7 @@
 
 ## 安装与更新
 
-- 安装包：见 [GitHub Releases](https://github.com/psterman/voice-pilot/releases)
+- 安装包：见 [GitHub Releases](https://github.com/psterman/onetone/releases)
 - 应用启动后会检查新版本，并在界面顶部提示更新。
 - 更新只替换程序文件，不会覆盖本地配置。
 
@@ -131,7 +131,7 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ## 目录结构
 
 ```
-voice-pilot/
+onetone/
 ├── assets/              # 品牌图标源文件
 ├── src/                 # 桌面应用前端、图标、声音、IME 预设
 ├── src-tauri/           # Rust 后端与 Tauri 配置
@@ -151,7 +151,7 @@ voice-pilot/
 
 ## 从牛马仓库迁出
 
-本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/voice-pilot**
+本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/onetone**
 
 旧 AHK 实现仅作历史参考，不在此仓库内（牛马仓库 `archive/voice-pilot-legacy-ahk-20260625/`）。
 

@@ -46,4 +46,4 @@ These terms are governed by the laws applicable in your jurisdiction. Where mand
 
 ## Contact
 
-Legal or terms questions: [github.com/psterman/voice-pilot/issues](https://github.com/psterman/voice-pilot/issues).
+Legal or terms questions: [github.com/psterman/onetone/issues](https://github.com/psterman/onetone/issues).

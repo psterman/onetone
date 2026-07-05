@@ -2,7 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "vp_site_lang";
-  const REPO = "psterman/voice-pilot";
+  const REPO = "psterman/onetone";
 
   const strings = {
     zh: {
@@ -580,7 +580,7 @@
       faqResetBody: "设置 → 恢复与维护 →「清除全部映射」。或退出软件后删除 <code>%APPDATA%\\oneTone\\app\\config\\settings.json</code> 再打开（应用更新不会覆盖该文件）。",
       faqRelatedReset: "相关：<a href=\"#wrong-keys\">只改按键、不清全部</a>",
       faqQ7: "还是不行，怎么反馈问题？",
-      faqReportBody: "请附上 Windows 版本、一声版本、触发键与语音快捷键、输入法名称、复现步骤。可在设置 → 运行状态导出日志。<a href=\"https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml\">提交问题</a>",
+      faqReportBody: "请附上 Windows 版本、一声版本、触发键与语音快捷键、输入法名称、复现步骤。可在设置 → 运行状态导出日志。<a href=\"https://github.com/psterman/onetone/issues/new?template=bug_report.yml\">提交问题</a>",
     },
     en: {
       siteName: "OneTone",
@@ -1151,7 +1151,7 @@
       faqResetBody: "Settings → Recovery → Clear all mappings. Or quit and delete <code>%APPDATA%\\oneTone\\app\\config\\settings.json</code> (updates preserve this file).",
       faqRelatedReset: "Related: <a href=\"#wrong-keys\">Fix keys without full reset</a>",
       faqQ7: "Still stuck — how do I report an issue?",
-      faqReportBody: "Include Windows version, OneTone version, trigger & voice shortcuts, IME name, and steps to reproduce. Export logs from Settings → Runtime. <a href=\"https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml\">Report issue</a>",
+      faqReportBody: "Include Windows version, OneTone version, trigger & voice shortcuts, IME name, and steps to reproduce. Export logs from Settings → Runtime. <a href=\"https://github.com/psterman/onetone/issues/new?template=bug_report.yml\">Report issue</a>",
     },
   };
 

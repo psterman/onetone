@@ -1,4 +1,4 @@
-(function(global){
+﻿(function(global){
   'use strict';
 
   var $=function(id){ return global.OneToneDom.$(id); };
@@ -6,14 +6,14 @@
   function t(key){ return global.OneToneI18n.t(key); }
   function toast(msg,kind){ return global.OneToneAppToast.show(msg,kind); }
 
-  var GITHUB_REPO_URL='https://github.com/psterman/voice-pilot';
+  var GITHUB_REPO_URL='https://github.com/psterman/onetone';
 
   function renderAboutPanel(){
     var el=$('aboutVersionValue');
     if(!el) return;
     var st=global.OneToneState.state;
     var ver=st.update&&st.update.currentVersion;
-    el.textContent=ver||'—';
+    el.textContent=ver||'鈥?;
   }
 
   function exportDiagnosticLogs(){

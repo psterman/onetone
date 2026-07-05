@@ -35,7 +35,7 @@ This release focuses on **first-run experience** and a lightweight **Coach HUD**
 
 #### Links
 
-- [Cold start QA checklist](./COLD_START_TEST_v1.0.0.md) · [CHANGELOG](../CHANGELOG.md) · [Report a bug](https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml)
+- [Cold start QA checklist](./COLD_START_TEST_v1.0.0.md) · [CHANGELOG](../CHANGELOG.md) · [Report a bug](https://github.com/psterman/onetone/issues/new?template=bug_report.yml)
 
 ---
 
@@ -70,4 +70,4 @@ This release focuses on **first-run experience** and a lightweight **Coach HUD**
 
 #### 链接
 
-- [冷启动测试清单](./COLD_START_TEST_v1.0.0.md) · [更新日志](../CHANGELOG.md) · [反馈问题](https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml)
+- [冷启动测试清单](./COLD_START_TEST_v1.0.0.md) · [更新日志](../CHANGELOG.md) · [反馈问题](https://github.com/psterman/onetone/issues/new?template=bug_report.yml)

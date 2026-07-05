@@ -22,7 +22,7 @@ OneTone ("一声") is a Windows desktop app that maps hardware keys to voice-inp
 
 ## What Leaves Your Computer
 
-1. **Software updates** — When you use "Check for updates", OneTone contacts GitHub Releases (`github.com/psterman/voice-pilot`) to read `latest.json` and download installer files. No personal data is sent in this request beyond standard HTTPS metadata (IP address, user-agent) handled by GitHub.
+1. **Software updates** — When you use "Check for updates", OneTone contacts GitHub Releases (`github.com/psterman/onetone`) to read `latest.json` and download installer files. No personal data is sent in this request beyond standard HTTPS metadata (IP address, user-agent) handled by GitHub.
 
 2. **Nothing else by default** — The app does not send keystrokes, audio, or configuration to third-party analytics services.
 
@@ -56,4 +56,4 @@ We may update this policy for new releases. The "Last updated" date at the top w
 
 ## Contact
 
-Questions or privacy requests: open an issue at [github.com/psterman/voice-pilot/issues](https://github.com/psterman/voice-pilot/issues).
+Questions or privacy requests: open an issue at [github.com/psterman/onetone/issues](https://github.com/psterman/onetone/issues).

@@ -47,4 +47,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - No code signing — SmartScreen requires **More info → Run anyway** on first launch
 - No macOS or Linux builds
 
-[1.0.0]: https://github.com/psterman/voice-pilot/releases/tag/v1.0.0
+[1.0.0]: https://github.com/psterman/onetone/releases/tag/v1.0.0

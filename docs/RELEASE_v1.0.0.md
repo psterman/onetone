@@ -40,7 +40,7 @@ Map hardware keys (mouse side buttons, volume keys, combos) to your voice-input 
 
 ### Links
 
-- [README (English)](../README.en.md) · [Privacy](../docs/PRIVACY.md) · [Report a bug](https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml)
+- [README (English)](../README.en.md) · [Privacy](../docs/PRIVACY.md) · [Report a bug](https://github.com/psterman/onetone/issues/new?template=bug_report.yml)
 
 ---
 
@@ -80,4 +80,4 @@ Map hardware keys (mouse side buttons, volume keys, combos) to your voice-input 
 
 ### 链接
 
-- [README（中文）](../README.md) · [隐私政策](../docs/PRIVACY.md) · [反馈问题](https://github.com/psterman/voice-pilot/issues/new?template=bug_report.yml)
+- [README（中文）](../README.md) · [隐私政策](../docs/PRIVACY.md) · [反馈问题](https://github.com/psterman/onetone/issues/new?template=bug_report.yml)
