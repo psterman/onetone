@@ -11,9 +11,17 @@
     var trig=hooks().selectedDisplayTriggerKey();
     var tgt=hooks().selectedDisplayTargetKey();
     var btnRecordTrigger=$('btnRecordTrigger');
-    if(btnRecordTrigger) btnRecordTrigger.textContent=trig?hooks().t('btnRerecordTrigger'):hooks().t('btnRecordTrigger');
+    if(btnRecordTrigger){
+      var lbl=trig?hooks().t('btnRerecordTrigger'):hooks().t('btnRecordTrigger');
+      if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel) global.OneToneMappingEditorChrome.setRecordBtnLabel(btnRecordTrigger,lbl);
+      else btnRecordTrigger.textContent=lbl;
+    }
     var btnRecordTarget=$('btnRecordTarget');
-    if(btnRecordTarget) btnRecordTarget.textContent=tgt?hooks().t('btnRerecordTarget'):hooks().t('btnRecordTarget');
+    if(btnRecordTarget){
+      var lbl2=tgt?hooks().t('btnRerecordTarget'):hooks().t('btnRecordTarget');
+      if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel) global.OneToneMappingEditorChrome.setRecordBtnLabel(btnRecordTarget,lbl2);
+      else btnRecordTarget.textContent=lbl2;
+    }
     var mappingEmptyTitle=$('mappingEmptyTitle');
     if(mappingEmptyTitle) mappingEmptyTitle.textContent=d.mappingEmptyTitle;
     var mappingEmptyHint=$('mappingEmptyHint');

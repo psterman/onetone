@@ -31,6 +31,8 @@
     }
     hooks.renderMappingList();
     hooks.renderEditor();
+    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+    hooks.render();
     if(toId){
       requestAnimationFrame(function(){
         var row=document.querySelector('.map-row[data-id="'+toId+'"]');

@@ -7,7 +7,7 @@
   var homeSchemeMenuOpen=false;
   function homeSchemeLabel(){
     hooks().ensureConfig();
-    const m=hooks().selectedMapping();
+    const m=homeActiveMapping();
     if(!m) return t('homeLiveUnset');
     if(hooks().isDraftMapping(m)) return t('homeLiveSchemeDraft');
     if((m.label||'').trim()) return m.label.trim();
@@ -30,6 +30,20 @@
       triggerLabel:hooks().friendlyKeyName(trig||''),
       targetLabel:hooks().friendlyKeyName(tgt||'')
     };
+  }
+
+  function homeActiveMapping(){
+    if(global.OneToneMappingCore&&global.OneToneMappingCore.activeScene){
+      return global.OneToneMappingCore.activeScene();
+    }
+    return hooks().selectedMapping();
+  }
+  function homeActiveSceneId(){
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activeSceneId){
+      return global.OneToneSceneActivate.activeSceneId();
+    }
+    const cfg=state().config||{};
+    return String(cfg.activeSceneId||'').trim();
   }
 
   function homeMappingShortName(m){
@@ -120,18 +134,11 @@
 
   function selectHomeMapping(id){
     if(hooks().getRecordingMode()!=='none') return;
-    if(!id||state().selectedMappingId===id){
-      closeHomeSchemeMenu();
-      return;
-    }
-    hooks().flushAllEditorToMappings();
-    state().selectedMappingId=id;
-    hooks().syncEditorFromSelection();
     closeHomeSchemeMenu();
-    hooks().render();
-    if(global.OneToneImePresets){
-      global.OneToneImePresets.refresh('mapping');
-      global.OneToneImePresets.refresh('onboarding');
+    if(!id||homeActiveSceneId()===id) return;
+    hooks().flushAllEditorToMappings();
+    if(global.OneToneSceneActivate){
+      global.OneToneSceneActivate.activateScene(id);
     }
   }
 
@@ -151,7 +158,8 @@
     const switcher=$('homeSchemeSwitcher');
     const chevron=$('homeSchemeSwitcherChevron');
     if(switcher) switcher.hidden=!!loading;
-    const m=hooks().selectedMapping();
+    const m=homeActiveMapping();
+    const activeId=homeActiveSceneId();
     const nameEl=$('homeSchemeSwitcherName');
     if(loading){
       if(nameEl) nameEl.textContent=t('homeLiveLoading');
@@ -173,7 +181,7 @@
     if(!listEl) return;
     let html='';
     schemes.forEach(function(item){
-      const sel=item.id===state().selectedMappingId;
+      const sel=item.id===activeId;
       const draft=hooks().isDraftMapping(item);
       const on=!!item.enabled;
       html+='<div class="home-scheme-item'+(sel?' is-selected':'')+(draft?' is-draft':'')+'" data-id="'+item.id+'" role="option" aria-selected="'+(sel?'true':'false')+'">';

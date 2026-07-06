@@ -73,6 +73,7 @@
       syncRecordingAudioUi:deps.syncRecordingAudioUi,
       openHomeKeyFinishSettings:H.openHomeKeyFinishSettings,
       openHomeKeySettings:H.openHomeKeySettings,
+      openHomeKeyStep:H.openHomeKeyStep,
       setSettingsPanel:deps.setSettingsPanel,
       loadMicDevices:deps.loadMicDevices,
       clearMicBackoff:deps.clearMicBackoff,

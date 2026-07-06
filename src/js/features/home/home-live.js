@@ -12,6 +12,33 @@
     if(raw==='hold'||raw==='longpress') return 'perpress';
     return raw;
   }
+  function homeActiveMapping(){
+    if(global.OneToneMappingCore&&global.OneToneMappingCore.activeScene){
+      return global.OneToneMappingCore.activeScene();
+    }
+    return hooks().selectedMapping();
+  }
+  function homeEffectiveTargetKey(m,cfg){
+    if(!m||!cfg||!global.OneToneSceneConfig) return '';
+    var eff=global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:m.id});
+    return eff&&eff.targetKey?String(eff.targetKey).trim():'';
+  }
+  function homeDisplayTargetKey(m,cfg){
+    var eff=homeEffectiveTargetKey(m,cfg);
+    if(eff) return eff;
+    return hooks().editorTargetForMapping(m)||'';
+  }
+  function homeEmptyKeyLabel(){
+    return global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.emptyKeyLabel():t('homeKeyMapTapToRecord');
+  }
+  function homeDisplayTriggerLabel(m){
+    if(global.OneToneSceneFlowSummary) return global.OneToneSceneFlowSummary.displayTriggerLabel(m);
+    return '';
+  }
+  function homeFinishBehaviorSummary(m){
+    if(global.OneToneSceneFlowSummary) return global.OneToneSceneFlowSummary.finishBehaviorTextHome(m);
+    return {text:homeEmptyKeyLabel(),saved:false};
+  }
   function computeHomeState(){
     if(!hooks().configLoadedFromBackend()){
       return {
@@ -39,13 +66,13 @@
         keyReady:false
       };
     }
-    const m=hooks().selectedMapping();
+    const m=homeActiveMapping();
+    const cfg=state().config||{};
     const trig=hooks().editorTriggerForMapping(m);
-    const tgt=hooks().editorTargetForMapping(m);
+    const tgt=homeDisplayTargetKey(m,cfg);
     const keyReady=!!(trig&&tgt);
     const keyEnabled=!!(m&&m.enabled);
     const keyActive=keyEnabled&&keyReady;
-    const cfg=state().config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk;
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi;
     const endCfg=cfg.voiceEnd||cfg.voice_end;
@@ -89,9 +116,9 @@
       ctaMode='listening';
       ctaMain=t('homeCtaListening');
       if(keyActive&&voiceActive){
-        ctaSub=t('homeCtaSubKeyOrVoice').replace('{key}',hooks().friendlyKeyName(trig));
+        ctaSub=t('homeCtaSubKeyOrVoice').replace('{key}',homeDisplayTriggerLabel(m));
       }else if(keyActive){
-        ctaSub=t('homeCtaSubKey').replace('{key}',hooks().friendlyKeyName(trig));
+        ctaSub=t('homeCtaSubKey').replace('{key}',homeDisplayTriggerLabel(m));
       }else{
         ctaSub=t('homeCtaSubVoice');
       }
@@ -117,7 +144,7 @@
       if(keyReady){
         ctaMode='start';
         ctaMain=t('homeCtaStart');
-        ctaSub=t('homeCtaSubKey').replace('{key}',hooks().friendlyKeyName(trig));
+        ctaSub=t('homeCtaSubKey').replace('{key}',homeDisplayTriggerLabel(m));
         ctaPanel='keyWake';
       }else if(trig&&!tgt){
         ctaMode='config';
@@ -134,8 +161,9 @@
       }
     }
     let keyStatus,keyDot;
-    if(keyReady){ keyStatus=hooks().friendlyKeyName(trig)+' → '+hooks().friendlyKeyName(tgt); keyDot='ready'; }
-    else if(trig){ keyStatus=hooks().friendlyKeyName(trig)+' → '+t('targetPlaceholder'); keyDot='on'; }
+    var trigLbl=homeDisplayTriggerLabel(m);
+    if(keyReady){ keyStatus=trigLbl+' → '+hooks().friendlyKeyName(tgt); keyDot='ready'; }
+    else if(trig){ keyStatus=trigLbl+' → '+t('targetPlaceholder'); keyDot='on'; }
     else { keyStatus=t('homeCapKeyUnset'); keyDot='off'; }
     let voiceStatus,voiceDot;
     if(voiceOn){
@@ -156,8 +184,8 @@
     else if(keyActive){ entrySummary=t('homeEntryKeyOnly'); entryMode='key'; }
     else if(voiceActive){ entrySummary=t('homeEntryVoiceOnly'); entryMode='voice'; }
     else{ entrySummary=t('homeEntryNone'); entryMode='none'; }
-    var mapLabels=window.OneToneKeyLabels?window.OneToneKeyLabels.labelsForMapping(m,global.OneToneI18n.getLang()):{triggerLabel:hooks().friendlyKeyName(trig),targetLabel:hooks().friendlyKeyName(tgt)};
-    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot,entrySummary,entryMode,keyActive,voiceActive,triggerLabel:mapLabels.triggerLabel||hooks().friendlyKeyName(trig),targetLabel:mapLabels.targetLabel||hooks().friendlyKeyName(tgt),triggerKey:trig,targetKey:tgt,keyReady};
+    var mapLabels=window.OneToneKeyLabels?window.OneToneKeyLabels.labelsForMapping(m,global.OneToneI18n.getLang()):{triggerLabel:trigLbl,targetLabel:hooks().friendlyKeyName(tgt)};
+    return {statusMode,statusLine,ctaMode,ctaMain,ctaSub,ctaPanel,ctaFocus,keyStatus,keyDot,voiceStatus,voiceDot,endStatus,endDot,entrySummary,entryMode,keyActive,voiceActive,triggerLabel:mapLabels.triggerLabel||trigLbl,targetLabel:mapLabels.targetLabel||hooks().friendlyKeyName(tgt),triggerKey:trig,targetKey:tgt,keyReady};
   }
   function setHomeLiveVal(id,text,kind){
     const el=$(id);
@@ -194,9 +222,11 @@
     if(arrowText) arrowText.textContent=t('homeKeyMapArrowText');
     global.OneToneHomeScheme.renderSwitcher(loading);
     hooks().ensureConfig();
-    const m=hooks().selectedMapping();
+    const m=homeActiveMapping();
+    const cfg=state().config||{};
     const trig=hooks().editorTriggerForMapping(m);
-    const tgt=hooks().editorTargetForMapping(m);
+    const tgt=homeDisplayTargetKey(m,cfg);
+    const emptyLbl=homeEmptyKeyLabel();
     const trigEl=$('homeKeyMapTriggerKey');
     const tgtEl=$('homeKeyMapTargetKey');
     if(loading){
@@ -207,14 +237,12 @@
       return;
     }
     if(trigEl){
-      trigEl.textContent=trig?hooks().friendlyKeyName(trig):t('homeKeyMapEmptyKey');
+      trigEl.textContent=trig?homeDisplayTriggerLabel(m):emptyLbl;
       trigEl.className='home-key-map-key'+(trig?' is-set':' is-empty');
-      trigEl.classList.toggle('is-recording',hooks().getRecordingMode()==='trigger');
     }
     if(tgtEl){
-      tgtEl.textContent=tgt?hooks().friendlyKeyName(tgt):t('homeKeyMapEmptyKey');
+      tgtEl.textContent=tgt?hooks().friendlyKeyName(tgt):emptyLbl;
       tgtEl.className='home-key-map-key'+(tgt?' is-set':' is-empty');
-      tgtEl.classList.toggle('is-recording',hooks().getRecordingMode()==='target');
     }
     if(trigHint) trigHint.hidden=!!trig;
     if(tgtHint) tgtHint.hidden=!!tgt;
@@ -239,7 +267,7 @@
         isAppTarget=!!preset;
       }
     }
-    const customTarget=String(hooks().editorTargetForMapping(m)||m.targetKey||'').trim();
+    const customTarget=String(homeDisplayTargetKey(m,state().config||{})||m.targetKey||'').trim();
     const rawKey=preset
       ?String((preset.endKey||preset.targetKey)||'').trim()
       :customTarget;
@@ -299,8 +327,8 @@
   }
 
   function renderHomeKeyFinishPreview(loading){
-    const m=hooks().selectedMapping();
-    const preview=loading?null:homeEndKeyPreview(m);
+    const m=homeActiveMapping();
+    const behavior=loading?null:homeFinishBehaviorSummary(m);
     const finishLbl=$('homeKeyMapFinishLbl');
     const finishKey=$('homeKeyMapFinishKey');
     const finishKeyText=$('homeKeyMapFinishKeyText');
@@ -309,7 +337,7 @@
     const arrowFinishText=$('homeKeyMapArrowFinishText');
     if(finishLbl) finishLbl.textContent=t('homeKeyMapFinishLbl');
     if(arrowFinishText) arrowFinishText.textContent=t('homeKeyMapArrowFinishText');
-    const summary=preview?preview.summary:t('homeLiveUnset');
+    const summary=behavior?behavior.text:t('homeLiveUnset');
     if(loading){
       if(finishKeyText) finishKeyText.textContent=t('homeLiveLoading');
       else if(finishKey) finishKey.textContent=t('homeLiveLoading');
@@ -321,19 +349,12 @@
     if(finishKeyText) finishKeyText.textContent=summary;
     else if(finishKey) finishKey.textContent=summary;
     if(finishImeIcon){
-      if(preview&&preview.showIcon&&preview.preset&&!preview.isAppTarget){
-        finishImeIcon.src=preview.preset.icon;
-        finishImeIcon.alt=t(preview.preset.nameKey);
-        finishImeIcon.hidden=false;
-      }else{
-        finishImeIcon.hidden=true;
-        finishImeIcon.removeAttribute('src');
-      }
+      finishImeIcon.hidden=true;
+      finishImeIcon.removeAttribute('src');
     }
     if(finishKey){
-      finishKey.className='home-key-map-key'+(preview&&preview.saved?' is-set':' is-empty');
-      finishKey.classList.toggle('has-ime-badge',!!(preview&&preview.showIcon&&preview.preset&&!preview.isAppTarget));
-      finishKey.classList.toggle('has-app-target-badge',!!(preview&&preview.showIcon&&preview.preset&&preview.isAppTarget));
+      finishKey.className='home-key-map-key'+(behavior&&behavior.saved?' is-set':' is-empty');
+      finishKey.classList.remove('has-ime-badge','has-app-target-badge');
     }
     if(finishHint){
       finishHint.innerHTML='';
@@ -501,9 +522,10 @@
   }
   function renderHomeLiveKeyPanel(loading){
     const recordingBusy=hooks().getRecordingMode()!=='none';
-    const m=hooks().selectedMapping();
+    const m=homeActiveMapping();
+    const cfg=state().config||{};
     const trig=hooks().editorTriggerForMapping(m);
-    const tgt=hooks().editorTargetForMapping(m);
+    const tgt=homeDisplayTargetKey(m,cfg);
     const ready=!!(trig&&tgt);
     const enabled=!!(m&&m.enabled);
     const isDraft=m&&hooks().isDraftMapping(m);

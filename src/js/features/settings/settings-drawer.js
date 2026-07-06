@@ -38,6 +38,11 @@
 
   function focusSettingsField(focus){
     if(!focus) return;
+    if(focus==='mappings'){
+      if(global.OneToneSceneTabs) global.OneToneSceneTabs.setSceneTab('advanced');
+      scrollSettingsToTarget(['keyWakeMappingSection','mappingListTitle']);
+      return;
+    }
     if(focus==='trigger'||focus==='target'||focus==='keyFinishFlow'){
       hooks().focusSchemeEditStep(focus==='keyFinishFlow'?'finish':focus);
       return;
@@ -77,10 +82,10 @@
     }
     const expanded=global.OneToneVoiceWake.getExpandedMode();
     const map={
-      trigger:['btnRecordTrigger','keySchemeEditTrigger'],
-      target:['btnRecordTarget','keySchemeEditTarget'],
+      trigger:['habitSettingsRow','habitBasicCard','btnRecordTrigger','keySchemeEditTrigger'],
+      target:['habitSettingsRow','habitBasicCard','btnRecordTarget','keySchemeEditTarget'],
       mappings:['keyWakeMappingSection','mappingListTitle'],
-      keyFinishFlow:['keySchemeEditFinish','keySchemeStepFinish'],
+      keyFinishFlow:['habitFinishCard','sceneFlowStepFinish'],
       mic:['micDeviceList','micTitle'],
       engine:['voiceSettingsEngineCard','voiceModePanel'],
       wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceSettingsEngineCard']:['voiceSapiPresets','voiceSettingsEngineCard'],

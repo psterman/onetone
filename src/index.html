@@ -100,7 +100,7 @@
               <section class="home-key-map-card" id="homeKeyMapCard" aria-labelledby="homeKeyMapTitle">
                 <div class="home-key-map-head">
                   <div class="home-key-map-head-text">
-                    <div class="mini-title" id="homeKeyMapTitle">按键对应</div>
+                    <div class="mini-title" id="homeKeyMapTitle">当前会这样工作</div>
                   </div>
                   <div class="home-key-map-scheme" id="homeSchemeSwitcher" data-home-guide-target>
                     <span class="home-key-map-scheme-lbl" id="homeKeyMapSchemeLbl">习惯</span>
@@ -115,27 +115,27 @@
                     </div>
                   </div>
                 </div>
-                <div class="home-key-map-flow" id="homeKeyMapFlow">
+                <div class="home-key-map-flow is-readonly-summary" id="homeKeyMapFlow">
                   <div class="home-key-map-step" id="homeKeyMapTrigger">
-                    <span class="home-key-map-step-label" id="homeKeyMapTriggerLbl">唤起键</span>
+                    <span class="home-key-map-step-label" id="homeKeyMapTriggerLbl">你按的键</span>
                     <div class="home-key-map-key is-empty" id="homeKeyMapTriggerKey">未设置</div>
                     <span class="home-key-map-step-hint" id="homeKeyMapTriggerHint">如音量键、鼠标侧键</span>
                   </div>
                   <div class="home-key-map-arrow" id="homeKeyMapArrow" aria-hidden="true">
                     <span class="home-key-map-arrow-icon">→</span>
-                    <span class="home-key-map-arrow-text" id="homeKeyMapArrowText">替你按下</span>
+                    <span class="home-key-map-arrow-text" id="homeKeyMapArrowText">帮你打开语音</span>
                   </div>
                   <div class="home-key-map-step" id="homeKeyMapTarget">
-                    <span class="home-key-map-step-label" id="homeKeyMapTargetLbl">语音快捷键</span>
+                    <span class="home-key-map-step-label" id="homeKeyMapTargetLbl">会帮你按下</span>
                     <div class="home-key-map-key is-empty" id="homeKeyMapTargetKey">未设置</div>
                     <span class="home-key-map-step-hint" id="homeKeyMapTargetHint">输入法的语音输入快捷键</span>
                   </div>
                   <div class="home-key-map-arrow" id="homeKeyMapArrowFinish" aria-hidden="true">
                     <span class="home-key-map-arrow-icon">→</span>
-                    <span class="home-key-map-arrow-text" id="homeKeyMapArrowFinishText">说完后</span>
+                    <span class="home-key-map-arrow-text" id="homeKeyMapArrowFinishText">然后这样收尾</span>
                   </div>
                   <div class="home-key-map-step" id="homeKeyMapFinish">
-                    <span class="home-key-map-step-label" id="homeKeyMapFinishLbl">结束键</span>
+                    <span class="home-key-map-step-label" id="homeKeyMapFinishLbl">说完后</span>
                     <div class="home-key-map-key is-empty" id="homeKeyMapFinishKey">
                       <img class="target-ime-badge home-key-finish-ime-badge" id="homeKeyMapFinishImeIcon" alt="" hidden decoding="async">
                       <span class="home-key-map-finish-key-text" id="homeKeyMapFinishKeyText">—</span>
@@ -146,7 +146,7 @@
               </section>
               <p class="home-live-hint" id="homeLiveKeyConflict" hidden></p>
               <div class="home-live-actions">
-                <button type="button" class="home-live-btn is-turn-on" id="btnHomeKeyToggle">开始</button>
+                <button type="button" class="home-live-btn is-turn-on home-key-entry-toggle" id="btnHomeKeyToggle">开始</button>
               </div>
             </div>
             <div class="home-live-panel is-active home-live-panel-voice" id="homeLivePanelVoice" data-module="voiceWake">
@@ -356,111 +356,168 @@
             <button type="button" class="scene-tab" data-scene-tab="voice" role="tab" id="sceneTabVoice" aria-selected="false"><span id="sceneTabVoiceLabel">单独语音</span></button>
             <button type="button" class="scene-tab" data-scene-tab="advanced" role="tab" id="sceneTabAdvanced" aria-selected="false"><span id="sceneTabAdvancedLabel">全部习惯</span></button>
           </div>
-          <div class="scene-status-bar" id="sceneStatusBar" hidden>
-            <div class="scene-status-row">
-              <span class="scene-status-label" id="sceneStatusActiveLabel">正在使用</span>
-              <span class="scene-status-value" id="sceneStatusActiveValue">—</span>
+          <div class="scene-status-bar habit-head" id="sceneStatusBar" hidden>
+            <div class="habit-head-main">
+              <div class="habit-head-icon scene-hero-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11v1a7 7 0 0 1-14 0v-1"/><path d="M12 19v3"/></svg>
+              </div>
+              <div class="habit-head-text scene-hero-main">
+                <div class="scene-hero-kicker" id="sceneHeroKicker">按键启动习惯</div>
+                <div class="habit-head-title-row">
+                  <div class="scene-hero-name" id="sceneHeroName">—</div>
+                  <span class="scene-hero-badge key-scheme-meta-chip" id="sceneHeroBadge">—</span>
+                </div>
+                <div class="scene-hero-action-line" id="sceneHeroActionLine">—</div>
+                <span class="sr-only" id="sceneStatusActiveLabel">正在使用</span>
+                <span class="sr-only" id="sceneStatusActiveValue">—</span>
+                <span class="sr-only" id="sceneStatusEditingLabel">正在编辑</span>
+                <span class="sr-only" id="sceneStatusEditingValue">—</span>
+                <span class="sr-only" id="keySchemeName">—</span>
+                <span class="sr-only" id="keySchemeCardKicker">—</span>
+                <span id="keySchemeBindingLine" hidden></span>
+              </div>
+              <div class="habit-head-toolbar">
+                <div class="scene-hero-actions habit-head-actions">
+                  <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增习惯</button>
+                  <button type="button" class="key-scheme-card-btn is-danger" id="btnKeySchemeDelete">删除</button>
+                  <button type="button" class="key-scheme-card-btn is-primary scene-status-activate" id="btnKeySchemeActivate" hidden>切换到这套习惯</button>
+                </div>
+                <div class="scene-hero-enable habit-head-enable" id="sceneHeroEnable">
+                  <span class="scene-hero-enable-lbl" id="sceneHeroEnableLabel">已启用</span>
+                  <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
+                </div>
+              </div>
             </div>
-            <div class="scene-status-row" id="sceneStatusEditingRow">
-              <span class="scene-status-label" id="sceneStatusEditingLabel">正在编辑</span>
-              <span class="scene-status-value" id="sceneStatusEditingValue">—</span>
-              <button type="button" class="key-scheme-card-btn is-primary scene-status-activate" id="btnKeySchemeActivate" hidden>切换到这套习惯</button>
-            </div>
-            <div class="scene-effective-preview" id="sceneEffectivePreview">
-              <div class="scene-effective-preview-title" id="sceneEffectivePreviewTitle">这套习惯会这样工作</div>
+            <span id="keySchemeCompletenessChip" class="sr-only"></span>
+            <span id="keySchemeConflictChip" class="key-scheme-meta-chip is-conflict" hidden>冲突</span>
+            <div class="scene-effective-preview sr-only" id="sceneEffectivePreview" hidden>
+              <div class="scene-effective-preview-title" id="sceneEffectivePreviewTitle">—</div>
               <div class="scene-effective-preview-body" id="sceneEffectivePreviewBody">—</div>
             </div>
+            <div class="scene-status-row sr-only" id="sceneStatusEditingRow"></div>
           </div>
           <div class="key-flow-section" id="quickKeyWakeSection">
-            <div class="setting-section-label" id="quickKeyWakeSummary">怎么唤起</div>
-            <p class="settings-secondary-hint" id="quickKeyWakeHint">按下左侧唤起键后，程序代按右侧听写快捷键；说完怎么办作为最后一步一起保存在当前习惯中。</p>
-            <div class="key-wake-settings" id="keyWakeSettings">
-              <section id="keyWakeSchemeCard" class="key-scheme-card">
-                <header class="key-scheme-card-head">
-                  <div class="key-scheme-card-title-row">
-                    <div>
-                      <div class="key-scheme-card-kicker" id="keySchemeCardKicker">正在使用</div>
-                      <div id="keySchemeName" class="key-scheme-card-title">—</div>
-                    </div>
-                    <div class="key-scheme-card-head-actions">
-                      <button type="button" class="key-scheme-card-btn" id="btnKeySchemeAdd">新增习惯</button>
-                      <button type="button" class="key-scheme-card-btn is-danger" id="btnKeySchemeDelete">删除</button>
-                      <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" hidden></button>
-                    </div>
+            <div class="key-wake-settings habit-page" id="keyWakeSettings">
+              <section class="habit-flow-bar" id="sceneFlowSummary">
+                <span class="habit-flow-bar-label" id="sceneFlowSummaryTitle">当前会这样工作</span>
+                <div class="home-key-map-flow is-readonly-summary scene-flow-summary habit-flow-inline" id="sceneFlowMap">
+                  <div class="home-key-map-step is-clickable" id="sceneFlowStepTrigger" data-step="trigger">
+                    <span class="home-key-map-step-num">1</span>
+                    <span class="home-key-map-step-label" id="sceneFlowStepTriggerLbl">你按的键</span>
+                    <div class="home-key-map-key is-empty" id="sceneFlowTriggerKey">—</div>
                   </div>
-                  <div class="key-scheme-card-meta">
-                    <span id="keySchemeBindingLine" hidden></span>
-                    <span id="keySchemeCompletenessChip" class="key-scheme-meta-chip"></span>
-                    <span id="keySchemeConflictChip" class="key-scheme-meta-chip is-conflict" hidden>冲突</span>
+                  <div class="home-key-map-arrow" aria-hidden="true">
+                    <span class="home-key-map-arrow-icon">→</span>
+                    <span class="home-key-map-arrow-text" id="sceneFlowArrowText">帮你打开语音</span>
                   </div>
-                </header>
-                <ol id="keySchemeTimeline" class="key-scheme-timeline is-horizontal">
-                  <li id="keySchemeStepTrigger" class="key-scheme-step is-pending" data-step="trigger">
-                    <span class="key-scheme-step-dot">1</span>
-                    <span class="key-scheme-step-title" id="keySchemeStepTriggerTitle">录唤起键</span>
-                    <span class="key-scheme-step-summary" id="keySchemeStepTriggerSummary">未设置</span>
-                  </li>
-                  <li id="keySchemeStepTarget" class="key-scheme-step is-pending" data-step="target">
-                    <span class="key-scheme-step-dot">2</span>
-                    <span class="key-scheme-step-title" id="keySchemeStepTargetTitle">录语音快捷键</span>
-                    <span class="key-scheme-step-summary" id="keySchemeStepTargetSummary">未设置</span>
-                  </li>
-                  <li id="keySchemeStepFinish" class="key-scheme-step is-pending" data-step="finish">
-                    <span class="key-scheme-step-dot">3</span>
-                    <span class="key-scheme-step-title" id="keySchemeStepFinishTitle">按键收尾</span>
-                    <span class="key-scheme-step-summary" id="keySchemeStepFinishSummary">—</span>
-                  </li>
+                  <div class="home-key-map-step is-clickable" id="sceneFlowStepTarget" data-step="target">
+                    <span class="home-key-map-step-num">2</span>
+                    <span class="home-key-map-step-label" id="sceneFlowStepTargetLbl">打开语音输入</span>
+                    <div class="home-key-map-key is-empty" id="sceneFlowTargetKey">—</div>
+                  </div>
+                  <div class="home-key-map-arrow" aria-hidden="true">
+                    <span class="home-key-map-arrow-icon">→</span>
+                    <span class="home-key-map-arrow-text" id="sceneFlowArrowFinishText">然后这样收尾</span>
+                  </div>
+                  <div class="home-key-map-step is-clickable" id="sceneFlowStepFinish" data-step="finish">
+                    <span class="home-key-map-step-num">3</span>
+                    <span class="home-key-map-step-label" id="sceneFlowStepFinishLbl">说完后</span>
+                    <div class="home-key-map-key is-empty" id="sceneFlowFinishKey">—</div>
+                  </div>
+                </div>
+                <ol id="keySchemeTimeline" class="sr-only" hidden aria-hidden="true">
+                  <li id="keySchemeStepTrigger" data-step="trigger"><span id="keySchemeStepTriggerSummary"></span><span id="keySchemeStepTriggerTitle"></span></li>
+                  <li id="keySchemeStepTarget" data-step="target"><span id="keySchemeStepTargetSummary"></span><span id="keySchemeStepTargetTitle"></span></li>
+                  <li id="keySchemeStepFinish" data-step="finish"><span id="keySchemeStepFinishSummary"></span><span id="keySchemeStepFinishTitle"></span></li>
                 </ol>
-                <div class="key-scheme-editor-grid">
-                  <section class="key-scheme-edit-card" data-edit-step="trigger" id="keySchemeEditTrigger">
-                    <p class="mic-desc" id="triggerTitle">唤起键</p>
-                    <div class="display empty" id="triggerDisplay">
-                      <span class="display-value" id="triggerView">未设置</span>
-                    </div>
+              </section>
+              <div class="habit-config-grid" id="habitSettingsRow">
+              <section class="habit-panel habit-panel--config" id="habitBasicCard">
+                <h3 class="habit-panel-title" id="habitBasicTitle">基础设置</h3>
+                <div class="habit-config-list">
+                <div class="habit-basic-row" data-edit-step="trigger" id="keySchemeEditTrigger">
+                  <div class="habit-basic-row-head">
+                    <p class="habit-basic-row-title">
+                      <svg class="habit-row-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/></svg>
+                      <span id="habitBasicTriggerTitle">你要按的键</span>
+                    </p>
+                    <p class="habit-basic-row-desc" id="habitBasicTriggerDesc">这个键以后用来启动语音输入。</p>
+                  </div>
+                  <div class="habit-basic-row-ctrl">
+                      <div class="habit-basic-key-display display empty" id="triggerDisplay">
+                        <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                        <span class="display-value" id="triggerView">未设置</span>
+                      </div>
+                      <button class="habit-rerecord-link record-btn" id="btnRecordTrigger" type="button">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        <span class="habit-rerecord-text">重新录制</span>
+                      </button>
+                    <p class="help sr-only" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
+                    <p class="mic-desc sr-only" id="triggerTitle">唤起键</p>
                     <p class="trigger-trace" id="triggerTrace" hidden></p>
-                    <div class="actions">
-                      <button class="btn secondary record-btn" id="btnRecordTrigger" type="button">按一下要用的唤起键</button>
-                    </div>
-                    <p class="help" id="triggerHelp">比如音量键、鼠标侧键，或一个不常用的组合键。</p>
-                  </section>
-                  <section class="key-scheme-target-column">
-                    <section class="key-scheme-edit-card" data-edit-step="target" id="keySchemeEditTarget">
-                      <p class="mic-desc" id="targetTitle">语音快捷键</p>
-                      <div class="display empty" id="targetDisplay">
+                  </div>
+                </div>
+                <div class="habit-basic-row" data-edit-step="target" id="keySchemeEditTarget">
+                  <div class="habit-basic-row-head">
+                    <p class="habit-basic-row-title">
+                      <svg class="habit-row-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                      <span id="habitBasicTargetTitle">打开语音输入的快捷键</span>
+                    </p>
+                    <p class="habit-basic-row-desc" id="habitBasicTargetDesc">这是输入法或语音工具当前使用的语音快捷键。</p>
+                  </div>
+                  <div class="habit-basic-row-ctrl">
+                      <div class="habit-basic-key-display display empty" id="targetDisplay">
                         <img class="target-ime-badge" id="targetImeIconMapping" alt="" hidden decoding="async">
                         <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
+                        <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/></svg>
                         <span class="display-value" id="targetView">未设置</span>
                       </div>
-                      <div class="actions">
-                        <button class="btn secondary record-btn" id="btnRecordTarget" type="button">按一下语音输入快捷键</button>
-                      </div>
-                      <p class="help" id="targetHelp">这是你平时用来唤起语音输入的按键。录制前可先切到普通输入状态。</p>
-                    </section>
-                    <p class="habit-software-section-title" id="habitSoftwareSectionTitle">配合的软件和输入方式</p>
-                    <div class="ime-preset-block ime-preset-block--below-card">
-                      <p class="ime-preset-hint habit-subsection-title" id="imePresetHintMapping">输入方式</p>
-                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
-                    </div>
-                    <div class="app-target-block app-target-block--below-card">
-                      <p class="app-target-hint habit-subsection-title" id="appTargetHintMapping">适用软件</p>
-                      <div class="app-target-strip" id="appTargetStripMapping" data-app-target-context="mapping"></div>
-                    </div>
-                  </section>
-                  <section class="key-scheme-edit-card key-scheme-finish-panel" data-edit-step="finish" id="keySchemeEditFinish">
-                    <p class="mic-desc" id="keyExecFinishTitle">按键收尾</p>
-                    <div class="voice-end-key-mode-panel" id="voiceEndKeyModePanel"></div>
-                    <div class="key-scheme-finish-timing" id="keyExecFinishTimingSection" hidden>
-                      <div class="key-scheme-finish-controls">
-                        <div class="key-scheme-finish-row" id="voiceEndCancelCard"></div>
-                        <div class="key-scheme-finish-row" id="voiceEndConfirmCard"></div>
-                      </div>
-                    </div>
-                  </section>
+                      <button class="habit-rerecord-link record-btn" id="btnRecordTarget" type="button">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        <span class="habit-rerecord-text">重新录制</span>
+                      </button>
+                    <p class="help sr-only" id="targetHelp">这是你平时用来唤起语音输入的按键。</p>
+                    <p class="mic-desc sr-only" id="targetTitle">语音快捷键</p>
+                  </div>
                 </div>
-                <div class="record-cancel-bar" id="recordCancelBar">
-                  <button type="button" class="btn-cancel-record" id="btnCancelRecord">取消录制</button>
                 </div>
               </section>
+              <section class="habit-panel habit-panel--config habit-finish-card" id="habitFinishCard" data-edit-step="finish">
+                <h3 class="habit-panel-title" id="habitFinishTitle">说完后怎么处理</h3>
+                <p class="sr-only" id="habitFinishHint">作为当前习惯的最后一步，在这里配置说完怎么办。</p>
+                <div class="voice-end-key-mode-panel" id="voiceEndKeyModePanel"></div>
+                <details class="habit-finish-advanced" id="habitFinishAdvanced">
+                  <summary class="habit-finish-advanced-summary">
+                    <svg class="habit-advanced-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span class="habit-finish-advanced-label" id="habitFinishAdvancedTitle">高级收尾设置</span>
+                  </summary>
+                  <div class="key-scheme-finish-timing" id="keyExecFinishTimingSection" hidden>
+                    <div class="key-scheme-finish-controls">
+                      <div class="key-scheme-finish-row" id="voiceEndCancelCard"></div>
+                      <div class="key-scheme-finish-row" id="voiceEndConfirmCard"></div>
+                    </div>
+                  </div>
+                </details>
+                <p class="mic-desc sr-only" id="keyExecFinishTitle">按键收尾</p>
+                <section class="sr-only" id="keySchemeEditFinish" aria-hidden="true"></section>
+              </section>
+              </div>
+              <section class="habit-panel habit-panel--soft" id="habitSoftwareCard">
+                <div class="habit-software-head">
+                  <h3 class="habit-panel-title" id="habitSoftwareTitle">适配常用软件</h3>
+                  <p class="habit-panel-desc" id="habitSoftwareDesc">选择常用软件，推荐更合适的发送方式</p>
+                </div>
+                <div class="habit-software-body">
+                <p class="habit-subsection-title" id="imePresetHintMapping">输入方式</p>
+                <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                <p class="habit-subsection-title habit-software-apps-title" id="appTargetHintMapping">目标软件</p>
+                <div class="app-target-strip" id="appTargetStripMapping" data-app-target-context="mapping"></div>
+                </div>
+                <p class="sr-only" id="habitSoftwareSectionTitle">适配常用软件</p>
+              </section>
+              <div class="record-cancel-bar" id="recordCancelBar">
+                <button type="button" class="btn-cancel-record" id="btnCancelRecord">取消录制</button>
+              </div>
               <span class="sr-only" id="triggerState" aria-live="polite"></span>
               <span class="sr-only" id="targetState" aria-live="polite"></span>
             </div>
@@ -1292,6 +1349,7 @@
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
+  <script src="js/features/scene/scene-flow-summary.js"></script>
   <script src="js/features/scene/scene-tabs.js"></script>
   <script src="js/features/scene/scene-voice-tab.js"></script>
   <script src="js/features/scene/scene-sync-confirm.js"></script>

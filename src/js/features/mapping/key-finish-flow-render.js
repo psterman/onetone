@@ -22,6 +22,12 @@
         +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
         +'</div></div>';
     }
+    if(opt==='manual'){
+      return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-manual">'
+        +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
+        +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
+        +'</div></div>';
+    }
     return '<div class="mode-anim" aria-hidden="true"><div class="mode-anim-inner mode-anim-tap">'
       +'<span class="ma-chip ma-key ma-k1">1</span><span class="ma-arrow">→</span>'
       +'<span class="ma-chip ma-voice ma-v1">'+t('keyFinishFlowAnimVoice')+'</span>'
@@ -32,17 +38,29 @@
       +'</span></div></div>';
   }
 
-  function renderKeyFinishModeBlock(m,id){
-    var mode=normalizeUiTriggerMode(m.triggerMode);
-    var html='<div class="map-trigger-mode key-scheme-finish-mode">';
-    html+='<div class="map-mode-cards">';
-    ['perpress','tap'].forEach(function(opt){
-      var titleKey=opt==='tap'?'keyFinishFlowConfirm':'keyFinishFlowInstant';
-      var descKey=titleKey+'Desc';
-      html+='<button type="button" class="map-mode-card'+(mode===opt?' is-active':'')+'" data-trigger-mode="'+id+'" data-mode="'+opt+'">';
-      html+=renderModeAnim(opt);
-      html+='<span class="mode-card-title">'+t(titleKey)+'</span>';
-      html+='<span class="mode-card-desc">'+t(descKey)+'</span>';
+  function finishModeIcon(mode){
+    var c='class="habit-mode-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"';
+    if(mode==='perpress') return '<svg '+c+'><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>';
+    if(mode==='confirm') return '<svg '+c+'><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+    return '<svg '+c+'><path d="M18 11V6a2 2 0 0 0-2-2"/><path d="M14 10V4a2 2 0 0 0-2-2"/><path d="M10 10.5V6a2 2 0 0 0-2-2"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>';
+  }
+
+  function renderKeyFinishModeBlock(m){
+    var current=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+    var html='<div class="map-trigger-mode habit-finish-modes">';
+    html+='<div class="habit-finish-mode-list">';
+    [
+      {mode:'perpress',title:'habitFinishModeDirect',desc:'habitFinishModeDirectDesc'},
+      {mode:'confirm',title:'habitFinishModeConfirm',desc:'habitFinishModeConfirmDesc',recommended:true},
+      {mode:'manual',title:'habitFinishModeManual',desc:'habitFinishModeManualDesc'}
+    ].forEach(function(opt){
+      var active=current===opt.mode;
+      html+='<button type="button" class="habit-finish-mode-option'+(active?' is-active':'')+'" data-finish-mode="'+opt.mode+'">';
+      html+=finishModeIcon(opt.mode);
+      html+='<span class="habit-finish-mode-copy"><span class="habit-finish-mode-title">'+t(opt.title)+'</span>';
+      if(opt.recommended&&active) html+='<span class="habit-finish-mode-badge">'+t('habitFinishModeRecommended')+'</span>';
+      html+='<span class="habit-finish-mode-desc">'+t(opt.desc)+'</span></span>';
+      if(active) html+='<svg class="habit-finish-mode-check" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
       html+='</button>';
     });
     html+='</div></div>';
@@ -54,8 +72,8 @@
     var onTxt=t('keyFinishFlowStatusOn');
     var offTxt=t('keyFinishFlowStatusOff');
     var isCancel=kind==='cancel';
-    var mode=normalizeUiTriggerMode(m.triggerMode);
-    var active=mode==='tap';
+    var finishMode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+    var active=finishMode==='confirm';
     var enabledField=isCancel?'cancelEnabled':'autoEnterEnabled';
     var rangeField=isCancel?'intervalMs':'enterDelayMs';
     var titleKey=isCancel?'cancelTimingTitle':'sendTimingTitle';
@@ -84,12 +102,10 @@
   function focusSchemeEditStep(step){
     if(!step) return;
     schemeStepFocus=step;
-    var stepIds={trigger:'keySchemeStepTrigger',target:'keySchemeStepTarget',finish:'keySchemeStepFinish'};
-    var editIds={trigger:'keySchemeEditTrigger',target:'keySchemeEditTarget',finish:'keySchemeEditFinish'};
+    var flowIds={trigger:'sceneFlowStepTrigger',target:'sceneFlowStepTarget',finish:'sceneFlowStepFinish'};
+    var editIds={trigger:'keySchemeEditTrigger',target:'keySchemeEditTarget',finish:'habitFinishCard'};
     ['trigger','target','finish'].forEach(function(s){
-      var li=$(stepIds[s]);
       var card=$(editIds[s]);
-      if(li) li.classList.toggle('is-active',s===step);
       if(card) card.classList.remove('is-focus-highlight');
     });
     var card=$(editIds[step]);
@@ -100,6 +116,9 @@
         card.classList.remove('is-focus-highlight');
       },1500);
       card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }else{
+      var flowEl=$(flowIds[step]);
+      if(flowEl) flowEl.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
     syncKeySchemeTimeline(step);
   }
@@ -107,59 +126,8 @@
   function renderKeySchemeCardHeader(){
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
-    var kicker=$('keySchemeCardKicker');
-    var nameEl=$('keySchemeName');
-    var bindingEl=$('keySchemeBindingLine');
-    var completeEl=$('keySchemeCompletenessChip');
-    var conflictEl=$('keySchemeConflictChip');
-    var toggleEl=$('keySchemeEnabledToggle');
-    if(kicker){
-      var uiState=global.OneToneState.ui;
-      var st=global.OneToneState.state;
-      var panelActive=uiState.drawerOpen&&uiState.settingsPanel==='keyWake';
-      var selId=st.selectedMappingId;
-      var activeId=st.config&&st.config.activeSceneId;
-      var isDifferent=panelActive&&selId&&activeId&&selId!==activeId;
-      kicker.textContent=isDifferent?t('sceneEditingKicker'):t('keySchemeCardKicker');
-    }
-    if(nameEl) nameEl.textContent=m?hooks().homeSchemeLabel():'—';
-    if(bindingEl){
-      var binding='';
-      if(m&&hooks().isSavedMapping(m)) binding=t('keyFinishFlowScheme').replace('{name}',hooks().homeSchemeLabel());
-      else if(m&&hooks().isDraftMapping(m)) binding=t('keyFinishFlowSchemeDraft');
-      bindingEl.textContent=binding;
-      bindingEl.hidden=!binding;
-    }
-    if(completeEl){
-      if(!m){
-        completeEl.textContent='';
-        completeEl.className='key-scheme-meta-chip';
-      }else if(hooks().isDraftMapping(m)){
-        completeEl.textContent=t('keySchemeCompletenessDraft');
-        completeEl.className='key-scheme-meta-chip is-draft';
-      }else if(hooks().isSavedMapping(m)){
-        completeEl.textContent=t('keySchemeCompletenessDone');
-        completeEl.className='key-scheme-meta-chip is-done';
-      }else{
-        completeEl.textContent=t('keySchemeCompletenessIncomplete');
-        completeEl.className='key-scheme-meta-chip is-pending';
-      }
-    }
-    if(conflictEl){
-      var hasConflict=m?hooks().schemeMappingHasConflict(m):false;
-      conflictEl.hidden=!hasConflict;
-      if(hasConflict) conflictEl.textContent=t('keySchemeConflict');
-    }
-    if(toggleEl){
-      if(m&&hooks().isSavedMapping(m)){
-        toggleEl.hidden=false;
-        toggleEl.classList.toggle('is-on',!!m.enabled);
-        toggleEl.setAttribute('aria-checked',m.enabled?'true':'false');
-        toggleEl.disabled=false;
-      }else{
-        toggleEl.hidden=true;
-      }
-    }
+    if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
+    else if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.renderLabels();
     var addBtn=$('btnKeySchemeAdd');
     var delBtn=$('btnKeySchemeDelete');
     var busy=global.OneToneMappingRecording.mode()!=='none';
@@ -184,11 +152,14 @@
   function syncKeySchemeTimeline(focusStep){
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
-    var trig=hooks().selectedDisplayTriggerKey();
-    var tgt=hooks().selectedDisplayTargetKey();
     var activeStep=focusStep
       ||(global.OneToneMappingRecording.mode()==='trigger'?'trigger':global.OneToneMappingRecording.mode()==='target'?'target':'')
       ||schemeStepFocus;
+    if(global.OneToneSceneFlowSummary){
+      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:activeStep});
+    }
+    var trig=hooks().selectedDisplayTriggerKey();
+    var tgt=hooks().selectedDisplayTargetKey();
     var trigSummary=$('keySchemeStepTriggerSummary');
     var tgtSummary=$('keySchemeStepTargetSummary');
     var finSummary=$('keySchemeStepFinishSummary');
@@ -219,14 +190,21 @@
 
   function syncKeyExecFinishTimingSection(m){
     var section=$('keyExecFinishTimingSection');
+    var details=$('habitFinishAdvanced');
     if(!section) return;
     if(!m||!hooks().isSavedMapping(m)){
       section.hidden=true;
+      if(details) details.open=false;
       return;
     }
     hooks().ensureMappingTiming(m);
-    var mode=normalizeUiTriggerMode(m.triggerMode);
-    section.hidden=mode!=='tap';
+    var mode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+    var showConfirm=mode==='confirm';
+    section.hidden=!showConfirm;
+    if(details){
+      details.classList.toggle('is-available',showConfirm);
+      if(!showConfirm) details.open=false;
+    }
   }
 
   function renderKeyFinishFlowPanel(){
@@ -250,7 +228,7 @@
       return;
     }
     syncKeyExecFinishCard();
-    modePanel.innerHTML=renderKeyFinishModeBlock(m,m.id);
+    modePanel.innerHTML=renderKeyFinishModeBlock(m);
     cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
     confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
     syncAllTimingRanges(cancelCard);
@@ -270,6 +248,19 @@
 
   function handleKeyFinishFlowClick(e){
     var el=e.target;
+    var finishBtn=el.closest&&el.closest('[data-finish-mode]');
+    if(finishBtn){
+      e.stopPropagation();
+      var mode=finishBtn.dataset.finishMode;
+      var m=hooks().selectedMapping();
+      if(!m||!mode||!global.OneToneSceneFlowSummary) return true;
+      global.OneToneSceneFlowSummary.applyFinishMode(m,mode);
+      hooks().save();
+      renderKeyFinishFlowPanel();
+      hooks().renderMappingList();
+      if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
+      return true;
+    }
     var modeBtn=el.closest&&el.closest('[data-trigger-mode]');
     if(modeBtn){
       e.stopPropagation();

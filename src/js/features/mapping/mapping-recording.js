@@ -291,10 +291,8 @@
     const keySettings=$('keyWakeSettings');
     const triggerBtn=$('btnRecordTrigger');
     const targetBtn=$('btnRecordTarget');
-    const homeCard=$('homeKeyMapCard');
     const recording=rec.mode==='trigger'||rec.mode==='target';
     if(keySettings) keySettings.classList.toggle('is-recording',recording);
-    if(homeCard) homeCard.classList.toggle('is-recording',recording);
     if(triggerBtn){
       triggerBtn.classList.toggle('is-recording',rec.mode==='trigger');
     }

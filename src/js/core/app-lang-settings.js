@@ -23,6 +23,7 @@
     var sceneTabVoiceLabel=$('sceneTabVoiceLabel'); if(sceneTabVoiceLabel) sceneTabVoiceLabel.textContent=d.sceneTabVoice;
     var sceneTabAdvancedLabel=$('sceneTabAdvancedLabel'); if(sceneTabAdvancedLabel) sceneTabAdvancedLabel.textContent=d.sceneTabAdvanced;
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+    if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.renderLabels();
     var keySchemeStepTriggerTitle=$('keySchemeStepTriggerTitle'); if(keySchemeStepTriggerTitle) keySchemeStepTriggerTitle.textContent=d.keySchemeStepTriggerTitle;
     var keySchemeStepTargetTitle=$('keySchemeStepTargetTitle'); if(keySchemeStepTargetTitle) keySchemeStepTargetTitle.textContent=d.keySchemeStepTargetTitle;
     var keySchemeStepFinishTitle=$('keySchemeStepFinishTitle'); if(keySchemeStepFinishTitle) keySchemeStepFinishTitle.textContent=d.keyExecFinishTitle;

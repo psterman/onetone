@@ -37,7 +37,7 @@
     var globalFooter=$('sceneGlobalVoiceFooter');
     if(globalFooter) globalFooter.hidden=!panelActive()||tab!=='advanced';
     var statusBar=$('sceneStatusBar');
-    if(statusBar) statusBar.hidden=!panelActive();
+    if(statusBar) statusBar.hidden=!panelActive()||tab!=='keys';
   }
 
   function renderSceneTabs(){
@@ -51,7 +51,7 @@
       });
     }
     applySceneTabVisibility();
-    renderSceneStatusBar();
+    renderSceneHeroCard();
     renderSceneGlobalFooter();
     var tabLabels={keys:'sceneTabKeysLabel',voice:'sceneTabVoiceLabel',advanced:'sceneTabAdvancedLabel'};
     Object.keys(tabLabels).forEach(function(tab){
@@ -101,61 +101,103 @@
     return body;
   }
 
-  function renderSceneStatusBar(){
+  function habitDisplayName(m){
+    if(!m) return '—';
+    if((m.group||'').trim()) return m.group.trim();
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(m);
+    return mappingDisplayLabel(m);
+  }
+
+  function renderSceneHeroCard(){
     var statusBar=$('sceneStatusBar');
     if(!statusBar) return;
-    statusBar.hidden=!panelActive();
-    if(!panelActive()) return;
+    var tab=ui().sceneTab||'keys';
+    statusBar.hidden=!panelActive()||tab!=='keys';
+    if(!panelActive()||tab!=='keys') return;
 
     var st=state();
     var selId=st.selectedMappingId;
     var activeId=st.config&&st.config.activeSceneId;
-    var activeMapping=findMapping(activeId);
     var selectedMappingObj=findMapping(selId);
     var isDifferent=!!(selId&&activeId&&selId!==activeId);
+    var m=selectedMappingObj;
 
-    var activeLbl=$('sceneStatusActiveLabel');
-    var activeVal=$('sceneStatusActiveValue');
-    if(activeLbl) activeLbl.textContent=t('sceneStatusActiveLabel');
-    if(activeVal) activeVal.textContent=activeMapping?mappingDisplayLabel(activeMapping):'—';
+    var kickerEl=$('sceneHeroKicker');
+    if(kickerEl) kickerEl.textContent=isDifferent?t('sceneEditingKicker'):t('sceneHeroTitle');
+    var nameEl=$('sceneHeroName');
+    if(nameEl) nameEl.textContent=habitDisplayName(m);
+    var legacyName=$('keySchemeName');
+    if(legacyName) legacyName.textContent=habitDisplayName(m);
+    var legacyKicker=$('keySchemeCardKicker');
+    if(legacyKicker) legacyKicker.textContent=isDifferent?t('sceneEditingKicker'):t('keySchemeCardKicker');
 
-    var editingLbl=$('sceneStatusEditingLabel');
-    var editingVal=$('sceneStatusEditingValue');
-    var editingRow=$('sceneStatusEditingRow');
-    if(editingLbl) editingLbl.textContent=t('sceneStatusEditingLabel');
-    if(editingVal){
-      editingVal.textContent=selectedMappingObj?mappingDisplayLabel(selectedMappingObj):'—';
-      editingVal.classList.toggle('is-different',isDifferent);
+    var actionEl=$('sceneHeroActionLine');
+    if(actionEl){
+      var trigLbl=m&&global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.displayTriggerLabel(m):'';
+      actionEl.textContent=trigLbl?t('sceneHeroActionLine').replace('{key}',trigLbl):t('sceneHeroActionEmpty');
     }
-    if(editingRow) editingRow.classList.toggle('is-different',isDifferent);
+
+    var badgeEl=$('sceneHeroBadge');
+    if(badgeEl){
+      if(!m){
+        badgeEl.textContent='—';
+        badgeEl.className='scene-hero-badge key-scheme-meta-chip';
+      }else if(global.OneToneMappingCore&&global.OneToneMappingCore.isDraft(m)){
+        badgeEl.textContent=t('keySchemeCompletenessDraft');
+        badgeEl.className='scene-hero-badge key-scheme-meta-chip is-draft';
+      }else if(global.OneToneMappingCore&&global.OneToneMappingCore.isSaved(m)){
+        badgeEl.textContent=t('keySchemeCompletenessDone');
+        badgeEl.className='scene-hero-badge key-scheme-meta-chip is-done';
+      }else{
+        badgeEl.textContent=t('keySchemeCompletenessIncomplete');
+        badgeEl.className='scene-hero-badge key-scheme-meta-chip is-pending';
+      }
+    }
+    var completeEl=$('keySchemeCompletenessChip');
+    if(completeEl&&badgeEl) completeEl.textContent=badgeEl.textContent;
+
+    var conflictEl=$('keySchemeConflictChip');
+    if(conflictEl){
+      var hasConflict=false;
+      if(m&&global.OneToneMappingCore){
+        var hooks=global.__vp_key_finish_flow_render_hooks__||{};
+        if(hooks.schemeMappingHasConflict) hasConflict=hooks.schemeMappingHasConflict(m);
+      }
+      conflictEl.hidden=!hasConflict;
+      if(hasConflict) conflictEl.textContent=t('keySchemeConflict');
+    }
 
     var btn=$('btnKeySchemeActivate');
     if(btn){
-      var m=selectedMappingObj;
       var canActivate=!!(m&&global.OneToneMappingCore&&global.OneToneMappingCore.isSaved(m));
       btn.hidden=!isDifferent||!canActivate;
       btn.disabled=!canActivate;
       btn.textContent=t('sceneActivateBtn');
     }
 
-    var previewTitle=$('sceneEffectivePreviewTitle');
-    var previewBody=$('sceneEffectivePreviewBody');
-    if(previewTitle){
-      previewTitle.textContent=isDifferent?t('scenePreviewSwitch'):t('scenePreviewSame');
-    }
-    if(previewBody){
-      var cfg=st.config;
-      var effective=cfg&&selId&&global.OneToneSceneConfig
-        ?global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:selId})
-        :null;
-      var hasOverride=!!(selectedMappingObj&&selectedMappingObj.voiceOverride);
-      previewBody.textContent=formatEffectivePreview(effective,hasOverride);
+    var toggleEl=$('keySchemeEnabledToggle');
+    var enableLbl=$('sceneHeroEnableLabel');
+    if(toggleEl){
+      if(m&&global.OneToneMappingCore&&global.OneToneMappingCore.isSaved(m)){
+        toggleEl.hidden=false;
+        toggleEl.classList.toggle('is-on',!!m.enabled);
+        toggleEl.setAttribute('aria-checked',m.enabled?'true':'false');
+        toggleEl.disabled=false;
+        if(enableLbl) enableLbl.textContent=m.enabled?t('sceneHeroEnabled'):t('sceneHeroDisabled');
+      }else{
+        toggleEl.hidden=true;
+        if(enableLbl) enableLbl.textContent=t('sceneHeroDisabled');
+      }
     }
 
-    var kicker=$('keySchemeCardKicker');
-    if(kicker){
-      kicker.textContent=isDifferent?t('sceneEditingKicker'):t('keySchemeCardKicker');
+    if(global.OneToneSceneFlowSummary){
+      global.OneToneSceneFlowSummary.renderLabels();
+      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:''});
     }
+  }
+
+  function renderSceneStatusBar(){
+    renderSceneHeroCard();
   }
 
   function engineSummary(cfg){
@@ -236,6 +278,7 @@
   global.OneToneSceneTabs={
     setSceneTab:setSceneTab,
     render:renderSceneTabs,
+    renderHero:renderSceneHeroCard,
     applyVisibility:applySceneTabVisibility,
     bindEvents:bindEvents
   };

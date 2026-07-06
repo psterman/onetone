@@ -39,10 +39,22 @@
     if(incomplete&&!hideForDraft) el.textContent=t('draftHint');
   }
 
-  function recordBtnClass(isPrimary, recorded){
-    var cls='btn '+(isPrimary?'primary':'secondary')+' record-btn';
-    if(recorded&&!isPrimary) cls+=' rerecord-btn';
+  function setRecordBtnLabel(btn, text){
+    if(!btn) return;
+    var span=btn.querySelector('.habit-rerecord-text');
+    if(span) span.textContent=text;
+    else btn.textContent=text;
+  }
+
+  function habitRecordBtnClass(isPrimary, recorded){
+    var cls='habit-rerecord-link record-btn';
+    if(isPrimary) cls+=' is-primary';
+    if(recorded&&!isPrimary) cls+=' is-rerecord';
     return cls;
+  }
+
+  function recordBtnClass(isPrimary, recorded){
+    return habitRecordBtnClass(isPrimary, recorded);
   }
 
   function updatePrimaryCTA(){
@@ -53,24 +65,24 @@
     var trig=core().editorTrigger(core().selected());
     var tgt=core().editorTarget(core().selected());
     if(mode==='trigger'){
-      triggerBtn.className=recordBtnClass(true,!!trig);
-      targetBtn.className=recordBtnClass(false,!!tgt);
+      triggerBtn.className=habitRecordBtnClass(true,!!trig);
+      targetBtn.className=habitRecordBtnClass(false,!!tgt);
       return;
     }
     if(mode==='target'){
-      triggerBtn.className=recordBtnClass(false,!!trig);
-      targetBtn.className=recordBtnClass(true,!!tgt);
+      triggerBtn.className=habitRecordBtnClass(false,!!trig);
+      targetBtn.className=habitRecordBtnClass(true,!!tgt);
       return;
     }
     if(!trig){
-      triggerBtn.className=recordBtnClass(true,false);
-      targetBtn.className=recordBtnClass(false,!!tgt);
+      triggerBtn.className=habitRecordBtnClass(true,false);
+      targetBtn.className=habitRecordBtnClass(false,!!tgt);
     }else if(!tgt){
-      triggerBtn.className=recordBtnClass(false,true);
-      targetBtn.className=recordBtnClass(true,false);
+      triggerBtn.className=habitRecordBtnClass(false,true);
+      targetBtn.className=habitRecordBtnClass(true,false);
     }else{
-      triggerBtn.className=recordBtnClass(false,true);
-      targetBtn.className=recordBtnClass(false,true);
+      triggerBtn.className=habitRecordBtnClass(false,true);
+      targetBtn.className=habitRecordBtnClass(false,true);
     }
   }
 
@@ -78,6 +90,7 @@
     isCurrentDraftComplete:isCurrentDraftComplete,
     renderAddButton:renderAddButton,
     renderDraftHint:renderDraftHint,
-    updatePrimaryCTA:updatePrimaryCTA
+    updatePrimaryCTA:updatePrimaryCTA,
+    setRecordBtnLabel:setRecordBtnLabel
   };
 })((typeof window!=='undefined')?window:globalThis);

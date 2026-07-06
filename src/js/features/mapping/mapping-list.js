@@ -191,8 +191,13 @@
         traceEl.hidden=true;
       }
     }
-    $('btnRecordTrigger').textContent=trig?t('btnRerecordTrigger'):t('btnRecordTrigger');
-    $('btnRecordTarget').textContent=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
+    if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
+      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trig?t('btnRerecordTrigger'):t('btnRecordTrigger'));
+      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),tgt?t('btnRerecordTarget'):t('btnRecordTarget'));
+    }else{
+      $('btnRecordTrigger').textContent=trig?t('btnRerecordTrigger'):t('btnRecordTrigger');
+      $('btnRecordTarget').textContent=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
+    }
     hooks().updatePrimaryCTA();
     hooks().applyKeyWakeRecordingUi();
     hooks().renderKeySchemeCardHeader();

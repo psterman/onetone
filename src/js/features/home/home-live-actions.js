@@ -53,21 +53,28 @@
     return !!(d&&d.open);
   }
 
-  function openHomeKeySettings(){
+  function syncHomeEditToActive(){
+    var m=global.OneToneMappingCore.activeScene();
+    if(!m) return;
+    var st=global.OneToneState.state;
+    if(st.selectedMappingId===m.id) return;
+    st.selectedMappingId=m.id;
+    global.OneToneMappingEditorState.syncFromMapping(m);
+  }
+
+  function openHomeKeyStep(focus){
     global.OneToneHomeScheme.closeMenu();
     if(global.OneToneHomeGuide.isOpen()) global.OneToneHomeGuide.close(true);
-    var m=global.OneToneMappingCore.selected();
-    var trig=global.OneToneMappingCore.editorTrigger(m);
-    var tgt=global.OneToneMappingCore.editorTarget(m);
-    var focus='trigger';
-    if(trig&&!tgt) focus='target';
-    global.OneToneSettingsDrawer.open({panel:'keyWake',focus:focus});
+    syncHomeEditToActive();
+    global.OneToneSettingsDrawer.open({panel:'keyWake',focus:focus||'trigger'});
+  }
+
+  function openHomeKeySettings(){
+    openHomeKeyStep('trigger');
   }
 
   function openHomeKeyFinishSettings(){
-    global.OneToneHomeScheme.closeMenu();
-    if(global.OneToneHomeGuide.isOpen()) global.OneToneHomeGuide.close(true);
-    global.OneToneSettingsDrawer.open({panel:'keyWake',focus:'keyFinishFlow'});
+    openHomeKeyStep('keyFinishFlow');
   }
 
   global.OneToneHomeLiveActions={
@@ -77,6 +84,8 @@
     homeSwitchWakeEngine:homeSwitchWakeEngine,
     voiceAdvancedDetailsOpen:voiceAdvancedDetailsOpen,
     openHomeKeySettings:openHomeKeySettings,
-    openHomeKeyFinishSettings:openHomeKeyFinishSettings
+    openHomeKeyFinishSettings:openHomeKeyFinishSettings,
+    openHomeKeyStep:openHomeKeyStep,
+    syncHomeEditToActive:syncHomeEditToActive
   };
 })((typeof window!=='undefined')?window:globalThis);

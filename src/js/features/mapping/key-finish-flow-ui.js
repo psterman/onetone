@@ -9,8 +9,13 @@
       settingsPanelKeyWake.addEventListener('input',h.handleKeyFinishFlowInput);
       settingsPanelKeyWake.addEventListener('click',function(e){
         var el=e.target;
+        var flowStep=el.closest&&el.closest('#sceneFlowMap [data-step]');
+        if(flowStep&&!el.closest('[data-finish-mode]')&&!el.closest('[data-trigger-mode]')&&!el.closest('[data-timing-toggle]')&&!el.closest('.toggle-switch')&&!el.closest('.record-btn')){
+          h.focusSchemeEditStep(flowStep.dataset.step);
+          return;
+        }
         var stepEl=el.closest&&el.closest('.key-scheme-step[data-step]');
-        if(stepEl&&!el.closest('[data-trigger-mode]')&&!el.closest('[data-timing-toggle]')&&!el.closest('.toggle-switch')&&!el.closest('.record-btn')){
+        if(stepEl&&!el.closest('[data-finish-mode]')&&!el.closest('[data-trigger-mode]')&&!el.closest('[data-timing-toggle]')&&!el.closest('.toggle-switch')&&!el.closest('.record-btn')){
           h.focusSchemeEditStep(stepEl.dataset.step);
           return;
         }

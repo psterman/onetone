@@ -101,10 +101,19 @@
     if(homeKeyMapCardEl){
       homeKeyMapCardEl.addEventListener('click',function(e){
         if(e.target.closest('#homeSchemeSwitcher')||e.target.closest('.home-scheme-menu')) return;
-        if(e.target.closest('#homeKeyMapFinish')||e.target.closest('#homeKeyMapArrowFinish')){ hooks.openHomeKeyFinishSettings(); return; }
-        if(e.target.closest('#homeKeyMapTrigger')||e.target.closest('#homeKeyMapTarget')){ hooks.openHomeKeySettings(); return; }
         if(e.target.closest('button')) return;
-        hooks.openHomeKeySettings();
+        if(e.target.closest('#homeKeyMapFinish')||e.target.closest('#homeKeyMapArrowFinish')){
+          hooks.openHomeKeyStep('keyFinishFlow');
+          return;
+        }
+        if(e.target.closest('#homeKeyMapTrigger')){
+          hooks.openHomeKeyStep('trigger');
+          return;
+        }
+        if(e.target.closest('#homeKeyMapTarget')){
+          hooks.openHomeKeyStep('target');
+          return;
+        }
       });
     }
   }
