@@ -37,17 +37,10 @@
     return editorTargetForMapping(m)||'';
   }
   function finishBehaviorTextHome(m){
-    if(!m||!isSavedMapping(m)) return {text:emptyKeyLabel(),saved:false};
-    ensureMappingTiming(m);
-    var raw=String(m.triggerMode||'tap').toLowerCase();
-    if(raw==='hold'||raw==='longpress'||raw==='perpress') return {text:t('homeFinishBehaviorPerPress'),saved:true};
-    if(raw==='toggle') return {text:t('homeFinishBehaviorToggle'),saved:true};
-    var cancel=!!m.cancelEnabled, autoEnter=!!m.autoEnterEnabled, text;
-    if(cancel&&autoEnter) text=t('homeFinishBehaviorTapBoth');
-    else if(cancel) text=t('homeFinishBehaviorTapCancel');
-    else if(autoEnter) text=t('homeFinishBehaviorTapAutoEnter');
-    else text=t('homeFinishBehaviorTapNone');
-    return {text:text,saved:true};
+    return finishStrategyPreviewText(m,'');
+  }
+  function finishBehaviorTextSettings(m,activeAppContextId){
+    return finishStrategyPreviewText(m,activeAppContextId||'');
   }
   function finishModeLabel(mode){
     if(mode==='perpress') return t('habitFinishModeAuto');
@@ -55,20 +48,31 @@
     if(mode==='manual') return t('habitFinishModeManual');
     return t('habitFinishModeManual');
   }
-  function finishBehaviorTextSettings(m,previewAppId){
-    if(!m||!isSavedMapping(m)) return {text:emptyKeyLabel(),saved:false};
-    if(previewAppId&&global.OneToneAppBehaviorRules){
-      var eff=global.OneToneAppBehaviorRules.resolveEffectiveFinish(m,previewAppId);
-      if(eff){
-        return {text:t('sceneFlowFinishWithApp').replace('{app}',eff.appName).replace('{mode}',finishModeLabel(eff.mode)),saved:true};
-      }
+  function resolveEffectiveFinishMode(m,activeAppContextId){
+    if(activeAppContextId&&global.OneToneAppBehaviorRules){
+      var eff=global.OneToneAppBehaviorRules.resolveEffectiveFinish(m,activeAppContextId);
+      if(eff) return eff.mode;
     }
+    return resolveFinishMode(m);
+  }
+  function finishStrategyPreviewText(m,activeAppContextId){
+    if(!m||!isSavedMapping(m)) return {text:emptyKeyLabel(),saved:false};
     ensureMappingTiming(m);
-    var mode=resolveFinishMode(m);
-    if(mode==='perpress') return {text:t('habitFinishModeAuto'),saved:true};
-    if(mode==='toggle') return {text:t('homeFinishBehaviorToggle'),saved:true};
-    if(mode==='confirm') return {text:t('habitFinishModeConfirmSend'),saved:true};
-    return {text:t('habitFinishModeManual'),saved:true};
+    var appName='';
+    if(activeAppContextId&&global.OneToneAppBehaviorRules){
+      var eff=global.OneToneAppBehaviorRules.resolveEffectiveFinish(m,activeAppContextId);
+      if(eff) appName=eff.appName;
+    }
+    var mode=resolveEffectiveFinishMode(m,activeAppContextId);
+    var text='';
+    if(mode==='perpress') text=t('keysFinishPreviewPerpress');
+    else if(mode==='toggle') text=t('homeFinishBehaviorToggle');
+    else if(mode==='confirm'){
+      var delay=((m.enterDelayMs||1200)/1000).toFixed(1);
+      text=m.cancelEnabled?t('keysFinishPreviewConfirmCancel').replace('{delay}',delay):t('keysFinishPreviewConfirm').replace('{delay}',delay);
+    }else text=t('keysFinishPreviewManual');
+    if(appName) text=t('keysFinishPreviewApp').replace('{app}',appName).replace('{text}',text);
+    return {text:text,saved:true};
   }
   function resolveFinishMode(m){
     if(!m) return 'manual';
@@ -101,7 +105,8 @@
     var trigRaw=editorTriggerForMapping(m), tgtRaw=displayTargetKey(m,cfg);
     var trigLbl=trigRaw?displayTriggerLabel(m):emptyKeyLabel();
     var tgtLbl=tgtRaw?friendlyKeyName(tgtRaw):emptyKeyLabel();
-    var finish=context==='home'?finishBehaviorTextHome(m):finishBehaviorTextSettings(m,opts.previewAppId||'');
+    var ctx=opts.activeAppContextId!==undefined?opts.activeAppContextId:(opts.previewAppId||'');
+    var finish=context==='home'?finishBehaviorTextHome(m):finishBehaviorTextSettings(m,ctx);
     var prefix=opts.prefix||'sceneFlow';
     setKeyCell($(prefix+'TriggerKey'),trigLbl,!!trigRaw);
     setKeyCell($(prefix+'TargetKey'),tgtLbl,!!tgtRaw);
@@ -203,16 +208,17 @@
       var core=global.OneToneMappingCore;
       m=core&&core.selected?core.selected():null;
     }
-    var preview=opts.previewAppId;
+    var preview=opts.activeAppContextId;
+    if(preview===undefined) preview=opts.previewAppId;
     if(preview===undefined&&global.OneToneAppBehaviorRules){
-      preview=global.OneToneAppBehaviorRules.getPreviewAppId();
+      preview=global.OneToneAppBehaviorRules.getActiveAppContextId();
     }
     syncFlowSummary(m,{
       context:opts.context||'settings',
       prefix:opts.prefix||'habitFlow',
-      previewAppId:preview||'',
+      activeAppContextId:preview||'',
       focusStep:opts.focusStep||''
     });
   }
-  global.OneToneSceneFlowSummary={displayTriggerLabel:displayTriggerLabel,displayTargetKey:displayTargetKey,finishBehaviorTextHome:finishBehaviorTextHome,finishBehaviorTextSettings:finishBehaviorTextSettings,resolveFinishMode:resolveFinishMode,applyFinishMode:applyFinishMode,syncFlowSummary:syncFlowSummary,renderLabels:renderLabels,render:render,emptyKeyLabel:emptyKeyLabel,friendlyKeyName:friendlyKeyName};
+  global.OneToneSceneFlowSummary={displayTriggerLabel:displayTriggerLabel,displayTargetKey:displayTargetKey,finishBehaviorTextHome:finishBehaviorTextHome,finishBehaviorTextSettings:finishBehaviorTextSettings,finishStrategyPreviewText:finishStrategyPreviewText,resolveEffectiveFinishMode:resolveEffectiveFinishMode,resolveFinishMode:resolveFinishMode,applyFinishMode:applyFinishMode,syncFlowSummary:syncFlowSummary,renderLabels:renderLabels,render:render,emptyKeyLabel:emptyKeyLabel,friendlyKeyName:friendlyKeyName};
 })((typeof window!=='undefined')?window:globalThis);

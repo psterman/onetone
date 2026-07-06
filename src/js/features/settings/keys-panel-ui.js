@@ -23,11 +23,89 @@
 
   function appRules(){ return global.OneToneAppBehaviorRules; }
 
-  function activeAppId(m){
-    var preview=ed()&&ed().getEditorPreviewAppId?ed().getEditorPreviewAppId():'';
-    if(preview) return preview;
-    if(appRules()&&appRules().getPreviewAppId) return appRules().getPreviewAppId()||'';
-    return m&&String(m.appTargetId||'').trim()||'';
+  function activeAppContextId(){
+    var ctx=ed()&&ed().getEditorActiveAppContextId?ed().getEditorActiveAppContextId():'';
+    if(ctx) return ctx;
+    if(appRules()&&appRules().getActiveAppContextId) return appRules().getActiveAppContextId()||'';
+    return '';
+  }
+
+  function presetIcon(appId){
+    var atp=global.OneToneAppTargetPresets;
+    if(!atp||!atp.presetById) return '';
+    var preset=atp.presetById(appId);
+    return preset&&preset.icon?preset.icon:'';
+  }
+
+  function renderTriggerContextBadge(){
+    var badge=$('triggerAppBadgeMapping');
+    var disp=$('triggerDisplay');
+    if(!badge) return;
+    var appId=activeAppContextId();
+    badge.classList.toggle('is-placeholder',!appId);
+    if(!appId){
+      badge.hidden=false;
+      badge.textContent='';
+      badge.innerHTML='';
+      badge.classList.remove('has-icon');
+      badge.removeAttribute('title');
+      if(disp) disp.classList.remove('has-app-target-badge');
+      return;
+    }
+    var atp=global.OneToneAppTargetPresets;
+    var preset=atp&&atp.presetById?atp.presetById(appId):null;
+    if(preset&&preset.icon){
+      badge.innerHTML='<img class="app-target-card-icon" src="'+esc(preset.icon)+'" alt="" decoding="async" />';
+      badge.hidden=false;
+      badge.classList.add('has-icon');
+      badge.setAttribute('title',appRules().appDisplayName(appId));
+    }else if(preset){
+      var isEn=global.OneToneI18n&&global.OneToneI18n.getLang&&global.OneToneI18n.getLang()==='en';
+      badge.textContent=isEn?(preset.badgeEn||preset.badge):(preset.badge||'');
+      badge.hidden=false;
+      badge.classList.remove('has-icon');
+      badge.setAttribute('title',appRules().appDisplayName(appId));
+    }else{
+      badge.hidden=false;
+      badge.textContent='';
+      badge.innerHTML='';
+      badge.classList.remove('has-icon');
+    }
+    if(disp) disp.classList.toggle('has-app-target-badge',!!appId);
+  }
+
+  function renderAppContextStrip(){
+    var strip=$('keysAppContextStrip');
+    var wrap=$('keysAppContextStripWrap');
+    var lbl=$('keysAppContextStripLbl');
+    if(lbl) lbl.textContent=t('keysAppContextStripLbl');
+    if(!strip||!wrap) return;
+    var m=core()&&core().selected?core().selected():null;
+    if(!m||!core().isSaved||!core().isSaved(m)){
+      wrap.hidden=true;
+      return;
+    }
+    wrap.hidden=false;
+    var ctxId=activeAppContextId();
+    var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
+    var html='';
+    html+='<button type="button" class="keys-app-context-item'+(ctxId===''?' is-selected':'')+'" data-app-context="" role="radio" aria-checked="'+(ctxId===''?'true':'false')+'" title="'+esc(t('keysAppContextStripGlobal'))+'">';
+    html+='<span class="keys-app-context-item-icon keys-app-context-item-icon--blank" aria-hidden="true"></span>';
+    html+='</button>';
+    presets.forEach(function(p){
+      var icon=presetIcon(p.id);
+      var isSel=ctxId===p.id;
+      var isPri=m&&String(m.appTargetId||'')===p.id;
+      var name=appRules().appDisplayName(p.id);
+      html+='<button type="button" class="keys-app-context-item'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" data-app-context="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      if(icon){
+        html+='<img class="keys-app-context-item-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
+      }else{
+        html+='<span class="keys-app-context-item-icon keys-app-context-item-icon--fallback" aria-hidden="true">'+esc(name.charAt(0))+'</span>';
+      }
+      html+='</button>';
+    });
+    strip.innerHTML=html;
   }
 
   function renderHabitSwitcher(){
@@ -62,7 +140,7 @@
       return;
     }
     wrap.hidden=false;
-    var appId=activeAppId(m);
+    var appId=activeAppContextId();
     var appName=appId&&appRules()&&appRules().appDisplayName?appRules().appDisplayName(appId):'';
     if(val) val.textContent=appName||t('keysAppContextDefault');
     if(badge){
@@ -172,11 +250,7 @@
       keysAdvConflictTitle:'keysAdvConflictTitle',
       keysAdvMouseTitle:'keysAdvMouseTitle',
       keysAdvMouseDesc:'keysAdvMouseDesc',
-      keysAdvTimingTitle:'keysAdvTimingTitle',
-      keysAdvCancelTitle:'keysAdvCancelTitle',
-      keysAdvImeTitle:'habitAdvancedImeTitle',
-      keysAdvPriorityTitle:'keysAdvPriorityTitle',
-      keysAdvPriorityDesc:'keysAdvPriorityDesc'
+      keysAdvImeTitle:'habitAdvancedImeTitle'
     };
     Object.keys(titles).forEach(function(id){
       var el=$(id);
@@ -192,21 +266,34 @@
     }
   }
 
+  function imeStatusText(m){
+    if(!m) return t('keysStatusUnset');
+    var imeId=String(m.imePresetId||'').trim();
+    if(imeId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+      var preset=global.OneToneImePresets.presetById(imeId);
+      if(preset&&preset.nameKey) return t(preset.nameKey);
+    }
+    var tgt=m&&core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
+    if(!tgt) return t('keysStatusUnset');
+    if(hooks().friendlyKeyName) return hooks().friendlyKeyName(tgt)||tgt;
+    return tgt;
+  }
+
   function renderStatusChips(){
     var m=core()&&core().selected?core().selected():null;
     renderHabitSwitcher();
     renderAppContext();
     var imeVal=$('keysStatusImeVal');
     var finishVal=$('keysStatusFinishVal');
-    var tgt=m&&core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
+    var imeText=imeStatusText(m);
     if(imeVal){
-      imeVal.textContent=tgt?t('keysStatusSet'):t('keysStatusUnset');
-      imeVal.classList.toggle('is-set',!!tgt);
-      imeVal.classList.toggle('is-unset',!tgt);
+      imeVal.textContent=imeText;
+      imeVal.classList.toggle('is-set',imeText!==t('keysStatusUnset'));
+      imeVal.classList.toggle('is-unset',imeText===t('keysStatusUnset'));
     }
     var finText='—';
     if(m&&global.OneToneSceneFlowSummary){
-      var preview=activeAppId(m);
+      var preview=activeAppContextId();
       finText=global.OneToneSceneFlowSummary.finishBehaviorTextSettings(m,preview).text||'—';
     }
     if(finishVal){
@@ -246,6 +333,8 @@
     if(finishMoreHint) finishMoreHint.textContent=t('keysFinishMoreHint');
     var desc=$('settingsPanelKeysDesc');
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
+    renderAppContextStrip();
+    renderTriggerContextBadge();
     syncRecordButtons();
     renderRecordingFeedback();
     renderAdvancedSections();
@@ -291,12 +380,24 @@
         if(banner) banner.scrollIntoView({behavior:'smooth',block:'nearest'});
       });
     }
+    var strip=$('keysAppContextStrip');
+    if(strip){
+      strip.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-app-context]');
+        if(!btn||!appRules()||!appRules().setActiveAppContextId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        appRules().setActiveAppContextId(btn.getAttribute('data-app-context')||'');
+      });
+    }
   }
 
   global.OneToneKeysPanelUi={
     render:render,
     bindEvents:bindEvents,
     renderRecordingFeedback:renderRecordingFeedback,
-    renderAppContext:renderAppContext
+    renderAppContext:renderAppContext,
+    renderAppContextStrip:renderAppContextStrip,
+    renderTriggerContextBadge:renderTriggerContextBadge
   };
 })((typeof window!=='undefined')?window:globalThis);

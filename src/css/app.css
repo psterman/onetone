@@ -1929,6 +1929,15 @@
       margin:0 0 6px;font-size:9px;font-weight:700;color:var(--on-surface-muted);text-align:center;
     }
     .habit-flow-ime-block .ime-preset-strip{justify-content:center;margin:0}
+    .habit-flow-device-diagnostic{
+      width:100%;margin-top:8px;padding:8px;border-radius:10px;
+      border:1px solid var(--outline-variant);background:var(--surface-soft);
+    }
+    .habit-flow-device-diagnostic-summary{
+      font-size:10px;font-weight:700;color:var(--primary);cursor:pointer;list-style:none;
+    }
+    .habit-flow-device-diagnostic-summary::-webkit-details-marker{display:none}
+    .habit-flow-device-diagnostic .habit-flow-device-summary{margin-top:8px;justify-content:flex-start}
     .habit-flow-device-summary{
       display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 8px;
       width:100%;margin-top:8px;font-size:9px;color:var(--on-surface-muted);line-height:1.35;
@@ -2080,6 +2089,14 @@
     #settingsPanelKeys .habit-flow-finish-preview.is-set{
       color:var(--key-soft);border-color:rgba(42,156,196,.25);background:var(--surface);
     }
+    .keys-finish-cancel-host{margin-top:8px}
+    .keys-finish-cancel-card .setting-row{margin:0}
+    .keys-finish-strategy-preview{
+      margin:10px 0 0;padding:8px 12px;border-radius:12px;border:1px solid var(--outline-variant);
+      background:var(--surface);font-size:11px;font-weight:700;line-height:1.45;
+      color:var(--on-surface-muted);text-align:center;
+    }
+    .keys-finish-strategy-preview.is-set{color:var(--on-surface);border-color:rgba(42,156,196,.22)}
     #settingsPanelKeys .habit-flow-arrow{align-self:center;padding:0 2px}
     #settingsPanelKeys .habit-flow-arrow .home-key-map-arrow-text{
       display:block;font-size:10px;font-weight:700;color:var(--primary);text-align:center;max-width:72px;line-height:1.3;
@@ -2175,6 +2192,36 @@
       background:var(--primary-soft);color:var(--primary-strong);
     }
     .keys-app-context-hint{margin:6px 0 0;font-size:10px;color:var(--on-surface-muted);line-height:1.4}
+    .keys-app-context-strip-wrap{margin-top:10px;padding-top:10px;border-top:1px solid var(--outline-variant)}
+    .keys-app-context-strip-lbl{display:block;margin:0 0 6px;font-size:10px;font-weight:700;color:var(--on-surface-muted)}
+    .keys-app-context-strip{
+      display:flex;flex-wrap:nowrap;align-items:center;gap:6px;width:100%;
+      overflow-x:auto;overflow-y:hidden;padding:2px 0;
+      scrollbar-width:none;-ms-overflow-style:none;
+    }
+    .keys-app-context-strip::-webkit-scrollbar{display:none;height:0}
+    .keys-app-context-item{
+      position:relative;flex:0 0 auto;width:32px;height:32px;min-width:0;padding:0;
+      border:1.5px solid transparent;border-radius:8px;background:var(--surface-high);cursor:pointer;
+      transition:border-color var(--dur-fast),outline-color var(--dur-fast);
+    }
+    .keys-app-context-item:hover{border-color:rgba(42,156,196,.35)}
+    .keys-app-context-item.is-selected{
+      border-color:var(--primary);outline:2px solid rgba(42,156,196,.22);outline-offset:1px;
+    }
+    .keys-app-context-item.is-primary:not(.is-selected){border-color:rgba(42,156,196,.28)}
+    .keys-app-context-item-icon{width:100%;height:100%;object-fit:cover;border-radius:6px;display:block}
+    .keys-app-context-item-icon--blank{
+      display:block;width:100%;height:100%;border-radius:6px;
+      border:1.5px dashed var(--outline-variant);background:transparent;
+    }
+    .keys-app-context-item-icon--fallback{
+      display:flex;align-items:center;justify-content:center;width:100%;height:100%;
+      border-radius:6px;font-size:11px;font-weight:800;color:var(--primary-strong);background:rgba(42,156,196,.1);
+    }
+    .keys-trigger-context-badge.is-placeholder{
+      visibility:hidden;pointer-events:none;
+    }
     .keys-recording-feedback{
       padding:10px 12px;border-radius:12px;border:1px solid rgba(220,53,69,.28);
       background:linear-gradient(180deg,rgba(220,53,69,.08),rgba(220,53,69,.03));
@@ -2201,10 +2248,26 @@
       display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px;cursor:pointer;list-style:none;
     }
     .keys-app-expand-summary::-webkit-details-marker{display:none}
+    .keys-app-expand-summary-main{flex:1;min-width:0;flex-wrap:wrap}
+    .keys-app-expand-chevron{
+      width:14px;height:14px;flex-shrink:0;margin-left:auto;
+      background:currentColor;
+      mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center/contain no-repeat;
+      -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center/contain no-repeat;
+      color:var(--on-surface-muted);transition:transform var(--dur-fast);
+    }
+    .keys-app-expand-row[open] .keys-app-expand-chevron{transform:rotate(180deg)}
+    .keys-app-expand-hint{
+      font-size:9px;font-weight:600;color:var(--on-surface-muted);white-space:nowrap;
+    }
+    .keys-app-expand-row[open] .keys-app-expand-hint{opacity:.55}
     .keys-app-expand-body{
-      padding:0 10px 10px;border-top:1px solid var(--outline-variant);
+      padding:10px;border-top:1px solid var(--outline-variant);
       background:var(--surface-soft);
     }
+    .keys-app-expand-primary{display:inline-block;margin:0 0 6px}
+    .keys-app-expand-note{margin:0 0 8px}
+    .keys-app-expand-tags{margin:0 0 8px}
     .keys-app-expand-finish{margin:8px 0 4px;font-size:10px;color:var(--on-surface-muted)}
     .keys-app-expand-finish strong{color:var(--on-surface)}
     .keys-app-priority-hint{margin:8px 0 0;font-size:9px;color:var(--on-surface-muted);line-height:1.4}
@@ -2987,6 +3050,9 @@
     .target-ime-badge{
       width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0;
       border:1px solid rgba(42,156,196,.18);box-shadow:0 4px 12px rgba(42,156,196,.12);
+    }
+    .target-ime-badge.is-placeholder{
+      visibility:hidden;pointer-events:none;border-color:transparent;box-shadow:none;
     }
     .voice-target-key-display.target-key-display .target-ime-badge{width:32px;height:32px;border-radius:9px}
     #onboardSetupNote,#onboardTargetNote,#onboardTryOptionalActions,

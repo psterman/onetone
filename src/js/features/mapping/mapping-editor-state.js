@@ -4,7 +4,7 @@
   var editorTriggerKey='';
   var editorTargetKey='';
   var editorAppTargetId='';
-  var editorPreviewAppId='';
+  var editorActiveAppContextId='';
   var keysExpandedAppId='';
   var pendingNewDraftId=null;
   var expandedAdvIds=new Set();
@@ -17,8 +17,8 @@
   function setEditorTargetKey(v){ editorTargetKey=String(v||''); }
   function getEditorAppTargetId(){ return editorAppTargetId; }
   function setEditorAppTargetId(v){ editorAppTargetId=String(v||''); }
-  function getEditorPreviewAppId(){ return editorPreviewAppId; }
-  function setEditorPreviewAppId(v){ editorPreviewAppId=String(v||''); }
+  function getEditorActiveAppContextId(){ return editorActiveAppContextId; }
+  function setEditorActiveAppContextId(v){ editorActiveAppContextId=String(v||''); }
   function getKeysExpandedAppId(){ return keysExpandedAppId; }
   function setKeysExpandedAppId(v){ keysExpandedAppId=String(v||''); }
   function getPendingNewDraftId(){ return pendingNewDraftId; }
@@ -29,7 +29,7 @@
       setEditorTriggerKey('');
       setEditorTargetKey('');
       setEditorAppTargetId('');
-      setEditorPreviewAppId('');
+      setEditorActiveAppContextId('');
       setKeysExpandedAppId('');
       return;
     }
@@ -37,11 +37,11 @@
     setEditorTargetKey(m.targetKey||'');
     var appId=String(m.appTargetId||'').trim();
     setEditorAppTargetId(appId);
-    setEditorPreviewAppId(appId);
+    setEditorActiveAppContextId('');
     setKeysExpandedAppId(appId);
     if(global.OneToneAppBehaviorRules){
       if(global.OneToneAppBehaviorRules.setKeysExpandedAppId) global.OneToneAppBehaviorRules.setKeysExpandedAppId(appId);
-      if(global.OneToneAppBehaviorRules.setPreviewAppId) global.OneToneAppBehaviorRules.setPreviewAppId(appId);
+      if(global.OneToneAppBehaviorRules.setActiveAppContextId) global.OneToneAppBehaviorRules.setActiveAppContextId('');
     }
   }
 
@@ -68,8 +68,8 @@
     setEditorTargetKey:setEditorTargetKey,
     getEditorAppTargetId:getEditorAppTargetId,
     setEditorAppTargetId:setEditorAppTargetId,
-    getEditorPreviewAppId:getEditorPreviewAppId,
-    setEditorPreviewAppId:setEditorPreviewAppId,
+    getEditorActiveAppContextId:getEditorActiveAppContextId,
+    setEditorActiveAppContextId:setEditorActiveAppContextId,
     getKeysExpandedAppId:getKeysExpandedAppId,
     setKeysExpandedAppId:setKeysExpandedAppId,
     getPendingNewDraftId:getPendingNewDraftId,

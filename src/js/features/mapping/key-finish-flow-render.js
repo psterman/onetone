@@ -71,6 +71,25 @@
     return html;
   }
 
+  function activeAppContextId(){
+    var ed=global.OneToneMappingEditorState;
+    if(ed&&ed.getEditorActiveAppContextId) return ed.getEditorActiveAppContextId()||'';
+    if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.getActiveAppContextId) return global.OneToneAppBehaviorRules.getActiveAppContextId()||'';
+    return '';
+  }
+
+  function renderKeysFinishStrategyPreview(m){
+    var el=$('keysFinishStrategyPreview');
+    if(!el||!global.OneToneSceneFlowSummary||!global.OneToneSceneFlowSummary.finishStrategyPreviewText) return;
+    var preview=global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,activeAppContextId());
+    el.textContent=preview.text||'—';
+    el.className='keys-finish-strategy-preview'+(preview.saved?' is-set':' is-empty');
+  }
+
+  function renderKeysFinishCancelOnly(m,id){
+    return '<div class="keys-finish-cancel-card">'+renderKeyTimingCard(m,id,'cancel')+'</div>';
+  }
+
   function useKeysFinishSegmented(){
     return !!$('keysFinishModeHost');
   }
@@ -198,8 +217,10 @@
     if(trigSummary) trigSummary.textContent=trig?hooks().friendlyKeyName(trig):t('homeKeyMapEmptyKey');
     if(tgtSummary) tgtSummary.textContent=tgt?hooks().friendlyKeyName(tgt):t('homeKeyMapEmptyKey');
     if(finSummary){
-      var preview=hooks().keyFinishPreviewText(m);
-      finSummary.textContent=preview.summary||'—';
+      var preview=global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.finishStrategyPreviewText
+        ?global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,'')
+        :hooks().keyFinishPreviewText(m);
+      finSummary.textContent=(preview&&preview.text)||(preview&&preview.summary)||'—';
     }
     var steps=[
       {id:'keySchemeStepTrigger',step:'trigger',done:!!trig},
@@ -222,19 +243,7 @@
 
   function syncKeyExecFinishTimingSection(m){
     var section=$('keyExecFinishTimingSection');
-    if(!section) return;
-    if(!m||!hooks().isSavedMapping(m)){
-      section.hidden=true;
-      return;
-    }
-    hooks().ensureMappingTiming(m);
-    var show=false;
-    if(global.OneToneHabitCompatibility&&global.OneToneHabitCompatibility.needsConfirmTiming){
-      show=global.OneToneHabitCompatibility.needsConfirmTiming(m);
-    }else if(global.OneToneSceneFlowSummary){
-      show=global.OneToneSceneFlowSummary.resolveFinishMode(m)==='confirm';
-    }
-    section.hidden=!show;
+    if(section) section.hidden=true;
   }
 
   function renderKeyFinishFlowPanel(){
@@ -242,6 +251,7 @@
     var cancelCard=$('voiceEndCancelCard');
     var confirmCard=$('voiceEndConfirmCard');
     var delayHost=$('keysFinishDelayHost');
+    var cancelHost=$('keysFinishCancelHost');
     if(!modePanel||!cancelCard||!confirmCard) return;
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
@@ -253,6 +263,8 @@
       cancelCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('cancelTimingTitle')+'</span></div></div>'+empty;
       confirmCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('sendTimingTitle')+'</span></div></div>'+empty;
       if(delayHost){ delayHost.innerHTML=''; delayHost.hidden=true; }
+      if(cancelHost){ cancelHost.innerHTML=''; cancelHost.hidden=true; }
+      renderKeysFinishStrategyPreview(null);
       syncKeyExecFinishTimingSection(null);
       renderKeySchemeCardHeader();
       syncKeySchemeTimeline(schemeStepFocus);
@@ -265,11 +277,17 @@
     }
     syncKeyExecFinishCard();
     modePanel.innerHTML=useKeysFinishSegmented()?renderKeyFinishModeSegmented(m):renderKeyFinishModeBlock(m);
-    cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
-    confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
+    var keysPanel=useKeysFinishSegmented();
+    var finishMode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+    if(keysPanel){
+      cancelCard.innerHTML='';
+      confirmCard.innerHTML='';
+    }else{
+      cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
+      confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
+    }
     if(delayHost){
-      var finishMode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
-      if(finishMode==='confirm'){
+      if(keysPanel&&finishMode==='confirm'){
         delayHost.innerHTML=renderKeysFinishDelayOnly(m,m.id);
         syncAllTimingRanges(delayHost);
         delayHost.hidden=false;
@@ -278,8 +296,20 @@
         delayHost.hidden=true;
       }
     }
-    syncAllTimingRanges(cancelCard);
-    syncAllTimingRanges(confirmCard);
+    if(cancelHost){
+      if(keysPanel&&finishMode==='confirm'){
+        cancelHost.innerHTML=renderKeysFinishCancelOnly(m,m.id);
+        syncAllTimingRanges(cancelHost);
+        cancelHost.hidden=false;
+      }else{
+        cancelHost.innerHTML='';
+        cancelHost.hidden=true;
+      }
+    }
+    if(!keysPanel){
+      syncAllTimingRanges(cancelCard);
+      syncAllTimingRanges(confirmCard);
+    }
     syncKeyExecFinishTimingSection(m);
     renderKeySchemeCardHeader();
     syncKeySchemeTimeline(schemeStepFocus);
@@ -289,6 +319,7 @@
     }
     if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
     if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
+    renderKeysFinishStrategyPreview(m);
   }
 
   function handleKeyFinishFlowInput(e){
@@ -383,6 +414,7 @@
     if(desc) desc.innerHTML=timingDescText(field,val);
     var valEl=block&&block.querySelector('.keys-finish-delay-value');
     if(valEl&&field==='enterDelayMs') valEl.textContent=formatTimingSec(val)+t('keysFinishDelayUnit');
+    renderKeysFinishStrategyPreview(m);
   }
 
   global.OneToneKeyFinishFlowRender={

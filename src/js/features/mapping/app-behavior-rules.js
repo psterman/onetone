@@ -7,7 +7,7 @@
   function core(){ return global.OneToneMappingCore; }
   function flowSummary(){ return global.OneToneSceneFlowSummary; }
 
-  var previewAppId='';
+  var activeAppContextId='';
   var keysExpandedAppId='';
 
   function getKeysExpandedAppId(){
@@ -182,30 +182,32 @@
 
   function renderKeysExpandableRow(m,preset){
     var isPrimary=isPrimaryApp(m,preset.id);
-    var expanded=getKeysExpandedAppId()===preset.id||previewAppId===preset.id;
+    var expanded=getKeysExpandedAppId()===preset.id||activeAppContextId===preset.id;
     var rule=ruleForApp(m,preset.id);
     var mode=rule?(rule.finishMode||preset.defaultMode):preset.defaultMode;
     var icon=iconForApp(preset.id);
-    var html='<details class="keys-app-expand-row'+(isPrimary?' is-primary':'')+(previewAppId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
+    var html='<details class="keys-app-expand-row'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
     html+='<summary class="keys-app-expand-summary">';
-    html+='<div class="keys-app-shortcut-main">';
+    html+='<div class="keys-app-shortcut-main keys-app-expand-summary-main">';
     if(icon){
       html+='<img class="keys-app-shortcut-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
     }else{
       html+='<span class="keys-app-shortcut-icon keys-app-shortcut-icon--fallback" aria-hidden="true">'+esc(appDisplayName(preset.id).charAt(0))+'</span>';
     }
     html+='<span class="keys-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</span>';
-    html+='<span class="keys-app-rule-note">'+esc(defaultNoteForApp(preset.id))+'</span>';
-    html+='<div class="keys-app-function-tags">';
-    MODE_CYCLE.forEach(function(modeOpt){
-      html+='<span class="keys-app-function-tag'+(mode===modeOpt?' is-active':'')+' '+finishModeClass(modeOpt)+'">'+esc(finishModeLabel(modeOpt))+'</span>';
-    });
-    html+='</div>';
-    if(isPrimary) html+='<span class="keys-app-primary-badge">'+esc(t('habitAppRulePrimaryOn'))+'</span>';
+    html+='<span class="keys-app-expand-chevron" aria-hidden="true"></span>';
+    html+='<span class="keys-app-expand-hint">'+esc(t('keysAppExpandHint'))+'</span>';
     html+='</div><div class="keys-app-shortcut-actions">';
     html+='<button type="button" class="keys-app-rule-toggle'+(isPrimary?' is-on':'')+'" data-app-rule-toggle="'+esc(preset.id)+'" data-is-on="'+(isPrimary?'true':'false')+'" role="switch" aria-checked="'+(isPrimary?'true':'false')+'" aria-label="'+esc(t('keysAppRuleToggle'))+'"></button>';
     html+='</div></summary>';
     html+='<div class="keys-app-expand-body">';
+    if(isPrimary) html+='<span class="keys-app-primary-badge keys-app-expand-primary">'+esc(t('habitAppRulePrimaryOn'))+'</span>';
+    html+='<p class="keys-app-rule-note keys-app-expand-note">'+esc(defaultNoteForApp(preset.id))+'</p>';
+    html+='<div class="keys-app-function-tags keys-app-expand-tags">';
+    MODE_CYCLE.forEach(function(modeOpt){
+      html+='<span class="keys-app-function-tag'+(mode===modeOpt?' is-active':'')+' '+finishModeClass(modeOpt)+'">'+esc(finishModeLabel(modeOpt))+'</span>';
+    });
+    html+='</div>';
     html+='<p class="keys-app-expand-finish"><span class="keys-app-expand-finish-lbl">'+esc(t('keysAppExpandFinish'))+'</span> <strong>'+esc(finishModeLabel(mode))+'</strong></p>';
     html+=renderWorkflowTimeline(m,preset.id,mode,{compact:true});
     html+='<p class="keys-app-priority-hint">'+esc(t('keysAppPriorityHint'))+'</p>';
@@ -267,6 +269,8 @@
       addBtn.textContent='+ '+t('habitAppShortcutsAdd');
       addBtn.disabled=true;
     }
+    var kpu=global.OneToneKeysPanelUi;
+    if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
   }
 
   function renderScenarioCard(m,preset){
@@ -276,7 +280,7 @@
     var icon=iconForApp(preset.id);
     var isPrimary=isPrimaryApp(m,preset.id);
     var openKey=appOpenShortcut(preset.id,m);
-    var html='<article class="habit-app-scenario-card'+(isPrimary?' is-primary':'')+(previewAppId===preset.id?' is-preview':'')+'" data-app-id="'+esc(preset.id)+'" data-app-rule="'+esc(preset.id)+'">';
+    var html='<article class="habit-app-scenario-card'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-id="'+esc(preset.id)+'" data-app-rule="'+esc(preset.id)+'">';
     html+='<div class="habit-app-scenario-head">';
     if(icon){
       html+='<img class="habit-app-scenario-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
@@ -324,32 +328,41 @@
     if(nameEl) nameEl.textContent=appDisplayName(appId);
   }
 
-  function setPreviewAppId(appId){
-    previewAppId=appId||'';
+  function setActiveAppContextId(appId){
+    activeAppContextId=appId||'';
     var ed=global.OneToneMappingEditorState;
-    if(ed&&ed.setEditorPreviewAppId) ed.setEditorPreviewAppId(previewAppId);
+    if(ed&&ed.setEditorActiveAppContextId) ed.setEditorActiveAppContextId(activeAppContextId);
     var m=core()&&core().selected?core().selected():null;
     var fs=flowSummary();
-    if(fs&&fs.syncFlowSummary) fs.syncFlowSummary(m,{context:'settings',previewAppId:previewAppId});
+    if(fs&&fs.syncFlowSummary) fs.syncFlowSummary(m,{context:'settings',activeAppContextId:activeAppContextId});
     var list=$('habitAppRulesList');
     if(list){
       list.querySelectorAll('.habit-app-scenario-card').forEach(function(card){
-        card.classList.toggle('is-preview',!!previewAppId&&card.dataset.appId===previewAppId);
+        card.classList.toggle('is-preview',!!activeAppContextId&&card.dataset.appId===activeAppContextId);
       });
     }
     var keysList=$('keysAppRulesList');
     if(keysList){
       keysList.querySelectorAll('.keys-app-expand-row').forEach(function(row){
-        row.classList.toggle('is-preview',!!previewAppId&&row.dataset.appId===previewAppId);
+        row.classList.toggle('is-preview',!!activeAppContextId&&row.dataset.appId===activeAppContextId);
+        if(activeAppContextId&&row.dataset.appId===activeAppContextId&&!row.open) row.open=true;
       });
     }
-    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+    if(activeAppContextId) setKeysExpandedAppId(activeAppContextId);
+    var kpu=global.OneToneKeysPanelUi;
+    if(kpu){
+      if(kpu.renderAppContextStrip) kpu.renderAppContextStrip();
+      if(kpu.renderTriggerContextBadge) kpu.renderTriggerContextBadge();
+      if(kpu.renderAppContext) kpu.renderAppContext();
+    }
+    if(global.OneToneKeyFinishFlowRender) global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
+    if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
   }
 
   function selectAppContext(appId){
     if(!appId) return;
     setKeysExpandedAppId(appId);
-    setPreviewAppId(appId);
+    setActiveAppContextId(appId);
     var row=document.querySelector('.keys-app-expand-row[data-app-id="'+appId+'"]');
     if(row&&!row.open) row.open=true;
   }
@@ -395,7 +408,7 @@
   function removeRule(m,appId){
     ensureRules(m);
     m.appBehaviorRules=m.appBehaviorRules.filter(function(r){ return r.appId!==appId; });
-    if(previewAppId===appId) setPreviewAppId('');
+    if(activeAppContextId===appId) setActiveAppContextId('');
     saveAndRefresh();
   }
 
@@ -504,31 +517,40 @@
       if(card.classList&&card.classList.contains('keys-app-expand-row')){
         setKeysExpandedAppId(appId);
       }
-      setPreviewAppId(appId);
+      setActiveAppContextId(appId);
     }
   }
 
-  function bindAppRulesList(list){
+  function bindAppRulesList(list,opts){
+    opts=opts||{};
     if(!list) return;
     list.addEventListener('click',handleAppRulesListClick);
-    list.addEventListener('mouseenter',function(e){
-      var card=e.target.closest&&e.target.closest('[data-app-rule]');
-      if(card) setPreviewAppId(card.dataset.appId);
-    },true);
-    list.addEventListener('mouseleave',function(e){
-      if(!list.contains(e.relatedTarget)) setPreviewAppId('');
-    });
+    if(opts.hoverPreview!==false){
+      list.addEventListener('mouseenter',function(e){
+        var card=e.target.closest&&e.target.closest('[data-app-rule]');
+        if(card) setActiveAppContextId(card.dataset.appId);
+      },true);
+      list.addEventListener('mouseleave',function(e){
+        if(!list.contains(e.relatedTarget)) setActiveAppContextId('');
+      });
+    }
   }
 
   function bindKeysAsideEvents(list){
     if(!list) return;
-    bindAppRulesList(list);
+    bindAppRulesList(list,{hoverPreview:false});
     list.addEventListener('toggle',function(e){
       var row=e.target;
       if(!row||!row.classList||!row.classList.contains('keys-app-expand-row')) return;
       if(row.open){
-        setKeysExpandedAppId(row.dataset.appId||'');
-        setPreviewAppId(row.dataset.appId||'');
+        list.querySelectorAll('.keys-app-expand-row').forEach(function(other){
+          if(other!==row) other.open=false;
+        });
+        var appId=row.dataset.appId||'';
+        setKeysExpandedAppId(appId);
+        setActiveAppContextId(appId);
+      }else if(getKeysExpandedAppId()===(row.dataset.appId||'')){
+        setKeysExpandedAppId('');
       }
     },true);
     list.addEventListener('click',function(e){
@@ -562,11 +584,11 @@
     bindEvents:bindEvents,
     bindKeysAsideEvents:bindKeysAsideEvents,
     renderKeysAside:renderKeysAside,
-    setPreviewAppId:setPreviewAppId,
+    setActiveAppContextId:setActiveAppContextId,
     selectAppContext:selectAppContext,
     setKeysExpandedAppId:setKeysExpandedAppId,
     getKeysExpandedAppId:getKeysExpandedAppId,
-    getPreviewAppId:function(){ return previewAppId; },
+    getActiveAppContextId:function(){ return activeAppContextId; },
     resolveEffectiveFinish:resolveEffectiveFinish,
     finishModeLabel:finishModeLabel,
     ensureRules:ensureRules,

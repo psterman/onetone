@@ -144,16 +144,43 @@
     if(voiceHint) voiceHint.hidden = true;
   }
 
+  function renderMappingTargetImeBadge(iconEl){
+    var presetId = getSelectedId('mapping');
+    var preset = presetById(presetId);
+    var wrap = iconEl.closest ? iconEl.closest('.target-key-display, .display') : null;
+    if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.clearMappingAppTargetBadge){
+      global.OneToneAppTargetPresets.clearMappingAppTargetBadge();
+    }
+    if(preset){
+      iconEl.src = preset.icon;
+      iconEl.hidden = false;
+      iconEl.classList.remove('is-placeholder');
+      iconEl.alt = t(preset.nameKey);
+      if(wrap) wrap.classList.add('has-ime-badge');
+      return;
+    }
+    iconEl.hidden = false;
+    iconEl.classList.add('is-placeholder');
+    iconEl.removeAttribute('src');
+    iconEl.alt = '';
+    if(wrap) wrap.classList.remove('has-ime-badge');
+  }
+
   function renderCardBadge(ctx){
     var iconId = CARD_ICONS[ctx];
     var iconEl = iconId ? $(iconId) : null;
     if(!iconEl) return;
+    if(ctx === 'mapping'){
+      renderMappingTargetImeBadge(iconEl);
+      return;
+    }
     var presetId = getSelectedId(ctx);
     var preset = presetById(presetId);
     var wrap = iconEl.closest ? iconEl.closest('.target-key-display') : null;
     if(preset){
       iconEl.src = preset.icon;
       iconEl.hidden = false;
+      iconEl.classList.remove('is-placeholder');
       iconEl.alt = t(preset.nameKey);
       if(wrap) wrap.classList.add('has-ime-badge');
       if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.renderCardBadge){
@@ -162,6 +189,7 @@
       return;
     }
     iconEl.hidden = true;
+    iconEl.classList.remove('is-placeholder');
     iconEl.removeAttribute('src');
     if(wrap) wrap.classList.remove('has-ime-badge');
   }
@@ -347,6 +375,7 @@
     presets: PRESETS,
     presetById: presetById,
     clearSelectedForManualRecord: clearSelectedForManualRecord,
-    renderCardBadge: renderCardBadge
+    renderCardBadge: renderCardBadge,
+    renderMappingTargetImeBadge: renderMappingTargetImeBadge
   };
 })(typeof window !== 'undefined' ? window : globalThis);

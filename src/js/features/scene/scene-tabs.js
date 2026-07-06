@@ -174,7 +174,7 @@
   function resolveEffectiveSource(m,foregroundId){
     if(!m) return t('habitEffectiveSourceDefault');
     var preview=foregroundId||'';
-    if(!preview&&global.OneToneAppBehaviorRules) preview=global.OneToneAppBehaviorRules.getPreviewAppId()||'';
+    if(!preview&&global.OneToneAppBehaviorRules) preview=global.OneToneAppBehaviorRules.getActiveAppContextId()||'';
     if(!preview&&global.OneToneHabitLayerNav) preview=global.OneToneHabitLayerNav.getForegroundAppId()||'';
     if(preview&&global.OneToneAppBehaviorRules){
       var eff=global.OneToneAppBehaviorRules.resolveEffectiveFinish(m,preview);
@@ -351,8 +351,8 @@
 
     if(global.OneToneSceneFlowSummary){
       global.OneToneSceneFlowSummary.renderLabels();
-      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getPreviewAppId():'';
-      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:'',previewAppId:preview});
+      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
+      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:'',activeAppContextId:preview});
     }
     if(global.OneToneHabitMulti) global.OneToneHabitMulti.render();
     if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
@@ -365,8 +365,8 @@
     if(!keysPanelActive()) return;
     if(global.OneToneSceneFlowSummary){
       var m=selectedMapping();
-      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getPreviewAppId():'';
-      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:'',previewAppId:preview});
+      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
+      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',focusStep:'',activeAppContextId:preview});
     }
     if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
     renderHabitVoiceDeviceSummary();
@@ -404,10 +404,11 @@
   }
 
   function renderHabitVoiceDeviceSummary(){
+    var diagnostic=$('habitFlowVoiceDeviceDiagnostic');
     var wrap=$('habitFlowVoiceDeviceSummary');
+    var keysActive=keysPanelActive();
+    if(diagnostic) diagnostic.hidden=!keysActive;
     if(!wrap) return;
-    var show=keysPanelActive();
-    wrap.hidden=!show;
     var textEl=$('habitFlowDeviceText');
     if(textEl){
       var cfg=state().config;
@@ -417,6 +418,8 @@
     }
     var btn=$('btnHabitFlowOpenVoice');
     if(btn) btn.textContent=t('habitFlowDeviceChange');
+    var lbl=$('habitFlowVoiceDeviceDiagnosticLbl');
+    if(lbl) lbl.textContent=t('keysVoiceDeviceDiagnosticTitle');
   }
 
   function renderSceneGlobalFooter(){

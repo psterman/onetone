@@ -244,7 +244,23 @@
     updateOnboardHintText('onboarding');
   }
 
+  function clearMappingAppTargetBadge(){
+    var badgeEl = $('targetAppBadgeMapping');
+    if(!badgeEl) return;
+    badgeEl.hidden = true;
+    badgeEl.textContent = '';
+    badgeEl.innerHTML = '';
+    badgeEl.classList.remove('has-icon');
+    badgeEl.removeAttribute('title');
+    var wrap = badgeEl.closest ? badgeEl.closest('.target-key-display, .display') : null;
+    if(wrap) wrap.classList.remove('has-app-target-badge');
+  }
+
   function renderCardBadge(ctx){
+    if(ctx === 'mapping'){
+      clearMappingAppTargetBadge();
+      return;
+    }
     var badgeId = CARD_BADGES[ctx];
     var badgeEl = badgeId ? $(badgeId) : null;
     if(!badgeEl) return;
@@ -259,8 +275,8 @@
       badgeEl.classList.toggle('has-icon', !!preset.icon);
       badgeEl.setAttribute('title', t(preset.nameKey));
       if(wrap) wrap.classList.add('has-app-target-badge');
-      if(ctx === 'mapping' || ctx === 'onboarding'){
-        var imeIcon = $(ctx === 'mapping' ? 'targetImeIconMapping' : 'onboardTargetImeIcon');
+      if(ctx === 'onboarding'){
+        var imeIcon = $('onboardTargetImeIcon');
         if(imeIcon){ imeIcon.hidden = true; imeIcon.removeAttribute('src'); }
       }
       return;
@@ -365,7 +381,6 @@
     m.label = (trig || '?') + ' → ' + (displayTarget || m.targetKey || combo || '?');
     if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(displayTarget || m.targetKey || combo);
     if(ed && ed.setEditorAppTargetId) ed.setEditorAppTargetId(presetId);
-    if(ed && ed.setEditorPreviewAppId) ed.setEditorPreviewAppId(presetId);
     if(ed && ed.setKeysExpandedAppId) ed.setKeysExpandedAppId(presetId);
     persistMapping();
     renderMappingChrome();
@@ -376,7 +391,7 @@
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     if(global.OneToneAppBehaviorRules){
       global.OneToneAppBehaviorRules.render();
-      if(global.OneToneAppBehaviorRules.selectAppContext) global.OneToneAppBehaviorRules.selectAppContext(presetId);
+      if(global.OneToneAppBehaviorRules.setKeysExpandedAppId) global.OneToneAppBehaviorRules.setKeysExpandedAppId(presetId);
     }
     refresh('mapping');
   }
@@ -508,6 +523,7 @@
     applyVoiceShortcutKeys: applyVoiceShortcutKeys,
     clearSelectedForManualRecord: clearSelectedForManualRecord,
     renderCardBadge: renderCardBadge,
+    clearMappingAppTargetBadge: clearMappingAppTargetBadge,
     setPrimaryForMapping: setPrimaryForMapping,
     clearPrimaryForMapping: clearPrimaryForMapping,
     shortcutDisplayForMapping: shortcutDisplayForMapping,

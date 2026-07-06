@@ -32,7 +32,7 @@
     }
     var cancelCard=$('voiceEndCancelCard');
     var cancelCell=$('habitKeyMapCellCancel');
-    if(cancelCard&&cancelCell) moveChild(cancelCell,cancelCard);
+    if(cancelCard&&cancelCell&&!$('keysFinishCancelHost')) moveChild(cancelCell,cancelCard);
     mounted=true;
   }
 
@@ -63,7 +63,7 @@
   function syncFinishPreview(m){
     var el=$('habitFlowFinishKey');
     if(!el||!global.OneToneSceneFlowSummary) return;
-    var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getPreviewAppId():'';
+    var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
     var fin=global.OneToneSceneFlowSummary.finishBehaviorTextSettings(m,preview);
     el.textContent=fin.text||'—';
     el.className='home-key-map-key habit-flow-finish-preview'+(fin.saved?' is-set':' is-empty');
@@ -83,8 +83,8 @@
     });
     syncFinishPreview(m);
     if(global.OneToneSceneFlowSummary&&m){
-      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getPreviewAppId():'';
-      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',prefix:'habitFlow',previewAppId:preview,focusStep:highlightStep});
+      var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
+      global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',prefix:'habitFlow',activeAppContextId:preview,focusStep:highlightStep});
     }
   }
 
@@ -115,7 +115,7 @@
     if(flow){
       flow.addEventListener('click',function(e){
         var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
-        if(!stepEl||e.target.closest('.record-btn')||e.target.closest('.voice-end-key-mode-panel')||e.target.closest('details')||e.target.closest('.ime-preset-strip')||e.target.closest('.habit-flow-device-link')) return;
+        if(!stepEl||e.target.closest('.record-btn')||e.target.closest('.voice-end-key-mode-panel')||e.target.closest('details')||e.target.closest('.ime-preset-strip')||e.target.closest('.habit-flow-device-link')||e.target.closest('.keys-app-context-strip')||e.target.closest('.habit-flow-device-diagnostic')) return;
         var step=stepEl.dataset.editStep;
         if(step) onStepClick(step);
       });

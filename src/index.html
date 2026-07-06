@@ -400,6 +400,10 @@
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
                     <span class="home-key-map-step-hint" id="habitFlowStepTriggerHint">比如音量键、鼠标侧键</span>
+                    <div class="keys-app-context-strip-wrap" id="keysAppContextStripWrap" hidden>
+                      <span class="keys-app-context-strip-lbl" id="keysAppContextStripLbl">应用上下文</span>
+                      <div class="keys-app-context-strip" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+                    </div>
                   </div>
                   <div class="habit-flow-step home-key-map-step keys-step-card is-clickable" data-edit-step="target" id="habitKeyMapRowTarget">
                     <div class="keys-step-card-head">
@@ -414,10 +418,13 @@
                           <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入方式</p>
                           <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
                         </div>
-                        <div class="habit-flow-device-summary" id="habitFlowVoiceDeviceSummary">
-                          <span class="habit-flow-device-text" id="habitFlowDeviceText">—</span>
-                          <button type="button" class="habit-flow-device-link" id="btnHabitFlowOpenVoice">更改</button>
-                        </div>
+                        <details class="habit-flow-device-diagnostic keys-voice-device-diagnostic" id="habitFlowVoiceDeviceDiagnostic">
+                          <summary class="habit-flow-device-diagnostic-summary" id="habitFlowVoiceDeviceDiagnosticLbl">语音设备与引擎</summary>
+                          <div class="habit-flow-device-summary" id="habitFlowVoiceDeviceSummary">
+                            <span class="habit-flow-device-text" id="habitFlowDeviceText">—</span>
+                            <button type="button" class="habit-flow-device-link" id="btnHabitFlowOpenVoice">更改</button>
+                          </div>
+                        </details>
                       </div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
@@ -433,8 +440,10 @@
                       <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>
                     </div>
                     <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
+                    <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
+                    <p class="keys-finish-strategy-preview is-empty" id="keysFinishStrategyPreview" aria-live="polite">—</p>
                     <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore">
-                      <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">更多收尾选项</summary>
+                      <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">可选：自定义中止键</summary>
                       <p class="keys-finish-more-hint" id="keysFinishMoreHint">中止键只在需要快速打断时使用</p>
                       <div class="habit-flow-cancel-block" id="habitKeyMapRowCancel" data-edit-step="cancel">
                         <span class="habit-flow-cancel-label" id="habitFlowFinishMoreCancelLbl">中止键（可选）</span>
@@ -459,6 +468,7 @@
                 <div class="habit-basic-row" data-edit-step="trigger" id="keySchemeEditTrigger">
                   <div class="habit-basic-row-ctrl">
                     <div class="habit-basic-key-display display empty" id="triggerDisplay">
+                      <span class="app-target-card-badge keys-trigger-context-badge is-placeholder" id="triggerAppBadgeMapping" aria-hidden="true"></span>
                       <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                       <span class="display-value" id="triggerView">未设置</span>
                     </div>
@@ -474,7 +484,7 @@
                 <div class="habit-basic-row" data-edit-step="target" id="keySchemeEditTarget">
                   <div class="habit-basic-row-ctrl">
                     <div class="habit-basic-key-display display empty" id="targetDisplay">
-                      <img class="target-ime-badge" id="targetImeIconMapping" alt="" hidden decoding="async">
+                      <img class="target-ime-badge is-placeholder" id="targetImeIconMapping" alt="" decoding="async">
                       <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
                       <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/></svg>
                       <span class="display-value" id="targetView">未设置</span>
@@ -526,9 +536,9 @@
             </div>
           </div>
               <details class="keys-advanced-details" id="keysAdvancedDetails">
-                <summary class="keys-advanced-summary" id="keysAdvancedSummary"><span class="keys-aside-step-badge keys-advanced-badge" aria-hidden="true">6</span>高级选项</summary>
-                <p class="keys-advanced-desc" id="keysAdvancedDesc">更多高级行为、特殊场景和规则设置</p>
-                <p class="keys-advanced-when" id="keysAdvancedWhenHint">只有当你要录鼠标键、处理冲突或调整特殊应用行为时才需要展开</p>
+                <summary class="keys-advanced-summary" id="keysAdvancedSummary"><span class="keys-aside-step-badge keys-advanced-badge" aria-hidden="true">6</span>遇到问题时</summary>
+                <p class="keys-advanced-desc" id="keysAdvancedDesc">按键冲突、特殊按键与输入法兼容排查</p>
+                <p class="keys-advanced-when" id="keysAdvancedWhenHint">仅在冲突、鼠标侧键录制或输入法异常时需要展开</p>
                 <div class="keys-advanced-body">
                   <section class="keys-advanced-group" id="keysAdvConflict">
                     <h5 class="keys-advanced-group-title" id="keysAdvConflictTitle">冲突处理</h5>
@@ -543,10 +553,6 @@
                     <h5 class="keys-advanced-group-title" id="keysAdvImeTitle">输入法兼容</h5>
                     <p class="keys-advanced-group-desc" id="keysAdvImeText">—</p>
                   </section>
-                  <section class="keys-advanced-group" id="keysAdvPriority">
-                    <h5 class="keys-advanced-group-title" id="keysAdvPriorityTitle">应用覆盖优先级</h5>
-                    <p class="keys-advanced-group-desc" id="keysAdvPriorityDesc">应用快捷键会覆盖默认行为；未匹配应用时使用步骤 1–3 的默认设置。</p>
-                  </section>
                 </div>
               </details>
             </div>
@@ -556,7 +562,7 @@
                   <span class="keys-aside-step-badge" aria-hidden="true">4</span>
                   <div class="habit-app-shortcuts-head-text">
                     <h4 class="habit-app-shortcuts-title" id="keysAppShortcutsTitle">应用快捷键</h4>
-                    <p class="habit-app-shortcuts-desc" id="keysAppShortcutsDesc">展开应用查看工作流与行为；选中后同步到左侧编辑上下文</p>
+                    <p class="habit-app-shortcuts-desc" id="keysAppShortcutsDesc">按应用覆盖步骤 3 的发送方式；未匹配时仍用全局默认</p>
                   </div>
                 </header>
                 <div class="keys-app-rules-list habit-app-rules-list keys-app-expand-list" id="keysAppRulesList"></div>
