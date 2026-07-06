@@ -5,8 +5,12 @@
   function state(){ return global.OneToneState.state; }
   function ui(){ return global.OneToneState.ui; }
   function hooks(){ return global.__vp_mapping_core_hooks__ || {}; }
+  function schemePanelActive(){
+    var drawer=global.OneToneSettingsDrawer;
+    return ui().drawerOpen&&drawer&&drawer.isKeysPanel();
+  }
   function mappingListUiActive(){
-    return ui().drawerOpen&&ui().settingsPanel==='keyWake';
+    return schemePanelActive();
   }
   function renderMappingChrome(){
     renderSettingsSchemeSubnav();
@@ -46,11 +50,13 @@
   function renderSettingsSchemeSubnav(){
     const subnav=$('settingsSchemeSubnav');
     const listEl=$('settingsSchemeSubnavList');
-    const keyWakePanel=$('settingsPanelKeyWake');
+    const habitsPanel=$('settingsPanelHabits');
+    const keysPanel=$('settingsPanelKeys');
     const sidebar=document.querySelector('.settings-sidebar');
-    const show=ui().drawerOpen&&ui().settingsPanel==='keyWake';
+    const show=mappingListUiActive();
     if(subnav) subnav.hidden=!show;
-    if(keyWakePanel) keyWakePanel.classList.toggle('is-scheme-subnav',show);
+    if(habitsPanel) habitsPanel.classList.toggle('is-scheme-subnav',show);
+    if(keysPanel) keysPanel.classList.toggle('is-scheme-subnav',show);
     if(sidebar) sidebar.classList.toggle('is-scheme-panel',show);
     if(listEl) listEl.setAttribute('aria-label',t('settingsSchemeSubnavLabel'));
     const addBtn=$('btnSettingsSchemeAdd');
@@ -78,6 +84,7 @@
       html+='</span></div>';
     });
     listEl.innerHTML=html;
+    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
   }
   function friendlyPair(triggerKey,targetKey,m){
     const lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';

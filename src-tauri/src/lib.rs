@@ -512,6 +512,7 @@ pub fn run() {
             ipc::cmd_resume,
             ipc::cmd_request_runtime,
             ipc::cmd_debug_effective_scene,
+            ipc::cmd_foreground_app,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,

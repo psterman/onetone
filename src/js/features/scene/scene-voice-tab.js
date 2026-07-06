@@ -104,7 +104,11 @@
     var root=$('sceneVoicePanelBody');
     var panel=$('sceneVoicePanel');
     if(!root||!panel) return;
-    var visible=ui().drawerOpen&&ui().settingsPanel==='keyWake'&&(ui().sceneTab||'keys')==='voice';
+    var visible=ui().drawerOpen
+      &&(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isHabitsPanel
+        ?global.OneToneSettingsDrawer.isHabitsPanel()
+        :ui().settingsPanel==='habits')
+      &&(ui().habitLayer||'global')==='advanced';
     panel.hidden=!visible;
     if(!visible) return;
     var mapping=selectedMapping();

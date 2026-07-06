@@ -66,7 +66,7 @@
     global.OneToneHomeScheme.closeMenu();
     if(global.OneToneHomeGuide.isOpen()) global.OneToneHomeGuide.close(true);
     syncHomeEditToActive();
-    global.OneToneSettingsDrawer.open({panel:'keyWake',focus:focus||'trigger'});
+    global.OneToneSettingsDrawer.open({panel:'keys',focus:focus||'trigger'});
   }
 
   function openHomeKeySettings(){

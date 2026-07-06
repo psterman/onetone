@@ -34,7 +34,8 @@
       actions.push({label:t('btnRuntimeGoVoice'),panel:'voiceWake'});
     }
     if(!hs.keyActive){
-      actions.push({label:t('keyWakeSettingsTitle'),panel:'keyWake'});
+      actions.push({label:t('settingsNavKeys'),panel:'keys'});
+      actions.push({label:t('settingsNavHabits'),panel:'habits'});
     }
     if(hs.statusMode==='error'){
       actions.push({label:t('debugFocusDiagnostics'),panel:'debug',debugMode:'diagnostics'});

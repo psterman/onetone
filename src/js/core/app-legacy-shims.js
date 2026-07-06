@@ -335,6 +335,12 @@
     
     function syncEditorFromSelection(){
       OneToneMappingEditorState.syncFromMapping(selectedMapping());
+      if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.renderKeysAside){
+        global.OneToneAppBehaviorRules.renderKeysAside();
+      }
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render){
+        global.OneToneKeysPanelUi.render();
+      }
     }
     
     

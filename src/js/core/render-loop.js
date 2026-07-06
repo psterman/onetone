@@ -18,7 +18,7 @@
         if(global.OneToneVoiceDiag.getFocusMode()==='developer') h.renderDebugDeveloperPanel();
         else h.scheduleDebugChromeRefresh();
       }
-      if(ui.drawerOpen&&ui.settingsPanel==='keyWake') h.renderKeyFinishFlowPanel();
+      if(ui.drawerOpen&&global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel()||global.OneToneSettingsDrawer.isHabitsPanel())) h.renderKeyFinishFlowPanel();
       h.renderVoiceModeSwitch();
       h.renderHome();
       h.renderListenRuntime();

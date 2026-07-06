@@ -4,11 +4,16 @@
   function hooks(){ return global.__vp_key_finish_flow_ui_hooks__ || {}; }
   function bindEvents(){
     var h=hooks();
-    var settingsPanelKeyWake=$('settingsPanelKeyWake');
-    if(settingsPanelKeyWake){
-      settingsPanelKeyWake.addEventListener('input',h.handleKeyFinishFlowInput);
-      settingsPanelKeyWake.addEventListener('click',function(e){
+    var settingsPanelKeys=$('settingsPanelKeys');
+    if(settingsPanelKeys){
+      settingsPanelKeys.addEventListener('input',h.handleKeyFinishFlowInput);
+      settingsPanelKeys.addEventListener('click',function(e){
         var el=e.target;
+        var mapRow=el.closest&&el.closest('.habit-key-map-row[data-edit-step]');
+        if(mapRow&&!el.closest('[data-finish-mode]')&&!el.closest('[data-trigger-mode]')&&!el.closest('[data-timing-toggle]')&&!el.closest('.toggle-switch')&&!el.closest('.record-btn')){
+          h.focusSchemeEditStep(mapRow.dataset.editStep);
+          return;
+        }
         var flowStep=el.closest&&el.closest('#sceneFlowMap [data-step]');
         if(flowStep&&!el.closest('[data-finish-mode]')&&!el.closest('[data-trigger-mode]')&&!el.closest('[data-timing-toggle]')&&!el.closest('.toggle-switch')&&!el.closest('.record-btn')){
           h.focusSchemeEditStep(flowStep.dataset.step);

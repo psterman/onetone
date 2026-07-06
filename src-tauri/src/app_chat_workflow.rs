@@ -78,6 +78,85 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
     }
 }
 
+pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
+
+struct BehaviorAppMatcher {
+    id: &'static str,
+    process_names: &'static [&'static str],
+    path_marker: Option<&'static str>,
+}
+
+const BEHAVIOR_APP_MATCHERS: &[BehaviorAppMatcher] = &[
+    BehaviorAppMatcher {
+        id: CURSOR_APP_TARGET_ID,
+        process_names: &["Cursor.exe"],
+        path_marker: None,
+    },
+    BehaviorAppMatcher {
+        id: CODEX_APP_TARGET_ID,
+        process_names: &["Codex.exe"],
+        path_marker: Some("OpenAI.Codex"),
+    },
+    BehaviorAppMatcher {
+        id: MINIMAX_APP_TARGET_ID,
+        process_names: &["MiniMax Code.exe"],
+        path_marker: Some("MiniMax Code"),
+    },
+    BehaviorAppMatcher {
+        id: CLAUDE_CODE_APP_TARGET_ID,
+        process_names: &["claude.exe", "Claude Code.exe"],
+        path_marker: None,
+    },
+];
+
+#[cfg(windows)]
+fn behavior_app_id_for_pid(pid: u32) -> Option<String> {
+    let path = process_image_path(pid)?;
+    let file_name = path.rsplit(['\\', '/']).next().unwrap_or_default();
+    for matcher in BEHAVIOR_APP_MATCHERS {
+        let name_ok = matcher
+            .process_names
+            .iter()
+            .any(|name| file_name.eq_ignore_ascii_case(name));
+        if !name_ok {
+            continue;
+        }
+        let path_ok = matcher
+            .path_marker
+            .map(|marker| path.contains(marker))
+            .unwrap_or(true);
+        if path_ok {
+            return Some(matcher.id.to_string());
+        }
+    }
+    None
+}
+
+/// Resolve the foreground app's behavior-rule id (cursor-chat, codex-chat, etc.).
+pub fn foreground_app_target_id() -> Option<String> {
+    #[cfg(windows)]
+    {
+        use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId};
+
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_null() {
+                return None;
+            }
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            if pid == 0 {
+                return None;
+            }
+            behavior_app_id_for_pid(pid)
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppChatWorkflowError {
     NotFound,

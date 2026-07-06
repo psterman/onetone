@@ -24,10 +24,11 @@
         state.selectedMappingId=id;
         hooks.syncEditorFromSelection();
         hooks.closeFloatMenu();
-        hooks.setSettingsPanel('keyWake');
+        hooks.setSettingsPanel('habits');
         hooks.renderKeyFinishFlowPanel();
         hooks.renderEditor();
         hooks.renderSettingsSchemeSubnav();
+        if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer('global');
         if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
         if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
       });

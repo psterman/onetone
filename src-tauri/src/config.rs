@@ -75,6 +75,16 @@ pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverri
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppBehaviorRule {
+    #[serde(rename = "appId")]
+    pub app_id: String,
+    #[serde(rename = "finishMode")]
+    pub finish_mode: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MappingEntry {
     pub id: String,
     #[serde(default)]
@@ -122,6 +132,8 @@ pub struct MappingEntry {
     pub ime_preset_id: String,
     #[serde(rename = "appTargetId", default)]
     pub app_target_id: String,
+    #[serde(rename = "appBehaviorRules", default)]
+    pub app_behavior_rules: Vec<AppBehaviorRule>,
     #[serde(rename = "voiceOverride", default, skip_serializing_if = "Option::is_none")]
     pub voice_override: Option<VoiceOverride>,
 }
@@ -1071,6 +1083,7 @@ impl Default for VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                app_behavior_rules: vec![],
                 voice_override: None,
             }],
             trash: vec![],
@@ -1179,6 +1192,41 @@ pub fn mapping_timing(m: &MappingEntry, cfg: &VoiceConfig) -> (u32, u32, bool, b
     )
 }
 
+pub fn apply_finish_mode_to_mapping(mapping: &mut MappingEntry, finish_mode: &str) {
+    match finish_mode.trim().to_lowercase().as_str() {
+        "perpress" | "hold" | "longpress" => {
+            mapping.trigger_mode = TriggerMode::PerPress;
+        }
+        "confirm" => {
+            mapping.trigger_mode = TriggerMode::Tap;
+            mapping.cancel_enabled = true;
+            mapping.auto_enter_enabled = true;
+        }
+        _ => {
+            mapping.trigger_mode = TriggerMode::Tap;
+            mapping.cancel_enabled = false;
+            mapping.auto_enter_enabled = false;
+        }
+    }
+}
+
+pub fn effective_mapping_for_trigger(
+    mapping: &MappingEntry,
+    foreground_app_id: Option<&str>,
+) -> MappingEntry {
+    let mut effective = mapping.clone();
+    if let Some(app_id) = foreground_app_id {
+        if let Some(rule) = mapping
+            .app_behavior_rules
+            .iter()
+            .find(|r| r.app_id == app_id)
+        {
+            apply_finish_mode_to_mapping(&mut effective, &rule.finish_mode);
+        }
+    }
+    effective
+}
+
 impl VoiceConfig {
     pub fn migrate(&mut self) {
         if self.version >= 6 && !self.mappings.is_empty() {
@@ -1272,6 +1320,7 @@ impl VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                app_behavior_rules: vec![],
                 voice_override: None,
             });
         }
@@ -1996,6 +2045,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
@@ -2030,6 +2080,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         });
         cfg.enable_mapping("b");
@@ -2076,6 +2127,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         });
         let result = cfg.cycle_scheme_same_trigger();
@@ -2110,6 +2162,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
@@ -2157,6 +2210,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
@@ -2194,6 +2248,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         });
         let result = cfg.select_scheme("b");
@@ -2227,6 +2282,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
@@ -2308,6 +2364,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         };
         let bindings = hotkey_registration_bindings(&m);
@@ -2343,6 +2400,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: None,
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
@@ -2376,5 +2434,24 @@ mod tests {
         assert!(loaded.window_layout_seen);
         assert!((loaded.window_width - 1024.0).abs() < f64::EPSILON);
         assert_eq!(loaded.window_x, Some(40.0));
+    }
+
+    #[test]
+    fn effective_mapping_applies_app_behavior_rule() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.trigger_mode = TriggerMode::Tap;
+        mapping.cancel_enabled = true;
+        mapping.auto_enter_enabled = true;
+        mapping.app_behavior_rules = vec![AppBehaviorRule {
+            app_id: "cursor-chat".into(),
+            finish_mode: "perpress".into(),
+            note: None,
+        }];
+        let effective = effective_mapping_for_trigger(&mapping, Some("cursor-chat"));
+        assert_eq!(effective.trigger_mode, TriggerMode::PerPress);
+        let fallback = effective_mapping_for_trigger(&mapping, Some("codex-chat"));
+        assert_eq!(fallback.trigger_mode, TriggerMode::Tap);
+        assert!(fallback.cancel_enabled);
+        assert!(fallback.auto_enter_enabled);
     }
 }

@@ -768,6 +768,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 target_key: Some("Win+H".into()),
                 wake_phrases: None,
@@ -807,6 +808,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: "cursor-chat".into(),
+            app_behavior_rules: vec![],
             voice_override: None,
         }];
         assert_eq!(

@@ -46,7 +46,7 @@
         hooks().focusMapping(id);
         const home=$('homeZone');
         if(home) home.scrollIntoView({behavior:'smooth',block:'start'});
-        hooks().openSettings({panel:'keyWake',focus:'trigger'});
+        hooks().openSettings({panel:'keys',focus:'trigger'});
         return;
       }
       const nativeRecBtn=el.closest&&el.closest('[data-native-restore-record]');
@@ -136,7 +136,7 @@
       }
       hooks().ensureConfig();
       const id=hooks().newMappingId();
-      state.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:state.config.mappings.length,triggerMode:'tap',intervalMs:state.config.intervalMs||1200,enterDelayMs:state.config.enterDelayMs||5000,cancelEnabled:state.config.cancelEnabled!==false,autoEnterEnabled:state.config.autoEnterEnabled!==false});
+      state.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:state.config.mappings.length,triggerMode:'tap',intervalMs:state.config.intervalMs||1200,enterDelayMs:state.config.enterDelayMs||5000,cancelEnabled:state.config.cancelEnabled!==false,autoEnterEnabled:state.config.autoEnterEnabled!==false,appBehaviorRules:[]});
       state.selectedMappingId=id;
       hooks().setPendingNewDraftId(id);
       hooks().setEditorTriggerKey("");
@@ -147,7 +147,7 @@
       hooks().renderRecordCancelBar();
       const home=$('homeZone');
       if(home) home.scrollIntoView({behavior:'smooth',block:'start'});
-      hooks().openSettings({panel:'keyWake',focus:'trigger'});
+      hooks().openSettings({panel:'keys',focus:'trigger'});
     });
     bindEvent('mapMenuFloat','click',function(e){
       e.stopPropagation();

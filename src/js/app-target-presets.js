@@ -242,8 +242,6 @@
 
   function updateHintVisibility(){
     updateOnboardHintText('onboarding');
-    var mappingHint = $('appTargetHintMapping');
-    if(mappingHint) mappingHint.textContent = t('appTargetHint');
   }
 
   function renderCardBadge(ctx){
@@ -292,6 +290,51 @@
     }
   }
 
+  function shortcutDisplayForMapping(appId){
+    var core = global.OneToneMappingCore;
+    var m = core && core.selected ? core.selected() : null;
+    appId = String(appId || '').trim();
+    if(!appId) return '';
+    var preset = presetById(appId);
+    if(!preset) return '';
+    var isPrimary = !!(m && String(m.appTargetId || '') === appId);
+    if(isPrimary && core){
+      var key = core.editorTarget ? core.editorTarget(m) : String(m.targetKey || '').trim();
+      if(key) return key;
+    }
+    if(preset.targetKey) return preset.targetKey;
+    if(isWorkflowAppTarget(appId)){
+      var voiceKey = configuredVoiceShortcutKey();
+      if(voiceKey) return voiceKey;
+    }
+    return '';
+  }
+
+  function isPrimaryForMapping(appId){
+    syncSelectedFromStorage('mapping');
+    return getSelectedId('mapping') === String(appId || '').trim();
+  }
+
+  function clearPrimaryForMapping(){
+    var core = global.OneToneMappingCore;
+    if(!core || !core.selected) return;
+    var m = core.selected();
+    if(!m) return;
+    m.appTargetId = '';
+    setSelectedId('mapping', '');
+    persistMapping();
+    renderMappingChrome();
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
+    if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
+    if(global.OneToneSceneTabs && global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
+    refresh('mapping');
+  }
+
+  function setPrimaryForMapping(appId){
+    var preset = presetById(appId);
+    if(preset) applyMappingTarget(preset.targetKey, preset.id);
+  }
+
   function applyMappingTarget(combo, presetId){
     var core = global.OneToneMappingCore;
     var ed = global.OneToneMappingEditorState;
@@ -321,6 +364,9 @@
     var trig = core.editorTrigger ? core.editorTrigger(m) : (m.triggerKey || '');
     m.label = (trig || '?') + ' → ' + (displayTarget || m.targetKey || combo || '?');
     if(ed && ed.setEditorTargetKey) ed.setEditorTargetKey(displayTarget || m.targetKey || combo);
+    if(ed && ed.setEditorAppTargetId) ed.setEditorAppTargetId(presetId);
+    if(ed && ed.setEditorPreviewAppId) ed.setEditorPreviewAppId(presetId);
+    if(ed && ed.setKeysExpandedAppId) ed.setKeysExpandedAppId(presetId);
     persistMapping();
     renderMappingChrome();
     if(core.maybeEnableAfterComplete) core.maybeEnableAfterComplete(m);
@@ -328,6 +374,10 @@
       global.OneToneApp.toast(t('appTargetApplied'));
     }
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
+    if(global.OneToneAppBehaviorRules){
+      global.OneToneAppBehaviorRules.render();
+      if(global.OneToneAppBehaviorRules.selectAppContext) global.OneToneAppBehaviorRules.selectAppContext(presetId);
+    }
     refresh('mapping');
   }
 
@@ -457,6 +507,10 @@
     applyRecordedVoiceShortcut: applyRecordedVoiceShortcut,
     applyVoiceShortcutKeys: applyVoiceShortcutKeys,
     clearSelectedForManualRecord: clearSelectedForManualRecord,
-    renderCardBadge: renderCardBadge
+    renderCardBadge: renderCardBadge,
+    setPrimaryForMapping: setPrimaryForMapping,
+    clearPrimaryForMapping: clearPrimaryForMapping,
+    shortcutDisplayForMapping: shortcutDisplayForMapping,
+    isPrimaryForMapping: isPrimaryForMapping
   };
 })(typeof window !== 'undefined' ? window : globalThis);

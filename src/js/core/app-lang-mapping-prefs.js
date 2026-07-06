@@ -110,7 +110,7 @@
     var voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
     var voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
     var voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;
-    if(hooks().ui().drawerOpen&&hooks().ui().settingsPanel==='keyWake') hooks().syncKeyExecFinishCard();
+    if(hooks().ui().drawerOpen&&global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel()||global.OneToneSettingsDrawer.isHabitsPanel())) hooks().syncKeyExecFinishCard();
     var voiceEndDesc=$('voiceEndDesc'); if(voiceEndDesc) voiceEndDesc.textContent=d.voiceEndDesc;
     hooks().syncVoiceEndModeUi();
     var voiceEndLabel=$('voiceEndLabel'); if(voiceEndLabel) voiceEndLabel.textContent=d.voiceEndLabel;

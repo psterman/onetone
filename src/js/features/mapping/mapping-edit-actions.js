@@ -37,7 +37,7 @@
     global.OneToneKeyFinishFlowRender.scheduleTimingSave();
     if(skipRender) return;
     global.OneToneMappingList.renderList();
-    if(ui().drawerOpen&&ui().settingsPanel==='keyWake'){
+    if(ui().drawerOpen&&global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isKeysPanel()){
       global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
     }
   }

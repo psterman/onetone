@@ -99,7 +99,7 @@
       runtimeRenderTimer=0;
       renderListenRuntime();
       if(ui.drawerOpen){
-        if(ui.settingsPanel==='keyWake') hooks().renderKeyFinishFlowPanel();
+        if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(ui.settingsPanel)||global.OneToneSettingsDrawer.isHabitsPanel(ui.settingsPanel))) hooks().renderKeyFinishFlowPanel();
         else if(ui.settingsPanel==='debug') hooks().scheduleDebugChromeRefresh();
         else if(ui.settingsPanel==='sounds') hooks().renderSoundSettingsPanel();
       }else{

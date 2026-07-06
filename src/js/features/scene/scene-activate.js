@@ -25,6 +25,8 @@
       toast(t('sceneActivateNeedComplete'),'warn');
       return;
     }
+    m.lastUsedAt=Date.now();
+    m.useCount=(m.useCount||0)+1;
     try{
       global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage({type:'mvp_scheme_select',mappingId:id});
     }catch(_){}

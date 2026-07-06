@@ -87,7 +87,7 @@
     const dictating=hooks().sessionActiveState(stateRaw);
     const focusMode=hooks().isHomeFirstRunFocusMode();
     const paused=!!runtime().paused;
-    let statusMode='idle',statusLine='',ctaMode='config',ctaMain='',ctaSub='',ctaPanel='keyWake',ctaFocus=null;
+    let statusMode='idle',statusLine='',ctaMode='config',ctaMain='',ctaSub='',ctaPanel='keys',ctaFocus=null;
     if(dictating){
       statusMode='active';
       statusLine=endSnap.statusLabel||global.OneToneVoiceEnd.stateLabel(stateRaw);
@@ -122,7 +122,7 @@
       }else{
         ctaSub=t('homeCtaSubVoice');
       }
-      ctaPanel=keyActive?'keyWake':'voiceWake';
+      ctaPanel=keyActive?'keys':'voiceWake';
     }else{
       statusMode='idle';
       statusLine=t('homeStatusTapToStart');
@@ -130,9 +130,9 @@
       ctaMain=t('homeCtaTurnOn');
       ctaSub=t('homeCtaTurnOnSub');
       if(trig&&tgt){
-        ctaPanel='keyWake';
+        ctaPanel='keys';
       }else if(trig&&!tgt){
-        ctaPanel='keyWake';
+        ctaPanel='keys';
         ctaFocus='target';
       }else{
         ctaPanel='voiceWake';
@@ -145,18 +145,18 @@
         ctaMode='start';
         ctaMain=t('homeCtaStart');
         ctaSub=t('homeCtaSubKey').replace('{key}',homeDisplayTriggerLabel(m));
-        ctaPanel='keyWake';
+        ctaPanel='keys';
       }else if(trig&&!tgt){
         ctaMode='config';
         ctaMain=t('homeCtaContinue');
         ctaSub=t('homeCtaSubNeedTarget');
-        ctaPanel='keyWake';
+        ctaPanel='keys';
         ctaFocus='target';
       }else{
         ctaMode='config';
         ctaMain=t('homeCtaContinue');
         ctaSub=t('homeCtaSubNeedTrigger');
-        ctaPanel='keyWake';
+        ctaPanel='keys';
         ctaFocus='trigger';
       }
     }

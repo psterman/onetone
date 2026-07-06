@@ -4,6 +4,14 @@ use crate::scene_config::{voice_runtime_fingerprint, SceneResolveContext};
 use crate::AppState;
 
 #[tauri::command]
+pub fn cmd_foreground_app() -> serde_json::Value {
+    let app_id = crate::app_chat_workflow::foreground_app_target_id();
+    serde_json::json!({
+        "appId": app_id,
+    })
+}
+
+#[tauri::command]
 pub fn cmd_debug_effective_scene(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
     let cfg = state.cfg.lock();
     let ctx = SceneResolveContext {

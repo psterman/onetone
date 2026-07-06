@@ -45,20 +45,50 @@
     return '<svg '+c+'><path d="M18 11V6a2 2 0 0 0-2-2"/><path d="M14 10V4a2 2 0 0 0-2-2"/><path d="M10 10.5V6a2 2 0 0 0-2-2"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>';
   }
 
+  function renderKeyFinishModeSegmented(m){
+    var current=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+    var html='';
+    [
+      {mode:'perpress',title:'habitFinishModeAuto'},
+      {mode:'confirm',title:'habitFinishModeConfirmSend'},
+      {mode:'manual',title:'habitFinishModeManual'}
+    ].forEach(function(opt){
+      var active=current===opt.mode;
+      html+='<button type="button" class="keys-finish-segment'+(active?' is-active':'')+'" data-finish-mode="'+opt.mode+'" role="radio" aria-checked="'+(active?'true':'false')+'">'+t(opt.title)+'</button>';
+    });
+    return html;
+  }
+
+  function renderKeysFinishDelayOnly(m,id){
+    hooks().ensureMappingTiming(m);
+    var seconds=((m.enterDelayMs||1200)/1000).toFixed(1);
+    var html='<div class="keys-finish-delay-card">';
+    html+='<div class="keys-finish-delay-head"><span class="keys-finish-delay-label">'+t('sendTimingTitle')+'</span>';
+    html+='<span class="keys-finish-delay-value">'+seconds+t('keysFinishDelayUnit')+'</span></div>';
+    html+='<div class="voice-end-inline-range keys-finish-delay-range"><input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+(m.enterDelayMs||1200)+'"></div>';
+    html+='<p class="keys-finish-delay-desc">'+t('sendTimingDesc').replace('{n}',seconds)+'</p>';
+    html+='</div>';
+    return html;
+  }
+
+  function useKeysFinishSegmented(){
+    return !!$('keysFinishModeHost');
+  }
+
   function renderKeyFinishModeBlock(m){
     var current=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
     var html='<div class="map-trigger-mode habit-finish-modes">';
     html+='<div class="habit-finish-mode-list">';
     [
-      {mode:'perpress',title:'habitFinishModeDirect',desc:'habitFinishModeDirectDesc'},
-      {mode:'confirm',title:'habitFinishModeConfirm',desc:'habitFinishModeConfirmDesc',recommended:true},
+      {mode:'perpress',title:'habitFinishModeAuto',desc:'habitFinishModeAutoDesc'},
+      {mode:'confirm',title:'habitFinishModeConfirmSend',desc:'habitFinishModeConfirmSendDesc',recommended:true},
       {mode:'manual',title:'habitFinishModeManual',desc:'habitFinishModeManualDesc'}
     ].forEach(function(opt){
       var active=current===opt.mode;
       html+='<button type="button" class="habit-finish-mode-option'+(active?' is-active':'')+'" data-finish-mode="'+opt.mode+'">';
       html+=finishModeIcon(opt.mode);
       html+='<span class="habit-finish-mode-copy"><span class="habit-finish-mode-title">'+t(opt.title)+'</span>';
-      if(opt.recommended&&active) html+='<span class="habit-finish-mode-badge">'+t('habitFinishModeRecommended')+'</span>';
+      if(opt.recommended) html+='<span class="habit-finish-mode-badge">'+t('habitFinishModeRecommended')+'</span>';
       html+='<span class="habit-finish-mode-desc">'+t(opt.desc)+'</span></span>';
       if(active) html+='<svg class="habit-finish-mode-check" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
       html+='</button>';
@@ -102,9 +132,10 @@
   function focusSchemeEditStep(step){
     if(!step) return;
     schemeStepFocus=step;
+    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer('global');
     var flowIds={trigger:'sceneFlowStepTrigger',target:'sceneFlowStepTarget',finish:'sceneFlowStepFinish'};
-    var editIds={trigger:'keySchemeEditTrigger',target:'keySchemeEditTarget',finish:'habitFinishCard'};
-    ['trigger','target','finish'].forEach(function(s){
+    var editIds={trigger:'habitKeyMapRowTrigger',target:'habitKeyMapRowTarget',finish:'habitKeyMapRowFinish',cancel:'habitKeyMapRowCancel'};
+    ['trigger','target','finish','cancel'].forEach(function(s){
       var card=$(editIds[s]);
       if(card) card.classList.remove('is-focus-highlight');
     });
@@ -120,6 +151,7 @@
       var flowEl=$(flowIds[step]);
       if(flowEl) flowEl.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
+    if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.highlightRow(step);
     syncKeySchemeTimeline(step);
   }
 
@@ -132,7 +164,7 @@
     var delBtn=$('btnKeySchemeDelete');
     var busy=global.OneToneMappingRecording.mode()!=='none';
     if(addBtn){
-      addBtn.textContent=t('addMapping');
+      addBtn.textContent=t('habitSwitcherNew');
       var ready=hooks().isCurrentDraftComplete();
       addBtn.disabled=!ready||busy;
       addBtn.title=(!ready&&!busy)?t('addNeedComplete'):'';
@@ -190,27 +222,26 @@
 
   function syncKeyExecFinishTimingSection(m){
     var section=$('keyExecFinishTimingSection');
-    var details=$('habitFinishAdvanced');
     if(!section) return;
     if(!m||!hooks().isSavedMapping(m)){
       section.hidden=true;
-      if(details) details.open=false;
       return;
     }
     hooks().ensureMappingTiming(m);
-    var mode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
-    var showConfirm=mode==='confirm';
-    section.hidden=!showConfirm;
-    if(details){
-      details.classList.toggle('is-available',showConfirm);
-      if(!showConfirm) details.open=false;
+    var show=false;
+    if(global.OneToneHabitCompatibility&&global.OneToneHabitCompatibility.needsConfirmTiming){
+      show=global.OneToneHabitCompatibility.needsConfirmTiming(m);
+    }else if(global.OneToneSceneFlowSummary){
+      show=global.OneToneSceneFlowSummary.resolveFinishMode(m)==='confirm';
     }
+    section.hidden=!show;
   }
 
   function renderKeyFinishFlowPanel(){
     var modePanel=$('voiceEndKeyModePanel');
     var cancelCard=$('voiceEndCancelCard');
     var confirmCard=$('voiceEndConfirmCard');
+    var delayHost=$('keysFinishDelayHost');
     if(!modePanel||!cancelCard||!confirmCard) return;
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
@@ -221,22 +252,43 @@
       modePanel.innerHTML=empty;
       cancelCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('cancelTimingTitle')+'</span></div></div>'+empty;
       confirmCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('sendTimingTitle')+'</span></div></div>'+empty;
+      if(delayHost){ delayHost.innerHTML=''; delayHost.hidden=true; }
       syncKeyExecFinishTimingSection(null);
       renderKeySchemeCardHeader();
       syncKeySchemeTimeline(schemeStepFocus);
       hooks().renderHomeKeyFinishPreview(false);
+      if(global.OneToneHabitKeyMappingTable){
+        global.OneToneHabitKeyMappingTable.syncRowStatus();
+      }
+      if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
       return;
     }
     syncKeyExecFinishCard();
-    modePanel.innerHTML=renderKeyFinishModeBlock(m);
+    modePanel.innerHTML=useKeysFinishSegmented()?renderKeyFinishModeSegmented(m):renderKeyFinishModeBlock(m);
     cancelCard.innerHTML=renderKeyTimingCard(m,m.id,'cancel');
     confirmCard.innerHTML=renderKeyTimingCard(m,m.id,'confirm');
+    if(delayHost){
+      var finishMode=global.OneToneSceneFlowSummary?global.OneToneSceneFlowSummary.resolveFinishMode(m):'manual';
+      if(finishMode==='confirm'){
+        delayHost.innerHTML=renderKeysFinishDelayOnly(m,m.id);
+        syncAllTimingRanges(delayHost);
+        delayHost.hidden=false;
+      }else{
+        delayHost.innerHTML='';
+        delayHost.hidden=true;
+      }
+    }
     syncAllTimingRanges(cancelCard);
     syncAllTimingRanges(confirmCard);
     syncKeyExecFinishTimingSection(m);
     renderKeySchemeCardHeader();
     syncKeySchemeTimeline(schemeStepFocus);
     hooks().renderHomeKeyFinishPreview(false);
+    if(global.OneToneHabitKeyMappingTable){
+      global.OneToneHabitKeyMappingTable.syncRowStatus();
+    }
+    if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
+    if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
   }
 
   function handleKeyFinishFlowInput(e){
@@ -259,6 +311,7 @@
       renderKeyFinishFlowPanel();
       hooks().renderMappingList();
       if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
+      if(global.OneToneHabitMulti) global.OneToneHabitMulti.render();
       return true;
     }
     var modeBtn=el.closest&&el.closest('[data-trigger-mode]');
@@ -325,9 +378,11 @@
     m[field]=val;
     scheduleTimingSave();
     syncTimingRangeFill(range);
-    var block=range.closest('.map-timing-block');
-    var desc=block&&block.querySelector('.map-timing-desc');
+    var block=range.closest('.map-timing-block')||range.closest('.keys-finish-delay-card');
+    var desc=block&&block.querySelector('.map-timing-desc,.keys-finish-delay-desc');
     if(desc) desc.innerHTML=timingDescText(field,val);
+    var valEl=block&&block.querySelector('.keys-finish-delay-value');
+    if(valEl&&field==='enterDelayMs') valEl.textContent=formatTimingSec(val)+t('keysFinishDelayUnit');
   }
 
   global.OneToneKeyFinishFlowRender={

@@ -165,6 +165,7 @@
       if(el) el.textContent=label;
       if(disp) disp.classList.toggle('empty',!normalized);
     }
+    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
   }
 
   function armLocalCaptureGuard(){
@@ -308,7 +309,8 @@
     if(onboardTriggerCard) onboardTriggerCard.classList.toggle('is-recording',rec.mode==='trigger');
     if(onboardTargetCard) onboardTargetCard.classList.toggle('is-recording',rec.mode==='target');
     if(window.OneToneOnboarding&&window.OneToneOnboarding.syncRecordingUi) window.OneToneOnboarding.syncRecordingUi();
-    if(hooks().ui().drawerOpen&&hooks().ui().settingsPanel==='keyWake') hooks().syncKeySchemeTimeline(hooks().schemeStepFocus());
+    if(hooks().ui().drawerOpen&&global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isKeysPanel()) hooks().syncKeySchemeTimeline(hooks().schemeStepFocus());
+    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
   }
 
   function renderRecordCancelBar(){

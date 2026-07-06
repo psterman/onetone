@@ -5,12 +5,16 @@
 
   function applySettingsTexts(d){
     var settingsNavBasic=$('settingsNavBasicLabel'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
-    var settingsNavKeyWake=$('settingsNavKeyWakeLabel'); if(settingsNavKeyWake) settingsNavKeyWake.textContent=d.settingsNavKeyWake;
+    var settingsNavKeys=$('settingsNavKeysLabel'); if(settingsNavKeys) settingsNavKeys.textContent=d.settingsNavKeys;
+    var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
     var settingsNavGeneral=$('settingsNavGeneralLabel'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
-    var spKey=$('settingsPanelKeyWakeDesc'); if(spKey) spKey.textContent=d.settingsPanelKeyWakeDesc;
+    var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
+    var spKeysTitle=$('settingsPanelKeysTitle'); if(spKeysTitle) spKeysTitle.textContent=d.settingsNavKeys;
+    var spHabits=$('settingsPanelHabitsDesc'); if(spHabits) spHabits.textContent=d.settingsPanelHabitsDesc;
+    var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
     var settingsVoiceCommonTitle=$('settingsVoiceCommonTitle'); if(settingsVoiceCommonTitle) settingsVoiceCommonTitle.textContent=d.settingsVoiceCommonTitle;
     var settingsVoiceAdvancedSummary=$('settingsVoiceAdvancedSummary'); if(settingsVoiceAdvancedSummary) settingsVoiceAdvancedSummary.textContent=d.settingsVoiceAdvancedSummary;
@@ -18,7 +22,7 @@
     var quickKeyWakeSummary=$('quickKeyWakeSummary'); if(quickKeyWakeSummary) quickKeyWakeSummary.textContent=d.quickKeyWakeSummary;
     var quickKeyWakeHint=$('quickKeyWakeHint'); if(quickKeyWakeHint) quickKeyWakeHint.textContent=d.quickKeyWakeHint;
     var keyExecFinishTitle=$('keyExecFinishTitle'); if(keyExecFinishTitle) keyExecFinishTitle.textContent=d.keyExecFinishTitle;
-    var keySchemeCardKicker=$('keySchemeCardKicker'); if(keySchemeCardKicker&&!(global.OneToneState.ui.drawerOpen&&global.OneToneState.ui.settingsPanel==='keyWake'&&global.OneToneState.state.selectedMappingId!==(global.OneToneState.state.config&&global.OneToneState.state.config.activeSceneId))) keySchemeCardKicker.textContent=d.keySchemeCardKicker;
+    var keySchemeCardKicker=$('keySchemeCardKicker'); if(keySchemeCardKicker&&!(global.OneToneState.ui.drawerOpen&&global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isHabitsPanel()&&global.OneToneState.state.selectedMappingId!==(global.OneToneState.state.config&&global.OneToneState.state.config.activeSceneId))) keySchemeCardKicker.textContent=d.keySchemeCardKicker;
     var sceneTabKeysLabel=$('sceneTabKeysLabel'); if(sceneTabKeysLabel) sceneTabKeysLabel.textContent=d.sceneTabKeys;
     var sceneTabVoiceLabel=$('sceneTabVoiceLabel'); if(sceneTabVoiceLabel) sceneTabVoiceLabel.textContent=d.sceneTabVoice;
     var sceneTabAdvancedLabel=$('sceneTabAdvancedLabel'); if(sceneTabAdvancedLabel) sceneTabAdvancedLabel.textContent=d.sceneTabAdvanced;

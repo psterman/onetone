@@ -206,6 +206,10 @@
     hooks().renderRecordCancelBar();
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
+    if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
+    if(global.OneToneHabitMulti) global.OneToneHabitMulti.render();
+    if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
+    if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
   }
 
   global.OneToneMappingList={

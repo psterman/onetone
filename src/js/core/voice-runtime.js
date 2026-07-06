@@ -52,7 +52,7 @@
           }
           if(panel==='voiceWake') maybeSyncMicLevelMonitor();
           if(panel==='voiceWake') maybeRenderMappingListFromVoice();
-          if(panel==='keyWake') hooks().renderKeyFinishFlowPanel();
+          if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(panel)||global.OneToneSettingsDrawer.isHabitsPanel(panel))) hooks().renderKeyFinishFlowPanel();
           if(panel==='debug') hooks().scheduleDebugChromeRefresh();
         }else{
           homeLightRenderCounter++;
