@@ -26,6 +26,7 @@
     syncToggle(next);
     global.OneToneConfigPersist.saveAsync().then(function(){
       syncToggle(!!st.config.startMinimizedToTray);
+      if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
     }).catch(function(err){
       st.config.startMinimizedToTray=!next;
       loadState();

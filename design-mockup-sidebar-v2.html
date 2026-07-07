@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · 语音侧栏改版视觉稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f5f6f8;
+  --surface-3: #eef0f3;
+  --line: #e7e8ec;
+  --line-soft: #eef0f3;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #94a3b8;
+  --ink-4: #cbd5e1;
+  --accent: #2563eb;
+  --accent-ink: #1d4ed8;
+  --accent-soft: #eaf1ff;
+  --accent-softer: #f5f8ff;
+  --success: #10b981;
+  --success-soft: #d1fae5;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.04);
+  --shadow: 0 4px 16px -4px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
+  --shadow-lg: 0 20px 48px -16px rgba(15,23,42,.12), 0 2px 6px rgba(15,23,42,.04);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body { background:var(--bg); color:var(--ink); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; font-feature-settings:'cv11'; }
+body { padding:64px 48px 96px; max-width:1280px; margin:0 auto; }
+
+/* HERO */
+.hero { display:grid; grid-template-columns:1.2fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:1px solid var(--line); }
+.hero h1 { font-family:'DM Serif Display', serif; font-weight:400; font-size:54px; line-height:1.05; letter-spacing:-.01em; }
+.hero h1 em { font-style:italic; color:var(--accent); }
+.hero .lead { font-size:16px; line-height:1.55; color:var(--ink-2); margin-top:20px; max-width:540px; }
+.hero .meta { display:flex; flex-direction:column; gap:10px; padding:20px 24px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); font-size:13px; color:var(--ink-2); }
+.hero .meta dt { color:var(--ink-3); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:2px; }
+.hero .meta dd { color:var(--ink); font-weight:500; }
+
+/* SECTION */
+.section { padding:64px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; }
+.section-head .num { font-family:'DM Serif Display', serif; font-size:24px; color:var(--accent); }
+.section-head h2 { font-size:30px; font-weight:600; letter-spacing:-.01em; }
+.section-head .sub { font-size:14px; color:var(--ink-2); margin-left:auto; }
+
+/* MAIN SIDEBAR MOCKUP */
+.stage { display:grid; grid-template-columns: 380px 1fr; gap:48px; align-items:start; }
+.app-frame { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:8px; box-shadow:var(--shadow-lg); }
+.app-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:#f4f5f7; border-bottom:1px solid var(--line); border-radius:12px 12px 0 0; }
+.app-bar .dot { width:10px; height:10px; border-radius:50%; background:#d4d6db; }
+.app-bar .dot.r{ background:#ff6259; } .app-bar .dot.y{ background:#ffbd2e; } .app-bar .dot.g{ background:#28c840; }
+.app-bar .title { font-size:12px; color:var(--ink-3); font-family:'JetBrains Mono', monospace; margin-left:14px; }
+.app-shell { background:#fcfcfd; border-radius:0 0 12px 12px; padding:18px; min-height:920px; }
+
+.sidebar { display:flex; flex-direction:column; gap:12px; }
+
+/* CARD */
+.card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+.card-head { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-bottom:1px solid var(--line-soft); }
+.card-head .title { font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:7px; }
+.card-head .title svg { color:var(--ink-3); }
+.card-head .more { font-size:11px; color:var(--ink-3); cursor:pointer; }
+.card-head .more:hover { color:var(--accent); }
+.card-body { padding:14px; }
+
+/* LIVE AUDIO CARD */
+.live { background:linear-gradient(180deg, #f5f8ff 0%, #ffffff 60%); }
+.live-head { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; }
+.live-head .status { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--success); font-weight:500; }
+.live-head .status::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--success); box-shadow:0 0 0 3px rgba(16,185,129,.18); animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{ box-shadow:0 0 0 3px rgba(16,185,129,.18);} 50%{ box-shadow:0 0 0 5px rgba(16,185,129,.05);} }
+
+.mic-select { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; margin:0 14px 10px; cursor:pointer; }
+.mic-select:hover { border-color:var(--accent); }
+.mic-select .ico { width:24px; height:24px; border-radius:7px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+.mic-select .name { flex:1; font-size:13px; font-weight:500; }
+.mic-select .meta { font-size:10px; color:var(--ink-3); font-family:'JetBrains Mono', monospace; }
+
+.wave { display:flex; align-items:center; justify-content:space-between; gap:3px; height:36px; padding:0 14px; margin-bottom:8px; }
+.wave .bar { flex:1; background:linear-gradient(180deg, var(--accent), #60a5fa); border-radius:2px; min-height:4px; animation:wave 1.2s ease-in-out infinite; opacity:.85; }
+.wave .bar:nth-child(1){ height:30%; animation-delay:.0s; }
+.wave .bar:nth-child(2){ height:55%; animation-delay:.1s; }
+.wave .bar:nth-child(3){ height:80%; animation-delay:.2s; }
+.wave .bar:nth-child(4){ height:95%; animation-delay:.05s; }
+.wave .bar:nth-child(5){ height:70%; animation-delay:.15s; }
+.wave .bar:nth-child(6){ height:100%; animation-delay:.25s; }
+.wave .bar:nth-child(7){ height:85%; animation-delay:.12s; }
+.wave .bar:nth-child(8){ height:65%; animation-delay:.22s; }
+.wave .bar:nth-child(9){ height:90%; animation-delay:.08s; }
+.wave .bar:nth-child(10){ height:75%; animation-delay:.18s; }
+.wave .bar:nth-child(11){ height:55%; animation-delay:.28s; }
+.wave .bar:nth-child(12){ height:80%; animation-delay:.13s; }
+.wave .bar:nth-child(13){ height:50%; animation-delay:.23s; }
+.wave .bar:nth-child(14){ height:35%; animation-delay:.06s; }
+.wave .bar:nth-child(15){ height:60%; animation-delay:.16s; }
+.wave .bar:nth-child(16){ height:75%; animation-delay:.26s; }
+.wave .bar:nth-child(17){ height:45%; animation-delay:.09s; }
+.wave .bar:nth-child(18){ height:65%; animation-delay:.19s; }
+.wave .bar:nth-child(19){ height:40%; animation-delay:.29s; }
+.wave .bar:nth-child(20){ height:55%; animation-delay:.11s; }
+@keyframes wave { 0%,100%{ transform:scaleY(.6);} 50%{ transform:scaleY(1.1);} }
+
+.recognition { padding:12px 14px; border-top:1px solid var(--line-soft); }
+.recognition .lbl { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.recognition .lbl::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--accent); animation:pulse 1.4s ease-in-out infinite; }
+.recognition .text { font-size:13px; line-height:1.5; color:var(--ink); font-weight:500; min-height:20px; }
+.recognition .text .typing::after { content:"▎"; color:var(--accent); animation:blink .8s steps(1) infinite; margin-left:1px; }
+@keyframes blink { 50%{ opacity:0; } }
+.recognition .text .placeholder { color:var(--ink-4); font-weight:400; }
+
+/* ENGINE CARD */
+.engine { padding:0; }
+.engine-head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+.engine-head .label { font-size:14px; font-weight:600; color:var(--accent-ink); display:flex; align-items:center; gap:7px; }
+.engine-head .label .ico { width:22px; height:22px; border-radius:6px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+.engine-head .badge { font-size:10px; color:var(--success); padding:2px 8px; background:var(--success-soft); border-radius:999px; font-weight:600; letter-spacing:.02em; }
+.engine-meta { display:flex; align-items:center; gap:10px; padding:0 14px 12px; font-size:11px; color:var(--ink-3); }
+.engine-meta .sep { width:1px; height:10px; background:var(--line); }
+.engine-meta code { font-family:'JetBrains Mono', monospace; }
+.lang-row { padding:10px 14px; border-top:1px solid var(--line-soft); display:flex; align-items:center; gap:10px; }
+.lang-row .lbl { font-size:12px; color:var(--ink-2); }
+.seg { display:inline-flex; padding:3px; background:var(--surface-2); border-radius:9px; flex:1; }
+.seg button { flex:1; padding:7px 10px; font-size:12px; border:none; background:transparent; color:var(--ink-2); border-radius:6px; font-family:inherit; cursor:pointer; font-weight:500; transition:.18s; }
+.seg button.on { background:#fff; color:var(--ink); box-shadow:var(--shadow-sm); font-weight:600; }
+.engine-actions { padding:10px 14px 14px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+.engine-actions .btn { padding:8px 6px; font-size:11px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px; transition:.18s; }
+.engine-actions .btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* APP SUMMON CARD */
+.summon-head { padding:11px 14px; border-bottom:1px solid var(--line-soft); }
+.summon-head .title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:7px; }
+.summon-head .title svg { color:var(--ink-3); }
+.summon-head .tip { font-size:11px; color:var(--ink-2); margin-top:6px; line-height:1.5; }
+.apps { display:flex; flex-direction:column; }
+.app { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line-soft); transition:.18s; cursor:pointer; }
+.app:last-child { border-bottom:none; }
+.app:hover { background:var(--surface-2); }
+.app.current { background:var(--accent-softer); }
+.app.current:hover { background:#eaf1ff; }
+.app .logo { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff; flex-shrink:0; }
+.app .info { flex:1; min-width:0; }
+.app .name { font-size:13px; font-weight:600; line-height:1.2; margin-bottom:3px; }
+.app.current .name { color:var(--accent-ink); }
+.app .wake { font-size:11px; color:var(--ink-2); display:inline-flex; align-items:center; gap:4px; margin-bottom:4px; }
+.app .wake .quote { color:var(--ink-3); font-family:'JetBrains Mono', monospace; font-size:10.5px; padding:1px 6px; background:var(--surface-2); border-radius:4px; }
+.app.current .wake .quote { background:#fff; }
+.app .shortcuts { display:flex; gap:3px; align-items:center; }
+.kbd { font-family:'JetBrains Mono', monospace; font-size:10.5px; padding:2px 6px; background:#fff; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; color:var(--ink-2); box-shadow:0 1px 0 rgba(15,23,42,.04); line-height:1.1; min-width:18px; text-align:center; }
+.app.current .kbd { background:#fff; border-color:#c5dafd; color:var(--accent-ink); }
+.app .shortcuts .plus { font-size:10px; color:var(--ink-4); }
+.btn-use { padding:6px 12px; font-size:12px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-weight:500; cursor:pointer; transition:.18s; flex-shrink:0; }
+.btn-use:hover { color:var(--accent); border-color:var(--accent); }
+.btn-current { padding:6px 12px; font-size:12px; color:#fff; background:var(--accent); border:1px solid var(--accent); border-radius:8px; font-family:inherit; font-weight:600; cursor:pointer; flex-shrink:0; box-shadow:0 1px 2px rgba(37,99,235,.3); }
+
+.summon-foot { padding:10px 14px; border-top:1px dashed var(--line); font-size:11px; color:var(--ink-3); display:flex; align-items:center; gap:5px; cursor:pointer; }
+.summon-foot:hover { color:var(--accent); }
+
+/* ANNOTATIONS */
+.annotation { font-size:13px; line-height:1.7; color:var(--ink-2); }
+.annotation h3 { font-size:18px; font-weight:600; color:var(--ink); margin-bottom:10px; display:flex; align-items:center; gap:10px; }
+.annotation h3 .num { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:12px; font-weight:600; font-family:'JetBrains Mono', monospace; }
+.annotation p { margin-bottom:10px; }
+.annotation .point { display:flex; gap:10px; padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:10px; margin-top:8px; font-size:12.5px; }
+.annotation .point .dot { width:5px; height:5px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:8px; }
+
+/* STATES */
+.states { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.state-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+.state-head { padding:12px 14px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between; }
+.state-head .label { font-size:12px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:6px; }
+.state-head .tag { font-size:10px; padding:2px 8px; border-radius:999px; font-weight:600; }
+.state-head .tag.live { background:var(--success-soft); color:var(--success); }
+.state-head .tag.idle { background:#f1f5f9; color:var(--ink-3); }
+.state-head .tag.warn { background:#fef3c7; color:#b45309; }
+.state-body { padding:14px; }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:12px; }
+.kv dt { color:var(--ink-3); }
+.kv dd { color:var(--ink); font-weight:500; font-family:'JetBrains Mono', monospace; font-size:11.5px; }
+.app-row-demo { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:9px; margin-bottom:6px; background:#fff; }
+.app-row-demo .logo { width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; }
+.app-row-demo .name { flex:1; font-size:12px; font-weight:500; }
+.app-row-demo .badge { font-size:10px; padding:1px 7px; border-radius:5px; font-weight:600; }
+.app-row-demo .badge.on { background:var(--accent-soft); color:var(--accent-ink); }
+.app-row-demo .badge.off { background:var(--surface-2); color:var(--ink-3); }
+
+footer.footer { margin-top:80px; padding-top:32px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-size:12px; color:var(--ink-3); }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero { grid-template-columns:1fr; }
+  .stage { grid-template-columns:1fr; }
+  .states { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div>
+    <h1>语音侧栏<em> · 改版</em></h1>
+    <p class="lead">把语音页右侧栏做成"实时仪表盘"——麦克风电平、识别引擎、应用召唤三段独立卡片，状态和数值外显，让用户随时感知系统在干什么。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>Scope</dt><dd>语音页 · 右侧栏</dd></div>
+    <div><dt>Source</dt><dd>基于真实截图核对结构</dd></div>
+    <div><dt>Version</dt><dd>v2.1 侧栏精修稿</dd></div>
+    <div><dt>Width</dt><dd>~380px (Tauri 窗口适配)</dd></div>
+  </dl>
+</header>
+
+<!-- MAIN MOCKUP -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>改版稿 · 完整侧栏</h2>
+    <span class="sub">实时仪表 + 引擎卡片 + 应用召唤</span>
+  </div>
+
+  <div class="stage">
+    <!-- ===== SIDEBAR MOCKUP ===== -->
+    <div class="app-frame">
+      <div class="app-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">voice-pilot · 侧栏</span>
+      </div>
+      <div class="app-shell">
+        <div class="sidebar">
+
+          <!-- LIVE CARD -->
+          <div class="card live">
+            <div class="live-head">
+              <span style="font-size:13px; font-weight:600;">实时语音</span>
+              <span class="status">监听中</span>
+            </div>
+            <div class="mic-select">
+              <span class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </span>
+              <span style="flex:1;">
+                <div class="name">Wireless Mic Rx</div>
+                <div class="meta">44.1 kHz · 实时</div>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="wave">
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </div>
+            <div class="recognition">
+              <div class="lbl">实时识别</div>
+              <div class="text"><span class="typing">你现在你就无最小单位的最小单元的</span></div>
+            </div>
+          </div>
+
+          <!-- ENGINE CARD -->
+          <div class="card engine">
+            <div class="engine-head">
+              <span class="label">
+                <span class="ico">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </span>
+                识别引擎
+              </span>
+              <span class="badge">● 完整链路</span>
+            </div>
+            <div class="engine-meta">
+              <code>本地离线识别</code>
+              <span class="sep"></span>
+              <code>small-cn · 12.4 MB</code>
+              <span class="sep"></span>
+              <code>延迟 380ms</code>
+            </div>
+            <div class="lang-row">
+              <span class="lbl">识别语言</span>
+              <div class="seg">
+                <button class="on">中文</button>
+                <button>English</button>
+              </div>
+            </div>
+            <div class="engine-actions">
+              <button class="btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                资源目录
+              </button>
+              <button class="btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                下载模型
+              </button>
+              <button class="btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                重试启动
+              </button>
+            </div>
+          </div>
+
+          <!-- SUMMON CARD -->
+          <div class="card">
+            <div class="summon-head">
+              <span class="title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                应用召唤
+              </span>
+              <div class="tip">说出唤醒词，自动打开应用并开始语音输入</div>
+            </div>
+            <div class="apps">
+
+              <div class="app">
+                <span class="logo" style="background:#000;">⏚</span>
+                <div class="info">
+                  <div class="name">Cursor</div>
+                  <div class="wake"><span class="quote">「打开 Cursor」</span></div>
+                  <div class="shortcuts">
+                    <span class="kbd">Ctrl</span><span class="plus">+</span><span class="kbd">L</span>
+                  </div>
+                </div>
+                <button class="btn-use">使用</button>
+              </div>
+
+              <div class="app">
+                <span class="logo" style="background:#10a37f;">⊕</span>
+                <div class="info">
+                  <div class="name">Codex</div>
+                  <div class="wake"><span class="quote">「打开 Codex」</span></div>
+                  <div class="shortcuts">
+                    <span class="kbd">RAlt</span>
+                  </div>
+                </div>
+                <button class="btn-use">使用</button>
+              </div>
+
+              <div class="app">
+                <span class="logo" style="background:#d97706;">C</span>
+                <div class="info">
+                  <div class="name">Claude Code</div>
+                  <div class="wake"><span class="quote">「打开 Claude」</span></div>
+                  <div class="shortcuts">
+                    <span class="kbd">Ctrl</span><span class="plus">+</span><span class="kbd">Shift</span><span class="plus">+</span><span class="kbd">↵</span>
+                  </div>
+                </div>
+                <button class="btn-use">使用</button>
+              </div>
+
+              <div class="app current">
+                <span class="logo" style="background:#0f172a;">M</span>
+                <div class="info">
+                  <div class="name">MiniMax</div>
+                  <div class="wake"><span class="quote">「打开 MiniMax」</span></div>
+                  <div class="shortcuts">
+                    <span class="kbd">RAlt</span>
+                  </div>
+                </div>
+                <button class="btn-current">当前</button>
+              </div>
+
+            </div>
+            <div class="summon-foot">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              在按键页管理应用快捷键
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ANNOTATIONS ===== -->
+    <div class="annotation">
+
+      <h3><span class="num">1</span> 实时语音卡 · 波形 + 打字光标</h3>
+      <p>原版只有一行"实时识别"的死字串，看不出系统在不在工作。改成三件事：</p>
+      <div class="point"><span class="dot"></span>顶部 <b>监听中</b> 状态 + 呼吸脉冲圆点，眼睛一瞄就知道系统在不在监听</div>
+      <div class="point"><span class="dot"></span>中间 <b>实时波形</b>，20 根 bar 错峰跳动 —— 这才是"语音工具"该有的视觉信号</div>
+      <div class="point"><span class="dot"></span>底部 <b>识别文字 + 打字光标</b> ▎，光标 0.8s 闪一次，比静态文字"活"</div>
+
+      <h3 style="margin-top:32px;"><span class="num">2</span> 识别引擎卡 · 三层信息</h3>
+      <p>原版就一个 "本地离线识别" + 完整链路标签，信息全挤一行。拆成三层：</p>
+      <div class="point"><span class="dot"></span><b>头部</b>：引擎名 + 完整链路绿标（一眼看状态）</div>
+      <div class="point"><span class="dot"></span><b>Meta 行</b>：模型名 / 大小 / 延迟 —— 写等宽字体，像终端输出一样紧凑</div>
+      <div class="point"><span class="dot"></span><b>语言切换</b>：独立的 seg control，原版塞进文字描述里</div>
+      <div class="point"><span class="dot"></span><b>三个动作按钮</b>：资源目录 / 下载模型 / 重试启动 等宽并排，加 hover 状态</div>
+
+      <h3 style="margin-top:32px;"><span class="num">3</span> 应用召唤卡 · 状态分层</h3>
+      <p>原版 4 个应用挤在一行，"当前"按钮和其他"使用"按钮视觉差异弱。改成：</p>
+      <div class="point"><span class="dot"></span>激活的 MiniMax 整行有 <b>淡蓝背景</b>，logo + 名称 + 快捷键全变 accent 色</div>
+      <div class="point"><span class="dot"></span><b>当前</b> 实心蓝按钮 vs <b>使用</b> 描边白按钮，视觉权重差一档</div>
+      <div class="point"><span class="dot"></span>每行的 <b>快捷键 kbd</b> 用真正的键盘样式（白底 + 底边阴影），和正文 monospace 分开</div>
+      <div class="point"><span class="dot"></span>底部 <b>虚线分隔</b> + 引导链接，去按键页管理快捷键</div>
+
+      <h3 style="margin-top:32px;"><span class="num">4</span> 卡片层 · dashed 给引擎</h3>
+      <p>三个卡片里只给"识别引擎"保留 dashed border —— 表达"这个还在跑/可能要重试"的不确定感。其他两个是确定性信息，给实线。</p>
+
+    </div>
+  </div>
+</section>
+
+<!-- STATES SECTION -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>三种状态</h2>
+    <span class="sub">侧栏在不同场景下的形态</span>
+  </div>
+
+  <div class="states">
+
+    <!-- IDLE -->
+    <div class="state-card">
+      <div class="state-head">
+        <span class="label">① 空闲态</span>
+        <span class="tag idle">未激活</span>
+      </div>
+      <div class="state-body">
+        <div class="mic-select" style="margin:0 0 10px;">
+          <span class="ico">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          </span>
+          <span style="flex:1;">
+            <div class="name">Wireless Mic Rx</div>
+            <div class="meta">未连接</div>
+          </span>
+        </div>
+        <div style="height:36px; display:flex; align-items:center; gap:3px; padding:0 0 8px;">
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+          <span style="flex:1; height:4px; background:var(--surface-2); border-radius:2px;"></span>
+        </div>
+        <div class="recognition" style="border-top:none; padding:0;">
+          <div class="text"><span class="placeholder">等待唤醒词...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTENING -->
+    <div class="state-card">
+      <div class="state-head">
+        <span class="label">② 监听中</span>
+        <span class="tag live">● 实时</span>
+      </div>
+      <div class="state-body">
+        <div class="mic-select" style="margin:0 0 10px;">
+          <span class="ico">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          </span>
+          <span style="flex:1;">
+            <div class="name">Wireless Mic Rx</div>
+            <div class="meta" style="color:var(--success);">44.1 kHz · 监听中</div>
+          </span>
+        </div>
+        <div class="wave" style="padding:0; margin-bottom:10px;">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </div>
+        <div class="recognition" style="border-top:none; padding:0;">
+          <div class="lbl" style="margin-bottom:4px;">实时识别</div>
+          <div class="text"><span class="typing">你现在你就无最小单位的最小单元的</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP CURRENT -->
+    <div class="state-card">
+      <div class="state-head">
+        <span class="label">③ 应用切换态</span>
+        <span class="tag warn">唤醒词触发</span>
+      </div>
+      <div class="state-body">
+        <div class="kv" style="margin-bottom:10px;">
+          <dt>唤醒词</dt><dd style="color:var(--accent);">「打开 MiniMax」</dd>
+          <dt>识别置信度</dt><dd>97%</dd>
+          <dt>匹配应用</dt><dd style="color:var(--accent-ink);">MiniMax</dd>
+          <dt>触发动作</dt><dd>RAlt · 聚焦输入框</dd>
+        </div>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:8px;">应用列表更新 ↓</div>
+        <div class="app-row-demo">
+          <span class="logo" style="background:#000;">⏚</span>
+          <span class="name">Cursor</span>
+          <span class="badge off">使用</span>
+        </div>
+        <div class="app-row-demo" style="background:var(--accent-softer); border-color:#c5dafd;">
+          <span class="logo" style="background:#0f172a;">M</span>
+          <span class="name" style="color:var(--accent-ink);">MiniMax</span>
+          <span class="badge on">当前</span>
+        </div>
+        <div class="app-row-demo">
+          <span class="logo" style="background:#d97706;">C</span>
+          <span class="name">Claude Code</span>
+          <span class="badge off">使用</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- KEY CHANGES -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>对比 · 原版 vs 改版</h2>
+    <span class="sub">侧栏最影响精致感的 5 个改动</span>
+  </div>
+
+  <div class="stage">
+
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px;">
+      <div style="font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px;">原版 · 截图还原</div>
+      <div style="background:#fcfcfd; border-radius:10px; padding:14px; font-size:12px; color:var(--ink-2); line-height:1.6;">
+        <div style="padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:8px;">
+          <div style="font-weight:600; font-size:13px; color:var(--ink);">麦克风与试听</div>
+          <div style="margin-top:6px; font-family:'JetBrains Mono', monospace; font-size:11px;">麦克风 (Wireless Mic Rx)</div>
+          <div style="margin-top:4px; font-size:11px;">实时识别: 你现在你就无最小单位的最小单元的</div>
+        </div>
+        <div style="padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:8px;">
+          <div style="font-weight:600; font-size:13px; color:var(--ink);">识别细项</div>
+          <div style="margin-top:6px;">本地离线识别</div>
+        </div>
+        <div style="padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:8px;">
+          <div style="font-weight:600; font-size:13px; color:var(--ink);">应用召唤</div>
+          <div style="margin-top:6px;">MiniMax · 唤醒词: 「打开 MiniMax」</div>
+        </div>
+        <div style="font-size:11px; color:var(--ink-3); margin-bottom:6px;">说出召唤词可打开对应应用，并自动开始语音输入。</div>
+        <div style="padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:8px; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+          <span style="width:18px; height:18px; background:#000; border-radius:4px; color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center;">⏚</span>
+          <div style="flex:1; font-size:12px;"><b>Cursor</b> · 「打开 Cursor」</div>
+          <button style="font-size:10px; padding:3px 8px; background:#fff; border:1px solid var(--line); border-radius:5px;">使用</button>
+        </div>
+        <div style="padding:10px 12px; background:var(--accent-soft); border:1px solid var(--line); border-radius:8px; display:flex; align-items:center; gap:8px;">
+          <span style="width:18px; height:18px; background:#0f172a; border-radius:4px; color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center;">M</span>
+          <div style="flex:1; font-size:12px;"><b>MiniMax</b> · 「打开 MiniMax」</div>
+          <button style="font-size:10px; padding:3px 8px; background:var(--accent); color:#fff; border-radius:5px;">当前</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <h3><span class="num">1</span> 实时识别从死字串 → 波形 + 打字光标</h3>
+      <p>原版只是把识别结果摆在那里，看不出系统在不在监听。改版加入<b>波形动画</b>和<b>光标闪烁</b>，"实时"二字真正兑现。</p>
+
+      <h3 style="margin-top:24px;"><span class="num">2</span> 引擎卡片信息密度提升</h3>
+      <p>原版只有 "本地离线识别" 一行字。改版加上 <b>模型大小 · 延迟 · 完整链路状态</b>，用等宽字体呈现 —— 像 dev tools 而不是用户文档。</p>
+
+      <h3 style="margin-top:24px;"><span class="num">3</span> 应用快捷键 kbd 化</h3>
+      <p>原版把 <code>Ctrl + L</code> 这种按键直接当文字显示，没有"键盘"的视觉重量。改版用真正的 <b>kbd 样式</b>（白底+下边框阴影），和正文 monospace 拉开。</p>
+
+      <h3 style="margin-top:24px;"><span class="num">4</span> 当前/使用按钮视觉权重拉开</h3>
+      <p>原版两个按钮都像二级操作。改版：当前 = <b>实心蓝</b>，使用 = <b>描边白</b>。再配合激活应用行的淡蓝底，整组视觉层级立刻清晰。</p>
+
+      <h3 style="margin-top:24px;"><span class="num">5</span> dashed border 只留给引擎卡</h3>
+      <p>三个卡片里只有"识别引擎"保留 dashed border —— 暗示它"需要关注/可能需要重试"。其他两个确定性信息给实线，主次感就出来了。</p>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <span>voice-pilot · 语音侧栏精修稿 v2.1</span>
+  <span>仅作设计参考</span>
+</footer>
+
+</body>
+</html>

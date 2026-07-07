@@ -36,8 +36,17 @@
     if(listenTitle) listenTitle.textContent=d.listenTitle;
     var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.listenDesc;
     var prefBasicTitle=$('prefBasicTitle'); if(prefBasicTitle) prefBasicTitle.textContent=d.prefBasicTitle;
+    var basicSummaryLaunchLabel=$('basicSummaryLaunchLabel'); if(basicSummaryLaunchLabel) basicSummaryLaunchLabel.textContent=d.basicSummaryLaunchLabel;
+    var basicSummaryWindowLabel=$('basicSummaryWindowLabel'); if(basicSummaryWindowLabel) basicSummaryWindowLabel.textContent=d.basicSummaryWindowLabel;
+    var basicSummaryStyleLabel=$('basicSummaryStyleLabel'); if(basicSummaryStyleLabel) basicSummaryStyleLabel.textContent=d.basicSummaryStyleLabel;
+    var basicSummaryLanguageLabel=$('basicSummaryLanguageLabel'); if(basicSummaryLanguageLabel) basicSummaryLanguageLabel.textContent=d.basicSummaryLanguageLabel;
+    var basicCommonTitle=$('basicCommonTitle'); if(basicCommonTitle) basicCommonTitle.textContent=d.basicCommonTitle;
+    var basicCommonDesc=$('basicCommonDesc'); if(basicCommonDesc) basicCommonDesc.textContent=d.basicCommonDesc;
     var prefSectionRuntime=$('prefSectionRuntime'); if(prefSectionRuntime) prefSectionRuntime.textContent=d.prefSectionRuntime;
     var prefSectionAppearance=$('prefSectionAppearance'); if(prefSectionAppearance) prefSectionAppearance.textContent=d.prefSectionAppearance;
+    var basicAppearanceDesc=$('basicAppearanceDesc'); if(basicAppearanceDesc) basicAppearanceDesc.textContent=d.basicAppearanceDesc;
+    var basicTextBlockTitle=$('basicTextBlockTitle'); if(basicTextBlockTitle) basicTextBlockTitle.textContent=d.basicTextBlockTitle;
+    var basicTextBlockDesc=$('basicTextBlockDesc'); if(basicTextBlockDesc) basicTextBlockDesc.textContent=d.basicTextBlockDesc;
     var prefSectionTypography=$('prefSectionTypography'); if(prefSectionTypography) prefSectionTypography.textContent=d.prefSectionTypography;
     var prefSectionLanguage=$('prefSectionLanguage'); if(prefSectionLanguage) prefSectionLanguage.textContent=d.prefSectionLanguage;
     var themeLabel=$('themeLabel'); if(themeLabel) themeLabel.textContent=d.themeLabel;
@@ -67,6 +76,8 @@
     var langDesc=$('langDesc'); if(langDesc) langDesc.textContent=d.langDesc;
     var langPickEn=$('langPickEn'); if(langPickEn) langPickEn.textContent=d.langEn;
     var langPickZh=$('langPickZh'); if(langPickZh) langPickZh.textContent=d.langZh;
+    var basicPageTipTitle=$('basicPageTipTitle'); if(basicPageTipTitle) basicPageTipTitle.textContent=d.basicPageTipTitle;
+    var basicPageTipBody=$('basicPageTipBody'); if(basicPageTipBody) basicPageTipBody.textContent=d.basicPageTipBody;
     var guideReplayTitle=$('guideReplayTitle'); if(guideReplayTitle) guideReplayTitle.textContent=d.guideReplayTitle;
     var guideReplayDesc=$('guideReplayDesc'); if(guideReplayDesc) guideReplayDesc.textContent=d.guideReplayDesc;
     var maintenanceDangerTitle=$('maintenanceDangerTitle'); if(maintenanceDangerTitle) maintenanceDangerTitle.textContent=d.maintenanceDangerTitle;
@@ -74,6 +85,7 @@
     document.querySelectorAll('[data-lang-pick]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-lang-pick')===hooks().getAppLang());
     });
+    if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
     var micTitle=$('micTitle'); if(micTitle) micTitle.textContent=d.micTitle;
     var btnMicRefresh=$('btnMicRefresh'); if(btnMicRefresh) btnMicRefresh.textContent=d.micRefresh;
     var micDesc=$('micDesc'); if(micDesc) micDesc.textContent=d.micDesc;

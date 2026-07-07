@@ -238,119 +238,153 @@
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
-        <section class="settings-panel drawer-section pref-page" id="settingsPanelBasic" style="border-top:0;padding-top:0">
-          <header class="pref-page-head">
+        <section class="settings-panel drawer-section pref-page basic-page" id="settingsPanelBasic" style="border-top:0;padding-top:0">
+          <header class="pref-page-head basic-page-head">
             <h3 class="pref-page-title" id="prefBasicTitle">基础</h3>
             <p class="pref-page-subtitle" id="settingsPanelBasicDesc">运行、外观、字体与语言</p>
           </header>
-
-          <div class="pref-section">
-            <h4 class="pref-section-title" id="prefSectionRuntime">运行</h4>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="autostartLabel">开机自启动</p>
-                <p class="pref-row-desc" id="autostartDesc">登录 Windows 后自动启动一声</p>
+          <section class="basic-summary-grid" id="basicSummaryGrid" aria-label="基础设置摘要">
+            <article class="basic-summary-card">
+              <span class="basic-summary-label" id="basicSummaryLaunchLabel">启动方式</span>
+              <strong class="basic-summary-value" id="basicSummaryLaunchValue">—</strong>
+            </article>
+            <article class="basic-summary-card">
+              <span class="basic-summary-label" id="basicSummaryWindowLabel">窗口方式</span>
+              <strong class="basic-summary-value" id="basicSummaryWindowValue">—</strong>
+            </article>
+            <article class="basic-summary-card">
+              <span class="basic-summary-label" id="basicSummaryStyleLabel">当前风格</span>
+              <strong class="basic-summary-value" id="basicSummaryStyleValue">—</strong>
+            </article>
+            <article class="basic-summary-card">
+              <span class="basic-summary-label" id="basicSummaryLanguageLabel">语言与字体</span>
+              <strong class="basic-summary-value" id="basicSummaryLanguageValue">—</strong>
+            </article>
+          </section>
+          <div class="basic-page-stack">
+            <section class="basic-block" aria-labelledby="basicCommonTitle">
+              <div class="basic-block-head">
+                <h4 class="basic-block-title" id="basicCommonTitle">常用</h4>
+                <p class="basic-block-desc" id="basicCommonDesc">先处理最常改的运行选项</p>
               </div>
-              <div class="pref-row-control">
-                <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
-              </div>
-            </div>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="startMinimizedLabel">启动后最小化到托盘</p>
-                <p class="pref-row-desc" id="startMinimizedDesc">下次启动时隐藏主窗口，仅在托盘运行</p>
-              </div>
-              <div class="pref-row-control">
-                <button type="button" class="toggle-switch" id="btnStartMinimized" role="switch" aria-checked="false"></button>
-              </div>
-            </div>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="coachHudLabel">按键提示条</p>
-                <p class="pref-row-desc" id="coachHudDesc">在屏幕底部显示当前习惯的按键提示，成功唤起后短暂确认</p>
-              </div>
-              <div class="pref-row-control">
-                <button type="button" class="toggle-switch" id="btnCoachHud" role="switch" aria-checked="false"></button>
-              </div>
-            </div>
-          </div>
-
-          <div class="pref-section">
-            <h4 class="pref-section-title" id="prefSectionAppearance">外观</h4>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="themeLabel">主题</p>
-                <p class="pref-row-desc" id="themeDesc">仅本机保存，与应用窗口同步</p>
-              </div>
-              <div class="pref-row-control">
-                <div class="pref-segmented" id="themeSegmented" role="radiogroup" aria-labelledby="themeLabel">
-                  <button type="button" class="pref-segmented-btn" data-theme-pick="dark" id="themePickDark">深色</button>
-                  <button type="button" class="pref-segmented-btn" data-theme-pick="light" id="themePickLight">浅色</button>
+              <div class="basic-list-card">
+                <div class="pref-row">
+                  <div class="pref-row-meta">
+                    <p class="pref-row-label" id="autostartLabel">开机自启动</p>
+                    <p class="pref-row-desc" id="autostartDesc">登录 Windows 后自动启动一声</p>
+                  </div>
+                  <div class="pref-row-control">
+                    <button type="button" class="toggle-switch" id="btnAutostart" role="switch" aria-checked="false"></button>
+                  </div>
+                </div>
+                <div class="pref-row">
+                  <div class="pref-row-meta">
+                    <p class="pref-row-label" id="startMinimizedLabel">启动后最小化到托盘</p>
+                    <p class="pref-row-desc" id="startMinimizedDesc">下次启动时隐藏主窗口，仅在托盘运行</p>
+                  </div>
+                  <div class="pref-row-control">
+                    <button type="button" class="toggle-switch" id="btnStartMinimized" role="switch" aria-checked="false"></button>
+                  </div>
+                </div>
+                <div class="pref-row">
+                  <div class="pref-row-meta">
+                    <p class="pref-row-label" id="coachHudLabel">按键提示条</p>
+                    <p class="pref-row-desc" id="coachHudDesc">在屏幕底部显示当前习惯的按键提示，成功唤起后短暂确认</p>
+                  </div>
+                  <div class="pref-row-control">
+                    <button type="button" class="toggle-switch" id="btnCoachHud" role="switch" aria-checked="false"></button>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="styleLabel">风格</p>
-                <p class="pref-row-desc" id="styleDesc">为界面选择具体视觉配色</p>
+            </section>
+            <section class="basic-block" aria-labelledby="prefSectionAppearance">
+              <div class="basic-block-head">
+                <h4 class="basic-block-title" id="prefSectionAppearance">外观</h4>
+                <p class="basic-block-desc" id="basicAppearanceDesc">主题色与组件语言保持统一，切换后立即生效</p>
               </div>
-              <div class="pref-row-control">
-                <div class="pref-style-grid" id="styleCardGrid" role="radiogroup" aria-labelledby="styleLabel">
-                  <button type="button" class="pref-style-card" data-style-pick="light" id="styleCardClear">
-                    <span class="pref-style-swatches" aria-hidden="true">
-                      <span style="background:#f9fbfd"></span>
-                      <span style="background:#2a9cc4"></span>
-                      <span style="background:#e6f7fc"></span>
-                    </span>
-                    <span class="pref-style-name" id="styleClearName">清澈</span>
-                    <span class="pref-style-desc" id="styleClearDesc">明亮浅色，青蓝强调色</span>
-                  </button>
-                  <button type="button" class="pref-style-card" data-style-pick="dark" id="styleCardGraphite">
-                    <span class="pref-style-swatches" aria-hidden="true">
-                      <span style="background:#1a2436"></span>
-                      <span style="background:#5ec8e8"></span>
-                      <span style="background:#0f1419"></span>
-                    </span>
-                    <span class="pref-style-name" id="styleGraphiteName">石墨</span>
-                    <span class="pref-style-desc" id="styleGraphiteDesc">中性深色，适合夜间使用</span>
-                  </button>
-                </div>
+              <div class="basic-split-grid">
+                <section class="basic-subcard" aria-labelledby="themeLabel">
+                  <div class="basic-subcard-head">
+                    <p class="pref-row-label" id="themeLabel">主题</p>
+                    <p class="pref-row-desc" id="themeDesc">仅本机保存，与应用窗口同步</p>
+                  </div>
+                  <div class="pref-row-control basic-subcard-control">
+                    <div class="pref-segmented" id="themeSegmented" role="radiogroup" aria-labelledby="themeLabel">
+                      <button type="button" class="pref-segmented-btn" data-theme-pick="dark" id="themePickDark">深色</button>
+                      <button type="button" class="pref-segmented-btn" data-theme-pick="light" id="themePickLight">浅色</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="basic-subcard" aria-labelledby="styleLabel">
+                  <div class="basic-subcard-head">
+                    <p class="pref-row-label" id="styleLabel">风格</p>
+                    <p class="pref-row-desc" id="styleDesc">为界面选择具体视觉配色</p>
+                  </div>
+                  <div class="pref-row-control basic-subcard-control">
+                    <div class="pref-style-grid" id="styleCardGrid" role="radiogroup" aria-labelledby="styleLabel">
+                      <button type="button" class="pref-style-card" data-style-pick="light" id="styleCardClear">
+                        <span class="pref-style-swatches" aria-hidden="true">
+                          <span style="background:#f9fbfd"></span>
+                          <span style="background:#2a9cc4"></span>
+                          <span style="background:#e6f7fc"></span>
+                        </span>
+                        <span class="pref-style-name" id="styleClearName">清澈</span>
+                        <span class="pref-style-desc" id="styleClearDesc">明亮浅色，青蓝强调色</span>
+                      </button>
+                      <button type="button" class="pref-style-card" data-style-pick="dark" id="styleCardGraphite">
+                        <span class="pref-style-swatches" aria-hidden="true">
+                          <span style="background:#1a2436"></span>
+                          <span style="background:#5ec8e8"></span>
+                          <span style="background:#0f1419"></span>
+                        </span>
+                        <span class="pref-style-name" id="styleGraphiteName">石墨</span>
+                        <span class="pref-style-desc" id="styleGraphiteDesc">中性深色，适合夜间使用</span>
+                      </button>
+                    </div>
+                  </div>
+                </section>
               </div>
-            </div>
-          </div>
-
-          <div class="pref-section">
-            <h4 class="pref-section-title" id="prefSectionTypography">字体</h4>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="fontSizeTitleText">字体大小</p>
-                <p class="pref-row-desc" id="fontSizeDesc">整体缩放，高分屏可选大档</p>
+            </section>
+            <section class="basic-block" aria-labelledby="basicTextBlockTitle">
+              <div class="basic-block-head">
+                <h4 class="basic-block-title" id="basicTextBlockTitle">文字与语言</h4>
+                <p class="basic-block-desc" id="basicTextBlockDesc">按你的阅读习惯调整字号与界面语言</p>
               </div>
-              <div class="pref-row-control">
-                <div class="pref-segmented is-wide" id="fontScaleTrack" role="radiogroup" aria-labelledby="fontSizeTitleText">
-                  <button type="button" class="pref-segmented-btn" data-scale="sm" id="fontScaleSm">更小</button>
-                  <button type="button" class="pref-segmented-btn is-active" data-scale="md" id="fontScaleMd">标准</button>
-                  <button type="button" class="pref-segmented-btn" data-scale="lg" id="fontScaleLg">更大</button>
-                  <button type="button" class="pref-segmented-btn" data-scale="xl" id="fontScaleXl">特大</button>
-                </div>
+              <div class="basic-split-grid">
+                <section class="basic-subcard" aria-labelledby="fontSizeTitleText">
+                  <div class="basic-subcard-head">
+                    <p class="basic-subcard-kicker" id="prefSectionTypography">字体</p>
+                    <p class="pref-row-label" id="fontSizeTitleText">字体大小</p>
+                    <p class="pref-row-desc" id="fontSizeDesc">整体缩放，高分屏可选大档</p>
+                  </div>
+                  <div class="pref-row-control basic-subcard-control">
+                    <div class="pref-segmented is-wide" id="fontScaleTrack" role="radiogroup" aria-labelledby="fontSizeTitleText">
+                      <button type="button" class="pref-segmented-btn" data-scale="sm" id="fontScaleSm">更小</button>
+                      <button type="button" class="pref-segmented-btn is-active" data-scale="md" id="fontScaleMd">标准</button>
+                      <button type="button" class="pref-segmented-btn" data-scale="lg" id="fontScaleLg">更大</button>
+                      <button type="button" class="pref-segmented-btn" data-scale="xl" id="fontScaleXl">特大</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="basic-subcard" aria-labelledby="langLabel">
+                  <div class="basic-subcard-head">
+                    <p class="basic-subcard-kicker" id="prefSectionLanguage">语言</p>
+                    <p class="pref-row-label" id="langLabel">语言</p>
+                    <p class="pref-row-desc" id="langDesc">仅影响界面文案，不影响语音识别</p>
+                  </div>
+                  <div class="pref-row-control basic-subcard-control">
+                    <div class="pref-segmented is-wide" id="langSegmented" role="radiogroup" aria-labelledby="langLabel">
+                      <button type="button" class="pref-segmented-btn" data-lang-pick="en" id="langPickEn">English</button>
+                      <button type="button" class="pref-segmented-btn" data-lang-pick="zh" id="langPickZh">简体中文</button>
+                    </div>
+                  </div>
+                </section>
               </div>
-            </div>
-          </div>
-
-          <div class="pref-section">
-            <h4 class="pref-section-title" id="prefSectionLanguage">语言</h4>
-            <div class="pref-row">
-              <div class="pref-row-meta">
-                <p class="pref-row-label" id="langLabel">语言</p>
-                <p class="pref-row-desc" id="langDesc">仅影响界面文案，不影响语音识别</p>
-              </div>
-              <div class="pref-row-control">
-                <div class="pref-segmented is-wide" id="langSegmented" role="radiogroup" aria-labelledby="langLabel">
-                  <button type="button" class="pref-segmented-btn" data-lang-pick="en" id="langPickEn">English</button>
-                  <button type="button" class="pref-segmented-btn" data-lang-pick="zh" id="langPickZh">简体中文</button>
-                </div>
-              </div>
-            </div>
+            </section>
+            <section class="basic-note-card" aria-labelledby="basicPageTipTitle">
+              <p class="basic-note-title" id="basicPageTipTitle">小提示</p>
+              <p class="basic-note-body" id="basicPageTipBody">主题、风格、字体即时生效；语言仅影响界面文案。</p>
+            </section>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeys" hidden>
@@ -358,14 +392,21 @@
             <div class="keys-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelKeysTitle">按键</h3>
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelKeysDesc">从按键到发送动作，完整配置一条链路</p>
-            </div>
-            <div class="keys-status-chips" id="keysStatusChips" aria-live="polite">
-              <label class="keys-habit-switcher" id="keysHabitSwitcherWrap">
-                <span class="keys-habit-switcher-lbl" id="keysHabitSwitcherLbl">当前习惯</span>
-                <select class="keys-habit-switcher-select" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl"></select>
-              </label>
-              <span class="keys-status-chip" id="keysStatusIme"><span class="keys-status-chip-lbl" id="keysStatusImeLbl">语音输入法激活</span><span class="keys-status-chip-val" id="keysStatusImeVal">—</span></span>
-              <span class="keys-status-chip" id="keysStatusFinish"><span class="keys-status-chip-lbl" id="keysStatusFinishLbl">完成发送动作</span><span class="keys-status-chip-val" id="keysStatusFinishVal">—</span></span>
+              <div class="flow-status-bar" id="keysFlowStatusBar" aria-live="polite">
+                <label class="flow-status-pill is-on keys-habit-pill" id="keysHabitPill">
+                  <span class="keys-habit-pill-prefix" id="keysHabitSwitcherLbl">当前习惯</span><span aria-hidden="true"> · </span>
+                  <select class="keys-habit-switcher-inline" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl"></select>
+                </label>
+                <span class="flow-status-divider" aria-hidden="true"></span>
+                <span class="flow-status-pill is-on" id="keysStatusImePill">—</span>
+                <span class="flow-status-divider" aria-hidden="true"></span>
+                <span class="flow-status-pill is-on" id="keysStatusActivePill"><span class="flow-status-dot" id="keysStatusActiveDot" hidden></span><span id="keysStatusActiveLbl">激活中</span></span>
+                <button type="button" class="toggle-switch keys-status-enable-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="true" aria-labelledby="keysStatusActiveLbl"></button>
+              </div>
+              <div class="keys-status-chips" id="keysStatusChips" hidden aria-hidden="true">
+                <span class="keys-status-chip" id="keysStatusIme" hidden><span id="keysStatusImeVal"></span></span>
+                <span class="keys-status-chip" id="keysStatusFinish" hidden><span id="keysStatusFinishVal"></span></span>
+              </div>
             </div>
           </header>
           <div class="keys-page-body">
@@ -379,9 +420,11 @@
                 <p class="keys-app-context-hint" id="keysAppContextHint">—</p>
               </div>
               <div class="keys-recording-feedback" id="keysRecordingFeedback" hidden aria-live="polite">
-                <div class="keys-recording-feedback-main">
-                  <span class="keys-recording-pulse" aria-hidden="true"></span>
-                  <span class="keys-recording-feedback-text" id="keysRecordingFeedbackText"></span>
+                <div class="keys-recording-feedback-main" id="keysRecordingFeedbackMain">
+                  <div class="keys-recording-feedback-lead">
+                    <span class="keys-recording-pulse" aria-hidden="true"></span>
+                    <span class="keys-recording-feedback-text" id="keysRecordingFeedbackText"></span>
+                  </div>
                 </div>
                 <p class="keys-recording-conflict" id="keysRecordingConflict" hidden role="alert"></p>
               </div>
@@ -390,30 +433,42 @@
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
                 <div class="habit-default-flow home-key-map-flow keys-step-stack" id="habitDefaultFlow">
                   <div class="habit-flow-step home-key-map-step keys-step-card is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger">
-                    <div class="keys-step-card-head">
-                      <span class="keys-flow-step-badge" aria-hidden="true">1</span>
+                    <div class="keys-step-card-head flow-step-card-head">
+                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">1</span>
                       <span class="home-key-map-step-label" id="habitFlowStepTriggerLbl">默认快捷键</span>
-                      <span class="habit-flow-step-status" id="habitKeyMapStTrigger">—</span>
+                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTrigger">—</span>
                     </div>
-                    <div class="keys-step-row">
-                      <div class="habit-flow-step-slot keys-step-key-area" id="habitKeyMapCellTrigger"></div>
+                    <div class="keys-step-body flow-step-body">
+                    <div class="keys-step-row keys-step-row--hero">
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero" id="habitKeyMapCellTrigger"></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
                     <span class="home-key-map-step-hint" id="habitFlowStepTriggerHint">比如音量键、鼠标侧键</span>
-                    <div class="keys-app-context-strip-wrap" id="keysAppContextStripWrap" hidden>
-                      <span class="keys-app-context-strip-lbl" id="keysAppContextStripLbl">应用上下文</span>
-                      <div class="keys-app-context-strip" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+                    <div class="keys-app-chips-wrap" id="keysAppContextStripWrap" hidden>
+                      <div class="keys-app-chips" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+                      <button type="button" class="keys-app-chip keys-app-chip--add" id="btnKeysAppChipAdd">+ 添加应用</button>
+                      <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
+                    </div>
                     </div>
                   </div>
                   <div class="habit-flow-step home-key-map-step keys-step-card is-clickable" data-edit-step="target" id="habitKeyMapRowTarget">
-                    <div class="keys-step-card-head">
-                      <span class="keys-flow-step-badge" aria-hidden="true">2</span>
+                    <div class="keys-step-card-head flow-step-card-head">
+                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">2</span>
                       <span class="home-key-map-step-label" id="habitFlowStepTargetLbl">语音输入法激活</span>
-                      <span class="habit-flow-step-status" id="habitKeyMapStTarget">—</span>
+                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTarget">—</span>
                     </div>
-                    <div class="keys-step-row">
-                      <div class="keys-step-target-body">
-                        <div class="habit-flow-step-slot keys-step-key-area" id="habitKeyMapCellTarget"></div>
+                    <div class="keys-step-body flow-step-body">
+                    <div class="keys-flow-row" id="keysTargetFlowRow">
+                      <div class="habit-flow-step-slot keys-step-key-area keys-flow-key" id="habitKeyMapCellTarget"></div>
+                      <span class="keys-flow-arrow" aria-hidden="true">→</span>
+                      <div class="keys-ime-pill" id="keysImePill" aria-hidden="true">
+                        <svg class="keys-ime-pill-mic" id="keysImePillMic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                        <img class="keys-ime-pill-icon" id="keysImePillIcon" alt="" decoding="async" hidden>
+                        <span class="keys-ime-pill-name" id="keysImePillName">—</span>
+                      </div>
+                      <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
+                    </div>
+                    <div class="keys-step-target-stash" hidden>
                         <div class="habit-flow-ime-block" id="habitFlowImeBlock">
                           <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入方式</p>
                           <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
@@ -425,23 +480,23 @@
                             <button type="button" class="habit-flow-device-link" id="btnHabitFlowOpenVoice">更改</button>
                           </div>
                         </details>
-                      </div>
-                      <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
                     <span class="home-key-map-step-hint" id="habitFlowStepTargetHint">输入法的语音输入快捷键</span>
+                    </div>
                   </div>
                   <div class="habit-flow-step home-key-map-step keys-step-card is-clickable habit-flow-step--finish" data-edit-step="finish" id="habitKeyMapRowFinish">
-                    <div class="keys-step-card-head">
-                      <span class="keys-flow-step-badge" aria-hidden="true">3</span>
+                    <div class="keys-step-card-head flow-step-card-head">
+                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">3</span>
                       <span class="home-key-map-step-label" id="habitFlowStepFinishLbl">完成发送动作</span>
-                      <span class="habit-flow-step-status" id="habitKeyMapStFinish">—</span>
+                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStFinish">—</span>
                     </div>
+                    <div class="keys-step-body flow-step-body">
                     <div class="keys-finish-mode-host" id="keysFinishModeHost">
                       <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>
                     </div>
                     <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
                     <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
-                    <p class="keys-finish-strategy-preview is-empty" id="keysFinishStrategyPreview" aria-live="polite">—</p>
+                    <p class="keys-finish-strategy-preview is-empty" id="keysFinishStrategyPreview" aria-live="polite" hidden>—</p>
                     <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore">
                       <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">可选：自定义中止键</summary>
                       <p class="keys-finish-more-hint" id="keysFinishMoreHint">中止键只在需要快速打断时使用</p>
@@ -451,6 +506,7 @@
                         <span class="habit-flow-step-status" id="habitKeyMapStCancel">—</span>
                       </div>
                     </details>
+                    </div>
                   </div>
                 </div>
                 <footer class="habit-key-mapping-foot keys-page-tip-bar">
@@ -559,12 +615,10 @@
             <aside class="keys-page-aside" id="keysPanelAside" aria-label="应用快捷键">
               <section class="keys-aside-card habit-app-shortcuts-panel keys-app-shortcuts-panel" id="keysAppShortcutsCard">
                 <header class="keys-aside-card-head habit-app-shortcuts-head">
-                  <span class="keys-aside-step-badge" aria-hidden="true">4</span>
-                  <div class="habit-app-shortcuts-head-text">
-                    <h4 class="habit-app-shortcuts-title" id="keysAppShortcutsTitle">应用快捷键</h4>
-                    <p class="habit-app-shortcuts-desc" id="keysAppShortcutsDesc">按应用覆盖步骤 3 的发送方式；未匹配时仍用全局默认</p>
-                  </div>
+                  <span class="keys-aside-title" id="keysAppShortcutsTitle"><svg class="keys-aside-title-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span id="keysAppShortcutsTitleLbl">应用快捷键</span></span>
+                  <span class="keys-aside-count" id="keysAppShortcutsCount">—</span>
                 </header>
+                <p class="habit-app-shortcuts-desc sr-only" id="keysAppShortcutsDesc">按应用覆盖步骤 3 的发送方式；未匹配时仍用全局默认</p>
                 <div class="keys-app-rules-list habit-app-rules-list keys-app-expand-list" id="keysAppRulesList"></div>
                 <button type="button" class="habit-app-shortcuts-add" id="btnKeysAddAppRule" hidden>+ 添加应用快捷键</button>
               </section>
@@ -818,119 +872,270 @@
           </div>
           </div>
         </section>
-        <section class="settings-panel drawer-section" id="settingsPanelVoiceWake" hidden>
-          <p class="settings-panel-desc" id="settingsPanelVoiceWakeDesc">在这里修改唤醒词、麦克风和结束词。引擎等高级选项在下方。</p>
-          <p class="settings-panel-note" id="voiceActiveSceneNote" hidden></p>
-          <div class="settings-page-actions">
-            <button type="button" class="control-btn" id="btnVoiceGoRuntime">查看实时状态</button>
-          </div>
-          <section class="settings-voice-common" id="settingsVoiceCommon">
-            <div class="mini-title" id="settingsVoiceCommonTitle">常用</div>
-          <section class="voice-settings-flow settings-voice-common-flow" id="voiceSettingsFlow" aria-label="语音流程">
-            <div class="voice-settings-card" id="voiceSettingsWakeCard">
-              <span class="voice-settings-card-lbl" id="voiceSettingsWakeLbl">唤醒词</span>
-              <div class="voice-settings-card-val" id="voiceSettingsWakePhrase">—</div>
-              <button type="button" class="voice-settings-mic-btn" id="btnVoiceSettingsMic">
-                <span id="voiceSettingsMicName">—</span>
-                <span class="mic-level-bars" id="voiceSettingsMicBars" aria-hidden="true"></span>
-              </button>
-              <p class="voice-settings-card-hint" id="voiceSettingsWakeHint"></p>
-            </div>
-            <div class="voice-settings-card" id="voiceSettingsEndPhraseCard">
-              <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">结束词</span>
-              <p class="voice-settings-card-sub" id="voiceSettingsEndWakeEcho"></p>
-              <div class="voice-settings-card-val is-muted" id="voiceSettingsEndPhraseStatus">—</div>
-              <p class="voice-settings-card-hint" id="voiceSettingsEndPhraseHint"></p>
-            </div>
-            <div class="voice-settings-card" id="voiceSettingsAutoCard">
-              <span class="voice-settings-card-lbl" id="voiceSettingsAutoLbl">自动发送</span>
-              <div class="voice-settings-card-val is-muted" id="voiceSettingsAutoStatus">—</div>
-              <div class="voice-settings-auto-controls" id="voiceSettingsAutoControls">
-                <div class="voice-end-inline-range">
-                  <span class="mic-desc" id="voiceSettingsDelayLbl">等待时间</span>
-                  <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000">
+        <section class="settings-panel drawer-section voice-page" id="settingsPanelVoiceWake" hidden>
+          <header class="voice-page-head">
+            <div class="voice-page-head-text">
+              <h3 class="pref-page-title" id="settingsPanelVoiceWakeTitle">语音唤醒</h3>
+              <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelVoiceWakeDesc">配置怎么开始听、怎么判断说完、以及说完后如何处理。</p>
+              <div class="flow-status-bar" id="voiceFlowStatusBar" aria-live="polite">
+                <span class="flow-status-pill is-on" id="voiceStatusEngine">—</span>
+                <span class="flow-status-divider" aria-hidden="true"></span>
+                <span class="flow-status-pill is-on" id="voiceStatusWake">—</span>
+                <span class="flow-status-divider" aria-hidden="true"></span>
+                <span class="flow-status-pill is-on" id="voiceStatusFinish">—</span>
+                <span class="flow-status-divider" aria-hidden="true"></span>
+                <button type="button" class="flow-status-pill is-action" id="btnVoiceSwitchHabit">切换习惯 ▾</button>
+                <button type="button" class="flow-status-link" id="btnVoiceGoRuntime">查看实时状态</button>
+              </div>
+              <div class="voice-page-head-context" id="voiceScopeBar" hidden aria-hidden="true">
+                <div class="voice-scope-bar-row">
+                  <div class="voice-scope-bar-editing">
+                    <span class="voice-scope-bar-prefix" id="voiceScopePrefix">正在编辑：</span>
+                    <strong class="voice-scope-bar-habit" id="voiceScopeHabitName">—</strong>
+                  </div>
                 </div>
-                <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
-                  <span class="sr-only" id="voiceSettingsCommitLbl">发送快捷键</span>
-                  <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
-                  <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                <p class="voice-scope-bar-hint" id="voiceScopeHint">修改这里会影响此习惯的语音唤醒、结束与发送规则</p>
+                <div class="voice-status-chips" id="voiceStatusChips" hidden>
+                  <span class="voice-status-chip" hidden>—</span>
                 </div>
               </div>
+              <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
             </div>
-          </section>
-          <details class="voice-settings-mic-details" id="voiceMicPickerDetails">
-            <summary id="voiceMicPickerSummary">选择麦克风</summary>
-          <div class="mic-settings-block drawer-section" id="voiceMicSection" style="border-top:0;padding-top:0;margin-bottom:0">
-            <div class="mic-head-row">
-              <div class="mini-title" id="micTitle">麦克风</div>
-              <button type="button" class="control-btn" id="btnMicRefresh">刷新设备</button>
+          </header>
+          <div class="voice-page-layout">
+            <div class="voice-page-main">
+              <section class="voice-step-stack voice-settings-flow" id="voiceSettingsFlow" aria-label="语音流程">
+                  <div class="voice-flow-step voice-step-card voice-settings-card" id="voiceSettingsWakeCard">
+                    <div class="flow-step-card-head">
+                      <span class="flow-step-badge" aria-hidden="true">▸</span>
+                      <span class="voice-settings-card-lbl" id="voiceSettingsWakeLbl">开始语音输入</span>
+                      <span class="flow-step-status" id="voiceStep1Status">已启用</span>
+                    </div>
+                    <div class="flow-step-body">
+                    <button type="button" class="voice-input-row" id="btnVoiceSettingsMic">
+                      <span class="voice-input-icon" aria-hidden="true">🎤</span>
+                      <span class="voice-input-lbl" id="voiceSettingsMicLbl">麦克风</span>
+                      <span class="voice-input-val" id="voiceSettingsMicName">—</span>
+                      <span class="mic-level-bars" id="voiceSettingsMicBars" aria-hidden="true"></span>
+                      <span class="voice-input-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="voice-input-row is-static" aria-hidden="false">
+                      <span class="voice-input-icon" aria-hidden="true">🔊</span>
+                      <span class="voice-input-lbl" id="voiceSettingsWakeWayLbl">唤醒方式</span>
+                      <span class="voice-input-val" id="voiceSettingsWakeWayVal">语音唤醒词</span>
+                    </div>
+                    <div class="voice-phrase-sub-block" id="voiceWakeCompact">
+                      <p class="voice-phrase-sub-lbl" id="voiceWakeCompactLbl">当前唤醒词</p>
+                      <div class="voice-phrase-compact-row">
+                        <div class="voice-phrase-compact-main">
+                          <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
+                          <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
+                        </div>
+                        <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言">
+                          <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
+                          <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
+                        </div>
+                      </div>
+                      <p class="voice-phrase-compact-hint" id="voiceWakeCompactHint">由左侧「识别方式」切换中英文识别资源，唤醒词会同步更新</p>
+                    </div>
+                    <details class="flow-preset-more" id="voiceWakePresetMore">
+                      <summary id="voiceWakePresetMoreSummary">更多预设</summary>
+                    <div class="voice-settings-wake-host" id="voiceSettingsWakeHost">
+                      <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
+                        <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+                      </div>
+                      <div id="voiceSettingsVoskWakeWrap" hidden>
+                        <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
+                        <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
+                          <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
+                        </div>
+                        <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
+                        <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
+                          <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="voice input">voice input</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
+                        </div>
+                      </div>
+                    </div>
+                    </details>
+                    <div class="voice-mode-meta" id="voiceModeMeta">
+                      <span class="voice-mode-dot" id="voiceModeMetaDot" aria-hidden="true"></span>
+                      <span class="voice-mode-meta-label" id="voiceModeMetaLabel">当前：系统快速识别</span>
+                      <button type="button" class="voice-mode-meta-link" id="btnVoiceModeMetaDetails">查看识别细项</button>
+                    </div>
+                    <p class="voice-mode-meta-hint" id="voiceModeMetaHint">由左侧「识别方式」切换</p>
+                    </div>
+                  </div>
+                  <div class="voice-flow-step voice-step-card voice-settings-card" id="voiceSettingsEndPhraseCard">
+                    <div class="flow-step-card-head">
+                      <span class="flow-step-badge" aria-hidden="true">▸</span>
+                      <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">判断说完</span>
+                      <span class="flow-step-status" id="voiceStep2Status">已启用</span>
+                    </div>
+                    <div class="flow-step-body">
+                    <p class="voice-settings-card-hint" id="voiceSettingsEndPhraseHint"></p>
+                    <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
+                      <p class="voice-end-detect-lite-body" id="voiceEndDetectLiteBody">系统快速识别会根据停顿自动判断说话结束。需要自定义结束词，请切换到本地离线识别。</p>
+                      <button type="button" class="voice-mode-meta-link" id="btnVoiceEndDetectSwitchVosk">切换到本地离线识别</button>
+                    </div>
+                    <div class="voice-phrase-sub-block" id="voiceEndCompact">
+                      <p class="voice-phrase-sub-lbl" id="voiceEndCompactLbl">结束词</p>
+                      <div class="voice-phrase-compact-row">
+                        <div class="voice-phrase-compact-main">
+                          <span class="voice-phrase-compact-zh" id="voiceEndCompactZh">—</span>
+                          <span class="voice-phrase-compact-en" id="voiceEndCompactEn" hidden>—</span>
+                        </div>
+                        <div class="flow-lang-toggle" id="voiceEndLangToggle" role="group" aria-label="结束词语言">
+                          <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceEndLangZh">中</button>
+                          <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceEndLangEn">EN</button>
+                        </div>
+                      </div>
+                    </div>
+                    <details class="flow-preset-more" id="voiceEndPresetMore">
+                      <summary id="voiceEndPresetMoreSummary">更多预设</summary>
+                    <div class="voice-end-detect-vosk" id="voiceEndPresetsWrap" hidden>
+                      <p class="voice-settings-step-sub" id="voiceEndPresetsZhLabel">结束词</p>
+                      <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
+                        <button type="button" class="voice-sapi-preset" data-phrase="结束输入">结束输入</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="就这样">就这样</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
+                      </div>
+                      <p class="voice-settings-step-sub" id="voiceEndPresetsEnLabel" style="margin-top:8px">英文结束词</p>
+                      <div class="voice-sapi-preset-grid" id="voiceEndPresetsEn">
+                        <button type="button" class="voice-sapi-preset" data-phrase="end dictation">end dictation</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
+                        <button type="button" class="voice-sapi-preset" data-phrase="that's it">that's it</button>
+                      </div>
+                      <p class="voice-end-silence-note" id="voiceEndSilenceNote">说完后静音视为结束</p>
+                    </div>
+                    </details>
+                    </div>
+                  </div>
+                  <div class="voice-flow-step voice-step-card voice-settings-card" id="voiceSettingsAutoCard">
+                    <div class="flow-step-card-head">
+                      <span class="flow-step-badge" aria-hidden="true">▸</span>
+                      <span class="voice-settings-card-lbl" id="voiceSettingsAutoLbl">说完后</span>
+                      <span class="flow-step-status" id="voiceStep3Status">已启用</span>
+                    </div>
+                    <div class="flow-step-body">
+                    <div class="voice-settings-auto-controls voice-finish-block" id="voiceSettingsFinishBlock">
+                      <div class="voice-finish-send-block" id="voiceSettingsSendBlock">
+                        <div class="setting-row voice-finish-auto-row">
+                          <div class="setting-row-main">
+                            <span class="setting-row-text" id="voiceEndAutoSendLabel">语音结束后自动发送</span>
+                          </div>
+                          <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false" aria-labelledby="voiceEndAutoSendLabel"></button>
+                        </div>
+                        <div class="voice-finish-send-details" id="voiceSettingsSendDetails">
+                          <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc"></p>
+                          <div class="flow-slider-row">
+                            <span class="flow-slider-lbl" id="voiceSettingsDelayLbl">延迟</span>
+                            <span class="flow-slider-val" id="voiceSettingsDelayVal">4.0 秒</span>
+                          </div>
+                          <div class="voice-end-inline-range voice-finish-delay-range">
+                            <span class="sr-only" id="voiceSettingsDelayLblSr">等待时间</span>
+                            <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000" aria-labelledby="voiceSettingsDelayLblSr">
+                          </div>
+                          <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
+                            <span class="voice-settings-commit-lbl" id="voiceSettingsCommitLbl">发送快捷键</span>
+                            <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
+                            <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                          </div>
+                        </div>
+                        <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+              </section>
             </div>
-            <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
-            <p class="mic-empty" id="micEmpty" hidden></p>
-            <div class="mic-device-list" id="micDeviceList"></div>
-            <div class="voice-mic-live" id="voiceMicLive">
-              <div class="voice-mic-live-head">
-                <span class="chip" id="voiceMicLiveState">—</span>
-                <span class="mic-level-bars" id="voiceMicLiveBars" aria-hidden="true"></span>
-              </div>
-              <div class="voice-mic-live-progress" id="voiceMicLiveProgress" hidden>
-                <div class="voice-mic-live-progress-track">
-                  <div class="voice-mic-live-progress-fill" id="voiceMicLiveProgressFill"></div>
+            <aside class="voice-page-aside">
+              <section class="voice-side-card voice-side-live" id="voiceSideLiveCard">
+                <div class="voice-side-live-head">
+                  <span class="voice-side-live-title" id="voiceSideLiveTitle">实时语音</span>
+                  <span class="voice-side-live-status" id="voiceSideLiveStatus"><span class="voice-side-live-dot" id="voiceSideLiveDot" hidden></span><span id="voiceSideLiveStatusLbl">—</span></span>
                 </div>
-              </div>
-              <div class="voice-live-status" id="voiceMicLiveStatus">
-                <p class="voice-live-primary" id="voiceMicLivePrimary">—</p>
-                <p id="voiceMicLiveSecondary" hidden>—</p>
-                <p id="voiceMicLiveExtra" hidden></p>
-              </div>
-            </div>
-          </div>
-          </details>
-          </section>
-          <details class="settings-voice-advanced" id="settingsVoiceAdvancedDetails">
-            <summary id="settingsVoiceAdvancedSummary">高级</summary>
-          <section class="voice-target-shortcut-block drawer-section">
-            <div class="mini-title" id="voiceTargetShortcutTitle">语音快捷键</div>
-            <p class="mic-desc" id="voiceTargetShortcutDesc">选你的输入法，自动填入默认快捷键</p>
-            <div class="voice-target-key-display target-key-display" id="voiceSettingsTargetKeyWrap">
-              <img class="target-ime-badge" id="voiceSettingsTargetImeIcon" alt="" hidden decoding="async">
-              <span id="voiceSettingsTargetKey">右 Alt</span>
-            </div>
-            <div class="ime-preset-block">
-              <p class="ime-preset-hint" id="imePresetHintVoice" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
-              <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice"></div>
-            </div>
-          </section>
-          <section class="voice-settings-flow settings-voice-advanced-flow" id="voiceSettingsAdvancedFlow" aria-label="高级语音选项">
-            <div class="voice-settings-card" id="voiceSettingsEngineCard">
-              <span class="voice-settings-card-lbl" id="voiceSettingsEngineLbl">识别引擎</span>
-              <p class="voice-settings-card-sub" id="voiceSettingsEngineSub">一般用户用轻量版即可；需要结束词请用离线版</p>
-              <div class="voice-settings-engine-pills" id="voiceSettingsEnginePills">
-                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeSapi">轻量版</button>
-                <button type="button" class="home-mini-toggle" id="btnVoiceSettingsModeVosk">离线版</button>
-              </div>
-              <div class="voice-settings-card-val is-muted" id="voiceSettingsEngineStatus">—</div>
-            </div>
-            <div class="voice-settings-card voice-sapi-sens-card" id="voiceSettingsSapiSensCard" hidden>
-              <span class="voice-settings-card-lbl" id="voiceSettingsSapiSensTitle">语音转文字匹配</span>
-              <p class="voice-settings-card-sub" id="voiceSettingsSapiSensDesc">以下档位控制识别如何将你说的话匹配为文本</p>
-              <div class="recording-audio-strength-row">
-                <span class="setting-row-text" id="voiceSettingsSapiSensLbl">当前档位</span>
-                <span class="recording-audio-strength-current" id="voiceSettingsSapiSensCurrent">标准</span>
-              </div>
-              <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroupSettings" role="group" aria-labelledby="voiceSettingsSapiSensTitle">
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSettingsSapiSens0">最易</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSettingsSapiSens1">较易</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSettingsSapiSens2">标准</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSettingsSapiSens3">较严</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSettingsSapiSens4">严格</button>
-                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSettingsSapiSens5">最严</button>
-              </div>
-            </div>
-          </section>
-          <section class="voice-mode-panel" id="voiceModePanel">
-            <div class="mini-title" id="voiceModeTitle">语音唤起</div>
-            <p class="mic-desc" id="voiceModeDesc">在左侧选择轻量版或离线版，在此配置唤醒词与识别细项。</p>
+                <button type="button" class="voice-side-mic-select" id="btnVoiceSideMicSelect" aria-expanded="false" aria-controls="voiceMicPickerDetails">
+                  <span class="voice-side-mic-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                  </span>
+                  <span class="voice-side-mic-text">
+                    <span class="voice-side-mic-name" id="voiceMicAsideDevice">—</span>
+                    <span class="voice-side-mic-meta" id="voiceMicAsideMeta">—</span>
+                  </span>
+                  <svg class="voice-side-mic-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="voice-side-wave mic-level-bars voice-aside-preview-bars" id="voiceMicAsideBars" aria-hidden="true"></div>
+                <div class="voice-side-recognition">
+                  <div class="voice-side-recognition-lbl" id="voiceSideRecognitionLbl">实时识别</div>
+                  <p class="voice-side-recognition-text" id="voiceMicAsideStatus"><span id="voiceMicAsideStatusText">—</span></p>
+                </div>
+                <details class="voice-side-mic-expand voice-settings-mic-details" id="voiceMicPickerDetails">
+                  <summary class="sr-only" id="voiceMicPickerSummary">麦克风与试听</summary>
+                  <div class="voice-side-mic-expand-body">
+                    <div class="mic-settings-block drawer-section" id="voiceMicSection">
+                      <div class="mic-head-row">
+                        <div class="mini-title" id="micTitle">麦克风</div>
+                        <button type="button" class="control-btn" id="btnMicRefresh">刷新设备</button>
+                      </div>
+                      <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
+                      <p class="mic-empty" id="micEmpty" hidden></p>
+                      <div class="mic-device-list" id="micDeviceList"></div>
+                    </div>
+                  </div>
+                </details>
+                <div class="voice-mic-live sr-only" id="voiceMicLive" aria-hidden="true">
+                  <div class="voice-mic-live-head">
+                    <span class="chip" id="voiceMicLiveState">—</span>
+                    <span class="mic-level-bars" id="voiceMicLiveBars" aria-hidden="true"></span>
+                  </div>
+                  <div class="voice-mic-live-progress" id="voiceMicLiveProgress" hidden>
+                    <div class="voice-mic-live-progress-track">
+                      <div class="voice-mic-live-progress-fill" id="voiceMicLiveProgressFill"></div>
+                    </div>
+                  </div>
+                  <div class="voice-live-status" id="voiceMicLiveStatus">
+                    <p class="voice-live-primary" id="voiceMicLivePrimary">—</p>
+                    <p id="voiceMicLiveSecondary" hidden>—</p>
+                    <p id="voiceMicLiveExtra" hidden></p>
+                  </div>
+                </div>
+                <span class="sr-only" id="voiceMicAsideExpandHint">展开查看更多</span>
+              </section>
+
+              <section class="voice-side-card voice-side-engine" id="voiceModePanelDetails">
+                <div class="voice-side-engine-head">
+                  <span class="voice-side-engine-label">
+                    <span class="voice-side-engine-ico" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </span>
+                    <span id="voiceSideEngineTitle">识别引擎</span>
+                  </span>
+                  <span class="voice-side-engine-badge" id="voiceSideEngineBadge" hidden>完整链路</span>
+                </div>
+                <div class="voice-side-engine-meta" id="voiceSideEngineMeta">
+                  <code id="voiceSideEngineMetaMode">—</code>
+                  <span class="voice-side-engine-meta-sep" id="voiceSideEngineMetaSep1" aria-hidden="true"></span>
+                  <code id="voiceSideEngineMetaModel">—</code>
+                  <span class="voice-side-engine-meta-sep" id="voiceSideEngineMetaSep2" aria-hidden="true"></span>
+                  <code id="voiceSideEngineMetaLatency">—</code>
+                </div>
+                <span class="sr-only" id="voiceRecognitionAsideSummary">—</span>
+                <span class="sr-only" id="voiceModeTitle">识别细项</span>
+                <span class="sr-only" id="voiceRecognitionAsideExpandHint">展开查看更多</span>
+              <section class="voice-mode-panel" id="voiceModePanel">
+            <p class="mic-desc" id="voiceModeDesc">在左侧切换识别方式，下方配置对应参数。</p>
             <div class="voice-mode-grid">
               <div class="voice-mode-card" id="btnVoiceModeSapi" data-voice-mode="sapi">
                 <div class="voice-mode-head">
@@ -940,7 +1145,6 @@
                   </div>
                   <div class="voice-mode-head-actions">
                     <span class="chip" id="voiceModeLiteBadge">低资源</span>
-                    <button type="button" class="toggle-switch" id="btnVoiceSapi" role="switch" aria-checked="false" aria-labelledby="voiceSapiLabel"></button>
                   </div>
                 </div>
                 <span class="sr-only" id="voiceSapiTitle">轻量版细项</span>
@@ -961,14 +1165,7 @@
                       <button type="button" class="control-btn" id="btnVoiceSapiSetup">一键去安装</button>
                     </div>
                   </div>
-                  <div class="voice-sapi-box">
-                    <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
-                      <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
-                    </div>
+                  <div class="voice-sapi-box voice-mode-details-only">
                     <div class="voice-sapi-heard-live" id="voiceSapiHeardLive">
                       <p class="voice-sapi-heard-primary" id="voiceSapiHeardPrimary">—</p>
                       <p class="voice-sapi-heard-extra" id="voiceSapiHeardExtra" hidden></p>
@@ -997,11 +1194,10 @@
                 <div class="voice-mode-head">
                   <div>
                     <p class="voice-mode-kicker" id="voiceModeProTitle">离线版</p>
-                    <p class="voice-mode-name" id="voiceModeProEngine">离线完整识别</p>
+                    <p class="voice-mode-name" id="voiceModeProEngine">本地离线识别</p>
                   </div>
                   <div class="voice-mode-head-actions">
                     <span class="chip" id="voiceModeProBadge">完整链路</span>
-                    <button type="button" class="toggle-switch" id="btnVoiceVosk" role="switch" aria-checked="false" aria-labelledby="voiceVoskLabel"></button>
                   </div>
                 </div>
                 <span class="sr-only" id="voiceVoskTitle">离线版细项</span>
@@ -1025,37 +1221,64 @@
                   <p class="mic-empty" id="voiceVoskError" hidden></p>
                   <div class="voice-vosk-missing-panel" id="voiceVoskMissingPanel" hidden>
                     <p class="voice-vosk-missing-body" id="voiceVoskMissingBody"></p>
-                    <div class="voice-vosk-missing-actions">
-                      <button type="button" class="btn secondary" id="btnVoskOpenResources">打开资源目录</button>
-                      <button type="button" class="btn secondary" id="btnVoskDownloadGuide">下载模型</button>
-                      <button type="button" class="btn secondary" id="btnVoskRetry">重试启动</button>
-                    </div>
-                  </div>
-                  <div class="voice-sapi-box" id="voiceVoskPresetsWrap">
-                    <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
-                    <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
-                      <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
-                    </div>
-                    <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
-                    <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
-                      <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="voice input">voice input</button>
-                      <button type="button" class="voice-sapi-preset" data-phrase="start typing">start typing</button>
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="voice-mode-status" id="voiceModeCurrent">现在还没打开语音模式</div>
-            <p class="voice-mode-hint" id="voiceModeHint" hidden>轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
-          </section>
-          </details>
+            <div class="voice-side-engine-actions" id="voiceSideEngineActions">
+              <button type="button" class="voice-side-engine-btn" id="btnVoskOpenResources">打开资源目录</button>
+              <button type="button" class="voice-side-engine-btn" id="btnVoskDownloadGuide">下载模型</button>
+              <button type="button" class="voice-side-engine-btn" id="btnVoskRetry">重试启动</button>
+            </div>
+            <div class="voice-mode-status sr-only" id="voiceModeCurrent">现在还没打开语音模式</div>
+            <p class="voice-mode-hint sr-only" id="voiceModeHint" hidden>轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
+              </section>
+              </section>
+
+              <section class="voice-side-card voice-side-summon" id="voiceAppShortcutsDetails">
+                <div class="voice-side-summon-head">
+                  <span class="voice-side-summon-title" id="voiceAppShortcutsTitle">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    <span id="voiceAppShortcutsTitleLbl">应用召唤</span>
+                  </span>
+                  <p class="voice-side-summon-tip" id="voiceAppShortcutsDesc">说出召唤词可打开对应应用，并自动开始语音输入。</p>
+                </div>
+                <span class="sr-only" id="voiceAppShortcutsAsideSummary">—</span>
+                <span class="sr-only" id="voiceAppShortcutsExpandHint">展开查看更多</span>
+                <div class="voice-summon-apps voice-app-shortcuts-list" id="voiceAppShortcutsList"></div>
+                <button type="button" class="voice-side-summon-foot" id="btnVoiceOpenKeysApps">在按键页管理应用快捷键</button>
+              </section>
+
+              <details class="voice-aside-card settings-voice-advanced voice-page-details voice-side-advanced-stash" id="settingsVoiceAdvancedDetails">
+                <summary class="voice-aside-summary">
+                  <div class="voice-aside-summary-inner">
+                    <div class="voice-aside-summary-top">
+                      <span class="voice-aside-summary-title" id="settingsVoiceAdvancedSummary">快捷键与高级</span>
+                      <span class="voice-aside-summary-hint" id="voiceShortcutAsideExpandHint">展开查看更多</span>
+                    </div>
+                    <div class="voice-aside-summary-preview" id="voiceShortcutAsidePreview">
+                      <span class="voice-aside-preview-key" id="voiceShortcutAsideKey">右 Alt</span>
+                      <span class="voice-aside-preview-desc" id="voiceShortcutAsideDesc">语音输入法激活键</span>
+                    </div>
+                  </div>
+                </summary>
+                <div class="voice-aside-body">
+                <section class="voice-target-shortcut-block drawer-section">
+                  <div class="mini-title" id="voiceTargetShortcutTitle">语音快捷键</div>
+                  <p class="mic-desc" id="voiceTargetShortcutDesc">选你的输入法，自动填入默认快捷键</p>
+                  <div class="voice-target-key-display target-key-display" id="voiceSettingsTargetKeyWrap">
+                    <img class="target-ime-badge" id="voiceSettingsTargetImeIcon" alt="" hidden decoding="async">
+                    <span id="voiceSettingsTargetKey">右 Alt</span>
+                  </div>
+                  <div class="ime-preset-block">
+                    <p class="ime-preset-hint" id="imePresetHintVoice" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
+                    <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice"></div>
+                  </div>
+                </section>
+                </div>
+              </details>
+            </aside>
+          </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
@@ -1604,6 +1827,7 @@
   <script src="js/features/voice/voice-settings-flow.js"></script>
   <script src="js/features/voice/voice-ui-bindings.js"></script>
   <script src="js/features/settings/settings-debug-hooks.js"></script>
+  <script src="js/features/settings/basic-panel-ui.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/settings/settings-drawer.js"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>

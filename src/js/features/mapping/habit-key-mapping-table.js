@@ -109,13 +109,39 @@
     }
   }
 
+  function startRecordForStep(step){
+    if(step!=='trigger'&&step!=='target') return;
+    var rec=global.OneToneMappingRecording;
+    var mode=rec&&rec.mode?rec.mode():'none';
+    if(mode!=='none') return;
+    var bootHooks=global.__vp_bootstrap_hooks__||{};
+    if(step==='trigger'&&bootHooks.startTriggerRecord) bootHooks.startTriggerRecord();
+    else if(step==='target'&&bootHooks.startTargetRecord) bootHooks.startTargetRecord();
+  }
+
   function bindEvents(){
     ensureMounted();
     var flow=$('habitDefaultFlow');
     if(flow){
       flow.addEventListener('click',function(e){
+        if(e.target.closest('.record-btn')){
+          var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
+          var step=stepEl&&stepEl.dataset.editStep;
+          if(step==='trigger'||step==='target') highlightRow(step);
+          return;
+        }
+        var keyArea=e.target.closest&&e.target.closest('.keys-step-key-area,.keys-flow-key,.habit-basic-key-display');
+        if(keyArea){
+          var stepFromKey=e.target.closest&&e.target.closest('[data-edit-step]');
+          var keyStep=stepFromKey&&stepFromKey.dataset.editStep;
+          if(keyStep==='trigger'||keyStep==='target'){
+            startRecordForStep(keyStep);
+            highlightRow(keyStep);
+          }
+          return;
+        }
         var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
-        if(!stepEl||e.target.closest('.record-btn')||e.target.closest('.voice-end-key-mode-panel')||e.target.closest('details')||e.target.closest('.ime-preset-strip')||e.target.closest('.habit-flow-device-link')||e.target.closest('.keys-app-context-strip')||e.target.closest('.habit-flow-device-diagnostic')) return;
+        if(!stepEl||e.target.closest('.voice-end-key-mode-panel')||e.target.closest('details')||e.target.closest('.ime-preset-strip')||e.target.closest('.habit-flow-device-link')||e.target.closest('.keys-app-context-strip')||e.target.closest('.habit-flow-device-diagnostic')||e.target.closest('.keys-app-chip')||e.target.closest('.keys-ime-pill')||e.target.closest('.btn-cancel-record')) return;
         var step=stepEl.dataset.editStep;
         if(step) onStepClick(step);
       });

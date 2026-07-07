@@ -41,6 +41,13 @@
 
   function hasVoiceParts(m,cfg){
     if(!m) return false;
+    // Re-entrancy guard: Habit Hub rendering can be re-triggered during config/UI updates.
+    // If that happens, prevent infinite recursion (Maximum call stack size exceeded).
+    if(!hasVoiceParts._guard) hasVoiceParts._guard=new Set();
+    var gid=String(m.id||'');
+    if(gid && hasVoiceParts._guard.has(gid)) return false;
+    if(gid) hasVoiceParts._guard.add(gid);
+    try{
     var ov=m.voiceOverride;
     if(ov){
       if(Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length) return true;
@@ -55,6 +62,9 @@
     var wakeDiff=JSON.stringify(eff.wakePhrases||[])!==JSON.stringify(globalWake||[]);
     var endDiff=JSON.stringify(eff.endPhrases||{})!==JSON.stringify(globalEnd||{});
     return wakeDiff||endDiff;
+    }finally{
+      if(gid) hasVoiceParts._guard.delete(gid);
+    }
   }
 
   function configuredAppIds(m){

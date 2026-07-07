@@ -123,6 +123,7 @@
     });
     try{ localStorage.setItem('vp_theme',theme); }catch(_){}
     try{ window.chrome?.webview?.postMessage({type:'mvp_sync_theme_backdrop',theme:theme}); }catch(_){}
+    if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
   }
 
   function applyFontScale(){
@@ -134,6 +135,7 @@
     });
     try{ localStorage.setItem('vp_font_scale',fontScale); }catch(_){}
     if(global.OneToneHomeGuide) global.OneToneHomeGuide.scheduleLayoutIfOpen();
+    if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
   }
 
   function setFontScale(scale){

@@ -190,6 +190,9 @@
     }
     if(!stateEl||!primary){
       renderSapiHeardInline(hooks().voiceUiSnapshot.wake||{}, currentVoiceMode());
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.syncAsideLiveStatus){
+        global.OneToneVoiceSettingsFlow.syncAsideLiveStatus();
+      }
       return;
     }
     const w=hooks().voiceUiSnapshot.wake||{};
@@ -206,6 +209,9 @@
       if(progressEl) progressEl.hidden=true;
       renderSapiHeardInline(w, mode);
       renderSettingsVoiceSubnav();
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.syncAsideLiveStatus){
+        global.OneToneVoiceSettingsFlow.syncAsideLiveStatus();
+      }
       return;
     }
     const raw=res.state||'stopped';
@@ -274,6 +280,9 @@
     }
     renderSapiHeardInline(w, mode);
     renderSettingsVoiceSubnav();
+    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.syncAsideLiveStatus){
+      global.OneToneVoiceSettingsFlow.syncAsideLiveStatus();
+    }
   }
 
   function renderSettingsVoiceSubnav(){
@@ -288,8 +297,8 @@
     if(listEl) listEl.setAttribute('aria-label',t('settingsVoiceSubnavLabel'));
     if(!show||!listEl) return;
     const modes=[
-      {mode:'sapi',title:t('voiceModeLiteTitle'),sub:t('voiceModeLiteEngine')},
-      {mode:'vosk',title:t('voiceModeProTitle'),sub:t('voiceModeProEngine')}
+      {mode:'sapi',title:t('voiceModeLiteEngine'),sub:t('voiceModeLiteEngine')},
+      {mode:'vosk',title:t('voiceModeProEngine'),sub:t('voiceModeProEngine')}
     ];
     let html='';
     modes.forEach(function(item){

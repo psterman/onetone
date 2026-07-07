@@ -80,6 +80,21 @@
     return t('habitFinishModeManual');
   }
 
+  function finishModeKbd(mode){
+    if(mode==='perpress') return t('habitWorkflowAuto');
+    if(mode==='confirm') return t('habitFinishModeConfirmSend');
+    if(mode==='manual') return t('habitWorkflowManual');
+    return t('habitWorkflowManual');
+  }
+
+  function friendlyKbd(key){
+    key=String(key||'').trim();
+    if(!key||key==='—') return '—';
+    var hooks=global.__vp_bootstrap_hooks__||{};
+    if(hooks.friendlyKeyName) return hooks.friendlyKeyName(key)||key;
+    return key;
+  }
+
   function finishModeClass(mode){
     if(mode==='perpress') return 'is-auto';
     if(mode==='confirm') return 'is-confirm';
@@ -180,12 +195,40 @@
     return html;
   }
 
+  function renderFlowHorizontal(m,presetId,mode){
+    var openKey=appOpenShortcut(presetId,m);
+    var voiceKey=globalVoiceShortcut();
+    var workflow=hasRustWorkflow(presetId);
+    var steps=[
+      {icon:'切',name:t('habitWorkflowHorizSwitch'),kbd:workflow?t('habitWorkflowAuto'):'—'},
+      {icon:'聚',name:t('habitWorkflowHorizFocus'),kbd:friendlyKbd(openKey)},
+      {icon:'麦',name:t('habitWorkflowHorizVoice'),kbd:friendlyKbd(voiceKey)},
+      {icon:'发',name:t('habitWorkflowHorizFinish'),kbd:finishModeKbd(mode)}
+    ];
+    var html='<div class="keys-flow-horizontal" aria-label="'+esc(t('habitWorkflowTitle'))+'">';
+    steps.forEach(function(step,i){
+      if(i>0) html+='<span class="keys-flow-horizontal-arr" aria-hidden="true">→</span>';
+      html+='<div class="keys-flow-horizontal-node">';
+      html+='<span class="keys-flow-horizontal-icon" aria-hidden="true">'+esc(step.icon)+'</span>';
+      html+='<span class="keys-flow-horizontal-name">'+esc(step.name)+'</span>';
+      html+='<span class="keys-flow-horizontal-kbd">'+esc(String(step.kbd).replace(/<[^>]+>/g,''))+'</span>';
+      html+='</div>';
+    });
+    html+='</div>';
+    html+='<button type="button" class="keys-app-expand-edit-link habit-app-workflow-edit" data-app-workflow-edit="'+esc(presetId)+'">'+esc(t('habitWorkflowEdit'))+' →</button>';
+    return html;
+  }
+
   function renderKeysExpandableRow(m,preset){
     var isPrimary=isPrimaryApp(m,preset.id);
     var expanded=getKeysExpandedAppId()===preset.id||activeAppContextId===preset.id;
     var rule=ruleForApp(m,preset.id);
     var mode=rule?(rule.finishMode||preset.defaultMode):preset.defaultMode;
     var icon=iconForApp(preset.id);
+    var openKey=appOpenShortcut(preset.id,m);
+    var meta=isPrimary&&openKey
+      ?t('keysAppExpandMetaSteps').replace('{n}','4')
+      :t('keysAppExpandMetaUnset');
     var html='<details class="keys-app-expand-row'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
     html+='<summary class="keys-app-expand-summary">';
     html+='<div class="keys-app-shortcut-main keys-app-expand-summary-main">';
@@ -194,23 +237,16 @@
     }else{
       html+='<span class="keys-app-shortcut-icon keys-app-shortcut-icon--fallback" aria-hidden="true">'+esc(appDisplayName(preset.id).charAt(0))+'</span>';
     }
-    html+='<span class="keys-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</span>';
-    html+='<span class="keys-app-expand-chevron" aria-hidden="true"></span>';
-    html+='<span class="keys-app-expand-hint">'+esc(t('keysAppExpandHint'))+'</span>';
+    html+='<span><span class="keys-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</span>';
+    html+='<span class="keys-app-expand-meta">'+esc(meta)+'</span></span>';
     html+='</div><div class="keys-app-shortcut-actions">';
     html+='<button type="button" class="keys-app-rule-toggle'+(isPrimary?' is-on':'')+'" data-app-rule-toggle="'+esc(preset.id)+'" data-is-on="'+(isPrimary?'true':'false')+'" role="switch" aria-checked="'+(isPrimary?'true':'false')+'" aria-label="'+esc(t('keysAppRuleToggle'))+'"></button>';
     html+='</div></summary>';
     html+='<div class="keys-app-expand-body">';
-    if(isPrimary) html+='<span class="keys-app-primary-badge keys-app-expand-primary">'+esc(t('habitAppRulePrimaryOn'))+'</span>';
-    html+='<p class="keys-app-rule-note keys-app-expand-note">'+esc(defaultNoteForApp(preset.id))+'</p>';
-    html+='<div class="keys-app-function-tags keys-app-expand-tags">';
-    MODE_CYCLE.forEach(function(modeOpt){
-      html+='<span class="keys-app-function-tag'+(mode===modeOpt?' is-active':'')+' '+finishModeClass(modeOpt)+'">'+esc(finishModeLabel(modeOpt))+'</span>';
-    });
+    html+='<div class="keys-workflow-expand">';
+    html+='<p class="keys-workflow-chain-lbl">'+esc(t('habitWorkflowChainTitle'))+'</p>';
+    html+=renderFlowHorizontal(m,preset.id,mode);
     html+='</div>';
-    html+='<p class="keys-app-expand-finish"><span class="keys-app-expand-finish-lbl">'+esc(t('keysAppExpandFinish'))+'</span> <strong>'+esc(finishModeLabel(mode))+'</strong></p>';
-    html+=renderWorkflowTimeline(m,preset.id,mode,{compact:true});
-    html+='<p class="keys-app-priority-hint">'+esc(t('keysAppPriorityHint'))+'</p>';
     html+='</div></details>';
     return html;
   }
@@ -449,6 +485,7 @@
     list.innerHTML=html;
     renderActiveScenarioBanner();
     renderKeysAside();
+    renderVoiceAside();
   }
 
   function handleAppRulesListClick(e){
@@ -566,9 +603,102 @@
     });
   }
 
+  var VOICE_SUMMON_PHRASE_KEYS={
+    'cursor-chat':'voiceAppSummonCursor',
+    'codex-chat':'voiceAppSummonCodex',
+    'claude-code':'voiceAppSummonClaude',
+    'minimax-chat':'voiceAppSummonMiniMax'
+  };
+
+  function voiceSummonPhrase(appId){
+    var key=VOICE_SUMMON_PHRASE_KEYS[appId];
+    return key?t(key):'';
+  }
+
+  function voiceSummonQuote(appId){
+    var phrase=voiceSummonPhrase(appId);
+    var m=phrase.match(/[「「""][^」」""]+[」」""]/);
+    return m?m[0]:phrase;
+  }
+
+  function renderVoiceAppShortcutRow(m,preset){
+    var isPrimary=isPrimaryApp(m,preset.id);
+    var icon=iconForApp(preset.id);
+    var openKey=appOpenShortcut(preset.id,m);
+    var html='<article class="voice-summon-app voice-app-shortcut-row'+(isPrimary?' is-primary':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'">';
+    if(icon){
+      html+='<img class="voice-summon-app-icon voice-app-shortcut-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
+    }else{
+      html+='<span class="voice-summon-app-icon voice-summon-app-icon--fallback voice-app-shortcut-icon--fallback" aria-hidden="true">'+esc(appDisplayName(preset.id).charAt(0))+'</span>';
+    }
+    html+='<div class="voice-summon-app-info voice-app-shortcut-main">';
+    html+='<div class="voice-summon-app-name voice-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</div>';
+    html+='<div class="voice-summon-app-wake"><span class="voice-summon-quote voice-app-shortcut-phrase">'+esc(voiceSummonQuote(preset.id))+'</span></div>';
+    if(openKey){
+      html+='<div class="voice-summon-shortcuts voice-app-shortcut-kbd">'+formatShortcutHtml(openKey)+'</div>';
+    }
+    html+='</div>';
+    html+='<button type="button" class="voice-summon-btn voice-app-shortcut-btn'+(isPrimary?' is-on':'')+'" data-voice-app-primary="'+esc(preset.id)+'">';
+    html+=esc(isPrimary?t('voiceAppShortcutActive'):t('voiceAppShortcutUse'));
+    html+='</button></article>';
+    return html;
+  }
+
+  function renderVoiceAside(){
+    var list=$('voiceAppShortcutsList');
+    var summaryEl=$('voiceAppShortcutsAsideSummary');
+    var uiState=global.OneToneState&&global.OneToneState.ui;
+    var voiceActive=uiState&&uiState.drawerOpen&&uiState.settingsPanel==='voiceWake';
+    if(!voiceActive||!list) return;
+    var m=core()&&core().selected?core().selected():null;
+    if(!m||!core().isSaved(m)){
+      list.innerHTML='<p class="habit-app-rules-empty">'+esc(t('habitAppRulesEmpty'))+'</p>';
+      if(summaryEl) summaryEl.textContent=t('voiceAppShortcutsAsideEmpty');
+      return;
+    }
+    if(seedDefaultBehaviorRules(m)){
+      if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
+    }
+    ensureRules(m);
+    var html='';
+    BEHAVIOR_PRESETS.forEach(function(preset){
+      html+=renderVoiceAppShortcutRow(m,preset);
+    });
+    list.innerHTML=html;
+    if(summaryEl){
+      var primary=BEHAVIOR_PRESETS.find(function(p){ return isPrimaryApp(m,p.id); });
+      if(primary){
+        summaryEl.textContent=appDisplayName(primary.id)+' · '+voiceSummonPhrase(primary.id);
+      }else{
+        summaryEl.textContent=t('voiceAppShortcutsAsideUnset');
+      }
+    }
+  }
+
+  function bindVoiceAsideEvents(list){
+    if(!list||list.dataset.voiceAsideBound==='1') return;
+    list.dataset.voiceAsideBound='1';
+    list.addEventListener('click',function(e){
+      var btn=e.target.closest&&e.target.closest('[data-voice-app-primary]');
+      if(!btn) return;
+      e.stopPropagation();
+      var atp=appTargetApi();
+      if(!atp) return;
+      var appId=btn.getAttribute('data-voice-app-primary');
+      if(isPrimaryApp(core().selected(),appId)){
+        if(atp.clearPrimaryForMapping) atp.clearPrimaryForMapping();
+      }else if(atp.setPrimaryForMapping){
+        atp.setPrimaryForMapping(appId);
+      }
+      renderVoiceAside();
+      if(global.OneToneVoiceSettingsFlow) global.OneToneVoiceSettingsFlow.render();
+    });
+  }
+
   function bindEvents(){
     bindAppRulesList($('habitAppRulesList'));
     bindKeysAsideEvents($('keysAppRulesList'));
+    bindVoiceAsideEvents($('voiceAppShortcutsList'));
   }
 
   function resolveEffectiveFinish(m,appId){
@@ -584,6 +714,7 @@
     bindEvents:bindEvents,
     bindKeysAsideEvents:bindKeysAsideEvents,
     renderKeysAside:renderKeysAside,
+    renderVoiceAside:renderVoiceAside,
     setActiveAppContextId:setActiveAppContextId,
     selectAppContext:selectAppContext,
     setKeysExpandedAppId:setKeysExpandedAppId,

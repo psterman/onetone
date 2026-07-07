@@ -25,6 +25,7 @@
     syncToggle(next);
     invoke('cmd_autostart_set',{enabled:next}).then(function(){
       syncToggle(next);
+      if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
     }).catch(function(err){
       loadState();
       toast(t('autostartFail'));

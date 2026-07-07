@@ -277,6 +277,9 @@
 
   function handleMouseDown(e){
     if(Rec().mode()!=='target'&&Rec().mode()!=='trigger') return;
+    if(e&&e.target&&e.target.closest){
+      if(e.target.closest('#btnCancelRecord,.btn-cancel-record')) return;
+    }
     e.preventDefault();
     e.stopPropagation();
     const btn=normalizeMouseButton(e.button);

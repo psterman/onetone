@@ -5,8 +5,6 @@
   function bindEvents(){
     var hooks=h();
     var t=hooks.t;
-    var btnVoiceSapi=$('btnVoiceSapi');
-    if(btnVoiceSapi) btnVoiceSapi.onclick=function(e){ e.stopPropagation(); hooks.toggleVoiceSapi(); };
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeSapi','sapi');
     var btnVoiceSapiTest=$('btnVoiceSapiTest');
     if(btnVoiceSapiTest) btnVoiceSapiTest.onclick=hooks.testVoiceSapiSend;
@@ -19,8 +17,6 @@
         hooks.addVoiceSapiPreset(e);
       };
     }
-    var btnVoiceVosk=$('btnVoiceVosk');
-    if(btnVoiceVosk) btnVoiceVosk.onclick=function(e){ e.stopPropagation(); hooks.toggleVoiceVosk(); };
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeVosk','vosk');
     var btnVoiceVoskTest=$('btnVoiceVoskTest');
     if(btnVoiceVoskTest) btnVoiceVoskTest.onclick=hooks.testVoiceVoskSend;
@@ -30,8 +26,8 @@
     if(btnVoskDownloadGuide) btnVoskDownloadGuide.onclick=function(e){ e.stopPropagation(); hooks.downloadVoskModelGuide&&hooks.downloadVoskModelGuide(); };
     var btnVoskRetry=$('btnVoskRetry');
     if(btnVoskRetry) btnVoskRetry.onclick=function(e){ e.stopPropagation(); hooks.retryVoskStart&&hooks.retryVoskStart(); };
-    var voiceVoskPresetsWrap=$('voiceVoskPresetsWrap');
-    if(voiceVoskPresetsWrap) voiceVoskPresetsWrap.onclick=hooks.addVoiceVoskPreset;
+    var voiceVoskWakeWrap=$('voiceSettingsVoskWakeWrap');
+    if(voiceVoskWakeWrap) voiceVoskWakeWrap.onclick=hooks.addVoiceVoskPreset;
     var voiceVoskModelPreset=$('voiceVoskModelPreset');
     if(voiceVoskModelPreset){
       voiceVoskModelPreset.onclick=function(ev){
@@ -87,20 +83,74 @@
         if(hooks.applyVoiceSapiSensLevel) hooks.applyVoiceSapiSensLevel(idx);
       };
     });
-    var btnVoiceSettingsModeSapi=$('btnVoiceSettingsModeSapi');
-    if(btnVoiceSettingsModeSapi) btnVoiceSettingsModeSapi.onclick=function(){ hooks.switchVoiceMode('sapi'); };
-    var btnVoiceSettingsModeVosk=$('btnVoiceSettingsModeVosk');
-    if(btnVoiceSettingsModeVosk) btnVoiceSettingsModeVosk.onclick=function(){ hooks.switchVoiceMode('vosk'); };
+    var btnVoiceSideMicSelect=$('btnVoiceSideMicSelect');
+    if(btnVoiceSideMicSelect){
+      btnVoiceSideMicSelect.onclick=function(){
+        var details=$('voiceMicPickerDetails');
+        if(!details) return;
+        details.open=!details.open;
+        btnVoiceSideMicSelect.setAttribute('aria-expanded',details.open?'true':'false');
+        if(details.open) details.scrollIntoView({behavior:'smooth',block:'nearest'});
+      };
+    }
     var btnVoiceSettingsMic=$('btnVoiceSettingsMic');
     if(btnVoiceSettingsMic){
       btnVoiceSettingsMic.onclick=function(){
         var details=$('voiceMicPickerDetails');
-        if(details) details.open=true;
+        if(details){
+          details.open=true;
+          var btn=$('btnVoiceSideMicSelect');
+          if(btn) btn.setAttribute('aria-expanded','true');
+        }
         hooks.focusSettingsField('mic');
+      };
+    }
+    var btnVoiceModeMetaDetails=$('btnVoiceModeMetaDetails');
+    if(btnVoiceModeMetaDetails){
+      btnVoiceModeMetaDetails.onclick=function(){
+        var card=$('voiceModePanelDetails');
+        if(card) card.scrollIntoView({behavior:'smooth',block:'start'});
+      };
+    }
+    var btnVoiceEndDetectSwitchVosk=$('btnVoiceEndDetectSwitchVosk');
+    if(btnVoiceEndDetectSwitchVosk){
+      btnVoiceEndDetectSwitchVosk.onclick=function(){
+        if(hooks.switchVoiceMode) hooks.switchVoiceMode('vosk');
+      };
+    }
+    var btnVoiceSwitchHabit=$('btnVoiceSwitchHabit');
+    if(btnVoiceSwitchHabit){
+      btnVoiceSwitchHabit.onclick=function(){
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('habits');
+      };
+    }
+    var btnVoiceOpenKeysApps=$('btnVoiceOpenKeysApps');
+    if(btnVoiceOpenKeysApps){
+      btnVoiceOpenKeysApps.onclick=function(){
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
       };
     }
     var btnVoiceGoRuntime=$('btnVoiceGoRuntime');
     if(btnVoiceGoRuntime) btnVoiceGoRuntime.onclick=function(){ hooks.setSettingsPanel('debug'); };
+    function bindFlowLangToggle(hostId,storageKey){
+      var host=$(hostId);
+      if(!host) return;
+      host.onclick=function(e){
+        var btn=e.target.closest&&e.target.closest('[data-lang]');
+        if(!btn) return;
+        e.preventDefault();
+        var lang=btn.getAttribute('data-lang')||'zh';
+        global[storageKey]=lang;
+        host.querySelectorAll('.flow-lang-btn').forEach(function(b){
+          b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+        });
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
+          global.OneToneVoiceSettingsFlow.render();
+        }
+      };
+    }
+    bindFlowLangToggle('voiceWakeLangToggle','__vp_voice_wake_lang__');
+    bindFlowLangToggle('voiceEndLangToggle','__vp_voice_end_lang__');
     var btnVoiceEndAudioSettings=$('btnVoiceEndAudioSettings');
     if(btnVoiceEndAudioSettings) btnVoiceEndAudioSettings.onclick=function(){
       hooks.openSettings({panel:'sounds',focus:'recordingAudio'});

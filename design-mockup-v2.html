@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · 界面改版视觉稿 v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f5f6f8;
+  --line: #e7e8ec;
+  --line-soft: #eef0f3;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #94a3b8;
+  --accent: #2563eb;
+  --accent-ink: #1d4ed8;
+  --accent-soft: #eaf1ff;
+  --accent-softer: #f5f8ff;
+  --success: #10b981;
+  --warn: #f59e0b;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.04);
+  --shadow: 0 4px 16px -4px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
+  --shadow-lg: 0 20px 48px -16px rgba(15,23,42,.12), 0 2px 6px rgba(15,23,42,.04);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body { background:var(--bg); color:var(--ink); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; font-feature-settings:'cv11'; }
+body { padding:64px 48px 96px; max-width:1280px; margin:0 auto; }
+
+/* ============ HERO ============ */
+.hero { display:grid; grid-template-columns:1.1fr 1fr; gap:48px; align-items:end; padding-bottom:56px; border-bottom:1px solid var(--line); }
+.hero h1 { font-family:'DM Serif Display', serif; font-weight:400; font-size:56px; line-height:1.05; letter-spacing:-.01em; color:var(--ink); }
+.hero h1 em { font-style:italic; color:var(--accent); }
+.hero .lead { font-size:17px; line-height:1.55; color:var(--ink-2); margin-top:24px; max-width:520px; }
+.hero .meta { display:flex; flex-direction:column; gap:10px; padding:20px 24px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); font-size:13px; color:var(--ink-2); }
+.hero .meta dt { color:var(--ink-3); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:2px; }
+.hero .meta dd { color:var(--ink); font-weight:500; }
+
+/* ============ SECTION ============ */
+.section { padding:64px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:32px; }
+.section-head .num { font-family:'DM Serif Display', serif; font-size:24px; color:var(--accent); }
+.section-head h2 { font-size:30px; font-weight:600; letter-spacing:-.01em; }
+.section-head .sub { font-size:14px; color:var(--ink-2); margin-left:auto; }
+
+/* ============ PRINCIPLES ============ */
+.principles { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.p-card { padding:24px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); }
+.p-card .icon { width:36px; height:36px; border-radius:10px; background:var(--accent-softer); display:flex; align-items:center; justify-content:center; color:var(--accent); margin-bottom:14px; }
+.p-card h3 { font-size:15px; font-weight:600; margin-bottom:6px; }
+.p-card p { font-size:13px; color:var(--ink-2); line-height:1.55; }
+
+/* ============ MOCKUP FRAME ============ */
+.mockup-wrap { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:8px; box-shadow:var(--shadow-lg); }
+.mockup { background:#fff; border-radius:14px; overflow:hidden; }
+.mockup-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:#f4f5f7; border-bottom:1px solid var(--line); }
+.mockup-bar .dot { width:10px; height:10px; border-radius:50%; background:#d4d6db; }
+.mockup-bar .dot.r{ background:#ff6259; } .mockup-bar .dot.y{ background:#ffbd2e; } .mockup-bar .dot.g{ background:#28c840; }
+.mockup-bar .title { font-size:12px; color:var(--ink-3); font-family:'JetBrains Mono', monospace; margin-left:14px; }
+
+/* ============ APP SHELL ============ */
+.app { display:grid; grid-template-columns: 1fr 320px; min-height:780px; }
+.app-main { padding:28px 32px; border-right:1px solid var(--line-soft); }
+.app-side { padding:24px 22px; background:#fcfcfd; }
+
+/* ============ HEADER (status bar pattern) ============ */
+.page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:24px; }
+.page-head h1 { font-size:24px; font-weight:600; letter-spacing:-.01em; }
+.page-head .sub { font-size:13px; color:var(--ink-2); margin-top:4px; }
+.status-bar { display:flex; align-items:center; gap:6px; padding:5px 5px 5px 12px; background:var(--surface-2); border-radius:999px; }
+.status-bar .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:12px; color:var(--ink-2); border-radius:999px; cursor:default; }
+.status-bar .pill.on { background:var(--surface); color:var(--ink); font-weight:500; box-shadow:var(--shadow-sm); }
+.status-bar .pill .dot { width:6px; height:6px; border-radius:50%; background:var(--success); box-shadow:0 0 0 3px rgba(16,185,129,.18); }
+.status-bar .divider { width:1px; height:16px; background:var(--line); }
+.status-bar .switch { width:36px; height:20px; background:var(--accent); border-radius:999px; position:relative; cursor:pointer; }
+.status-bar .switch::after { content:""; position:absolute; right:2px; top:2px; width:16px; height:16px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+
+/* ============ STEP CARD ============ */
+.step { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); margin-bottom:16px; overflow:hidden; }
+.step-head { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line-soft); }
+.step-head .badge { width:24px; height:24px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; font-family:'JetBrains Mono', monospace; }
+.step-head .title { font-size:15px; font-weight:600; flex:1; }
+.step-head .status { font-size:11px; color:var(--success); display:inline-flex; align-items:center; gap:4px; }
+.step-head .status::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--success); }
+.step-body { padding:20px; }
+
+/* ============ KEY PILL ============ */
+.key-pill { display:inline-flex; align-items:center; gap:10px; padding:14px 22px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:500; }
+.key-pill .key { background:#fff; border:1px solid var(--line); border-bottom-width:2px; padding:4px 10px; border-radius:6px; font-size:13px; box-shadow:0 1px 0 rgba(15,23,42,.04); }
+.key-pill.primary { background:var(--accent-soft); border-color:#c5dafd; color:var(--accent-ink); }
+.key-pill.lg { padding:18px 26px; font-size:18px; }
+.helper { font-size:12px; color:var(--ink-3); margin-top:10px; }
+
+/* ============ ARROW ROW ============ */
+.flow-row { display:flex; align-items:center; justify-content:center; gap:18px; padding:8px 0; }
+.flow-arrow { color:var(--ink-3); flex-shrink:0; }
+
+/* ============ APP CHIPS ============ */
+.app-chips { display:flex; flex-wrap:wrap; gap:6px; padding-top:14px; border-top:1px dashed var(--line-soft); margin-top:14px; }
+.app-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; font-size:12px; color:var(--ink-2); background:var(--surface-2); border-radius:8px; border:1px solid transparent; }
+.app-chip.on { color:var(--accent-ink); background:var(--accent-soft); border-color:#d4e4fd; font-weight:500; }
+.app-chip .logo { width:14px; height:14px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; }
+
+/* ============ SEGMENTED ============ */
+.segmented { display:flex; gap:0; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:4px; }
+.segmented button { flex:1; padding:10px 14px; font-size:13px; color:var(--ink-2); background:transparent; border:none; border-radius:8px; font-family:inherit; cursor:pointer; transition:.18s; }
+.segmented button.on { background:#fff; color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+.segmented.lg button { padding:14px 16px; font-size:14px; }
+
+/* ============ SLIDER ============ */
+.slider-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0 14px; }
+.slider-row .label { font-size:13px; color:var(--ink-2); }
+.slider-row .val { font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:600; color:var(--ink); padding:2px 8px; background:var(--surface-2); border-radius:6px; }
+.slider { position:relative; height:6px; background:var(--surface-2); border-radius:3px; }
+.slider .fill { position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, var(--accent), #60a5fa); border-radius:3px; }
+.slider .knob { position:absolute; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; background:#fff; border:2px solid var(--accent); border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+
+/* ============ SIDE CARD ============ */
+.side-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:12px; }
+.side-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line-soft); }
+.side-head .title { font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
+.side-head .title svg { color:var(--ink-3); }
+.side-head .more { font-size:11px; color:var(--ink-3); }
+.side-body { padding:14px 16px; }
+
+/* ============ APP LIST ============ */
+.app-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line-soft); cursor:pointer; }
+.app-row:last-child { border-bottom:none; }
+.app-row .logo { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+.app-row .name { font-size:13px; font-weight:500; flex:1; }
+.app-row .meta { font-size:11px; color:var(--ink-3); }
+.app-row .toggle { width:32px; height:18px; background:var(--surface-2); border-radius:999px; position:relative; flex-shrink:0; }
+.app-row .toggle.on { background:var(--accent); }
+.app-row .toggle::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.15); }
+.app-row .toggle.on::after { left:16px; }
+.app-row .chevron { color:var(--ink-3); }
+
+/* expanded */
+.flow-horizontal { display:flex; align-items:stretch; justify-content:space-between; padding:16px; gap:4px; }
+.flow-step { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; }
+.flow-step .ic { width:34px; height:34px; border-radius:10px; background:var(--accent-softer); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+.flow-step .name { font-size:11px; font-weight:600; text-align:center; }
+.flow-step .kbd { font-size:10px; color:var(--ink-3); font-family:'JetBrains Mono', monospace; padding:1px 5px; background:var(--surface-2); border-radius:4px; margin-top:2px; }
+.flow-step + .flow-step .ic::before { content:"→"; } /* not used; arrows separate */
+.flow-arrow-h { color:var(--ink-3); align-self:center; padding-bottom:18px; flex-shrink:0; }
+.flow-link { display:block; padding:8px 16px; border-top:1px solid var(--line-soft); text-align:center; font-size:12px; color:var(--accent); font-weight:500; cursor:pointer; }
+
+/* ============ VOICE PAGE SPECIFIC ============ */
+.voice-tag { font-family:'JetBrains Mono', monospace; font-size:12px; padding:5px 12px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:#fff; }
+.voice-input { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.voice-input .label { font-size:13px; color:var(--ink-2); flex:1; }
+.voice-input .value { font-size:13px; font-weight:500; }
+.voice-input .caret { color:var(--ink-3); }
+.sub-block { padding:14px 16px; background:var(--surface-2); border-radius:10px; margin-top:10px; }
+.sub-block .lbl { font-size:11px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.lang-toggle { display:inline-flex; padding:3px; background:var(--surface-2); border-radius:8px; }
+.lang-toggle button { padding:5px 12px; font-size:12px; border:none; background:transparent; color:var(--ink-2); border-radius:6px; font-family:inherit; cursor:pointer; }
+.lang-toggle button.on { background:#fff; color:var(--ink); font-weight:600; box-shadow:var(--shadow-sm); }
+.term-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.term-chips .chip { padding:5px 10px; font-size:12px; background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--ink-2); }
+.term-chips .chip.on { background:var(--accent-soft); border-color:#c5dafd; color:var(--accent-ink); font-weight:500; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
+.toggle-row .label { font-size:14px; font-weight:500; }
+.toggle-row .switch { width:40px; height:22px; background:var(--accent); border-radius:999px; position:relative; flex-shrink:0; }
+.toggle-row .switch::after { content:""; position:absolute; right:2px; top:2px; width:18px; height:18px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+
+/* offline panel */
+.offline { padding:14px; background:linear-gradient(180deg, #fafbff 0%, #fff 100%); border:1px dashed #c5dafd; border-radius:12px; }
+.offline-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.offline-head .label { font-size:13px; font-weight:600; color:var(--accent-ink); display:inline-flex; align-items:center; gap:6px; }
+.offline-head .tag { font-size:10px; color:var(--success); padding:2px 8px; background:rgba(16,185,129,.1); border-radius:999px; font-weight:600; }
+.offline-row { display:flex; gap:8px; margin-top:10px; }
+.offline-row .btn { flex:1; padding:8px; font-size:12px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; text-align:center; cursor:pointer; }
+
+/* ============ CHANGES ============ */
+.changes { display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; }
+.ch-card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px; }
+.ch-card .tag { font-size:11px; color:var(--accent); font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.ch-card h3 { font-size:17px; font-weight:600; margin-bottom:8px; }
+.ch-card p { font-size:13px; color:var(--ink-2); line-height:1.55; }
+.ch-card .visual { margin-top:16px; padding:14px; background:var(--surface-2); border-radius:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ch-card .visual .arrow { color:var(--ink-3); font-size:12px; }
+
+/* footer */
+.footer { margin-top:80px; padding-top:32px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-size:12px; color:var(--ink-3); }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .app { grid-template-columns: 1fr; }
+  .app-main { border-right:none; border-bottom:1px solid var(--line-soft); }
+  .hero { grid-template-columns:1fr; }
+  .principles { grid-template-columns:1fr; }
+  .changes { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div>
+    <h1>voice-pilot<em> · 界面改版</em></h1>
+    <p class="lead">把"配置链路"的两个核心页面 —— 按键、语音唤醒 —— 从信息密度过高的工具感，升级成呼吸感更强、状态更清晰、视觉更精致的产品形态。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>Project</dt><dd>voice-pilot (Tauri)</dd></div>
+    <div><dt>Pages</dt><dd>按键 · 语音唤醒</dd></div>
+    <div><dt>Version</dt><dd>v2 改版视觉稿</dd></div>
+    <div><dt>Type system</dt><dd>Outfit · DM Serif Display · JetBrains Mono</dd></div>
+  </dl>
+</header>
+
+<!-- ============ PRINCIPLES ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>设计原则</h2>
+    <span class="sub">改动背后的三条主线</span>
+  </div>
+  <div class="principles">
+    <div class="p-card">
+      <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+      <h3>统一语言</h3>
+      <p>两个页面共享同一个 header 状态条、同一套 step 卡片、同一份配色，不再"同主题但两套语言"。</p>
+    </div>
+    <div class="p-card">
+      <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <h3>呼吸感 & 层次</h3>
+      <p>减少 chip 数量、用卡片代替色块、加入细线分隔。把"v0.1 的字段密度"换掉，给眼睛留出落地空间。</p>
+    </div>
+    <div class="p-card">
+      <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <h3>状态外显</h3>
+      <p>已启用、激活中、当前应用上下文 → 全部 pill 化、顶部条带化。链路走到哪一眼看得到。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MOCKUP 1 - 按键页 ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>改版稿 · 按键</h2>
+    <span class="sub">三步链路 · 横向流式工作流</span>
+  </div>
+
+  <div class="mockup-wrap">
+    <div class="mockup">
+      <div class="mockup-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">voice-pilot · 按键链路配置</span>
+      </div>
+
+      <div class="app">
+        <!-- ============ MAIN ============ -->
+        <div class="app-main">
+          <!-- header with status bar -->
+          <div class="page-head">
+            <div>
+              <h1>按键</h1>
+              <p class="sub">从按键到发送动作，完整配置一条链路</p>
+            </div>
+          </div>
+
+          <div class="status-bar" style="margin-bottom:24px;">
+            <span class="pill on">当前习惯 · 默认</span>
+            <span class="divider"></span>
+            <span class="pill">语音输入法 · Typeless</span>
+            <span class="divider"></span>
+            <span class="pill on"><span class="dot"></span>激活中</span>
+            <span class="divider"></span>
+            <span class="switch"></span>
+          </div>
+
+          <!-- STEP 1 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">1</span>
+              <span class="title">你按的键</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="flow-row">
+                <div class="key-pill primary lg">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                  <span>音量键</span>
+                </div>
+              </div>
+              <p class="helper">支持音量键、鼠标侧键、自定义快捷键 · 点击胶囊可更换</p>
+
+              <div class="app-chips">
+                <span class="app-chip on" style="margin-right:8px;"><span class="logo" style="background:#0f172a;">M</span> MiniMax</span>
+                <span class="app-chip on" style="margin-right:8px;"><span class="logo" style="background:#d97706;">C</span> Claude Code</span>
+                <span class="app-chip on" style="margin-right:8px;"><span class="logo" style="background:#000;">⏚</span> Cursor</span>
+                <span class="app-chip" style="margin-right:8px;"><span class="logo" style="background:#10a37f;">⊕</span> Codex</span>
+                <span class="app-chip" style="color:var(--ink-3);">+ 添加应用</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">2</span>
+              <span class="title">帮你打开语音</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="flow-row">
+                <div class="key-pill lg"><span class="key">右 Alt</span></div>
+                <svg class="flow-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                <div class="key-pill lg">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                  <span>微软拼音</span>
+                </div>
+              </div>
+              <p class="helper">输入法快捷键 · 切换输入法的语音输入快捷键</p>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">3</span>
+              <span class="title">说完后怎么收尾</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="segmented lg" style="margin-bottom:18px;">
+                <button>自动发送</button>
+                <button class="on">确认后发送</button>
+                <button>手动处理</button>
+              </div>
+
+              <div class="slider-row">
+                <span class="label">发送确认延迟</span>
+                <span class="val">3.5 秒</span>
+              </div>
+              <div class="slider">
+                <div class="fill" style="width:35%;"></div>
+                <div class="knob" style="left:35%;"></div>
+              </div>
+              <p class="helper">说完后等待 3.5 秒，自动确认发送</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside class="app-side">
+          <div class="side-card">
+            <div class="side-head">
+              <span class="title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                应用快捷键
+              </span>
+              <span class="more">4 个</span>
+            </div>
+
+            <div class="app-row">
+              <span class="logo" style="background:#000;">⏚</span>
+              <span style="flex:1;">
+                <div class="name">Cursor</div>
+                <div class="meta">未配置</div>
+              </span>
+              <span class="toggle"></span>
+            </div>
+            <div class="app-row">
+              <span class="logo" style="background:#10a37f;">⊕</span>
+              <span style="flex:1;">
+                <div class="name">Codex</div>
+                <div class="meta">未配置</div>
+              </span>
+              <span class="toggle"></span>
+            </div>
+            <div class="app-row">
+              <span class="logo" style="background:#d97706;">C</span>
+              <span style="flex:1;">
+                <div class="name">Claude Code</div>
+                <div class="meta">未配置</div>
+              </span>
+              <span class="toggle"></span>
+            </div>
+            <div class="app-row" style="background:var(--accent-softer);">
+              <span class="logo" style="background:#0f172a;">M</span>
+              <span style="flex:1;">
+                <div class="name" style="color:var(--accent-ink);">MiniMax</div>
+                <div class="meta">4 步链路</div>
+              </span>
+              <span class="toggle on"></span>
+            </div>
+
+            <!-- expanded workflow -->
+            <div style="padding:0 16px 16px;">
+              <div style="font-size:11px; color:var(--ink-3); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em;">完整链路</div>
+              <div class="flow-horizontal">
+                <div class="flow-step">
+                  <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                  <div class="name">切换</div>
+                  <div class="kbd">自动</div>
+                </div>
+                <svg class="flow-arrow-h" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                <div class="flow-step">
+                  <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></div>
+                  <div class="name">聚焦</div>
+                  <div class="kbd">RAlt</div>
+                </div>
+                <svg class="flow-arrow-h" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                <div class="flow-step">
+                  <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></div>
+                  <div class="name">开语音</div>
+                  <div class="kbd">RAlt</div>
+                </div>
+                <svg class="flow-arrow-h" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                <div class="flow-step">
+                  <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+                  <div class="name">完成</div>
+                  <div class="kbd">自动</div>
+                </div>
+              </div>
+              <div style="margin-top:8px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:11px; color:var(--accent-ink); text-align:center;">编辑工作流设置 →</div>
+            </div>
+
+            <div class="flow-link">+ 添加应用快捷键</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MOCKUP 2 - 语音唤醒页 ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>改版稿 · 语音唤醒</h2>
+    <span class="sub">识别 · 唤醒 · 说完后 · 三段式状态外显</span>
+  </div>
+
+  <div class="mockup-wrap">
+    <div class="mockup">
+      <div class="mockup-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">voice-pilot · 语音唤醒配置</span>
+      </div>
+
+      <div class="app">
+        <!-- ============ MAIN ============ -->
+        <div class="app-main">
+          <div class="page-head">
+            <div>
+              <h1>语音唤醒</h1>
+              <p class="sub">配置怎么开始听、怎么判断说完、以及说完后如何处理</p>
+            </div>
+          </div>
+
+          <div class="status-bar" style="margin-bottom:24px;">
+            <span class="pill on">识别 · 本地离线</span>
+            <span class="divider"></span>
+            <span class="pill on">唤醒词 · "开始输入"</span>
+            <span class="divider"></span>
+            <span class="pill on">说完后 · 自动 Enter</span>
+            <span class="divider"></span>
+            <span class="pill" style="color:var(--accent); font-weight:500;">切换习惯 ▾</span>
+          </div>
+
+          <!-- SECTION 1 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">▸</span>
+              <span class="title">开始语音输入</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="voice-input" style="margin-bottom:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                <span class="label">麦克风</span>
+                <span class="value">Wireless Mic Rx</span>
+                <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+
+              <div class="voice-input" style="margin-bottom:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <span class="label">唤醒方式</span>
+                <span class="value">语音唤醒词</span>
+                <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+
+              <div class="sub-block">
+                <div class="lbl">当前唤醒词</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:18px; font-weight:600;">开始输入</span>
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--ink-3);">start dictation</span>
+                  </div>
+                  <div class="lang-toggle">
+                    <button class="on">中</button>
+                    <button>EN</button>
+                  </div>
+                </div>
+                <p style="font-size:12px; color:var(--ink-3); margin-top:8px;">由左侧"识别方式"切换中英文识别资源，唤醒词会同步更新</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">▸</span>
+              <span class="title">判断说完</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="sub-block">
+                <div class="lbl">结束词</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:18px; font-weight:600;">结束输入</span>
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--ink-3);">end dictation</span>
+                  </div>
+                  <div class="lang-toggle">
+                    <button class="on">中</button>
+                    <button>EN</button>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:10px; font-size:12px; color:var(--ink-3);">结束词或静音会被视为说话结束</div>
+            </div>
+          </div>
+
+          <!-- SECTION 3 -->
+          <div class="step">
+            <div class="step-head">
+              <span class="badge">▸</span>
+              <span class="title">说完后</span>
+              <span class="status">已启用</span>
+            </div>
+            <div class="step-body">
+              <div class="toggle-row">
+                <span class="label">语音结束后自动发送</span>
+                <span class="switch"></span>
+              </div>
+
+              <div class="slider-row">
+                <span class="label">延迟</span>
+                <span class="val">4.0 秒</span>
+              </div>
+              <div class="slider">
+                <div class="fill" style="width:40%;"></div>
+                <div class="knob" style="left:40%;"></div>
+              </div>
+              <p class="helper" style="margin-top:8px;">说完后静音 4.0 秒，自动按 Enter 发送</p>
+
+              <div style="margin-top:18px; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:13px; color:var(--ink-2);">发送快捷键</span>
+                <div class="segmented" style="width:auto;">
+                  <button class="on">Enter</button>
+                  <button>Ctrl + Enter</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside class="app-side">
+          <div class="side-card">
+            <div class="side-head">
+              <span class="title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                麦克风与试听
+              </span>
+              <span class="more">展开 ↗</span>
+            </div>
+            <div class="side-body">
+              <div style="font-size:13px; font-weight:500; margin-bottom:4px;">Wireless Mic Rx</div>
+              <div style="font-size:11px; color:var(--ink-3); font-family:'JetBrains Mono', monospace;">实时识别 · 因为</div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-head">
+              <span class="title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                识别细节
+              </span>
+            </div>
+            <div class="side-body">
+              <div style="font-size:12px; color:var(--ink-3); margin-bottom:4px;">当前方式</div>
+              <div style="font-size:13px; font-weight:500; margin-bottom:10px;">本地离线识别</div>
+              <div style="font-size:11px; color:var(--accent);">查看识别细分 →</div>
+            </div>
+          </div>
+
+          <div class="side-card" style="border-style:dashed; border-color:#c5dafd;">
+            <div class="side-head" style="border-bottom-color:#e8effd;">
+              <span class="title" style="color:var(--accent-ink);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                离线版
+              </span>
+              <span style="font-size:10px; color:var(--success); padding:2px 8px; background:rgba(16,185,129,.1); border-radius:999px; font-weight:600;">完整链路</span>
+            </div>
+            <div style="padding:14px 16px;">
+              <div style="font-size:14px; font-weight:600; color:var(--accent-ink); margin-bottom:10px;">本地离线识别</div>
+              <p style="font-size:12px; color:var(--ink-2); line-height:1.55; margin-bottom:12px;">与轻量版只能开一个，请选择「中文语音」或「英文语音」，切换后识别资源与唤醒词会自动更新。</p>
+
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:12px; color:var(--ink-2);">识别语言</span>
+              </div>
+              <div class="segmented" style="margin-bottom:12px;">
+                <button class="on">中文 small-cn</button>
+                <button>English small-en-us</button>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <button style="padding:8px; font-size:12px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit;">📂  打开资源目录</button>
+                <div style="display:flex; gap:6px;">
+                  <button style="flex:1; padding:8px; font-size:12px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit;">⬇  下载模型</button>
+                  <button style="flex:1; padding:8px; font-size:12px; color:var(--ink-2); background:#fff; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-family:inherit;">↻  重试启动</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-head">
+              <span class="title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                应用召唤
+              </span>
+              <span class="more">展开 ↗</span>
+            </div>
+            <div class="side-body">
+              <div style="font-size:12px; color:var(--ink-3); margin-bottom:4px;">MiniMax</div>
+              <div style="font-size:13px; font-weight:500;">唤醒词 · "打开 MiniMax"</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KEY CHANGES ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>关键改动</h2>
+    <span class="sub">7 处最影响精致感的细节</span>
+  </div>
+
+  <div class="changes">
+    <div class="ch-card">
+      <div class="tag">01 · 状态条统一</div>
+      <h3>顶部状态从 tag 堆叠 → 胶囊状态条</h3>
+      <p>把"当前习惯 / 输入法 / 激活中"做成一条 pill bar，未激活的 chip 是灰底，激活的是白底+阴影。状态对比一眼看出，不再是堆叠的标签。</p>
+      <div class="visual">
+        <span class="app-chip on">当前习惯 · 默认</span>
+        <span class="app-chip">语音输入法 · Typeless</span>
+        <span class="arrow">→</span>
+        <span style="font-size:11px; color:var(--ink-3);">统一白底胶囊 · 1px 阴影</span>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">02 · 双语 chip 减负</div>
+      <h3>10 个唤醒词 chip → 1 个当前值 + 中/EN 切换</h3>
+      <p>"唤醒方式"和"判断说完"两个区都是 5+5 双语 chip 铺满，看起来像按钮汤。改成"当前值 + 语言 toggle"，中英文各显示一行，剩下的在展开菜单里。</p>
+      <div class="visual">
+        <span class="term-chips">
+          <span class="chip on">开始输入</span>
+          <span class="chip">开始听写</span>
+          <span class="chip">打开听写</span>
+          <span class="chip">语音输入</span>
+        </span>
+        <span class="arrow">→</span>
+        <span style="font-size:13px; font-weight:600;">开始输入</span>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">03 · 工作流横置</div>
+      <h3>右侧 4 步垂直列表 → 横向 flow indicator</h3>
+      <p>原来 4 步压成 4 行（还带 ?? 占位图标），看不出"链路"。改成横向 4 节点 + 箭头，节点底下挂快捷键标签，链路感一眼可见。</p>
+      <div class="visual">
+        <div class="flow-step" style="display:flex; flex-direction:column; align-items:center; gap:4px;"><div class="ic" style="width:28px;height:28px;border-radius:8px;background:var(--accent-softer);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;">切</div><div style="font-size:10px;">切换</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        <div class="flow-step" style="display:flex; flex-direction:column; align-items:center; gap:4px;"><div class="ic" style="width:28px;height:28px;border-radius:8px;background:var(--accent-softer);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;">聚</div><div style="font-size:10px;">聚焦</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        <div class="flow-step" style="display:flex; flex-direction:column; align-items:center; gap:4px;"><div class="ic" style="width:28px;height:28px;border-radius:8px;background:var(--accent-softer);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;">开</div><div style="font-size:10px;">开语音</div></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        <div class="flow-step" style="display:flex; flex-direction:column; align-items:center; gap:4px;"><div class="ic" style="width:28px;height:28px;border-radius:8px;background:var(--accent-softer);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;">发</div><div style="font-size:10px;">完成</div></div>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">04 · 选中态对比度</div>
+      <h3>选中态从淡蓝 → 饱和蓝 + 阴影</h3>
+      <p>原来所有 chip 都是同色淡蓝，远看分不出选中没选中。选中的换成 #2563eb 主色 + 白字 + 细阴影，未选保持灰底，对比立刻拉开。</p>
+      <div class="visual">
+        <span class="app-chip" style="background:#eaf1ff; color:#1d4ed8; border-color:#c5dafd; font-weight:600;">已选</span>
+        <span class="app-chip">未选</span>
+        <span class="arrow">→</span>
+        <span style="font-size:11px; color:var(--ink-3);">饱和度 +48%</span>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">05 · 右侧栏卡片化</div>
+      <h3>侧栏裸字段 → 白色卡片 + 细边</h3>
+      <p>"应用快捷键""麦克风与试听""离线版"等分组全部装进白色卡片，圆角 + 1px 边线，跟主区视觉分层。离线版保留 dashed 边作为强调。</p>
+      <div class="visual">
+        <span style="padding:8px 14px; background:#fff; border:1px solid #e7e8ec; border-radius:10px; font-size:12px;">白色卡片 · #FFFFFF · 1px border</span>
+        <span style="padding:8px 14px; background:#fff; border:1px dashed #c5dafd; border-radius:10px; font-size:12px;">离线版 · dashed</span>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">06 · 延迟组件统一</div>
+      <h3>"3.5 秒" slider 和 "4.0 秒" toggle → 同一套模板</h3>
+      <p>两个页面都有"延迟"配置，一个是裸 slider + 右上角数值，一个是 toggle + slider + 描述。统一成"label · 数值 chip · slider · helper"四件套，两个页面完全对齐。</p>
+      <div class="visual">
+        <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+          <div style="display:flex; justify-content:space-between; font-size:12px;"><span style="color:var(--ink-2);">延迟</span><span style="font-family:'JetBrains Mono'; font-size:12px; font-weight:600;">3.5 秒</span></div>
+          <div style="height:5px; background:#eef0f3; border-radius:3px;"><div style="height:100%; width:35%; background:linear-gradient(90deg,#2563eb,#60a5fa); border-radius:3px;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ch-card">
+      <div class="tag">07 · 配色体系升级</div>
+      <h3>单层蓝 → 三层 surface + 饱和主色</h3>
+      <p>背景 #fafafa · 卡片 #ffffff · 二级表面 #f5f6f8，主操作色 #2563eb，文本 #0f172a / #475569 / #94a3b8 三档灰。改用 Outfit + JetBrains Mono，整体更现代。</p>
+      <div class="visual" style="gap:6px;">
+        <span style="width:30px; height:30px; background:#fafafa; border:1px solid #e7e8ec; border-radius:6px;"></span>
+        <span style="width:30px; height:30px; background:#ffffff; border:1px solid #e7e8ec; border-radius:6px;"></span>
+        <span style="width:30px; height:30px; background:#f5f6f8; border:1px solid #e7e8ec; border-radius:6px;"></span>
+        <span style="width:30px; height:30px; background:#eaf1ff; border-radius:6px;"></span>
+        <span style="width:30px; height:30px; background:#2563eb; border-radius:6px;"></span>
+        <span style="width:30px; height:30px; background:#0f172a; border-radius:6px;"></span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <span>voice-pilot · v2 改版视觉稿</span>
+  <span>由 Mavis 设计 · 仅作设计参考</span>
+</footer>
+
+</body>
+</html>

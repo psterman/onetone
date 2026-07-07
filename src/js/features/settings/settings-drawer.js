@@ -172,7 +172,7 @@
 
       mic:'voiceMicSection',
 
-      engine:'voiceModePanel',
+      engine:'voiceModePanelDetails',
 
       autoSend:'voiceSettingsAutoCard',
 
@@ -212,11 +212,11 @@
 
       mic:['micDeviceList','micTitle'],
 
-      engine:['voiceSettingsEngineCard','voiceModePanel'],
+      engine:['voiceModeMeta','voiceModePanelDetails','voiceModePanel'],
 
-      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceSettingsEngineCard']:['voiceSapiPresets','voiceSettingsEngineCard'],
+      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceModePanelDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
 
-      endPhrases:['voiceSettingsEndPhraseCard'],
+      endPhrases:['voiceSettingsEndPhraseCard','voiceEndPresetsWrap'],
 
       autoSend:['voiceSettingsAutoCard'],
 
@@ -231,6 +231,10 @@
 
 
   function refreshKeysPanel(){
+
+    if(global.OneToneHabitKeyMappingTable&&global.OneToneHabitKeyMappingTable.mount){
+      global.OneToneHabitKeyMappingTable.mount();
+    }
 
     hooks().renderKeyFinishFlowPanel();
 
@@ -409,6 +413,10 @@
     if(panel==='keys'){
 
       refreshKeysPanel();
+
+    }else if(panel==='basic'){
+
+      if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
 
     }else     if(panel==='habits'){
 

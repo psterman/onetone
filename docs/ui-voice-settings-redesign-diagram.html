@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>语音设置页 · 修改图</title>
+  <style>
+    :root {
+      --bg: #f4f3ef;
+      --panel: #fff;
+      --border: #d8d5cc;
+      --muted: #7c7a72;
+      --text: #2a2926;
+      --primary: #2a9cc4;
+      --primary-soft: rgba(42,156,196,.12);
+      --warn: #ea580c;
+      --bad: #fecaca;
+      --good: #bbf7d0;
+      --stack: #e8e6df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
+    h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
+    .lede { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
+      font-size: 12px;
+    }
+    .legend span {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+    }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .swatch.status { background: #fde68a; border: 1px solid #f59e0b; }
+    .swatch.control { background: var(--primary-soft); border: 1px solid var(--primary); }
+    .swatch.noise { background: var(--bad); border: 1px solid #f87171; }
+    .swatch.keep { background: var(--good); border: 1px solid #4ade80; }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 48px 1fr;
+      gap: 0;
+      align-items: stretch;
+    }
+    @media (max-width: 960px) {
+      .compare { grid-template-columns: 1fr; gap: 16px; }
+      .arrow-col { display: none; }
+    }
+    .col-head {
+      font-size: 13px; font-weight: 800; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .col-head .tag {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    }
+    .tag.before { background: #fee2e2; color: #b91c1c; }
+    .tag.after { background: #dcfce7; color: #15803d; }
+
+    .mock {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      overflow: hidden;
+      font-size: 11px;
+      min-height: 520px;
+    }
+    .mock-sidebar {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      min-height: 520px;
+    }
+    .nav {
+      background: var(--stack);
+      border-right: 1px solid var(--border);
+      padding: 10px 6px;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+    .nav-item {
+      padding: 6px 4px; text-align: center; border-radius: 8px;
+      font-size: 9px; color: var(--muted);
+    }
+    .nav-item.on { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+    .nav-sub { font-size: 8px; padding: 4px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 4px; }
+    .nav-sub .on { color: var(--primary); font-weight: 700; }
+
+    .content { padding: 12px; display: grid; gap: 8px; align-content: start; }
+
+    .block {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      position: relative;
+    }
+    .block.status { background: #fffbeb; border-color: #fcd34d; }
+    .block.control { background: var(--primary-soft); border-color: rgba(42,156,196,.35); }
+    .block.noise { background: #fef2f2; border-color: #fca5a5; opacity: .85; }
+    .block.stack { background: var(--stack); border-style: dashed; }
+    .block.fold { background: #fafaf9; border-style: dotted; color: var(--muted); }
+
+    .block-title { font-weight: 800; font-size: 11px; margin-bottom: 4px; }
+    .block-sub { font-size: 9px; color: var(--muted); line-height: 1.35; }
+    .block-items { display: grid; gap: 4px; margin-top: 6px; }
+    .pill {
+      display: inline-block; padding: 2px 6px; border-radius: 999px;
+      border: 1px solid var(--border); background: #fff; font-size: 9px; margin-right: 4px;
+    }
+    .step {
+      display: grid; gap: 4px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-head { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 11px; }
+    .badge {
+      width: 16px; height: 16px; border-radius: 999px;
+      background: var(--primary); color: #fff;
+      display: grid; place-items: center; font-size: 9px; font-weight: 800;
+    }
+    .step-body { font-size: 9px; color: var(--muted); padding-left: 22px; }
+
+    .layout-2col { display: grid; grid-template-columns: 1.6fr 1fr; gap: 8px; }
+    .aside-block { font-size: 9px; }
+
+    .strike { text-decoration: line-through; color: #b91c1c; }
+    .arrow-col {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: var(--primary); font-weight: 300;
+    }
+
+    .notes {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .note-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px;
+    }
+    .note-card h3 { margin: 0 0 8px; font-size: 13px; }
+    .note-card ul { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+    .note-card li { margin-bottom: 4px; }
+
+    .flow-diagram {
+      margin-top: 24px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 16px;
+    }
+    .flow-diagram h2 { margin: 0 0 12px; font-size: 15px; }
+    .zones {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .zone {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .zone-label { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .zone-main { background: var(--primary-soft); border-color: rgba(42,156,196,.3); }
+    .zone-head { background: #fffbeb; border-color: #fcd34d; }
+    .zone-fold { background: #fafaf9; border-style: dashed; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>语音设置页 · 修改图</h1>
+    <p class="lede">对比「现在」与「改后」的信息架构。目标：页头只读、主栏唯一操作中心、实时态与参数进折叠区。</p>
+
+    <div class="legend">
+      <span><i class="swatch status"></i> 状态 / 只读摘要</span>
+      <span><i class="swatch control"></i> 操控 / 主操作</span>
+      <span><i class="swatch noise"></i> 删除或下沉</span>
+      <span><i class="swatch keep"></i> 保留并强化</span>
+    </div>
+
+    <div class="compare">
+      <!-- BEFORE -->
+      <div>
+        <div class="col-head">现在 <span class="tag before">问题结构</span></div>
+        <div class="mock">
+          <div class="mock-sidebar">
+            <div class="nav">
+              <div class="nav-item">按键</div>
+              <div class="nav-item on">语音</div>
+              <div class="nav-sub">识别方式<br><span class="on">轻量</span> / 离线</div>
+            </div>
+            <div class="content">
+              <div class="block">
+                <div class="block-title">语音</div>
+                <div class="block-sub">配置怎么开始听、怎么判断说完…</div>
+              </div>
+              <div class="block status">
+                <div class="block-title">习惯归属条</div>
+                <div class="block-sub">正在编辑：AutoTrigger → RAlt + 长说明</div>
+              </div>
+              <div class="block status">
+                <div class="block-title">只读 chips</div>
+                <span class="pill">识别：…</span><span class="pill">唤醒：…</span><span class="pill">说完后：…</span>
+                <div class="block-sub" style="margin-top:4px">+ [查看实时状态] 按钮</div>
+              </div>
+              <div class="layout-2col">
+                <div>
+                  <div class="block stack">
+                    <div class="block-title">「常用」外框</div>
+                    <div class="block noise" style="margin-top:6px">
+                      <div class="step-head"><span class="badge">1</span> 开始语音输入</div>
+                      <div class="step-body">麦克风 + preset + 识别方式条 + <span class="strike">实时 hint</span></div>
+                    </div>
+                    <div class="block noise" style="margin-top:4px">
+                      <div class="step-head"><span class="badge">2</span> 判断说完</div>
+                      <div class="step-body">结束词 preset + 静音 ms 文案</div>
+                    </div>
+                    <div class="block noise" style="margin-top:4px">
+                      <div class="step-head"><span class="badge">3</span> 说完后</div>
+                      <div class="step-body">灰块：开关 + 滑杆 + Enter</div>
+                    </div>
+                  </div>
+                  <div class="block noise" style="margin-top:6px">
+                    <div class="block-title">识别细项（常开）</div>
+                    <div class="block-sub">轻量版大卡 + 离线版大卡 + 灵敏度 + 实时 heard</div>
+                  </div>
+                </div>
+                <div class="aside-block">
+                  <div class="block noise">
+                    <div class="block-title">▸ 选择麦克风</div>
+                    <div class="block-sub">设备列表 + 实时电平 + 识别文字</div>
+                  </div>
+                  <div class="block noise">
+                    <div class="block-title">▾ 高级（默认开）</div>
+                    <div class="block-sub">快捷键 + <span class="strike">灵敏度重复</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-col" aria-hidden="true">→</div>
+
+      <!-- AFTER -->
+      <div>
+        <div class="col-head">改后 <span class="tag after">目标结构</span></div>
+        <div class="mock">
+          <div class="mock-sidebar">
+            <div class="nav">
+              <div class="nav-item">按键</div>
+              <div class="nav-item on">语音</div>
+              <div class="nav-sub">识别方式<br><span class="on">轻量</span> / 离线</div>
+            </div>
+            <div class="content">
+              <div class="block">
+                <div class="block-title">语音唤醒</div>
+                <div class="block-sub">一句动作链路说明（副标题）</div>
+              </div>
+              <div class="block status">
+                <div class="block-title">页头 · 只读区</div>
+                <div class="block-sub">行1：正在编辑：<b>办公习惯</b> &nbsp; [切换习惯]</div>
+                <div class="block-sub">行2：识别：系统快速 · 唤醒：「开始输入」· 说完后：自动 Enter &nbsp; <u>实时状态</u></div>
+              </div>
+              <div class="layout-2col">
+                <div>
+                  <div class="block control" style="padding:0; overflow:hidden">
+                    <div class="block-title" style="padding:8px 10px 0">主操作区 · 步骤栈（无「常用」外框）</div>
+                    <div class="step">
+                      <div class="step-head"><span class="badge">1</span> 开始语音输入</div>
+                      <div class="step-body control" style="color:var(--text)">[麦克风] &nbsp; [唤醒词 preset…]</div>
+                      <div class="step-body">识别方式：系统快速识别（只读 · 链接展开细项）</div>
+                    </div>
+                    <div class="step">
+                      <div class="step-head"><span class="badge">2</span> 判断说完</div>
+                      <div class="step-body control" style="color:var(--text)">结束词 preset / 轻量版说明</div>
+                    </div>
+                    <div class="step">
+                      <div class="step-head"><span class="badge">3</span> 说完后</div>
+                      <div class="step-body control" style="color:var(--text)">┌ 灰底一体块：开关 → 说明 → 滑杆 → Enter ┐</div>
+                    </div>
+                  </div>
+                  <div class="block fold" style="margin-top:6px">
+                    <div class="block-title">▸ 识别细项（默认折叠）</div>
+                    <div class="block-sub">仅当前模式参数：灵敏度 / 语言 / 模型</div>
+                  </div>
+                </div>
+                <div class="aside-block">
+                  <div class="block fold">
+                    <div class="block-title">▸ 麦克风与试听</div>
+                    <div class="block-sub">设备 + 电平 + 实时文字（不进步骤卡）</div>
+                  </div>
+                  <div class="block fold">
+                    <div class="block-title">▸ 快捷键与高级</div>
+                    <div class="block-sub">输入法 preset · 目标键</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      <h2>改后 · 三层分区（认知模型）</h2>
+      <div class="zones">
+        <div class="zone zone-head">
+          <div class="zone-label">L0 页头</div>
+          <div>我在改谁 + 当前配置摘要（chips）+ 实时状态链接 &nbsp;—&nbsp; <b>只读，不可当按钮乱点</b></div>
+        </div>
+        <div class="zone zone-main">
+          <div class="zone-label">L1 主栏</div>
+          <div>① 开始 → ② 判断说完 → ③ 说完后 &nbsp;—&nbsp; <b>唯一操作中心</b>，纵向步骤栈，每步一个主控件</div>
+        </div>
+        <div class="zone zone-fold">
+          <div class="zone-label">L2 折叠</div>
+          <div>识别细项 · 麦克风 · 高级 &nbsp;—&nbsp; 默认关闭，需要时再展开</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div class="note-card">
+        <h3>删除 / 下沉</h3>
+        <ul>
+          <li>「常用」小标题 + section 外框</li>
+          <li>步骤内实时 hint（<code>voiceSettingsWakeHint</code>）</li>
+          <li>主栏下方双引擎大卡（子导航已切）</li>
+          <li>侧栏灵敏度重复块</li>
+          <li>麦克风双入口（只留步骤 1）</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>保留 / 强化</h3>
+        <ul>
+          <li>左侧「识别方式」唯一切换入口</li>
+          <li>页头只读 chips（与步骤内容不重复）</li>
+          <li>三步动作链路命名</li>
+          <li>第 3 步灰底一体块（已完成）</li>
+          <li>习惯归属（友好习惯名 + 两行布局）</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>落地顺序</h3>
+        <ul>
+          <li>① 页头整理（习惯名 + chips + runtime 链接）</li>
+          <li>② 去壳改 step-stack（对齐按键页）</li>
+          <li>③ 状态剥离（hint → 侧栏）</li>
+          <li>④ 识别细项折叠 + 去重</li>
+          <li>⑤ 侧栏默认全关</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

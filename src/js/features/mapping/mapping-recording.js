@@ -300,6 +300,10 @@
     if(targetBtn){
       targetBtn.classList.toggle('is-recording',rec.mode==='target');
     }
+    var triggerDisp=$('triggerDisplay');
+    var targetDisp=$('targetDisplay');
+    if(triggerDisp) triggerDisp.classList.toggle('is-recording',rec.mode==='trigger');
+    if(targetDisp) targetDisp.classList.toggle('is-recording',rec.mode==='target');
     const onboardTriggerBtn=$('btnOnboardStartTriggerRecord');
     const onboardTargetBtn=$('btnOnboardStartTargetRecord');
     const onboardTriggerCard=$('onboardTriggerCard');
@@ -320,8 +324,11 @@
     const m=OneToneMappingCore.selected();
     const showDraft=m&&OneToneMappingCore.isDraft(m);
     const show=rec.mode!=='none'||showDraft;
-    bar.classList.toggle('show',show);
     if(btn) btn.textContent=rec.mode!=='none'?t('cancelRecord'):t('cancelDraft');
+    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.syncCancelButtonHost){
+      global.OneToneKeysPanelUi.syncCancelButtonHost();
+    }
+    bar.classList.toggle('show',show&&btn&&btn.parentNode===bar);
   }
 
   function setRecording(mode,opts){
@@ -409,6 +416,7 @@
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
+          restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
           renderRecordCancelBar();
@@ -432,6 +440,7 @@
     hooks().ensureConfig();
     beginRecordSnapshot();
     hooks().resetTargetCapture();
+    hooks().armTargetLeftClickIgnore(900);
     rec.captureGen++;
     const captureGen=rec.captureGen;
     const fallback=(OneToneMappingCore.selected()&&OneToneMappingCore.selected().id)
@@ -449,6 +458,7 @@
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
+          restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
           renderRecordCancelBar();
@@ -516,6 +526,7 @@
   function finishTriggerCapture(key, source, sourceKey, sourceTime){
     if(rec.mode!=='trigger') return false;
     const k=hooks().normalizeTriggerKey(key);
+    if(hooks().shouldIgnoreTriggerLeftClickCapture(k,sourceKey||k,source)) return false;
     if(!hooks().isAllowedTriggerKey(k)){ hooks().toast(t('triggerRejected')); return false; }
     const m=OneToneMappingCore.recording();
     if(!m) return false;
@@ -589,6 +600,7 @@
     if(rec.mode!=='target') return false;
     combo=hooks().sanitizeTargetCombo(combo);
     if(!combo) return false;
+    if(hooks().shouldIgnoreTargetLeftClickCapture(combo,combo,null)) return false;
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
     if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
@@ -632,6 +644,7 @@
   global.OneToneMappingRecording={
     mode:function(){ return rec.mode; }, setMode:function(v){ rec.mode=v; },
     mappingId:function(){ return rec.mappingId; }, setMappingId:function(v){ rec.mappingId=v; },
+    wasEnabledBeforeRecording:function(){ return !!(rec.mappingWasEnabled&&rec.mappingWasEnabled.enabled); },
     isPending:function(){ return rec.startPending; }, setPending:function(v){ rec.startPending=v; },
     clearTimer:clearRecTimer, setTimer:function(fn,ms){ clearRecTimer(); rec.timer=setTimeout(fn,ms); },
     cancel:cancelRecording, cancelDraftOrRecording:cancelDraftOrRecording,

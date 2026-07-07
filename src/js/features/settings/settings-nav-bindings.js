@@ -58,8 +58,8 @@
         if(mode!=='sapi'&&mode!=='vosk') return;
         hooks.setSettingsPanel('voiceWake');
         hooks.switchVoiceMode(mode,{toastKind:'lite'});
-        var panel=$('voiceModePanel');
-        if(panel) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+        var card=$('voiceModePanelDetails');
+        if(card) card.scrollIntoView({behavior:'smooth',block:'nearest'});
       });
     }
     var settingsDebugSubnavList=$('settingsDebugSubnavList');
