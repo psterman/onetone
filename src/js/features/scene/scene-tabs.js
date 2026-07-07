@@ -106,6 +106,13 @@
     return mappingDisplayLabel(m);
   }
 
+  function isLibraryHabit(m){
+    var hp=global.OneToneHabitProfile;
+    var cfg=state().config||{};
+    if(hp&&hp.isLibraryHabit) return hp.isLibraryHabit(m,cfg);
+    return !!(m&&global.OneToneMappingCore&&global.OneToneMappingCore.isSaved&&global.OneToneMappingCore.isSaved(m));
+  }
+
   function resolveHabitStatus(m){
     if(!m) return {kind:'none',text:'—'};
     var hasConflict=false;
@@ -119,10 +126,19 @@
       ?global.OneToneMappingCore.editorTrigger(m):((m.triggerKey||'').trim());
     var tgt=global.OneToneMappingCore&&global.OneToneMappingCore.editorTarget
       ?global.OneToneMappingCore.editorTarget(m):((m.targetKey||'').trim());
+    if(isLibraryHabit(m)&&(!trig||!tgt)){
+      return {kind:'ready',text:t('sceneHeroStatusReady')};
+    }
     if(!trig||!tgt||!global.OneToneMappingCore.isSaved(m)){
       return {kind:'needsComplete',text:t('sceneHeroStatusNeedsComplete')};
     }
     return {kind:'ready',text:t('sceneHeroStatusReady')};
+  }
+
+  function habitProfile(m){
+    var hp=global.OneToneHabitProfile;
+    var cfg=state().config;
+    return hp&&hp.project&&m?hp.project(m,cfg||{}):null;
   }
 
   function renderHabitSwitcher(){
@@ -137,10 +153,11 @@
     var mappings=(st.config&&Array.isArray(st.config.mappings))?global.OneToneMappingCore.sorted():[];
     var html='';
     mappings.forEach(function(m){
-      if(!global.OneToneMappingCore.isSaved(m)) return;
+      if(!isLibraryHabit(m)) return;
       var name=habitDisplayName(m);
       var isSel=m.id===selId;
-      var isActive=activeId&&m.id===activeId;
+      var profile=habitProfile(m);
+      var isActive=profile?profile.isActive:!!(activeId&&m.id===activeId);
       html+='<button type="button" class="habit-switcher-item'+(isSel?' is-active':'')+(isActive?' is-active-scene':'')+'" role="option" data-habit-switch="'+m.id+'" aria-selected="'+(isSel?'true':'false')+'">';
       html+='<span>'+name+'</span></button>';
     });
@@ -328,7 +345,7 @@
 
     var btn=$('btnKeySchemeActivate');
     if(btn){
-      var canActivate=!!(m&&global.OneToneMappingCore&&global.OneToneMappingCore.isSaved(m));
+      var canActivate=!!(m&&isLibraryHabit(m));
       btn.hidden=!isDifferent||!canActivate;
       btn.disabled=!canActivate;
       btn.textContent=t('sceneActivateBtn');

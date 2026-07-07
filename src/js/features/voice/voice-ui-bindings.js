@@ -5,6 +5,18 @@
   function bindEvents(){
     var hooks=h();
     var t=hooks.t;
+    var voiceEngineTabbar=$('voiceEngineTabbar');
+    if(voiceEngineTabbar){
+      voiceEngineTabbar.addEventListener('click',function(e){
+        var tab=e.target.closest&&e.target.closest('[data-voice-engine-tab]');
+        if(!tab) return;
+        e.preventDefault();
+        var mode=tab.dataset.voiceEngineTab;
+        if(mode!=='sapi'&&mode!=='vosk') return;
+        hooks.setVoiceWakeExpandedMode(mode);
+        if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
+      });
+    }
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeSapi','sapi');
     var btnVoiceSapiTest=$('btnVoiceSapiTest');
     if(btnVoiceSapiTest) btnVoiceSapiTest.onclick=hooks.testVoiceSapiSend;
@@ -121,7 +133,17 @@
     var btnVoiceSwitchHabit=$('btnVoiceSwitchHabit');
     if(btnVoiceSwitchHabit){
       btnVoiceSwitchHabit.onclick=function(){
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('habits');
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
+      };
+    }
+    var btnVoiceSaveHabit=$('btnVoiceSaveHabit');
+    if(btnVoiceSaveHabit){
+      btnVoiceSaveHabit.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice){
+          global.OneToneHabitHub.createFromVoice();
+        }
       };
     }
     var btnVoiceOpenKeysApps=$('btnVoiceOpenKeysApps');

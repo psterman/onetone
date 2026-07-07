@@ -10,9 +10,11 @@
 
   function hooks(){ return global.__vp_settings_drawer_hooks__ || {}; }
 
+  function state(){ return global.OneToneState.state; }
+
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
 
@@ -110,13 +112,9 @@
 
     if(focus==='mappings'){
 
-      setSettingsPanel('habits');
+      setSettingsPanel('scenes');
 
-      if(global.OneToneHabitHub) global.OneToneHabitHub.showDetail(state().selectedMappingId,{layer:'advanced'});
-
-      else if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer('advanced');
-
-      scrollSettingsToTarget(['habitMappingsSection','mappingListTitle']);
+      scrollSettingsToTarget(['sceneModeList','settingsPanelScenes']);
 
       return;
 
@@ -366,9 +364,44 @@
 
   }
 
+  function navHighlightPanel(panel){
+    return panel==='habits'?'scenes':panel;
+  }
+
+  function openScenarioDetail(id,opts){
+    opts=opts||{};
+    if(id) state().selectedMappingId=id;
+    var hooks=global.__vp_bootstrap_hooks__||{};
+    if(hooks.syncEditorFromSelection) hooks.syncEditorFromSelection();
+    setSettingsPanel('keys');
+    if(opts.layer==='advanced'){
+      var advanced=$('keysAdvancedDetails');
+      if(advanced&&advanced.tagName==='DETAILS') advanced.open=true;
+    }
+    if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+  }
+
+  function openScenarioHub(){
+    setSettingsPanel('scenes');
+  }
+
+  function scrollToVoiceAction(navId){
+    var ids=['voiceSettingsWakeCard'];
+    if(navId==='voice:sapi') ids=['voiceSettingsWakeCard','voiceSapiBlock'];
+    else if(navId==='voice:vosk') ids=['voiceSettingsWakeCard','voiceVoskBlock'];
+    else if(navId==='voice:end') ids=['voiceSettingsEndPhraseCard'];
+    scrollSettingsToTarget(ids);
+  }
+
   function setSettingsPanel(panel){
 
     if(panel==='voiceEnd') panel='voiceWake';
+
+    if(panel==='habits'){
+      setSettingsPanel('scenes');
+      return;
+    }
 
     panel=normalizePanel(panel);
 
@@ -382,6 +415,8 @@
 
     ui.settingsPanel=panel;
 
+    const highlight=navHighlightPanel(panel);
+
     Object.keys(ids).forEach(function(key){
 
       const sec=$(ids[key]);
@@ -390,7 +425,7 @@
 
       const nav=document.querySelector('.settings-nav-item[data-panel="'+key+'"]');
 
-      if(nav) nav.classList.toggle('is-active',key===panel);
+      if(nav) nav.classList.toggle('is-active',highlight===key);
 
     });
 
@@ -418,13 +453,9 @@
 
       if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
 
-    }else     if(panel==='habits'){
+    }else if(panel==='scenes'){
 
-      if(panelChanged) ui.habitView='hub';
-
-      if(panelChanged&&global.OneToneHabitHub) global.OneToneHabitHub.showHub();
-
-      refreshHabitsPanel();
+      if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
 
     }else if(panel==='general'){
 
@@ -629,6 +660,8 @@
     open:openSettings,openDrawer:openDrawer,close:closeDrawer,
 
     setPanel:setSettingsPanel,syncChrome:syncSettingsChrome,
+
+    openScenarioDetail:openScenarioDetail,openScenarioHub:openScenarioHub,scrollToVoiceAction:scrollToVoiceAction,
 
     syncHeaderBtn:syncHeaderSettingsBtn,
 

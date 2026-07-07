@@ -1,0 +1,428 @@
+<!-- =====================================================================
+voice-pilot · 一声 onetone
+M1 集成指南 · integration-guide.html
+=====================================================================
+这是给开发看的"diff 指南"，告诉你怎么把 home-v9.css + home-v9.js 接进现有项目。
+===================================================================== -->
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>voice-pilot · M1 集成指南</title>
+<style>
+  :root{
+    --brand: #00A3FF;
+    --ink: #1c1917;
+    --ink-2: #57534E;
+    --ink-3: #a8a29e;
+    --code-bg: #1A2436;
+    --code-ink: #E6EDF3;
+    --ok: #34D399;
+    --warn: #FBBF24;
+    --line: #e7e5e4;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:#FAFAF9;
+    color:var(--ink);
+    padding:48px;
+    max-width:920px;
+    margin:0 auto;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1{
+    font-size:32px;
+    font-weight:700;
+    letter-spacing:-.02em;
+    margin-bottom:8px;
+  }
+  h1 em{ font-style:normal; color:var(--brand); }
+  .lead{ font-size:14.5px; color:var(--ink-2); margin-bottom:32px; }
+  h2{
+    font-size:20px;
+    font-weight:700;
+    margin:40px 0 12px;
+    padding-top:24px;
+    border-top:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  h2 .num{
+    font-family:ui-monospace, monospace;
+    font-size:12px;
+    color:var(--brand);
+    background:rgba(0,163,255,.10);
+    padding:3px 8px;
+    border-radius:999px;
+    font-weight:600;
+  }
+  h3{ font-size:15px; font-weight:600; margin:24px 0 8px; color:var(--ink); }
+  p, li{ font-size:14px; color:var(--ink-2); }
+  ol, ul{ padding-left:22px; margin:8px 0 16px; }
+  li{ margin-bottom:6px; }
+  code{
+    font-family:ui-monospace, "JetBrains Mono", monospace;
+    font-size:13px;
+    background:#fff;
+    border:1px solid var(--line);
+    padding:1px 6px;
+    border-radius:4px;
+    color:var(--ink);
+  }
+  pre{
+    background:var(--code-bg);
+    color:var(--code-ink);
+    padding:16px 20px;
+    border-radius:10px;
+    overflow-x:auto;
+    font-family:ui-monospace, "JetBrains Mono", monospace;
+    font-size:12.5px;
+    line-height:1.6;
+    margin:12px 0;
+  }
+  pre code{
+    background:transparent;
+    border:none;
+    padding:0;
+    color:inherit;
+    font-size:inherit;
+  }
+  .diff-add{ color:#7ee787; }
+  .diff-del{ color:#ff7b72; text-decoration:line-through; opacity:.7; }
+  .diff-cmt{ color:#8b949e; font-style:italic; }
+  .tag{
+    display:inline-block;
+    font-size:10.5px;
+    padding:2px 7px;
+    background:var(--brand);
+    color:#fff;
+    border-radius:999px;
+    font-weight:700;
+    letter-spacing:.04em;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .callout{
+    background:#EFF6FF;
+    border:1px solid #BFDBFE;
+    border-left:3px solid var(--brand);
+    padding:12px 16px;
+    border-radius:0 8px 8px 0;
+    margin:14px 0;
+    font-size:13px;
+    color:#1E40AF;
+  }
+  .warn{
+    background:#FEF3C7;
+    border-color:#FDE68A;
+    border-left-color:var(--warn);
+    color:#92400E;
+  }
+  .step{
+    counter-increment: step;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px 20px 16px 56px;
+    margin:12px 0;
+    position:relative;
+  }
+  .step::before{
+    content:counter(step);
+    position:absolute;
+    left:16px; top:50%;
+    transform:translateY(-50%);
+    width:28px; height:28px;
+    background:var(--brand);
+    color:#fff;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:700;
+    font-family:ui-monospace, monospace;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0;
+    font-size:13px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  th, td{
+    padding:10px 14px;
+    text-align:left;
+    border-bottom:1px solid var(--line);
+  }
+  th{
+    background:#fafaf9;
+    font-size:11px;
+    font-weight:700;
+    color:var(--ink-3);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  tr:last-child td{ border-bottom:none; }
+  td code{ font-size:11.5px; }
+  .effort{ display:inline-block; font-size:10px; padding:1px 6px; border-radius:3px; font-weight:700; }
+  .effort.s{ background:#d1fae5; color:#065f46; }
+  .effort.m{ background:#fef3c7; color:#92400e; }
+  .effort.l{ background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+
+<h1>voice-pilot · <em>M1 集成指南</em> <span class="tag">HOME v9</span></h1>
+<p class="lead">把 <code>home-v9.css</code> + <code>home-v9.js</code> 接进现有项目，照着下面 5 步操作。整页估计 30-60 分钟。</p>
+
+<h2><span class="num">01</span>放置文件</h2>
+<div class="step">
+  把两个文件放到对应位置：
+  <pre><code>src/
+├── css/
+│   ├── app.css         ← 已有 · 保留不动
+│   └── home-v9.css     ← 新增 ← 就是这个文件
+└── js/
+    ├── app.js          ← 已有 · 保留不动
+    └── home-v9.js      ← 新增 ← 配套 JS</code></pre>
+</div>
+
+<h2><span class="num">02</span>在 <code>src/index.html</code> 引入 <span class="tag">2 处</span></h2>
+
+<div class="step">
+  <h3>2.1 在 <code>&lt;head&gt;</code> 里引入新 CSS</h3>
+  <p>找到现有的 <code>&lt;link rel="stylesheet" href="css/app.css" /&gt;</code>，<strong>在它后面</strong>加一行：</p>
+  <pre><code>&lt;link rel="stylesheet" href="css/app.css" /&gt;      <span class="diff-cmt">// 已有</span>
+<span class="diff-add">&lt;link rel="stylesheet" href="css/home-v9.css" /&gt;</span>  <span class="diff-cmt">// 新增</span></code></pre>
+  <div class="callout"><strong>为什么在后面</strong>：home-v9.css 里覆盖了 --primary 等 token，<strong>后引入的优先级更高</strong>。这样不用动 app.css 也能换品牌色。</div>
+</div>
+
+<div class="step">
+  <h3>2.2 在 <code>&lt;body&gt;</code> 末尾引入新 JS</h3>
+  <p>找到现有的 <code>&lt;script src="js/app.js"&gt;&lt;/script&gt;</code>，<strong>在它后面</strong>加一行：</p>
+  <pre><code>&lt;script src="js/app.js" defer&gt;&lt;/script&gt;       <span class="diff-cmt">// 已有</span>
+<span class="diff-add">&lt;script src="js/home-v9.js" defer&gt;&lt;/script&gt;</span>  <span class="diff-cmt">// 新增</span></code></pre>
+</div>
+
+<h2><span class="num">03</span>改造 header <span class="tag">替换 1 个 class</span></h2>
+<div class="step">
+  找到现有的 <code>&lt;header class="app-header"&gt;</code>，把 class 改成：
+  <pre><code><span class="diff-del">&lt;header class="app-header"&gt;</span>
+<span class="diff-add">&lt;header class="app-header app-header-rev"&gt;</span></code></pre>
+  <p>CSS 就会自动套用新样式，<strong>HTML 结构不动</strong>。</p>
+  <div class="callout warn"><strong>注意</strong>：如果你的 JS 里有 <code>document.querySelector('.app-header')</code> 监听点击事件，<strong>不需要改 JS</strong>，新 class 是叠加的不是替换。</div>
+</div>
+
+<h2><span class="num">04</span>在主屏加 4 个新区块 <span class="tag">复制粘贴</span></h2>
+<div class="step">
+  <h3>4.1 找到插入位置</h3>
+  <p>在 <code>src/index.html</code> 里找 <code>&lt;div class="home-zone"&gt;</code>，在它的<strong>最前面</strong>（也就是在 <code>.home-status-summary</code> 之前）插入下面这一大段：</p>
+
+<pre><code><span class="diff-add">&lt;!-- ============ M1 · v9 重构区块 ============ --&gt;
+&lt;div class="vp-statusbar"&gt;
+  &lt;div class="left"&gt;
+    &lt;span class="state" id="vp9Status"&gt;
+      &lt;span class="dot"&gt;&lt;/span&gt;
+      &lt;span class="state-code"&gt;[IDLE]&lt;/span&gt;
+      &lt;span class="state-label"&gt;待命&lt;/span&gt;
+    &lt;/span&gt;
+    &lt;span class="sep"&gt;·&lt;/span&gt;
+    &lt;span class="meta" id="vp9Engine"&gt;小型 · 本地&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="right"&gt;
+    &lt;span class="lat" id="vp9Lat"&gt;—&lt;/span&gt;
+    &lt;span class="sep"&gt;·&lt;/span&gt;
+    &lt;span class="meta" id="vp9Chars"&gt;0 chars&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;div class="vp-hero-live" id="vp9HeroLive"&gt;
+  &lt;span class="state-label"&gt;
+    &lt;span class="live-dot"&gt;&lt;/span&gt;
+    &lt;span class="state-text"&gt;待命&lt;/span&gt;
+  &lt;/span&gt;
+
+  &lt;div class="vp-orb-wrap"&gt;
+    &lt;div class="vp-orb is-idle" id="vp9Orb"&gt;
+      &lt;svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"&gt;
+        &lt;path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/&gt;
+        &lt;path d="M19 10v2a7 7 0 0 1-14 0v-2"/&gt;
+        &lt;line x1="12" y1="19" x2="12" y2="23"/&gt;
+      &lt;/svg&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="live-text" id="vp9LiveText"&gt;
+    &lt;div class="vp-empty"&gt;
+      按住 &lt;kbd&gt;Ctrl&lt;/kbd&gt; + &lt;kbd&gt;⇧&lt;/kbd&gt; + &lt;kbd&gt;V&lt;/kbd&gt; 开始说话
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="vp-status-pills"&gt;
+    &lt;span class="pill live" id="vp9PillState"&gt;
+      &lt;span class="dot"&gt;&lt;/span&gt;listening
+    &lt;/span&gt;
+    &lt;span class="pill" id="vp9PillModel"&gt;小型模型 · 本地&lt;/span&gt;
+    &lt;span class="pill" id="vp9PillHotkey"&gt;已绑定 Ctrl+⇧+V&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;div class="vp-actions"&gt;
+  &lt;button class="btn" id="vp9BtnSwitch"&gt;
+    &lt;svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"&gt;
+      &lt;polyline points="17 1 21 5 17 9"/&gt;
+      &lt;path d="M3 11V9a4 4 0 0 1 4-4h14"/&gt;
+      &lt;polyline points="7 23 3 19 7 15"/&gt;
+      &lt;path d="M21 13v2a4 4 0 0 1-4 4H3"/&gt;
+    &lt;/svg&gt;
+    切换目标 &lt;span class="kbd"&gt;Tab&lt;/span&gt;
+  &lt;/button&gt;
+  &lt;button class="btn primary" id="vp9BtnEnd"&gt;
+    结束说话 &lt;span class="kbd"&gt;松开&lt;/span&gt;
+  &lt;/button&gt;
+  &lt;button class="btn" id="vp9BtnSettings"&gt;
+    &lt;svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"&gt;
+      &lt;path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/&gt;
+    &lt;/svg&gt;
+    高级设置
+  &lt;/button&gt;
+&lt;/div&gt;
+
+&lt;div class="vp-tray-toggle" id="vp9TrayToggle"&gt;
+  展开设置与习惯配置
+  &lt;svg class="arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round"&gt;
+    &lt;polyline points="6 9 12 15 18 9"/&gt;
+  &lt;/svg&gt;
+&lt;/div&gt;
+
+&lt;div class="vp-tray" id="vp9Tray"&gt;
+  &lt;div class="vp-tray-grid"&gt;
+    &lt;div class="vp-tray-card"&gt;
+      &lt;div class="lbl"&gt;按键唤起&lt;/div&gt;
+      &lt;div class="key" id="vp9TrayKey"&gt;Ctrl + ⇧ + V&lt;/div&gt;
+      &lt;div class="row"&gt;&lt;span class="k"&gt;结束动作&lt;/span&gt;&lt;span class="v" id="vp9TrayFinish"&gt;自动 Enter&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="row"&gt;&lt;span class="k"&gt;静音等待&lt;/span&gt;&lt;span class="v" id="vp9TrayDelay"&gt;3.5 秒&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="vp-tray-card"&gt;
+      &lt;div class="lbl"&gt;语音唤起&lt;/div&gt;
+      &lt;div class="key" id="vp9TrayWake"&gt;嗨小助手&lt;/div&gt;
+      &lt;div class="row"&gt;&lt;span class="k"&gt;备用词&lt;/span&gt;&lt;span class="v" id="vp9TrayWakeAlt"&gt;嗨同学 · 开始输入&lt;/span&gt;&lt;/div&gt;
+      &lt;div class="row"&gt;&lt;span class="k"&gt;结束词&lt;/span&gt;&lt;span class="v" id="vp9TrayEnd"&gt;停止输入 · 完毕&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="vp-tray-card"&gt;
+      &lt;div class="lbl"&gt;引擎&lt;/div&gt;
+      &lt;div class="key" id="vp9TrayEngine"&gt;small-cn · 本地&lt;/div&gt;
+      &lt;div class="row"&gt;
+        &lt;span class="k"&gt;状态&lt;/span&gt;
+        &lt;span class="v"&gt;
+          &lt;span class="swatch" style="background:#34D399; box-shadow:0 0 4px #34D399;"&gt;&lt;/span&gt;
+          &lt;span id="vp9TrayEngineStatus"&gt;在线 · 380ms&lt;/span&gt;
+        &lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div class="row"&gt;&lt;span class="k"&gt;麦克风&lt;/span&gt;&lt;span class="v" id="vp9TrayMic"&gt;Wireless Mic Rx&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;!-- ============ M1 区块结束 ============ --&gt;</span></code></pre>
+
+  <div class="callout warn"><strong>注意</strong>：所有 id 都用 <code>vp9</code> 前缀，不会和你现有 id 冲突。<strong>如果 id 重名</strong>，全局搜索 <code>vp9</code> 替换成你自己的前缀。</div>
+</div>
+
+<h2><span class="num">05</span>接上现有数据流 <span class="tag">JS 桥接</span></h2>
+<div class="step">
+  <p>把你现有 app.js 里更新首页状态的函数，改成同时调用 vp9 API：</p>
+
+<pre><code><span class="diff-cmt">// 现有代码（举例）</span>
+function onDictationStart(){
+  <span class="diff-del">document.getElementById('homeStatusTitle').textContent = '正在听';</span>
+  <span class="diff-del">document.getElementById('homeStatusIcon').classList.add('is-active');</span>
+}
+
+<span class="diff-cmt">// 改成</span>
+function onDictationStart(){
+  <span class="diff-add">window.vp9.updateState('DICTATING');</span>
+  <span class="diff-cmt">// 旧代码保留作为 fallback，不冲突</span>
+  document.getElementById('homeStatusTitle').textContent = '正在听';
+}
+
+<span class="diff-cmt">// 识别到新字符时</span>
+function onPartialText(text){
+  <span class="diff-add">window.vp9.setText('#vp9LiveText', previousFinal, text);</span>
+  document.getElementById('vp9Chars').textContent = text.length + ' chars';
+}
+
+<span class="diff-cmt">// 识别完成（断句）</span>
+function onFinalText(text){
+  <span class="diff-add">window.vp9.typewrite('#vp9LiveText', text, 50);</span>
+  previousFinal = text;
+}
+
+<span class="diff-cmt">// 引擎离线</span>
+function onEngineOffline(){
+  <span class="diff-add">window.vp9.updateState('ERROR');</span>
+}</code></pre>
+</div>
+
+<h2>验证清单</h2>
+<table>
+  <thead>
+    <tr><th>检查项</th><th>预期效果</th><th>耗时</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>页面打开后顶部</td>
+      <td>深色背景下看到 56px 高 header，左 logo + 中状态 pill + 右目标 app</td>
+      <td><span class="effort s">1 分钟</span></td>
+    </tr>
+    <tr>
+      <td>主屏中央</td>
+      <td>光晕球（深色 / 静态）+ 下方"按住 Ctrl+⇧+V 开始说话"占位</td>
+      <td><span class="effort s">1 分钟</span></td>
+    </tr>
+    <tr>
+      <td>按热键说话</td>
+      <td>光晕球变蓝扩散 + 状态条变 <code>[DICTATING]</code> + 文字流式输出</td>
+      <td><span class="effort m">5 分钟</span></td>
+    </tr>
+    <tr>
+      <td>点击"展开设置"</td>
+      <td>底部 tray 展开 3 张小卡（按键/语音/引擎）</td>
+      <td><span class="effort s">1 分钟</span></td>
+    </tr>
+    <tr>
+      <td>品牌色检查</td>
+      <td>所有蓝色都是 <code>#00A3FF</code>，没有残留的 <code>#2a9cc4</code></td>
+      <td><span class="effort s">2 分钟</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>回滚方案</h2>
+<div class="step">
+  任何一步出问题，3 秒钟回滚：
+  <ol>
+    <li>删掉 <code>src/index.html</code> 里新引入的两行 <code>&lt;link&gt;</code> 和 <code>&lt;script&gt;</code></li>
+    <li>删掉 <code>.home-zone</code> 里粘进去的那段 <code>vp-</code> 区块</li>
+    <li>把 <code>&lt;header class="app-header app-header-rev"&gt;</code> 改回 <code>&lt;header class="app-header"&gt;</code></li>
+  </ol>
+  <p>或者直接 <code>git checkout src/index.html</code>。</p>
+</div>
+
+<div class="callout">
+  <strong>需要帮忙的话</strong>：粘出错信息 / 截图，我直接帮你 debug。M1 完成 demo 后告诉我，进入 M2（设置页 + 5 主题）。
+</div>
+
+</body>
+</html>

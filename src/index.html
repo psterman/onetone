@@ -191,28 +191,30 @@
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
                   <span id="settingsNavBasicLabel">基础</span>
                 </button>
+                <div class="settings-nav-group" id="settingsNavKeysGroup">
                 <button type="button" class="settings-nav-item" data-panel="keys" id="settingsNavKeys">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                   <span id="settingsNavKeysLabel">按键</span>
                 </button>
+                  <div class="settings-scheme-subnav settings-keys-subnav" id="settingsSchemeSubnav" hidden>
+                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="按键编辑列表"></div>
+                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新建草稿</button>
+                  </div>
+                </div>
                 <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
                   <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                     <span id="settingsNavVoiceWakeLabel">语音</span>
                   </button>
-                  <div class="settings-scheme-subnav settings-voice-subnav" id="settingsVoiceSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsVoiceSubnavList" role="tablist" aria-label="语音模式"></div>
+                  <div class="settings-scheme-subnav settings-scene-voice-subnav" id="settingsSceneVoiceSubnav" hidden>
+                    <div class="settings-scheme-subnav-list" id="settingsSceneVoiceSubnavList" role="tablist" aria-label="语音动作"></div>
                   </div>
                 </div>
-                <div class="settings-nav-group" id="settingsNavHabitsGroup">
-                  <button type="button" class="settings-nav-item" data-panel="habits" id="settingsNavHabits">
-                    <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.828L4 7"/><path d="m15 9 6-6"/><path d="M20 21H9"/><path d="M4 21h5"/></svg>
-                    <span id="settingsNavHabitsLabel">我的习惯</span>
-                  </button>
-                  <div class="settings-scheme-subnav" id="settingsSchemeSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="习惯列表"></div>
-                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新增习惯</button>
-                  </div>
+                <div class="settings-nav-group" id="settingsNavScenesGroup">
+                <button type="button" class="settings-nav-item" data-panel="scenes" id="settingsNavScenes">
+                  <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M10 7.5h4M6.5 11v4M17.5 11v4M10 17.5h4"/><path d="M16 15h5v5h-5z"/></svg>
+                  <span id="settingsNavScenesLabel">情景模式</span>
+                </button>
                 </div>
                 <button type="button" class="settings-nav-item sr-only" data-panel="sounds" id="settingsNavSounds" hidden aria-hidden="true" tabindex="-1">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
@@ -596,6 +598,10 @@
                 <p class="keys-advanced-desc" id="keysAdvancedDesc">按键冲突、特殊按键与输入法兼容排查</p>
                 <p class="keys-advanced-when" id="keysAdvancedWhenHint">仅在冲突、鼠标侧键录制或输入法异常时需要展开</p>
                 <div class="keys-advanced-body">
+                  <section class="scene-voice-panel habit-advanced-block" id="sceneVoicePanel" hidden>
+                    <h4 class="habit-advanced-block-title" id="sceneVoicePanelTitle">单独语音设置</h4>
+                    <div id="sceneVoicePanelBody"></div>
+                  </section>
                   <section class="keys-advanced-group" id="keysAdvConflict">
                     <h5 class="keys-advanced-group-title" id="keysAdvConflictTitle">冲突处理</h5>
                     <div class="conflict-pill" id="conflictBanner" role="status"></div>
@@ -628,15 +634,58 @@
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
           </div>
         </section>
+        <section class="settings-panel drawer-section scene-mode-page" id="settingsPanelScenes" hidden>
+          <header class="pref-page-head scene-mode-head">
+            <div class="scene-mode-head-text">
+              <h3 class="pref-page-title" id="settingsPanelScenesTitle">情景模式</h3>
+              <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelScenesDesc">收录所有按键和语音动作，集中查看、跳转和调用。</p>
+            </div>
+            <div class="scene-mode-head-actions">
+              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeNew">+ 新建情景</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeManage" hidden aria-hidden="true" tabindex="-1">管理情景</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeOpenKeys">配置按键</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeOpenVoice">配置语音</button>
+            </div>
+          </header>
+          <section class="scene-mode-summary" aria-label="情景模式统计">
+            <article class="scene-mode-stat">
+              <span class="scene-mode-stat-label" id="sceneModeTotalLabel">全部动作</span>
+              <strong class="scene-mode-stat-value" id="sceneModeTotalCount">0</strong>
+            </article>
+            <article class="scene-mode-stat">
+              <span class="scene-mode-stat-label" id="sceneModeKeyLabel">按键动作</span>
+              <strong class="scene-mode-stat-value" id="sceneModeKeyCount">0</strong>
+            </article>
+            <article class="scene-mode-stat">
+              <span class="scene-mode-stat-label" id="sceneModeVoiceLabel">语音动作</span>
+              <strong class="scene-mode-stat-value" id="sceneModeVoiceCount">0</strong>
+            </article>
+          </section>
+          <div class="scene-mode-toolbar">
+            <div class="scene-mode-filters" role="tablist" aria-label="情景模式过滤">
+              <button type="button" class="scene-mode-filter is-active" data-scene-mode-filter="all" role="tab" aria-selected="true" id="sceneModeFilterAll">全部</button>
+              <button type="button" class="scene-mode-filter" data-scene-mode-filter="key" role="tab" aria-selected="false" id="sceneModeFilterKey">按键</button>
+              <button type="button" class="scene-mode-filter" data-scene-mode-filter="voice" role="tab" aria-selected="false" id="sceneModeFilterVoice">语音</button>
+            </div>
+          </div>
+          <div class="scene-mode-empty" id="sceneModeEmpty" hidden>
+            <strong id="sceneModeEmptyTitle">还没有情景动作</strong>
+            <span id="sceneModeEmptyDesc">先去按键或语音页面保存动作，这里会自动收录。</span>
+          </div>
+          <div class="scene-mode-list" id="sceneModeList" role="list"></div>
+        </section>
         <section class="settings-panel drawer-section" id="settingsPanelHabits" hidden>
-          <div class="habit-hub-shell" id="habitHubView">
+          <div class="habit-hub-shell" id="habitHubView" hidden aria-hidden="true">
             <header class="habit-hub-head">
               <div class="habit-hub-head-text">
-                <h3 class="pref-page-title" id="settingsPanelHabitsTitle">我的习惯</h3>
-                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">你在按键和语音里保存的情景模式会自动汇入这里</p>
+                <h3 class="pref-page-title" id="settingsPanelHabitsTitle">情景管理</h3>
+                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">重命名、复制、删除与高级语音/应用设置</p>
                 <p class="habit-hub-hint" id="habitHubAutoHint">不需要先选分类，保存后会自动出现在这里</p>
               </div>
-              <button type="button" class="habit-hub-new-btn" id="btnHabitHubNew">+ 新建习惯</button>
+              <div class="habit-hub-head-actions">
+                <button type="button" class="habit-hub-new-btn" id="btnHabitHubNew">从按键保存</button>
+                <button type="button" class="habit-hub-new-btn is-secondary" id="btnHabitHubSaveVoice">保存当前语音</button>
+              </div>
             </header>
             <div class="habit-hub-toolbar">
               <div class="habit-hub-filters" id="habitHubFilters" role="tablist" aria-label="习惯分类">
@@ -670,7 +719,10 @@
                 <div class="habit-hub-empty" id="habitHubEmpty" hidden>
                   <p class="habit-hub-empty-title" id="habitHubEmptyTitle">还没有习惯</p>
                   <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">在「按键」或「语音」里保存设置后，会自动出现在这里</p>
-                  <button type="button" class="habit-hub-empty-btn" id="btnHabitHubEmptyNew">+ 新建习惯</button>
+                  <div class="habit-hub-empty-actions">
+                    <button type="button" class="habit-hub-empty-btn" id="btnHabitHubEmptyNew">从按键保存</button>
+                    <button type="button" class="habit-hub-empty-btn is-secondary" id="btnHabitHubEmptySaveVoice">保存当前语音</button>
+                  </div>
                 </div>
                 <div class="habit-hub-list is-list" id="habitHubList" role="list"></div>
               </div>
@@ -842,10 +894,6 @@
                   </div>
                 </div>
                 <details class="habit-finish-advanced sr-only" id="habitFinishAdvanced" hidden></details>
-                <section class="scene-voice-panel habit-advanced-block" id="sceneVoicePanel" hidden>
-                  <h4 class="habit-advanced-block-title" id="sceneVoicePanelTitle">单独语音设置</h4>
-                  <div id="sceneVoicePanelBody"></div>
-                </section>
                 <div class="mapping-section habit-advanced-block" id="habitMappingsSection">
                   <div class="list-head-row">
                     <h2 id="mappingListTitle">全部习惯</h2>
@@ -884,7 +932,8 @@
                 <span class="flow-status-divider" aria-hidden="true"></span>
                 <span class="flow-status-pill is-on" id="voiceStatusFinish">—</span>
                 <span class="flow-status-divider" aria-hidden="true"></span>
-                <button type="button" class="flow-status-pill is-action" id="btnVoiceSwitchHabit">切换习惯 ▾</button>
+                <button type="button" class="flow-status-pill is-action" id="btnVoiceSaveHabit" hidden aria-hidden="true" tabindex="-1">保存为习惯</button>
+                <button type="button" class="flow-status-pill is-action" id="btnVoiceSwitchHabit" hidden aria-hidden="true" tabindex="-1">切换习惯 ▾</button>
                 <button type="button" class="flow-status-link" id="btnVoiceGoRuntime">查看实时状态</button>
               </div>
               <div class="voice-page-head-context" id="voiceScopeBar" hidden aria-hidden="true">
@@ -936,7 +985,7 @@
                           <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
                         </div>
                       </div>
-                      <p class="voice-phrase-compact-hint" id="voiceWakeCompactHint">由左侧「识别方式」切换中英文识别资源，唤醒词会同步更新</p>
+                      <p class="voice-phrase-compact-hint" id="voiceWakeCompactHint">由右侧「识别方式」切换中英文识别资源，唤醒词会同步更新</p>
                     </div>
                     <details class="flow-preset-more" id="voiceWakePresetMore">
                       <summary id="voiceWakePresetMoreSummary">更多预设</summary>
@@ -973,7 +1022,7 @@
                       <span class="voice-mode-meta-label" id="voiceModeMetaLabel">当前：系统快速识别</span>
                       <button type="button" class="voice-mode-meta-link" id="btnVoiceModeMetaDetails">查看识别细项</button>
                     </div>
-                    <p class="voice-mode-meta-hint" id="voiceModeMetaHint">由左侧「识别方式」切换</p>
+                    <p class="voice-mode-meta-hint" id="voiceModeMetaHint">由右侧「识别方式」切换</p>
                     </div>
                   </div>
                   <div class="voice-flow-step voice-step-card voice-settings-card" id="voiceSettingsEndPhraseCard">
@@ -1061,6 +1110,10 @@
               </section>
             </div>
             <aside class="voice-page-aside">
+              <div class="voice-engine-tabbar" id="voiceEngineTabbar" role="tablist" aria-label="识别方式">
+                <button type="button" class="voice-engine-tab is-active" data-voice-engine-tab="sapi" id="voiceEngineTabSapi" role="tab" aria-selected="true">轻量版</button>
+                <button type="button" class="voice-engine-tab" data-voice-engine-tab="vosk" id="voiceEngineTabVosk" role="tab" aria-selected="false">高级版</button>
+              </div>
               <section class="voice-side-card voice-side-live" id="voiceSideLiveCard">
                 <div class="voice-side-live-head">
                   <span class="voice-side-live-title" id="voiceSideLiveTitle">实时语音</span>
@@ -1135,7 +1188,7 @@
                 <span class="sr-only" id="voiceModeTitle">识别细项</span>
                 <span class="sr-only" id="voiceRecognitionAsideExpandHint">展开查看更多</span>
               <section class="voice-mode-panel" id="voiceModePanel">
-            <p class="mic-desc" id="voiceModeDesc">在左侧切换识别方式，下方配置对应参数。</p>
+            <p class="mic-desc" id="voiceModeDesc">在右侧切换识别方式，下方配置对应参数。</p>
             <div class="voice-mode-grid">
               <div class="voice-mode-card" id="btnVoiceModeSapi" data-voice-mode="sapi">
                 <div class="voice-mode-head">
@@ -1786,6 +1839,7 @@
   <script src="js/core/events.js?v=20260706-sync"></script>
   <script src="js/core/render-loop.js"></script>
   <script src="js/core/scene-config.js"></script>
+  <script src="js/core/habit-profile.js"></script>
   <script src="js/core/config-persist.js?v=20260706-sync"></script>
   <script src="js/core/app-text-utils.js"></script>
   <script src="js/core/app-autostart.js"></script>
@@ -1838,6 +1892,7 @@
   <script src="js/features/scene/habit-layer-nav.js"></script>
   <script src="js/features/scene/scene-tabs.js"></script>
   <script src="js/features/scene/scene-voice-tab.js"></script>
+  <script src="js/features/scene/scene-mode-hub.js"></script>
   <script src="js/features/scene/scene-sync-confirm.js"></script>
   <script src="js/features/mapping/mapping-conflict-state.js"></script>
   <script src="js/features/mapping/mapping-editor-state.js"></script>

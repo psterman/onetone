@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · iOS 化改版视觉稿 v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ==================== iOS DESIGN TOKENS ==================== */
+:root{
+  /* Surfaces */
+  --bg:           #F2F2F7;     /* iOS systemGroupedBackground */
+  --bg-elev:      #FFFFFF;     /* card / sheet */
+  --bg-elev-2:    #FFFFFF;
+  --fill-1:       rgba(120,120,128,0.12);   /* iOS secondary fill (segmented track) */
+  --fill-2:       rgba(120,120,128,0.20);
+  --fill-3:       rgba(120,120,128,0.32);
+
+  /* Text */
+  --label:        rgba(0,0,0,.88);
+  --label-2:      rgba(60,60,67,.60);
+  --label-3:      rgba(60,60,67,.30);
+  --label-inv:    rgba(255,255,255,.95);
+
+  /* Lines */
+  --separator:    rgba(60,60,67,.12);  /* hairline */
+  --separator-opaque: #C6C6C8;
+
+  /* iOS System Colors (light) */
+  --blue:         #007AFF;
+  --blue-soft:    rgba(0,122,255,.12);
+  --green:        #34C759;
+  --green-soft:   rgba(52,199,89,.14);
+  --red:          #FF3B30;
+  --red-soft:     rgba(255,59,48,.12);
+  --orange:       #FF9500;
+  --orange-soft:  rgba(255,149,0,.14);
+  --indigo:       #5856D6;
+  --indigo-soft:  rgba(88,86,214,.12);
+  --gray:         #8E8E93;
+  --gray-2:       #AEAEB2;
+  --gray-3:       #C7C7CC;
+  --gray-4:       #D1D1D6;
+  --gray-5:       #E5E5EA;
+  --gray-6:       #F2F2F7;
+
+  /* Radius */
+  --r-card:       14px;        /* iOS 17 medium radius */
+  --r-card-sm:    10px;
+  --r-pill:       999px;
+
+  /* Shadow */
+  --sh-1: 0 1px 2px rgba(0,0,0,.04);
+  --sh-2: 0 4px 16px -6px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --sh-3: 0 12px 32px -12px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.04);
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:var(--bg);
+  color:var(--label);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-feature-settings:'cv11','ss01';
+}
+body { padding:64px 48px 96px; max-width:1280px; margin:0 auto; }
+
+/* ==================== HERO ==================== */
+.hero { display:grid; grid-template-columns:1.4fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:.5px solid var(--separator); }
+.hero h1 { font-size:48px; font-weight:700; letter-spacing:-.02em; line-height:1.05; }
+.hero h1 em { font-style:normal; color:var(--blue); }
+.hero .lead { font-size:16px; line-height:1.55; color:var(--label-2); margin-top:18px; max-width:560px; }
+.hero .meta { display:flex; flex-direction:column; gap:14px; padding:18px 22px; background:var(--bg-elev); border-radius:var(--r-card); box-shadow:var(--sh-2); font-size:13px; color:var(--label-2); }
+.hero .meta dt { color:var(--label-3); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:2px; font-weight:500; }
+.hero .meta dd { color:var(--label); font-weight:600; font-size:14px; }
+.hero .meta .dot-pair { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.hero .meta .swatch { width:18px; height:18px; border-radius:5px; box-shadow:0 0 0 .5px rgba(0,0,0,.08); }
+.hero .meta .sw-blue{ background:#007AFF; }
+.hero .meta .sw-bg{ background:#F2F2F7; }
+.hero .meta .sw-card{ background:#FFFFFF; }
+
+/* ==================== SECTION ==================== */
+.section { padding:72px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:36px; }
+.section-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--blue); background:var(--blue-soft); padding:4px 10px; border-radius:var(--r-pill); font-weight:600; letter-spacing:.04em; }
+.section-head h2 { font-size:28px; font-weight:700; letter-spacing:-.01em; }
+.section-head .sub { font-size:14px; color:var(--label-2); margin-left:auto; }
+
+/* ==================== COMPARE TABLE ==================== */
+.compare { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.compare-col { background:var(--bg-elev); border-radius:var(--r-card); box-shadow:var(--sh-2); overflow:hidden; }
+.compare-head { padding:14px 20px; border-bottom:.5px solid var(--separator); display:flex; align-items:center; justify-content:space-between; }
+.compare-head .title { font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.compare-head .tag { font-size:11px; padding:3px 10px; border-radius:var(--r-pill); font-weight:600; letter-spacing:.02em; }
+.compare-head .tag.old { background:var(--fill-1); color:var(--label-2); }
+.compare-head .tag.new { background:var(--blue-soft); color:var(--blue); }
+.compare-body { padding:24px; background:var(--bg); }
+.compare-row { display:grid; grid-template-columns:120px 1fr; gap:16px; padding:14px 0; align-items:center; border-bottom:.5px solid var(--separator); }
+.compare-row:last-child { border-bottom:none; }
+.compare-row .key { font-size:12px; color:var(--label-2); font-weight:500; }
+.compare-row .demo { font-size:13px; }
+.compare-row .demo .lbl-old { color:var(--label-3); text-decoration:line-through; text-decoration-color:var(--label-3); }
+.compare-row .demo .lbl-new { color:var(--label); font-weight:600; }
+
+/* ==================== APP FRAME (mock window) ==================== */
+.app-frame { background:var(--bg-elev); border-radius:18px; box-shadow:var(--sh-3); overflow:hidden; }
+.app-bar { display:flex; align-items:center; gap:6px; padding:11px 18px; background:#ECECEF; border-bottom:.5px solid var(--separator); }
+.app-bar .dot { width:10px; height:10px; border-radius:50%; }
+.app-bar .dot.r{ background:#FF5F57; } .app-bar .dot.y{ background:#FEBC2E; } .app-bar .dot.g{ background:#28C840; }
+.app-bar .title { font-size:12px; color:var(--label-2); font-family:'JetBrains Mono', monospace; margin-left:14px; font-weight:500; }
+
+/* ==================== NAV BAR (44pt) ==================== */
+.ios-nav {
+  height:44px;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--separator);
+}
+.ios-nav .title { font-size:17px; font-weight:600; letter-spacing:-.01em; }
+.ios-nav .left, .ios-nav .right { position:absolute; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:18px; }
+.ios-nav .left { left:16px; }
+.ios-nav .right { right:16px; }
+.ios-nav .btn-link { font-size:17px; color:var(--blue); display:flex; align-items:center; gap:4px; cursor:pointer; font-weight:400; }
+.ios-nav .btn-link.bold { font-weight:600; }
+
+/* ==================== iOS LIST CELL ==================== */
+.list { background:var(--bg-elev); border-radius:var(--r-card); overflow:hidden; }
+.list-section-header { font-size:13px; color:var(--label-2); padding:24px 0 8px 20px; text-transform:none; font-weight:400; letter-spacing:-.01em; }
+.list-section-header.first { padding-top:8px; }
+.list-cell {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px;
+  background:var(--bg-elev);
+  position:relative;
+  min-height:44px;
+}
+.list-cell + .list-cell::before {
+  content:""; position:absolute; left:60px; right:0; top:0; height:.5px; background:var(--separator);
+}
+.list-cell .icon {
+  width:30px; height:30px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.list-cell .icon svg { color:#fff; }
+.list-cell .icon.blue { background:var(--blue); }
+.list-cell .icon.green { background:var(--green); }
+.list-cell .icon.orange { background:var(--orange); }
+.list-cell .icon.indigo { background:var(--indigo); }
+.list-cell .icon.red { background:var(--red); }
+.list-cell .icon.gray { background:var(--gray); }
+.list-cell .label { flex:1; font-size:16px; font-weight:400; letter-spacing:-.01em; }
+.list-cell .value { font-size:16px; color:var(--label-2); display:flex; align-items:center; gap:6px; }
+.list-cell .chevron { color:var(--gray-3); flex-shrink:0; }
+
+/* iOS segmented control */
+.seg {
+  display:inline-flex; padding:2px;
+  background:var(--fill-1);
+  border-radius:9px;
+  height:32px;
+}
+.seg button {
+  padding:0 14px;
+  font-size:13px; font-weight:500;
+  border:none; background:transparent;
+  color:var(--label);
+  border-radius:7px;
+  font-family:inherit;
+  cursor:pointer;
+  transition:background .15s;
+  display:flex; align-items:center; justify-content:center;
+  min-width:60px;
+}
+.seg button.on {
+  background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.04), 0 1px 1px rgba(0,0,0,.04);
+  font-weight:600;
+}
+
+/* iOS Switch */
+.switch { position:relative; width:51px; height:31px; background:var(--green); border-radius:var(--r-pill); transition:.2s; flex-shrink:0; }
+.switch::after { content:""; position:absolute; top:2px; left:22px; width:27px; height:27px; background:#fff; border-radius:50%; box-shadow:0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.05); transition:.2s; }
+.switch.off { background:var(--fill-2); }
+.switch.off::after { left:2px; }
+
+/* iOS Pill button */
+.pill {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:8px 16px;
+  border-radius:var(--r-pill);
+  font-size:15px;
+  font-weight:500;
+  cursor:pointer;
+  font-family:inherit;
+  border:none;
+  transition:opacity .12s;
+}
+.pill:active { opacity:.7; }
+.pill.filled { background:var(--blue); color:#fff; font-weight:600; }
+.pill.tinted { background:var(--blue-soft); color:var(--blue); }
+.pill.gray { background:var(--fill-1); color:var(--label); }
+.pill.bordered { background:transparent; color:var(--blue); border:.5px solid var(--blue); }
+
+/* iOS Slider */
+.ios-slider {
+  position:relative;
+  height:24px;
+  display:flex; align-items:center;
+  cursor:pointer;
+}
+.ios-slider .track {
+  height:4px; width:100%; background:var(--fill-1); border-radius:var(--r-pill);
+  position:relative;
+}
+.ios-slider .fill {
+  position:absolute; left:0; top:0; height:100%; width:60%;
+  background:var(--label); border-radius:var(--r-pill);
+}
+.ios-slider .thumb {
+  position:absolute; left:60%; top:50%; transform:translate(-50%,-50%);
+  width:24px; height:24px; background:#fff; border-radius:50%;
+  box-shadow:0 2px 6px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.05);
+}
+
+/* iOS Stepper */
+.stepper { display:inline-flex; background:var(--fill-1); border-radius:8px; overflow:hidden; }
+.stepper button {
+  width:32px; height:28px; border:none; background:transparent;
+  font-size:18px; color:var(--label); font-family:inherit;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.stepper .val { min-width:34px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:500; }
+
+/* iOS kbd / Shortcut */
+.kbd {
+  font-family:-apple-system, 'SF Pro Text', system-ui;
+  font-size:13px; font-weight:400;
+  padding:2px 7px;
+  background:#fff;
+  border:.5px solid var(--separator-opaque);
+  border-radius:5px;
+  color:var(--label);
+  min-width:22px;
+  text-align:center;
+  line-height:1.2;
+}
+
+/* iOS Sheet */
+.sheet {
+  position:relative;
+  background:var(--bg-elev);
+  border-radius:14px 14px 0 0;
+  box-shadow:0 -8px 24px rgba(0,0,0,.08);
+  overflow:hidden;
+  margin:0 8px;
+}
+.sheet-handle {
+  width:36px; height:5px; background:var(--gray-3); border-radius:3px;
+  margin:8px auto;
+}
+
+/* ==================== BEFORE / AFTER SCREENS ==================== */
+.dual-screens { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+.screen-wrap { display:flex; flex-direction:column; gap:12px; }
+.screen-wrap .label-tag { font-size:12px; font-weight:600; padding:5px 12px; border-radius:var(--r-pill); align-self:flex-start; }
+.screen-wrap .label-tag.before { background:var(--fill-2); color:var(--label-2); }
+.screen-wrap .label-tag.after { background:var(--blue); color:#fff; }
+.screen { display:flex; flex-direction:column; }
+
+/* ==================== ANNOTATIONS ==================== */
+.points { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.point {
+  background:var(--bg-elev);
+  border-radius:var(--r-card);
+  padding:18px;
+  box-shadow:var(--sh-1);
+}
+.point .ico-wrap {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--blue-soft); color:var(--blue);
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:12px;
+}
+.point h4 { font-size:15px; font-weight:600; margin-bottom:6px; letter-spacing:-.01em; }
+.point p { font-size:13px; color:var(--label-2); line-height:1.5; }
+.point .swap {
+  display:flex; align-items:center; gap:10px; margin-top:10px;
+  font-family:'JetBrains Mono', monospace; font-size:11.5px;
+}
+.point .swap code {
+  padding:2px 8px; border-radius:5px; font-weight:500;
+}
+.point .swap code.old { background:var(--fill-1); color:var(--label-2); text-decoration:line-through; text-decoration-color:var(--label-3); }
+.point .swap code.new { background:var(--blue-soft); color:var(--blue); }
+.point .swap .arr { color:var(--label-3); }
+
+/* ==================== FOOTER ==================== */
+footer.foot { margin-top:96px; padding-top:32px; border-top:.5px solid var(--separator); display:flex; justify-content:space-between; font-size:12px; color:var(--label-3); }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero, .compare, .dual-screens, .points { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div>
+    <h1>浅色主题<em> · iOS 化</em></h1>
+    <p class="lead">不是加玻璃、不是上 Material。把背景换成 <code style="font-family:'JetBrains Mono',monospace; font-size:14px; background:var(--fill-1); padding:2px 6px; border-radius:5px;">#F2F2F7</code>、把 1px 灰边换成 hairline + 微阴影、把饱和蓝换成系统蓝、把 8px 方角换成 14px 圆角 —— 这就是 iOS 感的来源。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>Platform</dt><dd>Windows · Tauri</dd></div>
+    <div><dt>Reference</dt><dd>iOS 17 Human Interface Guidelines</dd></div>
+    <div><dt>Version</dt><dd>v3.0 iOS 化主题</dd></div>
+    <div>
+      <dt>核心色</dt>
+      <dd>
+        <div class="dot-pair"><span class="swatch sw-bg"></span><span>背景 #F2F2F7</span></div>
+        <div class="dot-pair"><span class="swatch sw-card"></span><span>卡片 #FFFFFF</span></div>
+        <div class="dot-pair"><span class="swatch sw-blue"></span><span>主色 #007AFF</span></div>
+      </dd>
+    </div>
+  </dl>
+</header>
+
+<!-- ==================== SECTION 1: SIDE-BY-SIDE COMPARISON ==================== -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>视觉对比 · 一目了然</h2>
+    <span class="sub">左：当前 · 右：iOS 化后</span>
+  </div>
+
+  <div class="compare">
+    <div class="compare-col">
+      <div class="compare-head">
+        <span class="title">当前版本</span>
+        <span class="tag old">Web SaaS 风</span>
+      </div>
+      <div class="compare-body">
+        <div class="compare-row">
+          <span class="key">背景</span>
+          <span class="demo"><span class="lbl-old">纯白 #FFFFFF</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">卡片边</span>
+          <span class="demo"><span class="lbl-old">1px 实线 #E5E7EB</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">卡片圆角</span>
+          <span class="demo"><span class="lbl-old">8px</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">主色</span>
+          <span class="demo"><span class="lbl-old">#2563EB · 满屏用</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">分割</span>
+          <span class="demo"><span class="lbl-old">1px 灰线</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">状态点</span>
+          <span class="demo"><span class="lbl-old">小圆点 + 阴影</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">按钮反馈</span>
+          <span class="demo"><span class="lbl-old">变色 / hover 边框</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">图标</span>
+          <span class="demo"><span class="lbl-old">1px 描边 · 彩色</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">分段控件</span>
+          <span class="demo"><span class="lbl-old">淡蓝底 · 淡蓝字</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-col">
+      <div class="compare-head">
+        <span class="title">iOS 化后</span>
+        <span class="tag new">iOS HIG</span>
+      </div>
+      <div class="compare-body">
+        <div class="compare-row">
+          <span class="key">背景</span>
+          <span class="demo"><span class="lbl-new">#F2F2F7 系统灰</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">卡片边</span>
+          <span class="demo"><span class="lbl-new">无 · 极淡阴影浮起</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">卡片圆角</span>
+          <span class="demo"><span class="lbl-new">14px</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">主色</span>
+          <span class="demo"><span class="lbl-new">#007AFF · 主操作 1 处用</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">分割</span>
+          <span class="demo"><span class="lbl-new">0.5px hairline 或留白</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">状态点</span>
+          <span class="demo"><span class="lbl-new">绿点 + 呼吸脉冲</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">按钮反馈</span>
+          <span class="demo"><span class="lbl-new">透明度 0.7 + scale .98</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">图标</span>
+          <span class="demo"><span class="lbl-new">1.5px 描边 · 单色灰</span></span>
+        </div>
+        <div class="compare-row">
+          <span class="key">分段控件</span>
+          <span class="demo"><span class="lbl-new">灰槽 + 白 thumb</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SECTION 2: COMPONENT LIBRARY ==================== -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>组件库 · iOS 风格控件</h2>
+    <span class="sub">所有控件拆开看 · 像素级对比</span>
+  </div>
+
+  <div class="dual-screens">
+    <!-- ===== LEFT: BUTTONS, SLIDER, STEPPER, SEG ===== -->
+    <div class="screen-wrap">
+      <span class="label-tag before">基础控件</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">组件 · 按钮 / 输入</span>
+        </div>
+
+        <!-- Buttons -->
+        <div style="padding:24px; background:var(--bg);">
+          <div style="font-size:13px; color:var(--label-2); margin-bottom:12px; font-weight:500;">按钮 · Pill 系列</div>
+          <div style="background:var(--bg-elev); border-radius:var(--r-card); padding:18px; box-shadow:var(--sh-1); display:flex; flex-wrap:wrap; gap:10px;">
+            <button class="pill filled">保存设置</button>
+            <button class="pill tinted">重新加载引擎</button>
+            <button class="pill gray">取消</button>
+            <button class="pill bordered">导出配置</button>
+          </div>
+
+          <!-- Segmented -->
+          <div style="font-size:13px; color:var(--label-2); margin:24px 0 12px; font-weight:500;">分段控件 · Segmented Control</div>
+          <div style="background:var(--bg-elev); border-radius:var(--r-card); padding:18px; box-shadow:var(--sh-1); display:flex; flex-direction:column; gap:14px;">
+            <div class="seg" style="align-self:flex-start;">
+              <button class="on">中文</button>
+              <button>English</button>
+              <button>中英混合</button>
+            </div>
+            <div class="seg" style="align-self:flex-start;">
+              <button>语音</button>
+              <button class="on">按键</button>
+            </div>
+            <div class="seg" style="align-self:flex-start;">
+              <button class="on">本地离线</button>
+              <button>云端 API</button>
+            </div>
+          </div>
+
+          <!-- Slider + Stepper -->
+          <div style="font-size:13px; color:var(--label-2); margin:24px 0 12px; font-weight:500;">滑动条 · Slider / Stepper</div>
+          <div style="background:var(--bg-elev); border-radius:var(--r-card); padding:18px; box-shadow:var(--sh-1);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <span style="font-size:13px; font-weight:500;">静音后等待</span>
+              <span style="font-size:13px; color:var(--label-2); font-feature-settings:'tnum';">3.5 秒</span>
+            </div>
+            <div class="ios-slider"><div class="track"><div class="fill"></div></div><div class="thumb"></div></div>
+            <div style="margin-top:18px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="font-size:13px; font-weight:500;">热词长度</span>
+              <div class="stepper">
+                <button>−</button>
+                <span class="val">4</span>
+                <button>+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: SWITCH, LIST CELL, KBD ===== -->
+    <div class="screen-wrap">
+      <span class="label-tag before">列表与状态</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">组件 · 列表 / 状态</span>
+        </div>
+
+        <div style="padding:24px; background:var(--bg);">
+          <!-- List -->
+          <div style="font-size:13px; color:var(--label-2); margin-bottom:12px; font-weight:500;">设置列表 · iOS Cell</div>
+          <div class="list">
+            <div class="list-cell">
+              <span class="icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>
+              <span class="label">麦克风</span>
+              <span class="value">Wireless Mic Rx<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </div>
+            <div class="list-cell">
+              <span class="icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+              <span class="label">识别语言</span>
+              <span class="value">中文<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </div>
+            <div class="list-cell">
+              <span class="icon orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+              <span class="label">模型</span>
+              <span class="value">small-cn<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </div>
+            <div class="list-cell">
+              <span class="icon indigo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+              <span class="label">唤醒后自动开始</span>
+              <div class="switch"></div>
+            </div>
+            <div class="list-cell">
+              <span class="icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+              <span class="label">开机启动</span>
+              <div class="switch off"></div>
+            </div>
+          </div>
+
+          <!-- KBD -->
+          <div style="font-size:13px; color:var(--label-2); margin:24px 0 12px; font-weight:500;">快捷键 · iOS Kbd 样式</div>
+          <div style="background:var(--bg-elev); border-radius:var(--r-card); padding:18px; box-shadow:var(--sh-1); display:flex; align-items:center; gap:8px; font-size:13px;">
+            <span style="color:var(--label-2);">按住录音</span>
+            <span class="kbd">Ctrl</span>
+            <span style="color:var(--label-3);">+</span>
+            <span class="kbd">Shift</span>
+            <span style="color:var(--label-3);">+</span>
+            <span class="kbd">V</span>
+          </div>
+
+          <!-- Pills inline -->
+          <div style="font-size:13px; color:var(--label-2); margin:24px 0 12px; font-weight:500;">状态标签 · 胶囊</div>
+          <div style="background:var(--bg-elev); border-radius:var(--r-card); padding:18px; box-shadow:var(--sh-1); display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12px; padding:4px 10px; background:var(--green-soft); color:var(--green); border-radius:var(--r-pill); font-weight:600;">● 监听中</span>
+            <span style="font-size:12px; padding:4px 10px; background:var(--orange-soft); color:var(--orange); border-radius:var(--r-pill); font-weight:600;">⏸ 暂停</span>
+            <span style="font-size:12px; padding:4px 10px; background:var(--red-soft); color:var(--red); border-radius:var(--r-pill); font-weight:600;">● 离线</span>
+            <span style="font-size:12px; padding:4px 10px; background:var(--blue-soft); color:var(--blue); border-radius:var(--r-pill); font-weight:600;">已连接</span>
+            <span style="font-size:12px; padding:4px 10px; background:var(--fill-1); color:var(--label-2); border-radius:var(--r-pill); font-weight:500;">空闲</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SECTION 3: REAL SCREEN BEFORE/AFTER ==================== -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>真实页面 · 改版前后</h2>
+    <span class="sub">同一个语音唤醒设置页 · 一眼看出差距</span>
+  </div>
+
+  <div class="dual-screens">
+
+    <!-- ============ BEFORE ============ -->
+    <div class="screen-wrap">
+      <span class="label-tag before">BEFORE · 当前</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">voice-pilot · 语音唤醒（当前）</span>
+        </div>
+        <div style="background:#fafafa; padding:0;">
+
+          <!-- Title bar (current style) -->
+          <div style="padding:18px 24px; background:#fff; border-bottom:1px solid #e7e8ec; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.08em;">Voice</div>
+              <div style="font-size:20px; font-weight:600; margin-top:2px;">语音唤醒</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <span style="font-size:11px; padding:3px 9px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:600;">本地离线</span>
+              <span style="font-size:11px; padding:3px 9px; background:#d1fae5; color:#10b981; border-radius:6px; font-weight:600;">● 已连接</span>
+            </div>
+          </div>
+
+          <div style="padding:20px 24px;">
+            <!-- Big white card with 1px border -->
+            <div style="background:#fff; border:1px solid #e7e8ec; border-radius:10px; overflow:hidden; margin-bottom:14px;">
+              <div style="padding:12px 16px; border-bottom:1px solid #eef0f3; font-size:13px; font-weight:600; display:flex; align-items:center; gap:7px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+                唤醒方式
+              </div>
+              <div style="padding:14px 16px;">
+                <div style="font-size:11px; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em;">说出以下任一词语</div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <span style="font-size:12px; padding:4px 10px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:500;">嗨小助手</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:500;">嗨同学</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:500;">开始输入</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#f5f6f8; color:#475569; border-radius:6px; font-weight:500;">Hey pilot</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#f5f6f8; color:#475569; border-radius:6px; font-weight:500;">Start dictation</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#f5f6f8; color:#475569; border-radius:6px; font-weight:500;">+ 添加</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Another card -->
+            <div style="background:#fff; border:1px solid #e7e8ec; border-radius:10px; overflow:hidden; margin-bottom:14px;">
+              <div style="padding:12px 16px; border-bottom:1px solid #eef0f3; font-size:13px; font-weight:600;">判断说完</div>
+              <div style="padding:14px 16px;">
+                <div style="font-size:11px; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em;">说出以下任一词语</div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <span style="font-size:12px; padding:4px 10px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:500;">停止输入</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#eaf1ff; color:#2563eb; border-radius:6px; font-weight:500;">完毕</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#f5f6f8; color:#475569; border-radius:6px; font-weight:500;">Stop dictation</span>
+                  <span style="font-size:12px; padding:4px 10px; background:#f5f6f8; color:#475569; border-radius:6px; font-weight:500;">+ 添加</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delay card -->
+            <div style="background:#fff; border:1px solid #e7e8ec; border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+              <div style="font-size:13px; font-weight:600; margin-bottom:12px;">静音后等待</div>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <input type="range" style="flex:1;" value="60" />
+                <span style="font-size:13px; font-weight:600; color:#2563eb; min-width:50px;">3.5 秒</span>
+              </div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:8px;">说完后静音 4.0 秒，自动按 Enter 发送</div>
+            </div>
+
+            <!-- Status card with grid dot circles -->
+            <div style="background:#fff; border:1px dashed #e7e8ec; border-radius:10px; padding:14px 16px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="width:8px; height:8px; background:#10b981; border-radius:50%; box-shadow:0 0 0 3px rgba(16,185,129,.18);"></span>
+                <span style="font-size:13px; font-weight:500;">实时识别</span>
+                <span style="margin-left:auto; font-size:11px; color:#94a3b8;">380ms</span>
+              </div>
+              <div style="margin-top:10px; padding:10px 12px; background:#fafafa; border-radius:6px; font-size:12px; color:#475569; font-family:'JetBrains Mono',monospace; min-height:34px;">你现在就无最小单位的最小单元的</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ AFTER ============ -->
+    <div class="screen-wrap">
+      <span class="label-tag after">AFTER · iOS 化</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">voice-pilot · 语音唤醒（iOS 化）</span>
+        </div>
+        <div style="background:var(--bg);">
+
+          <!-- iOS Nav Bar -->
+          <div class="ios-nav">
+            <div class="left">
+              <span class="btn-link">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                设置
+              </span>
+            </div>
+            <span class="title">语音唤醒</span>
+            <div class="right">
+              <span class="btn-link bold">完成</span>
+            </div>
+          </div>
+
+          <div style="padding:20px 16px;">
+
+            <!-- 状态 section -->
+            <div class="list-section-header first">状态</div>
+            <div class="list">
+              <div class="list-cell">
+                <span class="icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+                <span class="label">引擎</span>
+                <span class="value">
+                  <span style="font-size:11px; padding:2px 8px; background:var(--green-soft); color:var(--green); border-radius:var(--r-pill); font-weight:600;">● 在线</span>
+                  本地离线
+                </span>
+              </div>
+              <div class="list-cell">
+                <span class="icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>
+                <span class="label">麦克风</span>
+                <span class="value">Wireless Mic Rx<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- 唤醒词 section -->
+            <div class="list-section-header">唤醒词</div>
+            <div class="list">
+              <div class="list-cell">
+                <span class="icon indigo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>
+                <span class="label">说出以下任一词唤醒</span>
+                <span class="value">嗨小助手<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+              <div class="list-cell">
+                <span class="label" style="padding-left:42px; color:var(--label-2); font-size:15px;">嗨同学</span>
+                <span class="value">已启用<div class="switch"></div></span>
+              </div>
+              <div class="list-cell">
+                <span class="label" style="padding-left:42px; color:var(--label-2); font-size:15px;">开始输入</span>
+                <span class="value">已启用<div class="switch"></div></span>
+              </div>
+              <div class="list-cell">
+                <span class="label" style="padding-left:42px; color:var(--blue); font-size:15px;">+ 添加唤醒词</span>
+              </div>
+            </div>
+
+            <!-- 结束 section -->
+            <div class="list-section-header">结束</div>
+            <div class="list">
+              <div class="list-cell">
+                <span class="icon orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"/></svg></span>
+                <span class="label">说出以下任一词结束</span>
+                <span class="value">停止输入<svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+              <div class="list-cell">
+                <span class="label" style="padding-left:42px; color:var(--label-2); font-size:15px;">完毕</span>
+                <span class="value">已启用<div class="switch"></div></span>
+              </div>
+            </div>
+
+            <!-- 静音检测 section -->
+            <div class="list-section-header">静音检测</div>
+            <div class="list">
+              <div style="padding:14px 16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                  <span style="font-size:13px; color:var(--label-2); font-weight:500;">说完后等待</span>
+                  <span style="font-size:13px; font-weight:600; font-feature-settings:'tnum';">3.5 秒</span>
+                </div>
+                <div class="ios-slider"><div class="track"><div class="fill"></div></div><div class="thumb"></div></div>
+              </div>
+              <div class="list-cell">
+                <span class="label" style="padding-left:0;">结束后按 Enter 发送</span>
+                <div class="switch"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== SECTION 4: KEY TAKEAWAYS ==================== -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>改动清单 · 给开发</h2>
+    <span class="sub">CSS / Tailwind 直接抄 · Tauri 上零成本切换</span>
+  </div>
+
+  <div class="points">
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+      </div>
+      <h4>背景 · 永远是 F2F2F7</h4>
+      <p>所有页面外层背景换成 iOS 系统灰，卡片是白色浮在它上面。不要用纯白当背景，否则卡片浮不起来。</p>
+      <div class="swap"><code class="old">#FFFFFF</code><span class="arr">→</span><code class="new">#F2F2F7</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+      </div>
+      <h4>卡片 · 阴影代替边框</h4>
+      <p>不要 1px 灰边线。改成 0 边线 + 极淡阴影浮起（<code style="font-family:'JetBrains Mono',monospace; font-size:11.5px;">0 4px 16px -6px rgba(0,0,0,.08)</code>），iOS 17 风格。</p>
+      <div class="swap"><code class="old">border: 1px #E5E7EB</code><span class="arr">→</span><code class="new">shadow + 0 border</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c0-3 2-6 5-6s5 3 5 6-2 6-5 6-5-3-5-6z"/><path d="M12 12c0-3 2-6 5-6s5 3 5 6-2 6-5 6-5-3-5-6z"/></svg>
+      </div>
+      <h4>圆角 · 14px 不是 8px</h4>
+      <p>所有卡片 / 大按钮 / 大输入框统一 14px。chip / 标签 / 头像保持 999px pill。0 方角出现在主界面。</p>
+      <div class="swap"><code class="old">border-radius: 8px</code><span class="arr">→</span><code class="new">border-radius: 14px</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+      </div>
+      <h4>主色 · 007AFF 只用一次</h4>
+      <p>系统蓝是强调色，不是主题色。一屏里最多 1 处大面积使用（主按钮 / 当前选中），其他全部灰阶 + 蓝字点缀。</p>
+      <div class="swap"><code class="old">#2563EB · 满屏</code><span class="arr">→</span><code class="new">#007AFF · 主操作</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <h4>分割 · Hairline 不抢戏</h4>
+      <p>分组用 0.5px 半透明线（<code style="font-family:'JetBrains Mono',monospace; font-size:11.5px;">rgba(60,60,67,.12)</code>），再小的信息差直接靠留白。绝不用 1px 实线灰。</p>
+      <div class="swap"><code class="old">border: 1px #E5E7EB</code><span class="arr">→</span><code class="new">.5px rgba(60,60,67,.12)</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
+      </div>
+      <h4>字体 · 系统字体 + 字重</h4>
+      <p>用 SF Pro / 系统字体栈，标题 600，正文 400。中文标题字号不要超过 20px，否则会"沉"。</p>
+      <div class="swap"><code class="old">Inter 700 32px</code><span class="arr">→</span><code class="new">SF Pro 600 20px</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <h4>按下反馈 · 透明 + 缩放</h4>
+      <p>全局按钮加 <code style="font-family:'JetBrains Mono',monospace; font-size:11.5px;">:active { opacity: .7; transform: scale(.98); }</code>，iOS 触感立刻有。不要 hover 变色。</p>
+      <div class="swap"><code class="old">hover: bg change</code><span class="arr">→</span><code class="new">active: opacity + scale</code></div>
+    </div>
+
+    <div class="point">
+      <div class="ico-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </div>
+      <h4>图标 · 1.5px 描边单色</h4>
+      <p>列表左侧图标用单色灰底（白图标 + 彩色 30px 圆角方块），颜色取自 iOS 系统色（蓝/绿/橙/紫）。不要描边 + 彩色混搭。</p>
+      <div class="swap"><code class="old">彩色描边 1px</code><span class="arr">→</span><code class="new">单色 1.5px / 灰底白图</code></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="foot">
+  <div>voice-pilot · iOS 化视觉稿 v3.0 · Tauri Windows</div>
+  <div>参考 · iOS 17 HIG · Linear · Raycast · Arc</div>
+</footer>
+
+</body>
+</html>

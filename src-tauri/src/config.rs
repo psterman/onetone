@@ -84,6 +84,7 @@ pub struct AppBehaviorRule {
     pub note: Option<String>,
 }
 
+/// Persisted habit/scene row. Runtime display uses read-only [`crate::habit_profile::HabitProfile`] projection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MappingEntry {
     pub id: String,
@@ -1504,6 +1505,7 @@ impl VoiceConfig {
     }
 
     /// 在同一 canonical trigger 的已完成方案间轮换 enabled；返回 (from_id, to_id)。
+    /// 只改按键启用状态，不切换 `active_scene_id`。
     pub fn cycle_scheme_same_trigger(&mut self) -> Option<(String, String)> {
         let active = self
             .mappings
@@ -1523,33 +1525,37 @@ impl VoiceConfig {
         let pos = siblings.iter().position(|m| m.id == from_id)?;
         let next = siblings[(pos + 1) % siblings.len()];
         let to_id = next.id.clone();
-        self.select_scheme(&to_id)
+        if let Some(m) = self.mappings.iter_mut().find(|m| m.id == from_id) {
+            m.enabled = false;
+        }
+        self.enable_mapping(&to_id);
+        Some((from_id, to_id))
     }
 
-    /// 直接切换到指定方案；返回 (from_id, to_id)。
+    /// 切换当前生效情景（语音合并上下文）；返回 (from_id, to_id)。
+    /// 不修改 `mapping.enabled`。
     pub fn select_scheme(&mut self, target_id: &str) -> Option<(String, String)> {
-        let target = self.find_mapping_by_id(target_id)?;
-        if !is_mapping_complete(target) {
+        if self.find_mapping_by_id(target_id).is_none() {
             return None;
         }
-        let from_id = self
-            .mappings
-            .iter()
-            .find(|m| m.enabled && is_mapping_complete(m))
-            .map(|m| m.id.clone())
-            .unwrap_or_default();
+        let from_id = self.active_scene_id.clone();
         if from_id == target_id {
             return None;
         }
-        let trigger = canonical_trigger(&target.trigger_key);
-        for m in &mut self.mappings {
-            if m.id != target_id && canonical_trigger(&m.trigger_key) == trigger {
-                m.enabled = false;
-            }
-        }
-        self.enable_mapping(target_id);
         self.active_scene_id = target_id.to_string();
         Some((from_id, target_id.to_string()))
+    }
+
+    /// 仅设置当前生效情景 id（语音合并上下文）。
+    pub fn set_active_scenario(&mut self, id: &str) -> bool {
+        if self.find_mapping_by_id(id).is_none() {
+            return false;
+        }
+        if self.active_scene_id == id {
+            return false;
+        }
+        self.active_scene_id = id.to_string();
+        true
     }
 
     /// 所有方案的切换快捷键 (combo, mapping_id)。
@@ -1675,7 +1681,6 @@ impl VoiceConfig {
         }
         if let Some(entry) = self.mappings.iter_mut().find(|m| m.id == id) {
             entry.enabled = true;
-            self.active_scene_id = id.to_string();
         }
         disabled
     }
@@ -2253,7 +2258,43 @@ mod tests {
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
-        assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
+        assert_eq!(cfg.active_scene_id, "b");
+        assert!(cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
+        assert!(!cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
+    }
+
+    #[test]
+    fn enable_mapping_does_not_change_active_scenario() {
+        let mut cfg = VoiceConfig::default();
+        let active_id = cfg.active_scene_id.clone();
+        cfg.mappings.push(MappingEntry {
+            id: "b".into(),
+            label: "AutoTrigger → F2".into(),
+            group: "  ".into(),
+            trigger_key: "F1".into(),
+            target_key: "F2".into(),
+            enabled: false,
+            order: 1,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+        });
+        cfg.enable_mapping("b");
+        assert_eq!(cfg.active_scene_id, active_id);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
     }
 

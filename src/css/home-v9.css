@@ -1,0 +1,687 @@
+/* =====================================================================
+   voice-pilot · 一声 onetone
+   M1 重构样式 · home-v9.css
+   =====================================================================
+   用途：替换 src/index.html 中首页 + 部分设置入口的视觉样式
+   兼容：基于现有 .app / .home-zone / .settings-page 结构，不动 DOM
+   配套：brand color #2a9cc4 → #00A3FF
+
+   使用方法：
+   1. 把这个文件存为 src/css/home-v9.css
+   2. 在 src/index.html 的 <head> 里，app.css 之后引入：
+      <link rel="stylesheet" href="css/home-v9.css" />
+   3. （可选）保留 app.css，home-v9.css 中相同类名以更高优先级覆盖
+
+   M1 范围内交付：
+   · 品牌色升级到 #00A3FF
+   · 新增 .app-header-rev（Linear 风 header）
+   · 新增 .vp-statusbar（状态条）
+   · 新增 .vp-hero-live（主屏实时区）
+   · 新增 .vp-orb（Cursor 风光晕球）
+   · 新增 .vp-actions（1 主 2 次按钮）
+   · 新增 .vp-status-pills（状态 pill 行）
+   · 新增 .vp-tray-toggle / .vp-tray（Notion 风折叠）
+   · 新增 .vp-empty（Linear 风空状态）
+   ===================================================================== */
+
+
+/* ========== 1. 品牌色升级（覆盖现有 --primary 体系） ========== */
+/* 浅色模式（原清澈风格）：#2a9cc4 → #00A3FF（纯蓝） */
+:root{
+  --primary:         #00A3FF;
+  --primary-strong:  #0085DB;
+  --primary-muted:   #4DB6FF;
+  --primary-soft:    rgba(0,163,255,.10);
+  --primary-glow:    rgba(0,163,255,.45);
+  --key-soft:        #00A3FF;
+  --success:         #00A3FF;
+  --outline:         rgba(0,163,255,.28);
+
+  /* v9 新增 token · 给新组件用 */
+  --vp-blue:         #00A3FF;
+  --vp-blue-2:       #0085DB;
+  --vp-blue-soft:    rgba(0,163,255,.10);
+  --vp-blue-glow:    rgba(0,163,255,.45);
+  --vp-blue-ink:     #003E80;
+  --vp-orb-shadow:   0 0 28px rgba(0,163,255,.45);
+
+  --vp-success:      #34D399;
+  --vp-success-soft: rgba(52,211,153,.14);
+  --vp-warn:         #FBBF24;
+  --vp-warn-soft:    rgba(251,191,36,.14);
+  --vp-error:        #FF4D6A;
+  --vp-error-soft:   rgba(255,77,106,.14);
+
+  --vp-radius-pill:  999px;
+  --vp-radius:       10px;
+  --vp-radius-lg:    14px;
+  --vp-shadow:       0 12px 32px -12px rgba(0,0,0,.32), 0 2px 6px rgba(0,0,0,.16);
+
+  /* 浅色模式默认背景（如果当前是浅色主题） */
+  --vp-bg:           #F2F2F7;
+  --vp-surface:      #FFFFFF;
+  --vp-surface-2:    #FAFAFC;
+  --vp-text:         rgba(0,0,0,.88);
+  --vp-text-2:       rgba(60,60,67,.60);
+  --vp-text-3:       rgba(60,60,67,.30);
+  --vp-border:       rgba(60,60,67,.10);
+  --vp-border-2:     rgba(60,60,67,.18);
+}
+
+/* 深色模式（原石墨风格）：保留深色调，主色提亮一档 */
+html[data-theme="dark"]{
+  --primary:         #00A3FF;
+  --primary-strong:  #4DB6FF;
+  --primary-muted:   #66CFFF;
+  --primary-soft:    rgba(0,163,255,.14);
+  --primary-glow:    rgba(0,163,255,.50);
+  --key-soft:        #4DB6FF;
+  --success:         #00A3FF;
+
+  --vp-bg:           #0F1419;
+  --vp-surface:      #1A2436;
+  --vp-surface-2:    #243042;
+  --vp-surface-3:    #2C3A4F;
+  --vp-text:         #E6EDF3;
+  --vp-text-2:       #9CA9BC;
+  --vp-text-3:       #6B7A91;
+  --vp-border:       rgba(255,255,255,.06);
+  --vp-border-2:     rgba(255,255,255,.10);
+}
+
+
+/* ========== 2. Header 重构（Linear 风 三段式） ========== */
+/* 在 src/index.html 的 .app-header 上加 class="app-header app-header-rev" 即可 */
+
+.app-header-rev{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  height:56px;
+  background:var(--vp-bg);
+  border-bottom:.5px solid var(--vp-border);
+  gap:14px;
+}
+
+.app-header-rev .brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+
+.app-header-rev .brand .logo{
+  width:32px;
+  height:32px;
+  background:linear-gradient(135deg, var(--vp-blue), var(--vp-blue-2));
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 0 12px var(--vp-blue-glow);
+  flex-shrink:0;
+}
+
+.app-header-rev .brand .logo svg{ color:#fff; }
+
+.app-header-rev .brand .name{
+  font-size:14px;
+  font-weight:600;
+  color:var(--vp-text);
+  letter-spacing:-.01em;
+  line-height:1.2;
+}
+
+.app-header-rev .brand .sub{
+  font-size:11px;
+  color:var(--vp-text-3);
+  line-height:1.2;
+  margin-top:2px;
+}
+
+.app-header-rev .header-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 12px;
+  background:var(--vp-success-soft);
+  border:1px solid rgba(52,211,153,.28);
+  border-radius:var(--vp-radius-pill);
+  font-size:11.5px;
+  color:var(--vp-success);
+  font-weight:600;
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+}
+
+.app-header-rev .header-status .dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--vp-success);
+  box-shadow:0 0 6px rgba(52,211,153,.6);
+  animation:vp-rec 1.6s ease-in-out infinite;
+}
+
+@keyframes vp-rec{ 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+
+.app-header-rev .actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:auto;
+}
+
+.app-header-rev .target-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px 5px 5px;
+  background:var(--vp-surface);
+  border:1px solid var(--vp-border-2);
+  border-radius:var(--vp-radius-pill);
+  font-size:12px;
+  color:var(--vp-text);
+  font-weight:500;
+}
+
+.app-header-rev .target-chip .logo{
+  width:20px;
+  height:20px;
+  background:#0078D4;
+  border-radius:50%;
+  font-size:10px;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+
+.app-header-rev .icon-btn{
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--vp-text-2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:.12s;
+}
+
+.app-header-rev .icon-btn:hover{
+  background:var(--vp-surface);
+  border-color:var(--vp-border-2);
+  color:var(--vp-text);
+}
+
+.app-header-rev .icon-btn.is-on{
+  background:var(--vp-blue-soft);
+  border-color:rgba(0,163,255,.28);
+  color:var(--vp-blue);
+}
+
+.app-header-rev .icon-btn svg{ width:16px; height:16px; }
+
+
+/* ========== 3. 状态条（Linear 三段式 · 32px） ========== */
+/* 用法：在首页主屏顶部加 <div class="vp-statusbar">…</div> */
+
+.vp-statusbar{
+  display:flex;
+  align-items:center;
+  padding:0 24px;
+  height:32px;
+  background:rgba(15,20,25,.85);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--vp-border);
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+  font-size:11px;
+  gap:12px;
+}
+
+.vp-statusbar.is-light{
+  background:rgba(255,255,255,.85);
+}
+
+.vp-statusbar .left,
+.vp-statusbar .right{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.vp-statusbar .right{ margin-left:auto; }
+
+.vp-statusbar .state{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  color:var(--vp-blue);
+  font-weight:600;
+}
+
+.vp-statusbar .state .dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--vp-blue);
+  box-shadow:0 0 5px var(--vp-blue-glow);
+  animation:vp-rec 1.6s ease-in-out infinite;
+}
+
+.vp-statusbar .sep{ color:var(--vp-text-3); }
+.vp-statusbar .meta{ color:var(--vp-text-2); }
+.vp-statusbar .lat{
+  color:var(--vp-blue);
+  font-weight:600;
+  font-feature-settings:'tnum';
+}
+
+.vp-statusbar .state.idle{ color:var(--vp-text-2); }
+.vp-statusbar .state.idle .dot{ background:var(--vp-text-3); box-shadow:none; animation:none; }
+.vp-statusbar .state.error{ color:var(--vp-error); }
+.vp-statusbar .state.error .dot{ background:var(--vp-error); box-shadow:0 0 5px rgba(255,77,106,.5); animation:none; }
+
+
+/* ========== 4. 主屏实时文本（Claude 流式 · 大字号） ========== */
+
+.vp-hero-live{
+  padding:48px 32px 32px;
+  text-align:center;
+  background:radial-gradient(ellipse at center, rgba(0,163,255,.06) 0%, transparent 70%);
+  min-height:340px;
+}
+
+html[data-theme="dark"] .vp-hero-live{
+  background:radial-gradient(ellipse at center, rgba(0,163,255,.08) 0%, transparent 65%);
+}
+
+.vp-hero-live .state-label{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--vp-blue);
+  margin-bottom:18px;
+  padding:5px 12px;
+  background:var(--vp-blue-soft);
+  border-radius:var(--vp-radius-pill);
+  border:1px solid rgba(0,163,255,.22);
+}
+
+.vp-hero-live .state-label .live-dot{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:var(--vp-blue);
+  animation:vp-rec 1.6s ease-in-out infinite;
+  box-shadow:0 0 5px var(--vp-blue-glow);
+}
+
+.vp-hero-live .live-text{
+  font-size:30px;
+  font-weight:500;
+  line-height:1.5;
+  letter-spacing:-.015em;
+  color:var(--vp-text);
+  max-width:680px;
+  margin:0 auto;
+  min-height:90px;
+  text-align:left;
+}
+
+.vp-hero-live .live-text .last{ color:var(--vp-text-2); }
+.vp-hero-live .live-text .typed{ color:var(--vp-text); font-weight:600; }
+.vp-hero-live .live-text .cursor{
+  display:inline-block;
+  width:3px;
+  height:28px;
+  background:var(--vp-blue);
+  vertical-align:-5px;
+  margin-left:3px;
+  animation:vp-blink 1s steps(1) infinite;
+  box-shadow:0 0 6px var(--vp-blue-glow);
+}
+
+@keyframes vp-blink{ 50%{ opacity:0; } }
+
+
+/* ========== 5. 光晕球（Cursor 风 · 状态可视化核心） ========== */
+
+.vp-orb-wrap{
+  display:flex;
+  justify-content:center;
+  margin:24px 0 20px;
+}
+
+.vp-orb{
+  position:relative;
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--vp-blue), var(--vp-blue-2));
+  box-shadow:var(--vp-orb-shadow);
+}
+
+.vp-orb::before,
+.vp-orb::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:2px solid var(--vp-blue);
+  animation:vp-ring 1.8s ease-out infinite;
+}
+
+.vp-orb::after{ animation-delay:.9s; }
+
+@keyframes vp-ring{
+  0%   { transform:scale(1); opacity:.8; }
+  100% { transform:scale(2.4); opacity:0; }
+}
+
+.vp-orb svg{
+  position:absolute;
+  inset:0;
+  margin:auto;
+  color:#fff;
+}
+
+/* 三态变体 */
+.vp-orb.is-idle{
+  background:var(--vp-text-3);
+  box-shadow:none;
+  opacity:.55;
+}
+.vp-orb.is-idle::before,
+.vp-orb.is-idle::after{ display:none; }
+
+.vp-orb.is-error{
+  background:var(--vp-error);
+  box-shadow:0 0 24px rgba(255,77,106,.4);
+}
+.vp-orb.is-error::before,
+.vp-orb.is-error::after{
+  border-color:var(--vp-error);
+  animation-duration:2.4s;
+}
+
+
+/* ========== 6. 状态 pill 行（Linear + Terminal 混合） ========== */
+
+.vp-status-pills{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:0 32px 24px;
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+  font-size:11px;
+  flex-wrap:wrap;
+}
+
+.vp-status-pills .pill{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 10px;
+  background:var(--vp-surface);
+  border:1px solid var(--vp-border-2);
+  border-radius:6px;
+  color:var(--vp-text-2);
+}
+
+.vp-status-pills .pill.live{
+  background:var(--vp-blue-soft);
+  border-color:rgba(0,163,255,.28);
+  color:var(--vp-blue);
+}
+
+.vp-status-pills .pill.live .dot{
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:var(--vp-blue);
+  animation:vp-rec 1.6s ease-in-out infinite;
+  box-shadow:0 0 4px var(--vp-blue-glow);
+}
+
+.vp-status-pills .pill .dot{
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:var(--vp-text-3);
+}
+
+.vp-status-pills .pill.error{
+  background:var(--vp-error-soft);
+  border-color:rgba(255,77,106,.32);
+  color:var(--vp-error);
+}
+
+.vp-status-pills .pill.error .dot{ background:var(--vp-error); }
+
+
+/* ========== 7. 操作按钮（Cursor 1 主 + 2 次） ========== */
+
+.vp-actions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:0 32px 32px;
+}
+
+.vp-actions .btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 14px;
+  border-radius:var(--vp-radius-pill);
+  font-size:13px;
+  font-weight:500;
+  background:var(--vp-surface);
+  border:1px solid var(--vp-border-2);
+  color:var(--vp-text);
+  cursor:pointer;
+  transition:.12s;
+  font-family:inherit;
+}
+
+.vp-actions .btn:hover{ background:var(--vp-surface-2); }
+
+.vp-actions .btn .kbd{
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+  font-size:10px;
+  padding:1px 5px;
+  background:rgba(0,0,0,.3);
+  border-radius:3px;
+  color:var(--vp-text-2);
+  margin-left:2px;
+}
+
+.vp-actions .btn.primary{
+  background:linear-gradient(135deg, var(--vp-blue), var(--vp-blue-2));
+  color:#fff;
+  font-weight:600;
+  border-color:transparent;
+  box-shadow:0 4px 14px var(--vp-blue-glow);
+  padding:9px 20px;
+  font-size:14px;
+}
+
+.vp-actions .btn.primary .kbd{
+  background:rgba(255,255,255,.2);
+  color:#fff;
+}
+
+.vp-actions .btn.primary:active{ transform:scale(.98); opacity:.9; }
+
+
+/* ========== 8. 设置折叠 tray（Notion 风） ========== */
+
+.vp-tray-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:14px;
+  background:var(--vp-bg);
+  border-top:.5px solid var(--vp-border);
+  font-size:12px;
+  color:var(--vp-text-2);
+  cursor:pointer;
+  font-weight:500;
+  user-select:none;
+  transition:.12s;
+}
+
+.vp-tray-toggle:hover{ color:var(--vp-blue); }
+
+.vp-tray-toggle .arr{ transition:transform .18s; }
+.vp-tray-toggle.open .arr{ transform:rotate(180deg); }
+
+.vp-tray{
+  background:var(--vp-bg);
+  border-top:.5px solid var(--vp-border);
+  padding:18px 24px 24px;
+  display:none;
+}
+
+.vp-tray.open{ display:block; }
+
+.vp-tray-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+}
+
+@media (max-width:760px){
+  .vp-tray-grid{ grid-template-columns:1fr; }
+}
+
+.vp-tray-card{
+  background:var(--vp-surface);
+  border:1px solid var(--vp-border-2);
+  border-radius:var(--vp-radius);
+  padding:14px;
+}
+
+.vp-tray-card .lbl{
+  font-size:10px;
+  font-weight:700;
+  color:var(--vp-text-3);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:6px;
+}
+
+.vp-tray-card .key{
+  font-size:13px;
+  font-weight:600;
+  color:var(--vp-text);
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+  margin-bottom:8px;
+  word-break:break-all;
+}
+
+.vp-tray-card .key .placeholder{ color:var(--vp-text-3); font-weight:400; }
+
+.vp-tray-card .row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:5px 0;
+  font-size:12px;
+}
+
+.vp-tray-card .row + .row{
+  border-top:1px solid var(--vp-border);
+  margin-top:5px;
+  padding-top:7px;
+}
+
+.vp-tray-card .row .k{ color:var(--vp-text-2); }
+.vp-tray-card .row .v{
+  color:var(--vp-text);
+  font-weight:500;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.vp-tray-card .row .v .swatch{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+
+/* ========== 9. 空状态（Linear 风 · 按热键开始说话） ========== */
+
+.vp-empty{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  font-size:18px;
+  color:var(--vp-text-2);
+  padding:16px 22px;
+  background:var(--vp-surface);
+  border:1px dashed var(--vp-border-2);
+  border-radius:var(--vp-radius-lg);
+  margin-top:18px;
+}
+
+.vp-empty kbd{
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+  font-size:14px;
+  font-weight:600;
+  padding:4px 10px;
+  background:var(--vp-bg);
+  border-radius:6px;
+  color:var(--vp-text);
+  border:1px solid var(--vp-border-2);
+  margin:0 2px;
+}
+
+.vp-empty-sub{
+  display:block;
+  font-size:11px;
+  color:var(--vp-text-3);
+  margin-top:10px;
+  font-family:'JetBrains Mono', ui-monospace, monospace;
+}
+
+
+/* ========== 10. 小屏适配 ========== */
+
+@media (max-width:560px){
+  .vp-hero-live{ padding:32px 18px 24px; }
+  .vp-hero-live .live-text{ font-size:22px; }
+  .vp-actions{ padding:0 18px 24px; flex-wrap:wrap; }
+  .vp-actions .btn.primary{ width:100%; justify-content:center; }
+  .vp-status-pills{ padding:0 18px 18px; }
+  .vp-orb{ width:48px; height:48px; }
+  .app-header-rev .header-status,
+  .app-header-rev .target-chip{ display:none; }
+}
+
+
+/* ========== 11. 减弱动效偏好 ========== */
+
+@media (prefers-reduced-motion:reduce){
+  .vp-rec,
+  .vp-blink,
+  .vp-ring,
+  .vp-orb::before,
+  .vp-orb::after{ animation:none !important; }
+}

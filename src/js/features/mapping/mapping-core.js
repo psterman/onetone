@@ -31,7 +31,14 @@
     });
   }
 
-  function schemeNavTags(m){
+  function habitProfileFor(m){
+    var hpMod=global.OneToneHabitProfile;
+    if(!hpMod||!hpMod.project||!m) return null;
+    hooks().ensureConfig();
+    return hpMod.project(m,state().config||{});
+  }
+
+  function keysEditorNavTags(m){
     const tags=[];
     if(isDraftMapping(m)){
       tags.push({cls:'is-draft',text:t('keySchemeCompletenessDraft')});
@@ -42,9 +49,16 @@
       return tags;
     }
     if(schemeMappingHasConflict(m)) tags.push({cls:'is-conflict',text:t('keySchemeConflict')});
-    var activeId=state().config&&state().config.activeSceneId;
-    if(activeId&&m.id===activeId) tags.push({cls:'is-active-scene',text:t('sceneActiveBadge')});
-    tags.push({cls:m.enabled?'is-on':'is-off',text:m.enabled?t('homeLiveBadgeReady'):t('homeLiveBadgeOff')});
+    const profile=habitProfileFor(m);
+    const keyOn=profile?profile.keyEnabled:!!m.enabled;
+    tags.push({cls:keyOn?'is-on':'is-off',text:keyOn?t('homeLiveBadgeReady'):t('homeLiveBadgeOff')});
+    return tags;
+  }
+
+  function schemeNavTags(m){
+    const tags=keysEditorNavTags(m);
+    const profile=habitProfileFor(m);
+    if(profile&&profile.isActive) tags.unshift({cls:'is-active-scene',text:t('sceneActiveBadge')});
     return tags;
   }
   function renderSettingsSchemeSubnav(){
@@ -58,9 +72,9 @@
     if(habitsPanel) habitsPanel.classList.toggle('is-scheme-subnav',show);
     if(keysPanel) keysPanel.classList.toggle('is-scheme-subnav',show);
     if(sidebar) sidebar.classList.toggle('is-scheme-panel',show);
-    if(listEl) listEl.setAttribute('aria-label',t('settingsSchemeSubnavLabel'));
+    if(listEl) listEl.setAttribute('aria-label',t('settingsKeysSubnavLabel'));
     const addBtn=$('btnSettingsSchemeAdd');
-    if(addBtn) addBtn.textContent='+ '+t('addMapping');
+    if(addBtn) addBtn.textContent='+ '+t('addKeysDraft');
     if(!show||!listEl) return;
     hooks().ensureConfig();
     const schemes=sortedMappings();
@@ -70,9 +84,10 @@
     }
     let html='';
     schemes.forEach(function(m){
+      if(!isSavedMapping(m)&&!isDraftMapping(m)) return;
       const sel=m.id===state().selectedMappingId;
       const pair=hooks().homeMappingPairLine(m);
-      const tags=schemeNavTags(m);
+      const tags=keysEditorNavTags(m);
       let tagsHtml='';
       tags.forEach(function(tag){
         tagsHtml+='<span class="scheme-nav-tag '+tag.cls+'">'+hooks().escHtml(tag.text)+'</span>';
@@ -81,9 +96,24 @@
       html+='<span class="settings-scheme-subnav-body">';
       html+='<span class="settings-scheme-subnav-pair">'+hooks().escHtml(pair)+'</span>';
       html+='<span class="settings-scheme-subnav-tags">'+tagsHtml+'</span>';
-      html+='</span></div>';
+      html+='</span>';
+      html+='<button type="button" class="settings-scheme-subnav-del" data-scheme-del="'+m.id+'" aria-label="'+hooks().escHtml(t('delete'))+'" title="'+hooks().escHtml(t('delete'))+'">×</button>';
+      html+='</div>';
     });
     listEl.innerHTML=html;
+    listEl.querySelectorAll('[data-scheme-del]').forEach(function(btn){
+      btn.addEventListener('mousedown',function(e){ e.stopPropagation(); });
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var delId=btn.getAttribute('data-scheme-del');
+        if(!delId) return;
+        if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delId);
+        if(hooks().render) hooks().render();
+        renderSettingsSchemeSubnav();
+        if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
+      });
+    });
     if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
   }
   function friendlyPair(triggerKey,targetKey,m){
@@ -105,8 +135,14 @@
     return !!(m&&editorTriggerForMapping(m)&&editorTargetForMapping(m));
   }
 
+  function isLibraryHabit(m){
+    var hp=global.OneToneHabitProfile;
+    var cfg=state().config||{};
+    return !!(hp&&hp.isLibraryHabit&&hp.isLibraryHabit(m,cfg));
+  }
+
   function isDraftMapping(m){
-    return !!(m&&!isSavedMapping(m));
+    return !!(m&&!isSavedMapping(m)&&!isLibraryHabit(m));
   }
 
   function hasDraftMappings(){
@@ -120,7 +156,7 @@
   function removeDraftMapping(id){
     hooks().ensureConfig();
     const m=state().config.mappings.find(function(x){return x.id===id;});
-    if(!m||isSavedMapping(m)) return;
+    if(!m||!isDraftMapping(m)) return;
     state().config.mappings=state().config.mappings.filter(function(x){return x.id!==id;});
     if(hooks().getPendingNewDraftId()===id) hooks().setPendingNewDraftId(null);
     if(state().selectedMappingId===id){
@@ -329,7 +365,7 @@
 
   global.OneToneMappingCore={
     listUiActive:mappingListUiActive,renderChrome:renderMappingChrome,
-    schemeHasConflict:schemeMappingHasConflict,schemeNavTags:schemeNavTags,
+    schemeHasConflict:schemeMappingHasConflict,schemeNavTags:schemeNavTags,keysEditorNavTags:keysEditorNavTags,
     renderSchemeSubnav:renderSettingsSchemeSubnav,friendlyPair:friendlyPair,
     isSaved:isSavedMapping,isDraft:isDraftMapping,hasDrafts:hasDraftMappings,
     isDraftPristine:isDraftPristine,removeDraft:removeDraftMapping,

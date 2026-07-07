@@ -6,6 +6,7 @@
   function applySettingsTexts(d){
     var settingsNavBasic=$('settingsNavBasicLabel'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     var settingsNavKeys=$('settingsNavKeysLabel'); if(settingsNavKeys) settingsNavKeys.textContent=d.settingsNavKeys;
+    var settingsNavScenes=$('settingsNavScenesLabel'); if(settingsNavScenes) settingsNavScenes.textContent=d.settingsNavScenes;
     var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
@@ -16,6 +17,7 @@
     var spHabits=$('settingsPanelHabitsDesc'); if(spHabits) spHabits.textContent=d.settingsPanelHabitsDesc;
     var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;
+    if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
     var settingsVoiceCommonTitle=$('settingsVoiceCommonTitle'); if(settingsVoiceCommonTitle) settingsVoiceCommonTitle.textContent=d.settingsVoiceCommonTitle;
     var settingsVoiceAdvancedSummary=$('settingsVoiceAdvancedSummary'); if(settingsVoiceAdvancedSummary) settingsVoiceAdvancedSummary.textContent=d.settingsVoiceAdvancedSummary;
     var voiceSettingsEngineSub=$('voiceSettingsEngineSub'); if(voiceSettingsEngineSub) voiceSettingsEngineSub.textContent=d.settingsVoiceEngineSub;

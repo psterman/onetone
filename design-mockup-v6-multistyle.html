@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · 多画风主题系统 v6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  /* ===== BRAND TOKENS · 跨主题共用 ===== */
+  --brand-blue:        #00A3FF;       /* 从图标取的蓝 */
+  --brand-blue-2:      #0085DB;
+  --brand-blue-soft:   rgba(0,163,255,.12);
+  --brand-blue-glow:   rgba(0,163,255,.4);
+
+  /* 跨主题统一的状态色 */
+  --state-success:     #34D399;
+  --state-success-soft:rgba(52,211,153,.14);
+  --state-warn:        #FBBF24;
+  --state-warn-soft:   rgba(251,191,36,.14);
+  --state-error:       #FF4D6A;
+  --state-error-soft:  rgba(255,77,106,.14);
+  --state-listen:      #00A3FF;       /* 唤醒 = 品牌蓝 */
+  --state-record:      #00A3FF;       /* 录制 = 品牌蓝 */
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:#FAFAF9;
+  color:#1c1917;
+  font-family:'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body { padding:64px 48px 96px; max-width:1320px; margin:0 auto; }
+
+/* HERO */
+.hero { display:grid; grid-template-columns:1.3fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:1px solid #e7e5e4; }
+.hero h1 { font-family:'Space Grotesk', sans-serif; font-size:46px; font-weight:700; letter-spacing:-.025em; line-height:1.05; }
+.hero h1 em { font-style:normal; color:var(--brand-blue); }
+.hero .lead { font-size:16px; line-height:1.6; color:#57534E; margin-top:18px; max-width:620px; }
+.hero .lead code { font-family:'JetBrains Mono', monospace; font-size:13.5px; background:#f0f9ff; color:var(--brand-blue); padding:2px 6px; border-radius:5px; font-weight:500; }
+.hero .meta { background:#fff; border-radius:14px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,.04); border:1px solid #e7e5e4; display:flex; flex-direction:column; gap:14px; font-size:13px; }
+.hero .meta dt { color:#a8a29e; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; font-weight:600; }
+.hero .meta dd { color:#1c1917; font-weight:600; font-size:14px; }
+.hero .meta .row { display:flex; align-items:center; gap:10px; }
+.hero .meta .row .swatch { width:18px; height:18px; border-radius:5px; box-shadow:0 0 0 .5px rgba(0,0,0,.08); }
+.hero .meta .row .sw-name { font-family:'JetBrains Mono', monospace; font-size:12px; color:#1c1917; font-weight:600; }
+
+/* SECTION */
+.section { padding:80px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:36px; }
+.section-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--brand-blue); background:var(--brand-blue-soft); padding:4px 10px; border-radius:999px; font-weight:600; }
+.section-head h2 { font-family:'Space Grotesk', sans-serif; font-size:28px; font-weight:600; letter-spacing:-.015em; }
+.section-head .sub { font-size:14px; color:#78716c; margin-left:auto; font-weight:500; }
+
+/* ===== THEME PICKER UI (inside Settings) ===== */
+.picker-wrap {
+  background:#fff;
+  border-radius:18px;
+  border:1px solid #e7e5e4;
+  overflow:hidden;
+  box-shadow:0 12px 32px -12px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.04);
+}
+.picker-bar { display:flex; align-items:center; gap:6px; padding:11px 18px; background:#ECECEF; border-bottom:1px solid #e7e5e4; }
+.picker-bar .dot { width:10px; height:10px; border-radius:50%; }
+.picker-bar .dot.r{ background:#FF5F57; } .picker-bar .dot.y{ background:#FEBC2E; } .picker-bar .dot.g{ background:#28C840; }
+.picker-bar .title { font-size:11.5px; color:#78716c; font-family:'JetBrains Mono', monospace; margin-left:14px; font-weight:500; }
+
+.settings-shell { display:grid; grid-template-columns:200px 1fr; min-height:540px; }
+.settings-nav { background:#FAFAF9; border-right:1px solid #e7e5e4; padding:18px 0; }
+.settings-nav .nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 18px;
+  font-size:13px;
+  color:#57534E;
+  cursor:pointer;
+}
+.settings-nav .nav-item.active { background:#fff; color:#1c1917; font-weight:600; box-shadow:inset 3px 0 0 var(--brand-blue); }
+.settings-nav .nav-item .ico { width:18px; height:18px; opacity:.5; }
+
+.settings-body { padding:32px 36px; }
+.settings-body .breadcrumb { font-size:11px; color:#a8a29e; margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+.settings-body h3 { font-size:24px; font-weight:700; letter-spacing:-.01em; margin-bottom:6px; }
+.settings-body .desc { font-size:13.5px; color:#78716c; margin-bottom:28px; }
+
+/* theme cards */
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.theme-card {
+  border:2px solid #e7e5e4;
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  position:relative;
+  transition:.15s;
+  background:#fff;
+}
+.theme-card:hover { border-color:#a8a29e; }
+.theme-card.active { border-color:var(--brand-blue); box-shadow:0 0 0 4px var(--brand-blue-soft); }
+.theme-card.active::after {
+  content:"✓ 当前";
+  position:absolute; top:12px; right:12px;
+  background:var(--brand-blue); color:#fff;
+  font-size:10px; font-weight:700;
+  padding:3px 8px; border-radius:999px;
+  letter-spacing:.04em;
+  z-index:5;
+}
+
+.theme-preview {
+  height:130px;
+  position:relative;
+  overflow:hidden;
+}
+.theme-info {
+  padding:14px 16px;
+  border-top:1px solid #e7e5e4;
+}
+.theme-info .name { font-size:14px; font-weight:600; margin-bottom:3px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.theme-info .name .badge { font-size:9.5px; padding:2px 6px; border-radius:4px; background:var(--brand-blue-soft); color:var(--brand-blue); font-weight:700; letter-spacing:.04em; }
+.theme-info .desc { font-size:11.5px; color:#78716c; line-height:1.4; }
+
+/* mini previews - terminal */
+.tp-terminal {
+  background:#0d1117;
+  padding:14px;
+  display:flex; flex-direction:column; gap:6px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:9px;
+  color:#8b949e;
+  height:100%;
+}
+.tp-terminal .tl { color:var(--brand-blue); }
+.tp-terminal .row { display:flex; align-items:center; gap:6px; }
+.tp-terminal .dot-blue { width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 4px var(--brand-blue-glow); }
+.tp-terminal .bars { display:flex; align-items:flex-end; gap:1px; height:18px; }
+.tp-terminal .bars span { width:2px; background:var(--brand-blue); border-radius:1px; }
+.tp-terminal .bars span:nth-child(1){ height:30%; }
+.tp-terminal .bars span:nth-child(2){ height:55%; }
+.tp-terminal .bars span:nth-child(3){ height:80%; }
+.tp-terminal .bars span:nth-child(4){ height:100%; }
+.tp-terminal .bars span:nth-child(5){ height:75%; }
+.tp-terminal .bars span:nth-child(6){ height:50%; }
+.tp-terminal .bars span:nth-child(7){ height:65%; }
+.tp-terminal .bars span:nth-child(8){ height:90%; }
+.tp-terminal .bars span:nth-child(9){ height:70%; }
+.tp-terminal .bars span:nth-child(10){ height:40%; }
+
+/* mini previews - raycast */
+.tp-ray {
+  background:rgba(30,30,32,.95);
+  padding:14px;
+  display:flex; flex-direction:column; gap:8px;
+  height:100%;
+}
+.tp-ray .top-bar { height:6px; background:rgba(255,255,255,.08); border-radius:3px; }
+.tp-ray .top-bar .fill { width:60%; height:100%; background:var(--brand-blue); border-radius:3px; box-shadow:0 0 8px var(--brand-blue-glow); }
+.tp-ray .big-rect {
+  flex:1;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:8px;
+  padding:10px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.tp-ray .orb { width:8px; height:8px; background:var(--brand-blue); border-radius:50%; box-shadow:0 0 6px var(--brand-blue-glow); }
+.tp-ray .line { height:5px; background:rgba(255,255,255,.15); border-radius:2px; }
+.tp-ray .line.short { width:50%; }
+
+/* mini previews - ios */
+.tp-ios {
+  background:#F2F2F7;
+  padding:14px;
+  display:flex; flex-direction:column; gap:6px;
+  height:100%;
+}
+.tp-ios .nav { height:14px; background:#fff; border-radius:5px; display:flex; align-items:center; padding:0 8px; font-size:8px; font-weight:600; color:#1c1917; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.tp-ios .row-rect { height:24px; background:#fff; border-radius:8px; display:flex; align-items:center; padding:0 8px; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.tp-ios .ico { width:10px; height:10px; background:var(--brand-blue); border-radius:3px; }
+.tp-ios .line { height:4px; background:#e5e5ea; border-radius:2px; flex:1; }
+.tp-ios .line.fill { background:#1c1917; width:60%; }
+.tp-ios .seg { display:inline-flex; background:rgba(120,120,128,.12); border-radius:5px; padding:1px; align-self:flex-start; }
+.tp-ios .seg span { font-size:7px; padding:2px 6px; border-radius:3px; }
+.tp-ios .seg span.on { background:#fff; color:var(--brand-blue); font-weight:600; }
+
+/* ===== SAME COMPONENT IN 3 THEMES ===== */
+.compare-section { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.compare-card { background:#fff; border:1px solid #e7e5e4; border-radius:14px; overflow:hidden; }
+.compare-head { padding:14px 18px; border-bottom:1px solid #f5f5f4; display:flex; align-items:center; justify-content:space-between; }
+.compare-head .name { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.compare-head .name .dot { width:8px; height:8px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 6px var(--brand-blue-glow); }
+.compare-head .meta { font-size:11px; color:#a8a29e; font-family:'JetBrains Mono', monospace; }
+
+/* ========== THEME 1: TERMINAL ========== */
+.th-terminal {
+  --bg:#0d1117; --surface:#161b22; --surface-2:#0d1117;
+  --text:#c9d1d9; --text-2:#8b949e; --text-3:#6e7681;
+  --border:#30363d; --border-soft:#21262d;
+  --accent: var(--brand-blue);
+  --font: 'JetBrains Mono', ui-monospace, monospace;
+  --radius: 4px;
+  --wave-style: ascii;
+}
+
+.th-terminal .app {
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:13px;
+  padding:0;
+}
+.th-terminal .head {
+  background:var(--surface);
+  padding:8px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+  font-size:11px; color:var(--text-2);
+}
+.th-terminal .head .tab {
+  padding:4px 10px;
+  background:var(--bg);
+  border-radius:4px 4px 0 0;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-bottom:none;
+  display:flex; align-items:center; gap:6px;
+}
+.th-terminal .head .tab .rec-dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 6px var(--brand-blue-glow);
+  animation:rec 1.4s ease-in-out infinite;
+}
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.4;} }
+.th-terminal .head .right { margin-left:auto; display:flex; gap:8px; }
+.th-terminal .head .pill {
+  padding:1px 7px; border:1px solid var(--border);
+  border-radius:3px; color:var(--text-2); font-size:10px;
+}
+.th-terminal .head .pill.live { color:var(--accent); border-color:var(--accent); }
+
+.th-terminal .body { padding:16px 18px; min-height:260px; }
+.th-terminal .status {
+  display:flex; align-items:center; gap:8px;
+  font-size:10.5px; color:var(--text-2);
+  padding-bottom:10px; margin-bottom:12px;
+  border-bottom:1px dashed var(--border);
+}
+.th-terminal .status .b { color:var(--text-3); }
+.th-terminal .status .k { color:var(--text-2); }
+.th-terminal .status .v { color:var(--text); font-weight:500; }
+.th-terminal .status .s { color:var(--border); }
+.th-terminal .status .a { color:var(--accent); }
+
+.th-terminal .wave {
+  display:flex; align-items:flex-end; gap:2px;
+  height:28px; margin-bottom:12px;
+  font-family:monospace; font-size:16px;
+  color:var(--accent); line-height:1;
+  letter-spacing:-1px;
+}
+
+.th-terminal .output {
+  background:var(--surface);
+  border-left:3px solid var(--accent);
+  padding:12px 14px;
+  font-size:13.5px; line-height:1.6;
+}
+.th-terminal .output .prompt { color:var(--accent); margin-right:8px; }
+.th-terminal .output .typed { color:#e6edf3; font-weight:500; }
+.th-terminal .output .cursor {
+  display:inline-block; width:8px; height:16px;
+  background:var(--accent); vertical-align:-3px; margin-left:2px;
+  animation:blink 1s steps(1) infinite;
+}
+@keyframes blink { 50%{ opacity:0; } }
+
+.th-terminal .meter {
+  display:flex; align-items:center; gap:10px;
+  margin-top:14px; font-size:10.5px; color:var(--text-2);
+}
+.th-terminal .meter .bar { flex:1; height:4px; background:var(--surface); border:1px solid var(--border); border-radius:1px; position:relative; overflow:hidden; }
+.th-terminal .meter .fill { position:absolute; left:0; top:0; height:100%; background:linear-gradient(90deg, var(--state-success), var(--state-warn), var(--accent)); width:70%; }
+.th-terminal .meter .db { color:var(--accent); font-weight:600; }
+
+.th-terminal .actions { display:flex; gap:6px; margin-top:14px; font-size:10.5px; }
+.th-terminal .actions .kh { padding:3px 8px; border:1px solid var(--border); border-radius:3px; color:var(--text-2); background:var(--surface); }
+.th-terminal .actions .kh kbd { color:var(--text); font-weight:600; }
+
+/* ========== THEME 2: RAYCAST ========== */
+.th-ray {
+  --bg:rgba(28,28,30,.95); --surface:rgba(255,255,255,.05);
+  --text:#fff; --text-2:rgba(255,255,255,.6); --text-3:rgba(255,255,255,.35);
+  --border:rgba(255,255,255,.08);
+  --accent: var(--brand-blue);
+  --font: 'Inter', system-ui, sans-serif;
+  --radius: 12px;
+  --wave-style: bar;
+}
+
+.th-ray .app {
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  backdrop-filter:blur(30px);
+  padding:18px;
+  min-height:340px;
+}
+.th-ray .topbar {
+  display:flex; align-items:center; gap:8px;
+  font-size:11px; color:var(--text-2);
+  margin-bottom:14px;
+  font-family:'JetBrains Mono', monospace;
+}
+.th-ray .topbar .pill { padding:2px 7px; background:rgba(255,255,255,.06); border-radius:4px; }
+.th-ray .topbar .pill.live { background:rgba(0,163,255,.18); color:var(--accent); }
+.th-ray .topbar .right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.th-ray .topbar .logo { width:14px; height:14px; background:#0078D4; border-radius:3px; font-size:8px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+.th-ray .input {
+  display:flex; align-items:center; gap:10px;
+  padding:14px 16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  margin-bottom:12px;
+}
+.th-ray .input .orb {
+  width:20px; height:20px;
+  background:var(--accent);
+  border-radius:50%;
+  box-shadow:0 0 10px var(--brand-blue-glow);
+  position:relative;
+  flex-shrink:0;
+}
+.th-ray .input .orb::before, .th-ray .input .orb::after {
+  content:""; position:absolute; inset:0;
+  border-radius:50%;
+  border:1px solid var(--accent);
+  animation:orb 1.8s ease-out infinite;
+}
+.th-ray .input .orb::after { animation-delay:.9s; }
+@keyframes orb { 0%{ transform:scale(1); opacity:.7;} 100%{ transform:scale(2.4); opacity:0;} }
+.th-ray .input .live {
+  flex:1; font-size:16px; font-weight:500;
+  letter-spacing:-.01em; line-height:1.4;
+  color:var(--text);
+}
+.th-ray .input .live .last { color:var(--text-2); }
+.th-ray .input .live .cursor {
+  display:inline-block; width:2px; height:18px;
+  background:var(--accent); vertical-align:-3px; margin-left:2px;
+  animation:blink 1s steps(1) infinite;
+}
+.th-ray .input .badge {
+  font-size:10px; font-weight:600;
+  padding:3px 7px; border-radius:5px;
+  background:rgba(0,163,255,.18); color:var(--accent);
+  letter-spacing:.04em;
+}
+
+.th-ray .meta {
+  display:flex; align-items:center; gap:12px;
+  padding:0 4px; margin-bottom:14px;
+  font-size:11.5px; color:var(--text-2);
+  font-family:'JetBrains Mono', monospace;
+}
+.th-ray .meta .sep { color:rgba(255,255,255,.15); }
+.th-ray .meta .lat { color:var(--accent); font-weight:600; }
+.th-ray .meta .target { display:inline-flex; align-items:center; gap:5px; margin-left:auto; color:rgba(255,255,255,.8); }
+
+.th-ray .wave {
+  display:flex; align-items:center; justify-content:center; gap:2.5px;
+  height:48px; margin-bottom:14px;
+}
+.th-ray .wave .bar {
+  width:3px; background:var(--accent);
+  border-radius:2px;
+  animation:rw 1.2s ease-in-out infinite;
+  box-shadow:0 0 4px var(--brand-blue-glow);
+}
+.th-ray .wave .bar:nth-child(1){ height:22%; animation-delay:0s; }
+.th-ray .wave .bar:nth-child(2){ height:35%; animation-delay:.06s; }
+.th-ray .wave .bar:nth-child(3){ height:50%; animation-delay:.12s; }
+.th-ray .wave .bar:nth-child(4){ height:68%; animation-delay:.18s; }
+.th-ray .wave .bar:nth-child(5){ height:82%; animation-delay:.24s; }
+.th-ray .wave .bar:nth-child(6){ height:94%; animation-delay:.30s; }
+.th-ray .wave .bar:nth-child(7){ height:88%; animation-delay:.36s; }
+.th-ray .wave .bar:nth-child(8){ height:72%; animation-delay:.42s; }
+.th-ray .wave .bar:nth-child(9){ height:58%; animation-delay:.48s; }
+.th-ray .wave .bar:nth-child(10){ height:76%; animation-delay:.54s; }
+.th-ray .wave .bar:nth-child(11){ height:62%; animation-delay:.60s; }
+.th-ray .wave .bar:nth-child(12){ height:42%; animation-delay:.66s; }
+.th-ray .wave .bar:nth-child(13){ height:30%; animation-delay:.72s; }
+.th-ray .wave .bar:nth-child(14){ height:48%; animation-delay:.78s; }
+@keyframes rw { 0%,100%{ transform:scaleY(.6); opacity:.7;} 50%{ transform:scaleY(1); opacity:1;} }
+
+.th-ray .foot { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.th-ray .foot .action {
+  padding:9px 11px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  display:flex; align-items:center; gap:7px;
+  font-size:11.5px; color:rgba(255,255,255,.75);
+}
+.th-ray .foot .action .ico { width:16px; height:16px; background:rgba(255,255,255,.08); border-radius:4px; }
+.th-ray .foot .action .key { margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:10px; color:rgba(255,255,255,.4); padding:1px 5px; background:rgba(255,255,255,.05); border-radius:3px; }
+.th-ray .foot .action.primary { background:linear-gradient(135deg, var(--accent), #0085DB); border-color:transparent; color:#fff; box-shadow:0 3px 10px var(--brand-blue-glow); }
+
+/* ========== THEME 3: IOS LIGHT ========== */
+.th-ios {
+  --bg:#F2F2F7; --surface:#FFFFFF;
+  --text:rgba(0,0,0,.88); --text-2:rgba(60,60,67,.6); --text-3:rgba(60,60,67,.3);
+  --border:rgba(60,60,67,.12);
+  --accent: var(--brand-blue);
+  --font: -apple-system, 'Inter', sans-serif;
+  --radius: 14px;
+  --wave-style: line;
+}
+
+.th-ios .app {
+  background:var(--bg);
+  font-family:var(--font);
+  padding:0;
+}
+.th-ios .navbar {
+  height:38px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(20px);
+  border-bottom:.5px solid var(--border);
+  position:relative;
+  font-size:14px; font-weight:600;
+  color:var(--text);
+}
+.th-ios .navbar .left, .th-ios .navbar .right {
+  position:absolute; top:50%; transform:translateY(-50%);
+  display:flex; align-items:center; gap:14px;
+  font-size:14px; color:var(--accent);
+  font-weight:400;
+}
+.th-ios .navbar .left { left:14px; }
+.th-ios .navbar .right { right:14px; font-weight:600; }
+
+.th-ios .hero-area {
+  background:var(--surface);
+  padding:32px 24px 28px;
+  text-align:center;
+}
+.th-ios .state-tag {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:10px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:18px;
+}
+.th-ios .state-tag .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px var(--brand-blue-soft); animation:rec 1.6s ease-in-out infinite; }
+
+.th-ios .live-text {
+  font-size:22px; font-weight:500;
+  line-height:1.45; letter-spacing:-.015em;
+  color:var(--text);
+  text-align:left;
+  max-width:300px; margin:0 auto;
+  min-height:60px;
+}
+.th-ios .live-text .last { color:var(--text-2); }
+.th-ios .live-text .cursor {
+  display:inline-block; width:2px; height:22px;
+  background:var(--accent); vertical-align:-4px; margin-left:2px;
+  animation:blink 1s steps(1) infinite;
+}
+
+.th-ios .wave {
+  display:flex; align-items:center; justify-content:center; gap:3px;
+  height:44px; margin:18px 0 0;
+}
+.th-ios .wave .bar {
+  width:3px;
+  background:linear-gradient(180deg, var(--accent), #66CFFF);
+  border-radius:2px;
+  animation:iw 1.3s ease-in-out infinite;
+}
+.th-ios .wave .bar:nth-child(1){ height:20%; animation-delay:0s; }
+.th-ios .wave .bar:nth-child(2){ height:35%; animation-delay:.05s; }
+.th-ios .wave .bar:nth-child(3){ height:55%; animation-delay:.1s; }
+.th-ios .wave .bar:nth-child(4){ height:75%; animation-delay:.15s; }
+.th-ios .wave .bar:nth-child(5){ height:92%; animation-delay:.2s; }
+.th-ios .wave .bar:nth-child(6){ height:100%; animation-delay:.25s; }
+.th-ios .wave .bar:nth-child(7){ height:85%; animation-delay:.3s; }
+.th-ios .wave .bar:nth-child(8){ height:65%; animation-delay:.35s; }
+.th-ios .wave .bar:nth-child(9){ height:80%; animation-delay:.4s; }
+.th-ios .wave .bar:nth-child(10){ height:55%; animation-delay:.45s; }
+.th-ios .wave .bar:nth-child(11){ height:40%; animation-delay:.5s; }
+.th-ios .wave .bar:nth-child(12){ height:60%; animation-delay:.55s; }
+.th-ios .wave .bar:nth-child(13){ height:42%; animation-delay:.6s; }
+.th-ios .wave .bar:nth-child(14){ height:30%; animation-delay:.65s; }
+.th-ios .wave .bar:nth-child(15){ height:48%; animation-delay:.7s; }
+@keyframes iw { 0%,100%{ transform:scaleY(.5); opacity:.7;} 50%{ transform:scaleY(1); opacity:1;} }
+
+.th-ios .actions {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:18px 24px 24px;
+  background:var(--surface);
+}
+.th-ios .btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 14px;
+  border-radius:999px;
+  font-size:13px; font-weight:500;
+  background:var(--bg); color:var(--text);
+  border:none;
+}
+.th-ios .btn.primary {
+  background:var(--accent); color:#fff; font-weight:600;
+  box-shadow:0 2px 6px var(--brand-blue-glow);
+}
+.th-ios .btn .key {
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px; padding:1px 5px;
+  background:rgba(255,255,255,.18); border-radius:3px;
+  margin-left:2px;
+}
+.th-ios .btn:not(.primary) .key { background:var(--surface); color:var(--text-2); }
+
+/* ===== ARCHITECTURE DIAGRAM ===== */
+.arch-wrap {
+  background:#fff;
+  border-radius:14px;
+  border:1px solid #e7e5e4;
+  overflow:hidden;
+}
+.arch {
+  padding:24px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:12px;
+}
+.arch-layer {
+  margin-bottom:14px;
+  border-radius:10px;
+  overflow:hidden;
+}
+.arch-layer-head {
+  padding:10px 14px;
+  font-weight:700;
+  display:flex; align-items:center; gap:10px;
+}
+.arch-layer-body {
+  padding:14px;
+  font-size:11.5px;
+  line-height:1.8;
+  color:#44403c;
+}
+.arch-layer .tok {
+  display:inline-block;
+  padding:2px 8px;
+  background:#fafaf9;
+  border:1px solid #e7e5e4;
+  border-radius:5px;
+  margin:2px 4px 2px 0;
+  font-size:11px;
+  font-weight:600;
+  color:#1c1917;
+}
+.arch-layer .tok.brand { background:#EFF6FF; border-color:#BFDBFE; color:#1E40AF; }
+.arch-layer .tok.theme1 { background:#0d1117; border-color:#0d1117; color:#c9d1d9; }
+.arch-layer .tok.theme2 { background:rgba(28,28,30,.95); border-color:#444; color:#fff; }
+.arch-layer .tok.theme3 { background:#fff; border-color:#d4d4d8; color:#1c1917; }
+
+.arch-layer.brand .arch-layer-head { background:#EFF6FF; color:#1E40AF; }
+.arch-layer.theme .arch-layer-head { background:#fafaf9; color:#44403c; border-bottom:1px solid #e7e5e4; }
+.arch-layer.comp .arch-layer-head { background:#FAFAF9; color:#57534E; border-bottom:1px solid #e7e5e4; }
+
+/* ===== TOKEN TABLE ===== */
+.token-tbl {
+  background:#fff;
+  border-radius:14px;
+  border:1px solid #e7e5e4;
+  overflow:hidden;
+}
+.token-tbl table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.token-tbl th, .token-tbl td { padding:12px 16px; text-align:left; border-bottom:1px solid #f5f5f4; }
+.token-tbl th { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#a8a29e; background:#fafaf9; }
+.token-tbl td.tt { font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--brand-blue); font-weight:600; }
+.token-tbl td .swatch { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; margin-right:6px; box-shadow:0 0 0 .5px rgba(0,0,0,.08); }
+.token-tbl tr:last-child td { border-bottom:none; }
+
+/* ===== TRADE-OFF ===== */
+.tradeoff { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
+.tradeoff .item { background:#fff; border:1px solid #e7e5e4; border-radius:12px; padding:16px 18px; }
+.tradeoff .item .lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#a8a29e; margin-bottom:8px; }
+.tradeoff .item h5 { font-size:14px; font-weight:600; margin-bottom:6px; letter-spacing:-.01em; }
+.tradeoff .item p { font-size:12.5px; color:#57534E; line-height:1.55; }
+.tradeoff .item.warn { background:#FEF3C7; border-color:#FDE68A; }
+.tradeoff .item.warn h5 { color:#92400E; }
+.tradeoff .item.warn .lbl { color:#B45309; }
+
+footer.foot { margin-top:96px; padding-top:32px; border-top:1px solid #e7e5e4; display:flex; justify-content:space-between; font-size:12px; color:#a8a29e; }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero, .theme-grid, .compare-section, .tradeoff, .settings-shell { grid-template-columns:1fr; }
+  .settings-shell { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div>
+    <h1>多画风主题系统 · <em>品牌色统一</em></h1>
+    <p class="lead">同一个 voice-pilot，三种完全不同的视觉语言 —— 但<strong>品牌色（蓝）贯穿所有主题</strong>，确保用户切换主题后还是"同一个产品"。架构采用 <code>设计 Token 三层</code>分离：品牌层（共用）+ 主题层（每主题独立）+ 组件层（不感知主题）。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>核心原则</dt><dd>品牌色统一 · 主题可切换 · 组件不感知</dd></div>
+    <div><dt>画风数量</dt><dd>建议先做 2 个（terminal + raycast），iOS 留 v2</dd></div>
+    <div><dt>实现成本</dt><dd>主题层 × 1 ≈ 主题层 × 3 的 40%（共用品牌层）</dd></div>
+    <dt style="font-size:11px; color:#a8a29e; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;">品牌色 · 从图标取</dt>
+    <div class="row"><span class="swatch" style="background:#00A3FF;"></span><span class="sw-name">#00A3FF · brand blue</span></div>
+    <div class="row"><span class="swatch" style="background:#0085DB;"></span><span class="sw-name">#0085DB · blue pressed</span></div>
+    <div class="row"><span class="swatch" style="background:rgba(0,163,255,.12);"></span><span class="sw-name">rgba(0,163,255,.12) · soft</span></div>
+  </dl>
+</header>
+
+<!-- ============ SECTION 01: THEME PICKER UI ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>设置页 · 主题选择器长什么样</h2>
+    <span class="sub">用户切换主题的位置</span>
+  </div>
+
+  <div class="picker-wrap">
+    <div class="picker-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">voice-pilot · Settings · Appearance</span>
+    </div>
+
+    <div class="settings-shell">
+      <div class="settings-nav">
+        <div class="nav-item">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          通用
+        </div>
+        <div class="nav-item">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          语音
+        </div>
+        <div class="nav-item">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          热键
+        </div>
+        <div class="nav-item">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          识别引擎
+        </div>
+        <div class="nav-item active">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:1; color:var(--brand-blue);"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          外观
+        </div>
+        <div class="nav-item">
+          <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1m17.6-7.6l-4.2 4.2M9.6 14.4l-4.2 4.2m0-13l4.2 4.2m4.2 4.2l4.2 4.2"/></svg>
+          高级
+        </div>
+      </div>
+
+      <div class="settings-body">
+        <div class="breadcrumb">外观 · Appearance</div>
+        <h3>画风</h3>
+        <p class="desc">切换 voice-pilot 的整体视觉语言。品牌色和功能保持一致，只换"皮肤"。</p>
+
+        <div class="theme-grid">
+
+          <!-- TERMINAL -->
+          <div class="theme-card active">
+            <div class="theme-preview">
+              <div class="tp-terminal">
+                <div class="row"><span class="dot-blue"></span><span class="tl">voice-pilot</span><span style="margin-left:auto; opacity:.6;">small · 380ms</span></div>
+                <div class="bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <div style="background:#161b22; padding:8px 10px; border-left:2px solid var(--brand-blue); margin-top:6px; color:#c9d1d9; font-size:9.5px;">
+                  <span style="color:var(--brand-blue);">❯</span> 现在我把界面重构
+                </div>
+              </div>
+            </div>
+            <div class="theme-info">
+              <div class="name">Terminal <span class="badge">DEV</span></div>
+              <div class="desc">深色 · 等宽 · 像 tmux status bar</div>
+            </div>
+          </div>
+
+          <!-- RAYCAST -->
+          <div class="theme-card">
+            <div class="theme-preview">
+              <div class="tp-ray">
+                <div class="top-bar"><div class="fill"></div></div>
+                <div class="big-rect">
+                  <div style="display:flex; align-items:center; gap:6px;"><div class="orb"></div><div style="height:5px; flex:1; background:rgba(255,255,255,.15); border-radius:2px;"></div></div>
+                  <div class="line"></div>
+                  <div class="line short"></div>
+                  <div style="display:flex; align-items:center; gap:4px; margin-top:auto;">
+                    <div style="flex:1; height:18px; background:linear-gradient(135deg, var(--brand-blue), #0085DB); border-radius:6px;"></div>
+                    <div style="flex:1; height:18px; background:rgba(255,255,255,.06); border-radius:6px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="theme-info">
+              <div class="name">Raycast <span class="badge">PRO</span></div>
+              <div class="desc">深色 · 圆角 · 命令面板范</div>
+            </div>
+          </div>
+
+          <!-- iOS -->
+          <div class="theme-card">
+            <div class="theme-preview">
+              <div class="tp-ios">
+                <div class="nav">语音唤醒</div>
+                <div class="row-rect">
+                  <div class="ico"></div>
+                  <div class="line"></div>
+                  <div class="line fill"></div>
+                </div>
+                <div class="row-rect">
+                  <div class="ico" style="background:#34D399;"></div>
+                  <div class="line fill" style="background:#34D399;"></div>
+                </div>
+                <div class="row-rect">
+                  <div class="seg"><span class="on">中文</span><span>EN</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="theme-info">
+              <div class="name">iOS <span class="badge" style="background:#FEF3C7; color:#92400E;">v2</span></div>
+              <div class="desc">浅色 · 大圆角 · 系统风 · 建议后期再加</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 主题内微调 -->
+        <div style="margin-top:32px; padding-top:24px; border-top:1px solid #f5f5f4;">
+          <div style="font-size:13px; font-weight:600; margin-bottom:14px; letter-spacing:-.01em;">主题内微调</div>
+          <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:14px;">
+            <div style="padding:14px; background:#fafaf9; border-radius:10px;">
+              <div style="font-size:12px; font-weight:600; margin-bottom:8px;">字体大小</div>
+              <div style="display:flex; gap:6px;">
+                <div style="flex:1; padding:8px; background:#fff; border:1px solid var(--brand-blue); border-radius:6px; text-align:center; font-size:11px; font-weight:600; color:var(--brand-blue);">小</div>
+                <div style="flex:1; padding:8px; background:var(--brand-blue); border-radius:6px; text-align:center; font-size:12px; font-weight:600; color:#fff;">标准</div>
+                <div style="flex:1; padding:8px; background:#fff; border:1px solid #e7e5e4; border-radius:6px; text-align:center; font-size:13px; font-weight:500;">大</div>
+              </div>
+            </div>
+            <div style="padding:14px; background:#fafaf9; border-radius:10px;">
+              <div style="font-size:12px; font-weight:600; margin-bottom:8px;">动效强度</div>
+              <div style="display:flex; gap:6px;">
+                <div style="flex:1; padding:8px; background:#fff; border:1px solid #e7e5e4; border-radius:6px; text-align:center; font-size:12px;">关闭</div>
+                <div style="flex:1; padding:8px; background:var(--brand-blue); border-radius:6px; text-align:center; font-size:12px; font-weight:600; color:#fff;">适中</div>
+                <div style="flex:1; padding:8px; background:#fff; border:1px solid #e7e5e4; border-radius:6px; text-align:center; font-size:12px;">丰富</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 02: SAME COMPONENT × 3 THEMES ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>同一段语音 · 三个主题对比</h2>
+    <span class="sub">dictating "现在我把界面重构" · 看品牌蓝如何贯穿</span>
+  </div>
+
+  <div class="compare-section">
+
+    <!-- TERMINAL -->
+    <div class="compare-card">
+      <div class="compare-head">
+        <span class="name"><span class="dot"></span>Terminal</span>
+        <span class="meta">tech.dev</span>
+      </div>
+      <div class="th-terminal">
+        <div class="app">
+          <div class="head">
+            <span class="tab"><span class="rec-dot"></span>voice-pilot</span>
+            <span class="right">
+              <span class="pill live">● DICTATING</span>
+              <span class="pill">small · 380ms</span>
+            </span>
+          </div>
+          <div class="body">
+            <div class="status">
+              <span class="b">[</span>
+              <span class="k">mic</span><span class="s">:</span><span class="v">Wireless Rx</span>
+              <span class="s">·</span>
+              <span class="k">target</span><span class="s">:</span><span class="v">VS Code</span>
+              <span class="s">·</span>
+              <span class="k">lat</span><span class="s">:</span><span class="a">380ms</span>
+              <span class="b">]</span>
+            </div>
+            <div class="wave">▁▂▄▆▇█▇▅▃▂▁▂▄▆▇█▆▄▂</div>
+            <div class="output">
+              <span class="prompt">❯</span><span class="typed">现在我把界面重构</span><span class="cursor"></span>
+            </div>
+            <div class="meter">
+              <span>INPUT</span>
+              <div class="bar"><div class="fill"></div></div>
+              <span class="db">-12dB</span>
+            </div>
+            <div class="actions">
+              <span class="kh"><kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>V</kbd> hold</span>
+              <span class="kh"><kbd>Esc</kbd> cancel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAYCAST -->
+    <div class="compare-card">
+      <div class="compare-head">
+        <span class="name"><span class="dot"></span>Raycast</span>
+        <span class="meta">modern.pro</span>
+      </div>
+      <div class="th-ray">
+        <div class="app">
+          <div class="topbar">
+            <span class="pill live">● DICTATING</span>
+            <span style="opacity:.7;">small · 380ms</span>
+            <span class="right">
+              <span class="logo">VS</span>
+              <span>VS Code</span>
+            </span>
+          </div>
+          <div class="input">
+            <div class="orb"></div>
+            <div class="live"><span class="last">现在我把界面重构</span><span class="cursor"></span></div>
+            <span class="badge">LIVE</span>
+          </div>
+          <div class="meta">
+            <span>44 chars</span>
+            <span class="sep">|</span>
+            <span class="lat">380ms</span>
+            <span class="target"><span>→</span><span class="logo">VS</span><span>VS Code</span></span>
+          </div>
+          <div class="wave">
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          </div>
+          <div class="foot">
+            <div class="action primary"><span class="ico"></span><span>结束</span><span class="key">⏎</span></div>
+            <div class="action"><span class="ico"></span><span>切换</span><span class="key">Tab</span></div>
+            <div class="action"><span class="ico"></span><span>设置</span><span class="key">⌘,</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- iOS -->
+    <div class="compare-card">
+      <div class="compare-head">
+        <span class="name"><span class="dot"></span>iOS</span>
+        <span class="meta">v2 · 后续</span>
+      </div>
+      <div class="th-ios">
+        <div class="app">
+          <div class="navbar">
+            <span class="left">‹ 设置</span>
+            <span>语音唤醒</span>
+            <span class="right">完成</span>
+          </div>
+          <div class="hero-area">
+            <div class="state-tag"><span class="dot"></span>正在听</div>
+            <div class="live-text">
+              <span class="last">现在我把界面重构</span><span class="cursor"></span>
+            </div>
+            <div class="wave">
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn">切换 <span class="key">Tab</span></button>
+            <button class="btn primary">结束 <span class="key">松开</span></button>
+            <button class="btn">设置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:20px; padding:14px 18px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; font-size:13px; color:#1E40AF; line-height:1.55;">
+    <strong>注意三个细节</strong>：① 三个主题都用同一个品牌蓝 <code style="font-family:'JetBrains Mono',monospace; font-size:12px; background:#fff; padding:1px 5px; border-radius:3px;">#00A3FF</code>，但表达方式不同（terminal=纯色、raycast=带光晕的渐变球、ios=柔色渐变）；② 状态码 [DICTATING] / LIVE / 正在听 三种语言；③ 字体系统完全独立（terminal=mono、raycast=Inter、ios=SF）。
+  </p>
+</section>
+
+<!-- ============ SECTION 03: ARCHITECTURE ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>实现架构 · 设计 Token 三层</h2>
+    <span class="sub">给开发看的 · 组件层不感知主题</span>
+  </div>
+
+  <div class="arch-wrap">
+    <div class="arch">
+
+      <div class="arch-layer brand">
+        <div class="arch-layer-head">
+          <span style="font-size:14px;">①</span>
+          <span>BRAND TOKENS · 品牌层</span>
+          <span style="margin-left:auto; font-size:10.5px; color:#1E40AF; font-weight:500; letter-spacing:.04em;">所有主题共用</span>
+        </div>
+        <div class="arch-layer-body">
+          <div>
+            <span class="tok brand">--brand-blue</span>
+            <span class="tok brand">--brand-blue-2</span>
+            <span class="tok brand">--brand-blue-soft</span>
+            <span class="tok brand">--brand-blue-glow</span>
+          </div>
+          <div style="margin-top:8px;">
+            <span class="tok brand">--state-success</span>
+            <span class="tok brand">--state-warn</span>
+            <span class="tok brand">--state-error</span>
+            <span class="tok brand">--state-listen = --brand-blue</span>
+          </div>
+          <div style="margin-top:8px;">
+            <span class="tok brand">--logo</span>
+            <span class="tok brand">--brand-voice (logo 气质)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-layer theme">
+        <div class="arch-layer-head">
+          <span style="font-size:14px;">②</span>
+          <span>THEME TOKENS · 主题层</span>
+          <span style="margin-left:auto; font-size:10.5px; color:#57534E; font-weight:500; letter-spacing:.04em;">每主题独立</span>
+        </div>
+        <div class="arch-layer-body" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+
+          <div style="background:#0d1117; color:#c9d1d9; padding:12px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:11px; line-height:1.7;">
+            <div style="color:var(--brand-blue); font-weight:700; margin-bottom:4px;">.theme-terminal {</div>
+            <div>  --bg: <span style="color:#a5d6ff;">#0d1117</span>;</div>
+            <div>  --surface: <span style="color:#a5d6ff;">#161b22</span>;</div>
+            <div>  --text: <span style="color:#a5d6ff;">#c9d1d9</span>;</div>
+            <div>  --border: <span style="color:#a5d6ff;">#30363d</span>;</div>
+            <div>  --font: <span style="color:#a5d6ff;">'JetBrains Mono'</span>;</div>
+            <div>  --radius: <span style="color:#a5d6ff;">4px</span>;</div>
+            <div>  --wave: <span style="color:#a5d6ff;">ascii</span>;</div>
+            <div>}</div>
+          </div>
+
+          <div style="background:rgba(28,28,30,.95); color:#fff; padding:12px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:11px; line-height:1.7;">
+            <div style="color:var(--brand-blue); font-weight:700; margin-bottom:4px;">.theme-raycast {</div>
+            <div>  --bg: <span style="color:#a5d6ff;">rgba(28,28,30,.95)</span>;</div>
+            <div>  --surface: <span style="color:#a5d6ff;">rgba(255,255,255,.05)</span>;</div>
+            <div>  --text: <span style="color:#a5d6ff;">#fff</span>;</div>
+            <div>  --border: <span style="color:#a5d6ff;">rgba(255,255,255,.08)</span>;</div>
+            <div>  --font: <span style="color:#a5d6ff;">'Inter'</span>;</div>
+            <div>  --radius: <span style="color:#a5d6ff;">12px</span>;</div>
+            <div>  --wave: <span style="color:#a5d6ff;">bar</span>;</div>
+            <div>}</div>
+          </div>
+
+          <div style="background:#fff; color:#1c1917; padding:12px; border-radius:8px; border:1px solid #e7e5e4; font-family:'JetBrains Mono', monospace; font-size:11px; line-height:1.7;">
+            <div style="color:var(--brand-blue); font-weight:700; margin-bottom:4px;">.theme-ios {</div>
+            <div>  --bg: <span style="color:#1c1917;">#F2F2F7</span>;</div>
+            <div>  --surface: <span style="color:#1c1917;">#FFFFFF</span>;</div>
+            <div>  --text: <span style="color:#1c1917;">rgba(0,0,0,.88)</span>;</div>
+            <div>  --border: <span style="color:#1c1917;">rgba(60,60,67,.12)</span>;</div>
+            <div>  --font: <span style="color:#1c1917;">'SF Pro Text'</span>;</div>
+            <div>  --radius: <span style="color:#1c1917;">14px</span>;</div>
+            <div>  --wave: <span style="color:#1c1917;">line</span>;</div>
+            <div>}</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="arch-layer comp">
+        <div class="arch-layer-head">
+          <span style="font-size:14px;">③</span>
+          <span>COMPONENTS · 组件层</span>
+          <span style="margin-left:auto; font-size:10.5px; color:#57534E; font-weight:500; letter-spacing:.04em;">不感知主题 · 只消费 token</span>
+        </div>
+        <div class="arch-layer-body">
+          <div style="background:#FAFAF9; padding:14px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:11.5px; line-height:1.8;">
+            <div style="color:#a8a29e; margin-bottom:4px;">/* Button · 不管自己在哪个主题 */</div>
+            <div>.btn-primary {</div>
+            <div>  background: <span style="color:var(--brand-blue);">var(--brand-blue)</span>;</div>
+            <div>  color: white;</div>
+            <div>  padding: 10px 18px;</div>
+            <div>  border-radius: <span style="color:#92400E;">var(--radius)</span>;</div>
+            <div>  font-family: <span style="color:#92400E;">var(--font)</span>;</div>
+            <div>  box-shadow: 0 0 12px <span style="color:var(--brand-blue);">var(--brand-blue-glow)</span>;</div>
+            <div>}</div>
+          </div>
+          <p style="margin-top:10px; font-family:-apple-system, sans-serif; font-size:12.5px; color:#57534E; line-height:1.6;">
+            组件只引用 token，<strong>不写死颜色 / 字体 / 圆角</strong>。换主题 = 换顶层 className = 整个组件树自动重渲染。
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 04: TOKEN TABLE ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>Token 对照表 · 一行代码切换主题</h2>
+    <span class="sub">开发只需要管这一张表</span>
+  </div>
+
+  <div class="token-tbl">
+    <table>
+      <thead>
+        <tr>
+          <th>Token</th>
+          <th>Terminal</th>
+          <th>Raycast</th>
+          <th>iOS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tt">--bg</td>
+          <td><span class="swatch" style="background:#0d1117;"></span>#0d1117</td>
+          <td><span class="swatch" style="background:#1c1c1e;"></span>rgba(28,28,30,.95)</td>
+          <td><span class="swatch" style="background:#F2F2F7;"></span>#F2F2F7</td>
+        </tr>
+        <tr>
+          <td class="tt">--surface</td>
+          <td><span class="swatch" style="background:#161b22;"></span>#161b22</td>
+          <td><span class="swatch" style="background:rgba(255,255,255,.05); border:1px solid #ccc;"></span>rgba(255,255,255,.05)</td>
+          <td><span class="swatch" style="background:#fff;"></span>#FFFFFF</td>
+        </tr>
+        <tr>
+          <td class="tt">--text</td>
+          <td><span class="swatch" style="background:#c9d1d9;"></span>#c9d1d9</td>
+          <td><span class="swatch" style="background:#fff;"></span>#FFFFFF</td>
+          <td><span class="swatch" style="background:rgba(0,0,0,.88);"></span>rgba(0,0,0,.88)</td>
+        </tr>
+        <tr>
+          <td class="tt">--border</td>
+          <td><span class="swatch" style="background:#30363d;"></span>#30363d</td>
+          <td><span class="swatch" style="background:rgba(255,255,255,.08);"></span>rgba(255,255,255,.08)</td>
+          <td><span class="swatch" style="background:rgba(60,60,67,.12);"></span>rgba(60,60,67,.12)</td>
+        </tr>
+        <tr>
+          <td class="tt">--font</td>
+          <td>JetBrains Mono</td>
+          <td>Inter</td>
+          <td>SF Pro Text</td>
+        </tr>
+        <tr>
+          <td class="tt">--radius</td>
+          <td>4px</td>
+          <td>12px</td>
+          <td>14px</td>
+        </tr>
+        <tr>
+          <td class="tt">--accent</td>
+          <td><span class="swatch" style="background:#00A3FF;"></span>#00A3FF</td>
+          <td><span class="swatch" style="background:#00A3FF; box-shadow:0 0 6px rgba(0,163,255,.4);"></span>#00A3FF + glow</td>
+          <td><span class="swatch" style="background:#00A3FF;"></span>#00A3FF</td>
+        </tr>
+        <tr>
+          <td class="tt">--wave-style</td>
+          <td>ascii (▁▃▅█)</td>
+          <td>bar (rounded bars)</td>
+          <td>line (thin lines)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:16px; padding:14px 18px; background:#FAFAF9; border-radius:10px; font-size:12.5px; color:#57534E; line-height:1.65;">
+    <strong style="color:#1c1917;">关键</strong>：<code style="font-family:'JetBrains Mono',monospace; font-size:11.5px; background:#fff; padding:1px 5px; border-radius:3px; color:var(--brand-blue);">--accent</code> 在所有主题都引用 <code style="font-family:'JetBrains Mono',monospace; font-size:11.5px; background:#fff; padding:1px 5px; border-radius:3px; color:var(--brand-blue);">--brand-blue</code>，所以用户改品牌色（v2 扩展）= 所有主题同步换色。
+  </p>
+</section>
+
+<!-- ============ SECTION 05: TRADE-OFF ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">05</span>
+    <h2>取舍 · 我建议先做 2 个</h2>
+    <span class="sub">iOS 留 v2，不是不要</span>
+  </div>
+
+  <div class="tradeoff">
+    <div class="item">
+      <div class="lbl">建议</div>
+      <h5>v1 · Terminal + Raycast</h5>
+      <p>两个都是深色，技术用户覆盖完整。开发工作量适中，每个主题都能做到 90 分。Raycast 主题顺便把"命令面板"的产品形态做出来。</p>
+    </div>
+    <div class="item warn">
+      <div class="lbl">不建议 · v1</div>
+      <h5>iOS 主题留到 v2</h5>
+      <p>iOS 主题在 Tauri 上的工作量大：阴影系统、圆角一致性、状态码语义、动效曲线全部要单独调。三个主题同时做，每个都半成品。</p>
+    </div>
+    <div class="item">
+      <div class="lbl">扩展性</div>
+      <h5>用户自定义品牌色 · v2 后期</h5>
+      <p>Token 架构支持未来扩展"自定义品牌色"。把 --brand-blue 改成用户选的颜色，所有主题同步换色。等于把整套主题系统做成"主题 + 配色"二维矩阵。</p>
+    </div>
+    <div class="item">
+      <div class="lbl">社区生态</div>
+      <h5>v3 · 允许用户自制主题</h5>
+      <p>把 Token 表导出成 JSON，让用户能 fork / 上传主题到 GitHub。Notion / VS Code 都是这么做出生态的。需要写一份 Token 文档 + 示例主题包。</p>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div>voice-pilot · 多画风主题系统 v6 · 品牌色统一</div>
+  <div>建议 v1 = Terminal + Raycast · iOS = v2</div>
+</footer>
+
+</body>
+</html>

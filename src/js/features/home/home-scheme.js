@@ -33,6 +33,10 @@
   }
 
   function homeActiveMapping(){
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.projectActive){
+      var p=global.OneToneHabitProfile.projectActive(state().config||{});
+      if(p&&p.mapping) return p.mapping;
+    }
     if(global.OneToneMappingCore&&global.OneToneMappingCore.activeScene){
       return global.OneToneMappingCore.activeScene();
     }

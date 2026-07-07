@@ -52,7 +52,7 @@
       btnHomeManageSchemes.onclick=function(e){
         e.stopPropagation();
         hooks.closeHomeSchemeMenu();
-        hooks.openSettings({panel:'habits',focus:'mappings'});
+        hooks.openSettings({panel:'scenes',focus:'mappings'});
       };
     }
     var homeSchemeMenuList=$('homeSchemeMenuList');
@@ -74,7 +74,7 @@
     if(homeLiveKeyConflict){
       homeLiveKeyConflict.onclick=function(){
         if(homeLiveKeyConflict.hidden) return;
-        hooks.openSettings({panel:'habits',focus:'mappings'});
+        hooks.openSettings({panel:'scenes',focus:'mappings'});
       };
     }
     document.addEventListener('click',function(e){

@@ -32,6 +32,33 @@
     return 'global';
   }
 
+  function habitProfile(mapping,cfg){
+    var hp=global.OneToneHabitProfile;
+    return hp&&hp.project&&mapping?hp.project(mapping,cfg||{}):null;
+  }
+
+  function isLibraryHabit(mapping,cfg){
+    var hp=global.OneToneHabitProfile;
+    if(hp&&hp.isLibraryHabit) return hp.isLibraryHabit(mapping,cfg||{});
+    return !!(mapping&&global.OneToneMappingCore&&global.OneToneMappingCore.isSaved&&global.OneToneMappingCore.isSaved(mapping));
+  }
+
+  function formatEffectivePreview(profile,hasOverride){
+    if(!profile) return '—';
+    var lang=global.OneToneI18n.getLang();
+    var kl=global.OneToneKeyLabels;
+    var keyLabel=profile.effectiveTargetKey||'—';
+    if(kl) keyLabel=kl.friendlyKeyName(profile.effectiveTargetKey,lang)||keyLabel;
+    var wake=(profile.effectiveWakePhrases||[])[0]||'—';
+    var end=((profile.effectiveEndPhrases&&profile.effectiveEndPhrases.zh)||[])[0]||'—';
+    var body=t('scenePreviewLine')
+      .replace('{wake}',wake)
+      .replace('{target}',keyLabel)
+      .replace('{end}',end);
+    if(hasOverride) body+=' · '+t('scenePreviewHasOverride');
+    return body;
+  }
+
   function ensureOverride(mapping){
     if(!mapping.voiceOverride) mapping.voiceOverride=null;
   }
@@ -105,10 +132,9 @@
     var panel=$('sceneVoicePanel');
     if(!root||!panel) return;
     var visible=ui().drawerOpen
-      &&(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isHabitsPanel
-        ?global.OneToneSettingsDrawer.isHabitsPanel()
-        :ui().settingsPanel==='habits')
-      &&(ui().habitLayer||'global')==='advanced';
+      &&(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isKeysPanel
+        ?global.OneToneSettingsDrawer.isKeysPanel()
+        :false);
     panel.hidden=!visible;
     if(!visible) return;
     var mapping=selectedMapping();
@@ -117,7 +143,7 @@
       root.innerHTML='<p class="scene-voice-empty">'+esc(t('sceneVoicePickMapping'))+'</p>';
       return;
     }
-    if(!global.OneToneMappingCore.isSaved(mapping)){
+    if(!isLibraryHabit(mapping,cfg)){
       root.innerHTML='<p class="scene-voice-empty">'+esc(t('sceneVoiceNeedComplete'))+'</p>';
       return;
     }
@@ -135,7 +161,12 @@
     html+=renderFieldRow('endPhrasesEn',t('sceneVoiceEndPhrasesEn'),
       fieldMode(ov,'endPhrasesEn')==='custom'&&ov&&ov.endPhrases?phrasesToText(ov.endPhrases.en):'',
       fieldMode(ov,'endPhrasesEn'));
-    html+='<p class="scene-voice-preview-hint">'+esc(t('sceneVoicePreviewHint'))+'</p>';
+    var profile=habitProfile(mapping,cfg);
+    var hasOverride=!!ov;
+    html+='<div class="scene-voice-preview">';
+    html+='<p class="scene-voice-preview-title">'+esc(t('habitEffectivePreviewTitle'))+'</p>';
+    html+='<p class="scene-voice-preview-hint">'+esc(formatEffectivePreview(profile,hasOverride))+'</p>';
+    html+='</div>';
     root.innerHTML=html;
     var title=$('sceneVoicePanelTitle');
     if(title) title.textContent=t('sceneVoiceOverrideTitle');

@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="1320" />
+<title>voice-pilot · 样稿图片 · v9 首页 + 设置</title>
+<style>
+:root{
+  --brand-blue:#00A3FF;
+  --brand-blue-2:#0085DB;
+  --brand-blue-soft:rgba(0,163,255,.10);
+  --brand-blue-glow:rgba(0,163,255,.45);
+  --state-success:#34D399;
+  --state-warn:#FBBF24;
+  --state-error:#FF4D6A;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ background:#FAFAF9; font-family:'Inter',-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; -webkit-font-smoothing:antialiased; }
+body{ padding:32px; }
+
+/* Section title */
+.cap{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:#1c1917; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid #e7e5e4; display:flex; align-items:center; gap:10px; }
+.cap .tag{ font-size:11px; padding:3px 10px; background:var(--brand-blue); color:#fff; border-radius:999px; font-weight:700; letter-spacing:.04em; }
+.cap .sub{ margin-left:auto; font-size:12px; color:#78716c; font-weight:500; }
+
+/* App frame */
+.app-frame{ background:#0F1419; border-radius:14px; box-shadow:0 12px 32px -12px rgba(0,0,0,.32), 0 2px 6px rgba(0,0,0,.16); overflow:hidden; margin-bottom:32px; max-width:1320px; }
+.app-bar{ display:flex; align-items:center; gap:6px; padding:10px 16px; background:#0a0e12; border-bottom:1px solid rgba(255,255,255,.06); }
+.app-bar .dot{ width:10px; height:10px; border-radius:50%; }
+.app-bar .dot.r{ background:#FF5F57; } .app-bar .dot.y{ background:#FEBC2E; } .app-bar .dot.g{ background:#28C840; }
+.app-bar .title{ font-size:11.5px; color:#6B7A91; font-family:'JetBrains Mono',monospace; margin-left:14px; font-weight:500; }
+
+/* =========== Home page AFTER =========== */
+.home-rev{ background:#0F1419; padding:0; }
+
+.app-header{ display:flex; align-items:center; justify-content:space-between; padding:0 20px; height:56px; background:#0F1419; border-bottom:1px solid rgba(255,255,255,.06); gap:14px; }
+.app-header .brand{ display:flex; align-items:center; gap:12px; }
+.app-header .brand .logo{ width:32px; height:32px; background:linear-gradient(135deg,var(--brand-blue),var(--brand-blue-2)); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 12px var(--brand-blue-glow); }
+.app-header .brand .logo svg{ color:#fff; }
+.app-header .brand .name{ font-size:14px; font-weight:600; color:#E6EDF3; letter-spacing:-.01em; line-height:1.2; }
+.app-header .brand .sub{ font-size:11px; color:#6B7A91; line-height:1.2; margin-top:2px; }
+.app-header .status-pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:rgba(52,211,153,.14); border:1px solid rgba(52,211,153,.28); border-radius:999px; font-size:11.5px; color:#34D399; font-weight:600; font-family:'JetBrains Mono',monospace; }
+.app-header .status-pill .dot{ width:6px; height:6px; border-radius:50%; background:#34D399; box-shadow:0 0 6px rgba(52,211,153,.6); animation:rec 1.6s ease-in-out infinite; }
+@keyframes rec{ 0%,100%{opacity:1;} 50%{opacity:.5;} }
+.app-header .actions{ display:flex; align-items:center; gap:8px; margin-left:auto; }
+.app-header .target-chip{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 5px; background:#1A2436; border:1px solid rgba(255,255,255,.10); border-radius:999px; font-size:12px; color:#E6EDF3; font-weight:500; }
+.app-header .target-chip .logo{ width:20px; height:20px; background:#0078D4; border-radius:50%; font-size:10px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.app-header .icon-btn{ width:32px; height:32px; border-radius:8px; background:transparent; border:1px solid transparent; color:#9CA9BC; display:flex; align-items:center; justify-content:center; }
+.app-header .icon-btn.is-on{ background:var(--brand-blue-soft); border-color:rgba(0,163,255,.28); color:var(--brand-blue); }
+.app-header .icon-btn svg{ width:16px; height:16px; }
+
+.statusbar{ display:flex; align-items:center; padding:0 24px; height:32px; background:rgba(15,20,25,.85); backdrop-filter:blur(20px); border-bottom:.5px solid rgba(255,255,255,.06); font-family:'JetBrains Mono',monospace; font-size:11px; gap:12px; }
+.statusbar .left, .statusbar .right{ display:flex; align-items:center; gap:12px; }
+.statusbar .right{ margin-left:auto; }
+.statusbar .state{ display:inline-flex; align-items:center; gap:6px; color:var(--brand-blue); font-weight:600; }
+.statusbar .state .dot{ width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 5px var(--brand-blue-glow); animation:rec 1.6s ease-in-out infinite; }
+.statusbar .sep{ color:#6B7A91; }
+.statusbar .meta{ color:#9CA9BC; }
+.statusbar .lat{ color:var(--brand-blue); font-weight:600; }
+
+.hero-live{ padding:48px 32px 28px; text-align:center; background:radial-gradient(ellipse at center,rgba(0,163,255,.08) 0%,transparent 65%); }
+.hero-live .state-label{ display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--brand-blue); margin-bottom:18px; padding:5px 12px; background:var(--brand-blue-soft); border-radius:999px; border:1px solid rgba(0,163,255,.22); }
+.hero-live .state-label .live-dot{ width:5px; height:5px; border-radius:50%; background:var(--brand-blue); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 5px var(--brand-blue-glow); }
+.hero-live .live-text{ font-size:36px; font-weight:500; line-height:1.45; letter-spacing:-.015em; color:#E6EDF3; max-width:760px; margin:0 auto; min-height:100px; text-align:left; }
+.hero-live .live-text .last{ color:#9CA9BC; }
+.hero-live .live-text .typed{ color:#fff; font-weight:600; }
+.hero-live .live-text .cursor{ display:inline-block; width:3px; height:34px; background:var(--brand-blue); vertical-align:-6px; margin-left:3px; animation:blink 1s steps(1) infinite; box-shadow:0 0 6px var(--brand-blue-glow); }
+@keyframes blink{ 50%{opacity:0;} }
+
+.hero-orb{ display:flex; justify-content:center; margin:28px 0 20px; }
+.hero-orb .orb{ position:relative; width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,var(--brand-blue),var(--brand-blue-2)); box-shadow:0 0 28px var(--brand-blue-glow); }
+.hero-orb .orb::before, .hero-orb .orb::after{ content:""; position:absolute; inset:0; border-radius:50%; border:2px solid var(--brand-blue); animation:ring 1.8s ease-out infinite; }
+.hero-orb .orb::after{ animation-delay:.9s; }
+@keyframes ring{ 0%{transform:scale(1);opacity:.8;} 100%{transform:scale(2.4);opacity:0;} }
+.hero-orb .orb svg{ position:absolute; inset:0; margin:auto; color:#fff; }
+
+.status-pills-row{ display:flex; align-items:center; justify-content:center; gap:8px; padding:0 32px 22px; font-family:'JetBrains Mono',monospace; font-size:11px; flex-wrap:wrap; }
+.status-pills-row .pill{ display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#1A2436; border:1px solid rgba(255,255,255,.10); border-radius:6px; color:#9CA9BC; }
+.status-pills-row .pill.live{ background:var(--brand-blue-soft); border-color:rgba(0,163,255,.28); color:var(--brand-blue); }
+.status-pills-row .pill.live .dot{ width:4px; height:4px; border-radius:50%; background:var(--brand-blue); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 4px var(--brand-blue-glow); }
+
+.hero-actions{ display:flex; align-items:center; justify-content:center; gap:8px; padding:0 32px 32px; }
+.hero-actions .btn{ display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:999px; font-size:13px; font-weight:500; background:#1A2436; border:1px solid rgba(255,255,255,.10); color:#E6EDF3; }
+.hero-actions .btn .kbd{ font-family:'JetBrains Mono',monospace; font-size:10px; padding:1px 5px; background:rgba(0,0,0,.3); border-radius:3px; color:#9CA9BC; margin-left:2px; }
+.hero-actions .btn.primary{ background:linear-gradient(135deg,var(--brand-blue),var(--brand-blue-2)); color:#fff; font-weight:600; border-color:transparent; box-shadow:0 4px 14px var(--brand-blue-glow); padding:10px 22px; font-size:14px; }
+.hero-actions .btn.primary .kbd{ background:rgba(255,255,255,.2); color:#fff; }
+.hero-actions .btn svg{ width:13px; height:13px; }
+
+.tray-toggle{ display:flex; align-items:center; justify-content:center; gap:6px; padding:14px; background:#0F1419; border-top:.5px solid rgba(255,255,255,.06); font-size:12px; color:#9CA9BC; font-weight:500; }
+
+.tray{ background:#0a0e12; border-top:.5px solid rgba(255,255,255,.06); padding:18px 24px 24px; }
+.tray-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.tray-card{ background:#1A2436; border:1px solid rgba(255,255,255,.10); border-radius:10px; padding:14px; }
+.tray-card .lbl{ font-size:10px; font-weight:700; color:#6B7A91; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+.tray-card .key{ font-size:13px; font-weight:600; color:#E6EDF3; font-family:'JetBrains Mono',monospace; margin-bottom:8px; word-break:break-all; }
+.tray-card .row{ display:flex; align-items:center; justify-content:space-between; padding:5px 0; font-size:12px; }
+.tray-card .row + .row{ border-top:1px solid rgba(255,255,255,.06); margin-top:5px; padding-top:7px; }
+.tray-card .row .k{ color:#9CA9BC; }
+.tray-card .row .v{ color:#E6EDF3; font-weight:500; display:inline-flex; align-items:center; gap:5px; }
+.tray-card .row .v .swatch{ width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+/* =========== Settings page AFTER =========== */
+.settings-rev{ display:grid; grid-template-columns:220px 1fr; min-height:680px; }
+.settings-sidebar{ background:#0a0e12; border-right:1px solid rgba(255,255,255,.06); padding:18px 0; display:flex; flex-direction:column; }
+.settings-sidebar .nav-head{ padding:0 18px 14px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,.06); }
+.settings-sidebar .nav-head .title{ font-size:13px; font-weight:600; color:#E6EDF3; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.settings-sidebar .nav-head .title .ico{ color:var(--brand-blue); }
+.settings-sidebar .nav-head .sub{ font-size:10.5px; color:#6B7A91; margin-top:3px; font-family:'JetBrains Mono',monospace; }
+.settings-sidebar .nav-item{ display:flex; align-items:center; gap:10px; padding:8px 18px; font-size:13px; color:#9CA9BC; position:relative; }
+.settings-sidebar .nav-item.active{ background:#1A2436; color:#E6EDF3; font-weight:600; }
+.settings-sidebar .nav-item.active::before{ content:""; position:absolute; left:0; top:50%; transform:translateY(-50%); width:3px; height:18px; background:var(--brand-blue); border-radius:0 2px 2px 0; box-shadow:0 0 8px var(--brand-blue-glow); }
+.settings-sidebar .nav-item .ico{ width:16px; height:16px; opacity:.7; }
+.settings-sidebar .nav-item.active .ico{ opacity:1; color:var(--brand-blue); }
+.settings-sidebar .nav-foot{ padding:18px; margin-top:auto; border-top:1px solid rgba(255,255,255,.06); }
+.settings-sidebar .nav-foot .ver{ font-size:10.5px; color:#6B7A91; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:6px; }
+.settings-sidebar .nav-foot .ver .dot{ width:5px; height:5px; border-radius:50%; background:#34D399; }
+
+.settings-main{ padding:24px 28px; }
+.settings-main .page-head{ margin-bottom:18px; }
+.settings-main .page-head .crumbs{ font-size:10.5px; color:#6B7A91; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+.settings-main .page-head .title{ font-size:22px; font-weight:700; color:#E6EDF3; letter-spacing:-.02em; }
+.settings-main .page-head .desc{ font-size:12.5px; color:#9CA9BC; margin-top:4px; }
+
+.s-card{ background:#1A2436; border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; margin-bottom:14px; }
+.s-card-head{ padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.06); }
+.s-card-head .title{ font-size:13px; font-weight:600; color:#E6EDF3; letter-spacing:-.01em; }
+.s-card-head .desc{ font-size:11.5px; color:#9CA9BC; margin-top:3px; }
+.s-card-body{ padding:6px 0; }
+.s-row{ display:flex; align-items:center; gap:14px; padding:11px 18px; min-height:48px; }
+.s-row + .s-row{ border-top:1px solid rgba(255,255,255,.06); }
+.s-row .icon{ width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.s-row .icon svg{ color:#fff; }
+.s-row .icon.blue{ background:var(--brand-blue); }
+.s-row .icon.green{ background:#34D399; }
+.s-row .icon.amber{ background:#FBBF24; }
+.s-row .icon.indigo{ background:#5856D6; }
+.s-row .label{ flex:1; font-size:13.5px; color:#E6EDF3; letter-spacing:-.01em; }
+.s-row .label small{ display:block; font-size:11px; color:#6B7A91; margin-top:2px; font-weight:400; }
+.s-row .value{ font-size:13px; color:#9CA9BC; }
+
+.ios-sw{ position:relative; width:42px; height:25px; background:var(--brand-blue); border-radius:999px; flex-shrink:0; }
+.ios-sw::after{ content:""; position:absolute; top:2px; left:19px; width:21px; height:21px; background:#fff; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,.2); }
+.ios-sw.off{ background:#4B5563; }
+.ios-sw.off::after{ left:2px; }
+
+.ios-seg{ display:inline-flex; padding:2px; background:rgba(255,255,255,.06); border-radius:8px; }
+.ios-seg button{ padding:5px 12px; font-size:12px; font-weight:500; border:none; background:transparent; color:#9CA9BC; border-radius:6px; cursor:pointer; }
+.ios-seg button.on{ background:#0F1419; color:#E6EDF3; box-shadow:0 1px 2px rgba(0,0,0,.2); font-weight:600; }
+
+.theme-picker{ padding:14px 18px; }
+.theme-picker .head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.theme-picker .head .lbl{ font-size:11px; font-weight:600; color:#6B7A91; text-transform:uppercase; letter-spacing:.06em; }
+.theme-picker .head .meta{ font-size:11px; color:#6B7A91; font-family:'JetBrains Mono',monospace; }
+.theme-picker .themes{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.theme-pick{ border:2px solid rgba(255,255,255,.10); border-radius:10px; padding:10px; background:#0F1419; position:relative; }
+.theme-pick.active{ border-color:var(--brand-blue); box-shadow:0 0 0 3px rgba(0,163,255,.18); }
+.theme-pick.active::after{ content:"✓"; position:absolute; top:8px; right:8px; background:var(--brand-blue); color:#fff; width:14px; height:14px; border-radius:50%; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.theme-pick .preview{ height:54px; border-radius:6px; margin-bottom:8px; overflow:hidden; position:relative; }
+.theme-pick .name{ font-size:11px; font-weight:600; color:#E6EDF3; }
+.theme-pick .name small{ display:block; font-size:9.5px; color:#6B7A91; font-weight:400; margin-top:1px; }
+
+/* Theme preview mini */
+.tp-terminal{ background:#0d1117; padding:8px; display:flex; flex-direction:column; gap:3px; font-family:'JetBrains Mono',monospace; font-size:7px; color:#8b949e; }
+.tp-terminal .tl{ color:var(--brand-blue); }
+.tp-terminal .bars{ display:flex; align-items:flex-end; gap:1px; height:14px; }
+.tp-terminal .bars span{ width:1.5px; background:var(--brand-blue); border-radius:.5px; }
+.tp-terminal .bars span:nth-child(1){ height:30%; } .tp-terminal .bars span:nth-child(2){ height:55%; } .tp-terminal .bars span:nth-child(3){ height:80%; } .tp-terminal .bars span:nth-child(4){ height:100%; } .tp-terminal .bars span:nth-child(5){ height:70%; } .tp-terminal .bars span:nth-child(6){ height:50%; } .tp-terminal .bars span:nth-child(7){ height:75%; }
+.tp-ray{ background:rgba(28,28,30,.95); padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-ray .top{ height:4px; background:rgba(255,255,255,.08); border-radius:2px; }
+.tp-ray .top .fill{ width:60%; height:100%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 4px var(--brand-blue-glow); }
+.tp-ray .mid{ flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:4px; padding:5px; display:flex; align-items:center; gap:4px; }
+.tp-ray .orb{ width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 3px var(--brand-blue-glow); }
+.tp-notion{ background:#F7F6F3; padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-notion .row{ height:8px; background:#fff; border-radius:2px; box-shadow:0 1px 1px rgba(0,0,0,.04); display:flex; align-items:center; padding:0 4px; gap:3px; }
+.tp-notion .ico{ width:4px; height:4px; background:var(--brand-blue); border-radius:1px; }
+.tp-notion .line{ height:2px; flex:1; background:#EEECE7; border-radius:1px; }
+.tp-cursor{ background:#1E1E1E; padding:0; display:flex; flex-direction:column; }
+.tp-cursor .tab{ padding:2px 5px; background:#2D2D2D; font-size:7px; color:#969696; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; gap:3px; }
+.tp-cursor .tab.active{ background:#1E1E1E; color:#fff; border-bottom:1px solid var(--brand-blue); }
+.tp-cursor .ed{ flex:1; padding:5px; display:flex; flex-direction:column; gap:2px; }
+.tp-cursor .ln{ height:2px; background:#3C3C3C; border-radius:1px; }
+.tp-cursor .ln.hl{ background:var(--brand-blue); width:50%; }
+.tp-ios{ background:#F2F2F7; padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-ios .row{ height:10px; background:#fff; border-radius:3px; box-shadow:0 1px 1px rgba(0,0,0,.04); display:flex; align-items:center; padding:0 4px; gap:3px; }
+.tp-ios .ico{ width:4px; height:4px; background:var(--brand-blue); border-radius:1px; }
+
+.color-picker{ display:flex; align-items:center; gap:12px; padding:14px 18px; }
+.color-picker .swatches{ display:flex; gap:8px; }
+.color-picker .sw{ width:28px; height:28px; border-radius:50%; position:relative; box-shadow:0 0 0 2px transparent; }
+.color-picker .sw.active{ box-shadow:0 0 0 2px #0F1419, 0 0 0 4px var(--brand-blue); }
+.color-picker .info{ flex:1; }
+.color-picker .info .lbl{ font-size:10px; font-weight:700; color:#6B7A91; text-transform:uppercase; letter-spacing:.06em; }
+.color-picker .info .val{ font-size:13px; color:#E6EDF3; font-family:'JetBrains Mono',monospace; font-weight:600; margin-top:2px; }
+.color-picker .info .val small{ color:#6B7A91; font-weight:400; font-size:11px; margin-left:4px; }
+</style>
+</head>
+<body>
+
+<!-- ========== HOME PAGE AFTER ========== -->
+<div class="cap">
+  <span class="tag">AFTER</span>
+  首页 · 实时驾驶舱
+  <span class="sub">voice-pilot · 一声 onetone · v9 · 1320 × 920</span>
+</div>
+
+<div class="app-frame">
+  <div class="app-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="title">一声 onetone · 主屏 · DICTATING</span>
+  </div>
+
+  <div class="home-rev">
+    <!-- HEADER -->
+    <div class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </div>
+        <div>
+          <div class="name">一声 <span style="color:#6B7A91;font-weight:400;margin-left:4px;">onetone</span></div>
+          <div class="sub">言出即行 · 万象成形</div>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="dot"></span>
+        引擎在线 · 小型模型
+      </div>
+      <div class="actions">
+        <span class="target-chip">
+          <span class="logo">VS</span>
+          <span style="color:#6B7A91;margin-right:-2px;">→</span>
+          <span>VS Code</span>
+        </span>
+        <button class="icon-btn" title="我的习惯">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="icon-btn is-on" title="设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="statusbar">
+      <div class="left">
+        <span class="state"><span class="dot"></span>[DICTATING]</span>
+        <span class="sep">·</span>
+        <span class="meta">小型 · 本地</span>
+      </div>
+      <div class="right">
+        <span class="lat">380ms</span>
+        <span class="sep">·</span>
+        <span class="meta">44 chars</span>
+      </div>
+    </div>
+
+    <!-- HERO LIVE -->
+    <div class="hero-live">
+      <span class="state-label"><span class="live-dot"></span>正在听 · DICTATING</span>
+
+      <div class="live-text">
+        <span class="last">现在我把</span><span class="typed">界面重构</span><span class="last">一下</span><span class="cursor"></span>
+      </div>
+
+      <div class="hero-orb">
+        <div class="orb">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+      </div>
+
+      <div class="status-pills-row">
+        <span class="pill live"><span class="dot"></span>listening</span>
+        <span class="pill">小型模型 · 本地</span>
+        <span class="pill">已绑定 Ctrl+⇧+V</span>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="hero-actions">
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        切换目标 <span class="kbd">Tab</span>
+      </button>
+      <button class="btn primary">
+        结束说话 <span class="kbd">松开</span>
+      </button>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        高级设置
+      </button>
+    </div>
+
+    <!-- TRAY TOGGLE -->
+    <div class="tray-toggle">
+      <span>展开设置与习惯配置</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <!-- TRAY -->
+    <div class="tray">
+      <div class="tray-grid">
+        <div class="tray-card">
+          <div class="lbl">按键唤起</div>
+          <div class="key">Ctrl + ⇧ + V</div>
+          <div class="row"><span class="k">结束动作</span><span class="v">自动 Enter</span></div>
+          <div class="row"><span class="k">静音等待</span><span class="v">3.5 秒</span></div>
+        </div>
+        <div class="tray-card">
+          <div class="lbl">语音唤起</div>
+          <div class="key">嗨小助手</div>
+          <div class="row"><span class="k">备用词</span><span class="v">嗨同学 · 开始输入</span></div>
+          <div class="row"><span class="k">结束词</span><span class="v">停止输入 · 完毕</span></div>
+        </div>
+        <div class="tray-card">
+          <div class="lbl">引擎</div>
+          <div class="key">small-cn · 本地</div>
+          <div class="row"><span class="k">状态</span><span class="v"><span class="swatch" style="background:#34D399;box-shadow:0 0 4px #34D399;"></span>在线 · 380ms</span></div>
+          <div class="row"><span class="k">麦克风</span><span class="v">Wireless Mic Rx</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== SETTINGS PAGE AFTER ========== -->
+<div class="cap">
+  <span class="tag">AFTER</span>
+  设置页 · 基础 · 5 主题 + 品牌色
+  <span class="sub">voice-pilot · 一声 onetone · v9 · 1320 × 780</span>
+</div>
+
+<div class="app-frame">
+  <div class="app-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="title">设置 · 基础 · v9 重构</span>
+  </div>
+
+  <div class="settings-rev">
+    <aside class="settings-sidebar">
+      <div class="nav-head">
+        <div class="title">
+          <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          配置
+        </div>
+        <div class="sub">7 sections · 88 options</div>
+      </div>
+      <div class="nav-item active">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+        <span>基础</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+        <span>按键</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        <span>语音</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.828L4 7"/></svg>
+        <span>我的习惯</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span>音效</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>运行状态</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="nav-foot">
+        <div class="ver"><span class="dot"></span>v0.4.2 · build 842</div>
+      </div>
+    </aside>
+
+    <div class="settings-main">
+      <div class="page-head">
+        <div class="crumbs">配置 · 基础</div>
+        <div class="title">基础</div>
+        <div class="desc">运行、外观、字体与语言</div>
+      </div>
+
+      <!-- 常用 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="title">常用</div>
+          <div class="desc">最常改的运行选项</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+            <div class="label">开机自启动<small>登录 Windows 后自动启动</small></div>
+            <div class="ios-sw"></div>
+          </div>
+          <div class="s-row">
+            <span class="icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="label">启动后最小化到托盘<small>下次启动时隐藏主窗口</small></div>
+            <div class="ios-sw off"></div>
+          </div>
+          <div class="s-row">
+            <span class="icon amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+            <div class="label">按键提示条<small>屏幕底部显示当前按键</small></div>
+            <div class="ios-sw"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 外观 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="title">外观</div>
+          <div class="desc">画风切换 · 切换后立即生效</div>
+        </div>
+        <div class="theme-picker">
+          <div class="head">
+            <span class="lbl">画风</span>
+            <span class="meta">5 个可选 · 1 个当前</span>
+          </div>
+          <div class="themes">
+            <div class="theme-pick active">
+              <div class="preview"><div class="tp-terminal"><div class="tl">voice-pilot</div><div class="bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+              <div class="name">Terminal<small>等宽 · 深色 · DEV</small></div>
+            </div>
+            <div class="theme-pick">
+              <div class="preview"><div class="tp-ray"><div class="top"><div class="fill"></div></div><div class="mid"><div class="orb"></div></div><div class="top"><div class="fill" style="width:30%;"></div></div></div></div>
+              <div class="name">Raycast<small>半透明 · 命令</small></div>
+            </div>
+            <div class="theme-pick">
+              <div class="preview"><div class="tp-notion"><div class="row"><div class="ico"></div><div class="line"></div></div><div class="row"><div class="ico"></div><div class="line"></div></div><div class="row"><div class="ico"></div><div class="line"></div></div></div></div>
+              <div class="name">Notion<small>米白 · 文档</small></div>
+            </div>
+            <div class="theme-pick">
+              <div class="preview"><div class="tp-cursor"><div class="tab active">voice.md</div><div class="ed"><div class="ln"></div><div class="ln hl"></div><div class="ln"></div></div></div></div>
+              <div class="name">Cursor<small>深黑 · AI 风</small></div>
+            </div>
+            <div class="theme-pick">
+              <div class="preview"><div class="tp-ios"><div class="row"><div class="ico"></div></div><div class="row"><div class="ico"></div></div><div class="row"><div class="ico"></div></div></div></div>
+              <div class="name">iOS<small>浅色 · v2</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="color-picker">
+          <div class="swatches">
+            <div class="sw active" style="background:#00A3FF;"></div>
+            <div class="sw" style="background:#34D399;"></div>
+            <div class="sw" style="background:#A78BFA;"></div>
+            <div class="sw" style="background:#F472B6;"></div>
+            <div class="sw" style="background:#FB923C;"></div>
+          </div>
+          <div class="info">
+            <div class="lbl">品牌色 · 跨主题共用</div>
+            <div class="val">#00A3FF<small>v0.5.0 开放自定义</small></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 字体语言 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="title">文字与语言</div>
+          <div class="desc">调整字号和界面语言</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon indigo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
+            <div class="label">字体大小</div>
+            <div class="ios-seg">
+              <button>更小</button>
+              <button class="on">标准</button>
+              <button>更大</button>
+              <button>特大</button>
+            </div>
+          </div>
+          <div class="s-row">
+            <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+            <div class="label">界面语言<small>仅影响界面文案，不影响语音识别</small></div>
+            <div class="ios-seg">
+              <button class="on">简体中文</button>
+              <button>English</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -286,33 +286,24 @@
   }
 
   function renderSettingsVoiceSubnav(){
-    const subnav=$('settingsVoiceSubnav');
-    const listEl=$('settingsVoiceSubnavList');
-    const voicePanel=$('settingsPanelVoiceWake');
-    const sidebar=document.querySelector('.settings-sidebar');
-    const show=ui().drawerOpen&&ui().settingsPanel==='voiceWake';
-    if(subnav) subnav.hidden=!show;
-    if(voicePanel) voicePanel.classList.toggle('is-voice-subnav',show);
-    if(sidebar) sidebar.classList.toggle('is-voice-panel',show);
-    if(listEl) listEl.setAttribute('aria-label',t('settingsVoiceSubnavLabel'));
-    if(!show||!listEl) return;
-    const modes=[
-      {mode:'sapi',title:t('voiceModeLiteEngine'),sub:t('voiceModeLiteEngine')},
-      {mode:'vosk',title:t('voiceModeProEngine'),sub:t('voiceModeProEngine')}
-    ];
-    let html='';
-    modes.forEach(function(item){
-      const sel=voiceWakeExpandedMode===item.mode;
-      const on=currentVoiceMode()===item.mode;
-      const status=voiceNavStatusLine(item.mode);
-      html+='<button type="button" class="settings-scheme-subnav-item'+(sel?' is-selected':'')+(on?' is-on':'')+'" data-voice-nav="'+item.mode+'" role="tab" aria-selected="'+(sel?'true':'false')+'">';
-      html+='<span class="settings-scheme-subnav-dot" aria-hidden="true"></span>';
-      html+='<span class="settings-scheme-subnav-text">';
-      html+='<span class="settings-scheme-subnav-pair">'+hooks().escHtml(item.title)+'</span>';
-      html+='<span class="settings-scheme-subnav-status">'+hooks().escHtml(item.sub)+' · '+hooks().escHtml(status)+'</span>';
-      html+='</span></button>';
+    if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.renderVoiceSubnav){
+      global.OneToneSceneModeHub.renderVoiceSubnav();
+    }
+  }
+
+  function renderVoiceEngineTabs(){
+    const tabbar=$('voiceEngineTabbar');
+    if(!tabbar) return;
+    const mode=voiceWakeExpandedMode||'sapi';
+    tabbar.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+      const on=(btn.dataset.voiceEngineTab||'')===mode;
+      btn.classList.toggle('is-active',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
     });
-    listEl.innerHTML=html;
+    const lite=$('voiceEngineTabSapi');
+    const pro=$('voiceEngineTabVosk');
+    if(lite) lite.textContent=t('voiceModeLiteTitle');
+    if(pro) pro.textContent=t('voiceModeProTitle');
   }
   function mergeWakeSnapshot(sapiRes,voskRes){
     sapiRes=sapiRes||{};
@@ -411,9 +402,14 @@
   function setVoiceWakeExpandedMode(mode){
     if(mode!=='sapi'&&mode!=='vosk') return;
     voiceWakeExpandedMode=mode;
+    if(ui().selectedSceneVoiceNav!=='voice:end'){
+      ui().selectedSceneVoiceNav=mode==='vosk'?'voice:vosk':'voice:sapi';
+    }
     syncVoiceWakeExpandedUi();
+    renderVoiceEngineTabs();
     renderVoiceMicLive();
     global.OneToneVoiceEnd.syncModeUi();
+    if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.renderVoiceSubnav();
   }
 
   function renderVoiceModeSwitch(){
@@ -443,6 +439,7 @@
     hooks().renderVoiceModeUsage();
     setVoiceModeCardBusy(voiceModeSwitchInFlight);
     global.OneToneVoiceEnd.syncModeUi();
+    renderVoiceEngineTabs();
     renderSettingsVoiceSubnav();
     hooks().renderVoiceSettingsFlow();
   }
@@ -1232,6 +1229,7 @@
     navStatusLine:voiceNavStatusLine,
     renderMicLive:renderVoiceMicLive,
     renderSubnav:renderSettingsVoiceSubnav,
+    renderEngineTabs:renderVoiceEngineTabs,
     mergeWakeSnapshot:mergeWakeSnapshot,
     syncSapiConfigFromStatus:syncVoiceSapiConfigFromStatus,
     syncVoskConfigFromStatus:syncVoiceVoskConfigFromStatus,

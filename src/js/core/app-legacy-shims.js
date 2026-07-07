@@ -156,7 +156,10 @@
     function voiceWakeNoticeLabel(res,notice){ return OneToneVoiceWake.noticeLabel(res,notice); }
     function voiceNavStatusLine(mode){ return OneToneVoiceWake.navStatusLine(mode); }
     function renderVoiceMicLive(){ return OneToneVoiceWake.renderMicLive(); }
-    function renderSettingsVoiceSubnav(){ return OneToneVoiceWake.renderSubnav(); }
+    function renderSettingsVoiceSubnav(){
+      if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.renderVoiceSubnav) return global.OneToneSceneModeHub.renderVoiceSubnav();
+      return OneToneVoiceWake.renderSubnav();
+    }
     function syncVoiceSapiConfigFromStatus(res){ return OneToneVoiceWake.syncSapiConfigFromStatus(res); }
     function syncVoiceVoskConfigFromStatus(res){ return OneToneVoiceWake.syncVoskConfigFromStatus(res); }
     function currentVoiceMode(){ return OneToneVoiceWake.currentMode(); }

@@ -8,6 +8,7 @@ mod coach_hud;
 mod cursor_workflow;
 mod device_identity;
 mod gesture_timing;
+mod habit_profile;
 mod input_ext;
 mod input_obs;
 mod ipc;

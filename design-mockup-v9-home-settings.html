@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1400" />
+<title>voice-pilot · 首页 + 设置页重构稿 v9</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  /* BRAND · 沿用现有 + 调整为更纯的蓝 */
+  --brand-blue:        #00A3FF;     /* 替代原 #2a9cc4 */
+  --brand-blue-2:      #0085DB;
+  --brand-blue-soft:   rgba(0,163,255,.10);
+  --brand-blue-glow:   rgba(0,163,255,.45);
+  --brand-blue-ink:    #003E80;
+
+  /* 状态色 */
+  --state-success:     #34D399;
+  --state-success-soft:rgba(52,211,153,.14);
+  --state-warn:        #FBBF24;
+  --state-warn-soft:   rgba(251,191,36,.14);
+  --state-error:       #FF4D6A;
+  --state-error-soft:  rgba(255,77,106,.14);
+
+  /* 中性色（深色模式） */
+  --bg:        #0F1419;
+  --surface:   #1A2436;
+  --surface-2: #243042;
+  --surface-3: #2C3A4F;
+  --text:      #E6EDF3;
+  --text-2:    #9CA9BC;
+  --text-3:    #6B7A91;
+  --border:    rgba(255,255,255,.06);
+  --border-2:  rgba(255,255,255,.10);
+
+  --radius:    10px;
+  --radius-lg: 14px;
+  --r-pill:    999px;
+
+  --shadow: 0 12px 32px -12px rgba(0,0,0,.32), 0 2px 6px rgba(0,0,0,.16);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.16);
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:#FAFAF9;
+  color:#1c1917;
+  font-family:'Inter', system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body { padding:64px 48px 96px; max-width:1400px; margin:0 auto; }
+
+/* HERO */
+.hero { display:grid; grid-template-columns:1.4fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:1px solid #e7e5e4; }
+.hero h1 { font-family:'Space Grotesk', sans-serif; font-size:46px; font-weight:700; letter-spacing:-.025em; line-height:1.05; }
+.hero h1 em { font-style:normal; color:var(--brand-blue); }
+.hero .lead { font-size:16px; line-height:1.6; color:#57534E; margin-top:18px; max-width:680px; }
+.hero .lead code { font-family:'JetBrains Mono', monospace; font-size:13.5px; background:#f0f9ff; color:var(--brand-blue); padding:2px 6px; border-radius:5px; font-weight:500; }
+.hero .meta { background:#fff; border-radius:14px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,.04); border:1px solid #e7e5e4; display:flex; flex-direction:column; gap:12px; font-size:13px; }
+.hero .meta dt { color:#a8a29e; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; font-weight:600; }
+.hero .meta dd { color:#1c1917; font-weight:600; font-size:14px; }
+.hero .meta .row { display:flex; align-items:center; gap:8px; padding:6px 10px; background:#FAFAF9; border-radius:8px; }
+.hero .meta .row .old { color:#a8a29e; text-decoration:line-through; }
+.hero .meta .row .arr { color:#a8a29e; }
+.hero .meta .row .new { color:var(--brand-blue); font-weight:600; }
+
+.section { padding:64px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:24px; }
+.section-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--brand-blue); background:var(--brand-blue-soft); padding:4px 10px; border-radius:999px; font-weight:600; }
+.section-head h2 { font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:600; letter-spacing:-.015em; }
+.section-head .sub { font-size:13px; color:#78716c; margin-left:auto; font-weight:500; }
+
+/* ===== APP WINDOW MOCKUP ===== */
+.app-frame { background:var(--bg); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
+.app-bar { display:flex; align-items:center; gap:6px; padding:10px 16px; background:#0a0e12; border-bottom:1px solid var(--border); }
+.app-bar .dot { width:10px; height:10px; border-radius:50%; }
+.app-bar .dot.r{ background:#FF5F57; } .app-bar .dot.y{ background:#FEBC2E; } .app-bar .dot.g{ background:#28C840; }
+.app-bar .title { font-size:11.5px; color:var(--text-3); font-family:'JetBrains Mono', monospace; margin-left:14px; font-weight:500; }
+
+/* ===== REVISED HEADER (Linear-style) ===== */
+.app-header { display:flex; align-items:center; justify-content:space-between; padding:0 20px; height:56px; background:var(--bg); border-bottom:1px solid var(--border); }
+.app-header .brand { display:flex; align-items:center; gap:12px; }
+.app-header .brand .logo { width:32px; height:32px; background:linear-gradient(135deg, var(--brand-blue), #0085DB); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 12px var(--brand-blue-glow); }
+.app-header .brand .logo svg { color:#fff; }
+.app-header .brand .name { font-size:14px; font-weight:600; color:var(--text); letter-spacing:-.01em; }
+.app-header .brand .sub { font-size:11px; color:var(--text-3); }
+.app-header .status-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.28); border-radius:var(--r-pill); font-size:11.5px; color:var(--state-success); font-weight:600; }
+.app-header .status-pill .dot { width:6px; height:6px; border-radius:50%; background:var(--state-success); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 6px rgba(52,211,153,.6); }
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+.app-header .actions { display:flex; align-items:center; gap:8px; }
+.app-header .icon-btn { width:32px; height:32px; border-radius:8px; background:transparent; border:1px solid transparent; color:var(--text-2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.12s; }
+.app-header .icon-btn:hover { background:var(--surface); border-color:var(--border-2); color:var(--text); }
+.app-header .icon-btn.is-on { background:var(--brand-blue-soft); border-color:rgba(0,163,255,.28); color:var(--brand-blue); }
+.app-header .icon-btn svg { width:16px; height:16px; }
+.app-header .target-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:var(--surface); border:1px solid var(--border-2); border-radius:var(--r-pill); font-size:12px; color:var(--text); }
+.app-header .target-chip .logo { width:16px; height:16px; background:#0078D4; border-radius:4px; font-size:9px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.app-header .target-chip .arr { color:var(--text-3); margin-right:-2px; }
+
+/* ===== HOME PAGE REVISED ===== */
+.home-rev { background:var(--bg); padding:0; }
+
+/* Status Bar (Linear style) */
+.statusbar { display:flex; align-items:center; padding:0 24px; height:32px; background:rgba(15,20,25,.85); backdrop-filter:blur(20px); border-bottom:.5px solid var(--border); font-family:'JetBrains Mono', monospace; font-size:11px; gap:12px; }
+.statusbar .left { display:flex; align-items:center; gap:12px; }
+.statusbar .state { display:inline-flex; align-items:center; gap:6px; color:var(--brand-blue); font-weight:600; }
+.statusbar .state .dot { width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 5px var(--brand-blue-glow); animation:rec 1.6s ease-in-out infinite; }
+.statusbar .sep { color:var(--text-3); }
+.statusbar .meta { color:var(--text-2); }
+.statusbar .right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+.statusbar .lat { color:var(--brand-blue); font-weight:600; }
+
+/* Hero Live Area (Claude-style) */
+.hero-live { padding:48px 32px 32px; text-align:center; background:radial-gradient(ellipse at center, rgba(0,163,255,.06) 0%, transparent 70%); }
+.hero-live .state-label { display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--brand-blue); margin-bottom:18px; padding:4px 10px; background:rgba(0,163,255,.08); border-radius:var(--r-pill); border:1px solid rgba(0,163,255,.18); }
+.hero-live .state-label .live-dot { width:5px; height:5px; border-radius:50%; background:var(--brand-blue); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 5px var(--brand-blue-glow); }
+.hero-live .live-text { font-size:30px; font-weight:500; line-height:1.5; letter-spacing:-.015em; color:var(--text); max-width:680px; margin:0 auto; min-height:90px; text-align:left; }
+.hero-live .live-text .last { color:var(--text-2); }
+.hero-live .live-text .cursor { display:inline-block; width:3px; height:28px; background:var(--brand-blue); vertical-align:-5px; margin-left:3px; animation:blink 1s steps(1) infinite; box-shadow:0 0 6px var(--brand-blue-glow); }
+@keyframes blink { 50%{ opacity:0; } }
+.hero-live .placeholder { font-size:18px; color:var(--text-3); text-align:center; padding:14px 18px; background:var(--surface); border:1px dashed var(--border-2); border-radius:var(--radius-lg); display:inline-flex; align-items:center; gap:10px; margin-top:14px; }
+.hero-live .placeholder kbd { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; padding:3px 8px; background:var(--bg); border-radius:5px; color:var(--text); border:1px solid var(--border-2); }
+
+/* Wave (Cursor orb) */
+.hero-orb { display:flex; justify-content:center; margin:24px 0 20px; }
+.hero-orb .orb { position:relative; width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--brand-blue), #0085DB); box-shadow:0 0 28px var(--brand-blue-glow); }
+.hero-orb .orb::before, .hero-orb .orb::after { content:""; position:absolute; inset:0; border-radius:50%; border:2px solid var(--brand-blue); animation:ring 1.8s ease-out infinite; }
+.hero-orb .orb::after { animation-delay:.9s; }
+@keyframes ring { 0%{ transform:scale(1); opacity:.8;} 100%{ transform:scale(2.4); opacity:0;} }
+.hero-orb .orb svg { position:absolute; inset:0; margin:auto; color:#fff; }
+
+/* Actions (Cursor 1 main + 2 minor) */
+.hero-actions { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 32px 32px; }
+.hero-actions .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:var(--r-pill); font-size:13px; font-weight:500; background:var(--surface); border:1px solid var(--border-2); color:var(--text); cursor:pointer; transition:.12s; }
+.hero-actions .btn:hover { background:var(--surface-2); }
+.hero-actions .btn .kbd { font-family:'JetBrains Mono', monospace; font-size:10px; padding:1px 5px; background:rgba(0,0,0,.3); border-radius:3px; color:var(--text-2); margin-left:2px; }
+.hero-actions .btn.primary { background:linear-gradient(135deg, var(--brand-blue), #0085DB); color:#fff; font-weight:600; border-color:transparent; box-shadow:0 4px 14px var(--brand-blue-glow); padding:9px 20px; font-size:14px; }
+.hero-actions .btn.primary .kbd { background:rgba(255,255,255,.2); color:#fff; }
+.hero-actions .btn .ico { display:inline-flex; }
+
+/* Status pills row (Linear+Terminal mix) */
+.status-pills-row { display:flex; align-items:center; justify-content:center; gap:8px; padding:0 32px 28px; font-family:'JetBrains Mono', monospace; font-size:11px; }
+.status-pills-row .pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:var(--surface); border:1px solid var(--border-2); border-radius:6px; color:var(--text-2); }
+.status-pills-row .pill.live { background:rgba(0,163,255,.08); border-color:rgba(0,163,255,.28); color:var(--brand-blue); }
+.status-pills-row .pill .dot { width:4px; height:4px; border-radius:50%; background:var(--brand-blue); }
+.status-pills-row .pill.live .dot { animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 4px var(--brand-blue-glow); }
+
+/* Tray toggle (Notion-style collapse) */
+.tray-toggle { display:flex; align-items:center; justify-content:center; gap:6px; padding:14px; background:var(--bg); border-top:.5px solid var(--border); font-size:12px; color:var(--text-2); cursor:pointer; font-weight:500; }
+.tray-toggle:hover { color:var(--brand-blue); }
+.tray-toggle .arr { transition:.18s; }
+.tray-toggle.open .arr { transform:rotate(180deg); }
+
+/* Tray content (settings collapsed) */
+.tray { background:#0a0e12; border-top:.5px solid var(--border); padding:18px 24px 24px; }
+.tray-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+.tray-card { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius); padding:14px; }
+.tray-card .lbl { font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+.tray-card .key { font-size:13px; font-weight:600; color:var(--text); font-family:'JetBrains Mono', monospace; }
+.tray-card .key .placeholder { color:var(--text-3); font-weight:400; }
+.tray-card .row { display:flex; align-items:center; justify-content:space-between; padding:6px 0; font-size:12px; }
+.tray-card .row + .row { border-top:1px solid var(--border); margin-top:6px; padding-top:8px; }
+.tray-card .row .k { color:var(--text-2); }
+.tray-card .row .v { color:var(--text); font-weight:500; }
+.tray-card .row .v .swatch { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; }
+
+/* ===== SETTINGS PAGE REVISED ===== */
+.settings-rev { display:grid; grid-template-columns:220px 1fr; min-height:580px; }
+.settings-sidebar { background:#0a0e12; border-right:1px solid var(--border); padding:18px 0; }
+.settings-sidebar .nav-head { padding:0 18px 14px; margin-bottom:8px; border-bottom:1px solid var(--border); }
+.settings-sidebar .nav-head .title { font-size:13px; font-weight:600; color:var(--text); letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.settings-sidebar .nav-head .title .ico { color:var(--brand-blue); }
+.settings-sidebar .nav-head .sub { font-size:10.5px; color:var(--text-3); margin-top:3px; font-family:'JetBrains Mono', monospace; }
+.settings-sidebar .nav-item { display:flex; align-items:center; gap:10px; padding:8px 18px; font-size:13px; color:var(--text-2); cursor:pointer; position:relative; }
+.settings-sidebar .nav-item:hover { background:var(--surface); color:var(--text); }
+.settings-sidebar .nav-item.active { background:var(--surface); color:var(--text); font-weight:600; }
+.settings-sidebar .nav-item.active::before { content:""; position:absolute; left:0; top:50%; transform:translateY(-50%); width:3px; height:18px; background:var(--brand-blue); border-radius:0 2px 2px 0; box-shadow:0 0 8px var(--brand-blue-glow); }
+.settings-sidebar .nav-item .ico { width:16px; height:16px; opacity:.7; flex-shrink:0; }
+.settings-sidebar .nav-item.active .ico { opacity:1; color:var(--brand-blue); }
+.settings-sidebar .nav-foot { padding:18px; margin-top:auto; border-top:1px solid var(--border); }
+.settings-sidebar .nav-foot .ver { font-size:10.5px; color:var(--text-3); font-family:'JetBrains Mono', monospace; display:flex; align-items:center; gap:6px; }
+.settings-sidebar .nav-foot .ver .dot { width:5px; height:5px; border-radius:50%; background:var(--state-success); }
+
+/* Settings main content */
+.settings-main { padding:24px 28px; overflow-y:auto; }
+.settings-main .page-head { margin-bottom:20px; }
+.settings-main .page-head .crumbs { font-size:10.5px; color:var(--text-3); font-family:'JetBrains Mono', monospace; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+.settings-main .page-head .title { font-size:22px; font-weight:700; color:var(--text); letter-spacing:-.02em; }
+.settings-main .page-head .desc { font-size:12.5px; color:var(--text-2); margin-top:4px; line-height:1.5; }
+
+/* Settings card */
+.s-card { background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius-lg); overflow:hidden; }
+.s-card + .s-card { margin-top:14px; }
+.s-card-head { padding:14px 18px; border-bottom:1px solid var(--border); }
+.s-card-head .title { font-size:13px; font-weight:600; color:var(--text); letter-spacing:-.01em; }
+.s-card-head .desc { font-size:11.5px; color:var(--text-2); margin-top:3px; line-height:1.45; }
+.s-card-body { padding:6px 0; }
+
+/* Settings row (iOS-style list) */
+.s-row { display:flex; align-items:center; gap:14px; padding:12px 18px; min-height:48px; }
+.s-row + .s-row { border-top:1px solid var(--border); }
+.s-row .icon { width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.s-row .icon.blue { background:var(--brand-blue); color:#fff; }
+.s-row .icon.green { background:var(--state-success); color:#fff; }
+.s-row .icon.amber { background:var(--state-warn); color:#fff; }
+.s-row .icon.indigo { background:#5856D6; color:#fff; }
+.s-row .icon.red { background:var(--state-error); color:#fff; }
+.s-row .label { flex:1; font-size:13.5px; color:var(--text); letter-spacing:-.01em; }
+.s-row .label small { display:block; font-size:11px; color:var(--text-3); margin-top:2px; font-weight:400; }
+.s-row .value { font-size:13px; color:var(--text-2); display:inline-flex; align-items:center; gap:6px; }
+.s-row .chev { color:var(--text-3); opacity:.4; }
+.s-row .ico-sm { width:14px; height:14px; opacity:.6; }
+
+/* iOS switch */
+.ios-sw { position:relative; width:42px; height:25px; background:var(--brand-blue); border-radius:var(--r-pill); flex-shrink:0; transition:.18s; }
+.ios-sw::after { content:""; position:absolute; top:2px; left:19px; width:21px; height:21px; background:#fff; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,.2); transition:.18s; }
+.ios-sw.off { background:#4B5563; }
+.ios-sw.off::after { left:2px; }
+
+/* iOS segmented */
+.ios-seg { display:inline-flex; padding:2px; background:rgba(255,255,255,.06); border-radius:8px; }
+.ios-seg button { padding:5px 12px; font-size:12px; font-weight:500; border:none; background:transparent; color:var(--text-2); border-radius:6px; font-family:inherit; cursor:pointer; transition:.12s; }
+.ios-seg button.on { background:var(--bg); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.2); font-weight:600; }
+
+/* Theme picker (5 themes) */
+.theme-picker { padding:14px 18px; }
+.theme-picker .head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.theme-picker .head .lbl { font-size:11px; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; }
+.theme-picker .head .meta { font-size:11px; color:var(--text-3); font-family:'JetBrains Mono', monospace; }
+.theme-picker .themes { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.theme-pick { border:2px solid var(--border-2); border-radius:var(--radius); padding:10px; background:var(--bg); cursor:pointer; position:relative; transition:.12s; }
+.theme-pick:hover { border-color:var(--text-3); }
+.theme-pick.active { border-color:var(--brand-blue); box-shadow:0 0 0 3px rgba(0,163,255,.18); }
+.theme-pick.active::after { content:"✓"; position:absolute; top:8px; right:8px; background:var(--brand-blue); color:#fff; width:14px; height:14px; border-radius:50%; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.theme-pick .preview { height:50px; border-radius:6px; margin-bottom:8px; overflow:hidden; position:relative; }
+.theme-pick .name { font-size:11px; font-weight:600; color:var(--text); }
+.theme-pick .name small { display:block; font-size:9.5px; color:var(--text-3); font-weight:400; margin-top:1px; }
+
+/* Theme previews */
+.tp-terminal { background:#0d1117; padding:8px; display:flex; flex-direction:column; gap:3px; font-family:'JetBrains Mono', monospace; font-size:7px; color:#8b949e; }
+.tp-terminal .tl { color:var(--brand-blue); }
+.tp-terminal .bars { display:flex; align-items:flex-end; gap:1px; height:14px; }
+.tp-terminal .bars span { width:1.5px; background:var(--brand-blue); border-radius:.5px; }
+.tp-terminal .bars span:nth-child(1){ height:30%; } .tp-terminal .bars span:nth-child(2){ height:55%; } .tp-terminal .bars span:nth-child(3){ height:80%; } .tp-terminal .bars span:nth-child(4){ height:100%; } .tp-terminal .bars span:nth-child(5){ height:70%; } .tp-terminal .bars span:nth-child(6){ height:50%; } .tp-terminal .bars span:nth-child(7){ height:75%; }
+.tp-ray { background:rgba(28,28,30,.95); padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-ray .top { height:4px; background:rgba(255,255,255,.08); border-radius:2px; }
+.tp-ray .top .fill { width:60%; height:100%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 4px var(--brand-blue-glow); }
+.tp-ray .mid { flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:4px; padding:5px; display:flex; align-items:center; gap:4px; }
+.tp-ray .orb { width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 3px var(--brand-blue-glow); }
+.tp-notion { background:#F7F6F3; padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-notion .row { height:8px; background:#fff; border-radius:2px; box-shadow:0 1px 1px rgba(0,0,0,.04); display:flex; align-items:center; padding:0 4px; gap:3px; }
+.tp-notion .ico { width:4px; height:4px; background:var(--brand-blue); border-radius:1px; }
+.tp-notion .line { height:2px; flex:1; background:#EEECE7; border-radius:1px; }
+.tp-cursor { background:#1E1E1E; padding:0; display:flex; flex-direction:column; }
+.tp-cursor .tab { padding:2px 5px; background:#2D2D2D; font-size:7px; color:#969696; font-family:'JetBrains Mono', monospace; display:flex; align-items:center; gap:3px; }
+.tp-cursor .tab.active { background:#1E1E1E; color:#fff; border-bottom:1px solid var(--brand-blue); }
+.tp-cursor .ed { flex:1; padding:5px; display:flex; flex-direction:column; gap:2px; }
+.tp-cursor .ln { height:2px; background:#3C3C3C; border-radius:1px; }
+.tp-cursor .ln.hl { background:var(--brand-blue); width:50%; }
+.tp-ios { background:#F2F2F7; padding:8px; display:flex; flex-direction:column; gap:4px; }
+.tp-ios .row { height:10px; background:#fff; border-radius:3px; box-shadow:0 1px 1px rgba(0,0,0,.04); display:flex; align-items:center; padding:0 4px; gap:3px; }
+.tp-ios .ico { width:4px; height:4px; background:var(--brand-blue); border-radius:1px; }
+
+/* Color picker */
+.color-picker { display:flex; align-items:center; gap:12px; padding:14px 18px; }
+.color-picker .swatches { display:flex; gap:8px; }
+.color-picker .sw { width:28px; height:28px; border-radius:50%; cursor:pointer; position:relative; transition:.12s; box-shadow:0 0 0 2px transparent; }
+.color-picker .sw:hover { transform:scale(1.08); }
+.color-picker .sw.active { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--brand-blue); }
+.color-picker .info { flex:1; }
+.color-picker .info .lbl { font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; }
+.color-picker .info .val { font-size:13px; color:var(--text); font-family:'JetBrains Mono', monospace; font-weight:600; margin-top:2px; }
+.color-picker .info .val small { color:var(--text-3); font-weight:400; font-size:11px; margin-left:4px; }
+
+/* B/A compare */
+.compare { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.compare-col { display:flex; flex-direction:column; gap:8px; }
+.compare-tag { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:var(--r-pill); font-size:11px; font-weight:700; align-self:flex-start; }
+.compare-tag.before { background:#FAFAF9; border:1px solid #e7e5e4; color:#78716c; }
+.compare-tag.after { background:var(--brand-blue); color:#fff; }
+
+/* Annotation */
+.annotation { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.ann-card { background:#fff; border:1px solid #e7e5e4; border-radius:10px; padding:14px; }
+.ann-card .ico { width:32px; height:32px; border-radius:8px; background:var(--brand-blue-soft); color:var(--brand-blue); display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.ann-card h5 { font-size:13px; font-weight:600; margin-bottom:4px; letter-spacing:-.01em; }
+.ann-card p { font-size:11.5px; color:#57534e; line-height:1.5; }
+
+/* Implementation table */
+.impl-tbl { background:#fff; border:1px solid #e7e5e4; border-radius:12px; overflow:hidden; }
+.impl-tbl table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.impl-tbl th, .impl-tbl td { padding:12px 16px; text-align:left; border-bottom:1px solid #f5f5f4; }
+.impl-tbl th { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#a8a29e; background:#fafaf9; }
+.impl-tbl tr:last-child td { border-bottom:none; }
+.impl-tbl td.tt { font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--brand-blue); font-weight:600; }
+.impl-tbl td .effort { display:inline-block; font-size:10px; padding:1px 6px; border-radius:3px; font-weight:700; }
+.impl-tbl td .effort.s { background:#d1fae5; color:#065f46; }
+.impl-tbl td .effort.m { background:#fef3c7; color:#92400e; }
+.impl-tbl td .effort.l { background:#fee2e2; color:#991b1b; }
+
+footer.foot { margin-top:80px; padding-top:24px; border-top:1px solid #e7e5e4; display:flex; justify-content:space-between; font-size:12px; color:#a8a29e; }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero, .settings-rev, .compare, .annotation, .theme-picker .themes { grid-template-columns:1fr; }
+  .tray-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div>
+    <h1>首页 + 设置页 · <em>v9 重构稿</em></h1>
+    <p class="lead">基于 v8 的 8 板块决策，把现有 "一声 onetone" 的首页从"配置面板"改成"实时驾驶舱"，设置页从"两套皮肤"扩成"5 主题 + 自定义品牌色"。沿用现有 <code>.app / .home-zone / .settings-page</code> 结构，不重构底层。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>覆盖页面</dt><dd>首页 + 设置页</dd></div>
+    <div><dt>品牌色升级</dt><dd><div class="row"><span class="old">#2a9cc4</span><span class="arr">→</span><span class="new">#00A3FF</span></div></dd></div>
+    <div><dt>v8 板块落地</dt><dd>8 / 8 全部应用</dd></div>
+    <div><dt>代码改动</dt><dd>结构不动 · CSS / 模板替换</dd></div>
+    <div><dt>可演示里程碑</dt><dd>M1 = 1 周 · 主屏重构完成</dd></div>
+  </dl>
+</header>
+
+<!-- ============ SECTION 01: REVISED HOME PAGE ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>首页重构 · "实时驾驶舱"</h2>
+    <span class="sub">从"双卡并列" → "Live 主屏 + 设置折叠 tray"</span>
+  </div>
+
+  <div class="compare">
+    <div class="compare-col">
+      <span class="compare-tag before">BEFORE · 当前首页</span>
+      <div class="app-frame" style="opacity:.85;">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">一声 onetone · 现状</span>
+        </div>
+        <div style="background:var(--bg); padding:0; min-height:560px;">
+          <div style="padding:16px 20px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; background:linear-gradient(135deg, var(--brand-blue), #0085DB); border-radius:8px; opacity:.7;"></div>
+              <div>
+                <div style="font-size:14px; font-weight:600; color:var(--text);">一声</div>
+                <div style="font-size:11px; color:var(--text-3);">言出即行 · 万象成形</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button style="width:32px; height:32px; background:transparent; border:1px solid var(--border-2); border-radius:8px; color:var(--text-2);">⚙</button>
+            </div>
+          </div>
+          <div style="padding:18px 20px;">
+            <div style="background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius-lg); padding:18px; margin-bottom:12px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:600; color:var(--text);">按键唤起</div>
+                <span style="font-size:10px; padding:3px 8px; background:rgba(52,211,153,.12); color:var(--state-success); border-radius:999px; font-weight:600;">● 在线</span>
+              </div>
+              <div style="font-size:11px; color:var(--text-3); margin-bottom:8px;">你按的键 → 帮你打开语音 → 然后这样收尾</div>
+              <div style="display:flex; gap:6px; font-family:'JetBrains Mono', monospace; font-size:11px;">
+                <div style="flex:1; padding:10px; background:var(--bg); border-radius:8px; text-align:center; color:var(--text);">Ctrl + ⇧</div>
+                <span style="color:var(--text-3); align-self:center;">→</span>
+                <div style="flex:1; padding:10px; background:var(--bg); border-radius:8px; text-align:center; color:var(--text);">Win + H</div>
+                <span style="color:var(--text-3); align-self:center;">→</span>
+                <div style="flex:1; padding:10px; background:var(--bg); border-radius:8px; text-align:center; color:var(--text);">Enter</div>
+              </div>
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius-lg); padding:18px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:600; color:var(--text);">语音唤起</div>
+                <span style="font-size:10px; padding:3px 8px; background:rgba(52,211,153,.12); color:var(--state-success); border-radius:999px; font-weight:600;">● 在线</span>
+              </div>
+              <div style="text-align:center; padding:20px; background:var(--bg); border-radius:8px; font-size:20px; font-weight:600; color:var(--text);">嗨小助手</div>
+              <div style="text-align:center; font-size:11px; color:var(--text-3); margin-top:8px;">对着麦克风说出唤醒词</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#FEF3C7; border:1px solid #FDE68A; border-radius:10px; padding:12px 14px; font-size:11.5px; color:#92400E; line-height:1.55;">
+        <strong>问题</strong>：两张卡同权重，"实时识别"在第 2 张卡底部小字，<strong>用户看不到系统在干什么</strong>。配置和实时混在一起。
+      </div>
+    </div>
+
+    <div class="compare-col">
+      <span class="compare-tag after">AFTER · 重构稿</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">一声 onetone · v9 重构</span>
+        </div>
+
+        <div class="home-rev">
+          <!-- HEADER (Linear style) -->
+          <div class="app-header">
+            <div class="brand">
+              <div class="logo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+              </div>
+              <div>
+                <div class="name">一声 <span style="color:var(--text-3); font-weight:400; margin-left:4px;">onetone</span></div>
+                <div class="sub">言出即行 · 万象成形</div>
+              </div>
+            </div>
+            <div class="status-pill">
+              <span class="dot"></span>
+              引擎在线 · 小型模型
+            </div>
+            <div class="actions">
+              <span class="target-chip">
+                <span class="logo">VS</span>
+                <span class="arr">→</span>
+                <span>VS Code</span>
+              </span>
+              <button class="icon-btn" title="我的习惯">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              </button>
+              <button class="icon-btn is-on" title="设置">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 01 · STATUS BAR (Linear) -->
+          <div class="statusbar">
+            <div class="left">
+              <span class="state"><span class="dot"></span>[DICTATING]</span>
+              <span class="sep">·</span>
+              <span class="meta">小型 · 本地</span>
+            </div>
+            <div class="right">
+              <span class="lat">380ms</span>
+              <span class="sep">·</span>
+              <span class="meta">44 chars</span>
+            </div>
+          </div>
+
+          <!-- 02 · HERO LIVE TEXT (Claude) -->
+          <div class="hero-live">
+            <span class="state-label"><span class="live-dot"></span>正在听 · DICTATING</span>
+            <div class="live-text">
+              <span class="last">现在我把</span><span style="color:var(--text); font-weight:600;">界面重构</span><span class="last">一下</span><span class="cursor"></span>
+            </div>
+
+            <!-- 03 · CURSOR ORB -->
+            <div class="hero-orb">
+              <div class="orb">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </div>
+            </div>
+
+            <!-- 04 · STATE PILLS (Linear+Terminal) -->
+            <div class="status-pills-row">
+              <span class="pill live"><span class="dot"></span>listening</span>
+              <span class="pill">小型模型 · 本地</span>
+              <span class="pill">已绑定 Ctrl+⇧+V</span>
+            </div>
+          </div>
+
+          <!-- 05 · ACTIONS (Cursor 1 main + 2 minor) -->
+          <div class="hero-actions">
+            <button class="btn">
+              <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              切换目标 <span class="kbd">Tab</span>
+            </button>
+            <button class="btn primary">
+              结束说话 <span class="kbd">松开</span>
+            </button>
+            <button class="btn">
+              <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              高级设置
+            </button>
+          </div>
+
+          <!-- 06 · SETTINGS TRAY TOGGLE (Notion) -->
+          <div class="tray-toggle">
+            <span>展开设置与习惯配置</span>
+            <svg class="arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <!-- TRAY CONTENT (collapsed by default in real app, shown expanded for mockup) -->
+          <div class="tray">
+            <div class="tray-grid">
+              <div class="tray-card">
+                <div class="lbl">按键唤起</div>
+                <div class="key">Ctrl + ⇧ + V</div>
+                <div class="row"><span class="k">结束动作</span><span class="v">自动 Enter</span></div>
+                <div class="row"><span class="k">静音等待</span><span class="v">3.5 秒</span></div>
+              </div>
+              <div class="tray-card">
+                <div class="lbl">语音唤起</div>
+                <div class="key">嗨小助手</div>
+                <div class="row"><span class="k">备用词</span><span class="v">嗨同学 · 开始输入</span></div>
+                <div class="row"><span class="k">结束词</span><span class="v">停止输入 · 完毕</span></div>
+              </div>
+              <div class="tray-card">
+                <div class="lbl">引擎</div>
+                <div class="key">small-cn · 本地</div>
+                <div class="row"><span class="k">状态</span><span class="v"><span class="swatch" style="background:var(--state-success); box-shadow:0 0 4px var(--state-success);"></span>在线 · 380ms</span></div>
+                <div class="row"><span class="k">麦克风</span><span class="v">Wireless Mic Rx</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 14px; font-size:11.5px; color:#1E40AF; line-height:1.55;">
+        <strong>改进</strong>：主屏 70% 留给"实时识别"+ 状态可视化，<strong>用户 5 米外也能扫到光晕球和状态码</strong>。设置折叠到底部 tray，需要时再展开。
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOTATIONS for home -->
+  <div class="annotation" style="margin-top:24px;">
+    <div class="ann-card">
+      <div class="ico">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h6m-3-3 3 3-3 3m13-3a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/></svg>
+      </div>
+      <h5>① 顶部状态条 (Linear)</h5>
+      <p>[DICTATING] · 小型模型 · 380ms 一行流完。左中右三段式分区，比原来"两个 badge 飘着"清楚 3 倍。</p>
+    </div>
+    <div class="ann-card">
+      <div class="ico">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+      </div>
+      <h5>② 主屏实时文本 (Claude)</h5>
+      <p>30px 字号 + 流式 ▎ 光标。识别一个字显示一个字，<strong>用户感知延迟从 380ms 降到 ~50ms</strong>。</p>
+    </div>
+    <div class="ann-card">
+      <div class="ico">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <h5>③ 光晕球 (Cursor)</h5>
+      <p>64px 直径 + 渐变蓝 + 2 个扩散环错峰。<strong>取代"实时识别"小字</strong>，副屏 3 米外也能看见。</p>
+    </div>
+    <div class="ann-card">
+      <div class="ico">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+      <h5>④ 设置折叠 (Notion)</h5>
+      <p>配置区折叠到 tray，按键/语音/引擎 3 张小卡。点击"展开"才出现，<strong>主屏永远不被设置抢戏</strong>。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 02: REVISED SETTINGS PAGE ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>设置页重构 · 5 主题 + 品牌色 + 列表式布局</h2>
+    <span class="sub">左侧导航 + 右侧分组卡片 · 主题切换成 5 个画风</span>
+  </div>
+
+  <div class="compare">
+    <div class="compare-col">
+      <span class="compare-tag before">BEFORE · 当前设置</span>
+      <div class="app-frame" style="opacity:.85;">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">设置 · 基础 · 现状</span>
+        </div>
+        <div style="background:var(--bg); padding:18px 20px; min-height:560px;">
+          <div style="font-size:11px; color:var(--text-3); margin-bottom:6px; font-family:'JetBrains Mono', monospace;">配置 / 基础</div>
+          <div style="font-size:20px; font-weight:700; color:var(--text); margin-bottom:14px;">基础</div>
+          <div style="background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius); padding:14px; margin-bottom:12px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div style="padding:10px; background:var(--bg); border-radius:8px;">
+                <div style="font-size:10px; color:var(--text-3); margin-bottom:4px;">启动方式</div>
+                <div style="font-size:12px; color:var(--text); font-weight:600;">开机自启</div>
+              </div>
+              <div style="padding:10px; background:var(--bg); border-radius:8px;">
+                <div style="font-size:10px; color:var(--text-3); margin-bottom:4px;">窗口方式</div>
+                <div style="font-size:12px; color:var(--text); font-weight:600;">最小化</div>
+              </div>
+            </div>
+          </div>
+          <div style="background:var(--surface); border:1px solid var(--border-2); border-radius:var(--radius); padding:14px;">
+            <div style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:10px;">外观</div>
+            <div style="font-size:11px; color:var(--text-3); margin-bottom:6px;">主题</div>
+            <div style="display:flex; gap:6px; padding:3px; background:var(--bg); border-radius:8px; margin-bottom:14px;">
+              <div style="flex:1; padding:6px; background:var(--surface); border-radius:6px; text-align:center; font-size:11px; color:var(--text); font-weight:600;">深色</div>
+              <div style="flex:1; padding:6px; text-align:center; font-size:11px; color:var(--text-3);">浅色</div>
+            </div>
+            <div style="font-size:11px; color:var(--text-3); margin-bottom:6px;">风格</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <div style="padding:8px; background:var(--bg); border-radius:8px; text-align:center;">
+                <div style="display:flex; gap:3px; height:18px; margin-bottom:4px;">
+                  <div style="flex:1; background:#f9fbfd; border-radius:3px;"></div>
+                  <div style="flex:1; background:#2a9cc4; border-radius:3px;"></div>
+                </div>
+                <div style="font-size:10px; color:var(--text-3);">清澈</div>
+              </div>
+              <div style="padding:8px; background:var(--bg); border-radius:8px; text-align:center;">
+                <div style="display:flex; gap:3px; height:18px; margin-bottom:4px;">
+                  <div style="flex:1; background:#1a2436; border-radius:3px;"></div>
+                  <div style="flex:1; background:#5ec8e8; border-radius:3px;"></div>
+                </div>
+                <div style="font-size:10px; color:var(--text-3);">石墨</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#FEF3C7; border:1px solid #FDE68A; border-radius:10px; padding:12px 14px; font-size:11.5px; color:#92400E; line-height:1.55;">
+        <strong>问题</strong>：只有 2 套固定风格（清澈/石墨），<strong>用户群覆盖窄</strong>。基础设置的所有功能堆在一屏，列表卡片都是死方框。
+      </div>
+    </div>
+
+    <div class="compare-col">
+      <span class="compare-tag after">AFTER · 重构稿</span>
+      <div class="app-frame">
+        <div class="app-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="title">设置 · 基础 · v9 重构</span>
+        </div>
+        <div class="settings-rev">
+          <!-- SIDEBAR -->
+          <aside class="settings-sidebar">
+            <div class="nav-head">
+              <div class="title">
+                <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                配置
+              </div>
+              <div class="sub">7 sections · 88 options</div>
+            </div>
+            <div class="nav-item active">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+              <span>基础</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+              <span>按键</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+              <span>语音</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.828L4 7"/></svg>
+              <span>我的习惯</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              <span>音效</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>运行状态</span>
+            </div>
+            <div style="flex:1;"></div>
+            <div class="nav-foot">
+              <div class="ver"><span class="dot"></span>v0.4.2 · build 842</div>
+            </div>
+          </aside>
+
+          <!-- MAIN -->
+          <div class="settings-main">
+            <div class="page-head">
+              <div class="crumbs">配置 · 基础</div>
+              <div class="title">基础</div>
+              <div class="desc">运行、外观、字体与语言</div>
+            </div>
+
+            <!-- 常用 -->
+            <div class="s-card">
+              <div class="s-card-head">
+                <div class="title">常用</div>
+                <div class="desc">最常改的运行选项</div>
+              </div>
+              <div class="s-card-body">
+                <div class="s-row">
+                  <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+                  <div class="label">开机自启动<small>登录 Windows 后自动启动</small></div>
+                  <div class="ios-sw on"></div>
+                </div>
+                <div class="s-row">
+                  <span class="icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <div class="label">启动后最小化到托盘<small>下次启动时隐藏主窗口</small></div>
+                  <div class="ios-sw"></div>
+                </div>
+                <div class="s-row">
+                  <span class="icon amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+                  <div class="label">按键提示条<small>屏幕底部显示当前按键</small></div>
+                  <div class="ios-sw on"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 外观 · 5 主题选择器 -->
+            <div class="s-card">
+              <div class="s-card-head">
+                <div class="title">外观</div>
+                <div class="desc">画风切换 · 切换后立即生效</div>
+              </div>
+              <div class="theme-picker">
+                <div class="head">
+                  <span class="lbl">画风</span>
+                  <span class="meta">5 个可选 · 1 个当前</span>
+                </div>
+                <div class="themes">
+                  <div class="theme-pick active">
+                    <div class="preview"><div class="tp-terminal"><div class="tl">voice-pilot</div><div class="bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                    <div class="name">Terminal<small>等宽 · 深色 · DEV</small></div>
+                  </div>
+                  <div class="theme-pick">
+                    <div class="preview"><div class="tp-ray"><div class="top"><div class="fill"></div></div><div class="mid"><div class="orb"></div></div><div class="top"><div class="fill" style="width:30%;"></div></div></div></div>
+                    <div class="name">Raycast<small>半透明 · 命令</small></div>
+                  </div>
+                  <div class="theme-pick">
+                    <div class="preview"><div class="tp-notion"><div class="row"><div class="ico"></div><div class="line"></div></div><div class="row"><div class="ico"></div><div class="line"></div></div><div class="row"><div class="ico"></div><div class="line"></div></div></div></div>
+                    <div class="name">Notion<small>米白 · 文档</small></div>
+                  </div>
+                  <div class="theme-pick">
+                    <div class="preview"><div class="tp-cursor"><div class="tab active">voice.md</div><div class="ed"><div class="ln"></div><div class="ln hl"></div><div class="ln"></div></div></div></div>
+                    <div class="name">Cursor<small>深黑 · AI 风</small></div>
+                  </div>
+                  <div class="theme-pick">
+                    <div class="preview"><div class="tp-ios"><div class="row"><div class="ico"></div></div><div class="row"><div class="ico"></div></div><div class="row"><div class="ico"></div></div></div></div>
+                    <div class="name">iOS<small>浅色 · v2</small></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 品牌色 -->
+              <div class="color-picker">
+                <div class="swatches">
+                  <div class="sw" style="background:#00A3FF;" title="品牌蓝"></div>
+                  <div class="sw active" style="background:#00A3FF;" title="品牌蓝 当前"></div>
+                  <div class="sw" style="background:#34D399;" title="绿"></div>
+                  <div class="sw" style="background:#A78BFA;" title="紫"></div>
+                  <div class="sw" style="background:#F472B6;" title="粉"></div>
+                  <div class="sw" style="background:#FB923C;" title="橙"></div>
+                </div>
+                <div class="info">
+                  <div class="lbl">品牌色 · 跨主题共用</div>
+                  <div class="val">#00A3FF<small>v0.5.0 开放自定义</small></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 字体与语言 -->
+            <div class="s-card">
+              <div class="s-card-head">
+                <div class="title">文字与语言</div>
+                <div class="desc">调整字号和界面语言</div>
+              </div>
+              <div class="s-card-body">
+                <div class="s-row">
+                  <span class="icon indigo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
+                  <div class="label">字体大小</div>
+                  <div class="ios-seg">
+                    <button>更小</button>
+                    <button class="on">标准</button>
+                    <button>更大</button>
+                    <button>特大</button>
+                  </div>
+                </div>
+                <div class="s-row">
+                  <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+                  <div class="label">界面语言<small>仅影响界面文案，不影响语音识别</small></div>
+                  <div class="ios-seg">
+                    <button class="on">简体中文</button>
+                    <button>English</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:12px 14px; font-size:11.5px; color:#1E40AF; line-height:1.55;">
+        <strong>改进</strong>：① 主题从 2 个扩到 5 个（Terminal/Raycast/Notion/Cursor/iOS）· ② iOS 列表式 cell + 圆角图标（30px 彩色方块）· ③ 品牌色从 #2a9cc4 升级到 #00A3FF，预留自定义色位置 · ④ 左侧导航加 active 蓝光指示条。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 03: 8 BLOCKS LANDED ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>v8 八板块 · 在两个页面里的具体落位</h2>
+    <span class="sub">每个决策都标到代码位置</span>
+  </div>
+
+  <div class="impl-tbl">
+    <table>
+      <thead>
+        <tr>
+          <th>v8 板块</th>
+          <th>借鉴自</th>
+          <th>首页落位</th>
+          <th>设置页落位</th>
+          <th>工作量</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tt">① 顶部状态条</td>
+          <td>Linear</td>
+          <td>.app-header 内嵌</td>
+          <td>—</td>
+          <td><span class="effort s">S</span></td>
+        </tr>
+        <tr>
+          <td class="tt">② 主屏实时文本</td>
+          <td>Claude</td>
+          <td>.hero-live .live-text</td>
+          <td>—</td>
+          <td><span class="effort m">M</span></td>
+        </tr>
+        <tr>
+          <td class="tt">③ 光晕球</td>
+          <td>Cursor</td>
+          <td>.hero-orb .orb</td>
+          <td>—</td>
+          <td><span class="effort s">S</span></td>
+        </tr>
+        <tr>
+          <td class="tt">④ 状态 pill</td>
+          <td>Linear + Terminal</td>
+          <td>.status-pills-row</td>
+          <td>—</td>
+          <td><span class="effort s">S</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑤ 操作按钮</td>
+          <td>Cursor (1 主 2 次)</td>
+          <td>.hero-actions</td>
+          <td>—</td>
+          <td><span class="effort s">S</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑥ 设置 tray</td>
+          <td>Notion</td>
+          <td>.tray + .tray-toggle</td>
+          <td>—</td>
+          <td><span class="effort m">M</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑦ 空状态</td>
+          <td>Linear</td>
+          <td>.hero-live .placeholder</td>
+          <td>—</td>
+          <td><span class="effort s">S</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑧ 主题选择器</td>
+          <td>Notion + 自创</td>
+          <td>—</td>
+          <td>.theme-picker + .theme-pick</td>
+          <td><span class="effort l">L</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑧-b iOS 列表 cell</td>
+          <td>iOS HIG</td>
+          <td>—</td>
+          <td>.s-card + .s-row</td>
+          <td><span class="effort m">M</span></td>
+        </tr>
+        <tr>
+          <td class="tt">⑧-c 品牌色升级</td>
+          <td>—</td>
+          <td>全局 --brand-blue</td>
+          <td>.color-picker</td>
+          <td><span class="effort m">M</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ SECTION 04: IMPLEMENTATION ROADMAP ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>实施路线 · 3 里程碑</h2>
+    <span class="sub">沿用 v8 · 本次聚焦两个页面</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;">
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M1 · 3-5 天</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">首页 v9</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">首页重构</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· 品牌色 #2a9cc4 → #00A3FF</li>
+        <li>· 新 .app-header (Linear 三段式)</li>
+        <li>· 新 .statusbar (32px 状态条)</li>
+        <li>· 新 .hero-live (Claude 流式文本)</li>
+        <li>· 新 .hero-orb (Cursor 光晕球)</li>
+        <li>· 新 .hero-actions (1 主 2 次)</li>
+        <li>· 新 .tray (Notion 折叠)</li>
+        <li>· 保留现有数据接口</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">demo：M1 完成即可演示</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M2 · 3-5 天</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">设置 v9</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">设置页重构</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· 新 .settings-rev (左 220 / 右自适应)</li>
+        <li>· 新 .s-card + .s-row (iOS 列表)</li>
+        <li>· 新 .ios-sw + .ios-seg (系统开关)</li>
+        <li>· 新 .theme-picker (5 主题)</li>
+        <li>· 新 .color-picker (品牌色)</li>
+        <li>· 现有 nav 7 项保留</li>
+        <li>· 现有数据迁移</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">M1+M2 = 完整 v9</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M3 · 持续</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">进阶</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">主题 + 品牌色</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· 实现 v7 Token 三层架构</li>
+        <li>· 5 主题 CSS 变量全部实现</li>
+        <li>· 主题切换过渡动画</li>
+        <li>· 自定义品牌色</li>
+        <li>· 主题切换 200ms 渐变</li>
+        <li>· 错误状态 1Password+Wave</li>
+        <li>· 用户自制主题（v3）</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">差异化 · 长期</div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div>voice-pilot · 一声 onetone · 首页 + 设置页 v9 重构稿</div>
+  <div>基于 v8 8 板块决策 · 沿用现有 .app / .home-zone / .settings-page 结构</div>
+</footer>
+
+</body>
+</html>

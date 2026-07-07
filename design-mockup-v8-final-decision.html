@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1400" />
+<title>voice-pilot · 最终设计决策稿 v8 · 8 板块 × 5 站</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --brand-blue:        #00A3FF;
+  --brand-blue-2:      #0085DB;
+  --brand-blue-soft:   rgba(0,163,255,.10);
+  --brand-blue-glow:   rgba(0,163,255,.45);
+  --state-success:     #34D399;
+  --state-warn:        #FBBF24;
+  --state-error:       #FF4D6A;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:#FAFAF9;
+  color:#1c1917;
+  font-family:'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body { padding:64px 48px 96px; max-width:1400px; margin:0 auto; }
+
+.hero { display:grid; grid-template-columns:1.4fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:1px solid #e7e5e4; }
+.hero h1 { font-family:'Space Grotesk', sans-serif; font-size:46px; font-weight:700; letter-spacing:-.025em; line-height:1.05; }
+.hero h1 em { font-style:normal; color:var(--brand-blue); }
+.hero .lead { font-size:16px; line-height:1.6; color:#57534E; margin-top:18px; max-width:680px; }
+.hero .lead code { font-family:'JetBrains Mono', monospace; font-size:13.5px; background:#f0f9ff; color:var(--brand-blue); padding:2px 6px; border-radius:5px; font-weight:500; }
+.hero .meta { background:#fff; border-radius:14px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,.04); border:1px solid #e7e5e4; display:flex; flex-direction:column; gap:12px; font-size:13px; }
+.hero .meta dt { color:#a8a29e; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; font-weight:600; }
+.hero .meta dd { color:#1c1917; font-weight:600; font-size:14px; }
+
+.section { padding:64px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:28px; }
+.section-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--brand-blue); background:var(--brand-blue-soft); padding:4px 10px; border-radius:999px; font-weight:600; }
+.section-head h2 { font-family:'Space Grotesk', sans-serif; font-size:26px; font-weight:600; letter-spacing:-.015em; }
+.section-head .sub { font-size:13px; color:#78716c; margin-left:auto; font-weight:500; }
+
+/* ===== STATION OVERVIEW ===== */
+.stations { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+.station { background:#fff; border:1px solid #e7e5e4; border-radius:12px; overflow:hidden; }
+.station-head { padding:14px 16px; border-bottom:1px solid #f5f5f4; }
+.station-head .name { font-size:13px; font-weight:600; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.station-head .name .dot { width:7px; height:7px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 4px var(--brand-blue-glow); }
+.station-head .meta { font-size:10.5px; color:#78716c; margin-top:2px; font-family:'JetBrains Mono', monospace; }
+.station-essence { padding:14px 16px; background:#FAFAF9; font-size:11.5px; color:#57534e; line-height:1.55; }
+.station-essence strong { color:#1c1917; font-weight:600; }
+.station-essence .borrow { display:inline-block; margin-top:6px; font-size:10px; padding:2px 6px; background:#EFF6FF; color:#1E40AF; border-radius:3px; font-weight:600; }
+
+/* ===== DECISION BLOCKS ===== */
+.decision { background:#fff; border:1px solid #e7e5e4; border-radius:14px; overflow:hidden; margin-bottom:18px; }
+.decision-head { padding:16px 22px; border-bottom:1px solid #f5f5f4; display:flex; align-items:center; gap:14px; }
+.decision-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--brand-blue); background:var(--brand-blue-soft); padding:4px 10px; border-radius:999px; }
+.decision-head .name { font-size:17px; font-weight:600; letter-spacing:-.01em; }
+.decision-head .sub { font-size:12.5px; color:#78716c; }
+.decision-head .pick { margin-left:auto; font-size:11px; padding:5px 12px; background:#1c1917; color:var(--brand-blue); border-radius:999px; font-weight:600; letter-spacing:.04em; }
+.decision-head .pick.pick-b { background:linear-gradient(135deg, var(--brand-blue), #0085DB); color:#fff; }
+
+.decision-grid { display:grid; gap:0; }
+.candidates { padding:20px 22px; background:#FAFAF9; }
+.candidates-row { display:grid; gap:14px; }
+.candidates-row.cols-2 { grid-template-columns:1fr 1fr; }
+.candidates-row.cols-3 { grid-template-columns:1fr 1fr 1fr; }
+
+.cand { background:#fff; border:1.5px solid #e7e5e4; border-radius:10px; overflow:hidden; position:relative; }
+.cand.picked { border-color:var(--brand-blue); box-shadow:0 0 0 4px var(--brand-blue-soft); }
+.cand-tag { position:absolute; top:10px; right:10px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:999px; background:var(--brand-blue); color:#fff; letter-spacing:.04em; z-index:5; }
+.cand-head { padding:10px 14px; border-bottom:1px solid #f5f5f4; display:flex; align-items:center; gap:8px; font-size:11px; font-weight:600; }
+.cand-head .from { padding:2px 7px; background:#1c1917; color:#fff; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.04em; }
+.cand-head .desc { color:#57534e; font-weight:500; font-size:11px; }
+.cand-body { padding:14px; min-height:140px; }
+
+.reasoning { padding:14px 22px; border-top:1px solid #f5f5f4; background:#fff; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.reason-box { padding:12px 14px; border-radius:8px; font-size:12px; line-height:1.55; }
+.reason-box.why { background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; }
+.reason-box.trade { background:#FEF3C7; border:1px solid #FDE68A; color:#92400E; }
+.reason-box h6 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+.reason-box.why h6 { color:#1E40AF; }
+.reason-box.trade h6 { color:#92400E; }
+
+/* ===== MOCKUP STYLES PER STATION ===== */
+/* Raycast style */
+.st-ray { background:rgba(28,28,30,.95); color:#fff; font-family:'Inter', system-ui, sans-serif; padding:0; min-height:120px; }
+.st-ray .topbar { display:flex; align-items:center; gap:8px; padding:8px 14px; font-size:10px; color:rgba(255,255,255,.5); border-bottom:1px solid rgba(255,255,255,.06); font-family:'JetBrains Mono', monospace; }
+.st-ray .topbar .pill { padding:2px 7px; background:rgba(255,255,255,.06); border-radius:3px; }
+.st-ray .topbar .pill.live { background:rgba(0,163,255,.18); color:var(--brand-blue); }
+.st-ray .topbar .right { margin-left:auto; display:flex; gap:6px; align-items:center; }
+.st-ray .topbar .right .logo { width:12px; height:12px; background:#0078D4; border-radius:2px; font-size:7px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+/* Linear style */
+.st-linear { background:#08090A; color:#fff; font-family:'Inter', system-ui, sans-serif; padding:0; min-height:120px; display:flex; flex-direction:column; }
+.st-linear .lsb { height:24px; background:#0e0f10; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; padding:0 12px; font-size:10px; color:rgba(255,255,255,.5); gap:10px; }
+.st-linear .lsb .ico { width:8px; height:8px; opacity:.5; }
+.st-linear .lsb .right { margin-left:auto; display:flex; gap:8px; align-items:center; font-family:'JetBrains Mono', monospace; }
+.st-linear .lsb .right .meta { color:rgba(255,255,255,.7); }
+.st-linear .lsb .right .meta.hl { color:var(--brand-blue); }
+.st-linear .lsb .right .target { display:inline-flex; align-items:center; gap:4px; padding:1px 6px; background:rgba(0,163,255,.12); border-radius:3px; color:var(--brand-blue); }
+
+/* Cursor style */
+.st-cursor { background:#1E1E1E; color:#D4D4D4; font-family:'Inter', system-ui, sans-serif; padding:0; min-height:120px; }
+.st-cursor .tabs { display:flex; background:#252526; border-bottom:1px solid #2D2D2D; padding:0 6px; }
+.st-cursor .tabs .tab { padding:5px 10px; font-size:9.5px; color:#858585; display:flex; align-items:center; gap:5px; border-right:1px solid #2D2D2D; }
+.st-cursor .tabs .tab.active { background:#1E1E1E; color:#fff; position:relative; }
+.st-cursor .tabs .tab.active::after { content:""; position:absolute; bottom:-1px; left:0; right:0; height:1px; background:var(--brand-blue); }
+.st-cursor .composer { padding:10px 14px; display:flex; align-items:center; gap:8px; background:linear-gradient(180deg, transparent, rgba(0,163,255,.02)); position:relative; }
+.st-cursor .composer .orb { width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg, var(--brand-blue), #0085DB); box-shadow:0 0 8px var(--brand-blue-glow); position:relative; flex-shrink:0; }
+.st-cursor .composer .orb::before, .st-cursor .composer .orb::after { content:""; position:absolute; inset:0; border-radius:50%; border:1px solid var(--brand-blue); animation:ring 1.8s ease-out infinite; }
+.st-cursor .composer .orb::after { animation-delay:.9s; }
+@keyframes ring { 0%{ transform:scale(1); opacity:.7;} 100%{ transform:scale(2.4); opacity:0;} }
+.st-cursor .composer .live { flex:1; font-size:12px; color:#D4D4D4; }
+.st-cursor .composer .live .last { color:#858585; }
+.st-cursor .composer .live .cursor { display:inline-block; width:2px; height:13px; background:var(--brand-blue); vertical-align:-2px; margin-left:2px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50%{ opacity:0; } }
+.st-cursor .composer .meta { font-family:'JetBrains Mono', monospace; font-size:9px; color:#6B6B6B; display:flex; gap:5px; align-items:center; }
+.st-cursor .composer .meta .pill { padding:1px 5px; background:#252526; border-radius:3px; }
+.st-cursor .composer .send { width:22px; height:22px; background:var(--brand-blue); border-radius:5px; box-shadow:0 2px 6px var(--brand-blue-glow); }
+
+/* Claude style */
+.st-claude { background:#262624; color:#F5F5F0; font-family:'Inter', system-ui, sans-serif; padding:18px 24px; min-height:140px; display:flex; flex-direction:column; gap:10px; }
+.st-claude .user-msg { font-size:14px; color:#F5F5F0; line-height:1.6; max-width:80%; align-self:flex-end; padding:10px 14px; background:#343231; border-radius:14px 14px 4px 14px; }
+.st-claude .ai-msg { font-size:14px; color:#F5F5F0; line-height:1.7; max-width:88%; }
+.st-claude .ai-msg .thinking { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(255,255,255,.04); border-radius:8px; font-size:12px; color:rgba(255,255,255,.55); }
+.st-claude .ai-msg .thinking .dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.4); animation:tdot 1.4s ease-in-out infinite; }
+.st-claude .ai-msg .thinking .dot:nth-child(2){ animation-delay:.2s; }
+.st-claude .ai-msg .thinking .dot:nth-child(3){ animation-delay:.4s; }
+@keyframes tdot { 0%,100%{ opacity:.3;} 50%{ opacity:1;} }
+.st-claude .ai-msg code { font-family:'JetBrains Mono', monospace; font-size:12.5px; background:rgba(255,255,255,.06); color:#F5F5F0; padding:1px 6px; border-radius:4px; }
+
+/* Wave style */
+.st-wave { background:#0d0d0d; color:#E6E6E6; font-family:'JetBrains Mono', monospace; padding:0; min-height:120px; display:flex; flex-direction:column; }
+.st-wave .wb { height:24px; background:#161616; border-bottom:1px solid #1f1f1f; display:flex; align-items:center; padding:0 12px; font-size:10px; color:#888; gap:10px; }
+.st-wave .wb .right { margin-left:auto; display:flex; gap:10px; align-items:center; }
+.st-wave .wb .right .ai-pill { padding:2px 8px; background:rgba(0,163,255,.1); border:1px solid rgba(0,163,255,.3); border-radius:4px; color:var(--brand-blue); font-size:9.5px; font-weight:600; }
+.st-wave .body { padding:10px 14px; font-size:11px; line-height:1.6; flex:1; }
+.st-wave .body .prompt { color:var(--brand-blue); }
+.st-wave .body .typing { color:#E6E6E6; }
+.st-wave .body .typing .cursor { display:inline-block; width:6px; height:13px; background:var(--brand-blue); vertical-align:-2px; animation:blink 1s steps(1) infinite; }
+.st-wave .body .suggestion { margin-top:6px; padding:6px 10px; background:#161616; border-left:2px solid var(--brand-blue); font-size:10.5px; color:#888; }
+.st-wave .body .suggestion .hl { color:var(--brand-blue); }
+
+/* Voice-pilot synthesized */
+.st-vp { background:rgba(28,28,30,.96); color:#fff; font-family:'Inter', system-ui, sans-serif; padding:0; }
+.st-vp .sb { height:26px; background:rgba(20,20,22,.92); border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; padding:0 14px; font-size:10.5px; color:rgba(255,255,255,.55); gap:12px; font-family:'JetBrains Mono', monospace; }
+.st-vp .sb .left { display:flex; align-items:center; gap:10px; }
+.st-vp .sb .left .dot-live { width:6px; height:6px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 6px var(--brand-blue-glow); animation:rec 1.6s ease-in-out infinite; }
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+.st-vp .sb .right { margin-left:auto; display:flex; gap:10px; align-items:center; }
+.st-vp .sb .right .lat { color:var(--brand-blue); font-weight:600; }
+.st-vp .sb .right .target { display:inline-flex; align-items:center; gap:5px; padding:2px 7px; background:rgba(0,163,255,.12); border-radius:4px; color:var(--brand-blue); }
+.st-vp .sb .right .target .logo { width:12px; height:12px; background:#0078D4; border-radius:2px; font-size:7px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+.st-vp .live-area { padding:20px 24px; }
+.st-vp .live-area .lbl { display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--brand-blue); margin-bottom:10px; }
+.st-vp .live-area .lbl .dot { width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 4px var(--brand-blue-glow); animation:rec 1.6s ease-in-out infinite; }
+.st-vp .live-area .text { font-size:18px; line-height:1.5; color:#fff; letter-spacing:-.01em; }
+.st-vp .live-area .text .last { color:rgba(255,255,255,.5); }
+.st-vp .live-area .text .cursor { display:inline-block; width:2px; height:18px; background:var(--brand-blue); vertical-align:-3px; margin-left:2px; animation:blink 1s steps(1) infinite; }
+
+.st-vp .wave-row { display:flex; align-items:center; justify-content:center; gap:2.5px; height:36px; margin-top:16px; }
+.st-vp .wave-row .bar { width:3px; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 4px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; }
+.st-vp .wave-row .bar:nth-child(1){ height:18%; animation-delay:0s; }
+.st-vp .wave-row .bar:nth-child(2){ height:32%; animation-delay:.05s; }
+.st-vp .wave-row .bar:nth-child(3){ height:48%; animation-delay:.1s; }
+.st-vp .wave-row .bar:nth-child(4){ height:65%; animation-delay:.15s; }
+.st-vp .wave-row .bar:nth-child(5){ height:82%; animation-delay:.2s; }
+.st-vp .wave-row .bar:nth-child(6){ height:95%; animation-delay:.25s; }
+.st-vp .wave-row .bar:nth-child(7){ height:78%; animation-delay:.3s; }
+.st-vp .wave-row .bar:nth-child(8){ height:60%; animation-delay:.35s; }
+.st-vp .wave-row .bar:nth-child(9){ height:75%; animation-delay:.4s; }
+.st-vp .wave-row .bar:nth-child(10){ height:48%; animation-delay:.45s; }
+.st-vp .wave-row .bar:nth-child(11){ height:32%; animation-delay:.5s; }
+.st-vp .wave-row .bar:nth-child(12){ height:55%; animation-delay:.55s; }
+.st-vp .wave-row .bar:nth-child(13){ height:40%; animation-delay:.6s; }
+.st-vp .wave-row .bar:nth-child(14){ height:25%; animation-delay:.65s; }
+@keyframes wbar { 0%,100%{ transform:scaleY(.5); opacity:.7;} 50%{ transform:scaleY(1); opacity:1;} }
+
+.st-vp .actions { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 18px; border-top:1px solid rgba(255,255,255,.06); }
+.st-vp .actions .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:500; background:rgba(255,255,255,.05); color:#fff; border:none; }
+.st-vp .actions .btn .kbd { font-family:'JetBrains Mono', monospace; font-size:10px; padding:1px 5px; background:rgba(0,0,0,.3); border-radius:3px; }
+.st-vp .actions .btn.primary { background:linear-gradient(135deg, var(--brand-blue), #0085DB); color:#fff; font-weight:600; box-shadow:0 2px 8px var(--brand-blue-glow); }
+.st-vp .actions .btn.primary .kbd { background:rgba(255,255,255,.2); color:#fff; }
+
+footer.foot { margin-top:80px; padding-top:24px; border-top:1px solid #e7e5e4; display:flex; justify-content:space-between; font-size:12px; color:#a8a29e; }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero, .stations, .candidates-row, .reasoning { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div>
+    <h1>最终决策稿 · <em>8 板块 × 5 站</em></h1>
+    <p class="lead">综合 v2-v7 的所有探索，从 Raycast / Linear / Cursor / Claude / Wave 五站中提取 voice-pilot 每个板块的最优解。每个板块都列出 <code>2-3 个候选</code> + <code>最终选择</code> + <code>取舍理由</code>。看完直接能进开发。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>覆盖范围</dt><dd>8 个 voice-pilot 核心板块</dd></div>
+    <div><dt>参考来源</dt><dd>5 站精华（Raycast / Linear / Cursor / Claude / Wave）</dd></div>
+    <div><dt>历史稿</dt><dd>v2 → v7 共 6 版迭代</dd></div>
+    <div><dt>核心原则</dt><dd>借形不借色 · 品牌蓝贯穿 · 状态可视化优先</dd></div>
+    <div><dt>目标</dt><dd>开发可执行的最终视觉决策</dd></div>
+  </dl>
+</header>
+
+<!-- ============ SECTION 01: 5 STATIONS OVERVIEW ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>5 站精华 · 一图概览</h2>
+    <span class="sub">每个产品的核心 UI 借鉴点</span>
+  </div>
+
+  <div class="stations">
+
+    <div class="station">
+      <div class="station-head">
+        <div class="name"><span class="dot"></span>Raycast</div>
+        <div class="meta">浮窗式命令面板</div>
+      </div>
+      <div class="station-essence">
+        <strong>精华</strong>：单栏命令面板 + 图标文字混合行 + 快捷键右侧标注 + 浮窗不抢主屏<br/>
+        <strong>借什么</strong>：主屏的浮窗式命令栏、action row、状态 pill 排
+      </div>
+    </div>
+
+    <div class="station">
+      <div class="station-head">
+        <div class="name"><span class="dot"></span>Linear</div>
+        <div class="meta">深色模式之神</div>
+      </div>
+      <div class="station-essence">
+        <strong>精华</strong>：单行 status bar 三段式（左图标/中信息/右操作）+ 空状态一句话 + transition 120-150ms<br/>
+        <strong>借什么</strong>：底部 status bar 的分区结构、空状态文案节奏
+      </div>
+    </div>
+
+    <div class="station">
+      <div class="station-head">
+        <div class="name"><span class="dot"></span>Cursor</div>
+        <div class="meta">AI 代码编辑器</div>
+      </div>
+      <div class="station-essence">
+        <strong>精华</strong>：底部 AI Composer 浮层 + 行内高亮联动 + Diff 视图（红绿对比）+ 渐变光晕球<br/>
+        <strong>借什么</strong>：底部 composer bar 模式、光晕球、识别 vs 原文 diff
+      </div>
+    </div>
+
+    <div class="station">
+      <div class="station-head">
+        <div class="name"><span class="dot"></span>Claude</div>
+        <div class="meta">长文本 AI 对话</div>
+      </div>
+      <div class="station-essence">
+        <strong>精华</strong>：长回复保持节奏 + "thinking" 三点跳 + Markdown 克制 + 打字机光标 + 代码块带文件名<br/>
+        <strong>借什么</strong>：主屏实时文本排版、thinking 状态指示、typewriter 流式输出
+      </div>
+    </div>
+
+    <div class="station">
+      <div class="station-head">
+        <div class="name"><span class="dot"></span>Wave</div>
+        <div class="meta">AI 终端新形态</div>
+      </div>
+      <div class="station-essence">
+        <strong>精华</strong>：命令 + 自然语言混合输入 + 上下文感知报错 + 终端美学现代化<br/>
+        <strong>借什么</strong>：错误状态的"上下文感知"思路（不是冷冰冰的"出错"，而是"刚才 X 时中断了"）
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 02: 8 DECISION BLOCKS ============ -->
+
+<!-- BLOCK 1: 顶部状态条 -->
+<div class="section" style="padding-top:48px;">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>8 个板块决策 · 标注最终选择</h2>
+    <span class="sub">每处 2-3 个候选 · 标注"为什么是这个"</span>
+  </div>
+
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">01</span>
+      <span class="name">顶部状态条</span>
+      <span class="sub">状态码 + 引擎信息 + 目标应用 + 延迟</span>
+      <span class="pick pick-b">→ 借鉴 Linear 三段式</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Linear</span>
+            <span class="desc">左图标 / 中信息 / 右操作</span>
+          </div>
+          <div class="cand-body">
+            <div class="st-linear">
+              <div class="lsb">
+                <svg class="ico" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+                <span>小型模型 · 本地</span>
+                <div class="right">
+                  <span class="meta hl">380ms</span>
+                  <span class="target">● VS Code</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Raycast</span>
+            <span class="desc">pill 横排</span>
+          </div>
+          <div class="cand-body">
+            <div class="st-ray">
+              <div class="topbar">
+                <span class="pill live">● DICTATING</span>
+                <span class="pill">小型</span>
+                <span class="pill">本地</span>
+                <div class="right">
+                  <span class="logo">VS</span>
+                  <span>VS Code</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么选 Linear</h6>
+        voice-pilot 的状态条需要承载<strong>引擎 / 模型 / 延迟 / 目标 app / 状态码</strong>五个信息维度，三段式分区（左图标/中信息/右操作）天然适合。Linear 的"延迟放右侧高亮蓝"是经典模式。<strong>Raycast pill 排信息量小时好看，超过 4 个 pill 就挤</strong>。
+      </div>
+      <div class="reason-box trade">
+        <h6>借鉴 vs 自创</h6>
+        <strong>借鉴</strong>：左/中/右分区 + 24px 高度 + 等宽字 + 高亮蓝强调延迟<br/>
+        <strong>自创</strong>：把状态码 [DICTATING] 放在中间、延迟放右（参考 Terminal 风的 ASCII），比 Linear 更"信息可视化"
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 2: 主屏实时文本 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">02</span>
+      <span class="name">主屏实时文本</span>
+      <span class="sub">用户说什么 / 系统听到什么</span>
+      <span class="pick pick-b">→ 借鉴 Claude 排版</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Claude</span>
+            <span class="desc">大方正 · 行高 1.7 · 等宽光标</span>
+          </div>
+          <div class="cand-body">
+            <div class="st-claude">
+              <div class="user-msg">现在我把界面重构一下</div>
+              <div class="ai-msg">
+                <span class="thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span>正在听 · 380ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Ulysses</span>
+            <span class="desc">全屏无干扰</span>
+          </div>
+          <div class="cand-body">
+            <div style="background:#FCFCFA; min-height:140px; padding:18px 24px; display:flex; align-items:center;">
+              <div style="font-family:Georgia, 'Times New Roman', serif; font-size:22px; line-height:1.6; color:#1c1917; max-width:340px; margin:0 auto;">
+                <span style="color:#999;">现在我把</span><span style="color:#1c1917;">界面重构一下</span><span style="display:inline-block; width:2px; height:22px; background:var(--brand-blue); vertical-align:-4px; margin-left:2px; animation:blink 1s steps(1) infinite;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么选 Claude</h6>
+        Claude 的<strong>思考中三点跳 + typewriter 输出</strong>是 voice-pilot 实时文本的最佳模板：用户看见字符一个个落下，确认系统在认真听。<strong>Ulysses 字体太雅</strong>，衬线字体不适合代码场景。<strong>Claude 字体用 Inter Sans + 等宽 ▎ 光标</strong>，既清晰又有质感。
+      </div>
+      <div class="reason-box trade">
+        <h6>关键决策</h6>
+        <strong>流式输出 vs 一句一更新</strong>：选流式（typewriter 效果）。识别一个字显示一个字，<strong>延迟感低 60%</strong>，用户感知不到 380ms 的真实延迟
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 3: 波形/状态指示 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">03</span>
+      <span class="name">波形 / 实时反馈</span>
+      <span class="sub">正在听 → 视觉化的"耳朵"</span>
+      <span class="pick pick-b">→ 借鉴 Raycast + Cursor 混合</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-3">
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Raycast</span>
+            <span class="desc">圆角 bar + 光晕</span>
+          </div>
+          <div class="cand-body" style="background:rgba(28,28,30,.95); padding:24px;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:3px; height:60px;">
+              <div style="width:3px; height:25%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite;"></div>
+              <div style="width:3px; height:45%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.06s;"></div>
+              <div style="width:3px; height:65%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.12s;"></div>
+              <div style="width:3px; height:85%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.18s;"></div>
+              <div style="width:3px; height:100%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.24s;"></div>
+              <div style="width:3px; height:75%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.30s;"></div>
+              <div style="width:3px; height:50%; background:var(--brand-blue); border-radius:2px; box-shadow:0 0 6px var(--brand-blue-glow); animation:wbar 1.2s ease-in-out infinite; animation-delay:.36s;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Cursor</span>
+            <span class="desc">光晕球 + 扩散环</span>
+          </div>
+          <div class="cand-body" style="background:#1E1E1E; padding:24px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:relative; width:60px; height:60px;">
+              <div style="position:absolute; inset:0; border-radius:50%; background:linear-gradient(135deg, var(--brand-blue), #0085DB); box-shadow:0 0 20px var(--brand-blue-glow);"></div>
+              <div style="position:absolute; inset:0; border-radius:50%; border:2px solid var(--brand-blue); animation:ring 1.8s ease-out infinite;"></div>
+              <div style="position:absolute; inset:0; border-radius:50%; border:2px solid var(--brand-blue); animation:ring 1.8s ease-out infinite; animation-delay:.9s;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Terminal</span>
+            <span class="desc">ASCII 字符</span>
+          </div>
+          <div class="cand-body" style="background:#0d1117; padding:24px;">
+            <div style="font-family:'JetBrains Mono', monospace; color:var(--brand-blue); font-size:18px; text-align:center; letter-spacing:-1px; line-height:1;">
+              ▁▂▄▆▇█▇▅▃▂▁▂▄▆▇█▆▄▂
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么主推 Cursor 光晕球</h6>
+        Raycast 的 bar 太"装饰"（用户每次看都差不多），Terminal 的 ASCII 太抽象。<strong>Cursor 光晕球 + 扩散环是"在工作中"的最强信号</strong>，2 个扩散环错峰扩散，肉眼一看就知道"在录"。<strong>原则</strong>：波形跟主题走，Raycast 风用 bar、Cursor 风用光晕球、Terminal 风用 ASCII，<strong>都靠同一个 token 切换</strong>。
+      </div>
+      <div class="reason-box trade">
+        <h6>三种风格并存</h6>
+        <strong>不是选一个，是每个主题一个</strong>：<br/>
+        · Terminal 主题 → ASCII ▁▃▅█<br/>
+        · Raycast 主题 → Raycast 圆角 bar<br/>
+        · Cursor 主题 → Cursor 光晕球<br/>
+        都引用同一个 <code style="font-family:'JetBrains Mono',monospace; font-size:11px;">--wave-style</code> token
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 4: 状态点 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">04</span>
+      <span class="name">状态指示点</span>
+      <span class="sub">idle / listening / dictating / error 四态</span>
+      <span class="pick pick-b">→ 借鉴 Linear + Terminal</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Linear</span>
+            <span class="desc">小圆点 + 脉冲</span>
+          </div>
+          <div class="cand-body" style="background:#08090A; padding:24px; display:flex; align-items:center; gap:14px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#6B6B6B;"></div>
+              <span style="font-size:11px; color:#888; font-family:'JetBrains Mono', monospace;">IDLE</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="position:relative; width:8px; height:8px;">
+                <div style="position:absolute; inset:0; border-radius:50%; background:var(--brand-blue);"></div>
+                <div style="position:absolute; inset:-3px; border-radius:50%; background:rgba(0,163,255,.2); animation:rec 1.8s ease-in-out infinite;"></div>
+              </div>
+              <span style="font-size:11px; color:var(--brand-blue); font-family:'JetBrains Mono', monospace; font-weight:600;">LISTENING</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="position:relative; width:8px; height:8px;">
+                <div style="position:absolute; inset:0; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 6px var(--brand-blue-glow);"></div>
+                <div style="position:absolute; inset:-3px; border-radius:50%; background:rgba(0,163,255,.3); animation:rec 1.2s ease-in-out infinite;"></div>
+              </div>
+              <span style="font-size:11px; color:#fff; font-family:'JetBrains Mono', monospace; font-weight:600;">DICTATING</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:8px; height:8px; border-radius:50%; background:#FF4D6A; box-shadow:0 0 4px rgba(255,77,106,.5);"></div>
+              <span style="font-size:11px; color:#FF4D6A; font-family:'JetBrains Mono', monospace; font-weight:600;">ERROR</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Linear + Terminal 混合</span>
+            <span class="desc">圆点 + 文字状态码</span>
+          </div>
+          <div class="cand-body" style="background:rgba(28,28,30,.95); padding:24px;">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.03); border-radius:6px;">
+                <div style="width:6px; height:6px; border-radius:50%; background:#6B6B6B;"></div>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#888;">[IDLE]</span>
+                <span style="font-size:10.5px; color:#666;">待命 · 按 [Ctrl+⇧+V] 开始</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(0,163,255,.06); border-radius:6px; border-left:2px solid var(--brand-blue);">
+                <div style="width:6px; height:6px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 4px var(--brand-blue-glow); animation:rec 1.6s ease-in-out infinite;"></div>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--brand-blue); font-weight:600;">[LISTENING]</span>
+                <span style="font-size:10.5px; color:rgba(255,255,255,.5);">唤醒词检测中</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(0,163,255,.10); border-radius:6px; border-left:2px solid var(--brand-blue);">
+                <div style="width:6px; height:6px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 6px var(--brand-blue-glow); animation:rec 1.2s ease-in-out infinite;"></div>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#fff; font-weight:600;">[DICTATING]</span>
+                <span style="font-size:10.5px; color:rgba(255,255,255,.6);">正在听 · 44 chars · 380ms</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,77,106,.08); border-radius:6px; border-left:2px solid var(--state-error);">
+                <div style="width:6px; height:6px; border-radius:50%; background:var(--state-error); box-shadow:0 0 4px rgba(255,77,106,.5);"></div>
+                <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--state-error); font-weight:600;">[ERROR]</span>
+                <span style="font-size:10.5px; color:rgba(255,255,255,.6);">引擎离线 · 5 分钟前</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么混合</h6>
+        纯 Linear 小圆点<strong>在远距离不可读</strong>，纯 Terminal 文字<strong>在主屏抢戏</strong>。<strong>圆点 + 状态码文字同时出现</strong>：圆点给视觉锚点（从屏幕外缘就能扫到），文字给明确语义（近距离能读懂）。
+      </div>
+      <div class="reason-box trade">
+        <h6>四态的色与义</h6>
+        <strong>idle</strong> = 灰 6B6B6B + [IDLE] 中性灰文字<br/>
+        <strong>listening</strong> = 蓝 00A3FF 慢脉冲 + [LISTENING] 蓝文字<br/>
+        <strong>dictating</strong> = 蓝 00A3FF 快脉冲 + [DICTATING] 白文字<br/>
+        <strong>error</strong> = 红 FF4D6A 不脉冲 + [ERROR] 红文字<br/>
+        <strong>关键</strong>：listening 和 dictating 同色不同节奏，1.6s vs 1.2s 间隔区分"在等你说"和"正在录"
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 5: 操作按钮 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">05</span>
+      <span class="name">操作按钮区</span>
+      <span class="sub">结束 / 切换 / 设置</span>
+      <span class="pick pick-b">→ 借鉴 Cursor 单主操作</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Raycast</span>
+            <span class="desc">三个等权 pill</span>
+          </div>
+          <div class="cand-body" style="background:rgba(28,28,30,.95); padding:18px;">
+            <div style="display:flex; gap:8px;">
+              <button style="flex:1; padding:9px 12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:8px; color:rgba(255,255,255,.85); font-size:12px; font-weight:500;">切换目标 <span style="font-family:'JetBrains Mono', monospace; font-size:10px; opacity:.4; margin-left:4px;">Tab</span></button>
+              <button style="flex:1; padding:9px 12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:8px; color:rgba(255,255,255,.85); font-size:12px; font-weight:500;">结束 <span style="font-family:'JetBrains Mono', monospace; font-size:10px; opacity:.4; margin-left:4px;">松开</span></button>
+              <button style="flex:1; padding:9px 12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:8px; color:rgba(255,255,255,.85); font-size:12px; font-weight:500;">设置 <span style="font-family:'JetBrains Mono', monospace; font-size:10px; opacity:.4; margin-left:4px;">⌘,</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Cursor</span>
+            <span class="desc">1 主操作 + 2 次操作</span>
+          </div>
+          <div class="cand-body" style="background:#1E1E1E; padding:18px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button style="padding:8px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:999px; color:rgba(255,255,255,.75); font-size:12px; font-weight:500;">切换</button>
+              <button style="flex:1; padding:10px 18px; background:linear-gradient(135deg, var(--brand-blue), #0085DB); border-radius:999px; color:#fff; font-size:13px; font-weight:600; box-shadow:0 2px 10px var(--brand-blue-glow); border:none; display:flex; align-items:center; justify-content:center; gap:8px;">结束说话 <span style="font-family:'JetBrains Mono', monospace; font-size:11px; background:rgba(255,255,255,.2); padding:1px 6px; border-radius:3px;">松开</span></button>
+              <button style="padding:8px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:999px; color:rgba(255,255,255,.75); font-size:12px; font-weight:500;">⚙ 设置</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么选 Cursor</h6>
+        Raycast 三等权设计适合"命令面板"（用户主动选择），不适合"工具面板"（系统主动建议）。<strong>voice-pilot 的核心动作只有一个："结束说话"</strong>，其他都是辅助。<strong>Cursor 的"1 大 + 2 小"分配</strong>让用户视觉上立即知道该按哪个。
+      </div>
+      <div class="reason-box trade">
+        <h6>细节</h6>
+        主操作按钮里<strong>嵌入了 hotkey 提示</strong>（松开），用户用一次就学会了，不用专门打开"快捷键面板"。<strong>次操作不放快捷键</strong>，避免视觉过载。
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 6: 设置面板 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">06</span>
+      <span class="name">设置面板</span>
+      <span class="sub">默认收起 · 按需展开</span>
+      <span class="pick pick-b">→ 借鉴 Notion 折叠 tray</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Notion</span>
+            <span class="desc">底部折叠 tray</span>
+          </div>
+          <div class="cand-body" style="background:#F7F6F3; padding:14px;">
+            <div style="background:#fff; border:1px solid rgba(55,53,47,.09); border-radius:6px; padding:12px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+              <div>
+                <div style="font-size:10px; color:#787774; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:6px;">唤醒</div>
+                <div style="font-size:12px; color:#37352F;">嗨小助手</div>
+              </div>
+              <div>
+                <div style="font-size:10px; color:#787774; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:6px;">模型</div>
+                <div style="font-size:12px; color:#37352F;">small-cn</div>
+              </div>
+              <div>
+                <div style="font-size:10px; color:#787774; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:6px;">延迟</div>
+                <div style="font-size:12px; color:#37352F;">3.5 秒</div>
+              </div>
+            </div>
+            <div style="text-align:center; margin-top:10px; font-size:11px; color:#B4B4B0;">收起 △</div>
+          </div>
+        </div>
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">iOS</span>
+            <span class="desc">底部 sheet</span>
+          </div>
+          <div class="cand-body" style="background:rgba(0,0,0,.4); padding:0; display:flex; align-items:flex-end; min-height:140px;">
+            <div style="width:100%; background:#fff; border-radius:14px 14px 0 0; padding:14px;">
+              <div style="width:36px; height:5px; background:#C7C7CC; border-radius:3px; margin:0 auto 12px;"></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="font-size:12px; color:#1c1917;">麦克风</div>
+                <div style="font-size:12px; color:#6B6B6B; text-align:right;">Wireless Rx</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么选 Notion tray</h6>
+        设置是 95% 时间不需要看的。<strong>Notion tray 的好处</strong>：用户能看到"设置就在那里"（安心感），但不占主屏空间。<strong>iOS sheet 适合移动端</strong>，桌面端从底部弹出会显得突兀（鼠标从屏幕底部拖上来不自然）。
+      </div>
+      <div class="reason-box trade">
+        <h6>三种触发方式</h6>
+        <strong>方式 1</strong>：点击底部"⚙ 设置"按钮展开（最直接）<br/>
+        <strong>方式 2</strong>：右键主屏任意位置 → 弹出菜单（Linear 风格）<br/>
+        <strong>方式 3</strong>：`Ctrl+,` 快捷键直接打开（Cursor 风格）<br/>
+        <strong>v1 只做方式 1，其他 v2 加</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 7: 空状态 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">07</span>
+      <span class="name">空状态</span>
+      <span class="sub">用户第一次 / 没事干时看到什么</span>
+      <span class="pick pick-b">→ 借鉴 Linear 一句话</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">Linear</span>
+            <span class="desc">"X to start" 一句话</span>
+          </div>
+          <div class="cand-body" style="background:rgba(28,28,30,.95); padding:32px; text-align:center;">
+            <div style="display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(255,255,255,.04); border-radius:999px; font-size:14px; color:rgba(255,255,255,.7);">
+              按住 <span style="font-family:'JetBrains Mono', monospace; padding:3px 8px; background:rgba(255,255,255,.08); border-radius:5px; color:#fff; font-size:12.5px; font-weight:600;">Ctrl + ⇧ + V</span> 开始说话
+            </div>
+            <div style="font-size:11px; color:#6B6B6B; margin-top:12px; font-family:'JetBrains Mono', monospace;">voice-pilot · 待命中 · 小型模型 · 本地</div>
+          </div>
+        </div>
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Claude</span>
+            <span class="desc">三点跳 thinking</span>
+          </div>
+          <div class="cand-body" style="background:#262624; padding:32px; display:flex; align-items:center; justify-content:center;">
+            <div style="display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(255,255,255,.04); border-radius:8px;">
+              <span style="width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.4); animation:tdot 1.4s ease-in-out infinite;"></span>
+              <span style="width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.4); animation:tdot 1.4s ease-in-out infinite; animation-delay:.2s;"></span>
+              <span style="width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.4); animation:tdot 1.4s ease-in-out infinite; animation-delay:.4s;"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么选 Linear</h6>
+        空状态是<strong>用户的第一个教程</strong>，必须 100% 告诉他下一步干什么。<strong>Linear 的"Press X to do Y"</strong>是教科书级空状态：用户 1 秒看懂、5 秒上手。<strong>Claude thinking 三点</strong>是"等待中"的视觉，<strong>不适合做空状态</strong>，用户会以为系统在思考什么。
+      </div>
+      <div class="reason-box trade">
+        <h6>三处细节</h6>
+        <strong>1</strong>：把热键嵌在提示里（不用单独开"快捷键面板"）<br/>
+        <strong>2</strong>：底部一行小字显示当前状态（小型模型 · 本地）—— 让用户知道系统在 ready<br/>
+        <strong>3</strong>：首次启动时显示一次 onboarding 浮窗，第二次起只显示这行（<strong>教学一次就好</strong>）
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCK 8: 错误状态 -->
+  <div class="decision">
+    <div class="decision-head">
+      <span class="num">08</span>
+      <span class="name">错误状态</span>
+      <span class="sub">引擎挂了 / 麦克风没权限 / 识别失败</span>
+      <span class="pick pick-b">→ 借鉴 1Password + Wave</span>
+    </div>
+    <div class="candidates">
+      <div class="candidates-row cols-2">
+
+        <div class="cand">
+          <div class="cand-head">
+            <span class="from">Wave</span>
+            <span class="desc">上下文感知报错</span>
+          </div>
+          <div class="cand-body" style="background:#0d0d0d; padding:18px;">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#E6E6E6; line-height:1.7;">
+              <div style="color:var(--brand-blue);">voice-pilot</div>
+              <div style="color:var(--state-error); margin-top:6px;">✕ engine unreachable</div>
+              <div style="color:#666; font-size:10.5px; margin-top:4px;">last online: 5 min ago · during: '现在我把界面重构'</div>
+              <div style="color:#888; font-size:10.5px; margin-top:6px;">→ run <span style="color:var(--brand-blue);">voice-pilot retry</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cand picked">
+          <span class="cand-tag">PICK</span>
+          <div class="cand-head">
+            <span class="from">1Password + Wave 混合</span>
+            <span class="desc">风险分级 + 上下文 + 行动</span>
+          </div>
+          <div class="cand-body" style="background:rgba(255,77,106,.06); border:1px solid rgba(255,77,106,.2); padding:18px;">
+            <div style="display:flex; align-items:flex-start; gap:12px;">
+              <div style="width:32px; height:32px; background:rgba(255,77,106,.15); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--state-error); flex-shrink:0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:13px; font-weight:600; color:var(--state-error); margin-bottom:4px;">引擎连接失败</div>
+                <div style="font-size:11.5px; color:rgba(255,255,255,.6); line-height:1.55; margin-bottom:8px;">
+                  5 分钟前中断于 <span style="color:#fff; font-style:italic;">"现在我把界面重构"</span>。<br/>
+                  可能是网络问题或本地模型路径错误。
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button style="padding:5px 12px; background:var(--state-error); color:#fff; border:none; border-radius:5px; font-size:11px; font-weight:600;">重新连接</button>
+                  <button style="padding:5px 12px; background:transparent; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.7); border-radius:5px; font-size:11px;">查看日志</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="reasoning">
+      <div class="reason-box why">
+        <h6>为什么混合 1Password + Wave</h6>
+        错误状态三件事必须同时说清：<strong>1) 出了什么事 2) 在什么上下文 3) 怎么办</strong>。<br/>
+        <strong>1Password</strong>：图标 + 标题 + 描述 + 双按钮（主操作 + 次操作）<br/>
+        <strong>Wave</strong>："在 'X' 时中断了" 这种上下文让用户<strong>立刻知道刚才那段内容有没有丢</strong>
+      </div>
+      <div class="reason-box trade">
+        <h6>三种错误的差异化</h6>
+        <strong>引擎离线</strong> = 红 + "重新连接" 按钮<br/>
+        <strong>麦克风没权限</strong> = 黄 + "去设置打开权限" 按钮<br/>
+        <strong>识别置信度低</strong> = 蓝（不阻断）+ 在文字底下加波浪线 + 建议重新说
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ SECTION 03: FINAL ASSEMBLY ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>最终集成 · 一张图看完整成品</h2>
+    <span class="sub">8 个板块拼在一起 · v1 主屏长这样</span>
+  </div>
+
+  <div style="background:#fff; border:1px solid #e7e5e4; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px -12px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.04); max-width:880px; margin:0 auto;">
+    <div style="display:flex; align-items:center; gap:6px; padding:11px 18px; background:#ECECEF; border-bottom:1px solid #e7e5e4;">
+      <span style="width:10px; height:10px; border-radius:50%; background:#FF5F57;"></span>
+      <span style="width:10px; height:10px; border-radius:50%; background:#FEBC2E;"></span>
+      <span style="width:10px; height:10px; border-radius:50%; background:#28C840;"></span>
+      <span style="font-size:11.5px; color:#78716c; font-family:'JetBrains Mono', monospace; margin-left:14px; font-weight:500;">voice-pilot · v1 主屏 · DICTATING</span>
+    </div>
+
+    <div class="st-vp">
+      <!-- 01 · Status bar (Linear style) -->
+      <div class="sb">
+        <div class="left">
+          <div class="dot-live"></div>
+          <span>[DICTATING]</span>
+          <span style="color:rgba(255,255,255,.35);">·</span>
+          <span>小型 · 本地</span>
+        </div>
+        <div class="right">
+          <span class="lat">380ms</span>
+          <span class="target"><span class="logo">VS</span>VS Code</span>
+        </div>
+      </div>
+
+      <!-- 03 · Cursor orb (state) -->
+      <div style="display:flex; align-items:center; justify-content:center; padding:18px 0 12px;">
+        <div style="position:relative; width:48px; height:48px;">
+          <div style="position:absolute; inset:0; border-radius:50%; background:linear-gradient(135deg, var(--brand-blue), #0085DB); box-shadow:0 0 16px var(--brand-blue-glow);"></div>
+          <div style="position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--brand-blue); animation:ring 1.8s ease-out infinite;"></div>
+          <div style="position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--brand-blue); animation:ring 1.8s ease-out infinite; animation-delay:.9s;"></div>
+        </div>
+      </div>
+
+      <!-- 02 · Live text (Claude style) -->
+      <div class="live-area">
+        <div class="lbl"><span class="dot"></span>正在听</div>
+        <div class="text">
+          <span style="color:rgba(255,255,255,.55);">现在我把</span><span style="color:#fff; font-weight:600;">界面重构</span><span style="color:rgba(255,255,255,.55);">一下</span><span class="cursor"></span>
+        </div>
+
+        <!-- 03 · Wave (Raycast bar) -->
+        <div class="wave-row">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </div>
+
+        <!-- 04 · State pills (Linear + Terminal mix) -->
+        <div style="margin-top:18px; padding-top:14px; border-top:1px dashed rgba(255,255,255,.06); display:flex; gap:8px; font-family:'JetBrains Mono', monospace; font-size:10px; color:rgba(255,255,255,.4);">
+          <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 8px; background:rgba(0,163,255,.06); border-radius:4px; color:var(--brand-blue);"><span style="width:4px; height:4px; border-radius:50%; background:var(--brand-blue);"></span>listening</span>
+          <span style="padding:3px 8px; background:rgba(255,255,255,.04); border-radius:4px;">44 chars</span>
+          <span style="padding:3px 8px; background:rgba(255,255,255,.04); border-radius:4px;">本地 · offline</span>
+        </div>
+      </div>
+
+      <!-- 05 · Action row (Cursor 1 main + 2 minor) -->
+      <div class="actions">
+        <button class="btn">切换 <span class="kbd">Tab</span></button>
+        <button class="btn primary">结束说话 <span class="kbd">松开</span></button>
+        <button class="btn">⚙ 设置</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:18px; padding:14px 18px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; font-size:12.5px; color:#1E40AF; line-height:1.6;">
+    <strong>8 个板块的来源标注</strong>：① 顶部状态条 = Linear 三段式 · ② 主屏实时文本 = Claude 排版 + 流式光标 · ③ 光晕球 = Cursor · ④ 波形 = Raycast · ⑤ 状态 pill = Linear + Terminal 混合 · ⑥ 操作按钮 = Cursor 1 主 2 次 · ⑦ 错误状态 = 1Password + Wave（v2 加）· ⑧ 设置 tray = Notion
+  </div>
+</section>
+
+<!-- ============ SECTION 04: IMPLEMENTATION PRIORITY ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>开发优先级 · 哪个先做</h2>
+    <span class="sub">3 个里程碑 · 每个都能 demo</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;">
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M1 · 1 周</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">MVP</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">核心能用</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· 状态条（Linear 三段式）</li>
+        <li>· 光晕球（Cursor）</li>
+        <li>· 实时文本（Claude 流式）</li>
+        <li>· 状态 pill（idle/listening/dictating）</li>
+        <li>· 主操作按钮（结束说话）</li>
+        <li>· 空状态一句话提示</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">5 个板块 · v1 demo</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M2 · 1 周</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">完整</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">体验完整</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· 设置 tray（Notion 折叠）</li>
+        <li>· 波形切换（bar / ASCII / orb）</li>
+        <li>· 错误状态（1Password + Wave）</li>
+        <li>· 切应用 + 设置 2 个次按钮</li>
+        <li>· 主题切换 UI（v7 主题选择器）</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">3 个板块 · 8 总</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">M3 · 持续</span>
+        <span style="font-size:10px; padding:2px 7px; background:#FAFAF9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">进阶</span>
+      </div>
+      <h4 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">打磨 + 主题</h4>
+      <ul style="list-style:none; font-size:12px; color:#57534E; line-height:1.8;">
+        <li>· Terminal / Raycast 主题切换</li>
+        <li>· 自定义品牌色</li>
+        <li>· 快捷键面板（`?` 触发）</li>
+        <li>· 主题切换过渡动画</li>
+        <li>· 用户自制主题（v3）</li>
+      </ul>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #e7e5e4; font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">多主题 + 生态</div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="foot">
+  <div>voice-pilot · 最终设计决策稿 v8 · 综合 v2-v7 + 5 站精华</div>
+  <div>8 板块 · 3 里程碑 · M1 即可 demo</div>
+</footer>
+
+</body>
+</html>

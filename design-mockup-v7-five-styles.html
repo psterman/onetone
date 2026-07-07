@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · 多画风主题 v7 · 5 风格</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  /* BRAND TOKENS · 全主题共用 */
+  --brand-blue:        #00A3FF;
+  --brand-blue-2:      #0085DB;
+  --brand-blue-soft:   rgba(0,163,255,.10);
+  --brand-blue-glow:   rgba(0,163,255,.45);
+  --state-success:     #34D399;
+  --state-warn:        #FBBF24;
+  --state-error:       #FF4D6A;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:#FAFAF9;
+  color:#1c1917;
+  font-family:'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body { padding:64px 48px 96px; max-width:1400px; margin:0 auto; }
+
+.hero { display:grid; grid-template-columns:1.3fr 1fr; gap:48px; align-items:end; padding-bottom:48px; border-bottom:1px solid #e7e5e4; }
+.hero h1 { font-family:'Space Grotesk', sans-serif; font-size:46px; font-weight:700; letter-spacing:-.025em; line-height:1.05; }
+.hero h1 em { font-style:normal; color:var(--brand-blue); }
+.hero .lead { font-size:16px; line-height:1.6; color:#57534E; margin-top:18px; max-width:660px; }
+.hero .lead strong { color:#1c1917; font-weight:600; }
+.hero .lead code { font-family:'JetBrains Mono', monospace; font-size:13.5px; background:#f0f9ff; color:var(--brand-blue); padding:2px 6px; border-radius:5px; font-weight:500; }
+.hero .meta { background:#fff; border-radius:14px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,.04); border:1px solid #e7e5e4; display:flex; flex-direction:column; gap:14px; font-size:13px; }
+.hero .meta dt { color:#a8a29e; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:3px; font-weight:600; }
+.hero .meta dd { color:#1c1917; font-weight:600; font-size:14px; }
+.hero .tenet { display:flex; gap:8px; align-items:flex-start; padding:10px 12px; background:#EFF6FF; border-radius:8px; font-size:12px; line-height:1.5; color:#1E40AF; }
+.hero .tenet::before { content:"▸"; color:var(--brand-blue); font-weight:700; flex-shrink:0; }
+
+.section { padding:80px 0 0; }
+.section-head { display:flex; align-items:baseline; gap:16px; margin-bottom:36px; }
+.section-head .num { font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--brand-blue); background:var(--brand-blue-soft); padding:4px 10px; border-radius:999px; font-weight:600; }
+.section-head h2 { font-family:'Space Grotesk', sans-serif; font-size:28px; font-weight:600; letter-spacing:-.015em; }
+.section-head .sub { font-size:14px; color:#78716c; margin-left:auto; font-weight:500; }
+
+/* ============ SECTION 01: 5 THEMES GRID (compact) ============ */
+.five-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; }
+.theme-card {
+  background:#fff;
+  border:2px solid #e7e5e4;
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  position:relative;
+  transition:.15s;
+}
+.theme-card.active { border-color:var(--brand-blue); box-shadow:0 0 0 4px var(--brand-blue-soft); }
+.theme-card.active::after {
+  content:"✓ 当前";
+  position:absolute; top:10px; right:10px;
+  background:var(--brand-blue); color:#fff;
+  font-size:10px; font-weight:700;
+  padding:3px 8px; border-radius:999px;
+  letter-spacing:.04em;
+  z-index:5;
+}
+.theme-info { padding:12px 14px; border-top:1px solid #f5f5f4; }
+.theme-info .name { font-size:13px; font-weight:600; margin-bottom:2px; letter-spacing:-.01em; display:flex; align-items:center; gap:6px; }
+.theme-info .name .badge { font-size:9px; padding:2px 5px; border-radius:4px; background:var(--brand-blue-soft); color:var(--brand-blue); font-weight:700; letter-spacing:.04em; }
+.theme-info .desc { font-size:10.5px; color:#78716c; line-height:1.4; }
+.theme-info .tag { display:inline-block; margin-top:6px; font-size:9.5px; padding:2px 6px; background:#fafaf9; border:1px solid #e7e5e4; border-radius:4px; color:#57534e; font-family:'JetBrains Mono', monospace; }
+
+/* mini previews */
+.mp-terminal { background:#0d1117; padding:14px; height:120px; display:flex; flex-direction:column; gap:6px; font-family:'JetBrains Mono', monospace; font-size:9px; color:#8b949e; }
+.mp-terminal .tl { color:var(--brand-blue); display:flex; align-items:center; gap:5px; }
+.mp-terminal .tl::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 4px var(--brand-blue-glow); }
+.mp-terminal .bars { display:flex; align-items:flex-end; gap:1.5px; height:16px; }
+.mp-terminal .bars span { width:2.5px; background:var(--brand-blue); border-radius:1px; }
+.mp-terminal .bars span:nth-child(1){ height:25%; }
+.mp-terminal .bars span:nth-child(2){ height:50%; }
+.mp-terminal .bars span:nth-child(3){ height:80%; }
+.mp-terminal .bars span:nth-child(4){ height:100%; }
+.mp-terminal .bars span:nth-child(5){ height:75%; }
+.mp-terminal .bars span:nth-child(6){ height:55%; }
+.mp-terminal .bars span:nth-child(7){ height:90%; }
+.mp-terminal .bars span:nth-child(8){ height:70%; }
+.mp-terminal .out { background:#161b22; padding:5px 7px; border-left:2px solid var(--brand-blue); color:#c9d1d9; }
+
+.mp-ray { background:rgba(28,28,30,.95); padding:14px; height:120px; display:flex; flex-direction:column; gap:6px; }
+.mp-ray .top { height:6px; background:rgba(255,255,255,.08); border-radius:3px; }
+.mp-ray .top .fill { width:60%; height:100%; background:var(--brand-blue); border-radius:3px; box-shadow:0 0 6px var(--brand-blue-glow); }
+.mp-ray .mid { flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:7px; padding:8px; display:flex; align-items:center; gap:6px; }
+.mp-ray .mid .orb { width:8px; height:8px; border-radius:50%; background:var(--brand-blue); box-shadow:0 0 5px var(--brand-blue-glow); }
+.mp-ray .mid .line { height:5px; background:rgba(255,255,255,.15); border-radius:2px; flex:1; }
+
+.mp-notion { background:#F7F6F3; padding:14px; height:120px; display:flex; flex-direction:column; gap:6px; font-family:'Inter', sans-serif; }
+.mp-notion .page-tab { height:14px; background:#fff; border-radius:3px; display:flex; align-items:center; padding:0 8px; font-size:8px; font-weight:500; color:#37352F; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.mp-notion .page-tab .ico { width:7px; height:7px; background:var(--brand-blue); border-radius:2px; margin-right:5px; }
+.mp-notion .row { height:20px; background:#fff; border-radius:4px; display:flex; align-items:center; padding:0 8px; gap:5px; box-shadow:0 1px 1px rgba(0,0,0,.03); }
+.mp-notion .row .ico { width:8px; height:8px; background:#37352F; border-radius:1px; }
+.mp-notion .row .line { height:3px; background:#EEECE7; border-radius:1px; flex:1; }
+.mp-notion .row .line.fill { background:#37352F; width:40%; }
+
+.mp-cursor { background:#1E1E1E; padding:14px; height:120px; display:flex; flex-direction:column; gap:5px; font-family:'Inter', sans-serif; }
+.mp-cursor .tab-row { display:flex; gap:2px; height:14px; }
+.mp-cursor .tab-row .tab { padding:0 6px; background:#2D2D2D; border-radius:3px 3px 0 0; display:flex; align-items:center; gap:4px; font-size:7.5px; color:#969696; }
+.mp-cursor .tab-row .tab.active { background:#1E1E1E; color:#fff; }
+.mp-cursor .tab-row .tab .dot { width:4px; height:4px; border-radius:50%; background:var(--brand-blue); }
+.mp-cursor .editor { flex:1; background:#1E1E1E; border:1px solid #2D2D2D; border-top:none; border-radius:0 0 4px 4px; padding:6px; display:flex; flex-direction:column; gap:3px; }
+.mp-cursor .editor .line { height:4px; background:#3C3C3C; border-radius:1px; }
+.mp-cursor .editor .line.f { background:#D4D4D4; width:70%; }
+.mp-cursor .editor .line.hl { background:var(--brand-blue-soft); border-left:2px solid var(--brand-blue); width:50%; }
+.mp-cursor .composer { display:flex; align-items:center; gap:5px; padding:5px 7px; background:#252526; border:1px solid #3C3C3C; border-radius:5px; }
+.mp-cursor .composer .orb { width:7px; height:7px; border-radius:50%; background:linear-gradient(135deg, var(--brand-blue), #0085DB); box-shadow:0 0 4px var(--brand-blue-glow); }
+.mp-cursor .composer .line { height:3px; flex:1; background:#3C3C3C; border-radius:1px; }
+
+.mp-ios { background:#F2F2F7; padding:14px; height:120px; display:flex; flex-direction:column; gap:5px; }
+.mp-ios .nav { height:14px; background:#fff; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:600; color:#1c1917; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.mp-ios .row-rect { flex:1; background:#fff; border-radius:8px; display:flex; align-items:center; padding:0 8px; gap:5px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.mp-ios .ico { width:10px; height:10px; background:var(--brand-blue); border-radius:3px; }
+.mp-ios .line { height:3px; background:#e5e5ea; border-radius:1px; flex:1; }
+.mp-ios .line.fill { background:#1c1917; width:50%; }
+
+/* ============ SECTION 02: NOTION DETAIL ============ */
+.detail-grid { display:grid; grid-template-columns:1.1fr 1fr; gap:24px; align-items:start; }
+.detail-card { background:#fff; border:1px solid #e7e5e4; border-radius:18px; overflow:hidden; box-shadow:0 12px 32px -12px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.04); }
+.bar { display:flex; align-items:center; gap:6px; padding:11px 18px; background:#ECECEF; border-bottom:1px solid #e7e5e4; }
+.bar .dot { width:10px; height:10px; border-radius:50%; }
+.bar .dot.r{ background:#FF5F57; } .bar .dot.y{ background:#FEBC2E; } .bar .dot.g{ background:#28C840; }
+.bar .title { font-size:11.5px; color:#78716c; font-family:'JetBrains Mono', monospace; margin-left:14px; font-weight:500; }
+
+.notes { display:background:#FAFAF9; padding:20px 24px; font-size:13px; color:#57534e; line-height:1.7; background:#FAFAF9; border-radius:14px; border:1px solid #e7e5e4; }
+.notes h4 { font-size:15px; font-weight:600; color:#1c1917; margin-bottom:10px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.notes h4 .dot { width:6px; height:6px; background:var(--brand-blue); border-radius:50%; }
+.notes ul { list-style:none; padding:0; }
+.notes li { padding:4px 0; padding-left:18px; position:relative; font-size:12.5px; }
+.notes li::before { content:"→"; position:absolute; left:0; color:var(--brand-blue); font-weight:600; }
+.notes .principle { background:#fff; border-left:3px solid var(--brand-blue); padding:10px 12px; border-radius:0 8px 8px 0; margin-top:10px; font-size:12px; color:#1c1917; }
+.notes .principle code { font-family:'JetBrains Mono', monospace; background:#EFF6FF; color:#1E40AF; padding:1px 5px; border-radius:3px; font-size:11.5px; }
+
+/* NOTION THEME - the actual app */
+.th-notion {
+  --bg:#F7F6F3; --surface:#FFFFFF;
+  --text:#37352F; --text-2:#787774; --text-3:#B4B4B0;
+  --border:rgba(55,53,47,.09);
+  --accent: var(--brand-blue);
+  --font: 'Inter', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 4px;
+  --radius-lg: 6px;
+}
+.th-notion .app { background:var(--bg); font-family:var(--font); display:grid; grid-template-columns:200px 1fr; min-height:520px; }
+.th-notion .side { background:var(--bg); border-right:1px solid var(--border); padding:14px 0; }
+.th-notion .side .workspace { padding:8px 14px; display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; margin-bottom:8px; }
+.th-notion .side .workspace .avatar { width:18px; height:18px; border-radius:4px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+.th-notion .side .section { font-size:11px; color:var(--text-3); padding:14px 14px 4px; font-weight:500; }
+.th-notion .side .item { display:flex; align-items:center; gap:8px; padding:4px 14px; font-size:13px; color:var(--text); cursor:pointer; }
+.th-notion .side .item:hover { background:rgba(55,53,47,.04); border-radius:3px; margin:0 6px; padding:4px 8px; }
+.th-notion .side .item.active { background:rgba(55,53,47,.06); font-weight:600; border-radius:3px; margin:0 6px; padding:4px 8px; }
+.th-notion .side .item .ico { width:14px; height:14px; opacity:.55; }
+.th-notion .side .item .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+
+.th-notion .main { padding:0; }
+.th-notion .topbar { display:flex; align-items:center; justify-content:space-between; padding:8px 28px; border-bottom:1px solid var(--border); background:rgba(247,246,243,.85); }
+.th-notion .topbar .crumbs { font-size:12px; color:var(--text-2); display:flex; align-items:center; gap:6px; }
+.th-notion .topbar .crumbs .sep { opacity:.4; }
+.th-notion .topbar .right { display:flex; align-items:center; gap:6px; }
+.th-notion .topbar .share { padding:4px 10px; background:var(--accent); color:#fff; font-size:12px; font-weight:500; border-radius:3px; }
+.th-notion .topbar .ico-btn { width:26px; height:26px; border-radius:3px; display:flex; align-items:center; justify-content:center; color:var(--text-2); }
+.th-notion .topbar .ico-btn:hover { background:rgba(55,53,47,.06); }
+
+.th-notion .page { padding:48px 64px 32px; max-width:780px; margin:0 auto; }
+.th-notion .cover { height:140px; background:linear-gradient(135deg, var(--accent), #66CFFF); border-radius:4px; margin-bottom:18px; position:relative; }
+.th-notion .cover::after { content:""; position:absolute; bottom:10px; right:14px; color:#fff; font-size:11px; font-weight:600; opacity:.7; }
+.th-notion .emoji { font-size:54px; line-height:1; margin-bottom:8px; }
+.th-notion .page h1 { font-size:38px; font-weight:700; letter-spacing:-.02em; color:var(--text); margin-bottom:6px; line-height:1.15; }
+.th-notion .page .meta { font-size:12px; color:var(--text-3); margin-bottom:24px; display:flex; gap:14px; }
+.th-notion .page .meta .author { display:inline-flex; align-items:center; gap:5px; }
+.th-notion .page .meta .author .avatar { width:14px; height:14px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; }
+
+.th-notion .live-callout {
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:14px 18px;
+  margin-bottom:18px;
+  display:flex; align-items:center; gap:14px;
+}
+.th-notion .live-callout .live-orb {
+  width:36px; height:36px;
+  background:linear-gradient(135deg, var(--accent), #0085DB);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  box-shadow:0 0 0 6px rgba(0,163,255,.12);
+  flex-shrink:0;
+}
+.th-notion .live-callout .text { flex:1; }
+.th-notion .live-callout .lbl { font-size:10.5px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:.1em; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+.th-notion .live-callout .lbl .live-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:rec 1.6s ease-in-out infinite; }
+.th-notion .live-callout .cont { font-size:18px; color:var(--text); font-weight:400; letter-spacing:-.01em; line-height:1.5; }
+.th-notion .live-callout .cont .cursor { display:inline-block; width:2px; height:18px; background:var(--accent); vertical-align:-3px; margin-left:2px; animation:blink 1s steps(1) infinite; }
+.th-notion .live-callout .meta { font-size:11px; color:var(--text-3); margin-top:4px; font-family:var(--mono); }
+
+.th-notion .body-text { font-size:15px; line-height:1.7; color:var(--text); margin-bottom:14px; }
+.th-notion .body-text strong { font-weight:600; }
+.th-notion .body-text code { font-family:var(--mono); font-size:13px; background:rgba(135,131,120,.15); color:#EB5757; padding:1px 5px; border-radius:3px; }
+.th-notion .h2 { font-size:22px; font-weight:600; color:var(--text); margin:24px 0 8px; letter-spacing:-.01em; }
+.th-notion .checklist { display:flex; flex-direction:column; gap:4px; }
+.th-notion .checklist .item { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:14px; color:var(--text); }
+.th-notion .checklist .item .cb { width:15px; height:15px; border:1.5px solid rgba(55,53,47,.3); border-radius:2px; }
+.th-notion .checklist .item.done { color:var(--text-3); text-decoration:line-through; }
+.th-notion .checklist .item.done .cb { background:var(--accent); border-color:var(--accent); position:relative; }
+.th-notion .checklist .item.done .cb::after { content:"✓"; color:#fff; font-size:10px; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.4;} }
+@keyframes blink { 50%{ opacity:0; } }
+
+/* CURSOR THEME */
+.th-cursor {
+  --bg:#1E1E1E; --bg-2:#252526;
+  --surface:#1E1E1E;
+  --text:#D4D4D4; --text-2:#858585; --text-3:#6B6B6B;
+  --border:#2D2D2D;
+  --border-2:#3C3C3C;
+  --accent: var(--brand-blue);
+  --accent-glow: var(--brand-blue-glow);
+  --font: 'Inter', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 6px;
+}
+.th-cursor .app { background:var(--bg); font-family:var(--font); color:var(--text); display:flex; flex-direction:column; min-height:520px; }
+.th-cursor .titlebar { display:flex; align-items:center; justify-content:space-between; padding:0 12px; height:28px; background:var(--bg-2); border-bottom:1px solid var(--border); }
+.th-cursor .titlebar .left { display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-2); }
+.th-cursor .titlebar .left .menu { font-weight:500; }
+.th-cursor .titlebar .right { display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-3); }
+.th-cursor .titlebar .right .badge { padding:2px 7px; background:var(--bg); border-radius:3px; color:var(--text-2); display:inline-flex; align-items:center; gap:4px; }
+.th-cursor .titlebar .right .badge .g { width:5px; height:5px; border-radius:50%; background:var(--state-success); box-shadow:0 0 4px var(--state-success); }
+
+.th-cursor .tabs { display:flex; background:var(--bg-2); border-bottom:1px solid var(--border); padding:0 8px; }
+.th-cursor .tabs .tab { padding:7px 12px; font-size:11.5px; color:var(--text-2); display:flex; align-items:center; gap:6px; border-right:1px solid var(--border); position:relative; }
+.th-cursor .tabs .tab.active { background:var(--bg); color:var(--text); }
+.th-cursor .tabs .tab.active::after { content:""; position:absolute; bottom:-1px; left:0; right:0; height:1px; background:var(--accent); }
+.th-cursor .tabs .tab .ico { width:12px; height:12px; }
+.th-cursor .tabs .tab .ai { font-size:8px; padding:1px 4px; background:var(--accent); color:#fff; border-radius:3px; font-weight:700; }
+
+.th-cursor .body { display:grid; grid-template-columns:48px 1fr; flex:1; }
+.th-cursor .activity { background:var(--bg-2); border-right:1px solid var(--border); padding:10px 0; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.th-cursor .activity .act-ico { width:28px; height:28px; border-radius:6px; background:transparent; display:flex; align-items:center; justify-content:center; color:var(--text-3); }
+.th-cursor .activity .act-ico.active { background:var(--accent); color:#fff; box-shadow:0 0 8px var(--accent-glow); }
+
+.th-cursor .editor-pane { padding:18px 24px; display:flex; flex-direction:column; gap:6px; position:relative; }
+.th-cursor .ln { display:flex; gap:14px; align-items:flex-start; font-size:13px; line-height:1.7; font-family:var(--mono); }
+.th-cursor .ln .num { color:var(--text-3); width:24px; text-align:right; font-size:11px; user-select:none; padding-top:1px; }
+.th-cursor .ln .code { flex:1; color:var(--text); }
+.th-cursor .ln .code .kw { color:#C586C0; } /* keyword */
+.th-cursor .ln .code .fn { color:#DCDCAA; }
+.th-cursor .ln .code .str { color:#CE9178; }
+.th-cursor .ln .code .var { color:#9CDCFE; }
+.th-cursor .ln .code .com { color:#6A9955; font-style:italic; }
+.th-cursor .ln.highlighted { background:rgba(0,163,255,.06); border-left:2px solid var(--accent); margin-left:-24px; padding-left:22px; }
+.th-cursor .ln.highlighted .num { color:var(--accent); font-weight:600; }
+
+.th-cursor .composer-bar {
+  position:absolute;
+  bottom:14px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 48px); max-width:580px;
+  background:var(--bg-2);
+  border:1px solid var(--border-2);
+  border-radius:8px;
+  padding:8px 10px;
+  display:flex; align-items:center; gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.th-cursor .composer-bar .ai-orb {
+  width:22px; height:22px;
+  background:linear-gradient(135deg, var(--accent), #0085DB);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  box-shadow:0 0 10px var(--accent-glow);
+  flex-shrink:0;
+  position:relative;
+}
+.th-cursor .composer-bar .ai-orb::before, .th-cursor .composer-bar .ai-orb::after {
+  content:""; position:absolute; inset:0; border-radius:50%;
+  border:1px solid var(--accent);
+  animation:orb 1.8s ease-out infinite;
+}
+.th-cursor .composer-bar .ai-orb::after { animation-delay:.9s; }
+@keyframes orb { 0%{ transform:scale(1); opacity:.7;} 100%{ transform:scale(2.5); opacity:0;} }
+
+.th-cursor .composer-bar .live { flex:1; font-size:13px; color:var(--text); letter-spacing:-.005em; }
+.th-cursor .composer-bar .live .last { color:var(--text-2); }
+.th-cursor .composer-bar .live .cursor { display:inline-block; width:2px; height:15px; background:var(--accent); vertical-align:-2px; margin-left:2px; animation:blink 1s steps(1) infinite; }
+.th-cursor .composer-bar .live .lbl { font-size:9.5px; color:var(--accent); text-transform:uppercase; letter-spacing:.1em; font-weight:700; margin-right:8px; }
+.th-cursor .composer-bar .meta { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; color:var(--text-3); }
+.th-cursor .composer-bar .meta .pill { padding:1px 5px; background:var(--bg); border-radius:3px; color:var(--text-2); }
+.th-cursor .composer-bar .meta .lat { color:var(--accent); font-weight:600; }
+.th-cursor .composer-bar .send {
+  width:24px; height:24px;
+  background:var(--accent);
+  border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  box-shadow:0 2px 6px var(--accent-glow);
+}
+
+/* ============ SECTION 03: 5 THEMES SIDE-BY-SIDE ============ */
+.five-compare { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+.compact-card { background:#fff; border:1px solid #e7e5e4; border-radius:12px; overflow:hidden; }
+.compact-head { padding:10px 12px; border-bottom:1px solid #f5f5f4; display:flex; align-items:center; gap:6px; }
+.compact-head .name { font-size:11px; font-weight:600; }
+.compact-head .name .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand-blue); margin-right:5px; vertical-align:middle; box-shadow:0 0 4px var(--brand-blue-glow); }
+
+/* ============ FORM vs COLOR MATRIX ============ */
+.form-matrix { background:#fff; border:1px solid #e7e5e4; border-radius:14px; overflow:hidden; }
+.form-matrix table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.form-matrix th, .form-matrix td { padding:12px 16px; text-align:left; border-bottom:1px solid #f5f5f4; }
+.form-matrix th { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#a8a29e; background:#fafaf9; }
+.form-matrix td.tt { font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--brand-blue); font-weight:600; min-width:120px; }
+.form-matrix td .swatch { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; margin-right:6px; box-shadow:0 0 0 .5px rgba(0,0,0,.08); }
+.form-matrix td { color:#44403c; }
+.form-matrix tr:last-child td { border-bottom:none; }
+.form-matrix td .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:3px; background:#f0f9ff; color:#1E40AF; font-weight:600; margin-left:6px; vertical-align:middle; }
+.form-matrix .borrowed { background:#FAFAF9; }
+.form-matrix .kept { background:#EFF6FF; }
+
+footer.foot { margin-top:96px; padding-top:32px; border-top:1px solid #e7e5e4; display:flex; justify-content:space-between; font-size:12px; color:#a8a29e; }
+
+@media (max-width: 1100px){
+  body { padding:40px 24px; }
+  .hero, .detail-grid, .five-grid, .five-compare { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div>
+    <h1>5 风格 · <em>品牌蓝贯穿</em></h1>
+    <p class="lead">v6 加了 Notion + Cursor 两个新方向。关键设计判断：<strong>借形不借色</strong> —— Notion 的"文档克制感"和 Cursor 的"AI 代码编辑器气质"都学，但 <code>#00A3FF</code> 替代所有强调色，voice-pilot 的品牌识别永远在。</p>
+  </div>
+  <dl class="meta">
+    <div><dt>v7 新增</dt><dd>Notion · Cursor 两个主题</dd></div>
+    <div><dt>核心原则</dt><dd>借形（结构 / 节奏 / 字体）不借色（强调色永远是品牌蓝）</dd></div>
+    <div><dt>品牌锚点</dt><dd>#00A3FF · 所有主题共用</dd></div>
+    <div class="tenet"><span><strong>原则：</strong>用户切主题后，应当觉得"换皮肤"而不是"换产品"。</span></div>
+  </dl>
+</header>
+
+<!-- ============ SECTION 01: 5 THEMES PICKER ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>5 套主题 · 一次看完</h2>
+    <span class="sub">设置页长什么样 · 当前选中 Terminal</span>
+  </div>
+
+  <div class="five-grid">
+
+    <div class="theme-card active">
+      <div class="mp-terminal">
+        <div class="tl">voice-pilot</div>
+        <div class="bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="out"><span style="color:var(--brand-blue);">❯</span> 现在我把界面重构</div>
+      </div>
+      <div class="theme-info">
+        <div class="name">Terminal <span class="badge">DEV</span></div>
+        <div class="desc">深色 · 等宽 · tmux 状态栏</div>
+        <div class="tag">v1 · 主推</div>
+      </div>
+    </div>
+
+    <div class="theme-card">
+      <div class="mp-ray">
+        <div class="top"><div class="fill"></div></div>
+        <div class="mid">
+          <div class="orb"></div>
+          <div class="line"></div>
+        </div>
+        <div class="top"><div class="fill" style="width:30%;"></div></div>
+      </div>
+      <div class="theme-info">
+        <div class="name">Raycast <span class="badge">PRO</span></div>
+        <div class="desc">深色 · 圆角 · 命令面板</div>
+        <div class="tag">v1 · 备选</div>
+      </div>
+    </div>
+
+    <div class="theme-card">
+      <div class="mp-notion">
+        <div class="page-tab"><span class="ico"></span>语音笔记</div>
+        <div class="row"><span class="ico"></span><div class="line"></div></div>
+        <div class="row"><span class="ico"></span><div class="line fill"></div></div>
+        <div class="row"><span class="ico"></span><div class="line"></div></div>
+      </div>
+      <div class="theme-info">
+        <div class="name">Notion <span class="badge">DOC</span></div>
+        <div class="desc">暖米白 · 极度克制 · 文档感</div>
+        <div class="tag">v1 可选 · 内容用户</div>
+      </div>
+    </div>
+
+    <div class="theme-card">
+      <div class="mp-cursor">
+        <div class="tab-row">
+          <div class="tab active"><span class="dot"></span>voice.md</div>
+          <div class="tab">settings</div>
+        </div>
+        <div class="editor">
+          <div class="line f"></div>
+          <div class="line hl"></div>
+          <div class="line f"></div>
+        </div>
+        <div class="composer">
+          <div class="orb"></div>
+          <div class="line"></div>
+        </div>
+      </div>
+      <div class="theme-info">
+        <div class="name">Cursor <span class="badge">AI</span></div>
+        <div class="desc">深黑 · 代码编辑器 · AI 配对</div>
+        <div class="tag">v1 可选 · AI 用户</div>
+      </div>
+    </div>
+
+    <div class="theme-card">
+      <div class="mp-ios">
+        <div class="nav">语音唤醒</div>
+        <div class="row-rect"><div class="ico"></div><div class="line"></div></div>
+        <div class="row-rect"><div class="ico" style="background:#34D399;"></div><div class="line fill"></div></div>
+        <div class="row-rect"><div class="ico"></div><div class="line"></div></div>
+      </div>
+      <div class="theme-info">
+        <div class="name">iOS <span class="badge" style="background:#FEF3C7; color:#92400E;">v2</span></div>
+        <div class="desc">浅色 · 大圆角 · 系统风</div>
+        <div class="tag">v2 后续再加</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 02: NOTION DETAIL ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>Notion 主题 · 完整效果</h2>
+    <span class="sub">借 Notion 的"文档克制感"，品牌蓝作点缀</span>
+  </div>
+
+  <div class="detail-grid">
+
+    <div class="detail-card">
+      <div class="bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">voice-pilot · notion style · 语音笔记</span>
+      </div>
+      <div class="th-notion">
+        <div class="app">
+          <aside class="side">
+            <div class="workspace"><div class="avatar">V</div> voice-pilot</div>
+            <div class="section">私人</div>
+            <div class="item"><span class="dot"></span>语音笔记</div>
+            <div class="item"><span class="ico">⚡</span> 收藏</div>
+            <div class="item"><span class="ico">📋</span> 模板</div>
+            <div class="section">工作区</div>
+            <div class="item active"><span class="ico">🎙️</span> 语音记录</div>
+            <div class="item"><span class="ico">📁</span> 草稿</div>
+            <div class="item"><span class="ico">⚙️</span> 设置</div>
+          </aside>
+          <main class="main">
+            <div class="topbar">
+              <div class="crumbs"><span>工作区</span><span class="sep">/</span><span>语音记录</span><span class="sep">/</span><span>当前会话</span></div>
+              <div class="right">
+                <div class="ico-btn">💬</div>
+                <div class="ico-btn">⋯</div>
+                <div class="share">分享</div>
+              </div>
+            </div>
+
+            <div class="page">
+              <div class="cover"></div>
+              <div class="emoji">🎙️</div>
+              <h1>语音笔记 · 7月7日</h1>
+              <div class="meta">
+                <span class="author"><span class="avatar">我</span> 我</span>
+                <span>最后编辑 · 刚刚</span>
+                <span>· 4 分钟前开始</span>
+              </div>
+
+              <!-- LIVE CALLOUT -->
+              <div class="live-callout">
+                <div class="live-orb">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                </div>
+                <div class="text">
+                  <div class="lbl"><span class="live-dot"></span>正在听 · DICTATING</div>
+                  <div class="cont">现在我把界面重构一下<span class="cursor"></span></div>
+                  <div class="meta">小型模型 · 本地 · 380ms · 44 chars</div>
+                </div>
+              </div>
+
+              <div class="body-text">
+                今天想梳理一下 voice-pilot 的整体方向。从 <strong>第一性原则</strong> 看，语音输入的核心问题是"降低视线切换成本"，所以主屏应该...
+              </div>
+
+              <div class="h2">待办</div>
+              <div class="checklist">
+                <div class="item done"><div class="cb"></div> 完成 5 套主题对比</div>
+                <div class="item done"><div class="cb"></div> 确定品牌色锚点</div>
+                <div class="item"><div class="cb"></div> 实现 Token 三层架构</div>
+                <div class="item"><div class="cb"></div> v1 先做 Terminal + Raycast 两个主题</div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4><span class="dot"></span>Notion 的形 · 我借什么</h4>
+      <ul>
+        <li><strong>暖米白底 #F7F6F3</strong> —— 不是纯白，文档感的关键</li>
+        <li><strong>极简文本色 #37352F</strong> —— 比纯黑柔，墨水感</li>
+        <li><strong>几乎不用圆角</strong> —— 4-6px 最大，硬朗但温和</li>
+        <li><strong>左侧栏 + 主内容</strong> —— Notion 标准布局，语音笔记场景直接套</li>
+        <li><strong>图标单色</strong> —— 不用彩色 emoji 风格，黑色细线条</li>
+        <li><strong>文档式封面 + 标题区</strong> —— 给"语音笔记"赋予"文档"的产品感</li>
+        <li><strong>Checklist 复用</strong> —— 把"已识别词条"做成 checkbox，用户看到 ✓ 有完成感</li>
+      </ul>
+
+      <div class="principle">
+        <strong>关键</strong>：品牌蓝只在 <code>live-callout</code> 的麦克风图标和光标出现，<strong>整页不超过 3 处蓝色</strong>。Notion 的克制是核心气质，蓝色泛滥就废了。
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 03: CURSOR DETAIL ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>Cursor 主题 · 完整效果</h2>
+    <span class="sub">借 Cursor 的"AI 代码编辑器"气质，品牌蓝替代紫色</span>
+  </div>
+
+  <div class="detail-grid">
+
+    <div class="detail-card">
+      <div class="bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="title">voice-pilot · cursor style · voice.md</span>
+      </div>
+      <div class="th-cursor">
+        <div class="app">
+
+          <!-- TITLE BAR -->
+          <div class="titlebar">
+            <div class="left">
+              <span class="menu">File</span>
+              <span class="menu">Edit</span>
+              <span class="menu">View</span>
+            </div>
+            <div class="right">
+              <span class="badge"><span class="g"></span>引擎在线</span>
+              <span>小型模型 · 380ms</span>
+            </div>
+          </div>
+
+          <!-- TABS -->
+          <div class="tabs">
+            <div class="tab active">
+              <svg class="ico" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              voice.md
+            </div>
+            <div class="tab">
+              <svg class="ico" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              settings
+            </div>
+            <div class="tab">
+              <span class="ai">AI</span>
+              voice-rules
+            </div>
+          </div>
+
+          <!-- BODY -->
+          <div class="body">
+            <div class="activity">
+              <div class="act-ico active">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+              </div>
+              <div class="act-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              </div>
+              <div class="act-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+            </div>
+
+            <div class="editor-pane">
+              <div class="ln"><span class="num">1</span><span class="code"><span class="com"># voice-pilot 主题 · Cursor 风</span></span></div>
+              <div class="ln"><span class="num">2</span><span class="code"></span></div>
+              <div class="ln"><span class="num">3</span><span class="code"><span class="kw">type</span> <span class="fn">VoiceCommand</span> = <span class="kw">interface</span> {</span></div>
+              <div class="ln"><span class="num">4</span><span class="code">  <span class="var">wakeWord</span>: <span class="str">"嗨小助手"</span> | <span class="str">"嗨同学"</span></span></div>
+              <div class="ln"><span class="num">5</span><span class="code">  <span class="var">engine</span>: <span class="str">"local-small-cn"</span></span></div>
+              <div class="ln highlighted"><span class="num">6</span><span class="code">  <span class="var">theme</span>: <span class="str">"cursor"</span>   <span class="com">// ← 主题由 dictation 识别</span></span></div>
+              <div class="ln"><span class="num">7</span><span class="code">  <span class="var">target</span>: <span class="str">"VS Code"</span></span></div>
+              <div class="ln"><span class="num">8</span><span class="code">}</span></div>
+              <div class="ln"><span class="num">9</span><span class="code"></span></div>
+              <div class="ln"><span class="num">10</span><span class="code"><span class="kw">const</span> <span class="var">cmd</span>: <span class="fn">VoiceCommand</span> = {</span></div>
+              <div class="ln"><span class="num">11</span><span class="code">  <span class="var">wakeWord</span>: <span class="str">"嗨小助手"</span>,</span></div>
+              <div class="ln"><span class="num">12</span><span class="code">  <span class="var">engine</span>: <span class="str">"local-small-cn"</span>,</span></div>
+              <div class="ln"><span class="num">13</span><span class="code">  <span class="var">theme</span>: <span class="str">"cursor"</span>,  <span class="com">// ← AI 在 dictation 中改的</span></span></div>
+              <div class="ln"><span class="num">14</span><span class="code">  <span class="var">target</span>: <span class="str">"VS Code"</span>,</span></div>
+              <div class="ln"><span class="num">15</span><span class="code">}</span></div>
+            </div>
+          </div>
+
+          <!-- AI COMPOSER -->
+          <div class="composer-bar">
+            <div class="ai-orb">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </div>
+            <div class="live">
+              <span class="lbl">● dictating</span><span class="last">现在我把界面重构</span><span class="cursor"></span>
+            </div>
+            <div class="meta">
+              <span class="pill">小型</span>
+              <span class="lat">380ms</span>
+            </div>
+            <div class="send">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h4><span class="dot"></span>Cursor 的形 · 我借什么</h4>
+      <ul>
+        <li><strong>深黑底 #1E1E1E</strong> —— 不是纯黑，编辑器质感的关键</li>
+        <li><strong>Tab 标签栏</strong> —— 把"语音笔记"做成多 Tab 编辑器，符合开发者心智</li>
+        <li><strong>代码语法高亮</strong> —— 用 VS Code 配色（紫关键字 / 黄函数 / 橙字符串 / 蓝变量）</li>
+        <li><strong>底部 AI Composer</strong> —— 借鉴 Cursor 的 Cmd+K 输入框，做成"语音输入栏"漂浮在底部</li>
+        <li><strong>渐变光晕球</strong> —— 麦克风图标用渐变蓝 + 光晕，替代 Cursor 的紫色 AI 球</li>
+        <li><strong>左侧 48px Activity 栏</strong> —— VS Code 标志性极窄边栏，放核心功能图标</li>
+        <li><strong>代码高亮联动</strong> —— 用户说"theme 是 cursor"，第 6 行立即高亮，<strong>语音输入直接改代码</strong></li>
+      </ul>
+
+      <div class="principle">
+        <strong>关键差异化</strong>：Cursor 的紫色 <code>#8B5CF6</code> 全部替换为品牌蓝 <code>#00A3FF</code>，但保留 <strong>渐变光晕</strong> 和 <strong>球体呼吸动效</strong>。这种"用自家颜色做对方语言"的做法，能让用户感觉 voice-pilot 是"Cursor 生态里的语音插件"，而不是"又一个模仿 Cursor 的产品"。
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 04: FORM vs COLOR ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>"借形不借色" · 5 个主题的具体取舍</h2>
+    <span class="sub">每个主题标出"借了什么 · 改了什么"</span>
+  </div>
+
+  <div class="form-matrix">
+    <table>
+      <thead>
+        <tr>
+          <th>主题</th>
+          <th>借的"形"</th>
+          <th>改的"色"</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="tt">Terminal</td>
+          <td class="borrowed">
+            <strong>GitHub Dark</strong> 的深色背景 + 等宽字体 + ASCII 字符状态码<br/>
+            <span style="color:#78716c; font-size:11px;">→ vibe: tmux status bar · 开发者母语</span>
+          </td>
+          <td class="kept">
+            <span class="swatch" style="background:#FF6B35;"></span> 原版用 orange，改用 <span class="swatch" style="background:#00A3FF;"></span> <strong>品牌蓝</strong>
+          </td>
+        </tr>
+        <tr>
+          <td class="tt">Raycast</td>
+          <td class="borrowed">
+            <strong>Raycast</strong> 的半透明深色 + 单栏命令 + 圆角 12px + pill 按钮<br/>
+            <span style="color:#78716c; font-size:11px;">→ vibe: 命令面板 · 中性专业</span>
+          </td>
+          <td class="kept">
+            <span class="swatch" style="background:#FF6363;"></span> 原版用 red，改用 <span class="swatch" style="background:#00A3FF;"></span> <strong>品牌蓝</strong>（光晕版）
+          </td>
+        </tr>
+        <tr>
+          <td class="tt">Notion</td>
+          <td class="borrowed">
+            <strong>Notion</strong> 的暖米白 #F7F6F3 + 墨水文字 #37352F + 极简圆角 + 文档式布局<br/>
+            <span style="color:#78716c; font-size:11px;">→ vibe: 文档笔记 · 内容创作者</span>
+          </td>
+          <td class="kept">
+            <span class="swatch" style="background:#37352F;"></span> 原版几乎无强调色，<span class="swatch" style="background:#00A3FF;"></span> <strong>仅在 live-callout 用品牌蓝</strong>（克制）
+          </td>
+        </tr>
+        <tr>
+          <td class="tt">Cursor</td>
+          <td class="borrowed">
+            <strong>Cursor / VS Code</strong> 的深黑 #1E1E1E + Tab 编辑器 + 语法高亮 + 底部 AI Composer + 渐变光晕球<br/>
+            <span style="color:#78716c; font-size:11px;">→ vibe: AI 配对编程 · 代码用户</span>
+          </td>
+          <td class="kept">
+            <span class="swatch" style="background:#8B5CF6;"></span> 原版用紫色 #8B5CF6，<strong>全部</strong>改为 <span class="swatch" style="background:#00A3FF;"></span> <strong>品牌蓝渐变</strong>
+          </td>
+        </tr>
+        <tr>
+          <td class="tt">iOS</td>
+          <td class="borrowed">
+            <strong>iOS HIG</strong> 的浅灰 #F2F2F7 + 大圆角 14px + 系统风 + segmented control<br/>
+            <span style="color:#78716c; font-size:11px;">→ vibe: 系统设置 · 普通用户</span>
+          </td>
+          <td class="kept">
+            <span class="swatch" style="background:#007AFF;"></span> 原版用 iOS 蓝 #007AFF，与品牌蓝 #00A3FF <strong>几乎一致</strong>，自然过渡
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ SECTION 05: DECISION ============ -->
+<section class="section">
+  <div class="section-head">
+    <span class="num">05</span>
+    <h2>v1 推荐配置 · 3 主题</h2>
+    <span class="sub">不是越多越好 · 是覆盖越准越好</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+
+    <div style="background:#fff; border:2px solid var(--brand-blue); border-radius:14px; padding:20px; box-shadow:0 0 0 4px var(--brand-blue-soft);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:10px; font-weight:700; color:var(--brand-blue); text-transform:uppercase; letter-spacing:.1em;">★ 默认</span>
+        <span style="font-size:10px; padding:2px 7px; background:var(--brand-blue); color:#fff; border-radius:999px; font-weight:700;">Terminal</span>
+      </div>
+      <h4 style="font-size:18px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">Terminal</h4>
+      <p style="font-size:12.5px; color:#57534E; line-height:1.6; margin-bottom:14px;">开发者用户打开软件的第一体验。和 tmux status bar 融为一体，最不抢戏。</p>
+      <div style="font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">覆盖 · 100% 开发者</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:10px; font-weight:700; color:#a8a29e; text-transform:uppercase; letter-spacing:.1em;">备选</span>
+        <span style="font-size:10px; padding:2px 7px; background:#fafaf9; border:1px solid #e7e5e4; color:#57534e; border-radius:999px; font-weight:600;">Raycast</span>
+      </div>
+      <h4 style="font-size:18px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">Raycast</h4>
+      <p style="font-size:12.5px; color:#57534E; line-height:1.6; margin-bottom:14px;">用户群扩展到 PM / 设计师。命令面板范已经教育过市场，门槛低。</p>
+      <div style="font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">覆盖 · 跨职能</div>
+    </div>
+
+    <div style="background:#fff; border:1px solid #e7e5e4; border-radius:14px; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span style="font-size:10px; font-weight:700; color:#a8a29e; text-transform:uppercase; letter-spacing:.1em;">差异化</span>
+        <span style="font-size:10px; padding:2px 7px; background:linear-gradient(135deg, #FEF3C7, #FED7AA); color:#92400E; border-radius:999px; font-weight:700;">Notion</span>
+      </div>
+      <h4 style="font-size:18px; font-weight:600; margin-bottom:8px; letter-spacing:-.01em;">Notion</h4>
+      <p style="font-size:12.5px; color:#57534E; line-height:1.6; margin-bottom:14px;">内容创作者 / 写作者的最爱。把"语音笔记"当成"文档"对待，给产品赋予新含义。</p>
+      <div style="font-size:11px; color:#78716c; font-family:'JetBrains Mono', monospace;">覆盖 · 内容创作者</div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:24px; padding:18px 22px; background:#FAFAF9; border-radius:12px; border:1px solid #e7e5e4; font-size:13px; color:#44403c; line-height:1.7;">
+    <strong style="color:#1c1917;">取舍说明</strong>：<strong style="color:var(--brand-blue);">v1 推荐 Terminal + Raycast + Notion</strong> 三个主题。覆盖了：开发者（Terminal）、跨职能（Raycast）、内容创作者（Notion）三个群体。Cursor 主题虽然技术用户会喜欢，但跟 Terminal 高度重叠，<strong>留作 v2 等用户反馈再决定要不要</strong>。iOS 主题同理，等产品验证了"普通人也用"再上。
+  </div>
+</section>
+
+<footer class="foot">
+  <div>voice-pilot · 多画风主题系统 v7 · 5 风格（Terminal / Raycast / Notion / Cursor / iOS）</div>
+  <div>v1 推荐 3 主题 · 借形不借色 · 品牌蓝贯穿</div>
+</footer>
+
+</body>
+</html>

@@ -113,6 +113,8 @@
     });
     const switchBtn=$('btnVoiceSwitchHabit');
     if(switchBtn) switchBtn.textContent=t('voiceStatusSwitchHabit');
+    const saveHabitBtn=$('btnVoiceSaveHabit');
+    if(saveHabitBtn) saveHabitBtn.textContent=t('voiceStatusSaveHabit');
     const delayLbl=$('voiceSettingsDelayLbl');
     if(delayLbl) delayLbl.textContent=t('voiceEndDelay');
   }

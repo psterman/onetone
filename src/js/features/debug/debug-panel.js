@@ -35,7 +35,7 @@
     }
     if(!hs.keyActive){
       actions.push({label:t('settingsNavKeys'),panel:'keys'});
-      actions.push({label:t('settingsNavHabits'),panel:'habits'});
+      actions.push({label:t('settingsNavScenes'),panel:'scenes'});
     }
     if(hs.statusMode==='error'){
       actions.push({label:t('debugFocusDiagnostics'),panel:'debug',debugMode:'diagnostics'});

@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="1280" />
+<title>voice-pilot · 浅色版 · 首页 + 设置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   浅色版 · 各 UI 强项综合
+   · 顶部状态条    → Linear 三段式
+   · 主屏实时文本  → Claude 流式 ▎ 光标
+   · 光晕球       → Cursor 渐变球 + 双扩散环
+   · 波形        → Raycast 圆角 bar + 光晕
+   · 状态 pill    → Linear + Terminal 混合
+   · 操作按钮    → Cursor 1 主 + 2 次
+   · 空状态      → Linear "按住 [热键] 开始"
+   · 错误状态    → 1Password + Wave 上下文
+   · 设置列表    → iOS cell（清单 + 圆角图标 + 开关）
+   ============================================================ */
+
+:root{
+  /* 系统浅色 token */
+  --bg:            #F2F2F7;
+  --surface:       #FFFFFF;
+  --surface-2:     #FAFAFC;
+  --surface-3:     #F8F8FB;
+
+  --text:          rgba(0,0,0,.88);
+  --text-2:        rgba(60,60,67,.60);
+  --text-3:        rgba(60,60,67,.30);
+
+  --border:        rgba(60,60,67,.10);
+  --border-strong: rgba(60,60,67,.18);
+
+  /* 品牌蓝 */
+  --brand:         #007AFF;
+  --brand-2:       #006FE6;
+  --brand-soft:    rgba(0,122,255,.10);
+  --brand-glow:    rgba(0,122,255,.40);
+
+  /* 状态 */
+  --success:       #34C759;
+  --success-soft:  rgba(52,199,89,.12);
+  --warn:          #FF9500;
+  --warn-soft:     rgba(255,149,0,.12);
+  --error:         #FF3B30;
+  --error-soft:    rgba(255,59,48,.10);
+
+  --r-pill:        999px;
+  --r-card:        12px;
+  --r-card-lg:     16px;
+  --r-ic:          7px;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  background:var(--bg);
+  color:var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body{ padding:48px 40px 80px; max-width:1280px; margin:0 auto; }
+
+/* ===== HERO ===== */
+.hero{ margin-bottom:36px; }
+.hero h1{ font-size:30px; font-weight:700; letter-spacing:-.02em; line-height:1.15; margin-bottom:8px; }
+.hero h1 em{ font-style:normal; color:var(--brand); }
+.hero .lead{ font-size:14.5px; line-height:1.65; color:var(--text-2); max-width:680px; }
+.hero .lead code{ font-family:'JetBrains Mono',monospace; font-size:13px; background:var(--brand-soft); color:var(--brand); padding:1px 6px; border-radius:4px; font-weight:500; }
+
+.tag{ display:inline-block; font-size:10.5px; padding:3px 9px; border-radius:var(--r-pill); background:var(--brand-soft); color:var(--brand); font-weight:700; letter-spacing:.04em; margin-left:8px; vertical-align:middle; }
+.tag-gray{ background:var(--bg); color:var(--text-2); }
+
+/* ===== APP FRAME ===== */
+.app-frame{
+  background:var(--surface);
+  border-radius:14px;
+  border:1px solid var(--border);
+  overflow:hidden;
+  box-shadow:0 8px 24px -12px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.04);
+  margin-bottom:32px;
+}
+.app-bar{
+  display:flex; align-items:center; gap:6px;
+  padding:10px 16px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+}
+.app-bar .dot{ width:10px; height:10px; border-radius:50%; }
+.app-bar .dot.r{ background:#FF5F57; } .app-bar .dot.y{ background:#FEBC2E; } .app-bar .dot.g{ background:#28C840; }
+.app-bar .title{ font-size:11.5px; color:var(--text-3); font-family:'JetBrains Mono',monospace; margin-left:14px; font-weight:500; }
+
+
+/* ========================================================
+   首页
+   ======================================================== */
+
+/* ① 顶部 header · Linear 三段式 */
+.home-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; height:60px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  gap:14px;
+}
+.home-header .brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+.home-header .brand .logo{
+  width:34px; height:34px;
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  box-shadow:0 2px 8px var(--brand-glow);
+  flex-shrink:0;
+}
+.home-header .brand .name{ font-size:14px; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1.2; }
+.home-header .brand .sub{ font-size:11px; color:var(--text-3); margin-top:2px; }
+
+.home-header .status-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 12px;
+  background:var(--success-soft);
+  border:1px solid rgba(52,199,89,.28);
+  border-radius:var(--r-pill);
+  font-size:11.5px; font-weight:600;
+  color:var(--success);
+  font-family:'JetBrains Mono',monospace;
+}
+.home-header .status-pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--success); box-shadow:0 0 6px rgba(52,199,89,.5); animation:rec 1.6s ease-in-out infinite; }
+@keyframes rec{ 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+.home-header .actions{ display:flex; align-items:center; gap:6px; margin-left:auto; }
+.home-header .target-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 10px 5px 5px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--r-pill);
+  font-size:12px; font-weight:500;
+}
+.home-header .target-chip .logo{ width:18px; height:18px; background:#0078D4; border-radius:50%; font-size:10px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.home-header .icon-btn{
+  width:32px; height:32px;
+  border-radius:8px;
+  background:transparent; border:1px solid transparent;
+  color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:.12s;
+}
+.home-header .icon-btn:hover{ background:var(--surface-2); border-color:var(--border); color:var(--text); }
+.home-header .icon-btn.is-on{ background:var(--brand-soft); border-color:rgba(0,122,255,.28); color:var(--brand); }
+.home-header .icon-btn svg{ width:16px; height:16px; }
+
+/* ①-b 状态条 · Linear 三段式 */
+.statusbar{
+  display:flex; align-items:center;
+  padding:0 22px; height:32px;
+  background:rgba(255,255,255,.78);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--border);
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px; gap:12px;
+}
+.statusbar .left, .statusbar .right{ display:flex; align-items:center; gap:12px; }
+.statusbar .right{ margin-left:auto; }
+.statusbar .state{ display:inline-flex; align-items:center; gap:6px; color:var(--brand); font-weight:600; }
+.statusbar .state .dot{ width:5px; height:5px; border-radius:50%; background:var(--brand); box-shadow:0 0 5px var(--brand-glow); animation:rec 1.6s ease-in-out infinite; }
+.statusbar .sep{ color:var(--text-3); }
+.statusbar .meta{ color:var(--text-2); }
+.statusbar .lat{ color:var(--brand); font-weight:600; font-feature-settings:'tnum'; }
+
+/* ② 主屏实时文本 · Claude 流式 */
+.hero-live{
+  padding:54px 32px 36px;
+  text-align:center;
+  background:radial-gradient(ellipse at center, rgba(0,122,255,.04) 0%, transparent 65%);
+}
+.hero-live .state-label{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--brand);
+  padding:5px 12px;
+  background:var(--brand-soft);
+  border-radius:var(--r-pill);
+  border:1px solid rgba(0,122,255,.22);
+  margin-bottom:20px;
+}
+.hero-live .state-label .live-dot{ width:5px; height:5px; border-radius:50%; background:var(--brand); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 5px var(--brand-glow); }
+
+.hero-live .live-text{
+  font-size:32px; font-weight:500;
+  line-height:1.5; letter-spacing:-.015em;
+  color:var(--text);
+  max-width:720px; margin:0 auto;
+  min-height:96px;
+  text-align:left;
+}
+.hero-live .live-text .last{ color:var(--text-2); }
+.hero-live .live-text .typed{ color:var(--text); font-weight:600; }
+.hero-live .live-text .cursor{
+  display:inline-block;
+  width:3px; height:30px;
+  background:var(--brand);
+  vertical-align:-6px; margin-left:3px;
+  box-shadow:0 0 6px var(--brand-glow);
+  animation:blink 1s steps(1) infinite;
+}
+@keyframes blink{ 50%{opacity:0;} }
+
+/* ③ 光晕球 · Cursor 风 */
+.hero-orb{ display:flex; justify-content:center; margin:28px 0 18px; }
+.hero-orb .orb{
+  position:relative;
+  width:72px; height:72px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  box-shadow:0 0 32px var(--brand-glow);
+}
+.hero-orb .orb::before, .hero-orb .orb::after{
+  content:""; position:absolute; inset:0;
+  border-radius:50%;
+  border:2px solid var(--brand);
+  animation:ring 1.8s ease-out infinite;
+}
+.hero-orb .orb::after{ animation-delay:.9s; }
+@keyframes ring{ 0%{transform:scale(1); opacity:.8;} 100%{transform:scale(2.4); opacity:0;} }
+.hero-orb .orb svg{ position:absolute; inset:0; margin:auto; color:#fff; }
+
+/* ⑤ 状态 pill 行 · Linear + Terminal 混合 */
+.status-pills{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:0 32px 24px;
+  font-family:'JetBrains Mono', monospace; font-size:11px;
+  flex-wrap:wrap;
+}
+.status-pills .pill{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:4px 10px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--text-2);
+}
+.status-pills .pill.live{ background:var(--brand-soft); border-color:rgba(0,122,255,.28); color:var(--brand); font-weight:600; }
+.status-pills .pill.live .dot{ width:4px; height:4px; border-radius:50%; background:var(--brand); animation:rec 1.6s ease-in-out infinite; box-shadow:0 0 4px var(--brand-glow); }
+.status-pills .pill.success{ background:var(--success-soft); border-color:rgba(52,199,89,.28); color:var(--success); }
+.status-pills .pill.success .dot{ width:4px; height:4px; border-radius:50%; background:var(--success); }
+
+/* ⑥ 操作按钮 · Cursor 1 主 2 次 */
+.hero-actions{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:0 32px 32px;
+}
+.hero-actions .btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px;
+  border-radius:var(--r-pill);
+  font-size:13px; font-weight:500;
+  background:var(--surface);
+  border:1px solid var(--border-strong);
+  color:var(--text);
+  cursor:pointer;
+  transition:.12s;
+  font-family:inherit;
+}
+.hero-actions .btn:hover{ background:var(--surface-3); }
+.hero-actions .btn .kbd{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px; padding:1px 6px;
+  background:var(--bg); border-radius:3px;
+  color:var(--text-2);
+  margin-left:2px;
+}
+.hero-actions .btn.primary{
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  color:#fff; font-weight:600;
+  border-color:transparent;
+  box-shadow:0 4px 14px var(--brand-glow);
+  padding:10px 22px;
+  font-size:14px;
+}
+.hero-actions .btn.primary .kbd{ background:rgba(255,255,255,.22); color:#fff; }
+.hero-actions .btn.primary:active{ transform:scale(.98); opacity:.92; }
+.hero-actions .btn svg{ width:13px; height:13px; }
+
+/* ⑥-b 设置折叠 · Notion tray */
+.tray-toggle{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:14px;
+  background:var(--surface-2);
+  border-top:.5px solid var(--border);
+  font-size:12px; color:var(--text-2);
+  cursor:pointer;
+  font-weight:500;
+  user-select:none;
+}
+.tray-toggle:hover{ color:var(--brand); background:var(--surface-3); }
+
+.tray{
+  background:var(--surface-2);
+  border-top:.5px solid var(--border);
+  padding:18px 24px 24px;
+}
+.tray-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.tray-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-card);
+  padding:14px;
+}
+.tray-card .lbl{ font-size:10px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+.tray-card .key{ font-size:13px; font-weight:600; color:var(--text); font-family:'JetBrains Mono', monospace; margin-bottom:8px; }
+.tray-card .row{ display:flex; align-items:center; justify-content:space-between; padding:5px 0; font-size:12px; }
+.tray-card .row + .row{ border-top:1px solid var(--border); margin-top:5px; padding-top:7px; }
+.tray-card .row .k{ color:var(--text-2); }
+.tray-card .row .v{ color:var(--text); font-weight:500; display:inline-flex; align-items:center; gap:5px; }
+.tray-card .row .v .swatch{ width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+
+/* ========================================================
+   设置页
+   ======================================================== */
+
+.settings-shell{
+  display:grid;
+  grid-template-columns:240px 1fr;
+  min-height:680px;
+}
+
+/* 左侧导航 */
+.settings-nav{
+  background:var(--surface-2);
+  border-right:1px solid var(--border);
+  padding:18px 0;
+  display:flex; flex-direction:column;
+}
+.settings-nav .nav-head{
+  padding:0 20px 14px;
+  margin-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.settings-nav .nav-head .title{
+  font-size:13px; font-weight:600; color:var(--text);
+  letter-spacing:-.01em;
+  display:flex; align-items:center; gap:8px;
+}
+.settings-nav .nav-head .title svg{ color:var(--brand); }
+.settings-nav .nav-head .sub{
+  font-size:10.5px; color:var(--text-3);
+  margin-top:3px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.settings-nav .nav-item{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 20px;
+  font-size:13px;
+  color:var(--text-2);
+  cursor:pointer;
+  position:relative;
+  transition:.12s;
+}
+.settings-nav .nav-item:hover{ background:var(--surface-3); color:var(--text); }
+.settings-nav .nav-item.active{
+  background:var(--surface-3);
+  color:var(--text);
+  font-weight:600;
+}
+.settings-nav .nav-item.active::before{
+  content:"";
+  position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:3px; height:18px;
+  background:var(--brand);
+  border-radius:0 2px 2px 0;
+  box-shadow:0 0 8px var(--brand-glow);
+}
+.settings-nav .nav-item .ico{ width:16px; height:16px; opacity:.65; flex-shrink:0; }
+.settings-nav .nav-item.active .ico{ opacity:1; color:var(--brand); }
+
+.settings-nav .nav-foot{
+  padding:18px 20px;
+  margin-top:auto;
+  border-top:1px solid var(--border);
+}
+.settings-nav .nav-foot .ver{
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono',monospace;
+  display:flex; align-items:center; gap:6px;
+}
+.settings-nav .nav-foot .ver .dot{
+  width:5px; height:5px; border-radius:50%;
+  background:var(--success);
+}
+
+/* 主内容区 */
+.settings-main{ padding:24px 32px 32px; overflow-y:auto; }
+.settings-main .page-head{ margin-bottom:18px; }
+.settings-main .crumbs{
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase; letter-spacing:.06em;
+  margin-bottom:4px;
+}
+.settings-main .page-title{
+  font-size:24px; font-weight:700;
+  color:var(--text); letter-spacing:-.02em;
+  line-height:1.2;
+}
+.settings-main .page-desc{
+  font-size:13px; color:var(--text-2);
+  margin-top:4px;
+  line-height:1.5;
+}
+
+/* 卡片 · iOS list */
+.s-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-card-lg);
+  overflow:hidden;
+  margin-bottom:14px;
+}
+.s-card-head{
+  padding:14px 18px 12px;
+  border-bottom:1px solid var(--border);
+}
+.s-card-head .lbl{
+  font-size:11px; font-weight:700;
+  color:var(--text-3);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:2px;
+}
+.s-card-head .title{
+  font-size:15px; font-weight:600;
+  color:var(--text); letter-spacing:-.01em;
+}
+.s-card-head .desc{
+  font-size:12px; color:var(--text-2);
+  margin-top:3px;
+  line-height:1.45;
+}
+.s-card-body{ padding:4px 0; }
+
+/* 设置行 · iOS cell */
+.s-row{
+  display:flex; align-items:center; gap:14px;
+  padding:11px 18px;
+  min-height:48px;
+}
+.s-row + .s-row{ border-top:.5px solid var(--border); }
+.s-row .icon{
+  width:30px; height:30px;
+  border-radius:var(--r-ic);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  color:#fff;
+}
+.s-row .icon svg{ color:#fff; }
+.s-row .icon.blue{ background:var(--brand); }
+.s-row .icon.green{ background:var(--success); }
+.s-row .icon.amber{ background:var(--warn); }
+.s-row .icon.red{ background:var(--error); }
+.s-row .icon.indigo{ background:#5856D6; }
+.s-row .icon.gray{ background:#8E8E93; }
+.s-row .label{
+  flex:1;
+  font-size:14px; color:var(--text);
+  letter-spacing:-.01em;
+}
+.s-row .label small{
+  display:block;
+  font-size:11.5px; color:var(--text-3);
+  margin-top:2px;
+  font-weight:400;
+}
+.s-row .value{
+  font-size:13px; color:var(--text-2);
+  display:inline-flex; align-items:center; gap:6px;
+}
+
+/* iOS 开关 */
+.ios-sw{
+  position:relative;
+  width:42px; height:25px;
+  background:var(--success);
+  border-radius:var(--r-pill);
+  flex-shrink:0;
+  transition:.18s;
+}
+.ios-sw::after{
+  content:"";
+  position:absolute; top:2px; left:19px;
+  width:21px; height:21px;
+  background:#fff; border-radius:50%;
+  box-shadow:0 2px 4px rgba(0,0,0,.18);
+  transition:.18s;
+}
+.ios-sw.off{ background:#E5E5EA; }
+.ios-sw.off::after{ left:2px; }
+
+/* iOS segmented */
+.ios-seg{
+  display:inline-flex;
+  padding:2px;
+  background:#F2F2F7;
+  border-radius:8px;
+}
+.ios-seg button{
+  padding:5px 12px;
+  font-size:12.5px; font-weight:500;
+  border:none; background:transparent;
+  color:var(--text-2);
+  border-radius:6px;
+  cursor:pointer;
+  font-family:inherit;
+  transition:.12s;
+}
+.ios-seg button.on{
+  background:#fff; color:var(--text); font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+
+/* chevron */
+.chev{ color:var(--text-3); opacity:.6; flex-shrink:0; }
+
+/* section divider */
+.divider{ height:8px; }
+
+/* row note */
+.note{
+  padding:10px 18px 12px;
+  font-size:11.5px;
+  color:var(--text-2);
+  line-height:1.55;
+  border-top:.5px solid var(--border);
+}
+.note strong{ display:block; font-size:12px; color:var(--text); margin-bottom:2px; font-weight:600; }
+
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<div class="hero">
+  <h1>voice-pilot · 浅色版 <span class="tag">AFTER</span></h1>
+  <p class="lead">
+    综合各 UI 强项的浅色主题。<strong>顶部状态条</strong> 学 Linear · <strong>主屏实时文本</strong> 学 Claude · <strong>光晕球</strong> 学 Cursor · <strong>状态 pill</strong> 学 Linear + Terminal · <strong>操作按钮</strong> 学 Cursor · <strong>设置列表</strong> 用 iOS cell。品牌色 <code>#007AFF</code> 贯穿，主屏背景 <code>#F2F2F7</code>，卡片 <code>#FFFFFF</code>。
+  </p>
+</div>
+
+
+<!-- ============ 首页 · 浅色版 ============ -->
+<div class="app-frame">
+  <div class="app-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="title">一声 onetone · 首页 · 浅色版</span>
+  </div>
+
+  <!-- ① 顶部 header · Linear 三段式 -->
+  <div class="home-header">
+    <div class="brand">
+      <div class="logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </div>
+      <div>
+        <div class="name">一声 <span style="color:var(--text-3);font-weight:400;margin-left:4px;">onetone</span></div>
+        <div class="sub">言出即行 · 万象成形</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <span class="dot"></span>
+      引擎在线 · 小型模型
+    </div>
+    <div class="actions">
+      <span class="target-chip">
+        <span class="logo">VS</span>
+        <span style="color:var(--text-3);margin-right:-2px;">→</span>
+        <span>VS Code</span>
+      </span>
+      <button class="icon-btn" title="我的习惯">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="icon-btn is-on" title="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ①-b 状态条 · Linear 三段式 -->
+  <div class="statusbar">
+    <div class="left">
+      <span class="state"><span class="dot"></span>[DICTATING]</span>
+      <span class="sep">·</span>
+      <span class="meta">小型 · 本地</span>
+    </div>
+    <div class="right">
+      <span class="lat">380ms</span>
+      <span class="sep">·</span>
+      <span class="meta">44 chars</span>
+    </div>
+  </div>
+
+  <!-- ② 主屏实时文本 · Claude 流式 -->
+  <div class="hero-live">
+    <span class="state-label"><span class="live-dot"></span>正在听 · DICTATING</span>
+
+    <div class="live-text">
+      <span class="last">现在我把</span><span class="typed">界面重构</span><span class="last">一下</span><span class="cursor"></span>
+    </div>
+
+    <!-- ③ 光晕球 · Cursor 风 -->
+    <div class="hero-orb">
+      <div class="orb">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </div>
+    </div>
+
+    <!-- ⑤ 状态 pill 行 · Linear + Terminal -->
+    <div class="status-pills">
+      <span class="pill live"><span class="dot"></span>listening</span>
+      <span class="pill success"><span class="dot"></span>引擎在线</span>
+      <span class="pill">小型模型 · 本地</span>
+      <span class="pill">已绑定 Ctrl+⇧+V</span>
+    </div>
+  </div>
+
+  <!-- ⑥ 操作按钮 · Cursor 1 主 2 次 -->
+  <div class="hero-actions">
+    <button class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      切换目标 <span class="kbd">Tab</span>
+    </button>
+    <button class="btn primary">
+      结束说话 <span class="kbd">松开</span>
+    </button>
+    <button class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      高级设置
+    </button>
+  </div>
+
+  <!-- ⑥-b 设置折叠 · Notion tray -->
+  <div class="tray-toggle">
+    <span>展开设置与习惯配置</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+
+  <div class="tray">
+    <div class="tray-grid">
+      <div class="tray-card">
+        <div class="lbl">按键唤起</div>
+        <div class="key">Ctrl + ⇧ + V</div>
+        <div class="row"><span class="k">结束动作</span><span class="v">自动 Enter</span></div>
+        <div class="row"><span class="k">静音等待</span><span class="v">3.5 秒</span></div>
+      </div>
+      <div class="tray-card">
+        <div class="lbl">语音唤起</div>
+        <div class="key">嗨小助手</div>
+        <div class="row"><span class="k">备用词</span><span class="v">嗨同学 · 开始输入</span></div>
+        <div class="row"><span class="k">结束词</span><span class="v">停止输入 · 完毕</span></div>
+      </div>
+      <div class="tray-card">
+        <div class="lbl">引擎</div>
+        <div class="key">small-cn · 本地</div>
+        <div class="row">
+          <span class="k">状态</span>
+          <span class="v">
+            <span class="swatch" style="background:var(--success);box-shadow:0 0 4px var(--success);"></span>
+            在线 · 380ms
+          </span>
+        </div>
+        <div class="row"><span class="k">麦克风</span><span class="v">Wireless Mic Rx</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ 设置页 · 浅色版 ============ -->
+<div class="app-frame">
+  <div class="app-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="title">一声 onetone · 设置 · 基础 · 浅色版</span>
+  </div>
+
+  <div class="settings-shell">
+    <!-- 左侧导航 -->
+    <aside class="settings-nav">
+      <div class="nav-head">
+        <div class="title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          配置
+        </div>
+        <div class="sub">7 sections · 88 options</div>
+      </div>
+      <div class="nav-item active">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+        <span>基础</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+        <span>按键</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        <span>语音</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.828L4 7"/></svg>
+        <span>我的习惯</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span>音效</span>
+      </div>
+      <div class="nav-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>运行状态</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="nav-foot">
+        <div class="ver"><span class="dot"></span>v0.4.2 · build 842</div>
+      </div>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="settings-main">
+      <div class="page-head">
+        <div class="crumbs">配置 · 基础</div>
+        <div class="page-title">基础</div>
+        <div class="page-desc">运行、外观、字体与语言</div>
+      </div>
+
+      <!-- 常用 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="lbl">01</div>
+          <div class="title">常用</div>
+          <div class="desc">最常改的运行选项</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+            <div class="label">开机自启动<small>登录 Windows 后自动启动</small></div>
+            <div class="ios-sw"></div>
+          </div>
+          <div class="s-row">
+            <span class="icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="label">启动后最小化到托盘<small>下次启动时隐藏主窗口</small></div>
+            <div class="ios-sw off"></div>
+          </div>
+          <div class="s-row">
+            <span class="icon amber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></span>
+            <div class="label">按键提示条<small>屏幕底部显示当前按键</small></div>
+            <div class="ios-sw"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 外观 · 精简 · 只保留 浅/深 + 风格 二选一 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="lbl">02</div>
+          <div class="title">外观</div>
+          <div class="desc">主题与语言保持统一，切换后立即生效</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon indigo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span>
+            <div class="label">主题模式</div>
+            <div class="ios-seg">
+              <button class="on">浅色</button>
+              <button>深色</button>
+              <button>跟随系统</button>
+            </div>
+          </div>
+          <div class="s-row">
+            <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></span>
+            <div class="label">主色调</div>
+            <div class="value" style="font-family:'JetBrains Mono',monospace; font-size:12.5px;">
+              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#007AFF;box-shadow:0 0 0 2px var(--surface), 0 0 0 3.5px var(--brand);"></span>
+              #007AFF · 品牌蓝
+            </div>
+          </div>
+        </div>
+        <div class="note">
+          <strong>关于主题</strong>浅色 / 深色二选一，主色调跟随品牌。后续可扩展更多画风，但当前以"够用、好维护"为优先。
+        </div>
+      </div>
+
+      <!-- 字体与语言 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="lbl">03</div>
+          <div class="title">文字与语言</div>
+          <div class="desc">按你的阅读习惯调整字号与界面语言</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon indigo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
+            <div class="label">字体大小</div>
+            <div class="ios-seg">
+              <button>更小</button>
+              <button class="on">标准</button>
+              <button>更大</button>
+              <button>特大</button>
+            </div>
+          </div>
+          <div class="s-row">
+            <span class="icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+            <div class="label">界面语言<small>仅影响界面文案，不影响语音识别</small></div>
+            <div class="ios-seg">
+              <button class="on">简体中文</button>
+              <button>English</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关于 -->
+      <div class="s-card">
+        <div class="s-card-head">
+          <div class="lbl">04</div>
+          <div class="title">关于一声</div>
+        </div>
+        <div class="s-card-body">
+          <div class="s-row">
+            <span class="icon gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+            <div class="label">版本</div>
+            <div class="value">v0.4.2 · build 842</div>
+          </div>
+          <div class="s-row">
+            <span class="icon gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+            <div class="label">更新日志</div>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="s-row">
+            <span class="icon gray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+            <div class="label">GitHub 仓库</div>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

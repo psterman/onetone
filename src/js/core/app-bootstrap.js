@@ -14,6 +14,7 @@
       global.OneToneAppBehaviorRules,
       global.OneToneHabitCompatibility,
       global.OneToneKeysPanelUi,
+      global.OneToneSceneModeHub,
       global.OneToneHabitHub,
       global.OneToneHabitMulti,
       global.OneToneHabitLayerNav,

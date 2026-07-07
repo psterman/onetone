@@ -27,6 +27,10 @@
     return trig?friendlyKeyName(trig):'';
   }
   function effectiveTargetKey(m,cfg){
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.project&&m&&cfg){
+      var profile=global.OneToneHabitProfile.project(m,cfg);
+      if(profile&&profile.effectiveTargetKey) return String(profile.effectiveTargetKey).trim();
+    }
     if(!m||!cfg||!global.OneToneSceneConfig) return '';
     var eff=global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:m.id});
     return eff&&eff.targetKey?String(eff.targetKey).trim():'';

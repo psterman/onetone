@@ -21,7 +21,9 @@
     if(activeSceneId()===id) return;
     var core=global.OneToneMappingCore;
     var m=core&&core.byId?core.byId(id):null;
-    if(!m||!core.isSaved(m)){
+    var hp=global.OneToneHabitProfile;
+    var isLibrary=hp&&hp.isLibraryHabit?hp.isLibraryHabit(m,cfg):!!(m&&core.isSaved(m));
+    if(!m||!isLibrary){
       toast(t('sceneActivateNeedComplete'),'warn');
       return;
     }

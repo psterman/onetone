@@ -24,7 +24,12 @@
     return global.__vp_mapping_list_ui_hooks__||global.__vp_mapping_trash_menu_hooks__||{};
   }
 
+  function hp(){
+    return global.OneToneHabitProfile;
+  }
+
   function habitName(m){
+    if(hp()&&hp().habitDisplayName) return hp().habitDisplayName(m);
     if(!m) return '—';
     if((m.group||'').trim()) return m.group.trim();
     if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(m);
@@ -33,6 +38,7 @@
   }
 
   function hasKeyParts(m){
+    if(hp()&&hp().hasKeyParts) return hp().hasKeyParts(m);
     if(!m||!core()) return false;
     var trig=core().editorTrigger?core().editorTrigger(m):String(m.triggerKey||'').trim();
     var tgt=core().editorTarget?core().editorTarget(m):String(m.targetKey||'').trim();
@@ -40,58 +46,29 @@
   }
 
   function hasVoiceParts(m,cfg){
-    if(!m) return false;
-    // Re-entrancy guard: Habit Hub rendering can be re-triggered during config/UI updates.
-    // If that happens, prevent infinite recursion (Maximum call stack size exceeded).
-    if(!hasVoiceParts._guard) hasVoiceParts._guard=new Set();
-    var gid=String(m.id||'');
-    if(gid && hasVoiceParts._guard.has(gid)) return false;
-    if(gid) hasVoiceParts._guard.add(gid);
-    try{
-    var ov=m.voiceOverride;
-    if(ov){
-      if(Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length) return true;
-      if(ov.endPhrases&&(ov.endPhrases.zh&&ov.endPhrases.zh.length||ov.endPhrases.en&&ov.endPhrases.en.length)) return true;
-      if(ov.targetKey&&String(ov.targetKey).trim()) return true;
-    }
-    if(!cfg||!global.OneToneSceneConfig) return false;
-    var eff=global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:m.id});
-    if(!eff) return false;
-    var globalWake=global.OneToneSceneConfig.globalWakePhrases(cfg);
-    var globalEnd=global.OneToneSceneConfig.globalEndPhrases(cfg);
-    var wakeDiff=JSON.stringify(eff.wakePhrases||[])!==JSON.stringify(globalWake||[]);
-    var endDiff=JSON.stringify(eff.endPhrases||{})!==JSON.stringify(globalEnd||{});
-    return wakeDiff||endDiff;
-    }finally{
-      if(gid) hasVoiceParts._guard.delete(gid);
-    }
+    if(hp()&&hp().hasVoiceParts) return hp().hasVoiceParts(m,cfg);
+    return false;
   }
 
   function configuredAppIds(m){
-    var ids=[];
-    if(!m) return ids;
-    if(Array.isArray(m.appBehaviorRules)){
-      m.appBehaviorRules.forEach(function(r){
-        if(r&&r.appId&&ids.indexOf(r.appId)<0) ids.push(r.appId);
-      });
-    }
-    if(m.appTargetId&&ids.indexOf(m.appTargetId)<0) ids.push(String(m.appTargetId));
-    return ids;
+    if(hp()&&hp().configuredAppIds) return hp().configuredAppIds(m);
+    return [];
   }
 
   function hasAppParts(m){
+    if(hp()&&hp().hasAppParts) return hp().hasAppParts(m);
     return configuredAppIds(m).length>0;
   }
 
   function classifyHabit(m,cfg){
-    var key=hasKeyParts(m);
-    var voice=hasVoiceParts(m,cfg);
-    var app=hasAppParts(m);
-    var n=(key?1:0)+(voice?1:0)+(app?1:0);
-    if(n>=2) return 'combo';
-    if(app) return 'app';
-    if(voice) return 'voice';
+    if(hp()&&hp().habitType) return hp().habitType(m,cfg);
     return 'keys';
+  }
+
+  function isLibraryHabit(m,cfg){
+    if(!m) return false;
+    if(hp()&&hp().isLibraryHabit) return hp().isLibraryHabit(m,cfg);
+    return !!(core()&&core().isSaved&&core().isSaved(m));
   }
 
   function typeLabel(type){
@@ -108,15 +85,15 @@
     return appId||'—';
   }
 
-  function habitDescription(m,type,cfg){
+  function habitDescription(m,type,cfg,profile){
     if(type==='app'){
       var apps=configuredAppIds(m).map(appDisplayName);
       if(apps.length) return t('habitHubDescAppPrefix')+' · '+apps.join(' / ');
       return t('habitHubDescApp');
     }
     if(type==='voice'){
-      var eff=cfg&&global.OneToneSceneConfig?global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:m.id}):null;
-      var end=eff&&eff.endPhrases&&eff.endPhrases.zh&&eff.endPhrases.zh[0];
+      profile=profile||(hp()&&hp().project?hp().project(m,cfg):null);
+      var end=profile&&profile.effectiveEndPhrases&&profile.effectiveEndPhrases.zh&&profile.effectiveEndPhrases.zh[0];
       var fin=flow&&flow.finishBehaviorTextSettings?flow.finishBehaviorTextSettings(m).text:'';
       var parts=[];
       if(end) parts.push(t('habitHubDescEndPhrase')+' · '+end);
@@ -147,12 +124,13 @@
 
   function pad2(n){ return n<10?'0'+n:String(n); }
 
-  function habitMetaLine(m){
+  function habitMetaLine(m,profile){
     var parts=[];
     var ts=m.updatedAt||m.lastUsedAt;
     if(ts) parts.push(formatRelativeTime(ts)+(m.updatedAt?t('habitHubUpdatedSuffix'):''));
     if(m.useCount>0) parts.push(t('habitHubUseCount').replace('{n}',String(m.useCount)));
-    if(!parts.length&&m.enabled) parts.push(t('habitHubMetaEnabled'));
+    var keyOn=profile?profile.keyEnabled:!!m.enabled;
+    if(!parts.length&&keyOn) parts.push(t('habitHubMetaEnabled'));
     return parts.join(' · ');
   }
 
@@ -162,9 +140,10 @@
     var cfg=state().config||{};
     var items=[];
     core().sorted().forEach(function(m){
-      if(!core().isSaved(m)) return;
-      var type=classifyHabit(m,cfg);
-      items.push({mapping:m,type:type});
+      if(!isLibraryHabit(m,cfg)) return;
+      var profile=hp()&&hp().project?hp().project(m,cfg):null;
+      var type=profile?profile.habitType:classifyHabit(m,cfg);
+      items.push({mapping:m,profile:profile,type:type});
     });
     return items;
   }
@@ -176,7 +155,8 @@
       var week=Date.now()-7*86400000;
       return items.filter(function(it){
         var m=it.mapping;
-        return (m.lastUsedAt&&m.lastUsedAt>=week)||(state().config&&state().config.activeSceneId===m.id);
+        var active=it.profile?it.profile.isActive:(state().config&&state().config.activeSceneId===m.id);
+        return (m.lastUsedAt&&m.lastUsedAt>=week)||active;
       });
     }
     if(f==='keys') return items.filter(function(it){ return it.type==='keys'||it.type==='combo'; });
@@ -232,9 +212,9 @@
   function renderCard(it){
     var m=it.mapping;
     var type=it.type;
+    var profile=it.profile;
     var cfg=state().config||{};
-    var activeId=cfg.activeSceneId;
-    var isActive=activeId&&m.id===activeId;
+    var isActive=profile?profile.isActive:!!(cfg.activeSceneId&&m.id===cfg.activeSceneId);
     var html='<article class="habit-hub-card habit-hub-card--'+esc(type)+(isActive?' is-active-scene':'')+'" data-habit-card="'+esc(m.id)+'" role="listitem">';
     html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
     html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
@@ -244,8 +224,8 @@
     html+='<span class="habit-hub-card-type">'+esc(typeLabel(type))+'</span>';
     if(isActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
     html+='</span>';
-    html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg))+'</span>';
-    var meta=habitMetaLine(m);
+    html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
+    var meta=habitMetaLine(m,profile);
     if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
     html+='</span></button>';
     html+='<div class="habit-hub-card-actions">';
@@ -262,7 +242,8 @@
     var map={
       settingsPanelHabitsDesc:'settingsPanelHabitsDesc',
       habitHubAutoHint:'habitHubAutoHint',
-      btnHabitHubNew:'habitHubNew',
+      btnHabitHubNew:'habitHubSaveFromKeys',
+      btnHabitHubSaveVoice:'habitHubSaveFromVoice',
       habitHubFilterAll:'habitHubFilterAll',
       habitHubFilterRecent:'habitHubFilterRecent',
       habitHubFilterKeys:'habitHubFilterKeys',
@@ -274,7 +255,8 @@
       habitHubSortType:'habitHubSortType',
       habitHubEmptyTitle:'habitHubEmptyTitle',
       habitHubEmptyDesc:'habitHubEmptyDesc',
-      btnHabitHubEmptyNew:'habitHubNew',
+      btnHabitHubEmptyNew:'habitHubSaveFromKeys',
+      btnHabitHubEmptySaveVoice:'habitHubSaveFromVoice',
       habitHubAsideDiagramLbl:'habitHubAsideDiagramLbl',
       habitHubAsideTitle:'habitHubAsideTitle',
       habitHubAsideItem1:'habitHubAsideItem1',
@@ -349,6 +331,10 @@
   }
 
   function showHub(){
+    if(global.OneToneSettingsDrawer){
+      global.OneToneSettingsDrawer.setPanel('scenes');
+      return;
+    }
     ui().habitView='hub';
     applyShellVisibility();
     render();
@@ -356,19 +342,91 @@
 
   function showDetail(id,opts){
     opts=opts||{};
-    ui().habitView='detail';
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.openScenarioDetail){
+      global.OneToneSettingsDrawer.openScenarioDetail(id||state().selectedMappingId,opts);
+      return;
+    }
     if(id) state().selectedMappingId=id;
     var h=hooks();
     if(h.syncEditorFromSelection) h.syncEditorFromSelection();
     else if(global.OneToneRender) global.OneToneRender.render();
-    if(opts.layer&&global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer(opts.layer);
-    applyShellVisibility();
-    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
-    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.onPanelVisibility();
   }
 
   function touchUpdated(m){
     if(m) m.updatedAt=Date.now();
+  }
+
+  function currentVoiceOverride(){
+    var cfg=state().config||{};
+    var sc=global.OneToneSceneConfig;
+    var end=sc&&sc.globalEndPhrases?sc.globalEndPhrases(cfg):{zh:[],en:[]};
+    return {
+      targetKey:sc&&sc.globalVoiceTargetKey?sc.globalVoiceTargetKey(cfg):'RAlt',
+      wakePhrases:sc&&sc.globalWakePhrases?sc.globalWakePhrases(cfg):[],
+      endPhrases:{
+        zh:Array.isArray(end.zh)?end.zh.slice():[],
+        en:Array.isArray(end.en)?end.en.slice():[]
+      }
+    };
+  }
+
+  function defaultVoiceHabitName(ov){
+    var wake=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length?ov.wakePhrases[0]:'';
+    return wake?t('habitHubVoiceDefaultName').replace('{phrase}',wake):t('habitHubVoiceDefaultNameFallback');
+  }
+
+  function createFromKeys(){
+    var add=$('btnAddMapping');
+    if(add) add.click();
+  }
+
+  function createFromVoice(opts){
+    opts=opts||{};
+    if(!core()) return null;
+    core().ensureConfig&&core().ensureConfig();
+    var cfg=state().config;
+    var ov=currentVoiceOverride();
+    var defaultName=defaultVoiceHabitName(ov);
+    var name=opts.name;
+    if(name===undefined){
+      name=prompt(t('habitHubVoiceNamePrompt'),defaultName);
+    }
+    if(name===null) return null;
+    name=String(name||'').trim()||defaultName;
+    var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    var m={
+      id:id,
+      label:'',
+      group:name,
+      triggerKey:'',
+      targetKey:'',
+      enabled:false,
+      order:Array.isArray(cfg.mappings)?cfg.mappings.length:0,
+      triggerMode:'tap',
+      intervalMs:cfg.intervalMs||1200,
+      enterDelayMs:cfg.enterDelayMs||5000,
+      cancelEnabled:cfg.cancelEnabled!==false,
+      autoEnterEnabled:cfg.autoEnterEnabled!==false,
+      switchKeys:[],
+      nativeKeyRestore:false,
+      imePresetId:'',
+      appTargetId:'',
+      appBehaviorRules:[],
+      voiceOverride:ov,
+      updatedAt:Date.now(),
+      lastUsedAt:0,
+      useCount:0
+    };
+    if(core().ensureMappingExtras) core().ensureMappingExtras(m);
+    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    cfg.mappings.push(m);
+    state().selectedMappingId=id;
+    if(hooks().setEditorTriggerKey) hooks().setEditorTriggerKey('');
+    if(hooks().setEditorTargetKey) hooks().setEditorTargetKey('');
+    if(hooks().save) hooks().save();
+    render();
+    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubVoiceSaved'),'scheme');
+    return m;
   }
 
   function bindEvents(){
@@ -450,16 +508,20 @@
       ui().habitHubSort=sort.value;
       renderList();
     });
-    function triggerNew(){
-      var add=$('btnAddMapping');
-      if(add) add.click();
-    }
     var newBtn=$('btnHabitHubNew');
-    if(newBtn) newBtn.addEventListener('click',function(e){ e.preventDefault(); triggerNew(); });
+    if(newBtn) newBtn.addEventListener('click',function(e){ e.preventDefault(); createFromKeys(); });
+    var saveVoiceBtn=$('btnHabitHubSaveVoice');
+    if(saveVoiceBtn) saveVoiceBtn.addEventListener('click',function(e){ e.preventDefault(); createFromVoice(); });
     var emptyNew=$('btnHabitHubEmptyNew');
-    if(emptyNew) emptyNew.addEventListener('click',function(e){ e.preventDefault(); triggerNew(); });
+    if(emptyNew) emptyNew.addEventListener('click',function(e){ e.preventDefault(); createFromKeys(); });
+    var emptySaveVoice=$('btnHabitHubEmptySaveVoice');
+    if(emptySaveVoice) emptySaveVoice.addEventListener('click',function(e){ e.preventDefault(); createFromVoice(); });
     var back=$('btnHabitHubBack');
-    if(back) back.addEventListener('click',function(e){ e.preventDefault(); showHub(); });
+    if(back) back.addEventListener('click',function(e){
+      e.preventDefault();
+      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('scenes');
+      else showHub();
+    });
     var help=$('btnHabitHubHelp');
     if(help) help.addEventListener('click',function(e){
       e.preventDefault();
@@ -471,6 +533,8 @@
     render:render,
     showHub:showHub,
     showDetail:showDetail,
+    createFromKeys:createFromKeys,
+    createFromVoice:createFromVoice,
     bindEvents:bindEvents,
     classifyHabit:classifyHabit,
     habitName:habitName,

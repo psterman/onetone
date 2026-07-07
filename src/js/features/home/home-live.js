@@ -13,12 +13,20 @@
     return raw;
   }
   function homeActiveMapping(){
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.projectActive){
+      var p=global.OneToneHabitProfile.projectActive(state().config||{});
+      if(p&&p.mapping) return p.mapping;
+    }
     if(global.OneToneMappingCore&&global.OneToneMappingCore.activeScene){
       return global.OneToneMappingCore.activeScene();
     }
     return hooks().selectedMapping();
   }
   function homeEffectiveTargetKey(m,cfg){
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.project&&m&&cfg){
+      var profile=global.OneToneHabitProfile.project(m,cfg);
+      if(profile&&profile.effectiveTargetKey) return String(profile.effectiveTargetKey).trim();
+    }
     if(!m||!cfg||!global.OneToneSceneConfig) return '';
     var eff=global.OneToneSceneConfig.resolveEffectiveScene(cfg,{activeSceneId:m.id});
     return eff&&eff.targetKey?String(eff.targetKey).trim():'';
