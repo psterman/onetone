@@ -68,7 +68,9 @@
     if(!ov) return;
     var empty=!((ov.targetKey&&String(ov.targetKey).trim())
       ||(ov.wakePhrases&&ov.wakePhrases.length)
-      ||(ov.endPhrases&&((ov.endPhrases.zh&&ov.endPhrases.zh.length)||(ov.endPhrases.en&&ov.endPhrases.en.length))));
+      ||(ov.endPhrases&&((ov.endPhrases.zh&&ov.endPhrases.zh.length)||(ov.endPhrases.en&&ov.endPhrases.en.length)))
+      ||(ov.engine&&String(ov.engine).trim())
+      ||(ov.modelPreset&&String(ov.modelPreset).trim()));
     if(empty) mapping.voiceOverride=null;
   }
 
@@ -163,6 +165,18 @@
       fieldMode(ov,'endPhrasesEn'));
     var profile=habitProfile(mapping,cfg);
     var hasOverride=!!ov;
+    var sc=global.OneToneSceneConfig;
+    var summon=sc&&sc.summonPhrasesForMapping?sc.summonPhrasesForMapping(mapping):[];
+    if(summon.length){
+      html+='<div class="scene-voice-summon">';
+      html+='<p class="scene-voice-summon-lbl">'+esc(t('sceneVoiceSummonLbl'))+'</p>';
+      html+='<p class="scene-voice-summon-hint">'+esc(t('sceneVoiceSummonHint'))+'</p>';
+      html+='<div class="scene-voice-summon-chips">';
+      summon.forEach(function(phrase){
+        html+='<span class="scene-voice-summon-chip">'+esc(phrase)+'</span>';
+      });
+      html+='</div></div>';
+    }
     html+='<div class="scene-voice-preview">';
     html+='<p class="scene-voice-preview-title">'+esc(t('habitEffectivePreviewTitle'))+'</p>';
     html+='<p class="scene-voice-preview-hint">'+esc(formatEffectivePreview(profile,hasOverride))+'</p>';

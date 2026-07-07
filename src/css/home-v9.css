@@ -333,7 +333,7 @@ html[data-theme="dark"] .vp-hero-live{
   letter-spacing:-.015em;
   color:var(--vp-text);
   max-width:680px;
-  margin:0 auto;
+  margin:0 auto 8px;
   min-height:90px;
   text-align:left;
 }
@@ -684,4 +684,198 @@ html[data-theme="dark"] .vp-hero-live{
   .vp-ring,
   .vp-orb::before,
   .vp-orb::after{ animation:none !important; }
+}
+
+
+/* ========== 12. v9 首页布局 · 解耦旧版双卡片 ========== */
+
+.home-zone.home-v9-active .home-status-summary,
+.home-zone.home-v9-active .home-hero{
+  display:none !important;
+}
+
+.home-zone.home-v9-active .home-advanced{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+  display:block !important;
+}
+
+.home-zone.home-v9-active{
+  display:flex;
+  flex-direction:column;
+  min-height:calc(100vh - 120px);
+  background:var(--vp-bg);
+  border-radius:var(--vp-radius-lg);
+  overflow:hidden;
+}
+
+.home-v9-active .app-header{
+  background:var(--vp-surface);
+  border-bottom:.5px solid var(--vp-border);
+}
+
+.home-v9-active .app-subtitle{ display:none; }
+
+.vp-header-target{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px 5px 5px;
+  background:var(--vp-surface-2);
+  border:1px solid var(--vp-border-2);
+  border-radius:var(--vp-radius-pill);
+  font-size:12px;
+  color:var(--vp-text);
+  font-weight:500;
+  cursor:pointer;
+  font-family:inherit;
+}
+
+.vp-header-target .logo{
+  width:20px;
+  height:20px;
+  background:linear-gradient(135deg,#0078D4,#00A3FF);
+  border-radius:50%;
+  font-size:10px;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+
+.vp-orb-wrap::before,
+.vp-orb-wrap::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  width:72px;
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--vp-blue),transparent);
+  opacity:.35;
+}
+
+.vp-orb-wrap::before{ right:calc(50% + 44px); }
+.vp-orb-wrap::after{ left:calc(50% + 44px); }
+
+.vp-orb-wrap{ position:relative; }
+
+
+/* ========== 13. 习惯选择条 ========== */
+
+.vp-habits{
+  padding:16px 24px 24px;
+  border-top:.5px solid var(--vp-border);
+  background:var(--vp-surface);
+  margin-top:auto;
+}
+
+.vp-habits-title{
+  font-size:12px;
+  font-weight:600;
+  color:var(--vp-text-2);
+  margin-bottom:12px;
+}
+
+.vp-habit-grid{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  padding-bottom:4px;
+  scrollbar-width:thin;
+}
+
+.vp-habit-card{
+  flex:0 0 auto;
+  min-width:148px;
+  max-width:200px;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1.5px solid var(--vp-border-2);
+  background:var(--vp-surface-2);
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .12s,box-shadow .12s;
+  position:relative;
+  font-family:inherit;
+  color:inherit;
+}
+
+.vp-habit-card:hover{
+  border-color:rgba(0,163,255,.35);
+}
+
+.vp-habit-card.is-selected{
+  border-color:var(--vp-blue);
+  box-shadow:0 0 0 1px rgba(0,163,255,.18);
+  background:rgba(0,163,255,.04);
+}
+
+.vp-habit-card.is-more{
+  border-style:dashed;
+  color:var(--vp-text-2);
+}
+
+.vp-habit-card.is-loading{
+  cursor:default;
+  color:var(--vp-text-3);
+}
+
+.vp-habit-icon{
+  display:block;
+  font-size:18px;
+  margin-bottom:6px;
+  line-height:1;
+}
+
+.vp-habit-name{
+  display:block;
+  font-size:13px;
+  font-weight:600;
+  color:var(--vp-text);
+  margin-bottom:4px;
+}
+
+.vp-habit-desc{
+  display:block;
+  font-size:11px;
+  line-height:1.4;
+  color:var(--vp-text-2);
+}
+
+.vp-habit-check{
+  position:absolute;
+  top:8px;
+  right:10px;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:var(--vp-blue);
+  color:#fff;
+  font-size:11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+
+.vp-status-pills .pill .pill-text{ margin-left:2px; }
+
+html[data-theme="dark"] .vp-statusbar{
+  background:rgba(15,20,25,.85);
+}
+
+html:not([data-theme="dark"]) .vp-statusbar{
+  background:rgba(255,255,255,.92);
+}
+
+html:not([data-theme="dark"]) .vp-statusbar.is-light{
+  color:var(--vp-text);
 }

@@ -31,6 +31,7 @@ mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
+mod vosk_model_download;
 mod window_layout;
 
 #[cfg(target_os = "windows")]
@@ -554,6 +555,7 @@ pub fn run() {
             ipc::cmd_voice_vosk_test_send,
             ipc::cmd_open_vosk_resources_dir,
             ipc::cmd_voice_vosk_retry_start,
+            ipc::cmd_vosk_download_model,
             ipc::cmd_voice_end_status,
             ipc::cmd_voice_end_set_enabled,
             ipc::cmd_voice_end_set_auto_send,

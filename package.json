@@ -7,6 +7,8 @@
     "serve": "serve src -l 1420 --no-port-switching",
     "tauri": "tauri",
     "dev": "tauri dev",
+    "prepare-vosk": "node scripts/ensure-vosk-cn-model.js",
+    "prebuild": "node scripts/ensure-vosk-cn-model.js",
     "build": "tauri build",
     "test:habit-profile": "node scripts/reconcile-habit-profile.js"
   },

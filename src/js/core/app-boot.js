@@ -61,6 +61,11 @@
       global.OneToneConfigPersist.startConfigSyncPoll(2000,15);
     }
     installRuntimeRefreshOnFocus();
+    setTimeout(function(){
+      if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
+        global.OneToneVoiceEngineReadiness.checkAfterBoot();
+      }
+    },4500);
   }
 
   var lastRuntimeRefreshAt=0;

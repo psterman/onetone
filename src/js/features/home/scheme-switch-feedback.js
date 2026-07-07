@@ -51,10 +51,27 @@
       hooks.toast(msg,'scheme');
     }
     notifyIfBackground(msg);
+    refreshVoiceAfterSceneSwitch();
+  }
+
+  function refreshVoiceAfterSceneSwitch(){
+    var wake=global.OneToneVoiceWake;
+    var end=global.OneToneVoiceEnd;
+    var hooks=h();
+    if(wake){
+      if(wake.loadSapiStatus) wake.loadSapiStatus();
+      if(wake.loadVoskStatus) wake.loadVoskStatus();
+      if(wake.renderModeSwitch) wake.renderModeSwitch();
+    }
+    if(end&&end.loadStatus) end.loadStatus();
+    if(hooks.renderVoiceSettingsFlow) hooks.renderVoiceSettingsFlow();
+    if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.render) global.OneToneSceneModeHub.render();
+    if(hooks.renderHomeLiveZone) hooks.renderHomeLiveZone();
   }
 
   global.OneToneSchemeSwitchFeedback={
     show:show,
-    ensureNotificationPermission:ensureNotificationPermission
+    ensureNotificationPermission:ensureNotificationPermission,
+    refreshVoiceAfterSceneSwitch:refreshVoiceAfterSceneSwitch
   };
 })((typeof window!=='undefined')?window:globalThis);

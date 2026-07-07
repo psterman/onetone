@@ -1,10 +1,38 @@
 (function(global){
   'use strict';
 
-  var STEPS = ['setup', 'try', 'phrases', 'mode'];
+  var STEPS = ['setup', 'try', 'phrases', 'engine', 'mode'];
+
+  function voskOnlyUi(){
+    return !!(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.isVoskOnlyUi());
+  }
+
+  function activeSteps(){
+    if(voskOnlyUi()) return STEPS.filter(function(s){ return s !== 'engine'; });
+    return STEPS.slice();
+  }
+
+  function currentStepName(){
+    var steps = activeSteps();
+    return steps[state.step] || steps[0] || 'setup';
+  }
+
+  function stepTitle(name){
+    if(name === 'setup') return t('onboardStepSetup');
+    if(name === 'try') return t('onboardStepTry');
+    if(name === 'phrases') return t('onboardStepPhrases');
+    if(name === 'engine') return t('onboardStepEngine');
+    if(name === 'mode') return t('onboardStepMode');
+    return name;
+  }
+
   var state = {
     open: false,
     step: 0,
+    engineChoice: 'pro',
+    engineProbeDone: false,
+    engineVoskReady: false,
+    engineSapiReady: false,
     triggerChoice: 'custom',
     altRiskAccepted: false,
     triggerRecorded: false,
@@ -159,7 +187,7 @@
     el.setAttribute('aria-hidden', state.open ? 'false' : 'true');
     if(state.open){
       render();
-      if(state.step === 1) startTryListen();
+      if(currentStepName() === 'try') startTryListen();
       else stopTryListen();
       stopPractice();
     }else{
@@ -173,13 +201,9 @@
   function renderProgress(){
     var host = $('onboardProgress');
     if(!host) return;
-    var titles = [
-      t('onboardStepSetup'),
-      t('onboardStepTry'),
-      t('onboardStepPhrases'),
-      t('onboardStepMode')
-    ];
-    host.innerHTML = titles.map(function(title, i){
+    var steps = activeSteps();
+    host.innerHTML = steps.map(function(name, i){
+      var title = stepTitle(name);
       var cls = 'onboard-progress-dot';
       if(i < state.step) cls += ' is-done';
       else if(i === state.step) cls += ' is-active';
@@ -193,9 +217,10 @@
   }
 
   function renderStepPanels(){
-    STEPS.forEach(function(name, i){
+    var cur = currentStepName();
+    STEPS.forEach(function(name){
       var panel = $('onboardPanel'+name.charAt(0).toUpperCase()+name.slice(1));
-      if(panel) panel.hidden = (i !== state.step);
+      if(panel) panel.hidden = (name !== cur);
     });
   }
 
@@ -401,6 +426,8 @@
     }
     var tryKey = $('onboardTryKeyWrap');
     if(tryKey) tryKey.classList.toggle('is-success', state.tryPassed);
+    var tryToMode = $('btnOnboardTryToMode');
+    if(tryToMode) tryToMode.hidden = voskOnlyUi();
     renderTryHelp();
   }
 
@@ -408,7 +435,7 @@
     var hint = $('onboardHint');
     var links = $('onboardFooterLinks');
     if(!hint && !links) return;
-    if(state.step !== 1){
+    if(currentStepName() !== 'try'){
       if(hint){
         hint.hidden = false;
         hint.textContent = t('onboardHintOnce');
@@ -453,19 +480,20 @@
     }
     if(later) later.hidden = true;
     if(!next) return;
-    if(state.step === 0){
+    var stepName = currentStepName();
+    if(stepName === 'setup'){
       next.textContent = t('onboardBtnNext');
       next.disabled = !canLeaveTriggerStep() || !targetOk();
       next.classList.add('primary');
       return;
     }
-    if(state.step === 1){
+    if(stepName === 'try'){
       next.textContent = state.tryPassed ? t('onboardBtnNext') : t('onboardBtnSkip');
       next.disabled = false;
       next.classList.toggle('primary', !!state.tryPassed);
       return;
     }
-    if(state.step === 2){
+    if(stepName === 'phrases' || stepName === 'engine'){
       next.textContent = t('onboardBtnNext');
       next.disabled = false;
       next.classList.add('primary');
@@ -483,6 +511,7 @@
     renderTryStep();
     renderTargetStep();
     renderPhrasesStep();
+    renderEngineStep();
     renderModeStep();
     renderActions();
     renderFooterHint();
@@ -491,7 +520,7 @@
     var descSub = $('onboardDescSub');
     var kicker = $('onboardKicker');
     if(kicker) kicker.textContent = t('onboardKicker');
-    var copy = stepCopy(state.step);
+    var copy = stepCopy(currentStepName());
     if(title) title.textContent = copy.title;
     if(desc) desc.textContent = copy.desc;
     if(descSub){
@@ -505,15 +534,16 @@
     }
   }
 
-  function stepCopy(step){
-    if(step === 0) return { title: t('onboardTitleSetup'), desc: t('onboardDescSetup') };
-    if(step === 1) return { title: t('onboardTitle2'), desc: t('onboardDesc2') };
-    if(step === 2) return { title: t('onboardTitlePhrases'), desc: t('onboardDescPhrases1'), descSub: t('onboardDescPhrases2') };
+  function stepCopy(name){
+    if(name === 'setup') return { title: t('onboardTitleSetup'), desc: t('onboardDescSetup') };
+    if(name === 'try') return { title: t('onboardTitle2'), desc: t('onboardDesc2') };
+    if(name === 'phrases') return { title: t('onboardTitlePhrases'), desc: t('onboardDescPhrases1'), descSub: t('onboardDescPhrases2') };
+    if(name === 'engine') return { title: t('onboardTitleEngine'), desc: t('onboardDescEngine') };
     return { title: t('onboardTitleMode'), desc: t('onboardDescMode') };
   }
 
   function isPhrasesStepOpen(){
-    return !!(state.open && state.step === 2);
+    return !!(state.open && currentStepName() === 'phrases');
   }
 
   function escHtmlOnboardPhrase(s){
@@ -641,6 +671,107 @@
     if(keys) keys.classList.toggle('is-selected', mode === 'keys');
     if(voice) voice.classList.toggle('is-selected', mode === 'voice');
     if(both) both.classList.toggle('is-selected', mode === 'both');
+  }
+
+  function getEngineChoice(){
+    if(voskOnlyUi()) return 'pro';
+    if(state.engineChoice === 'lite' || state.engineChoice === 'pro') return state.engineChoice;
+    try{
+      var v = localStorage.getItem('vp_engine_choice');
+      if(v === 'lite' || v === 'pro') return v;
+    }catch(_){}
+    return 'pro';
+  }
+
+  function setEngineChoice(choice){
+    if(choice !== 'lite' && choice !== 'pro') return;
+    state.engineChoice = choice;
+    try{ localStorage.setItem('vp_engine_choice', choice); }catch(_){}
+    renderEngineStep();
+  }
+
+  function probeEngineStep(){
+    if(currentStepName() !== 'engine' || !state.open) return;
+    if(!global.OneToneIpc || !global.OneToneIpc.invoke) return;
+    if(state.engineProbeDone) return;
+    state.engineProbeDone = true;
+    Promise.all([
+      global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).catch(function(){ return null; }),
+      global.OneToneIpc.invoke('cmd_voice_sapi_status',{}).catch(function(){ return null; })
+    ]).then(function(res){
+      var vosk=res[0];
+      var sapi=res[1];
+      state.engineVoskReady = !!(vosk && vosk.modelExists !== false && String(vosk.resourceIssue||'') !== 'model_missing');
+      state.engineSapiReady = !!(sapi && sapi.state !== 'error');
+      if(global.OneToneVoiceEngineReadiness){
+        if(global.OneToneVoiceEngineReadiness.sapiNeedsSetup(sapi)) state.engineSapiReady = false;
+        if(global.OneToneVoiceEngineReadiness.voskNeedsModel(vosk)) state.engineVoskReady = false;
+      }
+      if(!state.engineVoskReady && state.engineSapiReady) setEngineChoice('lite');
+      else if(state.engineVoskReady) setEngineChoice(getEngineChoice() === 'lite' && state.engineSapiReady ? 'lite' : 'pro');
+      renderEngineStep();
+    });
+  }
+
+  function renderEngineStep(){
+    if(voskOnlyUi()) return;
+    var choice = getEngineChoice();
+    state.engineChoice = choice;
+    var lite = $('onboardEngineLite');
+    var pro = $('onboardEnginePro');
+    if(lite) lite.classList.toggle('is-selected', choice === 'lite');
+    if(pro) pro.classList.toggle('is-selected', choice === 'pro');
+    var liteBadge = $('onboardEngineLiteBadge');
+    var proBadge = $('onboardEngineProBadge');
+    if(liteBadge){
+      liteBadge.hidden = !state.engineProbeDone;
+      liteBadge.textContent = state.engineSapiReady ? t('onboardEngineBadgeReady') : t('onboardEngineBadgeUnavailable');
+      liteBadge.className = 'onboard-engine-badge'+(state.engineSapiReady ? ' is-ok' : ' is-warn');
+    }
+    if(proBadge){
+      proBadge.hidden = !state.engineProbeDone;
+      proBadge.textContent = state.engineVoskReady ? t('onboardEngineBadgeBundled') : t('onboardEngineBadgeDownload');
+      proBadge.className = 'onboard-engine-badge'+(state.engineVoskReady ? ' is-ok' : ' is-warn');
+    }
+    var status = $('onboardEngineStatus');
+    if(status){
+      if(choice === 'pro' && state.engineProbeDone && !state.engineVoskReady){
+        status.hidden = false;
+        status.textContent = t('onboardEngineStatusDownload');
+      }else if(choice === 'lite' && state.engineProbeDone && !state.engineSapiReady){
+        status.hidden = false;
+        status.textContent = t('onboardEngineStatusSapi');
+      }else{
+        status.hidden = true;
+        status.textContent = '';
+      }
+    }
+    if(currentStepName() === 'engine') probeEngineStep();
+  }
+
+  function applyEngineChoice(){
+    var choice = voskOnlyUi() ? 'pro' : getEngineChoice();
+    if(!global.OneToneIpc || !global.OneToneIpc.invoke) return Promise.resolve();
+    if(choice === 'lite'){
+      return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){})
+        .then(function(){
+          return global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:true});
+        });
+    }
+    return global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:false}).catch(function(){})
+      .then(function(){
+        return global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:'cn-light'});
+      })
+      .then(function(){
+        return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:true});
+      })
+      .then(function(voskRes){
+        if(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.voskNeedsModel(voskRes)){
+          if(global.OneToneVoiceWake && global.OneToneVoiceWake.downloadVoskModel){
+            global.OneToneVoiceWake.downloadVoskModel('cn-light');
+          }
+        }
+      });
   }
 
   function canLeaveTriggerStep(){
@@ -783,7 +914,7 @@
     var a = app();
     if(a && a.on) a.on('onboarding_trigger_fired', onTriggerFired);
     state.tryNoResponseTimer = setTimeout(function(){
-      if(state.step !== 1 || state.tryPassed || state.tryFailed) return;
+      if(currentStepName() !== 'try' || state.tryPassed || state.tryFailed) return;
       state.tryNoResponseShown = true;
       renderFooterHint();
     }, 4000);
@@ -799,7 +930,7 @@
   }
 
   function onTriggerFired(msg){
-    if(state.step !== 1 || !state.open) return;
+    if(currentStepName() !== 'try' || !state.open) return;
     var result = $('onboardTryResult');
     if(msg && msg.ok){
       state.tryPassed = true;
@@ -833,41 +964,43 @@
   }
 
   function jumpToStep(stepIndex){
-    if(stepIndex < 0 || stepIndex >= STEPS.length) return;
+    if(stepIndex < 0 || stepIndex >= activeSteps().length) return;
     if(stepIndex > 0 && state.step === 0 && (!canLeaveTriggerStep() || !targetOk())) return;
     if(stepIndex > 1 && state.step < 1 && !state.tryPassed) return;
     state.step = stepIndex;
     render();
-    if(state.step === 1) startTryListen();
+    if(currentStepName() === 'try') startTryListen();
     else stopTryListen();
   }
 
   function goStep(delta){
     var next = state.step + delta;
-    if(next < 0 || next >= STEPS.length) return;
-    if(delta > 0 && state.step === 0){
+    if(next < 0 || next >= activeSteps().length) return;
+    if(delta > 0 && currentStepName() === 'setup'){
       applyTriggerChoice();
     }
-    if(state.step === 1 && next !== 1) state.tryHelpOpen = false;
+    if(currentStepName() === 'try' && next !== activeSteps().indexOf('try')) state.tryHelpOpen = false;
     state.step = next;
     render();
-    if(state.step === 1) startTryListen();
+    if(currentStepName() === 'try') startTryListen();
     else stopTryListen();
   }
 
   function finish(){
     setEntryMode(getEntryMode());
     var a = app();
-    if(a && a.saveConfigPatch){
-      a.saveConfigPatch(function(m, cfg){
-        ensureOnboardingScene(cfg, m);
-        if(cfg) cfg.coachHudEnabled = true;
-      });
-    }
-    markDone();
-    setOpen(false);
-    if(a && a.renderHome) a.renderHome();
-    if(a && a.toast) a.toast(t('onboardDoneToast'));
+    applyEngineChoice().finally(function(){
+      if(a && a.saveConfigPatch){
+        a.saveConfigPatch(function(m, cfg){
+          ensureOnboardingScene(cfg, m);
+          if(cfg) cfg.coachHudEnabled = true;
+        });
+      }
+      markDone();
+      setOpen(false);
+      if(a && a.renderHome) a.renderHome();
+      if(a && a.toast) a.toast(t('onboardDoneToast'));
+    });
   }
 
   function dismiss(){
@@ -899,7 +1032,7 @@
     var next = $('btnOnboardNext');
     if(back) back.onclick = function(){ goStep(-1); };
     if(next) next.onclick = function(){
-      if(state.step >= STEPS.length - 1) finish();
+      if(state.step >= activeSteps().length - 1) finish();
       else goStep(1);
     };
     var helpTry = $('btnOnboardTryHelp');
@@ -952,6 +1085,10 @@
     if(modeVoice) modeVoice.onclick = function(){ setEntryMode('voice'); renderModeStep(); };
     var modeBoth = $('onboardModeBoth');
     if(modeBoth) modeBoth.onclick = function(){ setEntryMode('both'); renderModeStep(); };
+    var engineLite = $('onboardEngineLite');
+    if(engineLite) engineLite.onclick = function(){ setEngineChoice('lite'); };
+    var enginePro = $('onboardEnginePro');
+    if(enginePro) enginePro.onclick = function(){ setEngineChoice('pro'); };
     var footerLinks = $('onboardFooterLinks');
     if(footerLinks){
       footerLinks.onclick = function(ev){
@@ -988,7 +1125,11 @@
       ['onboardModeNote','onboardModeNote'],
       ['onboardModeKeysTitle','onboardModeKeysTitle'],['onboardModeKeysHint','onboardModeKeysHint'],
       ['onboardModeVoiceTitle','onboardModeVoiceTitle'],['onboardModeVoiceHint','onboardModeVoiceHint'],
-      ['onboardModeBothTitle','onboardModeBothTitle'],['onboardModeBothHint','onboardModeBothHint']
+      ['onboardModeBothTitle','onboardModeBothTitle'],['onboardModeBothHint','onboardModeBothHint'],
+      ['btnOnboardTryToPhrases','onboardTryToPhrases'],['btnOnboardTryToMode','onboardTryToMode'],
+      ['onboardEngineNote','onboardEngineNote'],
+      ['onboardEngineLiteTitle','onboardEngineLiteTitle'],['onboardEngineLiteHint','onboardEngineLiteHint'],
+      ['onboardEngineProTitle','onboardEngineProTitle'],['onboardEngineProHint','onboardEngineProHint']
     ];
     pairs.forEach(function(pair){
       var el = $(pair[0]);
@@ -1011,6 +1152,14 @@
       if(!localStorage.getItem('vp_entry_mode')) localStorage.setItem('vp_entry_mode','both');
     }catch(_){}
     state.step = 0;
+    state.engineChoice = 'pro';
+    try{
+      var ec = localStorage.getItem('vp_engine_choice');
+      if(ec === 'lite' || ec === 'pro') state.engineChoice = ec;
+    }catch(_){}
+    state.engineProbeDone = false;
+    state.engineVoskReady = false;
+    state.engineSapiReady = false;
     state.triggerChoice = 'custom';
     state.altRiskAccepted = false;
     state.targetRecording = false;

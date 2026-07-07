@@ -18,11 +18,13 @@
   }
 
   function preferredEngine(){
-    if(hooks().homePreferredVoiceEngine) return hooks().homePreferredVoiceEngine();
+    if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.preferredEngine){
+      return global.OneToneVoiceEngineReadiness.preferredEngine();
+    }
     var cfg=state().config||{};
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
     if(vosk.enabled) return 'vosk';
-    return 'sapi';
+    return 'vosk';
   }
 
   function voskModelPreset(w, voskCfg){
@@ -125,13 +127,14 @@
 
   function buildLinkIds(ctx){
     var ids=[];
+    var hideEngine=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     if(ctx.statusMode==='error') ids.push('helpDebug');
     else if(ctx.dictating) ids.push('endPhrases');
     else if(!ctx.voiceOn||!ctx.wakePhrase) ids.push('editWake');
     else{
       ids.push('editWake');
       ids.push('mic');
-      if(ctx.engine!=='off') ids.push('engine');
+      if(ctx.engine!=='off'&&!hideEngine) ids.push('engine');
     }
     return ids.slice(0,4);
   }

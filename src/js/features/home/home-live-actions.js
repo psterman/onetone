@@ -5,22 +5,25 @@
   function t(key){ return global.OneToneI18n.t(key); }
   function toast(msg,kind){ return global.OneToneAppToast.show(msg,kind); }
 
+  function voskOnlyUi(){
+    return !!(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.isVoskOnlyUi());
+  }
+
   function homePreferredVoiceEngine(){
+    if(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.preferredEngine){
+      return global.OneToneVoiceEngineReadiness.preferredEngine();
+    }
     var cfg=global.OneToneState.state.config||{};
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
-    var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
     if(vosk.enabled) return 'vosk';
-    if(sapi.enabled) return 'sapi';
-    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.getExpandedMode()==='vosk') return 'vosk';
-    return 'sapi';
+    return 'vosk';
   }
 
   function homeToggleVoiceWake(){
     var eng=global.OneToneHomeLive.voiceEngineOn();
     if(eng==='vosk') global.OneToneVoiceWake.toggleVosk(false);
-    else if(eng==='sapi') global.OneToneVoiceWake.toggleSapi(false);
-    else if(homePreferredVoiceEngine()==='vosk') global.OneToneVoiceWake.toggleVosk(true);
-    else global.OneToneVoiceWake.toggleSapi(true);
+    else if(eng==='sapi'&&!voskOnlyUi()) global.OneToneVoiceWake.toggleSapi(false);
+    else global.OneToneVoiceWake.toggleVosk(true);
   }
 
   function toggleHomeKeyEnable(){
@@ -42,6 +45,7 @@
   }
 
   function homeSwitchWakeEngine(){
+    if(voskOnlyUi()) return;
     if(global.OneToneVoiceWake.isSapiTogglePending()||global.OneToneVoiceWake.isVoskTogglePending()||global.OneToneVoiceWake.isModeSwitchPending()) return;
     var eng=global.OneToneHomeLive.voiceEngineOn();
     var next=eng==='vosk'?'sapi':'vosk';

@@ -77,3 +77,22 @@ pub fn cmd_voice_vosk_retry_start(
         super::sapi::app_resource_dir(&app),
     )
 }
+
+#[tauri::command]
+pub fn cmd_vosk_download_model(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    preset: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let cfg = state.cfg.lock();
+    let p = preset
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| cfg.voice_vosk.model_preset.clone());
+    drop(cfg);
+    crate::vosk_model_download::start_vosk_model_download(
+        app.clone(),
+        Arc::clone(state.inner()),
+        p,
+        super::sapi::app_resource_dir(&app),
+    )
+}

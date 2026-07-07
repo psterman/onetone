@@ -185,6 +185,114 @@ pub fn send_wake_to_target(
     sent
 }
 
+pub struct VoiceWakeDispatchResult {
+    pub ok: bool,
+    pub target_key: String,
+    pub mapping_id: String,
+    pub used_summon_workflow: bool,
+    pub runtime_label: String,
+}
+
+pub fn handle_voice_wake_detected(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    matched_phrase: &str,
+    duration_ms: u32,
+    engine: &str,
+) -> VoiceWakeDispatchResult {
+    let (mapping_id, target_key, mapping_snapshot) = {
+        let cfg = state.cfg.lock();
+        let mapping_id = resolve_wake_mapping_id(&cfg);
+        let target_key = resolve_wake_target_key(&cfg, "");
+        let mapping = cfg.find_mapping_by_id(&mapping_id).cloned();
+        (mapping_id, target_key, mapping)
+    };
+
+    if let Some(mapping) = mapping_snapshot.as_ref() {
+        if let Some(app_target_id) = crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase)
+        {
+            if crate::app_chat_workflow::profile_for(&app_target_id).is_some() {
+                if let Some(window) = crate::ipc::get_main_window(app) {
+                    match crate::app_chat_workflow::run_for_target_id(
+                        state,
+                        &window,
+                        &mapping_id,
+                        &app_target_id,
+                        duration_ms,
+                    ) {
+                        Ok(label) => {
+                            crate::runtime_event::publish_runtime_event(
+                                Some(app),
+                                state.as_ref(),
+                                "voice",
+                                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                                &format!("{engine} summon workflow: {app_target_id} ({matched_phrase})"),
+                                Some(serde_json::json!({
+                                    "engine": engine,
+                                    "phrase": matched_phrase,
+                                    "appTargetId": app_target_id,
+                                    "workflow": true
+                                })),
+                            );
+                            crate::tray::refresh_menu(app);
+                            return VoiceWakeDispatchResult {
+                                ok: true,
+                                target_key: target_key.clone(),
+                                mapping_id,
+                                used_summon_workflow: true,
+                                runtime_label: label,
+                            };
+                        }
+                        Err((reason, _)) => {
+                            *state.voice_session_last_action.lock() =
+                                format!("summon workflow failed: {reason}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let sent = send_wake_to_target(Some(state.as_ref()), Some(app), &target_key, duration_ms);
+    if sent {
+        enter_dictating(state, Some(app), &mapping_id, &format!("{engine} wake"));
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "voice",
+            crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+            &format!("{engine} wake triggered: {target_key} (phrase: {matched_phrase})"),
+            Some(serde_json::json!({
+                "engine": engine,
+                "key": target_key,
+                "phrase": matched_phrase
+            })),
+        );
+        crate::tray::refresh_menu(app);
+    } else {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "voice",
+            crate::runtime_event::kind::VOICE_SEND_FAILED,
+            &format!("{engine} send failed: {target_key}"),
+            Some(serde_json::json!({ "engine": engine, "key": target_key })),
+        );
+    }
+
+    VoiceWakeDispatchResult {
+        ok: sent,
+        target_key,
+        mapping_id,
+        used_summon_workflow: false,
+        runtime_label: if sent {
+            format!("voice_{engine}")
+        } else {
+            format!("voice_{engine}_send_failed")
+        },
+    }
+}
+
 pub fn enter_dictating(
     state: &Arc<AppState>,
     app: Option<&AppHandle>,
@@ -773,6 +881,7 @@ mod tests {
                 target_key: Some("Win+H".into()),
                 wake_phrases: None,
                 end_phrases: None,
+                ..Default::default()
             }),
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());

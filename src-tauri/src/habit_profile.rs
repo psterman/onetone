@@ -246,6 +246,7 @@ mod tests {
                     zh: vec!["结束输入".into()],
                     en: vec!["send it".into()],
                 }),
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -306,6 +307,7 @@ mod tests {
                 target_key: None,
                 wake_phrases: Some(vec!["only-this".into()]),
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -336,6 +338,7 @@ mod tests {
                 target_key: None,
                 wake_phrases: Some(vec!["only-this".into()]),
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -370,6 +373,7 @@ mod tests {
                     zh: default_voice_end_phrases_zh(),
                     en: default_voice_end_phrases_en(),
                 }),
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -403,6 +407,7 @@ mod tests {
                 target_key: Some("F9".into()),
                 wake_phrases: None,
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -431,6 +436,7 @@ mod tests {
                     zh: vec!["结束输入".into()],
                     en: vec!["send it".into()],
                 }),
+                ..Default::default()
             });
         }
         let mapping = cfg.find_mapping_by_id(&id).unwrap();
@@ -478,6 +484,7 @@ mod tests {
                 target_key: None,
                 wake_phrases: Some(vec!["scene b wake".into()]),
                 end_phrases: None,
+                ..Default::default()
             });
         }
         cfg.active_scene_id = b.clone();

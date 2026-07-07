@@ -3,7 +3,8 @@
 use serde::Serialize;
 
 use crate::config::{
-    is_workflow_app_target, normalize_voice_override, PhraseBundle, VoiceConfig, VoiceOverride,
+    is_workflow_app_target, normalize_voice_override, vosk_preset_model_path, MappingEntry,
+    PhraseBundle, VoiceConfig, VoiceOverride, VoiceSapiConfig, VoiceVoskConfig,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -43,6 +44,7 @@ pub struct VoiceRuntimeFingerprint {
     pub wake_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
     pub vosk_model_path: String,
+    pub vosk_model_preset: String,
     pub min_confidence: f32,
 }
 
@@ -53,7 +55,7 @@ pub fn resolve_effective_scene(
     let mapping = cfg.find_mapping_by_id(ctx.active_scene_id)?;
     let ov = mapping.voice_override.as_ref();
     let target_key = resolve_effective_target_key(cfg, mapping, ov);
-    let wake_phrases = merge_wake_phrases(cfg, ov);
+    let wake_phrases = merge_wake_phrases(cfg, mapping, ov);
     let end_phrases = merge_end_phrases(cfg, ov);
     Some(EffectiveSceneConfig {
         scene_id: mapping.id.clone(),
@@ -69,12 +71,22 @@ pub fn voice_runtime_fingerprint(
     cfg: &VoiceConfig,
     ctx: &SceneResolveContext<'_>,
 ) -> Option<VoiceRuntimeFingerprint> {
+    let mapping = cfg.find_mapping_by_id(ctx.active_scene_id)?;
     let effective = resolve_effective_scene(cfg, ctx)?;
+    let model_preset = effective_vosk_model_preset(cfg, mapping);
+    let model_path = if model_preset != "custom" {
+        vosk_preset_model_path(&model_preset)
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| cfg.voice_vosk.model_path.trim().to_string())
+    } else {
+        cfg.voice_vosk.model_path.trim().to_string()
+    };
     Some(VoiceRuntimeFingerprint {
-        engine: desired_voice_engine(cfg),
+        engine: effective_desired_engine(cfg, mapping),
         wake_phrases: normalize_phrase_list(&effective.wake_phrases),
         end_phrases: normalize_end_phrases(&effective.end_phrases),
-        vosk_model_path: cfg.voice_vosk.model_path.trim().to_string(),
+        vosk_model_path: model_path,
+        vosk_model_preset: model_preset,
         min_confidence: cfg.voice_sapi.min_confidence,
     })
 }
@@ -146,7 +158,7 @@ pub fn vosk_grammar_from_effective(
     out
 }
 
-fn desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
+fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     if cfg.voice_vosk.enabled {
         DesiredVoiceEngine::Vosk
     } else if cfg.voice_sapi.enabled {
@@ -156,8 +168,75 @@ fn desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     }
 }
 
+pub fn idle_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
+    let Some(mapping) = cfg.find_mapping_by_id(&cfg.active_scene_id) else {
+        return global_desired_voice_engine(cfg);
+    };
+    effective_desired_engine(cfg, mapping)
+}
+
+pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> DesiredVoiceEngine {
+    if let Some(raw) = mapping
+        .voice_override
+        .as_ref()
+        .and_then(|o| o.engine.as_ref())
+    {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "vosk" | "pro" | "advanced" => return DesiredVoiceEngine::Vosk,
+            "sapi" | "lite" => return DesiredVoiceEngine::Sapi,
+            "none" | "off" => return DesiredVoiceEngine::None,
+            _ => {}
+        }
+    }
+    global_desired_voice_engine(cfg)
+}
+
+fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) -> String {
+    if let Some(preset) = mapping
+        .voice_override
+        .as_ref()
+        .and_then(|o| o.model_preset.as_ref())
+    {
+        let trimmed = preset.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+    let global = cfg.voice_vosk.model_preset.trim();
+    if global.is_empty() {
+        "cn-light".to_string()
+    } else {
+        global.to_string()
+    }
+}
+
+pub fn resolve_effective_vosk_config(cfg: &VoiceConfig) -> VoiceVoskConfig {
+    let mut vosk = cfg.voice_vosk.clone();
+    if idle_desired_voice_engine(cfg) != DesiredVoiceEngine::Vosk {
+        vosk.enabled = false;
+        return vosk;
+    }
+    vosk.enabled = true;
+    if let Some(mapping) = cfg.find_mapping_by_id(&cfg.active_scene_id) {
+        let preset = effective_vosk_model_preset(cfg, mapping);
+        if preset != "custom" {
+            vosk.model_preset = preset.clone();
+            if let Some(path) = vosk_preset_model_path(&preset) {
+                vosk.model_path = path.to_string();
+            }
+        }
+    }
+    vosk
+}
+
+pub fn resolve_effective_sapi_config(cfg: &VoiceConfig) -> VoiceSapiConfig {
+    let mut sapi = cfg.voice_sapi.clone();
+    sapi.enabled = idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Sapi;
+    sapi
+}
+
 fn global_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
-    match desired_voice_engine(cfg) {
+    match global_desired_voice_engine(cfg) {
         DesiredVoiceEngine::Vosk => cfg.voice_vosk.phrases.clone(),
         DesiredVoiceEngine::Sapi => cfg.voice_sapi.phrases.clone(),
         DesiredVoiceEngine::None => cfg.voice_vosk.phrases.clone(),
@@ -171,13 +250,25 @@ fn global_end_phrases(cfg: &VoiceConfig) -> PhraseBundle {
     }
 }
 
-fn merge_wake_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> Vec<String> {
-    if let Some(phrases) = ov.and_then(|o| o.wake_phrases.as_ref()) {
+fn merge_wake_phrases(
+    cfg: &VoiceConfig,
+    mapping: &crate::config::MappingEntry,
+    ov: Option<&VoiceOverride>,
+) -> Vec<String> {
+    let base = if let Some(phrases) = ov.and_then(|o| o.wake_phrases.as_ref()) {
         if !phrases.is_empty() {
-            return phrases.clone();
+            phrases.clone()
+        } else {
+            global_wake_phrases(cfg)
         }
-    }
-    global_wake_phrases(cfg)
+    } else {
+        global_wake_phrases(cfg)
+    };
+    let summon: Vec<String> = crate::config::summon_entries_for_mapping(mapping)
+        .into_iter()
+        .map(|(phrase, _)| phrase)
+        .collect();
+    crate::config::append_unique_phrases(base, &summon)
 }
 
 fn merge_end_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> PhraseBundle {
@@ -331,6 +422,7 @@ mod tests {
                 target_key: Some("F9".into()),
                 wake_phrases: None,
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
@@ -350,6 +442,7 @@ mod tests {
                     zh: vec!["结束输入".into()],
                     en: vec!["send it".into()],
                 }),
+                ..Default::default()
             });
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
@@ -393,6 +486,7 @@ mod tests {
                 target_key: None,
                 wake_phrases: Some(vec!["scene b wake".into()]),
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let fp_a = voice_runtime_fingerprint(&cfg, &ctx(&cfg)).unwrap();
@@ -427,6 +521,7 @@ mod tests {
                     zh: vec!["结束A".into()],
                     en: default_voice_end_phrases_en(),
                 }),
+                ..Default::default()
             });
         }
         let snapshot = freeze_session_snapshot(&cfg, &a).unwrap();
@@ -439,6 +534,7 @@ mod tests {
                     zh: vec!["结束A-改".into()],
                     en: default_voice_end_phrases_en(),
                 }),
+                ..Default::default()
             });
         }
         assert_eq!(snapshot.scene_id, a);
@@ -465,11 +561,31 @@ mod tests {
                 target_key: None,
                 wake_phrases: Some(vec!["only-b".into()]),
                 end_phrases: None,
+                ..Default::default()
             });
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
         assert_eq!(eff.scene_id, a);
         assert_ne!(eff.wake_phrases, vec!["only-b".to_string()]);
+    }
+
+    #[test]
+    fn summon_phrases_merge_into_effective_wake() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.app_target_id = "cursor-chat".into();
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                app_id: "cursor-chat".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: Some("打开我的 Cursor".into()),
+            }];
+        }
+        let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
+        assert!(eff.wake_phrases.contains(&"打开我的 Cursor".to_string()));
     }
 
     #[test]

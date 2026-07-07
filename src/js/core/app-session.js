@@ -50,6 +50,7 @@
   }
 
   function pickFallbackEngine(cfg,snapshot){
+    var voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
     var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
     if(!vosk.enabled&&!sapi.enabled) return null;
@@ -61,6 +62,7 @@
       if(vst==='stopped'||vst==null||vst==='') return 'vosk';
       return null;
     }
+    if(voskOnly) return null;
     if(sapi.enabled){
       var sst=sSnap&&sSnap.state;
       if(voiceStateBusy(sst)) return null;

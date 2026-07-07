@@ -77,8 +77,8 @@
           if(hooks.setVoiceWakeExpandedMode) hooks.setVoiceWakeExpandedMode('vosk');
           else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.setExpandedMode) global.OneToneVoiceWake.setExpandedMode('vosk');
         }else if(navId==='voice:end'){
-          var active=hooks.currentVoiceMode?hooks.currentVoiceMode():(global.OneToneVoiceWake&&global.OneToneVoiceWake.getExpandedMode?global.OneToneVoiceWake.getExpandedMode():'sapi');
-          var endMode=active==='vosk'?'vosk':'sapi';
+          var active=hooks.currentVoiceMode?hooks.currentVoiceMode():(global.OneToneVoiceWake&&global.OneToneVoiceWake.getExpandedMode?global.OneToneVoiceWake.getExpandedMode():'vosk');
+          var endMode=(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(active==='vosk'?'vosk':'sapi');
           if(hooks.setVoiceWakeExpandedMode) hooks.setVoiceWakeExpandedMode(endMode);
           else if(global.OneToneVoiceWake&&global.OneToneVoiceWake.setExpandedMode) global.OneToneVoiceWake.setExpandedMode(endMode);
         }

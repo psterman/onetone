@@ -37,6 +37,7 @@
       testVoiceVoskSend:deps.testVoiceVoskSend,
       openVoskResourcesDir:deps.openVoskResourcesDir,
       downloadVoskModelGuide:deps.downloadVoskModelGuide,
+      downloadVoskModel:deps.downloadVoskModel,
       retryVoskStart:deps.retryVoskStart,
       addVoiceVoskPreset:deps.addVoiceVoskPreset,
       syncVoiceVoskPresetButtons:global.OneToneVoiceWake.syncVoiceVoskPresetButtons,

@@ -216,7 +216,7 @@ pub fn resolve_path(rel: &str, resource_dir: Option<&Path>) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel)
 }
 
-fn model_dir_valid(path: &Path) -> bool {
+pub fn model_dir_valid(path: &Path) -> bool {
     path.join("conf/model.conf").is_file() || path.join("am/final.mdl").is_file()
 }
 
@@ -1600,6 +1600,13 @@ pub fn normalize_phrase(s: &str) -> String {
             c.is_ascii_alphanumeric()
                 || ('\u{4e00}'..='\u{9fff}').contains(c)
                 || ('\u{3400}'..='\u{4dbf}').contains(c)
+        })
+        .map(|c| {
+            if c.is_ascii_alphabetic() {
+                c.to_ascii_lowercase()
+            } else {
+                c
+            }
         })
         .collect()
 }

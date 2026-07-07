@@ -6,11 +6,15 @@
   function ui(){ return global.OneToneState.ui; }
   function runtime(){ return global.OneToneState.runtime; }
   function hooks(){ return global.__vp_voice_wake_hooks__ || {}; }
-  var voiceWakeExpandedMode='sapi';
+  function voskOnlyUi(){
+    return !!(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.isVoskOnlyUi());
+  }
+  var voiceWakeExpandedMode='vosk';
   var voiceModeSwitchSeq=0;
   var voiceModeSwitchInFlight=false;
   var voiceSapiTogglePending=false;
   var voiceVoskTogglePending=false;
+  var voiceVoskPendingPreset=null;
   var lastVoiceSapiLiveFp='';
   var lastVoiceVoskLiveFp='';
   var lastVoicePollWakeFp='';
@@ -21,6 +25,8 @@
   var voiceSapiPresetSaveSeq=0;
   var voiceSapiSelectedPhrases=[];
   var voiceSapiPresetSaveChain=Promise.resolve();
+  var voskDownloadInFlight=false;
+  var voskDownloadPercent=0;
   var SAPI_SENS_LEVELS=[0.15,0.25,0.35,0.50,0.65,0.80];
 
   function nearestSapiSensIndex(value){
@@ -294,6 +300,13 @@
   function renderVoiceEngineTabs(){
     const tabbar=$('voiceEngineTabbar');
     if(!tabbar) return;
+    if(voskOnlyUi()){
+      tabbar.hidden=true;
+      if(voiceWakeExpandedMode!=='vosk') setVoiceWakeExpandedMode('vosk');
+      syncVoskOnlyCopy();
+      return;
+    }
+    tabbar.hidden=false;
     const mode=voiceWakeExpandedMode||'sapi';
     tabbar.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
       const on=(btn.dataset.voiceEngineTab||'')===mode;
@@ -304,6 +317,16 @@
     const pro=$('voiceEngineTabVosk');
     if(lite) lite.textContent=t('voiceModeLiteTitle');
     if(pro) pro.textContent=t('voiceModeProTitle');
+  }
+
+  function syncVoskOnlyCopy(){
+    if(!voskOnlyUi()) return;
+    const voskDesc=$('voiceVoskDesc');
+    if(voskDesc) voskDesc.textContent=t('voiceVoskDescSingle');
+    const modeDesc=$('voiceModeDesc');
+    if(modeDesc) modeDesc.textContent=t('voiceModeDescSingle');
+    const cap=$('voiceEngineCapabilityNote');
+    if(cap) cap.textContent=t('voiceEngineCapabilityNotePro');
   }
   function mergeWakeSnapshot(sapiRes,voskRes){
     sapiRes=sapiRes||{};
@@ -358,7 +381,7 @@
     const sapi=cfg.voiceSapi||cfg.voice_sapi;
     if(vosk&&vosk.enabled) return 'vosk';
     if(sapi&&sapi.enabled) return 'sapi';
-    return 'off';
+    return voskOnlyUi()?'vosk':'off';
   }
 
   function isVoiceModeCardInteractiveTarget(target){
@@ -382,11 +405,21 @@
   }
 
   function syncVoiceWakeExpandedUi(){
-    const mode=voiceWakeExpandedMode||'sapi';
+    const mode=voiceWakeExpandedMode||'vosk';
     const sapiCard=$('btnVoiceModeSapi');
     const voskCard=$('btnVoiceModeVosk');
     const sapiBlock=$('voiceSapiBlock');
     const voskBlock=$('voiceVoskBlock');
+    if(voskOnlyUi()){
+      if(sapiCard) sapiCard.hidden=true;
+      if(sapiBlock) sapiBlock.hidden=true;
+      if(voskCard){
+        voskCard.hidden=false;
+        voskCard.classList.toggle('is-editing',true);
+      }
+      if(voskBlock) voskBlock.hidden=false;
+      return;
+    }
     if(sapiBlock) sapiBlock.hidden=false;
     if(voskBlock) voskBlock.hidden=false;
     if(sapiCard){
@@ -400,6 +433,7 @@
   }
 
   function setVoiceWakeExpandedMode(mode){
+    if(voskOnlyUi()&&mode==='sapi') mode='vosk';
     if(mode!=='sapi'&&mode!=='vosk') return;
     voiceWakeExpandedMode=mode;
     if(ui().selectedSceneVoiceNav!=='voice:end'){
@@ -410,6 +444,7 @@
     renderVoiceMicLive();
     global.OneToneVoiceEnd.syncModeUi();
     if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.renderVoiceSubnav();
+    renderWakeCustomPhrases();
   }
 
   function renderVoiceModeSwitch(){
@@ -420,6 +455,7 @@
     const currentEl=$('voiceModeCurrent');
     const hintEl=$('voiceModeHint');
     if(sapiCard){
+      sapiCard.hidden=voskOnlyUi();
       sapiCard.classList.toggle('is-active',mode==='sapi');
     }
     if(voskCard){
@@ -427,13 +463,13 @@
     }
     syncVoiceWakeExpandedUi();
     if(currentEl){
-      if(mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
-      else if(mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
+      if(voskOnlyUi()||mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
+      else if(mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
       else currentEl.textContent=t('voiceModeCurrentOff');
     }
     if(hintEl){
-      if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
-      else if(mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
+      if(voskOnlyUi()||mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
+      else if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
       else hintEl.textContent=t('voiceModeHintOff');
     }
     hooks().renderVoiceModeUsage();
@@ -540,6 +576,7 @@
 
   function switchVoiceMode(mode, opts){
     opts=opts||{};
+    if(voskOnlyUi()&&mode==='sapi') return;
     const toastKind=opts.toastKind||'default';
     const toastLite=toastKind==='lite';
     function modeToast(){
@@ -817,6 +854,7 @@
   }
 
   function toggleVoiceSapi(explicitNext){
+    if(voskOnlyUi()) return;
     if(voiceSapiTogglePending) return;
     const next=explicitNext!=null?!!explicitNext:!voiceSapiEnabledNow();
     const btn=$('btnVoiceSapi');
@@ -915,6 +953,111 @@
       const phrase=btn.getAttribute('data-phrase')||'';
       btn.classList.toggle('is-selected',selected.indexOf(phrase)>=0);
     });
+    renderWakeCustomPhrases();
+  }
+
+  function wakePresetPhraseSet(){
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    if(mode==='vosk'){
+      return presetPhrasesIn('#voiceVoskPresetsCn').concat(presetPhrasesIn('#voiceVoskPresetsEn'));
+    }
+    return presetPhrasesIn('#voiceSapiPresets');
+  }
+
+  function presetPhrasesIn(sel){
+    var pc=global.OneToneVoicePhraseCustom;
+    return pc&&pc.presetPhrasesIn?pc.presetPhrasesIn(sel):[];
+  }
+
+  function currentWakePhraseList(){
+    const cfg=state().config||{};
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    if(mode==='vosk'){
+      const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+      const w=hooks().voiceUiSnapshot.wake||{};
+      const live=w.vosk||{};
+      const fromLive=normalizePhraseList(live.phrases);
+      if(fromLive.length) return fromLive;
+      return normalizePhraseList(vosk.phrases);
+    }
+    const sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    const selected=normalizePhraseList(voiceSapiSelectedPhrases);
+    if(selected.length) return selected;
+    return normalizePhraseList(sapi.phrases);
+  }
+
+  function renderWakeCustomPhrases(){
+    const pc=global.OneToneVoicePhraseCustom;
+    if(!pc) return;
+    const active=currentWakePhraseList();
+    const custom=pc.customPhrases(active,wakePresetPhraseSet());
+    pc.renderChips('voiceWakeCustomChips',custom,function(phrase){
+      removeCustomWakePhrase(phrase);
+    });
+    const block=$('voiceWakeCustomBlock');
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    if(block) block.hidden=mode==='off';
+  }
+
+  function persistWakePhrases(next){
+    next=normalizePhraseList(next);
+    if(!next.length) next=['开始输入'];
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    if(mode==='vosk'){
+      return global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next}).then(function(res){
+        renderVoiceVoskStatus(res);
+        hooks().syncHomeFromVoiceSettings(res,null);
+        renderWakeCustomPhrases();
+        hooks().renderVoiceSettingsFlow();
+        return res;
+      });
+    }
+    voiceSapiPresetPending=next.slice();
+    if(state().config){
+      const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+      state().config.voiceSapi=cfg;
+      cfg.phrases=hooks().cloneStringList(next);
+    }
+    syncVoiceSapiPresets(next);
+    return global.OneToneIpc.invoke('cmd_voice_sapi_set_phrases',{phrases:next}).then(function(res){
+      if(res) renderVoiceSapiStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,res);
+      renderWakeCustomPhrases();
+      hooks().renderVoiceSettingsFlow();
+      return res;
+    });
+  }
+
+  function phraseHasLatinLetters(phrase){
+    return /[A-Za-z]/.test(String(phrase||''));
+  }
+
+  function addCustomWakePhrase(raw){
+    const phrase=String(raw||'').trim();
+    if(!phrase) return Promise.resolve();
+    const next=currentWakePhraseList().slice();
+    if(next.indexOf(phrase)>=0){
+      hooks().toast(t('voicePhraseAlreadyAdded'));
+      return Promise.resolve();
+    }
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    if(mode==='vosk'&&phraseHasLatinLetters(phrase)&&!isEnglishVoskPreset(backendVoiceVoskPreset())){
+      hooks().toast(t('voiceWakeMixedLangHint'));
+    }
+    next.push(phrase);
+    return persistWakePhrases(next).then(function(){
+      hooks().toast(t('voicePhraseAdded'));
+    }).catch(function(err){
+      console.error('voice_custom_wake',err);
+      hooks().toast(t('voiceSapiFail'));
+    });
+  }
+
+  function removeCustomWakePhrase(phrase){
+    phrase=String(phrase||'').trim();
+    if(!phrase) return;
+    const next=currentWakePhraseList().filter(function(p){ return p!==phrase; });
+    persistWakePhrases(next.length?next:['开始输入']);
   }
 
   function updateVoiceSapiConfidence(saveNow){
@@ -937,11 +1080,32 @@
     return String(preset||'')==='en-light';
   }
 
+  function resolvedVoskPreset(preset){
+    const p=String(preset||'').trim();
+    if(!p||p==='auto'||p==='custom') return 'cn-light';
+    return p;
+  }
+
+  function backendVoiceVoskPreset(){
+    const cfg=state().config||{};
+    const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+    const raw=hooks().voiceUiSnapshot;
+    const snap=(typeof raw==='function'?raw():raw)||{};
+    const live=snap.wake&&snap.wake.vosk;
+    return resolvedVoskPreset((live&&live.modelPreset)||vosk.modelPreset||'cn-light');
+  }
+
+  function syncVoiceWakeLangFromPreset(preset){
+    global.__vp_voice_wake_lang__=isEnglishVoskPreset(preset)?'en':'zh';
+  }
+
   function currentVoiceVoskPreset(){
+    if(voiceVoskPendingPreset) return voiceVoskPendingPreset;
     const host=$('voiceVoskModelPreset');
-    if(!host) return 'cn-light';
+    if(!host) return backendVoiceVoskPreset();
     const active=host.querySelector('[data-preset].is-active');
-    return active?(active.getAttribute('data-preset')||'cn-light'):'cn-light';
+    if(active) return resolvedVoskPreset(active.getAttribute('data-preset')||'cn-light');
+    return backendVoiceVoskPreset();
   }
 
   function syncVoiceVoskPresetButtons(preset, disabled){
@@ -987,10 +1151,10 @@
       syncVoiceVoskToggle(!!res.enabled);
       const presetEl=$('voiceVoskModelPreset');
       if(presetEl){
-        const preset=res.modelPreset||'cn-light';
-        const uiPreset=(preset==='auto'||preset==='custom')?'cn-light':preset;
+        const uiPreset=voiceVoskPendingPreset||resolvedVoskPreset(res.modelPreset||'cn-light');
         syncVoiceVoskPresetButtons(uiPreset,voiceVoskTogglePending);
         updateVoiceVoskPresetPanel(uiPreset);
+        if(!voiceVoskPendingPreset) syncVoiceWakeLangFromPreset(uiPreset);
       }
       syncVoiceVoskPresets(res.phrases||[]);
     }
@@ -1110,9 +1274,14 @@
     const openBtn=$('btnVoskOpenResources');
     const dlBtn=$('btnVoskDownloadGuide');
     const retryBtn=$('btnVoskRetry');
+    const liteBtn=$('btnVoskUseLite');
     if(openBtn) openBtn.textContent=t('voiceVoskOpenResources');
     if(dlBtn) dlBtn.textContent=t('voiceVoskDownloadGuide');
     if(retryBtn) retryBtn.textContent=t('voiceVoskRetry');
+    if(liteBtn){
+      liteBtn.textContent=t('voiceVoskUseLite');
+      liteBtn.hidden=voskOnlyUi();
+    }
     const snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
     const vosk=snap&&snap.vosk;
     if(vosk) renderVoskMissingPanel(vosk);
@@ -1124,13 +1293,83 @@
     });
   }
 
-  function downloadVoskModelGuide(){
+  function renderVoskDownloadProgress(phase,percent){
+    const wrap=$('voiceVoskDownloadProgress');
+    const fill=$('voiceVoskDownloadFill');
+    const status=$('voiceVoskDownloadStatus');
+    const dlBtn=$('btnVoskDownloadGuide');
+    if(!wrap) return;
+    const active=!!phase&&phase!=='done'&&phase!=='error';
+    wrap.hidden=!active&&!voskDownloadInFlight;
+    if(fill) fill.style.width=String(Math.max(0,Math.min(100,percent||0)))+'%';
+    if(status){
+      if(phase==='extracting') status.textContent=t('voiceVoskExtracting');
+      else if(phase==='downloading') status.textContent=t('voiceVoskDownloading').replace('{n}',String(percent||0));
+      else status.textContent='';
+    }
+    if(dlBtn) dlBtn.disabled=!!voskDownloadInFlight;
+  }
+
+  function handleVoskDownloadMessage(msg){
+    if(!msg||msg.type!=='mvp_vosk_download') return;
+    const phase=String(msg.phase||'');
+    if(phase==='downloading'||phase==='extracting'){
+      voskDownloadInFlight=true;
+      voskDownloadPercent=Number(msg.percent)||0;
+      renderVoskDownloadProgress(phase,voskDownloadPercent);
+      return;
+    }
+    voskDownloadInFlight=false;
+    if(phase==='done'&&msg.ok){
+      renderVoskDownloadProgress('',100);
+      hooks().toast(t('voiceVoskDownloadDone'));
+      loadVoiceVoskStatus();
+      hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+      if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
+      return;
+    }
+    if(phase==='error'){
+      renderVoskDownloadProgress('error',0);
+      const err=String(msg.error||t('voiceVoskFail'));
+      hooks().toast(t('voiceVoskDownloadFail').replace('{error}',err),'warn');
+      loadVoiceVoskStatus();
+    }
+  }
+
+  function currentVoskPreset(){
     const snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
     const vosk=snap&&snap.vosk;
-    const url=(vosk&&vosk.modelDownloadUrl)||'https://alphacephei.com/vosk/models';
-    global.OneToneIpc.invoke('cmd_open_url',{url:url}).catch(function(err){
-      hooks().toast(err&&err.message?String(err.message):t('voiceVoskFail'));
+    if(vosk&&vosk.modelPreset) return String(vosk.modelPreset).trim();
+    const cfg=state().config||{};
+    const v=cfg.voiceVosk||cfg.voice_vosk||{};
+    return String(v.modelPreset||'cn-light').trim()||'cn-light';
+  }
+
+  function downloadVoskModel(preset){
+    if(voskDownloadInFlight) return;
+    preset=preset||currentVoskPreset();
+    voskDownloadInFlight=true;
+    voskDownloadPercent=0;
+    renderVoskDownloadProgress('downloading',0);
+    global.OneToneIpc.invoke('cmd_vosk_download_model',{preset:preset}).then(function(res){
+      if(res&&res.reason==='already_running'){
+        hooks().toast(t('voiceVoskDownloadBusy'));
+        return;
+      }
+      if(!res||!res.ok){
+        voskDownloadInFlight=false;
+        renderVoskDownloadProgress('error',0);
+        hooks().toast(t('voiceVoskDownloadFail').replace('{error}',t('voiceVoskFail')),'warn');
+      }
+    }).catch(function(err){
+      voskDownloadInFlight=false;
+      renderVoskDownloadProgress('error',0);
+      hooks().toast(t('voiceVoskDownloadFail').replace('{error}',err&&err.message?String(err.message):t('voiceVoskFail')),'warn');
     });
+  }
+
+  function downloadVoskModelGuide(){
+    downloadVoskModel();
   }
 
   function retryVoskStart(){
@@ -1190,28 +1429,45 @@
       const phrase=btn.getAttribute('data-phrase')||'';
       btn.classList.toggle('is-selected',selected.includes(phrase));
     });
+    renderWakeCustomPhrases();
   }
 
-  function changeVoiceVoskModelPreset(){
+  function changeVoiceVoskModelPreset(requestedPreset){
     if(voiceVoskTogglePending) return;
-    hooks().markVoiceEngineBootHandled();
-    const preset=currentVoiceVoskPreset();
+    const preset=resolvedVoskPreset(requestedPreset||currentVoiceVoskPreset());
+    const currentBackend=backendVoiceVoskPreset();
+    syncVoiceVoskPresetButtons(preset,false);
     updateVoiceVoskPresetPanel(preset);
+    if(preset===currentBackend){
+      syncVoiceWakeLangFromPreset(preset);
+      hooks().renderVoiceSettingsFlow&&hooks().renderVoiceSettingsFlow();
+      return;
+    }
+    hooks().markVoiceEngineBootHandled();
     voiceVoskTogglePending=true;
+    voiceVoskPendingPreset=preset;
     syncVoiceVoskPresetButtons(preset,true);
+    hooks().toast(t('voiceVoskModelSwitching'));
     global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:preset}).then(function(res){
       renderVoiceVoskStatus(res);
+      if(shouldShowVoskMissingPanel(res)){
+        renderVoskDownloadProgress('',0);
+        hooks().toast(t('voiceVoskMissingModel'),'warn');
+      }
+      syncVoiceWakeLangFromPreset(preset);
       hooks().syncHomeFromVoiceSettings(res,null,null,{homeOnly:true,lightOnly:true});
       hooks().toast(t('voiceVoskModelUpdated'));
       hooks().stopMicLevelPoll();
       hooks().stopMicMonitor();
+      hooks().renderVoiceSettingsFlow&&hooks().renderVoiceSettingsFlow();
     }).catch(function(err){
       console.error('voice_vosk_model',err);
       hooks().toast(t('voiceVoskFail'));
       loadVoiceVoskStatus();
     }).finally(function(){
       voiceVoskTogglePending=false;
-      syncVoiceVoskPresetButtons(currentVoiceVoskPreset(),false);
+      voiceVoskPendingPreset=null;
+      syncVoiceVoskPresetButtons(backendVoiceVoskPreset(),false);
     });
   }
 
@@ -1255,6 +1511,8 @@
     testSapiSend:testVoiceSapiSend,
     addSapiPreset:addVoiceSapiPreset,
     syncSapiPresets:syncVoiceSapiPresets,
+    addCustomWakePhrase:addCustomWakePhrase,
+    renderWakeCustomPhrases:renderWakeCustomPhrases,
     initSapiPresetsFromConfig:initSapiPresetsFromConfig,
     updateSapiConfidence:updateVoiceSapiConfidence,
     syncSapiSensUi:syncVoiceSapiSensUi,
@@ -1271,9 +1529,12 @@
     changeVoskModelPreset:changeVoiceVoskModelPreset,
     isEnglishVoskPreset:isEnglishVoskPreset,
     openVoskResourcesDir:openVoskResourcesDir,
+    downloadVoskModel:downloadVoskModel,
     downloadVoskModelGuide:downloadVoskModelGuide,
+    handleVoskDownloadMessage:handleVoskDownloadMessage,
     retryVoskStart:retryVoskStart,
     applyVoskMissingLang:applyVoskMissingLang,
+    syncVoskOnlyCopy:syncVoskOnlyCopy,
     isModeSwitchPending:function(){ return voiceModeSwitchInFlight; },
     isSapiTogglePending:function(){ return voiceSapiTogglePending; },
     isVoskTogglePending:function(){ return voiceVoskTogglePending; },

@@ -69,11 +69,25 @@ const MINIMAX_PROFILE: AppChatProfile = AppChatProfile {
     launch_localappdata_rel: &["Programs\\MiniMax Code\\MiniMax Code.exe"],
 };
 
+const CLAUDE_PROFILE: AppChatProfile = AppChatProfile {
+    id: CLAUDE_CODE_APP_TARGET_ID,
+    error_prefix: "claude",
+    process_names: &["claude.exe", "Claude.exe"],
+    path_marker: None,
+    open_key: None,
+    composer_anchor: (0.50, 0.90),
+    accept_click_without_uia: true,
+    post_voice_key_ms: 420,
+    restore_main_delay_ms: 360,
+    launch_localappdata_rel: &[],
+};
+
 pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
     match app_target_id {
         CURSOR_APP_TARGET_ID => Some(&CURSOR_PROFILE),
         CODEX_APP_TARGET_ID => Some(&CODEX_PROFILE),
         MINIMAX_APP_TARGET_ID => Some(&MINIMAX_PROFILE),
+        CLAUDE_CODE_APP_TARGET_ID => Some(&CLAUDE_PROFILE),
         _ => None,
     }
 }

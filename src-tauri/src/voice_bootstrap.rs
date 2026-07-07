@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
 use crate::config::{VoiceConfig, VoiceVoskConfig};
+use crate::scene_config::DesiredVoiceEngine as EffectiveVoiceEngine;
 use crate::voice_sapi_runtime;
 use crate::voice_vosk_runtime;
 use crate::AppState;
@@ -48,11 +49,11 @@ pub fn desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     onetone_logic::voice_reload::desired_voice_engine(&voice_reload_snapshot(cfg))
 }
 
-fn desired_engine_label(engine: DesiredVoiceEngine) -> &'static str {
+fn desired_engine_label(engine: EffectiveVoiceEngine) -> &'static str {
     match engine {
-        DesiredVoiceEngine::None => "none",
-        DesiredVoiceEngine::Vosk => "vosk",
-        DesiredVoiceEngine::Sapi => "sapi",
+        EffectiveVoiceEngine::None => "none",
+        EffectiveVoiceEngine::Vosk => "vosk",
+        EffectiveVoiceEngine::Sapi => "sapi",
     }
 }
 
@@ -85,12 +86,17 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
     }
 
     let cfg = state.cfg.lock().clone();
-    let desired = desired_voice_engine(&cfg);
+    let desired = crate::scene_config::idle_desired_voice_engine(&cfg);
     let boot_fingerprint = crate::scene_config::idle_voice_fingerprint(&cfg);
 
     match desired {
-        DesiredVoiceEngine::Vosk => {
-            try_start_vosk_runtime(app, state, cfg.voice_vosk.clone(), "bootstrap");
+        EffectiveVoiceEngine::Vosk => {
+            try_start_vosk_runtime(
+                app,
+                state,
+                crate::scene_config::resolve_effective_vosk_config(&cfg),
+                "bootstrap",
+            );
             crate::runtime_event::publish_runtime_event(
                 Some(app),
                 state.as_ref(),
@@ -100,8 +106,11 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
                 Some(serde_json::json!({ "engine": "vosk" })),
             );
         }
-        DesiredVoiceEngine::Sapi => {
-            if voice_sapi_runtime::bootstrap_voice_sapi_if_needed(state) {
+        EffectiveVoiceEngine::Sapi => {
+            if voice_sapi_runtime::bootstrap_voice_sapi_if_needed_with_config(
+                state,
+                crate::scene_config::resolve_effective_sapi_config(&cfg),
+            ) {
                 crate::app_log::log_line(state, "voice", "voice bootstrap: sapi scheduled");
                 crate::runtime_event::publish_runtime_event(
                     Some(app),
@@ -113,7 +122,7 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
                 );
             }
         }
-        DesiredVoiceEngine::None => {
+        EffectiveVoiceEngine::None => {
             crate::app_log::log_line(state, "voice", "voice bootstrap: no engine enabled");
             crate::runtime_event::publish_runtime_event(
                 Some(app),
@@ -134,19 +143,19 @@ pub fn apply_voice_config_change(
     old_cfg: &VoiceConfig,
     new_cfg: &VoiceConfig,
 ) {
-    let old_desired = desired_voice_engine(old_cfg);
-    let new_desired = desired_voice_engine(new_cfg);
+    let old_desired = crate::scene_config::idle_desired_voice_engine(old_cfg);
+    let new_desired = crate::scene_config::idle_desired_voice_engine(new_cfg);
 
     if old_desired == new_desired {
         let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
         let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
         match old_desired {
-            DesiredVoiceEngine::Vosk => {
+            EffectiveVoiceEngine::Vosk => {
                 if old_fp != new_fp {
                     restart_vosk_runtime(
                         app,
                         state,
-                        new_cfg.voice_vosk.clone(),
+                        crate::scene_config::resolve_effective_vosk_config(new_cfg),
                         "effective fingerprint changed",
                     );
                     crate::runtime_event::publish_runtime_event(
@@ -173,11 +182,11 @@ pub fn apply_voice_config_change(
                     );
                 }
             }
-            DesiredVoiceEngine::Sapi => {
+            EffectiveVoiceEngine::Sapi => {
                 if old_fp != new_fp {
                     voice_sapi_runtime::restart_voice_sapi_runtime(
                         state,
-                        new_cfg.voice_sapi.clone(),
+                        crate::scene_config::resolve_effective_sapi_config(new_cfg),
                         "effective fingerprint changed",
                     );
                     crate::runtime_event::publish_runtime_event(
@@ -204,7 +213,7 @@ pub fn apply_voice_config_change(
                     );
                 }
             }
-            DesiredVoiceEngine::None => {
+            EffectiveVoiceEngine::None => {
                 crate::app_log::log_line(state, "voice", "voice config changed: no runtime change");
                 crate::runtime_event::publish_runtime_event(
                     Some(app),
@@ -247,35 +256,45 @@ pub fn apply_voice_config_change(
     );
 
     match (old_desired, new_desired) {
-        (DesiredVoiceEngine::None, DesiredVoiceEngine::Vosk) => {
+        (EffectiveVoiceEngine::None, EffectiveVoiceEngine::Vosk) => {
             voice_sapi_runtime::voice_sapi_stop(state);
-            try_start_vosk_runtime(app, state, new_cfg.voice_vosk.clone(), "config change");
-        }
-        (DesiredVoiceEngine::None, DesiredVoiceEngine::Sapi) => {
-            voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
-            voice_sapi_runtime::start_voice_sapi_runtime_only(
+            try_start_vosk_runtime(
+                app,
                 state,
-                new_cfg.voice_sapi.clone(),
+                crate::scene_config::resolve_effective_vosk_config(new_cfg),
                 "config change",
             );
         }
-        (DesiredVoiceEngine::Vosk, DesiredVoiceEngine::None) => {
-            voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
-        }
-        (DesiredVoiceEngine::Sapi, DesiredVoiceEngine::None) => {
-            voice_sapi_runtime::voice_sapi_stop(state);
-        }
-        (DesiredVoiceEngine::Vosk, DesiredVoiceEngine::Sapi) => {
+        (EffectiveVoiceEngine::None, EffectiveVoiceEngine::Sapi) => {
             voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
             voice_sapi_runtime::start_voice_sapi_runtime_only(
                 state,
-                new_cfg.voice_sapi.clone(),
+                crate::scene_config::resolve_effective_sapi_config(new_cfg),
                 "config change",
             );
         }
-        (DesiredVoiceEngine::Sapi, DesiredVoiceEngine::Vosk) => {
+        (EffectiveVoiceEngine::Vosk, EffectiveVoiceEngine::None) => {
+            voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+        }
+        (EffectiveVoiceEngine::Sapi, EffectiveVoiceEngine::None) => {
             voice_sapi_runtime::voice_sapi_stop(state);
-            try_start_vosk_runtime(app, state, new_cfg.voice_vosk.clone(), "config change");
+        }
+        (EffectiveVoiceEngine::Vosk, EffectiveVoiceEngine::Sapi) => {
+            voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+            voice_sapi_runtime::start_voice_sapi_runtime_only(
+                state,
+                crate::scene_config::resolve_effective_sapi_config(new_cfg),
+                "config change",
+            );
+        }
+        (EffectiveVoiceEngine::Sapi, EffectiveVoiceEngine::Vosk) => {
+            voice_sapi_runtime::voice_sapi_stop(state);
+            try_start_vosk_runtime(
+                app,
+                state,
+                crate::scene_config::resolve_effective_vosk_config(new_cfg),
+                "config change",
+            );
         }
         _ => {}
     }

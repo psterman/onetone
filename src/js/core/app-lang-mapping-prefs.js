@@ -143,6 +143,7 @@
     var appTargetHintOnboard=$('appTargetHintOnboard'); if(appTargetHintOnboard) appTargetHintOnboard.textContent=d.appTargetHint;
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.applyLang();
     if(global.OneToneVoiceWake && global.OneToneVoiceWake.applyVoskMissingLang) global.OneToneVoiceWake.applyVoskMissingLang();
+    if(global.OneToneVoiceWake && global.OneToneVoiceWake.syncVoskOnlyCopy) global.OneToneVoiceWake.syncVoskOnlyCopy();
     var voiceEndAutoSendLabel=$('voiceEndAutoSendLabel'); if(voiceEndAutoSendLabel) voiceEndAutoSendLabel.textContent=d.voiceEndAutoSendLabel;
     var btnVoiceEndTestStop=$('btnVoiceEndTestStop'); if(btnVoiceEndTestStop) btnVoiceEndTestStop.textContent=d.voiceEndTestStop;
     var btnVoiceEndTestCommit=$('btnVoiceEndTestCommit'); if(btnVoiceEndTestCommit) btnVoiceEndTestCommit.textContent=d.voiceEndTestCommit;

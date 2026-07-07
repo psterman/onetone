@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1600" />
+<title>voice-pilot · v14 · 按键工作流编辑器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   voice-pilot · v14
+   按键工作流编辑器 · 不是 settings page
+   ============================================================ */
+:root{
+  --bg:            #F5F5F7;
+  --surface:       #FFFFFF;
+  --surface-2:     #FBFBFD;
+  --surface-3:     #F4F4F6;
+  --surface-4:     #ECECEE;
+
+  --text:          #1c1c1e;
+  --text-2:        #6b6b70;
+  --text-3:        #a1a1a6;
+
+  --border:        #ECECEE;
+  --border-strong: #DCDCE0;
+
+  --brand:         #2A9CC4;
+  --brand-2:       #1F86AB;
+  --brand-soft:    rgba(42,156,196,.10);
+  --brand-glow:    rgba(42,156,196,.35);
+
+  --success:       #2BB673;
+  --success-soft:  rgba(43,182,115,.10);
+  --warn:          #E8930C;
+  --warn-soft:     rgba(232,147,12,.10);
+  --violet:        #8B5CF6;
+  --violet-soft:   rgba(139,92,246,.10);
+  --pink:          #EC4899;
+  --pink-soft:     rgba(236,72,153,.10);
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ background:var(--bg); color:var(--text); font-family:'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; }
+body{ padding:32px 28px 80px; }
+
+/* ============================================================
+   顶部标题
+   ============================================================ */
+.page-head{
+  max-width:1620px; margin:0 auto 24px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:32px;
+}
+.page-head h1{
+  font-size:26px; font-weight:700; letter-spacing:-.02em; color:var(--text);
+}
+.page-head h1 em{ font-style:normal; color:var(--brand); }
+.page-head .sub{
+  font-size:13px; color:var(--text-2); max-width:580px; line-height:1.55;
+}
+.page-head .sub code{
+  font-family:'JetBrains Mono', monospace; font-size:12px;
+  background:var(--brand-soft); color:var(--brand);
+  padding:2px 6px; border-radius:4px;
+}
+
+/* ============================================================
+   整体布局：左主区（工作流编辑器）+ 右栏（工作流库）
+   ============================================================ */
+.layout{
+  max-width:1620px; margin:0 auto;
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  gap:18px;
+  align-items:start;
+}
+.main-col{ display:flex; flex-direction:column; gap:14px; }
+.side-col{ display:flex; flex-direction:column; gap:14px; }
+
+/* ============================================================
+   工作流选择条（顶部 tab 切换器）
+   ============================================================ */
+.wf-tabs{
+  display:flex; align-items:center; gap:6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:8px;
+  overflow-x:auto;
+}
+.wf-tab{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--text-2);
+  font-weight:500;
+  white-space:nowrap;
+  transition:all .12s;
+}
+.wf-tab:hover{ background:var(--surface-3); }
+.wf-tab.active{
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  color:#fff; font-weight:600;
+  box-shadow:0 3px 10px var(--brand-glow);
+}
+.wf-tab .ico{
+  width:22px; height:22px; border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface-3); color:var(--text-2);
+  font-size:11px; font-weight:700;
+}
+.wf-tab.active .ico{ background:rgba(255,255,255,.22); color:#fff; }
+.wf-tab .dot-status{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--success);
+}
+.wf-tab.new{
+  color:var(--brand);
+  border:1px dashed var(--brand);
+  background:transparent;
+}
+.wf-tab.new:hover{ background:var(--brand-soft); }
+.wf-tab .edit-pen{
+  width:18px; height:18px; border-radius:4px;
+  background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+  margin-left:4px;
+}
+.wf-tab.active .edit-pen{ color:#fff; background:rgba(255,255,255,.18); }
+.wf-tab .edit-pen:hover{ background:var(--surface-3); color:var(--text); }
+
+/* ============================================================
+   流水线容器 · 3 stage card
+   ============================================================ */
+.pipeline{
+  display:grid;
+  grid-template-columns:1fr 36px 1fr 36px 1fr;
+  gap:8px;
+  align-items:stretch;
+}
+
+.stage{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.stage-head{
+  display:flex; align-items:center; gap:10px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface-2);
+}
+.stage-num{
+  width:28px; height:28px; border-radius:50%;
+  background:var(--brand-soft); color:var(--brand);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700;
+  font-family:'JetBrains Mono', monospace;
+  flex-shrink:0;
+}
+.stage-head .ttl{ font-size:14px; font-weight:600; color:var(--text); }
+.stage-head .sub{
+  margin-left:auto;
+  font-size:11px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+}
+
+.stage-body{
+  padding:22px 20px;
+  flex:1;
+  display:flex; flex-direction:column;
+  gap:16px;
+}
+
+/* stage 中央大交互部件 · 触发器 / 输入法 / 完成动作 */
+.big-widget{
+  background:linear-gradient(180deg, var(--surface-2), var(--surface));
+  border:1.5px dashed var(--border-strong);
+  border-radius:12px;
+  padding:18px;
+  display:flex; align-items:center; justify-content:center;
+  min-height:120px;
+  text-align:center;
+  position:relative;
+  transition:all .15s;
+}
+.big-widget:hover{ border-color:var(--brand); background:var(--brand-soft); }
+.big-widget.recording{
+  border-style:solid;
+  border-color:var(--error);
+  background:var(--error-soft);
+  animation:pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100%{ box-shadow:0 0 0 0 rgba(229,90,79,.4); }
+  50%{ box-shadow:0 0 0 10px rgba(229,90,79,0); }
+}
+
+/* trigger widget */
+.trigger-widget .key-display{
+  display:flex; align-items:center; gap:8px;
+  padding:14px 22px;
+  border-radius:10px;
+  background:#fff;
+  border:1.5px solid var(--text);
+  box-shadow:0 3px 0 var(--text);
+  font-family:'JetBrains Mono', monospace;
+  font-size:20px; font-weight:700;
+  color:var(--text);
+}
+.trigger-widget .key-display .k{
+  padding:4px 10px; background:var(--surface-3); border-radius:5px;
+}
+.trigger-widget .key-display .plus{ color:var(--text-3); font-weight:400; font-size:16px; }
+.trigger-widget .rec{
+  margin-top:10px;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 12px;
+  border-radius:999px;
+  border:1px solid var(--brand); color:var(--brand);
+  font-size:11.5px; font-weight:600;
+  cursor:pointer;
+  background:#fff;
+}
+.trigger-widget .rec .dot{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--error);
+  animation:rec 1.2s ease-in-out infinite;
+}
+.trigger-widget .picker-row{
+  display:flex; gap:5px; justify-content:center;
+  margin-top:10px; flex-wrap:wrap;
+}
+.trigger-widget .picker-row button{
+  padding:4px 10px; border-radius:5px;
+  background:#fff; border:1px solid var(--border);
+  font-size:11px; color:var(--text-2); cursor:pointer;
+  font-family:inherit;
+}
+.trigger-widget .picker-row button:hover{ background:var(--surface-3); }
+.trigger-widget .picker-row button.on{
+  background:var(--brand); color:#fff; border-color:var(--brand);
+  font-weight:600;
+}
+
+/* capture widget */
+.capture-widget{
+  flex-direction:column; gap:14px;
+}
+.capture-widget .im-card{
+  display:flex; align-items:center; gap:12px;
+  padding:14px 16px;
+  background:#fff;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  width:100%;
+  cursor:pointer;
+}
+.capture-widget .im-card.active{
+  border-color:var(--brand);
+  box-shadow:0 0 0 4px rgba(42,156,196,.08);
+}
+.capture-widget .im-card .im-ico{
+  width:36px; height:36px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--brand-soft); color:var(--brand);
+  font-size:14px; font-weight:700;
+  flex-shrink:0;
+}
+.capture-widget .im-card .im-info{ flex:1; text-align:left; }
+.capture-widget .im-card .im-name{ font-size:14px; font-weight:600; color:var(--text); }
+.capture-widget .im-card .im-desc{ font-size:11px; color:var(--text-2); margin-top:2px; }
+.capture-widget .im-card .im-key{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px; padding:3px 7px;
+  background:var(--surface-3); border-radius:4px;
+  color:var(--text-2);
+}
+.capture-widget .more{
+  font-size:11.5px; color:var(--brand); font-weight:600;
+  cursor:pointer;
+}
+
+/* action widget */
+.action-widget .act-grid{
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
+}
+.action-widget .act{
+  padding:14px 10px;
+  background:#fff;
+  border:2px solid var(--border);
+  border-radius:10px;
+  text-align:center;
+  cursor:pointer;
+}
+.action-widget .act.active{
+  border-color:var(--brand);
+  background:var(--brand-soft);
+}
+.action-widget .act .glyph{ font-size:24px; line-height:1; margin-bottom:6px; }
+.action-widget .act .name{ font-size:12.5px; font-weight:600; color:var(--text); }
+.action-widget .act .desc{ font-size:10.5px; color:var(--text-3); margin-top:3px; line-height:1.4; }
+
+/* 子控件 · 显示在 stage body 下部 */
+.sub-controls{
+  display:flex; flex-direction:column; gap:10px;
+}
+
+.sub-row{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 0;
+  border-top:1px dashed var(--border);
+  font-size:12px;
+}
+.sub-row:first-child{ border-top:none; padding-top:0; }
+.sub-row .lbl{ flex:1; color:var(--text-2); }
+.sub-row .ctrls{ display:flex; gap:6px; align-items:center; }
+
+.mini-seg{
+  display:flex; padding:2px;
+  background:var(--surface-3); border-radius:6px;
+}
+.mini-seg button{
+  border:none; background:transparent;
+  padding:4px 10px; border-radius:4px;
+  font-size:11.5px; color:var(--text-2);
+  cursor:pointer; font-family:inherit;
+}
+.mini-seg button.on{
+  background:#fff; color:var(--text); font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+}
+
+.mini-sw{
+  width:30px; height:18px; border-radius:9px;
+  background:var(--success); position:relative; cursor:pointer;
+}
+.mini-sw::after{
+  content:""; position:absolute;
+  top:2px; left:14px;
+  width:14px; height:14px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  transition:left .15s;
+}
+.mini-sw.off{ background:#DCDCE0; }
+.mini-sw.off::after{ left:2px; }
+
+.val-badge{
+  display:inline-flex; align-items:center; gap:2px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  color:var(--brand); font-weight:600;
+  padding:2px 7px; border-radius:5px;
+  background:var(--brand-soft);
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  width:100px; height:4px;
+  border-radius:2px;
+  background:var(--surface-3);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--brand);
+  border:2px solid #fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--brand);
+  border:2px solid #fff;
+  cursor:pointer;
+}
+
+/* stage 之间的连接箭头 */
+.connector{
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.connector .arrow{
+  width:36px; height:36px; border-radius:50%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--brand);
+  font-size:14px;
+}
+.connector.ok .arrow{
+  background:var(--success); border-color:var(--success);
+  color:#fff;
+}
+
+/* ============================================================
+   绑定区 · 这个工作流用于哪些应用
+   ============================================================ */
+.binding{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+}
+.binding-head{
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface-2);
+  display:flex; align-items:center; gap:10px;
+}
+.binding-head .ttl{ font-size:14px; font-weight:600; color:var(--text); }
+.binding-head .hint{
+  font-size:11.5px; color:var(--text-3);
+  padding-left:10px; border-left:1px solid var(--border);
+}
+.binding-body{
+  padding:16px 20px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.binding-app{
+  display:flex; align-items:center; gap:8px;
+  padding:7px 12px 7px 8px;
+  border-radius:8px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  font-size:12.5px;
+  color:var(--text);
+  font-weight:500;
+  cursor:pointer;
+}
+.binding-app.bound{
+  background:var(--brand-soft);
+  border-color:transparent;
+}
+.binding-app .ico{
+  width:22px; height:22px; border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  font-size:11px; font-weight:700;
+}
+.binding-app .x{
+  margin-left:4px;
+  color:var(--text-3);
+  font-size:14px;
+  cursor:pointer;
+}
+.binding-app .x:hover{ color:var(--error); }
+.binding-app.add{
+  border:1px dashed var(--border-strong);
+  background:transparent;
+  color:var(--text-2);
+}
+.binding-app.add:hover{ color:var(--brand); border-color:var(--brand); }
+
+/* ============================================================
+   右侧栏 · 工作流库 + 模板
+   ============================================================ */
+.side-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+}
+.side-head{
+  display:flex; align-items:center; gap:8px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.side-head .ico{ color:var(--brand); }
+.side-head .count{
+  margin-left:auto;
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+  font-weight:500;
+}
+
+/* 工作流库列表 */
+.wf-list{ padding:6px; }
+.wf-item{
+  padding:10px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  display:flex; align-items:center; gap:10px;
+  transition:background .12s;
+}
+.wf-item:hover{ background:var(--surface-2); }
+.wf-item.active{ background:var(--brand-soft); }
+.wf-item .ico{
+  width:28px; height:28px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:#fff;
+  flex-shrink:0;
+}
+.wf-item .info{ flex:1; min-width:0; }
+.wf-item .name{ font-size:12.5px; font-weight:600; color:var(--text); }
+.wf-item .desc{ font-size:10.5px; color:var(--text-3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wf-item .num{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px; color:var(--text-3);
+  padding:1px 5px;
+  background:var(--surface-3);
+  border-radius:3px;
+}
+
+/* 模板卡 */
+.tpl-card{
+  padding:12px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  margin-bottom:8px;
+  cursor:pointer;
+  transition:all .12s;
+}
+.tpl-card:hover{ border-color:var(--brand); transform:translateY(-1px); }
+.tpl-card .t-head{
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+}
+.tpl-card .t-ico{
+  width:26px; height:26px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  font-size:12px; font-weight:700;
+}
+.tpl-card .t-name{ font-size:12.5px; font-weight:600; color:var(--text); }
+.tpl-card .t-desc{ font-size:11px; color:var(--text-2); line-height:1.45; }
+
+/* ============================================================
+   底部提示区
+   ============================================================ */
+.tip-bar{
+  background:linear-gradient(135deg, var(--brand-soft), #fff);
+  border:1px solid var(--brand-soft);
+  border-radius:10px;
+  padding:12px 18px;
+  display:flex; align-items:center; gap:14px;
+  font-size:12.5px;
+  color:var(--text-2);
+}
+.tip-bar .tip-ico{
+  width:24px; height:24px; border-radius:50%;
+  background:var(--brand); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.tip-bar .txt strong{ color:var(--brand); font-weight:600; }
+
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <div>
+    <h1>我的<em>说话方式</em></h1>
+    <div class="sub">不是设置页，是工作流编辑器。每套"说话方式"= 1 个 <code>工作流</code>，包含 <b>3 步流水线</b>（触发 → 输入 → 完成）+ <b>应用绑定</b>。可以保存多套，按场景切换。</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ============ 左主区 ============ -->
+  <div class="main-col">
+
+    <!-- ① 工作流选择条 · 横向 tab -->
+    <div class="wf-tabs">
+      <div class="wf-tab">
+        <span class="ico" style="background:var(--text-3); color:#fff;">默</span>
+        <span>默认·通用</span>
+        <span class="edit-pen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </span>
+      </div>
+      <div class="wf-tab active">
+        <span class="ico" style="background:#0078D4;">C</span>
+        <span>Cursor·专注模式</span>
+        <span class="dot-status"></span>
+        <span class="edit-pen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </span>
+      </div>
+      <div class="wf-tab">
+        <span class="ico" style="background:#07C160;">微</span>
+        <span>微信·聊天</span>
+        <span class="edit-pen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </span>
+      </div>
+      <div class="wf-tab">
+        <span class="ico" style="background:var(--violet);">笔</span>
+        <span>Notion·写作</span>
+        <span class="edit-pen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </span>
+      </div>
+      <div class="wf-tab new">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>新建说话方式</span>
+      </div>
+    </div>
+
+    <!-- ② 流水线 · 3 stage card + 2 连接器 -->
+    <div class="pipeline">
+
+      <!-- STAGE ① 触发器 -->
+      <div class="stage">
+        <div class="stage-head">
+          <span class="stage-num">1</span>
+          <span class="ttl">怎么开始说话</span>
+          <span class="sub">TRIGGER</span>
+        </div>
+        <div class="stage-body">
+          <div class="big-widget trigger-widget">
+            <div>
+              <div class="key-display">
+                <span class="k">Ctrl</span>
+                <span class="plus">+</span>
+                <span class="k">⇧</span>
+                <span class="plus">+</span>
+                <span class="k">V</span>
+              </div>
+              <div style="text-align:center;">
+                <button class="rec"><span class="dot"></span>录制新键</button>
+              </div>
+              <div class="picker-row">
+                <button>音量键</button>
+                <button>鼠标侧键</button>
+                <button class="on">自定义</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-controls">
+            <div class="sub-row">
+              <span class="lbl">触发方式</span>
+              <div class="ctrls">
+                <div class="mini-seg">
+                  <button class="on">按住</button>
+                  <button>点一下</button>
+                  <button>双击</button>
+                </div>
+              </div>
+            </div>
+            <div class="sub-row">
+              <span class="lbl">生效范围</span>
+              <div class="ctrls">
+                <div class="mini-seg">
+                  <button class="on">全局</button>
+                  <button>仅绑定应用</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 连接器 1 -->
+      <div class="connector ok">
+        <div class="arrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- STAGE ② 输入法 -->
+      <div class="stage">
+        <div class="stage-head">
+          <span class="stage-num">2</span>
+          <span class="ttl">用什么识别</span>
+          <span class="sub">CAPTURE</span>
+        </div>
+        <div class="stage-body">
+          <div class="big-widget capture-widget">
+            <div class="im-card active" style="width:100%;">
+              <div class="im-ico">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+              </div>
+              <div class="im-info">
+                <div class="im-name">系统输入法</div>
+                <div class="im-desc">调用 Windows 当前输入法 · 自动识别</div>
+              </div>
+              <span class="im-key">语音键</span>
+            </div>
+            <div class="more">+ 选其他输入法</div>
+          </div>
+
+          <div class="sub-controls">
+            <div class="sub-row">
+              <span class="lbl">输入法激活键</span>
+              <div class="ctrls">
+                <span class="val-badge">右 Alt</span>
+                <button style="padding:3px 8px; border-radius:5px; border:1px solid var(--border); background:#fff; font-size:11px; color:var(--text-2); cursor:pointer;">重新录制</button>
+              </div>
+            </div>
+            <div class="sub-row">
+              <span class="lbl">识别引擎</span>
+              <div class="ctrls">
+                <div class="mini-seg">
+                  <button class="on">小型</button>
+                  <button>中型</button>
+                  <button>大型</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 连接器 2 -->
+      <div class="connector ok">
+        <div class="arrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+
+      <!-- STAGE ③ 完成动作 -->
+      <div class="stage">
+        <div class="stage-head">
+          <span class="stage-num">3</span>
+          <span class="ttl">说完后做什么</span>
+          <span class="sub">ACTION</span>
+        </div>
+        <div class="stage-body">
+          <div class="big-widget action-widget">
+            <div class="act-grid" style="width:100%;">
+              <div class="act">
+                <div class="glyph">⏵</div>
+                <div class="name">自动发送</div>
+                <div class="desc">说完立即送出</div>
+              </div>
+              <div class="act active">
+                <div class="glyph">⏸</div>
+                <div class="name">确认后发送</div>
+                <div class="desc">等几秒让你看</div>
+              </div>
+              <div class="act">
+                <div class="glyph">✋</div>
+                <div class="name">手动处理</div>
+                <div class="desc">只停止录音</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-controls">
+            <div class="sub-row">
+              <span class="lbl">确认延迟</span>
+              <div class="ctrls">
+                <input type="range" min="0" max="10" step="0.5" value="5" />
+                <span class="val-badge">5.0 秒</span>
+              </div>
+            </div>
+            <div class="sub-row">
+              <span class="lbl">取消窗口</span>
+              <div class="ctrls">
+                <div class="mini-sw"></div>
+                <span class="val-badge">1.2 秒</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ③ 应用绑定 · 这个工作流用于哪些应用 -->
+    <div class="binding">
+      <div class="binding-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+        <span class="ttl">用在哪些程序</span>
+        <span class="hint">已绑定 2 个 · 切换程序自动启用此工作流</span>
+      </div>
+      <div class="binding-body">
+        <div class="binding-app bound">
+          <span class="ico" style="background:#0078D4;">C</span>
+          <span>Cursor</span>
+          <span class="x">×</span>
+        </div>
+        <div class="binding-app bound">
+          <span class="ico" style="background:#10A37F;">VS</span>
+          <span>VS Code</span>
+          <span class="x">×</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#D97706;">CC</span>
+          <span>Claude Code</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#5856D6;">M</span>
+          <span>MiniMax</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#000;">W</span>
+          <span>WebStorm</span>
+        </div>
+        <div class="binding-app add">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          添加程序
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部小白提示 -->
+    <div class="tip-bar">
+      <div class="tip-ico">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      </div>
+      <div class="txt">
+        <strong>3 步就能配好一个说话方式</strong>　先选激活键，再选输入法，最后选完成动作。
+        想给别的程序也用？把程序拖到下面"用在哪些程序"里就行。每个程序可以配一套独立的方式。
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ 右侧栏 ============ -->
+  <div class="side-col">
+
+    <!-- 工作流库 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        我的工作流
+        <span class="count">4 套</span>
+      </div>
+      <div class="wf-list">
+        <div class="wf-item">
+          <span class="ico" style="background:var(--text-3);">默</span>
+          <div class="info">
+            <div class="name">默认·通用</div>
+            <div class="desc">按住 Ctrl+⇧+V · 自动发送</div>
+          </div>
+          <span class="num">ALL</span>
+        </div>
+        <div class="wf-item active">
+          <span class="ico" style="background:#0078D4;">C</span>
+          <div class="info">
+            <div class="name">Cursor·专注模式</div>
+            <div class="desc">音量键 · 确认后 5 秒</div>
+          </div>
+          <span class="num">2</span>
+        </div>
+        <div class="wf-item">
+          <span class="ico" style="background:#07C160;">微</span>
+          <div class="info">
+            <div class="name">微信·聊天</div>
+            <div class="desc">按住 右Alt · 自动发送</div>
+          </div>
+          <span class="num">1</span>
+        </div>
+        <div class="wf-item">
+          <span class="ico" style="background:var(--violet);">笔</span>
+          <div class="info">
+            <div class="name">Notion·写作</div>
+            <div class="desc">点一下 · 手动处理</div>
+          </div>
+          <span class="num">1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一键套用模板 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        一键套用模板
+      </div>
+      <div style="padding:10px;">
+        <div class="tpl-card">
+          <div class="t-head">
+            <span class="t-ico" style="background:#0078D4;">C</span>
+            <span class="t-name">Cursor 程序员</span>
+          </div>
+          <div class="t-desc">音量键 + 系统输入法 + 确认 5 秒 · 自动加注释符号</div>
+        </div>
+        <div class="tpl-card">
+          <div class="t-head">
+            <span class="t-ico" style="background:var(--violet);">笔</span>
+            <span class="t-name">写作·长文</span>
+          </div>
+          <div class="t-desc">点一下 + 微软拼音 + 手动处理 · 不打断思路</div>
+        </div>
+        <div class="tpl-card">
+          <div class="t-head">
+            <span class="t-ico" style="background:#07C160;">微</span>
+            <span class="t-name">聊天·快速回复</span>
+          </div>
+          <div class="t-desc">按住 + 系统输入法 + 自动发送 · 像微信语音</div>
+        </div>
+        <div class="tpl-card">
+          <div class="t-head">
+            <span class="t-ico" style="background:var(--warn);">📝</span>
+            <span class="t-name">会议·实时转写</span>
+          </div>
+          <div class="t-desc">双击 + 大型模型 · 自动分段 + 时间戳</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作提示 -->
+    <div class="side-card">
+      <div style="padding:12px 14px; font-size:11.5px; color:var(--text-2); line-height:1.6;">
+        <div style="font-weight:600; color:var(--text); margin-bottom:6px;">快捷键</div>
+        · 新建工作流 · <code style="background:var(--surface-3); padding:1px 5px; border-radius:3px; font-size:10.5px;">Ctrl+N</code><br/>
+        · 切换工作流 · <code style="background:var(--surface-3); padding:1px 5px; border-radius:3px; font-size:10.5px;">Ctrl+1~9</code><br/>
+        · 录制激活键 · <code style="background:var(--surface-3); padding:1px 5px; border-radius:3px; font-size:10.5px;">F2</code>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

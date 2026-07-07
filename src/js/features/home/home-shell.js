@@ -118,6 +118,11 @@
     const advSummary=$('homeAdvancedSummary');
     if(advSummary) advSummary.textContent=t('homeAdvancedSummary');
     global.OneToneHomeLive.renderZone();
+    if(global.OneToneHomeV9){
+      global.OneToneHomeV9.bindOnce();
+      global.OneToneHomeV9.applyLang();
+      global.OneToneHomeV9.render();
+    }
   }
 
   global.OneToneHomeShell={

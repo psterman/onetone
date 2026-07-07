@@ -463,6 +463,7 @@
     const cfg=state().config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     if(voskCfg.enabled) return 'vosk';
+    if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return 'vosk';
     return 'sapi';
   }
 
@@ -618,6 +619,9 @@
       renderHomeLiveKeyPanel(loading);
       renderHomeLiveVoicePanel(loading);
       hooks().refreshHomeGuideIfOpen();
+      if(global.OneToneHomeV9){
+        global.OneToneHomeV9.render();
+      }
     }catch(err){
       console.error('renderHomeLiveZone',err);
     }

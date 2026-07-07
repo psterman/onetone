@@ -39,11 +39,50 @@
 
   function isWorkflowAppTarget(id){
     const t=String(id||'').trim();
-    return t==='cursor-chat'||t==='codex-chat'||t==='minimax-chat';
+    return t==='cursor-chat'||t==='codex-chat'||t==='claude-code'||t==='minimax-chat';
   }
 
   function cloneList(arr){
     return Array.isArray(arr)?arr.map(function(s){return String(s);}):[];
+  }
+
+  function defaultSummonPhrase(appId){
+    appId=String(appId||'').trim();
+    if(appId==='cursor-chat') return '打开 Cursor';
+    if(appId==='codex-chat') return '打开 Codex';
+    if(appId==='claude-code') return '打开 Claude';
+    if(appId==='minimax-chat') return '打开 MiniMax';
+    return '';
+  }
+
+  function summonPhrasesForMapping(mapping){
+    if(!mapping) return [];
+    var out=[];
+    var seen={};
+    (Array.isArray(mapping.appBehaviorRules)?mapping.appBehaviorRules:[]).forEach(function(rule){
+      if(!rule||!rule.appId) return;
+      var phrase=String(rule.summonPhrase||'').trim()||defaultSummonPhrase(rule.appId);
+      if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+    });
+    var primary=String(mapping.appTargetId||'').trim();
+    if(primary){
+      var hasRule=(mapping.appBehaviorRules||[]).some(function(r){ return r&&r.appId===primary; });
+      if(!hasRule){
+        var fallback=defaultSummonPhrase(primary);
+        if(fallback&&!seen[fallback]) out.push(fallback);
+      }
+    }
+    return out;
+  }
+
+  function mergeWakePhrases(cfg,mapping,ov){
+    var base=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length
+      ?ov.wakePhrases.slice()
+      :globalWakePhrases(cfg);
+    summonPhrasesForMapping(mapping).forEach(function(phrase){
+      if(phrase&&base.indexOf(phrase)<0) base.push(phrase);
+    });
+    return base;
   }
 
   function mergeEndPhrases(global, overrideBundle){
@@ -64,7 +103,7 @@
     let targetKey=globalVoiceTargetKey(config);
     if(ov&&ov.targetKey&&String(ov.targetKey).trim()) targetKey=String(ov.targetKey).trim();
     else if(isWorkflowAppTarget(mapping.appTargetId)) targetKey=globalVoiceTargetKey(config);
-    const wake=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length?ov.wakePhrases.slice():globalWakePhrases(config);
+    const wake=mergeWakePhrases(config,mapping,ov);
     const end=mergeEndPhrases(globalEndPhrases(config),ov&&ov.endPhrases?ov.endPhrases:null);
     return {
       sceneId:sceneId,
@@ -80,6 +119,7 @@
     resolveEffectiveScene:resolveEffectiveScene,
     globalWakePhrases:globalWakePhrases,
     globalEndPhrases:globalEndPhrases,
-    globalVoiceTargetKey:globalVoiceTargetKey
+    globalVoiceTargetKey:globalVoiceTargetKey,
+    summonPhrasesForMapping:summonPhrasesForMapping
   };
 })((typeof window!=='undefined')?window:globalThis);

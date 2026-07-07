@@ -54,7 +54,13 @@
     var keyReady=!!(trig&&tgt);
     var keyEnabled=!!(m&&m.enabled);
     if(keyReady&&!keyEnabled) hooks().toggleHomeKeyEnable();
-    if(hooks().homeVoiceEngineOn()==='off') hooks().toggleVoiceSapi(true);
+    if(hooks().homeVoiceEngineOn()==='off'){
+      if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()){
+        hooks().toggleVoiceVosk(true);
+      }else{
+        hooks().toggleVoiceSapi(true);
+      }
+    }
     hooks().toast(hooks().t('homeStartedToast'));
   }
 
@@ -168,11 +174,19 @@
         hooks().markVoiceEngineBootHandled();
         hooks().setVoiceEngineBootDone(true);
         hooks().clearVoiceEngineBootTimer();
-        return hooks().vpInvoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
-          hooks().renderVoiceSapiStatus(res);
-          if(!hooks().handleVoiceSapiEnableResult(res,true)) return false;
-          if(res&&res.enabled) hooks().syncVoiceVoskToggle(false);
-          hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+        var useVosk=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
+        var cmd=useVosk?'cmd_voice_vosk_set_enabled':'cmd_voice_sapi_set_enabled';
+        return hooks().vpInvoke(cmd,{enabled:true}).then(function(res){
+          if(useVosk){
+            hooks().renderVoiceVoskStatus(res);
+            if(res&&res.enabled) hooks().syncVoiceSapiToggle(false);
+            hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'});
+          }else{
+            hooks().renderVoiceSapiStatus(res);
+            if(!hooks().handleVoiceSapiEnableResult(res,true)) return false;
+            if(res&&res.enabled) hooks().syncVoiceVoskToggle(false);
+            hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+          }
           hooks().renderHomeLiveZone();
           hooks().renderHome();
           return !!(res&&res.enabled);

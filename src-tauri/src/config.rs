@@ -47,6 +47,11 @@ pub struct VoiceOverride {
     pub wake_phrases: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_phrases: Option<PhraseBundle>,
+    /// Per-scene engine preference: "sapi" | "vosk" | "none".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine: Option<String>,
+    #[serde(rename = "modelPreset", default, skip_serializing_if = "Option::is_none")]
+    pub model_preset: Option<String>,
 }
 
 impl VoiceOverride {
@@ -61,6 +66,14 @@ impl VoiceOverride {
         }
         match &self.end_phrases {
             Some(b) if !b.is_empty() => return false,
+            _ => {}
+        }
+        match &self.engine {
+            Some(s) if !s.trim().is_empty() => return false,
+            _ => {}
+        }
+        match &self.model_preset {
+            Some(s) if !s.trim().is_empty() => return false,
             _ => {}
         }
         true
@@ -82,6 +95,94 @@ pub struct AppBehaviorRule {
     pub finish_mode: String,
     #[serde(default)]
     pub note: Option<String>,
+    #[serde(rename = "summonPhrase", default, skip_serializing_if = "Option::is_none")]
+    pub summon_phrase: Option<String>,
+}
+
+pub fn default_summon_phrase(app_id: &str) -> Option<&'static str> {
+    match app_id.trim() {
+        "cursor-chat" => Some("打开 Cursor"),
+        "codex-chat" => Some("打开 Codex"),
+        "claude-code" => Some("打开 Claude"),
+        "minimax-chat" => Some("打开 MiniMax"),
+        _ => None,
+    }
+}
+
+pub fn summon_phrase_for_rule(rule: &AppBehaviorRule) -> Option<String> {
+    if let Some(raw) = rule.summon_phrase.as_ref() {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    default_summon_phrase(&rule.app_id).map(|s| s.to_string())
+}
+
+pub fn summon_entries_for_mapping(mapping: &MappingEntry) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for rule in &mapping.app_behavior_rules {
+        let app_id = rule.app_id.trim();
+        if app_id.is_empty() {
+            continue;
+        }
+        if let Some(phrase) = summon_phrase_for_rule(rule) {
+            if seen.insert(phrase.clone()) {
+                out.push((phrase, app_id.to_string()));
+            }
+        }
+    }
+    let primary = mapping.app_target_id.trim();
+    if !primary.is_empty()
+        && mapping
+            .app_behavior_rules
+            .iter()
+            .all(|r| r.app_id.trim() != primary)
+    {
+        if let Some(phrase) = default_summon_phrase(primary) {
+            let phrase = phrase.to_string();
+            if seen.insert(phrase.clone()) {
+                out.push((phrase, primary.to_string()));
+            }
+        }
+    }
+    out
+}
+
+fn summon_phrases_match(heard: &str, summon: &str) -> bool {
+    let heard = heard.trim();
+    let summon = summon.trim();
+    if heard.is_empty() || summon.is_empty() {
+        return false;
+    }
+    if heard == summon {
+        return true;
+    }
+    crate::voice_vosk::matches_final(heard, &[summon.to_string()]).is_some()
+        || crate::voice_vosk::matches_final(summon, &[heard.to_string()]).is_some()
+}
+
+pub fn resolve_summon_app_for_phrase(mapping: &MappingEntry, matched_phrase: &str) -> Option<String> {
+    for (phrase, app_id) in summon_entries_for_mapping(mapping) {
+        if summon_phrases_match(matched_phrase, &phrase) {
+            return Some(app_id);
+        }
+    }
+    None
+}
+
+pub fn append_unique_phrases(mut phrases: Vec<String>, extra: &[String]) -> Vec<String> {
+    for phrase in extra {
+        let trimmed = phrase.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !phrases.iter().any(|p| p == trimmed) {
+            phrases.push(trimmed.to_string());
+        }
+    }
+    phrases
 }
 
 /// Persisted habit/scene row. Runtime display uses read-only [`crate::habit_profile::HabitProfile`] projection.
@@ -1170,7 +1271,7 @@ pub fn mapping_is_complete(m: &MappingEntry) -> bool {
 pub fn is_workflow_app_target(app_target_id: &str) -> bool {
     matches!(
         app_target_id.trim(),
-        "cursor-chat" | "codex-chat" | "minimax-chat"
+        "cursor-chat" | "codex-chat" | "claude-code" | "minimax-chat"
     )
 }
 
@@ -2487,6 +2588,7 @@ mod tests {
             app_id: "cursor-chat".into(),
             finish_mode: "perpress".into(),
             note: None,
+            summon_phrase: None,
         }];
         let effective = effective_mapping_for_trigger(&mapping, Some("cursor-chat"));
         assert_eq!(effective.trigger_mode, TriggerMode::PerPress);

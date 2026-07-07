@@ -134,11 +134,11 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, app: &AppHandle) {
 fn process_detected(
     state: &Arc<AppState>,
     app: &AppHandle,
-    _phrase: &str,
+    phrase: &str,
     confidence: f32,
     exact: bool,
 ) {
-    let (min_confidence, target_key, duration_ms, cooldown_ms) = {
+    let (min_confidence, _target_key, duration_ms, cooldown_ms) = {
         let cfg = state.cfg.lock();
         (
             cfg.voice_sapi.min_confidence,
@@ -177,6 +177,7 @@ fn process_detected(
 
     let state2 = Arc::clone(state);
     let app2 = app.clone();
+    let phrase2 = phrase.to_string();
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
             *state2.voice_sapi_last_skip.lock() = "等待上一轮快捷键发送完成。".into();
@@ -186,61 +187,42 @@ fn process_detected(
             *state2.voice_sapi_last_trigger.lock() = String::new();
             return;
         }
-        let sent = crate::voice_end_runtime::send_wake_to_target(
-            Some(state2.as_ref()),
-            Some(&app2),
-            &target_key,
+        let result = crate::voice_end_runtime::handle_voice_wake_detected(
+            &state2,
+            &app2,
+            &phrase2,
             duration_ms,
+            "sapi",
         );
-        *state2.voice_sapi_state.lock() = if sent {
+        *state2.voice_sapi_state.lock() = if result.ok {
             "triggered".into()
         } else {
             "error".into()
         };
-        if !sent {
-            *state2.voice_sapi_last_error.lock() = format!("快捷键发送失败：{target_key}");
+        if !result.ok {
+            *state2.voice_sapi_last_error.lock() =
+                format!("快捷键发送失败：{}", result.target_key);
             *state2.voice_sapi_last_trigger.lock() = String::new();
-            crate::runtime_event::publish_runtime_event(
-                Some(&app2),
-                state2.as_ref(),
-                "voice",
-                crate::runtime_event::kind::VOICE_SEND_FAILED,
-                &format!("sapi send failed: {target_key}"),
-                Some(serde_json::json!({ "engine": "sapi", "key": target_key })),
-            );
         } else {
             *state2.voice_sapi_last_error.lock() = String::new();
             *state2.voice_sapi_last_skip.lock() = String::new();
-            *state2.voice_sapi_last_trigger.lock() = format!("{target_key}");
-            let mapping_id = {
-                let cfg = state2.cfg.lock();
-                crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
-            };
-            crate::voice_end_runtime::enter_dictating(
-                &state2,
-                Some(&app2),
-                &mapping_id,
-                "sapi wake",
-            );
-            crate::runtime_event::publish_runtime_event(
-                Some(&app2),
-                state2.as_ref(),
-                "voice",
-                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                &format!("sapi wake triggered: {target_key}"),
-                Some(serde_json::json!({ "engine": "sapi", "key": target_key })),
-            );
-            crate::tray::refresh_menu(&app2);
+            if result.used_summon_workflow {
+                *state2.voice_sapi_last_trigger.lock() =
+                    format!("{}（召唤「{}」）", result.target_key, phrase2);
+            } else {
+                *state2.voice_sapi_last_trigger.lock() = format!("{}", result.target_key);
+            }
         }
 
-        let label = if sent {
-            "voice_sapi"
-        } else {
-            "voice_sapi_send_failed"
-        };
-        let cue = if sent { "voice_wake" } else { "send_fail" };
+        let cue = if result.ok { "voice_wake" } else { "send_fail" };
         let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
-        crate::ipc::push_runtime_via_app(&app2, state2.as_ref(), label, "", sound_cue.as_deref());
+        crate::ipc::push_runtime_via_app(
+            &app2,
+            state2.as_ref(),
+            &result.runtime_label,
+            "",
+            sound_cue.as_deref(),
+        );
     });
 }
 
@@ -272,6 +254,13 @@ fn sapi_state_is_busy(state: &str) -> bool {
 /// Startup bootstrap: start SAPI runtime only. Does not change config or save_config.
 pub fn bootstrap_voice_sapi_if_needed(state: &Arc<AppState>) -> bool {
     let cfg = state.cfg.lock().voice_sapi.clone();
+    start_voice_sapi_runtime_only(state, cfg, "bootstrap")
+}
+
+pub fn bootstrap_voice_sapi_if_needed_with_config(
+    state: &Arc<AppState>,
+    cfg: VoiceSapiConfig,
+) -> bool {
     start_voice_sapi_runtime_only(state, cfg, "bootstrap")
 }
 

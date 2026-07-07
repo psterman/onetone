@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1400" />
+<title>voice-pilot · v13 · 按键 + 语音 · 照搬 Typeless 结构</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   voice-pilot · v13
+   按键 + 语音 · 照搬 Typeless 真实结构
+   左主区（编号流程卡）+ 右侧栏（应用快捷键）
+   ============================================================ */
+:root{
+  --bg:            #F5F5F7;
+  --surface:       #FFFFFF;
+  --surface-2:     #FBFBFD;
+  --surface-3:     #F4F4F6;
+
+  --text:          #1c1c1e;
+  --text-2:        #6b6b70;
+  --text-3:        #a1a1a6;
+
+  --border:        #ECECEE;
+  --border-strong: #DCDCE0;
+
+  --brand:         #2A9CC4;
+  --brand-2:       #1F86AB;
+  --brand-soft:    rgba(42,156,196,.10);
+  --brand-glow:    rgba(42,156,196,.35);
+
+  --success:       #2BB673;
+  --success-soft:  rgba(43,182,115,.10);
+  --warn:          #E8930C;
+  --error:         #E55A4F;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ background:var(--bg); color:var(--text); font-family:'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; }
+body{ padding:36px 32px 80px; }
+
+.page-title-row{
+  max-width:1640px; margin:0 auto 28px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:32px;
+}
+.page-title-row h1{
+  font-size:28px; font-weight:700; letter-spacing:-.02em; color:var(--text);
+}
+.page-title-row h1 em{ font-style:normal; color:var(--brand); }
+.page-title-row .sub{
+  font-size:13px; color:var(--text-2); max-width:620px; line-height:1.55;
+}
+.page-title-row .meta{
+  display:flex; gap:18px;
+  font-size:12px; color:var(--text-2);
+}
+.page-title-row .meta strong{ color:var(--text); font-weight:600; }
+
+/* ============================================================
+   整体布局 · 左主 + 右栏
+   ============================================================ */
+.layout{
+  max-width:1640px; margin:0 auto;
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  gap:20px;
+  align-items:start;
+}
+
+.app-bar{
+  height:34px; background:var(--surface);
+  border:1px solid var(--border);
+  border-bottom:none;
+  border-radius:10px 10px 0 0;
+  display:flex; align-items:center; gap:6px;
+  padding:0 14px;
+  font-size:11.5px; color:var(--text-2);
+  font-family:'JetBrains Mono', monospace;
+}
+.app-bar .dot{ width:9px; height:9px; border-radius:50%; background:#E5E5EA; }
+.app-bar .dot.r{ background:#FF5F57; }
+.app-bar .dot.y{ background:#FEBC2E; }
+.app-bar .dot.g{ background:#28C840; }
+.app-bar .title{ margin-left:14px; }
+.app-bar .right{ margin-left:auto; font-size:10.5px; color:var(--text-3); }
+
+.frame{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:0 0 10px 10px;
+  overflow:hidden;
+}
+
+/* ============================================================
+   左主区
+   ============================================================ */
+.main-col{ display:flex; flex-direction:column; }
+
+/* 顶部上下文条 · 显示当前应用 */
+.context-bar{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 16px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+  font-size:12.5px;
+  color:var(--text-2);
+}
+.context-bar .ctx-l{ display:flex; align-items:center; gap:8px; }
+.context-bar .ctx-tag{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 9px; border-radius:6px;
+  background:var(--brand-soft); color:var(--brand);
+  font-weight:600;
+}
+.context-bar .ctx-tag .ico{ width:12px; height:12px; }
+.context-bar .ctx-r{ margin-left:auto; font-size:11.5px; }
+
+/* 编号流程卡 · ①②③ */
+.flow{
+  padding:20px 22px;
+}
+.flow-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.flow-card:last-child{ margin-bottom:0; }
+
+.flow-head{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface-2);
+}
+.flow-head .num{
+  width:22px; height:22px; border-radius:50%;
+  background:var(--brand-soft); color:var(--brand);
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700;
+  font-family:'JetBrains Mono', monospace;
+  flex-shrink:0;
+}
+.flow-head .title{ font-size:13.5px; font-weight:600; color:var(--text); }
+.flow-head .enabled{
+  margin-left:auto;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--success);
+  font-family:'JetBrains Mono', monospace;
+}
+.flow-head .enabled::before{
+  content:""; width:6px; height:6px; border-radius:50%;
+  background:var(--success);
+  box-shadow:0 0 6px rgba(43,182,115,.4);
+}
+.flow-head .enabled.off{ color:var(--text-3); }
+.flow-head .enabled.off::before{ background:var(--text-3); box-shadow:none; }
+
+.flow-body{
+  padding:20px 22px 22px;
+}
+
+/* 中央大可视化块 · 按键/箭头/麦克风 */
+.hero-block{
+  display:flex; align-items:center; justify-content:center;
+  gap:18px;
+  min-height:80px;
+  margin-bottom:14px;
+}
+
+/* 单个按键胶囊 */
+.key-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:11px 20px;
+  border-radius:999px;
+  background:linear-gradient(180deg, #fff, var(--surface-3));
+  border:1px solid var(--border-strong);
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+  font-size:14px; font-weight:600; color:var(--text);
+}
+.key-pill .ico{
+  width:18px; height:18px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--brand);
+}
+.key-pill .ico svg{ width:16px; height:16px; }
+.key-pill.special{
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  color:#fff; border:none;
+  box-shadow:0 3px 10px var(--brand-glow);
+}
+.key-pill.special .ico{ color:#fff; }
+
+/* 箭头流 */
+.flow-arrow{
+  font-size:18px; color:var(--text-3);
+  font-weight:300;
+}
+
+/* 描述（一行） */
+.flow-desc{
+  font-size:12.5px; color:var(--text-2);
+  text-align:center;
+  line-height:1.5;
+}
+
+/* 应用选择 chip 列表 */
+.app-chips{
+  display:flex; gap:6px; flex-wrap:wrap;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px dashed var(--border);
+}
+.app-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 11px;
+  border-radius:6px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  font-size:12px;
+  color:var(--text-2);
+  font-weight:500;
+  cursor:pointer;
+}
+.app-chip.active{
+  background:var(--brand-soft);
+  border-color:transparent;
+  color:var(--brand);
+  font-weight:600;
+}
+.app-chip .ico{ width:12px; height:12px; border-radius:2px; }
+.app-chip .add{ color:var(--text-3); }
+.app-chip:hover:not(.active){ background:var(--surface-3); }
+
+/* 3 选 1 segmented */
+.seg-3{
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  background:var(--surface-3);
+  border-radius:8px;
+  padding:3px;
+  margin-bottom:14px;
+}
+.seg-3 button{
+  border:none; background:transparent;
+  padding:10px;
+  border-radius:6px;
+  font-size:13px;
+  color:var(--text-2);
+  font-weight:500;
+  cursor:pointer;
+  font-family:inherit;
+}
+.seg-3 button.on{
+  background:var(--surface);
+  color:var(--text);
+  font-weight:600;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+
+/* 带数值 badge 的 slider */
+.slider-row{
+  margin-top:14px;
+}
+.slider-row .slider-head{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12.5px; color:var(--text);
+  font-weight:500;
+  margin-bottom:8px;
+}
+.slider-row .slider-head .val{
+  display:inline-flex; align-items:center; gap:3px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:12px;
+  color:var(--brand); font-weight:600;
+  padding:2px 8px; border-radius:5px;
+  background:var(--brand-soft);
+}
+.slider-row .desc{
+  font-size:11.5px; color:var(--text-3);
+  margin-top:6px;
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%; height:4px;
+  border-radius:2px;
+  background:var(--surface-3);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--brand);
+  border:2.5px solid #fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+  cursor:pointer;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px; height:16px;
+  border-radius:50%;
+  background:var(--brand);
+  border:2.5px solid #fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+  cursor:pointer;
+}
+
+/* Toggle 行（带描述） */
+.toggle-row{
+  display:flex; align-items:flex-start; gap:14px;
+  padding:14px 0;
+  border-top:1px solid var(--border);
+}
+.toggle-row .info{ flex:1; }
+.toggle-row .info .name{ font-size:13px; font-weight:600; color:var(--text); }
+.toggle-row .info .desc{ font-size:11.5px; color:var(--text-2); margin-top:3px; line-height:1.5; }
+
+.ios-sw{
+  width:36px; height:20px; border-radius:10px;
+  background:var(--success); position:relative;
+  cursor:pointer; flex-shrink:0;
+  margin-top:2px;
+  transition:background .15s;
+}
+.ios-sw::after{
+  content:""; position:absolute;
+  top:2px; left:18px;
+  width:16px; height:16px; border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  transition:left .15s;
+}
+.ios-sw.off{ background:#DCDCE0; }
+.ios-sw.off::after{ left:2px; }
+
+/* 可选 tag */
+.opt-tag{
+  display:inline-block;
+  font-size:10.5px;
+  padding:2px 8px;
+  background:var(--brand-soft);
+  color:var(--brand);
+  border-radius:5px;
+  font-weight:600;
+  margin-top:6px;
+}
+
+/* ============================================================
+   右侧栏
+   ============================================================ */
+.side-col{ display:flex; flex-direction:column; gap:12px; }
+
+.side-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.side-head{
+  display:flex; align-items:center; gap:8px;
+  padding:11px 14px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:600;
+  color:var(--text);
+}
+.side-head .ico{ color:var(--brand); }
+.side-head .count{
+  margin-left:auto;
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+  font-weight:500;
+}
+
+/* App 列表项 */
+.app-item{
+  padding:14px;
+  border-bottom:1px solid var(--border);
+}
+.app-item:last-child{ border-bottom:none; }
+.app-item.active{ background:var(--brand-soft); }
+
+.app-row{
+  display:flex; align-items:center; gap:9px;
+  margin-bottom:8px;
+}
+.app-row .ico{
+  width:24px; height:24px;
+  border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  font-size:11px; font-weight:700;
+}
+.app-row .name{ font-size:13px; font-weight:600; color:var(--text); }
+.app-row .status{
+  margin-left:auto;
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+}
+.app-row .ios-sw{ width:30px; height:18px; }
+.app-row .ios-sw::after{ width:14px; height:14px; left:16px; }
+.app-row .ios-sw.off::after{ left:2px; }
+
+.app-chain{
+  display:flex; align-items:flex-start;
+  gap:2px;
+  margin:10px 0 6px;
+}
+.app-chain .step{
+  flex:1;
+  display:flex; flex-direction:column; align-items:center;
+  gap:4px;
+  position:relative;
+}
+.app-chain .step .glyph{
+  width:28px; height:28px;
+  border-radius:50%;
+  background:var(--surface-3);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-2);
+}
+.app-chain .step .glyph svg{ width:14px; height:14px; }
+.app-chain .step:not(:last-child)::after{
+  content:""; position:absolute;
+  top:14px; left:calc(50% + 16px); right:calc(-50% + 16px);
+  height:1px; background:var(--border);
+}
+.app-chain .step .lbl{
+  font-size:10.5px; color:var(--text); font-weight:600;
+}
+.app-chain .step .kbd{
+  font-family:'JetBrains Mono', monospace;
+  font-size:9.5px; color:var(--text-3);
+}
+
+.app-desc{
+  font-size:11px; color:var(--text-2); line-height:1.45;
+  margin-top:8px;
+}
+
+.app-say-input{
+  display:flex; gap:6px;
+  margin-top:10px;
+}
+.app-say-input input{
+  flex:1;
+  font-size:12px;
+  padding:6px 10px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--surface);
+  font-family:inherit;
+  color:var(--text);
+}
+.app-say-input input:focus{
+  outline:none; border-color:var(--brand);
+}
+.app-say-input button{
+  padding:6px 12px;
+  background:var(--brand); color:#fff;
+  border:none; border-radius:6px;
+  font-size:11.5px; font-weight:600;
+  cursor:pointer;
+}
+
+.add-app-btn{
+  padding:12px;
+  text-align:center;
+  font-size:12px;
+  color:var(--brand);
+  cursor:pointer;
+  font-weight:600;
+  border-top:1px dashed var(--border);
+}
+.add-app-btn:hover{ background:var(--brand-soft); }
+
+/* ============================================================
+   应用快捷键 · 麦克风区段（用在主区 + 语音页）
+   ============================================================ */
+.mic-block{
+  display:flex; align-items:center; gap:18px;
+  padding:16px 20px;
+  background:linear-gradient(135deg, var(--brand-soft), #fff);
+  border:1px solid var(--brand-soft);
+  border-radius:10px;
+  margin-bottom:14px;
+}
+.mic-block .mic-ico{
+  width:54px; height:54px; border-radius:50%;
+  background:linear-gradient(135deg, var(--brand), var(--brand-2));
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 14px var(--brand-glow);
+  flex-shrink:0;
+}
+.mic-block .mic-info{ flex:1; min-width:0; }
+.mic-block .mic-info .lbl{
+  font-size:10.5px; color:var(--brand); font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  margin-bottom:3px;
+}
+.mic-block .mic-info .name{ font-size:15px; font-weight:600; color:var(--text); }
+.mic-block .mic-info .sub{ font-size:11.5px; color:var(--text-2); margin-top:3px; }
+.mic-block .mic-level{
+  display:flex; gap:2px; flex:1; max-width:160px;
+  align-items:center;
+}
+.mic-block .mic-level .bar{
+  flex:1; height:4px; border-radius:2px;
+  background:var(--brand); opacity:.2;
+}
+.mic-block .mic-level .bar.on{ opacity:1; }
+.mic-block .test-btn{
+  padding:7px 14px;
+  border:1px solid var(--brand);
+  background:#fff;
+  color:var(--brand);
+  border-radius:6px;
+  font-size:12px; font-weight:600;
+  cursor:pointer;
+}
+
+/* 引擎选择 · 卡片 */
+.engine-grid{
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin-bottom:14px;
+}
+.engine-card{
+  padding:12px;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:8px;
+  text-align:center;
+  cursor:pointer;
+}
+.engine-card.active{
+  border-color:var(--brand);
+  background:var(--brand-soft);
+}
+.engine-card .name{ font-size:13px; font-weight:600; color:var(--text); }
+.engine-card .meta{
+  font-size:10.5px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+  margin-top:3px;
+}
+.engine-card.active .meta{ color:var(--brand); }
+
+/* tag 输入框（备用唤醒词） */
+.tag-input{
+  display:flex; align-items:center; gap:5px; flex-wrap:wrap;
+  padding:6px 10px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:6px;
+}
+.tag-input .tag{
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:4px;
+  background:var(--brand-soft); color:var(--brand);
+  font-size:11.5px; font-weight:500;
+}
+.tag-input .tag .x{
+  font-size:13px; color:var(--brand);
+  line-height:1; cursor:pointer; opacity:.6;
+}
+.tag-input .tag .x:hover{ opacity:1; }
+.tag-input input{
+  border:none; background:transparent;
+  font-size:12px; padding:3px 4px;
+  outline:none; flex:1; min-width:80px;
+  font-family:inherit;
+}
+
+/* ============================================================
+   主页顶部上下文激活条
+   ============================================================ */
+.active-bar{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px;
+  background:linear-gradient(90deg, var(--brand-soft), #fff);
+  border-bottom:1px solid var(--border);
+  font-size:12px;
+  color:var(--text-2);
+}
+.active-bar .name{ font-weight:600; color:var(--text); }
+.active-bar .sep{ color:var(--text-3); }
+.active-bar .ico{ color:var(--brand); }
+
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+</style>
+</head>
+<body>
+
+<div class="page-title-row">
+  <div>
+    <h1>v13 · <em>按键 + 语音</em> · 照搬 Typeless 真实结构</h1>
+    <div class="sub">左主区是编号 ①②③ ④ 流程卡，每张卡中央是"可视化的东西"（按键胶囊 / 箭头流 / 麦克风），下面一行描述，**再下面放真实控件**（slider/seg-3/toggle，数值直接显示，不藏到高级）。右侧栏是应用快捷键列表，每个 app 一行 + 4 步链路可视化。</div>
+  </div>
+  <div class="meta">
+    <div><strong>对照</strong>　照搬 Typeless v3 设置页结构（你给的参考图）</div>
+    <div><strong>改回</strong>　把 v12 错误藏到"高级"的真实选项全部还原</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ============ 左主区 · 按键页 ============ -->
+  <div class="main-col">
+    <div class="app-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">一声 onetone · 设置 · 按键 · v13</span>
+      <span class="right">v0.4.2 · build 842</span>
+    </div>
+    <div class="frame">
+
+      <!-- 顶部上下文 · 当前应用 -->
+      <div class="context-bar">
+        <div class="ctx-l">
+          <span>当前应用上下文</span>
+          <span class="ctx-tag">
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Cursor
+          </span>
+          <span>· 当前潜景 · 4 步链路</span>
+        </div>
+        <div class="ctx-r">应用快捷键可重编排步骤 ③ 的发送方式</div>
+      </div>
+
+      <!-- 流程卡 ①②③④ -->
+      <div class="flow">
+
+        <!-- ① 你按的键 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">1</span>
+            <span class="title">你按的键</span>
+            <span class="enabled">已启用</span>
+          </div>
+          <div class="flow-body">
+            <div class="hero-block">
+              <div class="key-pill special">
+                <span class="ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                </span>
+                音量键
+              </div>
+            </div>
+            <div class="flow-desc">支持音量键、鼠标侧键、自定义快捷键·点击胶囊可更换</div>
+            <div class="app-chips">
+              <div class="app-chip active">
+                <span class="ico" style="background:#0078D4;">C</span>
+                Cursor
+              </div>
+              <div class="app-chip">
+                <span class="ico" style="background:#10A37F;">Co</span>
+                Codex
+              </div>
+              <div class="app-chip">
+                <span class="ico" style="background:#D97706;">CC</span>
+                Claude Code
+              </div>
+              <div class="app-chip">
+                <span class="ico" style="background:#5856D6;">M</span>
+                MiniMax
+              </div>
+              <div class="app-chip add">+ 添加应用</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② 帮你打开语音 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">2</span>
+            <span class="title">帮你打开语音</span>
+            <span class="enabled">已启用</span>
+          </div>
+          <div class="flow-body">
+            <div class="hero-block">
+              <div class="key-pill">
+                <span class="ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg>
+                </span>
+                右 Alt
+              </div>
+              <span class="flow-arrow">→</span>
+              <div class="key-pill">
+                <span class="ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                </span>
+                右 Alt
+              </div>
+            </div>
+            <div class="flow-desc">输入法的语音输入快捷键</div>
+          </div>
+        </div>
+
+        <!-- ③ 说完后怎么收尾 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">3</span>
+            <span class="title">说完后怎么收尾</span>
+            <span class="enabled">已启用</span>
+          </div>
+          <div class="flow-body">
+            <div class="seg-3">
+              <button>自动发送</button>
+              <button class="on">确认后发送</button>
+              <button>手动处理</button>
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-head">
+                <span>发送确认延迟</span>
+                <span class="val">5.0 秒</span>
+              </div>
+              <input type="range" min="0" max="10" step="0.5" value="5" />
+              <div class="desc">说完后等待 5.0 秒·自动确认发送</div>
+            </div>
+
+            <div class="toggle-row">
+              <div class="info">
+                <div class="name">取消窗口</div>
+                <div class="desc">已开启·再按启动键的 1.2 秒内 → Esc 取消听写</div>
+              </div>
+              <div class="ios-sw"></div>
+            </div>
+
+            <div class="slider-row" style="margin-top:14px;">
+              <div class="slider-head">
+                <span>取消窗口有效期</span>
+                <span class="val">1.2 秒</span>
+              </div>
+              <input type="range" min="0.5" max="3" step="0.1" value="1.2" />
+            </div>
+
+            <div class="opt-tag">可选·自定义出键</div>
+          </div>
+        </div>
+
+        <!-- ④ 遇到问题时 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">4</span>
+            <span class="title">遇到问题时</span>
+            <span class="enabled off">未配置</span>
+          </div>
+          <div class="flow-body">
+            <div class="flow-desc" style="margin-bottom:14px;">
+              当引擎掉线 / 麦克风权限异常 / 识别连续失败时自动回退方案
+            </div>
+            <div class="seg-3">
+              <button>提示并继续</button>
+              <button class="on">暂停并提醒</button>
+              <button>无操作</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 右侧栏 · 应用快捷键 ============ -->
+  <div class="side-col">
+
+    <!-- 当前激活习惯摘要 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/></svg>
+        当前习惯
+      </div>
+      <div style="padding:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px;">
+          <span style="color:var(--text-3);">默认</span>
+          <span class="ctx-tag" style="font-size:11px;">语音输入法 · Typeless</span>
+          <div class="ios-sw" style="margin-left:auto;"></div>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-2); line-height:1.5;">
+          4 个应用已配置 · 1 个应用未配置 · 可随时切换
+        </div>
+      </div>
+    </div>
+
+    <!-- 应用快捷键列表 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+        应用快捷键
+        <span class="count">4 个</span>
+      </div>
+
+      <!-- Cursor · 已启用 -->
+      <div class="app-item active">
+        <div class="app-row">
+          <span class="ico" style="background:#0078D4;">C</span>
+          <span class="name">Cursor</span>
+          <span class="ios-sw"></span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3); margin-bottom:6px;">4 步链路</div>
+        <div class="app-chain">
+          <div class="step">
+            <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg></div>
+            <div class="lbl">切换</div>
+            <div class="kbd">自动</div>
+          </div>
+          <div class="step">
+            <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg></div>
+            <div class="lbl">聚焦</div>
+            <div class="kbd">右 Alt</div>
+          </div>
+          <div class="step">
+            <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+            <div class="lbl">开语音</div>
+            <div class="kbd">右 Alt</div>
+          </div>
+          <div class="step">
+            <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="lbl">完成</div>
+            <div class="kbd">自动</div>
+          </div>
+        </div>
+        <div class="app-desc">说出口令可配合语音唤醒,高级版命中的可打开应用工作流</div>
+        <div class="app-say-input">
+          <input value="打开 Cursor" placeholder="说出口令" />
+          <button>保存口令</button>
+        </div>
+      </div>
+
+      <!-- Codex · 未配置 -->
+      <div class="app-item">
+        <div class="app-row">
+          <span class="ico" style="background:#10A37F;">Co</span>
+          <span class="name">Codex</span>
+          <span class="ios-sw off"></span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3);">未配置</div>
+      </div>
+
+      <!-- Claude Code · 未配置 -->
+      <div class="app-item">
+        <div class="app-row">
+          <span class="ico" style="background:#D97706;">CC</span>
+          <span class="name">Claude Code</span>
+          <span class="ios-sw off"></span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3);">未配置</div>
+      </div>
+
+      <!-- MiniMax · 未配置 -->
+      <div class="app-item">
+        <div class="app-row">
+          <span class="ico" style="background:#5856D6;">M</span>
+          <span class="name">MiniMax</span>
+          <span class="ios-sw off"></span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3);">未配置</div>
+      </div>
+
+      <div class="add-app-btn">+ 添加应用快捷键</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ============ 第二个 layout：语音页 ============ -->
+<div class="layout" style="margin-top:36px;">
+
+  <!-- 左主区 · 语音页 -->
+  <div class="main-col">
+    <div class="app-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="title">一声 onetone · 设置 · 语音 · v13</span>
+      <span class="right">v0.4.2 · build 842</span>
+    </div>
+    <div class="frame">
+
+      <!-- 顶部上下文 · 当前激活状态 -->
+      <div class="active-bar">
+        <span class="ico">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        <span>激活中</span>
+        <span class="name">小型模型 · 本地</span>
+        <span class="sep">·</span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size:11.5px;">380ms</span>
+        <span class="sep">·</span>
+        <span style="color:var(--success);">● 在线</span>
+      </div>
+
+      <div class="flow">
+
+        <!-- ① 麦克风 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">1</span>
+            <span class="title">麦克风</span>
+            <span class="enabled">已就绪</span>
+          </div>
+          <div class="flow-body">
+            <div class="mic-block">
+              <div class="mic-ico">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </div>
+              <div class="mic-info">
+                <div class="lbl">输入设备</div>
+                <div class="name">系统默认麦克风</div>
+                <div class="sub">采样率 44.1 kHz · 单声道</div>
+              </div>
+              <div class="mic-level">
+                <div class="bar on"></div><div class="bar on"></div><div class="bar on"></div><div class="bar on"></div><div class="bar on"></div><div class="bar on"></div><div class="bar on"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+              </div>
+              <button class="test-btn">测试一下</button>
+            </div>
+            <div class="toggle-row" style="border-top:none; padding-top:0;">
+              <div class="info">
+                <div class="name">噪声抑制</div>
+                <div class="desc">过滤键盘声 / 风扇声 / 空调声</div>
+              </div>
+              <div class="ios-sw"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="info">
+                <div class="name">自动增益</div>
+                <div class="desc">小声说话自动放大音量</div>
+              </div>
+              <div class="ios-sw off"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② 识别引擎 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">2</span>
+            <span class="title">识别引擎</span>
+            <span class="enabled">已启用</span>
+          </div>
+          <div class="flow-body">
+            <div class="slider-head" style="font-size:12.5px; color:var(--text); font-weight:500; margin-bottom:8px;">模型</div>
+            <div class="engine-grid">
+              <div class="engine-card active">
+                <div class="name">小型</div>
+                <div class="meta">0.4 GB · 380ms</div>
+              </div>
+              <div class="engine-card">
+                <div class="name">中型</div>
+                <div class="meta">1.2 GB · 520ms</div>
+              </div>
+              <div class="engine-card">
+                <div class="name">大型</div>
+                <div class="meta">3.5 GB · 800ms</div>
+              </div>
+            </div>
+
+            <div class="slider-head" style="font-size:12.5px; color:var(--text); font-weight:500; margin-bottom:8px;">运行位置</div>
+            <div class="seg-3" style="grid-template-columns:1fr 1fr; margin-bottom:14px;">
+              <button class="on">本地</button>
+              <button>云端</button>
+            </div>
+
+            <div class="slider-head" style="font-size:12.5px; color:var(--text); font-weight:500; margin-bottom:8px;">识别语言</div>
+            <div class="seg-3">
+              <button class="on">普通话</button>
+              <button>英语</button>
+              <button>中英混合</button>
+            </div>
+
+            <div class="toggle-row" style="margin-top:8px;">
+              <div class="info">
+                <div class="name">自动标点</div>
+                <div class="desc">根据语气和停顿自动加逗号句号</div>
+              </div>
+              <div class="ios-sw"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ③ 唤醒词 -->
+        <div class="flow-card">
+          <div class="flow-head">
+            <span class="num">3</span>
+            <span class="title">唤醒词</span>
+            <span class="enabled">已启用</span>
+          </div>
+          <div class="flow-body">
+            <div class="hero-block">
+              <div class="key-pill special" style="font-size:18px; padding:14px 24px;">
+                <span class="ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+                </span>
+                "嗨小助手"
+              </div>
+            </div>
+            <div class="flow-desc">说出这 4 个字开始说话·说"停止输入"结束</div>
+
+            <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--border);">
+              <div class="slider-head" style="font-size:12.5px; color:var(--text-2); font-weight:500; margin-bottom:6px;">备用唤醒词</div>
+              <div class="tag-input">
+                <span class="tag">嗨同学 <span class="x">×</span></span>
+                <span class="tag">开始输入 <span class="x">×</span></span>
+                <input placeholder="+ 添加" />
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <div class="slider-head" style="font-size:12.5px; color:var(--text-2); font-weight:500; margin-bottom:6px;">结束词</div>
+              <div class="tag-input">
+                <span class="tag">停止输入 <span class="x">×</span></span>
+                <span class="tag">完毕 <span class="x">×</span></span>
+                <input placeholder="+ 添加" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧栏 · 引擎状态 -->
+  <div class="side-col">
+
+    <!-- 引擎状态 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+        引擎状态
+        <span class="count">3/3</span>
+      </div>
+
+      <div class="app-item active">
+        <div class="app-row">
+          <span class="ico" style="background:var(--brand);">小</span>
+          <span class="name">小型 · 本地</span>
+          <span style="font-size:10.5px; color:var(--success); font-family:'JetBrains Mono', monospace;">● 在线</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-2); line-height:1.5;">
+          模型路径 <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px;">C:\voice-pilot\models\small-cn</span><br/>
+          加载时间 <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px;">3.2s</span><br/>
+          占用内存 <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px;">412 MB</span>
+        </div>
+      </div>
+
+      <div class="app-item">
+        <div class="app-row">
+          <span class="ico" style="background:var(--text-3);">中</span>
+          <span class="name" style="color:var(--text-3);">中型 · 本地</span>
+          <span style="font-size:10.5px; color:var(--text-3); font-family:'JetBrains Mono', monospace;">未下载</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3);">1.2 GB · 下载后可用</div>
+      </div>
+
+      <div class="app-item">
+        <div class="app-row">
+          <span class="ico" style="background:var(--text-3);">大</span>
+          <span class="name" style="color:var(--text-3);">大型 · 云端</span>
+          <span style="font-size:10.5px; color:var(--text-3); font-family:'JetBrains Mono', monospace;">需登录</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-3);">3.5 GB · 需 Pro 订阅</div>
+      </div>
+    </div>
+
+    <!-- 提示 -->
+    <div class="side-card">
+      <div style="padding:14px; font-size:11.5px; color:var(--text-2); line-height:1.55;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span style="font-weight:600; color:var(--text);">小白提示</span>
+        </div>
+        · 默认小型模型已够用，开箱即用<br/>
+        · 切换中型需要下载约 1 分钟<br/>
+        · 切到大型需要登录 Pro 账号
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -237,6 +237,7 @@ mod tests {
                     target_key: Some("F2".into()),
                     wake_phrases: None,
                     end_phrases: None,
+                    ..Default::default()
                 }),
             ),
             mapping("b", "F3", other_target, None),

@@ -4,6 +4,7 @@
   var WORKFLOW_APP_TARGET_IDS = {
     'cursor-chat': true,
     'codex-chat': true,
+    'claude-code': true,
     'minimax-chat': true
   };
 

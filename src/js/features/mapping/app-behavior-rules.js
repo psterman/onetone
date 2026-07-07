@@ -246,6 +246,7 @@
     html+='<div class="keys-workflow-expand">';
     html+='<p class="keys-workflow-chain-lbl">'+esc(t('habitWorkflowChainTitle'))+'</p>';
     html+=renderFlowHorizontal(m,preset.id,mode);
+    html+=renderSummonPhraseEditor(m,preset.id);
     html+='</div>';
     html+='</div></details>';
     return html;
@@ -303,7 +304,8 @@
     if(addBtn){
       addBtn.hidden=false;
       addBtn.textContent='+ '+t('habitAppShortcutsAdd');
-      addBtn.disabled=true;
+      addBtn.disabled=false;
+      addBtn.title=t('habitAppShortcutsAddHint');
     }
     var kpu=global.OneToneKeysPanelUi;
     if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
@@ -489,6 +491,17 @@
   }
 
   function handleAppRulesListClick(e){
+    var summonSave=e.target.closest&&e.target.closest('[data-summon-save]');
+    if(summonSave){
+      e.preventDefault();
+      e.stopPropagation();
+      var mSummon=core()&&core().selected?core().selected():null;
+      if(!mSummon) return;
+      var appIdSummon=summonSave.getAttribute('data-summon-save')||'';
+      var input=document.querySelector('[data-summon-input="'+appIdSummon+'"]');
+      saveSummonPhrase(mSummon,appIdSummon,input?input.value:'');
+      return;
+    }
     var editBtn=e.target.closest&&e.target.closest('[data-app-rule-edit]');
     if(editBtn){
       e.stopPropagation();
@@ -576,6 +589,21 @@
   function bindKeysAsideEvents(list){
     if(!list) return;
     bindAppRulesList(list,{hoverPreview:false});
+    var addBtn=$('btnKeysAddAppRule');
+    if(addBtn&&!addBtn.dataset.summonBound){
+      addBtn.dataset.summonBound='1';
+      addBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        var first=list.querySelector('.keys-app-expand-row');
+        if(first){
+          first.open=true;
+          setKeysExpandedAppId(first.dataset.appId||'');
+          var input=first.querySelector('[data-summon-input]');
+          if(input) input.focus();
+        }
+        hooks().toast&&hooks().toast(t('habitAppShortcutsAddHint'));
+      });
+    }
     list.addEventListener('toggle',function(e){
       var row=e.target;
       if(!row||!row.classList||!row.classList.contains('keys-app-expand-row')) return;
@@ -610,15 +638,62 @@
     'minimax-chat':'voiceAppSummonMiniMax'
   };
 
-  function voiceSummonPhrase(appId){
+  function voiceSummonPhrase(appId,m){
+    var rule=m?ruleForApp(m,appId):null;
+    if(rule&&String(rule.summonPhrase||'').trim()) return String(rule.summonPhrase).trim();
     var key=VOICE_SUMMON_PHRASE_KEYS[appId];
     return key?t(key):'';
   }
 
-  function voiceSummonQuote(appId){
-    var phrase=voiceSummonPhrase(appId);
-    var m=phrase.match(/[「「""][^」」""]+[」」""]/);
-    return m?m[0]:phrase;
+  function voiceSummonQuote(appId,m){
+    var phrase=voiceSummonPhrase(appId,m);
+    var m2=phrase.match(/[「「""][^」」""]+[」」""]/);
+    return m2?m2[0]:phrase;
+  }
+
+  function saveSummonPhrase(m,appId,phrase){
+    if(!m||!appId) return;
+    ensureRules(m);
+    var rule=ruleForApp(m,appId);
+    phrase=String(phrase||'').trim();
+    if(rule){
+      rule.summonPhrase=phrase||undefined;
+    }else{
+      m.appBehaviorRules.push({
+        appId:appId,
+        finishMode:defaultModeForApp(appId),
+        note:defaultNoteForApp(appId),
+        summonPhrase:phrase||undefined
+      });
+    }
+    saveAndRefresh();
+    hooks().toast&&hooks().toast(t('habitAppSummonPhraseSaved'));
+  }
+
+  function hooks(){
+    return global.__vp_bootstrap_hooks__||{};
+  }
+
+  function renderSummonPhraseEditor(m,presetId){
+    var rule=ruleForApp(m,presetId);
+    var value=rule&&rule.summonPhrase?String(rule.summonPhrase):'';
+    if(!value){
+      var key=VOICE_SUMMON_PHRASE_KEYS[presetId];
+      if(key){
+        var full=t(key);
+        var m3=full.match(/[「「""]([^」」""]+)[」」""]/);
+        value=m3?m3[1]:full;
+      }
+    }
+    var html='<div class="keys-app-summon-edit" data-summon-edit="'+esc(presetId)+'">';
+    html+='<p class="keys-app-summon-edit-lbl">'+esc(t('habitAppSummonPhraseLbl'))+'</p>';
+    html+='<div class="keys-app-summon-edit-row">';
+    html+='<input type="text" class="keys-app-summon-edit-input" data-summon-input="'+esc(presetId)+'" value="'+esc(value)+'" maxlength="48" placeholder="'+esc(t('habitAppSummonPhrasePlaceholder'))+'" spellcheck="false" autocomplete="off" />';
+    html+='<button type="button" class="keys-app-summon-edit-save" data-summon-save="'+esc(presetId)+'">'+esc(t('habitAppSummonPhraseSave'))+'</button>';
+    html+='</div>';
+    html+='<p class="keys-app-summon-edit-hint">'+esc(t('habitAppSummonPhraseHint'))+'</p>';
+    html+='</div>';
+    return html;
   }
 
   function renderVoiceAppShortcutRow(m,preset){
@@ -633,7 +708,7 @@
     }
     html+='<div class="voice-summon-app-info voice-app-shortcut-main">';
     html+='<div class="voice-summon-app-name voice-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</div>';
-    html+='<div class="voice-summon-app-wake"><span class="voice-summon-quote voice-app-shortcut-phrase">'+esc(voiceSummonQuote(preset.id))+'</span></div>';
+    html+='<div class="voice-summon-app-wake"><span class="voice-summon-quote voice-app-shortcut-phrase">'+esc(voiceSummonQuote(preset.id,m))+'</span></div>';
     if(openKey){
       html+='<div class="voice-summon-shortcuts voice-app-shortcut-kbd">'+formatShortcutHtml(openKey)+'</div>';
     }
@@ -668,7 +743,7 @@
     if(summaryEl){
       var primary=BEHAVIOR_PRESETS.find(function(p){ return isPrimaryApp(m,p.id); });
       if(primary){
-        summaryEl.textContent=appDisplayName(primary.id)+' · '+voiceSummonPhrase(primary.id);
+        summaryEl.textContent=appDisplayName(primary.id)+' · '+voiceSummonPhrase(primary.id,m);
       }else{
         summaryEl.textContent=t('voiceAppShortcutsAsideUnset');
       }

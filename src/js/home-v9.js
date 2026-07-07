@@ -95,7 +95,8 @@
     toggle.addEventListener('click', () => {
       const isOpen = tray.classList.toggle('open');
       toggle.classList.toggle('open', isOpen);
-      const label = isOpen ? '收起设置' : '展开设置与习惯配置';
+      var labelKey=isOpen?'homeV9TrayToggleClose':'homeV9TrayToggleOpen';
+      var label=(window.OneToneI18n&&window.OneToneI18n.t)?window.OneToneI18n.t(labelKey):(isOpen?'收起设置与习惯配置':'展开设置与习惯配置');
       const textNode = Array.from(toggle.childNodes).find(n => n.nodeType === 3);
       if(textNode){
         textNode.textContent = label;

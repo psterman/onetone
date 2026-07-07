@@ -67,6 +67,7 @@ fn main() {
         "cmd_voice_vosk_test_send",
         "cmd_open_vosk_resources_dir",
         "cmd_voice_vosk_retry_start",
+        "cmd_vosk_download_model",
         "cmd_voice_end_status",
         "cmd_voice_end_set_enabled",
         "cmd_voice_end_set_auto_send",

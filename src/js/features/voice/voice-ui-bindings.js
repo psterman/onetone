@@ -13,6 +13,7 @@
         e.preventDefault();
         var mode=tab.dataset.voiceEngineTab;
         if(mode!=='sapi'&&mode!=='vosk') return;
+        if(mode==='sapi'&&global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return;
         hooks.setVoiceWakeExpandedMode(mode);
         if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
       });
@@ -35,7 +36,16 @@
     var btnVoskOpenResources=$('btnVoskOpenResources');
     if(btnVoskOpenResources) btnVoskOpenResources.onclick=function(e){ e.stopPropagation(); hooks.openVoskResourcesDir&&hooks.openVoskResourcesDir(); };
     var btnVoskDownloadGuide=$('btnVoskDownloadGuide');
-    if(btnVoskDownloadGuide) btnVoskDownloadGuide.onclick=function(e){ e.stopPropagation(); hooks.downloadVoskModelGuide&&hooks.downloadVoskModelGuide(); };
+    if(btnVoskDownloadGuide) btnVoskDownloadGuide.onclick=function(e){ e.stopPropagation(); hooks.downloadVoskModel&&hooks.downloadVoskModel(); };
+    var btnVoskUseLite=$('btnVoskUseLite');
+    if(btnVoskUseLite) btnVoskUseLite.onclick=function(e){
+      e.stopPropagation();
+      if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.offerLiteFallback){
+        global.OneToneVoiceEngineReadiness.offerLiteFallback();
+      }else if(hooks.switchVoiceMode){
+        hooks.switchVoiceMode('sapi');
+      }
+    };
     var btnVoskRetry=$('btnVoskRetry');
     if(btnVoskRetry) btnVoskRetry.onclick=function(e){ e.stopPropagation(); hooks.retryVoskStart&&hooks.retryVoskStart(); };
     var voiceVoskWakeWrap=$('voiceSettingsVoskWakeWrap');
@@ -45,8 +55,10 @@
       voiceVoskModelPreset.onclick=function(ev){
         var btn=ev.target.closest&&ev.target.closest('[data-preset]');
         if(!btn||btn.disabled) return;
-        if(hooks.syncVoiceVoskPresetButtons) hooks.syncVoiceVoskPresetButtons(btn.getAttribute('data-preset')||'cn-light',false);
-        hooks.changeVoiceVoskModelPreset();
+        ev.preventDefault();
+        ev.stopPropagation();
+        var preset=btn.getAttribute('data-preset')||'cn-light';
+        if(hooks.changeVoiceVoskModelPreset) hooks.changeVoiceVoskModelPreset(preset);
       };
     }
     var btnVoiceEnd=$('btnVoiceEnd');
@@ -146,6 +158,54 @@
         }
       };
     }
+    function bindCustomPhraseAdd(inputId,btnId,addFn){
+      var input=$(inputId);
+      var btn=$(btnId);
+      if(!btn||!addFn) return;
+      function commit(){
+        var phrase=input?global.OneToneVoicePhraseCustom.readInput(inputId):'';
+        if(!phrase) return;
+        addFn(phrase);
+        if(global.OneToneVoicePhraseCustom) global.OneToneVoicePhraseCustom.clearInput(inputId);
+      }
+      btn.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        commit();
+      };
+      if(input){
+        input.addEventListener('keydown',function(e){
+          if(e.key==='Enter'){
+            e.preventDefault();
+            commit();
+          }
+        });
+      }
+    }
+    bindCustomPhraseAdd('voiceWakeCustomInput','btnVoiceWakeCustomAdd',function(phrase){
+      var wake=global.OneToneVoiceWake;
+      if(wake&&wake.addCustomWakePhrase) wake.addCustomWakePhrase(phrase);
+    });
+    bindCustomPhraseAdd('voiceEndCustomInput','btnVoiceEndCustomAdd',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomEndPhrase) end.addCustomEndPhrase(phrase);
+    });
+    function bindPhraseListen(btnId,inputId){
+      var btn=$(btnId);
+      if(!btn) return;
+      btn.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var listen=global.OneToneVoicePhraseListen;
+        if(listen&&listen.fillInputAsync){
+          listen.fillInputAsync(inputId,btn);
+        }else if(listen&&listen.fillInput){
+          listen.fillInput(inputId);
+        }
+      };
+    }
+    bindPhraseListen('btnVoiceWakeCustomListen','voiceWakeCustomInput');
+    bindPhraseListen('btnVoiceEndCustomListen','voiceEndCustomInput');
     var btnVoiceOpenKeysApps=$('btnVoiceOpenKeysApps');
     if(btnVoiceOpenKeysApps){
       btnVoiceOpenKeysApps.onclick=function(){

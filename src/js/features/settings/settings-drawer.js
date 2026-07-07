@@ -148,15 +148,16 @@
 
     if(focus==='wakePhrases'){
 
-      hooks().setVoiceWakeExpandedMode(hooks().currentVoiceMode()==='vosk'?'vosk':'sapi');
+      hooks().setVoiceWakeExpandedMode(hooks().currentVoiceMode()==='vosk'?'vosk':(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()?'vosk':'sapi'));
 
       hooks().renderVoiceModeSwitch();
 
     }else if(focus==='engine'){
 
       const active=hooks().currentVoiceMode();
+      var fallback=(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk');
 
-      hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':(global.OneToneVoiceWake.getExpandedMode()||'sapi'));
+      hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':fallback);
 
       hooks().renderVoiceModeSwitch();
 
@@ -471,7 +472,7 @@
 
         const active=hooks().currentVoiceMode();
 
-        hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':(global.OneToneVoiceWake.getExpandedMode()||'sapi'));
+        hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
 
         global.OneToneVoiceWake.clearLiveFingerprints();
 

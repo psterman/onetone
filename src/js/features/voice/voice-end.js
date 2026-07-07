@@ -600,6 +600,170 @@
 
     });
 
+    renderEndCustomPhrases();
+
+  }
+
+
+
+  function endPresetPhraseSet(){
+
+    var pc=global.OneToneVoicePhraseCustom;
+
+    if(!pc||!pc.presetPhrasesIn) return [];
+
+    return pc.presetPhrasesIn('#voiceEndPresetsZh').concat(pc.presetPhrasesIn('#voiceEndPresetsEn'));
+
+  }
+
+
+
+  function currentEndPhraseLists(){
+
+    const cfg=state().config||{};
+
+    const endCfg=cfg.voiceEnd||cfg.voice_end||{};
+
+    const snap=(hooks().voiceUiSnapshot&&typeof hooks().voiceUiSnapshot==='function'
+      ?hooks().voiceUiSnapshot()
+      :hooks().voiceUiSnapshot)||{};
+
+    const endSnap=snap.end||{};
+
+    const zh=normalizePhraseList(endSnap.phrasesZh&&endSnap.phrasesZh.length?endSnap.phrasesZh:endCfg.phrasesZh);
+
+    const en=normalizePhraseList(endSnap.phrasesEn&&endSnap.phrasesEn.length?endSnap.phrasesEn:endCfg.phrasesEn);
+
+    return {zh:zh.length?zh:['结束输入'],en:en.length?en:['end dictation']};
+
+  }
+
+
+
+  function normalizePhraseList(list){
+
+    return (Array.isArray(list)?list:[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+
+  }
+
+
+
+  function renderEndCustomPhrases(){
+
+    const pc=global.OneToneVoicePhraseCustom;
+
+    if(!pc) return;
+
+    const lists=currentEndPhraseLists();
+
+    const active=lists.zh.concat(lists.en);
+
+    const custom=pc.customPhrases(active,endPresetPhraseSet());
+
+    pc.renderChips('voiceEndCustomChips',custom,function(phrase){
+
+      removeCustomEndPhrase(phrase);
+
+    });
+
+    const block=$('voiceEndCustomBlock');
+
+    const wakeApi=global.OneToneVoiceWake;
+
+    const mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
+
+    if(block) block.hidden=mode!=='vosk';
+
+  }
+
+
+
+  function persistEndPhrases(zh,en){
+
+    zh=normalizePhraseList(zh);
+
+    en=normalizePhraseList(en);
+
+    if(!zh.length) zh=['结束输入'];
+
+    if(!en.length) en=['end dictation'];
+
+    syncVoiceEndPresets(zh,en);
+
+    return global.OneToneIpc.invoke('cmd_voice_end_set_phrases',{phrasesZh:zh,phrasesEn:en}).then(function(res){
+
+      renderVoiceEndStatus(res);
+
+      hooks().syncHomeFromVoiceSettings(null,null,res);
+
+      renderEndCustomPhrases();
+
+      hooks().renderVoiceSettingsFlow();
+
+      return res;
+
+    });
+
+  }
+
+
+
+  function addCustomEndPhrase(raw){
+
+    const phrase=String(raw||'').trim();
+
+    if(!phrase) return Promise.resolve();
+
+    const lists=currentEndPhraseLists();
+
+    const lang=global.__vp_voice_end_lang__||(/[\u4e00-\u9fff]/.test(phrase)?'zh':'en');
+
+    const target=lang==='en'?lists.en.slice():lists.zh.slice();
+
+    if(target.indexOf(phrase)>=0||(lang==='en'?lists.zh:lists.en).indexOf(phrase)>=0){
+
+      hooks().toast(t('voicePhraseAlreadyAdded'));
+
+      return Promise.resolve();
+
+    }
+
+    target.push(phrase);
+
+    const nextZh=lang==='zh'?target:lists.zh;
+
+    const nextEn=lang==='en'?target:lists.en;
+
+    return persistEndPhrases(nextZh,nextEn).then(function(){
+
+      hooks().toast(t('voicePhraseAdded'));
+
+    }).catch(function(err){
+
+      console.error('voice_custom_end',err);
+
+      hooks().toast(t('voiceEndFail'));
+
+    });
+
+  }
+
+
+
+  function removeCustomEndPhrase(phrase){
+
+    phrase=String(phrase||'').trim();
+
+    if(!phrase) return;
+
+    const lists=currentEndPhraseLists();
+
+    const nextZh=lists.zh.filter(function(p){ return p!==phrase; });
+
+    const nextEn=lists.en.filter(function(p){ return p!==phrase; });
+
+    persistEndPhrases(nextZh.length?nextZh:['结束输入'],nextEn.length?nextEn:['end dictation']);
+
   }
 
 
@@ -707,6 +871,10 @@
     addPreset:addVoiceEndPreset,
 
     syncPresets:syncVoiceEndPresets,
+
+    addCustomEndPhrase:addCustomEndPhrase,
+
+    renderEndCustomPhrases:renderEndCustomPhrases,
 
     testStop:testVoiceEndStop,
 

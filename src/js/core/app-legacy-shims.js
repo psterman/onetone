@@ -192,10 +192,11 @@
     function testVoiceVoskSend(){ return OneToneVoiceWake.testVoskSend(); }
     function openVoskResourcesDir(){ return OneToneVoiceWake.openVoskResourcesDir(); }
     function downloadVoskModelGuide(){ return OneToneVoiceWake.downloadVoskModelGuide(); }
+    function downloadVoskModel(){ return OneToneVoiceWake.downloadVoskModel(); }
     function retryVoskStart(){ return OneToneVoiceWake.retryVoskStart(); }
     function addVoiceVoskPreset(ev){ return OneToneVoiceWake.addVoskPreset(ev); }
     function syncVoiceVoskPresets(phrases){ return OneToneVoiceWake.syncVoskPresets(phrases); }
-    function changeVoiceVoskModelPreset(){ return OneToneVoiceWake.changeVoskModelPreset(); }
+    function changeVoiceVoskModelPreset(preset){ return OneToneVoiceWake.changeVoskModelPreset(preset); }
     function settingsPanelNeedsVoicePoll(){ return OneToneVoiceWake.settingsPanelNeedsPoll(); }
     
     function mappingListUiActive(){ return OneToneMappingCore.listUiActive(); }
@@ -461,6 +462,7 @@
       defaultConfig:defaultConfig,
       defaultUpdateState:defaultUpdateState,
       downloadVoskModelGuide:downloadVoskModelGuide,
+      downloadVoskModel:downloadVoskModel,
       deferProcessUsagePoll:deferProcessUsagePoll,
       deleteMappingFromMenu:deleteMappingFromMenu,
       disableMappingForRecordingAsync:disableMappingForRecordingAsync,

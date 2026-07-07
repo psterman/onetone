@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{
-    save_config, vosk_preset_default_phrases, vosk_preset_model_path, VoiceVoskConfig,
+    append_unique_phrases, save_config, vosk_preset_default_phrases, vosk_preset_model_path,
+    VoiceVoskConfig,
 };
 use crate::voice_vosk::{
     probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, vosk_resource_issue,
@@ -280,7 +281,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
 }
 
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
-    let (target_key, duration_ms, cooldown_ms) = {
+    let (_target_key, duration_ms, cooldown_ms) = {
         let cfg = state.cfg.lock();
         (
             crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key),
@@ -320,61 +321,43 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
             *state2.voice_vosk_last_trigger.lock() = String::new();
             return;
         }
-        let sent = crate::voice_end_runtime::send_wake_to_target(
-            Some(state2.as_ref()),
-            Some(&app2),
-            &target_key,
+        let result = crate::voice_end_runtime::handle_voice_wake_detected(
+            &state2,
+            &app2,
+            &phrase2,
             duration_ms,
+            "vosk",
         );
-        *state2.voice_vosk_state.lock() = if sent {
+        *state2.voice_vosk_state.lock() = if result.ok {
             "triggered".into()
         } else {
             "error".into()
         };
-        if !sent {
-            *state2.voice_vosk_last_error.lock() = format!("快捷键发送失败：{target_key}");
+        if !result.ok {
+            *state2.voice_vosk_last_error.lock() =
+                format!("快捷键发送失败：{}", result.target_key);
             *state2.voice_vosk_last_trigger.lock() = String::new();
-            crate::runtime_event::publish_runtime_event(
-                Some(&app2),
-                state2.as_ref(),
-                "voice",
-                crate::runtime_event::kind::VOICE_SEND_FAILED,
-                &format!("vosk send failed: {target_key}"),
-                Some(serde_json::json!({ "engine": "vosk", "key": target_key })),
-            );
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();
             *state2.voice_vosk_last_skip.lock() = String::new();
-            *state2.voice_vosk_last_trigger.lock() = format!("{target_key}（命中「{phrase2}」）");
-            let mapping_id = {
-                let cfg = state2.cfg.lock();
-                crate::voice_end_runtime::resolve_wake_mapping_id(&cfg)
-            };
-            crate::voice_end_runtime::enter_dictating(
-                &state2,
-                Some(&app2),
-                &mapping_id,
-                "vosk wake",
-            );
-            crate::runtime_event::publish_runtime_event(
-                Some(&app2),
-                state2.as_ref(),
-                "voice",
-                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                &format!("vosk wake triggered: {target_key} (phrase: {phrase2})"),
-                Some(serde_json::json!({ "engine": "vosk", "key": target_key, "phrase": phrase2 })),
-            );
-            crate::tray::refresh_menu(&app2);
+            if result.used_summon_workflow {
+                *state2.voice_vosk_last_trigger.lock() =
+                    format!("{}（召唤「{}」）", result.target_key, phrase2);
+            } else {
+                *state2.voice_vosk_last_trigger.lock() =
+                    format!("{}（命中「{}」）", result.target_key, phrase2);
+            }
         }
 
-        let label = if sent {
-            "voice_vosk"
-        } else {
-            "voice_vosk_send_failed"
-        };
-        let cue = if sent { "voice_wake" } else { "send_fail" };
+        let cue = if result.ok { "voice_wake" } else { "send_fail" };
         let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
-        crate::ipc::push_runtime_via_app(&app2, state2.as_ref(), label, "", sound_cue.as_deref());
+        crate::ipc::push_runtime_via_app(
+            &app2,
+            state2.as_ref(),
+            &result.runtime_label,
+            "",
+            sound_cue.as_deref(),
+        );
     });
 }
 
@@ -525,13 +508,22 @@ pub fn voice_vosk_set_model_preset(
 
     let enabled = {
         let mut cfg = state.cfg.lock();
+        let old_preset = cfg.voice_vosk.model_preset.clone();
+        let old_defaults = vosk_preset_default_phrases(&old_preset).unwrap_or_default();
         cfg.voice_vosk.model_preset = preset.clone();
         if preset != "custom" {
             if let Some(path) = vosk_preset_model_path(&preset) {
                 cfg.voice_vosk.model_path = path.to_string();
             }
-            if let Some(phrases) = vosk_preset_default_phrases(&preset) {
-                cfg.voice_vosk.phrases = phrases;
+            if let Some(defaults) = vosk_preset_default_phrases(&preset) {
+                let custom: Vec<String> = cfg
+                    .voice_vosk
+                    .phrases
+                    .iter()
+                    .filter(|p| !old_defaults.iter().any(|d| d == *p))
+                    .cloned()
+                    .collect();
+                cfg.voice_vosk.phrases = append_unique_phrases(defaults, &custom);
             }
         }
         cfg.normalize();

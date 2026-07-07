@@ -444,6 +444,7 @@
               testVoiceVoskSend:d.testVoiceVoskSend,
               openVoskResourcesDir:d.openVoskResourcesDir,
               downloadVoskModelGuide:d.downloadVoskModelGuide,
+              downloadVoskModel:d.downloadVoskModel,
               retryVoskStart:d.retryVoskStart,
               addVoiceVoskPreset:d.addVoiceVoskPreset,
               changeVoiceVoskModelPreset:d.changeVoiceVoskModelPreset,
