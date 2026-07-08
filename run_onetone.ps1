@@ -48,6 +48,27 @@ function Copy-VoskRuntimeDlls {
   }
 }
 
+function Sync-VoskBundleResources {
+  param([string]$ReleaseDir)
+  if (-not (Test-Path $ReleaseDir)) { return }
+  $bundleVosk = Join-Path $ReleaseDir 'resources\vosk'
+  if (-not (Test-Path $bundleVosk)) {
+    New-Item -ItemType Directory -Path $bundleVosk -Force | Out-Null
+  }
+  Copy-VoskRuntimeDlls -DestDir $ReleaseDir
+  Copy-VoskRuntimeDlls -DestDir $bundleVosk
+  $models = @('vosk-model-small-cn-0.22', 'vosk-model-small-en-us-0.15')
+  foreach ($modelName in $models) {
+    $srcModel = Join-Path $voskDir $modelName
+    $destModel = Join-Path $bundleVosk $modelName
+    $marker = Join-Path $destModel 'conf\model.conf'
+    if ((Test-Path (Join-Path $srcModel 'conf\model.conf')) -and -not (Test-Path $marker)) {
+      Write-LaunchLog "syncing vosk model: $modelName"
+      Copy-Item -LiteralPath $srcModel -Destination $destModel -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
 function Clear-StaleBundleResources {
   param([string]$BuildRoot)
   $resourcesDir = Join-Path $BuildRoot 'release\resources'
@@ -102,6 +123,8 @@ function Start-OnetoneExe {
     return
   }
   Copy-VoskRuntimeDlls -DestDir $exeDir
+  $releaseDir = Split-Path -Parent $ExePath
+  Sync-VoskBundleResources -ReleaseDir $releaseDir
   Write-LaunchLog "runtime log: $(Join-Path $logDir 'runtime-live.log')"
   $oldLogDir = $env:ONETONE_LOG_DIR
   if ($Safe) {
@@ -245,6 +268,7 @@ try {
   $needBuild = $Rebuild -or ($stale -and -not $LaunchOnly)
 
   if (-not $needBuild -and (Test-Path $releaseExe)) {
+    Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
     Write-LaunchLog "launch dev build (up to date): $releaseExe"
     Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
     exit 0
@@ -305,6 +329,8 @@ try {
   if (-not (Test-Path $releaseExe)) {
     throw "build finished but exe missing: $releaseExe"
   }
+
+  Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
 
   Write-LaunchLog 'build ok'
   Start-OnetoneExe -ExePath $releaseExe -Safe:$Safe

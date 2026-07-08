@@ -1193,8 +1193,20 @@
   }
 
   function loadVoiceVoskStatus(){
-    voiceStatusPollTick();
-    return Promise.resolve(hooks().voiceUiSnapshot.wake&&hooks().voiceUiSnapshot.wake.vosk);
+    return global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).then(function(res){
+      const snap=hooks().voiceUiSnapshot;
+      if(snap){
+        const wake=snap.wake||{};
+        snap.wake=mergeWakeSnapshot(wake.sapi,res);
+      }
+      renderVoiceVoskStatus(res);
+      hooks().syncHomeFromVoiceSettings&&hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
+      hooks().scheduleVoiceUiRender&&hooks().scheduleVoiceUiRender(ui().drawerOpen?{vosk:res}:null);
+      return res;
+    }).catch(function(err){
+      voiceStatusPollTick();
+      return Promise.resolve(hooks().voiceUiSnapshot.wake&&hooks().voiceUiSnapshot.wake.vosk);
+    });
   }
 
   function syncVoiceVoskToggle(enabled){
@@ -1242,6 +1254,8 @@
     if(!res) return false;
     const issue=String(res.resourceIssue||'');
     if(issue==='model_missing'||issue==='dll_missing') return true;
+    const err=String(res.lastError||'').trim().toLowerCase();
+    if(err.indexOf('load model failed')>=0||err.indexOf('model_missing')>=0||err.indexOf('model not found')>=0) return true;
     if(res.enabled&&res.state==='error'){
       if(res.modelExists===false) return true;
       if(res.dllExists===false) return true;
@@ -1256,6 +1270,7 @@
     const err=String(res.lastError||'').trim();
     if(err.indexOf('dll_missing:')===0) return t('voiceVoskMissingDll');
     if(err.indexOf('model_missing:')===0) return t('voiceVoskMissingModel');
+    if(/load model failed/i.test(err)) return t('voiceVoskMissingModel');
     return err||t('voiceVoskFail');
   }
 
@@ -1353,14 +1368,28 @@
     renderVoskDownloadProgress('downloading',0);
     global.OneToneIpc.invoke('cmd_vosk_download_model',{preset:preset}).then(function(res){
       if(res&&res.reason==='already_running'){
+        voskDownloadInFlight=false;
+        renderVoskDownloadProgress('',0);
         hooks().toast(t('voiceVoskDownloadBusy'));
+        return;
+      }
+      if(res&&res.alreadyPresent){
+        voskDownloadInFlight=false;
+        renderVoskDownloadProgress('',100);
+        hooks().toast(t('voiceVoskDownloadDone'));
+        loadVoiceVoskStatus();
+        hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+        if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
         return;
       }
       if(!res||!res.ok){
         voskDownloadInFlight=false;
         renderVoskDownloadProgress('error',0);
-        hooks().toast(t('voiceVoskDownloadFail').replace('{error}',t('voiceVoskFail')),'warn');
+        var errMsg=(res&&res.error)||(res&&res.reason)||t('voiceVoskFail');
+        hooks().toast(t('voiceVoskDownloadFail').replace('{error}',errMsg),'warn');
+        return;
       }
+      // async download started — completion via mvp_vosk_download
     }).catch(function(err){
       voskDownloadInFlight=false;
       renderVoskDownloadProgress('error',0);

@@ -41,6 +41,25 @@ pub fn start_vosk_model_download(
         return Err("preset required".into());
     }
     let dir_name = model_dir_name(&preset).ok_or_else(|| format!("unsupported preset: {preset}"))?;
+
+    let base = vosk_resources_dir(resource_dir.as_deref());
+    let dest = base.join(dir_name);
+    if model_dir_valid(&dest) {
+        crate::voice_vosk_runtime::refresh_vosk_probe_cache(state.as_ref(), resource_dir.as_deref());
+        if state.cfg.lock().voice_vosk.enabled {
+            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
+                &state,
+                resource_dir.clone(),
+            );
+        }
+        return Ok(serde_json::json!({
+            "ok": true,
+            "alreadyPresent": true,
+            "preset": preset,
+            "path": dest.display().to_string(),
+        }));
+    }
+
     let url = vosk_model_download_url(&preset)
         .ok_or_else(|| format!("no download url for preset: {preset}"))?;
 
@@ -127,6 +146,10 @@ fn download_and_install(
 
     let zip_path = downloads.join(format!("{dir_name}.zip"));
     let dest = base.join(dir_name);
+
+    if model_dir_valid(&dest) {
+        return Ok(dest);
+    }
 
     emit_download(
         app,

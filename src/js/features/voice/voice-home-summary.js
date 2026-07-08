@@ -189,6 +189,19 @@
       var endList=endPhrases(endSnap,endCfg);
       var endHint=endList[0]||t('homeEndPhraseDefault');
       endLine=t('homeVoiceSimpleEndLine').replace('{phrase}',endHint);
+      var wSnap=snap().wake||{};
+      var res=eng==='vosk'?wSnap.vosk:wSnap.sapi;
+      if(res){
+        if(eng==='vosk'){
+          var partial=String(res.lastPartial||'').trim();
+          var finalChunk=String(res.lastFinal||'').trim();
+          if(partial) heardLine=t('voiceVoskPartial')+'：'+partial;
+          else if(finalChunk) heardLine=t('voiceVoskFinal')+'：'+finalChunk;
+        }else if(eng==='sapi'){
+          var heard=String(res.lastHeard||'').trim();
+          if(heard) heardLine=t('voiceSapiHeard')+'：'+heard;
+        }
+      }
     }else if(stateRaw==='error'){
       statusMode='error';
       statusLine=endSnap.statusLabel||(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.stateLabel

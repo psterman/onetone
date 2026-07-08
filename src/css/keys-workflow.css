@@ -340,7 +340,29 @@
 }
 
 #settingsPanelKeys .keys-workflow-col-subhead .habit-flow-step-status {
-  margin-left: auto;
+  display: none;
+}
+
+#settingsPanelKeys #keysImePill {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-hub-scheme-rename {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-row:hover .keys-hub-scheme-rename,
+#settingsPanelKeys .keys-hub-scheme-row:focus-within .keys-hub-scheme-rename {
+  opacity: 1;
 }
 
 @media (min-width: 1041px) {

@@ -102,24 +102,7 @@
 
   function renderImePill(m){
     var pill=$('keysImePill');
-    var nameEl=$('keysImePillName');
-    var iconEl=$('keysImePillIcon');
-    var micEl=$('keysImePillMic');
-    if(!pill||!nameEl) return;
-    var info=imeDisplayInfo(m);
-    nameEl.textContent=info.name;
-    if(iconEl){
-      if(info.icon){
-        iconEl.src=info.icon;
-        iconEl.hidden=false;
-        if(micEl) micEl.hidden=true;
-      }else{
-        iconEl.hidden=true;
-        iconEl.removeAttribute('src');
-        if(micEl) micEl.hidden=false;
-      }
-    }
-    pill.hidden=false;
+    if(pill) pill.hidden=true;
   }
 
   function renderFlowStatusBar(m){
@@ -273,11 +256,12 @@
         var stepsText=comp.done+'/'+comp.total;
         var enabled=!!m.enabled;
         return '<button type="button" class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
-          +'<span class="keys-hub-scheme-name">'+esc(habitName(m))+'</span>'
+          +'<span class="keys-hub-scheme-name" data-scheme-rename="'+esc(m.id)+'" title="'+esc(t('keysSchemeRename'))+'">'+esc(habitName(m))+'</span>'
           +'<span class="keys-hub-scheme-meta">'
           +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
           +'<span class="keys-hub-scheme-dot'+(enabled?' is-on':'')+'" aria-hidden="true"></span>'
           +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
+          +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(m.id)+'" aria-label="'+esc(t('keysSchemeRename'))+'">'+esc(t('keysSchemeRename'))+'</button>'
           +'</span></button>';
       }).join('');
     }
@@ -331,6 +315,23 @@
     }).join('');
   }
 
+  function renameScheme(id){
+    id=String(id||'').trim();
+    if(!id||!core()) return;
+    var m=core().byId?core().byId(id):null;
+    if(!m) return;
+    var next=prompt(t('keysSchemeRenamePrompt'),habitName(m));
+    if(next===null) return;
+    next=String(next).trim();
+    if(!next) return;
+    m.group=next;
+    if(global.OneToneHabitHub&&global.OneToneHabitHub.touchUpdated) global.OneToneHabitHub.touchUpdated(m);
+    if(hooks().save) hooks().save();
+    if(hooks().renderMappingList) hooks().renderMappingList();
+    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+    render();
+  }
+
   function switchActiveScheme(id){
     id=String(id||'').trim();
     if(!id) return;
@@ -363,9 +364,13 @@
       wrap.hidden=true;
       return;
     }
-    wrap.hidden=false;
     var appId=activeAppContextId();
-    var appName=appId&&appRules()&&appRules().appDisplayName?appRules().appDisplayName(appId):'';
+    if(!appId){
+      wrap.hidden=true;
+      return;
+    }
+    wrap.hidden=false;
+    var appName=appRules()&&appRules().appDisplayName?appRules().appDisplayName(appId):'';
     if(val) val.textContent=appName||t('keysAppContextDefault');
     if(badge){
       var isPrimary=appId&&String(m.appTargetId||'')===appId;
@@ -620,11 +625,20 @@
           if(tplApiNew&&tplApiNew.applyTemplateNew) tplApiNew.applyTemplateNew(newBtn.getAttribute('data-new-template')||'');
           return;
         }
+        var renameBtn=e.target.closest&&e.target.closest('[data-scheme-rename]');
+        if(renameBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          e.stopPropagation();
+          renameScheme(renameBtn.getAttribute('data-scheme-rename')||'');
+          return;
+        }
         var schemeRow=e.target.closest&&e.target.closest('.keys-hub-scheme-row[data-scheme-id]');
         if(schemeRow){
           e.__vpKeysPanelHandled=true;
           e.preventDefault();
           switchActiveScheme(schemeRow.getAttribute('data-scheme-id')||'');
+          return;
         }
       });
     }
@@ -640,6 +654,7 @@
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,
     renderKeysHub:renderKeysHub,
+    renameScheme:renameScheme,
     renderWorkflowOverview:renderWorkflowOverview,
     renderWorkflowTemplates:renderWorkflowTemplates,
     switchActiveScheme:switchActiveScheme

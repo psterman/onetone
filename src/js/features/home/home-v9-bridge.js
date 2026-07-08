@@ -7,6 +7,86 @@
   var foregroundAppId='';
   var foregroundPollTimer=null;
   var lastLiveText='';
+  var dictationLive={ finals:[], lastFinalKey:'', sessionKey:'' };
+
+  function resetDictationLive(){
+    dictationLive={ finals:[], lastFinalKey:'', sessionKey:'' };
+  }
+
+  function dictationSessionKey(summary){
+    var end=global.OneToneVoiceUiState.snapshot().end||{};
+    return String(end.mappingId||'')+'|'+String(end.state||'');
+  }
+
+  function wakeEngineResult(summary){
+    var w=global.OneToneVoiceUiState.snapshot().wake||{};
+    var eng=summary.engine;
+    if(eng==='vosk') return w.vosk||{};
+    if(eng==='sapi') return w.sapi||{};
+    return {};
+  }
+
+  function isNoisePhrase(text,summary){
+    text=String(text||'').trim();
+    if(!text) return true;
+    var phrases=(summary.wakePhrases||[]).slice();
+    if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceEndPhrases){
+      phrases=phrases.concat(global.OneToneHomeLive.voiceEndPhrases());
+    }
+    return phrases.some(function(p){
+      p=String(p||'').trim();
+      if(!p) return false;
+      var norm=text.toLowerCase();
+      var np=p.toLowerCase();
+      return norm===np||norm.indexOf(np)>=0||np.indexOf(norm)>=0;
+    });
+  }
+
+  function syncDictationFinals(summary){
+    var key=dictationSessionKey(summary);
+    if(!summary.dictating){
+      if(dictationLive.sessionKey) resetDictationLive();
+      return;
+    }
+    if(key!==dictationLive.sessionKey){
+      dictationLive={ finals:[], lastFinalKey:'', sessionKey:key };
+    }
+    var res=wakeEngineResult(summary);
+    var eng=summary.engine;
+    var finalText='';
+    if(eng==='vosk'){
+      finalText=String(res.lastFinal||'').trim();
+    }else if(eng==='sapi'){
+      finalText=String(res.lastHeard||'').trim();
+    }
+    if(finalText&&finalText!==dictationLive.lastFinalKey&&!isNoisePhrase(finalText,summary)){
+      dictationLive.lastFinalKey=finalText;
+      dictationLive.finals.push(finalText);
+    }
+  }
+
+  function dictationTextParts(summary){
+    syncDictationFinals(summary);
+    var res=wakeEngineResult(summary);
+    var eng=summary.engine;
+    var finalized=dictationLive.finals.join('');
+    var partial='';
+    if(eng==='vosk'){
+      partial=String(res.lastPartial||'').trim();
+      if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
+        partial='';
+      }
+    }else if(eng==='sapi'){
+      partial=String(res.lastHeard||'').trim();
+      if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
+        partial='';
+      }
+    }
+    if(finalized||partial){
+      return { finalized:finalized, pending:partial, placeholder:false };
+    }
+    return { finalized:'', pending:summary.statusLine||t('homeV9DictatingHint'), placeholder:false };
+  }
 
   function hooks(){ return global.__vp_home_live_hooks__ || {}; }
   function schemeHooks(){ return global.__vp_home_scheme_hooks__ || {}; }
@@ -138,7 +218,7 @@
     var eng=summary.engine;
     var res=eng==='vosk'?w.vosk:w.sapi;
     if(summary.dictating){
-      return { finalized:'', pending:summary.statusLine||t('homeV9DictatingHint'), placeholder:false };
+      return dictationTextParts(summary);
     }
     if(summary.heardLine){
       var heard=summary.heardLine.replace(/^[^：:]+[：:]/,'').trim();
@@ -219,7 +299,7 @@
       return;
     }
     var combined=(vm.live.finalized||'')+(vm.live.pending||'');
-    if(combined===lastLiveText) return;
+    if(!vm.summary.dictating&&combined===lastLiveText) return;
     lastLiveText=combined;
     if(global.vp9&&global.vp9.setText){
       global.vp9.setText('#vp9LiveText',vm.live.finalized,vm.live.pending);

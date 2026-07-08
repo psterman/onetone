@@ -71,6 +71,15 @@
       return;
     }
 
+    var renameSchemeBtn=e.target.closest&&e.target.closest('[data-scheme-rename]');
+    if(renameSchemeBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      var panelUiRename=global.OneToneKeysPanelUi;
+      if(panelUiRename&&panelUiRename.renameScheme) panelUiRename.renameScheme(renameSchemeBtn.getAttribute('data-scheme-rename')||'');
+      return;
+    }
+
     var schemeRow=e.target.closest&&e.target.closest('.keys-hub-scheme-row[data-scheme-id]');
     if(schemeRow){
       e.preventDefault();

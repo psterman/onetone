@@ -363,7 +363,8 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
 
 pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
     let cfg = state.cfg.lock();
-    let probe = cached_vosk_probe(state, &cfg.voice_vosk, resource_dir.as_deref());
+    let probe = probe_vosk_resources(&cfg.voice_vosk, resource_dir.as_deref());
+    *state.voice_vosk_probe.lock() = Some(probe.clone());
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key);
     let resources_dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());

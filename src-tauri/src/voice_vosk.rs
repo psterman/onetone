@@ -183,15 +183,44 @@ fn manifest_vosk_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/vosk")
 }
 
-fn resolve_vosk_dll_dir(resource_dir: Option<&Path>) -> PathBuf {
-    if let Some(rd) = resource_dir {
-        let packaged = rd.join("resources/vosk");
-        if packaged.join("libvosk.dll").is_file() {
-            return packaged;
+fn normalize_extended_path(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        if let Some(stripped) = raw.strip_prefix(r"\\?\") {
+            return PathBuf::from(stripped);
         }
-        let flat = rd.join("vosk");
-        if flat.join("libvosk.dll").is_file() {
-            return flat;
+    }
+    PathBuf::from(raw.as_ref())
+}
+
+fn push_candidate(candidates: &mut Vec<PathBuf>, path: PathBuf) {
+    let normalized = normalize_extended_path(&path);
+    if normalized != path && !candidates.iter().any(|p| p == &normalized) {
+        candidates.push(normalized);
+    }
+    if !candidates.iter().any(|p| p == &path) {
+        candidates.push(path);
+    }
+}
+
+fn resolve_vosk_dll_dir(resource_dir: Option<&Path>) -> PathBuf {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(rd) = resource_dir {
+        push_candidate(&mut candidates, rd.join("resources/vosk"));
+        push_candidate(&mut candidates, rd.join("vosk"));
+        push_candidate(&mut candidates, rd.to_path_buf());
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            push_candidate(&mut candidates, dir.join("resources/vosk"));
+            push_candidate(&mut candidates, dir.join("vosk"));
+            push_candidate(&mut candidates, dir.to_path_buf());
+        }
+    }
+    for candidate in candidates {
+        if candidate.join("libvosk.dll").is_file() {
+            return candidate;
         }
     }
     manifest_vosk_dir()
@@ -202,15 +231,29 @@ pub fn resolve_path(rel: &str, resource_dir: Option<&Path>) -> PathBuf {
     if rel_path.is_absolute() {
         return rel_path.to_path_buf();
     }
+    let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(rd) = resource_dir {
-        let from_resource = rd.join(rel);
-        if model_dir_valid(&from_resource) || from_resource.exists() {
-            return from_resource;
-        }
+        push_candidate(&mut candidates, rd.join(rel));
         let stripped = rel.strip_prefix("resources/").unwrap_or(rel);
-        let alt = rd.join(stripped);
-        if model_dir_valid(&alt) || alt.exists() {
-            return alt;
+        push_candidate(&mut candidates, rd.join(stripped));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            push_candidate(&mut candidates, dir.join(rel));
+            let stripped = rel.strip_prefix("resources/").unwrap_or(rel);
+            push_candidate(&mut candidates, dir.join(stripped));
+        }
+    }
+    push_candidate(&mut candidates, PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel));
+
+    for candidate in &candidates {
+        if model_dir_valid(candidate) {
+            return candidate.clone();
+        }
+    }
+    for candidate in candidates {
+        if candidate.exists() {
+            return candidate;
         }
     }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel)
