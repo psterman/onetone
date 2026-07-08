@@ -4449,8 +4449,12 @@
     #settingsPanelKeys .keys-app-expand-wrap.is-primary .keys-app-expand-summary{background:transparent}
     #settingsPanelKeys .keys-app-expand-head{align-items:center}
     #settingsPanelKeys .keys-app-expand-head .keys-app-expand-toggle{margin:0 12px 0 0}
-    #settingsPanelKeys .keys-app-expand-body{padding:0 0 12px;border-top:0;background:var(--surface)}
-    #settingsPanelKeys .keys-flow-horizontal{padding:0 14px 8px}
+    #settingsPanelKeys .keys-app-expand-body{padding:0 0 12px;border-top:0;background:var(--surface);overflow:visible}
+    #settingsPanelKeys .keys-workflow-expand{padding:8px 0 0;overflow:visible}
+    #settingsPanelKeys .keys-workflow-chain-lbl{
+      margin:0 14px 6px;font-size:10px;font-weight:600;color:var(--on-surface-muted);
+    }
+    #settingsPanelKeys .keys-flow-horizontal{padding:0 14px 8px;overflow:visible}
     #settingsPanelKeys .keys-page-foot{display:none}
     .pref-page{max-width:760px;padding-bottom:8px}
     .pref-page-head{margin:0 0 4px}

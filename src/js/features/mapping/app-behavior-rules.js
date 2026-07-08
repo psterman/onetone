@@ -304,9 +304,7 @@
       if(addBtn) addBtn.hidden=true;
       return;
     }
-    if(seedDefaultBehaviorRules(m)){
-      if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
-    }
+    seedDefaultBehaviorRules(m);
     ensureRules(m);
     var html='';
     BEHAVIOR_PRESETS.forEach(function(preset){
@@ -321,7 +319,6 @@
     }
     var kpu=global.OneToneKeysPanelUi;
     if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
-    if(kpu&&kpu.renderKeysHub) kpu.renderKeysHub();
   }
 
   function renderScenarioCard(m,preset){
@@ -406,7 +403,8 @@
       if(kpu.renderTriggerContextBadge) kpu.renderTriggerContextBadge();
       if(kpu.renderAppContext) kpu.renderAppContext();
     }
-    if(global.OneToneKeyFinishFlowRender) global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
+    var kfr=global.OneToneKeyFinishFlowRender;
+    if(kfr&&kfr.refreshFinishModeSegment) kfr.refreshFinishModeSegment(m);
     if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
   }
 
@@ -444,6 +442,52 @@
     return true;
   }
 
+  function resolveGlobalFinishMode(m){
+    var fs=flowSummary();
+    return fs&&fs.resolveFinishMode?fs.resolveFinishMode(m):defaultModeForApp('');
+  }
+
+  function ensurePrimaryAppRule(m,appId){
+    if(!m||!appId) return false;
+    ensureRules(m);
+    if(ruleForApp(m,appId)) return false;
+    m.appBehaviorRules.push({
+      appId:appId,
+      finishMode:resolveGlobalFinishMode(m),
+      note:defaultNoteForApp(appId)
+    });
+    return true;
+  }
+
+  function ensureRulesBeforeSave(m){
+    if(!m) return;
+    ensureRules(m);
+    var primary=String(m.appTargetId||'').trim();
+    if(primary) ensurePrimaryAppRule(m,primary);
+    if(!m.appBehaviorRules.length) seedDefaultBehaviorRules(m);
+  }
+
+  function refreshFinishModeUi(m){
+    if(global.OneToneKeyFinishFlowRender){
+      if(global.OneToneKeyFinishFlowRender.refreshFinishModeSegment) global.OneToneKeyFinishFlowRender.refreshFinishModeSegment(m);
+      else if(global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel) global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
+    }
+    renderKeysAside();
+    renderActiveScenarioBanner();
+    if(global.OneToneKeysPanelUi){
+      if(global.OneToneKeysPanelUi.renderAppContext) global.OneToneKeysPanelUi.renderAppContext();
+      if(global.OneToneKeysPanelUi.renderTriggerContextBadge) global.OneToneKeysPanelUi.renderTriggerContextBadge();
+    }
+    if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
+  }
+
+  function saveFinishModeChange(m){
+    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
+    refreshFinishModeUi(m);
+    if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
+    if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
+  }
+
   function upsertRule(m,appId,finishMode,note){
     ensureRules(m);
     var existing=ruleForApp(m,appId);
@@ -453,7 +497,14 @@
     }else{
       m.appBehaviorRules.push({appId:appId,finishMode:finishMode,note:note||defaultNoteForApp(appId)});
     }
-    saveAndRefresh();
+    if(keysPanelActive()) saveFinishModeChange(m);
+    else saveAndRefresh();
+  }
+
+  function setAppFinishMode(m,appId,mode){
+    if(!m||!appId||!mode) return;
+    var rule=ruleForApp(m,appId);
+    upsertRule(m,appId,mode,rule&&rule.note||defaultNoteForApp(appId));
   }
 
   function removeRule(m,appId){
@@ -479,9 +530,7 @@
       if(addBtn) addBtn.hidden=true;
       return;
     }
-    if(seedDefaultBehaviorRules(m)){
-      if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
-    }
+    seedDefaultBehaviorRules(m);
     ensureRules(m);
     if(addBtn){
       addBtn.hidden=false;
@@ -515,7 +564,6 @@
       }else if(atpToggle&&atpToggle.setPrimaryForMapping){
         atpToggle.setPrimaryForMapping(toggleBtn.dataset.appRuleToggle);
       }
-      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
       return true;
     }
     var summonSave=e.target.closest&&e.target.closest('[data-summon-save]');
@@ -579,7 +627,7 @@
       return true;
     }
     var card=e.target.closest&&e.target.closest('[data-app-rule]');
-    if(card&&!e.target.closest('button,input,textarea,select,summary')){
+    if(card&&!e.target.closest('button,input,textarea,select,summary,.keys-flow-horizontal,.keys-workflow-expand,[data-summon-edit]')){
       var appId=card.dataset.appId;
       if(card.classList&&card.classList.contains('keys-app-expand-wrap')){
         var details=card.querySelector('.keys-app-expand-row');
@@ -591,6 +639,7 @@
         setKeysExpandedAppId(appId);
       }
       setActiveAppContextId(appId);
+      e.stopPropagation();
       return true;
     }
     return false;
@@ -614,7 +663,6 @@
 
   function bindKeysAsideEvents(list){
     if(!list) return;
-    bindAppRulesList(list,{hoverPreview:false});
     if(list.dataset.keysAsideBound!=='1'){
       list.dataset.keysAsideBound='1';
       list.addEventListener('toggle',function(e){
@@ -760,9 +808,7 @@
       if(summaryEl) summaryEl.textContent=t('voiceAppShortcutsAsideEmpty');
       return;
     }
-    if(seedDefaultBehaviorRules(m)){
-      if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
-    }
+    seedDefaultBehaviorRules(m);
     ensureRules(m);
     var html='';
     BEHAVIOR_PRESETS.forEach(function(preset){
@@ -809,8 +855,11 @@
     if(!m||!appId) return null;
     ensureRules(m);
     var rule=m.appBehaviorRules.find(function(r){ return r.appId===appId; });
-    if(!rule) return null;
-    return {mode:rule.finishMode,appName:appDisplayName(appId)};
+    if(rule) return {mode:rule.finishMode,appName:appDisplayName(appId)};
+    if(String(m.appTargetId||'')===appId){
+      return {mode:resolveGlobalFinishMode(m),appName:appDisplayName(appId)};
+    }
+    return null;
   }
 
   global.OneToneAppBehaviorRules={
@@ -826,6 +875,9 @@
     getKeysExpandedAppId:getKeysExpandedAppId,
     getActiveAppContextId:function(){ return activeAppContextId; },
     resolveEffectiveFinish:resolveEffectiveFinish,
+    setAppFinishMode:setAppFinishMode,
+    ensurePrimaryAppRule:ensurePrimaryAppRule,
+    ensureRulesBeforeSave:ensureRulesBeforeSave,
     finishModeLabel:finishModeLabel,
     ensureRules:ensureRules,
     behaviorPresets:BEHAVIOR_PRESETS,

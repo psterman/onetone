@@ -100,7 +100,10 @@
 
     if(e.target.closest&&e.target.closest('#keysAppRulesList')){
       var appRules=global.OneToneAppBehaviorRules;
-      if(appRules&&appRules.handleListClick&&appRules.handleListClick(e)) return;
+      if(appRules&&appRules.handleListClick&&appRules.handleListClick(e)){
+        e.__vpKeysPanelHandled=true;
+        return;
+      }
     }
 
     if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode]')){

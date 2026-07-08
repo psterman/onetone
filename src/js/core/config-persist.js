@@ -19,6 +19,46 @@
     return !!(hookFn('newMappingId')&&hookFn('renderHome')&&hookFn('syncEditorFromSelection'));
   }
 
+  function normalizeAppBehaviorRules(rules){
+    if(!Array.isArray(rules)) return [];
+    return rules.map(function(r){
+      if(!r||typeof r!=='object') return null;
+      var appId=String(r.appId||r.app_id||'').trim();
+      if(!appId) return null;
+      var out={
+        appId:appId,
+        finishMode:String(r.finishMode||r.finish_mode||'confirm').trim()||'confirm',
+        note:r.note!=null?String(r.note):''
+      };
+      var summon=r.summonPhrase!=null?r.summonPhrase:r.summon_phrase;
+      if(summon!=null&&String(summon).trim()) out.summonPhrase=String(summon).trim();
+      return out;
+    }).filter(Boolean);
+  }
+
+  function serializeAppBehaviorRules(rules){
+    return normalizeAppBehaviorRules(rules).map(function(r){
+      var out={appId:r.appId,finishMode:r.finishMode,note:r.note||''};
+      if(r.summonPhrase) out.summonPhrase=r.summonPhrase;
+      return out;
+    });
+  }
+
+  function normalizeInboundMapping(m){
+    if(!m||typeof m!=='object') return m;
+    const out=Object.assign({},m);
+    if(out.triggerKey==null&&out.trigger_key!=null) out.triggerKey=out.trigger_key;
+    if(out.targetKey==null&&out.target_key!=null) out.targetKey=out.target_key;
+    if(out.sourceKey==null&&out.source_key!=null) out.sourceKey=out.source_key;
+    if(out.activeSceneId==null&&out.active_scene_id!=null) out.activeSceneId=out.active_scene_id;
+    if(out.appTargetId==null&&out.app_target_id!=null) out.appTargetId=out.app_target_id;
+    if(!Array.isArray(out.appBehaviorRules)&&Array.isArray(out.app_behavior_rules)){
+      out.appBehaviorRules=out.app_behavior_rules;
+    }
+    out.appBehaviorRules=normalizeAppBehaviorRules(out.appBehaviorRules);
+    return out;
+  }
+
   function normalizeInboundConfig(raw){
     if(!raw||typeof raw!=='object') return raw;
     const cfg=Object.assign({},raw);
@@ -27,15 +67,10 @@
     if(!cfg.voiceSapi&&cfg.voice_sapi) cfg.voiceSapi=cfg.voice_sapi;
     if(!cfg.voiceEnd&&cfg.voice_end) cfg.voiceEnd=cfg.voice_end;
     if(Array.isArray(cfg.mappings)){
-      cfg.mappings=cfg.mappings.map(function(m){
-        if(!m||typeof m!=='object') return m;
-        const out=Object.assign({},m);
-        if(out.triggerKey==null&&out.trigger_key!=null) out.triggerKey=out.trigger_key;
-        if(out.targetKey==null&&out.target_key!=null) out.targetKey=out.target_key;
-        if(out.sourceKey==null&&out.source_key!=null) out.sourceKey=out.source_key;
-        if(out.activeSceneId==null&&out.active_scene_id!=null) out.activeSceneId=out.active_scene_id;
-        return out;
-      });
+      cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
+    }
+    if(Array.isArray(cfg.trash)){
+      cfg.trash=cfg.trash.map(normalizeInboundMapping);
     }
     return cfg;
   }
@@ -58,7 +93,9 @@
     const vosk=!!((c.voiceVosk||c.voice_vosk||{}).enabled);
     const sapi=!!((c.voiceSapi||c.voice_sapi||{}).enabled);
     return maps.length+'|'+String(c.activeSceneId||c.active_scene_id||'')+'|'+maps.map(function(m){
-      return String(m.id||'')+':'+(m.enabled?1:0)+':'+String(m.triggerKey||m.trigger_key||'')+':'+String(m.targetKey||m.target_key||'');
+      var rules=serializeAppBehaviorRules(m.appBehaviorRules||m.app_behavior_rules||[]);
+      var rulesSig=rules.map(function(r){ return r.appId+':'+r.finishMode; }).join(',');
+      return String(m.id||'')+':'+(m.enabled?1:0)+':'+String(m.triggerKey||m.trigger_key||'')+':'+String(m.targetKey||m.target_key||'')+':'+String(m.appTargetId||m.app_target_id||'')+':'+rulesSig;
     }).join(';')+'|v'+(vosk?1:0)+'|s'+(sapi?1:0);
   }
 
@@ -124,13 +161,19 @@
       activeSceneId:String(st.config.activeSceneId||st.selectedMappingId||''),
       mappings:st.config.mappings.map(function(m,i){
         hooks().ensureMappingExtras(m);
+        if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
+          global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
+        }
         const trig=hooks().editorTriggerForMapping(m);
         const tgt=hooks().editorTargetForMapping(m);
-        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'默认',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'默认',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
       }),
       trash:(st.config.trash||[]).map(function(m){
         hooks().ensureMappingExtras(m);
-        return {id:m.id,label:m.label||'',group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
+        if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
+          global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
+        }
+        return {id:m.id,label:m.label||'',group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
       }),
       intervalMs:st.config.intervalMs||1200,
       enterDelayMs:st.config.enterDelayMs||5000,

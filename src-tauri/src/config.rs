@@ -1932,6 +1932,24 @@ pub fn config_path() -> PathBuf {
 /// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
 pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceConfig> {
     let mut cfg: VoiceConfig = serde_json::from_str(json).ok()?;
+    for m in &mut cfg.mappings {
+        if m.app_behavior_rules.is_empty() {
+            if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
+                if !prev.app_behavior_rules.is_empty() {
+                    m.app_behavior_rules = prev.app_behavior_rules.clone();
+                }
+            }
+        }
+    }
+    for m in &mut cfg.trash {
+        if m.app_behavior_rules.is_empty() {
+            if let Some(prev) = existing.trash.iter().find(|x| x.id == m.id) {
+                if !prev.app_behavior_rules.is_empty() {
+                    m.app_behavior_rules = prev.app_behavior_rules.clone();
+                }
+            }
+        }
+    }
     cfg.voice_vosk = existing.voice_vosk.clone();
     cfg.voice_sapi = existing.voice_sapi.clone();
     cfg.voice_end = existing.voice_end.clone();
