@@ -151,6 +151,10 @@
     const m=hooks().mappingById(id);
     if(!m||hooks().isDraftMapping(m)) return;
     const next=!m.enabled;
+    if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.setMappingEnabled){
+      global.OneToneMappingEditActions.setMappingEnabled(id,next);
+      return;
+    }
     try{
       window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id,enabled:next});
     }catch(_){}

@@ -354,11 +354,10 @@
 
   function openVoiceProfile(id){
     openKeys(id);
-    var advanced=$('keysAdvancedDetails');
-    if(advanced&&advanced.tagName==='DETAILS') advanced.open=true;
+    ui().habitAdvancedFocus='voice';
     if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
-    var panel=$('sceneVoicePanel');
-    if(panel) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+    var stash=$('keysCompatStash');
+    if(stash) stash.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
   function defaultVoiceNavId(){

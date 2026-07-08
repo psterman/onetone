@@ -409,6 +409,18 @@
     return t('sceneGlobalEngineOff');
   }
 
+  function modelPresetLabel(cfg){
+    if(!cfg) return '—';
+    var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+    if(!vosk.enabled) return '—';
+    var preset=String(vosk.modelPreset||vosk.model_preset||'cn-light').trim()||'cn-light';
+    if(preset==='cn-light') return t('keysCaptureModelCnLight');
+    if(preset==='en-light') return t('keysCaptureModelEnLight');
+    if(preset==='cn'||preset==='cn-heavy') return t('keysCaptureModelCn');
+    if(preset==='en'||preset==='en-heavy') return t('keysCaptureModelEn');
+    return preset;
+  }
+
   function getActiveMicName(){
     var hooks=global.__vp_bootstrap_hooks__||{};
     if(typeof hooks.micDevices!=='function') return '—';
@@ -421,22 +433,15 @@
   }
 
   function renderHabitVoiceDeviceSummary(){
-    var diagnostic=$('habitFlowVoiceDeviceDiagnostic');
-    var wrap=$('habitFlowVoiceDeviceSummary');
-    var keysActive=keysPanelActive();
-    if(diagnostic) diagnostic.hidden=!keysActive;
-    if(!wrap) return;
     var textEl=$('habitFlowDeviceText');
     if(textEl){
       var cfg=state().config;
-      textEl.textContent=t('habitFlowDeviceSummary')
-        .replace('{mic}',getActiveMicName())
-        .replace('{engine}',engineSummary(cfg));
+      textEl.textContent=t('keysCaptureVoiceSummary')
+        .replace('{engine}',engineSummary(cfg))
+        .replace('{model}',modelPresetLabel(cfg));
     }
     var btn=$('btnHabitFlowOpenVoice');
     if(btn) btn.textContent=t('habitFlowDeviceChange');
-    var lbl=$('habitFlowVoiceDeviceDiagnosticLbl');
-    if(lbl) lbl.textContent=t('keysVoiceDeviceDiagnosticTitle');
   }
 
   function renderSceneGlobalFooter(){

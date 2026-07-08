@@ -48,6 +48,40 @@ function Copy-VoskRuntimeDlls {
   }
 }
 
+function Clear-StaleBundleResources {
+  param([string]$BuildRoot)
+  $resourcesDir = Join-Path $BuildRoot 'release\resources'
+  if (-not (Test-Path $resourcesDir)) { return }
+  $voskPath = Join-Path $resourcesDir 'vosk'
+  if ((Test-Path -LiteralPath $voskPath) -and -not (Test-Path -LiteralPath $voskPath -PathType Container)) {
+    Write-LaunchLog "removing stale bundle file: $voskPath"
+    Remove-Item -LiteralPath $voskPath -Force -ErrorAction SilentlyContinue
+  }
+}
+
+$script:BuildLockPath = Join-Path $logDir 'build.lock'
+
+function Enter-BuildLock {
+  $deadline = (Get-Date).AddMinutes(8)
+  while (Test-Path -LiteralPath $script:BuildLockPath) {
+    if ((Get-Date) -gt $deadline) {
+      Write-LaunchLog 'build lock timeout, clearing stale lock'
+      Remove-Item -LiteralPath $script:BuildLockPath -Force -ErrorAction SilentlyContinue
+      break
+    }
+    Write-LaunchLog 'waiting for another build to finish...'
+    Start-Sleep -Seconds 3
+  }
+  if (-not (Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+  }
+  Set-Content -LiteralPath $script:BuildLockPath -Value $PID -Encoding ascii
+}
+
+function Exit-BuildLock {
+  Remove-Item -LiteralPath $script:BuildLockPath -Force -ErrorAction SilentlyContinue
+}
+
 function Test-OnetoneRunning {
   return $null -ne (Get-Process onetone -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
@@ -256,12 +290,15 @@ try {
 
   Push-Location $tauri
   try {
+    Enter-BuildLock
+    Clear-StaleBundleResources -BuildRoot $buildRoot
     & cargo tauri build --no-bundle -- --target-dir $buildRoot
     if ($LASTEXITCODE -ne 0) {
       throw "cargo tauri build failed with exit code $LASTEXITCODE"
     }
   }
   finally {
+    Exit-BuildLock
     Pop-Location
   }
 
@@ -274,6 +311,7 @@ try {
   exit 0
 }
 catch {
+  Exit-BuildLock
   Write-LaunchLog "launch failed: $($_.Exception.Message)"
   Write-Error $_.Exception.Message
   exit 1

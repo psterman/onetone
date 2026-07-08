@@ -17,6 +17,7 @@
   <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <link rel="stylesheet" href="css/app.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
+  <link rel="stylesheet" href="css/keys-workflow.css" />
 </head>
 <body>
   <div class="app">
@@ -494,15 +495,10 @@
               <h3 class="pref-page-title" id="settingsPanelKeysTitle">按键</h3>
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelKeysDesc">从按键到发送动作，完整配置一条链路</p>
               <div class="flow-status-bar" id="keysFlowStatusBar" aria-live="polite">
-                <label class="flow-status-pill is-on keys-habit-pill" id="keysHabitPill">
-                  <span class="keys-habit-pill-prefix" id="keysHabitSwitcherLbl">当前习惯</span><span aria-hidden="true"> · </span>
-                  <select class="keys-habit-switcher-inline" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl"></select>
-                </label>
+                <span class="flow-status-pill" id="keysStatusImePill">—</span>
                 <span class="flow-status-divider" aria-hidden="true"></span>
-                <span class="flow-status-pill is-on" id="keysStatusImePill">—</span>
-                <span class="flow-status-divider" aria-hidden="true"></span>
-                <span class="flow-status-pill is-on" id="keysStatusActivePill"><span class="flow-status-dot" id="keysStatusActiveDot" hidden></span><span id="keysStatusActiveLbl">激活中</span></span>
-                <button type="button" class="toggle-switch keys-status-enable-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="true" aria-labelledby="keysStatusActiveLbl"></button>
+                <span class="flow-status-pill" id="keysStatusActivePill"><span class="flow-status-dot" id="keysStatusActiveDot" hidden></span><span id="keysStatusActiveLbl">—</span></span>
+                <button type="button" class="toggle-switch keys-status-enable-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysStatusActiveLbl"></button>
               </div>
               <div class="keys-status-chips" id="keysStatusChips" hidden aria-hidden="true">
                 <span class="keys-status-chip" id="keysStatusIme" hidden><span id="keysStatusImeVal"></span></span>
@@ -532,12 +528,22 @@
           <div class="key-flow-section" id="quickKeyWakeSection">
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
-                <div class="habit-default-flow home-key-map-flow keys-step-stack" id="habitDefaultFlow">
-                  <div class="habit-flow-step home-key-map-step keys-step-card is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger">
-                    <div class="keys-step-card-head flow-step-card-head">
-                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">1</span>
-                      <span class="home-key-map-step-label" id="habitFlowStepTriggerLbl">默认快捷键</span>
-                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTrigger">—</span>
+                <div class="keys-workflow-tabs-shell" id="keysWorkflowTabsBar">
+                  <span class="sr-only" id="keysWorkflowTabsLbl">当前编辑方案</span>
+                  <div class="keys-workflow-tabs" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysWorkflowTabsLbl"></div>
+                  <label class="keys-habit-switcher-assist">
+                    <span class="sr-only" id="keysHabitSwitcherLbl">当前习惯</span>
+                    <select class="keys-habit-switcher-inline" id="keysHabitSwitcher" aria-labelledby="keysHabitSwitcherLbl keysWorkflowTabsLbl"></select>
+                  </label>
+                </div>
+                <div class="habit-default-flow home-key-map-flow keys-workflow-grid" id="habitDefaultFlow">
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger">
+                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
+                      <span class="keys-workflow-col-tag" id="keysColTriggerLbl">TRIGGER</span>
+                      <div class="keys-workflow-col-subhead">
+                        <span class="home-key-map-step-label" id="habitFlowStepTriggerLbl">默认快捷键</span>
+                        <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTrigger">—</span>
+                      </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-step-row keys-step-row--hero">
@@ -545,18 +551,16 @@
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
                     <span class="home-key-map-step-hint" id="habitFlowStepTriggerHint">比如音量键、鼠标侧键</span>
-                    <div class="keys-app-chips-wrap" id="keysAppContextStripWrap" hidden>
-                      <div class="keys-app-chips" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
-                      <button type="button" class="keys-app-chip keys-app-chip--add" id="btnKeysAppChipAdd">+ 添加应用</button>
-                      <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
-                    </div>
                     </div>
                   </div>
-                  <div class="habit-flow-step home-key-map-step keys-step-card is-clickable" data-edit-step="target" id="habitKeyMapRowTarget">
-                    <div class="keys-step-card-head flow-step-card-head">
-                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">2</span>
-                      <span class="home-key-map-step-label" id="habitFlowStepTargetLbl">语音输入法激活</span>
-                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTarget">—</span>
+                  <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="target" id="habitKeyMapRowTarget">
+                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
+                      <span class="keys-workflow-col-tag" id="keysColCaptureLbl">CAPTURE</span>
+                      <div class="keys-workflow-col-subhead">
+                        <span class="home-key-map-step-label" id="habitFlowStepTargetLbl">语音输入法激活</span>
+                        <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTarget">—</span>
+                      </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-flow-row" id="keysTargetFlowRow">
@@ -569,27 +573,27 @@
                       </div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
+                    <div class="keys-capture-voice-summary" id="keysCaptureVoiceSummary">
+                      <span class="keys-capture-voice-text habit-flow-device-text" id="habitFlowDeviceText">—</span>
+                      <button type="button" class="habit-flow-device-link keys-capture-voice-link" id="btnHabitFlowOpenVoice">更改</button>
+                    </div>
                     <div class="keys-step-target-stash" hidden>
                         <div class="habit-flow-ime-block" id="habitFlowImeBlock">
                           <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入方式</p>
                           <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
                         </div>
-                        <details class="habit-flow-device-diagnostic keys-voice-device-diagnostic" id="habitFlowVoiceDeviceDiagnostic">
-                          <summary class="habit-flow-device-diagnostic-summary" id="habitFlowVoiceDeviceDiagnosticLbl">语音设备与引擎</summary>
-                          <div class="habit-flow-device-summary" id="habitFlowVoiceDeviceSummary">
-                            <span class="habit-flow-device-text" id="habitFlowDeviceText">—</span>
-                            <button type="button" class="habit-flow-device-link" id="btnHabitFlowOpenVoice">更改</button>
-                          </div>
-                        </details>
                     </div>
                     <span class="home-key-map-step-hint" id="habitFlowStepTargetHint">输入法的语音输入快捷键</span>
                     </div>
                   </div>
-                  <div class="habit-flow-step home-key-map-step keys-step-card is-clickable habit-flow-step--finish" data-edit-step="finish" id="habitKeyMapRowFinish">
-                    <div class="keys-step-card-head flow-step-card-head">
-                      <span class="keys-flow-step-badge flow-step-badge" aria-hidden="true">3</span>
-                      <span class="home-key-map-step-label" id="habitFlowStepFinishLbl">完成发送动作</span>
-                      <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStFinish">—</span>
+                  <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable habit-flow-step--finish" data-edit-step="finish" id="habitKeyMapRowFinish">
+                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
+                      <span class="keys-workflow-col-tag" id="keysColActionLbl">ACTION</span>
+                      <div class="keys-workflow-col-subhead">
+                        <span class="home-key-map-step-label" id="habitFlowStepFinishLbl">完成发送动作</span>
+                        <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStFinish">—</span>
+                      </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-finish-mode-host" id="keysFinishModeHost">
@@ -608,6 +612,14 @@
                       </div>
                     </details>
                     </div>
+                  </div>
+                </div>
+                <div class="keys-app-binding-strip" id="keysAppBindingStrip" hidden>
+                  <span class="keys-app-binding-lbl" id="keysAppBindingLbl">用在哪些程序</span>
+                  <div class="keys-app-chips-wrap" id="keysAppContextStripWrap" hidden>
+                    <div class="keys-app-chips" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+                    <button type="button" class="keys-app-chip keys-app-chip--add" id="btnKeysAppChipAdd">+ 添加应用</button>
+                    <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
                   </div>
                 </div>
                 <footer class="habit-key-mapping-foot keys-page-tip-bar">
@@ -692,32 +704,25 @@
               </div>
             </div>
           </div>
-              <details class="keys-advanced-details" id="keysAdvancedDetails">
-                <summary class="keys-advanced-summary" id="keysAdvancedSummary"><span class="keys-aside-step-badge keys-advanced-badge" aria-hidden="true">6</span>遇到问题时</summary>
-                <p class="keys-advanced-desc" id="keysAdvancedDesc">按键冲突、特殊按键与输入法兼容排查</p>
-                <p class="keys-advanced-when" id="keysAdvancedWhenHint">仅在冲突、鼠标侧键录制或输入法异常时需要展开</p>
-                <div class="keys-advanced-body">
-                  <section class="scene-voice-panel habit-advanced-block" id="sceneVoicePanel" hidden>
-                    <h4 class="habit-advanced-block-title" id="sceneVoicePanelTitle">单独语音设置</h4>
-                    <div id="sceneVoicePanelBody"></div>
-                  </section>
-                  <section class="keys-advanced-group" id="keysAdvConflict">
-                    <h5 class="keys-advanced-group-title" id="keysAdvConflictTitle">冲突处理</h5>
-                    <div class="conflict-pill" id="conflictBanner" role="status"></div>
-                    <button type="button" class="keys-advanced-link" id="btnKeysAdvancedConflict">查看冲突详情</button>
-                  </section>
-                  <section class="keys-advanced-group" id="keysAdvMouse">
-                    <h5 class="keys-advanced-group-title" id="keysAdvMouseTitle">鼠标 / 特殊按键</h5>
-                    <p class="keys-advanced-group-desc" id="keysAdvMouseDesc">支持鼠标侧键、音量键等特殊输入；左键等系统常用键可能冲突。</p>
-                  </section>
-                  <section class="keys-advanced-group" id="keysAdvIme" hidden>
-                    <h5 class="keys-advanced-group-title" id="keysAdvImeTitle">输入法兼容</h5>
-                    <p class="keys-advanced-group-desc" id="keysAdvImeText">—</p>
-                  </section>
-                </div>
-              </details>
+              <div class="keys-compat-stash" id="keysCompatStash" hidden aria-hidden="true">
+                <section class="scene-voice-panel habit-advanced-block keys-advanced-voice-override" id="sceneVoicePanel" hidden>
+                  <h4 class="habit-advanced-block-title" id="sceneVoicePanelTitle">单独语音设置</h4>
+                  <div id="sceneVoicePanelBody"></div>
+                </section>
+                <div class="conflict-pill" id="conflictBanner" role="status"></div>
+              </div>
             </div>
-            <aside class="keys-page-aside" id="keysPanelAside" aria-label="应用快捷键">
+            <aside class="keys-page-aside" id="keysPanelAside" aria-label="方案与模板">
+              <section class="keys-aside-card keys-hub-card" id="keysHubCard">
+                <header class="keys-aside-card-head keys-hub-head">
+                  <span class="keys-aside-title" id="keysHubTitleLbl">方案</span>
+                  <span class="keys-aside-count" id="keysHubCount">—</span>
+                </header>
+                <div class="keys-hub-schemes" id="keysHubSchemeList" role="list"></div>
+                <div class="keys-hub-divider" id="keysHubDivider" aria-hidden="true"></div>
+                <p class="keys-hub-templates-lbl" id="keysHubTemplatesLbl">快速模板</p>
+                <div class="keys-hub-templates" id="keysHubTemplateList"></div>
+              </section>
               <section class="keys-aside-card habit-app-shortcuts-panel keys-app-shortcuts-panel" id="keysAppShortcutsCard">
                 <header class="keys-aside-card-head habit-app-shortcuts-head">
                   <span class="keys-aside-title" id="keysAppShortcutsTitle"><svg class="keys-aside-title-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span id="keysAppShortcutsTitleLbl">应用快捷键</span></span>
@@ -2041,6 +2046,8 @@
   <script src="js/features/mapping/mapping-conflict-state.js"></script>
   <script src="js/features/mapping/mapping-editor-state.js"></script>
   <script src="js/features/mapping/mapping-core.js"></script>
+  <script src="js/features/mapping/keys-workflow-templates.js"></script>
+  <script src="js/features/mapping/keys-flow-interaction.js"></script>
   <script src="js/features/mapping/mapping-editor-chrome.js"></script>
   <script src="js/features/mapping/mapping-meta-render.js"></script>
   <script src="js/features/mapping/mapping-list.js"></script>

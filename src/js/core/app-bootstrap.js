@@ -11,6 +11,7 @@
       global.OneToneVoiceUiBindings,
       global.OneToneHomeUiBindings,
       global.OneToneKeyFinishFlowUi,
+      global.OneToneKeysFlowInteraction,
       global.OneToneAppBehaviorRules,
       global.OneToneHabitCompatibility,
       global.OneToneKeysPanelUi,

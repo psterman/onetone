@@ -333,25 +333,28 @@
     var el=e.target;
     var finishBtn=el.closest&&el.closest('[data-finish-mode]');
     if(finishBtn){
-      e.stopPropagation();
+      if(finishBtn.closest('[data-app-rule-pill]')) return false;
       var mode=finishBtn.dataset.finishMode;
       var m=hooks().selectedMapping();
-      if(!m||!mode||!global.OneToneSceneFlowSummary) return true;
+      if(!m||!mode||!global.OneToneSceneFlowSummary) return false;
+      e.stopPropagation();
       global.OneToneSceneFlowSummary.applyFinishMode(m,mode);
       hooks().save();
       renderKeyFinishFlowPanel();
       hooks().renderMappingList();
       if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
       if(global.OneToneHabitMulti) global.OneToneHabitMulti.render();
+      if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
+      if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
       return true;
     }
     var modeBtn=el.closest&&el.closest('[data-trigger-mode]');
     if(modeBtn){
-      e.stopPropagation();
       var id=modeBtn.dataset.triggerMode;
       var mode=modeBtn.dataset.mode;
       var m=appState().config.mappings.find(function(x){return x.id===id;});
-      if(!m||!mode) return true;
+      if(!m||!mode) return false;
+      e.stopPropagation();
       m.triggerMode=mode;
       hooks().save();
       renderKeyFinishFlowPanel();
@@ -360,16 +363,17 @@
     }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
     if(timingToggle){
-      e.stopPropagation();
-      var tid=timingToggle.dataset.timingToggle;
       var field=timingToggle.dataset.field;
-      var tm=appState().config.mappings.find(function(x){return x.id===tid;});
-      if(!tm) return true;
-      if(field==='cancelEnabled'||field==='autoEnterEnabled') tm.triggerMode='tap';
-      tm[field]=!tm[field];
+      var m=hooks().selectedMapping();
+      if(!m||!field) return false;
+      e.stopPropagation();
+      if(field==='cancelEnabled'||field==='autoEnterEnabled') m.triggerMode='tap';
+      m[field]=!m[field];
       scheduleTimingSave();
       renderKeyFinishFlowPanel();
       hooks().renderMappingList();
+      if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
+      if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
       return true;
     }
     return false;
@@ -401,10 +405,9 @@
   }
 
   function liveUpdateTimingRange(range){
-    var id=range.dataset.timingRange;
     var field=range.dataset.field;
     var val=Number(range.value);
-    var m=appState().config&&appState().config.mappings.find(function(x){return x.id===id;});
+    var m=hooks().selectedMapping();
     if(!m) return;
     m[field]=val;
     scheduleTimingSave();

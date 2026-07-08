@@ -58,7 +58,9 @@
   function syncConfirmTimingVisibility(m){
     var section=$('keyExecFinishTimingSection');
     if(!section) return;
-    if(!m||!core()||!core().isSaved||!core().isSaved(m)){
+    var drawer=global.OneToneSettingsDrawer;
+    var onKeysPanel=drawer&&drawer.isKeysPanel&&drawer.isKeysPanel();
+    if(onKeysPanel||!m||!core()||!core().isSaved||!core().isSaved(m)){
       section.hidden=true;
       return;
     }

@@ -212,7 +212,12 @@
     if(!msg||typeof msg!=='object') return;
     if(!hooksReady()){
       pendingMvpInitMsg=msg;
-      if(msg.config) state().config=normalizeInboundConfig(msg.config);
+      if(msg.config){
+        state().config=normalizeInboundConfig(msg.config);
+        if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.applyPendingEnable){
+          global.OneToneMappingEditActions.applyPendingEnable(state().config);
+        }
+      }
       return;
     }
     try{
@@ -222,6 +227,9 @@
       if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
       const st=state();
       if(msg.config) st.config=normalizeInboundConfig(msg.config);
+      if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.applyPendingEnable){
+        global.OneToneMappingEditActions.applyPendingEnable(st.config);
+      }
       const setConflictRows=hookFn('setConflictRows');
       if(Array.isArray(msg.conflicts)&&setConflictRows) setConflictRows(msg.conflicts);
       const normalizeUpdate=hookFn('normalizeUpdateState');

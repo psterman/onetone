@@ -39,6 +39,10 @@
     }
     var next=!m.enabled;
     global.OneToneHomeLive.syncEntryToggleBtn($('btnHomeKeyToggle'),next,'homeLiveToggleKeyOff','homeLiveToggleKeyOn');
+    if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.setMappingEnabled){
+      global.OneToneMappingEditActions.setMappingEnabled(m.id,next);
+      return;
+    }
     try{
       window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:next});
     }catch(_){}

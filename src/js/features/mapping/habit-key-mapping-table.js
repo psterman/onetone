@@ -119,6 +119,20 @@
     else if(step==='target'&&bootHooks.startTargetRecord) bootHooks.startTargetRecord();
   }
 
+  function isInteractiveFlowTarget(el){
+    if(!el||!el.closest) return false;
+    if(el.closest('.record-btn')) return true;
+    if(el.closest('.keys-step-key-area,.keys-flow-key,.habit-basic-key-display')) return true;
+    return !!el.closest([
+      '.voice-end-key-mode-panel','.keys-finish-mode-host','.keys-finish-delay-host',
+      '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
+      '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
+      '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip',
+      '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
+      '.keys-app-chip','.keys-ime-pill','.btn-cancel-record','input','button','select','textarea','label'
+    ].join(','));
+  }
+
   function bindEvents(){
     ensureMounted();
     var flow=$('habitDefaultFlow');
@@ -140,8 +154,9 @@
           }
           return;
         }
+        if(isInteractiveFlowTarget(e.target)) return;
         var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
-        if(!stepEl||e.target.closest('.voice-end-key-mode-panel')||e.target.closest('details')||e.target.closest('.ime-preset-strip')||e.target.closest('.habit-flow-device-link')||e.target.closest('.keys-app-context-strip')||e.target.closest('.habit-flow-device-diagnostic')||e.target.closest('.keys-app-chip')||e.target.closest('.keys-ime-pill')||e.target.closest('.btn-cancel-record')) return;
+        if(!stepEl) return;
         var step=stepEl.dataset.editStep;
         if(step) onStepClick(step);
       });

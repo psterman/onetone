@@ -31,8 +31,18 @@
         }
       }
       if(msg.type==='mvp_mapping_toggled'&&msg.ok){
+        var edit=global.OneToneMappingEditActions;
+        var nextEnabled=!!msg.enabled;
+        if(edit&&edit.acceptMappingToggledAck&&!edit.acceptMappingToggledAck(msg.id,nextEnabled)) return;
         var m=state.config&&state.config.mappings.find(function(x){ return x.id===msg.id; });
-        if(m) m.enabled=!!msg.enabled;
+        if(m){
+          if(m.enabled===nextEnabled){
+            if(edit&&edit.clearPendingEnable) edit.clearPendingEnable(msg.id,nextEnabled);
+            return;
+          }
+          m.enabled=nextEnabled;
+        }
+        if(edit&&edit.clearPendingEnable) edit.clearPendingEnable(msg.id,nextEnabled);
         if(msg.autoDisabled&&msg.autoDisabled.length) hooks.toast(t('conflictDisabled'));
         hooks.render();
       }

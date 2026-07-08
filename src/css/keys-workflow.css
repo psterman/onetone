@@ -1,0 +1,675 @@
+/* Keys workflow editor — Phase A/B layout (loads after app.css) */
+
+#settingsPanelKeys .keys-workflow-tabs-shell {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+/* Scheme switching lives in the sidebar hub — hide duplicate top tabs */
+#settingsPanelKeys:has(#keysHubCard:not([hidden])) .keys-workflow-tabs-shell {
+  display: none;
+}
+
+#settingsPanelKeys .keys-habit-switcher-assist {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#settingsPanelKeys .keys-workflow-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+#settingsPanelKeys .keys-workflow-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelKeys .keys-workflow-tab:hover {
+  border-color: rgba(42, 156, 196, 0.28);
+  color: var(--on-surface);
+  background: var(--surface);
+}
+
+#settingsPanelKeys .keys-workflow-tab.is-active {
+  border-color: rgba(42, 156, 196, 0.42);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  box-shadow: 0 1px 0 rgba(42, 156, 196, 0.08);
+}
+
+#settingsPanelKeys .keys-workflow-tab.is-disabled-scheme {
+  opacity: 0.72;
+}
+
+#settingsPanelKeys .keys-workflow-tab-name {
+  max-width: min(160px, 28vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-workflow-tabs-empty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--on-surface-muted);
+}
+
+/* Phase C — sidebar workflow overview */
+#settingsPanelKeys .keys-workflow-overview-card {
+  border-color: rgba(42, 156, 196, 0.18);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+}
+
+#settingsPanelKeys .keys-workflow-overview-desc {
+  margin: 0 0 10px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-workflow-overview-list {
+  display: grid;
+  gap: 6px;
+}
+
+#settingsPanelKeys .keys-workflow-overview-row {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelKeys .keys-workflow-overview-row:hover {
+  border-color: rgba(42, 156, 196, 0.28);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-workflow-overview-row.is-editing {
+  border-color: rgba(42, 156, 196, 0.38);
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px rgba(42, 156, 196, 0.08);
+}
+
+#settingsPanelKeys .keys-workflow-overview-row.is-disabled-scheme {
+  opacity: 0.82;
+}
+
+#settingsPanelKeys .keys-workflow-overview-row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-workflow-overview-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-workflow-overview-editing {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+#settingsPanelKeys .keys-workflow-overview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+#settingsPanelKeys .keys-workflow-overview-steps,
+#settingsPanelKeys .keys-workflow-overview-apps {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-workflow-overview-status {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+#settingsPanelKeys .keys-workflow-overview-status.is-on {
+  color: #2e7d4f;
+}
+
+#settingsPanelKeys .keys-workflow-overview-status.is-off {
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-workflow-overview-empty {
+  margin: 0;
+  font-size: 10px;
+  color: var(--on-surface-muted);
+  line-height: 1.45;
+}
+
+#settingsPanelKeys .keys-aside-card--demoted {
+  padding: 8px 10px;
+  border-color: var(--outline-variant);
+  background: var(--surface-soft);
+  opacity: 0.96;
+}
+
+#settingsPanelKeys .keys-aside-card--demoted .keys-aside-card-head {
+  margin-bottom: 6px;
+}
+
+#settingsPanelKeys .keys-aside-card--demoted .keys-aside-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-aside-card--demoted .keys-aside-title-icon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.75;
+}
+
+#settingsPanelKeys .keys-aside-card--demoted .keys-aside-count {
+  font-size: 9px;
+}
+
+#settingsPanelKeys .keys-aside-card--demoted .habit-app-shortcuts-add {
+  font-size: 10px;
+}
+
+#settingsPanelKeys .habit-default-flow.keys-workflow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+#settingsPanelKeys .habit-default-flow.keys-workflow-grid .habit-flow-step.keys-workflow-col {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#settingsPanelKeys .keys-workflow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  padding: 0 2px;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-workflow-arrow-icon {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+}
+
+#settingsPanelKeys .keys-workflow-col-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+#settingsPanelKeys .keys-workflow-col-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+#settingsPanelKeys .keys-workflow-col-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-workflow-col-subhead .home-key-map-step-label {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-workflow-grid .keys-flow-step-badge {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-app-binding-strip {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-app-binding-lbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  margin-bottom: 8px;
+}
+
+#settingsPanelKeys .keys-app-binding-strip .keys-app-chips-wrap {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+#settingsPanelKeys .keys-capture-voice-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+#settingsPanelKeys .keys-capture-voice-text {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-capture-voice-link {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#settingsPanelKeys .keys-workflow-col .keys-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-workflow-col .keys-finish-segments {
+  flex-direction: column;
+}
+
+#settingsPanelKeys .keys-workflow-col .keys-finish-segment {
+  min-width: 0;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-workflow-col-subhead .habit-flow-step-status {
+  margin-left: auto;
+}
+
+@media (min-width: 1041px) {
+  #settingsPanelKeys .keys-workflow-col .keys-flow-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #settingsPanelKeys .keys-workflow-col .keys-flow-arrow {
+    display: none;
+  }
+
+  #settingsPanelKeys .keys-workflow-col .keys-ime-pill {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1040px) {
+  #settingsPanelKeys .habit-default-flow.keys-workflow-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  #settingsPanelKeys .keys-workflow-arrow {
+    display: none;
+  }
+}
+
+/* Phase D — advanced compat-only section */
+#settingsPanelKeys .keys-advanced-details {
+  margin-top: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  padding: 10px 12px;
+}
+
+#settingsPanelKeys .keys-advanced-summary {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelKeys .keys-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelKeys .keys-advanced-desc,
+#settingsPanelKeys .keys-advanced-when {
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-advanced-when {
+  margin: 0 0 10px;
+}
+
+#settingsPanelKeys .keys-advanced-voice-override[hidden] {
+  display: none !important;
+}
+
+/* Phase E — workflow templates */
+#settingsPanelKeys .keys-template-card {
+  margin-top: 2px;
+}
+
+#settingsPanelKeys .keys-template-desc {
+  margin: 0 0 8px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-template-list {
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-template-item {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--outline-variant);
+  background: var(--surface);
+}
+
+#settingsPanelKeys .keys-template-item-head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+#settingsPanelKeys .keys-template-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-template-item-desc {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-template-preview {
+  margin: 0 0 8px;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+
+#settingsPanelKeys .keys-template-preview-line {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-template-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+
+#settingsPanelKeys .keys-template-apply:hover {
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-template-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Merged sidebar hub — schemes + templates */
+#settingsPanelKeys .keys-hub-card .keys-aside-card-head {
+  padding: 10px 12px;
+}
+
+#settingsPanelKeys .keys-hub-schemes {
+  display: grid;
+  gap: 4px;
+  padding: 0 8px 8px;
+  max-height: min(220px, 36vh);
+  overflow: auto;
+}
+
+#settingsPanelKeys .keys-hub-scheme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-row:hover {
+  background: var(--surface-soft);
+  border-color: var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-hub-scheme-row.is-editing {
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.28);
+}
+
+#settingsPanelKeys .keys-hub-scheme-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-hub-scheme-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-hub-scheme-steps {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-hub-scheme-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-hub-scheme-dot.is-on {
+  background: #2e7d4f;
+}
+
+#settingsPanelKeys .keys-hub-scheme-editing {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+#settingsPanelKeys .keys-hub-empty {
+  margin: 0;
+  padding: 4px 8px 8px;
+  font-size: 10px;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-hub-divider {
+  height: 1px;
+  margin: 0 12px;
+  background: var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-hub-templates-lbl {
+  margin: 8px 12px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-hub-templates {
+  display: grid;
+  gap: 6px;
+  padding: 0 8px 10px;
+}
+
+#settingsPanelKeys .keys-hub-template-row {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-hub-template-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-hub-template-name {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-hub-template-summary {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-hub-template-actions {
+  display: flex;
+  gap: 6px;
+}
+
+#settingsPanelKeys .keys-hub-template-btn {
+  flex: 1;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(42, 156, 196, 0.24);
+  background: var(--surface);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+
+#settingsPanelKeys .keys-hub-template-btn.is-new {
+  border-style: solid;
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-hub-template-btn:hover {
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-hub-template-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#settingsPanelKeys .keys-compat-stash:not([hidden]) {
+  display: block;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-compat-stash .scene-voice-panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+#settingsPanelKeys #keysAppShortcutsCard {
+  overflow: visible;
+}

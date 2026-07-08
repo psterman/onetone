@@ -376,8 +376,7 @@
     if(hooks.syncEditorFromSelection) hooks.syncEditorFromSelection();
     setSettingsPanel('keys');
     if(opts.layer==='advanced'){
-      var advanced=$('keysAdvancedDetails');
-      if(advanced&&advanced.tagName==='DETAILS') advanced.open=true;
+      ui.habitAdvancedFocus='voice';
     }
     if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();

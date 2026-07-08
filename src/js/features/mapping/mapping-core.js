@@ -230,9 +230,15 @@
 
   function maybeEnableMappingAfterComplete(m){
     if(hooks().onboardIsOpen()||!m||!isSavedMapping(m)||m.enabled) return;
-    try{
-      window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true});
-    }catch(_){}
+    var edit=global.OneToneMappingEditActions;
+    if(edit&&edit.hasPendingEnable&&edit.hasPendingEnable(m.id)) return;
+    if(edit&&edit.setMappingEnabled){
+      edit.setMappingEnabled(m.id,true);
+    }else{
+      try{
+        window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true});
+      }catch(_){}
+    }
     hooks().toast(t('mappingAutoEnabled'));
   }
 

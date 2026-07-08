@@ -4,9 +4,20 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function state(){ return global.OneToneState.state; }
+  function ui(){ return global.OneToneState.ui; }
   function core(){ return global.OneToneMappingCore; }
   function hooks(){ return global.__vp_bootstrap_hooks__ || {}; }
   function ed(){ return global.OneToneMappingEditorState; }
+  function keysPanelVisible(){
+    var panel=$('settingsPanelKeys');
+    return !!(panel && !panel.hidden);
+  }
+
+  function keysPanelActive(){
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&drawer.isKeysPanel&&drawer.isKeysPanel()) return true;
+    return keysPanelVisible();
+  }
 
   function habitName(m){
     if(!m) return '—';
@@ -137,33 +148,45 @@
         toggle.disabled=true;
         toggle.classList.toggle('is-on',wasOn);
         toggle.setAttribute('aria-checked',wasOn?'true':'false');
+        delete toggle.dataset.vpToggleBusy;
       }
       return;
     }
     if(activePill) activePill.classList.remove('is-recording');
     var enabled=!!(m&&m.enabled);
-    if(activeLbl) activeLbl.textContent=enabled?t('keysStatusActiveOn'):t('keysStatusActiveOff');
+    var activeOnText=t('keysStatusActiveOn');
+    var activeOffText=t('keysStatusActiveOff');
+    if(activeLbl){
+      var nextLbl=enabled?activeOnText:activeOffText;
+      if(activeLbl.textContent!==nextLbl) activeLbl.textContent=nextLbl;
+    }
     if(activeDot) activeDot.hidden=!enabled;
     if(activePill) activePill.classList.toggle('is-on',enabled);
     if(toggle){
       toggle.classList.toggle('is-on',enabled);
       toggle.setAttribute('aria-checked',enabled?'true':'false');
       toggle.disabled=!m;
+      delete toggle.dataset.vpToggleBusy;
     }
   }
 
   function renderAppContextStrip(){
     var strip=$('keysAppContextStrip');
     var wrap=$('keysAppContextStripWrap');
+    var bindingStrip=$('keysAppBindingStrip');
+    var bindingLbl=$('keysAppBindingLbl');
     var addBtn=$('btnKeysAppChipAdd');
+    if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
     if(addBtn) addBtn.textContent=t('keysAppChipAdd');
     if(!strip||!wrap) return;
     var m=core()&&core().selected?core().selected():null;
     if(!m||!core().isSaved||!core().isSaved(m)){
       wrap.hidden=true;
+      if(bindingStrip) bindingStrip.hidden=true;
       return;
     }
     wrap.hidden=false;
+    if(bindingStrip) bindingStrip.hidden=false;
     var ctxId=activeAppContextId();
     var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
     var html='';
@@ -191,12 +214,140 @@
     if(!schemes.length){
       sel.innerHTML='<option value="">'+esc(t('mappingEmptyTitle'))+'</option>';
       sel.disabled=true;
+      renderWorkflowTabs();
       return;
     }
     sel.disabled=false;
     sel.innerHTML=schemes.map(function(m){
       return '<option value="'+esc(m.id)+'"'+(m.id===selected?' selected':'')+'>'+esc(habitName(m))+'</option>';
     }).join('');
+    renderWorkflowTabs();
+  }
+
+  function schemeCompletion(m){
+    var c=core();
+    if(!m||!c) return {done:0,total:3};
+    var done=0;
+    var trig=(c.editorTrigger?c.editorTrigger(m):'')||String(m.triggerKey||'').trim();
+    var tgt=(c.editorTarget?c.editorTarget(m):'')||String(m.targetKey||'').trim();
+    if(trig) done++;
+    if(tgt) done++;
+    if(c.isSaved&&c.isSaved(m)) done++;
+    return {done:done,total:3};
+  }
+
+  function schemeAppRuleCount(m){
+    if(!m||!Array.isArray(m.appBehaviorRules)) return 0;
+    return m.appBehaviorRules.length;
+  }
+
+  function renderKeysHub(){
+    var schemeList=$('keysHubSchemeList');
+    var tplList=$('keysHubTemplateList');
+    var card=$('keysHubCard');
+    var countEl=$('keysHubCount');
+    var titleLbl=$('keysHubTitleLbl');
+    var tplLbl=$('keysHubTemplatesLbl');
+    var aside=$('keysPanelAside');
+    var tplApi=global.OneToneKeysWorkflowTemplates;
+    if(titleLbl) titleLbl.textContent=t('keysHubTitle');
+    if(tplLbl) tplLbl.textContent=t('keysHubTemplatesLbl');
+    if(aside) aside.setAttribute('aria-label',t('keysHubTitle'));
+    if(!schemeList) return;
+    if(!core()||!core().sorted){
+      schemeList.innerHTML='';
+      if(tplList) tplList.innerHTML='';
+      if(card) card.hidden=true;
+      return;
+    }
+    var schemes=core().sorted();
+    var selected=state().selectedMappingId;
+    if(card) card.hidden=false;
+    if(countEl) countEl.textContent=String(schemes.length);
+    if(!schemes.length){
+      schemeList.innerHTML='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
+    }else{
+      schemeList.innerHTML=schemes.map(function(m){
+        var isEditing=m.id===selected;
+        var comp=schemeCompletion(m);
+        var stepsText=comp.done+'/'+comp.total;
+        var enabled=!!m.enabled;
+        return '<button type="button" class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
+          +'<span class="keys-hub-scheme-name">'+esc(habitName(m))+'</span>'
+          +'<span class="keys-hub-scheme-meta">'
+          +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
+          +'<span class="keys-hub-scheme-dot'+(enabled?' is-on':'')+'" aria-hidden="true"></span>'
+          +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
+          +'</span></button>';
+      }).join('');
+    }
+    if(!tplList||!tplApi||!tplApi.list) return;
+    var templates=tplApi.list();
+    var m=core()&&core().selected?core().selected():null;
+    var canFill=!!m;
+    tplList.innerHTML=templates.map(function(tpl){
+      var summary=tplApi.compactSummary?tplApi.compactSummary(tpl):'';
+      return '<article class="keys-hub-template-row" data-template-id="'+esc(tpl.id)+'">'
+        +'<div class="keys-hub-template-main"><strong class="keys-hub-template-name">'+esc(t(tpl.nameKey))+'</strong>'
+        +'<span class="keys-hub-template-summary">'+esc(summary)+'</span></div>'
+        +'<div class="keys-hub-template-actions">'
+        +'<button type="button" class="keys-hub-template-btn" data-apply-template="'+esc(tpl.id)+'"'+(canFill?'':' disabled')+'>'+esc(t('keysTemplateApply'))+'</button>'
+        +'<button type="button" class="keys-hub-template-btn is-new" data-new-template="'+esc(tpl.id)+'">'+esc(t('keysTemplateNew'))+'</button>'
+        +'</div></article>';
+    }).join('');
+  }
+
+  function renderWorkflowOverview(){
+    renderKeysHub();
+  }
+
+  function renderWorkflowTemplates(){
+    renderKeysHub();
+  }
+
+  function renderWorkflowTabs(){
+    var tabs=$('keysWorkflowTabs');
+    var bar=$('keysWorkflowTabsBar');
+    var tabsLbl=$('keysWorkflowTabsLbl');
+    if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
+    if(!tabs) return;
+    if(!core()||!core().sorted){
+      tabs.innerHTML='';
+      if(bar) bar.hidden=true;
+      return;
+    }
+    var schemes=core().sorted();
+    var selected=state().selectedMappingId;
+    if(!schemes.length){
+      tabs.innerHTML='<p class="keys-workflow-tabs-empty">'+esc(t('mappingEmptyTitle'))+'</p>';
+      if(bar) bar.hidden=false;
+      return;
+    }
+    if(bar) bar.hidden=false;
+    tabs.innerHTML=schemes.map(function(m){
+      var isSel=m.id===selected;
+      var enabled=!!m.enabled;
+      return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'"><span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span></button>';
+    }).join('');
+  }
+
+  function switchActiveScheme(id){
+    id=String(id||'').trim();
+    if(!id) return;
+    hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
+    state().selectedMappingId=id;
+    var sel=$('keysHabitSwitcher');
+    if(sel&&sel.value!==id) sel.value=id;
+    hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
+    hooks().renderKeyFinishFlowPanel&&hooks().renderKeyFinishFlowPanel();
+    hooks().renderEditor&&hooks().renderEditor();
+    hooks().renderSettingsSchemeSubnav&&hooks().renderSettingsSchemeSubnav();
+    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+    if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+    if(hooks().render) hooks().render();
+    render();
+    var tab=$('keysWorkflowTab-'+id);
+    if(tab) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
   }
 
   function renderAppContext(){
@@ -263,7 +414,7 @@
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
     var recording=mode==='trigger'||mode==='target';
-    var onKeys=global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isKeysPanel&&global.OneToneSettingsDrawer.isKeysPanel();
+    var onKeys=keysPanelActive();
     var host=(onKeys&&recording&&feedbackMain)?feedbackMain:bar;
     if(btn.parentNode!==host) host.appendChild(btn);
   }
@@ -335,29 +486,6 @@
     }
   }
 
-  function renderAdvancedSections(){
-    var when=$('keysAdvancedWhenHint');
-    if(when) when.textContent=t('keysAdvancedWhenHint');
-    var titles={
-      keysAdvConflictTitle:'keysAdvConflictTitle',
-      keysAdvMouseTitle:'keysAdvMouseTitle',
-      keysAdvMouseDesc:'keysAdvMouseDesc',
-      keysAdvImeTitle:'habitAdvancedImeTitle'
-    };
-    Object.keys(titles).forEach(function(id){
-      var el=$(id);
-      if(el) el.textContent=t(titles[id]);
-    });
-    var conflictBtn=$('btnKeysAdvancedConflict');
-    if(conflictBtn) conflictBtn.textContent=t('keysAdvConflictBtn');
-    if(global.OneToneHabitCompatibility&&global.OneToneHabitCompatibility.renderKeysAdvanced){
-      global.OneToneHabitCompatibility.renderKeysAdvanced();
-    }
-    if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
-      global.OneToneMappingCore.renderConflictBanner();
-    }
-  }
-
   function imeStatusText(m){
     if(!m) return t('keysStatusUnset');
     var imeId=String(m.imePresetId||'').trim();
@@ -374,6 +502,7 @@
   function renderStatusChips(){
     var m=core()&&core().selected?core().selected():null;
     renderHabitSwitcher();
+    renderKeysHub();
     renderAppContext();
     renderFlowStatusBar(m);
     renderImePill(m);
@@ -383,7 +512,6 @@
       countEl.textContent=t('keysAppShortcutsCount').replace('{n}',String(n));
     }
     var labels={
-      keysAdvancedDesc:'keysAdvancedDesc',
       keysAppShortcutsTitleLbl:'habitAppShortcutsTitle'
     };
     Object.keys(labels).forEach(function(id){
@@ -391,18 +519,22 @@
       if(el) el.textContent=t(labels[id]);
     });
     var advSummary=$('keysAdvancedSummary');
-    if(advSummary){
-      var badge=advSummary.querySelector('.keys-advanced-badge');
-      advSummary.textContent='';
-      if(badge) advSummary.appendChild(badge);
-      advSummary.appendChild(document.createTextNode(t('keysAdvancedTitle')));
-    }
+    if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
       ['habitFlowStepTriggerLbl','keysStep1Title'],
       ['habitFlowStepTargetLbl','keysStep2Title'],
       ['habitFlowStepFinishLbl','keysStep3Title']
     ];
     stepLbls.forEach(function(pair){
+      var el=$(pair[0]);
+      if(el) el.textContent=t(pair[1]);
+    });
+    var colLbls=[
+      ['keysColTriggerLbl','keysColTrigger'],
+      ['keysColCaptureLbl','keysColCapture'],
+      ['keysColActionLbl','keysColAction']
+    ];
+    colLbls.forEach(function(pair){
       var el=$(pair[0]);
       if(el) el.textContent=t(pair[1]);
     });
@@ -416,12 +548,13 @@
     renderTriggerContextBadge();
     syncRecordButtons();
     renderRecordingFeedback();
-    renderAdvancedSections();
+    if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
+      global.OneToneMappingCore.renderConflictBanner();
+    }
   }
 
   function render(){
-    var drawer=global.OneToneSettingsDrawer;
-    if(!drawer||!drawer.isKeysPanel||!drawer.isKeysPanel()) return;
+    if(!keysPanelActive()) return;
     renderStatusChips();
     if(appRules()&&appRules().renderKeysAside) appRules().renderKeysAside();
   }
@@ -430,17 +563,24 @@
     var switcher=$('keysHabitSwitcher');
     if(switcher){
       switcher.addEventListener('change',function(){
-        var id=switcher.value;
-        if(!id) return;
-        hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
-        state().selectedMappingId=id;
-        hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
-        hooks().renderKeyFinishFlowPanel&&hooks().renderKeyFinishFlowPanel();
-        hooks().renderEditor&&hooks().renderEditor();
-        hooks().renderSettingsSchemeSubnav&&hooks().renderSettingsSchemeSubnav();
-        if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
-        if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
-        render();
+        switchActiveScheme(switcher.value);
+      });
+    }
+    var workflowTabs=$('keysWorkflowTabs');
+    if(workflowTabs){
+      workflowTabs.addEventListener('keydown',function(e){
+        if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'&&e.key!=='Home'&&e.key!=='End') return;
+        var tabs=Array.prototype.slice.call(workflowTabs.querySelectorAll('[role="tab"]'));
+        if(!tabs.length) return;
+        var idx=tabs.findIndex(function(btn){ return btn.getAttribute('aria-selected')==='true'; });
+        if(idx<0) idx=0;
+        if(e.key==='Home') idx=0;
+        else if(e.key==='End') idx=tabs.length-1;
+        else if(e.key==='ArrowRight') idx=Math.min(tabs.length-1,idx+1);
+        else if(e.key==='ArrowLeft') idx=Math.max(0,idx-1);
+        e.preventDefault();
+        var next=tabs[idx];
+        if(next) switchActiveScheme(next.getAttribute('data-scheme-id')||'');
       });
     }
     var addBtn=$('btnKeysAddAppRule');
@@ -451,14 +591,6 @@
         if(main) main.click();
       });
     }
-    var conflictBtn=$('btnKeysAdvancedConflict');
-    if(conflictBtn){
-      conflictBtn.addEventListener('click',function(e){
-        e.preventDefault();
-        var banner=$('conflictBanner');
-        if(banner) banner.scrollIntoView({behavior:'smooth',block:'nearest'});
-      });
-    }
     var addChip=$('btnKeysAppChipAdd');
     if(addChip){
       addChip.addEventListener('click',function(e){
@@ -467,24 +599,33 @@
         if(main) main.click();
       });
     }
-    var enableBtn=$('btnKeysMappingEnable');
-    if(enableBtn){
-      enableBtn.addEventListener('click',function(){
-        var m=core()&&core().selected?core().selected():null;
-        if(!m||!global.OneToneMappingEditActions) return;
-        global.OneToneMappingEditActions.setMappingEnabled(m.id,!m.enabled);
-        render();
-        if(hooks().renderEditor) hooks().renderEditor();
-      });
-    }
-    var strip=$('keysAppContextStrip');
-    if(strip){
-      strip.addEventListener('click',function(e){
-        var btn=e.target.closest&&e.target.closest('[data-app-context]');
-        if(!btn||!appRules()||!appRules().setActiveAppContextId) return;
-        e.preventDefault();
-        e.stopPropagation();
-        appRules().setActiveAppContextId(btn.getAttribute('data-app-context')||'');
+    var hub=$('keysHubCard');
+    if(hub&&hub.dataset.keysHubBound!=='1'){
+      hub.dataset.keysHubBound='1';
+      hub.addEventListener('click',function(e){
+        if(e.__vpKeysPanelHandled) return;
+        var fillBtn=e.target.closest&&e.target.closest('[data-apply-template]');
+        if(fillBtn&&!fillBtn.disabled){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          var tplApi=global.OneToneKeysWorkflowTemplates;
+          if(tplApi&&tplApi.applyTemplate) tplApi.applyTemplate(fillBtn.getAttribute('data-apply-template')||'');
+          return;
+        }
+        var newBtn=e.target.closest&&e.target.closest('[data-new-template]');
+        if(newBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          var tplApiNew=global.OneToneKeysWorkflowTemplates;
+          if(tplApiNew&&tplApiNew.applyTemplateNew) tplApiNew.applyTemplateNew(newBtn.getAttribute('data-new-template')||'');
+          return;
+        }
+        var schemeRow=e.target.closest&&e.target.closest('.keys-hub-scheme-row[data-scheme-id]');
+        if(schemeRow){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          switchActiveScheme(schemeRow.getAttribute('data-scheme-id')||'');
+        }
       });
     }
   }
@@ -497,6 +638,10 @@
     renderAppContext:renderAppContext,
     renderAppContextStrip:renderAppContextStrip,
     renderTriggerContextBadge:renderTriggerContextBadge,
-    renderImePill:renderImePill
+    renderImePill:renderImePill,
+    renderKeysHub:renderKeysHub,
+    renderWorkflowOverview:renderWorkflowOverview,
+    renderWorkflowTemplates:renderWorkflowTemplates,
+    switchActiveScheme:switchActiveScheme
   };
 })((typeof window!=='undefined')?window:globalThis);

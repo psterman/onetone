@@ -132,13 +132,20 @@
   function render(){
     var root=$('sceneVoicePanelBody');
     var panel=$('sceneVoicePanel');
+    var stash=$('keysCompatStash');
     if(!root||!panel) return;
     var visible=ui().drawerOpen
       &&(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.isKeysPanel
         ?global.OneToneSettingsDrawer.isKeysPanel()
         :false);
-    panel.hidden=!visible;
-    if(!visible) return;
+    var voiceOverride=ui().habitAdvancedFocus==='voice';
+    var show=visible&&voiceOverride;
+    if(stash){
+      stash.hidden=!show;
+      stash.setAttribute('aria-hidden',show?'false':'true');
+    }
+    panel.hidden=!show;
+    if(!show) return;
     var mapping=selectedMapping();
     var cfg=state().config;
     if(!mapping||!cfg){

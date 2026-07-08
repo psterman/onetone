@@ -22,8 +22,12 @@
     if(!m||!m.id) return;
     rec.mappingWasEnabled={id:m.id,enabled:!!m.enabled};
     if(!m.enabled) return;
-    m.enabled=false;
-    try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
+    var edit=global.OneToneMappingEditActions;
+    if(edit&&edit.setMappingEnabled) edit.setMappingEnabled(m.id,false);
+    else{
+      m.enabled=false;
+      try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
+    }
   }
 
   function disableMappingForRecordingAsync(m){
@@ -31,15 +35,13 @@
       if(!m||!m.id){ resolve(); return; }
       rec.mappingWasEnabled={id:m.id,enabled:!!m.enabled};
       if(!m.enabled){ resolve(); return; }
-      m.enabled=false;
-      const invoke=window.__vp_invoke__;
-      if(invoke){
-        invoke('cmd_mapping_toggle',{id:m.id,enabled:false}).then(function(){ resolve(); }).catch(function(){
-          try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
-          resolve();
-        });
+      var edit=global.OneToneMappingEditActions;
+      if(edit&&edit.setMappingEnabled){
+        edit.setMappingEnabled(m.id,false);
+        resolve();
         return;
       }
+      m.enabled=false;
       try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:false}); }catch(_){}
       resolve();
     });
@@ -75,8 +77,12 @@
   function restoreMappingEnabledAfterRecordCancel(m){
     if(!rec.mappingWasEnabled||!m||m.id!==rec.mappingWasEnabled.id) return;
     if(rec.mappingWasEnabled.enabled&&!m.enabled){
-      m.enabled=true;
-      try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true}); }catch(_){}
+      var edit=global.OneToneMappingEditActions;
+      if(edit&&edit.setMappingEnabled) edit.setMappingEnabled(m.id,true);
+      else{
+        m.enabled=true;
+        try{ window.chrome?.webview?.postMessage({type:'mvp_mapping_toggle',id:m.id,enabled:true}); }catch(_){}
+      }
     }
     clearRecordMappingGuard();
   }

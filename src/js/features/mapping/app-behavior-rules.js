@@ -6,6 +6,16 @@
   function state(){ return global.OneToneState.state; }
   function core(){ return global.OneToneMappingCore; }
   function flowSummary(){ return global.OneToneSceneFlowSummary; }
+  function keysPanelVisible(){
+    var panel=$('settingsPanelKeys');
+    return !!(panel && !panel.hidden);
+  }
+
+  function keysPanelActive(){
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&drawer.isKeysPanel&&drawer.isKeysPanel()) return true;
+    return keysPanelVisible();
+  }
 
   var activeAppContextId='';
   var keysExpandedAppId='';
@@ -226,10 +236,12 @@
     var mode=rule?(rule.finishMode||preset.defaultMode):preset.defaultMode;
     var icon=iconForApp(preset.id);
     var openKey=appOpenShortcut(preset.id,m);
-    var meta=isPrimary&&openKey
-      ?t('keysAppExpandMetaSteps').replace('{n}','4')
+    var meta=isPrimary
+      ?(openKey?t('keysAppExpandMetaSteps').replace('{n}','4'):t('keysAppExpandMetaPrimary'))
       :t('keysAppExpandMetaUnset');
-    var html='<details class="keys-app-expand-row'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
+    var html='<div class="keys-app-expand-wrap'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'">';
+    html+='<div class="keys-app-expand-head">';
+    html+='<details class="keys-app-expand-row'+(expanded?' is-open':'')+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
     html+='<summary class="keys-app-expand-summary">';
     html+='<div class="keys-app-shortcut-main keys-app-expand-summary-main">';
     if(icon){
@@ -239,9 +251,8 @@
     }
     html+='<span><span class="keys-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</span>';
     html+='<span class="keys-app-expand-meta">'+esc(meta)+'</span></span>';
-    html+='</div><div class="keys-app-shortcut-actions">';
-    html+='<button type="button" class="keys-app-rule-toggle'+(isPrimary?' is-on':'')+'" data-app-rule-toggle="'+esc(preset.id)+'" data-is-on="'+(isPrimary?'true':'false')+'" role="switch" aria-checked="'+(isPrimary?'true':'false')+'" aria-label="'+esc(t('keysAppRuleToggle'))+'"></button>';
-    html+='</div></summary>';
+    html+='</div>';
+    html+='</summary>';
     html+='<div class="keys-app-expand-body">';
     html+='<div class="keys-workflow-expand">';
     html+='<p class="keys-workflow-chain-lbl">'+esc(t('habitWorkflowChainTitle'))+'</p>';
@@ -249,6 +260,8 @@
     html+=renderSummonPhraseEditor(m,preset.id);
     html+='</div>';
     html+='</div></details>';
+    html+='<button type="button" class="keys-app-rule-toggle keys-app-expand-toggle'+(isPrimary?' is-on':'')+'" data-app-rule-toggle="'+esc(preset.id)+'" data-is-on="'+(isPrimary?'true':'false')+'" role="switch" aria-checked="'+(isPrimary?'true':'false')+'" aria-label="'+esc(t('keysAppRuleToggle'))+'"></button>';
+    html+='</div></div>';
     return html;
   }
 
@@ -282,8 +295,7 @@
     var list=$('keysAppRulesList');
     var addBtn=$('btnKeysAddAppRule');
     var aside=$('keysPanelAside');
-    var drawer=global.OneToneSettingsDrawer;
-    var keysActive=drawer&&drawer.isKeysPanel&&drawer.isKeysPanel();
+    var keysActive=keysPanelActive();
     if(aside) aside.hidden=!keysActive;
     if(!keysActive||!list) return;
     var m=core()&&core().selected?core().selected():null;
@@ -309,6 +321,7 @@
     }
     var kpu=global.OneToneKeysPanelUi;
     if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
+    if(kpu&&kpu.renderKeysHub) kpu.renderKeysHub();
   }
 
   function renderScenarioCard(m,preset){
@@ -491,23 +504,39 @@
   }
 
   function handleAppRulesListClick(e){
+    var toggleBtn=e.target.closest&&e.target.closest('.keys-app-rule-toggle');
+    if(toggleBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      var atpToggle=appTargetApi();
+      var isOn=toggleBtn.dataset.isOn==='true';
+      if(isOn){
+        if(atpToggle&&atpToggle.clearPrimaryForMapping) atpToggle.clearPrimaryForMapping();
+      }else if(atpToggle&&atpToggle.setPrimaryForMapping){
+        atpToggle.setPrimaryForMapping(toggleBtn.dataset.appRuleToggle);
+      }
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+      return true;
+    }
     var summonSave=e.target.closest&&e.target.closest('[data-summon-save]');
     if(summonSave){
       e.preventDefault();
       e.stopPropagation();
       var mSummon=core()&&core().selected?core().selected():null;
-      if(!mSummon) return;
+      if(!mSummon) return true;
       var appIdSummon=summonSave.getAttribute('data-summon-save')||'';
-      var input=document.querySelector('[data-summon-input="'+appIdSummon+'"]');
+      var input=summonSave.closest('[data-summon-edit]');
+      input=input&&input.querySelector('[data-summon-input="'+appIdSummon+'"]');
+      if(!input) input=document.querySelector('[data-summon-input="'+appIdSummon+'"]');
       saveSummonPhrase(mSummon,appIdSummon,input?input.value:'');
-      return;
+      return true;
     }
     var editBtn=e.target.closest&&e.target.closest('[data-app-rule-edit]');
     if(editBtn){
       e.stopPropagation();
       var atp=appTargetApi();
       if(atp&&atp.setPrimaryForMapping) atp.setPrimaryForMapping(editBtn.dataset.appRuleEdit);
-      return;
+      return true;
     }
     var workflowEdit=e.target.closest&&e.target.closest('[data-app-workflow-edit]');
     if(workflowEdit){
@@ -515,66 +544,63 @@
       var card=workflowEdit.closest('.habit-app-scenario-card');
       var finish=card&&card.querySelector('.habit-app-workflow-finish');
       if(finish) finish.scrollIntoView({behavior:'smooth',block:'nearest'});
-      return;
+      return true;
     }
     var menuBtn=e.target.closest&&e.target.closest('[data-app-rule-menu]');
     if(menuBtn){
       e.stopPropagation();
-      return;
-    }
-    var toggle=e.target.closest&&e.target.closest('[data-app-rule-toggle]');
-    if(toggle){
-      e.preventDefault();
-      e.stopPropagation();
-      var atpToggle=appTargetApi();
-      var isOn=toggle.dataset.isOn==='true';
-      if(isOn){
-        if(atpToggle&&atpToggle.clearPrimaryForMapping) atpToggle.clearPrimaryForMapping();
-      }else if(atpToggle&&atpToggle.setPrimaryForMapping){
-        atpToggle.setPrimaryForMapping(toggle.dataset.appRuleToggle);
-      }
-      return;
+      return true;
     }
     var pillBtn=e.target.closest&&e.target.closest('[data-app-rule-pill]');
     if(pillBtn){
+      e.preventDefault();
       e.stopPropagation();
       var m3=core()&&core().selected?core().selected():null;
-      if(!m3) return;
+      if(!m3) return true;
       var appId3=pillBtn.dataset.appRulePill;
       var mode3=pillBtn.dataset.finishMode;
-      if(!mode3) return;
+      if(!mode3) return true;
       var rule3=ruleForApp(m3,appId3);
       upsertRule(m3,appId3,mode3,rule3&&rule3.note||defaultNoteForApp(appId3));
-      return;
+      return true;
     }
     var primarySet=e.target.closest&&e.target.closest('[data-app-rule-primary]');
     if(primarySet){
       e.stopPropagation();
       var atp=appTargetApi();
       if(atp&&atp.setPrimaryForMapping) atp.setPrimaryForMapping(primarySet.dataset.appRulePrimary);
-      return;
+      return true;
     }
     var primaryClear=e.target.closest&&e.target.closest('[data-app-rule-primary-clear]');
     if(primaryClear){
       e.stopPropagation();
       var atp2=appTargetApi();
       if(atp2&&atp2.clearPrimaryForMapping) atp2.clearPrimaryForMapping();
-      return;
+      return true;
     }
     var card=e.target.closest&&e.target.closest('[data-app-rule]');
-    if(card){
+    if(card&&!e.target.closest('button,input,textarea,select,summary')){
       var appId=card.dataset.appId;
-      if(card.classList&&card.classList.contains('keys-app-expand-row')){
+      if(card.classList&&card.classList.contains('keys-app-expand-wrap')){
+        var details=card.querySelector('.keys-app-expand-row');
+        if(details){
+          details.open=true;
+          setKeysExpandedAppId(appId);
+        }
+      }else if(card.classList&&card.classList.contains('keys-app-expand-row')){
         setKeysExpandedAppId(appId);
       }
       setActiveAppContextId(appId);
+      return true;
     }
+    return false;
   }
 
   function bindAppRulesList(list,opts){
     opts=opts||{};
-    if(!list) return;
-    list.addEventListener('click',handleAppRulesListClick);
+    if(!list||list.dataset.appRulesBound==='1') return;
+    list.dataset.appRulesBound='1';
+    list.addEventListener('click',handleAppRulesListClick,true);
     if(opts.hoverPreview!==false){
       list.addEventListener('mouseenter',function(e){
         var card=e.target.closest&&e.target.closest('[data-app-rule]');
@@ -589,6 +615,34 @@
   function bindKeysAsideEvents(list){
     if(!list) return;
     bindAppRulesList(list,{hoverPreview:false});
+    if(list.dataset.keysAsideBound!=='1'){
+      list.dataset.keysAsideBound='1';
+      list.addEventListener('toggle',function(e){
+        var row=e.target;
+        if(!row||!row.classList||!row.classList.contains('keys-app-expand-row')) return;
+        if(row.open){
+          list.querySelectorAll('.keys-app-expand-row').forEach(function(other){
+            if(other!==row) other.open=false;
+          });
+          var appId=row.dataset.appId||'';
+          setKeysExpandedAppId(appId);
+          setActiveAppContextId(appId);
+        }else if(getKeysExpandedAppId()===(row.dataset.appId||'')){
+          setKeysExpandedAppId('');
+        }
+      },true);
+      list.addEventListener('click',function(e){
+        var workflowEdit=e.target.closest&&e.target.closest('[data-app-workflow-edit]');
+        if(!workflowEdit) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var more=$('habitFlowFinishMore');
+        if(more) more.open=true;
+        var finishRow=$('habitKeyMapRowFinish');
+        if(finishRow) finishRow.scrollIntoView({behavior:'smooth',block:'nearest'});
+        if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.highlightRow('finish');
+      });
+    }
     var addBtn=$('btnKeysAddAppRule');
     if(addBtn&&!addBtn.dataset.summonBound){
       addBtn.dataset.summonBound='1';
@@ -604,31 +658,6 @@
         hooks().toast&&hooks().toast(t('habitAppShortcutsAddHint'));
       });
     }
-    list.addEventListener('toggle',function(e){
-      var row=e.target;
-      if(!row||!row.classList||!row.classList.contains('keys-app-expand-row')) return;
-      if(row.open){
-        list.querySelectorAll('.keys-app-expand-row').forEach(function(other){
-          if(other!==row) other.open=false;
-        });
-        var appId=row.dataset.appId||'';
-        setKeysExpandedAppId(appId);
-        setActiveAppContextId(appId);
-      }else if(getKeysExpandedAppId()===(row.dataset.appId||'')){
-        setKeysExpandedAppId('');
-      }
-    },true);
-    list.addEventListener('click',function(e){
-      var workflowEdit=e.target.closest&&e.target.closest('[data-app-workflow-edit]');
-      if(!workflowEdit) return;
-      e.preventDefault();
-      e.stopPropagation();
-      var more=$('habitFlowFinishMore');
-      if(more) more.open=true;
-      var finishRow=$('habitKeyMapRowFinish');
-      if(finishRow) finishRow.scrollIntoView({behavior:'smooth',block:'nearest'});
-      if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.highlightRow('finish');
-    });
   }
 
   var VOICE_SUMMON_PHRASE_KEYS={
@@ -691,7 +720,7 @@
     html+='<input type="text" class="keys-app-summon-edit-input" data-summon-input="'+esc(presetId)+'" value="'+esc(value)+'" maxlength="48" placeholder="'+esc(t('habitAppSummonPhrasePlaceholder'))+'" spellcheck="false" autocomplete="off" />';
     html+='<button type="button" class="keys-app-summon-edit-save" data-summon-save="'+esc(presetId)+'">'+esc(t('habitAppSummonPhraseSave'))+'</button>';
     html+='</div>';
-    html+='<p class="keys-app-summon-edit-hint">'+esc(t('habitAppSummonPhraseHint'))+'</p>';
+    html+='<p class="keys-app-summon-edit-hint sr-only">'+esc(t('habitAppSummonPhraseHint'))+'</p>';
     html+='</div>';
     return html;
   }
@@ -787,6 +816,7 @@
   global.OneToneAppBehaviorRules={
     render:renderAppBehaviorRules,
     bindEvents:bindEvents,
+    handleListClick:handleAppRulesListClick,
     bindKeysAsideEvents:bindKeysAsideEvents,
     renderKeysAside:renderKeysAside,
     renderVoiceAside:renderVoiceAside,

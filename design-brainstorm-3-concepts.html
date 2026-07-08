@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1600" />
+<title>voice-pilot · 按键设置 · 3 个候选布局 · 头脑风暴</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  font-family:'Inter', system-ui, sans-serif;
+  background:#0e0e10;
+  color:#fff;
+  padding:0;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* 顶部 meta */
+.meta-head{
+  padding:32px 40px 28px;
+  background:linear-gradient(180deg, #18181b, #0e0e10);
+  border-bottom:1px solid #2a2a2e;
+}
+.meta-head .crumbs{
+  font-size:11px; color:#71717a;
+  font-family:'JetBrains Mono', monospace;
+  margin-bottom:8px;
+}
+.meta-head h1{
+  font-family:'Space Grotesk', sans-serif;
+  font-size:32px; font-weight:700; letter-spacing:-.025em;
+}
+.meta-head h1 em{ font-style:normal; color:#2A9CC4; }
+.meta-head .sub{
+  font-size:13px; color:#a1a1aa;
+  margin-top:6px; max-width:680px; line-height:1.6;
+}
+.meta-head .sub b{ color:#fff; font-weight:600; }
+
+/* 3 个区块纵向排列 · 每个都有概念头 */
+.concept{
+  padding:48px 40px 64px;
+  border-bottom:1px solid #2a2a2e;
+}
+.concept:last-child{ border-bottom:none; }
+
+.concept-head{
+  max-width:1520px; margin:0 auto 32px;
+  display:flex; align-items:flex-end; gap:32px;
+}
+.concept-tag{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px;
+  background:#27272a;
+  border:1px solid #3f3f46;
+  border-radius:999px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  color:#a1a1aa;
+  font-weight:600;
+}
+.concept-tag .dot{
+  width:6px; height:6px; border-radius:50%;
+}
+.concept[data=A] .dot{ background:#60a5fa; }
+.concept[data=B] .dot{ background:#f472b6; }
+.concept[data=C] .dot{ background:#fbbf24; }
+
+.concept-title{
+  font-family:'Space Grotesk', sans-serif;
+  font-size:26px; font-weight:700;
+  letter-spacing:-.02em;
+  margin-top:8px;
+}
+.concept[data=A] .concept-title{ color:#60a5fa; }
+.concept[data=B] .concept-title{ color:#f472b6; }
+.concept[data=C] .concept-title{ color:#fbbf24; }
+
+.concept-tagline{
+  font-size:13.5px; color:#a1a1aa; line-height:1.6;
+  max-width:540px;
+  margin-top:6px;
+}
+.concept-tagline b{ color:#fff; font-weight:600; }
+
+.concept-frame{
+  max-width:1520px; margin:0 auto;
+  border:1px solid #2a2a2e;
+  border-radius:16px;
+  overflow:hidden;
+  background:#fff;
+  color:#1c1c1e;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部说明 ===== -->
+<div class="meta-head">
+  <div class="crumbs">voice-pilot · 按键设置 · 3 个候选布局</div>
+  <h1>三个<em>完全不同</em>的产品语言</h1>
+  <div class="sub">跳出"工作流编辑器"框架，从 <b>故事书</b> / <b>卡牌</b> / <b>工作室</b> 三个方向重新设计。<b>不是小修小补，是 3 个不同的脑暴起点</b>。每个概念独立成体，你可以选 1 个继续深入，或者混搭。</div>
+</div>
+
+
+<!-- =================================================================
+     概念 A · 故事书 Storybook
+     纵向叙述 · 每章一屏 · 像读产品页
+     ================================================================= -->
+<section class="concept" data="A">
+  <div class="concept-head">
+    <div style="flex:1;">
+      <span class="concept-tag"><span class="dot"></span>CONCEPT A</span>
+      <div class="concept-title">故事书 · Storybook</div>
+      <div class="concept-tagline">
+        心理模型："我在读一个关于按键的 <b>3 章故事</b>"。<br/>
+        布局：纵向滚动 · 每章 = 一整屏场景 · 大插画 + 极简文案 + 控件<br/>
+        适合：<b>新手</b> · 第一次配置的人 · 喜欢"看完就懂"的人<br/>
+        灵感：Apple 产品页 · Stripe 首页 · Notion onboarding
+      </div>
+    </div>
+    <div style="font-size:11.5px; color:#71717a; font-family:'JetBrains Mono', monospace; max-width:280px; line-height:1.55;">
+      · 用户从顶读到底<br/>
+      · 每个 stage 不会被其他东西打断<br/>
+      · 滚动 = 推进 = 配置完成
+    </div>
+  </div>
+
+  <div class="concept-frame">
+
+    <!-- 顶部薄 header -->
+    <div style="padding:14px 32px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:12px; background:#fafafa;">
+      <span style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">配置 / 按键设置 /</span>
+      <span style="font-size:12px; font-weight:600;">编程·Cursor</span>
+      <span style="margin-left:auto; font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">情景模式 #2 / 5</span>
+    </div>
+
+    <!-- 大标题 -->
+    <div style="padding:48px 48px 24px;">
+      <div style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace; letter-spacing:.1em; text-transform:uppercase; margin-bottom:10px;">PROLOGUE · 前言</div>
+      <h2 style="font-family:'Space Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-.025em; line-height:1.15;">
+        你的按键，<br/>会做这 3 件事。
+      </h2>
+      <p style="font-size:14px; color:#6b6b70; margin-top:14px; max-width:520px; line-height:1.6;">
+        按下激活键 → 软件听你说话 → 文字出现在屏幕上。<br/>
+        下面 3 章告诉你每一步是怎么发生的。
+      </p>
+    </div>
+
+    <!-- CHAPTER 1 -->
+    <div style="display:grid; grid-template-columns:1.1fr 1fr; gap:0; border-top:1px solid #eee;">
+      <div style="padding:64px 48px; background:linear-gradient(135deg, #fafbff, #fff);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#60a5fa; font-weight:700; letter-spacing:.12em; margin-bottom:14px;">CHAPTER 01 · 触发</div>
+        <h3 style="font-family:'Space Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-.02em; line-height:1.2;">
+          当你按下这个键，<br/>故事开始。
+        </h3>
+        <p style="font-size:14px; color:#6b6b70; line-height:1.65; margin-top:18px; max-width:420px;">
+          选一个你顺手的方式开始说话。可以是键盘、鼠标、或者小声说个唤醒词。
+        </p>
+
+        <div style="margin-top:36px;">
+          <div style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px;">当前选择</div>
+          <!-- 大键盘 -->
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="padding:18px 28px; background:#fff; border:2px solid #1c1c1e; border-radius:10px; box-shadow:0 4px 0 #1c1c1e; font-family:'JetBrains Mono', monospace; font-size:22px; font-weight:700;">
+              <span style="padding:4px 10px; background:#f4f4f6; border-radius:5px;">Ctrl</span>
+              <span style="color:#a1a1aa; font-weight:400; margin:0 4px;">+</span>
+              <span style="padding:4px 10px; background:#f4f4f6; border-radius:5px;">⇧</span>
+              <span style="color:#a1a1aa; font-weight:400; margin:0 4px;">+</span>
+              <span style="padding:4px 10px; background:#f4f4f6; border-radius:5px;">V</span>
+            </div>
+          </div>
+          <button style="margin-top:14px; padding:7px 16px; background:#fff; border:1px solid #dcdce0; border-radius:999px; font-size:12px; color:#6b6b70; cursor:pointer; font-family:inherit;">
+            ◉ 录制新键
+          </button>
+        </div>
+
+        <!-- 极简子控件 -->
+        <div style="margin-top:32px; padding-top:20px; border-top:1px dashed #eee; display:flex; gap:24px; font-size:12px;">
+          <div>
+            <div style="color:#a1a1aa; margin-bottom:4px; font-size:11px;">按法</div>
+            <div style="display:inline-flex; padding:2px; background:#f4f4f6; border-radius:5px;">
+              <span style="padding:3px 9px; background:#1c1c1e; color:#fff; border-radius:3px; font-size:11px; font-weight:600;">按住</span>
+              <span style="padding:3px 9px; font-size:11px; color:#a1a1aa;">点一下</span>
+              <span style="padding:3px 9px; font-size:11px; color:#a1a1aa;">双击</span>
+            </div>
+          </div>
+          <div>
+            <div style="color:#a1a1aa; margin-bottom:4px; font-size:11px;">范围</div>
+            <div style="display:inline-flex; padding:2px; background:#f4f4f6; border-radius:5px;">
+              <span style="padding:3px 9px; background:#1c1c1e; color:#fff; border-radius:3px; font-size:11px; font-weight:600;">全局</span>
+              <span style="padding:3px 9px; font-size:11px; color:#a1a1aa;">指定</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：大插画 · 手指按键盘 -->
+      <div style="background:linear-gradient(135deg, #dbeafe, #f0f9ff); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; min-height:380px;">
+        <svg width="280" height="200" viewBox="0 0 280 200">
+          <!-- 简化的键盘 -->
+          <rect x="40" y="60" width="200" height="100" rx="8" fill="#fff" stroke="#1c1c1e" stroke-width="2"/>
+          <rect x="60" y="80" width="20" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="85" y="80" width="20" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="110" y="80" width="20" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="135" y="80" width="20" height="20" rx="3" fill="#60a5fa" stroke="#1c1c1e" stroke-width="2"/>
+          <rect x="160" y="80" width="20" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="185" y="80" width="20" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="60" y="105" width="50" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="115" y="105" width="80" height="20" rx="3" fill="#60a5fa" stroke="#1c1c1e" stroke-width="2"/>
+          <rect x="200" y="105" width="30" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <rect x="60" y="130" width="170" height="20" rx="3" fill="#f4f4f6" stroke="#1c1c1e"/>
+          <!-- 手指 -->
+          <ellipse cx="155" cy="40" rx="22" ry="32" fill="#fde2c5" stroke="#1c1c1e" stroke-width="2"/>
+          <circle cx="155" cy="22" r="14" fill="#fde2c5" stroke="#1c1c1e" stroke-width="2"/>
+        </svg>
+        <div style="position:absolute; bottom:20px; left:20px; font-family:'JetBrains Mono', monospace; font-size:10px; color:#6b6b70;">illustration · 按下 Ctrl+⇧+V</div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 2 -->
+    <div style="display:grid; grid-template-columns:1fr 1.1fr; gap:0; border-top:1px solid #eee;">
+      <!-- 左：大插画 · 麦克风 -->
+      <div style="background:linear-gradient(135deg, #fef3c7, #fffbeb); display:flex; align-items:center; justify-content:center; min-height:380px; position:relative; overflow:hidden;">
+        <svg width="200" height="220" viewBox="0 0 200 220">
+          <rect x="75" y="30" width="50" height="100" rx="25" fill="#fff" stroke="#1c1c1e" stroke-width="2.5"/>
+          <path d="M50 110 Q50 160 100 160 Q150 160 150 110" stroke="#1c1c1e" stroke-width="2.5" fill="none"/>
+          <line x1="100" y1="160" x2="100" y2="190" stroke="#1c1c1e" stroke-width="2.5"/>
+          <line x1="70" y1="190" x2="130" y2="190" stroke="#1c1c1e" stroke-width="2.5"/>
+          <!-- 声波 -->
+          <path d="M30 70 Q20 90 30 110" stroke="#fbbf24" stroke-width="2.5" fill="none"/>
+          <path d="M170 70 Q180 90 170 110" stroke="#fbbf24" stroke-width="2.5" fill="none"/>
+          <path d="M15 60 Q0 90 15 120" stroke="#fbbf24" stroke-width="2" fill="none" opacity=".6"/>
+          <path d="M185 60 Q200 90 185 120" stroke="#fbbf24" stroke-width="2" fill="none" opacity=".6"/>
+        </svg>
+        <div style="position:absolute; bottom:20px; left:20px; font-family:'JetBrains Mono', monospace; font-size:10px; color:#92400e;">illustration · 系统输入法正在听</div>
+      </div>
+
+      <div style="padding:64px 48px; background:linear-gradient(135deg, #fffbeb, #fff);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#f59e0b; font-weight:700; letter-spacing:.12em; margin-bottom:14px;">CHAPTER 02 · 识别</div>
+        <h3 style="font-family:'Space Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-.02em; line-height:1.2;">
+          你的声音，<br/>变成屏幕上的字。
+        </h3>
+        <p style="font-size:14px; color:#6b6b70; line-height:1.65; margin-top:18px; max-width:420px;">
+          选一个输入法帮你把声音转成文字。Windows 自带的就够用，喜欢更聪明的可以选 Typeless。
+        </p>
+
+        <div style="margin-top:32px;">
+          <div style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px;">选择输入法</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:#fff; border:2px solid #f59e0b; border-radius:10px; box-shadow:0 0 0 4px rgba(245,158,11,.08);">
+              <div style="width:32px; height:32px; border-radius:7px; background:#fef3c7; color:#92400e; display:flex; align-items:center; justify-content:center; font-weight:700;">微</div>
+              <div style="flex:1;">
+                <div style="font-size:13px; font-weight:600;">微软拼音</div>
+                <div style="font-size:11px; color:#a1a1aa;">系统自带 · 立即可用</div>
+              </div>
+              <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#a1a1aa;">激活键: 右 Alt</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:#fafafa; border:1px solid #eee; border-radius:10px;">
+              <div style="width:32px; height:32px; border-radius:7px; background:#f4f4f6; color:#6b6b70; display:flex; align-items:center; justify-content:center; font-weight:700;">T</div>
+              <div style="flex:1;">
+                <div style="font-size:13px; font-weight:500; color:#6b6b70;">Typeless</div>
+                <div style="font-size:11px; color:#a1a1aa;">AI 润色 · 自动去语气词</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:#fafafa; border:1px solid #eee; border-radius:10px;">
+              <div style="width:32px; height:32px; border-radius:7px; background:#f4f4f6; color:#6b6b70; display:flex; align-items:center; justify-content:center; font-weight:700;">讯</div>
+              <div style="flex:1;">
+                <div style="font-size:13px; font-weight:500; color:#6b6b70;">讯飞输入法</div>
+                <div style="font-size:11px; color:#a1a1aa;">中文识别更强</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAPTER 3 -->
+    <div style="display:grid; grid-template-columns:1.1fr 1fr; gap:0; border-top:1px solid #eee;">
+      <div style="padding:64px 48px; background:linear-gradient(135deg, #fafbff, #fff);">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#34d399; font-weight:700; letter-spacing:.12em; margin-bottom:14px;">CHAPTER 03 · 收尾</div>
+        <h3 style="font-family:'Space Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-.02em; line-height:1.2;">
+          说完之后，<br/>文字自动出现。
+        </h3>
+        <p style="font-size:14px; color:#6b6b70; line-height:1.65; margin-top:18px; max-width:420px;">
+          决定一下你说完后，软件是立刻发出去、还是等你检查一下再发。
+        </p>
+
+        <div style="margin-top:32px;">
+          <div style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px;">选择收尾方式</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+            <div style="padding:18px 10px; background:#fff; border:2px solid #eee; border-radius:10px; text-align:center;">
+              <div style="font-size:24px; margin-bottom:4px;">⏵</div>
+              <div style="font-size:13px; font-weight:600;">立刻发</div>
+              <div style="font-size:11px; color:#a1a1aa; margin-top:4px;">说完就送</div>
+            </div>
+            <div style="padding:18px 10px; background:#dcfce7; border:2px solid #34d399; border-radius:10px; text-align:center;">
+              <div style="font-size:24px; margin-bottom:4px;">⏸</div>
+              <div style="font-size:13px; font-weight:600; color:#16a34a;">等我 5 秒</div>
+              <div style="font-size:11px; color:#6b6b70; margin-top:4px;">检查再发</div>
+            </div>
+            <div style="padding:18px 10px; background:#fff; border:2px solid #eee; border-radius:10px; text-align:center;">
+              <div style="font-size:24px; margin-bottom:4px;">✋</div>
+              <div style="font-size:13px; font-weight:600;">只停录</div>
+              <div style="font-size:11px; color:#a1a1aa; margin-top:4px;">我手动发</div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px; padding:14px 16px; background:#fff; border:1px solid #eee; border-radius:10px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:12px; color:#6b6b70;">等待</span>
+            <input type="range" min="0" max="10" step="0.5" value="5" style="flex:1; accent-color:#34d399;" />
+            <span style="font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:#16a34a; padding:3px 8px; background:#dcfce7; border-radius:5px;">5.0 秒</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:linear-gradient(135deg, #d1fae5, #ecfdf5); display:flex; align-items:center; justify-content:center; min-height:380px; position:relative; overflow:hidden;">
+        <!-- 编辑器屏幕 -->
+        <div style="background:#1c1c1e; border-radius:10px; padding:16px 20px; width:280px; box-shadow:0 8px 20px rgba(0,0,0,.15);">
+          <div style="display:flex; gap:4px; margin-bottom:10px;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#ff5f57;"></span>
+            <span style="width:8px; height:8px; border-radius:50%; background:#febc2e;"></span>
+            <span style="width:8px; height:8px; border-radius:50%; background:#28c840;"></span>
+          </div>
+          <div style="color:#d4d4d4; font-family:'JetBrains Mono', monospace; font-size:13px; line-height:1.6;">
+            <span style="color:#a1a1aa;">// voice-pilot output</span><br/>
+            <span style="color:#60a5fa;">function</span> <span style="color:#fbbf24;">handle</span>() {<br/>
+            &nbsp;&nbsp;<span style="color:#a1a1aa;">// 自动追加...</span><br/>
+            &nbsp;&nbsp;<span style="background:#fef08a; color:#1c1c1e; padding:1px 3px; border-radius:3px;">现在我把界面重构一下</span><span style="display:inline-block; width:7px; height:14px; background:#34d399; vertical-align:-2px; margin-left:2px; animation:blink 1s steps(1) infinite;"></span><br/>
+            }
+          </div>
+        </div>
+        <div style="position:absolute; bottom:20px; left:20px; font-family:'JetBrains Mono', monospace; font-size:10px; color:#065f46;">illustration · 文字自动写入 Cursor</div>
+      </div>
+    </div>
+
+    <!-- EPILOGUE · 适用程序 + 保存 -->
+    <div style="padding:48px 48px; background:#fafafa; border-top:1px solid #eee; text-align:center;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size:11px; color:#a1a1aa; letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px;">EPILOGUE · 故事讲完了</div>
+      <h3 style="font-family:'Space Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-.02em;">
+        这套方式适用于哪些程序？
+      </h3>
+
+      <div style="display:flex; justify-content:center; gap:8px; margin-top:20px; flex-wrap:wrap;">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:#1c1c1e; color:#fff; border-radius:8px; font-size:13px; font-weight:600;">
+          <span style="width:14px; height:14px; background:#0078D4; border-radius:3px; display:inline-block;"></span>
+          Cursor
+          <span style="margin-left:4px; opacity:.6;">×</span>
+        </span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:#1c1c1e; color:#fff; border-radius:8px; font-size:13px; font-weight:600;">
+          <span style="width:14px; height:14px; background:#10A37F; border-radius:3px; display:inline-block;"></span>
+          VS Code
+          <span style="margin-left:4px; opacity:.6;">×</span>
+        </span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:#fff; border:1px solid #eee; color:#6b6b70; border-radius:8px; font-size:13px; font-weight:500;">
+          <span style="width:14px; height:14px; background:#000; border-radius:3px; display:inline-block;"></span>
+          WebStorm
+        </span>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:#fff; border:1px solid #eee; color:#6b6b70; border-radius:8px; font-size:13px; font-weight:500;">
+          + 添加程序
+        </span>
+      </div>
+
+      <button style="margin-top:32px; padding:14px 36px; background:linear-gradient(135deg, #2A9CC4, #1F86AB); color:#fff; border:none; border-radius:999px; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 6px 20px rgba(42,156,196,.4); font-family:inherit;">
+        保存为「编程·Cursor」情景模式 →
+      </button>
+      <div style="margin-top:12px; font-size:11.5px; color:#a1a1aa;">或继续编辑 · 添加更多程序</div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- =================================================================
+     概念 B · 卡牌 Card Collection
+     一手按键卡 · 翻转查看 · 像集换式卡牌
+     ================================================================= -->
+<section class="concept" data="B">
+  <div class="concept-head">
+    <div style="flex:1;">
+      <span class="concept-tag"><span class="dot"></span>CONCEPT B</span>
+      <div class="concept-title">卡牌 · Card Hand</div>
+      <div class="concept-tagline">
+        心理模型："我有 <b>一手按键卡</b>，每张卡代表一种说话方式"。<br/>
+        布局：2D 网格 / 手牌 · 卡片可翻面 · 可拖拽排序 · 可收藏<br/>
+        适合：<b>多工作流管理</b> · 切换频繁的人 · 喜欢收藏/整理的人<br/>
+        灵感：Hearthstone 卡组 · Things 3 · iOS Wallet · 拍立得收藏
+      </div>
+    </div>
+    <div style="font-size:11.5px; color:#71717a; font-family:'JetBrains Mono', monospace; max-width:280px; line-height:1.55;">
+      · 卡片正面：极简可视化<br/>
+      · 卡片背面：详细配置<br/>
+      · 拖拽重排 · 加星收藏<br/>
+    </div>
+  </div>
+
+  <div class="concept-frame" style="background:linear-gradient(180deg, #fdf2f8, #fff, #fdf2f8);">
+
+    <!-- 顶部 header -->
+    <div style="padding:18px 32px; display:flex; align-items:center; gap:14px; background:rgba(255,255,255,.7); backdrop-filter:blur(8px); border-bottom:1px solid #fce7f3;">
+      <span style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">配置 / 按键设置 /</span>
+      <h1 style="font-family:'Space Grotesk', sans-serif; font-size:18px; font-weight:700;">我的按键卡组</h1>
+      <span style="margin-left:auto; padding:4px 10px; background:#fce7f3; color:#be185d; border-radius:999px; font-size:11.5px; font-weight:600; font-family:'JetBrains Mono', monospace;">5 张 · ⭐ 3</span>
+    </div>
+
+    <!-- 过滤条 -->
+    <div style="padding:14px 32px; display:flex; gap:8px; align-items:center;">
+      <span style="font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace; text-transform:uppercase; letter-spacing:.1em;">筛选</span>
+      <span style="padding:5px 11px; background:#1c1c1e; color:#fff; border-radius:999px; font-size:11.5px; font-weight:600;">全部 · 5</span>
+      <span style="padding:5px 11px; background:#fff; color:#6b6b70; border-radius:999px; font-size:11.5px; font-weight:500; border:1px solid #eee;">⭐ 收藏 · 3</span>
+      <span style="padding:5px 11px; background:#fff; color:#6b6b70; border-radius:999px; font-size:11.5px; font-weight:500; border:1px solid #eee;">编程</span>
+      <span style="padding:5px 11px; background:#fff; color:#6b6b70; border-radius:999px; font-size:11.5px; font-weight:500; border:1px solid #eee;">聊天</span>
+      <span style="padding:5px 11px; background:#fff; color:#6b6b70; border-radius:999px; font-size:11.5px; font-weight:500; border:1px solid #eee;">写作</span>
+      <span style="padding:5px 11px; background:#fff; color:#6b6b70; border-radius:999px; font-size:11.5px; font-weight:500; border:1px solid #eee;">会议</span>
+
+      <span style="margin-left:auto; font-size:11px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">拖动卡片可排序</span>
+    </div>
+
+    <!-- 卡组网格 -->
+    <div style="padding:8px 32px 40px;">
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:18px;">
+
+        <!-- 卡片 1 · 默认 -->
+        <div style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04), 0 8px 24px rgba(190,24,93,.06); transition:transform .15s;">
+          <div style="height:120px; background:linear-gradient(135deg, #1c1c1e, #3f3f46); display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="padding:6px 10px; background:#fff; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#1c1c1e;">VOL</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">🎙</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fbbf24; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; color:#1c1c1e;">⏵</div>
+            </div>
+            <div style="position:absolute; top:10px; left:10px; padding:3px 8px; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; font-size:10px; font-family:'JetBrains Mono', monospace;">#001</div>
+            <div style="position:absolute; top:10px; right:10px; font-size:14px; color:rgba(255,255,255,.5);">☆</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div style="font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:700;">默认·通用</div>
+            <div style="font-size:11.5px; color:#a1a1aa; margin-top:2px;">按音量键 · 系统输入法 · 立即发送</div>
+            <div style="margin-top:10px; display:flex; gap:4px; align-items:center;">
+              <span style="font-size:10px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">适用</span>
+              <div style="display:flex; gap:2px;">
+                <span style="width:14px; height:14px; background:#0078D4; border-radius:3px;"></span>
+                <span style="width:14px; height:14px; background:#10A37F; border-radius:3px;"></span>
+                <span style="width:14px; height:14px; background:#000; border-radius:3px;"></span>
+                <span style="width:14px; height:14px; background:#d97706; border-radius:3px;"></span>
+                <span style="font-size:10.5px; color:#6b6b70; font-family:'JetBrains Mono', monospace;">+3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 2 · 编程 · 激活 + 翻面提示 -->
+        <div style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 0 0 3px #be185d, 0 8px 24px rgba(190,24,93,.2); position:relative;">
+          <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); padding:3px 10px; background:#be185d; color:#fff; border-radius:999px; font-size:10px; font-weight:700; z-index:2;">当前激活</div>
+          <div style="height:120px; background:linear-gradient(135deg, #0078D4, #005A9E); display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="padding:6px 10px; background:#fff; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#0078D4;">VOL</div>
+              <div style="color:rgba(255,255,255,.5); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">🎙</div>
+              <div style="color:rgba(255,255,255,.5); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">⏸</div>
+            </div>
+            <div style="position:absolute; top:10px; left:10px; padding:3px 8px; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; font-size:10px; font-family:'JetBrains Mono', monospace;">#002</div>
+            <div style="position:absolute; top:10px; right:10px; font-size:14px; color:#fbbf24;">⭐</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div style="font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:700;">编程·Cursor</div>
+            <div style="font-size:11.5px; color:#a1a1aa; margin-top:2px;">音量键 · 微软拼音 · 等 5 秒确认</div>
+            <div style="margin-top:10px; display:flex; gap:4px; align-items:center;">
+              <span style="font-size:10px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">适用</span>
+              <span style="width:14px; height:14px; background:#0078D4; border-radius:3px;"></span>
+              <span style="width:14px; height:14px; background:#10A37F; border-radius:3px;"></span>
+              <button style="margin-left:auto; padding:3px 8px; background:#fce7f3; color:#be185d; border:none; border-radius:5px; font-size:10.5px; font-weight:600; cursor:pointer; font-family:inherit;">查看 / 编辑 →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 3 · 聊天 -->
+        <div style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04), 0 8px 24px rgba(190,24,93,.06);">
+          <div style="height:120px; background:linear-gradient(135deg, #07C160, #047857); display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="padding:6px 10px; background:#fff; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#07C160;">RAlt</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">🎙</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fbbf24; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; color:#1c1c1e;">⏵</div>
+            </div>
+            <div style="position:absolute; top:10px; left:10px; padding:3px 8px; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; font-size:10px; font-family:'JetBrains Mono', monospace;">#003</div>
+            <div style="position:absolute; top:10px; right:10px; font-size:14px; color:rgba(255,255,255,.5);">☆</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div style="font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:700;">聊天·微信</div>
+            <div style="font-size:11.5px; color:#a1a1aa; margin-top:2px;">按住 右Alt · 微软拼音 · 立即发送</div>
+            <div style="margin-top:10px; display:flex; gap:4px; align-items:center;">
+              <span style="font-size:10px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">适用</span>
+              <span style="width:14px; height:14px; background:#07C160; border-radius:3px;"></span>
+              <span style="width:14px; height:14px; background:#000; border-radius:3px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 4 · 写作 -->
+        <div style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04), 0 8px 24px rgba(190,24,93,.06);">
+          <div style="height:120px; background:linear-gradient(135deg, #8B5CF6, #6D28D9); display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="padding:6px 10px; background:#fff; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#8B5CF6;">F2</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">🎙</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#ec4899; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff;">✋</div>
+            </div>
+            <div style="position:absolute; top:10px; left:10px; padding:3px 8px; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; font-size:10px; font-family:'JetBrains Mono', monospace;">#004</div>
+            <div style="position:absolute; top:10px; right:10px; font-size:14px; color:#fbbf24;">⭐</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div style="font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:700;">写作·长文</div>
+            <div style="font-size:11.5px; color:#a1a1aa; margin-top:2px;">F2 键 · 讯飞 · 只停录（手动发）</div>
+            <div style="margin-top:10px; display:flex; gap:4px; align-items:center;">
+              <span style="font-size:10px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">适用</span>
+              <span style="width:14px; height:14px; background:#000; border-radius:3px;"></span>
+              <span style="width:14px; height:14px; background:#1c1c1e; border-radius:3px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 卡片 5 · 会议 -->
+        <div style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04), 0 8px 24px rgba(190,24,93,.06);">
+          <div style="height:120px; background:linear-gradient(135deg, #f59e0b, #b45309); display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div style="padding:6px 10px; background:#fff; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; color:#f59e0b;">DBC</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">🎙</div>
+              <div style="color:rgba(255,255,255,.4); font-size:18px;">→</div>
+              <div style="width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px;">⏸</div>
+            </div>
+            <div style="position:absolute; top:10px; left:10px; padding:3px 8px; background:rgba(255,255,255,.15); color:#fff; border-radius:999px; font-size:10px; font-family:'JetBrains Mono', monospace;">#005</div>
+            <div style="position:absolute; top:10px; right:10px; font-size:14px; color:rgba(255,255,255,.5);">☆</div>
+          </div>
+          <div style="padding:14px 16px;">
+            <div style="font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:700;">会议·转写</div>
+            <div style="font-size:11.5px; color:#a1a1aa; margin-top:2px;">双击 · 大型模型 · 不自动发</div>
+            <div style="margin-top:10px; display:flex; gap:4px; align-items:center;">
+              <span style="font-size:10px; color:#a1a1aa; font-family:'JetBrains Mono', monospace;">适用</span>
+              <span style="width:14px; height:14px; background:#a855f7; border-radius:3px;"></span>
+              <span style="width:14px; height:14px; background:#000; border-radius:3px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- + 新建卡槽 -->
+        <div style="background:transparent; border:2px dashed #dcdce0; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:240px; cursor:pointer; color:#a1a1aa; transition:all .15s;">
+          <div style="font-size:32px; margin-bottom:8px;">+</div>
+          <div style="font-family:'Space Grotesk', sans-serif; font-size:14px; font-weight:600; color:#6b6b70;">新建按键卡</div>
+          <div style="font-size:11px; margin-top:4px;">从空白 · 从模板 · 从复制</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- =================================================================
+     概念 C · 工作室 Workshop Studio
+     硬件面板 · 旋钮 / 波形 / LED · 像合成器
+     ================================================================= -->
+<section class="concept" data="C">
+  <div class="concept-head">
+    <div style="flex:1;">
+      <span class="concept-tag"><span class="dot"></span>CONCEPT C</span>
+      <div class="concept-title">工作室 · Workshop</div>
+      <div class="concept-tagline">
+        心理模型："这是我的 <b>硬件工作台</b>，每个旋钮控制一项参数"。<br/>
+        布局：暗色硬件面板 · 旋钮 / 波形 / LED · 实时可视化<br/>
+        适合：<b>喜欢调参数</b>的发烧友 · 觉得 settings 太枯燥的人<br/>
+        灵感：Teenage Engineering OP-1 · Native Instruments · Ableton Push · 模拟合成器
+      </div>
+    </div>
+    <div style="font-size:11.5px; color:#71717a; font-family:'JetBrains Mono', monospace; max-width:280px; line-height:1.55;">
+      · 暗色调·金属质感<br/>
+      · 物理控件隐喻<br/>
+      · 实时反馈 · 工作流=信号链
+    </div>
+  </div>
+
+  <div class="concept-frame" style="background:#1a1a1d; color:#fff; padding:0; border:none;">
+
+    <!-- 顶部暗色 header -->
+    <div style="padding:14px 24px; background:#0e0e10; border-bottom:1px solid #2a2a2e; display:flex; align-items:center; gap:14px;">
+      <span style="font-size:11px; color:#71717a; font-family:'JetBrains Mono', monospace;">CONFIG / KEYBOARD</span>
+      <h1 style="font-family:'Space Grotesk', sans-serif; font-size:16px; font-weight:700; letter-spacing:.05em;">WORKSHOP · v0.1</h1>
+      <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+        <span style="width:6px; height:6px; background:#34d399; border-radius:50%; box-shadow:0 0 8px #34d399;"></span>
+        <span style="font-size:11px; color:#34d399; font-family:'JetBrains Mono', monospace;">LIVE</span>
+      </div>
+    </div>
+
+    <!-- 工作流 chip 切换器 · 紧凑 -->
+    <div style="padding:14px 24px; display:flex; gap:6px; border-bottom:1px solid #2a2a2e; background:#161618;">
+      <div style="padding:6px 12px; background:#2a2a2e; color:#a1a1aa; border-radius:6px; font-size:12px; font-family:'JetBrains Mono', monospace;">默认·通用</div>
+      <div style="padding:6px 12px; background:linear-gradient(180deg, #fbbf24, #f59e0b); color:#1c1c1e; border-radius:6px; font-size:12px; font-weight:700; box-shadow:0 2px 8px rgba(251,191,36,.3);">编程·Cursor</div>
+      <div style="padding:6px 12px; background:#2a2a2e; color:#a1a1aa; border-radius:6px; font-size:12px; font-family:'JetBrains Mono', monospace;">聊天·微信</div>
+      <div style="padding:6px 12px; background:#2a2a2e; color:#a1a1aa; border-radius:6px; font-size:12px; font-family:'JetBrains Mono', monospace;">写作·长文</div>
+      <div style="padding:6px 12px; background:#2a2a2e; color:#a1a1aa; border-radius:6px; font-size:12px; font-family:'JetBrains Mono', monospace;">会议·转写</div>
+      <div style="margin-left:auto; padding:6px 12px; background:transparent; color:#fbbf24; border:1px dashed #fbbf24; border-radius:6px; font-size:12px; font-weight:600;">+ NEW PATCH</div>
+    </div>
+
+    <!-- 主舞台 · 信号链 -->
+    <div style="padding:32px 32px 20px;">
+
+      <!-- 信号链标题 -->
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#71717a; letter-spacing:.2em; margin-bottom:6px;">SIGNAL CHAIN · 信号链路</div>
+        <div style="font-family:'Space Grotesk', sans-serif; font-size:18px; font-weight:600; color:#fff;">TRIGGER → CAPTURE → ACTION</div>
+      </div>
+
+      <!-- 三个模块 + 信号线 -->
+      <div style="display:grid; grid-template-columns:1fr 60px 1fr 60px 1fr; gap:8px; align-items:center;">
+
+        <!-- MODULE 1 · TRIGGER -->
+        <div style="background:linear-gradient(180deg, #2a2a2e, #1f1f23); border:1px solid #3f3f46; border-radius:12px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <div style="width:8px; height:8px; background:#60a5fa; border-radius:50%; box-shadow:0 0 8px #60a5fa;"></div>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#a1a1aa; letter-spacing:.15em;">MODULE 01 · TRIGGER</span>
+          </div>
+          <div style="text-align:center; padding:14px; background:#0e0e10; border-radius:8px; border:1px solid #3f3f46;">
+            <div style="font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:700; color:#fff; padding:6px 12px; background:#2a2a2e; border-radius:6px; display:inline-block; border:1px solid #60a5fa; box-shadow:0 0 12px rgba(96,165,250,.3);">VOL</div>
+          </div>
+          <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+            <div>
+              <div style="font-size:9.5px; color:#71717a; font-family:'JetBrains Mono', monospace; letter-spacing:.1em; margin-bottom:4px;">MODE</div>
+              <div style="display:flex; gap:4px;">
+                <div style="flex:1; padding:6px 0; background:#60a5fa; color:#0e0e10; border-radius:5px; font-size:11px; font-weight:700; text-align:center;">HOLD</div>
+                <div style="flex:1; padding:6px 0; background:#2a2a2e; color:#a1a1aa; border-radius:5px; font-size:11px; text-align:center;">TAP</div>
+                <div style="flex:1; padding:6px 0; background:#2a2a2e; color:#a1a1aa; border-radius:5px; font-size:11px; text-align:center;">DBL</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:#71717a; font-family:'JetBrains Mono', monospace; letter-spacing:.1em; margin-bottom:4px;">SCOPE</div>
+              <div style="display:flex; gap:4px;">
+                <div style="flex:1; padding:6px 0; background:#60a5fa; color:#0e0e10; border-radius:5px; font-size:11px; font-weight:700; text-align:center;">GLOBAL</div>
+                <div style="flex:1; padding:6px 0; background:#2a2a2e; color:#a1a1aa; border-radius:5px; font-size:11px; text-align:center;">APP</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 信号连接线 -->
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+          <div style="width:60px; height:2px; background:linear-gradient(90deg, #60a5fa, #fbbf24); position:relative;">
+            <div style="position:absolute; right:-4px; top:-3px; width:0; height:0; border-left:8px solid #fbbf24; border-top:4px solid transparent; border-bottom:4px solid transparent;"></div>
+          </div>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:8px; color:#34d399; letter-spacing:.1em;">OK</div>
+        </div>
+
+        <!-- MODULE 2 · CAPTURE -->
+        <div style="background:linear-gradient(180deg, #2a2a2e, #1f1f23); border:1px solid #3f3f46; border-radius:12px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <div style="width:8px; height:8px; background:#fbbf24; border-radius:50%; box-shadow:0 0 8px #fbbf24;"></div>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#a1a1aa; letter-spacing:.15em;">MODULE 02 · CAPTURE</span>
+          </div>
+
+          <!-- 旋钮 · 输入法选择 -->
+          <div style="display:flex; align-items:center; gap:14px; padding:12px; background:#0e0e10; border-radius:8px; border:1px solid #3f3f46;">
+            <div style="position:relative; width:48px; height:48px;">
+              <div style="position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 30% 30%, #fbbf24, #b45309); box-shadow:inset 0 -2px 4px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.3);"></div>
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:18px; height:18px; background:#1f1f23; border-radius:50%; box-shadow:inset 0 1px 2px rgba(0,0,0,.5);"></div>
+              <div style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:2px; height:10px; background:#fff; transform-origin:50% 14px; transform:translateX(-50%) rotate(-30deg);"></div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; color:#71717a; letter-spacing:.1em;">INPUT METHOD</div>
+              <div style="font-size:13px; font-weight:700; color:#fff; margin-top:2px;">微软拼音</div>
+            </div>
+          </div>
+
+          <!-- 电平指示器 -->
+          <div style="margin-top:12px;">
+            <div style="font-size:9.5px; color:#71717a; font-family:'JetBrains Mono', monospace; letter-spacing:.1em; margin-bottom:6px;">LEVEL · 输入电平</div>
+            <div style="display:flex; gap:2px; height:8px;">
+              <div style="flex:1; background:#34d399; border-radius:1px;"></div>
+              <div style="flex:1; background:#34d399; border-radius:1px;"></div>
+              <div style="flex:1; background:#34d399; border-radius:1px;"></div>
+              <div style="flex:1; background:#34d399; border-radius:1px;"></div>
+              <div style="flex:1; background:#34d399; border-radius:1px;"></div>
+              <div style="flex:1; background:#fbbf24; border-radius:1px;"></div>
+              <div style="flex:1; background:#fbbf24; border-radius:1px;"></div>
+              <div style="flex:1; background:#fbbf24; border-radius:1px;"></div>
+              <div style="flex:1; background:#27272a; border-radius:1px;"></div>
+              <div style="flex:1; background:#27272a; border-radius:1px;"></div>
+              <div style="flex:1; background:#27272a; border-radius:1px;"></div>
+              <div style="flex:1; background:#27272a; border-radius:1px;"></div>
+              <div style="flex:1; background:#27272a; border-radius:1px;"></div>
+            </div>
+          </div>
+
+          <!-- 引擎旋钮 -->
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <div style="flex:1; padding:8px; background:#0e0e10; border-radius:6px; border:1px solid #3f3f46;">
+              <div style="font-size:9.5px; color:#71717a; font-family:'JetBrains Mono', monospace;">ENGINE</div>
+              <div style="font-size:12px; font-weight:700; margin-top:2px;">SMALL · 380ms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 信号连接线 -->
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+          <div style="width:60px; height:2px; background:linear-gradient(90deg, #fbbf24, #34d399); position:relative;">
+            <div style="position:absolute; right:-4px; top:-3px; width:0; height:0; border-left:8px solid #34d399; border-top:4px solid transparent; border-bottom:4px solid transparent;"></div>
+          </div>
+          <div style="font-family:'JetBrains Mono', monospace; font-size:8px; color:#34d399; letter-spacing:.1em;">OK</div>
+        </div>
+
+        <!-- MODULE 3 · ACTION -->
+        <div style="background:linear-gradient(180deg, #2a2a2e, #1f1f23); border:1px solid #3f3f46; border-radius:12px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <div style="width:8px; height:8px; background:#34d399; border-radius:50%; box-shadow:0 0 8px #34d399;"></div>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#a1a1aa; letter-spacing:.15em;">MODULE 03 · ACTION</span>
+          </div>
+
+          <!-- 动作选择 -->
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px;">
+            <div style="padding:10px 0; background:#27272a; color:#71717a; border-radius:5px; text-align:center; font-size:11px;">⏵<br/>AUTO</div>
+            <div style="padding:10px 0; background:#34d399; color:#0e0e10; border-radius:5px; text-align:center; font-size:11px; font-weight:700; box-shadow:0 0 12px rgba(52,211,153,.3);">⏸<br/>WAIT</div>
+            <div style="padding:10px 0; background:#27272a; color:#71717a; border-radius:5px; text-align:center; font-size:11px;">✋<br/>HOLD</div>
+          </div>
+
+          <!-- 延迟旋钮 -->
+          <div style="margin-top:12px; display:flex; align-items:center; gap:10px; padding:10px 12px; background:#0e0e10; border-radius:8px; border:1px solid #3f3f46;">
+            <div style="position:relative; width:36px; height:36px;">
+              <div style="position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 30% 30%, #34d399, #047857); box-shadow:inset 0 -2px 4px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.3);"></div>
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:14px; height:14px; background:#1f1f23; border-radius:50%;"></div>
+              <div style="position:absolute; top:4px; left:50%; transform:translateX(-50%); width:1.5px; height:8px; background:#fff; transform-origin:50% 12px; transform:translateX(-50%) rotate(45deg);"></div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; color:#71717a; letter-spacing:.1em;">DELAY</div>
+              <div style="font-size:14px; font-weight:700; color:#fff; font-family:'JetBrains Mono', monospace; margin-top:2px;">5.0s</div>
+            </div>
+          </div>
+
+          <!-- 取消窗口 toggle -->
+          <div style="margin-top:10px; display:flex; align-items:center; gap:8px; padding:8px 10px; background:#0e0e10; border-radius:6px; border:1px solid #3f3f46;">
+            <span style="flex:1; font-size:11px; color:#a1a1aa;">CANCEL WINDOW</span>
+            <div style="width:30px; height:16px; border-radius:8px; background:#34d399; position:relative;">
+              <div style="position:absolute; top:2px; left:16px; width:12px; height:12px; border-radius:50%; background:#fff;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 底部 · 实时波形 + 适用程序 -->
+    <div style="padding:0 32px 24px;">
+      <div style="background:linear-gradient(180deg, #161618, #0e0e10); border:1px solid #2a2a2e; border-radius:10px; padding:16px 20px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div>
+            <div style="font-family:'JetBrains Mono', monospace; font-size:9.5px; color:#71717a; letter-spacing:.1em;">REAL-TIME WAVEFORM</div>
+            <div style="font-size:11px; color:#a1a1aa; margin-top:2px;">按你的按键 · 看看会发生什么</div>
+          </div>
+          <div style="flex:1; display:flex; gap:2px; align-items:center; height:32px;">
+            <div style="flex:1; height:30%; background:#60a5fa; border-radius:1px; opacity:.7;"></div>
+            <div style="flex:1; height:55%; background:#60a5fa; border-radius:1px; opacity:.8;"></div>
+            <div style="flex:1; height:75%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:90%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:100%; background:#60a5fa; border-radius:1px; box-shadow:0 0 8px #60a5fa;"></div>
+            <div style="flex:1; height:80%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:60%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:40%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:25%; background:#60a5fa; border-radius:1px; opacity:.7;"></div>
+            <div style="flex:1; height:15%; background:#60a5fa; border-radius:1px; opacity:.5;"></div>
+            <div style="flex:1; height:35%; background:#60a5fa; border-radius:1px; opacity:.7;"></div>
+            <div style="flex:1; height:55%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:70%; background:#60a5fa; border-radius:1px;"></div>
+            <div style="flex:1; height:50%; background:#60a5fa; border-radius:1px; opacity:.8;"></div>
+            <div style="flex:1; height:30%; background:#60a5fa; border-radius:1px; opacity:.6;"></div>
+            <div style="flex:1; height:20%; background:#60a5fa; border-radius:1px; opacity:.5;"></div>
+            <div style="flex:1; height:12%; background:#60a5fa; border-radius:1px; opacity:.4;"></div>
+            <div style="flex:1; height:18%; background:#60a5fa; border-radius:1px; opacity:.5;"></div>
+            <div style="flex:1; height:30%; background:#60a5fa; border-radius:1px; opacity:.6;"></div>
+            <div style="flex:1; height:48%; background:#60a5fa; border-radius:1px; opacity:.7;"></div>
+            <div style="flex:1; height:65%; background:#60a5fa; border-radius:1px;"></div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button style="padding:8px 16px; background:transparent; border:1px solid #fbbf24; color:#fbbf24; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.1em;">▶ TEST</button>
+            <button style="padding:8px 16px; background:#fbbf24; color:#0e0e10; border:none; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.1em; box-shadow:0 0 12px rgba(251,191,36,.4);">● REC</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部 · 适用程序 -->
+    <div style="padding:14px 32px 20px; background:#0e0e10; border-top:1px solid #2a2a2e;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:#71717a; letter-spacing:.15em;">PATCH DESTINATION · 补丁目标</span>
+        <div style="display:flex; gap:6px; margin-left:14px;">
+          <span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#0078D4; color:#fff; border-radius:5px; font-size:11px; font-weight:600;">
+            <span style="width:10px; height:10px; background:#fff; border-radius:2px;"></span>
+            Cursor
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#10A37F; color:#fff; border-radius:5px; font-size:11px; font-weight:600;">
+            <span style="width:10px; height:10px; background:#fff; border-radius:2px;"></span>
+            VS Code
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#27272a; color:#71717a; border-radius:5px; font-size:11px; border:1px dashed #3f3f46;">+ ADD ROUTE</span>
+        </div>
+        <span style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:10px; color:#34d399;">● PATCH ACTIVE</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ===== 底部 meta ===== -->
+<div style="padding:32px 40px 48px; text-align:center; color:#71717a; font-size:13px; line-height:1.7;">
+  <div style="font-family:'Space Grotesk', sans-serif; font-size:18px; color:#fff; margin-bottom:8px;">3 个候选 · 互斥方向</div>
+  <div>A 故事书 → 适合 <b style="color:#60a5fa;">叙事型新手</b> · 看完就懂<br/>
+  B 卡牌 → 适合 <b style="color:#f472b6;">多工作流管理</b> · 切换收藏的人<br/>
+  C 工作室 → 适合 <b style="color:#fbbf24;">硬件爱好者</b> · 喜欢调参数的发烧友</div>
+  <div style="margin-top:18px; font-size:11.5px; color:#52525b; font-family:'JetBrains Mono', monospace;">告诉我哪个方向对了 · 或者混搭 · 或者全不要</div>
+</div>
+
+<style>@keyframes blink { 50%{ opacity:0;} }</style>
+
+</body>
+</html>
