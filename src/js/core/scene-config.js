@@ -46,29 +46,51 @@
     return Array.isArray(arr)?arr.map(function(s){return String(s);}):[];
   }
 
-  function defaultSummonPhrase(appId){
+  function effectiveVoskModelPreset(cfg,mapping){
+    var ov=mapping&&mapping.voiceOverride?mapping.voiceOverride:null;
+    if(ov&&ov.modelPreset&&String(ov.modelPreset).trim()) return String(ov.modelPreset).trim();
+    var vosk=cfg&&(cfg.voiceVosk||cfg.voice_vosk)||{};
+    var global=String(vosk.modelPreset||'').trim();
+    return global||'cn-light';
+  }
+
+  function isEnglishVoskPreset(preset){
+    return String(preset||'').trim()==='en-light';
+  }
+
+  function defaultSummonPhrase(appId,opts){
+    opts=opts||{};
     appId=String(appId||'').trim();
-    if(appId==='cursor-chat') return '打开 Cursor';
-    if(appId==='codex-chat') return '打开 Codex';
-    if(appId==='claude-code') return '打开 Claude';
-    if(appId==='minimax-chat') return '打开 MiniMax';
+    var en=isEnglishVoskPreset(opts.preset);
+    if(appId==='cursor-chat') return en?'Open Cursor':'打开 Cursor';
+    if(appId==='codex-chat') return en?'Open Codex':'打开 Codex';
+    if(appId==='claude-code') return en?'Open Claude':'打开 Claude';
+    if(appId==='minimax-chat') return en?'Open MiniMax':'打开 MiniMax';
     return '';
   }
 
-  function summonPhrasesForMapping(mapping){
+  function baseWakePhrases(cfg,mapping,ov){
+    ov=ov!==undefined?ov:(mapping&&mapping.voiceOverride)||null;
+    if(ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length) return ov.wakePhrases.slice();
+    return globalWakePhrases(cfg);
+  }
+
+  function summonPhrasesForMapping(mapping,opts){
+    opts=opts||{};
     if(!mapping) return [];
+    var preset=opts.preset||'cn-light';
     var out=[];
     var seen={};
     (Array.isArray(mapping.appBehaviorRules)?mapping.appBehaviorRules:[]).forEach(function(rule){
       if(!rule||!rule.appId) return;
-      var phrase=String(rule.summonPhrase||'').trim()||defaultSummonPhrase(rule.appId);
+      var phrase=String(rule.summonPhrase||'').trim()||defaultSummonPhrase(rule.appId,{preset:preset});
       if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
     });
     var primary=String(mapping.appTargetId||'').trim();
     if(primary){
       var hasRule=(mapping.appBehaviorRules||[]).some(function(r){ return r&&r.appId===primary; });
       if(!hasRule){
-        var fallback=defaultSummonPhrase(primary);
+        var fallback=defaultSummonPhrase(primary,{preset:preset});
         if(fallback&&!seen[fallback]) out.push(fallback);
       }
     }
@@ -76,10 +98,9 @@
   }
 
   function mergeWakePhrases(cfg,mapping,ov){
-    var base=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length
-      ?ov.wakePhrases.slice()
-      :globalWakePhrases(cfg);
-    summonPhrasesForMapping(mapping).forEach(function(phrase){
+    var preset=effectiveVoskModelPreset(cfg,mapping);
+    var base=baseWakePhrases(cfg,mapping,ov);
+    summonPhrasesForMapping(mapping,{preset:preset}).forEach(function(phrase){
       if(phrase&&base.indexOf(phrase)<0) base.push(phrase);
     });
     return base;
@@ -100,16 +121,22 @@
     const mapping=config.mappings.find(function(m){return m.id===sceneId;});
     if(!mapping) return null;
     const ov=mapping.voiceOverride||null;
+    const preset=effectiveVoskModelPreset(config,mapping);
     let targetKey=globalVoiceTargetKey(config);
     if(ov&&ov.targetKey&&String(ov.targetKey).trim()) targetKey=String(ov.targetKey).trim();
     else if(isWorkflowAppTarget(mapping.appTargetId)) targetKey=globalVoiceTargetKey(config);
+    const baseWake=baseWakePhrases(config,mapping,ov);
+    const summon=summonPhrasesForMapping(mapping,{preset:preset});
     const wake=mergeWakePhrases(config,mapping,ov);
     const end=mergeEndPhrases(globalEndPhrases(config),ov&&ov.endPhrases?ov.endPhrases:null);
     return {
       sceneId:sceneId,
       targetKey:targetKey,
+      baseWakePhrases:baseWake,
+      summonPhrases:summon,
       wakePhrases:wake,
       endPhrases:end,
+      modelPreset:preset,
       triggerKey:String(mapping.triggerKey||''),
       appTargetId:String(mapping.appTargetId||'')
     };
@@ -120,6 +147,10 @@
     globalWakePhrases:globalWakePhrases,
     globalEndPhrases:globalEndPhrases,
     globalVoiceTargetKey:globalVoiceTargetKey,
-    summonPhrasesForMapping:summonPhrasesForMapping
+    baseWakePhrases:baseWakePhrases,
+    effectiveVoskModelPreset:effectiveVoskModelPreset,
+    defaultSummonPhrase:defaultSummonPhrase,
+    summonPhrasesForMapping:summonPhrasesForMapping,
+    isWorkflowAppTarget:isWorkflowAppTarget
   };
 })((typeof window!=='undefined')?window:globalThis);

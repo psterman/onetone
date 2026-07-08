@@ -417,6 +417,9 @@
     if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
     if(global.OneToneKeyFinishFlowRender) global.OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel();
     if(global.OneToneHabitCompatibility) global.OneToneHabitCompatibility.render();
+    if(global.OneToneSceneVoiceTab&&global.OneToneSceneVoiceTab.render) global.OneToneSceneVoiceTab.render();
+    if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
+    if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
   }
 
   function seedDefaultBehaviorRules(m){
@@ -708,6 +711,10 @@
   function voiceSummonPhrase(appId,m){
     var rule=m?ruleForApp(m,appId):null;
     if(rule&&String(rule.summonPhrase||'').trim()) return String(rule.summonPhrase).trim();
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config||{}:{};
+    var sc=global.OneToneSceneConfig;
+    var preset=sc&&sc.effectiveVoskModelPreset&&m?sc.effectiveVoskModelPreset(cfg,m):'cn-light';
+    if(sc&&sc.defaultSummonPhrase) return sc.defaultSummonPhrase(appId,{preset:preset})||'';
     var key=VOICE_SUMMON_PHRASE_KEYS[appId];
     return key?t(key):'';
   }
@@ -744,21 +751,16 @@
   function renderSummonPhraseEditor(m,presetId){
     var rule=ruleForApp(m,presetId);
     var value=rule&&rule.summonPhrase?String(rule.summonPhrase):'';
-    if(!value){
-      var key=VOICE_SUMMON_PHRASE_KEYS[presetId];
-      if(key){
-        var full=t(key);
-        var m3=full.match(/[「「""]([^」」""]+)[」」""]/);
-        value=m3?m3[1]:full;
-      }
-    }
+    if(!value) value=voiceSummonPhrase(presetId,m);
+    var workflow=global.OneToneSceneConfig&&global.OneToneSceneConfig.isWorkflowAppTarget
+      ?global.OneToneSceneConfig.isWorkflowAppTarget(presetId):false;
     var html='<div class="keys-app-summon-edit" data-summon-edit="'+esc(presetId)+'">';
     html+='<p class="keys-app-summon-edit-lbl">'+esc(t('habitAppSummonPhraseLbl'))+'</p>';
     html+='<div class="keys-app-summon-edit-row">';
     html+='<input type="text" class="keys-app-summon-edit-input" data-summon-input="'+esc(presetId)+'" value="'+esc(value)+'" maxlength="48" placeholder="'+esc(t('habitAppSummonPhrasePlaceholder'))+'" spellcheck="false" autocomplete="off" />';
     html+='<button type="button" class="keys-app-summon-edit-save" data-summon-save="'+esc(presetId)+'">'+esc(t('habitAppSummonPhraseSave'))+'</button>';
     html+='</div>';
-    html+='<p class="keys-app-summon-edit-hint sr-only">'+esc(t('habitAppSummonPhraseHint'))+'</p>';
+    html+='<p class="keys-app-summon-edit-hint'+(workflow?' sr-only':'')+'">'+esc(workflow?t('habitAppSummonPhraseHint'):t('keysAppSummonNoWorkflowHint'))+'</p>';
     html+='</div>';
     return html;
   }
@@ -775,7 +777,7 @@
     }
     html+='<div class="voice-summon-app-info voice-app-shortcut-main">';
     html+='<div class="voice-summon-app-name voice-app-shortcut-name">'+esc(appDisplayName(preset.id))+'</div>';
-    html+='<div class="voice-summon-app-wake"><span class="voice-summon-quote voice-app-shortcut-phrase">'+esc(voiceSummonQuote(preset.id,m))+'</span></div>';
+    html+='<div class="voice-summon-app-phrase"><span class="voice-summon-quote voice-app-shortcut-phrase">'+esc(voiceSummonQuote(preset.id,m))+'</span></div>';
     if(openKey){
       html+='<div class="voice-summon-shortcuts voice-app-shortcut-kbd">'+formatShortcutHtml(openKey)+'</div>';
     }

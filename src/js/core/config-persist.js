@@ -94,7 +94,7 @@
     const sapi=!!((c.voiceSapi||c.voice_sapi||{}).enabled);
     return maps.length+'|'+String(c.activeSceneId||c.active_scene_id||'')+'|'+maps.map(function(m){
       var rules=serializeAppBehaviorRules(m.appBehaviorRules||m.app_behavior_rules||[]);
-      var rulesSig=rules.map(function(r){ return r.appId+':'+r.finishMode; }).join(',');
+      var rulesSig=rules.map(function(r){ return r.appId+':'+r.finishMode+':'+(r.summonPhrase||''); }).join(',');
       return String(m.id||'')+':'+(m.enabled?1:0)+':'+String(m.triggerKey||m.trigger_key||'')+':'+String(m.targetKey||m.target_key||'')+':'+String(m.appTargetId||m.app_target_id||'')+':'+rulesSig;
     }).join(';')+'|v'+(vosk?1:0)+'|s'+(sapi?1:0);
   }

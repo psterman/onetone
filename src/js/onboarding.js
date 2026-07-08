@@ -1003,6 +1003,24 @@
     });
   }
 
+  function runTryTestSend(){
+    var a = app();
+    var mappingId = '';
+    if(a && a.getActiveMapping){
+      var m = a.getActiveMapping();
+      mappingId = m && m.id ? String(m.id) : '';
+    }
+    if(global.OneToneMappingTestSend && global.OneToneMappingTestSend.fire){
+      global.OneToneMappingTestSend.fire(mappingId || null);
+      return;
+    }
+    if(a && a.fireTestSend){
+      a.fireTestSend(mappingId || null);
+      return;
+    }
+    if(a && a.toast) a.toast(t('onboardTryTestUnavailable'));
+  }
+
   function dismiss(){
     markDone();
     setOpen(false);
@@ -1036,6 +1054,11 @@
       else goStep(1);
     };
     var helpTry = $('btnOnboardTryHelp');
+    var tryTest = $('btnOnboardTryTest');
+    if(tryTest) tryTest.onclick = function(ev){
+      if(ev) ev.stopPropagation();
+      runTryTestSend();
+    };
     if(helpTry) helpTry.onclick = function(ev){
       if(ev) ev.stopPropagation();
       showTryHelp('timeout');
@@ -1126,6 +1149,7 @@
       ['onboardModeKeysTitle','onboardModeKeysTitle'],['onboardModeKeysHint','onboardModeKeysHint'],
       ['onboardModeVoiceTitle','onboardModeVoiceTitle'],['onboardModeVoiceHint','onboardModeVoiceHint'],
       ['onboardModeBothTitle','onboardModeBothTitle'],['onboardModeBothHint','onboardModeBothHint'],
+      ['btnOnboardTryTest','onboardTryTestBtn'],
       ['btnOnboardTryToPhrases','onboardTryToPhrases'],['btnOnboardTryToMode','onboardTryToMode'],
       ['onboardEngineNote','onboardEngineNote'],
       ['onboardEngineLiteTitle','onboardEngineLiteTitle'],['onboardEngineLiteHint','onboardEngineLiteHint'],

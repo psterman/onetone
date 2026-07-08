@@ -710,7 +710,8 @@
     #settingsPanelVoiceWake .voice-summon-app-info{flex:1;min-width:0}
     #settingsPanelVoiceWake .voice-summon-app-name{font-size:13px;font-weight:700;line-height:1.2;margin-bottom:3px}
     #settingsPanelVoiceWake .voice-summon-app.is-primary .voice-summon-app-name{color:var(--primary-strong)}
-    #settingsPanelVoiceWake .voice-summon-app-wake{margin-bottom:4px}
+    #settingsPanelVoiceWake .voice-summon-app-wake,
+    #settingsPanelVoiceWake .voice-summon-app-phrase{margin-bottom:4px}
     #settingsPanelVoiceWake .voice-summon-quote{
       font-size:11px;color:var(--on-surface-muted);font-family:ui-monospace,monospace;
       padding:1px 6px;background:var(--surface-soft);border-radius:4px;

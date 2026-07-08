@@ -209,7 +209,12 @@ pub fn handle_voice_wake_detected(
     };
 
     if let Some(mapping) = mapping_snapshot.as_ref() {
-        if let Some(app_target_id) = crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase)
+        let preset = {
+            let cfg = state.cfg.lock();
+            crate::scene_config::effective_vosk_model_preset(&cfg, mapping)
+        };
+        if let Some(app_target_id) =
+            crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase, &preset)
         {
             if crate::app_chat_workflow::profile_for(&app_target_id).is_some() {
                 if let Some(window) = crate::ipc::get_main_window(app) {

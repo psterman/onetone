@@ -100,26 +100,31 @@ pub struct AppBehaviorRule {
 }
 
 pub fn default_summon_phrase(app_id: &str) -> Option<&'static str> {
+    default_summon_phrase_for_preset(app_id, "cn-light")
+}
+
+pub fn default_summon_phrase_for_preset(app_id: &str, preset: &str) -> Option<&'static str> {
+    let en = preset.trim() == "en-light";
     match app_id.trim() {
-        "cursor-chat" => Some("打开 Cursor"),
-        "codex-chat" => Some("打开 Codex"),
-        "claude-code" => Some("打开 Claude"),
-        "minimax-chat" => Some("打开 MiniMax"),
+        "cursor-chat" => Some(if en { "Open Cursor" } else { "打开 Cursor" }),
+        "codex-chat" => Some(if en { "Open Codex" } else { "打开 Codex" }),
+        "claude-code" => Some(if en { "Open Claude" } else { "打开 Claude" }),
+        "minimax-chat" => Some(if en { "Open MiniMax" } else { "打开 MiniMax" }),
         _ => None,
     }
 }
 
-pub fn summon_phrase_for_rule(rule: &AppBehaviorRule) -> Option<String> {
+pub fn summon_phrase_for_rule(rule: &AppBehaviorRule, preset: &str) -> Option<String> {
     if let Some(raw) = rule.summon_phrase.as_ref() {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
             return Some(trimmed.to_string());
         }
     }
-    default_summon_phrase(&rule.app_id).map(|s| s.to_string())
+    default_summon_phrase_for_preset(&rule.app_id, preset).map(|s| s.to_string())
 }
 
-pub fn summon_entries_for_mapping(mapping: &MappingEntry) -> Vec<(String, String)> {
+pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for rule in &mapping.app_behavior_rules {
@@ -127,7 +132,7 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry) -> Vec<(String, String
         if app_id.is_empty() {
             continue;
         }
-        if let Some(phrase) = summon_phrase_for_rule(rule) {
+        if let Some(phrase) = summon_phrase_for_rule(rule, preset) {
             if seen.insert(phrase.clone()) {
                 out.push((phrase, app_id.to_string()));
             }
@@ -140,7 +145,7 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry) -> Vec<(String, String
             .iter()
             .all(|r| r.app_id.trim() != primary)
     {
-        if let Some(phrase) = default_summon_phrase(primary) {
+        if let Some(phrase) = default_summon_phrase_for_preset(primary, preset) {
             let phrase = phrase.to_string();
             if seen.insert(phrase.clone()) {
                 out.push((phrase, primary.to_string()));
@@ -163,8 +168,12 @@ fn summon_phrases_match(heard: &str, summon: &str) -> bool {
         || crate::voice_vosk::matches_final(summon, &[heard.to_string()]).is_some()
 }
 
-pub fn resolve_summon_app_for_phrase(mapping: &MappingEntry, matched_phrase: &str) -> Option<String> {
-    for (phrase, app_id) in summon_entries_for_mapping(mapping) {
+pub fn resolve_summon_app_for_phrase(
+    mapping: &MappingEntry,
+    matched_phrase: &str,
+    preset: &str,
+) -> Option<String> {
+    for (phrase, app_id) in summon_entries_for_mapping(mapping, preset) {
         if summon_phrases_match(matched_phrase, &phrase) {
             return Some(app_id);
         }
@@ -796,6 +805,24 @@ pub fn vosk_preset_default_phrases(preset: &str) -> Option<Vec<String>> {
         "cn-light" => Some(default_voice_vosk_phrases_cn()),
         "en-light" => Some(default_voice_vosk_phrases_en()),
         _ => None,
+    }
+}
+
+/// When preset and stored phrases disagree (e.g. en-light with cn default list), align defaults.
+pub fn reconcile_vosk_phrases_for_preset(vosk: &mut VoiceVoskConfig) {
+    let preset = vosk.model_preset.trim();
+    if preset == "custom" {
+        return;
+    }
+    let Some(target_defaults) = vosk_preset_default_phrases(preset) else {
+        return;
+    };
+    let cn_defaults = default_voice_vosk_phrases_cn();
+    let en_defaults = default_voice_vosk_phrases_en();
+    if preset == "en-light" && vosk.phrases == cn_defaults {
+        vosk.phrases = target_defaults;
+    } else if preset == "cn-light" && vosk.phrases == en_defaults {
+        vosk.phrases = target_defaults;
     }
 }
 pub fn resolve_vosk_model_path(cfg: &VoiceVoskConfig) -> String {
@@ -1524,6 +1551,7 @@ impl VoiceConfig {
             if let Some(path) = vosk_preset_model_path(&self.voice_vosk.model_preset) {
                 self.voice_vosk.model_path = path.to_string();
             }
+            reconcile_vosk_phrases_for_preset(&mut self.voice_vosk);
         } else if self.voice_vosk.model_path.trim().is_empty() {
             self.voice_vosk.model_path = default_voice_vosk_model_path();
         }
@@ -2614,5 +2642,32 @@ mod tests {
         assert_eq!(fallback.trigger_mode, TriggerMode::Tap);
         assert!(fallback.cancel_enabled);
         assert!(fallback.auto_enter_enabled);
+    }
+
+    #[test]
+    fn default_summon_phrase_respects_preset() {
+        assert_eq!(default_summon_phrase("cursor-chat"), Some("打开 Cursor"));
+        assert_eq!(
+            default_summon_phrase_for_preset("cursor-chat", "cn-light"),
+            Some("打开 Cursor")
+        );
+        assert_eq!(
+            default_summon_phrase_for_preset("cursor-chat", "en-light"),
+            Some("Open Cursor")
+        );
+    }
+
+    #[test]
+    fn reconcile_vosk_phrases_swaps_stale_cn_on_en_light() {
+        let mut vosk = VoiceVoskConfig {
+            enabled: true,
+            phrases: vosk_preset_default_phrases("cn-light").unwrap(),
+            target_key: default_voice_vosk_target_key(),
+            cooldown_ms: default_voice_vosk_cooldown_ms(),
+            model_path: VOSK_EN_LIGHT_REL.into(),
+            model_preset: "en-light".into(),
+        };
+        reconcile_vosk_phrases_for_preset(&mut vosk);
+        assert_eq!(vosk.phrases, vosk_preset_default_phrases("en-light").unwrap());
     }
 }

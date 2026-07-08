@@ -336,9 +336,10 @@
     let engine='none',phrase='',state='off';
     if(voskOn){
       engine='vosk';
+      const phrases=Array.isArray(voskRes.phrases)?voskRes.phrases:[];
       const cn=Array.isArray(voskRes.phrasesCn)?voskRes.phrasesCn:[];
       const en=Array.isArray(voskRes.phrasesEn)?voskRes.phrasesEn:[];
-      phrase=(cn[0]||en[0]||'').trim();
+      phrase=(phrases[0]||cn[0]||en[0]||'').trim();
       state=voskRes.state||'stopped';
     }else if(sapiOn){
       engine='sapi';

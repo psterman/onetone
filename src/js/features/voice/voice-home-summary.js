@@ -38,7 +38,18 @@
     return 'off';
   }
 
+  function activeHabitProfile(cfg){
+    var hp=global.OneToneHabitProfile;
+    if(!hp||!hp.projectActive) return null;
+    return hp.projectActive(cfg||{})||null;
+  }
+
   function wakePhrases(eng, w, voskCfg, sapiCfg){
+    var cfg=state().config||{};
+    var active=activeHabitProfile(cfg);
+    if(active&&Array.isArray(active.baseWakePhrases)&&active.baseWakePhrases.length){
+      return cloneList(active.baseWakePhrases);
+    }
     if(eng==='vosk'){
       var enOnly=global.OneToneVoiceWake&&global.OneToneVoiceWake.isEnglishVoskPreset(voskModelPreset(w,voskCfg));
       var cn=Array.isArray(w.vosk&&w.vosk.phrasesCn)?cloneList(w.vosk.phrasesCn):[];

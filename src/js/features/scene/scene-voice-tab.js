@@ -49,12 +49,16 @@
     var kl=global.OneToneKeyLabels;
     var keyLabel=profile.effectiveTargetKey||'—';
     if(kl) keyLabel=kl.friendlyKeyName(profile.effectiveTargetKey,lang)||keyLabel;
-    var wake=(profile.effectiveWakePhrases||[])[0]||'—';
-    var end=((profile.effectiveEndPhrases&&profile.effectiveEndPhrases.zh)||[])[0]||'—';
-    var body=t('scenePreviewLine')
-      .replace('{wake}',wake)
-      .replace('{target}',keyLabel)
-      .replace('{end}',end);
+    var baseWake=(profile.baseWakePhrases||[])[0]||'—';
+    var summonList=(profile.summonPhrases||[]).filter(Boolean);
+    var summon=summonList.length?summonList.join(' / '):'—';
+    var endList=((profile.effectiveEndPhrases&&profile.effectiveEndPhrases[lang])||[])
+      .concat((profile.effectiveEndPhrases&&profile.effectiveEndPhrases.zh)||[])
+      .filter(Boolean);
+    var end=endList[0]||'—';
+    var body=t('scenePreviewBaseWake').replace('{wake}',baseWake)
+      +' · '+t('scenePreviewSummon').replace('{summon}',summon)
+      +' · '+t('scenePreviewEffective').replace('{target}',keyLabel).replace('{end}',end);
     if(hasOverride) body+=' · '+t('scenePreviewHasOverride');
     return body;
   }
@@ -172,8 +176,7 @@
       fieldMode(ov,'endPhrasesEn'));
     var profile=habitProfile(mapping,cfg);
     var hasOverride=!!ov;
-    var sc=global.OneToneSceneConfig;
-    var summon=sc&&sc.summonPhrasesForMapping?sc.summonPhrasesForMapping(mapping):[];
+    var summon=(profile&&Array.isArray(profile.summonPhrases)?profile.summonPhrases:[]);
     if(summon.length){
       html+='<div class="scene-voice-summon">';
       html+='<p class="scene-voice-summon-lbl">'+esc(t('sceneVoiceSummonLbl'))+'</p>';

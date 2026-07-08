@@ -108,6 +108,8 @@
       isComplete:isLibraryHabit(m,cfg),
       habitType:habitType(m,cfg),
       effectiveTargetKey:eff?String(eff.targetKey||''):'',
+      baseWakePhrases:eff&&Array.isArray(eff.baseWakePhrases)?eff.baseWakePhrases.slice():[],
+      summonPhrases:eff&&Array.isArray(eff.summonPhrases)?eff.summonPhrases.slice():[],
       effectiveWakePhrases:eff&&Array.isArray(eff.wakePhrases)?eff.wakePhrases.slice():[],
       effectiveEndPhrases:eff&&eff.endPhrases?{
         zh:Array.isArray(eff.endPhrases.zh)?eff.endPhrases.zh.slice():[],

@@ -30,6 +30,9 @@
     text=String(text||'').trim();
     if(!text) return true;
     var phrases=(summary.wakePhrases||[]).slice();
+    if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceSummonPhrases){
+      phrases=phrases.concat(global.OneToneHomeLive.voiceSummonPhrases());
+    }
     if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceEndPhrases){
       phrases=phrases.concat(global.OneToneHomeLive.voiceEndPhrases());
     }

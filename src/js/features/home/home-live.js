@@ -395,8 +395,13 @@
   }
 
   function homeVoiceWakePhrases(){
+    var cfg=state().config||{};
+    var hp=global.OneToneHabitProfile;
+    var active=hp&&hp.projectActive?hp.projectActive(cfg):null;
+    if(active&&Array.isArray(active.baseWakePhrases)&&active.baseWakePhrases.length){
+      return hooks().cloneStringList(active.baseWakePhrases);
+    }
     const eng=homeVoiceEngineOn();
-    const cfg=state().config||{};
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const w=hooks().voiceUiSnapshot.wake||{};
@@ -425,6 +430,14 @@
     const fromSnap=Array.isArray(w.sapi&&w.sapi.phrases)?hooks().cloneStringList(w.sapi.phrases):[];
     if(fromSnap.length) return fromSnap;
     return hooks().cloneStringList(sapiCfg.phrases||[]);
+  }
+
+  function homeVoiceSummonPhrases(){
+    var cfg=state().config||{};
+    var hp=global.OneToneHabitProfile;
+    var active=hp&&hp.projectActive?hp.projectActive(cfg):null;
+    if(active&&Array.isArray(active.summonPhrases)) return hooks().cloneStringList(active.summonPhrases);
+    return [];
   }
 
   function homeVoiceEndPhrases(){
@@ -636,6 +649,7 @@
     micStatusLabel:homeMicStatusLabel,
     voiceWakePhrase:homeVoiceWakePhrase,
     voiceWakePhrases:homeVoiceWakePhrases,
+    voiceSummonPhrases:homeVoiceSummonPhrases,
     voiceEndPhrases:homeVoiceEndPhrases,
     voiceEngineOn:homeVoiceEngineOn,
     voiceEngineUiMode:homeVoiceEngineUiMode,

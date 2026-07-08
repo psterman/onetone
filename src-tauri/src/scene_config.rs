@@ -3,8 +3,8 @@
 use serde::Serialize;
 
 use crate::config::{
-    is_workflow_app_target, normalize_voice_override, vosk_preset_model_path, MappingEntry,
-    PhraseBundle, VoiceConfig, VoiceOverride, VoiceSapiConfig, VoiceVoskConfig,
+    is_workflow_app_target, vosk_preset_model_path, MappingEntry, PhraseBundle, VoiceConfig,
+    VoiceOverride, VoiceSapiConfig, VoiceVoskConfig,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -24,6 +24,8 @@ pub struct SceneResolveContext<'a> {
 pub struct EffectiveSceneConfig {
     pub scene_id: String,
     pub target_key: String,
+    pub base_wake_phrases: Vec<String>,
+    pub summon_phrases: Vec<String>,
     pub wake_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
     pub trigger_key: String,
@@ -54,12 +56,20 @@ pub fn resolve_effective_scene(
 ) -> Option<EffectiveSceneConfig> {
     let mapping = cfg.find_mapping_by_id(ctx.active_scene_id)?;
     let ov = mapping.voice_override.as_ref();
+    let preset = effective_vosk_model_preset(cfg, mapping);
     let target_key = resolve_effective_target_key(cfg, mapping, ov);
+    let base_wake_phrases = base_wake_phrases(cfg, ov);
+    let summon_phrases: Vec<String> = crate::config::summon_entries_for_mapping(mapping, &preset)
+        .into_iter()
+        .map(|(phrase, _)| phrase)
+        .collect();
     let wake_phrases = merge_wake_phrases(cfg, mapping, ov);
     let end_phrases = merge_end_phrases(cfg, ov);
     Some(EffectiveSceneConfig {
         scene_id: mapping.id.clone(),
         target_key,
+        base_wake_phrases,
+        summon_phrases,
         wake_phrases,
         end_phrases,
         trigger_key: mapping.trigger_key.clone(),
@@ -191,7 +201,7 @@ pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> De
     global_desired_voice_engine(cfg)
 }
 
-fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) -> String {
+pub fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) -> String {
     if let Some(preset) = mapping
         .voice_override
         .as_ref()
@@ -250,21 +260,23 @@ fn global_end_phrases(cfg: &VoiceConfig) -> PhraseBundle {
     }
 }
 
+fn base_wake_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> Vec<String> {
+    if let Some(phrases) = ov.and_then(|o| o.wake_phrases.as_ref()) {
+        if !phrases.is_empty() {
+            return phrases.clone();
+        }
+    }
+    global_wake_phrases(cfg)
+}
+
 fn merge_wake_phrases(
     cfg: &VoiceConfig,
     mapping: &crate::config::MappingEntry,
     ov: Option<&VoiceOverride>,
 ) -> Vec<String> {
-    let base = if let Some(phrases) = ov.and_then(|o| o.wake_phrases.as_ref()) {
-        if !phrases.is_empty() {
-            phrases.clone()
-        } else {
-            global_wake_phrases(cfg)
-        }
-    } else {
-        global_wake_phrases(cfg)
-    };
-    let summon: Vec<String> = crate::config::summon_entries_for_mapping(mapping)
+    let base = base_wake_phrases(cfg, ov);
+    let preset = effective_vosk_model_preset(cfg, mapping);
+    let summon: Vec<String> = crate::config::summon_entries_for_mapping(mapping, &preset)
         .into_iter()
         .map(|(phrase, _)| phrase)
         .collect();
@@ -357,8 +369,8 @@ fn normalize_end_phrases(bundle: &PhraseBundle) -> PhraseBundle {
 mod tests {
     use super::*;
     use crate::config::{
-        default_voice_end_phrases_en, default_voice_end_phrases_zh, MappingEntry, TriggerMode,
-        VoiceConfig, VoiceOverride,
+        default_voice_end_phrases_en, normalize_voice_override, vosk_preset_default_phrases,
+        MappingEntry, TriggerMode, VoiceConfig, VoiceOverride,
     };
 
     fn base_cfg() -> VoiceConfig {
@@ -586,6 +598,104 @@ mod tests {
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
         assert!(eff.wake_phrases.contains(&"打开我的 Cursor".to_string()));
+        assert!(eff.summon_phrases.contains(&"打开我的 Cursor".to_string()));
+    }
+
+    fn cn_wake_defaults() -> Vec<String> {
+        vosk_preset_default_phrases("cn-light").unwrap()
+    }
+
+    fn en_wake_defaults() -> Vec<String> {
+        vosk_preset_default_phrases("en-light").unwrap()
+    }
+
+    #[test]
+    fn cn_light_base_wake_excludes_en_defaults() {
+        let mut cfg = base_cfg();
+        cfg.voice_vosk.model_preset = "cn-light".into();
+        cfg.voice_vosk.phrases = cn_wake_defaults();
+        let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
+        let en_defaults = en_wake_defaults();
+        for phrase in &eff.base_wake_phrases {
+            assert!(!en_defaults.iter().any(|d| d == phrase));
+        }
+    }
+
+    #[test]
+    fn en_light_base_wake_excludes_cn_defaults_after_normalize() {
+        let mut cfg = base_cfg();
+        cfg.voice_vosk.model_preset = "en-light".into();
+        cfg.voice_vosk.phrases = cn_wake_defaults();
+        cfg.normalize();
+        let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
+        let cn_defaults = cn_wake_defaults();
+        for phrase in &eff.base_wake_phrases {
+            assert!(!cn_defaults.iter().any(|d| d == phrase));
+        }
+        assert_eq!(cfg.voice_vosk.phrases, en_wake_defaults());
+    }
+
+    #[test]
+    fn summon_phrase_overrides_default() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                app_id: "cursor-chat".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: Some("hey cursor".into()),
+            }];
+        }
+        let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
+        assert!(eff.summon_phrases.contains(&"hey cursor".to_string()));
+        assert!(!eff.summon_phrases.iter().any(|p| p == "打开 Cursor"));
+    }
+
+    #[test]
+    fn summon_dedup_in_effective_wake() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        cfg.voice_vosk.phrases = vec!["打开 Cursor".into()];
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                app_id: "cursor-chat".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: None,
+            }];
+        }
+        let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
+        let count = eff
+            .wake_phrases
+            .iter()
+            .filter(|p| *p == "打开 Cursor")
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn fingerprint_changes_when_summon_changes() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        let fp_before = idle_voice_fingerprint(&cfg).unwrap();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                app_id: "cursor-chat".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: Some("unique summon xyz".into()),
+            }];
+        }
+        let fp_after = idle_voice_fingerprint(&cfg).unwrap();
+        assert_ne!(fp_before, fp_after);
+        assert!(fp_after.wake_phrases.contains(&"unique summon xyz".to_string()));
     }
 
     #[test]
