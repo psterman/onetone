@@ -224,6 +224,17 @@
       var heard=summary.heardLine.replace(/^[^：:]+[：:]/,'').trim();
       if(heard) return { finalized:'', pending:heard, placeholder:false };
     }
+    if(eng==='vosk'&&res){
+      var finalText=String(res.lastFinal||'').trim();
+      var partialText=String(res.lastPartial||'').trim();
+      if(finalText||partialText){
+        return {
+          finalized:finalText,
+          pending:partialText&&partialText!==finalText?partialText:'',
+          placeholder:false
+        };
+      }
+    }
     if(summary.statusMode==='listening'&&res){
       var partial=res.lastPartial||res.lastHeard||'';
       if(partial) return { finalized:'', pending:partial, placeholder:false };

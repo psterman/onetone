@@ -32,14 +32,19 @@
         e.stopPropagation();
         var id=btn.dataset.schemeNav;
         if(!id) return;
-        hooks.flushAllEditorToMappings();
-        state.selectedMappingId=id;
-        hooks.syncEditorFromSelection();
-        hooks.closeFloatMenu();
         hooks.setSettingsPanel('keys');
-        hooks.renderKeyFinishFlowPanel();
-        hooks.renderEditor();
-        hooks.renderSettingsSchemeSubnav();
+        if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.switchActiveScheme){
+          global.OneToneKeysPanelUi.switchActiveScheme(id);
+        }else{
+          hooks.flushAllEditorToMappings();
+          state.selectedMappingId=id;
+          hooks.syncEditorFromSelection();
+          hooks.closeFloatMenu();
+          hooks.renderKeyFinishFlowPanel();
+          hooks.renderEditor();
+          hooks.renderSettingsSchemeSubnav();
+          if(hooks.render) hooks.render();
+        }
         if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.setHabitLayer('global');
         if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
         if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();

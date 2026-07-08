@@ -33,6 +33,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   min-height: 34px;
   padding: 6px 14px;
   border-radius: 999px;
@@ -61,6 +62,20 @@
 
 #settingsPanelKeys .keys-workflow-tab.is-disabled-scheme {
   opacity: 0.72;
+}
+
+#settingsPanelKeys .keys-workflow-tab.is-draft {
+  border-style: dashed;
+}
+
+#settingsPanelKeys .keys-workflow-tab-draft {
+  font-size: 8px;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 4px;
 }
 
 #settingsPanelKeys .keys-workflow-tab-name {
@@ -348,12 +363,14 @@
 }
 
 #settingsPanelKeys .keys-hub-scheme-rename {
-  padding: 0 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 8px;
-  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
   color: var(--primary-strong);
   cursor: pointer;
   opacity: 0;
@@ -363,6 +380,47 @@
 #settingsPanelKeys .keys-hub-scheme-row:hover .keys-hub-scheme-rename,
 #settingsPanelKeys .keys-hub-scheme-row:focus-within .keys-hub-scheme-rename {
   opacity: 1;
+}
+
+#settingsPanelKeys .keys-capture-ime-block {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-capture-ime-block .habit-flow-subsection-title {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  text-align: left;
+}
+
+#settingsPanelKeys .keys-capture-ime-block .ime-preset-strip {
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+#settingsPanelKeys .ime-preset-item--custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .ime-preset-custom-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.72;
+}
+
+#settingsPanelKeys .ime-preset-item--custom.is-selected .ime-preset-custom-icon {
+  opacity: 1;
+}
+
+#settingsPanelKeys .keys-app-chip--none {
+  border-style: dashed;
+  font-weight: 600;
 }
 
 @media (min-width: 1041px) {
@@ -515,31 +573,119 @@
 
 #settingsPanelKeys .keys-hub-schemes {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding: 0 8px 8px;
   max-height: min(220px, 36vh);
   overflow: auto;
+}
+
+#settingsPanelKeys .keys-hub-scheme-group {
+  display: grid;
+  gap: 4px;
+}
+
+#settingsPanelKeys .keys-hub-scheme-group-lbl {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted);
+  text-transform: uppercase;
+}
+
+#settingsPanelKeys .keys-hub-scheme-group--drafts .keys-hub-scheme-group-lbl {
+  color: #b45309;
+}
+
+#settingsPanelKeys .keys-hub-draft-empty {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px dashed var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
 }
 
 #settingsPanelKeys .keys-hub-scheme-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 7px 8px;
+  padding: 4px 6px 4px 4px;
   border-radius: 8px;
   border: 1px solid transparent;
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
   background: transparent;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-main:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 #settingsPanelKeys .keys-hub-scheme-row:hover {
   background: var(--surface-soft);
   border-color: var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-hub-scheme-row.is-draft {
+  border-style: dashed;
+}
+
+#settingsPanelKeys .keys-hub-scheme-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-hub-scheme-toggle {
+  flex-shrink: 0;
+  transform: scale(0.82);
+  transform-origin: center;
+}
+
+#settingsPanelKeys .keys-hub-scheme-delete {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-row:hover .keys-hub-scheme-delete,
+#settingsPanelKeys .keys-hub-scheme-row:focus-within .keys-hub-scheme-delete {
+  opacity: 1;
+}
+
+#settingsPanelKeys .keys-hub-scheme-delete:hover {
+  background: rgba(198, 40, 40, 0.1);
+  color: #c62828;
 }
 
 #settingsPanelKeys .keys-hub-scheme-row.is-editing {
@@ -556,6 +702,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-hub-scheme-draft {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 1px 5px;
+  border-radius: 999px;
 }
 
 #settingsPanelKeys .keys-hub-scheme-meta {
@@ -690,6 +846,40 @@
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+/* App shortcut expand — facts instead of horizontal chain */
+#settingsPanelKeys .keys-app-expand-facts {
+  display: grid;
+  gap: 6px;
+  padding: 0 14px 8px;
+}
+
+#settingsPanelKeys .keys-app-expand-fact {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-app-expand-fact.is-muted {
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-app-expand-fact-lbl {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+
+#settingsPanelKeys .keys-app-expand-hint-inline {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-app-expand-edit-link {
+  margin: 0 14px 4px;
 }
 
 #settingsPanelKeys #keysAppShortcutsCard {

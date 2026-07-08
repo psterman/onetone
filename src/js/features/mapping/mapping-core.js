@@ -61,6 +61,23 @@
     if(profile&&profile.isActive) tags.unshift({cls:'is-active-scene',text:t('sceneActiveBadge')});
     return tags;
   }
+  function renderSchemeSubnavItem(m){
+    const sel=m.id===state().selectedMappingId;
+    const pair=hooks().homeMappingPairLine(m);
+    const tags=keysEditorNavTags(m);
+    let tagsHtml='';
+    tags.forEach(function(tag){
+      tagsHtml+='<span class="scheme-nav-tag '+tag.cls+'">'+hooks().escHtml(tag.text)+'</span>';
+    });
+    const isDraft=isIncompleteScheme(m);
+    return '<div class="settings-scheme-subnav-item'+(sel?' is-selected':'')+(isDraft?' is-draft-item':'')+'" data-scheme-nav="'+m.id+'" role="option" aria-selected="'+(sel?'true':'false')+'" tabindex="0">'
+      +'<span class="settings-scheme-subnav-body">'
+      +'<span class="settings-scheme-subnav-pair">'+hooks().escHtml(pair)+'</span>'
+      +'<span class="settings-scheme-subnav-tags">'+tagsHtml+'</span>'
+      +'</span>'
+      +'<button type="button" class="settings-scheme-subnav-del" data-scheme-del="'+m.id+'" aria-label="'+hooks().escHtml(t('delete'))+'" title="'+hooks().escHtml(t('delete'))+'">×</button>'
+      +'</div>';
+  }
   function renderSettingsSchemeSubnav(){
     const subnav=$('settingsSchemeSubnav');
     const listEl=$('settingsSchemeSubnavList');
@@ -78,28 +95,29 @@
     if(!show||!listEl) return;
     hooks().ensureConfig();
     const schemes=sortedMappings();
-    if(!schemes.length){
+    const saved=schemes.filter(isSavedMapping);
+    const drafts=schemes.filter(isIncompleteScheme);
+    if(!saved.length&&!drafts.length){
       listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+hooks().escHtml(t('mappingEmptyTitle'))+'</p>';
       return;
     }
     let html='';
-    schemes.forEach(function(m){
-      if(!isSavedMapping(m)&&!isDraftMapping(m)) return;
-      const sel=m.id===state().selectedMappingId;
-      const pair=hooks().homeMappingPairLine(m);
-      const tags=keysEditorNavTags(m);
-      let tagsHtml='';
-      tags.forEach(function(tag){
-        tagsHtml+='<span class="scheme-nav-tag '+tag.cls+'">'+hooks().escHtml(tag.text)+'</span>';
-      });
-      html+='<div class="settings-scheme-subnav-item'+(sel?' is-selected':'')+'" data-scheme-nav="'+m.id+'" role="option" aria-selected="'+(sel?'true':'false')+'" tabindex="0">';
-      html+='<span class="settings-scheme-subnav-body">';
-      html+='<span class="settings-scheme-subnav-pair">'+hooks().escHtml(pair)+'</span>';
-      html+='<span class="settings-scheme-subnav-tags">'+tagsHtml+'</span>';
-      html+='</span>';
-      html+='<button type="button" class="settings-scheme-subnav-del" data-scheme-del="'+m.id+'" aria-label="'+hooks().escHtml(t('delete'))+'" title="'+hooks().escHtml(t('delete'))+'">×</button>';
-      html+='</div>';
-    });
+    html+='<div class="settings-scheme-subnav-group settings-scheme-subnav-saved">';
+    html+='<p class="settings-scheme-subnav-group-lbl">'+hooks().escHtml(t('settingsKeysSavedLbl'))+'</p>';
+    if(saved.length){
+      saved.forEach(function(m){ html+=renderSchemeSubnavItem(m); });
+    }else{
+      html+='<p class="settings-scheme-subnav-empty settings-scheme-subnav-saved-empty">'+hooks().escHtml(t('settingsKeysSavedEmpty'))+'</p>';
+    }
+    html+='</div>';
+    html+='<div class="settings-scheme-subnav-group settings-scheme-subnav-drafts">';
+    html+='<p class="settings-scheme-subnav-group-lbl">'+hooks().escHtml(t('settingsKeysDraftBoxLbl'))+'</p>';
+    if(drafts.length){
+      drafts.forEach(function(m){ html+=renderSchemeSubnavItem(m); });
+    }else{
+      html+='<p class="settings-scheme-subnav-empty settings-scheme-subnav-draft-empty">'+hooks().escHtml(t('settingsKeysDraftBoxEmpty'))+'</p>';
+    }
+    html+='</div>';
     listEl.innerHTML=html;
     listEl.querySelectorAll('[data-scheme-del]').forEach(function(btn){
       btn.addEventListener('mousedown',function(e){ e.stopPropagation(); });
@@ -145,8 +163,12 @@
     return !!(m&&!isSavedMapping(m)&&!isLibraryHabit(m));
   }
 
+  function isIncompleteScheme(m){
+    return !!(m&&!isSavedMapping(m));
+  }
+
   function hasDraftMappings(){
-    return sortedMappings().some(isDraftMapping);
+    return sortedMappings().some(isIncompleteScheme);
   }
 
   function isDraftPristine(m){
@@ -374,7 +396,7 @@
     listUiActive:mappingListUiActive,renderChrome:renderMappingChrome,
     schemeHasConflict:schemeMappingHasConflict,schemeNavTags:schemeNavTags,keysEditorNavTags:keysEditorNavTags,
     renderSchemeSubnav:renderSettingsSchemeSubnav,friendlyPair:friendlyPair,
-    isSaved:isSavedMapping,isDraft:isDraftMapping,hasDrafts:hasDraftMappings,
+    isSaved:isSavedMapping,isDraft:isDraftMapping,isIncomplete:isIncompleteScheme,hasDrafts:hasDraftMappings,
     isDraftPristine:isDraftPristine,removeDraft:removeDraftMapping,
     abandonDraftIfPristine:abandonDraftIfPristine,byId:mappingById,activeScene:activeSceneMapping,
     isSelected:isSelectedMapping,editorTrigger:editorTriggerForMapping,

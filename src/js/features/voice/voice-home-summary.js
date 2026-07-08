@@ -120,9 +120,15 @@
       }
       return { heardLine:heardLine, statusLine:statusLine, statusMode:statusMode };
     }
+    if(eng==='vosk'&&res){
+      var partialText=String(res.lastPartial||'').trim();
+      var finalText=String(res.lastFinal||'').trim();
+      if(partialText) heardLine=t('voiceVoskPartial')+'：'+partialText;
+      else if(finalText) heardLine=t('voiceVoskFinal')+'：'+finalText;
+    }
     statusLine=t('homeVoiceSimpleStatusReady');
     statusMode='ready';
-    return { heardLine:null, statusLine:statusLine, statusMode:statusMode };
+    return { heardLine:heardLine, statusLine:statusLine, statusMode:statusMode };
   }
 
   function buildLinkIds(ctx){

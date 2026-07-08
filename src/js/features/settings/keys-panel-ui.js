@@ -172,7 +172,9 @@
     if(bindingStrip) bindingStrip.hidden=false;
     var ctxId=activeAppContextId();
     var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
-    var html='';
+    var primaryId=m?String(m.appTargetId||'').trim():'';
+    var noneSelected=!ctxId&&!primaryId;
+    var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-app-chip-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
     presets.forEach(function(p){
       var icon=presetIcon(p.id);
       var isSel=ctxId===p.id;
@@ -224,6 +226,29 @@
     return m.appBehaviorRules.length;
   }
 
+  function renderKeysHubSchemeRow(m,selected){
+    var isEditing=m.id===selected;
+    var comp=schemeCompletion(m);
+    var stepsText=comp.done+'/'+comp.total;
+    var enabled=!!m.enabled;
+    var isDraft=core().isIncomplete&&core().isIncomplete(m);
+    var isStrictDraft=core().isDraft&&core().isDraft(m);
+    var canToggle=core().isSaved&&core().isSaved(m);
+    var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
+    return '<div class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'">'
+      +'<button type="button" class="keys-hub-scheme-main" data-scheme-select="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
+      +'<span class="keys-hub-scheme-name">'+esc(habitName(m))+'</span>'
+      +(isDraft?'<span class="keys-hub-scheme-draft">'+esc(draftBadge)+'</span>':'')
+      +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
+      +'</button>'
+      +'<div class="keys-hub-scheme-actions">'
+      +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
+      +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(m.id)+'" aria-label="'+esc(t('keysSchemeRename'))+'" title="'+esc(t('keysSchemeRename'))+'">✎</button>'
+      +(canToggle?'<button type="button" class="toggle-switch keys-hub-scheme-toggle'+(enabled?' is-on':'')+'" data-scheme-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enabled?'true':'false')+'" aria-label="'+esc(enabled?t('keysWorkflowEnabled'):t('keysWorkflowDisabled'))+'"></button>':'')
+      +'<button type="button" class="keys-hub-scheme-delete" data-scheme-delete="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActDelete'))+'" title="'+esc(t('habitHubActDelete'))+'">×</button>'
+      +'</div></div>';
+  }
+
   function renderKeysHub(){
     var schemeList=$('keysHubSchemeList');
     var tplList=$('keysHubTemplateList');
@@ -245,25 +270,29 @@
     }
     var schemes=core().sorted();
     var selected=state().selectedMappingId;
+    var saved=schemes.filter(function(m){ return core().isSaved&&core().isSaved(m); });
+    var drafts=schemes.filter(function(m){ return core().isIncomplete&&core().isIncomplete(m); });
     if(card) card.hidden=false;
     if(countEl) countEl.textContent=String(schemes.length);
-    if(!schemes.length){
+    if(!saved.length&&!drafts.length){
       schemeList.innerHTML='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
     }else{
-      schemeList.innerHTML=schemes.map(function(m){
-        var isEditing=m.id===selected;
-        var comp=schemeCompletion(m);
-        var stepsText=comp.done+'/'+comp.total;
-        var enabled=!!m.enabled;
-        return '<button type="button" class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
-          +'<span class="keys-hub-scheme-name" data-scheme-rename="'+esc(m.id)+'" title="'+esc(t('keysSchemeRename'))+'">'+esc(habitName(m))+'</span>'
-          +'<span class="keys-hub-scheme-meta">'
-          +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
-          +'<span class="keys-hub-scheme-dot'+(enabled?' is-on':'')+'" aria-hidden="true"></span>'
-          +(isEditing?'<span class="keys-hub-scheme-editing">'+esc(t('keysWorkflowEditing'))+'</span>':'')
-          +'<button type="button" class="keys-hub-scheme-rename" data-scheme-rename="'+esc(m.id)+'" aria-label="'+esc(t('keysSchemeRename'))+'">'+esc(t('keysSchemeRename'))+'</button>'
-          +'</span></button>';
-      }).join('');
+      var html='';
+      if(saved.length){
+        html+='<div class="keys-hub-scheme-group">';
+        html+='<p class="keys-hub-scheme-group-lbl">'+esc(t('settingsKeysSavedLbl'))+'</p>';
+        html+=saved.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('');
+        html+='</div>';
+      }
+      html+='<div class="keys-hub-scheme-group keys-hub-scheme-group--drafts">';
+      html+='<p class="keys-hub-scheme-group-lbl">'+esc(t('settingsKeysDraftBoxLbl'))+'</p>';
+      if(drafts.length){
+        html+=drafts.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('');
+      }else{
+        html+='<p class="keys-hub-empty keys-hub-draft-empty">'+esc(t('settingsKeysDraftBoxEmpty'))+'</p>';
+      }
+      html+='</div>';
+      schemeList.innerHTML=html;
     }
     if(!tplList||!tplApi||!tplApi.list) return;
     var templates=tplApi.list();
@@ -311,7 +340,13 @@
     tabs.innerHTML=schemes.map(function(m){
       var isSel=m.id===selected;
       var enabled=!!m.enabled;
-      return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'"><span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span></button>';
+      var isDraft=core().isIncomplete&&core().isIncomplete(m);
+      var isStrictDraft=core().isDraft&&core().isDraft(m);
+      var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
+      return '<button type="button" class="keys-workflow-tab'+(isSel?' is-active':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="tab" aria-selected="'+(isSel?'true':'false')+'" id="keysWorkflowTab-'+esc(m.id)+'" data-scheme-id="'+esc(m.id)+'">'
+        +'<span class="keys-workflow-tab-name">'+esc(habitName(m))+'</span>'
+        +(isDraft?'<span class="keys-workflow-tab-draft">'+esc(draftBadge)+'</span>':'')
+        +'</button>';
     }).join('');
   }
 
@@ -349,6 +384,9 @@
     render();
     var tab=$('keysWorkflowTab-'+id);
     if(tab) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    var schemeList=$('keysHubSchemeList');
+    var hubRow=schemeList&&schemeList.querySelector('[data-scheme-id="'+id+'"]');
+    if(hubRow) hubRow.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
   function renderAppContext(){
@@ -552,6 +590,7 @@
     renderAppContextStrip();
     renderTriggerContextBadge();
     syncRecordButtons();
+    if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     renderRecordingFeedback();
     if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
       global.OneToneMappingCore.renderConflictBanner();
@@ -625,6 +664,26 @@
           if(tplApiNew&&tplApiNew.applyTemplateNew) tplApiNew.applyTemplateNew(newBtn.getAttribute('data-new-template')||'');
           return;
         }
+        var enableBtn=e.target.closest&&e.target.closest('[data-scheme-enable]');
+        if(enableBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          e.stopPropagation();
+          var enableId=enableBtn.getAttribute('data-scheme-enable')||'';
+          var enableM=core().byId?core().byId(enableId):null;
+          if(enableM&&global.OneToneMappingEditActions&&global.OneToneMappingEditActions.setMappingEnabled){
+            global.OneToneMappingEditActions.setMappingEnabled(enableId,!enableM.enabled);
+          }
+          return;
+        }
+        var delBtn=e.target.closest&&e.target.closest('[data-scheme-delete]');
+        if(delBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          e.stopPropagation();
+          if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delBtn.getAttribute('data-scheme-delete')||'');
+          return;
+        }
         var renameBtn=e.target.closest&&e.target.closest('[data-scheme-rename]');
         if(renameBtn){
           e.__vpKeysPanelHandled=true;
@@ -633,11 +692,11 @@
           renameScheme(renameBtn.getAttribute('data-scheme-rename')||'');
           return;
         }
-        var schemeRow=e.target.closest&&e.target.closest('.keys-hub-scheme-row[data-scheme-id]');
-        if(schemeRow){
+        var schemeSelect=e.target.closest&&e.target.closest('[data-scheme-select]');
+        if(schemeSelect){
           e.__vpKeysPanelHandled=true;
           e.preventDefault();
-          switchActiveScheme(schemeRow.getAttribute('data-scheme-id')||'');
+          switchActiveScheme(schemeSelect.getAttribute('data-scheme-select')||'');
           return;
         }
       });

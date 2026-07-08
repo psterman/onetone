@@ -321,7 +321,11 @@
     var selectedId = getSelectedId(ctx);
     var disabled = isContextDisabled(ctx);
     host.classList.toggle('is-disabled', disabled);
-    host.innerHTML = PRESETS.map(function(p){
+    var customSelected = !selectedId;
+    var html = '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
+      +'<span class="ime-preset-custom-icon" aria-hidden="true">⌨</span>'
+      +'</button>';
+    html += PRESETS.map(function(p){
       var selected = selectedId === p.id;
       var label = t(p.nameKey);
       var keyLabel = global.OneToneKeyLabels
@@ -331,6 +335,7 @@
         +'<img class="ime-preset-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />'
         +'</button>';
     }).join('');
+    host.innerHTML = html;
     renderCardBadge(ctx);
   }
 
@@ -347,6 +352,14 @@
       var host = $(MOUNTS[ctx]);
       if(!host) return;
       host.addEventListener('click', function(ev){
+        var customBtn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-custom]') : null;
+        if(customBtn && !customBtn.disabled){
+          ev.stopPropagation();
+          var customCtx = customBtn.getAttribute('data-ime-context') || ctx;
+          clearSelectedForManualRecord(customCtx);
+          customBtn.blur();
+          return;
+        }
         var btn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-id]') : null;
         if(!btn || btn.disabled) return;
         ev.stopPropagation();

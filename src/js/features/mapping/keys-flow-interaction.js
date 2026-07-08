@@ -71,21 +71,46 @@
       return;
     }
 
+    var schemeEnableBtn=e.target.closest&&e.target.closest('[data-scheme-enable]');
+    if(schemeEnableBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      e.__vpKeysPanelHandled=true;
+      var enableId=schemeEnableBtn.getAttribute('data-scheme-enable')||'';
+      var core=global.OneToneMappingCore;
+      var enableM=core&&core.byId?core.byId(enableId):null;
+      if(enableM&&global.OneToneMappingEditActions&&global.OneToneMappingEditActions.setMappingEnabled){
+        global.OneToneMappingEditActions.setMappingEnabled(enableId,!enableM.enabled);
+      }
+      return;
+    }
+
+    var schemeDelBtn=e.target.closest&&e.target.closest('[data-scheme-delete]');
+    if(schemeDelBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      e.__vpKeysPanelHandled=true;
+      if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(schemeDelBtn.getAttribute('data-scheme-delete')||'');
+      return;
+    }
+
     var renameSchemeBtn=e.target.closest&&e.target.closest('[data-scheme-rename]');
     if(renameSchemeBtn){
       e.preventDefault();
       e.stopPropagation();
+      e.__vpKeysPanelHandled=true;
       var panelUiRename=global.OneToneKeysPanelUi;
       if(panelUiRename&&panelUiRename.renameScheme) panelUiRename.renameScheme(renameSchemeBtn.getAttribute('data-scheme-rename')||'');
       return;
     }
 
-    var schemeRow=e.target.closest&&e.target.closest('.keys-hub-scheme-row[data-scheme-id]');
-    if(schemeRow){
+    var schemeSelectBtn=e.target.closest&&e.target.closest('[data-scheme-select]');
+    if(schemeSelectBtn){
       e.preventDefault();
       e.stopPropagation();
+      e.__vpKeysPanelHandled=true;
       var panelUi=global.OneToneKeysPanelUi;
-      if(panelUi&&panelUi.switchActiveScheme) panelUi.switchActiveScheme(schemeRow.getAttribute('data-scheme-id')||'');
+      if(panelUi&&panelUi.switchActiveScheme) panelUi.switchActiveScheme(schemeSelectBtn.getAttribute('data-scheme-select')||'');
       return;
     }
 
@@ -104,6 +129,22 @@
       e.stopPropagation();
       var appRulesCtx=global.OneToneAppBehaviorRules;
       if(appRulesCtx&&appRulesCtx.setActiveAppContextId) appRulesCtx.setActiveAppContextId(appChip.getAttribute('data-app-context')||'');
+      return;
+    }
+
+    var appChipNone=e.target.closest&&e.target.closest('#keysAppContextStrip [data-app-chip-none]');
+    if(appChipNone){
+      e.preventDefault();
+      e.stopPropagation();
+      var atp=global.OneToneAppTargetPresets;
+      if(atp&&atp.clearPrimaryForMapping) atp.clearPrimaryForMapping();
+      var appRulesNone=global.OneToneAppBehaviorRules;
+      if(appRulesNone){
+        if(appRulesNone.setActiveAppContextId) appRulesNone.setActiveAppContextId('');
+        if(appRulesNone.setKeysExpandedAppId) appRulesNone.setKeysExpandedAppId('');
+      }
+      var panelUi=global.OneToneKeysPanelUi;
+      if(panelUi&&panelUi.render) panelUi.render();
       return;
     }
 

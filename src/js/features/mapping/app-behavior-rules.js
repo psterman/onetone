@@ -205,25 +205,16 @@
     return html;
   }
 
-  function renderFlowHorizontal(m,presetId,mode){
+  function renderKeysAppExpandFacts(m,presetId,mode){
     var openKey=appOpenShortcut(presetId,m);
-    var voiceKey=globalVoiceShortcut();
-    var workflow=hasRustWorkflow(presetId);
-    var steps=[
-      {icon:'切',name:t('habitWorkflowHorizSwitch'),kbd:workflow?t('habitWorkflowAuto'):'—'},
-      {icon:'聚',name:t('habitWorkflowHorizFocus'),kbd:friendlyKbd(openKey)},
-      {icon:'麦',name:t('habitWorkflowHorizVoice'),kbd:friendlyKbd(voiceKey)},
-      {icon:'发',name:t('habitWorkflowHorizFinish'),kbd:finishModeKbd(mode)}
-    ];
-    var html='<div class="keys-flow-horizontal" aria-label="'+esc(t('habitWorkflowTitle'))+'">';
-    steps.forEach(function(step,i){
-      if(i>0) html+='<span class="keys-flow-horizontal-arr" aria-hidden="true">→</span>';
-      html+='<div class="keys-flow-horizontal-node">';
-      html+='<span class="keys-flow-horizontal-icon" aria-hidden="true">'+esc(step.icon)+'</span>';
-      html+='<span class="keys-flow-horizontal-name">'+esc(step.name)+'</span>';
-      html+='<span class="keys-flow-horizontal-kbd">'+esc(String(step.kbd).replace(/<[^>]+>/g,''))+'</span>';
-      html+='</div>';
-    });
+    var html='<div class="keys-app-expand-facts">';
+    if(openKey){
+      html+='<p class="keys-app-expand-fact"><span class="keys-app-expand-fact-lbl">'+esc(t('keysAppExpandOpenLbl'))+'</span> <strong>'+esc(friendlyKbd(openKey))+'</strong></p>';
+    }else{
+      html+='<p class="keys-app-expand-fact is-muted">'+esc(t('keysAppExpandOpenUnset'))+'</p>';
+    }
+    html+='<p class="keys-app-expand-fact"><span class="keys-app-expand-fact-lbl">'+esc(t('keysAppExpandFinish'))+'</span> <strong>'+esc(finishModeLabel(mode))+'</strong></p>';
+    html+='<p class="keys-app-expand-hint-inline">'+esc(t('keysAppPriorityHint'))+'</p>';
     html+='</div>';
     html+='<button type="button" class="keys-app-expand-edit-link habit-app-workflow-edit" data-app-workflow-edit="'+esc(presetId)+'">'+esc(t('habitWorkflowEdit'))+' →</button>';
     return html;
@@ -237,8 +228,8 @@
     var icon=iconForApp(preset.id);
     var openKey=appOpenShortcut(preset.id,m);
     var meta=isPrimary
-      ?(openKey?t('keysAppExpandMetaSteps').replace('{n}','4'):t('keysAppExpandMetaPrimary'))
-      :t('keysAppExpandMetaUnset');
+      ?t('keysAppExpandMetaPrimaryFinish').replace('{finish}',finishModeLabel(mode))
+      :(openKey?t('keysAppExpandMetaOpen').replace('{key}',friendlyKbd(openKey)):t('keysAppExpandMetaUnset'));
     var html='<div class="keys-app-expand-wrap'+(isPrimary?' is-primary':'')+(activeAppContextId===preset.id?' is-preview':'')+'" data-app-rule="'+esc(preset.id)+'" data-app-id="'+esc(preset.id)+'">';
     html+='<div class="keys-app-expand-head">';
     html+='<details class="keys-app-expand-row'+(expanded?' is-open':'')+'" data-app-id="'+esc(preset.id)+'"'+(expanded?' open':'')+'>';
@@ -255,8 +246,7 @@
     html+='</summary>';
     html+='<div class="keys-app-expand-body">';
     html+='<div class="keys-workflow-expand">';
-    html+='<p class="keys-workflow-chain-lbl">'+esc(t('habitWorkflowChainTitle'))+'</p>';
-    html+=renderFlowHorizontal(m,preset.id,mode);
+    html+=renderKeysAppExpandFacts(m,preset.id,mode);
     html+=renderSummonPhraseEditor(m,preset.id);
     html+='</div>';
     html+='</div></details>';
