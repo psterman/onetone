@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use crate::config::{MappingEntry, TriggerMode, VoiceConfig};
@@ -304,7 +304,8 @@ struct PendingDouble {
 
 pub struct GestureTracker {
     long_press: HashMap<String, PendingLong>,
-    long_fired: HashSet<String>,
+    // lookup_key -> dispatch_key (used to support "hold-to-talk": keyup should also dispatch)
+    long_fired: HashMap<String, String>,
     double_wait: HashMap<String, PendingDouble>,
 }
 
@@ -312,7 +313,7 @@ impl GestureTracker {
     pub fn new() -> Self {
         Self {
             long_press: HashMap::new(),
-            long_fired: HashSet::new(),
+            long_fired: HashMap::new(),
             double_wait: HashMap::new(),
         }
     }
@@ -323,12 +324,15 @@ impl GestureTracker {
         self.double_wait.clear();
     }
 
-    pub fn on_keyup(&mut self, event: &PhysicalKeyEvent) {
+    // Returns Some(dispatch_key) when this keyup should also dispatch an action.
+    pub fn on_keyup(&mut self, event: &PhysicalKeyEvent) -> Option<String> {
         let lk = event.lookup_key();
-        if self.long_fired.remove(&lk) {
-            return;
+        if let Some(dispatch_key) = self.long_fired.remove(&lk) {
+            // For LongPress mode we treat keyup as "end" signal.
+            return Some(dispatch_key);
         }
         self.long_press.remove(&lk);
+        None
     }
 
     pub fn on_keydown(
@@ -377,19 +381,19 @@ impl GestureTracker {
     }
 
     pub fn poll_long_press(&mut self, _cfg: &VoiceConfig, now: Instant) -> Vec<String> {
-        let mut fired = Vec::new();
-        let mut done = Vec::new();
+        let mut fired_keys: Vec<(String, String)> = Vec::new(); // (lookup_key, dispatch_key)
         for (lk, pending) in &self.long_press {
             if now.duration_since(pending.started)
                 >= Duration::from_millis(pending.threshold_ms as u64)
             {
-                fired.push(pending.dispatch_key.clone());
-                done.push(lk.clone());
+                fired_keys.push((lk.clone(), pending.dispatch_key.clone()));
             }
         }
-        for lk in done {
+        let fired: Vec<String> = fired_keys.iter().map(|(_, dk)| dk.clone()).collect();
+        for (lk, dispatch_key) in fired_keys {
             self.long_press.remove(&lk);
-            self.long_fired.insert(lk);
+            // Key released after a successful long-press should dispatch again (stop dictation).
+            self.long_fired.insert(lk, dispatch_key);
         }
         fired
     }

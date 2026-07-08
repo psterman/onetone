@@ -110,6 +110,242 @@
     return hooks().selectedMapping?hooks().selectedMapping():null;
   }
 
+  function runHomeTestSend(mappingIdOverride){
+    var m=homeActiveMapping();
+    var mappingId=mappingIdOverride!=null?String(mappingIdOverride):(m&&m.id?String(m.id):'');
+    var app=global.OneToneApp;
+    if(app&&app.fireTestSend){
+      app.fireTestSend(mappingId||null);
+      return;
+    }
+    if(global.OneToneMappingTestSend&&global.OneToneMappingTestSend.fire){
+      global.OneToneMappingTestSend.fire(mappingId||null);
+      return;
+    }
+    if(app&&app.toast){
+      app.toast(t('onboardTryTestUnavailable'));
+    }
+  }
+
+  function templatePickOverlayEl(){ return $('templatePickOverlay'); }
+  function templatePickGridEl(){ return $('templatePickGrid'); }
+  function templatePickLiveEl(){ return $('templatePickLive'); }
+  function templatePickLiveTextEl(){ return $('templatePickLiveText'); }
+  function templatePickLiveHintEl(){ return $('templatePickLiveHint'); }
+  function templatePickLiveDotEl(){ return $('templatePickLiveDot'); }
+  var templatePickLiveTimer=0;
+
+  function ensureGlobalMapping(){
+    var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:null;
+    if(!st||!st.config) return null;
+    var cfg=st.config;
+    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    if(cfg.mappings.length){
+      var activeId=String(cfg.activeSceneId||'').trim();
+      var active=activeId?cfg.mappings.find(function(x){ return x&&x.id===activeId; }):null;
+      return active||cfg.mappings[0]||null;
+    }
+    var id=(global.OneToneMappingCore&&global.OneToneMappingCore.newMappingId)
+      ?global.OneToneMappingCore.newMappingId()
+      :('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    var m={
+      id:id,
+      label:'',
+      group:t('homeV9HabitsTitle')||'默认',
+      triggerKey:'',
+      targetKey:'',
+      enabled:true,
+      order:0,
+      triggerMode:'tap',
+      intervalMs:cfg.intervalMs||1200,
+      enterDelayMs:cfg.enterDelayMs||5000,
+      cancelEnabled:cfg.cancelEnabled!==false,
+      autoEnterEnabled:cfg.autoEnterEnabled!==false,
+      switchKeys:[],
+      nativeKeyRestore:false,
+      imePresetId:'',
+      appTargetId:'',
+      appBehaviorRules:[]
+    };
+    cfg.mappings.push(m);
+    cfg.activeSceneId=id;
+    st.selectedMappingId=id;
+    return m;
+  }
+
+  function persistTriggerStyle(mappingId, triggerMode, cancelEnabled, autoEnterEnabled){
+    var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:null;
+    if(!st||!st.config||!Array.isArray(st.config.mappings)) return false;
+    var row=st.config.mappings.find(function(x){ return x&&x.id===mappingId; });
+    if(!row) return false;
+    row.triggerMode=triggerMode;
+    row.cancelEnabled=cancelEnabled;
+    row.autoEnterEnabled=autoEnterEnabled;
+    row.updatedAt=Date.now();
+    st.selectedMappingId=mappingId;
+    st.config.activeSceneId=mappingId;
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+      global.OneToneConfigPersist.save();
+    }
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+      global.OneToneSceneActivate.activateScene(mappingId);
+    }
+    if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.renderSwitcher) global.OneToneHomeScheme.renderSwitcher(false);
+    if(global.OneToneMappingList&&global.OneToneMappingList.renderEditor) global.OneToneMappingList.renderEditor();
+    if(global.OneToneMappingList&&global.OneToneMappingList.renderList) global.OneToneMappingList.renderList();
+    return true;
+  }
+
+  function closeTemplatePick(){
+    var overlay=templatePickOverlayEl();
+    if(!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+    clearInterval(templatePickLiveTimer);
+    templatePickLiveTimer=0;
+  }
+
+  function renderTemplatePickCards(){
+    var grid=templatePickGridEl();
+    if(!grid) return;
+    var m=homeActiveMapping();
+    var rawMode=(m&&m.triggerMode!=null)?String(m.triggerMode||'').toLowerCase():'tap';
+    var selected='tap';
+    if(rawMode==='double') selected='double';
+    else if(rawMode==='hold'||rawMode==='longpress'||rawMode==='perpress') selected='hold';
+
+    var styles=[
+      { id:'hold',   anim:'hold',   title:t('homeTestPickHoldTitle'),   desc:t('homeTestPickHoldDesc') },
+      { id:'tap',    anim:'tap',    title:t('homeTestPickTapTitle'),    desc:t('homeTestPickTapDesc') },
+      { id:'double', anim:'double', title:t('homeTestPickDoubleTitle'), desc:t('homeTestPickDoubleDesc') }
+    ];
+
+    grid.innerHTML=styles.map(function(s){
+      var sel=s.id===selected;
+      var animHtml='';
+      if(s.anim==='hold'){
+        animHtml='<div class="tp-demo">'
+          +'<div class="tp-hold-label">按住中</div>'
+          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-wave-hold">'
+          +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
+          +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
+          +'</div>'
+          +'<div class="tp-hold-bar"><div class="tp-hold-bar-fill"></div></div>'
+          +'</div>';
+      }else if(s.anim==='tap'){
+        animHtml='<div class="tp-demo">'
+          +'<div class="tp-tap-label">单击 Alt（开始）→ 再单击（结束）</div>'
+          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-tap-wave">'
+          +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
+          +'<div class="b"></div>'
+          +'</div>'
+          +'</div>';
+      }else if(s.anim==='double'){
+        animHtml='<div class="tp-demo">'
+          +'<div class="tp-double-hint">快速连按 Alt 两次</div>'
+          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-double-count">×2</div>'
+          +'</div>';
+      }
+      return '<button type="button" class="template-pick-card'+(sel?' is-selected':'')+'"'
+        +' data-style-id="'+esc(s.id)+'" role="option" aria-selected="'+(sel?'true':'false')+'">'
+        +'<div class="template-pick-card-anim template-pick-card-anim--'+esc(s.anim)+'" aria-hidden="true">'+animHtml+'</div>'
+        +'<b>'+esc(s.title)+'</b>'
+        +'<span class="template-pick-desc">'+esc(s.desc)+'</span>'
+        +'</button>';
+    }).join('');
+  }
+
+  function openTemplatePick(){
+    var overlay=templatePickOverlayEl();
+    if(!overlay) return;
+    renderTemplatePickCards();
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    var live=templatePickLiveEl();
+    if(live) live.hidden=true;
+    var btnApply=$('btnTemplatePickApply');
+    if(btnApply) btnApply.disabled=false;
+  }
+
+  function templatePickSelectedIds(){
+    var grid=templatePickGridEl();
+    if(!grid) return [];
+    var btn=grid.querySelector('.template-pick-card.is-selected');
+    if(!btn) return [];
+    var id=String(btn.getAttribute('data-style-id')||'').trim();
+    return id?[id]:[];
+  }
+
+  function applyTemplatesFromPickAndTest(){
+    var ids=templatePickSelectedIds();
+    var styleId=ids&&ids.length?String(ids[0]):'';
+    if(!styleId){
+      closeTemplatePick();
+      return;
+    }
+    var m=homeActiveMapping()||ensureGlobalMapping();
+    var mappingId=m&&m.id?String(m.id):'';
+    if(!mappingId){
+      if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(t('onboardTryTestUnavailable'));
+      closeTemplatePick();
+      return;
+    }
+
+    // Ensure mapping-core "selected()" points to the active home mapping.
+    if(global.OneToneState&&global.OneToneState.state) global.OneToneState.state.selectedMappingId=mappingId;
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+      global.OneToneSceneActivate.activateScene(mappingId);
+    }
+
+    // Persisted triggerMode expects: tap | perpress | longpress | double (see Rust TriggerMode).
+    var patchTriggerMode=styleId==='hold'?'longpress':(styleId==='double'?'double':'tap');
+    var patchCancelEnabled=styleId==='hold'?false:true;
+    var patchAutoEnterEnabled=styleId==='hold'?false:true;
+
+    var ok=persistTriggerStyle(mappingId,patchTriggerMode,patchCancelEnabled,patchAutoEnterEnabled);
+    if(!ok&&global.OneToneApp&&global.OneToneApp.toast){
+      global.OneToneApp.toast(t('onboardTryTestUnavailable'));
+    }
+
+    // Show a live “press your trigger key now” guide instead of the old test modal.
+    var live=templatePickLiveEl();
+    if(live) live.hidden=false;
+    function updateLive(){
+      var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot?global.OneToneVoiceUiState.snapshot():{};
+      var end=(snap&&snap.end)||{};
+      var state=String(end.state||'idle');
+      var dot=templatePickLiveDotEl();
+      var textEl=templatePickLiveTextEl();
+      var hintEl=templatePickLiveHintEl();
+      var dictating=state==='dictating'||state==='stopping'||state==='committing';
+      if(dot) dot.classList.toggle('is-on',dictating);
+      if(textEl){
+        if(state==='dictating') textEl.textContent=t('homeTestLiveDictating');
+        else if(state==='stopping') textEl.textContent=t('homeTestLiveStopping');
+        else if(state==='committing') textEl.textContent=t('homeTestLiveCommitting');
+        else if(state==='sent') textEl.textContent=t('homeTestLiveSent');
+        else if(state==='error') textEl.textContent=t('homeTestLiveError');
+        else textEl.textContent=t('homeTestLiveReady');
+      }
+      if(hintEl){
+        if(styleId==='hold'){
+          hintEl.textContent=t('homeTestLiveHintHold');
+        }else if(styleId==='double'){
+          hintEl.textContent=t('homeTestLiveHintDouble');
+        }else{
+          hintEl.textContent=t('homeTestLiveHintTap');
+        }
+      }
+    }
+    updateLive();
+    clearInterval(templatePickLiveTimer);
+    templatePickLiveTimer=setInterval(updateLive,300);
+  }
+
   function activeSceneId(){
     var cfg=global.OneToneState.state.config||{};
     return String(cfg.activeSceneId||'').trim();
@@ -441,6 +677,40 @@
     if(btnSettings){
       btnSettings.onclick=function(){ openSettings({panel:'voiceWake'}); };
     }
+    var btnTestSend=$('vp9BtnTestSend');
+    if(btnTestSend){
+      btnTestSend.onclick=function(){
+        openTemplatePick();
+      };
+    }
+
+    var overlay=templatePickOverlayEl();
+    if(overlay){
+      overlay.addEventListener('click',function(e){
+        if(e.target===overlay) closeTemplatePick();
+      });
+    }
+    var grid=templatePickGridEl();
+    if(grid){
+      grid.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('.template-pick-card');
+        if(!btn) return;
+        grid.querySelectorAll('.template-pick-card.is-selected').forEach(function(x){
+          x.classList.remove('is-selected');
+          x.setAttribute('aria-selected','false');
+        });
+        btn.classList.add('is-selected');
+        btn.setAttribute('aria-selected','true');
+        var btnApply=$('btnTemplatePickApply');
+        if(btnApply) btnApply.disabled=false;
+      });
+    }
+    var btnClose=$('btnTemplatePickClose');
+    if(btnClose) btnClose.onclick=function(){ closeTemplatePick(); };
+    var btnCancel=$('btnTemplatePickCancel');
+    if(btnCancel) btnCancel.onclick=function(){ closeTemplatePick(); };
+    var btnApply=$('btnTemplatePickApply');
+    if(btnApply) btnApply.onclick=function(){ applyTemplatesFromPickAndTest(); };
     var headerTarget=$('vp9HeaderTarget');
     if(headerTarget){
       headerTarget.onclick=function(){
@@ -472,7 +742,13 @@
       var textNode=Array.from(toggle.childNodes).find(function(n){ return n.nodeType===3; });
       if(textNode) textNode.textContent=label;
     }
-    ['vp9BtnEnd','vp9BtnSwitch','vp9BtnSettings'].forEach(function(id){
+    ['vp9BtnEnd','vp9BtnTestSend','vp9BtnSwitch','vp9BtnSettings'].forEach(function(id){
+      var el=$(id);
+      if(!el) return;
+      var key=el.getAttribute('data-i18n');
+      if(key) el.textContent=t(key);
+    });
+    ['templatePickTitle','templatePickDesc','btnTemplatePickCancel','btnTemplatePickApply'].forEach(function(id){
       var el=$(id);
       if(!el) return;
       var key=el.getAttribute('data-i18n');

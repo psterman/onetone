@@ -378,7 +378,8 @@
   function ensureMappingExtras(m){
     if(!m) return;
     if((m.triggerMode||'').toLowerCase()==='toggle') m.triggerMode='tap';
-    if((m.triggerMode||'').toLowerCase()==='hold') m.triggerMode='perpress';
+    // Legacy alias: old UI used `hold`; runtime uses `longpress` for hold-to-talk.
+    if((m.triggerMode||'').toLowerCase()==='hold') m.triggerMode='longpress';
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;

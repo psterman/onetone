@@ -211,7 +211,8 @@
     return t('keysTemplateNewConfirmIntro').replace('{name}',t(tpl.nameKey))+'\n\n'+lines.join('\n');
   }
 
-  function applyTemplateNew(id){
+  function applyTemplateNew(id, opts){
+    opts=opts||{};
     var tpl=templateById(id);
     if(!tpl||!core()) return Promise.resolve(false);
     if(draftBlocksNewScheme()) return Promise.resolve(false);
@@ -220,6 +221,9 @@
     var confirmFn=global.OneToneMappingConfirmModal&&global.OneToneMappingConfirmModal.open
       ? function(text){ return global.OneToneMappingConfirmModal.open(text); }
       : function(text){ return Promise.resolve(window.confirm(text)); };
+    if(opts.skipConfirm){
+      confirmFn=function(){ return Promise.resolve(true); };
+    }
     return confirmFn(msg).then(function(ok){
       if(!ok) return false;
       var m=createMappingShell(t(tpl.nameKey));
@@ -235,7 +239,8 @@
     });
   }
 
-  function applyTemplate(id){
+  function applyTemplate(id, opts){
+    opts=opts||{};
     var tpl=templateById(id);
     if(!tpl||!core()||!core().selected) return Promise.resolve(false);
     if(hooks().flushAllEditorToMappings) hooks().flushAllEditorToMappings();
@@ -246,6 +251,9 @@
     var confirmFn=global.OneToneMappingConfirmModal&&global.OneToneMappingConfirmModal.open
       ? function(text){ return global.OneToneMappingConfirmModal.open(text); }
       : function(text){ return Promise.resolve(window.confirm(text)); };
+    if(opts.skipConfirm){
+      confirmFn=function(){ return Promise.resolve(true); };
+    }
     return confirmFn(msg).then(function(ok){
       if(!ok) return false;
       applyFields(tpl,m,{ overwriteTarget:hasTarget });

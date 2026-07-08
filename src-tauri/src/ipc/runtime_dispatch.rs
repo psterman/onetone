@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tauri::AppHandle;
+use tauri::Manager;
 
 use crate::app_chat_workflow;
 use crate::config::effective_mapping_for_trigger;
@@ -53,7 +54,14 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
     if event.is_keyup {
-        state.gesture.lock().on_keyup(&event);
+        let maybe_dispatch = state.gesture.lock().on_keyup(&event);
+        if let Some(dispatch_key) = maybe_dispatch {
+            // For hold-to-talk (LongPress mode): key release should end the current dictation
+            // session (if any) and run finish/send, instead of re-sending the wake key.
+            let app = window.app_handle();
+            crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
+            let _ = dispatch_key;
+        }
         return;
     }
     let now = std::time::Instant::now();

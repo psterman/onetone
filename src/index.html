@@ -118,6 +118,7 @@
 
           <div class="vp-actions">
             <button type="button" class="btn primary" id="vp9BtnEnd" data-i18n="homeV9BtnEnd">结束说话</button>
+            <button type="button" class="btn" id="vp9BtnTestSend" data-i18n="homeLiveTestEndSend">测试发送</button>
             <button type="button" class="btn" id="vp9BtnSwitch" data-i18n="homeV9BtnSwitch">切换目标</button>
             <button type="button" class="btn" id="vp9BtnSettings" data-i18n="homeV9BtnSettings">语音设置</button>
           </div>
@@ -1949,6 +1950,27 @@
       <div class="test-modal-hint" id="testModalHint" hidden></div>
       <div class="test-modal-actions">
         <button type="button" class="btn primary" id="btnTestModalOk">知道了</button>
+      </div>
+    </div>
+  </div>
+  <div class="template-pick-overlay" id="templatePickOverlay" aria-hidden="true">
+    <div class="template-pick-modal" role="dialog" aria-modal="true" aria-labelledby="templatePickTitle">
+      <div class="template-pick-head">
+        <h3 class="template-pick-title" id="templatePickTitle" data-i18n="homeTestPickTitle">选择按键方式</h3>
+        <button type="button" class="welcome-close" id="btnTemplatePickClose" aria-label="关闭">×</button>
+      </div>
+      <p class="template-pick-desc" id="templatePickDesc" data-i18n="homeTestPickDesc">选一个最顺手的组合，然后填充到当前习惯并测试发送。</p>
+      <div class="template-pick-grid" id="templatePickGrid" role="listbox" aria-label="快捷键方式"></div>
+      <div class="template-pick-live" id="templatePickLive" hidden>
+        <div class="template-pick-live-row">
+          <span class="template-pick-live-dot" id="templatePickLiveDot" aria-hidden="true"></span>
+          <span class="template-pick-live-text" id="templatePickLiveText">—</span>
+        </div>
+        <p class="template-pick-live-hint" id="templatePickLiveHint">—</p>
+      </div>
+      <div class="template-pick-actions">
+        <button type="button" class="btn secondary" id="btnTemplatePickCancel" data-i18n="homeTestPickCancel">取消</button>
+        <button type="button" class="btn primary" id="btnTemplatePickApply" data-i18n="homeTestPickApplyAndTest">填充并测试发送</button>
       </div>
     </div>
   </div>

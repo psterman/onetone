@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>voice-pilot · 选择按键方式 · v3 · Alt + 全局方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  font-family:'Inter', system-ui, -apple-system, sans-serif;
+  background:#F5F5F7;
+  color:#1c1c1e;
+  -webkit-font-smoothing:antialiased;
+  padding:32px 24px;
+}
+
+/* ============================================================
+   主容器
+   ============================================================ */
+.wrap{
+  max-width:1080px; margin:0 auto;
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 12px 36px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.04);
+  overflow:hidden;
+}
+
+/* ============================================================
+   顶部 header
+   ============================================================ */
+.head{
+  padding:24px 32px 20px;
+  border-bottom:1px solid #ECECEE;
+  display:flex; align-items:flex-start; gap:16px;
+  background:linear-gradient(180deg, #fff, #FAFAFC);
+}
+.head .step{
+  width:32px; height:32px; border-radius:50%;
+  background:#2A9CC4; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:13px; font-weight:700;
+  flex-shrink:0;
+  box-shadow:0 4px 12px rgba(42,156,196,.3);
+}
+.head .info{ flex:1; }
+.head .title{
+  font-family:'Space Grotesk', sans-serif;
+  font-size:22px; font-weight:700; letter-spacing:-.015em;
+}
+.head .sub{
+  font-size:13px; color:#6b6b70; margin-top:4px; line-height:1.5;
+}
+.head .hint-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px;
+  background:#FFF3E0; color:#E8930C;
+  border-radius:999px;
+  font-size:11px; font-weight:600;
+  margin-top:8px;
+}
+.head .hint-pill::before{
+  content:"💡"; font-size:13px;
+}
+.head .close{
+  width:32px; height:32px; border-radius:50%;
+  background:#F4F4F6; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  color:#6b6b70;
+}
+
+/* ============================================================
+   3 张卡 · 每张默认就播放按键演示
+   ============================================================ */
+.cards{
+  padding:24px 32px 8px;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:14px;
+}
+
+.card{
+  position:relative;
+  background:#fff;
+  border:2px solid #ECECEE;
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:all .25s cubic-bezier(.4, 0, .2, 1);
+}
+.card:hover{
+  border-color:#C7E5F0;
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(42,156,196,.08);
+}
+/* 按下时再深一档：让"按一下"也能看见触发 */
+.card:active{
+  transform:translateY(0);
+  transition:all .08s;
+}
+.card.selected{
+  border-color:#2A9CC4;
+  background:linear-gradient(180deg, #F0F9FC, #fff);
+  box-shadow:0 12px 32px rgba(42,156,196,.18), 0 0 0 4px rgba(42,156,196,.08);
+  transform:translateY(-3px);
+}
+
+/* 选中徽章 */
+.card-badge{
+  position:absolute;
+  top:12px; right:12px;
+  width:24px; height:24px; border-radius:50%;
+  background:#E5E5EA;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .25s;
+  z-index:5;
+}
+.card.selected .card-badge{
+  background:#2A9CC4;
+  animation:badgePop .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes badgePop {
+  0%{ transform:scale(0); }
+  60%{ transform:scale(1.2); }
+  100%{ transform:scale(1); }
+}
+.card-badge svg{
+  width:14px; height:14px;
+  stroke:#fff; stroke-width:3;
+  fill:none; stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:20;
+  stroke-dashoffset:20;
+}
+.card.selected .card-badge svg{
+  animation:checkDraw .4s ease-out .15s forwards;
+}
+@keyframes checkDraw {
+  to{ stroke-dashoffset:0; }
+}
+
+/* 演示动画区 · 关键：默认就有按键动画 */
+.demo{
+  height:140px;
+  background:linear-gradient(180deg, #FAFAFC, #F4F4F6);
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+  overflow:hidden;
+}
+.card.selected .demo{
+  background:linear-gradient(180deg, #F0F9FC, #E6F4F9);
+}
+
+/* 时间轴 · 演示进度 */
+.timeline{
+  position:absolute;
+  bottom:8px; left:12px; right:12px;
+  display:flex; align-items:center;
+  height:6px;
+  background:rgba(0,0,0,.06);
+  border-radius:3px;
+  overflow:hidden;
+}
+.timeline-fill{
+  height:100%;
+  background:linear-gradient(90deg, #2A9CC4, #1F86AB);
+  border-radius:3px;
+  width:0%;
+}
+
+/* 卡的文字区 */
+.card-body{
+  padding:14px 16px 16px;
+}
+.card-title{
+  font-size:15px; font-weight:700; letter-spacing:-.01em;
+  display:flex; align-items:center; gap:6px;
+}
+.card-tag{
+  display:inline-block;
+  font-size:9.5px;
+  padding:1px 6px;
+  background:#F0F9FC;
+  color:#2A9CC4;
+  border-radius:3px;
+  font-weight:700;
+  letter-spacing:.05em;
+  margin-left:auto;
+}
+.card.selected .card-tag{
+  background:#2A9CC4;
+  color:#fff;
+}
+.card-desc{
+  font-size:11.5px;
+  color:#6b6b70;
+  margin-top:4px;
+  line-height:1.5;
+  min-height:34px;
+}
+
+/* ============================================================
+   卡片 1 · 按住说话 · 默认就循环播放按键动画
+   ============================================================ */
+.demo-hold{
+  flex-direction:column;
+  gap:14px;
+}
+.hold-key{
+  width:64px; height:64px;
+  background:#fff;
+  border:2px solid #1c1c1e;
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:18px; font-weight:700;
+  color:#1c1c1e;
+  position:relative;
+  box-shadow:0 3px 0 #1c1c1e;
+  /* 默认就播放按键动画（未选中=低饱和度节奏慢） */
+  animation:holdPressIdle 3.2s ease-in-out infinite;
+}
+.card.selected .hold-key{
+  animation:holdPress 2.2s ease-in-out infinite;
+}
+/* 选中时按键外圈多一道脉冲光晕 */
+.card.selected .hold-key::before{
+  content:"";
+  position:absolute; inset:-8px;
+  border:2px solid #2A9CC4;
+  border-radius:14px;
+  opacity:0;
+  animation:keyHalo 2.2s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes keyHalo {
+  0%, 18%{ opacity:0; transform:scale(.85); }
+  30%{ opacity:.7; transform:scale(1); }
+  60%, 100%{ opacity:0; transform:scale(1.08); }
+}
+/* 未选中时的"轻呼吸"：按下时红，松开时白，节奏慢 */
+@keyframes holdPressIdle {
+  0%, 100%{ transform:translateY(0); box-shadow:0 3px 0 #1c1c1e; }
+  35%{ transform:translateY(3px); box-shadow:0 0 0 #1c1c1e; background:#FFD9D6; color:#FF3B30; border-color:#FF3B30; }
+  65%{ transform:translateY(3px); box-shadow:0 0 0 #1c1c1e; background:#FFD9D6; color:#FF3B30; border-color:#FF3B30; }
+}
+@keyframes holdPress {
+  0%, 100%{ transform:translateY(0); box-shadow:0 3px 0 #1c1c1e; }
+  18%, 82%{ transform:translateY(3px); box-shadow:0 0 0 #1c1c1e; background:#FF3B30; color:#fff; border-color:#FF3B30; }
+}
+.hold-wave{
+  display:flex; gap:3px;
+  align-items:center; height:24px;
+}
+.hold-wave .b{
+  width:3px; background:#D8D8DC; border-radius:2px;
+  /* 默认就跳动（未选中=灰度） */
+  animation:waveBar 1.6s ease-in-out infinite;
+}
+.card.selected .hold-wave .b{
+  background:#2A9CC4;
+  animation:waveBar 1.2s ease-in-out infinite;
+}
+.hold-wave .b:nth-child(1){ height:30%; animation-delay:0s; }
+.hold-wave .b:nth-child(2){ height:60%; animation-delay:.08s; }
+.hold-wave .b:nth-child(3){ height:90%; animation-delay:.16s; }
+.hold-wave .b:nth-child(4){ height:75%; animation-delay:.24s; }
+.hold-wave .b:nth-child(5){ height:50%; animation-delay:.32s; }
+.hold-wave .b:nth-child(6){ height:80%; animation-delay:.4s; }
+.hold-wave .b:nth-child(7){ height:60%; animation-delay:.48s; }
+.hold-wave .b:nth-child(8){ height:30%; animation-delay:.56s; }
+@keyframes waveBar {
+  0%, 100%{ transform:scaleY(.3); }
+  50%{ transform:scaleY(1); }
+}
+.hold-label{
+  position:absolute;
+  top:8px; left:12px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:9px;
+  color:#a1a1a6;
+  letter-spacing:.1em;
+}
+
+/* ============================================================
+   卡片 2 · 按一下 · 默认就循环播放
+   ============================================================ */
+.demo-tap{
+  flex-direction:column;
+  gap:10px;
+}
+.tap-stage{
+  display:flex; align-items:center; gap:20px;
+  position:relative;
+}
+.tap-dot{
+  width:14px; height:14px; border-radius:50%;
+  background:#E5E5EA;
+  position:relative;
+  transition:all .2s;
+  /* 默认就脉冲（未选中） */
+  animation:dotPulseIdle 2.4s ease-in-out infinite;
+}
+.tap-dot.left{ animation-delay:0s; }
+.tap-dot.right{ animation-delay:1.2s; }
+.card.selected .tap-dot.left{ animation:dotPulse 2s ease-in-out infinite; animation-delay:0s; background:#2A9CC4; box-shadow:0 0 0 4px rgba(42,156,196,.2); }
+.card.selected .tap-dot.right{ animation:dotPulse 2s ease-in-out infinite; animation-delay:1s; background:#2A9CC4; box-shadow:0 0 0 4px rgba(42,156,196,.2); }
+@keyframes dotPulseIdle {
+  0%, 100%{ background:#E5E5EA; transform:scale(1); }
+  20%{ background:#C7E5F0; transform:scale(1.25); }
+  40%{ background:#E5E5EA; transform:scale(1); }
+}
+@keyframes dotPulse {
+  0%, 100%{ transform:scale(1); }
+  50%{ transform:scale(1.5); box-shadow:0 0 0 6px rgba(42,156,196,.15); }
+}
+.tap-line{
+  flex:1;
+  height:2px;
+  background:#E5E5EA;
+  position:relative;
+  overflow:hidden;
+}
+.tap-line::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg, #C7E5F0, transparent);
+  /* 默认流动（未选中） */
+  animation:lineFlow 2.4s linear infinite;
+}
+.card.selected .tap-line::after{
+  background:linear-gradient(90deg, #2A9CC4, transparent);
+  animation:lineFlow 1.5s linear infinite;
+}
+@keyframes lineFlow {
+  0%{ transform:translateX(-100%); }
+  100%{ transform:translateX(100%); }
+}
+.tap-anim{
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:60px; height:30px;
+}
+.tap-anim::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border:2px solid #D8D8DC;
+  border-radius:4px;
+  /* 默认就闪烁（未选中） */
+  animation:tapBlinkIdle 2.6s ease-in-out infinite;
+}
+.card.selected .tap-anim::before{
+  border:2px solid #2A9CC4;
+  animation:tapBlink 2s ease-in-out infinite;
+}
+@keyframes tapBlinkIdle {
+  0%, 20%{ opacity:0; transform:scale(0.9); }
+  10%{ opacity:.6; transform:scale(1.05); }
+  15%{ opacity:0; transform:scale(0.95); }
+  60%, 80%{ opacity:0; transform:scale(0.9); }
+  70%{ opacity:.6; transform:scale(1.05); }
+  75%{ opacity:0; transform:scale(0.95); }
+}
+@keyframes tapBlink {
+  0%, 20%{ opacity:0; transform:scale(0.8); }
+  10%{ opacity:1; transform:scale(1.1); }
+  15%{ opacity:0; transform:scale(0.9); }
+  60%, 80%{ opacity:0; transform:scale(0.8); }
+  70%{ opacity:1; transform:scale(1.1); }
+  75%{ opacity:0; transform:scale(0.9); }
+}
+
+/* ============================================================
+   卡片 3 · 双击 · 默认就循环播放
+   ============================================================ */
+.demo-double{
+  flex-direction:column;
+  gap:14px;
+}
+.double-key{
+  width:64px; height:64px;
+  background:#fff;
+  border:2px solid #1c1c1e;
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:18px; font-weight:700;
+  color:#1c1c1e;
+  box-shadow:0 3px 0 #1c1c1e;
+  /* 默认播放双击（未选中=低饱和） */
+  animation:doubleTapIdle 2.6s ease-in-out infinite;
+}
+.card.selected .double-key{
+  animation:doubleTap 1.8s ease-in-out infinite;
+}
+.card.selected .double-key::before{
+  content:"";
+  position:absolute; inset:-8px;
+  border:2px solid #2A9CC4;
+  border-radius:14px;
+  opacity:0;
+  animation:keyHalo 1.8s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes doubleTapIdle {
+  0%, 12%, 100%{ transform:translateY(0); box-shadow:0 3px 0 #1c1c1e; background:#fff; }
+  4%, 8%{ transform:translateY(3px); box-shadow:0 0 0 #1c1c1e; background:#FFD9D6; color:#FF3B30; border-color:#FF3B30; }
+}
+@keyframes doubleTap {
+  0%, 18%, 100%{ transform:translateY(0); box-shadow:0 3px 0 #1c1c1e; background:#fff; }
+  5%, 13%{ transform:translateY(3px); box-shadow:0 0 0 #1c1c1e; background:#FF3B30; color:#fff; border-color:#FF3B30; }
+  20%, 80%{ transform:translateY(0); box-shadow:0 3px 0 #1c1c1e; background:#fff; }
+}
+.double-hint{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px;
+  color:#a1a1a6;
+  letter-spacing:.1em;
+  text-align:center;
+}
+.double-count{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  color:#a1a1a6;
+  font-weight:700;
+  letter-spacing:.05em;
+}
+.card.selected .double-count{
+  color:#2A9CC4;
+}
+.card.selected .double-count::after{
+  content:" · 触发中";
+  animation:blink 1s ease-in-out infinite;
+}
+@keyframes blink { 50%{ opacity:0.3; } }
+
+/* ============================================================
+   底部 · 测试面板
+   ============================================================ */
+.test-panel{
+  margin:16px 32px 0;
+  background:#F0F9FC;
+  border:1px solid #C7E5F0;
+  border-radius:12px;
+  padding:14px 18px;
+  display:flex; align-items:center; gap:14px;
+}
+.test-panel .ico{
+  width:36px; height:36px; border-radius:50%;
+  background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  color:#2A9CC4;
+  flex-shrink:0;
+  box-shadow:0 2px 6px rgba(42,156,196,.15);
+}
+.test-panel .info{ flex:1; }
+.test-panel .lbl{
+  font-size:12px;
+  color:#1c1c1e;
+  font-weight:600;
+  display:flex; align-items:center; gap:8px;
+}
+.test-panel .lbl .live{
+  display:inline-flex; align-items:center; gap:4px;
+  padding:1px 6px;
+  background:#FF3B30;
+  color:#fff;
+  border-radius:3px;
+  font-size:9px;
+  font-family:'JetBrains Mono', monospace;
+  font-weight:700;
+  letter-spacing:.05em;
+}
+.test-panel .lbl .live::before{
+  content:"●"; animation:blink 1.2s ease-in-out infinite;
+}
+.test-panel .desc{
+  font-size:11.5px;
+  color:#6b6b70;
+  margin-top:3px;
+  line-height:1.5;
+}
+.test-panel .desc b{ color:#1c1c1e; font-weight:600; }
+.test-panel .desc .kbd-inline{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px;
+  font-weight:600;
+  padding:1px 6px;
+  background:#fff;
+  border:1px solid #C7E5F0;
+  border-radius:3px;
+  color:#2A9CC4;
+  margin:0 2px;
+  box-shadow:0 1.5px 0 #C7E5F0;
+}
+
+.test-btn{
+  padding:9px 18px;
+  background:#fff;
+  color:#2A9CC4;
+  border:1.5px solid #2A9CC4;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px;
+  transition:all .15s;
+  font-family:inherit;
+}
+.test-btn:hover{
+  background:#2A9CC4;
+  color:#fff;
+}
+.test-btn:active{
+  transform:scale(0.96);
+}
+
+/* ============================================================
+   底部 · 底部按钮 · 改成"存为习惯（全局方案）"
+   ============================================================ */
+.foot{
+  padding:20px 32px 28px;
+  display:flex; align-items:center; gap:12px;
+}
+.foot .cancel{
+  flex:0 0 auto;
+  padding:13px 28px;
+  background:#fff;
+  color:#6b6b70;
+  border:1px solid #ECECEE;
+  border-radius:10px;
+  font-size:13.5px;
+  font-weight:500;
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .15s;
+}
+.foot .cancel:hover{
+  background:#FAFAFC;
+  border-color:#DCDCE0;
+}
+.foot .apply{
+  flex:1;
+  padding:14px 24px;
+  background:linear-gradient(135deg, #2A9CC4, #1F86AB);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  font-family:inherit;
+  box-shadow:0 6px 18px rgba(42,156,196,.35);
+  transition:all .15s;
+}
+.foot .apply:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 22px rgba(42,156,196,.45);
+}
+.foot .apply .icon{
+  width:22px; height:22px;
+  border-radius:6px;
+  background:rgba(255,255,255,.18);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.foot .apply .kbd{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  padding:2px 7px;
+  background:rgba(255,255,255,.2);
+  border-radius:4px;
+  margin-left:4px;
+}
+.foot .apply-text{
+  display:flex; flex-direction:column; align-items:flex-start; line-height:1.2;
+  flex:1;
+}
+.foot .apply-text .t1{ font-size:14px; font-weight:700; }
+.foot .apply-text .t2{ font-size:11px; opacity:.9; margin-top:2px; }
+/* "全局方案"小徽章 */
+.foot .apply .scope-badge{
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 8px;
+  background:rgba(255,255,255,.2);
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.04em;
+}
+.foot .apply .scope-badge::before{
+  content:"◌"; font-size:11px;
+}
+
+/* ============================================================
+   底部说明
+   ============================================================ */
+.legend{
+  padding:0 32px 24px;
+  display:flex; gap:16px; flex-wrap:wrap;
+  font-size:11px;
+  color:#a1a1a6;
+  font-family:'JetBrains Mono', monospace;
+}
+.legend .dot{ color:#2A9CC4; }
+
+/* ============================================================
+   顶部右上 · "我的习惯"切换器（不再是"编程·Cursor"）
+   ============================================================ */
+.habit-switcher{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 10px 5px 6px;
+  background:#fff;
+  border:1px solid #ECECEE;
+  border-radius:999px;
+  font-size:11.5px;
+  cursor:pointer;
+  transition:all .15s;
+}
+.habit-switcher:hover{
+  border-color:#2A9CC4;
+}
+.habit-switcher .habit-ico{
+  width:18px; height:18px; border-radius:50%;
+  background:linear-gradient(135deg, #2A9CC4, #1F86AB);
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700;
+}
+.habit-switcher .habit-name{ font-weight:600; color:#1c1c1e; }
+.habit-switcher .arrow{ color:#a1a1a6; font-size:9px; }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- 顶部 -->
+  <div class="head">
+    <div class="step">1</div>
+    <div class="info">
+      <div class="title">选一个你用着顺手的说话方式</div>
+      <div class="sub">下面 3 种 · 任选一种作为你的全局方案 · 之后随时能改</div>
+      <div class="hint-pill">卡片默认就在循环演示 · 鼠标移上去看得更清楚</div>
+    </div>
+    <div class="habit-switcher" title="这是你正在编辑的「习惯」">
+      <span class="habit-ico">习</span>
+      <span class="habit-name">我的习惯 · 默认</span>
+      <span class="arrow">▾</span>
+    </div>
+    <button class="close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- 3 张卡 · 每张都默认播放按键演示 -->
+  <div class="cards">
+
+    <!-- 卡片 1 · 按住说话 -->
+    <div class="card selected" onclick="this.classList.toggle('selected')">
+      <div class="card-badge">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="demo demo-hold">
+        <div class="hold-label">按住 → 松开 → 发送</div>
+        <div class="hold-key">Alt</div>
+        <div class="hold-wave">
+          <div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>
+          <div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>
+        </div>
+        <div class="timeline">
+          <div class="timeline-fill" style="animation:holdFill 2.2s ease-in-out infinite;"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">
+          按住说话
+          <span class="card-tag">推荐</span>
+        </div>
+        <div class="card-desc">按住 Alt 不放开始说话 · 松开就结束 · 像发微信语音</div>
+      </div>
+    </div>
+
+    <!-- 卡片 2 · 按一下 -->
+    <div class="card" onclick="this.classList.toggle('selected')">
+      <div class="card-badge">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="demo demo-tap">
+        <div class="tap-label" style="position:absolute;top:8px;left:12px;font-family:'JetBrains Mono',monospace;font-size:9px;color:#a1a1a6;">按 1 次 → 录音 → 再按 1 次 → 停止</div>
+        <div class="tap-stage">
+          <div class="tap-dot left"></div>
+          <div class="tap-line"></div>
+          <div class="tap-dot right"></div>
+        </div>
+        <div class="tap-anim"></div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">
+          按一下开始/结束
+          <span class="card-tag">免长按</span>
+        </div>
+        <div class="card-desc">按一次 Alt 开始 · 说话 · 再按一次 Alt 结束</div>
+      </div>
+    </div>
+
+    <!-- 卡片 3 · 双击 -->
+    <div class="card" onclick="this.classList.toggle('selected')">
+      <div class="card-badge">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="demo demo-double">
+        <div style="position:absolute;top:8px;left:12px;font-family:'JetBrains Mono',monospace;font-size:9px;color:#a1a1a6;">快速按 2 下 Alt → 开始</div>
+        <div class="double-key">Alt</div>
+        <div class="double-count">×2</div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">
+          双击开始/结束
+          <span class="card-tag">防误触</span>
+        </div>
+        <div class="card-desc">快速连按 Alt 两次开始 · 再连按两次结束</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 实时测试面板 -->
+  <div class="test-panel">
+    <div class="ico">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+    </div>
+    <div class="info">
+      <div class="lbl">
+        现在可以测试
+        <span class="live">LIVE</span>
+      </div>
+      <div class="desc">
+        选中"<b>按住说话</b>" · 按住 <span class="kbd-inline">Alt</span> 不放试试 · 看屏幕上字流出来
+      </div>
+    </div>
+    <button class="test-btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      试一下
+    </button>
+  </div>
+
+  <!-- 底部按钮 · 改成"存为习惯（全局方案）" -->
+  <div class="foot">
+    <button class="cancel">先不改</button>
+    <button class="apply">
+      <span class="icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </span>
+      <div class="apply-text">
+        <div class="t1">存为习惯（全局方案）</div>
+        <div class="t2">对所有程序生效 · 不绑到某个应用 · 之后还能改</div>
+      </div>
+      <span class="scope-badge">全局</span>
+      <span class="icon">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+    </button>
+  </div>
+
+  <!-- 底部说明 -->
+  <div class="legend">
+    <span><span class="dot">●</span> 3 张卡都在自动循环演示</span>
+    <span>· 点卡片可切换选中</span>
+    <span>· 全局方案：对所有程序生效</span>
+    <span>· 之后还能改 · 不影响数据</span>
+  </div>
+
+</div>
+
+<style>
+/* 时间轴填充动画（按 Alt 节奏） */
+@keyframes holdFill {
+  0%{ width:0%; }
+  18%{ width:5%; }
+  82%{ width:100%; }
+  100%{ width:100%; }
+}
+</style>
+
+</body>
+</html>
