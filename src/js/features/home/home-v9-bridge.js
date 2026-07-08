@@ -134,6 +134,97 @@
   function templatePickLiveHintEl(){ return $('templatePickLiveHint'); }
   function templatePickLiveDotEl(){ return $('templatePickLiveDot'); }
   var templatePickLiveTimer=0;
+  var templatePickAutoCloseTimer=0;
+  var templatePickTraining=null;
+
+  function resetTemplatePickTraining(){
+    clearTimeout(templatePickAutoCloseTimer);
+    templatePickAutoCloseTimer=0;
+    templatePickTraining=null;
+  }
+
+  function templatePickStorageKey(){ return 'vp_template_pick_habits_v1'; }
+
+  function readTemplatePickHabits(){
+    try{
+      var raw=localStorage.getItem(templatePickStorageKey());
+      var parsed=raw?JSON.parse(raw):{};
+      return parsed&&typeof parsed==='object'?parsed:{};
+    }catch(_){
+      return {};
+    }
+  }
+
+  function writeTemplatePickHabits(data){
+    try{ localStorage.setItem(templatePickStorageKey(),JSON.stringify(data||{})); }catch(_){}
+  }
+
+  function templatePickHabitMeta(mappingId){
+    mappingId=String(mappingId||'').trim();
+    if(!mappingId) return null;
+    var all=readTemplatePickHabits();
+    var meta=all[mappingId];
+    return meta&&typeof meta==='object'?meta:null;
+  }
+
+  function templatePickHabitReady(mappingId){
+    var meta=templatePickHabitMeta(mappingId);
+    return !!(meta&&meta.completedAt);
+  }
+
+  function rememberTemplatePickHabit(mappingId,patch){
+    mappingId=String(mappingId||'').trim();
+    if(!mappingId) return null;
+    var all=readTemplatePickHabits();
+    var prev=all[mappingId]&&typeof all[mappingId]==='object'?all[mappingId]:{};
+    var next=Object.assign({},prev,patch||{});
+    next.mappingId=mappingId;
+    next.updatedAt=Date.now();
+    all[mappingId]=next;
+    writeTemplatePickHabits(all);
+    return next;
+  }
+
+  function rememberTemplatePickSample(mappingId,styleId,text){
+    text=String(text||'').trim();
+    if(!text) return null;
+    var meta=templatePickHabitMeta(mappingId)||{};
+    var samples=Array.isArray(meta.samples)?meta.samples.slice():[];
+    var exists=samples.some(function(item){ return item&&item.text===text; });
+    if(!exists){
+      samples.push({
+        text:text,
+        styleId:String(styleId||'').trim()||'tap',
+        capturedAt:Date.now()
+      });
+      if(samples.length>5) samples=samples.slice(samples.length-5);
+    }
+    return rememberTemplatePickHabit(mappingId,{ samples:samples, lastSampleText:text, lastSampleAt:Date.now() });
+  }
+
+  function finalizeTemplatePickTraining(sampleText){
+    if(!templatePickTraining||templatePickTraining.completed) return;
+    var training=templatePickTraining;
+    training.completed=true;
+    rememberTemplatePickHabit(training.mappingId,{
+      styleId:training.styleId,
+      triggerMode:training.triggerMode,
+      activatedAt:training.activatedAt||Date.now(),
+      completedAt:Date.now()
+    });
+    if(sampleText) rememberTemplatePickSample(training.mappingId,training.styleId,sampleText);
+    if(global.OneToneApp&&global.OneToneApp.toast){
+      global.OneToneApp.toast(sampleText?t('homeTestPickSavedTrained'):t('homeTestPickSaved'));
+    }
+    var btnApply=$('btnTemplatePickApply');
+    if(btnApply){
+      btnApply.disabled=false;
+      btnApply.textContent=t('homeTestPickApplyDone');
+    }
+    templatePickAutoCloseTimer=setTimeout(function(){
+      closeTemplatePick();
+    },900);
+  }
 
   function ensureGlobalMapping(){
     var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:null;
@@ -204,6 +295,12 @@
     overlay.setAttribute('aria-hidden','true');
     clearInterval(templatePickLiveTimer);
     templatePickLiveTimer=0;
+    resetTemplatePickTraining();
+    var btnApply=$('btnTemplatePickApply');
+    if(btnApply){
+      btnApply.disabled=false;
+      btnApply.textContent=t('homeTestPickApplyAndTest');
+    }
   }
 
   function renderTemplatePickCards(){
@@ -262,13 +359,17 @@
   function openTemplatePick(){
     var overlay=templatePickOverlayEl();
     if(!overlay) return;
+    resetTemplatePickTraining();
     renderTemplatePickCards();
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden','false');
     var live=templatePickLiveEl();
     if(live) live.hidden=true;
     var btnApply=$('btnTemplatePickApply');
-    if(btnApply) btnApply.disabled=false;
+    if(btnApply){
+      btnApply.disabled=false;
+      btnApply.textContent=t('homeTestPickApplyAndTest');
+    }
   }
 
   function templatePickSelectedIds(){
@@ -310,18 +411,59 @@
     if(!ok&&global.OneToneApp&&global.OneToneApp.toast){
       global.OneToneApp.toast(t('onboardTryTestUnavailable'));
     }
+    if(!ok){
+      closeTemplatePick();
+      return;
+    }
+    templatePickTraining={
+      mappingId:mappingId,
+      styleId:styleId,
+      triggerMode:patchTriggerMode,
+      activatedAt:0,
+      completed:false
+    };
+    rememberTemplatePickHabit(mappingId,{
+      styleId:styleId,
+      triggerMode:patchTriggerMode,
+      savedAt:Date.now(),
+      completedAt:0
+    });
+    var btnApply=$('btnTemplatePickApply');
+    if(btnApply){
+      btnApply.disabled=true;
+      btnApply.textContent=t('homeTestPickWaiting');
+    }
+    if(global.OneToneApp&&global.OneToneApp.toast){
+      global.OneToneApp.toast(t('homeTestPickSavedPrompt'));
+    }
 
     // Show a live “press your trigger key now” guide instead of the old test modal.
     var live=templatePickLiveEl();
     if(live) live.hidden=false;
     function updateLive(){
       var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot?global.OneToneVoiceUiState.snapshot():{};
+      var summary=global.OneToneVoiceHomeSummary&&global.OneToneVoiceHomeSummary.compute
+        ?global.OneToneVoiceHomeSummary.compute()
+        :{ dictating:false };
       var end=(snap&&snap.end)||{};
       var state=String(end.state||'idle');
       var dot=templatePickLiveDotEl();
       var textEl=templatePickLiveTextEl();
       var hintEl=templatePickLiveHintEl();
       var dictating=state==='dictating'||state==='stopping'||state==='committing';
+      var liveParts=dictationTextParts(summary);
+      var sampleText=((liveParts&&liveParts.finalized)||'').trim();
+      if(templatePickTraining&&summary&&summary.dictating&&!templatePickTraining.activatedAt){
+        templatePickTraining.activatedAt=Date.now();
+        rememberTemplatePickHabit(templatePickTraining.mappingId,{
+          styleId:templatePickTraining.styleId,
+          triggerMode:templatePickTraining.triggerMode,
+          activatedAt:templatePickTraining.activatedAt
+        });
+      }
+      if(templatePickTraining&&sampleText){
+        rememberTemplatePickSample(templatePickTraining.mappingId,templatePickTraining.styleId,sampleText);
+      }
       if(dot) dot.classList.toggle('is-on',dictating);
       if(textEl){
         if(state==='dictating') textEl.textContent=t('homeTestLiveDictating');
@@ -339,6 +481,9 @@
         }else{
           hintEl.textContent=t('homeTestLiveHintTap');
         }
+      }
+      if(templatePickTraining&&(state==='sent'||(templatePickTraining.activatedAt&&sampleText))){
+        finalizeTemplatePickTraining(sampleText);
       }
     }
     updateLive();
@@ -528,6 +673,15 @@
     if(el) el.textContent=text||'';
   }
 
+  function updateTestSendEntryLabel(){
+    var btn=$('vp9BtnTestSend');
+    if(!btn) return;
+    var m=homeActiveMapping();
+    var mappingId=m&&m.id?String(m.id):'';
+    var ready=mappingId&&templatePickHabitReady(mappingId);
+    btn.textContent=ready?t('homeLiveTestEndSend'):t('homeTestPickEntry');
+  }
+
   function renderEmptyState(liveEl,trigger){
     if(!liveEl) return;
     var trig=trigger||'';
@@ -629,6 +783,7 @@
     renderTray(vm);
     renderStatusBar(vm);
     renderHabits(vm);
+    updateTestSendEntryLabel();
     var endBtn=$('vp9BtnEnd');
     if(endBtn) endBtn.disabled=vm.vpState!=='DICTATING'&&!vm.summary.dictating;
   }
@@ -680,6 +835,12 @@
     var btnTestSend=$('vp9BtnTestSend');
     if(btnTestSend){
       btnTestSend.onclick=function(){
+        var m=homeActiveMapping();
+        var mappingId=m&&m.id?String(m.id):'';
+        if(mappingId&&templatePickHabitReady(mappingId)){
+          runHomeTestSend(mappingId);
+          return;
+        }
         openTemplatePick();
       };
     }

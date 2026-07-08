@@ -4245,6 +4245,12 @@
       border:none;background:linear-gradient(180deg,var(--primary-glow) 0%,var(--primary) 100%);
       color:var(--on-primary);font-weight:700;box-shadow:var(--shadow-button);
     }
+    .btn.primary:disabled{
+      border:none;
+      background:linear-gradient(180deg,rgba(42,156,196,.22) 0%, rgba(42,156,196,.12) 100%);
+      color:rgba(18,38,63,.52);
+      box-shadow:none;
+    }
     .btn.primary:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px)}
     .btn.primary:active:not(:disabled){transform:scale(0.98) translateY(0)}
     .btn.primary.is-recording{animation:btn-recording-pulse 1.4s ease-in-out infinite}
