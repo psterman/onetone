@@ -87,19 +87,42 @@
     return false;
   }
 
+  function containsLeftMouseToken(v){
+    var raw=String(v||'').trim();
+    if(!raw) return false;
+    if(isLeftMouseToken(raw)) return true;
+    if(raw.indexOf('+')<0) return false;
+    return raw.split('+').some(function(part){
+      return isLeftMouseToken(part);
+    });
+  }
+
+  function isAllowedTriggerKey(key){
+    var normalized=normalizeTriggerKey(key);
+    if(!String(normalized||'').trim()) return false;
+    if(containsLeftMouseToken(key)) return false;
+    return !containsLeftMouseToken(normalized);
+  }
+
+  function isAllowedTargetKey(key){
+    var raw=String(key||'').trim();
+    if(!raw) return false;
+    return !containsLeftMouseToken(raw);
+  }
+
   function shouldIgnoreTriggerLeftClickCapture(key, sourceKey, source){
     if(Date.now()>triggerLeftClickIgnoreUntil) return false;
-    if(isLeftMouseToken(key)||isLeftMouseToken(sourceKey)) return true;
+    if(containsLeftMouseToken(key)||containsLeftMouseToken(sourceKey)) return true;
     var evt=source&&Array.isArray(source.rawEvents)&&source.rawEvents[0];
-    if(evt&&isLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
+    if(evt&&containsLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
     return false;
   }
 
   function shouldIgnoreTargetLeftClickCapture(key, sourceKey, source){
     if(Date.now()>targetLeftClickIgnoreUntil) return false;
-    if(isLeftMouseToken(key)||isLeftMouseToken(sourceKey)) return true;
+    if(containsLeftMouseToken(key)||containsLeftMouseToken(sourceKey)) return true;
     var evt=source&&Array.isArray(source.rawEvents)&&source.rawEvents[0];
-    if(evt&&isLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
+    if(evt&&containsLeftMouseToken(evt.hotkey||evt.key||evt.code||'')) return true;
     return false;
   }
 
@@ -108,6 +131,9 @@
     buildPeripheralTriggerSource:buildPeripheralTriggerSource,
     normalizeTriggerKey:normalizeTriggerKey,
     normalizeMediaTargetKey:normalizeMediaTargetKey,
+    containsLeftMouseToken:containsLeftMouseToken,
+    isAllowedTriggerKey:isAllowedTriggerKey,
+    isAllowedTargetKey:isAllowedTargetKey,
     armTriggerLeftClickIgnore:armTriggerLeftClickIgnore,
     armTargetLeftClickIgnore:armTargetLeftClickIgnore,
     shouldIgnoreTriggerLeftClickCapture:shouldIgnoreTriggerLeftClickCapture,

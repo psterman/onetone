@@ -104,6 +104,7 @@ pub struct AppState {
     pub update_installing: Mutex<bool>,
     pub gesture: Mutex<press_gesture::GestureTracker>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
+    pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
@@ -196,6 +197,7 @@ pub fn run() {
         update_installing: Mutex::new(false),
         gesture: Mutex::new(press_gesture::GestureTracker::new()),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
+        trigger_compat_probe: Mutex::new(None),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
@@ -422,11 +424,15 @@ pub fn run() {
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
 
+                    ipc::poll_trigger_compat_probe(&state2, &win2);
+
                     {
                         let mgr_opt = state2.hotkey_mgr.lock();
                         if let Some(mgr) = mgr_opt.as_ref() {
                             while let Some(obs) = mgr.try_recv_obs() {
-                                ipc::handle_input_obs_event(&state2, &app2, obs);
+                                if !ipc::note_trigger_compat_obs(&state2, &obs) {
+                                    ipc::handle_input_obs_event(&state2, &app2, obs);
+                                }
                             }
                         }
                     }
@@ -435,7 +441,11 @@ pub fn run() {
                         let cfg = state2.cfg.lock();
                         let mut gesture = state2.gesture.lock();
                         gesture.expire_double_waits(std::time::Instant::now());
-                        let long_fires = gesture.poll_long_press(&cfg, std::time::Instant::now());
+                        let long_fires = if ipc::trigger_compat_probe_active(&state2) {
+                            Vec::new()
+                        } else {
+                            gesture.poll_long_press(&cfg, std::time::Instant::now())
+                        };
                         drop(gesture);
                         drop(cfg);
                         for key in long_fires {
@@ -482,6 +492,11 @@ pub fn run() {
                         continue;
                     }
 
+                    if ipc::trigger_compat_probe_active(&state2) {
+                        ipc::handle_trigger_compat_probe(&state2, &win2, &key_name);
+                        continue;
+                    }
+
                     if *state2.paused.lock() {
                         continue;
                     }
@@ -512,6 +527,8 @@ pub fn run() {
             ipc::cmd_scheme_select,
             ipc::cmd_start_recording,
             ipc::cmd_stop_recording,
+            ipc::cmd_start_trigger_compat_probe,
+            ipc::cmd_stop_trigger_compat_probe,
             ipc::cmd_pause,
             ipc::cmd_resume,
             ipc::cmd_request_runtime,

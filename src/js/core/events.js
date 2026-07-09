@@ -43,6 +43,8 @@
     else if(type==='mvp_scheme_select')bridgeInvoke('cmd_scheme_select',{mappingId:msg.mappingId||''});
     else if(type==='mvp_start_recording')bridgeInvoke('cmd_start_recording',{mappingId:msg.mappingId||'',mode:msg.mode||'trigger'});
     else if(type==='mvp_stop_recording')bridgeInvoke('cmd_stop_recording',{});
+    else if(type==='mvp_start_trigger_compat_probe')bridgeInvoke('cmd_start_trigger_compat_probe',{mappingId:msg.mappingId||''});
+    else if(type==='mvp_stop_trigger_compat_probe')bridgeInvoke('cmd_stop_trigger_compat_probe',{});
     else if(type==='mvp_mapping_toggle')bridgeInvoke('cmd_mapping_toggle',{id:msg.id,enabled:!!msg.enabled});
     else if(type==='mvp_mapping_delete')bridgeInvoke('cmd_mapping_delete',{id:msg.id});
     else if(type==='mvp_mapping_duplicate')bridgeInvoke('cmd_mapping_duplicate',{id:msg.id});

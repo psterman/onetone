@@ -243,6 +243,8 @@
               armTriggerLeftClickIgnore:d.armTriggerLeftClickIgnore,
               armTargetLeftClickIgnore:d.armTargetLeftClickIgnore,
               isAllowedTriggerKey:d.isAllowedTriggerKey,
+              isAllowedTargetKey:d.isAllowedTargetKey,
+              containsLeftMouseToken:d.containsLeftMouseToken,
               sanitizeTargetCombo:d.sanitizeTargetCombo,
               normalizeMediaTargetKey:d.normalizeMediaTargetKey,
               maybeEnableMappingAfterComplete:d.maybeEnableMappingAfterComplete,

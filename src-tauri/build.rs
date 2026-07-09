@@ -21,6 +21,8 @@ fn main() {
         "cmd_scheme_select",
         "cmd_start_recording",
         "cmd_stop_recording",
+        "cmd_start_trigger_compat_probe",
+        "cmd_stop_trigger_compat_probe",
         "cmd_pause",
         "cmd_resume",
         "cmd_request_runtime",

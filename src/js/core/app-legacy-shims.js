@@ -95,6 +95,8 @@
     function armTargetLeftClickIgnore(ms){ return OneToneAppKeyUtils.armTargetLeftClickIgnore(ms); }
     function shouldIgnoreTriggerLeftClickCapture(key,sourceKey,source){ return OneToneAppKeyUtils.shouldIgnoreTriggerLeftClickCapture(key,sourceKey,source); }
     function shouldIgnoreTargetLeftClickCapture(key,sourceKey,source){ return OneToneAppKeyUtils.shouldIgnoreTargetLeftClickCapture(key,sourceKey,source); }
+    function isAllowedTargetKey(key){ return OneToneAppKeyUtils.isAllowedTargetKey(key); }
+    function containsLeftMouseToken(key){ return OneToneAppKeyUtils.containsLeftMouseToken(key); }
     
     function renderKeyFinishFlowPanel(){ return OneToneKeyFinishFlowRender.renderKeyFinishFlowPanel(); }
     function focusSchemeEditStep(step){ return OneToneKeyFinishFlowRender.focusSchemeEditStep(step); }
@@ -409,7 +411,7 @@
     function ensureNotificationPermission(){ return OneToneSchemeSwitchFeedback.ensureNotificationPermission(); }
     
     function isAllowedTriggerKey(key){
-      return !!String(normalizeTriggerKey(key)||'').trim();
+      return OneToneAppKeyUtils.isAllowedTriggerKey(key);
     }
     
     function hasCompleteMappings(){
@@ -509,6 +511,8 @@
       initHomeGuide:initHomeGuide,
       installAppUpdate:installAppUpdate,
       isAllowedTriggerKey:isAllowedTriggerKey,
+      isAllowedTargetKey:isAllowedTargetKey,
+      containsLeftMouseToken:containsLeftMouseToken,
       isAutoTriggerMapping:isAutoTriggerMapping,
       isCurrentDraftComplete:isCurrentDraftComplete,
       isDraftMapping:isDraftMapping,

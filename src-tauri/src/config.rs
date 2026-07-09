@@ -885,7 +885,21 @@ pub fn canonical_trigger(key: &str) -> String {
 }
 
 pub fn is_allowed_trigger(key: &str) -> bool {
-    !canonical_trigger(key).trim().is_empty()
+    let canonical = canonical_trigger(key);
+    !canonical.trim().is_empty() && !contains_left_mouse_token(&canonical)
+}
+
+pub fn contains_left_mouse_token(key: &str) -> bool {
+    key.split('+').any(|part| {
+        matches!(
+            canonical_trigger(part.trim()).as_str(),
+            "LButton" | "Mouse_Left" | "MouseLeft"
+        )
+    })
+}
+
+pub fn is_allowed_target_shortcut(key: &str) -> bool {
+    !key.trim().is_empty() && !contains_left_mouse_token(key)
 }
 
 pub fn physical_bindings(trigger_key: &str) -> Vec<String> {
@@ -1109,13 +1123,17 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
 pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     let tk = canonical_trigger(&m.trigger_key);
     if tk.contains('+') {
-        return vec![tk];
+        if is_allowed_trigger(&tk) {
+            return vec![tk];
+        }
+        return vec![];
     }
     if let Some(src) = &m.trigger_source {
         let from_raw: Vec<String> = src
             .raw_events
             .iter()
             .filter_map(hotkey_from_raw_event)
+            .filter(|k| is_allowed_trigger(k))
             .collect();
         if !from_raw.is_empty() {
             let mut out = Vec::new();
@@ -1129,6 +1147,9 @@ pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     }
     if canonical_trigger(&m.trigger_key) == "AutoTrigger" {
         return vec!["Volume_Down".into(), "Volume_Up".into()];
+    }
+    if !is_allowed_trigger(&tk) {
+        return vec![];
     }
     physical_bindings(&m.trigger_key)
 }

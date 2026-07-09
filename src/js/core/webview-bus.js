@@ -56,6 +56,16 @@
       if(msg.type==='mvp_trigger_test_fired'){
         hooks.onboardEmit('trigger_test_fired',msg);
       }
+      if(msg.type==='mvp_trigger_compat_result'){
+        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onModeCompatResult){
+          global.OneToneHabitTriggerSetup.onModeCompatResult(msg);
+        }
+      }
+      if(msg.type==='mvp_trigger_compat_seen'){
+        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onModeCompatSeen){
+          global.OneToneHabitTriggerSetup.onModeCompatSeen(msg);
+        }
+      }
       if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; hooks.render(); }
       if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; hooks.render(); }
       function applyRuntimeFields(msg){

@@ -6,6 +6,33 @@
   function Rec(){ return global.OneToneMappingRecording; }
   function hooks(){ return global.__vp_mapping_recording_input_hooks__ || {}; }
   var cap={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
+  function containsLeftMouse(key){
+    var util=global.OneToneAppKeyUtils;
+    if(util&&util.containsLeftMouseToken) return util.containsLeftMouseToken(key);
+    return false;
+  }
+  function rejectLeftMouseRecording(mode, key, sourceKey, source){
+    key=String(key||'').trim();
+    sourceKey=String(sourceKey||'').trim();
+    var hasLeft=containsLeftMouse(key)||containsLeftMouse(sourceKey);
+    if(!hasLeft){
+      var evt=source&&Array.isArray(source.rawEvents)&&source.rawEvents[0];
+      hasLeft=!!(evt&&containsLeftMouse(evt.hotkey||evt.key||evt.code||''));
+    }
+    if(!hasLeft) return false;
+    if(mode==='trigger'&&hooks().shouldIgnoreTriggerLeftClickCapture(key,sourceKey,source)) return true;
+    if(mode==='target'&&hooks().shouldIgnoreTargetLeftClickCapture(key,sourceKey,source)) return true;
+    hooks().toast(t('leftMouseRejected'));
+    hooks().pushLog('[record] reject left click as '+mode);
+    if(mode==='trigger'){
+      Rec().updatePreview('trigger','');
+      if($('triggerState')) $('triggerState').textContent=t('triggerRecordHint');
+    }else{
+      Rec().updatePreview('target','');
+      if($('targetState')) $('targetState').textContent=t('targetRecordHint');
+    }
+    return true;
+  }
   function webEventToPhysicalKey(key,code){
     const media=hooks().normalizeMediaTargetKey(code,key);
     if(media) return media;
@@ -286,6 +313,7 @@
     if(!btn) return;
     const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
     const combo=sanitizeTargetCombo(normalizeTargetCombination(mods, btn, cap.modSide));
+    if(rejectLeftMouseRecording(Rec().mode(), combo, btn, null)) return;
     if(Rec().mode()==='trigger'){
     $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
     Rec().finishFrontendTrigger(combo);
@@ -322,7 +350,8 @@
     if(!msg||typeof msg!=='object') return false;
     const type=msg.type||'';
     if(type==='mvp_record_rejected'){
-    hooks().toast(t('whitelistRejected'));
+    var reason=String(msg.reason||'');
+    hooks().toast(reason.indexOf('left_mouse')>=0||reason.indexOf('mouse')>=0?t('leftMouseRejected'):t('whitelistRejected'));
     Rec().cancel();
     return true;
     }
@@ -330,17 +359,13 @@
     if(Rec().mode()!=='none') hooks().playSoundCue('record');
     const seen=msg.key||'?';
     if(Rec().mode()==='trigger'){
-    if(hooks().shouldIgnoreTriggerLeftClickCapture(seen, seen, null)){
-    Rec().updatePreview('trigger','');
-    $('triggerState').textContent=t('triggerRecordHint');
-    hooks().pushLog('[record] ignore trigger-start left click');
-    return true;
-    }
+    if(rejectLeftMouseRecording('trigger', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('trigger',seen);
     Rec().updatePreview('trigger',preview);
     Rec().notifyOnboardingPreview('trigger',preview);
     $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
     }else if(Rec().mode()==='target'){
+    if(rejectLeftMouseRecording('target', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('target',seen);
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
@@ -363,6 +388,7 @@
     Rec().notifyOnboardingPreview('trigger',preview);
     $('triggerState').textContent=t('comboHint')+hooks().friendlyKeyName(preview);
     }else if(Rec().mode()==='target'){
+    if(rejectLeftMouseRecording('target', seen, seen, null)) return true;
     const preview=Rec().previewCaptureKey('target',seen);
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
@@ -375,10 +401,7 @@
     const captureMode=msg.mode||'trigger';
     if(captureMode==='trigger'){
     if(Rec().mode()==='trigger'){
-    if(hooks().shouldIgnoreTriggerLeftClickCapture(key, msg.sourceKey||'', msg.source||null)){
-    hooks().pushLog('[record] ignore transient left click');
-    return true;
-    }
+    if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
     return true;
     }
@@ -397,10 +420,7 @@
     }
     if(captureMode==='target'){
     if(Rec().mode()==='target'){
-    if(hooks().shouldIgnoreTargetLeftClickCapture(key, msg.sourceKey||'', msg.source||null)){
-    hooks().pushLog('[record] ignore transient left click');
-    return true;
-    }
+    if(rejectLeftMouseRecording('target', key, msg.sourceKey||'', msg.source||null)) return true;
     const sanitized=sanitizeTargetCombo(key);
     if(sanitized) Rec().finishTarget(sanitized, msg.mappingId||'');
     }else if(Rec().applyBackendKeyCapture(msg)){

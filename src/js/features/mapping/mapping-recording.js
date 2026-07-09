@@ -505,6 +505,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(mode==='target'){
       const combo=hooks().sanitizeTargetCombo(key);
       if(!combo) return false;
+      if(!hooks().isAllowedTargetKey(combo)){ return false; }
       if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
         global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m, combo);
       }else{
@@ -513,7 +514,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(m.targetKey);
     }else{
       const trig=hooks().normalizeTriggerKey(key);
+      const rawSourceKey=String(msg.sourceKey||'').trim();
+      if(!hooks().isAllowedTriggerKey(key||trig)) return false;
+      if(rawSourceKey&&!hooks().isAllowedTriggerKey(rawSourceKey)) return false;
       if(!hooks().isAllowedTriggerKey(trig)) return false;
+      if(hooks().shouldIgnoreTriggerLeftClickCapture(key||trig,rawSourceKey||trig,msg.source||null)) return false;
       m.triggerKey=trig;
       if(msg.source) m.triggerSource=msg.source;
       else if(trig!=='AutoTrigger') m.triggerSource=null;
@@ -543,11 +548,24 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       ||blob.indexOf('launch_')>=0||/^f1[3-9]$|^f2[0-4]$/.test(blob.replace(/\s/g,''));
   }
 
+  function shortcutRejectedToast(key){
+    const util=global.OneToneAppKeyUtils;
+    if(util&&util.containsLeftMouseToken&&util.containsLeftMouseToken(key)){
+      hooks().toast(t('leftMouseRejected'));
+    }else{
+      hooks().toast(t('triggerRejected'));
+    }
+  }
+
   function finishTriggerCapture(key, source, sourceKey, sourceTime){
     if(rec.mode!=='trigger') return false;
+    const rawKey=String(key||'').trim();
+    const rawSourceKey=String(sourceKey||'').trim();
     const k=hooks().normalizeTriggerKey(key);
-    if(hooks().shouldIgnoreTriggerLeftClickCapture(k,sourceKey||k,source)) return false;
-    if(!hooks().isAllowedTriggerKey(k)){ hooks().toast(t('triggerRejected')); return false; }
+    if(hooks().shouldIgnoreTriggerLeftClickCapture(rawKey||k,rawSourceKey||rawKey||k,source)) return false;
+    if(!hooks().isAllowedTriggerKey(rawKey||k)){ shortcutRejectedToast(rawKey||k); return false; }
+    if(rawSourceKey&&!hooks().isAllowedTriggerKey(rawSourceKey)){ shortcutRejectedToast(rawSourceKey); return false; }
+    if(!hooks().isAllowedTriggerKey(k)){ shortcutRejectedToast(k); return false; }
     const m=OneToneMappingCore.recording();
     if(!m) return false;
     m.triggerKey=k;
@@ -617,6 +635,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       hooks().pushLog('[record] ignore trigger-start left click');
       return;
     }
+    if(!hooks().isAllowedTriggerKey(physical)){
+      shortcutRejectedToast(physical);
+      return;
+    }
     hooks().armTriggerPeripheralGuard(450);
     const source=hooks().buildPeripheralTriggerSource(physical, device);
     const display=(physical==='Volume_Up'||physical==='Volume_Down'||physical==='Volume_Mute')?'AutoTrigger':physical;
@@ -633,6 +655,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(rec.mode!=='target') return false;
     combo=hooks().sanitizeTargetCombo(combo);
     if(!combo) return false;
+    if(!hooks().isAllowedTargetKey(combo)){
+      hooks().toast(t('leftMouseRejected'));
+      return false;
+    }
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
     if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
@@ -684,6 +710,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(rec.mode!=='target') return false;
     combo=hooks().sanitizeTargetCombo(combo);
     if(!combo) return false;
+    if(!hooks().isAllowedTargetKey(combo)){
+      hooks().toast(t('leftMouseRejected'));
+      return false;
+    }
     if(hooks().shouldIgnoreTargetLeftClickCapture(combo,combo,null)) return false;
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;

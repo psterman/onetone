@@ -169,6 +169,19 @@
         var sapi=w.sapi||{};
         return sapi.lastHeard||'';
       },
+      getPracticeHeardRaw:function(mode){
+        var w=hooks().voiceUiSnapshot().wake||{};
+        var endMode=mode==='end';
+        if(w.engine==='vosk'){
+          var vosk=w.vosk||{};
+          if(endMode){
+            return String(vosk.lastPartial||vosk.lastFinal||'').trim();
+          }
+          return String(vosk.lastDetectedPhrase||vosk.lastFinal||vosk.lastPartial||'').trim();
+        }
+        var sapi=w.sapi||{};
+        return String(sapi.lastHeard||'').trim();
+      },
       enableVoiceWakeForPractice:function(){
         if(hooks().homeVoiceEngineOn()!=='off') return Promise.resolve(true);
         hooks().markVoiceEngineBootHandled();
@@ -190,6 +203,20 @@
           hooks().renderHomeLiveZone();
           hooks().renderHome();
           return !!(res&&res.enabled);
+        });
+      },
+      enableVoicePractice:function(opts){
+        opts=opts||{};
+        var self=this;
+        var tasks=[];
+        if(opts.mode==='end'){
+          tasks.push(hooks().vpInvoke('cmd_voice_end_set_enabled',{enabled:true}).catch(function(){ return null; }));
+        }
+        return Promise.all(tasks).then(function(){
+          if(hooks().homeVoiceEngineOn()==='off'){
+            return self.enableVoiceWakeForPractice();
+          }
+          return true;
         });
       },
       openPhrasePractice:function(opts){

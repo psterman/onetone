@@ -406,6 +406,197 @@ impl GestureTracker {
     }
 }
 
+pub const TRIGGER_COMPAT_PULSE_MS: u64 = 1500;
+pub const TRIGGER_COMPAT_TOTAL_MS: u64 = 8000;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerCompatVerdict {
+    HoldCapable,
+    PulseOnly,
+    Unrecognized,
+}
+
+impl TriggerCompatVerdict {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TriggerCompatVerdict::HoldCapable => "hold_capable",
+            TriggerCompatVerdict::PulseOnly => "pulse_only",
+            TriggerCompatVerdict::Unrecognized => "unrecognized",
+        }
+    }
+
+    pub fn recommended_mode(self) -> Option<&'static str> {
+        match self {
+            TriggerCompatVerdict::HoldCapable => Some("hold"),
+            TriggerCompatVerdict::PulseOnly => Some("tap"),
+            TriggerCompatVerdict::Unrecognized => None,
+        }
+    }
+
+    pub fn viable_modes(self) -> &'static [&'static str] {
+        match self {
+            TriggerCompatVerdict::HoldCapable => &["hold", "tap", "double"],
+            TriggerCompatVerdict::PulseOnly => &["tap", "double"],
+            TriggerCompatVerdict::Unrecognized => &[],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerCompatRisk {
+    None,
+    LeftMouse,
+    ScrollWheel,
+    VendorMacro,
+}
+
+impl TriggerCompatRisk {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TriggerCompatRisk::None => "none",
+            TriggerCompatRisk::LeftMouse => "left_mouse",
+            TriggerCompatRisk::ScrollWheel => "scroll_wheel",
+            TriggerCompatRisk::VendorMacro => "vendor_macro",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TriggerCompatResult {
+    pub verdict: TriggerCompatVerdict,
+    pub risk: TriggerCompatRisk,
+    pub key: String,
+    pub device: Option<String>,
+    pub saw_keydown: bool,
+    pub saw_keyup: bool,
+}
+
+pub fn trigger_compat_risk_for_key(key: &str) -> TriggerCompatRisk {
+    match key {
+        "LButton" => TriggerCompatRisk::LeftMouse,
+        "MButton" => TriggerCompatRisk::ScrollWheel,
+        _ => TriggerCompatRisk::None,
+    }
+}
+
+pub fn trigger_compat_event_matches(bindings: &[String], event: &PhysicalKeyEvent) -> bool {
+    resolve_binding_in_list(bindings, &event.key, event.device.as_deref()).is_some()
+}
+
+/// Classifies whether a bound trigger can support hold-to-talk (keydown + keyup) or pulse-only.
+#[derive(Debug)]
+pub struct TriggerCompatClassifier {
+    started_at: Instant,
+    matched_key: Option<String>,
+    matched_device: Option<String>,
+    keydown_at: Option<Instant>,
+    saw_keydown: bool,
+    saw_keyup: bool,
+    risk: TriggerCompatRisk,
+    finished: bool,
+}
+
+impl TriggerCompatClassifier {
+    pub fn new(now: Instant) -> Self {
+        Self {
+            started_at: now,
+            matched_key: None,
+            matched_device: None,
+            keydown_at: None,
+            saw_keydown: false,
+            saw_keyup: false,
+            risk: TriggerCompatRisk::None,
+            finished: false,
+        }
+    }
+
+    pub fn note_vendor_macro_risk(&mut self) {
+        if self.risk == TriggerCompatRisk::None {
+            self.risk = TriggerCompatRisk::VendorMacro;
+        }
+    }
+
+    fn merge_risk(&mut self, key: &str) {
+        let incoming = trigger_compat_risk_for_key(key);
+        if incoming != TriggerCompatRisk::None {
+            self.risk = incoming;
+        }
+    }
+
+    fn same_slot(&self, key: &str, device: Option<&str>) -> bool {
+        self.matched_key.as_deref() == Some(key) && self.matched_device.as_deref() == device
+    }
+
+    fn store_slot(&mut self, key: &str, device: Option<&str>) {
+        self.matched_key = Some(key.to_string());
+        self.matched_device = device.map(str::to_string);
+        self.merge_risk(key);
+    }
+
+    fn build_result(&self, verdict: TriggerCompatVerdict) -> TriggerCompatResult {
+        TriggerCompatResult {
+            verdict,
+            risk: self.risk,
+            key: self.matched_key.clone().unwrap_or_default(),
+            device: self.matched_device.clone(),
+            saw_keydown: self.saw_keydown,
+            saw_keyup: self.saw_keyup,
+        }
+    }
+
+    fn complete(&mut self, verdict: TriggerCompatVerdict) -> TriggerCompatResult {
+        self.finished = true;
+        self.build_result(verdict)
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.finished
+    }
+
+    pub fn on_event(
+        &mut self,
+        event: &PhysicalKeyEvent,
+        bindings: &[String],
+        now: Instant,
+    ) -> Option<TriggerCompatResult> {
+        if self.finished || !trigger_compat_event_matches(bindings, event) {
+            return None;
+        }
+        if event.is_keyup {
+            if !self.saw_keydown || !self.same_slot(&event.key, event.device.as_deref()) {
+                return None;
+            }
+            self.saw_keyup = true;
+            return Some(self.complete(TriggerCompatVerdict::HoldCapable));
+        }
+        if self.saw_keydown {
+            return None;
+        }
+        self.store_slot(&event.key, event.device.as_deref());
+        self.saw_keydown = true;
+        self.keydown_at = Some(now);
+        None
+    }
+
+    pub fn poll(&mut self, now: Instant) -> Option<TriggerCompatResult> {
+        if self.finished {
+            return None;
+        }
+        if self.saw_keydown {
+            let started = self.keydown_at.unwrap_or(self.started_at);
+            if !self.saw_keyup && now.duration_since(started) >= Duration::from_millis(TRIGGER_COMPAT_PULSE_MS)
+            {
+                return Some(self.complete(TriggerCompatVerdict::PulseOnly));
+            }
+            return None;
+        }
+        if now.duration_since(self.started_at) >= Duration::from_millis(TRIGGER_COMPAT_TOTAL_MS) {
+            return Some(self.complete(TriggerCompatVerdict::Unrecognized));
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -450,5 +641,78 @@ mod tests {
         let event = parse_physical_event(&wire);
         assert_eq!(event.key, "Gamepad_A");
         assert_eq!(event.device.as_deref(), Some("xinput:0"));
+    }
+
+    #[test]
+    fn compat_keydown_keyup_is_hold_capable() {
+        let bindings = vec!["RAlt".into()];
+        let start = Instant::now();
+        let mut classifier = TriggerCompatClassifier::new(start);
+        let down = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "RAlt".into(),
+        };
+        assert!(classifier.on_event(&down, &bindings, start).is_none());
+        let up = PhysicalKeyEvent {
+            is_keyup: true,
+            device: None,
+            key: "RAlt".into(),
+        };
+        let result = classifier
+            .on_event(&up, &bindings, start + Duration::from_millis(80))
+            .expect("keyup should complete");
+        assert_eq!(result.verdict, TriggerCompatVerdict::HoldCapable);
+        assert_eq!(result.verdict.recommended_mode(), Some("hold"));
+        assert!(result.verdict.viable_modes().contains(&"double"));
+    }
+
+    #[test]
+    fn compat_keydown_only_is_pulse_only() {
+        let bindings = vec!["Volume_Up".into()];
+        let start = Instant::now();
+        let mut classifier = TriggerCompatClassifier::new(start);
+        let down = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "Volume_Up".into(),
+        };
+        assert!(classifier.on_event(&down, &bindings, start).is_none());
+        let result = classifier
+            .poll(start + Duration::from_millis(TRIGGER_COMPAT_PULSE_MS + 50))
+            .expect("pulse timeout should complete");
+        assert_eq!(result.verdict, TriggerCompatVerdict::PulseOnly);
+        assert_eq!(result.verdict.recommended_mode(), Some("tap"));
+        assert_eq!(result.verdict.viable_modes(), &["tap", "double"]);
+        assert!(!result.verdict.viable_modes().contains(&"hold"));
+    }
+
+    #[test]
+    fn compat_no_input_is_unrecognized() {
+        let start = Instant::now();
+        let mut classifier = TriggerCompatClassifier::new(start);
+        let result = classifier
+            .poll(start + Duration::from_millis(TRIGGER_COMPAT_TOTAL_MS + 50))
+            .expect("total timeout should complete");
+        assert_eq!(result.verdict, TriggerCompatVerdict::Unrecognized);
+        assert!(result.verdict.recommended_mode().is_none());
+    }
+
+    #[test]
+    fn compat_left_mouse_keeps_verdict_with_risk() {
+        let bindings = vec!["LButton".into()];
+        let start = Instant::now();
+        let mut classifier = TriggerCompatClassifier::new(start);
+        let down = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "LButton".into(),
+        };
+        assert!(classifier.on_event(&down, &bindings, start).is_none());
+        let result = classifier
+            .poll(start + Duration::from_millis(TRIGGER_COMPAT_PULSE_MS + 50))
+            .expect("pulse timeout should complete");
+        assert_eq!(result.verdict, TriggerCompatVerdict::PulseOnly);
+        assert_eq!(result.risk, TriggerCompatRisk::LeftMouse);
     }
 }

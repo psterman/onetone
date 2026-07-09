@@ -1,6 +1,6 @@
 use tauri::Emitter;
 
-use crate::config::is_allowed_trigger;
+use crate::config::{is_allowed_target_shortcut, is_allowed_trigger};
 use crate::ipc::core::persist_and_rebind;
 use crate::press_gesture::RecordedGesture;
 use crate::AppState;
@@ -49,7 +49,7 @@ pub(crate) fn finish_hardware_capture(
         if !is_allowed_trigger(&captured) {
             let ack = serde_json::json!({
                 "type": "mvp_record_rejected",
-                "reason": "trigger_not_allowed",
+                "reason": "left_mouse_not_allowed",
                 "key": captured,
             });
             window.emit("to_js", &ack).ok();
@@ -67,6 +67,15 @@ pub(crate) fn finish_hardware_capture(
             );
         }
     } else {
+        if !is_allowed_target_shortcut(&captured) {
+            let ack = serde_json::json!({
+                "type": "mvp_record_rejected",
+                "reason": "left_mouse_not_allowed",
+                "key": captured,
+            });
+            window.emit("to_js", &ack).ok();
+            return;
+        }
         let mut cfg = state.cfg.lock();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == target.mapping_id) {
             m.target_key = captured.clone();

@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v3 · 大 CTA 优先</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* 主题色对齐 app.css · 清澈（浅）/ 石墨（深） */
+  :root{
+    --bg:           #FAFAFA;
+    --surface:      #FFFFFF;
+    --surface-2:    #F4F4F6;
+    --line:         #E8E8EC;
+    --line-soft:    #F0F0F3;
+    --ink:          #14171E;
+    --ink-2:        #5B6473;
+    --ink-3:        #9099A6;
+    --ink-4:        #B8BFC9;
+
+    /* 清澈 · 应用真实色 */
+    --accent:       #2a9cc4;
+    --accent-2:     #1f8fb8;
+    --accent-3:     #45b0d4;
+    --accent-soft:  #e6f7fc;
+    --accent-glow:  #5ec8e8;
+    --accent-rgb:   42,156,196;
+    --accent-ink:   #0a4a66;
+
+    --success:      #16A34A;
+    --success-soft: rgba(22,163,74,.10);
+    --warn:         #F59E0B;
+    --warn-soft:    rgba(245,158,11,.10);
+    --error:        #DC2626;
+    --error-soft:   rgba(220,38,38,.10);
+  }
+  html[data-theme="dark"]{
+    --bg:           #0F1419;
+    --surface:      #1A2436;
+    --surface-2:    #243042;
+    --line:         rgba(255,255,255,.06);
+    --line-soft:    rgba(255,255,255,.04);
+    --ink:          #E6EDF3;
+    --ink-2:        #9CA9BC;
+    --ink-3:        #6B7A91;
+    --ink-4:        #4B5567;
+
+    /* 石墨 · 应用真实色 */
+    --accent:       #5ec8e8;
+    --accent-2:     #3eb8dc;
+    --accent-3:     #7ed4ef;
+    --accent-soft:  rgba(94,200,232,.14);
+    --accent-glow:  #8ee0f4;
+    --accent-rgb:   94,200,232;
+    --accent-ink:   #B0E6F5;
+
+    --success:      #4ADE80;
+    --success-soft: rgba(74,222,128,.12);
+    --error:        #FF6B7A;
+    --error-soft:   rgba(255,107,122,.14);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s,color .2s;
+  }
+
+  /* ========== intro ========== */
+  .intro{
+    max-width:1180px;margin:0 auto;padding:48px 40px 16px;
+  }
+  .intro .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;margin-bottom:14px;
+  }
+  .intro h1{
+    font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.22;
+    margin:0 0 12px;
+  }
+  .intro .lede{
+    font-size:15px;color:var(--ink-2);max-width:780px;margin:0 0 8px;
+  }
+  .intro .refs{
+    margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;
+  }
+  .ref{
+    font-size:11.5px;color:var(--ink-2);
+    background:var(--surface);border:1px solid var(--line);
+    padding:4px 10px;border-radius:6px;
+  }
+  .ref b{color:var(--accent);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{
+    max-width:1180px;margin:24px auto 0;padding:0 40px 24px;
+  }
+  .stage-head{
+    display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  }
+  .stage-head h2{font-size:14px;font-weight:600;margin:0;}
+  .stage-head .hint{font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;}
+  .stage-head .hint b{color:var(--accent);font-weight:600;}
+
+  .window{
+    border-radius:16px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(0,0,0,.04), 0 24px 48px -16px rgba(20,23,30,.10);
+    overflow:hidden;
+    height:680px;
+    display:flex;flex-direction:column;
+    position:relative;
+  }
+
+  /* ========== Header ========== */
+  .app-header{
+    height:50px;flex:0 0 50px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .brand .logo{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 3px 10px var(--accent-glow);flex-shrink:0;
+  }
+  .brand .logo svg{width:14px;height:14px;}
+  .brand .name{font-size:13px;font-weight:600;letter-spacing:-.01em;}
+  .header-actions{display:flex;align-items:center;gap:4px;}
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;background:transparent;border:none;
+    color:var(--ink-2);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  /* ========== Hero ========== */
+  .hero{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px 24px 20px;text-align:center;
+  }
+  /* 状态徽章 — 一行、紧凑、不是主角 */
+  .ready-pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 12px 5px 10px;border-radius:999px;
+    background:var(--success-soft);
+    border:1px solid rgba(22,163,74,.20);
+    font-size:12px;font-weight:500;color:var(--success);
+    margin-bottom:24px;
+  }
+  .ready-pill.live{background:var(--accent-soft);border-color:rgba(var(--accent-rgb),.26);color:var(--accent);}
+  .ready-pill.live .dot{animation:pulse 1.4s ease-in-out infinite;}
+  .ready-pill.err{background:var(--error-soft);border-color:rgba(220,38,38,.20);color:var(--error);}
+  .ready-pill.err .dot{animation:pulse 1.0s ease-in-out infinite;}
+  .ready-pill.idle{background:var(--surface-2);border-color:var(--line);color:var(--ink-3);}
+  .ready-pill .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;flex-shrink:0;
+  }
+  .ready-pill.ok .dot{box-shadow:0 0 4px var(--success-soft);animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  /* 大标题 — 像 VSCode 欢迎页 / iA Writer Start */
+  .hero-title{
+    font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.2;
+    color:var(--ink);margin:0 0 10px;
+  }
+  .hero-sub{
+    font-size:14px;color:var(--ink-2);max-width:480px;margin:0 auto 32px;line-height:1.55;
+  }
+  .hero-sub .key{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;font-weight:600;
+    padding:2px 8px;border-radius:6px;
+    background:var(--surface-2);border:1px solid var(--line);
+    color:var(--ink);margin:0 3px;vertical-align:1px;
+  }
+
+  /* 大主 CTA — 像 Notion / Figma / Bear 的 + New */
+  .big-cta{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 28px;
+    background:var(--ink);color:var(--surface);
+    border:none;border-radius:12px;
+    font-size:15px;font-weight:600;font-family:inherit;
+    cursor:pointer;
+    box-shadow:0 4px 16px rgba(20,23,30,.12);
+    transition:.15s;
+    margin-bottom:20px;
+  }
+  html[data-theme="dark"] .big-cta{background:var(--ink);color:#0F1419;}
+  .big-cta:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 20px rgba(20,23,30,.18);
+    background:var(--accent);color:#fff;
+  }
+  .big-cta.is-listening,.big-cta.is-listening:hover{
+    background:var(--accent);color:#fff;
+    animation:ctaBreath 1.6s ease-in-out infinite;
+  }
+  .big-cta.is-dictating,.big-cta.is-dictating:hover{
+    background:var(--accent);color:#fff;
+    animation:ctaPulse 1.0s ease-in-out infinite;
+  }
+  .big-cta.is-error,.big-cta.is-error:hover{background:var(--error);color:#fff;}
+  @keyframes ctaBreath{
+    0%,100%{box-shadow:0 4px 16px var(--accent-glow);}
+    50%{box-shadow:0 4px 28px var(--accent-glow);}
+  }
+  @keyframes ctaPulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.02);}
+  }
+  .big-cta svg{width:18px;height:18px;}
+
+  /* 次要动作 — 平铺、文字按钮 */
+  .sub-actions{
+    display:flex;align-items:center;gap:4px;
+  }
+  .link-btn{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:7px 14px;border-radius:8px;
+    font-size:13px;font-weight:500;color:var(--ink-2);
+    background:transparent;border:none;cursor:pointer;font-family:inherit;
+  }
+  .link-btn:hover{color:var(--ink);background:var(--surface-2);}
+  .link-btn svg{width:13px;height:13px;}
+  .link-btn .plus{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--surface-2);color:var(--ink);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;margin-right:3px;
+  }
+
+  /* ========== Habit tab bar (底部) ========== */
+  .habit-strip{
+    flex:0 0 auto;border-top:1px solid var(--line-soft);
+    padding:10px 18px;background:var(--surface);
+  }
+  .habit-strip .lbl{
+    font-size:10px;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;
+    font-weight:600;font-family:'JetBrains Mono',monospace;margin-bottom:8px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .habit-strip .lbl .more{font-size:10px;text-transform:none;letter-spacing:0;color:var(--ink-3);}
+  .habit-strip .lbl .more:hover{color:var(--accent);cursor:pointer;}
+  .habit-pills{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .habit-pill{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:5px 11px;border-radius:8px;
+    font-size:12.5px;color:var(--ink-2);
+    background:transparent;border:1px solid transparent;
+    cursor:pointer;font-family:inherit;transition:.12s;
+  }
+  .habit-pill:hover{background:var(--surface-2);color:var(--ink);}
+  .habit-pill .d{width:5px;height:5px;border-radius:50%;background:var(--ink-4);flex-shrink:0;}
+  .habit-pill.active{
+    background:var(--ink);color:var(--surface);font-weight:500;
+    box-shadow:0 1px 3px rgba(0,0,0,.10);
+  }
+  html[data-theme="dark"] .habit-pill.active{color:#0F1419;}
+  .habit-pill.active .d{background:var(--accent);box-shadow:0 0 4px var(--accent-glow);}
+  .habit-pill.add{
+    border:1px dashed var(--line);color:var(--ink-3);
+  }
+  .habit-pill.add:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ========== Footer meta ========== */
+  .footer-strip{
+    flex:0 0 auto;height:30px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+    background:var(--bg);
+    font-size:10.5px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+  }
+  .footer-strip .l,.footer-strip .r{display:flex;align-items:center;gap:10px;}
+  .footer-strip .m{display:inline-flex;align-items:center;gap:4px;}
+  .footer-strip .m .d{width:4px;height:4px;border-radius:50%;background:var(--ink-4);}
+  .footer-strip .m.ok .d{background:var(--success);}
+
+  /* ========== Update banner (顶部悬浮，可选) ========== */
+  .update-banner{
+    position:absolute;top:60px;left:18px;right:18px;
+    background:var(--surface);border:1px solid var(--accent);
+    border-radius:10px;padding:10px 14px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 4px 16px var(--accent-glow);
+    z-index:5;
+  }
+  .update-banner .ico{
+    width:24px;height:24px;border-radius:6px;
+    background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .update-banner .ico svg{width:13px;height:13px;}
+  .update-banner .body{flex:1;text-align:left;min-width:0;}
+  .update-banner .title{font-size:12.5px;font-weight:600;}
+  .update-banner .sub{font-size:11px;color:var(--ink-3);margin-top:1px;}
+  .update-banner .actions{display:flex;gap:6px;}
+  .update-banner .actions button{
+    padding:5px 10px;border-radius:6px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font-size:11.5px;font-weight:500;cursor:pointer;font-family:inherit;
+  }
+  .update-banner .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  /* ========== state switch ========== */
+  .state-switch{
+    position:absolute;top:14px;right:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;
+  }
+  .state-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  .theme-switch{
+    position:absolute;top:14px;left:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+  }
+  .theme-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  /* ========== Comparison block ========== */
+  .compare{
+    max-width:1180px;margin:36px auto 0;padding:0 40px 80px;
+  }
+  .compare h3{
+    font-size:14px;font-weight:600;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare h3 .tag{
+    font-size:10px;font-weight:700;letter-spacing:.06em;
+    padding:2px 7px;border-radius:5px;
+  }
+  .compare h3 .tag.now{background:var(--error-soft);color:var(--error);}
+  .compare h3 .tag.next{background:var(--accent-soft);color:var(--accent);}
+  .compare .lead{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;line-height:1.55;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col ul{
+    margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-2);line-height:1.8;
+  }
+  .compare .col li b{color:var(--ink);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .intro h1{font-size:24px;}
+    .hero-title{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构 v3</div>
+  <h1>首页不是配置面板，是上手入口。</h1>
+  <p class="lede">v2 把 mapping 配置当主角 —— 视觉上跟 settings drawer 太像，用户进首页第一眼看到的是「我应该改什么」而不是「我能用它做什么」。v3 反过来：首页只有一个大 CTA —— 「试试看能不能用」，其余只保留快速切换和系统状态。</p>
+
+  <div class="refs">
+    <span class="ref">参考 · <b>VSCode</b> 欢迎页（左侧最近 + 右侧新建）</span>
+    <span class="ref">参考 · <b>Bear / iA Writer</b> 主屏（大 + 号）</span>
+    <span class="ref">参考 · <b>Notion / Figma</b> 主屏（最近 + 大 CTA）</span>
+    <span class="ref">参考 · <b>Spotify</b> 主屏（封面 + 立即播放）</span>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 互动预览</h2>
+    <div class="hint">右上切换状态 · <b>IDLE</b> / LISTENING / DICTATING / ERROR · 左上切主题</div>
+  </div>
+
+  <div class="window" id="window">
+    <!-- 主题切换 -->
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <!-- 状态切换 -->
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="IDLE">IDLE</button>
+      <button data-s="LISTENING">LISTENING</button>
+      <button data-s="DICTATING">DICTATING</button>
+      <button data-s="ERROR">ERROR</button>
+    </div>
+
+    <!-- 更新 banner (可选) -->
+    <div class="update-banner" id="updateBanner" hidden>
+      <div class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+      </div>
+      <div class="body">
+        <div class="title">检测到 v0.4.0 · 包含 12 项修复</div>
+        <div class="sub">本地配置不会受影响</div>
+      </div>
+      <div class="actions">
+        <button>稍后</button>
+        <button class="primary">查看</button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" title="设置" id="btnSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-btn" title="更多" id="btnMenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero: 大 CTA -->
+    <main class="hero">
+      <!-- 状态徽章（不是 mapping 卡，只是「能/不能用」） -->
+      <div class="ready-pill ok" id="readyPill">
+        <span class="dot"></span>
+        <span id="readyText">准备就绪 · 当前可用</span>
+      </div>
+
+      <h1 class="hero-title" id="heroTitle">试试一声能不能用</h1>
+      <p class="hero-sub" id="heroSub">
+        按住 <span class="key">音量 +</span> 不放，对准麦克风说话，松开自动发送
+      </p>
+
+      <!-- 大主 CTA -->
+      <button class="big-cta" id="bigCta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="ctaIcon"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        <span id="ctaText">开始测试</span>
+      </button>
+
+      <!-- 次要文字按钮 -->
+      <div class="sub-actions">
+        <button class="link-btn" id="btnNew">
+          <span class="plus">+</span>新建习惯
+        </button>
+        <button class="link-btn" id="btnGuide">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          使用引导
+        </button>
+      </div>
+    </main>
+
+    <!-- Habit switcher strip -->
+    <div class="habit-strip">
+      <div class="lbl">
+        <span>当前习惯</span>
+        <span class="more">管理 →</span>
+      </div>
+      <div class="habit-pills" id="habitPills">
+        <button class="habit-pill active"><span class="d"></span>默认</button>
+        <button class="habit-pill"><span class="d"></span>写作</button>
+        <button class="habit-pill"><span class="d"></span>微信</button>
+        <button class="habit-pill"><span class="d"></span>Cursor</button>
+        <button class="habit-pill add"><span style="margin-right:2px;">+</span>新建</button>
+      </div>
+    </div>
+
+    <!-- Footer meta -->
+    <div class="footer-strip">
+      <div class="l">
+        <span class="m"><span class="d"></span>v0.3.1</span>
+        <span class="m ok"><span class="d"></span>HUD 开</span>
+        <span class="m"><span class="d"></span>Vosk · cn-light</span>
+      </div>
+      <div class="r">
+        <span class="m"><span class="d"></span>内存 1.5 GB · CPU 13%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag now">v2 错位</span> 我之前做成了编辑器</h3>
+      <p class="lead">mapping 大卡片 + meta 行 + 3 个并列按钮 —— 视觉上跟 settings drawer 的设置项长得太像。用户进首页看到的是「这是一个配置展示面板」，不是「这是一个可以立即用的工具」。</p>
+      <ul>
+        <li>把 <b>mapping 配置</b>当主角（那是 settings 该展示的）</li>
+        <li>3 个并列按钮（换习惯/测一下/新建）<b>权重相等</b>，看不出哪个重要</li>
+        <li>meta 行（目标/引擎/麦）<b>信息密度太高</b>，用户第一眼看不懂</li>
+        <li>没有「立即上手」的引导感</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag next">v3 修正</span> 首页 = 上手入口</h3>
+      <p class="lead">VSCode 欢迎页 / Bear / Figma / Spotify 那一派：进来第一眼看到的是一个**明确的行动**。mapping 配置进 settings，首页只回答两件事：「现在能用吗」+「怎么用」。</p>
+      <ul>
+        <li><b>唯一大 CTA</b>「试试看能不能用」—— 14px 大按钮，立即行动</li>
+        <li>状态徽章 <b>1 行搞定</b>（绿/黄/红/灰），不解释，看色就知道</li>
+        <li><b>不展示 mapping 配置</b>，只在 footer 一行小字说「Vosk · cn-light」</li>
+        <li>次要动作退到文字按钮（+ 新建习惯 / 使用引导）</li>
+        <li>习惯切换条作为 <b>底部导航条</b>，不是顶部卡片</li>
+        <li>状态切换时 CTA 自己变化（IDLE=测试，LISTENING=说话中，DICTATING=松开结束，ERROR=重试）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  /* ========== 状态切换 ========== */
+  const STATES = {
+    IDLE:{
+      ready:'ok', readyText:'准备就绪 · 当前可用',
+      title:'试试一声能不能用',
+      sub:'按住 <span class="key">音量 +</span> 不放，对准麦克风说话，松开自动发送',
+      ctaClass:'', ctaText:'开始测试',
+      ctaIcon:'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>'
+    },
+    LISTENING:{
+      ready:'live', readyText:'听见唤醒词 · 继续说',
+      title:'正在等待你说',
+      sub:'说出 <span class="key">开始输入</span> 或继续说刚才的话',
+      ctaClass:'is-listening', ctaText:'说话中…',
+      ctaIcon:'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>'
+    },
+    DICTATING:{
+      ready:'live', readyText:'正在听写 · 12.4s',
+      title:'正在听你说话',
+      sub:'松开 <span class="key">音量 +</span> 结束 · 或说出 <span class="key">结束输入</span>',
+      ctaClass:'is-dictating', ctaText:'松开结束',
+      ctaIcon:'<rect x="6" y="6" width="12" height="12" rx="2"/>'
+    },
+    ERROR:{
+      ready:'err', readyText:'麦克风没声音',
+      title:'检测不到声音',
+      sub:'检查麦克风权限，或换一台设备试试',
+      ctaClass:'is-error', ctaText:'重试',
+      ctaIcon:'<path d="M1 1l22 22"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/>'
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const readyPill = $('#readyPill');
+  const readyText = $('#readyText');
+  const heroTitle = $('#heroTitle');
+  const heroSub = $('#heroSub');
+  const bigCta = $('#bigCta');
+  const ctaText = $('#ctaText');
+  const ctaIcon = $('#ctaIcon');
+
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      readyPill.className = 'ready-pill ' + s.ready;
+      readyText.textContent = s.readyText;
+      heroTitle.textContent = s.title;
+      heroSub.innerHTML = s.sub;
+      bigCta.className = 'big-cta ' + s.ctaClass;
+      ctaText.textContent = s.ctaText;
+      ctaIcon.innerHTML = s.ctaIcon;
+    });
+  });
+
+  /* ========== 主题切换 ========== */
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  /* ========== habit 标签切换 ========== */
+  $$('#habitPills .habit-pill:not(.add)').forEach(p=>{
+    p.addEventListener('click',()=>{
+      $$('#habitPills .habit-pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+    });
+  });
+
+  /* ========== 大 CTA 点击 ========== */
+  bigCta.addEventListener('click',()=>{
+    if(bigCta.classList.contains('is-listening')) return;
+    if(bigCta.classList.contains('is-dictating')){
+      // 模拟结束
+      $$('#stateSwitch button[data-s="IDLE"]')[0].click();
+      return;
+    }
+    // 模拟开始测试 → 切到 LISTENING
+    $$('#stateSwitch button[data-s="LISTENING"]')[0].click();
+    setTimeout(()=>{
+      if($$('#stateSwitch button.on')[0].dataset.s === 'LISTENING'){
+        $$('#stateSwitch button[data-s="DICTATING"]')[0].click();
+      }
+    }, 1800);
+  });
+
+  /* ========== 默认展示 banner (示意) ========== */
+  setTimeout(()=>{
+    const b = document.getElementById('updateBanner');
+    if(b) b.hidden = false;
+  }, 600);
+</script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v2 · 基于真实动线</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ========== tokens · 浅色（清澈，对齐应用默认） ========== */
+  :root{
+    --bg:           #FAFAFA;
+    --surface:      #FFFFFF;
+    --surface-2:    #F4F4F6;
+    --surface-3:    #ECECF0;
+    --line:         #E8E8EC;
+    --line-soft:    #F0F0F3;
+    --ink:          #14171E;
+    --ink-2:        #5B6473;
+    --ink-3:        #9099A6;
+    --ink-4:        #B8BFC9;
+    --accent:       #00A3FF;
+    --accent-2:     #0085DB;
+    --accent-soft:  rgba(0,163,255,.10);
+    --accent-glow:  rgba(0,163,255,.28);
+    --accent-ink:   #003E80;
+    --success:      #16A34A;
+    --success-soft: rgba(22,163,74,.10);
+    --warn:         #F59E0B;
+    --warn-soft:    rgba(245,158,11,.10);
+    --error:        #DC2626;
+    --error-soft:   rgba(220,38,38,.10);
+  }
+  /* 深色（石墨，对齐应用 dark theme） */
+  html[data-theme="dark"]{
+    --bg:           #0F1419;
+    --surface:      #1A2436;
+    --surface-2:    #243042;
+    --surface-3:    #2C3A4F;
+    --line:         rgba(255,255,255,.06);
+    --line-soft:    rgba(255,255,255,.04);
+    --ink:          #E6EDF3;
+    --ink-2:        #9CA9BC;
+    --ink-3:        #6B7A91;
+    --ink-4:        #4B5567;
+    --accent:       #4DB6FF;
+    --accent-2:     #0085DB;
+    --accent-soft:  rgba(77,182,255,.14);
+    --accent-glow:  rgba(77,182,255,.34);
+    --accent-ink:   #B0DBFF;
+    --success:      #4ADE80;
+    --success-soft: rgba(74,222,128,.12);
+    --error:        #FF6B7A;
+    --error-soft:   rgba(255,107,122,.14);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s,color .2s;
+  }
+
+  /* ========== 顶部说明 ========== */
+  .intro{
+    max-width:1180px;margin:0 auto;padding:48px 40px 20px;
+  }
+  .intro .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;margin-bottom:14px;
+  }
+  .intro h1{
+    font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.22;
+    margin:0 0 12px;
+  }
+  .intro .lede{
+    font-size:15px;color:var(--ink-2);max-width:760px;margin:0 0 18px;
+  }
+  .intro .ledger{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+    margin-top:18px;
+  }
+  .ledg{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:12px;
+  }
+  .ledg .k{font-size:10px;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase;font-weight:600;}
+  .ledg .v{color:var(--ink);margin-top:4px;line-height:1.45;}
+  .ledg .v b{color:var(--accent);font-weight:600;}
+  .ledg.muted{opacity:.6;}
+  .ledg.muted .v b{color:var(--ink-3);}
+
+  /* ========== mockup 容器 ========== */
+  .stage{
+    max-width:1180px;margin:24px auto 0;padding:0 40px 24px;
+  }
+  .stage-head{
+    display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  }
+  .stage-head h2{font-size:14px;font-weight:600;margin:0;color:var(--ink);}
+  .stage-head .hint{font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;}
+  .stage-head .hint b{color:var(--accent);font-weight:600;}
+
+  .window{
+    border-radius:16px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(0,0,0,.04), 0 24px 48px -16px rgba(20,23,30,.10);
+    overflow:hidden;
+    height:660px;
+    display:flex;flex-direction:column;
+    position:relative;
+  }
+
+  /* ========== Header (slim) ========== */
+  .app-header{
+    height:50px;flex:0 0 50px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;border-bottom:1px solid var(--line-soft);
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .brand .logo{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 3px 10px var(--accent-glow);flex-shrink:0;
+  }
+  .brand .logo svg{width:14px;height:14px;}
+  .brand .name{font-size:13px;font-weight:600;letter-spacing:-.01em;}
+  .brand .sub{font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;}
+  .header-actions{display:flex;align-items:center;gap:4px;}
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;background:transparent;border:none;
+    color:var(--ink-2);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  /* ========== Hero (mapping dashboard) ========== */
+  .hero{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:36px 24px 24px;position:relative;text-align:center;
+  }
+  .hero-kicker{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:999px;
+    background:var(--surface-2);border:1px solid var(--line);
+    font-size:11px;color:var(--ink-2);font-weight:500;
+    margin-bottom:18px;
+  }
+  .hero-kicker .dot{
+    width:5px;height:5px;border-radius:50%;
+  }
+  .hero-kicker .dot.ok{background:var(--success);box-shadow:0 0 4px var(--success-soft);}
+  .hero-kicker .dot.warn{background:var(--warn);box-shadow:0 0 4px var(--warn-soft);}
+  .hero-kicker .dot.err{background:var(--error);box-shadow:0 0 4px var(--error-soft);}
+  .hero-kicker .dot.idle{background:var(--ink-4);}
+
+  /* ===== mapping card · 核心 ===== */
+  .map-card{
+    width:100%;max-width:520px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 20px;
+    text-align:left;
+    box-shadow:0 1px 2px rgba(0,0,0,.03);
+    transition:border-color .25s,box-shadow .25s;
+    position:relative;
+  }
+  .map-card.is-listening{
+    border-color:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-soft);
+  }
+  .map-card.is-dictating{
+    border-color:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-soft), 0 8px 24px -4px var(--accent-glow);
+  }
+  .map-card.is-error{
+    border-color:var(--error);
+    box-shadow:0 0 0 4px var(--error-soft);
+  }
+
+  .map-card .head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .map-card .name{font-size:15px;font-weight:600;letter-spacing:-.01em;}
+  .map-card .name .star{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--accent);margin-right:8px;vertical-align:middle;
+  }
+  .map-card .badge{
+    font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    padding:3px 8px;border-radius:5px;
+    background:var(--success-soft);color:var(--success);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .map-card .badge.warn{background:var(--warn-soft);color:var(--warn);}
+  .map-card .badge.err{background:var(--error-soft);color:var(--error);}
+  .map-card .badge.dim{background:var(--surface-2);color:var(--ink-3);}
+
+  .flow{
+    display:grid;grid-template-columns:auto 1fr auto;gap:0;
+    align-items:center;
+    background:var(--surface-2);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+  .flow .key{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:54px;height:32px;padding:0 10px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:7px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;font-weight:600;color:var(--ink);
+    box-shadow:0 1px 0 rgba(0,0,0,.04);
+  }
+  .flow .arrow{
+    margin:0 12px;color:var(--ink-3);font-size:14px;
+  }
+  .flow .target{
+    display:flex;align-items:center;gap:8px;
+  }
+  .flow .target .key{
+    background:var(--accent-soft);
+    border-color:rgba(0,163,255,.32);
+    color:var(--accent-ink);
+  }
+  html[data-theme="dark"] .flow .target .key{color:var(--accent-ink);}
+  .flow .target .ime{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:11px;color:var(--ink-2);font-weight:500;
+  }
+  .flow .target .ime .ico{
+    width:14px;height:14px;border-radius:4px;background:#0078D4;
+    display:inline-flex;align-items:center;justify-content:center;
+    color:#fff;font-size:8px;font-weight:700;
+  }
+
+  .map-card .meta{
+    display:flex;flex-wrap:wrap;gap:8px;
+    font-size:12px;color:var(--ink-2);
+  }
+  .map-card .meta .pill{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:3px 9px;border-radius:6px;
+    background:var(--surface-2);
+    font-size:11.5px;
+  }
+  .map-card .meta .pill .k{color:var(--ink-3);}
+  .map-card .meta .pill .v{color:var(--ink);font-weight:500;font-family:'JetBrains Mono',monospace;}
+  .map-card .meta .pill .v.hi{color:var(--accent);}
+
+  /* meta row (under card) */
+  .run-meta{
+    margin-top:18px;
+    display:flex;justify-content:center;gap:14px;flex-wrap:wrap;
+    font-size:11.5px;color:var(--ink-3);
+    font-family:'JetBrains Mono',monospace;letter-spacing:-.005em;
+  }
+  .run-meta .m{display:inline-flex;align-items:center;gap:5px;}
+  .run-meta .m .d{width:4px;height:4px;border-radius:50%;background:var(--ink-4);}
+  .run-meta .m.ok .d{background:var(--success);box-shadow:0 0 4px var(--success-soft);}
+  .run-meta .m.err .d{background:var(--error);box-shadow:0 0 4px var(--error-soft);}
+  .run-meta .m.accent{color:var(--accent);}
+  .run-meta .m.accent .d{background:var(--accent);box-shadow:0 0 4px var(--accent-glow);}
+
+  /* actions */
+  .hero-actions{
+    display:flex;align-items:center;gap:8px;margin-top:20px;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:8px 14px;border-radius:9px;
+    font-size:13px;font-weight:500;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);cursor:pointer;
+    font-family:inherit;transition:.12s;
+  }
+  .btn:hover{background:var(--surface-2);}
+  .btn svg{width:13px;height:13px;}
+  .btn.primary{
+    background:var(--ink);color:var(--surface);border-color:var(--ink);
+    padding:9px 16px;font-weight:600;
+  }
+  html[data-theme="dark"] .btn.primary{background:var(--ink);color:#0F1419;}
+  .btn.primary:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary svg{flex-shrink:0;}
+  .btn .chev{width:11px;height:11px;color:var(--ink-3);margin-left:2px;}
+  .btn.is-open{background:var(--surface-2);border-color:var(--line-soft);}
+
+  /* ========== Habit tab bar ========== */
+  .habit-strip{
+    flex:0 0 auto;border-top:1px solid var(--line-soft);
+    padding:10px 18px;background:var(--surface);
+  }
+  .habit-strip .lbl{
+    font-size:10px;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;
+    font-weight:600;font-family:'JetBrains Mono',monospace;margin-bottom:8px;
+  }
+  .habit-pills{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  }
+  .habit-pill{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:5px 11px;border-radius:8px;
+    font-size:12.5px;color:var(--ink-2);
+    background:transparent;border:1px solid transparent;
+    cursor:pointer;font-family:inherit;
+    transition:.12s;
+  }
+  .habit-pill:hover{background:var(--surface-2);color:var(--ink);}
+  .habit-pill .d{width:5px;height:5px;border-radius:50%;background:var(--ink-4);flex-shrink:0;}
+  .habit-pill.active{
+    background:var(--ink);color:var(--surface);font-weight:500;
+    box-shadow:0 1px 3px rgba(0,0,0,.10);
+  }
+  html[data-theme="dark"] .habit-pill.active{color:#0F1419;}
+  .habit-pill.active .d{background:var(--accent);box-shadow:0 0 4px var(--accent-glow);}
+  .habit-pill.add{
+    border:1px dashed var(--line);color:var(--ink-3);
+  }
+  .habit-pill.add:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ========== Footer meta strip ========== */
+  .footer-strip{
+    flex:0 0 auto;height:28px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+    background:var(--bg);
+    border-top:1px solid var(--line-soft);
+    font-size:10.5px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+  }
+  .footer-strip .l{display:flex;align-items:center;gap:10px;}
+  .footer-strip .r{display:flex;align-items:center;gap:10px;}
+  .footer-strip .m{display:inline-flex;align-items:center;gap:4px;}
+  .footer-strip .m .d{width:4px;height:4px;border-radius:50%;background:var(--ink-4);}
+  .footer-strip .m.ok .d{background:var(--success);}
+
+  /* ========== Update banner (optional layer) ========== */
+  .update-banner{
+    position:absolute;top:60px;left:18px;right:18px;
+    background:var(--surface);border:1px solid var(--accent);
+    border-radius:10px;padding:10px 14px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 4px 16px var(--accent-glow);
+    z-index:5;
+  }
+  .update-banner .ico{
+    width:24px;height:24px;border-radius:6px;
+    background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .update-banner .ico svg{width:13px;height:13px;}
+  .update-banner .body{flex:1;text-align:left;min-width:0;}
+  .update-banner .title{font-size:12.5px;font-weight:600;}
+  .update-banner .sub{font-size:11px;color:var(--ink-3);margin-top:1px;}
+  .update-banner .actions{display:flex;gap:6px;}
+  .update-banner .actions button{
+    padding:5px 10px;border-radius:6px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font-size:11.5px;font-weight:500;cursor:pointer;font-family:inherit;
+  }
+  .update-banner .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  /* ========== Dropdowns ========== */
+  .popover{
+    position:absolute;z-index:20;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:0 12px 32px -8px rgba(20,23,30,.18), 0 2px 6px rgba(0,0,0,.04);
+    padding:6px;
+    min-width:200px;
+    display:none;
+  }
+  .popover.open{display:block;animation:popIn .15s ease-out;}
+  @keyframes popIn{
+    from{opacity:0;transform:translateY(-4px) scale(.98);}
+    to{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .popover .item{
+    display:flex;align-items:center;gap:8px;
+    padding:8px 10px;border-radius:7px;
+    font-size:13px;color:var(--ink);cursor:pointer;
+  }
+  .popover .item:hover{background:var(--surface-2);}
+  .popover .item .ico{
+    width:22px;height:22px;border-radius:5px;
+    background:var(--surface-2);color:var(--ink-2);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .popover .item .ico svg{width:13px;height:13px;}
+  .popover .item .t{flex:1;}
+  .popover .item .s{font-size:11px;color:var(--ink-3);}
+  .popover .sep{height:1px;background:var(--line-soft);margin:4px 6px;}
+  .popover .item.danger{color:var(--error);}
+  .popover .item.danger .ico{background:var(--error-soft);color:var(--error);}
+  .popover .item.active .ico{background:var(--accent-soft);color:var(--accent);}
+
+  /* state switch */
+  .state-switch{
+    position:absolute;top:14px;right:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;
+  }
+  .state-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  .theme-switch{
+    position:absolute;top:14px;left:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+  }
+  .theme-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  /* habit popover under btn */
+  #habitPop{top:calc(50% + 56px);left:50%;transform:translateX(-50%);min-width:260px;}
+  #menuPop{top:62px;right:54px;}
+
+  /* ========== After explanation block ========== */
+  .compare{
+    max-width:1180px;margin:40px auto 0;padding:0 40px 80px;
+  }
+  .compare h3{
+    font-size:14px;font-weight:600;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare h3 .tag{
+    font-size:10px;font-weight:700;letter-spacing:.06em;
+    padding:2px 7px;border-radius:5px;
+  }
+  .compare h3 .tag.now{background:var(--error-soft);color:var(--error);}
+  .compare h3 .tag.next{background:var(--accent-soft);color:var(--accent);}
+  .compare .lead{font-size:12.5px;color:var(--ink-2);margin:0 0 18px;line-height:1.55;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col ul{
+    margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-2);line-height:1.85;
+  }
+  .compare .col li b{color:var(--ink);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 20px;}
+    .intro .ledger{grid-template-columns:repeat(2,1fr);}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .intro h1{font-size:24px;}
+    .flow{grid-template-columns:1fr;}
+    .flow .arrow{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构提案 v2</div>
+  <h1>首页是仪表盘，不是输入面板。<br/>HUD 才是语音输入的中心。</h1>
+  <p class="lede">基于真实软件动线：tray 托盘（暂停/切习惯）+ coach HUD（屏幕底栏输入反馈）+ settings drawer（详细配置）+ onboarding/habit_setup（引导流程）。首页只是「偶尔打开看一眼」的辅助工具窗口 —— 简到一眼读完，明到不用解释。</p>
+
+  <div class="ledger">
+    <div class="ledg"><div class="k">1 · tray</div><div class="v"><b>主战场</b><br/>右键暂停/切习惯</div></div>
+    <div class="ledg"><div class="k">2 · HUD</div><div class="v"><b>输入反馈</b><br/>屏幕底栏气泡</div></div>
+    <div class="ledg muted"><div class="k">3 · 首页</div><div class="v"><b>仪表盘</b><br/>一周 1 次 × 30s</div></div>
+    <div class="ledg"><div class="k">4 · settings</div><div class="v"><b>详细配置</b><br/>6 大面板</div></div>
+    <div class="ledg"><div class="k">5 · onboarding</div><div class="v"><b>引导</b><br/>5 步配置</div></div>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 互动预览</h2>
+    <div class="hint">右上切换状态 · <b>IDLE</b> / LISTENING / DICTATING / ERROR · 左上切换主题</div>
+  </div>
+
+  <div class="window" id="window">
+    <!-- 主题切换 -->
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <!-- 状态切换 -->
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="IDLE">IDLE</button>
+      <button data-s="LISTENING">LISTENING</button>
+      <button data-s="DICTATING">DICTATING</button>
+      <button data-s="ERROR">ERROR</button>
+    </div>
+
+    <!-- 更新 banner (可选) -->
+    <div class="update-banner" id="updateBanner" hidden>
+      <div class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+      </div>
+      <div class="body">
+        <div class="title">检测到 v0.4.0 · 包含 12 项修复</div>
+        <div class="sub">本地配置不会受影响，可在线更新</div>
+      </div>
+      <div class="actions">
+        <button>稍后</button>
+        <button class="primary">查看</button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div>
+          <div class="name">一声</div>
+          <div class="sub">voice-pilot</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" title="设置" id="btnSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-btn" title="更多" id="btnMenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero: mapping dashboard -->
+    <main class="hero" id="hero">
+      <div class="hero-kicker" id="kicker">
+        <span class="dot ok"></span>
+        <span id="kickerText">当前习惯 · 已启用</span>
+      </div>
+
+      <!-- ====== mapping 大卡片（核心） ====== -->
+      <div class="map-card" id="mapCard">
+        <div class="head">
+          <div class="name"><span class="star"></span><span id="habitName">默认</span></div>
+          <span class="badge" id="habitBadge">已启用</span>
+        </div>
+
+        <div class="flow">
+          <span class="key" id="triggerKey">音量 +</span>
+          <span class="arrow">→</span>
+          <div class="target">
+            <span class="key" id="targetKey">RAlt</span>
+            <span class="ime">
+              <span class="ico">⌨</span>
+              <span id="imeName">微信输入法</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="meta">
+          <span class="pill"><span class="k">触发</span><span class="v" id="modeText">长按</span></span>
+          <span class="pill"><span class="k">结束</span><span class="v">自动 Enter</span></span>
+          <span class="pill"><span class="k">目标</span><span class="v hi" id="appTarget">当前窗口</span></span>
+          <span class="pill"><span class="k">唤醒</span><span class="v">开始输入</span></span>
+        </div>
+      </div>
+
+      <div class="run-meta">
+        <span class="m ok" id="engineMeta"><span class="d"></span>Vosk 待命 · cn-light</span>
+        <span class="m ok" id="micMeta"><span class="d"></span>麦克风 OK</span>
+        <span class="m"><span class="d"></span>HUD 开</span>
+        <span class="m"><span class="d"></span>0 chars</span>
+      </div>
+
+      <div class="hero-actions">
+        <button class="btn primary" id="btnHabit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+          <span>换习惯</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button class="btn" id="btnTest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+          <span>测一下</span>
+        </button>
+        <button class="btn" id="btnNew">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>新建</span>
+        </button>
+      </div>
+
+      <!-- 换习惯 dropdown -->
+      <div class="popover" id="habitPop">
+        <div class="item active">
+          <span class="ico"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);"></span></span>
+          <span class="t">默认</span>
+          <span class="s">长按 · LAlt</span>
+        </div>
+        <div class="item">
+          <span class="ico"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink-4);"></span></span>
+          <span class="t">写作</span>
+          <span class="s">每按即发</span>
+        </div>
+        <div class="item">
+          <span class="ico"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink-4);"></span></span>
+          <span class="t">微信</span>
+          <span class="s">长按 · Caps</span>
+        </div>
+        <div class="item">
+          <span class="ico"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink-4);"></span></span>
+          <span class="t">Cursor</span>
+          <span class="s">长按 · Ctrl+I</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+          <span class="t">新建习惯</span>
+          <span class="s">5 步配置</span>
+        </div>
+        <div class="item">
+          <span class="ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <span class="t">管理全部习惯</span>
+          <span class="s">→ 设置</span>
+        </div>
+      </div>
+
+      <!-- ··· menu dropdown -->
+      <div class="popover" id="menuPop">
+        <div class="item">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+          <span class="t">按键提示条（HUD）</span>
+          <span class="s">已开</span>
+        </div>
+        <div class="item">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M16 15h5v5h-5z"/></svg></span>
+          <span class="t">情景模式</span>
+          <span class="s">一般</span>
+        </div>
+        <div class="item">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <span class="t">重新引导</span>
+          <span class="s">5 步配置</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          <span class="t">诊断 & 日志</span>
+          <span class="s">→ 设置</span>
+        </div>
+        <div class="item">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+          <span class="t">恢复与维护</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item danger">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></span>
+          <span class="t">暂停监听</span>
+          <span class="s">托盘也能切</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Habit switcher strip -->
+    <div class="habit-strip">
+      <div class="lbl">习惯</div>
+      <div class="habit-pills" id="habitPills">
+        <button class="habit-pill active"><span class="d"></span>默认</button>
+        <button class="habit-pill"><span class="d"></span>写作</button>
+        <button class="habit-pill"><span class="d"></span>微信</button>
+        <button class="habit-pill"><span class="d"></span>Cursor</button>
+        <button class="habit-pill add"><span style="margin-right:2px;">+</span>新建</button>
+      </div>
+    </div>
+
+    <!-- Footer meta strip -->
+    <div class="footer-strip">
+      <div class="l">
+        <span class="m"><span class="d"></span>v0.3.1</span>
+        <span class="m ok"><span class="d"></span>HUD 开</span>
+        <span class="m"><span class="d"></span>开机自启</span>
+      </div>
+      <div class="r">
+        <span class="m"><span class="d"></span>内存 1.5 GB · CPU 13%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag now">现在</span> 你的截图 · 现状</h3>
+      <p class="lead">首页当成了输入面板 —— 中心一个 64px 小球被三个 pill + 四个并列按钮围攻，权重被稀释。用户 99% 的语音输入根本不通过这个按钮（物理按键和 HUD 才负责），所以它既不是核心信息，也不是高频动作。</p>
+      <ul>
+        <li><b>Header 4 个等权按钮</b>（当前窗口/总开关/情景模式/设置），没有主次</li>
+        <li><b>顶部 32px 三段状态条</b>（引擎/延迟/字符数）—— 信息密度相同，没有层级</li>
+        <li><b>64px orb 配三个状态 pill</b>——视觉权重被围攻</li>
+        <li><b>4 个并列按钮</b>（结束说话/选择按键方式/切换目标/语音设置）—— 喧宾夺主</li>
+        <li><b>3 个横滑习惯卡片</b>——和 hero 各自为政，没层级</li>
+        <li><b>没有「+ 新建」明确入口</b>，藏在「我的习惯」按钮后面</li>
+        <li><b>用户真正高频的：换习惯 / 测试发送 / 看 HUD 开关</b>，都被埋没</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag next">建议</span> 改造后 · 仪表盘定位</h3>
+      <p class="lead">首页的角色明确为「mapping 状态仪表盘 + 入口」—— 5 秒看一眼就知道现在什么状态、要不要换。语音输入的中心在 HUD（屏幕底栏气泡），不在这里。</p>
+      <ul>
+        <li><b>Header 缩到 2 按钮</b>（设置 + ···），总开关/情景模式/HUD 全部进菜单</li>
+        <li><b>删 32px 顶部状态条</b>，元数据沉到 hero meta 一行小字（11.5px 灰字）</li>
+        <li><b>中心 = 1 个 mapping 大卡片</b>（触发键 → 目标键 + IME → 触发模式/结束/唤醒/目标），用户每次打开要确认的核心</li>
+        <li><b>底部 habit 横排标签</b>，像 Notion 工作区，含「+ 新建」直接进 habit_setup overlay</li>
+        <li><b>可见动作 = 2 个</b>：「换习惯」+ 「测一下」（加可选「+ 新建」）—— 其他都进 ··· 菜单</li>
+        <li><b>4 态响应</b>：IDLE 静默灰、LISTENING 蓝色发光、DICTATING 强脉冲、ERROR 红色</li>
+        <li><b>footer 一行细字</b>：版本 / HUD 状态 / 自启 / 资源 —— 像 macOS 菜单栏辅助工具</li>
+        <li><b>浅深主题切换</b>（应用已有清澈/石墨两套）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  /* ========== 状态切换 ========== */
+  const STATES = {
+    IDLE:{
+      kickerDot:'ok', kickerText:'当前习惯 · 已启用',
+      mapCard:'', badge:'已启用', badgeCls:'',
+      engine:'ok', engineText:'Vosk 待命 · cn-light',
+      mic:'ok', micText:'麦克风 OK'
+    },
+    LISTENING:{
+      kickerDot:'ok', kickerText:'听见了唤醒词',
+      mapCard:'is-listening', badge:'等待说话', badgeCls:'',
+      engine:'accent', engineText:'Vosk 唤醒中 · 0.4s',
+      mic:'ok', micText:'麦克风 OK'
+    },
+    DICTATING:{
+      kickerDot:'ok', kickerText:'正在听写',
+      mapCard:'is-dictating', badge:'听写中', badgeCls:'',
+      engine:'accent', engineText:'Vosk 听写中 · 12.4s',
+      mic:'ok', micText:'麦克风 OK'
+    },
+    ERROR:{
+      kickerDot:'err', kickerText:'麦克风没声音',
+      mapCard:'is-error', badge:'离线', badgeCls:'err',
+      engine:'err', engineText:'Vosk 不可用',
+      mic:'err', micText:'麦克风无信号'
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const kickerDot = $('.hero-kicker .dot');
+  const kickerText = $('#kickerText');
+  const mapCard = $('#mapCard');
+  const habitBadge = $('#habitBadge');
+  const engineMeta = $('#engineMeta');
+  const micMeta = $('#micMeta');
+
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      kickerDot.className = 'dot ' + s.kickerDot;
+      kickerText.textContent = s.kickerText;
+      mapCard.className = 'map-card ' + s.mapCard;
+      habitBadge.textContent = s.badge;
+      habitBadge.className = 'badge ' + s.badgeCls;
+      engineMeta.className = 'm ' + s.engine;
+      engineMeta.innerHTML = '<span class="d"></span>' + s.engineText;
+      micMeta.className = 'm ' + s.mic;
+      micMeta.innerHTML = '<span class="d"></span>' + s.micText;
+    });
+  });
+
+  /* ========== 主题切换 ========== */
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  /* ========== popover 切换 ========== */
+  function togglePop(btn, popId){
+    const pop = document.getElementById(popId);
+    const wasOpen = pop.classList.contains('open');
+    closeAllPops();
+    if(!wasOpen){
+      pop.classList.add('open');
+      btn.classList.add('is-open');
+    }
+  }
+  function closeAllPops(){
+    $$('.popover').forEach(p=>p.classList.remove('open'));
+    $$('.btn.is-open').forEach(b=>b.classList.remove('is-open'));
+  }
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.popover') && !e.target.closest('[data-pop]')){
+      closeAllPops();
+    }
+  });
+  document.getElementById('btnHabit').addEventListener('click',e=>{
+    e.stopPropagation();
+    togglePop(e.currentTarget, 'habitPop');
+  });
+  document.getElementById('btnMenu').addEventListener('click',e=>{
+    e.stopPropagation();
+    togglePop(e.currentTarget, 'menuPop');
+  });
+
+  /* ========== habit 标签切换 ========== */
+  $$('#habitPills .habit-pill:not(.add)').forEach(p=>{
+    p.addEventListener('click',()=>{
+      $$('#habitPills .habit-pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+      const name = p.textContent.trim();
+      document.getElementById('habitName').textContent = name;
+    });
+  });
+
+  /* ========== 默认展示一次 banner (示意) ========== */
+  setTimeout(()=>{
+    const b = document.getElementById('updateBanner');
+    if(b && Math.random() > 0.4) b.hidden = false;
+  }, 600);
+</script>
+</body>
+</html>

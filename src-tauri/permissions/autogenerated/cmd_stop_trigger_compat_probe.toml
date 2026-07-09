@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-stop-trigger-compat-probe"
+description = "Enables the cmd_stop_trigger_compat_probe command without any pre-configured scope."
+commands.allow = ["cmd_stop_trigger_compat_probe"]
+
+[[permission]]
+identifier = "deny-cmd-stop-trigger-compat-probe"
+description = "Denies the cmd_stop_trigger_compat_probe command without any pre-configured scope."
+commands.deny = ["cmd_stop_trigger_compat_probe"]

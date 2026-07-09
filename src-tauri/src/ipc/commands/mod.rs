@@ -5,6 +5,7 @@ mod runtime;
 mod scheme;
 mod shell;
 mod voice;
+mod compat;
 
 pub use mapping::*;
 pub use mic::*;
@@ -13,3 +14,4 @@ pub use runtime::*;
 pub use scheme::*;
 pub use shell::*;
 pub use voice::*;
+pub use compat::*;

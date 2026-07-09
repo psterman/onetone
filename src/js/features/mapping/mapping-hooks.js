@@ -45,6 +45,8 @@
       armTargetLeftClickIgnore:deps.armTargetLeftClickIgnore,
       normalizeTriggerKey:deps.normalizeTriggerKey,
       isAllowedTriggerKey:deps.isAllowedTriggerKey,
+      isAllowedTargetKey:deps.isAllowedTargetKey,
+      containsLeftMouseToken:deps.containsLeftMouseToken,
       sanitizeTargetCombo:deps.sanitizeTargetCombo,
       normalizeMediaTargetKey:deps.normalizeMediaTargetKey,
       maybeEnableMappingAfterComplete:deps.maybeEnableMappingAfterComplete,
@@ -64,6 +66,9 @@
       render:deps.render,
       shouldIgnoreTriggerLeftClickCapture:deps.shouldIgnoreTriggerLeftClickCapture,
       shouldIgnoreTargetLeftClickCapture:deps.shouldIgnoreTargetLeftClickCapture,
+      isAllowedTriggerKey:deps.isAllowedTriggerKey,
+      isAllowedTargetKey:deps.isAllowedTargetKey,
+      containsLeftMouseToken:deps.containsLeftMouseToken,
       triggerPeripheralGuardUntil:ed().triggerPeripheralGuardUntil,
       armTriggerPeripheralGuard:ed().armTriggerPeripheralGuard
     };

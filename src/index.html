@@ -2060,18 +2060,19 @@
         <div class="habit-setup-stage">
           <div class="habit-setup-keyboard" id="habitSetupTriggerKeyboard" aria-hidden="true"></div>
           <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
+          <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupTriggerStartRecord">开始录制启动键</button>
         </div>
         <div class="habit-setup-test-grid" id="habitSetupTestGrid">
           <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
             <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
             <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
-            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry" hidden>重新测试</button>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry">重新测试</button>
           </section>
           <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
             <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
             <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
             <div id="habitSetupStep2VoiceHost"></div>
-            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry" hidden>重新测试</button>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry">重新测试</button>
           </section>
         </div>
         <div class="habit-setup-actions habit-setup-actions--footer">
@@ -2086,6 +2087,13 @@
         <p class="habit-setup-desc" id="habitSetupModePageDesc">选一个最顺手的说话方式，之后随时能改。</p>
         <p class="habit-setup-mode-summary" id="habitSetupModeTriggerSummary"></p>
         <p class="habit-setup-mode-lock" id="habitSetupModeLock"></p>
+        <section class="habit-setup-test-panel" id="habitSetupModeCompatPanel">
+          <h4 class="habit-setup-test-panel-title" id="habitSetupModeCompatTitle">外设兼容检测</h4>
+          <p class="habit-setup-status" id="habitSetupModeCompatStatus"></p>
+          <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupModeCompatRetry" hidden>重新检测</button>
+        </section>
+        <p class="habit-setup-mode-mismatch" id="habitSetupModeMismatch" hidden></p>
+        <p class="habit-setup-desc habit-setup-mode-compat-hint" id="habitSetupModeCompatGridHint"></p>
         <div class="template-pick-grid habit-setup-mode-grid" id="habitSetupModeGrid" role="listbox" aria-label="快捷键方式"></div>
         <div class="habit-setup-actions habit-setup-actions--footer">
           <button type="button" class="btn secondary" id="btnHabitSetupBack">上一步</button>
@@ -2097,6 +2105,19 @@
         <div class="habit-setup-badge" id="habitSetupVoiceLessonBadge">🎙 语音操作教学</div>
         <h3 class="habit-setup-title" id="habitSetupVoiceLessonTitle">学会三种语音操作</h3>
         <p class="habit-setup-desc" id="habitSetupVoiceLessonDesc">跟读并完成演示，确认你能用语音控制 OneTone。</p>
+        <div class="habit-setup-test-panel" id="habitSetupVoiceEasterPrompt">
+          <p class="habit-setup-desc" id="habitSetupVoiceEasterPromptDesc">彩蛋：要不要试试语音激活输入方案？</p>
+          <div class="habit-setup-record-actions">
+            <button type="button" class="btn secondary" id="btnHabitSetupVoiceEasterSkip">先不试</button>
+            <button type="button" class="btn primary" id="btnHabitSetupVoiceEasterTry">试一试</button>
+          </div>
+        </div>
+        <section class="habit-setup-test-panel" id="habitSetupVoiceStep4Panel" hidden>
+          <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceStep4Title">语音测试</h4>
+          <p class="habit-setup-desc" id="habitSetupVoiceStep4Desc"></p>
+          <div id="habitSetupVoiceStep4Host"></div>
+          <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceStep4Retry">重新测试</button>
+        </section>
         <div class="habit-setup-voice-lessons" id="habitSetupVoiceLessons" role="listbox" aria-label="语音教学"></div>
         <div class="habit-setup-voice-lesson-demo" id="habitSetupVoiceLessonDemoHost" hidden></div>
         <div class="habit-setup-actions habit-setup-actions--footer">

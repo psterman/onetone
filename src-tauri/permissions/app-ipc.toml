@@ -8,6 +8,8 @@ permissions = [
   "allow-cmd-scheme-select",
   "allow-cmd-start-recording",
   "allow-cmd-stop-recording",
+  "allow-cmd-start-trigger-compat-probe",
+  "allow-cmd-stop-trigger-compat-probe",
   "allow-cmd-pause",
   "allow-cmd-resume",
   "allow-cmd-request-runtime",

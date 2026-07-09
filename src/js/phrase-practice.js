@@ -18,7 +18,8 @@
     phraseOptions: [],
     practiceIndex: 0,
     onPhrasesChange: null,
-    multiSelect: false
+    multiSelect: false,
+    onHeardChange: null
   };
 
   function app(){
@@ -243,11 +244,13 @@
     var heard = String(text || '').trim();
     if(!heard){
       el.textContent = t('phrasePracticeListening');
-      el.className = 'phrase-practice-heard';
+      el.className = 'phrase-practice-heard habit-setup-voice-preview';
+      if(typeof state.onHeardChange === 'function') state.onHeardChange('');
       return;
     }
     el.textContent = t('phrasePracticeHeard').replace('{text}', heard);
-    el.className = 'phrase-practice-heard is-live';
+    el.className = 'phrase-practice-heard habit-setup-voice-preview is-live';
+    if(typeof state.onHeardChange === 'function') state.onHeardChange(heard);
   }
 
   function stopTimers(){
@@ -292,8 +295,10 @@
 
   function pollHeard(){
     var a = app();
-    if(!a || !a.getWakeHeardRaw) return;
-    var heard = a.getWakeHeardRaw();
+    if(!a) return;
+    var heard = a.getPracticeHeardRaw
+      ? a.getPracticeHeardRaw(state.mode)
+      : (a.getWakeHeardRaw ? a.getWakeHeardRaw() : '');
     renderHeard(heard);
     var hit = matchWakePhrase(heard, state.phrases);
     if(hit) handleMatch(hit);
@@ -319,13 +324,41 @@
     mount.innerHTML =
       '<div class="phrase-practice-embedded">'+
         '<p class="phrase-practice-hint" data-phrase-practice-hint></p>'+
+        '<div class="phrase-practice-preview-label" data-phrase-practice-preview-label></div>'+
         '<div class="phrase-practice-phrase" data-phrase-practice-phrase></div>'+
-        '<p class="phrase-practice-heard" data-phrase-practice-heard></p>'+
+        '<p class="phrase-practice-heard habit-setup-voice-preview" data-phrase-practice-heard></p>'+
         '<div class="phrase-practice-chip-row" data-phrase-practice-chips></div>'+
       '</div>';
+    var previewLbl = mount.querySelector('[data-phrase-practice-preview-label]');
+    if(previewLbl) previewLbl.textContent = t('phrasePracticeLivePreview');
     var hint = mount.querySelector('[data-phrase-practice-hint]');
-    if(hint) hint.textContent = t('phrasePracticeHint');
+    if(hint) hint.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
     renderChips(mount.querySelector('[data-phrase-practice-chips]'));
+  }
+
+  function bootEmbeddedPractice(){
+    var a = app();
+    if(a && a.enableVoicePractice){
+      a.enableVoicePractice({mode:state.mode}).then(function(){
+        var mic = global.OneToneAppMic;
+        if(mic && mic.loadMicDevices){
+          return mic.loadMicDevices({manual:true}).catch(function(){}).then(startTimers);
+        }
+        startTimers();
+      }).catch(function(){ startTimers(); });
+      return;
+    }
+    if(a && a.enableVoiceWakeForPractice){
+      a.enableVoiceWakeForPractice().then(function(){
+        var mic = global.OneToneAppMic;
+        if(mic && mic.loadMicDevices){
+          return mic.loadMicDevices({manual:true}).catch(function(){}).then(startTimers);
+        }
+        startTimers();
+      }).catch(function(){ startTimers(); });
+      return;
+    }
+    startTimers();
   }
 
   function renderChips(host){
@@ -379,6 +412,7 @@
     state.multiSelect = !!opts.multiSelect;
     state.onMatch = opts.onMatch || null;
     state.onSkip = opts.onSkip || null;
+    state.onHeardChange = opts.onHeardChange || null;
     state.readOnly = !!opts.readOnly;
     state.embedded = !!opts.embedded;
     state.mountEl = opts.mount || null;
@@ -389,7 +423,7 @@
     if(state.embedded){
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount) renderEmbeddedShell(mount);
-      startTimers();
+      bootEmbeddedPractice();
       return;
     }
 
@@ -399,6 +433,16 @@
       overlay.setAttribute('aria-hidden', 'false');
     }
     var a = app();
+    if(a && a.enableVoicePractice){
+      a.enableVoicePractice({mode:state.mode}).then(function(){
+        var mic = global.OneToneAppMic;
+        if(mic && mic.loadMicDevices){
+          return mic.loadMicDevices({manual:true}).catch(function(){}).then(bootPracticeUi);
+        }
+        bootPracticeUi();
+      }).catch(function(){ bootPracticeUi(); });
+      return;
+    }
     if(a && a.enableVoiceWakeForPractice){
       a.enableVoiceWakeForPractice().then(function(){
         var mic = global.OneToneAppMic;
@@ -428,6 +472,7 @@
     if(!opts.silent && typeof state.onSkip === 'function') state.onSkip();
     state.onMatch = null;
     state.onSkip = null;
+    state.onHeardChange = null;
     var overlay = overlayEl();
     if(overlay){
       overlay.classList.remove('open');
@@ -462,7 +507,9 @@
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount){
         var eh = mount.querySelector('[data-phrase-practice-hint]');
-        if(eh) eh.textContent = t('phrasePracticeHint');
+        if(eh) eh.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
+        var pl = mount.querySelector('[data-phrase-practice-preview-label]');
+        if(pl) pl.textContent = t('phrasePracticeLivePreview');
       }
     }
     renderPhraseDisplay();

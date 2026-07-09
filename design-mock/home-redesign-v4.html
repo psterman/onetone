@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v4 · 视觉冲击 + 零文字引导</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ========== 主题色对齐 app.css · 清澈 / 石墨 ========== */
+  :root{
+    --bg:           #FAFAFA;
+    --surface:      #FFFFFF;
+    --surface-2:    #F4F4F6;
+    --line:         #E8E8EC;
+    --line-soft:    #F0F0F3;
+    --ink:          #14171E;
+    --ink-2:        #5B6473;
+    --ink-3:        #9099A6;
+    --ink-4:        #B8BFC9;
+    --accent:       #2a9cc4;
+    --accent-2:     #1f8fb8;
+    --accent-3:     #45b0d4;
+    --accent-soft:  #e6f7fc;
+    --accent-glow:  #5ec8e8;
+    --accent-rgb:   42,156,196;
+    --accent-ink:   #0a4a66;
+    --success:      #16A34A;
+    --success-soft: rgba(22,163,74,.10);
+    --error:        #DC2626;
+    --error-soft:   rgba(220,38,38,.10);
+  }
+  html[data-theme="dark"]{
+    --bg:           #0F1419;
+    --surface:      #1A2436;
+    --surface-2:    #243042;
+    --line:         rgba(255,255,255,.06);
+    --line-soft:    rgba(255,255,255,.04);
+    --ink:          #E6EDF3;
+    --ink-2:        #9CA9BC;
+    --ink-3:        #6B7A91;
+    --ink-4:        #4B5567;
+    --accent:       #5ec8e8;
+    --accent-2:     #3eb8dc;
+    --accent-3:     #7ed4ef;
+    --accent-soft:  rgba(94,200,232,.14);
+    --accent-glow:  #8ee0f4;
+    --accent-rgb:   94,200,232;
+    --accent-ink:   #B0E6F5;
+    --success:      #4ADE80;
+    --success-soft: rgba(74,222,128,.12);
+    --error:        #FF6B7A;
+    --error-soft:   rgba(255,107,122,.14);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s,color .2s;
+  }
+
+  /* ========== intro ========== */
+  .intro{
+    max-width:1180px;margin:0 auto;padding:48px 40px 16px;
+  }
+  .intro .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;margin-bottom:14px;
+  }
+  .intro h1{
+    font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.22;
+    margin:0 0 12px;
+  }
+  .intro .lede{
+    font-size:15px;color:var(--ink-2);max-width:780px;margin:0;
+  }
+
+  /* ========== mockup container ========== */
+  .stage{
+    max-width:1180px;margin:24px auto 0;padding:0 40px 24px;
+  }
+  .stage-head{
+    display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  }
+  .stage-head h2{font-size:14px;font-weight:600;margin:0;}
+  .stage-head .hint{font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;}
+  .stage-head .hint b{color:var(--accent);font-weight:600;}
+
+  .window{
+    border-radius:16px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(0,0,0,.04), 0 24px 48px -16px rgba(20,23,30,.10);
+    overflow:hidden;
+    height:720px;
+    display:flex;flex-direction:column;
+    position:relative;
+  }
+
+  /* ========== Header ========== */
+  .app-header{
+    height:50px;flex:0 0 50px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px;
+    position:relative;z-index:2;
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .brand .logo{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 3px 10px rgba(var(--accent-rgb),.32);flex-shrink:0;
+  }
+  .brand .logo svg{width:14px;height:14px;}
+  .brand .name{font-size:13px;font-weight:600;letter-spacing:-.01em;}
+  .header-actions{display:flex;align-items:center;gap:4px;}
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;background:transparent;border:none;
+    color:var(--ink-2);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  /* ========== Hero (核心视觉区) ========== */
+  .hero{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px 24px;text-align:center;position:relative;
+    background:radial-gradient(ellipse at 50% 45%, rgba(var(--accent-rgb),.08) 0%, transparent 55%);
+  }
+  html[data-theme="dark"] .hero{
+    background:radial-gradient(ellipse at 50% 45%, rgba(var(--accent-rgb),.10) 0%, transparent 55%);
+  }
+
+  /* 顶部状态行 · 极简一行小字 */
+  .status-line{
+    display:inline-flex;align-items:center;gap:7px;
+    font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+    margin-bottom:60px;
+    letter-spacing:.01em;
+  }
+  .status-line .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--ink-4);flex-shrink:0;
+    transition:.3s;
+  }
+  .status-line.is-live .dot{background:var(--accent);box-shadow:0 0 8px rgba(var(--accent-rgb),.55);animation:dotBreath 1.6s ease-in-out infinite;}
+  .status-line.is-rec .dot{background:var(--accent);box-shadow:0 0 10px rgba(var(--accent-rgb),.7);animation:dotPulse 1.0s ease-in-out infinite;}
+  .status-line.is-err .dot{background:var(--error);box-shadow:0 0 8px rgba(220,38,38,.5);animation:dotPulse 1.0s ease-in-out infinite;}
+  .status-line.is-ok .dot{background:var(--success);box-shadow:0 0 6px rgba(22,163,74,.45);animation:dotBreath 2.0s ease-in-out infinite;}
+  @keyframes dotBreath{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.85);}}
+  @keyframes dotPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.7);}}
+  .status-line .sep{color:var(--ink-4);margin:0 2px;}
+
+  /* ====== 巨大中心圆球 · 视觉锚 ====== */
+  .orb-wrap{
+    position:relative;margin-bottom:48px;
+  }
+  .orb{
+    width:140px;height:140px;border-radius:50%;
+    background:radial-gradient(circle at 30% 28%, var(--accent-3), var(--accent) 55%, var(--accent-2));
+    box-shadow:
+      0 16px 48px -8px rgba(var(--accent-rgb),.32),
+      inset 0 2px 6px rgba(255,255,255,.18),
+      inset 0 -8px 20px rgba(var(--accent-rgb),.30);
+    transition:.4s;
+    position:relative;
+  }
+  /* 极淡外圈（不是 v1 的「外扩脉冲」，是几乎不可见的呼吸圈） */
+  .orb::before{
+    content:"";position:absolute;inset:-10px;border-radius:50%;
+    border:1px solid rgba(var(--accent-rgb),.14);
+    transition:.4s;
+  }
+  .orb::after{
+    content:"";position:absolute;inset:-22px;border-radius:50%;
+    border:1px solid rgba(var(--accent-rgb),.06);
+  }
+  /* IDLE 灰 */
+  .orb.is-idle{
+    background:radial-gradient(circle at 30% 28%, #c4cad3, #9099a6 60%, #5b6473);
+    box-shadow:
+      0 8px 24px -8px rgba(20,23,30,.18),
+      inset 0 2px 6px rgba(255,255,255,.10);
+  }
+  .orb.is-idle::before{border-color:rgba(20,23,30,.06);}
+  .orb.is-idle::after{border-color:rgba(20,23,30,.03);}
+  /* LISTENING 呼吸 */
+  .orb.is-listening{animation:orbBreath 1.8s ease-in-out infinite;}
+  @keyframes orbBreath{
+    0%,100%{transform:scale(1);box-shadow:0 16px 48px -8px rgba(var(--accent-rgb),.32),inset 0 2px 6px rgba(255,255,255,.18);}
+    50%{transform:scale(1.04);box-shadow:0 24px 64px -4px rgba(var(--accent-rgb),.45),inset 0 2px 6px rgba(255,255,255,.20);}
+  }
+  /* DICTATING 脉冲 */
+  .orb.is-dictating{animation:orbStrong 1.1s ease-in-out infinite;}
+  @keyframes orbStrong{
+    0%,100%{transform:scale(1.05);}
+    50%{transform:scale(0.96);}
+  }
+  /* ERROR 红 */
+  .orb.is-error{
+    background:radial-gradient(circle at 30% 28%, #ff8095, #ff4d6a 55%, #d63052);
+    box-shadow:0 16px 48px -8px rgba(220,38,38,.36),inset 0 2px 6px rgba(255,255,255,.18);
+  }
+  .orb.is-error::before{border-color:rgba(220,38,38,.16);}
+  .orb.is-error::after{border-color:rgba(220,38,38,.07);}
+
+  /* 大字 · mapping 关键信息（不是动作引导） */
+  .hero-h{
+    font-size:32px;font-weight:600;letter-spacing:-.025em;line-height:1.15;
+    color:var(--ink);margin:0 0 8px;
+    font-feature-settings:'tnum';
+  }
+  .hero-h .arrow{
+    color:var(--ink-4);margin:0 14px;font-weight:400;vertical-align:2px;
+  }
+  .hero-h .key{
+    display:inline-block;
+    font-family:'JetBrains Mono',monospace;font-weight:600;
+    color:var(--accent-ink);
+  }
+  .hero-sub{
+    font-size:13px;color:var(--ink-3);margin:0;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;
+  }
+  .hero-sub .mode{color:var(--ink-2);font-weight:500;}
+  .hero-sub .sep{margin:0 8px;color:var(--ink-4);}
+
+  /* ========== 底部习惯条 · 极简 ========== */
+  .habit-strip{
+    flex:0 0 auto;border-top:1px solid var(--line-soft);
+    padding:14px 18px;background:var(--surface);
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+  }
+  .habit-pills{
+    display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+  }
+  .habit-pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:8px;
+    font-size:12.5px;color:var(--ink-2);
+    background:transparent;border:none;
+    cursor:pointer;font-family:inherit;transition:.12s;
+  }
+  .habit-pill:hover{color:var(--ink);background:var(--surface-2);}
+  .habit-pill .d{width:5px;height:5px;border-radius:50%;background:var(--ink-4);flex-shrink:0;transition:.2s;}
+  .habit-pill.active{
+    background:var(--ink);color:var(--surface);font-weight:500;
+    box-shadow:0 1px 3px rgba(0,0,0,.10);
+  }
+  html[data-theme="dark"] .habit-pill.active{color:#0F1419;}
+  .habit-pill.active .d{background:var(--accent);box-shadow:0 0 6px rgba(var(--accent-rgb),.7);}
+
+  .habit-right{
+    display:flex;align-items:center;gap:14px;flex-shrink:0;
+    font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+  }
+  .habit-right .m{display:inline-flex;align-items:center;gap:4px;}
+  .habit-right .m .d{width:4px;height:4px;border-radius:50%;background:var(--ink-4);}
+  .habit-right .m.ok .d{background:var(--success);}
+
+  /* ========== Update banner ========== */
+  .update-banner{
+    position:absolute;top:60px;left:18px;right:18px;
+    background:var(--surface);border:1px solid var(--accent);
+    border-radius:10px;padding:10px 14px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 4px 16px rgba(var(--accent-rgb),.18);
+    z-index:5;
+  }
+  .update-banner .ico{
+    width:24px;height:24px;border-radius:6px;
+    background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .update-banner .ico svg{width:13px;height:13px;}
+  .update-banner .body{flex:1;text-align:left;min-width:0;}
+  .update-banner .title{font-size:12.5px;font-weight:600;}
+  .update-banner .sub{font-size:11px;color:var(--ink-3);margin-top:1px;}
+  .update-banner .actions{display:flex;gap:6px;}
+  .update-banner .actions button{
+    padding:5px 10px;border-radius:6px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font-size:11.5px;font-weight:500;cursor:pointer;font-family:inherit;
+  }
+  .update-banner .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:14px;right:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;
+  }
+  .state-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  .theme-switch{
+    position:absolute;top:14px;left:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:8px;padding:3px;
+    border:1px solid var(--line);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:5px;cursor:pointer;
+  }
+  .theme-switch button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+  /* ========== Comparison block ========== */
+  .compare{
+    max-width:1180px;margin:36px auto 0;padding:0 40px 80px;
+  }
+  .compare h3{
+    font-size:14px;font-weight:600;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare h3 .tag{
+    font-size:10px;font-weight:700;letter-spacing:.06em;
+    padding:2px 7px;border-radius:5px;
+  }
+  .compare h3 .tag.v1{background:rgba(42,156,196,.10);color:var(--accent);}
+  .compare h3 .tag.v3{background:rgba(217,119,6,.10);color:#D97706;}
+  .compare h3 .tag.v4{background:var(--accent-soft);color:var(--accent);}
+  .compare .lead{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;line-height:1.55;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+  .compare .col ul{
+    margin:0;padding-left:18px;font-size:12px;color:var(--ink-2);line-height:1.75;
+  }
+  .compare .col li b{color:var(--ink);font-weight:600;}
+  .compare .col{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface);}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .intro h1{font-size:24px;}
+    .hero-h{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构 v4</div>
+  <h1>回归视觉冲击，但去掉「输入面板」感。<br/>零文字引导，让用户自己探索。</h1>
+  <p class="lede">v1 有冲击力但像 ChatGPT（"按住说话"+ "开始说话"按钮 + 三个状态 pill）→ 错位成输入面板。<br/>v3 我矫枉过正：把圆球砍了，堆了一堆文字（"试试看"+"新建习惯"+"使用引导"+"准备就绪"）→ 没了冲击，还像配置面板。<br/><b>v4 折中：巨大安静圆球回来，但里面展示的是 mapping 的关键信息（不是输入引导），全页面没一句"请按这个"的话。</b></p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 互动预览</h2>
+    <div class="hint">右上切状态 · <b>IDLE</b> / LISTENING / DICTATING / ERROR · 左上切主题</div>
+  </div>
+
+  <div class="window" id="window">
+    <!-- 主题切换 -->
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <!-- 状态切换 -->
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="IDLE">IDLE</button>
+      <button data-s="LISTENING">LISTENING</button>
+      <button data-s="DICTATING">DICTATING</button>
+      <button data-s="ERROR">ERROR</button>
+    </div>
+
+    <!-- 更新 banner (可选) -->
+    <div class="update-banner" id="updateBanner" hidden>
+      <div class="ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+      </div>
+      <div class="body">
+        <div class="title">检测到 v0.4.0 · 包含 12 项修复</div>
+        <div class="sub">本地配置不会受影响</div>
+      </div>
+      <div class="actions">
+        <button>稍后</button>
+        <button class="primary">查看</button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" title="设置" id="btnSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-btn" title="更多" id="btnMenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <main class="hero">
+
+      <!-- 顶部极简状态行 -->
+      <div class="status-line" id="statusLine">
+        <span class="dot"></span>
+        <span id="statusText">待命</span>
+        <span class="sep">·</span>
+        <span id="statusTarget">当前窗口</span>
+      </div>
+
+      <!-- 巨大圆球 -->
+      <div class="orb-wrap">
+        <div class="orb is-idle" id="orb"></div>
+      </div>
+
+      <!-- 大字：mapping 关键信息（不是动作引导） -->
+      <h1 class="hero-h" id="heroH">
+        <span class="key">音量 +</span>
+        <span class="arrow">→</span>
+        <span class="key">RAlt</span>
+      </h1>
+
+      <!-- 极简副字：模式 -->
+      <p class="hero-sub" id="heroSub">
+        <span class="mode">长按开启</span>
+        <span class="sep">·</span>
+        自动发送
+        <span class="sep">·</span>
+        当前习惯 <b id="habitName" style="color:var(--ink);font-weight:600;">默认</b>
+      </p>
+
+    </main>
+
+    <!-- 底部习惯条 · 极简 -->
+    <div class="habit-strip">
+      <div class="habit-pills" id="habitPills">
+        <button class="habit-pill active"><span class="d"></span>默认</button>
+        <button class="habit-pill"><span class="d"></span>写作</button>
+        <button class="habit-pill"><span class="d"></span>微信</button>
+        <button class="habit-pill"><span class="d"></span>Cursor</button>
+        <button class="habit-pill"><span class="d"></span>+ 新建</button>
+      </div>
+      <div class="habit-right">
+        <span class="m"><span class="d"></span>v0.3.1</span>
+        <span class="m ok"><span class="d"></span>HUD</span>
+        <span class="m"><span class="d"></span>Vosk · cn-light</span>
+        <span class="m"><span class="d"></span>1.5G</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v1">v1</span> 有冲击力 · 但像输入面板</h3>
+      <p class="lead">140px 大圆球 + 30px 提示字 + radial 渐变 —— 视觉震撼对，但「按住 音量+ 开始说话」+「开始说话」按钮 + 三个状态 pill 让它变成 ChatGPT 语音模式那样的输入面板。</p>
+      <ul>
+        <li><b>"按住 音量+ 开始说话"</b> —— 输入引导</li>
+        <li><b>"开始说话" 主按钮</b> —— 像输入触发器</li>
+        <li><b>3 个状态 pill</b> —— 像状态监控面板</li>
+        <li><b>底部 3 个横滑卡片</b> —— 像配置概览</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v3">v3</span> 工具感对了 · 但太素 + 文字堆</h3>
+      <p class="lead">把 mapping 大卡片砍了，换成大 CTA「开始测试」+ 文字链接「+ 新建习惯」「使用引导」+ 状态徽章。文字引导过多，每个动作都被保姆式提示，用户没法自己探索。</p>
+      <ul>
+        <li><b>绿色徽章 "准备就绪"</b> —— 像系统通知</li>
+        <li><b>"试试一声能不能用"</b> —— 引导文案</li>
+        <li><b>"按住音量+ 不放，对准麦克风说话，松开自动发送"</b> —— 教程段落</li>
+        <li><b>"+ 新建习惯" / "使用引导"</b> —— 文字按钮堆</li>
+        <li><b>视觉冲击消失</b> —— 像普通设置页</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v4">v4</span> 视觉冲击 × 工具定位 × 零引导</h3>
+      <p class="lead">巨大圆球回来 —— 但里面展示的是 mapping 的关键信息（不是输入引导）。全页面找不到一句"请按这个"的话。所有文字都是状态描述，没有动作引导。</p>
+      <ul>
+        <li><b>140px 大圆球</b> 回来了 —— 中心安静能呼吸</li>
+        <li><b>大字是 mapping 关键信息</b>「音量 + → RAlt」—— 不是「按住说话」</li>
+        <li><b>副字极简</b>：长按开启 · 自动发送 · 当前习惯 默认</li>
+        <li><b>没有「开始测试」按钮</b> —— 圆球本身就是状态可视化</li>
+        <li><b>没有「+ 新建习惯」/「使用引导」文字按钮</b> —— 全砍</li>
+        <li><b>底部习惯条</b> + 极小元数据行（v/HUD/Vosk/资源）</li>
+        <li>圆球状态变化：IDLE 灰 → LISTENING 主色呼吸 → DICTATING 主色脉冲 → ERROR 红</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  /* ========== 状态切换 ========== */
+  const STATES = {
+    IDLE:{
+      orb:'is-idle',
+      status:'待命', target:'当前窗口',
+      h:'<span class="key">音量 +</span><span class="arrow">→</span><span class="key">RAlt</span>',
+      sub:'<span class="mode">长按开启</span><span class="sep">·</span>自动发送<span class="sep">·</span>当前习惯 <b id="habitName" style="color:var(--ink);font-weight:600;">默认</b>',
+      line:'is-ok'
+    },
+    LISTENING:{
+      orb:'is-listening',
+      status:'听见唤醒词', target:'当前窗口',
+      h:'<span class="key">音量 +</span><span class="arrow">→</span><span class="key">RAlt</span>',
+      sub:'<span class="mode">说出「开始输入」</span><span class="sep">·</span>或在键上继续说<span class="sep">·</span>当前习惯 <b id="habitName" style="color:var(--ink);font-weight:600;">默认</b>',
+      line:'is-live'
+    },
+    DICTATING:{
+      orb:'is-dictating',
+      status:'正在听写 · 12.4s', target:'当前窗口',
+      h:'<span class="key">音量 +</span><span class="arrow">→</span><span class="key">RAlt</span>',
+      sub:'<span class="mode">松开结束</span><span class="sep">·</span>或说「结束输入」<span class="sep">·</span>当前习惯 <b id="habitName" style="color:var(--ink);font-weight:600;">默认</b>',
+      line:'is-rec'
+    },
+    ERROR:{
+      orb:'is-error',
+      status:'麦克风没声音', target:'—',
+      h:'<span class="key" style="color:var(--error);">!</span><span class="arrow">→</span><span class="key" style="color:var(--error);">无信号</span>',
+      sub:'<span class="mode">检查麦克风权限</span><span class="sep">·</span>或换一台设备<span class="sep">·</span>当前习惯 <b id="habitName" style="color:var(--ink);font-weight:600;">默认</b>',
+      line:'is-err'
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const orb = $('#orb');
+  const statusLine = $('#statusLine');
+  const statusText = $('#statusText');
+  const statusTarget = $('#statusTarget');
+  const heroH = $('#heroH');
+  const heroSub = $('#heroSub');
+
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      orb.className = 'orb ' + s.orb;
+      statusLine.className = 'status-line ' + s.line;
+      statusText.textContent = s.status;
+      statusTarget.textContent = s.target;
+      heroH.innerHTML = s.h;
+      heroSub.innerHTML = s.sub;
+    });
+  });
+
+  /* ========== 主题切换 ========== */
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  /* ========== habit 标签切换 ========== */
+  $$('#habitPills .habit-pill').forEach(p=>{
+    p.addEventListener('click',()=>{
+      $$('#habitPills .habit-pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+    });
+  });
+
+  /* ========== 默认展示 banner ========== */
+  setTimeout(()=>{
+    const b = document.getElementById('updateBanner');
+    if(b) b.hidden = false;
+  }, 600);
+</script>
+</body>
+</html>

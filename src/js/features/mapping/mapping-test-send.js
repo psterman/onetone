@@ -21,9 +21,22 @@
   function resetState(){
     clearTimeout(sendTimer);
     clearTimeout(sendWatchdog);
+    sendTimer=0;
+    sendWatchdog=0;
     sendState='idle';
     sendMappingId=null;
     sendFromFooter=false;
+  }
+
+  function showFooterSentBriefly(){
+    clearTimeout(sendTimer);
+    sendState='sent';
+    sendFromFooter=true;
+    renderSendButton();
+    sendTimer=setTimeout(function(){
+      resetState();
+      renderSendButton();
+    },900);
   }
 
   function clearWizardTimers(){
@@ -289,8 +302,10 @@
     var targetKey=effectiveTargetKey(mappingId,msg.key||'');
     var wasSilent=activationTestSilent;
     var cb=activationTestCallback;
+    var wasFooter=sendFromFooter;
     resetState();
-    renderSendButton();
+    if(wasFooter&&msg&&msg.ok) showFooterSentBriefly();
+    else renderSendButton();
     hooks.renderMappingList();
     hooks.renderHomeLiveKeyPanel(false);
     if(cb){
@@ -761,6 +776,10 @@
     if(context==='habit-trigger-test'){
       startHabitTriggerVerify(forMappingId||state.selectedMappingId||'',opts&&opts.onResult);
       return;
+    }
+    if(sendState==='sent'){
+      resetState();
+      renderSendButton();
     }
     if(context==='habit-activation-test'){
       activationTestCallback=opts&&typeof opts.onResult==='function'?opts.onResult:null;

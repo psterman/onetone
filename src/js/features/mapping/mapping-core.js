@@ -233,7 +233,7 @@
     if(!m||!isSelectedMapping(m.id)) return;
     const trig=(hooks().getEditorTriggerKey()||'').trim();
     const tgt=(hooks().getEditorTargetKey()||'').trim();
-    if(trig) m.triggerKey=trig;
+    if(trig&&(!hooks().isAllowedTriggerKey||hooks().isAllowedTriggerKey(trig))) m.triggerKey=trig;
     if(tgt){
       m.targetKey=tgt;
       m.label=(m.triggerKey||'?')+' → '+tgt;
