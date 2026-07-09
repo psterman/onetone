@@ -334,8 +334,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
             "error".into()
         };
         if !result.ok {
-            *state2.voice_vosk_last_error.lock() =
-                format!("快捷键发送失败：{}", result.target_key);
+            *state2.voice_vosk_last_error.lock() = format!("快捷键发送失败：{}", result.target_key);
             *state2.voice_vosk_last_trigger.lock() = String::new();
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();

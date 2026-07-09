@@ -10,8 +10,6 @@ pub fn window_icon() -> tauri::Result<Image<'static>> {
     Ok(Image::new_owned(rgba.into_raw(), width, height))
 }
 
-pub fn apply_window_icon(
-    window: &tauri::WebviewWindow,
-) -> tauri::Result<()> {
+pub fn apply_window_icon(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window.set_icon(window_icon()?)
 }

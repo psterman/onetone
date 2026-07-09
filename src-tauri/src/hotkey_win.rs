@@ -1085,7 +1085,10 @@ unsafe fn raw_input_device_id(hdevice: isize) -> Option<String> {
         return None;
     }
     let stable = device_identity::stable_id_from_path(&name);
-    device_cache().lock().unwrap().insert(hdevice, stable.clone());
+    device_cache()
+        .lock()
+        .unwrap()
+        .insert(hdevice, stable.clone());
     Some(stable)
 }
 

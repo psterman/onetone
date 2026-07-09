@@ -231,7 +231,9 @@ pub fn handle_voice_wake_detected(
                                 state.as_ref(),
                                 "voice",
                                 crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                                &format!("{engine} summon workflow: {app_target_id} ({matched_phrase})"),
+                                &format!(
+                                    "{engine} summon workflow: {app_target_id} ({matched_phrase})"
+                                ),
                                 Some(serde_json::json!({
                                     "engine": engine,
                                     "phrase": matched_phrase,
@@ -854,7 +856,9 @@ mod tests {
 
     #[test]
     fn wake_target_uses_scene_override() {
-        use crate::config::{new_mapping_id, MappingEntry, TriggerMode, VoiceConfig, VoiceOverride};
+        use crate::config::{
+            new_mapping_id, MappingEntry, TriggerMode, VoiceConfig, VoiceOverride,
+        };
 
         let mut cfg = VoiceConfig::default();
         let id = cfg.active_scene_id.clone();

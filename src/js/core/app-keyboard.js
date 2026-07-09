@@ -9,6 +9,11 @@
     var t=h.t;
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'){
+        var habitSetupOpen=$('habitSetupOverlay')&&$('habitSetupOverlay').classList.contains('open');
+        if(habitSetupOpen&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.handleEsc()){
+          e.preventDefault();
+          return;
+        }
         var testOpen=$('testOverlay')&&$('testOverlay').classList.contains('open');
         if(testOpen){ e.preventDefault(); h.closeTestModal(); return; }
         var phraseOpen=$('phrasePracticeOverlay')&&$('phrasePracticeOverlay').classList.contains('open');

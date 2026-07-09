@@ -338,12 +338,15 @@
       const renderHomeLive=hookFn('renderHomeLiveZone');
       const renderUpdate=hookFn('renderUpdateUi');
       const welcomeOpen=hookFn('welcomeOpen');
+      const habitSetupOpen=global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen
+        &&global.OneToneHabitTriggerSetup.isOpen();
       requestAnimationFrame(function(){
         if(serial!==mvpInitRenderSerial) return;
-        if(renderHome) renderHome();
-        if(renderHomeLive) renderHomeLive();
-        if(renderUpdate) renderUpdate();
+        if(renderHome&&!habitSetupOpen) renderHome();
+        if(renderHomeLive&&!habitSetupOpen) renderHomeLive();
+        if(renderUpdate&&!habitSetupOpen) renderUpdate();
         if(welcomeOpen&&welcomeOpen()) return;
+        if(habitSetupOpen) return;
         if(ui.drawerOpen){
           const renderEditor=hookFn('renderEditor');
           const renderListen=hookFn('renderListenRuntime');

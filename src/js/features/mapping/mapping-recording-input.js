@@ -412,6 +412,13 @@
     hooks().save();
     hooks().render();
     Rec().notifyOnboardingCapture('target',msg);
+    if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onTargetCaptured){
+      var capturedKey=sanitizeTargetCombo(key)||String(key||'').trim();
+      global.OneToneHabitTriggerSetup.onTargetCaptured({
+        mappingId:msg.mappingId||Rec().mappingId()||'',
+        key:capturedKey
+      });
+    }
     }
     return true;
     }

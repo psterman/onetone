@@ -18,8 +18,28 @@
     var t=hooks.t;
     bindClick('btnTestModalOk',function(){ hooks.closeTestModal(); });
     bindClick('btnTestModalClose',function(){ hooks.closeTestModal(); });
+    bindClick('btnTestWizardClose',function(){ hooks.closeTestModal(); });
+    bindClick('btnTestWizardOpen',function(e){
+      if(e) e.stopPropagation();
+      if(global.OneToneMappingTestSend&&global.OneToneMappingTestSend.fire){
+        global.OneToneMappingTestSend.fire(null,{context:'manual-wizard'});
+      }else{
+        hooks.fireTestSend(null);
+      }
+    });
     bindEvent('testOverlay','click',function(e){
       if(e.target===$('testOverlay')) hooks.closeTestModal();
+      var wizardAction=e.target&&e.target.closest?e.target.closest('[data-test-wizard-act]'):null;
+      if(wizardAction&&global.OneToneMappingTestSend&&global.OneToneMappingTestSend.handleWizardAction){
+        e.stopPropagation();
+        global.OneToneMappingTestSend.handleWizardAction(wizardAction.getAttribute('data-test-wizard-act'));
+        return;
+      }
+      var wizardMode=e.target&&e.target.closest?e.target.closest('[data-test-wizard-mode]'):null;
+      if(wizardMode&&global.OneToneMappingTestSend&&global.OneToneMappingTestSend.handleWizardAction){
+        e.stopPropagation();
+        global.OneToneMappingTestSend.handleWizardAction('select-mode',wizardMode.getAttribute('data-test-wizard-mode'));
+      }
     });
     bindClick('btnTestSend',function(){ hooks.fireTestSend(null); });
     bindClick('btnRecordTrigger',hooks.startTriggerRecord);

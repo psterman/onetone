@@ -123,6 +123,10 @@
       global.OneToneHomeV9.applyLang();
       global.OneToneHomeV9.render();
     }
+    if(global.OneToneHabitTriggerSetup){
+      global.OneToneHabitTriggerSetup.bindOnce();
+      global.OneToneHabitTriggerSetup.applyLang();
+    }
   }
 
   global.OneToneHomeShell={

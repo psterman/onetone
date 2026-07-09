@@ -244,7 +244,10 @@ pub fn resolve_path(rel: &str, resource_dir: Option<&Path>) -> PathBuf {
             push_candidate(&mut candidates, dir.join(stripped));
         }
     }
-    push_candidate(&mut candidates, PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel));
+    push_candidate(
+        &mut candidates,
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel),
+    );
 
     for candidate in &candidates {
         if model_dir_valid(candidate) {

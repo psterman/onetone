@@ -40,17 +40,18 @@ pub fn start_vosk_model_download(
     if preset.is_empty() {
         return Err("preset required".into());
     }
-    let dir_name = model_dir_name(&preset).ok_or_else(|| format!("unsupported preset: {preset}"))?;
+    let dir_name =
+        model_dir_name(&preset).ok_or_else(|| format!("unsupported preset: {preset}"))?;
 
     let base = vosk_resources_dir(resource_dir.as_deref());
     let dest = base.join(dir_name);
     if model_dir_valid(&dest) {
-        crate::voice_vosk_runtime::refresh_vosk_probe_cache(state.as_ref(), resource_dir.as_deref());
+        crate::voice_vosk_runtime::refresh_vosk_probe_cache(
+            state.as_ref(),
+            resource_dir.as_deref(),
+        );
         if state.cfg.lock().voice_vosk.enabled {
-            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
-                &state,
-                resource_dir.clone(),
-            );
+            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(&state, resource_dir.clone());
         }
         return Ok(serde_json::json!({
             "ok": true,
@@ -251,9 +252,7 @@ fn unzip_archive(zip_path: &Path, dest: &Path) -> Result<(), String> {
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
         let name = entry.name().to_string();
-        let rel = name
-            .trim_start_matches("./")
-            .trim_start_matches('/');
+        let rel = name.trim_start_matches("./").trim_start_matches('/');
         if rel.is_empty() || rel.ends_with('/') {
             continue;
         }

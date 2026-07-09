@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewWindow};
@@ -142,10 +142,12 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
             snapshot.1,
             snapshot.2,
             snapshot.3,
-            snapshot.4
+            snapshot
+                .4
                 .map(|v| format!("{v:.0}"))
                 .unwrap_or_else(|| "-".into()),
-            snapshot.5
+            snapshot
+                .5
                 .map(|v| format!("{v:.0}"))
                 .unwrap_or_else(|| "-".into()),
         ),

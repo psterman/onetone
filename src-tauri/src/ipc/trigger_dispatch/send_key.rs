@@ -27,6 +27,27 @@ fn emit_onboarding_trigger_fired(
     window.emit("to_js", &payload).ok();
 }
 
+fn emit_trigger_test_fired(
+    window: &tauri::WebviewWindow,
+    mapping_id: &str,
+    trigger_key: &str,
+    target_key: &str,
+    source_key: &str,
+    ok: bool,
+    reason: &str,
+) {
+    let payload = serde_json::json!({
+        "type": "mvp_trigger_test_fired",
+        "mappingId": mapping_id,
+        "triggerKey": trigger_key,
+        "targetKey": target_key,
+        "sourceKey": source_key,
+        "ok": ok,
+        "reason": reason,
+    });
+    window.emit("to_js", &payload).ok();
+}
+
 fn finish_send_key_dispatch(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
@@ -39,6 +60,15 @@ fn finish_send_key_dispatch(
     label: &str,
 ) {
     emit_onboarding_trigger_fired(
+        window,
+        mapping_id,
+        trigger_key,
+        target_key,
+        source_key,
+        ok,
+        reason,
+    );
+    emit_trigger_test_fired(
         window,
         mapping_id,
         trigger_key,

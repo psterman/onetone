@@ -16,7 +16,11 @@ fn should_publish_input_obs(state: &AppState, kind: &str) -> bool {
 }
 
 /// Publish low-frequency input observability events to the runtime ring.
-pub fn handle_input_obs_event(state: &Arc<AppState>, app: &AppHandle, obs: crate::input_obs::InputObsEvent) {
+pub fn handle_input_obs_event(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    obs: crate::input_obs::InputObsEvent,
+) {
     if !should_publish_input_obs(state, obs.kind) {
         return;
     }
@@ -96,8 +100,7 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         let mapping_id = mapping.id.clone();
         let duration_ms = cfg.key_press_duration_ms;
         let foreground_app = app_chat_workflow::foreground_app_target_id();
-        let effective =
-            effective_mapping_for_trigger(mapping, foreground_app.as_deref());
+        let effective = effective_mapping_for_trigger(mapping, foreground_app.as_deref());
         let actions = {
             let mut pool = state.machine_pool.lock();
             pool.get_or_create(&mapping_id)

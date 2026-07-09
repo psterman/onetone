@@ -94,7 +94,10 @@ mod tests {
     #[test]
     fn gamepad_mask_to_name() {
         assert_eq!(gamepad_button_name(XINPUT_GAMEPAD_A), Some("Gamepad_A"));
-        assert_eq!(gamepad_button_name(XINPUT_GAMEPAD_DPAD_UP), Some("Gamepad_DpadUp"));
+        assert_eq!(
+            gamepad_button_name(XINPUT_GAMEPAD_DPAD_UP),
+            Some("Gamepad_DpadUp")
+        );
         assert_eq!(gamepad_button_name(0), None);
     }
 }

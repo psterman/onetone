@@ -299,8 +299,7 @@ pub fn apply_voice_config_change(
         _ => {}
     }
 
-    *state.last_voice_fingerprint.lock() =
-        crate::scene_config::idle_voice_fingerprint(new_cfg);
+    *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(new_cfg);
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }
 

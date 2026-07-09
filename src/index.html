@@ -1940,16 +1940,169 @@
   </div>
   <div class="test-overlay" id="testOverlay" aria-hidden="true">
     <div class="test-modal" role="dialog" aria-modal="true" aria-labelledby="testModalTitle">
-      <div class="test-modal-head">
-        <div class="test-status-icon is-sending" id="testStatusIcon">…</div>
-        <h3 class="test-modal-title" id="testModalTitle">测试语音快捷键</h3>
-        <button type="button" class="welcome-close" id="btnTestModalClose" aria-label="关闭">×</button>
+      <div class="test-modal-view test-modal-view--send" id="testModalSendView">
+        <div class="test-modal-head">
+          <div class="test-status-icon is-sending" id="testStatusIcon">…</div>
+          <h3 class="test-modal-title" id="testModalTitle">测试语音快捷键</h3>
+          <button type="button" class="welcome-close" id="btnTestModalClose" aria-label="关闭">×</button>
+        </div>
+        <p class="test-modal-summary" id="testModalSummary"></p>
+        <ul class="test-check-list" id="testCheckList"></ul>
+        <div class="test-modal-hint" id="testModalHint" hidden></div>
+        <div class="test-modal-actions">
+          <button type="button" class="btn secondary" id="btnTestWizardOpen">保存为全局习惯</button>
+          <button type="button" class="btn primary" id="btnTestModalOk">知道了</button>
+        </div>
       </div>
-      <p class="test-modal-summary" id="testModalSummary"></p>
-      <ul class="test-check-list" id="testCheckList"></ul>
-      <div class="test-modal-hint" id="testModalHint" hidden></div>
-      <div class="test-modal-actions">
-        <button type="button" class="btn primary" id="btnTestModalOk">知道了</button>
+      <div class="test-modal-view test-modal-view--wizard" id="testModalWizardView" hidden>
+        <div class="template-pick-head">
+          <div>
+            <h3 class="template-pick-title" id="testWizardTitle">保存为全局习惯</h3>
+            <p class="template-pick-desc" id="testWizardDesc">先录两个键，再选择按键方式，最后按一下验证。</p>
+          </div>
+          <button type="button" class="welcome-close" id="btnTestWizardClose" aria-label="关闭">×</button>
+        </div>
+        <div class="test-wizard-steps" id="testWizardSteps">
+          <span class="test-wizard-step is-active" data-step="1">1</span>
+          <span class="test-wizard-step" data-step="2">2</span>
+          <span class="test-wizard-step" data-step="3">3</span>
+        </div>
+        <div class="test-wizard-panel" id="testWizardStep1">
+          <p class="test-wizard-kicker" id="testWizardStep1Kicker">第一步</p>
+          <h4 class="test-wizard-panel-title" id="testWizardStep1Title">录制按键</h4>
+          <div class="test-wizard-record-grid">
+            <div class="test-wizard-record-card">
+              <b id="testWizardTriggerTitle">你要按的键</b>
+              <div class="test-wizard-record-key" id="testWizardTriggerKey">未设置</div>
+              <p class="test-wizard-record-hint" id="testWizardTriggerHint">支持键盘、鼠标侧键、戒指、手柄等来源。</p>
+              <button type="button" class="btn secondary" id="btnTestWizardRecordTrigger" data-test-wizard-act="record-trigger">录这个键</button>
+            </div>
+            <div class="test-wizard-record-card">
+              <b id="testWizardTargetTitle">打开语音输入的快捷键</b>
+              <div class="test-wizard-record-key" id="testWizardTargetKey">未设置</div>
+              <p class="test-wizard-record-hint" id="testWizardTargetHint">这是程序之后替你发送给输入法的激活键。</p>
+              <button type="button" class="btn secondary" id="btnTestWizardRecordTarget" data-test-wizard-act="record-target">录这个键</button>
+            </div>
+          </div>
+          <p class="test-wizard-status" id="testWizardRecordStatus">先录左边的启动键。</p>
+          <div class="test-modal-actions">
+            <button type="button" class="btn primary" id="btnTestWizardToStep2" data-test-wizard-act="to-step-2">下一步</button>
+          </div>
+        </div>
+        <div class="test-wizard-panel" id="testWizardStep2" hidden>
+          <p class="test-wizard-kicker" id="testWizardStep2Kicker">第二步</p>
+          <h4 class="test-wizard-panel-title" id="testWizardStep2Title">选择按键方式</h4>
+          <div class="template-pick-grid" id="testWizardModeGrid" role="listbox" aria-label="快捷键方式"></div>
+          <p class="test-wizard-status" id="testWizardModeStatus">选择一种最顺手的触发方式。</p>
+          <div class="template-pick-actions">
+            <button type="button" class="btn secondary" id="btnTestWizardBackTo1" data-test-wizard-act="back-1">上一步</button>
+            <button type="button" class="btn primary" id="btnTestWizardToStep3" data-test-wizard-act="to-step-3">开始验证</button>
+          </div>
+        </div>
+        <div class="test-wizard-panel" id="testWizardStep3" hidden>
+          <p class="test-wizard-kicker" id="testWizardStep3Kicker">第三步</p>
+          <h4 class="test-wizard-panel-title" id="testWizardStep3Title">按一下验证</h4>
+          <div class="test-wizard-verify-key" id="testWizardVerifyKey">—</div>
+          <p class="test-wizard-verify-note" id="testWizardVerifyNote">启用后按一下这个键，看是否成功唤起。</p>
+          <p class="test-wizard-status" id="testWizardVerifyStatus">等待验证开始…</p>
+          <div class="template-pick-actions">
+            <button type="button" class="btn secondary" id="btnTestWizardBackTo2" data-test-wizard-act="back-2">返回修改</button>
+            <button type="button" class="btn primary" id="btnTestWizardRetry" data-test-wizard-act="retry-verify">重新验证</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="habit-setup-overlay" id="habitSetupOverlay" aria-hidden="true">
+    <div class="habit-setup-modal" role="dialog" aria-modal="true" aria-labelledby="habitSetupProgressLabel">
+      <header class="habit-setup-header">
+        <nav class="habit-setup-step-nav" id="habitSetupStepNav" role="tablist" aria-label="习惯设置步骤"></nav>
+        <button type="button" class="welcome-close habit-setup-close habit-setup-close--header" id="btnHabitSetupHeaderClose" aria-label="关闭">×</button>
+      </header>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupActivationView">
+        <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupActivationClose" aria-label="关闭">×</button>
+        <div class="habit-setup-badge" id="habitSetupActivationBadge">⌨ 选择语音输入法</div>
+        <h3 class="habit-setup-title" id="habitSetupActivationTitle">你平时用哪个语音输入法？</h3>
+        <p class="habit-setup-desc" id="habitSetupActivationDesc">点选你的输入法，会自动填入默认快捷键；也可以自己录制调整。</p>
+        <p class="habit-setup-mode-summary" id="habitSetupTriggerSummary"></p>
+        <div class="habit-setup-activation-body" id="habitSetupActivationBody">
+        <div class="habit-setup-ime-grid" id="habitSetupImeGrid" role="listbox" aria-label="语音输入法"></div>
+        <div class="habit-setup-ime-selected" id="habitSetupImeSelected" hidden>
+          <div class="habit-setup-ime-selected-head">
+            <img id="habitSetupTargetImeIcon" class="habit-setup-ime-selected-icon is-placeholder" alt="" hidden />
+            <span class="habit-setup-ime-selected-icon habit-setup-ime-selected-icon--custom" id="habitSetupImeCustomIcon" aria-hidden="true" hidden>⌨</span>
+            <div class="habit-setup-ime-selected-copy">
+              <p class="habit-setup-ime-selected-name" id="habitSetupImeSelectedName"></p>
+              <p class="habit-setup-status habit-setup-ime-selected-key" id="habitSetupImeSelectedKey"></p>
+            </div>
+          </div>
+          <button type="button" class="btn secondary" id="btnHabitSetupImeReRecord">重新录制快捷键</button>
+        </div>
+        <div class="habit-setup-sub-host" id="habitSetupSubHost" hidden>
+          <div class="habit-setup-sub-panel" id="habitSetupRecordPanel" hidden>
+            <p class="habit-setup-sub-title" id="habitSetupRecordTitle"></p>
+            <p class="habit-setup-status" id="habitSetupRecordStatus"></p>
+            <div class="habit-setup-record-actions">
+              <button type="button" class="btn secondary" id="btnHabitSetupRecordBack">返回</button>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div class="habit-setup-actions habit-setup-actions--footer">
+          <button type="button" class="btn primary" id="btnHabitSetupNext" disabled>下一步</button>
+        </div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupTriggerView" hidden>
+        <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupClose" aria-label="关闭">×</button>
+        <div class="habit-setup-badge" id="habitSetupTriggerBadge">🧪 现场测试</div>
+        <h3 class="habit-setup-title" id="habitSetupTriggerTitle">试试 OneTone 能不能用</h3>
+        <p class="habit-setup-desc" id="habitSetupTriggerDesc">先录启动键，再分别测试按键响应和语音唤起是否正常。</p>
+        <div class="habit-setup-stage">
+          <div class="habit-setup-keyboard" id="habitSetupTriggerKeyboard" aria-hidden="true"></div>
+          <p class="habit-setup-status" id="habitSetupTriggerStatus"></p>
+        </div>
+        <div class="habit-setup-test-grid" id="habitSetupTestGrid">
+          <section class="habit-setup-test-panel" id="habitSetupKeyTestPanel">
+            <h4 class="habit-setup-test-panel-title" id="habitSetupKeyTestTitle">按键测试</h4>
+            <p class="habit-setup-status" id="habitSetupKeyTestStatus"></p>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupKeyTestRetry" hidden>重新测试</button>
+          </section>
+          <section class="habit-setup-test-panel" id="habitSetupVoiceTestPanel2">
+            <h4 class="habit-setup-test-panel-title" id="habitSetupVoiceTestTitle2">语音测试</h4>
+            <p class="habit-setup-desc" id="habitSetupVoiceTestDesc2"></p>
+            <div id="habitSetupStep2VoiceHost"></div>
+            <button type="button" class="btn secondary habit-setup-test-retry" id="btnHabitSetupVoiceTestRetry" hidden>重新测试</button>
+          </section>
+        </div>
+        <div class="habit-setup-actions habit-setup-actions--footer">
+          <button type="button" class="btn secondary" id="btnHabitSetupBackToActivationFromTrigger">上一步</button>
+          <button type="button" class="btn primary" id="btnHabitSetupNextTrigger" disabled>下一步</button>
+        </div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupModeView" hidden>
+        <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupModeClose" aria-label="关闭">×</button>
+        <div class="habit-setup-badge" id="habitSetupModeBadge">👆 选择按键方式</div>
+        <h3 class="habit-setup-title" id="habitSetupModePageTitle">选择按键方式</h3>
+        <p class="habit-setup-desc" id="habitSetupModePageDesc">选一个最顺手的说话方式，之后随时能改。</p>
+        <p class="habit-setup-mode-summary" id="habitSetupModeTriggerSummary"></p>
+        <p class="habit-setup-mode-lock" id="habitSetupModeLock"></p>
+        <div class="template-pick-grid habit-setup-mode-grid" id="habitSetupModeGrid" role="listbox" aria-label="快捷键方式"></div>
+        <div class="habit-setup-actions habit-setup-actions--footer">
+          <button type="button" class="btn secondary" id="btnHabitSetupBack">上一步</button>
+          <button type="button" class="btn primary" id="btnHabitSetupSave">存为习惯（全局方案）</button>
+        </div>
+      </div>
+      <div class="habit-setup-view habit-setup-screen" id="habitSetupVoiceLessonView" hidden>
+        <button type="button" class="welcome-close habit-setup-close" id="btnHabitSetupVoiceLessonClose" aria-label="关闭">×</button>
+        <div class="habit-setup-badge" id="habitSetupVoiceLessonBadge">🎙 语音操作教学</div>
+        <h3 class="habit-setup-title" id="habitSetupVoiceLessonTitle">学会三种语音操作</h3>
+        <p class="habit-setup-desc" id="habitSetupVoiceLessonDesc">跟读并完成演示，确认你能用语音控制 OneTone。</p>
+        <div class="habit-setup-voice-lessons" id="habitSetupVoiceLessons" role="listbox" aria-label="语音教学"></div>
+        <div class="habit-setup-voice-lesson-demo" id="habitSetupVoiceLessonDemoHost" hidden></div>
+        <div class="habit-setup-actions habit-setup-actions--footer">
+          <button type="button" class="btn secondary" id="btnHabitSetupBackFromVoiceLesson">上一步</button>
+          <button type="button" class="btn primary" id="btnHabitSetupSaveVoice" disabled>完成设置</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1959,7 +2112,7 @@
         <h3 class="template-pick-title" id="templatePickTitle" data-i18n="homeTestPickTitle">选择按键方式</h3>
         <button type="button" class="welcome-close" id="btnTemplatePickClose" aria-label="关闭">×</button>
       </div>
-      <p class="template-pick-desc" id="templatePickDesc" data-i18n="homeTestPickDesc">选一个最顺手的组合，然后填充到当前习惯并测试发送。</p>
+      <p class="template-pick-desc" id="templatePickDesc" data-i18n="homeTestPickDesc">选一个最顺手的说话方式 · 之后随时能改 · 对所有程序生效</p>
       <div class="template-pick-grid" id="templatePickGrid" role="listbox" aria-label="快捷键方式"></div>
       <div class="template-pick-live" id="templatePickLive" hidden>
         <div class="template-pick-live-row">
@@ -2090,6 +2243,7 @@
   <script src="js/features/mapping/mapping-recording-bindings.js"></script>
   <script src="js/features/home/home-live-actions.js"></script>
   <script src="js/home-v9.js"></script>
+  <script src="js/features/home/habit-trigger-setup.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>
   <script src="js/features/home/home-scheme.js"></script>

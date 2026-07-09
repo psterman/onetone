@@ -3,9 +3,7 @@
 
 use serde::Serialize;
 
-use crate::config::{
-    mapping_is_complete, MappingEntry, PhraseBundle, TriggerMode, VoiceConfig,
-};
+use crate::config::{mapping_is_complete, MappingEntry, PhraseBundle, TriggerMode, VoiceConfig};
 use crate::scene_config::{resolve_effective_scene, SceneResolveContext};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -46,11 +44,7 @@ pub fn project_habit(mapping: &MappingEntry, cfg: &VoiceConfig) -> HabitProfile 
 
     let (effective_target_key, effective_wake_phrases, effective_end_phrases) =
         if let Some(eff) = effective {
-            (
-                eff.target_key,
-                eff.wake_phrases,
-                eff.end_phrases,
-            )
+            (eff.target_key, eff.wake_phrases, eff.end_phrases)
         } else {
             (String::new(), Vec::new(), PhraseBundle::default())
         };
@@ -74,11 +68,7 @@ pub fn project_habit(mapping: &MappingEntry, cfg: &VoiceConfig) -> HabitProfile 
 }
 
 pub fn project_all(cfg: &VoiceConfig) -> Vec<HabitProfile> {
-    let mut out: Vec<HabitProfile> = cfg
-        .mappings
-        .iter()
-        .map(|m| project_habit(m, cfg))
-        .collect();
+    let mut out: Vec<HabitProfile> = cfg.mappings.iter().map(|m| project_habit(m, cfg)).collect();
     out.sort_by_key(|h| h.order);
     out
 }
@@ -120,25 +110,13 @@ fn has_app_parts(mapping: &MappingEntry) -> bool {
 
 fn has_voice_parts(mapping: &MappingEntry, cfg: &VoiceConfig) -> bool {
     if let Some(ov) = mapping.voice_override.as_ref() {
-        if ov
-            .wake_phrases
-            .as_ref()
-            .is_some_and(|p| !p.is_empty())
-        {
+        if ov.wake_phrases.as_ref().is_some_and(|p| !p.is_empty()) {
             return true;
         }
-        if ov
-            .end_phrases
-            .as_ref()
-            .is_some_and(|b| !b.is_empty())
-        {
+        if ov.end_phrases.as_ref().is_some_and(|b| !b.is_empty()) {
             return true;
         }
-        if ov
-            .target_key
-            .as_ref()
-            .is_some_and(|k| !k.trim().is_empty())
-        {
+        if ov.target_key.as_ref().is_some_and(|k| !k.trim().is_empty()) {
             return true;
         }
     }
@@ -449,7 +427,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(profile.effective_wake_phrases, vec!["小调小调".to_string()]);
-        assert_eq!(profile.effective_end_phrases.zh, vec!["结束输入".to_string()]);
+        assert_eq!(
+            profile.effective_end_phrases.zh,
+            vec!["结束输入".to_string()]
+        );
         assert_eq!(profile.effective_wake_phrases, eff.wake_phrases);
         assert_eq!(profile.effective_end_phrases, eff.end_phrases);
     }
@@ -499,7 +480,9 @@ mod tests {
         assert_eq!(active.id, b);
         assert!(active.is_active);
         assert_eq!(active.effective_wake_phrases, eff.wake_phrases);
-        assert!(active.effective_wake_phrases.contains(&"scene b wake".to_string()));
+        assert!(active
+            .effective_wake_phrases
+            .contains(&"scene b wake".to_string()));
     }
 
     #[test]

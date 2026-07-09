@@ -101,10 +101,7 @@ fn active_mapping_keys(cfg: &VoiceConfig) -> (String, String) {
         };
         return (trigger_key, target_key);
     }
-    let m = cfg
-        .mappings
-        .iter()
-        .find(|m| mapping_is_complete(m));
+    let m = cfg.mappings.iter().find(|m| mapping_is_complete(m));
     match m {
         Some(m) => (m.trigger_key.clone(), m.target_key.clone()),
         None => (String::new(), String::new()),

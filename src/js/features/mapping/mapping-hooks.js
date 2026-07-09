@@ -92,6 +92,7 @@
     };
     global.__vp_mapping_test_send_hooks__={
       t:deps.t,
+      escHtml:tx().escHtml,
       ensureConfig:deps.ensureConfig,
       flushAllEditorToMappings:deps.flushAllEditorToMappings,
       mappingById:deps.mappingById,
@@ -104,6 +105,9 @@
       conflictsForMapping:deps.conflictsForMapping,
       otherIdInConflict:deps.otherIdInConflict,
       mappingTargetKey:deps.mappingTargetKey,
+      save:deps.save,
+      render:deps.render,
+      toast:deps.toast,
       playSoundCue:deps.playSoundCue,
       renderMappingList:deps.renderMappingList,
       renderHomeLiveKeyPanel:deps.renderHomeLiveKeyPanel

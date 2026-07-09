@@ -134,97 +134,6 @@
   function templatePickLiveHintEl(){ return $('templatePickLiveHint'); }
   function templatePickLiveDotEl(){ return $('templatePickLiveDot'); }
   var templatePickLiveTimer=0;
-  var templatePickAutoCloseTimer=0;
-  var templatePickTraining=null;
-
-  function resetTemplatePickTraining(){
-    clearTimeout(templatePickAutoCloseTimer);
-    templatePickAutoCloseTimer=0;
-    templatePickTraining=null;
-  }
-
-  function templatePickStorageKey(){ return 'vp_template_pick_habits_v1'; }
-
-  function readTemplatePickHabits(){
-    try{
-      var raw=localStorage.getItem(templatePickStorageKey());
-      var parsed=raw?JSON.parse(raw):{};
-      return parsed&&typeof parsed==='object'?parsed:{};
-    }catch(_){
-      return {};
-    }
-  }
-
-  function writeTemplatePickHabits(data){
-    try{ localStorage.setItem(templatePickStorageKey(),JSON.stringify(data||{})); }catch(_){}
-  }
-
-  function templatePickHabitMeta(mappingId){
-    mappingId=String(mappingId||'').trim();
-    if(!mappingId) return null;
-    var all=readTemplatePickHabits();
-    var meta=all[mappingId];
-    return meta&&typeof meta==='object'?meta:null;
-  }
-
-  function templatePickHabitReady(mappingId){
-    var meta=templatePickHabitMeta(mappingId);
-    return !!(meta&&meta.completedAt);
-  }
-
-  function rememberTemplatePickHabit(mappingId,patch){
-    mappingId=String(mappingId||'').trim();
-    if(!mappingId) return null;
-    var all=readTemplatePickHabits();
-    var prev=all[mappingId]&&typeof all[mappingId]==='object'?all[mappingId]:{};
-    var next=Object.assign({},prev,patch||{});
-    next.mappingId=mappingId;
-    next.updatedAt=Date.now();
-    all[mappingId]=next;
-    writeTemplatePickHabits(all);
-    return next;
-  }
-
-  function rememberTemplatePickSample(mappingId,styleId,text){
-    text=String(text||'').trim();
-    if(!text) return null;
-    var meta=templatePickHabitMeta(mappingId)||{};
-    var samples=Array.isArray(meta.samples)?meta.samples.slice():[];
-    var exists=samples.some(function(item){ return item&&item.text===text; });
-    if(!exists){
-      samples.push({
-        text:text,
-        styleId:String(styleId||'').trim()||'tap',
-        capturedAt:Date.now()
-      });
-      if(samples.length>5) samples=samples.slice(samples.length-5);
-    }
-    return rememberTemplatePickHabit(mappingId,{ samples:samples, lastSampleText:text, lastSampleAt:Date.now() });
-  }
-
-  function finalizeTemplatePickTraining(sampleText){
-    if(!templatePickTraining||templatePickTraining.completed) return;
-    var training=templatePickTraining;
-    training.completed=true;
-    rememberTemplatePickHabit(training.mappingId,{
-      styleId:training.styleId,
-      triggerMode:training.triggerMode,
-      activatedAt:training.activatedAt||Date.now(),
-      completedAt:Date.now()
-    });
-    if(sampleText) rememberTemplatePickSample(training.mappingId,training.styleId,sampleText);
-    if(global.OneToneApp&&global.OneToneApp.toast){
-      global.OneToneApp.toast(sampleText?t('homeTestPickSavedTrained'):t('homeTestPickSaved'));
-    }
-    var btnApply=$('btnTemplatePickApply');
-    if(btnApply){
-      btnApply.disabled=false;
-      btnApply.textContent=t('homeTestPickApplyDone');
-    }
-    templatePickAutoCloseTimer=setTimeout(function(){
-      closeTemplatePick();
-    },900);
-  }
 
   function ensureGlobalMapping(){
     var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:null;
@@ -288,6 +197,16 @@
     return true;
   }
 
+  function friendlyTriggerLabel(m){
+    var key=m&&String(m.triggerKey||'').trim()?String(m.triggerKey).trim():'';
+    if(!key) return 'Alt';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+      var lang=global.OneToneApp&&global.OneToneApp.getLang?global.OneToneApp.getLang():'zh';
+      return global.OneToneKeyLabels.friendlyKeyName(key,lang)||key;
+    }
+    return key;
+  }
+
   function closeTemplatePick(){
     var overlay=templatePickOverlayEl();
     if(!overlay) return;
@@ -295,7 +214,6 @@
     overlay.setAttribute('aria-hidden','true');
     clearInterval(templatePickLiveTimer);
     templatePickLiveTimer=0;
-    resetTemplatePickTraining();
     var btnApply=$('btnTemplatePickApply');
     if(btnApply){
       btnApply.disabled=false;
@@ -307,6 +225,7 @@
     var grid=templatePickGridEl();
     if(!grid) return;
     var m=homeActiveMapping();
+    var trigLabel=friendlyTriggerLabel(m);
     var rawMode=(m&&m.triggerMode!=null)?String(m.triggerMode||'').toLowerCase():'tap';
     var selected='tap';
     if(rawMode==='double') selected='double';
@@ -324,7 +243,7 @@
       if(s.anim==='hold'){
         animHtml='<div class="tp-demo">'
           +'<div class="tp-hold-label">按住中</div>'
-          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-key">'+esc(trigLabel)+'</div>'
           +'<div class="tp-wave-hold">'
           +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
           +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
@@ -333,8 +252,8 @@
           +'</div>';
       }else if(s.anim==='tap'){
         animHtml='<div class="tp-demo">'
-          +'<div class="tp-tap-label">单击 Alt（开始）→ 再单击（结束）</div>'
-          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-tap-label">单击 '+esc(trigLabel)+'（开始）→ 再单击（结束）</div>'
+          +'<div class="tp-key">'+esc(trigLabel)+'</div>'
           +'<div class="tp-tap-wave">'
           +'<div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div>'
           +'<div class="b"></div>'
@@ -342,8 +261,8 @@
           +'</div>';
       }else if(s.anim==='double'){
         animHtml='<div class="tp-demo">'
-          +'<div class="tp-double-hint">快速连按 Alt 两次</div>'
-          +'<div class="tp-key">Alt</div>'
+          +'<div class="tp-double-hint">快速连按 '+esc(trigLabel)+' 两次</div>'
+          +'<div class="tp-key">'+esc(trigLabel)+'</div>'
           +'<div class="tp-double-count">×2</div>'
           +'</div>';
       }
@@ -359,7 +278,6 @@
   function openTemplatePick(){
     var overlay=templatePickOverlayEl();
     if(!overlay) return;
-    resetTemplatePickTraining();
     renderTemplatePickCards();
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden','false');
@@ -415,80 +333,10 @@
       closeTemplatePick();
       return;
     }
-    templatePickTraining={
-      mappingId:mappingId,
-      styleId:styleId,
-      triggerMode:patchTriggerMode,
-      activatedAt:0,
-      completed:false
-    };
-    rememberTemplatePickHabit(mappingId,{
-      styleId:styleId,
-      triggerMode:patchTriggerMode,
-      savedAt:Date.now(),
-      completedAt:0
-    });
-    var btnApply=$('btnTemplatePickApply');
-    if(btnApply){
-      btnApply.disabled=true;
-      btnApply.textContent=t('homeTestPickWaiting');
-    }
     if(global.OneToneApp&&global.OneToneApp.toast){
-      global.OneToneApp.toast(t('homeTestPickSavedPrompt'));
+      global.OneToneApp.toast(t('homeTestPickSaved'));
     }
-
-    // Show a live “press your trigger key now” guide instead of the old test modal.
-    var live=templatePickLiveEl();
-    if(live) live.hidden=false;
-    function updateLive(){
-      var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot?global.OneToneVoiceUiState.snapshot():{};
-      var summary=global.OneToneVoiceHomeSummary&&global.OneToneVoiceHomeSummary.compute
-        ?global.OneToneVoiceHomeSummary.compute()
-        :{ dictating:false };
-      var end=(snap&&snap.end)||{};
-      var state=String(end.state||'idle');
-      var dot=templatePickLiveDotEl();
-      var textEl=templatePickLiveTextEl();
-      var hintEl=templatePickLiveHintEl();
-      var dictating=state==='dictating'||state==='stopping'||state==='committing';
-      var liveParts=dictationTextParts(summary);
-      var sampleText=((liveParts&&liveParts.finalized)||'').trim();
-      if(templatePickTraining&&summary&&summary.dictating&&!templatePickTraining.activatedAt){
-        templatePickTraining.activatedAt=Date.now();
-        rememberTemplatePickHabit(templatePickTraining.mappingId,{
-          styleId:templatePickTraining.styleId,
-          triggerMode:templatePickTraining.triggerMode,
-          activatedAt:templatePickTraining.activatedAt
-        });
-      }
-      if(templatePickTraining&&sampleText){
-        rememberTemplatePickSample(templatePickTraining.mappingId,templatePickTraining.styleId,sampleText);
-      }
-      if(dot) dot.classList.toggle('is-on',dictating);
-      if(textEl){
-        if(state==='dictating') textEl.textContent=t('homeTestLiveDictating');
-        else if(state==='stopping') textEl.textContent=t('homeTestLiveStopping');
-        else if(state==='committing') textEl.textContent=t('homeTestLiveCommitting');
-        else if(state==='sent') textEl.textContent=t('homeTestLiveSent');
-        else if(state==='error') textEl.textContent=t('homeTestLiveError');
-        else textEl.textContent=t('homeTestLiveReady');
-      }
-      if(hintEl){
-        if(styleId==='hold'){
-          hintEl.textContent=t('homeTestLiveHintHold');
-        }else if(styleId==='double'){
-          hintEl.textContent=t('homeTestLiveHintDouble');
-        }else{
-          hintEl.textContent=t('homeTestLiveHintTap');
-        }
-      }
-      if(templatePickTraining&&(state==='sent'||(templatePickTraining.activatedAt&&sampleText))){
-        finalizeTemplatePickTraining(sampleText);
-      }
-    }
-    updateLive();
-    clearInterval(templatePickLiveTimer);
-    templatePickLiveTimer=setInterval(updateLive,300);
+    closeTemplatePick();
   }
 
   function activeSceneId(){
@@ -676,10 +524,7 @@
   function updateTestSendEntryLabel(){
     var btn=$('vp9BtnTestSend');
     if(!btn) return;
-    var m=homeActiveMapping();
-    var mappingId=m&&m.id?String(m.id):'';
-    var ready=mappingId&&templatePickHabitReady(mappingId);
-    btn.textContent=ready?t('homeLiveTestEndSend'):t('homeTestPickEntry');
+    btn.textContent=t('homeTestPickEntry');
   }
 
   function renderEmptyState(liveEl,trigger){
@@ -776,6 +621,7 @@
   }
 
   function render(){
+    if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()) return;
     var vm=buildViewModel();
     if(global.vp9&&global.vp9.updateState) global.vp9.updateState(vm.vpState);
     renderLiveText(vm);
@@ -835,13 +681,11 @@
     var btnTestSend=$('vp9BtnTestSend');
     if(btnTestSend){
       btnTestSend.onclick=function(){
-        var m=homeActiveMapping();
-        var mappingId=m&&m.id?String(m.id):'';
-        if(mappingId&&templatePickHabitReady(mappingId)){
-          runHomeTestSend(mappingId);
-          return;
+        if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
+          global.OneToneHabitTriggerSetup.open();
+        }else{
+          openTemplatePick();
         }
-        openTemplatePick();
       };
     }
 
@@ -909,7 +753,7 @@
       var key=el.getAttribute('data-i18n');
       if(key) el.textContent=t(key);
     });
-    ['templatePickTitle','templatePickDesc','btnTemplatePickCancel','btnTemplatePickApply'].forEach(function(id){
+    ['templatePickTitle','templatePickDesc','templatePickModeLabel','imePresetHintTemplatePick','btnTemplatePickCancel','btnTemplatePickApply'].forEach(function(id){
       var el=$(id);
       if(!el) return;
       var key=el.getAttribute('data-i18n');

@@ -1,10 +1,10 @@
+mod app_chat_workflow;
 mod app_icon;
 mod app_log;
 mod audio_win;
 mod backdrop;
-mod config;
-mod app_chat_workflow;
 mod coach_hud;
+mod config;
 mod cursor_workflow;
 mod device_identity;
 mod gesture_timing;
@@ -93,8 +93,7 @@ pub struct AppState {
     pub voice_session_last_action: Mutex<String>,
     pub voice_session_mapping_id: Mutex<String>,
     pub voice_session_snapshot: Mutex<Option<crate::scene_config::VoiceSessionSnapshot>>,
-    pub last_voice_fingerprint:
-        Mutex<Option<crate::scene_config::VoiceRuntimeFingerprint>>,
+    pub last_voice_fingerprint: Mutex<Option<crate::scene_config::VoiceRuntimeFingerprint>>,
     pub voice_session_commit_token: Mutex<u64>,
     /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
@@ -369,7 +368,12 @@ pub fn run() {
             let state_layout = app_state.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(Duration::from_millis(120)).await;
-                window_layout::apply_on_startup_logged(&win_layout, &cfg_layout, &state_layout, "deferred");
+                window_layout::apply_on_startup_logged(
+                    &win_layout,
+                    &cfg_layout,
+                    &state_layout,
+                    "deferred",
+                );
             });
 
             if first_launch {
@@ -383,19 +387,17 @@ pub fn run() {
 
             let window_clone = window.clone();
             let state_for_close = app_state.clone();
-            window.on_window_event(move |event| {
-                match event {
-                    tauri::WindowEvent::CloseRequested { api, .. } => {
-                        window_layout::persist_now(&state_for_close, &window_clone);
-                        api.prevent_close();
-                        let _ = window_clone.hide();
-                        app_log::log_line(&state_for_close, "window", "main window hidden");
-                    }
-                    tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
-                        window_layout::schedule_save(state_for_close.clone(), window_clone.clone());
-                    }
-                    _ => {}
+            window.on_window_event(move |event| match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    window_layout::persist_now(&state_for_close, &window_clone);
+                    api.prevent_close();
+                    let _ = window_clone.hide();
+                    app_log::log_line(&state_for_close, "window", "main window hidden");
                 }
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
+                    window_layout::schedule_save(state_for_close.clone(), window_clone.clone());
+                }
+                _ => {}
             });
 
             let state2 = app_state.clone();

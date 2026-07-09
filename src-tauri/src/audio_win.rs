@@ -6,10 +6,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::AppState;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, WebviewWindow};
-use crate::AppState;
 
 /// Wait after stopping capture before reopening (device switch / monitor restart).
 pub const MIC_MONITOR_SETTLE_MS: u64 = 400;
@@ -203,11 +203,11 @@ mod imp {
     use cpal::SampleFormat;
     use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
     use windows::core::{HSTRING, PCWSTR};
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eConsole, eMultimedia, eRender, ERole, IMMDevice,
         IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE, DEVICE_STATE_ACTIVE,
     };
-    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::StructuredStorage::PropVariantToStringAlloc;
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
@@ -319,7 +319,9 @@ mod imp {
                 }
             })
         {
-            state.recording_audio_sync_running.store(false, Ordering::Release);
+            state
+                .recording_audio_sync_running
+                .store(false, Ordering::Release);
             eprintln!("recording audio sync spawn failed: {err}");
             sync_recording_audio_policy_now(state.as_ref());
         }
@@ -441,7 +443,9 @@ mod imp {
         }
     }
 
-    fn capture_render_endpoint(role: ERole) -> Result<Option<RecordingAudioEndpointBackup>, String> {
+    fn capture_render_endpoint(
+        role: ERole,
+    ) -> Result<Option<RecordingAudioEndpointBackup>, String> {
         unsafe {
             init_com_apartment()?;
             let enumerator: IMMDeviceEnumerator =
@@ -515,7 +519,9 @@ mod imp {
         }
     }
 
-    fn restore_recording_audio_endpoint(endpoint: &RecordingAudioEndpointBackup) -> Result<(), String> {
+    fn restore_recording_audio_endpoint(
+        endpoint: &RecordingAudioEndpointBackup,
+    ) -> Result<(), String> {
         let Some(role) = role_from_name(&endpoint.role) else {
             return Ok(());
         };

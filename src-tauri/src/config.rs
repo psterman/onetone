@@ -33,8 +33,7 @@ pub struct PhraseBundle {
 
 impl PhraseBundle {
     pub fn is_empty(&self) -> bool {
-        self.zh.iter().all(|p| p.trim().is_empty())
-            && self.en.iter().all(|p| p.trim().is_empty())
+        self.zh.iter().all(|p| p.trim().is_empty()) && self.en.iter().all(|p| p.trim().is_empty())
     }
 }
 
@@ -50,7 +49,11 @@ pub struct VoiceOverride {
     /// Per-scene engine preference: "sapi" | "vosk" | "none".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub engine: Option<String>,
-    #[serde(rename = "modelPreset", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "modelPreset",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub model_preset: Option<String>,
 }
 
@@ -95,7 +98,11 @@ pub struct AppBehaviorRule {
     pub finish_mode: String,
     #[serde(default)]
     pub note: Option<String>,
-    #[serde(rename = "summonPhrase", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "summonPhrase",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub summon_phrase: Option<String>,
 }
 
@@ -245,7 +252,11 @@ pub struct MappingEntry {
     pub app_target_id: String,
     #[serde(rename = "appBehaviorRules", default)]
     pub app_behavior_rules: Vec<AppBehaviorRule>,
-    #[serde(rename = "voiceOverride", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "voiceOverride",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub voice_override: Option<VoiceOverride>,
 }
 
@@ -2601,7 +2612,10 @@ mod tests {
             device: Some("xinput:1".into()),
             key: "Gamepad_A".into(),
         });
-        assert_eq!(hit0.map(|m| m.id.as_str()), Some(cfg.mappings[0].id.as_str()));
+        assert_eq!(
+            hit0.map(|m| m.id.as_str()),
+            Some(cfg.mappings[0].id.as_str())
+        );
         assert_eq!(hit1.map(|m| m.id.as_str()), Some("pad1"));
     }
 
@@ -2668,6 +2682,9 @@ mod tests {
             model_preset: "en-light".into(),
         };
         reconcile_vosk_phrases_for_preset(&mut vosk);
-        assert_eq!(vosk.phrases, vosk_preset_default_phrases("en-light").unwrap());
+        assert_eq!(
+            vosk.phrases,
+            vosk_preset_default_phrases("en-light").unwrap()
+        );
     }
 }

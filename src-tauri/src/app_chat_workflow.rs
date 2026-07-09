@@ -250,7 +250,10 @@ pub fn run_for_target_id(
         "unknown_app_target".to_string(),
         AppChatWorkflowError::NotFound,
     ))?;
-    Err((profile.error_prefix.to_string(), AppChatWorkflowError::NotFound))
+    Err((
+        profile.error_prefix.to_string(),
+        AppChatWorkflowError::NotFound,
+    ))
 }
 
 #[cfg(windows)]
@@ -285,8 +288,8 @@ fn run_app_chat_workflow(
     let app = window.app_handle();
     let _hide_guard = MainWindowHideGuard::maybe_hide(&app, profile.restore_main_delay_ms);
 
-    let (hwnd, freshly_launched) = ensure_app_window(profile)
-        .ok_or((prefix.to_string(), AppChatWorkflowError::NotFound))?;
+    let (hwnd, freshly_launched) =
+        ensure_app_window(profile).ok_or((prefix.to_string(), AppChatWorkflowError::NotFound))?;
     if freshly_launched {
         std::thread::sleep(Duration::from_millis(2200));
     }
@@ -393,10 +396,7 @@ fn focus_chat_input(
 }
 
 #[cfg(windows)]
-fn click_composer_anchor(
-    hwnd: winapi::shared::windef::HWND,
-    anchor: (f32, f32),
-) -> bool {
+fn click_composer_anchor(hwnd: winapi::shared::windef::HWND, anchor: (f32, f32)) -> bool {
     crate::keyboard::click_client_relative(hwnd, anchor.0, anchor.1)
 }
 
@@ -467,7 +467,7 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
     use winapi::shared::windef::{HWND, RECT};
     use winapi::um::winuser::{
         EnumWindows, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowRect,
-        GetWindowThreadProcessId, GW_OWNER, GWL_EXSTYLE, IsWindowVisible, WS_EX_TOOLWINDOW,
+        GetWindowThreadProcessId, IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
     };
 
     struct EnumCtx {
@@ -524,10 +524,7 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
         candidates: Vec::new(),
     };
     unsafe {
-        EnumWindows(
-            Some(enum_proc),
-            &mut ctx as *mut EnumCtx as LPARAM,
-        );
+        EnumWindows(Some(enum_proc), &mut ctx as *mut EnumCtx as LPARAM);
     }
     ctx.candidates
         .into_iter()
@@ -576,7 +573,12 @@ fn process_image_path(pid: u32) -> Option<String> {
         )
         .is_ok();
         if !ok || len == 0 {
-            len = GetModuleFileNameExW(handle, std::ptr::null_mut(), buf.as_mut_ptr(), buf.len() as u32);
+            len = GetModuleFileNameExW(
+                handle,
+                std::ptr::null_mut(),
+                buf.as_mut_ptr(),
+                buf.len() as u32,
+            );
         }
         CloseHandle(handle);
         if len == 0 {
@@ -602,14 +604,11 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND) -> bool {
 
     unsafe {
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-        let automation: IUIAutomation = match CoCreateInstance(
-            &CUIAutomation,
-            None,
-            CLSCTX_INPROC_SERVER,
-        ) {
-            Ok(v) => v,
-            Err(_) => return false,
-        };
+        let automation: IUIAutomation =
+            match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+                Ok(v) => v,
+                Err(_) => return false,
+            };
         let root = match automation.ElementFromHandle(WinHwnd(hwnd as *mut _)) {
             Ok(v) => v,
             Err(_) => return false,
@@ -618,12 +617,11 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND) -> bool {
         let mut best: Option<(IUIAutomationElement, i32)> = None;
         for control_type in [UIA_EditControlTypeId, UIA_DocumentControlTypeId] {
             let value = VARIANT::from(control_type.0);
-            let condition = match automation
-                .CreatePropertyCondition(UIA_ControlTypePropertyId, &value)
-            {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
+            let condition =
+                match automation.CreatePropertyCondition(UIA_ControlTypePropertyId, &value) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
             let elements = match root.FindAll(TreeScope_Descendants, &condition) {
                 Ok(v) => v,
                 Err(_) => continue,

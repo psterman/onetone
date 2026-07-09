@@ -6,7 +6,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
-  var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0 };
+var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null };
   function clearRecTimer(){ clearTimeout(rec.timer); rec.timer=0; }
   function beginRecordSnapshot(){
     const m=OneToneMappingCore.selected();
@@ -89,6 +89,7 @@
 
   function cancelRecording(){
     if(rec.mode==='none') return;
+    rec.suppressAutoEnableOnce=false;
     const draftId=state.selectedMappingId;
     clearRecTimer();
     if(rec.mode==='schemeSwitch'){
@@ -172,6 +173,9 @@
       if(disp) disp.classList.toggle('empty',!normalized);
     }
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
+    if(mode==='target'&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){
+      global.OneToneHabitTriggerSetup.refreshRecordStatus(normalized);
+    }
   }
 
   function armLocalCaptureGuard(){
@@ -396,19 +400,24 @@
     return invokeRecordingCommand('cmd_stop_recording',{});
   }
 
-  function startTriggerRecord(){
+  function startTriggerRecord(pinnedMappingId){
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     hooks().ensureConfig();
-    beginRecordSnapshot();
+    const pin=String(pinnedMappingId||'').trim();
     hooks().resetTargetCapture();
-    hooks().armTriggerLeftClickIgnore(900);
-    rec.captureGen++;
-    const captureGen=rec.captureGen;
     const fallback=(OneToneMappingCore.selected()&&OneToneMappingCore.selected().id)
       ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
       ||'';
-    if(!state.selectedMappingId&&fallback) state.selectedMappingId=fallback;
-    rec.mappingId=state.selectedMappingId||fallback||'';
+    if(pin){
+      state.selectedMappingId=pin;
+    }else if(!state.selectedMappingId&&fallback){
+      state.selectedMappingId=fallback;
+    }
+    rec.mappingId=pin||state.selectedMappingId||fallback||'';
+    beginRecordSnapshot();
+    hooks().armTriggerLeftClickIgnore(900);
+    rec.captureGen++;
+    const captureGen=rec.captureGen;
     const m=OneToneMappingCore.recording();
     if(m){
       m.triggerSource=null; m.sourceKey=''; m.sourceTime='';
@@ -441,19 +450,24 @@
     });
   }
 
-  function startTargetRecord(){
+  function startTargetRecord(pinnedMappingId){
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     hooks().ensureConfig();
-    beginRecordSnapshot();
+    const pin=String(pinnedMappingId||'').trim();
     hooks().resetTargetCapture();
-    hooks().armTargetLeftClickIgnore(900);
-    rec.captureGen++;
-    const captureGen=rec.captureGen;
     const fallback=(OneToneMappingCore.selected()&&OneToneMappingCore.selected().id)
       ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
       ||'';
-    if(!state.selectedMappingId&&fallback) state.selectedMappingId=fallback;
-    rec.mappingId=state.selectedMappingId||fallback||'';
+    if(pin){
+      state.selectedMappingId=pin;
+    }else if(!state.selectedMappingId&&fallback){
+      state.selectedMappingId=fallback;
+    }
+    rec.mappingId=pin||state.selectedMappingId||fallback||'';
+    beginRecordSnapshot();
+    hooks().armTargetLeftClickIgnore(900);
+    rec.captureGen++;
+    const captureGen=rec.captureGen;
     const m=OneToneMappingCore.recording();
     rec.startPending=true;
     hooks().pushLog('[record] start target mapping='+String(rec.mappingId||''));
@@ -556,15 +570,22 @@
     setRecording('none');
     hooks().save();
     hooks().render();
-    notifyOnboardingCapture('trigger',{
+  notifyOnboardingCapture('trigger',{
       mode:'trigger',
       mappingId:m.id,
       key:k,
       source:source||null,
       sourceKey:m.sourceKey,
       sourceTime:m.sourceTime
-    });
+  });
+  if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onTriggerCaptured){
+    global.OneToneHabitTriggerSetup.onTriggerCaptured({mappingId:m.id,key:k});
+  }
+  if(rec.suppressAutoEnableOnce){
+    rec.suppressAutoEnableOnce=false;
+  }else{
     hooks().maybeEnableMappingAfterComplete(m);
+  }
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){ }
     return true;
   }
@@ -602,11 +623,16 @@
     finishTriggerCapture(display, source, physical, String(Date.now()));
   }
 
-  function finishTargetCapture(combo, mappingId){
+  function rejectTargetCapture(){
+    if(rec.mode!=='target') return;
+    updateRecordingPreview('target','');
+    notifyOnboardingRecordingPreview('target','');
+  }
+
+  function commitTargetCapture(combo, mappingId){
     if(rec.mode!=='target') return false;
     combo=hooks().sanitizeTargetCombo(combo);
     if(!combo) return false;
-    if(hooks().shouldIgnoreTargetLeftClickCapture(combo,combo,null)) return false;
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
     if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
@@ -637,7 +663,14 @@
       mappingId:m.id,
       key:combo
     });
-    hooks().maybeEnableMappingAfterComplete(m);
+    if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onTargetCaptured){
+      global.OneToneHabitTriggerSetup.onTargetCaptured({mappingId:m.id,key:combo});
+    }
+    if(rec.suppressAutoEnableOnce){
+      rec.suppressAutoEnableOnce=false;
+    }else{
+      hooks().maybeEnableMappingAfterComplete(m);
+    }
     if(wasNewDraft&&OneToneMappingCore.isSaved(m)&&global.OneToneSceneActivate){
       global.OneToneSceneActivate.activateScene(m.id);
     }
@@ -647,9 +680,36 @@
     return true;
   }
 
+  function finishTargetCapture(combo, mappingId){
+    if(rec.mode!=='target') return false;
+    combo=hooks().sanitizeTargetCombo(combo);
+    if(!combo) return false;
+    if(hooks().shouldIgnoreTargetLeftClickCapture(combo,combo,null)) return false;
+    const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
+    if(!m) return false;
+    var hook=rec.beforeFinishTargetHook;
+    if(hook){
+      void Promise.resolve(hook(combo, mappingId, m)).then(function(ok){
+        if(rec.mode!=='target') return;
+        if(!ok){
+          rejectTargetCapture();
+          return;
+        }
+        commitTargetCapture(combo, mappingId);
+      });
+      return true;
+    }
+    return commitTargetCapture(combo, mappingId);
+  }
+
+  function setBeforeFinishTargetHook(fn){
+    rec.beforeFinishTargetHook=typeof fn==='function'?fn:null;
+  }
+
   global.OneToneMappingRecording={
     mode:function(){ return rec.mode; }, setMode:function(v){ rec.mode=v; },
     mappingId:function(){ return rec.mappingId; }, setMappingId:function(v){ rec.mappingId=v; },
+    setSuppressAutoEnableOnce:function(v){ rec.suppressAutoEnableOnce=!!v; },
     wasEnabledBeforeRecording:function(){ return !!(rec.mappingWasEnabled&&rec.mappingWasEnabled.enabled); },
     isPending:function(){ return rec.startPending; }, setPending:function(v){ rec.startPending=v; },
     clearTimer:clearRecTimer, setTimer:function(fn,ms){ clearRecTimer(); rec.timer=setTimeout(fn,ms); },
@@ -673,6 +733,8 @@
     finishTrigger:finishTriggerCapture,
     finishFrontendTrigger:finishFrontendTriggerCapture,
     finishDetectedHardwareTrigger:finishDetectedHardwareTriggerCapture,
-    finishTarget:finishTargetCapture
+    finishTarget:finishTargetCapture,
+    rejectTargetCapture:rejectTargetCapture,
+    setBeforeFinishTargetHook:setBeforeFinishTargetHook
   };
 })((typeof window!=='undefined')?window:globalThis);

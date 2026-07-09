@@ -5,7 +5,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 static SEND_GUARD: AtomicBool = AtomicBool::new(false);
 static SEND_GUARD_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
-static GUARDED_KEYS: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+static GUARDED_KEYS: LazyLock<Mutex<HashSet<String>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
 static BLOCKED_COUNT: AtomicU64 = AtomicU64::new(0);
 
 fn now_ms() -> u64 {
@@ -48,8 +49,7 @@ fn expand_guard_aliases(key: &str) -> Vec<String> {
     match key.to_ascii_uppercase().as_str() {
         "CTRL" | "CONTROL" => {
             out.extend(
-                ["Ctrl", "Control", "LCtrl", "RCtrl", "LControl", "RControl"]
-                    .map(String::from),
+                ["Ctrl", "Control", "LCtrl", "RCtrl", "LControl", "RControl"].map(String::from),
             );
         }
         "ALT" => {

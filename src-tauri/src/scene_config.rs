@@ -695,7 +695,9 @@ mod tests {
         }
         let fp_after = idle_voice_fingerprint(&cfg).unwrap();
         assert_ne!(fp_before, fp_after);
-        assert!(fp_after.wake_phrases.contains(&"unique summon xyz".to_string()));
+        assert!(fp_after
+            .wake_phrases
+            .contains(&"unique summon xyz".to_string()));
     }
 
     #[test]

@@ -13,10 +13,7 @@ pub fn parse_vid_pid(path: &str) -> Option<(u16, u16)> {
 fn parse_hex_after(haystack: &str, needle: &str) -> Option<u16> {
     let idx = haystack.find(needle)?;
     let rest = &haystack[idx + needle.len()..];
-    let hex: String = rest
-        .chars()
-        .take_while(|c| c.is_ascii_hexdigit())
-        .collect();
+    let hex: String = rest.chars().take_while(|c| c.is_ascii_hexdigit()).collect();
     u16::from_str_radix(&hex, 16).ok()
 }
 

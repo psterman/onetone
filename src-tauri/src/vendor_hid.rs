@@ -54,10 +54,7 @@ pub fn scan_vendor_hid_report(data: &[u8]) -> Option<VendorHidScan> {
 }
 
 fn first_nonzero_byte(data: &[u8], start: usize) -> Option<u8> {
-    data.get(start..)?
-        .iter()
-        .find(|&&b| b != 0)
-        .copied()
+    data.get(start..)?.iter().find(|&&b| b != 0).copied()
 }
 
 #[cfg(test)]
@@ -66,7 +63,10 @@ mod tests {
 
     #[test]
     fn vendor_byte_maps_to_hid_name() {
-        assert_eq!(scan_vendor_hid_bytes(&[0, 0, 0xB3]).as_deref(), Some("HID_B3"));
+        assert_eq!(
+            scan_vendor_hid_bytes(&[0, 0, 0xB3]).as_deref(),
+            Some("HID_B3")
+        );
     }
 
     #[test]

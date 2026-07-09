@@ -53,6 +53,9 @@
         hooks.onboardEmit('onboarding_trigger_fired',msg);
         if(msg.ok) hooks.renderHome();
       }
+      if(msg.type==='mvp_trigger_test_fired'){
+        hooks.onboardEmit('trigger_test_fired',msg);
+      }
       if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; hooks.render(); }
       if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; hooks.render(); }
       function applyRuntimeFields(msg){
