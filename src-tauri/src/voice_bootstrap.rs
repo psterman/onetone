@@ -34,6 +34,8 @@ fn voice_reload_snapshot(cfg: &VoiceConfig) -> onetone_logic::voice_reload::Voic
             enabled: cfg.voice_end.enabled,
             phrases_zh: cfg.voice_end.phrases_zh.clone(),
             phrases_en: cfg.voice_end.phrases_en.clone(),
+            cancel_phrases_zh: cfg.voice_end.cancel_phrases_zh.clone(),
+            cancel_phrases_en: cfg.voice_end.cancel_phrases_en.clone(),
         },
     }
 }

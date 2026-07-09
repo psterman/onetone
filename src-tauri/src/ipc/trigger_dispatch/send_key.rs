@@ -169,6 +169,23 @@ pub(super) fn dispatch_send_key(
         return;
     }
 
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        let app = window.app_handle();
+        crate::voice_end_runtime::cancel_dictation_after_trigger_key(state, &app);
+        finish_send_key_dispatch(
+            state,
+            window,
+            mapping_id,
+            &trigger_key,
+            &target_key,
+            source_key,
+            true,
+            "cancelled",
+            "esc",
+        );
+        return;
+    }
+
     let sent = crate::voice_end_runtime::send_wake_to_target(
         Some(state.as_ref()),
         Some(&window.app_handle()),
@@ -177,27 +194,23 @@ pub(super) fn dispatch_send_key(
     );
     if sent {
         let app = window.app_handle();
-        if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-            crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
-        } else {
-            let should_enter = {
-                let cfg = state.cfg.lock();
-                if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
-                    false
-                } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
-                    !m.native_key_restore && !m.target_key.trim().is_empty() && key == m.target_key
-                } else {
-                    false
-                }
-            };
-            if should_enter {
-                crate::voice_end_runtime::enter_dictating(
-                    state,
-                    Some(&app),
-                    mapping_id,
-                    "physical trigger",
-                );
+        let should_enter = {
+            let cfg = state.cfg.lock();
+            if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
+                false
+            } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
+                !m.native_key_restore && !m.target_key.trim().is_empty() && key == m.target_key
+            } else {
+                false
             }
+        };
+        if should_enter {
+            crate::voice_end_runtime::enter_dictating(
+                state,
+                Some(&app),
+                mapping_id,
+                "physical trigger",
+            );
         }
     }
     let reason = if sent { "sent" } else { "send_failed" };

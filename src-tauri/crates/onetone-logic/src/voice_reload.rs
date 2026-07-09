@@ -32,6 +32,8 @@ pub struct VoiceEndReload {
     pub enabled: bool,
     pub phrases_zh: Vec<String>,
     pub phrases_en: Vec<String>,
+    pub cancel_phrases_zh: Vec<String>,
+    pub cancel_phrases_en: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -58,6 +60,8 @@ pub fn vosk_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadC
         || old.voice_end.enabled != new.voice_end.enabled
         || old.voice_end.phrases_zh != new.voice_end.phrases_zh
         || old.voice_end.phrases_en != new.voice_end.phrases_en
+        || old.voice_end.cancel_phrases_zh != new.voice_end.cancel_phrases_zh
+        || old.voice_end.cancel_phrases_en != new.voice_end.cancel_phrases_en
 }
 
 pub fn sapi_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadConfig) -> bool {

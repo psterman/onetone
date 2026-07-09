@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v7 · Material 3 视觉</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ========== 主题色（清澈 + 石墨） ========== */
+  :root{
+    --bg:           #F5F5F7;
+    --surface:      #FFFFFF;
+    --surface-1:    #F8F9FB;
+    --surface-2:    #F1F2F5;
+    --surface-3:    #E9EAEE;
+    --line:         rgba(20,23,30,.06);
+    --line-2:       rgba(20,23,30,.10);
+    --line-3:       rgba(20,23,30,.14);
+    --ink:          #14171E;
+    --ink-2:        #5B6473;
+    --ink-3:        #9099A6;
+    --ink-4:        #B8BFC9;
+
+    /* 主色（青蓝）— 按键速查 */
+    --primary:      #2a9cc4;
+    --primary-2:    #1f8fb8;
+    --primary-3:    #45b0d4;
+    --primary-soft: #e6f7fc;
+    --primary-rgb:  42,156,196;
+
+    /* 语义色 */
+    --green:        #16A34A;
+    --green-soft:   #DCFCE7;
+    --green-rgb:    22,163,74;
+    --orange:       #F59E0B;
+    --orange-soft:  #FEF3C7;
+    --orange-rgb:   245,158,11;
+    --red:          #DC2626;
+    --red-soft:     #FEE2E2;
+    --red-rgb:      220,38,38;
+    --purple:       #8B5CF6;
+    --purple-soft:  #EDE9FE;
+    --purple-rgb:   139,92,246;
+    --pink:         #EC4899;
+    --pink-soft:    #FCE7F3;
+    --pink-rgb:     236,72,153;
+    --teal:         #14B8A6;
+    --teal-soft:    #CCFBF1;
+    --teal-rgb:     20,184,166;
+
+    /* 阴影 */
+    --shadow-1: 0 1px 2px rgba(20,23,30,.04), 0 1px 3px rgba(20,23,30,.06);
+    --shadow-2: 0 2px 4px rgba(20,23,30,.04), 0 4px 12px rgba(20,23,30,.06);
+    --shadow-3: 0 4px 8px rgba(20,23,30,.05), 0 12px 24px rgba(20,23,30,.08);
+    --shadow-4: 0 8px 16px rgba(20,23,30,.06), 0 24px 48px rgba(20,23,30,.10);
+  }
+  html[data-theme="dark"]{
+    --bg:           #0F1419;
+    --surface:      #1A2436;
+    --surface-1:    #1F2A3D;
+    --surface-2:    #243042;
+    --surface-3:    #2C3A4F;
+    --line:         rgba(255,255,255,.06);
+    --line-2:       rgba(255,255,255,.10);
+    --line-3:       rgba(255,255,255,.16);
+    --ink:          #E6EDF3;
+    --ink-2:        #9CA9BC;
+    --ink-3:        #6B7A91;
+    --ink-4:        #4B5567;
+
+    --primary:      #5ec8e8;
+    --primary-2:    #3eb8dc;
+    --primary-3:    #7ed4ef;
+    --primary-soft: rgba(94,200,232,.14);
+    --primary-rgb:  94,200,232;
+
+    --green:        #4ADE80;
+    --green-soft:   rgba(74,222,128,.14);
+    --green-rgb:    74,222,128;
+    --orange:       #FBBF24;
+    --orange-soft:  rgba(251,191,36,.14);
+    --orange-rgb:   251,191,36;
+    --red:          #FF6B7A;
+    --red-soft:     rgba(255,107,122,.14);
+    --red-rgb:      255,107,122;
+    --purple:       #A78BFA;
+    --purple-soft:  rgba(167,139,250,.14);
+    --purple-rgb:   167,139,250;
+    --pink:         #F472B6;
+    --pink-soft:    rgba(244,114,182,.14);
+    --pink-rgb:     244,114,182;
+    --teal:         #2DD4BF;
+    --teal-soft:    rgba(45,212,191,.14);
+    --teal-rgb:     45,212,191;
+
+    --shadow-1: 0 1px 2px rgba(0,0,0,.30);
+    --shadow-2: 0 2px 4px rgba(0,0,0,.30), 0 4px 12px rgba(0,0,0,.30);
+    --shadow-3: 0 4px 8px rgba(0,0,0,.36), 0 12px 24px rgba(0,0,0,.36);
+    --shadow-4: 0 8px 16px rgba(0,0,0,.40), 0 24px 48px rgba(0,0,0,.40);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s,color .2s;
+  }
+
+  /* ========== intro ========== */
+  .intro{
+    max-width:1180px;margin:0 auto;padding:48px 40px 16px;
+  }
+  .intro .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--primary);font-weight:700;margin-bottom:14px;
+  }
+  .intro h1{
+    font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.22;
+    margin:0 0 12px;
+  }
+  .intro .lede{
+    font-size:15px;color:var(--ink-2);max-width:880px;margin:0;
+  }
+  .intro .lede b{color:var(--ink);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{
+    max-width:1180px;margin:24px auto 0;padding:0 40px 24px;
+  }
+  .stage-head{
+    display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  }
+  .stage-head h2{font-size:14px;font-weight:600;margin:0;}
+  .stage-head .hint{font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;}
+  .stage-head .hint b{color:var(--primary);font-weight:600;}
+
+  .window{
+    border-radius:24px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-4);
+    overflow:hidden;
+    height:900px;
+    display:flex;flex-direction:column;
+    position:relative;
+  }
+
+  /* ========== Header ========== */
+  .app-header{
+    height:54px;flex:0 0 54px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 20px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .logo{
+    width:30px;height:30px;border-radius:9px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 4px 14px rgba(var(--primary-rgb),.36);
+    transition:.3s;
+  }
+  .brand .logo:hover{transform:rotate(-6deg) scale(1.05);}
+  .brand .logo svg{width:16px;height:16px;}
+  .brand .name{font-size:14px;font-weight:600;letter-spacing:-.01em;}
+  .header-actions{display:flex;align-items:center;gap:6px;}
+  .icon-btn{
+    width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid transparent;
+    color:var(--ink-2);display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:.15s;
+  }
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink);}
+  .icon-btn svg{width:17px;height:17px;}
+
+  /* ========== Scroll area ========== */
+  .scroll{
+    flex:1;overflow-y:auto;padding:8px 20px 24px;
+  }
+  .scroll::-webkit-scrollbar{width:8px;}
+  .scroll::-webkit-scrollbar-track{background:transparent;}
+  .scroll::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:4px;}
+
+  /* ========== 状态条 (Material tonal) ========== */
+  .status-bar{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;border-radius:14px;
+    background:var(--surface-1);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-1);
+    font-size:12px;color:var(--ink-2);
+    margin-bottom:22px;
+    animation:slideIn .4s ease-out both;
+  }
+  .status-bar .item{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:8px;
+    background:var(--surface-2);
+    font-size:11.5px;font-weight:500;
+  }
+  .status-bar .item.ok{background:var(--green-soft);color:var(--green);}
+  .status-bar .item.live{background:var(--primary-soft);color:var(--primary);}
+  .status-bar .item.err{background:var(--red-soft);color:var(--red);}
+  .status-bar .item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .status-bar .item.ok .dot{animation:dotBreath 2s ease-in-out infinite;}
+  .status-bar .item.live .dot{animation:dotBreath 1.4s ease-in-out infinite;}
+  @keyframes dotBreath{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .status-bar .right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  .status-bar .update-chip{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:5px 12px;border-radius:8px;
+    background:var(--orange-soft);color:var(--orange);
+    font-size:11.5px;font-weight:600;cursor:pointer;
+    transition:.15s;
+  }
+  .status-bar .update-chip:hover{background:var(--orange);color:#fff;transform:translateY(-1px);}
+  .status-bar .update-chip svg{width:11px;height:11px;}
+
+  /* ========== Section (通用 · Material 3 大卡) ========== */
+  .section{
+    margin-bottom:18px;
+    animation:slideIn .5s ease-out both;
+  }
+  .section:nth-child(2){animation-delay:.05s;}
+  .section:nth-child(3){animation-delay:.10s;}
+  .section:nth-child(4){animation-delay:.15s;}
+  @keyframes slideIn{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .section-head{
+    display:flex;align-items:center;gap:14px;
+    margin-bottom:12px;
+    padding:0 4px;
+  }
+  .section-icon{
+    width:44px;height:44px;border-radius:13px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    box-shadow:var(--shadow-1);
+    transition:.3s;
+  }
+  .section-icon svg{width:22px;height:22px;}
+  .section-icon.is-primary{background:var(--primary-soft);color:var(--primary);}
+  .section-icon.is-green{background:var(--green-soft);color:var(--green);}
+  .section-icon.is-orange{background:var(--orange-soft);color:var(--orange);}
+  .section-icon.is-purple{background:var(--purple-soft);color:var(--purple);}
+  .section-icon.is-pink{background:var(--pink-soft);color:var(--pink);}
+  .section-icon.is-teal{background:var(--teal-soft);color:var(--teal);}
+  .section-icon.is-red{background:var(--red-soft);color:var(--red);}
+
+  .section-text{flex:1;min-width:0;}
+  .section-title{
+    font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-.015em;
+    line-height:1.2;
+  }
+  .section-desc{
+    font-size:11.5px;color:var(--ink-3);margin-top:2px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.01em;
+  }
+  .section-more{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:6px 10px;border-radius:8px;
+    font-size:12px;font-weight:500;color:var(--ink-2);
+    cursor:pointer;
+    transition:.12s;
+    background:transparent;border:none;font-family:inherit;
+  }
+  .section-more:hover{background:var(--surface-2);color:var(--ink);}
+  .section-more svg{width:12px;height:12px;transition:.15s;}
+  .section-more:hover svg{transform:translateX(2px);}
+
+  /* ========== Section 1 · 按键速查 (3 列卡片) ========== */
+  .key-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  }
+  .key-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px;
+    cursor:pointer;
+    transition:.2s cubic-bezier(.2,.8,.2,1);
+    position:relative;
+    overflow:hidden;
+  }
+  .key-card::before{
+    content:"";position:absolute;inset:0;border-radius:18px;
+    background:linear-gradient(135deg, transparent 50%, rgba(var(--primary-rgb),.04) 100%);
+    opacity:0;transition:.3s;
+  }
+  .key-card:hover{
+    transform:translateY(-3px);
+    box-shadow:var(--shadow-3);
+    border-color:var(--line-2);
+  }
+  .key-card:hover::before{opacity:1;}
+  .key-card.is-active{
+    background:linear-gradient(135deg, var(--primary-soft) 0%, var(--surface) 100%);
+    border-color:var(--primary);
+    box-shadow:0 0 0 1px var(--primary), var(--shadow-2);
+  }
+  .key-card.is-paused{opacity:.55;}
+
+  .key-card .top{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:12px;position:relative;
+  }
+  .key-card .key-ico{
+    width:38px;height:38px;border-radius:11px;
+    background:var(--primary-soft);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;
+    transition:.2s;
+  }
+  .key-card.is-active .key-ico{
+    background:var(--primary);color:#fff;
+    box-shadow:0 4px 12px rgba(var(--primary-rgb),.4);
+  }
+  .key-card .key-ico svg{width:18px;height:18px;}
+  .key-card .badge{
+    font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    padding:3px 7px;border-radius:6px;
+    background:var(--green-soft);color:var(--green);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .key-card .badge.off{background:var(--surface-3);color:var(--ink-3);}
+
+  .key-card .key-name{
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;font-weight:700;color:var(--ink);
+    margin-bottom:2px;
+  }
+  .key-card .key-name .arrow{color:var(--ink-4);margin:0 4px;font-weight:400;}
+  .key-card .key-name .target{color:var(--primary);}
+
+  .key-card .meta{
+    font-size:11px;color:var(--ink-3);line-height:1.4;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.01em;
+  }
+
+  /* ========== Section 2 · 语音历史 (Material 列表) ========== */
+  .history-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:var(--shadow-1);
+  }
+  .history-row{
+    display:grid;grid-template-columns:62px 1fr auto auto;gap:14px;align-items:center;
+    padding:13px 18px;
+    border-bottom:1px solid var(--line);
+    transition:.15s;
+    cursor:pointer;
+    position:relative;
+  }
+  .history-row:last-child{border-bottom:none;}
+  .history-row::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+    background:transparent;transition:.2s;
+  }
+  .history-row:hover{background:var(--surface-1);}
+  .history-row:hover::before{background:var(--green);}
+
+  .history-row .time{
+    font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+    font-weight:500;
+  }
+  .history-row .text{
+    font-size:13.5px;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    line-height:1.4;
+  }
+  .history-row .text .quote{color:var(--ink-4);margin:0 2px;font-weight:300;}
+  .history-row .app{
+    font-size:10.5px;font-family:'JetBrains Mono',monospace;font-weight:600;
+    padding:3px 8px;border-radius:6px;
+    background:var(--surface-2);color:var(--ink-2);
+    border:1px solid var(--line);
+  }
+  .history-row .status{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11.5px;font-weight:600;
+  }
+  .history-row .status.ok{color:var(--green);}
+  .history-row .status.err{color:var(--red);}
+  .history-row .status .ico{
+    width:16px;height:16px;border-radius:50%;
+    background:currentColor;color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .history-row .status.ok .ico{background:var(--green);}
+  .history-row .status.err .ico{background:var(--red);}
+  .history-row .status .ico svg{width:9px;height:9px;color:#fff;}
+
+  /* ========== Section 3 · 快捷入口 (Material 图标) ========== */
+  .quick-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:10px;
+  }
+  .quick-btn{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:18px 8px 14px;border-radius:16px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    cursor:pointer;
+    transition:.2s cubic-bezier(.2,.8,.2,1);
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .quick-btn:hover{
+    transform:translateY(-3px);
+    box-shadow:var(--shadow-2);
+  }
+  .quick-btn .ico{
+    width:40px;height:40px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    transition:.25s cubic-bezier(.2,.8,.2,1);
+    flex-shrink:0;
+  }
+  .quick-btn .ico svg{width:20px;height:20px;transition:transform .2s;}
+  .quick-btn:hover .ico{transform:scale(1.08);}
+  .quick-btn:hover .ico svg{transform:scale(1.1);}
+
+  /* 每个按钮的图标颜色 */
+  .quick-btn.q1 .ico{background:var(--primary-soft);color:var(--primary);}
+  .quick-btn.q2 .ico{background:var(--orange-soft);color:var(--orange);}
+  .quick-btn.q3 .ico{background:var(--pink-soft);color:var(--pink);}
+  .quick-btn.q4 .ico{background:var(--purple-soft);color:var(--purple);}
+  .quick-btn.q5 .ico{background:var(--teal-soft);color:var(--teal);}
+  .quick-btn.q6 .ico{background:var(--green-soft);color:var(--green);}
+
+  .quick-btn:hover.q1{background:var(--primary);border-color:var(--primary);}
+  .quick-btn:hover.q1 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q1 .lbl{color:#fff;}
+  .quick-btn:hover.q2{background:var(--orange);border-color:var(--orange);}
+  .quick-btn:hover.q2 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q2 .lbl{color:#fff;}
+  .quick-btn:hover.q3{background:var(--pink);border-color:var(--pink);}
+  .quick-btn:hover.q3 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q3 .lbl{color:#fff;}
+  .quick-btn:hover.q4{background:var(--purple);border-color:var(--purple);}
+  .quick-btn:hover.q4 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q4 .lbl{color:#fff;}
+  .quick-btn:hover.q5{background:var(--teal);border-color:var(--teal);}
+  .quick-btn:hover.q5 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q5 .lbl{color:#fff;}
+  .quick-btn:hover.q6{background:var(--green);border-color:var(--green);}
+  .quick-btn:hover.q6 .ico{background:rgba(255,255,255,.18);color:#fff;}
+  .quick-btn:hover.q6 .lbl{color:#fff;}
+
+  .quick-btn .lbl{
+    font-size:12.5px;font-weight:600;color:var(--ink);transition:.15s;
+  }
+  .quick-btn .sub{
+    font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;
+  }
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:14px;right:20px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:10px;padding:3px;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-1);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:6px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.02em;
+    transition:.12s;
+  }
+  .state-switch button:hover{color:var(--ink);}
+  .state-switch button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);}
+
+  .theme-switch{
+    position:absolute;top:14px;left:20px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--surface-2);border-radius:10px;padding:3px;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-1);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font-size:10.5px;color:var(--ink-3);padding:4px 9px;border-radius:6px;cursor:pointer;
+    transition:.12s;
+  }
+  .theme-switch button:hover{color:var(--ink);}
+  .theme-switch button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1);}
+
+  /* ========== Comparison ========== */
+  .compare{
+    max-width:1180px;margin:36px auto 0;padding:0 40px 80px;
+  }
+  .compare h3{
+    font-size:14px;font-weight:600;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare h3 .tag{
+    font-size:10px;font-weight:700;letter-spacing:.06em;
+    padding:2px 7px;border-radius:5px;
+  }
+  .compare h3 .tag.v6{background:rgba(20,23,30,.06);color:var(--ink-2);}
+  .compare h3 .tag.v7{background:var(--primary);color:#fff;}
+  .compare .lead{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;line-height:1.55;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface);}
+  .compare .col ul{
+    margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-2);line-height:1.85;
+  }
+  .compare .col li b{color:var(--ink);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .intro h1{font-size:24px;}
+    .key-grid{grid-template-columns:repeat(2,1fr);}
+    .quick-grid{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构 v7 · Material 3 视觉</div>
+  <h1>v6 信息架构 + Material 3 视觉质感。</h1>
+  <p class="lede">v6 解决了「要承担什么功能」，但视觉太素。v7 用 <b>Material 3 / Material You</b> 的设计语言重新包装：<b>大圆角卡片 + 彩色图标块 + 柔和多层阴影 + 微动效 + 留白分隔</b>。每个 section 头部有专属色的图标锚（青蓝/绿/橙/紫/粉/青），让功能区"自带路标"。所有按钮 hover 时图标缩放、卡片抬升、阴影变深，符合 Material motion 规范。</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 功能总览 + Material 3 质感</h2>
+    <div class="hint">左上切主题 · 右上切引擎状态 · hover 任意卡片看微动效</div>
+  </div>
+
+  <div class="window" id="window">
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="OK">引擎 OK</button>
+      <button data-s="LIVE">正在听</button>
+      <button data-s="ERR">引擎报错</button>
+    </div>
+
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" title="设置" id="btnSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-btn" title="更多">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="scroll">
+
+      <!-- ============ 状态条 ============ -->
+      <div class="status-bar">
+        <span class="item ok" id="statusEngine">
+          <span class="dot"></span>
+          <span id="statusEngineText">Vosk 待命</span>
+        </span>
+        <span class="item ok" id="statusMic">
+          <span class="dot"></span>
+          <span>麦克风 OK</span>
+        </span>
+        <span class="item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+          <span>当前窗口</span>
+        </span>
+        <span class="item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg>
+          <span>默认</span>
+        </span>
+        <span class="right">
+          <span class="update-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            v0.4.0
+          </span>
+        </span>
+      </div>
+
+      <!-- ============ Section 1: 按键速查 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <div class="section-icon is-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+          </div>
+          <div class="section-text">
+            <div class="section-title">按键速查</div>
+            <div class="section-desc">6 个按键 · 3 个习惯 · 5 个启用</div>
+          </div>
+          <button class="section-more">
+            管理
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <div class="key-grid">
+
+          <div class="key-card is-active">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              </span>
+              <span class="badge">默认</span>
+            </div>
+            <div class="key-name">音量 + <span class="arrow">→</span> <span class="target">RAlt</span></div>
+            <div class="meta">长按开 · 松开发送 · 当前窗口</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg>
+              </span>
+              <span class="badge">微信</span>
+            </div>
+            <div class="key-name">侧键 ↑ <span class="arrow">→</span> <span class="target">Ctrl+Shift</span></div>
+            <div class="meta">单击开 · 自动输入 · 微信</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              </span>
+              <span class="badge">Cursor</span>
+            </div>
+            <div class="key-name">Ctrl + I <span class="arrow">→</span> <span class="target">Cmd + I</span></div>
+            <div class="meta">长按开 · 自动输入 · Cursor</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </span>
+              <span class="badge">语音</span>
+            </div>
+            <div class="key-name">说「<span class="target">开始输入</span>」</div>
+            <div class="meta">唤醒词 · 打开当前默认语音</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-9 4 18 3-9h4"/></svg>
+              </span>
+              <span class="badge">语音</span>
+            </div>
+            <div class="key-name">说「<span class="target">结束输入</span>」</div>
+            <div class="meta">结束词 · 停止听写并自动发送</div>
+          </div>
+
+          <div class="key-card is-paused">
+            <div class="top">
+              <span class="key-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+              <span class="badge off">停用</span>
+            </div>
+            <div class="key-name">滚轮中键 <span class="arrow">→</span> <span class="target">F2</span></div>
+            <div class="meta">单击开 · 自动输入 · Typora</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ Section 2: 最近语音输入 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <div class="section-icon is-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="section-text">
+            <div class="section-title">最近语音输入</div>
+            <div class="section-desc">5 条 · 4 已发送 · 1 失败</div>
+          </div>
+          <button class="section-more">
+            全部
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <div class="history-card">
+          <div class="history-row">
+            <span class="time">10:24</span>
+            <span class="text"><span class="quote">"</span>今天天气怎么样<span class="quote">"</span></span>
+            <span class="app">默认</span>
+            <span class="status ok">
+              <span class="ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              已发送
+            </span>
+          </div>
+          <div class="history-row">
+            <span class="time">10:18</span>
+            <span class="text"><span class="quote">"</span>把这段话发给张总<span class="quote">"</span></span>
+            <span class="app">默认</span>
+            <span class="status ok">
+              <span class="ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              已发送
+            </span>
+          </div>
+          <div class="history-row">
+            <span class="time">10:12</span>
+            <span class="text"><span class="quote">"</span>打开 Cursor 并新建项目<span class="quote">"</span></span>
+            <span class="app">Cursor</span>
+            <span class="status err">
+              <span class="ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+              失败
+            </span>
+          </div>
+          <div class="history-row">
+            <span class="time">10:05</span>
+            <span class="text"><span class="quote">"</span>今天会议几点开始<span class="quote">"</span></span>
+            <span class="app">默认</span>
+            <span class="status ok">
+              <span class="ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              已发送
+            </span>
+          </div>
+          <div class="history-row">
+            <span class="time">09:58</span>
+            <span class="text"><span class="quote">"</span>明天八点的闹钟<span class="quote">"</span></span>
+            <span class="app">默认</span>
+            <span class="status ok">
+              <span class="ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              已发送
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Section 3: 快捷入口 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <div class="section-icon is-purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="section-text">
+            <div class="section-title">快捷入口</div>
+            <div class="section-desc">6 个常用设置 · 一键跳转</div>
+          </div>
+        </div>
+
+        <div class="quick-grid">
+          <button class="quick-btn q1">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </span>
+            <span class="lbl">唤醒词</span>
+            <span class="sub">5 个</span>
+          </button>
+          <button class="quick-btn q2">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </span>
+            <span class="lbl">识别引擎</span>
+            <span class="sub">Vosk</span>
+          </button>
+          <button class="quick-btn q3">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </span>
+            <span class="lbl">外观</span>
+            <span class="sub">清澈</span>
+          </button>
+          <button class="quick-btn q4">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </span>
+            <span class="lbl">运行状态</span>
+            <span class="sub">诊断</span>
+          </button>
+          <button class="quick-btn q5">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="lbl">备份恢复</span>
+            <span class="sub">配置</span>
+          </button>
+          <button class="quick-btn q6">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span class="lbl">帮助教程</span>
+            <span class="sub">F1</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v6">v6</span> 信息对了 · 视觉太素</h3>
+      <p class="lead">v6 把功能分区分清楚了（按键速查 / 历史 / 快捷入口），但视觉太平 —— 全是中性灰白卡片，没视觉锚点，没区分功能区，像普通的设置概览页。</p>
+      <ul>
+        <li>卡片都是<b>同样灰白</b>，分不清哪个是哪个</li>
+        <li><b>没有图标锚</b>，section header 只有一个标题</li>
+        <li>没有<b>动效</b>，看起来静态、单薄</li>
+        <li>按钮 hover 没反馈，像 PDF 而不是工具</li>
+        <li>分割靠<b>间距</b>，功能区边界模糊</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v7">v7</span> Material 3 质感 · 6 个语义色</h3>
+      <p class="lead">参考 Material You 设计语言：每个 section 头部有<b>专属色图标块</b>当锚；快捷入口 6 个按钮每个一种语义色（青/橙/粉/紫/青绿/绿）；hover 时卡片抬升+阴影变深+图标缩放；状态条用 tonal pill；状态点呼吸。</p>
+      <ul>
+        <li><b>Section 头部 13px 大圆角图标块</b>，每个 section 一种色（青蓝/绿/紫）</li>
+        <li><b>6 个语义色快捷按钮</b>：青蓝(唤醒词)/橙(引擎)/粉(外观)/紫(诊断)/青绿(备份)/绿(帮助)</li>
+        <li><b>按键卡 is-active 态</b>：渐变背景 + 主色描边 + 蓝色图标块变实心</li>
+        <li><b>状态条用 tonal pill</b>（绿/蓝/橙），不再灰字</li>
+        <li><b>历史行 hover</b>：左侧出现 3px 绿色高亮条 + 背景滑入</li>
+        <li><b>微动效</b>：logo hover 旋转 -6° + scale 1.05 / 状态点呼吸 / 卡片 staggered fade-up 入场</li>
+        <li><b>多层级阴影</b>（shadow-1/2/3/4）模拟 Material elevation</li>
+        <li>不再依赖硬分割线，<b>section header 图标块</b>当锚点</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const statusEngine = $('#statusEngine');
+  const statusEngineText = $('#statusEngineText');
+  const statusMic = $('#statusMic');
+
+  const STATES = {
+    OK:{engine:'ok',engineText:'Vosk 待命'},
+    LIVE:{engine:'live',engineText:'Vosk 唤醒中 · 0.4s'},
+    ERR:{engine:'err',engineText:'Vosk 不可用'}
+  };
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      statusEngine.className = 'item ' + s.engine;
+      statusEngineText.textContent = s.engineText;
+      statusMic.className = 'item ' + (s.engine==='err'?'err':'ok');
+      statusMic.lastChild.textContent = ' ' + (s.engine==='err'?'麦克风无信号':'麦克风 OK');
+    });
+  });
+
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+</script>
+</body>
+</html>

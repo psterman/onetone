@@ -46,6 +46,8 @@ pub struct VoiceOverride {
     pub wake_phrases: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_phrases: Option<PhraseBundle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cancel_phrases: Option<PhraseBundle>,
     /// Per-scene engine preference: "sapi" | "vosk" | "none".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub engine: Option<String>,
@@ -68,6 +70,10 @@ impl VoiceOverride {
             _ => {}
         }
         match &self.end_phrases {
+            Some(b) if !b.is_empty() => return false,
+            _ => {}
+        }
+        match &self.cancel_phrases {
             Some(b) if !b.is_empty() => return false,
             _ => {}
         }
@@ -501,6 +507,10 @@ pub struct VoiceEndConfig {
     pub phrases_zh: Vec<String>,
     #[serde(default = "default_voice_end_phrases_en")]
     pub phrases_en: Vec<String>,
+    #[serde(default = "default_voice_end_cancel_phrases_zh")]
+    pub cancel_phrases_zh: Vec<String>,
+    #[serde(default = "default_voice_end_cancel_phrases_en")]
+    pub cancel_phrases_en: Vec<String>,
     #[serde(default = "default_voice_end_commit_delay_ms")]
     pub commit_delay_ms: u32,
     #[serde(default = "default_voice_end_commit_key")]
@@ -519,6 +529,14 @@ pub fn default_voice_end_phrases_zh() -> Vec<String> {
 
 pub fn default_voice_end_phrases_en() -> Vec<String> {
     vec!["end dictation".into(), "send it".into()]
+}
+
+pub fn default_voice_end_cancel_phrases_zh() -> Vec<String> {
+    vec!["取消输入".into(), "不要了".into()]
+}
+
+pub fn default_voice_end_cancel_phrases_en() -> Vec<String> {
+    vec!["cancel input".into(), "never mind".into()]
 }
 
 fn default_voice_end_commit_delay_ms() -> u32 {
@@ -543,6 +561,8 @@ impl Default for VoiceEndConfig {
             enabled: false,
             phrases_zh: default_voice_end_phrases_zh(),
             phrases_en: default_voice_end_phrases_en(),
+            cancel_phrases_zh: default_voice_end_cancel_phrases_zh(),
+            cancel_phrases_en: default_voice_end_cancel_phrases_en(),
             commit_delay_ms: default_voice_end_commit_delay_ms(),
             commit_key: default_voice_end_commit_key(),
             dictation_timeout_ms: default_voice_end_dictation_timeout_ms(),
@@ -1602,6 +1622,22 @@ impl VoiceConfig {
             .all(|p| p.trim().is_empty())
         {
             self.voice_end.phrases_en = default_voice_end_phrases_en();
+        }
+        if self
+            .voice_end
+            .cancel_phrases_zh
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
+            self.voice_end.cancel_phrases_zh = default_voice_end_cancel_phrases_zh();
+        }
+        if self
+            .voice_end
+            .cancel_phrases_en
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
+            self.voice_end.cancel_phrases_en = default_voice_end_cancel_phrases_en();
         }
         if self.voice_end.commit_key.trim().is_empty() {
             self.voice_end.commit_key = default_voice_end_commit_key();

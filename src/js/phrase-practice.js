@@ -104,8 +104,17 @@
     return state.mode === 'end';
   }
 
+  function isCancelMode(){
+    return state.mode === 'cancel';
+  }
+
+  function isTranscriptMode(){
+    return isEndMode() || isCancelMode();
+  }
+
   function skipButtonKey(){
     if(state.matched) return 'phrasePracticeDone';
+    if(isCancelMode()) return 'phrasePracticeSkipCancel';
     return isEndMode() ? 'phrasePracticeSkipEnd' : 'phrasePracticeSkip';
   }
 
@@ -142,11 +151,15 @@
     var a = app();
     var modal = modalEl();
     if(modal) modal.classList.toggle('is-end-mode', isEndMode());
+    if(modal) modal.classList.toggle('is-cancel-mode', isCancelMode());
     var kicker = $('phrasePracticeKicker');
     var context = $('phrasePracticeContext');
     if(kicker){
       if(isEndMode() && !state.embedded){
         kicker.textContent = t('phrasePracticeKickerEnd');
+        kicker.hidden = false;
+      }else if(isCancelMode() && !state.embedded){
+        kicker.textContent = t('phrasePracticeKickerCancel');
         kicker.hidden = false;
       }else{
         kicker.hidden = true;
@@ -159,17 +172,28 @@
     var pickHint = $('phrasePracticePickHint');
     if(pickHint){
       if(state.multiSelect && !state.embedded){
-        pickHint.textContent = t(isEndMode() ? 'phrasePracticePickHintEnd' : 'phrasePracticePickHint');
+        var pickKey='phrasePracticePickHint';
+        if(isEndMode()) pickKey='phrasePracticePickHintEnd';
+        else if(isCancelMode()) pickKey='phrasePracticePickHintCancel';
+        pickHint.textContent = t(pickKey);
         pickHint.hidden = false;
       }else{
         pickHint.hidden = true;
       }
     }
     var title = $('phrasePracticeTitle');
-    if(title) title.textContent = t(isEndMode() ? 'phrasePracticeTitleEnd' : 'phrasePracticeTitle');
+    if(title){
+      var titleKey='phrasePracticeTitle';
+      if(isEndMode()) titleKey='phrasePracticeTitleEnd';
+      else if(isCancelMode()) titleKey='phrasePracticeTitleCancel';
+      title.textContent = t(titleKey);
+    }
     var hint = $('phrasePracticeHint');
     if(hint){
-      hint.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
+      var hintKey='phrasePracticeHint';
+      if(isEndMode()) hintKey='phrasePracticeHintEnd';
+      else if(isCancelMode()) hintKey='phrasePracticeHintCancel';
+      hint.textContent = t(hintKey);
       hint.classList.remove('is-success-note');
     }
     var skip = $('btnPhrasePracticeSkip');
@@ -271,8 +295,11 @@
     }
     var h = heardEl();
     if(h){
-      h.textContent = isEndMode()
-        ? t('phrasePracticeEndRecognized').replace('{phrase}', matchedPhrase)
+      var okKey='phrasePracticeWakeSuccess';
+      if(isEndMode()) okKey='phrasePracticeEndRecognized';
+      else if(isCancelMode()) okKey='phrasePracticeCancelRecognized';
+      h.textContent = isTranscriptMode()
+        ? t(okKey).replace('{phrase}', matchedPhrase)
         : t('phrasePracticeWakeSuccess');
       h.className = 'phrase-practice-heard is-ok';
     }
@@ -286,6 +313,9 @@
     if(hint && isEndMode() && !state.embedded){
       var keyLabel = (a && a.getImeTargetKeyLabel) ? a.getImeTargetKeyLabel() : 'Alt';
       hint.textContent = t('phrasePracticeEndPracticeNote').replace('{key}', keyLabel);
+      hint.classList.add('is-success-note');
+    }else if(hint && isCancelMode() && !state.embedded){
+      hint.textContent = t('phrasePracticeCancelPracticeNote');
       hint.classList.add('is-success-note');
     }
     if(a && a.playSoundCue) a.playSoundCue('voice_wake');
@@ -332,7 +362,7 @@
     var previewLbl = mount.querySelector('[data-phrase-practice-preview-label]');
     if(previewLbl) previewLbl.textContent = t('phrasePracticeLivePreview');
     var hint = mount.querySelector('[data-phrase-practice-hint]');
-    if(hint) hint.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
+    if(hint) hint.textContent = t(isTranscriptMode() ? (isCancelMode() ? 'phrasePracticeHintCancel' : 'phrasePracticeHintEnd') : 'phrasePracticeHint');
     renderChips(mount.querySelector('[data-phrase-practice-chips]'));
   }
 
@@ -405,7 +435,7 @@
   function open(opts){
     opts = opts || {};
     close({ silent: true });
-    state.mode = opts.mode === 'end' ? 'end' : 'wake';
+    state.mode = opts.mode === 'end' ? 'end' : (opts.mode === 'cancel' ? 'cancel' : 'wake');
     state.phraseOptions = Array.isArray(opts.phraseOptions) ? opts.phraseOptions.filter(Boolean) : [];
     state.phrases = Array.isArray(opts.phrases) ? opts.phrases.filter(Boolean) : [];
     state.onPhrasesChange = opts.onPhrasesChange || null;
@@ -507,7 +537,7 @@
       var mount = typeof state.mountEl === 'string' ? $(String(state.mountEl).replace(/^#/,'')) : state.mountEl;
       if(mount){
         var eh = mount.querySelector('[data-phrase-practice-hint]');
-        if(eh) eh.textContent = t(isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint');
+        if(eh) eh.textContent = t(isCancelMode() ? 'phrasePracticeHintCancel' : (isEndMode() ? 'phrasePracticeHintEnd' : 'phrasePracticeHint'));
         var pl = mount.querySelector('[data-phrase-practice-preview-label]');
         if(pl) pl.textContent = t('phrasePracticeLivePreview');
       }

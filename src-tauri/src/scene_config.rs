@@ -28,6 +28,7 @@ pub struct EffectiveSceneConfig {
     pub summon_phrases: Vec<String>,
     pub wake_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
+    pub cancel_phrases: PhraseBundle,
     pub trigger_key: String,
     pub app_target_id: String,
 }
@@ -45,6 +46,7 @@ pub struct VoiceRuntimeFingerprint {
     pub engine: DesiredVoiceEngine,
     pub wake_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
+    pub cancel_phrases: PhraseBundle,
     pub vosk_model_path: String,
     pub vosk_model_preset: String,
     pub min_confidence: f32,
@@ -65,6 +67,7 @@ pub fn resolve_effective_scene(
         .collect();
     let wake_phrases = merge_wake_phrases(cfg, mapping, ov);
     let end_phrases = merge_end_phrases(cfg, ov);
+    let cancel_phrases = merge_cancel_phrases(cfg, ov);
     Some(EffectiveSceneConfig {
         scene_id: mapping.id.clone(),
         target_key,
@@ -72,6 +75,7 @@ pub fn resolve_effective_scene(
         summon_phrases,
         wake_phrases,
         end_phrases,
+        cancel_phrases,
         trigger_key: mapping.trigger_key.clone(),
         app_target_id: mapping.app_target_id.clone(),
     })
@@ -95,6 +99,7 @@ pub fn voice_runtime_fingerprint(
         engine: effective_desired_engine(cfg, mapping),
         wake_phrases: normalize_phrase_list(&effective.wake_phrases),
         end_phrases: normalize_end_phrases(&effective.end_phrases),
+        cancel_phrases: normalize_end_phrases(&effective.cancel_phrases),
         vosk_model_path: model_path,
         vosk_model_preset: model_preset,
         min_confidence: cfg.voice_sapi.min_confidence,
@@ -162,6 +167,12 @@ pub fn vosk_grammar_from_effective(
             push(p);
         }
         for p in &effective.end_phrases.en {
+            push(p);
+        }
+        for p in &effective.cancel_phrases.zh {
+            push(p);
+        }
+        for p in &effective.cancel_phrases.en {
             push(p);
         }
     }
@@ -257,6 +268,32 @@ fn global_end_phrases(cfg: &VoiceConfig) -> PhraseBundle {
     PhraseBundle {
         zh: cfg.voice_end.phrases_zh.clone(),
         en: cfg.voice_end.phrases_en.clone(),
+    }
+}
+
+fn global_cancel_phrases(cfg: &VoiceConfig) -> PhraseBundle {
+    PhraseBundle {
+        zh: cfg.voice_end.cancel_phrases_zh.clone(),
+        en: cfg.voice_end.cancel_phrases_en.clone(),
+    }
+}
+
+fn merge_cancel_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> PhraseBundle {
+    let global = global_cancel_phrases(cfg);
+    let Some(bundle) = ov.and_then(|o| o.cancel_phrases.as_ref()) else {
+        return global;
+    };
+    PhraseBundle {
+        zh: if bundle.zh.is_empty() {
+            global.zh
+        } else {
+            bundle.zh.clone()
+        },
+        en: if bundle.en.is_empty() {
+            global.en
+        } else {
+            bundle.en.clone()
+        },
     }
 }
 

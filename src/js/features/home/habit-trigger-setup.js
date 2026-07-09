@@ -61,6 +61,20 @@
     return list.filter(Boolean);
   }
 
+  var CANCEL_PRESET_OPTIONS=['取消输入','不要了','cancel input','never mind'];
+
+  function getVoiceCancelPhrases(){
+    var st=global.OneToneState&&global.OneToneState.state;
+    var cfg=st&&st.config?st.config:null;
+    var end=cfg&&(cfg.voiceEnd||cfg.voice_end)||{};
+    var lang=global.OneToneApp&&global.OneToneApp.getLang?global.OneToneApp.getLang():'zh';
+    var list=lang==='en'?(end.cancelPhrasesEn||end.cancel_phrases_en||[]):(end.cancelPhrasesZh||end.cancel_phrases_zh||[]);
+    if(!Array.isArray(list)||!list.length){
+      list=lang==='en'?['cancel input','never mind']:['取消输入','不要了'];
+    }
+    return list.filter(Boolean);
+  }
+
   function getWakePhrases(){
     var m=setupState?mappingById(setupState.mappingId):null;
     var ov=m&&m.voiceOverride?m.voiceOverride:null;
@@ -1010,40 +1024,30 @@
     var demoHost=$('habitSetupVoiceLessonDemoHost');
     if(!demoHost) return;
     demoHost.hidden=false;
-    if(lessonId==='cancel'){
-      demoHost.innerHTML='<div class="habit-setup-cancel-demo">'+esc(t('habitSetupVoiceLessonCancelDemo'))+'</div>'
-        +'<button type="button" class="btn primary" id="btnHabitSetupVoiceCancelOk" style="margin-top:12px">'
-        +esc(t('habitSetupVoiceLessonCancelOk'))+'</button>';
-      var okBtn=$('btnHabitSetupVoiceCancelOk');
-      if(okBtn){
-        okBtn.onclick=function(){
-          if(!setupState||!setupState.voiceLessons) return;
-          setupState.voiceLessons.cancel=true;
-          clearVoiceLessonPractice();
-          demoHost.hidden=true;
-          demoHost.innerHTML='';
-          setupState.activeVoiceLesson='';
-          renderVoiceLessonPage();
-        };
-      }
-      renderVoiceLessonPage();
-      return;
-    }
     if(!global.OneTonePhrasePractice||!global.OneTonePhrasePractice.open) return;
-    var phrases=lessonId==='end'?getVoiceEndPhrases():getWakePhrases();
-    var options=lessonId==='end'?getVoiceEndPhrases():WAKE_PRESET_OPTIONS.slice();
+    var practiceMode=lessonId==='end'?'end':(lessonId==='cancel'?'cancel':'wake');
+    var phrases=lessonId==='end'?getVoiceEndPhrases():(lessonId==='cancel'?getVoiceCancelPhrases():getWakePhrases());
+    var options=lessonId==='end'?getVoiceEndPhrases():(lessonId==='cancel'?getVoiceCancelPhrases():WAKE_PRESET_OPTIONS.slice());
+    var sceneTitle=lessonId==='end'?t('habitSetupVoiceLessonEndTitle'):(lessonId==='cancel'?t('habitSetupVoiceLessonCancelTitle'):t('habitSetupVoiceLessonWakeTitle'));
+    var userBubble=lessonId==='wake'?'准备开始输入':'…正在输入';
+    var aiBubble=lessonId==='end'?'说“结束输入”完成':(lessonId==='cancel'?'说“取消输入”放弃':'说“开始输入”启动');
+    var hintKey=lessonId==='end'?'phrasePracticeHintEnd':(lessonId==='cancel'?'phrasePracticeHintCancel':'phrasePracticeHint');
     var mountId='habitSetupVoiceLessonPracticeMount';
+    var keyHint=lessonId==='cancel'
+      ?('<p class="habit-setup-cancel-demo">'+esc(t('habitSetupVoiceLessonCancelKeyHint'))+'</p>')
+      :'';
     demoHost.innerHTML=
       '<div class="habit-setup-voice-scene habit-setup-voice-scene--'+esc(lessonId)+'" aria-hidden="true">'
-      +'<div class="habit-setup-voice-scene-label">'+esc(lessonId==='end'?t('habitSetupVoiceLessonEndTitle'):t('habitSetupVoiceLessonWakeTitle'))+'</div>'
+      +'<div class="habit-setup-voice-scene-label">'+esc(sceneTitle)+'</div>'
       +'<div class="habit-setup-voice-scene-chat">'
-      +'<span class="habit-setup-voice-bubble is-user">'+esc(lessonId==='end'?'…正在输入':'准备开始输入')+'</span>'
-      +'<span class="habit-setup-voice-bubble is-ai">'+esc(lessonId==='end'?'说“结束输入”完成':'说“开始输入”启动')+'</span>'
+      +'<span class="habit-setup-voice-bubble is-user">'+esc(userBubble)+'</span>'
+      +'<span class="habit-setup-voice-bubble is-ai">'+esc(aiBubble)+'</span>'
       +'</div>'
       +'</div>'
+      +keyHint
       +'<div class="habit-setup-voice-custom-row">'
       +'<input type="text" id="habitSetupVoiceLessonCustomInput" class="voice-phrase-custom-input"'
-      +' placeholder="'+esc(t(lessonId==='end'?'phrasePracticeHintEnd':'phrasePracticeHint'))+'" />'
+      +' placeholder="'+esc(t(hintKey))+'" />'
       +'<button type="button" class="voice-phrase-custom-add" id="btnHabitSetupVoiceLessonAdd">'+esc(t('voicePhraseAdd'))+'</button>'
       +'</div>'
       +'<div id="'+mountId+'"></div>'
@@ -1053,7 +1057,7 @@
       var bubble=demoHost.querySelector('.habit-setup-voice-bubble.is-user');
       if(!bubble) return;
       var text=String(heard||'').trim();
-      bubble.textContent=text||(lessonId==='end'?'…正在输入':'准备开始输入');
+      bubble.textContent=text||userBubble;
     }
     function markLessonDone(){
       if(!setupState) return;
@@ -1075,7 +1079,7 @@
       global.OneTonePhrasePractice.open({
         embedded:true,
         mount:'#'+mountId,
-        mode:lessonId==='end'?'end':'wake',
+        mode:practiceMode,
         phrases:list,
         phraseOptions:options,
         multiSelect:true,

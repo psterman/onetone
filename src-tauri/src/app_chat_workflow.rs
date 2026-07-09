@@ -333,6 +333,11 @@ fn activate_voice_input(
     }
     .ok_or((prefix.to_string(), AppChatWorkflowError::VoiceFailed))?;
 
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        crate::voice_end_runtime::cancel_dictation_after_trigger_key(state, app);
+        return Ok(());
+    }
+
     if !crate::keyboard::send_chord(&voice_key, duration_ms) {
         return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
     }
@@ -342,9 +347,7 @@ fn activate_voice_input(
         std::thread::sleep(Duration::from_millis(profile.post_voice_key_ms));
     }
 
-    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-        crate::voice_end_runtime::stop_dictation_after_trigger_key(state, app);
-    } else if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {
+    if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {
         crate::voice_end_runtime::enter_dictating(
             state,
             Some(app),

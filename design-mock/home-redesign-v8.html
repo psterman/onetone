@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v8 · 真正 Material 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     Material 3 Color Roles · 清澈（应用真实色对应到 M3 role）
+     Primary = 应用 brand #2a9cc4，对应到 M3 色板
+     ============================================================ */
+  :root{
+    /* Primary */
+    --md-primary:                 #00658F;
+    --md-on-primary:               #FFFFFF;
+    --md-primary-container:        #C7E7FF;
+    --md-on-primary-container:     #001E2E;
+
+    /* Secondary (中性冷灰) */
+    --md-secondary:               #4F616E;
+    --md-on-secondary:             #FFFFFF;
+    --md-secondary-container:      #D3E5F2;
+    --md-on-secondary-container:   #0B1D29;
+
+    /* Tertiary (成功绿，对应 M3 第 3 actor) */
+    --md-tertiary:                #006C4C;
+    --md-on-tertiary:              #FFFFFF;
+    --md-tertiary-container:       #89F8C7;
+    --md-on-tertiary-container:    #002115;
+
+    /* Error */
+    --md-error:                    #BA1A1A;
+    --md-on-error:                 #FFFFFF;
+    --md-error-container:          #FFDAD6;
+    --md-on-error-container:       #410002;
+
+    /* Surface (5 层 tonal elevation) */
+    --md-background:               #FCFCFF;
+    --md-on-background:            #191C20;
+    --md-surface:                  #FCFCFF;
+    --md-on-surface:               #191C20;
+    --md-surface-variant:          #DDE3EA;
+    --md-on-surface-variant:       #41484D;
+    --md-surface-container-lowest: #FFFFFF;
+    --md-surface-container-low:    #F6F8FB;
+    --md-surface-container:        #F0F2F5;
+    --md-surface-container-high:   #EAECEF;
+    --md-surface-container-highest:#E3E6EA;
+
+    /* Outline */
+    --md-outline:                  #71787D;
+    --md-outline-variant:          #C1C7CD;
+
+    /* Easing & duration · M3 emphasized */
+    --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+    --md-ease-decel:      cubic-bezier(0, 0, 0, 1);
+    --md-dur-short1: 50ms;
+    --md-dur-short2: 100ms;
+    --md-dur-short3: 150ms;
+    --md-dur-short4: 200ms;
+    --md-dur-medium1: 250ms;
+    --md-dur-medium2: 300ms;
+    --md-dur-long1: 450ms;
+
+    /* Shape */
+    --md-shape-xs:  4px;
+    --md-shape-sm:  8px;
+    --md-shape-md:  12px;
+    --md-shape-lg:  16px;
+    --md-shape-xl:  28px;
+    --md-shape-full: 999px;
+
+    /* State layer opacity */
+    --md-hover:  0.08;
+    --md-focus:  0.12;
+    --md-press:  0.12;
+    --md-drag:   0.16;
+  }
+
+  html[data-theme="dark"]{
+    --md-primary:                 #8FCEFF;
+    --md-on-primary:               #00344C;
+    --md-primary-container:        #004C6C;
+    --md-on-primary-container:     #C7E7FF;
+
+    --md-secondary:               #B7C9D8;
+    --md-on-secondary:             #21323E;
+    --md-secondary-container:      #374955;
+    --md-on-secondary-container:   #D3E5F2;
+
+    --md-tertiary:                #6FDDA8;
+    --md-on-tertiary:              #003824;
+    --md-tertiary-container:       #005236;
+    --md-on-tertiary-container:    #89F8C7;
+
+    --md-error:                    #FFB4AB;
+    --md-on-error:                 #690005;
+    --md-error-container:          #93000A;
+    --md-on-error-container:       #FFDAD6;
+
+    --md-background:               #10131A;
+    --md-on-background:            #E1E2E5;
+    --md-surface:                  #10131A;
+    --md-on-surface:               #E1E2E5;
+    --md-surface-variant:          #41484D;
+    --md-on-surface-variant:       #C1C7CD;
+    --md-surface-container-lowest: #0B0E13;
+    --md-surface-container-low:    #1A1D22;
+    --md-surface-container:        #1E2126;
+    --md-surface-container-high:   #282B30;
+    --md-surface-container-highest:#33363B;
+
+    --md-outline:                  #8B9297;
+    --md-outline-variant:          #41484D;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--md-on-background);
+    background:var(--md-background);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition:background var(--md-dur-medium1) var(--md-ease-standard),
+               color var(--md-dur-medium1) var(--md-ease-standard);
+  }
+
+  /* ========== M3 Type Scale ========== */
+  .t-display-l {font:600 57px/64px 'Outfit';letter-spacing:-.025em;}
+  .t-display-m {font:400 45px/52px 'Outfit';letter-spacing:0;}
+  .t-display-s {font:400 36px/44px 'Outfit';letter-spacing:0;}
+  .t-headline-l{font:400 32px/40px 'Outfit';letter-spacing:0;}
+  .t-headline-m{font:400 28px/36px 'Outfit';letter-spacing:0;}
+  .t-headline-s{font:400 24px/32px 'Outfit';letter-spacing:0;}
+  .t-title-l   {font:500 22px/28px 'Outfit';letter-spacing:0;}
+  .t-title-m   {font:500 16px/24px 'Outfit';letter-spacing:.009em;}
+  .t-title-s   {font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-body-l    {font:400 16px/24px 'Outfit';letter-spacing:.031em;}
+  .t-body-m    {font:400 14px/20px 'Outfit';letter-spacing:.025em;}
+  .t-body-s    {font:400 12px/16px 'Outfit';letter-spacing:.033em;}
+  .t-label-l   {font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-label-m   {font:500 12px/16px 'Outfit';letter-spacing:.042em;}
+  .t-label-s   {font:500 11px/16px 'Outfit';letter-spacing:.045em;}
+
+  /* ========== intro ========== */
+  .intro{
+    max-width:1180px;margin:0 auto;padding:48px 40px 16px;
+  }
+  .intro .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--md-primary);font-weight:700;margin-bottom:14px;
+  }
+  .intro h1{
+    font:600 32px/40px 'Outfit';letter-spacing:-.02em;
+    margin:0 0 12px;
+  }
+  .intro .lede{
+    font:400 15px/24px 'Outfit';color:var(--md-on-surface-variant);
+    max-width:880px;margin:0;letter-spacing:.01em;
+  }
+  .intro .lede b{color:var(--md-on-surface);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{max-width:1180px;margin:24px auto 0;padding:0 40px 24px;}
+  .stage-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  }
+  .stage-head h2{font:600 14px/20px 'Outfit';margin:0;}
+  .stage-head .hint{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);}
+
+  .window{
+    border-radius:var(--md-shape-xl);
+    background:var(--md-surface);
+    box-shadow:0 4px 8px rgba(0,0,0,.04),0 16px 32px rgba(0,0,0,.08);
+    overflow:hidden;
+    height:920px;
+    display:flex;flex-direction:column;
+    position:relative;
+    border:1px solid var(--md-outline-variant);
+  }
+
+  /* ========== Top App Bar (M3 CenterAligned) ========== */
+  .top-app-bar{
+    height:64px;flex:0 0 64px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;
+    background:var(--md-surface);
+  }
+  .tab-left{display:flex;align-items:center;gap:12px;}
+  .tab-icon-btn{
+    width:40px;height:40px;border-radius:var(--md-shape-full);
+    background:transparent;border:none;color:var(--md-on-surface-variant);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+  }
+  .tab-icon-btn::before{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);
+    background:var(--md-primary);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .tab-icon-btn:hover::before{opacity:var(--md-hover);}
+  .tab-icon-btn:active::before{opacity:var(--md-press);}
+  .tab-icon-btn svg{position:relative;width:20px;height:20px;}
+
+  .tab-brand{display:flex;align-items:center;gap:10px;}
+  .tab-brand .logo{
+    width:32px;height:32px;border-radius:var(--md-shape-md);
+    background:linear-gradient(135deg,var(--md-primary),var(--md-primary-container));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .tab-brand .logo svg{width:18px;height:18px;}
+  .tab-brand .name{font:600 18px/24px 'Outfit';letter-spacing:-.01em;color:var(--md-on-surface);}
+
+  .tab-right{display:flex;align-items:center;gap:4px;}
+
+  /* ========== Scroll area ========== */
+  .scroll{flex:1;overflow-y:auto;padding:8px 16px 32px;}
+  .scroll::-webkit-scrollbar{width:8px;}
+  .scroll::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:4px;}
+
+  /* ========== Hero Card (Filled tonal) ========== */
+  .hero{
+    background:var(--md-primary-container);
+    color:var(--md-on-primary-container);
+    border-radius:var(--md-shape-xl);
+    padding:24px;
+    display:grid;grid-template-columns:64px 1fr auto;gap:20px;align-items:center;
+    margin-bottom:28px;
+    position:relative;
+    overflow:hidden;
+    animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;
+  }
+  @keyframes md-enter{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .hero .leading{
+    width:64px;height:64px;border-radius:var(--md-shape-lg);
+    background:var(--md-primary);color:var(--md-on-primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.08),inset 0 0 0 1px rgba(255,255,255,.1);
+  }
+  .hero .leading svg{width:32px;height:32px;}
+  .hero .leading .status-dot{
+    position:absolute;bottom:52px;left:54px;
+    width:14px;height:14px;border-radius:var(--md-shape-full);
+    background:var(--md-tertiary);
+    border:3px solid var(--md-primary-container);
+  }
+  .hero .body{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .hero .body .kicker{
+    font:500 12px/16px 'Outfit';letter-spacing:.04em;text-transform:uppercase;
+    color:var(--md-primary);
+  }
+  .hero .body .title{font:500 22px/28px 'Outfit';letter-spacing:-.005em;}
+  .hero .body .sub{
+    font:400 14px/20px 'Outfit';letter-spacing:.025em;
+    color:var(--md-on-primary-container);opacity:.85;
+  }
+  .hero .body .sub b{font-weight:600;}
+
+  .hero .actions{display:flex;gap:8px;flex-shrink:0;}
+
+  /* Filled button */
+  .btn-filled{
+    display:inline-flex;align-items:center;gap:8px;
+    height:40px;padding:0 20px;
+    background:var(--md-primary);color:var(--md-on-primary);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.08);
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+  }
+  .btn-filled::before{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);
+    background:var(--md-on-primary);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .btn-filled:hover::before{opacity:var(--md-hover);}
+  .btn-filled:active::before{opacity:var(--md-press);}
+  .btn-filled:active{box-shadow:0 1px 2px rgba(0,0,0,.12);}
+  .btn-filled svg{position:relative;width:18px;height:18px;}
+  .btn-filled span{position:relative;}
+
+  /* Tonal button */
+  .btn-tonal{
+    display:inline-flex;align-items:center;gap:8px;
+    height:40px;padding:0 20px;
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+  }
+  .btn-tonal::before{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);
+    background:var(--md-on-secondary-container);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .btn-tonal:hover::before{opacity:var(--md-hover);}
+  .btn-tonal:active::before{opacity:var(--md-press);}
+  .btn-tonal svg{position:relative;width:18px;height:18px;}
+  .btn-tonal span{position:relative;}
+
+  /* ========== Section ========== */
+  .section{margin-bottom:28px;animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;}
+  .section:nth-of-type(2){animation-delay:50ms;}
+  .section:nth-of-type(3){animation-delay:100ms;}
+  .section:nth-of-type(4){animation-delay:150ms;}
+
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 4px;margin-bottom:12px;
+  }
+  .section-title{font:500 22px/28px 'Outfit';letter-spacing:-.005em;color:var(--md-on-surface);}
+  .section-link{
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    color:var(--md-primary);
+    background:transparent;border:none;cursor:pointer;padding:6px 12px;border-radius:var(--md-shape-full);
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    display:inline-flex;align-items:center;gap:4px;
+    font-family:inherit;
+  }
+  .section-link:hover{background:var(--md-primary-container);}
+
+  /* ========== Key Cards (Elevated card · surfaceContainer) ========== */
+  .key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .key-card{
+    background:var(--md-surface-container-low);
+    border:1px solid var(--md-outline-variant);
+    border-radius:var(--md-shape-lg);
+    padding:16px;
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+  }
+  .key-card::before{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);
+    background:var(--md-primary);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-standard);
+    pointer-events:none;
+  }
+  .key-card:hover{background:var(--md-surface-container);border-color:var(--md-outline);}
+  .key-card:hover::before{opacity:var(--md-hover);}
+  .key-card:active::before{opacity:var(--md-press);}
+
+  .key-card .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;position:relative;}
+  .key-card .lead-ico{
+    width:40px;height:40px;border-radius:var(--md-shape-md);
+    background:var(--md-primary-container);color:var(--md-on-primary-container);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .key-card.is-active .lead-ico{background:var(--md-primary);color:var(--md-on-primary);}
+  .key-card .lead-ico svg{width:20px;height:20px;}
+
+  /* Assist chip (status badge) */
+  .chip-assist{
+    display:inline-flex;align-items:center;gap:4px;
+    height:24px;padding:0 8px;
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    border:none;border-radius:var(--md-shape-sm);
+    font:500 11px/16px 'Outfit';letter-spacing:.045em;
+    font-family:inherit;cursor:pointer;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .chip-assist:hover{background:var(--md-surface-container-high);}
+  .chip-assist.success{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .chip-assist.dim{background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);}
+
+  .key-card .title{
+    font:500 15px/22px 'Outfit';letter-spacing:.009em;
+    color:var(--md-on-surface);margin-bottom:2px;position:relative;
+  }
+  .key-card .title .arr{color:var(--md-on-surface-variant);margin:0 4px;font-weight:400;}
+  .key-card .title .target{color:var(--md-primary);}
+  .key-card .desc{
+    font:400 12px/18px 'JetBrains Mono';letter-spacing:.02em;
+    color:var(--md-on-surface-variant);position:relative;
+  }
+
+  /* ========== List Card (M3 ListItem) ========== */
+  .list-card{
+    background:var(--md-surface-container);
+    border-radius:var(--md-shape-lg);
+    overflow:hidden;
+    border:1px solid var(--md-outline-variant);
+  }
+  .list-item{
+    display:flex;align-items:center;gap:16px;
+    padding:12px 16px;
+    cursor:pointer;
+    position:relative;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    min-height:56px;
+  }
+  .list-item + .list-item{border-top:1px solid var(--md-outline-variant);}
+  .list-item:hover{background:var(--md-surface-container-high;}
+  .list-item:active{background:var(--md-surface-container-highest;}
+
+  .list-item .leading-ico{
+    width:36px;height:36px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .list-item .leading-ico.ok{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .list-item .leading-ico.err{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .list-item .leading-ico svg{width:18px;height:18px;}
+
+  .list-item .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .list-item .body .l1{font:400 14px/20px 'Outfit';color:var(--md-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.025em;}
+  .list-item .body .l1 .q{color:var(--md-on-surface-variant);margin:0 2px;}
+  .list-item .body .l2{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.02em;}
+
+  .list-item .trailing{
+    display:flex;align-items:center;gap:8px;flex-shrink:0;
+  }
+  .list-item .trailing .time{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);}
+  .list-item .trailing .ok-text{font:500 12px/16px 'Outfit';color:var(--md-tertiary);letter-spacing:.042em;}
+  .list-item .trailing .err-text{font:500 12px/16px 'Outfit';color:var(--md-error);letter-spacing:.042em;}
+
+  /* ========== Icon Buttons (Tonal FAB style) ========== */
+  .quick-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+  .quick-btn{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:16px 8px 14px;
+    background:var(--md-surface-container-low);
+    border:1px solid transparent;
+    border-radius:var(--md-shape-lg);
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+    font-family:inherit;
+  }
+  .quick-btn::before{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);
+    background:var(--md-primary);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-standard);
+    pointer-events:none;
+  }
+  .quick-btn:hover{background:var(--md-surface-container);border-color:var(--md-outline-variant);}
+  .quick-btn:hover::before{opacity:var(--md-hover);}
+  .quick-btn:active::before{opacity:var(--md-press);}
+
+  .quick-btn .lead-ico{
+    width:48px;height:48px;border-radius:var(--md-shape-md);
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    display:flex;align-items:center;justify-content:center;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .quick-btn:hover .lead-ico{transform:scale(1.05);}
+  .quick-btn .lead-ico svg{width:22px;height:22px;}
+  .quick-btn .lbl{font:500 13px/18px 'Outfit';color:var(--md-on-surface);letter-spacing:.009em;position:relative;}
+  .quick-btn .sub{font:400 11px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);position:relative;letter-spacing:.045em;}
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:18px;right:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);
+    padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .state-switch button:hover{color:var(--md-on-surface);}
+  .state-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  .theme-switch{
+    position:absolute;top:18px;left:18px;z-index:10;
+    display:flex;gap:3px;
+    background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);
+    padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .theme-switch button:hover{color:var(--md-on-surface);}
+  .theme-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  /* ========== Comparison ========== */
+  .compare{max-width:1180px;margin:36px auto 0;padding:0 40px 80px;}
+  .compare h3{
+    font:600 14px/20px 'Outfit';margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare h3 .tag{
+    font:500 10px/16px 'Outfit';letter-spacing:.045em;
+    padding:2px 7px;border-radius:var(--md-shape-xs);
+  }
+  .compare h3 .tag.v7{background:var(--md-surface-container);color:var(--md-on-surface-variant);}
+  .compare h3 .tag.v8{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .compare .lead{font:400 12.5px/20px 'Outfit';color:var(--md-on-surface-variant);margin:0 0 14px;letter-spacing:.02em;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col{
+    border:1px solid var(--md-outline-variant);
+    border-radius:var(--md-shape-lg);padding:16px;
+    background:var(--md-surface-container-lowest);
+  }
+  .compare .col ul{
+    margin:0;padding-left:18px;
+    font:400 12.5px/22px 'Outfit';color:var(--md-on-surface-variant);letter-spacing:.015em;
+  }
+  .compare .col li b{color:var(--md-on-surface);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .hero{grid-template-columns:1fr;}
+    .key-grid{grid-template-columns:repeat(2,1fr);}
+    .quick-grid{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构 v8 · 真正 Material 3</div>
+  <h1>v7 是 Material 的"皮"。v8 是 Material 的"骨"。</h1>
+  <p class="lede">v7 把每个 section 染成不同色 —— <b>反 M3</b>。M3 是 25 个 Color Roles 系统（Primary / Secondary / Tertiary + Container/On 配对），用 tonal 层级表达重要性，不是彩虹色。M3 还用 <b>Tonal Elevation</b>（surface color tonal 叠加）代替 box-shadow，用 <b>State Layers</b>（8%/12%/16% primary overlay）做 hover/press 反馈，用 <b>M3 Type Scale</b> 统一字号。v8 全部贯彻。</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 真正 M3 规范</h2>
+    <div class="hint">左上切主题 · 右上切引擎状态 · hover 任意组件看 State Layer 反馈</div>
+  </div>
+
+  <div class="window" id="window">
+
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="OK">引擎 OK</button>
+      <button data-s="LIVE">正在听</button>
+      <button data-s="ERR">引擎报错</button>
+    </div>
+
+    <!-- ============ Top App Bar (M3 CenterAligned) ============ -->
+    <header class="top-app-bar">
+      <div class="tab-left">
+        <button class="tab-icon-btn" title="菜单">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="tab-brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+      <div class="tab-right">
+        <button class="tab-icon-btn" title="搜索">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="tab-icon-btn" title="设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="tab-icon-btn" title="更多">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="scroll">
+
+      <!-- ============ Hero Card (Filled tonal · primaryContainer) ============ -->
+      <div class="hero">
+        <div class="leading" style="position:relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <div class="status-dot" id="heroStatusDot" style="background:var(--md-tertiary);"></div>
+        </div>
+        <div class="body">
+          <div class="kicker" id="heroKicker">准备好了 · 一切就绪</div>
+          <div class="title" id="heroTitle">当前可用，可以开始说话</div>
+          <div class="sub" id="heroSub">Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b></div>
+        </div>
+        <div class="actions">
+          <button class="btn-filled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span>测试发送</span>
+          </button>
+          <button class="btn-tonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>新建习惯</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ Section 1: 按键速查 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">按键速查</h2>
+          <button class="section-link">管理 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="key-grid">
+          <div class="key-card is-active">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              </span>
+              <button class="chip-assist success">默认</button>
+            </div>
+            <div class="title">音量 + <span class="arr">→</span> <span class="target">RAlt</span></div>
+            <div class="desc">长按开 · 当前窗口</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg>
+              </span>
+              <button class="chip-assist">微信</button>
+            </div>
+            <div class="title">侧键 ↑ <span class="arr">→</span> <span class="target">Ctrl+Shift</span></div>
+            <div class="desc">单击开 · 微信</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              </span>
+              <button class="chip-assist">Cursor</button>
+            </div>
+            <div class="title">Ctrl + I <span class="arr">→</span> <span class="target">Cmd + I</span></div>
+            <div class="desc">长按开 · Cursor</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </span>
+              <button class="chip-assist">语音</button>
+            </div>
+            <div class="title">说「<span class="target">开始输入</span>」</div>
+            <div class="desc">唤醒词 · 当前窗口</div>
+          </div>
+
+          <div class="key-card">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-9 4 18 3-9h4"/></svg>
+              </span>
+              <button class="chip-assist">语音</button>
+            </div>
+            <div class="title">说「<span class="target">结束输入</span>」</div>
+            <div class="desc">结束词 · 停止听写</div>
+          </div>
+
+          <div class="key-card" style="opacity:.55;">
+            <div class="top">
+              <span class="lead-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+              <button class="chip-assist dim">停用</button>
+            </div>
+            <div class="title">滚轮中键 <span class="arr">→</span> <span class="target">F2</span></div>
+            <div class="desc">单击开 · Typora</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Section 2: 最近语音输入 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">最近语音输入</h2>
+          <button class="section-link">全部 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="list-card">
+          <div class="list-item">
+            <div class="leading-ico ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="body">
+              <div class="l1"><span class="q">"</span>今天天气怎么样<span class="q">"</span></div>
+              <div class="l2">默认 · 长按 音量+</div>
+            </div>
+            <div class="trailing">
+              <span class="time">10:24</span>
+              <span class="ok-text">已发送</span>
+            </div>
+          </div>
+
+          <div class="list-item">
+            <div class="leading-ico ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="body">
+              <div class="l1"><span class="q">"</span>把这段话发给张总<span class="q">"</span></div>
+              <div class="l2">默认 · 长按 音量+</div>
+            </div>
+            <div class="trailing">
+              <span class="time">10:18</span>
+              <span class="ok-text">已发送</span>
+            </div>
+          </div>
+
+          <div class="list-item">
+            <div class="leading-ico err">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+            <div class="body">
+              <div class="l1"><span class="q">"</span>打开 Cursor 并新建项目<span class="q">"</span></div>
+              <div class="l2">Cursor · Ctrl+I</div>
+            </div>
+            <div class="trailing">
+              <span class="time">10:12</span>
+              <span class="err-text">失败</span>
+            </div>
+          </div>
+
+          <div class="list-item">
+            <div class="leading-ico ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="body">
+              <div class="l1"><span class="q">"</span>今天会议几点开始<span class="q">"</span></div>
+              <div class="l2">默认 · 长按 音量+</div>
+            </div>
+            <div class="trailing">
+              <span class="time">10:05</span>
+              <span class="ok-text">已发送</span>
+            </div>
+          </div>
+
+          <div class="list-item">
+            <div class="leading-ico ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="body">
+              <div class="l1"><span class="q">"</span>明天八点的闹钟<span class="q">"</span></div>
+              <div class="l2">默认 · 长按 音量+</div>
+            </div>
+            <div class="trailing">
+              <span class="time">09:58</span>
+              <span class="ok-text">已发送</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Section 3: 快捷入口 ============ -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">快捷入口</h2>
+        </div>
+
+        <div class="quick-grid">
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </span>
+            <span class="lbl">唤醒词</span>
+            <span class="sub">5 个</span>
+          </button>
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </span>
+            <span class="lbl">识别引擎</span>
+            <span class="sub">Vosk</span>
+          </button>
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </span>
+            <span class="lbl">外观</span>
+            <span class="sub">清澈</span>
+          </button>
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </span>
+            <span class="lbl">运行状态</span>
+            <span class="sub">诊断</span>
+          </button>
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="lbl">备份恢复</span>
+            <span class="sub">配置</span>
+          </button>
+          <button class="quick-btn">
+            <span class="lead-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span class="lbl">帮助教程</span>
+            <span class="sub">F1</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v7">v7 错位</span> 是 Material 的"皮"</h3>
+      <p class="lead">学了 M3 的大圆角、彩色图标、微动效 —— 但内核是错的：每个 section 一种语义色（青/绿/紫），每个按钮一种色（橙/粉/紫/青绿/绿）。这是"彩虹 UI"，反 M3 的 Color Roles 原则。</p>
+      <ul>
+        <li>每个 section 头部<b>不同色图标块</b>—— M3 不这样</li>
+        <li>6 个快捷按钮<b>6 种语义色</b>—— M3 用 primary + secondary + tertiary 三色</li>
+        <li>用 <b>box-shadow</b> 模拟 elevation—— M3 用 <b>tonal elevation</b>（surface color tonal 叠加）</li>
+        <li>hover 用<b>背景变色</b>—— M3 用 <b>state layer overlay</b>（8%/12%/16% primary）</li>
+        <li>字体大小混乱（13/14/15/22/32 都有）—— M3 用 <b>type scale</b>（headline/title/body/label 五级）</li>
+        <li>圆角全部 rounded-2xl—— M3 shape 分七类，按组件用途选</li>
+        <li>所有 section 头部用彩色图标块—— M3 用纯文字 <b>titleLarge 22px</b></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v8">v8</span> Material 3 的"骨" — 全部贯彻</h3>
+      <p class="lead">v8 真正按 M3 规范重做：25 个 Color Roles（primary/secondary/tertiary + container/on）+ Tonal Elevation 5 层 surface + State Layer 8%/12%/16% overlay + M3 Type Scale + Shape 七类 + Emphasized easing。</p>
+      <ul>
+        <li><b>25 个 CSS 变量</b>对应 M3 Color Roles（--md-primary / --md-on-primary / --md-primary-container / --md-on-primary-container 等）</li>
+        <li><b>5 层 surface tonal</b>（lowest/low/container/high/highest）—— 不用 shadow，靠 tonal 叠加</li>
+        <li><b>Hero Card (Filled tonal)</b>：primaryContainer 背景 + onPrimaryContainer 文字 + 64px 图标 + Filled + Tonal 双按钮</li>
+        <li><b>State Layer</b>：所有可交互元素用 ::before 叠加 primary 8%/12% overlay，不改背景</li>
+        <li><b>List Card (M3 ListItem)</b>：单张 surfaceContainer 卡片包含多行，items 之间 1px outline-variant divider</li>
+        <li><b>Icon Buttons</b>：48px rounded-md icon container + secondaryContainer 背景 + 下方 13/500 标签</li>
+        <li><b>M3 Type Scale</b>：titleLarge 22 / titleMedium 16 / bodyMedium 14 / labelLarge 14-medium / labelMedium 12-medium 等</li>
+        <li><b>Emphasized easing</b>：cubic-bezier(0.2, 0, 0, 1) 而不是 (.2,.8,.2,1)</li>
+        <li><b>TopAppBar 64px</b>：center-aligned title + leading/middle/trailing 三段</li>
+        <li><b>Section header</b>：纯 titleLarge 文字（不再用彩色图标块当锚）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const heroStatusDot = $('#heroStatusDot');
+  const heroKicker = $('#heroKicker');
+  const heroTitle = $('#heroTitle');
+  const heroSub = $('#heroSub');
+
+  const STATES = {
+    OK:{
+      kicker:'准备好了 · 一切就绪',
+      title:'当前可用，可以开始说话',
+      sub:'Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b>',
+      dotColor:'var(--md-tertiary)'
+    },
+    LIVE:{
+      kicker:'正在听 · 唤醒词已触发',
+      title:'听见了唤醒词 · 继续说话',
+      sub:'说出 <b>「开始输入」</b> 或继续刚才的话 · 当前 <b>「默认」习惯</b>',
+      dotColor:'var(--md-primary)'
+    },
+    ERR:{
+      kicker:'需要关注 · 引擎异常',
+      title:'检测不到声音 · 检查麦克风',
+      sub:'Vosk 不可用 · 麦克风无信号 · 请检查权限设置',
+      dotColor:'var(--md-error)'
+    }
+  };
+
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      heroKicker.textContent = s.kicker;
+      heroTitle.textContent = s.title;
+      heroSub.innerHTML = s.sub;
+      heroStatusDot.style.background = s.dotColor;
+    });
+  });
+
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+</script>
+</body>
+</html>

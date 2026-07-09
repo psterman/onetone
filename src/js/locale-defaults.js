@@ -52,6 +52,8 @@
         voiceVoskPhrases: ['start dictation', 'start input', 'voice input'],
         voiceEndPhrasesZh: ['结束输入', '发出去'],
         voiceEndPhrasesEn: ['end dictation', 'send it'],
+        voiceCancelPhrasesZh: ['取消输入', '不要了'],
+        voiceCancelPhrasesEn: ['cancel input', 'never mind'],
         voskModelPreset: 'en-light',
         voskModelPath: 'resources/vosk/vosk-model-small-en-us-0.15'
       };
@@ -65,6 +67,8 @@
       voiceVoskPhrases: ['开始输入', '开始听写', '打开听写', '语音输入', '开启输入'],
       voiceEndPhrasesZh: ['结束输入', '发出去'],
       voiceEndPhrasesEn: ['end dictation', 'send it'],
+      voiceCancelPhrasesZh: ['取消输入', '不要了'],
+      voiceCancelPhrasesEn: ['cancel input', 'never mind'],
       voskModelPreset: 'cn-light',
       voskModelPath: 'resources/vosk/vosk-model-small-cn-0.22'
     };

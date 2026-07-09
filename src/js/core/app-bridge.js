@@ -171,10 +171,10 @@
       },
       getPracticeHeardRaw:function(mode){
         var w=hooks().voiceUiSnapshot().wake||{};
-        var endMode=mode==='end';
+        var transcriptMode=mode==='end'||mode==='cancel';
         if(w.engine==='vosk'){
           var vosk=w.vosk||{};
-          if(endMode){
+          if(transcriptMode){
             return String(vosk.lastPartial||vosk.lastFinal||'').trim();
           }
           return String(vosk.lastDetectedPhrase||vosk.lastFinal||vosk.lastPartial||'').trim();
@@ -209,7 +209,7 @@
         opts=opts||{};
         var self=this;
         var tasks=[];
-        if(opts.mode==='end'){
+        if(opts.mode==='end'||opts.mode==='cancel'){
           tasks.push(hooks().vpInvoke('cmd_voice_end_set_enabled',{enabled:true}).catch(function(){ return null; }));
         }
         return Promise.all(tasks).then(function(){

@@ -116,7 +116,7 @@
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','发出去'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation','send it'],commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'}
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','发出去'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation','send it'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind'],commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'}
     };
   }
 
@@ -225,6 +225,8 @@
           enabled:!!cfg.enabled,
           phrasesZh:hooks().cloneStringList(cfg.phrasesZh||cfg.phrases_zh),
           phrasesEn:hooks().cloneStringList(cfg.phrasesEn||cfg.phrases_en),
+          cancelPhrasesZh:hooks().cloneStringList(cfg.cancelPhrasesZh||cfg.cancel_phrases_zh),
+          cancelPhrasesEn:hooks().cloneStringList(cfg.cancelPhrasesEn||cfg.cancel_phrases_en),
           commitDelayMs:Number(cfg.commitDelayMs||cfg.commit_delay_ms)||4000,
           commitKey:String(cfg.commitKey||cfg.commit_key||'Enter').trim()||'Enter',
           dictationTimeoutMs:Number(cfg.dictationTimeoutMs||cfg.dictation_timeout_ms)||60000,

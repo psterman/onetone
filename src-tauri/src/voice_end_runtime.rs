@@ -427,6 +427,14 @@ pub fn matches_end_phrase(
     best.map(|(phrase, _)| phrase)
 }
 
+pub fn matches_cancel_phrase(
+    text: &str,
+    phrases_zh: &[String],
+    phrases_en: &[String],
+) -> Option<String> {
+    matches_end_phrase(text, phrases_zh, phrases_en)
+}
+
 pub fn text_matches_wake_phrase(cfg: &VoiceConfig, text: &str) -> bool {
     matches_final(text, &idle_wake_phrases(cfg)).is_some()
 }
@@ -435,19 +443,21 @@ pub fn text_matches_wake_phrases(phrases: &[String], text: &str) -> bool {
     matches_final(text, phrases).is_some()
 }
 
-pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
+pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
     if !should_match_end_phrase(state) {
         return;
     }
     if !state.cfg.lock().voice_end.enabled {
         return;
     }
-    let (phrases_zh, phrases_en, wake_phrases) = {
+    let (cancel_zh, cancel_en, end_zh, end_en, wake_phrases) = {
         let snapshot = state.voice_session_snapshot.lock();
         let Some(snap) = snapshot.as_ref() else {
             return;
         };
         (
+            snap.effective.cancel_phrases.zh.clone(),
+            snap.effective.cancel_phrases.en.clone(),
             snap.effective.end_phrases.zh.clone(),
             snap.effective.end_phrases.en.clone(),
             snap.effective.wake_phrases.clone(),
@@ -456,9 +466,17 @@ pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, tex
     if text_matches_wake_phrases(&wake_phrases, text) {
         return;
     }
-    if let Some(phrase) = matches_end_phrase(text, &phrases_zh, &phrases_en) {
+    if let Some(phrase) = matches_cancel_phrase(text, &cancel_zh, &cancel_en) {
+        handle_cancel_phrase(state, app, &phrase);
+        return;
+    }
+    if let Some(phrase) = matches_end_phrase(text, &end_zh, &end_en) {
         handle_end_phrase(state, app, &phrase);
     }
+}
+
+pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
+    try_match_session_phrase_on_final(state, app, text);
 }
 
 pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
@@ -474,6 +492,65 @@ pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) 
         return;
     }
     finish_dictation_session(state, Some(app), "trigger key", true);
+}
+
+pub fn cancel_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) {
+    cancel_dictation_session(state, Some(app), "trigger key");
+}
+
+pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
+    if session_state(state) != "dictating" {
+        return;
+    }
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "session",
+        crate::runtime_event::kind::CANCEL_PHRASE_MATCHED,
+        phrase,
+        None,
+    );
+    cancel_dictation_session(state, Some(app), phrase);
+}
+
+fn cancel_dictation_session(
+    state: &Arc<AppState>,
+    app: Option<&AppHandle>,
+    reason: &str,
+) {
+    if session_state(state) != "dictating" {
+        return;
+    }
+    if *state.paused.lock() {
+        *state.voice_session_last_action.lock() = "skipped: paused".into();
+        return;
+    }
+    if crate::send_guard::is_active() {
+        *state.voice_session_last_action.lock() = "skipped: send_guard".into();
+        return;
+    }
+
+    let _ = bump_commit_token(state);
+    let session_mapping_id = state.voice_session_mapping_id.lock().clone();
+    *state.voice_session_state.lock() = "idle".into();
+    *state.voice_session_started_at.lock() = None;
+    *state.voice_session_last_end_phrase.lock() = String::new();
+    *state.voice_session_last_action.lock() = format!("cancelled: {reason}");
+
+    crate::keyboard::send_escape();
+
+    if let Some(app) = app {
+        crate::ipc::push_runtime_via_app(app, state.as_ref(), "esc", &session_mapping_id, None);
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "session",
+            crate::runtime_event::kind::SESSION_ENDED,
+            "dictation cancelled",
+            None,
+        );
+        crate::tray::refresh_menu(app);
+    }
 }
 
 pub fn handle_end_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
@@ -712,6 +789,8 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
         "mappingId": state.voice_session_mapping_id.lock().clone(),
         "phrasesZh": cfg.voice_end.phrases_zh,
         "phrasesEn": cfg.voice_end.phrases_en,
+        "cancelPhrasesZh": cfg.voice_end.cancel_phrases_zh,
+        "cancelPhrasesEn": cfg.voice_end.cancel_phrases_en,
         "commitDelayMs": cfg.voice_end.commit_delay_ms,
         "commitKey": cfg.voice_end.commit_key,
         "autoSendEnabled": cfg.voice_end.auto_send_enabled,
@@ -834,6 +913,26 @@ mod tests {
         assert_eq!(
             matches_end_phrase("send it", &zh, &en),
             Some("send it".into())
+        );
+    }
+
+    #[test]
+    fn cancel_phrase_zh_match() {
+        let zh = vec!["取消输入".into()];
+        let en: Vec<String> = vec![];
+        assert_eq!(
+            matches_cancel_phrase("取消输入", &zh, &en),
+            Some("取消输入".into())
+        );
+    }
+
+    #[test]
+    fn cancel_phrase_prefers_longer_match() {
+        let zh = vec!["取消".into(), "取消输入".into()];
+        let en: Vec<String> = vec![];
+        assert_eq!(
+            matches_cancel_phrase("取消输入", &zh, &en),
+            Some("取消输入".into())
         );
     }
 
