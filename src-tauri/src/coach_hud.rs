@@ -12,8 +12,9 @@ use crate::AppState;
 
 pub const COACH_HUD_LABEL: &str = "coach_hud";
 
-const HUD_WIDTH: f64 = 360.0;
+const HUD_WIDTH: f64 = 400.0;
 const HUD_HEIGHT: f64 = 88.0;
+const HUD_HEIGHT_DICTATING: f64 = 118.0;
 
 static SUCCESS_UNTIL: Mutex<Option<Instant>> = Mutex::new(None);
 
@@ -26,6 +27,9 @@ pub struct CoachHudSnapshot {
     pub trigger_key: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub target_key: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub cancel_phrase_hint: String,
+    pub cancel_window_active: bool,
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -59,10 +63,28 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnaps
             mode: "hidden".into(),
             trigger_key: String::new(),
             target_key: String::new(),
+            cancel_phrase_hint: String::new(),
+            cancel_window_active: false,
         };
     }
 
     let (trigger_key, target_key) = active_mapping_keys(cfg);
+    let session = crate::voice_end_runtime::session_state(state);
+
+    if session == "dictating" {
+        let mapping_id = state.voice_session_mapping_id.lock().clone();
+        return CoachHudSnapshot {
+            visible: true,
+            mode: "dictating".into(),
+            trigger_key,
+            target_key,
+            cancel_phrase_hint: dictation_cancel_phrase_hint(state),
+            cancel_window_active: crate::voice_end_runtime::is_in_trigger_cancel_window(
+                state,
+                &mapping_id,
+            ),
+        };
+    }
 
     if let Some(until) = *SUCCESS_UNTIL.lock() {
         if Instant::now() < until {
@@ -71,6 +93,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnaps
                 mode: "success".into(),
                 trigger_key,
                 target_key,
+                cancel_phrase_hint: String::new(),
+                cancel_window_active: false,
             };
         }
     }
@@ -80,7 +104,32 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig, state: &AppState) -> CoachHudSnaps
         mode: "key_only".into(),
         trigger_key,
         target_key,
+        cancel_phrase_hint: String::new(),
+        cancel_window_active: false,
     }
+}
+
+fn dictation_cancel_phrase_hint(state: &AppState) -> String {
+    if let Some(snap) = state.voice_session_snapshot.lock().as_ref() {
+        if let Some(p) = snap.effective.cancel_phrases.zh.first() {
+            let t = p.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+        if let Some(p) = snap.effective.cancel_phrases.en.first() {
+            let t = p.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+    }
+    let cfg = state.cfg.lock();
+    cfg.voice_end
+        .cancel_phrases_zh
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "取消输入".into())
 }
 
 fn active_mapping_keys(cfg: &VoiceConfig) -> (String, String) {
@@ -124,7 +173,12 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
         };
         if visible {
             position_coach_hud(&hud_win);
-            let _ = hud_win.set_size(Size::Logical(LogicalSize::new(HUD_WIDTH, HUD_HEIGHT)));
+            let height = if payload.mode == "dictating" {
+                HUD_HEIGHT_DICTATING
+            } else {
+                HUD_HEIGHT
+            };
+            let _ = hud_win.set_size(Size::Logical(LogicalSize::new(HUD_WIDTH, height)));
             let _ = hud_win.show();
         } else {
             let _ = hud_win.hide();

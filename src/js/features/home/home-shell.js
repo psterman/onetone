@@ -82,7 +82,14 @@
       statusSummary.setAttribute('aria-hidden','false');
     }
     const focusMode=hooks().isHomeFirstRunFocusMode();
-    placeHomeHabitsBtn(unlocked);
+    const useWorkbench=!!($('homeWorkbench'));
+    const appEl=document.querySelector('.app');
+    if(appEl) appEl.classList.toggle('is-workbench',useWorkbench);
+    if(!useWorkbench) placeHomeHabitsBtn(unlocked);
+    else{
+      const cta=$('btnHomeCta');
+      if(cta) cta.hidden=true;
+    }
     const btnSettingsGlobal=$('btnSettings');
     if(btnSettingsGlobal){
       btnSettingsGlobal.hidden=!!(focusMode&&!ui.drawerOpen);
@@ -117,11 +124,23 @@
     }
     const advSummary=$('homeAdvancedSummary');
     if(advSummary) advSummary.textContent=t('homeAdvancedSummary');
-    global.OneToneHomeLive.renderZone();
-    if(global.OneToneHomeV9){
-      global.OneToneHomeV9.bindOnce();
-      global.OneToneHomeV9.applyLang();
-      global.OneToneHomeV9.render();
+    if(useWorkbench){
+      if(global.OneToneHomeV9){
+        global.OneToneHomeV9.bindOnce();
+        global.OneToneHomeV9.applyLang();
+      }
+      if(global.OneToneHomeWorkbench){
+        global.OneToneHomeWorkbench.bindOnce();
+        global.OneToneHomeWorkbench.applyLang();
+        global.OneToneHomeWorkbench.render();
+      }
+    }else{
+      global.OneToneHomeLive.renderZone();
+      if(global.OneToneHomeV9){
+        global.OneToneHomeV9.bindOnce();
+        global.OneToneHomeV9.applyLang();
+        global.OneToneHomeV9.render();
+      }
     }
     if(global.OneToneHabitTriggerSetup){
       global.OneToneHabitTriggerSetup.bindOnce();

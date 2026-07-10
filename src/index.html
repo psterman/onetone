@@ -17,11 +17,12 @@
   <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
   <link rel="stylesheet" href="css/app.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
+  <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/keys-workflow.css" />
 </head>
 <body>
   <div class="app">
-    <header class="app-header">
+    <header class="app-header app-header--slim">
       <div class="app-brand">
         <img class="app-logo" src="icon.png" width="36" height="36" alt="" aria-hidden="true" decoding="async" />
         <div class="app-title-wrap">
@@ -68,9 +69,126 @@
       </div>
     </section>
 
-    <main class="main-scroll">
+    <main class="main-scroll app-workbench-shell" id="appWorkbenchShell">
+      <aside class="app-left-nav" id="wbLeftNav" aria-label="主导航">
+              <div class="wb-nav-brand">
+                <img src="icon.png" width="32" height="32" alt="" decoding="async" />
+                <span class="wb-nav-brand-name" id="wbNavBrandName">一声</span>
+              </div>
+              <div class="wb-nav-section" data-i18n="homeWbNavSectionMain">主面板</div>
+              <button type="button" class="wb-nav-item is-active" data-wb-nav="home" id="wbNavHome">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span data-i18n="homeWbNavHome">首页</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="schemes" id="wbNavSchemes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+                <span data-i18n="homeWbNavSchemes">输入方案</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="triggers" id="wbNavTriggers">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+                <span data-i18n="homeWbNavTriggers">触发设置</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                <span data-i18n="homeWbNavVoice">语音与模型</span>
+              </button>
+              <div class="wb-nav-section" data-i18n="homeWbNavSectionSystem">系统</div>
+              <button type="button" class="wb-nav-item" data-wb-nav="sounds" id="wbNavSounds">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <span data-i18n="homeWbNavSounds">声音与反馈</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="general" id="wbNavGeneral">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span data-i18n="homeWbNavGeneral">通用设置</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="maintenance" id="wbNavMaintenance">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                <span data-i18n="homeWbNavMaintenance">恢复与维护</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="runtime" id="wbNavRuntime">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span data-i18n="homeWbNavRuntime">运行状态</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="log" id="wbNavLog">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span data-i18n="homeWbNavLog">查看日志</span>
+              </button>
+              <div class="wb-sidebar-status">
+                <div class="wb-sidebar-status-label"><span class="wb-sidebar-status-dot" id="wbSidebarDot"></span><span data-i18n="homeWbSidebarRunning">运行中</span></div>
+                <div class="wb-sidebar-status-main" id="wbSidebarMain">OneTone 已启动</div>
+                <div class="wb-sidebar-status-sub" id="wbSidebarSub">—</div>
+              </div>
+      </aside>
+      <div class="app-content-column" id="appContentColumn">
       <div class="editor-zone">
-        <div class="home-zone home-v9-active" id="homeZone">
+        <div class="home-zone home-workbench-active" id="homeZone">
+          <div class="home-workbench" id="homeWorkbench">
+              <div class="home-workbench-body">
+                <div class="home-center" id="wbCenter">
+                  <div class="wb-status-overview" id="wbStatusOverview" aria-live="polite"></div>
+                  <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
+                  <div class="wb-command-search" id="wbCommandSearch">
+                    <svg class="wb-command-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="search" id="wbCommandSearchInput" placeholder="搜索命令、习惯或设置…" autocomplete="off" aria-controls="wbCmdkPanel" aria-expanded="false" aria-autocomplete="list" role="combobox" />
+                    <kbd>Ctrl K</kbd>
+                    <div class="wb-cmdk-panel" id="wbCmdkPanel" role="listbox" hidden></div>
+                  </div>
+                  <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbTriggerTitle">
+                    <div class="wb-trigger-head">
+                      <div class="wb-trigger-status" id="wbTriggerStatus">当前触发 · 已就绪</div>
+                      <button type="button" class="wb-trigger-edit" id="wbTriggerEdit" title="编辑规则" aria-label="编辑规则">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                      </button>
+                    </div>
+                    <div class="wb-trigger-main">
+                      <div class="wb-trigger-key" id="wbTriggerKey" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      </div>
+                      <div class="wb-trigger-info">
+                        <h2 class="wb-trigger-title" id="wbTriggerTitle">—</h2>
+                        <div class="wb-trigger-meta" id="wbTriggerMeta">
+                          <span class="wb-trigger-meta-text" id="wbTriggerMetaText">—</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="wb-trigger-wave" id="wbTriggerWave" aria-hidden="true">
+                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                    </div>
+                    <div class="wb-live-text" id="wbLiveText" aria-live="polite">
+                      <div class="vp-empty" data-i18n="homeWbLiveIdleHint">听写内容将显示在这里</div>
+                    </div>
+                    <div class="wb-trigger-actions">
+                      <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnTestSend" data-i18n="homeLiveTestEndSend">测试发送</button>
+                      <button type="button" class="wb-trigger-btn wb-trigger-btn-tonal" id="wbBtnEnd" data-i18n="homeV9BtnEnd">结束说话</button>
+                    </div>
+                  </section>
+                  <div class="wb-quick-section">
+                    <div class="wb-quick-label" data-i18n="homeWbQuickSection">快捷操作</div>
+                    <div class="wb-quick-bar">
+                      <button type="button" class="wb-quick-btn" id="wbQuickNewHabit">
+                        <span class="wb-quick-ico wb-quick-c2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                        <span data-i18n="homeWbQuickNewHabit">新建习惯</span>
+                      </button>
+                      <button type="button" class="wb-quick-btn" id="wbQuickSwitchModel">
+                        <span class="wb-quick-ico wb-quick-c3" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg></span>
+                        <span data-i18n="homeWbQuickSwitchModel">切换模型</span>
+                      </button>
+                      <button type="button" class="wb-quick-btn" id="wbQuickLog">
+                        <span class="wb-quick-ico wb-quick-c4" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                        <span data-i18n="homeWbQuickLog">打开日志</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="wb-finish-summary" id="wbFinishSummary" aria-live="polite"></div>
+                </div>
+              </div>
+          </div>
+
+          <div class="home-v9-legacy" hidden aria-hidden="true">
           <!-- ============ v9 首页 · 实时引导 + 数据管控 ============ -->
           <div class="vp-statusbar is-light">
             <div class="left">
@@ -163,7 +281,8 @@
             <h2 class="vp-habits-title" id="vp9HabitsTitle">当前习惯</h2>
             <div class="vp-habit-grid" id="vp9HabitGrid" role="listbox" aria-label="习惯列表"></div>
           </section>
-          <!-- ============ v9 首页结束 · 下方为旧版兼容层 ============ -->
+          </div>
+          <!-- ============ v9 legacy 结束 · 下方为旧版兼容层 ============ -->
 
           <p class="home-status-summary home-entry-mode-summary" id="homeStatusSummary" hidden aria-hidden="true"></p>
           <section class="home-hero" hidden>
@@ -281,8 +400,8 @@
         </div>
       </div>
       <div class="settings-page" id="settingsDrawer" aria-hidden="true" hidden>
-        <div class="settings-shell">
-          <aside class="settings-sidebar">
+        <div class="settings-shell" id="settingsShell">
+          <aside class="settings-sidebar" id="settingsSidebar">
             <div class="settings-sidebar-body">
               <div class="settings-page-head">
                 <h2 id="settingsTitle">配置</h2>
@@ -297,19 +416,12 @@
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                   <span id="settingsNavKeysLabel">按键</span>
                 </button>
-                  <div class="settings-scheme-subnav settings-keys-subnav" id="settingsSchemeSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="按键编辑列表"></div>
-                    <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新建草稿</button>
-                  </div>
                 </div>
                 <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
                   <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                     <span id="settingsNavVoiceWakeLabel">语音</span>
                   </button>
-                  <div class="settings-scheme-subnav settings-scene-voice-subnav" id="settingsSceneVoiceSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsSceneVoiceSubnavList" role="tablist" aria-label="语音动作"></div>
-                  </div>
                 </div>
                 <div class="settings-nav-group" id="settingsNavScenesGroup">
                 <button type="button" class="settings-nav-item" data-panel="scenes" id="settingsNavScenes">
@@ -326,9 +438,6 @@
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     <span id="settingsNavDebugLabel">运行状态</span>
                   </button>
-                  <div class="settings-scheme-subnav settings-debug-subnav" id="settingsDebugSubnav" hidden>
-                    <div class="settings-scheme-subnav-list" id="settingsDebugSubnavList" role="tablist" aria-label="运行状态分组"></div>
-                  </div>
                 </div>
               </nav>
             </div>
@@ -338,6 +447,18 @@
                 <span id="settingsNavGeneralLabel">恢复与维护</span>
                 <span class="settings-nav-badge" id="settingsNavGeneralBadge" hidden aria-hidden="true"></span>
               </button>
+            </div>
+          </aside>
+          <aside class="settings-subnav-rail" id="settingsSubnavRail" hidden aria-label="设置子导航">
+            <div class="settings-scheme-subnav settings-keys-subnav" id="settingsSchemeSubnav" hidden>
+              <div class="settings-scheme-subnav-list" id="settingsSchemeSubnavList" role="listbox" aria-label="按键编辑列表"></div>
+              <button type="button" class="settings-scheme-subnav-add" id="btnSettingsSchemeAdd">+ 新建草稿</button>
+            </div>
+            <div class="settings-scheme-subnav settings-scene-voice-subnav" id="settingsSceneVoiceSubnav" hidden>
+              <div class="settings-scheme-subnav-list" id="settingsSceneVoiceSubnavList" role="tablist" aria-label="语音动作"></div>
+            </div>
+            <div class="settings-scheme-subnav settings-debug-subnav" id="settingsDebugSubnav" hidden>
+              <div class="settings-scheme-subnav-list" id="settingsDebugSubnavList" role="tablist" aria-label="运行状态分组"></div>
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
@@ -495,6 +616,7 @@
             <div class="keys-page-head-text">
               <h3 class="pref-page-title" id="settingsPanelKeysTitle">按键</h3>
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelKeysDesc">从按键到发送动作，完整配置一条链路</p>
+              <p class="keys-trigger-avoid-hint" id="keysTriggerAvoidHint" data-i18n="keysTriggerAvoidHint">鼠标左键、滚轮、系统级修饰键、Fn / Esc / Wake 键等设备通常不适合作为触发键。</p>
               <div class="flow-status-bar" id="keysFlowStatusBar" aria-live="polite">
                 <span class="flow-status-pill" id="keysStatusImePill">—</span>
                 <span class="flow-status-divider" aria-hidden="true"></span>
@@ -1229,6 +1351,17 @@
                     </div>
                   </div>
               </section>
+              <section class="voice-side-card voice-cloud-placeholder drawer-section" id="voiceCloudPlaceholderSection" aria-labelledby="voiceCloudPlaceholderTitle">
+                <div class="mini-title" id="voiceCloudPlaceholderTitle" data-i18n="homeWbCloudEnhanceTitle">云端增强（即将推出）</div>
+                <p class="mic-desc" id="voiceCloudPlaceholderDesc" data-i18n="homeWbCloudEnhanceDesc">连接云端输入法与大模型后，可在本地识别之上获得增强能力。</p>
+                <div class="wb-diag-row"><span data-i18n="homeWbCloudIme">云端输入法</span><strong id="voiceCloudImeStatus" data-i18n="homeWbCloudNotConnected">未连接</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbCloudModel">大模型</span><strong id="voiceCloudModelStatus" data-i18n="homeWbCloudModelUnset">未选择</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbCloudPrivacy">隐私模式</span><strong id="voiceCloudPrivacyStatus" data-i18n="homeWbPrivacyLocal">本地优先</strong></div>
+                <div class="wb-cloud-actions">
+                  <button type="button" id="voiceCloudConnectBtn" data-i18n="homeWbCloudConnect" disabled>连接</button>
+                  <button type="button" id="voiceCloudConfigureBtn" data-i18n="homeWbCloudConfigure" disabled>配置</button>
+                </div>
+              </section>
             </div>
             <aside class="voice-page-aside">
               <div class="voice-engine-tabbar" id="voiceEngineTabbar" role="tablist" aria-label="识别方式">
@@ -1576,6 +1709,26 @@
                 <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc">集中查看识别状态、测试操作与即时记录。</p>
               </div>
             </div>
+            <div class="debug-trigger-diag-stack" id="debugTriggerDiagStack">
+              <div class="wb-diag-block debug-trigger-block" id="debugTriggerCompatBlock">
+                <h3 class="wb-diag-block-title" id="debugTriggerCompatTitle" data-i18n="homeWbDiagCompatTitle">设备兼容性</h3>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagStatus">状态</span><strong id="debugDiagCompatStatus">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagDevice">设备</span><strong id="debugDiagDevice">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagKeydown">keydown</span><strong id="debugDiagKeydown">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagKeyup">keyup</span><strong id="debugDiagKeyup">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagHold">按住说话</span><strong id="debugDiagHold">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagRelease">松开发送</span><strong id="debugDiagRelease">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagRecommended">建议模式</span><strong id="debugDiagRecommended">—</strong></div>
+                <button type="button" class="wb-diag-probe-btn" id="debugDiagProbeBtn" data-i18n="homeWbDiagCompatProbe">检测兼容性</button>
+              </div>
+              <div class="wb-diag-block debug-trigger-block" id="debugTriggerPerfBlock">
+                <h3 class="wb-diag-block-title" id="debugTriggerPerfTitle" data-i18n="homeWbDiagPerfTitle">性能状态</h3>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagKeyLatency">按键响应</span><strong id="debugDiagKeyLatency">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagRecogStatus">识别状态</span><strong id="debugDiagRecogStatus">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagWakeLatency">唤醒延迟</span><strong id="debugDiagWakeLatency">—</strong></div>
+                <div class="wb-diag-row"><span data-i18n="homeWbDiagSendLatency">发送延迟</span><strong id="debugDiagSendLatency">—</strong></div>
+              </div>
+            </div>
             <div class="voice-diag-tabs" id="voiceDiagTabs" role="tablist" aria-label="诊断分组"></div>
             <section class="voice-diag-pane" id="voiceDiagPaneSapi" data-diag-tab="sapi">
               <div class="voice-diag-metrics" id="voiceDiagMetricsSapi"></div>
@@ -1690,6 +1843,7 @@
         </section>
           </div>
         </div>
+      </div>
       </div>
     </main>
   </div>
@@ -2265,6 +2419,10 @@
   <script src="js/features/home/home-live-actions.js"></script>
   <script src="js/home-v9.js"></script>
   <script src="js/features/home/habit-trigger-setup.js"></script>
+  <script src="js/features/home/home-workbench-compat.js"></script>
+  <script src="js/features/home/home-workbench-cmdk.js"></script>
+  <script src="js/features/home/home-workbench-alerts.js"></script>
+  <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>
   <script src="js/features/home/home-scheme.js"></script>

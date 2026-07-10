@@ -1598,6 +1598,7 @@
     }
     .app.is-settings .settings-page{display:flex}
     .app.is-settings .editor-zone{display:none}
+    .app.is-settings .app-workbench-shell .app-left-nav{display:flex}
     .app.is-settings .main-scroll{padding:0;overflow:hidden}
     .app.is-settings{
       height:calc(100vh / var(--ui-font-scale));
@@ -1708,6 +1709,9 @@
     .settings-sidebar.is-scheme-panel{width:220px}
     .settings-sidebar.is-voice-panel{width:220px}
     .settings-sidebar.is-debug-panel{width:220px}
+    .settings-shell.is-scheme-panel .settings-subnav-rail{width:220px}
+    .settings-shell.is-voice-panel .settings-subnav-rail{width:220px}
+    .settings-shell.is-debug-panel .settings-subnav-rail{width:220px}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-grid{grid-template-columns:1fr;margin-top:8px}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-card[hidden]{display:none!important}
     #settingsPanelVoiceWake.is-voice-subnav .voice-mode-card{

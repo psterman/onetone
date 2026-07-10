@@ -10,6 +10,8 @@
       --primary-soft:rgba(42,156,196,.18);
       --success:#16a34a;
       --success-soft:rgba(22,163,74,.16);
+      --error:#dc2626;
+      --error-soft:rgba(220,38,38,.12);
       --surface:rgba(244,249,252,.94);
       --on-surface:#152238;
       --on-surface-muted:#5a7086;
@@ -23,6 +25,8 @@
         --primary-soft:rgba(94,200,232,.16);
         --success:#4ade80;
         --success-soft:rgba(74,222,128,.14);
+        --error:#f87171;
+        --error-soft:rgba(248,113,113,.14);
         --surface:rgba(30,40,56,.94);
         --on-surface:#e8f0f8;
         --on-surface-muted:#9aa8b8;
@@ -40,19 +44,21 @@
       padding:0 8px 6px;
     }
     .hud-pill{
-      width:100%;max-width:344px;display:flex;align-items:center;gap:12px;
+      width:100%;max-width:384px;display:flex;align-items:center;gap:12px;
       padding:11px 14px 11px 16px;border-radius:16px;border:1px solid var(--outline);
       background:var(--surface);box-shadow:var(--shadow);color:var(--on-surface);
       backdrop-filter:blur(14px);transition:transform .2s ease, border-color .2s ease;
     }
     .hud-pill.is-hidden{opacity:0;pointer-events:none;transform:translateY(8px)}
     .hud-pill.is-success{border-color:rgba(22,163,74,.35);background:linear-gradient(135deg,var(--surface),var(--success-soft))}
+    .hud-pill.is-dictating{align-items:flex-start;padding:12px 14px 12px 16px}
     .hud-icon{
       flex:0 0 34px;width:34px;height:34px;border-radius:12px;
       display:flex;align-items:center;justify-content:center;
       background:var(--primary-soft);color:var(--primary);font-size:17px;line-height:1;
     }
     .hud-pill.is-success .hud-icon{background:var(--success-soft);color:var(--success)}
+    .hud-pill.is-dictating .hud-icon{background:var(--primary-soft);color:var(--primary)}
     .hud-body{flex:1;min-width:0}
     .hud-title{margin:0;font-size:13px;font-weight:700;line-height:1.35}
     .hud-sub{margin:3px 0 0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
@@ -68,6 +74,21 @@
       background:transparent;color:var(--on-surface-muted);font-size:16px;line-height:1;cursor:pointer;
     }
     .hud-dismiss:hover{background:var(--primary-soft);color:var(--primary)}
+    .hud-actions{display:flex;gap:8px;margin-top:10px}
+    .hud-btn{
+      flex:1;min-height:32px;border-radius:10px;border:1px solid var(--outline);
+      background:var(--surface);color:var(--on-surface);font-size:12px;font-weight:700;
+      cursor:pointer;font-family:inherit;padding:0 10px;
+    }
+    .hud-btn:hover{border-color:rgba(42,156,196,.35);background:var(--primary-soft)}
+    .hud-btn-primary{background:var(--primary);border-color:transparent;color:#fff}
+    .hud-btn-primary:hover{opacity:.92}
+    .hud-btn-cancel{color:var(--error);border-color:rgba(220,38,38,.22);background:var(--error-soft)}
+    .hud-btn-cancel:hover{border-color:rgba(220,38,38,.35)}
+    .hud-window-note{
+      margin-top:6px;font-size:10px;line-height:1.4;color:var(--on-surface-muted);
+    }
+    .hud-window-note.is-live{color:var(--primary);font-weight:600}
   </style>
 </head>
 <body>
@@ -77,6 +98,11 @@
       <div class="hud-body">
         <p class="hud-title" id="hudTitle">—</p>
         <p class="hud-sub" id="hudSub"></p>
+        <div class="hud-actions" id="hudActions" hidden>
+          <button type="button" class="hud-btn hud-btn-primary" id="hudBtnEnd">结束并发送</button>
+          <button type="button" class="hud-btn hud-btn-cancel" id="hudBtnCancel">取消输入</button>
+        </div>
+        <p class="hud-window-note" id="hudWindowNote" hidden></p>
       </div>
       <button type="button" class="hud-dismiss" id="hudDismiss" title="Dismiss" aria-label="Dismiss">×</button>
     </div>
@@ -94,14 +120,26 @@
         key_only_sub:'一声会替你按下输入法快捷键',
         success_title:'已唤起',
         success_sub:'快捷键已发送',
-        dismiss:'本次隐藏'
+        dismiss:'本次隐藏',
+        dictating_title:'正在听写',
+        dictating_sub:'说完可点结束，说错了可取消',
+        dictating_cancel_hint:'也可说「{phrase}」取消',
+        dictating_window:'刚唤起 · 再按启动键可取消',
+        btn_end:'结束并发送',
+        btn_cancel:'取消输入'
       },
       en:{
         key_only_title:'Press your trigger key',
         key_only_sub:'OneTone sends your IME shortcut',
         success_title:'Triggered',
         success_sub:'Shortcut sent',
-        dismiss:'Hide for now'
+        dismiss:'Hide for now',
+        dictating_title:'Dictating',
+        dictating_sub:'Tap End to send, or Cancel to discard',
+        dictating_cancel_hint:'Or say “{phrase}” to cancel',
+        dictating_window:'Just started · press trigger again to cancel',
+        btn_end:'End & send',
+        btn_cancel:'Cancel input'
       }
     };
 
@@ -116,6 +154,13 @@
     const title=document.getElementById('hudTitle');
     const sub=document.getElementById('hudSub');
     const dismiss=document.getElementById('hudDismiss');
+    const actions=document.getElementById('hudActions');
+    const btnEnd=document.getElementById('hudBtnEnd');
+    const btnCancel=document.getElementById('hudBtnCancel');
+    const windowNote=document.getElementById('hudWindowNote');
+
+    btnEnd.textContent=t('btn_end');
+    btnCancel.textContent=t('btn_cancel');
 
     function renderKeys(triggerKey,targetKey){
       if(!triggerKey&&!targetKey) return '';
@@ -127,9 +172,23 @@
       const visible=!!(s&&s.visible);
       pill.classList.toggle('is-hidden',!visible);
       pill.classList.toggle('is-success',visible&&mode==='success');
+      pill.classList.toggle('is-dictating',visible&&mode==='dictating');
+      actions.hidden=!(visible&&mode==='dictating');
+      dismiss.hidden=visible&&mode==='dictating';
+      windowNote.hidden=!(visible&&mode==='dictating');
       if(!visible) return;
 
       const keys=renderKeys(s.triggerKey||'',s.targetKey||'');
+      if(mode==='dictating'){
+        icon.textContent='🎙';
+        title.textContent=t('dictating_title');
+        const hint=s.cancelPhraseHint||'';
+        const phraseLine=hint?t('dictating_cancel_hint').replace('{phrase}',hint):'';
+        sub.textContent=t('dictating_sub')+(phraseLine?(' · '+phraseLine):'');
+        windowNote.textContent=s.cancelWindowActive?t('dictating_window'):'';
+        windowNote.classList.toggle('is-live',!!s.cancelWindowActive);
+        return;
+      }
       if(mode==='success'){
         icon.textContent='✓';
         title.textContent=t('success_title');
@@ -144,6 +203,8 @@
     dismiss.onclick=function(){ invoke('cmd_coach_hud_dismiss',{}).catch(function(){}); };
     dismiss.setAttribute('title',t('dismiss'));
     dismiss.setAttribute('aria-label',t('dismiss'));
+    btnEnd.onclick=function(){ invoke('cmd_voice_end_ui_end',{}).catch(function(){}); };
+    btnCancel.onclick=function(){ invoke('cmd_voice_end_ui_cancel',{}).catch(function(){}); };
 
     if(listen){ listen('coach_state',function(ev){ applyState(ev.payload); }).catch(function(){}); }
     invoke('cmd_coach_hud_get_state',{}).then(function(s){ applyState(s); }).catch(function(){});

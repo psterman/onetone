@@ -83,22 +83,28 @@
     const listEl=$('settingsSchemeSubnavList');
     const habitsPanel=$('settingsPanelHabits');
     const keysPanel=$('settingsPanelKeys');
-    const sidebar=document.querySelector('.settings-sidebar');
+    const sidebar=$('settingsSidebar')||document.querySelector('.settings-sidebar');
+    const shell=$('settingsShell')||document.querySelector('.settings-shell');
     const show=mappingListUiActive();
     if(subnav) subnav.hidden=!show;
     if(habitsPanel) habitsPanel.classList.toggle('is-scheme-subnav',show);
     if(keysPanel) keysPanel.classList.toggle('is-scheme-subnav',show);
     if(sidebar) sidebar.classList.toggle('is-scheme-panel',show);
+    if(shell) shell.classList.toggle('is-scheme-panel',show);
     if(listEl) listEl.setAttribute('aria-label',t('settingsKeysSubnavLabel'));
     const addBtn=$('btnSettingsSchemeAdd');
     if(addBtn) addBtn.textContent='+ '+t('addKeysDraft');
-    if(!show||!listEl) return;
+    if(!show||!listEl){
+      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
+      return;
+    }
     hooks().ensureConfig();
     const schemes=sortedMappings();
     const saved=schemes.filter(isSavedMapping);
     const drafts=schemes.filter(isIncompleteScheme);
     if(!saved.length&&!drafts.length){
       listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+hooks().escHtml(t('mappingEmptyTitle'))+'</p>';
+      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
       return;
     }
     let html='';
@@ -133,6 +139,7 @@
       });
     });
     if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
   }
   function friendlyPair(triggerKey,targetKey,m){
     const lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';

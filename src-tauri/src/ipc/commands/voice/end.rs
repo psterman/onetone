@@ -101,6 +101,22 @@ pub fn cmd_voice_end_ui_end(
 }
 
 #[tauri::command]
+pub fn cmd_voice_end_ui_cancel(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+) -> serde_json::Value {
+    let _ = window;
+    if !crate::voice_end_runtime::ui_cancel_dictation(&state, &app) {
+        return serde_json::json!({
+            "ok": false,
+            "reason": "not dictating"
+        });
+    }
+    crate::voice_end_runtime::voice_end_status(&state)
+}
+
+#[tauri::command]
 pub fn cmd_voice_end_test_commit(
     state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,

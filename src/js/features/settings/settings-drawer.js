@@ -22,6 +22,30 @@
 
   var lastPanel='basic';
 
+  function syncSubnavRail(){
+    var rail=$('settingsSubnavRail');
+    if(!rail) return;
+    var scheme=$('settingsSchemeSubnav');
+    var voice=$('settingsSceneVoiceSubnav');
+    var debug=$('settingsDebugSubnav');
+    var show=(scheme&&!scheme.hidden)||(voice&&!voice.hidden)||(debug&&!debug.hidden);
+    rail.hidden=!show;
+  }
+
+  function syncWorkbenchNav(panel,opts){
+    if(!global.OneToneHomeWorkbench||!global.OneToneHomeWorkbench.syncNavActiveState) return;
+    if(!$('wbLeftNav')) return;
+    opts=opts||{};
+    if(panel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode&&!opts.debugMode){
+      opts.debugMode=global.OneToneVoiceDiag.getFocusMode();
+    }
+    global.OneToneHomeWorkbench.syncNavActiveState(panel,opts);
+  }
+
+  function isWorkbenchShell(){
+    return !!$('wbLeftNav');
+  }
+
 
 
   function normalizePanel(panel){
@@ -501,6 +525,10 @@
 
     });
 
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState&&ui.drawerOpen){
+      syncWorkbenchNav(panel);
+    }
+
   }
 
   function openSettings(opts){
@@ -547,6 +575,8 @@
 
     if(app) app.classList.toggle('is-settings',!!ui.drawerOpen);
 
+    if(app) app.classList.toggle('is-workbench',isWorkbenchShell());
+
     if(drawer){
 
       drawer.hidden=!ui.drawerOpen;
@@ -577,9 +607,15 @@
 
     ui.drawerOpen=true;
 
+    setSettingsPanel(opts.panel||'basic');
+
     syncSettingsChrome();
 
-    setSettingsPanel(opts.panel||'basic');
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
+      var navOpts={};
+      if((opts.panel||'basic')==='debug'&&opts.debugMode) navOpts.debugMode=opts.debugMode;
+      syncWorkbenchNav(ui.settingsPanel,navOpts);
+    }
 
     setTimeout(function(){
 
@@ -620,6 +656,8 @@
     lastPanel='basic';
 
     syncSettingsChrome();
+
+    syncWorkbenchNav('home');
 
     resetSettingsLayoutScroll();
 
@@ -667,6 +705,8 @@
 
     focusField:focusSettingsField,resetScroll:resetSettingsLayoutScroll,
 
+    syncSubnavRail:syncSubnavRail,syncWorkbenchNav:syncWorkbenchNav,isWorkbenchShell:isWorkbenchShell,
+
     lastPanel:function(){ return lastPanel; },
 
     isHabitsPanel:isHabitsPanel,isKeysPanel:isKeysPanel,normalizePanel:normalizePanel
@@ -674,6 +714,11 @@
   };
 
   syncHeaderSettingsBtn();
+
+  (function initWorkbenchChrome(){
+    var app=document.querySelector('.app');
+    if(app) app.classList.toggle('is-workbench',isWorkbenchShell());
+  })();
 
 })(typeof window!=='undefined'?window:globalThis);
 

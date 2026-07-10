@@ -29,6 +29,9 @@
       if(mode==='diagnostics'){
         renderVoiceDiagTabs();
         ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
+        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
+          global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
+        }
       }
       return;
     }
@@ -45,20 +48,29 @@
     if(mode==='diagnostics'){
       renderVoiceDiagTabs();
       ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
+      if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
+        global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
+      }
     }else if(mode==='developer'){
       hooks().renderDebugDeveloperPanel();
+    }
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncWorkbenchNav){
+      global.OneToneSettingsDrawer.syncWorkbenchNav('debug',{debugMode:mode});
     }
   }
   function renderSettingsDebugSubnav(){
     const subnav=$('settingsDebugSubnav');
     const listEl=$('settingsDebugSubnavList');
     const debugPanel=$('settingsPanelDebug');
-    const sidebar=document.querySelector('.settings-sidebar');
+    const sidebar=$('settingsSidebar')||document.querySelector('.settings-sidebar');
+    const shell=$('settingsShell')||document.querySelector('.settings-shell');
     const show=ui().drawerOpen&&ui().settingsPanel==='debug';
     if(subnav) subnav.hidden=!show;
     if(debugPanel) debugPanel.classList.toggle('is-debug-subnav',show);
     if(sidebar) sidebar.classList.toggle('is-debug-panel',show);
+    if(shell) shell.classList.toggle('is-debug-panel',show);
     if(listEl) listEl.setAttribute('aria-label',t('settingsDebugSubnavLabel'));
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
     if(!show||!listEl) return;
     const items=[
       {mode:'overview',title:t('debugFocusOverview'),sub:debugFocusDynamicSub('overview')||t('debugFocusOverviewStatus')},
@@ -76,6 +88,7 @@
       html+='</span></button>';
     });
     listEl.innerHTML=html;
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
   }
 
   function setVoiceDiagTab(tab){
@@ -142,6 +155,9 @@
     if(debugFocusMode==='diagnostics'){
       renderVoiceDiagTabs();
       ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
+      if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
+        global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
+      }
     }
   }
 

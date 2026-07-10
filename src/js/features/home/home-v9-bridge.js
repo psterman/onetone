@@ -622,6 +622,10 @@
 
   function render(){
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()) return;
+    if(global.OneToneHomeWorkbench&&$('homeWorkbench')){
+      global.OneToneHomeWorkbench.render();
+      return;
+    }
     var vm=buildViewModel();
     if(global.vp9&&global.vp9.updateState) global.vp9.updateState(vm.vpState);
     renderLiveText(vm);

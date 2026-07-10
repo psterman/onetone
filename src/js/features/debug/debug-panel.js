@@ -49,6 +49,15 @@
     }).join('');
   }
 
+  function formatUptime(ms){
+    if(!(ms>0)) return '—';
+    var sec=Math.floor(ms/1000);
+    var h=Math.floor(sec/3600);
+    var m=Math.floor((sec%3600)/60);
+    var s=sec%60;
+    return [h,m,s].map(function(n){ return String(n).padStart(2,'0'); }).join(':');
+  }
+
   function renderDebugOverviewCards(){
     const host=$('debugOverviewCards');
     if(!host) return;
@@ -77,6 +86,8 @@
       voiceSub=(voiceSub?voiceSub+' · ':'')+t('debugCardEnd')+'：'+endPart;
     }
     const cards=[];
+    const started=runtime().appStartedAt||Date.now();
+    cards.push(card('is-ok',t('homeWbStatusUptime'),formatUptime(Date.now()-started),t('debugCardUptimeSub')));
     cards.push(card(paused?'is-warn':'is-ok',t('debugCardListen'),paused?t('listenPaused'):t('listenOn'),paused?t('debugCardListenPausedSub'):t('debugCardListenOnSub')));
     cards.push(card(keyOn?'is-ok':(keyReady?'is-warn':'is-off'),t('debugCardKey'),keyReady?(keyEnabled?t('debugCardKeyReady'):t('debugCardKeyDisabled')):t('debugCardKeyMissing'),keyReady?(hooks().friendlyKeyName(trig)+' → '+hooks().friendlyKeyName(tgt)):t('debugCardKeyHint')));
     cards.push(card(voiceOn?'is-ok':(w.engine!=='none'?'is-warn':'is-off'),t('debugCardVoice'),voiceOn?(eng+(w.phrase?' · '+w.phrase:'')):eng,voiceSub));

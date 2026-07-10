@@ -334,7 +334,7 @@ fn activate_voice_input(
     .ok_or((prefix.to_string(), AppChatWorkflowError::VoiceFailed))?;
 
     if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-        crate::voice_end_runtime::cancel_dictation_after_trigger_key(state, app);
+        crate::voice_end_runtime::handle_trigger_press_while_dictating(state, app, mapping_id);
         return Ok(());
     }
 

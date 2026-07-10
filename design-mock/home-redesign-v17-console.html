@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VoicePilot · Home Redesign v17 · 控制台</title>
+<style>
+:root{
+  --bg:#FAFAFA;
+  --panel:#FFFFFF;
+  --border:#E5E5E5;
+  --border-strong:#C4C4C4;
+  --primary:#1E6FF1;
+  --primary-strong:#155EE0;
+  --primary-soft:#DCEAFF;
+  --text:#1A1A1A;
+  --text-muted:#666666;
+  --text-faint:#999999;
+  --success:#10B981;
+  --hover:#F0F0F0;
+}
+[data-theme="dark"]{
+  --bg:#0E0E10;
+  --panel:#1A1A1C;
+  --border:#2A2A2C;
+  --border-strong:#3D3D40;
+  --primary:#4A8AFF;
+  --primary-strong:#6FA5FF;
+  --primary-soft:#1F3A6B;
+  --text:#EEEEEE;
+  --text-muted:#999999;
+  --text-faint:#666666;
+  --hover:#262629;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+}
+.page{
+  max-width:880px;margin:0 auto;
+  padding:32px 32px 80px;
+}
+
+/* —— 顶部：行内状态条（去掉独立 chip，不用白卡片） —— */
+.topbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:14px 0;
+  border-bottom:1px solid var(--border);
+}
+.brand{ font:600 15px/22px 'OutFit'; letter-spacing:-.01em;color:var(--text); }
+.dot-sep{ color:var(--text-faint);font-size:14px; }
+.status-inline{
+  display:inline-flex;align-items:center;gap:6px;
+  font:500 12px/16px 'OutFit';color:var(--text-muted);
+}
+.status-inline .dot{
+  width:7px;height:7px;border-radius:999px;background:var(--success);
+  box-shadow:0 0 0 3px rgba(16,185,129,.18);
+}
+.status-inline.warn .dot{ background:#F59E0B;box-shadow:0 0 0 3px rgba(245,158,11,.18); }
+.topbar .spacer{ flex:1; }
+.topbar .actions button{
+  background:transparent;border:1px solid var(--border-strong);
+  color:var(--text-muted);padding:5px 12px;border-radius:8px;
+  font:500 12px/16px 'OutFit';cursor:pointer;transition:all .15s;
+}
+.topbar .actions button:hover{ background:var(--panel);color:var(--text); }
+
+/* —— 搜索条：单行，不再做大白卡 —— */
+.search{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;
+  margin:24px 0 0;
+}
+.search:focus-within{ border-color:var(--primary);box-shadow:0 0 0 4px rgba(30,111,241,.10); }
+.search svg{ width:16px;height:16px;color:var(--text-faint);flex-shrink:0; }
+.search input{
+  flex:1;border:none;background:transparent;
+  font:400 13px/18px 'OutFit';color:var(--text);outline:none;
+}
+.search input::placeholder{ color:var(--text-faint); }
+.search kbd{
+  padding:3px 7px;border:1px solid var(--border);
+  border-radius:5px;font:500 10px/14px 'JetBrains Mono',monospace;
+  color:var(--text-muted);background:var(--bg);
+}
+
+/* —— 分区通用：横线分割，不做卡片 —— */
+.section{
+  padding:24px 0 28px;
+  border-bottom:1px solid var(--border);
+}
+.section:last-of-type{ border-bottom:none; }
+.section-label{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:16px;
+}
+.section-label h3{
+  margin:0;font:600 11px/16px 'OutFit';
+  text-transform:uppercase;letter-spacing:.12em;
+  color:var(--text-faint);
+}
+.section-label .hint{
+  font:400 11px/14px 'OutFit';color:var(--text-faint);
+}
+
+/* —— segmented control —— */
+.seg-control{
+  display:inline-flex;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:3px;gap:2px;
+}
+.seg-control button{
+  border:none;background:transparent;
+  padding:7px 14px;border-radius:7px;
+  font:500 12px/16px 'OutFit';color:var(--text-muted);
+  cursor:pointer;transition:all .15s;
+}
+.seg-control button:hover:not(.active){ color:var(--text);background:var(--hover); }
+.seg-control button.active{
+  background:var(--primary);color:#fff;
+  box-shadow:0 1px 3px rgba(30,111,241,.30);
+}
+
+/* —— 即时调整：表单式（不再做大白卡） —— */
+.trigger-form{
+  display:grid;
+  grid-template-columns:80px 1fr 80px 1fr 80px 1fr;
+  gap:14px 18px;align-items:center;
+}
+.field-label{
+  font:500 12px/16px 'OutFit';color:var(--text-muted);
+  text-align:right;
+}
+.field-control{ display:inline-flex;gap:8px;align-items:center; }
+
+.select{
+  background:var(--panel);border:1px solid var(--border-strong);
+  border-radius:8px;padding:7px 30px 7px 12px;
+  font:500 12px/16px 'OutFit';color:var(--text);
+  position:relative;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  min-width:120px;
+  transition:border-color .15s;
+}
+.select::after{
+  content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  color:var(--text-faint);font-size:10px;pointer-events:none;
+}
+.select:hover{ border-color:var(--primary); }
+
+/* —— 最近识别：列表式 —— */
+.recent{ display:flex;flex-direction:column; }
+.recent-item{
+  display:grid;
+  grid-template-columns:32px 1fr auto auto auto;
+  gap:14px;align-items:center;
+  padding:10px;border-radius:8px;
+  cursor:pointer;transition:background .15s;
+  border:1px solid transparent;
+}
+.recent-item + .recent-item{ margin-top:2px; }
+.recent-item:hover{ background:var(--hover); }
+.recent-item .play{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--primary);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition:transform .12s;
+}
+.recent-item:hover .play{ transform:scale(1.05); }
+.recent-item .play svg{ width:10px;height:10px;margin-left:2px; }
+.recent-item .text{
+  font:400 13px/18px 'OutFit';color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.recent-item .target{
+  font:400 12px/16px 'OutFit';color:var(--text-faint);
+  white-space:nowrap;
+}
+.recent-item .time{
+  font:400 12px/16px 'OutFit';color:var(--text-faint);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.recent-item .ok{
+  color:var(--success);font:600 14px/16px 'OutFit';width:14px;text-align:center;
+}
+
+/* —— 录音测试：紧凑 —— */
+.record-section{
+  display:flex;align-items:center;gap:18px;
+}
+.record-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:var(--primary);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:none;cursor:pointer;flex-shrink:0;
+  box-shadow:0 6px 16px rgba(30,111,241,.30);
+  transition:transform .12s,box-shadow .12s;
+}
+.record-btn:hover{ transform:translateY(-1px);box-shadow:0 10px 22px rgba(30,111,241,.36); }
+.record-btn:active{ transform:translateY(0); }
+.record-btn svg{ width:22px;height:22px; }
+.record-info{
+  font:400 13px/22px 'OutFit';color:var(--text-muted);
+}
+.record-info b{ color:var(--text);font-weight:600; }
+.record-info .sub{
+  display:block;font:400 11px/14px 'OutFit';color:var(--text-faint);margin-top:2px;
+}
+
+/* —— 主题切换 —— */
+.theme-switch{
+  position:fixed;top:20px;right:20px;
+  display:flex;gap:4px;padding:4px;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:999px;z-index:10;
+  box-shadow:0 2px 8px rgba(15,23,42,.06);
+}
+.theme-switch button{
+  border:none;background:transparent;
+  padding:5px 12px;border-radius:999px;
+  font:500 12px/16px 'OutFit';color:var(--text-muted);
+  cursor:pointer;
+}
+.theme-switch button.on{ background:var(--hover);color:var(--text); }
+
+@media(max-width:760px){
+  .page{ padding:20px 16px 60px; }
+  .trigger-form{ grid-template-columns:64px 1fr 64px 1fr; }
+  .recent-item{ grid-template-columns:32px 1fr auto; }
+  .recent-item .target,.recent-item .time{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="theme-switch" id="themeSwitch">
+  <button class="on" data-theme="light">浅色</button>
+  <button data-theme="dark">深色</button>
+</div>
+
+<div class="page">
+
+  <!-- 顶部：行内状态条 -->
+  <header class="topbar">
+    <span class="brand">VoicePilot</span>
+    <span class="dot-sep">·</span>
+    <span class="status-inline"><span class="dot"></span>已就绪</span>
+    <span class="dot-sep">·</span>
+    <span class="status-inline"><span class="dot"></span>麦克风 OK</span>
+    <span class="dot-sep">·</span>
+    <span class="status-inline"><span class="dot"></span>引擎 OK</span>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button>设置</button>
+    </div>
+  </header>
+
+  <!-- 搜索条 -->
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="搜索命令、习惯或设置..."/>
+    <kbd>Ctrl K</kbd>
+  </div>
+
+  <!-- 模式切换：核心 -->
+  <section class="section">
+    <div class="section-label">
+      <h3>输入模式</h3>
+      <span class="hint">切换即时生效</span>
+    </div>
+    <div class="seg-control">
+      <button class="active">OneTone 标准</button>
+      <button>连续模式</button>
+      <button>命令模式</button>
+      <button>自定义</button>
+    </div>
+  </section>
+
+  <!-- 即时调整：表单式（键位/方式/目标） -->
+  <section class="section">
+    <div class="section-label">
+      <h3>当前触发</h3>
+      <span class="hint">修改即生效</span>
+    </div>
+    <div class="trigger-form">
+      <span class="field-label">键位</span>
+      <div class="field-control">
+        <button class="select">音量减</button>
+      </div>
+      <span class="field-label">方式</span>
+      <div class="field-control">
+        <div class="seg-control">
+          <button class="active">单击</button>
+          <button>双击</button>
+          <button>长按</button>
+        </div>
+      </div>
+      <span class="field-label">目标</span>
+      <div class="field-control">
+        <button class="select">当前窗口</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 最近识别：语音识别快速查看 -->
+  <section class="section">
+    <div class="section-label">
+      <h3>最近识别</h3>
+      <span class="hint">点击回放或重新发送</span>
+    </div>
+    <div class="recent">
+      <div class="recent-item">
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></span>
+        <span class="text">帮我整理一下今早的会议纪要</span>
+        <span class="target">→ Notion</span>
+        <span class="time">10:32</span>
+        <span class="ok">✓</span>
+      </div>
+      <div class="recent-item">
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></span>
+        <span class="text">新建一个 Excel 表格</span>
+        <span class="target">→ Excel</span>
+        <span class="time">10:25</span>
+        <span class="ok">✓</span>
+      </div>
+      <div class="recent-item">
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></span>
+        <span class="text">把这段加上星星的 emoji</span>
+        <span class="target">→ 当前窗口</span>
+        <span class="time">10:18</span>
+        <span class="ok">✓</span>
+      </div>
+      <div class="recent-item">
+        <span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg></span>
+        <span class="text">打开 GitHub 项目主页</span>
+        <span class="target">→ 浏览器</span>
+        <span class="time">10:11</span>
+        <span class="ok">✓</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 录音测试 -->
+  <section class="section">
+    <div class="section-label">
+      <h3>录音测试</h3>
+    </div>
+    <div class="record-section">
+      <button class="record-btn" aria-label="开始录音">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+      <div class="record-info">
+        按住 <b>音量减</b> 录音 · 松开自动识别并发送
+        <span class="sub">实测转写延迟 &lt; 0.8s</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const themeSwitch=document.getElementById('themeSwitch');
+themeSwitch.addEventListener('click',e=>{
+  const t=e.target.dataset.theme;if(!t)return;
+  document.documentElement.dataset.theme=t;
+  themeSwitch.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.theme===t));
+});
+</script>
+</body>
+</html>

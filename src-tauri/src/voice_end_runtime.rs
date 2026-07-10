@@ -312,6 +312,7 @@ pub fn enter_dictating(
     if session_state(state) == "dictating" {
         *state.voice_session_started_at.lock() = Some(Instant::now());
         *state.voice_session_last_action.lock() = reason.to_string();
+        refresh_coach_hud(app, state);
         return;
     }
     bump_commit_token(state);
@@ -340,6 +341,7 @@ pub fn enter_dictating(
             Some(serde_json::json!({ "mappingId": scene_id })),
         );
         crate::tray::refresh_menu(app);
+        refresh_coach_hud(Some(app), state);
     }
 }
 
@@ -498,6 +500,64 @@ pub fn cancel_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle
     cancel_dictation_session(state, Some(app), "trigger key");
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerWhileDictatingAction {
+    Cancelled,
+    Stopped,
+}
+
+/// True only within `intervalMs` after dictation started (mistake-correction window).
+pub fn is_in_trigger_cancel_window(state: &AppState, mapping_id: &str) -> bool {
+    if session_state(state) != "dictating" {
+        return false;
+    }
+    let cfg = state.cfg.lock();
+    let (interval_ms, _, cancel_enabled, _) = match cfg.find_mapping_by_id(mapping_id) {
+        Some(m) => crate::config::mapping_timing(m, &cfg),
+        None => (
+            cfg.interval_ms,
+            cfg.enter_delay_ms,
+            cfg.cancel_enabled,
+            cfg.auto_enter_enabled,
+        ),
+    };
+    if !cancel_enabled {
+        return false;
+    }
+    let Some(started_at) = *state.voice_session_started_at.lock() else {
+        return false;
+    };
+    started_at.elapsed() < Duration::from_millis(interval_ms.max(200) as u64)
+}
+
+pub fn handle_trigger_press_while_dictating(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    mapping_id: &str,
+) -> TriggerWhileDictatingAction {
+    if is_in_trigger_cancel_window(state, mapping_id) {
+        cancel_dictation_after_trigger_key(state, app);
+        TriggerWhileDictatingAction::Cancelled
+    } else {
+        stop_dictation_after_trigger_key(state, app);
+        TriggerWhileDictatingAction::Stopped
+    }
+}
+
+pub fn ui_cancel_dictation(state: &Arc<AppState>, app: &AppHandle) -> bool {
+    if session_state(state) != "dictating" {
+        return false;
+    }
+    cancel_dictation_after_trigger_key(state, app);
+    true
+}
+
+fn refresh_coach_hud(app: Option<&AppHandle>, state: &AppState) {
+    if let Some(app) = app {
+        crate::coach_hud::push_state(app, state);
+    }
+}
+
 pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if session_state(state) != "dictating" {
         return;
@@ -550,6 +610,7 @@ fn cancel_dictation_session(
             None,
         );
         crate::tray::refresh_menu(app);
+        refresh_coach_hud(Some(app), state);
     }
 }
 
@@ -722,6 +783,7 @@ fn finish_dictation_session(
                     None,
                 );
                 crate::tray::refresh_menu(app);
+                refresh_coach_hud(Some(app), state2.as_ref());
             }
         }
         let _ = phrase2;

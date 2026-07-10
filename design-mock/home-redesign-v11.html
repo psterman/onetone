@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v11 · 三栏布局 · Codex 风</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* M3 Material You palette */
+    --md-primary:               #00658F;
+    --md-on-primary:             #FFFFFF;
+    --md-primary-container:      #C7E7FF;
+    --md-on-primary-container:   #001E2E;
+    --md-secondary:              #4F616E;
+    --md-secondary-container:    #D3E5F2;
+    --md-on-secondary-container: #0B1D29;
+    --md-tertiary:               #7B5800;
+    --md-tertiary-container:      #FFE08A;
+    --md-on-tertiary-container:   #271900;
+    --md-quaternary:             #5D5A8E;
+    --md-quaternary-container:    #E5DEFF;
+    --md-on-quaternary-container: #181638;
+    --md-error:                  #BA1A1A;
+    --md-error-container:        #FFDAD6;
+    --md-on-error-container:     #410002;
+    --md-success:                #16A34A;
+    --md-success-container:      #DCFCE7;
+    --md-background:             #F1F2F8;
+    --md-on-background:           #191C20;
+    --md-surface:                #FCFCFF;
+    --md-on-surface:              #191C20;
+    --md-on-surface-variant:      #41484D;
+    --md-surface-container-lowest:#FFFFFF;
+    --md-surface-container-low:  #F8F8FC;
+    --md-surface-container:       #ECEFF4;
+    --md-surface-container-high: #E5E8ED;
+    --md-surface-container-highest:#DFE2E7;
+    --md-outline:                #71787D;
+    --md-outline-variant:        #C1C7CD;
+
+    /* Shape */
+    --md-shape-xs: 8px;
+    --md-shape-sm: 12px;
+    --md-shape-md: 16px;
+    --md-shape-lg: 24px;
+    --md-shape-xl: 32px;
+    --md-shape-full: 999px;
+
+    --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --md-dur-short2: 100ms;
+    --md-dur-short3: 150ms;
+    --md-dur-medium2: 300ms;
+    --md-hover: 0.08;
+    --md-press: 0.12;
+  }
+  html[data-theme="dark"]{
+    --md-primary:               #8FCEFF;
+    --md-on-primary:             #00344C;
+    --md-primary-container:      #004C6C;
+    --md-on-primary-container:   #C7E7FF;
+    --md-secondary:              #B7C9D8;
+    --md-secondary-container:    #374955;
+    --md-on-secondary-container: #D3E5F2;
+    --md-tertiary:               #F0BD48;
+    --md-tertiary-container:     #5A4100;
+    --md-on-tertiary-container:  #FFE08A;
+    --md-quaternary:             #C5C2EE;
+    --md-quaternary-container:   #454368;
+    --md-on-quaternary-container: #E5DEFF;
+    --md-error:                  #FFB4AB;
+    --md-error-container:        #93000A;
+    --md-on-error-container:     #FFDAD6;
+    --md-success:                #4ADE80;
+    --md-success-container:      rgba(74,222,128,.18);
+    --md-background:             #0F1218;
+    --md-on-background:           #E1E2E5;
+    --md-surface:                #13161D;
+    --md-on-surface:              #E1E2E5;
+    --md-on-surface-variant:      #C1C7CD;
+    --md-surface-container-lowest:#0B0E13;
+    --md-surface-container-low:  #1A1D24;
+    --md-surface-container:       #1E2128;
+    --md-surface-container-high: #262932;
+    --md-surface-container-highest:#2E313B;
+    --md-outline:                #8B9297;
+    --md-outline-variant:        #41484D;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--md-on-background);
+    background:var(--md-background);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition:background var(--md-dur-medium2),color var(--md-dur-medium2);
+  }
+
+  /* ========== M3 Type Scale ========== */
+  .t-display-s{font:400 36px/44px 'Outfit';}
+  .t-headline-m{font:500 28px/36px 'Outfit';letter-spacing:-.005em;}
+  .t-title-l{font:500 22px/28px 'Outfit';letter-spacing:-.005em;}
+  .t-title-m{font:500 16px/24px 'Outfit';letter-spacing:.009em;}
+  .t-title-s{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-body-l{font:400 16px/24px 'Outfit';letter-spacing:.031em;}
+  .t-body-m{font:400 14px/20px 'Outfit';letter-spacing:.025em;}
+  .t-body-s{font:400 12px/16px 'Outfit';letter-spacing:.033em;}
+  .t-label-l{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-label-m{font:500 12px/16px 'Outfit';letter-spacing:.042em;}
+  .t-label-s{font:500 11px/16px 'Outfit';letter-spacing:.045em;}
+  .t-mono{font:500 12px/16px 'JetBrains Mono';letter-spacing:.045em;}
+
+  /* ========== intro ========== */
+  .intro{max-width:1180px;margin:0 auto;padding:48px 40px 16px;}
+  .intro .eyebrow{font:600 11px/16px 'Outfit';letter-spacing:.16em;text-transform:uppercase;color:var(--md-primary);margin-bottom:14px;}
+  .intro h1{font:600 32px/40px 'Outfit';letter-spacing:-.02em;margin:0 0 12px;}
+  .intro .lede{font:400 15px/24px 'Outfit';color:var(--md-on-surface-variant);max-width:980px;margin:0;}
+  .intro .lede b{color:var(--md-on-surface);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{max-width:1320px;margin:24px auto 0;padding:0 40px 24px;}
+  .stage-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .stage-head h2{font:600 14px/20px 'Outfit';margin:0;}
+  .stage-head .hint{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);}
+
+  /* ========== 3-column window ========== */
+  .window{
+    border-radius:var(--md-shape-xl);
+    background:var(--md-surface);
+    box-shadow:0 4px 8px rgba(0,0,0,.04),0 16px 40px rgba(0,0,0,.10);
+    overflow:hidden;
+    height:920px;
+    display:grid;
+    grid-template-columns:240px 1fr 280px;
+    position:relative;
+    border:1px solid var(--md-outline-variant);
+  }
+
+  /* ========== ① Left Sidebar · 全局导航 ========== */
+  .left-sidebar{
+    background:var(--md-surface-container-low);
+    border-right:1px solid var(--md-outline-variant);
+    padding:16px 12px;
+    display:flex;flex-direction:column;
+    gap:4px;
+    overflow-y:auto;
+  }
+  .left-sidebar .brand{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 12px 18px 8px;
+    margin-bottom:4px;
+  }
+  .left-sidebar .brand .logo{
+    width:36px;height:36px;border-radius:var(--md-shape-full);
+    background:linear-gradient(135deg,var(--md-primary),var(--md-tertiary));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 4px 12px rgba(0,101,143,.32);
+    flex-shrink:0;
+  }
+  .left-sidebar .brand .logo svg{width:20px;height:20px;}
+  .left-sidebar .brand .name{font:600 16px/24px 'Outfit';color:var(--md-on-surface);letter-spacing:-.01em;}
+
+  .nav-item{
+    display:flex;align-items:center;gap:14px;
+    height:48px;padding:0 14px;
+    background:transparent;border:none;
+    border-radius:var(--md-shape-full);
+    color:var(--md-on-surface-variant);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized),
+               color var(--md-dur-short2) var(--md-ease-emphasized);
+    font-family:inherit;
+    text-align:left;
+    width:100%;
+  }
+  .nav-item::before{
+    content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+    width:4px;height:0;border-radius:var(--md-shape-full);
+    background:var(--md-primary);
+    transition:height var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .nav-item::after{
+    content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);
+    background:var(--md-primary);opacity:0;
+    transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .nav-item:hover{color:var(--md-on-surface);}
+  .nav-item:hover::after{opacity:var(--md-hover);}
+  .nav-item.active{color:var(--md-on-surface);background:var(--md-secondary-container);}
+  .nav-item.active::before{height:24px;}
+  .nav-item svg{position:relative;width:20px;height:20px;flex-shrink:0;z-index:1;}
+  .nav-item span{position:relative;z-index:1;flex:1;}
+
+  .nav-section-label{
+    font:500 11px/16px 'Outfit';letter-spacing:.06em;text-transform:uppercase;
+    color:var(--md-on-surface-variant);opacity:.6;
+    padding:14px 14px 6px;
+  }
+
+  .sidebar-status{
+    margin-top:auto;
+    padding:14px;
+    background:var(--md-success-container);
+    border-radius:var(--md-shape-md);
+    border:1px solid rgba(22,163,74,.2);
+  }
+  .sidebar-status .label{font:500 11px/16px 'Outfit';letter-spacing:.045em;color:var(--md-success);text-transform:uppercase;}
+  .sidebar-status .main{font:500 13px/18px 'Outfit';color:var(--md-on-success-container, #14532D);margin-top:2px;}
+  html[data-theme="dark"] .sidebar-status .main{color:var(--md-on-tertiary-container);}
+  .sidebar-status .sub{font:400 11px/14px 'JetBrains Mono';color:var(--md-success);opacity:.7;margin-top:2px;}
+  .sidebar-status .dot{
+    display:inline-block;width:6px;height:6px;border-radius:var(--md-shape-full);
+    background:var(--md-success);
+    margin-right:6px;animation:pulse 2s ease-in-out infinite;
+    vertical-align:middle;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  /* ========== ② Center Main ========== */
+  .center{
+    background:var(--md-background);
+    overflow-y:auto;
+    padding:20px 24px 24px;
+  }
+  .center::-webkit-scrollbar{width:8px;}
+  .center::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:4px;}
+
+  /* TopBar · search + settings */
+  .top-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .top-bar h1{
+    font:500 24px/32px 'Outfit';letter-spacing:-.01em;color:var(--md-on-surface);
+    margin:0;
+  }
+  .top-bar h1 .sub{
+    display:block;font:400 13px/20px 'Outfit';color:var(--md-on-surface-variant);letter-spacing:.025em;margin-top:2px;
+  }
+  .top-bar-actions{display:flex;gap:6px;}
+  .tab-icon-btn{
+    width:44px;height:44px;border-radius:var(--md-shape-full);
+    background:transparent;border:none;color:var(--md-on-surface-variant);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .tab-icon-btn::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .tab-icon-btn:hover::before{opacity:var(--md-hover);}
+  .tab-icon-btn:active::before{opacity:var(--md-press);}
+  .tab-icon-btn svg{position:relative;width:20px;height:20px;}
+
+  /* Hero Card · M3 filled tonal */
+  .hero{
+    background:linear-gradient(135deg,var(--md-primary-container) 0%, var(--md-quaternary-container) 100%);
+    color:var(--md-on-primary-container);
+    border-radius:var(--md-shape-xl);
+    padding:22px;
+    display:grid;grid-template-columns:64px 1fr;gap:18px;align-items:center;
+    margin-bottom:16px;
+    position:relative;overflow:hidden;
+    animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;
+  }
+  @keyframes md-enter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .hero::after{
+    content:"";position:absolute;right:-40px;top:-40px;
+    width:180px;height:180px;border-radius:var(--md-shape-full);
+    background:radial-gradient(circle,rgba(255,255,255,.18) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .hero .leading{
+    width:64px;height:64px;border-radius:var(--md-shape-full);
+    background:var(--md-primary);color:var(--md-on-primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.16),0 4px 12px rgba(0,101,143,.32),
+               inset 0 0 0 1px rgba(255,255,255,.1);
+    position:relative;z-index:1;flex-shrink:0;
+  }
+  .hero .leading svg{width:30px;height:30px;}
+  .hero .leading .status-dot{
+    position:absolute;bottom:0;right:0;
+    width:16px;height:16px;border-radius:var(--md-shape-full);
+    background:var(--md-tertiary);
+    border:3px solid var(--md-primary-container);
+  }
+  .hero .body{display:flex;flex-direction:column;gap:4px;min-width:0;position:relative;z-index:1;}
+  .hero .body .kicker{
+    font:600 11px/16px 'Outfit';letter-spacing:.06em;text-transform:uppercase;
+    color:var(--md-primary);
+  }
+  .hero .body .title{font:500 20px/28px 'Outfit';letter-spacing:-.01em;color:var(--md-on-primary-container);}
+  .hero .body .sub{font:400 13px/18px 'Outfit';color:var(--md-on-primary-container);opacity:.8;}
+  .hero .body .sub b{font-weight:600;}
+
+  /* Quick Settings chips */
+  .quick-chips{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
+    margin-bottom:18px;
+  }
+  .qchip{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;
+    background:var(--md-surface-container);
+    border-radius:var(--md-shape-lg);
+    border:1px solid var(--md-outline-variant);
+    font:500 13px/18px 'Outfit';letter-spacing:.009em;
+    color:var(--md-on-surface);
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-emphasized);
+    border:none;font-family:inherit;
+    position:relative;overflow:hidden;
+    text-align:left;
+  }
+  .qchip::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .qchip:hover::before{opacity:var(--md-hover);}
+  .qchip:active::before{opacity:var(--md-press);}
+  .qchip .d{width:8px;height:8px;border-radius:var(--md-shape-full);flex-shrink:0;position:relative;z-index:1;}
+  .qchip .lbl{position:relative;z-index:1;flex:1;}
+  .qchip .v{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.025em;position:relative;z-index:1;}
+  .qchip.ok{background:var(--md-success-container);color:var(--md-success);border-color:rgba(22,163,74,.3);}
+  .qchip.ok .d{background:var(--md-success);}
+  html[data-theme="dark"] .qchip.ok{color:var(--md-success);}
+  .qchip.live{background:var(--md-primary-container);color:var(--md-on-primary-container);border-color:rgba(0,101,143,.3);}
+  .qchip.live .d{background:var(--md-primary);animation:pulse 1.4s ease-in-out infinite;}
+  .qchip.err{background:var(--md-error-container);color:var(--md-on-error-container);border-color:rgba(186,26,26,.3);}
+  .qchip.err .d{background:var(--md-error);}
+
+  /* Section */
+  .section{margin-bottom:18px;animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;}
+  .section:nth-of-type(2){animation-delay:50ms;}
+  .section:nth-of-type(3){animation-delay:100ms;}
+
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .section-title{font:500 16px/24px 'Outfit';letter-spacing:.009em;color:var(--md-on-surface);}
+  .section-link{
+    font:500 13px/20px 'Outfit';letter-spacing:.007em;
+    color:var(--md-primary);
+    background:transparent;border:none;cursor:pointer;padding:4px 12px;border-radius:var(--md-shape-full);
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+    display:inline-flex;align-items:center;gap:4px;font-family:inherit;
+  }
+  .section-link:hover{background:var(--md-primary-container);}
+
+  /* Grouped Card */
+  .group-card{
+    background:var(--md-surface);
+    border-radius:var(--md-shape-lg);
+    overflow:hidden;
+    border:1px solid var(--md-outline-variant);
+  }
+
+  /* List item · 56dp 安卓风 */
+  .litem{
+    display:grid;
+    grid-template-columns:40px 1fr auto;
+    gap:14px;align-items:center;
+    min-height:60px;
+    padding:10px 14px;
+    cursor:pointer;
+    position:relative;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+    color:var(--md-on-surface);
+    font-family:inherit;
+    width:100%;text-align:left;
+    border:none;background:transparent;
+  }
+  .litem + .litem{border-top:1px solid var(--md-outline-variant);}
+  .litem::before{content:"";position:absolute;inset:0;background:var(--md-on-surface);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);pointer-events:none;}
+  .litem:hover{background:var(--md-surface-container);}
+  .litem:hover::before{opacity:var(--md-hover);}
+  .litem:active::before{opacity:var(--md-press);}
+
+  /* 40dp 圆形图标 · 安卓风 */
+  .litem .leading-ico{
+    width:40px;height:40px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    transition:transform var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .litem:hover .leading-ico{transform:scale(1.06);}
+  .litem .leading-ico svg{width:20px;height:20px;}
+  .litem.is-primary .leading-ico{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .litem.is-secondary .leading-ico{background:var(--md-secondary-container);color:var(--md-on-secondary-container);}
+  .litem.is-tertiary .leading-ico{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .litem.is-quaternary .leading-ico{background:var(--md-quaternary-container);color:var(--md-on-quaternary-container);}
+  .litem.is-success .leading-ico{background:var(--md-success-container);color:var(--md-success);}
+  .litem.is-warn .leading-ico{background:var(--md-error-container);color:var(--md-on-error-container);}
+
+  .litem .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;position:relative;z-index:1;}
+  .litem .body .l1{font:500 14px/20px 'Outfit';color:var(--md-on-surface);letter-spacing:.009em;}
+  .litem .body .l1 .arr{color:var(--md-on-surface-variant);font-weight:400;margin:0 3px;}
+  .litem .body .l1 .target{color:var(--md-primary);}
+  .litem .body .l2{font:400 11px/14px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.025em;}
+
+  .litem .trailing{display:flex;align-items:center;gap:8px;flex-shrink:0;position:relative;z-index:1;}
+  .litem .trailing .v{font:400 12px/16px 'Outfit';color:var(--md-on-surface-variant);}
+  .litem .trailing .ok{color:var(--md-success);font-weight:500;}
+  .litem .trailing .err{color:var(--md-error);font-weight:500;}
+
+  /* Chip */
+  .chip{
+    display:inline-flex;align-items:center;
+    height:22px;padding:0 8px;
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    border:none;border-radius:var(--md-shape-xs);
+    font:500 10.5px/14px 'Outfit';letter-spacing:.045em;
+  }
+  .chip.solid-tertiary{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .chip.outline{background:transparent;border:1px solid var(--md-outline-variant);color:var(--md-on-surface-variant);}
+
+  /* Toggle */
+  .toggle{
+    width:44px;height:24px;border-radius:var(--md-shape-full);
+    background:var(--md-surface-container-highest);
+    border:2px solid var(--md-outline);
+    position:relative;cursor:pointer;
+    transition:all var(--md-dur-short3) var(--md-ease-spring);
+    flex-shrink:0;
+  }
+  .toggle::after{
+    content:"";position:absolute;top:2px;left:2px;
+    width:14px;height:14px;border-radius:var(--md-shape-full);
+    background:var(--md-outline);
+    transition:all var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .toggle.on{background:var(--md-primary);border-color:var(--md-primary);}
+  .toggle.on::after{left:20px;background:var(--md-on-primary);width:20px;height:20px;top:0;}
+
+  /* Data card · Quaternary 紫 + Tertiary 橙 */
+  .data-card{
+    background:linear-gradient(135deg, var(--md-quaternary-container) 0%, var(--md-tertiary-container) 100%);
+    border-radius:var(--md-shape-lg);
+    padding:16px 18px;
+    margin-bottom:12px;
+    border:1px solid var(--md-outline-variant);
+    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+    position:relative;overflow:hidden;
+  }
+  html[data-theme="dark"] .data-card{
+    background:linear-gradient(135deg, rgba(69,67,104,.4) 0%, rgba(90,65,0,.4) 100%);
+  }
+  .data-card::after{
+    content:"";position:absolute;right:-30px;top:-30px;
+    width:120px;height:120px;border-radius:var(--md-shape-full);
+    background:radial-gradient(circle,rgba(255,255,255,.16) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .data-card .stat{display:flex;flex-direction:column;gap:1px;position:relative;z-index:1;}
+  .data-card .stat .v{font:600 22px/28px 'Outfit';color:var(--md-on-quaternary-container);letter-spacing:-.015em;}
+  html[data-theme="dark"] .data-card .stat .v{color:var(--md-on-quaternary-container);}
+  .data-card .stat .l{font:500 10px/14px 'Outfit';color:var(--md-on-quaternary-container);opacity:.75;letter-spacing:.045em;text-transform:uppercase;}
+
+  /* ========== ③ Right Sidebar · 上下文帮助（Codex 风） ========== */
+  .right-sidebar{
+    background:var(--md-surface-container-lowest);
+    border-left:1px solid var(--md-outline-variant);
+    padding:18px 18px;
+    overflow-y:auto;
+    display:flex;flex-direction:column;
+    gap:16px;
+  }
+  .right-sidebar::-webkit-scrollbar{width:8px;}
+  .right-sidebar::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:4px;}
+
+  .help-block{
+    background:var(--md-surface);
+    border-radius:var(--md-shape-md);
+    border:1px solid var(--md-outline-variant);
+    padding:14px;
+  }
+  .help-block .h{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:10px;
+  }
+  .help-block .h .ico{
+    width:22px;height:22px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .help-block .h .ico svg{width:13px;height:13px;}
+  .help-block .h .ico.primary{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .help-block .h .ico.success{background:var(--md-success-container);color:var(--md-success);}
+  .help-block .h .ico.warn{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .help-block .h .ico.tertiary{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .help-block .h .t{font:500 13px/18px 'Outfit';color:var(--md-on-surface);letter-spacing:.007em;flex:1;}
+  .help-block .h .badge{
+    font:500 10px/14px 'JetBrains Mono';letter-spacing:.045em;
+    padding:2px 6px;border-radius:var(--md-shape-xs);
+  }
+  .help-block .h .badge.fast{background:var(--md-success-container);color:var(--md-success);}
+  .help-block .h .badge.mid{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .help-block .h .badge.slow{background:var(--md-error-container);color:var(--md-on-error-container);}
+
+  .compat-list{
+    display:flex;flex-direction:column;gap:6px;
+    font:400 12px/16px 'Outfit';color:var(--md-on-surface-variant);letter-spacing:.025em;
+  }
+  .compat-row{
+    display:flex;align-items:flex-start;gap:8px;
+    padding:6px 0;
+  }
+  .compat-row .ic{
+    width:16px;height:16px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    margin-top:1px;
+  }
+  .compat-row .ic.ok{background:var(--md-success-container);color:var(--md-success);}
+  .compat-row .ic.warn{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .compat-row .ic.no{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .compat-row .ic svg{width:9px;height:9px;}
+  .compat-row .lbl{flex:1;}
+  .compat-row .lbl b{color:var(--md-on-surface);font-weight:500;display:block;}
+  .compat-row .lbl .sub{font:400 10.5px/14px 'Outfit';color:var(--md-on-surface-variant);opacity:.7;margin-top:1px;}
+
+  .perf-stat{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    margin-top:8px;
+  }
+  .perf-stat .item{
+    padding:8px 10px;background:var(--md-surface-container-low);border-radius:var(--md-shape-sm);
+  }
+  .perf-stat .item .l{font:500 10px/14px 'Outfit';color:var(--md-on-surface-variant);letter-spacing:.045em;text-transform:uppercase;}
+  .perf-stat .item .v{font:600 14px/20px 'Outfit';color:var(--md-on-surface);margin-top:2px;}
+  .perf-stat .item .v.fast{color:var(--md-success);}
+  .perf-stat .item .v.mid{color:var(--md-on-tertiary-container);}
+  .perf-stat .item .v.slow{color:var(--md-on-error-container);}
+
+  .nope-list{
+    display:flex;flex-direction:column;gap:6px;
+    font:400 11.5px/16px 'Outfit';color:var(--md-on-surface-variant);letter-spacing:.025em;
+  }
+  .nope-list .row{
+    display:flex;align-items:center;gap:8px;
+  }
+  .nope-list .ic{
+    width:14px;height:14px;border-radius:var(--md-shape-full);
+    background:var(--md-error-container);color:var(--md-on-error-container);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .nope-list .ic svg{width:8px;height:8px;}
+  .nope-list .lbl{flex:1;}
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:18px;right:18px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+  }
+  .state-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  .theme-switch{
+    position:absolute;top:18px;right:140px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+  }
+  .theme-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  /* ========== Compare ========== */
+  .compare{max-width:1180px;margin:36px auto 0;padding:0 40px 80px;}
+  .compare h3{font:600 14px/20px 'Outfit';margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .compare h3 .tag{font:500 10px/16px 'Outfit';letter-spacing:.045em;padding:2px 7px;border-radius:var(--md-shape-xs);}
+  .compare h3 .tag.v10{background:var(--md-quaternary-container);color:var(--md-on-quaternary-container);}
+  .compare h3 .tag.v11{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .compare .lead{font:400 12.5px/20px 'Outfit';color:var(--md-on-surface-variant);margin:0 0 14px;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col{border:1px solid var(--md-outline-variant);border-radius:var(--md-shape-lg);padding:16px;background:var(--md-surface-container-lowest);}
+  .compare .col ul{margin:0;padding-left:18px;font:400 12.5px/22px 'Outfit';color:var(--md-on-surface-variant);}
+  .compare .col li b{color:var(--md-on-surface);font-weight:600;}
+
+  @media(max-width:1100px){
+    .window{grid-template-columns:200px 1fr 240px;}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v11 · 重构 · 三栏布局 + Codex 风</div>
+  <h1>Codex 教我的事：<br/>主面板也要有「右侧上下文帮助」</h1>
+  <p class="lede">Codex 那个「选择按键方式」页面做对的关键：<b>左侧全局导航</b>（7 个分类）+ <b>右侧上下文帮助区</b>（设备兼容性 + 性能评级 + 不建议使用清单）。我之前 v10 是单栏 dashboard，<b>缺右侧帮助区</b>。v11 改成三栏布局：
+- <b>① 左侧 sidebar</b>：全局导航（首页/方案管理/触发设置/语音输入/声音与反馈/通用设置/运行状态/查看日志） + 底部状态卡
+- <b>② 中央主区</b>：v10 的 Hero + Quick Settings + 按键速查 + 数据卡 + 历史（保留）
+- <b>③ 右侧 sidebar</b>：设备兼容性参考（你的键盘/鼠标/耳机）+ 性能评级（当前方案快/中/慢）+ 不建议使用清单</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 三栏布局 · Codex + Material You 范</h2>
+    <div class="hint">右上切主题 / 状态 · hover 任意 nav item 看 4dp active indicator</div>
+  </div>
+
+  <div class="window" id="window">
+
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="OK">OK</button>
+      <button data-s="LIVE">LIVE</button>
+      <button data-s="ERR">ERR</button>
+    </div>
+
+    <!-- ========== ① 左侧 sidebar ========== -->
+    <aside class="left-sidebar">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+
+      <div class="nav-section-label">主面板</div>
+
+      <button class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>首页</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>方案管理</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+        <span>触发设置</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        <span>语音输入</span>
+      </button>
+
+      <div class="nav-section-label">系统</div>
+
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span>声音与反馈</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>通用设置</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>运行状态</span>
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>查看日志</span>
+      </button>
+
+      <div class="sidebar-status">
+        <div class="label"><span class="dot"></span>运行中</div>
+        <div class="main">OneTone 已启动</div>
+        <div class="sub">语音服务 · 正常</div>
+      </div>
+    </aside>
+
+    <!-- ========== ② 中央主区 ========== -->
+    <main class="center">
+
+      <div class="top-bar">
+        <h1>
+          首页
+          <span class="sub" id="timeSub">晚上好，<b id="habitName">默认</b> 习惯可用</span>
+        </h1>
+        <div class="top-bar-actions">
+          <button class="tab-icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+          <button class="tab-icon-btn" title="通知"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="tab-icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="hero">
+        <div class="leading" style="position:relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <div class="status-dot" id="heroStatusDot" style="background:var(--md-success);"></div>
+        </div>
+        <div class="body">
+          <div class="kicker" id="heroKicker">准备好了</div>
+          <div class="title" id="heroTitle">当前可用，可以开始说话</div>
+          <div class="sub" id="heroSub">Vosk 待命 · 麦克风 OK · <b>「默认」习惯</b></div>
+        </div>
+      </div>
+
+      <!-- Quick Settings · 2x2 grid -->
+      <div class="quick-chips">
+        <button class="qchip ok"><span class="d"></span><span class="lbl">Vosk · 在线</span><span class="v">cn-light</span></button>
+        <button class="qchip live" id="qsChip2"><span class="d"></span><span class="lbl" id="qsChip2Text">麦克风 · OK</span><span class="v">2.4s</span></button>
+        <button class="qchip"><span class="d"></span><span class="lbl">HUD · 提示条</span><span class="v">已开</span></button>
+        <button class="qchip"><span class="d"></span><span class="lbl">目标窗口</span><span class="v">当前</span></button>
+      </div>
+
+      <!-- Section 1: 按键速查 -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">按键速查</h3>
+          <button class="section-link">管理 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="group-card">
+          <button class="litem is-primary">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+            <span class="body">
+              <span class="l1">音量 + <span class="arr">→</span> <span class="target">RAlt</span></span>
+              <span class="l2">长按开 · 松开发送</span>
+            </span>
+            <span class="trailing"><span class="chip solid-tertiary">默认</span><span class="toggle on"></span></span>
+          </button>
+
+          <button class="litem is-quaternary">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg></span>
+            <span class="body">
+              <span class="l1">侧键 ↑ <span class="arr">→</span> <span class="target">Ctrl+Shift</span></span>
+              <span class="l2">单击开 · 微信</span>
+            </span>
+            <span class="trailing"><span class="chip">微信</span><span class="toggle on"></span></span>
+          </button>
+
+          <button class="litem is-tertiary">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
+            <span class="body">
+              <span class="l1">Ctrl + I <span class="arr">→</span> <span class="target">Cmd + I</span></span>
+              <span class="l2">长按开 · Cursor</span>
+            </span>
+            <span class="trailing"><span class="chip">Cursor</span><span class="toggle on"></span></span>
+          </button>
+
+          <button class="litem is-secondary">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>
+            <span class="body">
+              <span class="l1">唤醒词「<span class="target">开始输入</span>」</span>
+              <span class="l2">语音唤起 · Vosk</span>
+            </span>
+            <span class="trailing"><span class="chip">语音</span><span class="toggle on"></span></span>
+          </button>
+
+          <button class="litem" style="opacity:.55;">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg></span>
+            <span class="body">
+              <span class="l1">滚轮中键 <span class="arr">→</span> <span class="target">F2</span></span>
+              <span class="l2">单击开 · Typora</span>
+            </span>
+            <span class="trailing"><span class="chip outline">停用</span><span class="toggle"></span></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 2: 历史 -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">最近语音输入</h3>
+          <button class="section-link">全部 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="data-card">
+          <div class="stat"><span class="v">5</span><span class="l">今日录入</span></div>
+          <div class="stat"><span class="v">4</span><span class="l">已发送</span></div>
+          <div class="stat"><span class="v">1</span><span class="l">失败</span></div>
+          <div class="stat"><span class="v">2.4s</span><span class="l">平均时长</span></div>
+        </div>
+
+        <div class="group-card">
+          <button class="litem is-success">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span class="body">
+              <span class="l1">"今天天气怎么样"</span>
+              <span class="l2">默认 · 长按 音量+</span>
+            </span>
+            <span class="trailing"><span class="v t-mono">10:24</span><span class="v ok t-label-m">已发送</span></span>
+          </button>
+
+          <button class="litem is-warn">
+            <span class="leading-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span class="body">
+              <span class="l1">"打开 Cursor 并新建项目"</span>
+              <span class="l2">Cursor · Ctrl+I</span>
+            </span>
+            <span class="trailing"><span class="v t-mono">10:12</span><span class="v err t-label-m">失败</span></span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ========== ③ 右侧 sidebar · 上下文帮助 ========== -->
+    <aside class="right-sidebar">
+
+      <!-- 设备兼容性参考 · Codex 风 -->
+      <div class="help-block">
+        <div class="h">
+          <span class="ico primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          <span class="t">设备兼容性</span>
+        </div>
+        <div class="compat-list">
+          <div class="compat-row">
+            <span class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="lbl"><b>键盘按键</b><div class="sub">普通键 · 字母 · 数字 · 符号</div></div>
+          </div>
+          <div class="compat-row">
+            <span class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="lbl"><b>鼠标按键</b><div class="sub">左 / 右 / 中 / 侧键 · 滚轮</div></div>
+          </div>
+          <div class="compat-row">
+            <span class="ic warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <div class="lbl"><b>音量键</b><div class="sub">系统占用 · 谨慎使用</div></div>
+          </div>
+          <div class="compat-row">
+            <span class="ic ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="lbl"><b>蓝牙耳机</b><div class="sub">支持按键 · 检测中</div></div>
+          </div>
+          <div class="compat-row">
+            <span class="ic no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <div class="lbl"><b>触摸屏</b><div class="sub">灵敏度低 · 不推荐</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 性能评级 · Codex 风 -->
+      <div class="help-block">
+        <div class="h">
+          <span class="ico tertiary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span class="t">性能评级</span>
+          <span class="badge fast" id="perfBadge">快</span>
+        </div>
+        <div class="perf-stat">
+          <div class="item">
+            <div class="l">按键响应</div>
+            <div class="v fast" id="perfResp">12ms</div>
+          </div>
+          <div class="item">
+            <div class="l">识别准确</div>
+            <div class="v fast" id="perfAcc">96%</div>
+          </div>
+          <div class="item">
+            <div class="l">唤醒延迟</div>
+            <div class="v fast">0.4s</div>
+          </div>
+          <div class="item">
+            <div class="l">发送延迟</div>
+            <div class="v mid">120ms</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 不建议使用清单 · Codex 风（negative guidance）-->
+      <div class="help-block">
+        <div class="h">
+          <span class="ico warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          <span class="t">不建议使用</span>
+        </div>
+        <div class="nope-list">
+          <div class="row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span class="lbl">系统级修饰键（影响正常操作）</span>
+          </div>
+          <div class="row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span class="lbl">系统级快捷键（可能冲突）</span>
+          </div>
+          <div class="row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span class="lbl">Fn / Esc / Wake 键</span>
+          </div>
+          <div class="row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span class="lbl">触摸屏手势</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v10">v10</span> 单栏 dashboard · 缺右侧帮助</h3>
+      <p class="lead">v10 单栏布局，顶部 TopAppBar + 底部 NavigationBar。但缺一个关键东西：<b>右侧上下文帮助</b>。Codex 那个「选择按键方式」页面做对了：右侧一直显示设备兼容性 + 性能评级 + 不建议清单，让用户随时知道自己的硬件和方案能不能用。</p>
+      <ul>
+        <li>只有<b>顶部导航</b>，没有左侧全局 sidebar</li>
+        <li>没有<b>右侧上下文帮助</b> —— 用户切换习惯时不知道会不会卡</li>
+        <li>没有<b>设备兼容性参考</b> —— 不知道我的鼠标能不能用</li>
+        <li>没有<b>性能评级</b> —— 不知道当前方案快不快</li>
+        <li>没有<b>不建议使用清单</b> —— 不知道哪些键不该用</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v11">v11</span> 三栏布局 + Codex 风</h3>
+      <p class="lead">v11 把 Codex 的设计语言用到了主面板：① 左侧 sidebar 全局导航（7 个分类 + 底部状态卡）；② 中央主区（v10 的 Hero/Quick Settings/按键速查/数据卡/历史 全部保留）；③ 右侧 sidebar 三个 help-block（设备兼容性 + 性能评级 + 不建议使用清单）。</p>
+      <ul>
+        <li><b>左侧 sidebar</b>：7 个 nav-item（首页/方案管理/触发设置/语音输入/声音与反馈/通用设置/运行状态/查看日志），active 时 4dp primary 指示条 spring 弹入</li>
+        <li><b>右侧 3 个 help-block</b>：① 设备兼容性（5 类硬件 ✓/⚠/✗）+ ② 性能评级（4 项数据：响应/准确/唤醒/发送延迟）+ ③ 不建议使用清单（4 项 negative guidance）</li>
+        <li><b>中央主区保留 v10</b>：Hero + Quick Settings 2x2 + 按键速查 list + 数据卡 + 历史</li>
+        <li><b>底部状态卡</b>：左侧 sidebar 底部显示「OneTone 已启动 · 语音服务 · 正常」</li>
+        <li>所有状态切换（OK/LIVE/ERR）联动到中央 + 右侧</li>
+        <li><b>Spring easing</b>：4dp active 指示条 + 图标 hover 弹性缩放</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const heroStatusDot = $('#heroStatusDot');
+  const heroKicker = $('#heroKicker');
+  const heroTitle = $('#heroTitle');
+  const heroSub = $('#heroSub');
+  const qsChip2 = $('#qsChip2');
+  const qsChip2Text = $('#qsChip2Text');
+
+  const STATES = {
+    OK:{kicker:'准备好了',title:'当前可用，可以开始说话',sub:'Vosk 待命 · 麦克风 OK · <b>「默认」习惯</b>',dot:'var(--md-success)',qs2Class:'ok',qs2Text:'麦克风 · OK'},
+    LIVE:{kicker:'正在听',title:'听见了唤醒词 · 继续说话',sub:'说出 <b>「开始输入」</b> 或继续刚才的话',dot:'var(--md-primary)',qs2Class:'live',qs2Text:'麦克风 · 唤醒中'},
+    ERR:{kicker:'需要关注',title:'检测不到声音',sub:'Vosk 不可用 · 麦克风无信号 · 请检查权限',dot:'var(--md-error)',qs2Class:'err',qs2Text:'麦克风 · 异常'}
+  };
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      heroKicker.textContent = s.kicker;
+      heroTitle.textContent = s.title;
+      heroSub.innerHTML = s.sub;
+      heroStatusDot.style.background = s.dot;
+      qsChip2.className = 'qchip ' + s.qs2Class;
+      qsChip2Text.textContent = s.qs2Text;
+    });
+  });
+
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  document.querySelectorAll('.toggle').forEach(t=>{
+    t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('on');});
+  });
+
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.addEventListener('click',()=>{
+      document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+      n.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

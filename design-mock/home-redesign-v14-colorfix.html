@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VoicePilot · Home Redesign v14 · 配色整改预览</title>
+<style>
+:root{
+  /* 中性灰底盘 —— 纯中性、不带任何蓝调 */
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface-soft:#FAFAFA;
+  --border:#E5E5E5;
+  --border-strong:#D4D4D4;
+
+  /* 主色 —— 一根电蓝 */
+  --primary:#1E6FF1;
+  --primary-strong:#155EE0;
+  --primary-soft:#DCEAFF;
+
+  /* 文字 —— 永远中性灰，不走 slate 蓝灰 */
+  --text:#171717;
+  --text-muted:#737373;
+  --text-faint:#A3A3A3;
+
+  /* 状态色 —— 各只一个值 */
+  --success:#10B981;
+  --warning:#F59E0B;
+  --error:#EF4444;
+
+  /* 强调 —— cyan 只给声波/录音 */
+  --cyan:#06B6D4;
+
+  /* icon palette —— 4 色封顶（无紫）*/
+  --icon-blue:#1E6FF1;
+  --icon-cyan:#0EA5E9;
+  --icon-green:#10B981;
+  --icon-amber:#F59E0B;
+
+  /* 改色前版的"错误示范"色，把 bad palette 显式化 */
+  --bad-bg-grad-1:#eaf3ff;
+  --bad-bg-grad-2:#dbe9ff;
+  --bad-text-1:#1e3a8a;
+  --bad-text-2:#5a7086;
+  --bad-accent-soft:#dbe7ff;
+  --bad-accent:#2563EB;
+  --bad-avatar-grad-1:#bcd4ff;
+  --bad-avatar-grad-2:#9bcaff;
+}
+[data-theme="dark"]{
+  --bg:#0F0F11;
+  --surface:#171717;
+  --surface-soft:#1F1F1F;
+  --border:#262626;
+  --border-strong:#404040;
+  --primary:#4A8AFF;
+  --primary-strong:#6FA5FF;
+  --primary-soft:#1F3A6B;
+  --text:#FAFAFA;
+  --text-muted:#A3A3A3;
+  --text-faint:#737373;
+  --success:#10B981;
+  --warning:#F59E0B;
+  --error:#EF4444;
+  --cyan:#22D3EE;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+}
+
+/* —— layout —— */
+.page{max-width:1180px;margin:0 auto;padding:48px 32px 80px}
+.eyebrow{
+  font:600 11px/16px 'Outfit';letter-spacing:.18em;text-transform:uppercase;
+  color:var(--primary);margin-bottom:14px;
+}
+h1{font:600 30px/40px 'Outfit';letter-spacing:-.02em;margin:0 0 14px;color:var(--text)}
+.lede{font:400 15px/24px 'Outfit';color:var(--text-muted);max-width:780px;margin:0 0 32px}
+
+/* —— toolbar —— */
+.toolbar{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  padding:10px 12px;background:var(--surface);
+  border:1px solid var(--border);border-radius:999px;
+  margin-bottom:32px;font-size:13px;
+  box-shadow:0 4px 12px rgba(15,23,42,.04);
+}
+.toolbar .seg{display:flex;gap:4px;background:var(--surface-soft);border-radius:999px;padding:4px}
+.toolbar .seg button{
+  border:none;background:transparent;color:var(--text-muted);
+  padding:6px 12px;border-radius:999px;font:500 12px/16px 'Outfit';
+  cursor:pointer;
+}
+.toolbar .seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.toolbar .label{font:500 11px/16px 'JetBrains Mono',monospace;color:var(--text-faint);letter-spacing:.04em}
+.toolbar .spacer{flex:1}
+
+/* —— before/after compare —— */
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:12px;
+}
+@media(max-width:900px){.compare{grid-template-columns:1fr}}
+.compare-col{
+  border-radius:24px;padding:6px;border:1px solid var(--border);
+}
+.compare-col.before{
+  background:linear-gradient(135deg,var(--bad-bg-grad-1) 0%,var(--bad-bg-grad-2) 100%);
+  border-color:#d6e4ff;
+}
+.compare-col.after{
+  background:var(--bg);border-color:var(--border);
+}
+.compare-col .tag{
+  display:inline-block;margin:10px 0 4px 6px;
+  padding:4px 12px;border-radius:999px;
+  font:600 11px/14px 'Outfit';letter-spacing:.06em;
+}
+.compare-col.before .tag{background:rgba(37,99,235,.12);color:#1d4ed8}
+.compare-col.after  .tag{background:var(--primary-soft);color:var(--primary-strong)}
+
+/* —— hero card —— */
+.hero{
+  border-radius:20px;padding:30px;margin:6px;
+  background:#fff;border:1px solid var(--border);
+  box-shadow:0 14px 34px rgba(15,23,42,.05);
+  transition:background .25s ease,border-color .25s ease,box-shadow .25s ease;
+}
+[data-theme="dark"] .hero{background:#131C2E;border-color:#1E2A40;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+.hero.before{
+  background:linear-gradient(135deg,var(--bad-bg-grad-1) 0%,var(--bad-bg-grad-2) 100%);
+  border-color:#d6e4ff;
+  box-shadow:0 14px 34px rgba(37,99,235,.10);
+}
+.hero-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.trigger-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:5px 12px 5px 10px;border-radius:999px;
+  font:500 13px/18px 'Outfit';
+}
+.hero.before .trigger-pill{background:rgba(37,99,235,.10);color:#1d4ed8}
+.hero.after  .trigger-pill{background:var(--success);color:#fff}
+.trigger-pill .dot{width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.9}
+
+.icon-btn{
+  width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid transparent;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-muted);cursor:pointer;
+}
+.icon-btn:hover{background:var(--surface-soft);color:var(--text)}
+.hero.before .icon-btn{color:#3b6fd9}
+
+.hero-mid{display:flex;align-items:center;gap:22px;margin:4px 0 26px}
+.avatar{
+  width:88px;height:88px;border-radius:26px;
+  display:inline-flex;align-items:center;justify-content:center;
+  position:relative;flex-shrink:0;
+}
+.hero.before .avatar{background:linear-gradient(160deg,var(--bad-avatar-grad-1),var(--bad-avatar-grad-2));box-shadow:0 14px 28px rgba(37,99,235,.20)}
+.hero.after  .avatar{background:var(--primary);box-shadow:0 14px 28px rgba(37,99,235,.28)}
+.avatar svg{width:34px;height:34px;color:#fff}
+.avatar .dot{
+  position:absolute;right:-4px;bottom:-4px;
+  width:20px;height:20px;border-radius:999px;
+  background:var(--success);border:3px solid #fff;
+}
+[data-theme="dark"] .avatar .dot{border-color:#131C2E}
+.hero.before .avatar .dot{border-color:#eaf3ff}
+
+.title-block h2{
+  font:600 22px/30px 'Outfit';letter-spacing:-.01em;
+  margin:0 0 12px;
+}
+.hero.before .title-block h2{color:var(--bad-text-1)}
+.hero.after  .title-block h2{color:var(--text)}
+.title-meta{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;
+  font:500 12px/16px 'OutFit';color:#fff;
+}
+.hero.before .tag-chip{background:var(--bad-accent)}
+.hero.after  .tag-chip{background:var(--primary)}
+.desc{margin:0;font:400 14px/22px 'Outfit'}
+.hero.before .desc{color:var(--bad-text-2)}
+.hero.after  .desc{color:var(--text-muted)}
+
+/* —— waveform —— */
+.waveform{
+  height:48px;display:flex;align-items:center;justify-content:center;gap:3px;
+  margin:22px 0 18px;
+}
+.waveform span{width:4px;border-radius:3px;display:inline-block;background:var(--cyan)}
+.hero.before .waveform span{background:#a3d8e8;opacity:.65}
+
+/* —— state card —— */
+.state-card{
+  border-radius:18px;padding:18px 22px;
+  display:flex;align-items:center;gap:14px;
+  margin:18px 0 22px;
+}
+.hero.before .state-card{background:rgba(255,255,255,.55);border:1px dashed rgba(37,99,235,.30)}
+.hero.after  .state-card{background:var(--surface-soft);border:1px dashed var(--border-strong)}
+.state-card .spinner{
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid var(--border-strong);border-top-color:var(--primary);
+  animation:spin 1s linear infinite;flex-shrink:0;
+}
+.hero.before .state-card .spinner{border-color:rgba(37,99,235,.25);border-top-color:#2563EB}
+.state-card .text{font:500 14px/20px 'Outfit'}
+.hero.before .state-card .text{color:#3b6fd9}
+.hero.after  .state-card .text{color:var(--text-muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* —— buttons —— */
+.btn-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 22px;border-radius:14px;font:600 14px/20px 'Outfit';
+  border:1px solid transparent;cursor:pointer;transition:transform .12s ease,background .15s ease,box-shadow .15s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 10px 22px rgba(37,99,235,.25)}
+.btn-primary:hover{background:var(--primary-strong)}
+.hero.before .btn-primary{background:linear-gradient(135deg,#7fa9ff,#a48aff);box-shadow:0 10px 22px rgba(124,79,191,.22)}
+.btn-secondary{background:var(--surface-soft);color:var(--text-muted);border-color:var(--border)}
+.btn-secondary:hover{background:#E2E8F0;color:var(--text)}
+[data-theme="dark"] .btn-secondary:hover{background:#243049}
+.hero.before .btn-secondary{background:#fff;color:#5a7086;border-color:#cdd9ed}
+
+/* —— section header —— */
+.section-title{
+  font:600 11px/16px 'Outfit';letter-spacing:.18em;text-transform:uppercase;
+  color:var(--text-faint);margin:56px 0 16px;
+  display:flex;justify-content:space-between;align-items:baseline;
+}
+.section-title .hint{font:400 12px/16px 'JetBrains Mono',monospace;color:var(--text-faint);text-transform:none;letter-spacing:0}
+
+/* —— token palette —— */
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.swatch{border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface);transition:background .25s ease,border-color .25s ease}
+.swatch .chip{height:84px}
+.swatch .meta{padding:10px 12px;border-top:1px solid var(--border)}
+.swatch .meta .name{font:600 10px/14px 'JetBrains Mono',monospace;color:var(--text);text-transform:uppercase;letter-spacing:.04em}
+.swatch .meta .hex{font:400 10px/14px 'JetBrains Mono',monospace;color:var(--text-muted);margin-top:2px}
+
+/* —— showcase cards —— */
+.showcase{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:32px;
+  display:grid;grid-template-columns:1fr 1fr;gap:48px;
+  transition:background .25s ease,border-color .25s ease;
+}
+@media(max-width:880px){.showcase{grid-template-columns:1fr;gap:24px}}
+.showcase h3{margin:0 0 18px;font:600 14px/20px 'Outfit';color:var(--text)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}
+.row:last-child{margin-bottom:0}
+.row .label{font:500 11px/16px 'JetBrains Mono',monospace;color:var(--text-faint);width:80px;letter-spacing:.04em}
+
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font:500 12px/16px 'Outfit'}
+.chip.neutral{background:var(--surface-soft);color:var(--text)}
+.chip.success{background:rgba(16,185,129,.12);color:#047857}
+.chip.warning{background:rgba(245,158,11,.15);color:#b45309}
+.chip.error{background:rgba(239,68,68,.12);color:#b91c1c}
+.chip .dot{width:6px;height:6px;border-radius:999px;background:currentColor}
+[data-theme="dark"] .chip.success{color:#34d399}
+[data-theme="dark"] .chip.warning{color:#fbbf24}
+[data-theme="dark"] .chip.error{color:#f87171}
+
+.dot-row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.dot-row .pair{display:flex;align-items:center;gap:8px;font:500 12px/16px 'JetBrains Mono',monospace;color:var(--text-muted)}
+.dot-row .dot{width:12px;height:12px;border-radius:999px;border:2px solid #fff}
+[data-theme="dark"] .dot-row .dot{border-color:var(--surface)}
+
+.icon-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.icon-tile{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:18px 8px;border-radius:14px;gap:10px;background:var(--surface-soft);
+}
+.icon-tile svg{width:22px;height:22px}
+.icon-tile .name{font:500 10px/12px 'Outfit';color:var(--text-muted);letter-spacing:.04em}
+
+/* —— principles —— */
+.principles{
+  margin-top:36px;background:var(--surface);border:1px solid var(--border);
+  border-radius:24px;padding:32px;
+  transition:background .25s ease,border-color .25s ease;
+}
+.principles h3{margin:0 0 16px;font:600 16px/22px 'Outfit';color:var(--text)}
+.principles ol{margin:0;padding:0;list-style:none;counter-reset:rule}
+.principles li{
+  counter-increment:rule;display:flex;gap:16px;padding:14px 0;
+  border-top:1px solid var(--border);font:400 14px/22px 'Outfit';color:var(--text-muted);
+}
+.principles li:first-child{border-top:0}
+.principles li::before{
+  content:counter(rule,decimal-leading-zero);flex-shrink:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:10px;background:var(--primary-soft);color:var(--primary-strong);
+  font:700 12px/16px 'JetBrains Mono',monospace;
+}
+.principles li b{color:var(--text);font-weight:600}
+
+.footer{
+  margin-top:48px;font:400 12px/20px 'JetBrains Mono',monospace;color:var(--text-faint);text-align:center;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">VoicePilot · Home Redesign v14 · colorfix</div>
+  <h1>Hero Card 配色整改单预览</h1>
+  <p class="lede">把现状那张 pastel 蓝紫统一场改成"中性灰底盘 + 单一纯蓝强调"。左边是改色前，右边是改色后，结构不变。下面是完整 token 色板和控件指南。</p>
+
+  <div class="toolbar">
+    <span class="label">视图</span>
+    <div class="seg" id="modeSwitch">
+      <button class="on" data-mode="compare">并排对比</button>
+      <button data-mode="after">只看改色后</button>
+      <button data-mode="before">只看改色前</button>
+    </div>
+    <span class="label" style="margin-left:8px">主题</span>
+    <div class="seg" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+  </div>
+
+  <div class="compare" id="compare">
+    <div class="compare-col before">
+      <span class="tag">改色前 · pastel 蓝染场</span>
+      <div class="hero before">
+        <div class="hero-top">
+          <span class="trigger-pill"><span class="dot"></span>当前触发·已就绪</span>
+          <button class="icon-btn" aria-label="编辑">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="hero-mid">
+          <div class="avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <span class="dot"></span>
+          </div>
+          <div class="title-block">
+            <h2>未设置·单击触发</h2>
+            <div class="title-meta">
+              <span class="tag-chip">单击触发</span>
+              <span class="desc">按住 未设置·松开 发送到 当前窗口</span>
+            </div>
+          </div>
+        </div>
+        <div class="waveform" aria-hidden="true">
+          <span style="height:10%"></span><span style="height:14%"></span><span style="height:8%"></span>
+          <span style="height:12%"></span><span style="height:18%"></span><span style="height:22%"></span>
+          <span style="height:14%"></span><span style="height:10%"></span><span style="height:16%"></span>
+          <span style="height:24%"></span><span style="height:30%"></span><span style="height:20%"></span>
+          <span style="height:12%"></span><span style="height:8%"></span><span style="height:14%"></span>
+          <span style="height:18%"></span><span style="height:12%"></span><span style="height:8%"></span>
+        </div>
+        <div class="state-card">
+          <div class="spinner"></div>
+          <div class="text">读取中...</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            测试发送
+          </button>
+          <button class="btn btn-secondary">结束说话</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-col after">
+      <span class="tag">改色后 · 中性灰 + 纯蓝</span>
+      <div class="hero">
+        <div class="hero-top">
+          <span class="trigger-pill"><span class="dot"></span>当前触发·已就绪</span>
+          <button class="icon-btn" aria-label="编辑">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="hero-mid">
+          <div class="avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <span class="dot"></span>
+          </div>
+          <div class="title-block">
+            <h2>未设置·单击触发</h2>
+            <div class="title-meta">
+              <span class="tag-chip">单击触发</span>
+              <span class="desc">按住 未设置·松开 发送到 当前窗口</span>
+            </div>
+          </div>
+        </div>
+        <div class="waveform" aria-hidden="true">
+          <span style="height:10%"></span><span style="height:14%"></span><span style="height:8%"></span>
+          <span style="height:12%"></span><span style="height:18%"></span><span style="height:22%"></span>
+          <span style="height:14%"></span><span style="height:10%"></span><span style="height:16%"></span>
+          <span style="height:24%"></span><span style="height:30%"></span><span style="height:20%"></span>
+          <span style="height:12%"></span><span style="height:8%"></span><span style="height:14%"></span>
+          <span style="height:18%"></span><span style="height:12%"></span><span style="height:8%"></span>
+        </div>
+        <div class="state-card">
+          <div class="spinner"></div>
+          <div class="text">读取中...</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            测试发送
+          </button>
+          <button class="btn btn-secondary">结束说话</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title"><span>配色 Token · Light</span><span class="hint">14 色 · 改色前会保留旧的放在对照卡里</span></div>
+  <div class="palette" id="palette"></div>
+
+  <div class="section-title"><span>控件示范</span><span class="hint">按钮 / 状态 / icon palette</span></div>
+  <div class="showcase">
+    <div>
+      <h3>Button</h3>
+      <div class="row">
+        <span class="label">primary</span>
+        <button class="btn btn-primary">测试发送</button>
+        <button class="btn btn-primary" disabled style="opacity:.5;cursor:not-allowed">已禁用</button>
+      </div>
+      <div class="row">
+        <span class="label">secondary</span>
+        <button class="btn btn-secondary">结束说话</button>
+        <button class="btn btn-secondary" disabled style="opacity:.5;cursor:not-allowed">已禁用</button>
+      </div>
+      <div class="row">
+        <span class="label">ghost</span>
+        <button class="btn" style="background:transparent;color:var(--text-muted)">更多</button>
+      </div>
+
+      <h3 style="margin-top:32px">Chip · 状态标签</h3>
+      <div class="row">
+        <span class="chip neutral"><span class="dot"></span>当前触发·已就绪</span>
+        <span class="chip success"><span class="dot"></span>工作中</span>
+        <span class="chip warning"><span class="dot"></span>采集受限</span>
+        <span class="chip error"><span class="dot"></span>已断开</span>
+      </div>
+      <div class="row">
+        <span class="chip" style="background:var(--primary);color:#fff"><span class="dot" style="background:#fff"></span>主操作</span>
+        <span class="chip" style="background:rgba(6,182,212,.14);color:#0e7490"><span class="dot" style="background:#06B6D4"></span>录音中</span>
+      </div>
+    </div>
+
+    <div>
+      <h3>Status Dot</h3>
+      <div class="dot-row">
+        <div class="pair"><span class="dot" style="background:#10B981"></span>success · #10B981</div>
+        <div class="pair"><span class="dot" style="background:#F59E0B"></span>warning · #F59E0B</div>
+        <div class="pair"><span class="dot" style="background:#EF4444"></span>error · #EF4444</div>
+        <div class="pair"><span class="dot" style="background:#06B6D4"></span>cyan · #06B6D4</div>
+        <div class="pair"><span class="dot" style="background:#94A3B8"></span>neutral · #94A3B8</div>
+      </div>
+
+      <h3 style="margin-top:32px">Icon Palette · 4 色封顶</h3>
+      <div class="icon-grid">
+        <div class="icon-tile" style="color:var(--icon-blue)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+          <span class="name">VOICE</span>
+        </div>
+        <div class="icon-tile" style="color:var(--icon-green)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="name">DONE</span>
+        </div>
+        <div class="icon-tile" style="color:var(--icon-amber)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/></svg>
+          <span class="name">FILE</span>
+        </div>
+        <div class="icon-tile" style="color:var(--icon-cyan)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span class="name">TIMER</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="principles">
+    <h3>设计纪律 · 五条铁律</h3>
+    <ol>
+      <li><b>背景永远中性灰。</b>主背景、卡片、边框都在 slate-* 上，不允许带蓝调。</li>
+      <li><b>蓝色只允许三个地方出现</b>：主操作按钮、品牌 hero 区、active 状态。其他位置一律走灰阶。</li>
+      <li><b>文字不要染色。</b>主文字 #0F172A、次级 #64748B，绝不用 blue-* 当文字色。</li>
+      <li><b>cyan 只给声波/录音/实时反馈。</b>波形、录音指示、streaming 状态才用 #06B6D4。</li>
+      <li><b>icon palette 严格 4 色。</b>多出任何色都收掉，4 色按语义分配：蓝=语音、绿=完成、橙=文件、青=时间。</li>
+    </ol>
+  </div>
+
+  <div class="footer">v14 · built by Mavis · 2026-07-10</div>
+</div>
+
+<script>
+// 主题切换
+const root = document.documentElement;
+const themeSwitch = document.getElementById('themeSwitch');
+themeSwitch.addEventListener('click', e => {
+  const t = e.target.dataset.theme;
+  if (!t) return;
+  root.dataset.theme = t;
+  themeSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.theme === t));
+});
+
+// 视图切换
+const modeSwitch = document.getElementById('modeSwitch');
+const compareCols = document.querySelectorAll('.compare-col');
+modeSwitch.addEventListener('click', e => {
+  const m = e.target.dataset.mode;
+  if (!m) return;
+  modeSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  const [before, after] = compareCols;
+  before.style.display = ''; after.style.display = '';
+  if (m === 'before') { after.style.display = 'none'; }
+  if (m === 'after') { before.style.display = 'none'; }
+});
+
+// 生成 token 色板
+const tokens = [
+  ['bg','#F7F9FC'],['surface','#FFFFFF'],['surface-soft','#F1F5F9'],
+  ['border','#E2E8F0'],['border-strong','#CBD5E1'],
+  ['text','#0F172A'],['text-muted','#64748B'],['text-faint','#94A3B8'],
+  ['primary','#2563EB'],['primary-strong','#1D4ED8'],['primary-soft','#DBE7FF'],
+  ['success','#10B981'],['warning','#F59E0B'],['error','#EF4444'],
+  ['cyan','#06B6D4'],
+];
+const palette = document.getElementById('palette');
+palette.innerHTML = tokens.map(([n,h]) => `
+  <div class="swatch">
+    <div class="chip" style="background:${h}"></div>
+    <div class="meta"><div class="name">--${n}</div><div class="hex">${h}</div></div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>

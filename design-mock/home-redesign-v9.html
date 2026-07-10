@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v9 · Apple 设置风 + M3 骨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* M3 Color Roles · 清澈 */
+    --md-primary:               #00658F;
+    --md-on-primary:             #FFFFFF;
+    --md-primary-container:      #C7E7FF;
+    --md-on-primary-container:   #001E2E;
+    --md-secondary:              #4F616E;
+    --md-secondary-container:    #D3E5F2;
+    --md-on-secondary-container: #0B1D29;
+    --md-tertiary:               #006C4C;
+    --md-tertiary-container:     #89F8C7;
+    --md-on-tertiary-container:  #002115;
+    --md-error:                  #BA1A1A;
+    --md-error-container:        #FFDAD6;
+    --md-on-error-container:     #410002;
+    --md-background:             #F4F4F7;
+    --md-on-background:          #191C20;
+    --md-surface:                #FCFCFF;
+    --md-on-surface:             #191C20;
+    --md-on-surface-variant:     #41484D;
+    --md-surface-container-lowest:#FFFFFF;
+    --md-surface-container-low:  #F6F8FB;
+    --md-surface-container:      #F0F2F5;
+    --md-surface-container-high: #EAECEF;
+    --md-surface-container-highest:#E3E6EA;
+    --md-outline:                #71787D;
+    --md-outline-variant:        #C1C7CD;
+
+    /* M3 Shape */
+    --md-shape-xs: 4px;
+    --md-shape-sm: 8px;
+    --md-shape-md: 12px;
+    --md-shape-lg: 16px;
+    --md-shape-xl: 20px;
+    --md-shape-2xl: 28px;
+    --md-shape-full: 999px;
+
+    --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+    --md-dur-short2: 100ms;
+    --md-dur-short3: 150ms;
+    --md-dur-short4: 200ms;
+    --md-dur-medium1: 250ms;
+    --md-dur-medium2: 300ms;
+    --md-dur-long1: 450ms;
+
+    --md-hover: 0.08;
+    --md-focus: 0.12;
+    --md-press: 0.12;
+  }
+  html[data-theme="dark"]{
+    --md-primary:               #8FCEFF;
+    --md-on-primary:             #00344C;
+    --md-primary-container:      #004C6C;
+    --md-on-primary-container:   #C7E7FF;
+    --md-secondary:              #B7C9D8;
+    --md-secondary-container:    #374955;
+    --md-on-secondary-container: #D3E5F2;
+    --md-tertiary:               #6FDDA8;
+    --md-tertiary-container:     #005236;
+    --md-on-tertiary-container:  #89F8C7;
+    --md-error:                  #FFB4AB;
+    --md-error-container:        #93000A;
+    --md-on-error-container:     #FFDAD6;
+    --md-background:             #0F1218;
+    --md-on-background:          #E1E2E5;
+    --md-surface:                #13161D;
+    --md-on-surface:             #E1E2E5;
+    --md-on-surface-variant:     #C1C7CD;
+    --md-surface-container-lowest:#0B0E13;
+    --md-surface-container-low:  #1A1D24;
+    --md-surface-container:      #1E2128;
+    --md-surface-container-high: #262932;
+    --md-surface-container-highest:#2E313B;
+    --md-outline:                #8B9297;
+    --md-outline-variant:        #41484D;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--md-on-background);
+    background:var(--md-background);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition:background var(--md-dur-medium1),color var(--md-dur-medium1);
+  }
+
+  /* ========== M3 Type Scale ========== */
+  .t-display-s{font:400 36px/44px 'Outfit';letter-spacing:0;}
+  .t-headline-l{font:400 32px/40px 'Outfit';letter-spacing:0;}
+  .t-headline-m{font:500 28px/36px 'Outfit';letter-spacing:-.005em;}
+  .t-headline-s{font:400 24px/32px 'Outfit';letter-spacing:0;}
+  .t-title-l{font:500 22px/28px 'Outfit';letter-spacing:-.005em;}
+  .t-title-m{font:500 16px/24px 'Outfit';letter-spacing:.009em;}
+  .t-title-s{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-body-l{font:400 16px/24px 'Outfit';letter-spacing:.031em;}
+  .t-body-m{font:400 14px/20px 'Outfit';letter-spacing:.025em;}
+  .t-body-s{font:400 12px/16px 'Outfit';letter-spacing:.033em;}
+  .t-label-l{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-label-m{font:500 12px/16px 'Outfit';letter-spacing:.042em;}
+  .t-label-s{font:500 11px/16px 'Outfit';letter-spacing:.045em;}
+  .t-mono{font:500 12px/16px 'JetBrains Mono';letter-spacing:.045em;}
+
+  /* ========== intro ========== */
+  .intro{max-width:1180px;margin:0 auto;padding:48px 40px 16px;}
+  .intro .eyebrow{font:600 11px/16px 'Outfit';letter-spacing:.16em;text-transform:uppercase;color:var(--md-primary);margin-bottom:14px;}
+  .intro h1{font:600 32px/40px 'Outfit';letter-spacing:-.02em;margin:0 0 12px;}
+  .intro .lede{font:400 15px/24px 'Outfit';color:var(--md-on-surface-variant);max-width:920px;margin:0;letter-spacing:.01em;}
+  .intro .lede b{color:var(--md-on-surface);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{max-width:1180px;margin:24px auto 0;padding:0 40px 24px;}
+  .stage-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .stage-head h2{font:600 14px/20px 'Outfit';margin:0;}
+  .stage-head .hint{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);}
+
+  .window{
+    border-radius:var(--md-shape-2xl);
+    background:var(--md-surface);
+    box-shadow:0 4px 8px rgba(0,0,0,.04),0 16px 32px rgba(0,0,0,.08);
+    overflow:hidden;
+    height:940px;
+    display:flex;flex-direction:column;
+    position:relative;
+    border:1px solid var(--md-outline-variant);
+  }
+
+  /* ========== Top App Bar ========== */
+  .top-app-bar{
+    height:64px;flex:0 0 64px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;
+    background:var(--md-surface);
+  }
+  .tab-icon-btn{
+    width:40px;height:40px;border-radius:var(--md-shape-full);
+    background:transparent;border:none;color:var(--md-on-surface-variant);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .tab-icon-btn::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-standard);}
+  .tab-icon-btn:hover::before{opacity:var(--md-hover);}
+  .tab-icon-btn:active::before{opacity:var(--md-press);}
+  .tab-icon-btn svg{position:relative;width:20px;height:20px;}
+
+  .tab-brand{display:flex;align-items:center;gap:10px;}
+  .tab-brand .logo{
+    width:32px;height:32px;border-radius:var(--md-shape-md);
+    background:linear-gradient(135deg,var(--md-primary),var(--md-primary-container));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .tab-brand .logo svg{width:18px;height:18px;}
+  .tab-brand .name{font:600 18px/24px 'Outfit';color:var(--md-on-surface);}
+
+  /* ========== Scroll ========== */
+  .scroll{flex:1;overflow-y:auto;padding:8px 16px 32px;}
+  .scroll::-webkit-scrollbar{width:8px;}
+  .scroll::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:4px;}
+
+  /* ========== Hero Card (filled tonal · 反色区) ========== */
+  .hero{
+    background:linear-gradient(135deg,var(--md-primary-container) 0%, var(--md-primary-container) 60%, rgba(var(--md-primary),.18) 100%);
+    color:var(--md-on-primary-container);
+    border-radius:var(--md-shape-xl);
+    padding:24px;
+    display:grid;grid-template-columns:64px 1fr auto;gap:20px;align-items:center;
+    margin-bottom:28px;
+    position:relative;
+    overflow:hidden;
+    animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;
+  }
+  @keyframes md-enter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .hero::after{
+    content:"";position:absolute;right:-60px;top:-60px;
+    width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle,rgba(var(--md-primary),.08) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .hero .leading{
+    width:64px;height:64px;border-radius:var(--md-shape-lg);
+    background:var(--md-primary);color:var(--md-on-primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.16),inset 0 0 0 1px rgba(255,255,255,.1);
+    position:relative;z-index:1;
+  }
+  .hero .leading svg{width:32px;height:32px;}
+  .hero .leading .status-dot{
+    position:absolute;bottom:-2px;right:-2px;
+    width:16px;height:16px;border-radius:var(--md-shape-full);
+    background:var(--md-tertiary);
+    border:3px solid var(--md-primary-container);
+    box-shadow:0 0 0 2px var(--md-primary-container);
+  }
+  .hero .body{display:flex;flex-direction:column;gap:4px;min-width:0;position:relative;z-index:1;}
+  .hero .body .kicker{font:600 11px/16px 'Outfit';letter-spacing:.05em;text-transform:uppercase;color:var(--md-primary);}
+  .hero .body .title{font:500 22px/28px 'Outfit';letter-spacing:-.005em;}
+  .hero .body .sub{font:400 14px/20px 'Outfit';color:var(--md-on-primary-container);opacity:.8;letter-spacing:.025em;}
+  .hero .body .sub b{font-weight:600;color:var(--md-on-primary-container);}
+  .hero .actions{display:flex;gap:8px;flex-shrink:0;position:relative;z-index:1;}
+
+  /* Filled button · M3 */
+  .btn-filled{
+    display:inline-flex;align-items:center;gap:8px;
+    height:40px;padding:0 20px;
+    background:var(--md-primary);color:var(--md-on-primary);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+    position:relative;overflow:hidden;
+    transition:box-shadow var(--md-dur-short2) var(--md-ease-standard);
+    font-family:inherit;
+  }
+  .btn-filled::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-on-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-standard);}
+  .btn-filled:hover::before{opacity:var(--md-hover);}
+  .btn-filled:active::before{opacity:var(--md-press);}
+  .btn-filled svg{position:relative;width:18px;height:18px;}
+  .btn-filled span{position:relative;}
+
+  .btn-tonal{
+    display:inline-flex;align-items:center;gap:8px;
+    height:40px;padding:0 20px;
+    background:transparent;color:var(--md-primary);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    font-family:inherit;
+  }
+  .btn-tonal::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-standard);}
+  .btn-tonal:hover::before{opacity:.08;}
+  .btn-tonal:active::before{opacity:.12;}
+  .btn-tonal svg{position:relative;width:18px;height:18px;}
+  .btn-tonal span{position:relative;}
+
+  /* ========== Section ========== */
+  .section{margin-bottom:22px;animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;}
+  .section:nth-of-type(2){animation-delay:50ms;}
+  .section:nth-of-type(3){animation-delay:100ms;}
+  .section:nth-of-type(4){animation-delay:150ms;}
+
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 4px;margin-bottom:10px;
+  }
+  .section-title{font:500 16px/24px 'Outfit';letter-spacing:.009em;color:var(--md-on-surface);}
+  .section-link{
+    font:500 13px/20px 'Outfit';letter-spacing:.007em;
+    color:var(--md-primary);
+    background:transparent;border:none;cursor:pointer;padding:6px 12px;border-radius:var(--md-shape-full);
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    display:inline-flex;align-items:center;gap:4px;font-family:inherit;
+  }
+  .section-link:hover{background:var(--md-primary-container);}
+
+  /* ========== Grouped List Card (Apple 设置风) ========== */
+  .group-card{
+    background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-lg);
+    overflow:hidden;
+    border:1px solid var(--md-outline-variant);
+  }
+  .group-card + .group-card{margin-top:12px;}
+
+  /* List item · M3 · 56dp 标准 */
+  .litem{
+    display:grid;
+    grid-template-columns:36px 1fr auto;
+    gap:16px;align-items:center;
+    min-height:60px;
+    padding:10px 16px;
+    cursor:pointer;
+    position:relative;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+    color:var(--md-on-surface);
+    font-family:inherit;
+    width:100%;text-align:left;
+    border:none;background:transparent;
+  }
+  .litem + .litem{border-top:1px solid var(--md-outline-variant);}
+  .litem::before{content:"";position:absolute;inset:0;background:var(--md-on-surface);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-standard);pointer-events:none;}
+  .litem:hover{background:var(--md-surface-container);}
+  .litem:hover::before{opacity:var(--md-hover);}
+  .litem:active::before{opacity:var(--md-press);}
+
+  /* Icon container · 36x36 rounded-md */
+  .litem .leading-ico{
+    width:36px;height:36px;border-radius:var(--md-shape-md);
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .litem.is-primary .leading-ico{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .litem.is-success .leading-ico{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .litem.is-warn .leading-ico{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .litem .leading-ico svg{width:20px;height:20px;}
+
+  .litem .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
+  .litem .body .l1{font:500 15px/22px 'Outfit';color:var(--md-on-surface);letter-spacing:.009em;display:flex;align-items:center;gap:6px;}
+  .litem .body .l1 .arr{color:var(--md-on-surface-variant);font-weight:400;margin:0 2px;}
+  .litem .body .l1 .target{color:var(--md-primary);}
+  .litem .body .l2{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.025em;}
+
+  .litem .trailing{display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:1;}
+  .litem .trailing .v{font:400 13px/20px 'Outfit';color:var(--md-on-surface-variant);}
+  .litem .trailing .ok{color:var(--md-tertiary);}
+  .litem .trailing .off{color:var(--md-on-surface-variant);}
+  .litem .trailing .err{color:var(--md-error);}
+  .litem .trailing .chev{color:var(--md-on-surface-variant);}
+
+  /* M3 Assist chip · status badge */
+  .chip{
+    display:inline-flex;align-items:center;gap:4px;
+    height:24px;padding:0 10px;
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    border:none;border-radius:var(--md-shape-sm);
+    font:500 11px/16px 'Outfit';letter-spacing:.045em;
+    font-family:inherit;cursor:pointer;
+    transition:background var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .chip::before{content:"";position:absolute;}
+  .chip.solid-primary{background:var(--md-primary);color:var(--md-on-primary);}
+  .chip.solid-success{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .chip.solid-warn{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .chip.outline{background:transparent;border:1px solid var(--md-outline-variant);color:var(--md-on-surface-variant);}
+
+  /* Toggle · M3 Switch (mini) */
+  .toggle{
+    width:44px;height:24px;border-radius:var(--md-shape-full);
+    background:var(--md-surface-container-highest);border:2px solid var(--md-outline);
+    position:relative;cursor:pointer;
+    transition:background var(--md-dur-short2) var(--md-ease-standard),
+               border-color var(--md-dur-short2) var(--md-ease-standard);
+    flex-shrink:0;
+  }
+  .toggle::after{
+    content:"";position:absolute;top:2px;left:2px;
+    width:16px;height:16px;border-radius:var(--md-shape-full);
+    background:var(--md-outline);
+    transition:all var(--md-dur-short3) var(--md-ease-emphasized);
+  }
+  .toggle.on{background:var(--md-primary);border-color:var(--md-primary);}
+  .toggle.on::after{left:22px;background:var(--md-on-primary);width:20px;height:20px;top:0;}
+
+  /* ========== Data summary (Apple Activity Monitor 风) ========== */
+  .data-card{
+    background:linear-gradient(135deg, var(--md-tertiary-container) 0%, rgba(105,221,168,.18) 100%);
+    border-radius:var(--md-shape-lg);
+    padding:18px 20px;
+    margin-bottom:12px;
+    border:1px solid rgba(105,221,168,.3);
+    display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+    position:relative;overflow:hidden;
+  }
+  html[data-theme="dark"] .data-card{
+    background:linear-gradient(135deg, rgba(0,82,54,.4) 0%, rgba(45,212,191,.10) 100%);
+    border-color:rgba(105,221,168,.2);
+  }
+  .data-card::after{
+    content:"";position:absolute;right:-30px;top:-30px;
+    width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.15) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .data-card .stat{display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
+  .data-card .stat .v{font:500 24px/32px 'Outfit';color:var(--md-on-tertiary-container);letter-spacing:-.01em;}
+  html[data-theme="dark"] .data-card .stat .v{color:var(--md-on-tertiary-container);}
+  .data-card .stat .l{font:400 11px/16px 'Outfit';color:var(--md-on-tertiary-container);opacity:.7;letter-spacing:.045em;}
+
+  /* ========== Icon grid (Palm OS 风) ========== */
+  .icon-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:8px;
+  }
+  .icon-tile{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:16px 8px 14px;
+    background:var(--md-surface-container-low);
+    border:1px solid transparent;
+    border-radius:var(--md-shape-lg);
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+    position:relative;overflow:hidden;
+    font-family:inherit;
+  }
+  .icon-tile::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-standard);pointer-events:none;}
+  .icon-tile:hover{background:var(--md-surface-container);border-color:var(--md-outline-variant);transform:translateY(-2px);}
+  .icon-tile:hover::before{opacity:var(--md-hover);}
+  .icon-tile:active::before{opacity:var(--md-press);}
+  .icon-tile .ico{
+    width:48px;height:48px;border-radius:var(--md-shape-md);
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .icon-tile:hover .ico{transform:scale(1.05);}
+  .icon-tile .ico svg{width:24px;height:24px;}
+  .icon-tile .lbl{font:500 12px/16px 'Outfit';color:var(--md-on-surface);letter-spacing:.042em;position:relative;}
+  .icon-tile .sub{font:400 11px/14px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.045em;position:relative;}
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:18px;right:18px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .state-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  .theme-switch{
+    position:absolute;top:18px;left:18px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-standard);
+  }
+  .theme-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  /* ========== Compare ========== */
+  .compare{max-width:1180px;margin:36px auto 0;padding:0 40px 80px;}
+  .compare h3{font:600 14px/20px 'Outfit';margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .compare h3 .tag{font:500 10px/16px 'Outfit';letter-spacing:.045em;padding:2px 7px;border-radius:var(--md-shape-xs);}
+  .compare h3 .tag.v8{background:var(--md-surface-container);color:var(--md-on-surface-variant);}
+  .compare h3 .tag.v9{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .compare .lead{font:400 12.5px/20px 'Outfit';color:var(--md-on-surface-variant);margin:0 0 14px;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col{border:1px solid var(--md-outline-variant);border-radius:var(--md-shape-lg);padding:16px;background:var(--md-surface-container-lowest);}
+  .compare .col ul{margin:0;padding-left:18px;font:400 12.5px/22px 'Outfit';color:var(--md-on-surface-variant);}
+  .compare .col li b{color:var(--md-on-surface);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .icon-grid{grid-template-columns:repeat(3,1fr);}
+    .data-card{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 · 重构 · Hero 保留 + 下面三块重做</div>
+  <h1>Hero 反色卡保留 · 三块塌方重做：<br/>Apple 设置式分组列表 + 数据摘要 + Palm 网格</h1>
+  <p class="lede">v8 的 Hero 反色卡你认可，但下面三个 section 都崩了：<b>list items 太稀</b>、<b>6 个图标大小不一错位</b>、<b>6 个按钮只是横排没归类</b>。v9 重新设计：
+- ① 按键速查 → Apple 设置式<b>分组列表</b>，每行带图标 + 标题 + 副标题 + chip + 状态
+- ② 最近语音 → 顶部加 <b>Apple 后台管理数据卡</b>（今日 5 / 成功 4 / 失败 1 / 平均 2.4s），下面才是 list
+- ③ 快捷入口 → 改成 <b>双大组卡</b>（系统设置 / 内容管理），每组里 3 个 list item，<b>Palm OS 网格</b>作为补充入口</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · M3 骨 + Apple 设置 + Palm 网格</h2>
+    <div class="hint">左上切主题 · 右上切状态 · hover 任意行看 State Layer</div>
+  </div>
+
+  <div class="window" id="window">
+
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="OK">引擎 OK</button>
+      <button data-s="LIVE">正在听</button>
+      <button data-s="ERR">引擎报错</button>
+    </div>
+
+    <header class="top-app-bar">
+      <button class="tab-icon-btn" title="菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="tab-brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="tab-icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button class="tab-icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        <button class="tab-icon-btn" title="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+    </header>
+
+    <div class="scroll">
+
+      <!-- ========== Hero Card (反色区 · v8 保留) ========== -->
+      <div class="hero">
+        <div class="leading" style="position:relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <div class="status-dot" id="heroStatusDot" style="background:var(--md-tertiary);"></div>
+        </div>
+        <div class="body">
+          <div class="kicker" id="heroKicker">准备好了 · 一切就绪</div>
+          <div class="title" id="heroTitle">当前可用，可以开始说话</div>
+          <div class="sub" id="heroSub">Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b></div>
+        </div>
+        <div class="actions">
+          <button class="btn-filled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span>测试发送</span>
+          </button>
+          <button class="btn-tonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>新建习惯</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ========== Section 1: 按键速查 · Apple 设置式分组列表 ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">按键速查</h3>
+          <button class="section-link">管理 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="group-card">
+
+          <button class="litem is-primary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">音量 + <span class="arr">→</span> <span class="target">RAlt</span></span>
+              <span class="l2">长按开 · 松开发送 · 当前窗口</span>
+            </span>
+            <span class="trailing">
+              <span class="chip solid-success">默认</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">侧键 ↑ <span class="arr">→</span> <span class="target">Ctrl+Shift</span></span>
+              <span class="l2">单击开 · 自动输入 · 微信</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">微信</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">Ctrl + I <span class="arr">→</span> <span class="target">Cmd + I</span></span>
+              <span class="l2">长按开 · 自动输入 · Cursor</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">Cursor</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">唤醒词「<span class="target">开始输入</span>」</span>
+              <span class="l2">语音唤起 · Vosk 离线识别</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">语音</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-9 4 18 3-9h4"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">结束词「<span class="target">结束输入</span>」</span>
+              <span class="l2">停止听写 · 自动发送</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">语音</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem" style="opacity:.6;">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">滚轮中键 <span class="arr">→</span> <span class="target">F2</span></span>
+              <span class="l2">单击开 · 自动输入 · Typora</span>
+            </span>
+            <span class="trailing">
+              <span class="chip outline">停用</span>
+              <span class="toggle"></span>
+            </span>
+          </button>
+
+        </div>
+      </section>
+
+      <!-- ========== Section 2: 最近语音输入 · Apple Activity Monitor 数据卡 + List ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">最近语音输入</h3>
+          <button class="section-link">全部 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <!-- 数据卡 · Apple Activity Monitor 风 -->
+        <div class="data-card">
+          <div class="stat">
+            <span class="v">5</span>
+            <span class="l">今日已录入</span>
+          </div>
+          <div class="stat">
+            <span class="v">4</span>
+            <span class="l">成功发送</span>
+          </div>
+          <div class="stat">
+            <span class="v">1</span>
+            <span class="l">识别失败</span>
+          </div>
+          <div class="stat">
+            <span class="v">2.4s</span>
+            <span class="l">平均识别时长</span>
+          </div>
+        </div>
+
+        <div class="group-card">
+
+          <button class="litem is-success">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"今天天气怎么样"</span>
+              <span class="l2">默认 · 长按 音量+</span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:24</span>
+              <span class="v ok t-label-m">已发送</span>
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+
+          <button class="litem is-success">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"把这段话发给张总"</span>
+              <span class="l2">默认 · 长按 音量+</span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:18</span>
+              <span class="v ok t-label-m">已发送</span>
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+
+          <button class="litem is-warn">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"打开 Cursor 并新建项目"</span>
+              <span class="l2">Cursor · Ctrl+I · <span style="color:var(--md-error);">应用未聚焦</span></span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:12</span>
+              <span class="v err t-label-m">失败</span>
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+
+        </div>
+      </section>
+
+      <!-- ========== Section 3: 快捷入口 · Apple 设置双组卡 + Palm 网格 ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">快捷入口</h3>
+        </div>
+
+        <!-- 双组卡 · Apple 设置风 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="group-card">
+            <button class="litem is-primary">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">唤醒词</span>
+                <span class="l2">5 个 · 中文 4 · 英文 1</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+            <button class="litem">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">识别引擎</span>
+                <span class="l2">Vosk · cn-light · 离线</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+            <button class="litem">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">外观主题</span>
+                <span class="l2">清澈 · 标准字号</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+          </div>
+
+          <div class="group-card">
+            <button class="litem is-success">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">历史记录</span>
+                <span class="l2">共 124 段 · 118 成功</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+            <button class="litem">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">习惯管理</span>
+                <span class="l2">3 个习惯 · 默认 / 写作 / 微信</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+            <button class="litem">
+              <span class="leading-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M16 15h5v5h-5z"/></svg>
+              </span>
+              <span class="body">
+                <span class="l1">情景模式</span>
+                <span class="l2">一般 · 安静工作日</span>
+              </span>
+              <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 维护组卡 -->
+        <div class="group-card" style="margin-top:12px;">
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">运行状态</span>
+              <span class="l2">CPU 13% · 内存 1.5 GB · 进程稳定</span>
+            </span>
+            <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </button>
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">备份恢复</span>
+              <span class="l2">上次备份 · 2 天前 · 自动开启</span>
+            </span>
+            <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </button>
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">帮助教程</span>
+              <span class="l2">5 篇文档 · 12 个视频 · F1 打开</span>
+            </span>
+            <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </button>
+          <button class="litem">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">关于一声</span>
+              <span class="l2">v0.3.1 · cn-light · 1519 MB</span>
+            </span>
+            <span class="trailing"><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </button>
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v8">v8</span> Hero 对了 · 下面三块塌</h3>
+      <p class="lead">v8 Hero 反色卡你认可（M3 filled tonal），但下面三个 section 都塌了：list item 太稀、6 个图标大小不一错位、6 个按钮只是横排没归类、没有信息密度。</p>
+      <ul>
+        <li>按键速查改成 3 列卡片网格 —— <b>没有"信息归类"</b></li>
+        <li>历史 5 行 list item —— <b>没有"数据维度"</b>（看不到总数 / 成功率）</li>
+        <li>6 个快捷按钮 —— <b>没有"分组"</b>（系统 / 内容 / 维护 混在一起）</li>
+        <li>图标大小不一致（microphone 32px vs monitor 22px）—— <b>视觉系统塌了</b></li>
+        <li>每个按钮只有 1 行字 —— <b>没有"信息密度"</b>（没有副标题/数据）</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v9">v9</span> Apple 设置风 + Palm 网格</h3>
+      <p class="lead">v9 在 v8 基础上把下面三块彻底重做：① 按键速查改成 Apple 设置式分组列表（M3 ListItem，56dp 标准行高）；② 历史顶部加 Apple Activity Monitor 数据卡（5/4/1/2.4s）；③ 快捷入口改成双大组卡 + 维护组卡，每行带 leading icon + 标题 + 副标题 + chevron。</p>
+      <ul>
+        <li><b>M3 ListItem 56dp 标准</b>：36px 图标 + 标题（titleMedium 16/500）+ 副标题（JetBrains Mono 12px）+ trailing chevron</li>
+        <li><b>Apple Activity Monitor 数据卡</b>：4 列数字（今日 5 / 成功 4 / 失败 1 / 平均 2.4s），tertiaryContainer 渐变</li>
+        <li><b>Apple 设置双组卡</b>：左"系统设置"（唤醒词/引擎/外观）+ 右"内容管理"（历史/习惯/情景）+ 下"维护与帮助"（4 行）</li>
+        <li><b>M3 Switch toggle</b>：44x24 真实开关样式替代文字"启用"状态</li>
+        <li><b>M3 Assist chip</b>：24px 圆角徽章替代硬色块（默认=success，微信=neutral，停用=outline）</li>
+        <li><b>所有图标统一 20px stroked</b>：same stroke-width / size / currentColor</li>
+        <li><b>每行都有"标题 + 副标题"</b>三件套：信息密度+50%</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const heroStatusDot = $('#heroStatusDot');
+  const heroKicker = $('#heroKicker');
+  const heroTitle = $('#heroTitle');
+  const heroSub = $('#heroSub');
+
+  const STATES = {
+    OK:{kicker:'准备好了 · 一切就绪',title:'当前可用，可以开始说话',sub:'Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b>',dot:'var(--md-tertiary)'},
+    LIVE:{kicker:'正在听 · 唤醒词已触发',title:'听见了唤醒词 · 继续说话',sub:'说出 <b>「开始输入」</b> 或继续刚才的话 · 当前 <b>「默认」习惯</b>',dot:'var(--md-primary)'},
+    ERR:{kicker:'需要关注 · 引擎异常',title:'检测不到声音 · 检查麦克风',sub:'Vosk 不可用 · 麦克风无信号 · 请检查权限',dot:'var(--md-error)'}
+  };
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      heroKicker.textContent = s.kicker;
+      heroTitle.textContent = s.title;
+      heroSub.innerHTML = s.sub;
+      heroStatusDot.style.background = s.dot;
+    });
+  });
+
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  // Toggle interaction
+  document.querySelectorAll('.toggle').forEach(t=>{
+    t.addEventListener('click',e=>{
+      e.stopPropagation();
+      t.classList.toggle('on');
+    });
+  });
+</script>
+</body>
+</html>

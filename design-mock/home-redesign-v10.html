@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一声 首页重构 v10 · 安卓 Material You 风</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     Material You / Android 14-15 Dynamic Color
+     从应用 brand 色 #2a9cc4 自动派生整套 palette
+     ============================================================ */
+  :root{
+    /* Primary · 应用 brand */
+    --md-primary:               #00658F;
+    --md-on-primary:             #FFFFFF;
+    --md-primary-container:      #C7E7FF;
+    --md-on-primary-container:   #001E2E;
+
+    /* Secondary · 中性偏暖（Material You 用 primary 派生） */
+    --md-secondary:              #4F616E;
+    --md-on-secondary:            #FFFFFF;
+    --md-secondary-container:    #D3E5F2;
+    --md-on-secondary-container: #0B1D29;
+
+    /* Tertiary · 暖橙（成功 / 强调 · Material You 派生） */
+    --md-tertiary:               #7B5800;
+    --md-on-tertiary:             #FFFFFF;
+    --md-tertiary-container:      #FFE08A;
+    --md-on-tertiary-container:   #271900;
+
+    /* Quaternary · Material 3 Expressive 新增 · 紫色调（数据卡 / 统计） */
+    --md-quaternary:             #5D5A8E;
+    --md-quaternary-container:    #E5DEFF;
+    --md-on-quaternary-container: #181638;
+
+    /* Error */
+    --md-error:                  #BA1A1A;
+    --md-error-container:        #FFDAD6;
+    --md-on-error-container:     #410002;
+
+    /* Surface · 5 层 tonal */
+    --md-background:             #FCFCFF;
+    --md-on-background:           #191C20;
+    --md-surface:                #FCFCFF;
+    --md-on-surface:              #191C20;
+    --md-on-surface-variant:      #41484D;
+    --md-surface-container-lowest:#FFFFFF;
+    --md-surface-container-low:  #F8F8FC;
+    --md-surface-container:       #F1F2F8;
+    --md-surface-container-high: #EBEDF2;
+    --md-surface-container-highest:#E5E7EC;
+
+    --md-outline:                #71787D;
+    --md-outline-variant:        #C1C7CD;
+
+    /* Shape · Material You 更大圆角（squircle 32dp+） */
+    --md-shape-xs:  8px;
+    --md-shape-sm:  12px;
+    --md-shape-md:  16px;
+    --md-shape-lg:  24px;   /* 卡片 · Material You extra-large */
+    --md-shape-xl:  32px;   /* Hero 卡片 */
+    --md-shape-2xl: 40px;
+    --md-shape-full: 999px;
+
+    /* Motion */
+    --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --md-dur-short2: 100ms;
+    --md-dur-short3: 150ms;
+    --md-dur-short4: 200ms;
+    --md-dur-medium1: 250ms;
+    --md-dur-medium2: 300ms;
+
+    /* State layer */
+    --md-hover: 0.08;
+    --md-focus: 0.12;
+    --md-press: 0.12;
+  }
+  html[data-theme="dark"]{
+    --md-primary:               #8FCEFF;
+    --md-on-primary:             #00344C;
+    --md-primary-container:      #004C6C;
+    --md-on-primary-container:   #C7E7FF;
+    --md-secondary:              #B7C9D8;
+    --md-secondary-container:    #374955;
+    --md-on-secondary-container: #D3E5F2;
+    --md-tertiary:               #F0BD48;
+    --md-tertiary-container:     #5A4100;
+    --md-on-tertiary-container:  #FFE08A;
+    --md-quaternary:             #C5C2EE;
+    --md-quaternary-container:   #454368;
+    --md-on-quaternary-container: #E5DEFF;
+    --md-error:                  #FFB4AB;
+    --md-error-container:        #93000A;
+    --md-on-error-container:     #FFDAD6;
+    --md-background:             #10131A;
+    --md-on-background:           #E1E2E5;
+    --md-surface:                #13161D;
+    --md-on-surface:              #E1E2E5;
+    --md-on-surface-variant:      #C1C7CD;
+    --md-surface-container-lowest:#0B0E13;
+    --md-surface-container-low:  #1A1D24;
+    --md-surface-container:       #1E2128;
+    --md-surface-container-high: #262932;
+    --md-surface-container-highest:#2E313B;
+    --md-outline:                #8B9297;
+    --md-outline-variant:        #41484D;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Outfit',system-ui,sans-serif;
+    color:var(--md-on-background);
+    background:var(--md-background);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition:background var(--md-dur-medium1),color var(--md-dur-medium1);
+  }
+
+  /* ========== M3 Type Scale ========== */
+  .t-display-s{font:400 36px/44px 'Outfit';}
+  .t-headline-l{font:400 32px/40px 'Outfit';}
+  .t-headline-m{font:500 28px/36px 'Outfit';letter-spacing:-.005em;}
+  .t-headline-s{font:400 24px/32px 'Outfit';}
+  .t-title-l{font:500 22px/28px 'Outfit';letter-spacing:-.005em;}
+  .t-title-m{font:500 16px/24px 'Outfit';letter-spacing:.009em;}
+  .t-title-s{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-body-l{font:400 16px/24px 'Outfit';letter-spacing:.031em;}
+  .t-body-m{font:400 14px/20px 'Outfit';letter-spacing:.025em;}
+  .t-body-s{font:400 12px/16px 'Outfit';letter-spacing:.033em;}
+  .t-label-l{font:500 14px/20px 'Outfit';letter-spacing:.007em;}
+  .t-label-m{font:500 12px/16px 'Outfit';letter-spacing:.042em;}
+  .t-label-s{font:500 11px/16px 'Outfit';letter-spacing:.045em;}
+  .t-mono{font:500 12px/16px 'JetBrains Mono';letter-spacing:.045em;}
+
+  /* ========== intro ========== */
+  .intro{max-width:1180px;margin:0 auto;padding:48px 40px 16px;}
+  .intro .eyebrow{font:600 11px/16px 'Outfit';letter-spacing:.16em;text-transform:uppercase;color:var(--md-primary);margin-bottom:14px;}
+  .intro h1{font:600 32px/40px 'Outfit';letter-spacing:-.02em;margin:0 0 12px;}
+  .intro .lede{font:400 15px/24px 'Outfit';color:var(--md-on-surface-variant);max-width:920px;margin:0;}
+  .intro .lede b{color:var(--md-on-surface);font-weight:600;}
+
+  /* ========== mockup container ========== */
+  .stage{max-width:1180px;margin:24px auto 0;padding:0 40px 24px;}
+  .stage-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .stage-head h2{font:600 14px/20px 'Outfit';margin:0;}
+  .stage-head .hint{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);}
+
+  .window{
+    border-radius:32px;
+    background:var(--md-surface);
+    box-shadow:0 4px 8px rgba(0,0,0,.04),0 16px 40px rgba(0,0,0,.10);
+    overflow:hidden;
+    height:980px;
+    display:flex;flex-direction:column;
+    position:relative;
+    border:1px solid var(--md-outline-variant);
+  }
+
+  /* ========== Top App Bar ========== */
+  .top-app-bar{
+    height:64px;flex:0 0 64px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 8px 0 16px;
+    background:var(--md-surface);
+  }
+  .tab-icon-btn{
+    width:48px;height:48px;border-radius:var(--md-shape-full);
+    background:transparent;border:none;color:var(--md-on-surface-variant);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .tab-icon-btn::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .tab-icon-btn:hover::before{opacity:var(--md-hover);}
+  .tab-icon-btn:active::before{opacity:var(--md-press);}
+  .tab-icon-btn svg{position:relative;width:24px;height:24px;}
+
+  .tab-brand{display:flex;align-items:center;gap:10px;}
+  .tab-brand .logo{
+    width:36px;height:36px;border-radius:var(--md-shape-full);  /* 圆形 · 安卓风 */
+    background:linear-gradient(135deg,var(--md-primary),var(--md-tertiary));
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    box-shadow:0 4px 12px rgba(0,101,143,.32);
+  }
+  .tab-brand .logo svg{width:20px;height:20px;}
+  .tab-brand .name{font:600 18px/24px 'Outfit';color:var(--md-on-surface);}
+
+  /* ========== Scroll ========== */
+  .scroll{flex:1;overflow-y:auto;padding:4px 16px 4px;}
+  .scroll::-webkit-scrollbar{width:8px;}
+  .scroll::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:4px;}
+
+  /* ========== Hero Card (Material You Expressive · squircle 大圆角 + 彩色) ========== */
+  .hero{
+    background:linear-gradient(135deg,var(--md-primary-container) 0%, var(--md-quaternary-container) 100%);
+    color:var(--md-on-primary-container);
+    border-radius:var(--md-shape-xl);
+    padding:24px;
+    display:grid;grid-template-columns:72px 1fr;gap:20px;align-items:center;
+    margin-bottom:24px;
+    position:relative;
+    overflow:hidden;
+    animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;
+  }
+  @keyframes md-enter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .hero::after{
+    content:"";position:absolute;right:-50px;top:-50px;
+    width:200px;height:200px;border-radius:var(--md-shape-full);
+    background:radial-gradient(circle,rgba(255,255,255,.16) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  /* 圆形 72px 图标 · 安卓风 */
+  .hero .leading{
+    width:72px;height:72px;border-radius:var(--md-shape-full);
+    background:var(--md-primary);color:var(--md-on-primary);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.16),0 4px 12px rgba(0,101,143,.32),
+               inset 0 0 0 1px rgba(255,255,255,.1);
+    position:relative;z-index:1;
+    flex-shrink:0;
+  }
+  .hero .leading svg{width:36px;height:36px;}
+  .hero .leading .status-dot{
+    position:absolute;bottom:0;right:0;
+    width:18px;height:18px;border-radius:var(--md-shape-full);
+    background:var(--md-tertiary);
+    border:3px solid var(--md-primary-container);
+  }
+  .hero .body{display:flex;flex-direction:column;gap:6px;min-width:0;position:relative;z-index:1;}
+  .hero .body .kicker{
+    font:600 11px/16px 'Outfit';letter-spacing:.06em;text-transform:uppercase;
+    color:var(--md-primary);
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .hero .body .kicker::before{
+    content:"";width:6px;height:6px;border-radius:var(--md-shape-full);
+    background:var(--md-primary);animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  .hero .body .title{font:500 24px/32px 'Outfit';letter-spacing:-.01em;color:var(--md-on-primary-container);}
+  .hero .body .sub{font:400 14px/20px 'Outfit';color:var(--md-on-primary-container);opacity:.8;letter-spacing:.02em;}
+  .hero .body .sub b{font-weight:600;}
+  .hero .actions{
+    display:flex;gap:10px;
+    grid-column:1/-1;margin-top:14px;
+    position:relative;z-index:1;
+  }
+
+  /* Filled · M3 安卓风 +44dp 高 */
+  .btn-filled{
+    display:inline-flex;align-items:center;gap:8px;
+    height:44px;padding:0 22px;
+    background:var(--md-primary);color:var(--md-on-primary);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+    position:relative;overflow:hidden;
+    transition:box-shadow var(--md-dur-short2) var(--md-ease-emphasized);
+    font-family:inherit;
+  }
+  .btn-filled::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-on-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .btn-filled:hover::before{opacity:var(--md-hover);}
+  .btn-filled:active::before{opacity:var(--md-press);}
+  .btn-filled svg{position:relative;width:18px;height:18px;}
+  .btn-filled span{position:relative;}
+
+  .btn-tonal{
+    display:inline-flex;align-items:center;gap:8px;
+    height:44px;padding:0 22px;
+    background:rgba(255,255,255,.4);
+    color:var(--md-on-primary-container);
+    border:none;border-radius:var(--md-shape-full);
+    font:500 14px/20px 'Outfit';letter-spacing:.007em;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+    font-family:inherit;
+  }
+  .btn-tonal::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-full);background:var(--md-on-primary-container);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .btn-tonal:hover::before{opacity:.08;}
+  .btn-tonal:active::before{opacity:.12;}
+  .btn-tonal svg{position:relative;width:18px;height:18px;}
+  .btn-tonal span{position:relative;}
+
+  /* ========== Quick Settings 状态 chips（Material You 顶部 4 个圆 chip） ========== */
+  .quick-chips{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+    margin-bottom:18px;
+  }
+  .qchip{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 12px;
+    background:var(--md-surface-container);
+    border-radius:var(--md-shape-lg);  /* 安卓 24dp 圆角 */
+    font:500 12px/16px 'Outfit';letter-spacing:.042em;
+    color:var(--md-on-surface);
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-emphasized);
+    border:none;font-family:inherit;
+    position:relative;overflow:hidden;
+  }
+  .qchip::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);}
+  .qchip:hover::before{opacity:var(--md-hover);}
+  .qchip:active::before{opacity:var(--md-press);}
+  .qchip .d{width:8px;height:8px;border-radius:var(--md-shape-full);flex-shrink:0;position:relative;z-index:1;}
+  .qchip .lbl{position:relative;z-index:1;}
+  .qchip.ok{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .qchip.ok .d{background:var(--md-tertiary);}
+  .qchip.live{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .qchip.live .d{background:var(--md-primary);animation:pulse 1.4s ease-in-out infinite;}
+  .qchip.err{background:var(--md-error-container);color:var(--md-on-error-container);}
+  .qchip.err .d{background:var(--md-error);}
+  .qchip.neutral{background:var(--md-surface-container);color:var(--md-on-surface);}
+  .qchip.neutral .d{background:var(--md-on-surface-variant);}
+
+  /* ========== Section ========== */
+  .section{margin-bottom:18px;animation:md-enter var(--md-dur-medium2) var(--md-ease-emphasized) both;}
+  .section:nth-of-type(2){animation-delay:50ms;}
+  .section:nth-of-type(3){animation-delay:100ms;}
+  .section:nth-of-type(4){animation-delay:150ms;}
+
+  .section-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 4px;margin-bottom:12px;
+  }
+  .section-title{font:500 18px/24px 'Outfit';letter-spacing:-.005em;color:var(--md-on-surface);}
+  .section-link{
+    font:500 13px/20px 'Outfit';letter-spacing:.007em;
+    color:var(--md-primary);
+    background:transparent;border:none;cursor:pointer;padding:6px 12px;border-radius:var(--md-shape-full);
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+    display:inline-flex;align-items:center;gap:4px;font-family:inherit;
+  }
+  .section-link:hover{background:var(--md-primary-container);}
+
+  /* ========== Grouped List Card (Material You · squircle 大圆角) ========== */
+  .group-card{
+    background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-lg);
+    overflow:hidden;
+    border:1px solid var(--md-outline-variant);
+  }
+  .group-card + .group-card{margin-top:12px;}
+
+  /* List item · 安卓圆形图标 40dp + 标题 + 副标题 + chevron */
+  .litem{
+    display:grid;
+    grid-template-columns:48px 1fr auto;
+    gap:16px;align-items:center;
+    min-height:68px;
+    padding:10px 16px;
+    cursor:pointer;
+    position:relative;
+    transition:background var(--md-dur-short2) var(--md-ease-emphasized);
+    color:var(--md-on-surface);
+    font-family:inherit;
+    width:100%;text-align:left;
+    border:none;background:transparent;
+  }
+  .litem + .litem{border-top:1px solid var(--md-outline-variant);}
+  .litem::before{content:"";position:absolute;inset:0;background:var(--md-on-surface);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);pointer-events:none;}
+  .litem:hover{background:var(--md-surface-container);}
+  .litem:hover::before{opacity:var(--md-hover);}
+  .litem:active::before{opacity:var(--md-press);}
+
+  /* 圆形 40dp 图标 · 安卓风 */
+  .litem .leading-ico{
+    width:40px;height:40px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    transition:transform var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .litem:hover .leading-ico{transform:scale(1.06);}
+  .litem .leading-ico svg{width:20px;height:20px;}
+  /* 6 种语义 container 色（Material You 多色 surface） */
+  .litem.is-primary .leading-ico{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .litem.is-secondary .leading-ico{background:var(--md-secondary-container);color:var(--md-on-secondary-container);}
+  .litem.is-tertiary .leading-ico{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .litem.is-quaternary .leading-ico{background:var(--md-quaternary-container);color:var(--md-on-quaternary-container);}
+  .litem.is-success .leading-ico{background:#C8E6C9;color:#1B5E20;}
+  html[data-theme="dark"] .litem.is-success .leading-ico{background:rgba(74,222,128,.18);color:#A5D6A7;}
+  .litem.is-warn .leading-ico{background:var(--md-error-container);color:var(--md-on-error-container);}
+
+  .litem .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
+  .litem .body .l1{font:500 15px/22px 'Outfit';color:var(--md-on-surface);letter-spacing:.009em;display:flex;align-items:center;gap:6px;}
+  .litem .body .l1 .arr{color:var(--md-on-surface-variant);font-weight:400;margin:0 2px;}
+  .litem .body .l1 .target{color:var(--md-primary);}
+  .litem .body .l2{font:400 12px/16px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.025em;}
+
+  .litem .trailing{display:flex;align-items:center;gap:10px;flex-shrink:0;position:relative;z-index:1;}
+  .litem .trailing .v{font:400 13px/20px 'Outfit';color:var(--md-on-surface-variant);}
+  .litem .trailing .ok{color:var(--md-tertiary);font-weight:500;}
+  .litem .trailing .err{color:var(--md-error);font-weight:500;}
+  .litem .trailing .chev{color:var(--md-on-surface-variant);}
+
+  /* Chip · Material You assist */
+  .chip{
+    display:inline-flex;align-items:center;gap:4px;
+    height:24px;padding:0 10px;
+    background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+    border:none;border-radius:var(--md-shape-xs);
+    font:500 11px/16px 'Outfit';letter-spacing:.045em;
+    font-family:inherit;
+  }
+  .chip.solid-primary{background:var(--md-primary);color:var(--md-on-primary);}
+  .chip.solid-tertiary{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .chip.outline{background:transparent;border:1px solid var(--md-outline-variant);color:var(--md-on-surface-variant);}
+
+  /* M3 Switch · 52x32 安卓风大开关 */
+  .toggle{
+    width:52px;height:32px;border-radius:var(--md-shape-full);
+    background:var(--md-surface-container-highest);
+    border:2px solid var(--md-outline);
+    position:relative;cursor:pointer;
+    transition:all var(--md-dur-short3) var(--md-ease-spring);
+    flex-shrink:0;
+  }
+  .toggle::after{
+    content:"";position:absolute;top:4px;left:4px;
+    width:16px;height:16px;border-radius:var(--md-shape-full);
+    background:var(--md-outline);
+    transition:all var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .toggle.on{background:var(--md-primary);border-color:var(--md-primary);}
+  .toggle.on::after{left:24px;background:var(--md-on-primary);width:24px;height:24px;top:2px;}
+
+  /* ========== Data summary card (Material You · 多色 surface) ========== */
+  .data-card{
+    background:linear-gradient(135deg, var(--md-quaternary-container) 0%, var(--md-tertiary-container) 100%);
+    border-radius:var(--md-shape-lg);
+    padding:20px;
+    margin-bottom:12px;
+    border:1px solid var(--md-outline-variant);
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+    position:relative;overflow:hidden;
+  }
+  html[data-theme="dark"] .data-card{
+    background:linear-gradient(135deg, rgba(69,67,104,.4) 0%, rgba(90,65,0,.4) 100%);
+  }
+  .data-card::after{
+    content:"";position:absolute;right:-30px;top:-30px;
+    width:140px;height:140px;border-radius:var(--md-shape-full);
+    background:radial-gradient(circle,rgba(255,255,255,.18) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .data-card .stat{display:flex;flex-direction:column;gap:2px;position:relative;z-index:1;}
+  .data-card .stat .v{font:600 26px/32px 'Outfit';color:var(--md-on-quaternary-container);letter-spacing:-.015em;}
+  html[data-theme="dark"] .data-card .stat .v{color:var(--md-on-quaternary-container);}
+  .data-card .stat .l{font:500 11px/14px 'Outfit';color:var(--md-on-quaternary-container);opacity:.78;letter-spacing:.045em;text-transform:uppercase;}
+
+  /* ========== Material You 圆形 Icon Button grid ========== */
+  .icon-grid{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  }
+  .icon-tile{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:18px 12px 14px;
+    background:var(--md-surface-container-low);
+    border:1px solid transparent;
+    border-radius:var(--md-shape-lg);
+    cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-emphasized);
+    position:relative;overflow:hidden;
+    font-family:inherit;
+  }
+  .icon-tile::before{content:"";position:absolute;inset:0;border-radius:var(--md-shape-lg);background:var(--md-primary);opacity:0;transition:opacity var(--md-dur-short2) var(--md-ease-emphasized);pointer-events:none;}
+  .icon-tile:hover{background:var(--md-surface-container);border-color:var(--md-outline-variant);}
+  .icon-tile:hover::before{opacity:var(--md-hover);}
+  .icon-tile:active::before{opacity:var(--md-press);}
+  .icon-tile .ico{
+    width:56px;height:56px;border-radius:var(--md-shape-full);  /* 56dp 圆形 · 安卓 Material You */
+    display:flex;align-items:center;justify-content:center;
+    transition:transform var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .icon-tile:hover .ico{transform:scale(1.08);}
+  .icon-tile .ico svg{width:26px;height:26px;}
+  .icon-tile .lbl{font:500 13px/18px 'Outfit';color:var(--md-on-surface);letter-spacing:.009em;position:relative;}
+  .icon-tile .sub{font:400 11px/14px 'JetBrains Mono';color:var(--md-on-surface-variant);letter-spacing:.045em;position:relative;}
+
+  /* 6 种语义色（M3 多色 surface） */
+  .icon-tile.q1 .ico{background:var(--md-primary-container);color:var(--md-on-primary-container);}
+  .icon-tile.q2 .ico{background:var(--md-secondary-container);color:var(--md-on-secondary-container);}
+  .icon-tile.q3 .ico{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);}
+  .icon-tile.q4 .ico{background:var(--md-quaternary-container);color:var(--md-on-quaternary-container);}
+  .icon-tile.q5 .ico{background:#C8E6C9;color:#1B5E20;}
+  html[data-theme="dark"] .icon-tile.q5 .ico{background:rgba(74,222,128,.18);color:#A5D6A7;}
+  .icon-tile.q6 .ico{background:#FFCDD2;color:#B71C1C;}
+  html[data-theme="dark"] .icon-tile.q6 .ico{background:rgba(255,107,122,.18);color:#FFB4AB;}
+
+  /* ========== NavigationBar (M3 安卓范底部导航) ========== */
+  .nav-bar{
+    height:80px;flex:0 0 80px;
+    display:grid;grid-template-columns:repeat(4,1fr);
+    background:var(--md-surface-container);
+    border-top:1px solid var(--md-outline-variant);
+    padding:0 8px 12px;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;
+    background:transparent;border:none;
+    cursor:pointer;
+    color:var(--md-on-surface-variant);
+    font:500 11px/14px 'Outfit';letter-spacing:.045em;
+    padding:8px 12px;
+    border-radius:var(--md-shape-md);
+    position:relative;
+    transition:color var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .nav-item .pill{
+    width:64px;height:32px;border-radius:var(--md-shape-full);
+    display:flex;align-items:center;justify-content:center;
+    transition:all var(--md-dur-short3) var(--md-ease-spring);
+  }
+  .nav-item .pill svg{width:22px;height:22px;}
+  .nav-item:hover{color:var(--md-on-surface);}
+  .nav-item.active .pill{background:var(--md-secondary-container);}
+  .nav-item.active{color:var(--md-on-surface);}
+  .nav-item.active .pill svg{color:var(--md-on-secondary-container);}
+
+  /* ========== state / theme switch ========== */
+  .state-switch{
+    position:absolute;top:18px;right:18px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .state-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .state-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  .theme-switch{
+    position:absolute;top:18px;left:18px;z-index:10;
+    display:flex;gap:3px;background:var(--md-surface-container-low);
+    border-radius:var(--md-shape-full);padding:3px;
+    border:1px solid var(--md-outline-variant);
+  }
+  .theme-switch button{
+    border:none;background:transparent;font-family:inherit;
+    font:500 10.5px/16px 'Outfit';letter-spacing:.045em;
+    color:var(--md-on-surface-variant);padding:4px 10px;border-radius:var(--md-shape-full);cursor:pointer;
+    transition:all var(--md-dur-short2) var(--md-ease-emphasized);
+  }
+  .theme-switch button.on{background:var(--md-surface-container-highest);color:var(--md-on-surface);}
+
+  /* ========== Compare ========== */
+  .compare{max-width:1180px;margin:36px auto 0;padding:0 40px 80px;}
+  .compare h3{font:600 14px/20px 'Outfit';margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .compare h3 .tag{font:500 10px/16px 'Outfit';letter-spacing:.045em;padding:2px 7px;border-radius:var(--md-shape-xs);}
+  .compare h3 .tag.v9{background:var(--md-surface-container);color:var(--md-on-surface-variant);}
+  .compare h3 .tag.v10{background:var(--md-quaternary-container);color:var(--md-on-quaternary-container);}
+  .compare .lead{font:400 12.5px/20px 'Outfit';color:var(--md-on-surface-variant);margin:0 0 14px;}
+  .compare .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .compare .col{border:1px solid var(--md-outline-variant);border-radius:var(--md-shape-lg);padding:16px;background:var(--md-surface-container-lowest);}
+  .compare .col ul{margin:0;padding-left:18px;font:400 12.5px/22px 'Outfit';color:var(--md-on-surface-variant);}
+  .compare .col li b{color:var(--md-on-surface);font-weight:600;}
+
+  @media(max-width:880px){
+    .intro{padding:32px 24px 16px;}
+    .stage{padding:0 24px 24px;}
+    .compare .grid{grid-template-columns:1fr;}
+    .icon-grid{grid-template-columns:repeat(2,1fr);}
+    .data-card{grid-template-columns:repeat(2,1fr);}
+    .quick-chips{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<section class="intro">
+  <div class="eyebrow">首页 v9 → v10 · 安卓 Material You 风</div>
+  <h1>v9 像 iOS 蓝色 · v10 改成 Android 14/15 Material You</h1>
+  <p class="lede">v9 浅蓝反色 + 圆角矩形图标 + 蓝色 chip —— 跟 iOS 17/18 系统设置确实像。v10 改成<b>安卓 Material You</b>：
+- <b>圆形图标</b>（40dp · 56dp）取代圆角矩形（iOS 用 rounded-md，安卓用 circle）
+- <b>Quaternary color</b>（紫色 · Material You 新增）做数据卡渐变
+- <b>6 色多 surface</b>（primary/secondary/tertiary/quaternary/success/warn · Material You 多彩）
+- <b>Squircle 大圆角</b>（32-40dp · 安卓 14 卡片比 iOS 16dp 圆角大）
+- <b>Quick Settings 顶部 chip</b>（4 个圆角色状态块 · 安卓 Quick Settings 范）
+- <b>底部 NavigationBar</b>（80dp · 安卓范标志）</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head">
+    <h2>新版首页 · 安卓 Material You 范</h2>
+    <div class="hint">左上切主题 · 右上切状态 · hover 任意行看 State Layer</div>
+  </div>
+
+  <div class="window" id="window">
+
+    <div class="theme-switch" id="themeSwitch">
+      <button class="on" data-theme="light">浅色</button>
+      <button data-theme="dark">深色</button>
+    </div>
+
+    <div class="state-switch" id="stateSwitch">
+      <button class="on" data-s="OK">引擎 OK</button>
+      <button data-s="LIVE">正在听</button>
+      <button data-s="ERR">引擎报错</button>
+    </div>
+
+    <header class="top-app-bar">
+      <button class="tab-icon-btn" title="菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="tab-brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="name">一声</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="tab-icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button class="tab-icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        <button class="tab-icon-btn" title="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+    </header>
+
+    <div class="scroll">
+
+      <!-- ========== Hero Card (Material You Expressive · squircle + 紫蓝渐变) ========== -->
+      <div class="hero">
+        <div class="leading" style="position:relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          <div class="status-dot" id="heroStatusDot" style="background:var(--md-tertiary);"></div>
+        </div>
+        <div class="body">
+          <div class="kicker" id="heroKicker">准备好了</div>
+          <div class="title" id="heroTitle">当前可用，可以开始说话</div>
+          <div class="sub" id="heroSub">Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b></div>
+        </div>
+        <div class="actions">
+          <button class="btn-filled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span>测试发送</span>
+          </button>
+          <button class="btn-tonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>新建习惯</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ========== Quick Settings · 4 个圆角色状态块 ========== -->
+      <div class="quick-chips">
+        <button class="qchip ok">
+          <span class="d"></span>
+          <span class="lbl">Vosk · 在线</span>
+        </button>
+        <button class="qchip live" id="qsChip2">
+          <span class="d"></span>
+          <span class="lbl" id="qsChip2Text">麦克风 · OK</span>
+        </button>
+        <button class="qchip neutral">
+          <span class="d"></span>
+          <span class="lbl">HUD · 开</span>
+        </button>
+        <button class="qchip neutral">
+          <span class="d"></span>
+          <span class="lbl">默认习惯</span>
+        </button>
+      </div>
+
+      <!-- ========== Section 1: 按键速查 ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">按键速查</h3>
+          <button class="section-link">管理 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <div class="group-card">
+          <button class="litem is-primary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">音量 + <span class="arr">→</span> <span class="target">RAlt</span></span>
+              <span class="l2">长按开 · 松开发送 · 当前窗口</span>
+            </span>
+            <span class="trailing">
+              <span class="chip solid-tertiary">默认</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem is-quaternary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="6"/><line x1="12" y1="7" x2="12" y2="11"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">侧键 ↑ <span class="arr">→</span> <span class="target">Ctrl+Shift</span></span>
+              <span class="l2">单击开 · 自动输入 · 微信</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">微信</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem is-tertiary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">Ctrl + I <span class="arr">→</span> <span class="target">Cmd + I</span></span>
+              <span class="l2">长按开 · 自动输入 · Cursor</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">Cursor</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem is-secondary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">唤醒词「<span class="target">开始输入</span>」</span>
+              <span class="l2">语音唤起 · Vosk 离线识别</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">语音</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem is-secondary">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-9 4 18 3-9h4"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">结束词「<span class="target">结束输入</span>」</span>
+              <span class="l2">停止听写 · 自动发送</span>
+            </span>
+            <span class="trailing">
+              <span class="chip">语音</span>
+              <span class="toggle on"></span>
+            </span>
+          </button>
+
+          <button class="litem" style="opacity:.55;">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">滚轮中键 <span class="arr">→</span> <span class="target">F2</span></span>
+              <span class="l2">单击开 · 自动输入 · Typora</span>
+            </span>
+            <span class="trailing">
+              <span class="chip outline">停用</span>
+              <span class="toggle"></span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ========== Section 2: 最近语音输入 · Quaternary 多色数据卡 ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">最近语音输入</h3>
+          <button class="section-link">全部 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+
+        <!-- 数据卡 · Quaternary + Tertiary 多色渐变 -->
+        <div class="data-card">
+          <div class="stat">
+            <span class="v">5</span>
+            <span class="l">今日已录入</span>
+          </div>
+          <div class="stat">
+            <span class="v">4</span>
+            <span class="l">成功发送</span>
+          </div>
+          <div class="stat">
+            <span class="v">1</span>
+            <span class="l">识别失败</span>
+          </div>
+          <div class="stat">
+            <span class="v">2.4s</span>
+            <span class="l">平均时长</span>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <button class="litem is-success">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"今天天气怎么样"</span>
+              <span class="l2">默认 · 长按 音量+</span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:24</span>
+              <span class="v ok t-label-m">已发送</span>
+              <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+
+          <button class="litem is-success">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"把这段话发给张总"</span>
+              <span class="l2">默认 · 长按 音量+</span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:18</span>
+              <span class="v ok t-label-m">已发送</span>
+              <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+
+          <button class="litem is-warn">
+            <span class="leading-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </span>
+            <span class="body">
+              <span class="l1">"打开 Cursor 并新建项目"</span>
+              <span class="l2">Cursor · Ctrl+I · 应用未聚焦</span>
+            </span>
+            <span class="trailing">
+              <span class="v t-mono">10:12</span>
+              <span class="v err t-label-m">失败</span>
+              <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ========== Section 3: 快捷入口 · 圆形大图标网格 6 色 ========== -->
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">快捷入口</h3>
+        </div>
+
+        <div class="icon-grid">
+          <button class="icon-tile q1">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </span>
+            <span class="lbl">唤醒词</span>
+            <span class="sub">5 个</span>
+          </button>
+          <button class="icon-tile q3">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </span>
+            <span class="lbl">识别引擎</span>
+            <span class="sub">Vosk</span>
+          </button>
+          <button class="icon-tile q4">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </span>
+            <span class="lbl">外观主题</span>
+            <span class="sub">清澈</span>
+          </button>
+          <button class="icon-tile q2">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+            </span>
+            <span class="lbl">习惯管理</span>
+            <span class="sub">3 个</span>
+          </button>
+          <button class="icon-tile q5">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </span>
+            <span class="lbl">运行状态</span>
+            <span class="sub">诊断</span>
+          </button>
+          <button class="icon-tile q6">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span class="lbl">备份恢复</span>
+            <span class="sub">配置</span>
+          </button>
+          <button class="icon-tile q2">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M16 15h5v5h-5z"/></svg>
+            </span>
+            <span class="lbl">情景模式</span>
+            <span class="sub">一般</span>
+          </button>
+          <button class="icon-tile q5">
+            <span class="ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <span class="lbl">帮助教程</span>
+            <span class="sub">F1</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ========== Bottom NavigationBar (M3 安卓范) ========== -->
+    <nav class="nav-bar">
+      <button class="nav-item active">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </span>
+        首页
+      </button>
+      <button class="nav-item">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        历史
+      </button>
+      <button class="nav-item">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+        </span>
+        习惯
+      </button>
+      <button class="nav-item">
+        <span class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
+        设置
+      </button>
+    </nav>
+
+  </div>
+</section>
+
+<section class="compare">
+  <div class="grid">
+    <div class="col">
+      <h3><span class="tag v9">v9 像 iOS</span> 浅蓝反色 + 圆角矩形</h3>
+      <p class="lead">v9 用 primaryContainer 浅蓝做 Hero 反色，36x36 rounded-md 图标，蓝色 chip 和 chip-style chip，跟 iOS 17/18 系统设置"蓝色"风太像了。</p>
+      <ul>
+        <li><b>单一蓝色 surface</b>：所有容器都是 primaryContainer 浅蓝</li>
+        <li><b>圆角矩形图标</b>：rounded-md 12dp · iOS 风</li>
+        <li><b>小圆角卡片</b>：16dp · iOS 风</li>
+        <li>没有底部导航 · 没有 Quick Settings · 没有 Material You 派生色</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3><span class="tag v10">v10 安卓 Material You</span> 多彩 surface + 圆形 + 底部导航</h3>
+      <p class="lead">v10 真正按 Android 14/15 Material You 设计：派生 Quaternary 紫色（Material You 新增）、6 色多 surface（primary/secondary/tertiary/quaternary/success/warn）、40-56dp 圆形图标、squircle 大圆角（32dp+）、Quick Settings 顶部状态 chip、底部 NavigationBar。</p>
+      <ul>
+        <li><b>Quaternary 紫色</b>（Material You 新增）做 Hero 渐变和数据卡渐变</li>
+        <li><b>6 色多 surface</b>：primary / secondary / tertiary / quaternary / success / warn，每个 list item 图标一种色</li>
+        <li><b>40-56dp 圆形图标</b>取代圆角矩形（Material You Expressive 标志）</li>
+        <li><b>Squircle 大圆角</b>：32-40dp 卡片（安卓比 iOS 大一倍）</li>
+        <li><b>Quick Settings 顶部 4 chip</b>：引擎/麦克风/HUD/当前习惯，圆角色状态块</li>
+        <li><b>M3 NavigationBar 80dp 底部</b>：4 个 nav item（首页/历史/习惯/设置），pill 高亮 active</li>
+        <li><b>M3 Switch 52x32 大开关</b>取代 44x24（安卓风更大）</li>
+        <li><b>Spring easing</b>（cubic-bezier(0.34, 1.56, 0.64, 1)）做图标 hover 缩放</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const heroStatusDot = $('#heroStatusDot');
+  const heroKicker = $('#heroKicker');
+  const heroTitle = $('#heroTitle');
+  const heroSub = $('#heroSub');
+  const qsChip2 = $('#qsChip2');
+  const qsChip2Text = $('#qsChip2Text');
+
+  const STATES = {
+    OK:{kicker:'准备好了',title:'当前可用，可以开始说话',sub:'Vosk 待命 · 麦克风 OK · 当前窗口 · <b>「默认」习惯</b>',dot:'var(--md-tertiary)',qs2Class:'ok',qs2Text:'麦克风 · OK'},
+    LIVE:{kicker:'正在听 · 唤醒词触发',title:'听见了唤醒词 · 继续说话',sub:'说出 <b>「开始输入」</b> 或继续刚才的话',dot:'var(--md-primary)',qs2Class:'live',qs2Text:'麦克风 · 唤醒中'},
+    ERR:{kicker:'需要关注',title:'检测不到声音 · 检查麦克风',sub:'Vosk 不可用 · 麦克风无信号 · 请检查权限',dot:'var(--md-error)',qs2Class:'err',qs2Text:'麦克风 · 异常'}
+  };
+  $$('#stateSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#stateSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      const s = STATES[btn.dataset.s];
+      heroKicker.textContent = s.kicker;
+      heroTitle.textContent = s.title;
+      heroSub.innerHTML = s.sub;
+      heroStatusDot.style.background = s.dot;
+      qsChip2.className = 'qchip ' + s.qs2Class;
+      qsChip2Text.textContent = s.qs2Text;
+    });
+  });
+
+  $$('#themeSwitch button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      $$('#themeSwitch button').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    });
+  });
+
+  document.querySelectorAll('.toggle').forEach(t=>{
+    t.addEventListener('click',e=>{
+      e.stopPropagation();
+      t.classList.toggle('on');
+    });
+  });
+
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.addEventListener('click',()=>{
+      document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+      n.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

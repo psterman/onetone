@@ -24,6 +24,9 @@
       }
       if(msg.type==='mvp_init'){
         hooks.applyMvpInit(msg);
+        if(global.OneToneState&&global.OneToneState.runtime){
+          global.OneToneState.runtime.appStartedAt=Date.now();
+        }
       }
       if(msg.type==='mvp_saved'&&msg.ok){
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
@@ -57,6 +60,12 @@
         hooks.onboardEmit('trigger_test_fired',msg);
       }
       if(msg.type==='mvp_trigger_compat_result'){
+        if(global.OneToneHomeWorkbenchCompat){
+          global.OneToneHomeWorkbenchCompat.store(msg.mappingId,msg);
+        }
+        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.onCompatResult){
+          global.OneToneHomeWorkbench.onCompatResult(msg);
+        }
         if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.onModeCompatResult){
           global.OneToneHabitTriggerSetup.onModeCompatResult(msg);
         }

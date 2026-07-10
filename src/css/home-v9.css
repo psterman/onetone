@@ -689,8 +689,23 @@ html[data-theme="dark"] .vp-hero-live{
 
 /* ========== 12. v9 首页布局 · 解耦旧版双卡片 ========== */
 
+.home-zone.home-workbench-active .home-advanced{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+  display:block !important;
+}
+
 .home-zone.home-v9-active .home-status-summary,
-.home-zone.home-v9-active .home-hero{
+.home-zone.home-v9-active .home-hero,
+.home-zone.home-workbench-active .home-status-summary,
+.home-zone.home-workbench-active .home-hero{
   display:none !important;
 }
 

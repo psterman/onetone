@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VoicePilot · Home Redesign v16 · 回归·精简</title>
+<style>
+:root{
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface-soft:#FAFAFA;
+  --border:#E5E5E5;
+  --border-strong:#D4D4D4;
+  --primary:#1E6FF1;
+  --primary-strong:#155EE0;
+  --primary-soft:#DCEAFF;
+  --text:#171717;
+  --text-muted:#737373;
+  --text-faint:#A3A3A3;
+  --success:#10B981;
+  --cyan:#06B6D4;
+  --radius-card:20px;
+  --radius-row:14px;
+}
+[data-theme="dark"]{
+  --bg:#0F0F11;
+  --surface:#171717;
+  --surface-soft:#1F1F1F;
+  --border:#262626;
+  --border-strong:#404040;
+  --primary:#4A8AFF;
+  --primary-strong:#6FA5FF;
+  --primary-soft:#1F3A6B;
+  --text:#FAFAFA;
+  --text-muted:#A3A3A3;
+  --text-faint:#737373;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+  min-height:100vh;
+}
+.page{
+  max-width:1080px;margin:0 auto;
+  padding:48px 32px 64px;
+}
+.eyebrow{
+  font:600 11px/16px 'OutFit';letter-spacing:.18em;text-transform:uppercase;
+  color:var(--primary);margin-bottom:14px;
+}
+h1{font:600 28px/36px 'OutFit';letter-spacing:-.02em;margin:0 0 12px;color:var(--text)}
+.lede{font:400 14px/22px 'OutFit';color:var(--text-muted);max-width:680px;margin:0 0 36px}
+
+/* ① 状态条 */
+.status-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-card);
+  margin-bottom:18px;
+  box-shadow:0 4px 16px rgba(15,23,42,.04);
+}
+.status-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;
+  font:500 12px/16px 'OutFit';
+  background:rgba(16,185,129,.10);color:#047857;
+}
+[data-theme="dark"] .status-pill{ color:#34D399;background:rgba(16,185,129,.14); }
+.status-pill.neutral{ background:var(--surface-soft);color:var(--text-muted); }
+.status-pill .dot{ width:7px;height:7px;border-radius:999px;background:currentColor; }
+.status-pill.neutral .dot{ background:var(--text-faint); }
+.status-actions{ margin-left:auto; display:flex; gap:4px;}
+.status-actions button{
+  border:none;background:transparent;color:var(--text-muted);
+  padding:6px 12px;border-radius:999px;font:500 12px/16px 'OutFit';
+  cursor:pointer;
+}
+.status-actions button:hover{ background:var(--surface-soft);color:var(--text); }
+
+/* ② 搜索条 */
+.search{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-row);
+  margin-bottom:24px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.search:focus-within{
+  border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(30,111,241,.12);
+}
+.search svg{ width:18px;height:18px;color:var(--text-faint); }
+.search input{
+  flex:1;border:none;background:transparent;
+  font:400 14px/20px 'OutFit';color:var(--text);outline:none;
+}
+.search input::placeholder{ color:var(--text-faint); }
+.search kbd{
+  padding:4px 8px;border:1px solid var(--border);
+  border-radius:6px;font:500 11px/16px 'JetBrains Mono',monospace;
+  color:var(--text-muted);background:var(--surface-soft);
+}
+
+/* ③ Hero 卡：Raycast 风骨架 */
+.hero{
+  border-radius:var(--radius-card);
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:24px;
+  margin-bottom:28px;
+  box-shadow:0 4px 14px rgba(15,23,42,.04);
+}
+.hero-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.trigger-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;
+  font:500 12px/16px 'OutFit';
+  background:var(--success);color:#fff;
+}
+.trigger-pill .dot{ width:6px;height:6px;border-radius:999px;background:currentColor; }
+.icon-btn{
+  width:34px;height:34px;border-radius:10px;
+  border:1px solid transparent;background:transparent;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-muted);cursor:pointer;
+}
+.icon-btn:hover{ background:var(--surface-soft);color:var(--text); }
+
+.hero-main{
+  display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;
+  margin-bottom:18px;
+}
+.avatar{
+  width:64px;height:64px;border-radius:18px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--primary);
+  box-shadow:0 8px 20px rgba(30,111,241,.32),
+             inset 0 -4px 10px rgba(0,0,0,.10),
+             inset 0 2px 8px rgba(255,255,255,.25);
+  position:relative;
+}
+.avatar svg{ width:28px;height:28px;color:#fff; }
+.avatar .status{
+  position:absolute;right:-3px;bottom:-3px;
+  width:16px;height:16px;border-radius:999px;
+  background:var(--success);border:3px solid var(--surface);
+}
+
+.hero-info h2{
+  font:600 20px/28px 'OutFit';letter-spacing:-.01em;
+  margin:0 0 6px;color:var(--text);
+}
+.hero-meta{
+  display:inline-flex;align-items:center;gap:8px;
+  font:400 13px/18px 'OutFit';color:var(--text-muted);
+}
+.hero-meta .pip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px;border-radius:999px;
+  background:var(--surface-soft);font:500 12px/16px 'OutFit';
+}
+.hero-meta .pip.bordered{
+  background:var(--primary);color:#fff;
+}
+.hero-meta .key{
+  color:var(--text-faint);font:500 11px/14px 'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.06em;margin-right:2px;
+}
+.hero-meta .dot-sep{ width:3px;height:3px;border-radius:999px;background:var(--text-faint); }
+
+.waveform{
+  height:36px;display:flex;align-items:center;justify-content:center;gap:3px;
+  margin:14px 0 14px;
+}
+.waveform span{ width:4px;border-radius:3px;background:var(--cyan);display:inline-block; }
+
+.btn-row{ display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 20px;border-radius:12px;font:600 14px/20px 'OutFit';
+  border:1px solid transparent;cursor:pointer;transition:all .15s;
+}
+.btn-primary{
+  background:var(--primary);color:#fff;
+  box-shadow:0 8px 20px rgba(30,111,241,.30);
+}
+.btn-primary:hover{ background:var(--primary-strong); }
+.btn-secondary{
+  background:var(--surface-soft);color:var(--text-muted);border-color:var(--border);
+}
+.btn-secondary:hover{ background:#EEEEEF;color:var(--text); }
+[data-theme="dark"] .btn-secondary:hover{ background:#262626;color:var(--text); }
+.btn svg{ width:14px;height:14px; }
+
+/* ④ 快捷动作 */
+.section-label{
+  font:600 11px/14px 'JetBrains Mono',monospace;
+  color:var(--text-faint);text-transform:uppercase;
+  letter-spacing:.10em;margin:8px 0 12px;
+}
+.section-label .hint{
+  font:400 11px/14px 'OutFit';color:var(--text-faint);
+  text-transform:none;letter-spacing:0;margin-left:8px;
+}
+.quick{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  margin-bottom:28px;
+}
+.quick-tile{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:18px 12px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-row);
+  font:500 13px/18px 'OutFit';color:var(--text);
+  cursor:pointer;transition:all .15s;
+}
+.quick-tile:hover{ background:var(--surface-soft); }
+.quick-tile:hover .quick-icon{ color:var(--primary);background:var(--primary-soft); }
+.quick-icon{
+  width:36px;height:36px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--surface-soft);color:var(--text-muted);
+  transition:all .15s;
+}
+.quick-icon svg{ width:18px;height:18px; }
+
+/* ⑤ 配置摘要 */
+.summary{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  margin-bottom:8px;
+}
+.summary-tile{
+  display:flex;flex-direction:column;gap:6px;
+  padding:14px 16px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-row);
+  transition:background .15s;
+}
+.summary-tile:hover{ background:var(--surface-soft); }
+.summary-tile .label{
+  font:500 11px/14px 'JetBrains Mono',monospace;
+  color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em;
+  display:flex;align-items:center;gap:6px;
+}
+.summary-tile .label .dot{
+  width:6px;height:6px;border-radius:999px;background:var(--success);
+}
+.summary-tile .value{
+  font:500 13px/18px 'OutFit';color:var(--text);
+}
+
+/* 主题切换 */
+.theme-switch{
+  position:fixed;top:24px;right:24px;
+  display:flex;gap:4px;padding:4px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:999px;z-index:10;
+  box-shadow:0 4px 12px rgba(15,23,42,.06);
+}
+.theme-switch button{
+  border:none;background:transparent;padding:6px 14px;
+  border-radius:999px;font:500 12px/16px 'OutFit';color:var(--text-muted);
+  cursor:pointer;
+}
+.theme-switch button.on{ background:var(--surface-soft);color:var(--text); }
+
+@media(max-width:760px){
+  .page{padding:32px 20px;}
+  .quick{grid-template-columns:repeat(2,1fr);}
+  .summary{grid-template-columns:repeat(2,1fr);}
+  .hero-main{grid-template-columns:auto 1fr;row-gap:12px;}
+  .avatar{grid-row:span 2;}
+}
+</style>
+</head>
+<body>
+
+<div class="theme-switch" id="themeSwitch">
+  <button class="on" data-theme="light">浅色</button>
+  <button data-theme="dark">深色</button>
+</div>
+
+<div class="page">
+
+  <div class="eyebrow">VoicePilot · Home Redesign v16 · 回归 · 精简</div>
+  <h1>回归 Raycast 风骨架 · 8 个元素替代 13 个</h1>
+  <p class="lede">保留 hero 卡 / 快捷网格 / 配置摘要三段式骨架，删掉"启动台巨型按钮""冗余状态""拼接胶囊""折叠详情"。每一段都精简了，但工具感还在。</p>
+
+  <!-- ① 状态条：聚合为单行 -->
+  <header class="status-bar">
+    <span class="status-pill"><span class="dot"></span>已就绪</span>
+    <span class="status-pill neutral"><span class="dot"></span>语音引擎</span>
+    <span class="status-pill neutral"><span class="dot"></span>麦克风 OK</span>
+    <div class="status-actions">
+      <button>设置</button>
+    </div>
+  </header>
+
+  <!-- ② 搜索条 -->
+  <section class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="搜索命令、习惯或设置..."/>
+    <kbd>Ctrl K</kbd>
+  </section>
+
+  <!-- ③ Hero 卡：紧凑版 -->
+  <section class="hero">
+    <div class="hero-top">
+      <span class="trigger-pill"><span class="dot"></span>当前触发·已就绪</span>
+      <button class="icon-btn" aria-label="编辑">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="hero-main">
+      <div class="avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        <span class="status"></span>
+      </div>
+      <div class="hero-info">
+        <h2>音量减·单击触发</h2>
+        <div class="hero-meta">
+          <span class="pip bordered"><span class="key">触发</span>单击</span>
+          <span class="dot-sep"></span>
+          <span>按住·发送到 <b>当前窗口</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="waveform" aria-hidden="true">
+      <span style="height:10%"></span><span style="height:14%"></span><span style="height:8%"></span>
+      <span style="height:12%"></span><span style="height:18%"></span><span style="height:22%"></span>
+      <span style="height:14%"></span><span style="height:10%"></span><span style="height:16%"></span>
+      <span style="height:24%"></span><span style="height:30%"></span><span style="height:20%"></span>
+      <span style="height:12%"></span><span style="height:8%"></span><span style="height:14%"></span>
+      <span style="height:18%"></span><span style="height:12%"></span><span style="height:8%"></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        测试发送
+      </button>
+      <button class="btn btn-secondary">结束说话</button>
+    </div>
+  </section>
+
+  <!-- ④ 快捷动作：4 个 → 4 个 -->
+  <div class="section-label">快捷动作<span class="hint">常用 4 个 · 其它进设置</span></div>
+  <section class="quick">
+    <button class="quick-tile">
+      <span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+      <span>测试发送</span>
+    </button>
+    <button class="quick-tile">
+      <span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span>新建习惯</span>
+    </button>
+    <button class="quick-tile">
+      <span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+      <span>切换模型</span>
+    </button>
+    <button class="quick-tile">
+      <span class="quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg></span>
+      <span>打开日志</span>
+    </button>
+  </section>
+
+  <!-- ⑤ 配置摘要 4 卡：作为"工作摘要"保留 -->
+  <div class="section-label">当前配置<span class="hint">点击展开详情</span></div>
+  <section class="summary">
+    <div class="summary-tile">
+      <span class="label"><span class="dot"></span>语音模式</span>
+      <span class="value">系统识别·等待唤醒词</span>
+    </div>
+    <div class="summary-tile">
+      <span class="label"><span class="dot"></span>输入方式</span>
+      <span class="value">单击触发</span>
+    </div>
+    <div class="summary-tile">
+      <span class="label"><span class="dot"></span>当前窗口</span>
+      <span class="value">当前窗口</span>
+    </div>
+    <div class="summary-tile">
+      <span class="label"><span class="dot"></span>输入方案</span>
+      <span class="value">OneTone·音量减</span>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const themeSwitch=document.getElementById('themeSwitch');
+themeSwitch.addEventListener('click',e=>{
+  const t=e.target.dataset.theme;if(!t)return;
+  document.documentElement.dataset.theme=t;
+  themeSwitch.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.theme===t));
+});
+</script>
+</body>
+</html>

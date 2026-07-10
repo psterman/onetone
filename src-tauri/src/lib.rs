@@ -247,7 +247,7 @@ pub fn run() {
             if let Err(err) = app_icon::apply_window_icon(&window) {
                 app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));
             } else {
-                app_log::log_line(&app_state, "startup", "window icon set (256px)");
+                app_log::log_line(&app_state, "startup", "window icon set (embedded ico)");
             }
 
             let _backdrop_mode = backdrop::apply_native_backdrop(&window, None);
@@ -583,6 +583,7 @@ pub fn run() {
             ipc::cmd_voice_end_set_phrases,
             ipc::cmd_voice_end_test_stop,
             ipc::cmd_voice_end_ui_end,
+            ipc::cmd_voice_end_ui_cancel,
             ipc::cmd_voice_end_test_commit,
             ipc::cmd_update_check,
             ipc::cmd_update_install,

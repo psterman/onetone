@@ -144,14 +144,12 @@ def write_ico_bmp(path: Path, frames: list[Image.Image]) -> None:
 
 
 def generate_ico(master: Image.Image) -> None:
-    """BMP frames, 256px listed first — better Windows taskbar / shell icon selection."""
-    sizes_desc = tuple(sorted(ICO_SIZES, reverse=True))
-    frames = [
-        resize_variant(master, size, sharpen=size <= 48) for size in sizes_desc
-    ]
+    """BMP frames; 32px first for Tauri dev default_window_icon (uses ICO entry[0])."""
+    sizes_asc = tuple(sorted(ICO_SIZES))
+    frames = [resize_variant(master, size, sharpen=size <= 48) for size in sizes_asc]
     out = ICONS_DIR / "icon.ico"
     write_ico_bmp(out, frames)
-    print(f"Wrote {out} BMP, order: {', '.join(str(s) for s in sizes_desc)}")
+    print(f"Wrote {out} BMP, order: {', '.join(str(s) for s in sizes_asc)}")
 
 
 def generate_windows_export(master: Image.Image) -> None:

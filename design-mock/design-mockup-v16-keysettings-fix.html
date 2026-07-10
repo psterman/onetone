@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1600" />
+<title>voice-pilot · 按键设置 · v16 · 问题修复版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   voice-pilot · v16 · 修复版
+   基于 v15（design-mockup-v15-keysettings.html）迭代
+   主要修复：
+   ① 文案错字（"跳起""用在哪此程序""说漏"）
+   ② 触发卡空壳 —— 加"测试一下"+ 冲突提示
+   ③ 识别卡清晰度 —— "右 Alt"改成明确"目标键" + 引擎选择
+   ④ 收尾卡语言 —— "延迟/取消窗口"改口语化文案
+   ⑤ 状态语义 —— 工作流列表加"已保存/草稿"徽章
+   ⑥ "应用快捷键"与"适用程序"去重
+   ⑦ 提示信息 —— 顶部增加"音量键可能冲突"提示
+   ============================================================ */
+:root{
+  --bg:            #F5F5F7;
+  --surface:       #FFFFFF;
+  --surface-2:     #FBFBFD;
+  --surface-3:     #F4F4F6;
+  --surface-4:     #ECECEE;
+
+  --text:          #1c1c1e;
+  --text-2:        #6b6b70;
+  --text-3:        #a1a1a6;
+
+  --border:        #ECECEE;
+  --border-strong: #DCDCE0;
+
+  --brand:         #2A9CC4;
+  --brand-2:       #1F86AB;
+  --brand-soft:    rgba(42,156,196,.10);
+  --brand-glow:    rgba(42,156,196,.35);
+
+  --success:       #2BB673;
+  --success-soft:  rgba(43,182,115,.10);
+  --warn:          #E8930C;
+  --warn-soft:     rgba(232,147,12,.10);
+  --error:         #E55353;
+
+  --r-card:        12px;
+  --r-stage:       14px;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ background:var(--bg); color:var(--text); font-family:'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing:antialiased; }
+body{ padding:32px 28px 80px; }
+
+/* ============================================================
+   页面标题 · 主词统一为「按键设置」
+   ============================================================ */
+.page-head{
+  max-width:1620px; margin:0 auto 22px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:32px;
+}
+.page-head .crumbs{
+  font-size:11px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+  margin-bottom:4px;
+  display:flex; align-items:center; gap:6px;
+}
+.page-head .crumbs .sep{ color:var(--text-3); }
+.page-head h1{
+  font-size:24px; font-weight:700; letter-spacing:-.02em; color:var(--text);
+}
+.page-head h1 em{ font-style:normal; color:var(--brand); }
+.page-head .sub{
+  font-size:12.5px; color:var(--text-2); max-width:540px; line-height:1.55;
+  margin-top:6px;
+}
+.page-head .meta{
+  display:flex; gap:18px;
+  font-size:11.5px; color:var(--text-3);
+}
+.page-head .meta b{ color:var(--text); font-weight:600; }
+
+/* ============================================================
+   v16 新增：顶部"提示条"
+   把 v15 里散落的"鼠标左键、滚轮…"等提醒统一收纳
+   当前激活场景是"音量键"，所以第一行提示音量键容易冲突
+   ============================================================ */
+.tip-bar{
+  max-width:1620px; margin:0 auto 16px;
+  display:flex; gap:10px;
+}
+.tip-pill{
+  flex:1;
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px;
+  background:var(--warn-soft);
+  border:1px solid rgba(232,147,12,.25);
+  border-radius:9px;
+  font-size:12px;
+  color:#9C6300;
+}
+.tip-pill .ico{
+  width:18px; height:18px; border-radius:50%;
+  background:var(--warn); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+  font-size:11px; font-weight:700;
+}
+.tip-pill .ttl{ font-weight:600; color:#7A4B00; }
+.tip-pill .desc{ color:#9C6300; }
+.tip-pill .act{
+  margin-left:auto;
+  font-size:11px;
+  color:var(--brand);
+  text-decoration:none;
+  font-weight:600;
+  cursor:pointer;
+}
+
+/* ============================================================
+   整体布局
+   ============================================================ */
+.layout{
+  max-width:1620px; margin:0 auto;
+  display:grid;
+  grid-template-columns: 1fr 300px;
+  gap:16px;
+  align-items:start;
+}
+.main-col{ display:flex; flex-direction:column; gap:14px; }
+.side-col{ display:flex; flex-direction:column; gap:12px; }
+
+/* ============================================================
+   情景模式 · 顶部方案标签（保留）
+   ============================================================ */
+.modes{
+  display:flex; align-items:center; gap:4px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:5px;
+  overflow-x:auto;
+}
+.mode-tab{
+  display:flex; align-items:center; gap:7px;
+  padding:7px 12px;
+  border-radius:7px;
+  cursor:pointer;
+  font-size:12.5px;
+  color:var(--text-2);
+  font-weight:500;
+  white-space:nowrap;
+  transition:all .12s;
+  position:relative;
+}
+.mode-tab:hover{ background:var(--surface-3); color:var(--text); }
+.mode-tab.active{
+  background:var(--surface-3);
+  color:var(--text);
+  font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--brand);
+}
+.mode-tab .ico{
+  width:18px; height:18px; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface-4); color:var(--text-2);
+  font-size:10px; font-weight:700;
+}
+.mode-tab.active .ico{ background:var(--brand); color:#fff; }
+/* v16 新增：草稿状态点 */
+.mode-tab .draft-dot{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--warn);
+}
+.mode-tab .num{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10px; color:var(--text-3);
+}
+.mode-tab.new{
+  margin-left:auto;
+  color:var(--brand);
+  background:transparent;
+}
+.mode-tab.new:hover{ background:var(--brand-soft); }
+
+/* ============================================================
+   三段式主流程 · 工作流（保留 + 主舞台更突出）
+   ============================================================ */
+.workflow{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-stage);
+  overflow:hidden;
+}
+
+.workflow-head{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface-2);
+}
+.workflow-head .lbl{
+  font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-3);
+}
+.workflow-head .ttl{
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.workflow-head .status{
+  margin-left:auto;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--success);
+  font-family:'JetBrains Mono', monospace;
+}
+.workflow-head .status::before{
+  content:""; width:5px; height:5px; border-radius:50%;
+  background:var(--success);
+}
+/* v16 新增：编辑/测试双按钮 */
+.workflow-head .head-actions{
+  display:flex; gap:6px;
+}
+.head-btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:4px 10px;
+  border-radius:6px;
+  font-size:11px;
+  color:var(--text-2);
+  cursor:pointer;
+  display:inline-flex; align-items:center; gap:4px;
+  font-weight:500;
+}
+.head-btn:hover{ border-color:var(--brand); color:var(--brand); }
+.head-btn.primary{
+  background:var(--brand);
+  border-color:var(--brand);
+  color:#fff;
+}
+.head-btn.primary:hover{ background:var(--brand-2); border-color:var(--brand-2); color:#fff; }
+
+.pipeline{
+  display:grid;
+  grid-template-columns:1fr 30px 1fr 30px 1fr;
+  gap:6px;
+  padding:18px;
+}
+
+.stage{
+  display:flex; flex-direction:column;
+  border-radius:10px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  overflow:hidden;
+  position:relative;
+}
+.stage.focus{
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(42,156,196,.10);
+  background:#fff;
+}
+
+.stage-head{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+}
+.stage-num{
+  width:20px; height:20px; border-radius:50%;
+  background:var(--surface-4); color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700;
+  font-family:'JetBrains Mono', monospace;
+}
+.stage.focus .stage-num{
+  background:var(--brand); color:#fff;
+}
+.stage-head .ttl{ font-size:12.5px; font-weight:600; color:var(--text); }
+.stage-head .sub{
+  margin-left:auto;
+  font-size:10px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+}
+/* v16 新增：步骤头部的副提示 */
+.stage-head .hint{
+  font-size:10.5px;
+  color:var(--text-3);
+  margin-left:6px;
+  font-family:inherit;
+}
+
+.stage-body{
+  padding:14px;
+  display:flex; flex-direction:column; gap:10px;
+  flex:1;
+}
+
+/* 大交互部件 */
+.big-widget{
+  background:#fff;
+  border:1.5px dashed var(--border-strong);
+  border-radius:10px;
+  padding:14px;
+  display:flex; align-items:center; justify-content:center;
+  min-height:92px;
+  transition:all .15s;
+}
+.big-widget:hover{ border-color:var(--brand); }
+.stage.focus .big-widget{
+  border-style:solid;
+  border-color:var(--border);
+}
+
+/* ====== 触发卡 · v16 改造 ====== */
+.trigger-widget{
+  flex-direction:column;
+  gap:10px;
+  align-items:stretch;
+}
+.trigger-widget .key-display{
+  display:flex; align-items:center; gap:6px;
+  padding:10px 16px;
+  border-radius:8px;
+  background:var(--surface);
+  border:1.5px solid var(--text);
+  box-shadow:0 2px 0 var(--text);
+  font-family:'JetBrains Mono', monospace;
+  font-size:16px; font-weight:700;
+  color:var(--text);
+  justify-content:center;
+  width:fit-content;
+  margin:0 auto;
+}
+.trigger-widget .key-display .k{
+  padding:3px 7px; background:var(--surface-3); border-radius:4px;
+}
+.trigger-widget .key-display .plus{ color:var(--text-3); font-weight:400; font-size:13px; }
+.trigger-widget .trigger-actions{
+  display:flex; gap:6px; justify-content:center;
+}
+.trigger-widget .trigger-actions button{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:5px 10px;
+  border-radius:6px;
+  font-size:11px;
+  color:var(--text-2);
+  cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+  font-weight:500;
+  font-family:inherit;
+}
+.trigger-widget .trigger-actions button:hover{ border-color:var(--brand); color:var(--brand); }
+.trigger-widget .trigger-actions button.rec .dot{
+  width:5px; height:5px; border-radius:50%;
+  background:var(--error);
+  animation:rec 1.2s ease-in-out infinite;
+}
+.trigger-widget .trigger-actions button.test{
+  background:var(--brand-soft);
+  border-color:transparent;
+  color:var(--brand-2);
+  font-weight:600;
+}
+.trigger-widget .trigger-actions button.test:hover{ background:var(--brand); color:#fff; }
+
+/* ====== v16 新增：触发卡冲突提示 ====== */
+.conflict-warn{
+  display:flex; gap:8px;
+  padding:8px 10px;
+  background:var(--warn-soft);
+  border:1px solid rgba(232,147,12,.25);
+  border-radius:7px;
+  font-size:11px;
+  color:#9C6300;
+  align-items:flex-start;
+}
+.conflict-warn .ico{
+  color:var(--warn);
+  font-size:13px;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.conflict-warn .ttl{ font-weight:600; color:#7A4B00; }
+.conflict-warn a{
+  color:var(--brand);
+  text-decoration:none;
+  font-weight:600;
+  margin-left:auto;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+/* ====== 识别卡 · v16 改造 ====== */
+.capture-widget{
+  flex-direction:column;
+  gap:8px;
+  align-items:stretch;
+}
+.capture-widget .im-card{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  width:100%;
+}
+.capture-widget .im-ico{
+  width:28px; height:28px; border-radius:6px;
+  background:var(--brand-soft); color:var(--brand);
+  display:flex; align-items:center; justify-content:center;
+}
+.capture-widget .im-info{ flex:1; text-align:left; }
+.capture-widget .im-name{
+  font-size:12.5px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:6px;
+}
+.capture-widget .im-name .badge{
+  font-family:'JetBrains Mono', monospace;
+  font-size:9.5px;
+  padding:1px 5px;
+  background:var(--surface-3);
+  color:var(--text-2);
+  border-radius:3px;
+  font-weight:500;
+}
+.capture-widget .im-desc{
+  font-size:10.5px; color:var(--text-3); margin-top:1px;
+}
+/* v16：原来"右 Alt"是个 im-key 标签，容易看成识别引擎。
+   现在改成"目标键"语义明确的 chip */
+.capture-widget .target-key{
+  font-family:'JetBrains Mono', monospace;
+  font-size:10.5px;
+  padding:4px 8px;
+  background:var(--text);
+  color:#fff;
+  border-radius:5px;
+  font-weight:600;
+  display:inline-flex; align-items:center; gap:4px;
+}
+.capture-widget .target-key::before{
+  content:"目标键";
+  font-family:'Inter', sans-serif;
+  font-size:9px;
+  background:rgba(255,255,255,.15);
+  padding:1px 4px;
+  border-radius:3px;
+  font-weight:500;
+  letter-spacing:.04em;
+}
+/* v16 新增：引擎选择器 */
+.engine-pick{
+  display:flex; gap:5px;
+}
+.engine-pick .chip{
+  flex:1;
+  text-align:center;
+  padding:6px 8px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-size:11px;
+  color:var(--text-2);
+  cursor:pointer;
+  font-weight:500;
+}
+.engine-pick .chip.active{
+  background:var(--brand-soft);
+  border-color:var(--brand);
+  color:var(--brand-2);
+  font-weight:600;
+}
+.engine-pick .chip .desc{
+  display:block;
+  font-size:9.5px;
+  color:var(--text-3);
+  font-weight:400;
+  margin-top:1px;
+}
+.engine-pick .chip.active .desc{ color:var(--brand); }
+
+/* ====== 收尾卡 · v16 改造 ====== */
+.action-widget .act-grid{
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;
+  width:100%;
+}
+.action-widget .act{
+  padding:8px 6px;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:7px;
+  text-align:center;
+  cursor:pointer;
+}
+.action-widget .act.active{
+  border-color:var(--brand);
+  background:var(--brand-soft);
+}
+.action-widget .act .glyph{ font-size:18px; line-height:1; margin-bottom:3px; }
+.action-widget .act .name{ font-size:11px; font-weight:600; color:var(--text); }
+.action-widget .act.active .name{ color:var(--brand); }
+
+/* stage 子控件 */
+.sub-controls{
+  display:flex; flex-direction:column; gap:8px;
+  padding-top:10px;
+  border-top:1px dashed var(--border);
+}
+.sub-row{
+  display:flex; align-items:center; gap:8px;
+  font-size:11.5px;
+}
+.sub-row .lbl{ flex:1; color:var(--text-2); }
+.sub-row .ctrls{ display:flex; gap:6px; align-items:center; }
+
+.mini-seg{
+  display:flex; padding:2px;
+  background:var(--surface-4); border-radius:5px;
+}
+.mini-seg button{
+  border:none; background:transparent;
+  padding:3px 8px; border-radius:3px;
+  font-size:10.5px; color:var(--text-2);
+  cursor:pointer; font-family:inherit;
+}
+.mini-seg button.on{
+  background:#fff; color:var(--text); font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+}
+
+.mini-sw{
+  width:26px; height:15px; border-radius:8px;
+  background:var(--success); position:relative; cursor:pointer;
+}
+.mini-sw::after{
+  content:""; position:absolute;
+  top:2px; left:13px;
+  width:11px; height:11px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  transition:left .15s;
+}
+.mini-sw.off{ background:#DCDCE0; }
+.mini-sw.off::after{ left:2px; }
+
+.val-badge{
+  display:inline-flex; align-items:center;
+  font-family:'JetBrains Mono', monospace;
+  font-size:10.5px;
+  color:var(--brand); font-weight:600;
+  padding:1px 6px; border-radius:4px;
+  background:var(--brand-soft);
+}
+/* v16 新增：滑块旁的口语化提示 */
+.range-with-hint{
+  display:flex; flex-direction:column; gap:4px; width:100%;
+}
+.range-row{
+  display:flex; align-items:center; gap:8px;
+}
+.range-row .lbl-inline{ font-size:11.5px; color:var(--text-2); flex:1; }
+.range-hint{
+  font-size:10.5px;
+  color:var(--text-3);
+  font-style:italic;
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  width:90px; height:3px;
+  border-radius:2px;
+  background:var(--surface-4);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:12px; height:12px;
+  border-radius:50%;
+  background:var(--brand);
+  border:2px solid #fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  cursor:pointer;
+}
+
+/* 连接器 */
+.connector{
+  display:flex; align-items:center; justify-content:center;
+}
+.connector .arrow{
+  width:24px; height:24px; border-radius:50%;
+  background:var(--surface-3);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+}
+.connector.ok .arrow{
+  background:var(--success); color:#fff;
+}
+
+/* ============================================================
+   v16 改造：适用程序
+   - 标题改成「在哪些程序中生效」
+   - 「添加」按钮视觉权重降低（变虚线）
+   - 不再有右侧"应用快捷键"独立模块（已合并到工作流列表里）
+   ============================================================ */
+.binding{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.binding-head{
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface-2);
+  display:flex; align-items:center; gap:8px;
+}
+.binding-head .ttl{ font-size:12.5px; font-weight:600; color:var(--text); }
+.binding-head .hint{
+  font-size:10.5px; color:var(--text-3);
+  padding-left:8px; border-left:1px solid var(--border);
+}
+.binding-body{
+  padding:12px 16px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.binding-app{
+  display:flex; align-items:center; gap:6px;
+  padding:5px 10px 5px 7px;
+  border-radius:6px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  font-size:11.5px;
+  color:var(--text);
+  font-weight:500;
+  cursor:pointer;
+}
+.binding-app.bound{
+  background:var(--brand-soft);
+  border-color:transparent;
+}
+.binding-app .ico{
+  width:18px; height:18px; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  font-size:9.5px; font-weight:700;
+}
+.binding-app .x{
+  margin-left:2px;
+  color:var(--text-3);
+  font-size:13px; line-height:1;
+  cursor:pointer;
+}
+.binding-app.add{
+  border:1px dashed var(--border-strong);
+  background:transparent;
+  color:var(--text-3);
+}
+.binding-app.add:hover{ color:var(--brand); border-color:var(--brand); }
+
+/* ============================================================
+   右侧栏 · 工作流列表（主） + 模板区（弱化为折叠）
+   ============================================================ */
+.side-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.side-head{
+  display:flex; align-items:center; gap:7px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:12px; font-weight:600; color:var(--text);
+  background:var(--surface-2);
+}
+.side-head .count{
+  margin-left:auto;
+  font-size:10px; color:var(--text-3);
+  font-family:'JetBrains Mono', monospace;
+}
+
+/* 工作流列表 · 主列表 */
+.wf-list{ padding:6px; }
+.wf-item{
+  padding:8px 10px;
+  border-radius:7px;
+  cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+}
+.wf-item:hover{ background:var(--surface-2); }
+.wf-item.active{
+  background:var(--brand-soft);
+}
+.wf-item .ico{
+  width:22px; height:22px; border-radius:5px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:#fff;
+  flex-shrink:0;
+}
+.wf-item .info{ flex:1; min-width:0; }
+.wf-item .name{
+  font-size:12px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:5px;
+}
+/* v16 新增：状态徽章 */
+.wf-item .status-badge{
+  font-size:9px;
+  padding:1px 5px;
+  border-radius:3px;
+  font-weight:600;
+  letter-spacing:.02em;
+}
+.wf-item .status-badge.saved{
+  background:var(--success-soft);
+  color:var(--success);
+}
+.wf-item .status-badge.draft{
+  background:var(--warn-soft);
+  color:var(--warn);
+}
+.wf-item .desc{ font-size:10px; color:var(--text-3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wf-item .badge{
+  font-family:'JetBrains Mono', monospace;
+  font-size:9.5px; color:var(--text-3);
+  padding:1px 4px; background:var(--surface-3); border-radius:3px;
+}
+
+/* 模板区 · 弱化为折叠 */
+.tpl-disclosure{
+  margin:0 12px 12px;
+  padding:10px 12px;
+  background:var(--surface-2);
+  border-radius:8px;
+  font-size:11px;
+  color:var(--text-2);
+}
+.tpl-disclosure summary{
+  list-style:none;
+  display:flex; align-items:center; gap:6px;
+  cursor:pointer;
+  font-weight:500;
+  color:var(--text-2);
+}
+.tpl-disclosure summary::-webkit-details-marker{ display:none; }
+.tpl-disclosure .tpl-list{
+  display:flex; flex-wrap:wrap; gap:5px;
+  margin-top:8px;
+}
+.tpl-disclosure .tpl-list .chip{
+  padding:3px 8px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:999px;
+  font-size:10.5px;
+  color:var(--text-2);
+  cursor:pointer;
+}
+.tpl-disclosure .tpl-list .chip:hover{ border-color:var(--brand); color:var(--brand); }
+
+@keyframes rec { 0%,100%{ opacity:1;} 50%{ opacity:.5;} }
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     页面标题
+     ============================================================ -->
+<div class="page-head">
+  <div>
+    <div class="crumbs">
+      <span>配置</span>
+      <span class="sep">›</span>
+      <span>按键设置</span>
+    </div>
+    <h1>按键<em>设置</em></h1>
+    <div class="sub">为每种<strong>情景模式</strong>配置一个<strong>工作流</strong>。一个工作流 = 触发 + 识别 + 收尾 三步流水线 + 适用程序。</div>
+  </div>
+  <div class="meta">
+    <div>情景模式 · <b>5</b></div>
+    <div>工作流 · <b>5</b></div>
+    <div>已保存 · <b>3</b> · 草稿 · <b>2</b></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     v16 新增：顶部提示条
+     ============================================================ -->
+<div class="tip-bar">
+  <div class="tip-pill">
+    <span class="ico">!</span>
+    <div>
+      <span class="ttl">音量键可能被系统占用。</span>
+      <span class="desc">部分键盘、媒体播放器和会议软件会拦截音量键，建议先测试再保存。</span>
+    </div>
+    <a class="act">查看冲突列表 →</a>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ============================================================
+       左主区
+       ============================================================ -->
+  <div class="main-col">
+
+    <!-- 情景模式 · 顶部方案标签（v16 加草稿状态点） -->
+    <div class="modes">
+      <div class="mode-tab">
+        <span class="ico" style="background:var(--text-3); color:#fff;">默</span>
+        <span>默认·通用</span>
+        <span class="num">7</span>
+      </div>
+      <div class="mode-tab active">
+        <span class="ico">C</span>
+        <span>编程·Cursor</span>
+        <span class="num">2</span>
+      </div>
+      <div class="mode-tab">
+        <span class="ico">微</span>
+        <span>聊天·微信</span>
+        <span class="num">1</span>
+      </div>
+      <div class="mode-tab">
+        <span class="ico" style="background:#D97706;">笔</span>
+        <span>写作·长文</span>
+        <span class="num draft-dot" title="草稿"></span>
+      </div>
+      <div class="mode-tab">
+        <span class="ico" style="background:#7C3AED;">会</span>
+        <span>会议·转写</span>
+        <span class="num draft-dot" title="草稿"></span>
+      </div>
+      <div class="mode-tab new">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>新建情景</span>
+      </div>
+    </div>
+
+    <!-- 工作流 · 三段式主流程 -->
+    <div class="workflow">
+      <div class="workflow-head">
+        <span class="lbl">WORKFLOW</span>
+        <span class="ttl">编程·Cursor 工作流</span>
+        <span class="status">3 步已就绪</span>
+        <!-- v16 新增：操作按钮组 -->
+        <div class="head-actions">
+          <button class="head-btn">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            重命名
+          </button>
+          <button class="head-btn primary">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            测试一次
+          </button>
+        </div>
+      </div>
+
+      <div class="pipeline">
+
+        <!-- STAGE ① 触发 -->
+        <div class="stage focus">
+          <div class="stage-head">
+            <span class="stage-num">1</span>
+            <span class="ttl">触发</span>
+            <span class="sub">TRIGGER</span>
+            <span class="hint">· 你按的键</span>
+          </div>
+          <div class="stage-body">
+            <!-- v16：触发卡加测试 + 录制按钮组 -->
+            <div class="big-widget trigger-widget">
+              <div class="key-display">
+                <span class="k">Ctrl</span>
+                <span class="plus">+</span>
+                <span class="k">⇧</span>
+                <span class="plus">+</span>
+                <span class="k">V</span>
+              </div>
+              <div class="trigger-actions">
+                <button class="rec"><span class="dot"></span>录制新键</button>
+                <button class="test">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  按一下试试
+                </button>
+              </div>
+            </div>
+            <!-- v16 新增：冲突提示卡 -->
+            <div class="conflict-warn">
+              <span class="ico">⚠</span>
+              <div>
+                <div class="ttl">Ctrl+⇧+V 与剪贴板冲突</div>
+                <div>系统剪贴板默认占用此组合键，建议改为 Ctrl+⇧+空格</div>
+              </div>
+              <a>换键 →</a>
+            </div>
+            <div class="sub-controls">
+              <div class="sub-row">
+                <span class="lbl">方式</span>
+                <div class="ctrls">
+                  <div class="mini-seg">
+                    <button class="on">按住</button>
+                    <button>点一下</button>
+                    <button>双击</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="connector ok">
+          <div class="arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+        <!-- STAGE ② 识别 · v16 改造 -->
+        <div class="stage">
+          <div class="stage-head">
+            <span class="stage-num">2</span>
+            <span class="ttl">识别</span>
+            <span class="sub">CAPTURE</span>
+            <span class="hint">· 帮你打开语音</span>
+          </div>
+          <div class="stage-body">
+            <div class="big-widget capture-widget">
+              <div class="im-card">
+                <div class="im-ico">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
+                </div>
+                <div class="im-info">
+                  <div class="im-name">
+                    系统输入法
+                    <span class="badge">SAPI</span>
+                  </div>
+                  <div class="im-desc">调用 Windows 自带识别引擎</div>
+                </div>
+                <!-- v16：把"右 Alt"从 im-key 改成 target-key，明确语义 -->
+                <span class="target-key">右 Alt</span>
+              </div>
+              <!-- v16 新增：引擎选择器 -->
+              <div class="engine-pick">
+                <div class="chip active">
+                  SAPI
+                  <span class="desc">系统·省资源</span>
+                </div>
+                <div class="chip">
+                  Vosk
+                  <span class="desc">离线·更准</span>
+                </div>
+                <div class="chip">
+                  云端
+                  <span class="desc">在线·最强</span>
+                </div>
+              </div>
+            </div>
+            <div class="sub-controls">
+              <div class="sub-row">
+                <span class="lbl">目标程序</span>
+                <div class="ctrls">
+                  <div class="mini-seg">
+                    <button class="on">所有</button>
+                    <button>仅前台</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="connector ok">
+          <div class="arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+        <!-- STAGE ③ 收尾 · v16 改造 -->
+        <div class="stage">
+          <div class="stage-head">
+            <span class="stage-num">3</span>
+            <span class="ttl">收尾</span>
+            <span class="sub">ACTION</span>
+            <span class="hint">· 说完后怎么处理</span>
+          </div>
+          <div class="stage-body">
+            <div class="big-widget action-widget">
+              <div class="act-grid">
+                <div class="act">
+                  <div class="glyph">⏵</div>
+                  <div class="name">自动发送</div>
+                </div>
+                <div class="act active">
+                  <div class="glyph">⏸</div>
+                  <div class="name">确认后</div>
+                </div>
+                <div class="act">
+                  <div class="glyph">✋</div>
+                  <div class="name">手动</div>
+                </div>
+              </div>
+            </div>
+            <div class="sub-controls">
+              <!-- v16：把"延迟 5.0s"改成口语化的"说完后等…秒确认" -->
+              <div class="sub-row">
+                <div class="range-with-hint">
+                  <div class="range-row">
+                    <span class="lbl-inline">说完后等</span>
+                    <input type="range" min="0" max="10" step="0.5" value="5" />
+                    <span class="val-badge">5.0s</span>
+                  </div>
+                  <span class="range-hint">停顿 5 秒后自动确认发送</span>
+                </div>
+              </div>
+              <!-- v16：取消窗口加上 Esc 明确提示 -->
+              <div class="sub-row">
+                <div class="range-with-hint">
+                  <div class="range-row">
+                    <span class="lbl-inline">启动后 1.2 秒内可按 Esc 取消</span>
+                    <div class="mini-sw"></div>
+                  </div>
+                  <span class="range-hint">避免说错或误触发</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- v16 改造：适用程序（标题规范化，去掉右侧重复的"应用快捷键"模块） -->
+    <div class="binding">
+      <div class="binding-head">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+        <span class="ttl">在哪些程序中生效</span>
+        <span class="hint">切换到这些程序时自动启用此工作流</span>
+      </div>
+      <div class="binding-body">
+        <div class="binding-app bound">
+          <span class="ico" style="background:#0078D4;">C</span>
+          <span>Cursor</span>
+          <span class="x">×</span>
+        </div>
+        <div class="binding-app bound">
+          <span class="ico" style="background:#10A37F;">VS</span>
+          <span>VS Code</span>
+          <span class="x">×</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#000;">W</span>
+          <span>WebStorm</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#D97706;">CC</span>
+          <span>Claude Code</span>
+        </div>
+        <div class="binding-app">
+          <span class="ico" style="background:#5856D6;">M</span>
+          <span>MiniMax</span>
+        </div>
+        <div class="binding-app add">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>添加</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       右侧栏 · 工作流列表（主） + 模板区（弱化折叠）
+       v16 改造：去掉右侧"应用快捷键"独立模块（已合并到工作流列表里）
+       ============================================================ -->
+  <div class="side-col">
+
+    <!-- 我的工作流 · 主列表 · v16 加状态徽章 -->
+    <div class="side-card">
+      <div class="side-head">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        我的工作流
+        <span class="count">5</span>
+      </div>
+      <div class="wf-list">
+        <div class="wf-item">
+          <span class="ico" style="background:var(--text-3);">默</span>
+          <div class="info">
+            <div class="name">
+              默认·通用
+              <span class="status-badge saved">已保存</span>
+            </div>
+            <div class="desc">Ctrl+⇧+V · 自动发送</div>
+          </div>
+          <span class="badge">7</span>
+        </div>
+        <div class="wf-item active">
+          <span class="ico" style="background:#0078D4;">C</span>
+          <div class="info">
+            <div class="name">
+              编程·Cursor
+              <span class="status-badge saved">已保存</span>
+            </div>
+            <div class="desc">音量键 · 确认 5s</div>
+          </div>
+          <span class="badge">2</span>
+        </div>
+        <div class="wf-item">
+          <span class="ico" style="background:#07C160;">微</span>
+          <div class="info">
+            <div class="name">
+              聊天·微信
+              <span class="status-badge saved">已保存</span>
+            </div>
+            <div class="desc">按住 右 Alt · 自动发送</div>
+          </div>
+          <span class="badge">1</span>
+        </div>
+        <div class="wf-item">
+          <span class="ico" style="background:#D97706;">笔</span>
+          <div class="info">
+            <div class="name">
+              写作·长文
+              <span class="status-badge draft">草稿</span>
+            </div>
+            <div class="desc">未设置 · 手动处理</div>
+          </div>
+          <span class="badge">—</span>
+        </div>
+        <div class="wf-item">
+          <span class="ico" style="background:#7C3AED;">会</span>
+          <div class="info">
+            <div class="name">
+              会议·转写
+              <span class="status-badge draft">草稿</span>
+            </div>
+            <div class="desc">未设置 · 大型引擎</div>
+          </div>
+          <span class="badge">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模板区 · 弱化为折叠 disclosure -->
+    <details class="tpl-disclosure">
+      <summary>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        从模板创建（4）
+      </summary>
+      <div class="tpl-list">
+        <span class="chip">程序员</span>
+        <span class="chip">写作</span>
+        <span class="chip">聊天</span>
+        <span class="chip">会议</span>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     v16 改造说明 · 浮动小标签（仅本次草稿用，方便对照查看）
+     ============================================================ -->
+<div style="
+  position:fixed; right:24px; bottom:24px;
+  background:#1c1c1e; color:#fff;
+  padding:14px 18px;
+  border-radius:10px;
+  font-size:12px;
+  line-height:1.7;
+  max-width:340px;
+  box-shadow:0 12px 32px rgba(0,0,0,.18);
+  z-index:999;
+  font-family:'JetBrains Mono', monospace;
+">
+  <div style="font-weight:700; margin-bottom:6px; color:#7DD3FC;">v16 修复点</div>
+  ① 顶部"音量键冲突"提示<br/>
+  ② 触发卡：录制 + 测试 双按钮<br/>
+  ③ 触发卡：实时冲突检测<br/>
+  ④ 识别卡：SAPI/Vosk/云端 引擎选择<br/>
+  ⑤ 识别卡：右 Alt 改为"目标键"语义<br/>
+  ⑥ 收尾卡：口语化文案<br/>
+  ⑦ 工作流列表：已保存/草稿 徽章<br/>
+  ⑧ 去掉重复的"应用快捷键"模块<br/>
+  ⑨ 文案：跳起→录制 / 用在哪此→在哪此
+</div>
+
+</body>
+</html>

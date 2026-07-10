@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OneTone 首页样稿 · 用户化精简 v1</title>
+<style>
+  :root {
+    --primary: #2a9cc4;
+    --primary-strong: #1f7a9a;
+    --primary-soft: rgba(42, 156, 196, 0.14);
+    --surface: #f8fafb;
+    --surface-high: #ffffff;
+    --surface-soft: #eef3f6;
+    --on-surface: #1a2332;
+    --on-surface-muted: #5c6b7a;
+    --outline-variant: #d8e2ea;
+    --error: #dc2626;
+    --error-soft: rgba(220, 38, 38, 0.1);
+    --warning: #d97706;
+    --warning-soft: rgba(217, 119, 6, 0.12);
+    --success: #16a34a;
+    --radius-row: 10px;
+    --radius-pill: 999px;
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: var(--font); background: #e8edf2; color: var(--on-surface); }
+  body { padding: 24px; }
+
+  .page-head { max-width: 1200px; margin: 0 auto 20px; }
+  .page-head h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .page-head p { margin: 0; font-size: 13px; color: var(--on-surface-muted); line-height: 1.6; }
+  .page-head .tag { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--primary-soft); color: var(--primary-strong); font-size: 11px; font-weight: 700; }
+
+  .controls { max-width: 1200px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .controls label { font-size: 12px; font-weight: 600; color: var(--on-surface-muted); margin-right: 4px; }
+  .controls button {
+    border: 1px solid var(--outline-variant); background: var(--surface-high); color: var(--on-surface);
+    padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .controls button.is-on { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .compare { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 1100px) { .compare { grid-template-columns: 1fr; } }
+
+  .frame-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .frame-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--on-surface-muted); }
+  .frame-label span { font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 6px; color: var(--primary-strong); }
+
+  .app-window {
+    background: var(--surface-high);
+    border: 1px solid var(--outline-variant);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(26, 35, 50, 0.12);
+    display: flex;
+    flex-direction: column;
+    height: 680px;
+    margin: 0 auto;
+    transition: width 0.25s ease;
+  }
+  .app-window.w760 { width: 760px; max-width: 100%; }
+  .app-window.w1366 { width: 100%; max-width: 920px; }
+
+  .titlebar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--outline-variant); background: var(--surface-high);
+    font-size: 13px; font-weight: 700;
+  }
+  .titlebar .dots { display: flex; gap: 6px; }
+  .titlebar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--outline-variant); display: block; }
+
+  .shell { display: flex; flex: 1; min-height: 0; }
+
+  /* Left nav */
+  .left-nav {
+    width: 200px; flex-shrink: 0; border-right: 1px solid var(--outline-variant);
+    background: var(--surface); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px;
+    font-size: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 800; font-size: 14px; }
+  .brand-icon { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, #2a9cc4, #1a6d8a); }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; color: var(--on-surface-muted); font-weight: 600; }
+  .nav-item.active { background: var(--primary-soft); color: var(--primary-strong); }
+  .nav-item svg { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--on-surface-muted); padding: 10px 10px 4px; opacity: 0.65; }
+  .nav-status { margin-top: auto; padding: 10px; border-top: 1px solid var(--outline-variant); font-size: 11px; color: var(--on-surface-muted); }
+  .nav-status strong { display: block; color: var(--on-surface); font-size: 12px; margin-top: 2px; }
+
+  /* Center — single column, NO right rail, NO footbar */
+  .center {
+    flex: 1; min-width: 0; overflow-y: auto; padding: 12px 16px 16px;
+    background: var(--surface-high);
+  }
+  .center-inner { max-width: 640px; }
+
+  .overview {
+    display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; margin-bottom: 10px;
+    border: 1px solid var(--outline-variant); border-radius: var(--radius-row); background: var(--surface);
+    font-size: 12px; color: var(--on-surface-muted);
+  }
+  .overview span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .overview strong { color: var(--on-surface); font-weight: 700; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+
+  .alert {
+    display: none; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; margin-bottom: 10px; border-radius: var(--radius-row);
+    background: var(--warning-soft); border: 1px solid rgba(217, 119, 6, 0.35);
+    font-size: 12px; color: #92400e;
+  }
+  .alert.show { display: flex; }
+  .alert.error { background: var(--error-soft); border-color: rgba(220,38,38,0.35); color: #991b1b; }
+  .alert a { color: inherit; font-weight: 700; white-space: nowrap; text-decoration: underline; cursor: pointer; }
+
+  .command-card {
+    padding: 14px; margin-bottom: 10px; border-radius: 12px;
+    border: 1px solid var(--outline-variant); background: var(--surface);
+  }
+  .command-card h2 { margin: 0 0 4px; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+  .command-card .sub { margin: 0 0 10px; font-size: 12px; color: var(--on-surface-muted); line-height: 1.5; }
+  .ctx-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .ctx-pills span { padding: 2px 8px; border-radius: var(--radius-pill); background: var(--surface-soft); border: 1px solid var(--outline-variant); font-size: 11px; color: var(--on-surface-muted); }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-bottom: 10px;
+    border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-high);
+    font-size: 12px; color: var(--on-surface-muted);
+  }
+  .search-bar kbd { margin-left: auto; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface-soft); border: 1px solid var(--outline-variant); }
+  .live-text {
+    min-height: 88px; padding: 12px; margin-bottom: 10px; border-radius: var(--radius-row);
+    border: 1px dashed var(--outline-variant); background: var(--surface-high);
+    font-size: 14px; line-height: 1.6; color: var(--on-surface-muted);
+  }
+  .live-text.active { border-style: solid; color: var(--on-surface); }
+  .live-text kbd { padding: 2px 6px; border-radius: 4px; background: var(--surface-soft); border: 1px solid var(--outline-variant); font-size: 12px; }
+  .live-text .pending { color: var(--primary-strong); }
+  .cmd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-high); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .ctx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  @media (max-width: 520px) { .ctx-grid { grid-template-columns: 1fr; } }
+  .ctx-card { padding: 10px 12px; border-radius: var(--radius-row); border: 1px solid var(--outline-variant); background: var(--surface); }
+  .ctx-card .lbl { font-size: 10px; font-weight: 700; color: var(--on-surface-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ctx-card .val { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .ctx-card .val .dot { width: 6px; height: 6px; }
+
+  .pipeline {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 8px;
+    border-radius: var(--radius-row); border: 1px solid var(--outline-variant); background: var(--surface);
+    font-size: 12px;
+  }
+  .pipeline-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+  .step { padding: 4px 10px; border-radius: var(--radius-pill); background: var(--surface-soft); border: 1px solid var(--outline-variant); font-weight: 600; white-space: nowrap; }
+  .arrow { color: var(--on-surface-muted); font-size: 11px; }
+  .pipe-edit { font-size: 11px; font-weight: 700; color: var(--primary-strong); background: none; border: none; cursor: pointer; font-family: inherit; white-space: nowrap; }
+
+  .finish-row {
+    padding: 8px 12px; margin-bottom: 10px; border-radius: var(--radius-row);
+    background: var(--surface-soft); font-size: 12px; color: var(--on-surface-muted);
+  }
+  .finish-row strong { color: var(--on-surface); }
+
+  .quick-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick-btn { padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--primary-soft); color: var(--primary-strong); font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+  /* Removed callouts */
+  .removed {
+    max-width: 1200px; margin: 24px auto 0; padding: 14px 16px; border-radius: 10px;
+    border: 1px dashed #c4cfd8; background: #f4f7f9; font-size: 12px; color: var(--on-surface-muted); line-height: 1.7;
+  }
+  .removed b { color: var(--error); }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>OneTone 首页样稿 · 用户化精简 v1</h1>
+  <p>对应计划 Phase 1 + Phase 2：<b>单列主区</b>（无右侧诊断栏 / 无最近输入 / 无底栏 / 无历史 nav）。品牌色 <code>#2a9cc4</code>。</p>
+  <span class="tag">design-mock · 非生产代码</span>
+</div>
+
+<div class="controls">
+  <label>状态</label>
+  <button type="button" class="state-btn is-on" data-state="idle">空状态 · 待命</button>
+  <button type="button" class="state-btn" data-state="dictating">听写中</button>
+  <button type="button" class="state-btn" data-state="alert">单条告警</button>
+</div>
+
+<div class="compare">
+  <div class="frame-wrap">
+    <div class="frame-label">窄窗口 <span>760 × 680（tauri 默认宽）</span></div>
+    <div class="app-window w760" id="win760">
+      <div class="titlebar"><span>OneTone</span><div class="dots"><i></i><i></i><i></i></div></div>
+      <div class="shell" id="shell760"></div>
+    </div>
+  </div>
+  <div class="frame-wrap">
+    <div class="frame-label">宽桌面 <span>主列 max-width 640 居中</span></div>
+    <div class="app-window w1366" id="win1366">
+      <div class="titlebar"><span>OneTone</span><div class="dots"><i></i><i></i><i></i></div></div>
+      <div class="shell" id="shell1366"></div>
+    </div>
+  </div>
+</div>
+
+<div class="removed">
+  <b>已移除</b>（相对当前实现）：右侧 <code>wbDiagRail</code>（兼容/性能/云端/不建议）、<code>wbRecentSection</code>、<code>wbFootbar</code>、左侧「历史记录」nav、Pipeline 中「AI 改写 · 可配置」。<br>
+  <b>迁出</b>：兼容+性能 → 运行状态 · 诊断顶部；不建议按键 → 触发设置；云端占位 → 语音与模型。
+</div>
+
+<script>
+  function shellHtml(state) {
+    const idle = state === 'idle';
+    const alert = state === 'alert';
+    const dictating = state === 'dictating';
+    return `
+    <aside class="left-nav">
+      <div class="brand"><div class="brand-icon"></div> OneTone</div>
+      <div class="nav-item active">⌂ 首页</div>
+      <div class="nav-item">☰ 输入方案</div>
+      <div class="nav-item">⌨ 触发设置</div>
+      <div class="nav-item">🎤 语音与模型</div>
+      <div class="nav-section">系统</div>
+      <div class="nav-item">🔊 声音与反馈</div>
+      <div class="nav-item">⚙ 通用设置</div>
+      <div class="nav-item">🔧 恢复与维护</div>
+      <div class="nav-item">📈 运行状态</div>
+      <div class="nav-item">📄 查看日志</div>
+      <div class="nav-status"><span>● 监听中</span><strong>OneTone 已启动</strong></div>
+    </aside>
+    <main class="center">
+      <div class="center-inner">
+        <div class="overview">
+          <span><i class="dot"></i> 状态 <strong>${dictating ? '正在听写' : '待命'}</strong></span>
+          <span><i class="dot"></i> 识别 <strong>离线识别 · 已就绪</strong></span>
+          <span><i class="dot"></i> 麦克风 <strong>系统默认</strong></span>
+        </div>
+
+        <div class="alert ${alert ? 'show' : ''} ${alert ? 'error' : ''}">
+          <span>${alert ? '识别异常，请检查麦克风与模型' : ''}</span>
+          <a>去运行状态</a>
+        </div>
+
+        <section class="command-card">
+          <h2>按住说话，输入到当前窗口</h2>
+          <p class="sub">按住侧键开始说话，松手后发送到当前应用</p>
+          <div class="ctx-pills">
+            <span>F13</span><span>按住说话</span><span>Cursor</span>
+          </div>
+          <div class="search-bar">搜索命令、习惯或设置… <kbd>Ctrl K</kbd></div>
+          <div class="live-text ${dictating ? 'active' : ''}">
+            ${idle ? '按住 <kbd>F13</kbd> 开始说话' : ''}
+            ${dictating ? '今天把首页的信息层级梳理一下<span class="pending">，让用户只看得到</span>' : ''}
+          </div>
+          <div class="cmd-actions">
+            <button class="btn primary" ${idle ? 'disabled' : ''}>结束说话</button>
+            <button class="btn">测试发送</button>
+          </div>
+        </section>
+
+        <div class="ctx-grid">
+          <div class="ctx-card"><div class="lbl">语音模式</div><div class="val"><i class="dot"></i> 离线识别 · 已就绪</div></div>
+          <div class="ctx-card"><div class="lbl">输入方式</div><div class="val"><i class="dot"></i> 按住说话</div></div>
+          <div class="ctx-card"><div class="lbl">当前窗口</div><div class="val"><i class="dot"></i> Cursor</div></div>
+          <div class="ctx-card"><div class="lbl">当前输入方案</div><div class="val"><i class="dot"></i> 全局 · 侧键</div></div>
+        </div>
+
+        <div class="pipeline">
+          <div class="pipeline-steps">
+            <span class="step">F13</span><span class="arrow">→</span>
+            <span class="step">按住说话</span><span class="arrow">→</span>
+            <span class="step">发送到 Cursor</span>
+          </div>
+          <button class="pipe-edit" type="button">编辑规则</button>
+        </div>
+
+        <div class="finish-row">结束与发送 · <strong>松手发送</strong> · 结束词：完毕 / 发送</div>
+
+        <div class="quick-actions">
+          <button class="quick-btn" type="button">测试发送</button>
+          <button class="quick-btn" type="button">新建习惯</button>
+          <button class="quick-btn" type="button">切换模型</button>
+          <button class="quick-btn" type="button">打开日志</button>
+        </div>
+      </div>
+    </main>`;
+  }
+
+  let state = 'idle';
+  function render() {
+    document.getElementById('shell760').innerHTML = shellHtml(state);
+    document.getElementById('shell1366').innerHTML = shellHtml(state);
+  }
+  document.querySelectorAll('.state-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('is-on'));
+      btn.classList.add('is-on');
+      state = btn.dataset.state;
+      render();
+    });
+  });
+  render();
+</script>
+</body>
+</html>

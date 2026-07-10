@@ -1,12 +1,26 @@
 use std::sync::Arc;
 
+use tauri::Manager;
+
 use crate::ipc::core::push_runtime;
 use crate::AppState;
 use crate::{keyboard, state};
 
-pub(super) fn dispatch_send_esc(state: &AppState, window: &tauri::WebviewWindow, mapping_id: &str) {
+pub(super) fn dispatch_send_esc(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    mapping_id: &str,
+) {
+    let app = window.app_handle();
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        if crate::voice_end_runtime::is_in_trigger_cancel_window(state.as_ref(), mapping_id) {
+            crate::voice_end_runtime::cancel_dictation_after_trigger_key(state, &app);
+            push_runtime(state.as_ref(), window, "esc", mapping_id);
+        }
+        return;
+    }
     keyboard::send_escape();
-    push_runtime(state, window, "esc", mapping_id);
+    push_runtime(state.as_ref(), window, "esc", mapping_id);
 }
 
 pub(super) fn dispatch_send_enter(

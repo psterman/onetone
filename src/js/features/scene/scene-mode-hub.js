@@ -260,16 +260,18 @@
   function renderVoiceSubnav(){
     var subnav=$('settingsSceneVoiceSubnav');
     var listEl=$('settingsSceneVoiceSubnavList');
-    var sidebar=document.querySelector('.settings-sidebar');
+    var sidebar=$('settingsSidebar')||document.querySelector('.settings-sidebar');
+    var shell=$('settingsShell')||document.querySelector('.settings-shell');
     var voicePanel=$('settingsPanelVoiceWake');
     var st=ui();
     var show=st.drawerOpen&&st.settingsPanel==='voiceWake';
     if(subnav) subnav.hidden=!show;
     if(sidebar) sidebar.classList.toggle('is-voice-panel',show);
+    if(shell) shell.classList.toggle('is-voice-panel',show);
     if(voicePanel) voicePanel.classList.toggle('is-voice-subnav',show);
     if(!listEl) return;
     listEl.setAttribute('aria-label',t('settingsSceneVoiceSubnavLabel'));
-    if(!show){ listEl.innerHTML=''; return; }
+    if(!show){ listEl.innerHTML=''; if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail(); return; }
     var items=collectVoiceActions();
     if(!items.length){
       listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+esc(t('sceneModeVoiceEmpty'))+'</p>';
@@ -292,6 +294,7 @@
       html+='</span></button>';
     });
     listEl.innerHTML=html;
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
   }
 
   function cardHtml(it){

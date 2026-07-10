@@ -78,6 +78,7 @@ fn main() {
         "cmd_voice_end_set_phrases",
         "cmd_voice_end_test_stop",
         "cmd_voice_end_ui_end",
+        "cmd_voice_end_ui_cancel",
         "cmd_voice_end_test_commit",
         "cmd_export_logs",
         "cmd_app_log",

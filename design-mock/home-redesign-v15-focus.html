@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VoicePilot · Home Redesign v15 · 信息架构精简版</title>
+<style>
+:root{
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface-soft:#FAFAFA;
+  --border:#E5E5E5;
+  --border-strong:#D4D4D4;
+  --primary:#1E6FF1;
+  --primary-strong:#155EE0;
+  --primary-soft:#DCEAFF;
+  --text:#171717;
+  --text-muted:#737373;
+  --text-faint:#A3A3A3;
+  --success:#10B981;
+  --cyan:#06B6D4;
+  --radius-card:20px;
+  --radius-row:14px;
+}
+[data-theme="dark"]{
+  --bg:#0F0F11;
+  --surface:#171717;
+  --surface-soft:#1F1F1F;
+  --border:#262626;
+  --border-strong:#404040;
+  --primary:#4A8AFF;
+  --primary-strong:#6FA5FF;
+  --primary-soft:#1F3A6B;
+  --text:#FAFAFA;
+  --text-muted:#A3A3A3;
+  --text-faint:#737373;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  background:var(--bg);color:var(--text);
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+  min-height:100vh;
+}
+.page{
+  max-width:920px;margin:0 auto;
+  padding:96px 32px 80px;
+}
+.eyebrow{
+  font:600 11px/16px 'Outfit';letter-spacing:.18em;text-transform:uppercase;
+  color:var(--primary);margin-bottom:14px;
+}
+h1{font:600 30px/40px 'Outfit';letter-spacing:-.02em;margin:0 0 14px;color:var(--text)}
+.lede{font:400 15px/24px 'OutFit';color:var(--text-muted);max-width:680px;margin:0 0 64px}
+
+/* ① 状态条：单行，单 pill */
+.status-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 10px 10px 14px;
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-card);
+  margin-bottom:96px;
+  box-shadow:0 4px 16px rgba(15,23,42,.04);
+}
+.status-pill{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:8px 16px;border-radius:999px;
+  font:500 13px/18px 'OutFit';
+  background:rgba(16,185,129,.10);color:#047857;
+}
+[data-theme="dark"] .status-pill{ color:#34D399;background:rgba(16,185,129,.14); }
+.status-pill .dot{
+  width:8px;height:8px;border-radius:999px;background:currentColor;
+  box-shadow:0 0 0 4px rgba(16,185,129,.18);
+}
+.status-actions{ display:flex;gap:4px; }
+.status-actions button{
+  border:none;background:transparent;color:var(--text-muted);
+  padding:8px 16px;border-radius:999px;font:500 13px/16px 'Outfit';
+  cursor:pointer;transition:background .15s,color .15s;
+}
+.status-actions button:hover{ background:var(--surface-soft);color:var(--text); }
+
+/* ② 焦点区：唯一的"大按钮" */
+.hero-focus{
+  text-align:center;
+  padding:32px 0 16px;
+  margin-bottom:104px;
+}
+.orb-button{
+  width:144px;height:144px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#5A98FF 0%,#1E6FF1 62%,#1555C9 100%);
+  display:inline-flex;align-items:center;justify-content:center;
+  margin:0 auto 40px;
+  border:none;
+  box-shadow:
+    0 28px 64px rgba(30,111,241,.40),
+    0 4px 12px rgba(15,23,42,.06),
+    inset 0 -10px 22px rgba(0,0,0,.12),
+    inset 0 4px 14px rgba(255,255,255,.30);
+  cursor:pointer;
+  position:relative;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.orb-button:hover{ transform:translateY(-3px); }
+.orb-button:active{ transform:translateY(0);box-shadow:
+    0 16px 40px rgba(30,111,241,.40),
+    0 2px 8px rgba(15,23,42,.06),
+    inset 0 -6px 14px rgba(0,0,0,.12),
+    inset 0 4px 14px rgba(255,255,255,.30); }
+.orb-button::before,
+.orb-button::after{
+  content:'';position:absolute;inset:-14px;
+  border-radius:50%;border:2px solid rgba(30,111,241,.28);
+  pointer-events:none;
+  animation:pulse 2.6s ease-out infinite;
+}
+.orb-button::after{ animation-delay:1.3s; }
+@keyframes pulse{
+  0%{transform:scale(1);opacity:.85;}
+  100%{transform:scale(1.55);opacity:0;}
+}
+.orb-button svg{ width:54px;height:54px;color:#fff; }
+.orb-hint{
+  position:absolute;bottom:-36px;left:50%;transform:translateX(-50%);
+  font:500 11px/14px 'JetBrains Mono',monospace;color:var(--text-faint);
+  letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;
+}
+
+.hero-focus h1{
+  font:600 32px/40px 'Outfit';letter-spacing:-.02em;
+  margin:0 0 28px;color:var(--text);
+}
+.hero-focus .accent{ color:var(--primary); }
+
+.meta-row{
+  display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center;
+}
+.meta-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:999px;
+  background:var(--surface);border:1px solid var(--border);
+  font:500 12px/16px 'Outfit';color:var(--text-muted);
+}
+.meta-chip .key{
+  color:var(--text-faint);font:500 11px/14px 'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+
+/* ③ 搜索条：1 行 */
+.search{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;background:var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius-row);
+  margin-bottom:24px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.search:focus-within{
+  border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(30,111,241,.12);
+}
+.search svg{ width:18px;height:18px;color:var(--text-faint); }
+.search input{
+  flex:1;border:none;background:transparent;
+  font:400 14px/20px 'Outfit';color:var(--text);outline:none;
+}
+.search input::placeholder{ color:var(--text-faint); }
+.search kbd{
+  padding:4px 8px;border:1px solid var(--border);
+  border-radius:6px;font:500 11px/16px 'JetBrains Mono',monospace;
+  color:var(--text-muted);background:var(--surface-soft);
+}
+
+/* ④ 常用动作：≤3 */
+.section-label{
+  font:600 11px/16px 'JetBrains Mono',monospace;
+  color:var(--text-faint);text-transform:uppercase;
+  letter-spacing:.10em;margin:0 0 14px;
+}
+.quick{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  margin-bottom:72px;
+}
+.quick-tile{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:24px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-row);
+  font:500 14px/20px 'Outfit';color:var(--text);
+  cursor:pointer;transition:all .15s;
+}
+.quick-tile:hover{ background:var(--surface-soft);transform:translateY(-1px); }
+.quick-tile:hover svg{ color:var(--primary); }
+.quick-tile svg{ width:20px;height:20px;color:var(--text-muted); transition:color .15s; }
+
+/* ⑤ 详情折叠：默认折叠 */
+.details summary{
+  list-style:none;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;
+  background:transparent;border:1px dashed var(--border-strong);
+  border-radius:var(--radius-row);
+  color:var(--text-muted);font:500 14px/20px 'Outfit';
+  cursor:pointer;transition:background .15s;
+}
+.details summary::-webkit-details-marker{ display:none; }
+.details summary:hover{ background:var(--surface-soft);color:var(--text); }
+.details summary::after{
+  content:'⌄';font-size:18px;transition:transform .2s;color:var(--text-faint);
+}
+.details[open] summary{
+  border-radius:var(--radius-row) var(--radius-row) 0 0;
+  background:var(--surface-soft);color:var(--text);
+}
+.details[open] summary::after{ transform:rotate(180deg); }
+.details-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);border-top:0;
+  border-radius:0 0 var(--radius-row) var(--radius-row);
+  overflow:hidden;
+}
+.details-cell{
+  padding:18px 22px;background:var(--surface);
+  display:flex;justify-content:space-between;align-items:center;
+  font:500 13px/18px 'Outfit';
+}
+.details-cell .label{
+  color:var(--text-faint);font:500 11px/14px 'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.details-cell .value{ color:var(--text); }
+
+/* 元信息 */
+.footnote{
+  margin-top:80px;font:400 11px/16px 'JetBrains Mono',monospace;
+  color:var(--text-faint);text-align:center;letter-spacing:.04em;
+}
+
+/* 主题切换 */
+.theme-switch{
+  position:fixed;top:24px;right:24px;
+  display:flex;gap:4px;padding:4px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:999px;z-index:10;
+  box-shadow:0 4px 12px rgba(15,23,42,.06);
+}
+.theme-switch button{
+  border:none;background:transparent;padding:6px 14px;
+  border-radius:999px;font:500 12px/16px 'Outfit';color:var(--text-muted);
+  cursor:pointer;
+}
+.theme-switch button.on{ background:var(--surface-soft);color:var(--text); }
+
+@media(max-width:680px){
+  .page{padding:64px 20px;}
+  .quick{grid-template-columns:1fr;}
+  .details-grid{grid-template-columns:1fr;}
+  .hero-focus h1{font-size:24px;}
+  .orb-button{width:120px;height:120px;}
+  .orb-button svg{width:42px;height:42px;}
+}
+</style>
+</head>
+<body>
+
+<div class="theme-switch" id="themeSwitch">
+  <button class="on" data-theme="light">浅色</button>
+  <button data-theme="dark">深色</button>
+</div>
+
+<div class="page">
+
+  <div class="eyebrow">VoicePilot · Home Redesign v15 · 信息架构精简版</div>
+  <h1>首页只回答两件事：能用？怎么用？</h1>
+  <p class="lede">原 13 个 UI 元素压成 4 个分区。状态聚合、配置下沉、详情折叠——所有"诊断级"信息都进入隐藏面板。</p>
+
+  <!-- ① 全局状态条：单 pill + 设置 -->
+  <header class="status-bar">
+    <div class="status-pill"><span class="dot"></span>已就绪 · 等待唤醒词</div>
+    <div class="status-actions">
+      <button>设置</button>
+    </div>
+  </header>
+
+  <!-- ② 焦点区：唯一的巨型麦克风按钮 -->
+  <section class="hero-focus">
+    <button class="orb-button" aria-label="按下开始语音">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+      <span class="orb-hint">按住说话</span>
+    </button>
+    <h1>按住 <span class="accent">音量减</span> · 松开发送</h1>
+    <div class="meta-row">
+      <span class="meta-chip"><span class="key">触发</span>单击触发</span>
+      <span class="meta-chip"><span class="key">目标</span>当前窗口</span>
+    </div>
+  </section>
+
+  <!-- ③ 搜索条 -->
+  <section class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="搜索命令、习惯或设置..."/>
+    <kbd>Ctrl K</kbd>
+  </section>
+
+  <!-- ④ 常用动作：≤3 -->
+  <div class="section-label">常用动作</div>
+  <section class="quick">
+    <button class="quick-tile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      <span>测试发送</span>
+    </button>
+    <button class="quick-tile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/></svg>
+      <span>打开日志</span>
+    </button>
+    <button class="quick-tile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>设置</span>
+    </button>
+  </section>
+
+  <!-- ⑤ 详情折叠：默认折叠 -->
+  <details class="details">
+    <summary>详情 · 语音引擎 / 麦克风 / 输入方案</summary>
+    <div class="details-grid">
+      <div class="details-cell"><span class="label">语音引擎</span><span class="value">系统识别</span></div>
+      <div class="details-cell"><span class="label">麦克风</span><span class="value">USB Audio Device</span></div>
+      <div class="details-cell"><span class="label">当前窗口</span><span class="value">未指定</span></div>
+      <div class="details-cell"><span class="label">输入方案</span><span class="value">OneTone · 标准</span></div>
+    </div>
+  </details>
+
+  <div class="footnote">v15 · built for focus · 2026-07-10</div>
+
+</div>
+
+<script>
+const themeSwitch=document.getElementById('themeSwitch');
+themeSwitch.addEventListener('click',e=>{
+  const t=e.target.dataset.theme;if(!t)return;
+  document.documentElement.dataset.theme=t;
+  themeSwitch.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.theme===t));
+});
+</script>
+</body>
+</html>
