@@ -1416,6 +1416,8 @@
   text-align: center;
   color: var(--on-surface);
 }
+
+#settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display.display:focus-visible {
   border-color: rgba(42, 156, 196, 0.45) !important;
   box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.12);
 }
@@ -1432,4 +1434,356 @@
 
 #settingsPanelKeys .keys-workflow-col .keys-finish-segments {
   flex-direction: row;
+}
+
+/* Shared workflow primitives for Keys + Voice panels */
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-btn:hover:not(:disabled) {
+  border-color: rgba(42, 156, 196, 0.32);
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-btn.is-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-btn.is-primary:hover:not(:disabled) {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-enable {
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-pipeline {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: stretch;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  padding: 0 2px;
+  color: var(--on-surface-muted);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow-icon {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-trigger-modes {
+  display: flex;
+  gap: 0;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-trigger-mode-seg {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-trigger-mode-seg.is-active {
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-trigger-mode-seg:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-change-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-tag {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-tag.is-active {
+  color: #2e7d4f;
+  background: rgba(46, 125, 79, 0.12);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-lbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  margin-bottom: 8px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip .keys-app-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip.is-selected {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.28);
+  font-weight: 700;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip--add {
+  border: 0;
+  background: transparent;
+  color: var(--on-surface-muted);
+  font-weight: 600;
+  padding: 5px 8px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-schemes {
+  display: grid;
+  gap: 4px;
+  padding: 0 8px 8px;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px 4px 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-row.is-editing {
+  border-color: rgba(42, 156, 196, 0.28);
+  background: var(--primary-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-copy {
+  display: grid;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-pair {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-toggle {
+  transform: scale(0.85);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.35;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col .keys-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1040px) {
+  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow {
+    display: none;
+  }
 }

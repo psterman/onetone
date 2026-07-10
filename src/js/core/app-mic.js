@@ -63,11 +63,8 @@
     if(settingsMicBtn) pushTarget(settingsMicBtn);
     var wakeCard=$('voiceSettingsWakeCard');
     if(wakeCard) pushTarget(wakeCard);
-    var micAsideBars=$('voiceMicAsideBars');
-    if(micAsideBars){
-      var liveCard=$('voiceSideLiveCard');
-      pushTarget(liveCard||micAsideBars);
-    }
+    var testWave=$('voiceTestWave');
+    if(testWave) pushTarget(testWave);
     var micLive=$('voiceMicLive');
     if(micLive) pushTarget(micLive);
     var practiceMic=$('phrasePracticeMicRow');

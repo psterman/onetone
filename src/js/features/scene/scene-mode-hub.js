@@ -264,36 +264,22 @@
     var shell=$('settingsShell')||document.querySelector('.settings-shell');
     var voicePanel=$('settingsPanelVoiceWake');
     var st=ui();
-    var show=st.drawerOpen&&st.settingsPanel==='voiceWake';
-    if(subnav) subnav.hidden=!show;
-    if(sidebar) sidebar.classList.toggle('is-voice-panel',show);
-    if(shell) shell.classList.toggle('is-voice-panel',show);
-    if(voicePanel) voicePanel.classList.toggle('is-voice-subnav',show);
+    var onVoice=st.drawerOpen&&st.settingsPanel==='voiceWake';
+    if(subnav) subnav.hidden=true;
+    if(sidebar) sidebar.classList.remove('is-voice-panel');
+    if(shell) shell.classList.remove('is-voice-panel');
+    if(voicePanel) voicePanel.classList.remove('is-voice-subnav');
     if(!listEl) return;
-    listEl.setAttribute('aria-label',t('settingsSceneVoiceSubnavLabel'));
-    if(!show){ listEl.innerHTML=''; if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail(); return; }
-    var items=collectVoiceActions();
-    if(!items.length){
-      listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+esc(t('sceneModeVoiceEmpty'))+'</p>';
+    if(!onVoice){
+      listEl.innerHTML='';
+      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
       return;
     }
-    var sel=st.selectedSceneVoiceNav;
-    if(st.settingsPanel==='voiceWake'&&sel!=='voice:end'){
+    if(st.selectedSceneVoiceNav!=='voice:end'){
       var exp=global.OneToneVoiceWake&&global.OneToneVoiceWake.getExpandedMode?global.OneToneVoiceWake.getExpandedMode():'vosk';
-      sel=exp==='vosk'?'voice:vosk':'voice:sapi';
-      st.selectedSceneVoiceNav=sel;
+      st.selectedSceneVoiceNav=exp==='vosk'?'voice:vosk':'voice:sapi';
     }
-    if(!sel||!items.some(function(it){ return it.id===sel; })) sel=items[0].id;
-    var html='';
-    items.forEach(function(it){
-      var selected=it.id===sel;
-      html+='<button type="button" class="settings-scheme-subnav-item'+(selected?' is-selected':'')+(it.active?' is-on':'')+'" data-scene-voice-nav="'+esc(it.id)+'" role="tab" aria-selected="'+(selected?'true':'false')+'">';
-      html+='<span class="settings-scheme-subnav-text">';
-      html+='<span class="settings-scheme-subnav-pair">'+esc(it.name)+'</span>';
-      html+='<span class="settings-scheme-subnav-status">'+esc(it.meta)+'</span>';
-      html+='</span></button>';
-    });
-    listEl.innerHTML=html;
+    listEl.innerHTML='';
     if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
   }
 

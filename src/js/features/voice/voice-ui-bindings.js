@@ -5,6 +5,14 @@
   function bindEvents(){
     var hooks=h();
     var t=hooks.t;
+    function setRecognizeNavActive(targetId){
+      var nav=$('voiceRecognizeNav');
+      if(!nav) return;
+      nav.querySelectorAll('.voice-recognize-nav-link').forEach(function(link){
+        var href=link.getAttribute('href')||'';
+        link.classList.toggle('is-active',href==='#'+targetId);
+      });
+    }
     var voiceEngineTabbar=$('voiceEngineTabbar');
     if(voiceEngineTabbar){
       voiceEngineTabbar.addEventListener('click',function(e){
@@ -132,8 +140,12 @@
     var btnVoiceModeMetaDetails=$('btnVoiceModeMetaDetails');
     if(btnVoiceModeMetaDetails){
       btnVoiceModeMetaDetails.onclick=function(){
-        var card=$('voiceModePanelDetails');
-        if(card) card.scrollIntoView({behavior:'smooth',block:'start'});
+        var det=$('voiceRecognizeEngineDetails');
+        if(det){
+          det.open=true;
+          det.scrollIntoView({behavior:'smooth',block:'start'});
+          setRecognizeNavActive('voiceAdvancedSection');
+        }
       };
     }
     var btnVoiceEndDetectSwitchVosk=$('btnVoiceEndDetectSwitchVosk');
@@ -157,6 +169,97 @@
           global.OneToneHabitHub.createFromVoice();
         }
       };
+    }
+    function runVoiceTestOnce(){
+      var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
+      if(eng==='vosk'&&hooks.testVoiceVoskSend) hooks.testVoiceVoskSend();
+      else if(eng==='sapi'&&hooks.testVoiceSapiSend) hooks.testVoiceSapiSend();
+      else{
+        var micBtn=$('btnVoiceSettingsMic');
+        if(micBtn) micBtn.click();
+      }
+    }
+    var btnVoiceTestTop=$('btnVoiceTestTop');
+    if(btnVoiceTestTop) btnVoiceTestTop.onclick=runVoiceTestOnce;
+    var btnVoiceTestMic=$('btnVoiceTestMic');
+    if(btnVoiceTestMic) btnVoiceTestMic.onclick=runVoiceTestOnce;
+    var btnVoiceEnabled=$('btnVoiceEnabled');
+    if(btnVoiceEnabled){
+      btnVoiceEnabled.onclick=function(){
+        if(hooks.homeToggleVoiceWake) hooks.homeToggleVoiceWake();
+      };
+    }
+    var btnVoiceRecognizeChange=$('btnVoiceRecognizeChange');
+    if(btnVoiceRecognizeChange){
+      btnVoiceRecognizeChange.onclick=function(){
+        var det=$('voiceRecognizeEngineDetails');
+        if(det){
+          det.open=true;
+          det.scrollIntoView({behavior:'smooth',block:'start'});
+          setRecognizeNavActive('voiceAdvancedSection');
+        }
+      };
+    }
+    var voiceRecognizeNav=$('voiceRecognizeNav');
+    if(voiceRecognizeNav){
+      voiceRecognizeNav.addEventListener('click',function(e){
+        var link=e.target.closest&&e.target.closest('.voice-recognize-nav-link');
+        if(!link) return;
+        setRecognizeNavActive((link.getAttribute('href')||'').replace(/^#/,''));
+      });
+    }
+    var voiceInputTriggerModes=$('voiceInputTriggerModes');
+    if(voiceInputTriggerModes){
+      voiceInputTriggerModes.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-trigger-mode]');
+        if(!btn||btn.disabled) return;
+        e.preventDefault();
+        voiceInputTriggerModes.querySelectorAll('.keys-trigger-mode-seg').forEach(function(seg){
+          seg.classList.toggle('is-active',seg===btn);
+        });
+      });
+    }
+    var voiceRecognizeSourceGrid=$('voiceRecognizeSourceGrid');
+    if(voiceRecognizeSourceGrid){
+      voiceRecognizeSourceGrid.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-engine-tab]');
+        if(!btn||btn.disabled) return;
+        e.preventDefault();
+        var mode=btn.getAttribute('data-voice-engine-tab');
+        if(mode!=='sapi'&&mode!=='vosk') return;
+        if(mode==='sapi'&&global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return;
+        if(hooks.setVoiceWakeExpandedMode) hooks.setVoiceWakeExpandedMode(mode);
+        if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
+      });
+    }
+    var voiceOutputModeSegments=$('voiceOutputModeSegments');
+    if(voiceOutputModeSegments){
+      voiceOutputModeSegments.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-output-mode]');
+        if(!btn||btn.disabled) return;
+        e.preventDefault();
+        var mode=btn.getAttribute('data-voice-output-mode')||'';
+        var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
+        if(eng==='sapi'||eng==='off'||mode==='manual') return;
+        var autoBtn=$('btnVoiceEndAutoSend');
+        var isAuto=autoBtn&&autoBtn.classList.contains('is-on');
+        if(mode==='auto'&&!isAuto&&hooks.toggleVoiceEndAutoSend) hooks.toggleVoiceEndAutoSend();
+        else if(mode==='confirm'&&isAuto&&hooks.toggleVoiceEndAutoSend) hooks.toggleVoiceEndAutoSend();
+      });
+    }
+    var btnVoiceAppScopeAdd=$('btnVoiceAppScopeAdd');
+    if(btnVoiceAppScopeAdd){
+      btnVoiceAppScopeAdd.onclick=function(){
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
+      };
+    }
+    var voiceAppScopeChips=$('voiceAppScopeChips');
+    if(voiceAppScopeChips){
+      voiceAppScopeChips.addEventListener('click',function(e){
+        if(e.target.closest&&e.target.closest('[data-voice-scope-app],[data-voice-scope-none]')){
+          if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
+        }
+      });
     }
     function bindCustomPhraseAdd(inputId,btnId,addFn){
       var input=$(inputId);

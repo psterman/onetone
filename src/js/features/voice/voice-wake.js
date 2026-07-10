@@ -299,15 +299,21 @@
 
   function renderVoiceEngineTabs(){
     const tabbar=$('voiceEngineTabbar');
+    const mode=voiceWakeExpandedMode||'sapi';
+    const grid=$('voiceRecognizeSourceGrid');
+    if(grid){
+      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+        const tab=btn.getAttribute('data-voice-engine-tab')||'';
+        const on=tab===mode;
+        btn.classList.toggle('is-active',on);
+      });
+    }
     if(!tabbar) return;
     if(voskOnlyUi()){
-      tabbar.hidden=true;
       if(voiceWakeExpandedMode!=='vosk') setVoiceWakeExpandedMode('vosk');
       syncVoskOnlyCopy();
       return;
     }
-    tabbar.hidden=false;
-    const mode=voiceWakeExpandedMode||'sapi';
     tabbar.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
       const on=(btn.dataset.voiceEngineTab||'')===mode;
       btn.classList.toggle('is-active',on);

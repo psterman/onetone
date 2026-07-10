@@ -412,9 +412,19 @@
 
   function scrollToVoiceAction(navId){
     var ids=['voiceSettingsWakeCard'];
-    if(navId==='voice:sapi') ids=['voiceSettingsWakeCard','voiceSapiBlock'];
-    else if(navId==='voice:vosk') ids=['voiceSettingsWakeCard','voiceVoskBlock'];
-    else if(navId==='voice:end') ids=['voiceSettingsEndPhraseCard'];
+    if(navId==='voice:sapi'){
+      ids=['voiceSettingsEndPhraseCard','voiceRecognizeEngineDetails','voiceSapiBlock'];
+      var det=$('voiceRecognizeEngineDetails');
+      if(det) det.open=true;
+    }else if(navId==='voice:vosk'){
+      ids=['voiceSettingsEndPhraseCard','voiceRecognizeEngineDetails','voiceVoskBlock'];
+      var detV=$('voiceRecognizeEngineDetails');
+      if(detV) detV.open=true;
+    }else if(navId==='voice:end'){
+      ids=['voiceSettingsEndPhraseCard','voiceEndPhraseMore'];
+      var endDet=$('voiceEndPhraseMore');
+      if(endDet) endDet.open=true;
+    }
     scrollSettingsToTarget(ids);
   }
 

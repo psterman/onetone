@@ -770,32 +770,11 @@
   }
 
   function renderVoiceAside(){
-    var list=$('voiceAppShortcutsList');
-    var summaryEl=$('voiceAppShortcutsAsideSummary');
+    var card=$('voiceAppShortcutsDetails');
     var uiState=global.OneToneState&&global.OneToneState.ui;
     var voiceActive=uiState&&uiState.drawerOpen&&uiState.settingsPanel==='voiceWake';
-    if(!voiceActive||!list) return;
-    var m=core()&&core().selected?core().selected():null;
-    if(!m||!core().isSaved(m)){
-      list.innerHTML='<p class="habit-app-rules-empty">'+esc(t('habitAppRulesEmpty'))+'</p>';
-      if(summaryEl) summaryEl.textContent=t('voiceAppShortcutsAsideEmpty');
-      return;
-    }
-    seedDefaultBehaviorRules(m);
-    ensureRules(m);
-    var html='';
-    BEHAVIOR_PRESETS.forEach(function(preset){
-      html+=renderVoiceAppShortcutRow(m,preset);
-    });
-    list.innerHTML=html;
-    if(summaryEl){
-      var primary=BEHAVIOR_PRESETS.find(function(p){ return isPrimaryApp(m,p.id); });
-      if(primary){
-        summaryEl.textContent=appDisplayName(primary.id)+' · '+voiceSummonPhrase(primary.id,m);
-      }else{
-        summaryEl.textContent=t('voiceAppShortcutsAsideUnset');
-      }
-    }
+    if(card) card.hidden=true;
+    if(!voiceActive) return;
   }
 
   function bindVoiceAsideEvents(list){
