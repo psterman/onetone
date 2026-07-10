@@ -80,66 +80,18 @@
   }
   function renderSettingsSchemeSubnav(){
     const subnav=$('settingsSchemeSubnav');
-    const listEl=$('settingsSchemeSubnavList');
     const habitsPanel=$('settingsPanelHabits');
     const keysPanel=$('settingsPanelKeys');
     const sidebar=$('settingsSidebar')||document.querySelector('.settings-sidebar');
     const shell=$('settingsShell')||document.querySelector('.settings-shell');
-    const show=mappingListUiActive();
-    if(subnav) subnav.hidden=!show;
-    if(habitsPanel) habitsPanel.classList.toggle('is-scheme-subnav',show);
-    if(keysPanel) keysPanel.classList.toggle('is-scheme-subnav',show);
-    if(sidebar) sidebar.classList.toggle('is-scheme-panel',show);
-    if(shell) shell.classList.toggle('is-scheme-panel',show);
-    if(listEl) listEl.setAttribute('aria-label',t('settingsKeysSubnavLabel'));
-    const addBtn=$('btnSettingsSchemeAdd');
-    if(addBtn) addBtn.textContent='+ '+t('addKeysDraft');
-    if(!show||!listEl){
-      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
-      return;
+    if(subnav) subnav.hidden=true;
+    if(habitsPanel) habitsPanel.classList.remove('is-scheme-subnav');
+    if(keysPanel) keysPanel.classList.remove('is-scheme-subnav');
+    if(sidebar) sidebar.classList.remove('is-scheme-panel');
+    if(shell) shell.classList.remove('is-scheme-panel');
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail){
+      global.OneToneSettingsDrawer.syncSubnavRail();
     }
-    hooks().ensureConfig();
-    const schemes=sortedMappings();
-    const saved=schemes.filter(isSavedMapping);
-    const drafts=schemes.filter(isIncompleteScheme);
-    if(!saved.length&&!drafts.length){
-      listEl.innerHTML='<p class="settings-scheme-subnav-empty">'+hooks().escHtml(t('mappingEmptyTitle'))+'</p>';
-      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
-      return;
-    }
-    let html='';
-    html+='<div class="settings-scheme-subnav-group settings-scheme-subnav-saved">';
-    html+='<p class="settings-scheme-subnav-group-lbl">'+hooks().escHtml(t('settingsKeysSavedLbl'))+'</p>';
-    if(saved.length){
-      saved.forEach(function(m){ html+=renderSchemeSubnavItem(m); });
-    }else{
-      html+='<p class="settings-scheme-subnav-empty settings-scheme-subnav-saved-empty">'+hooks().escHtml(t('settingsKeysSavedEmpty'))+'</p>';
-    }
-    html+='</div>';
-    html+='<div class="settings-scheme-subnav-group settings-scheme-subnav-drafts">';
-    html+='<p class="settings-scheme-subnav-group-lbl">'+hooks().escHtml(t('settingsKeysDraftBoxLbl'))+'</p>';
-    if(drafts.length){
-      drafts.forEach(function(m){ html+=renderSchemeSubnavItem(m); });
-    }else{
-      html+='<p class="settings-scheme-subnav-empty settings-scheme-subnav-draft-empty">'+hooks().escHtml(t('settingsKeysDraftBoxEmpty'))+'</p>';
-    }
-    html+='</div>';
-    listEl.innerHTML=html;
-    listEl.querySelectorAll('[data-scheme-del]').forEach(function(btn){
-      btn.addEventListener('mousedown',function(e){ e.stopPropagation(); });
-      btn.addEventListener('click',function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        var delId=btn.getAttribute('data-scheme-del');
-        if(!delId) return;
-        if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delId);
-        if(hooks().render) hooks().render();
-        renderSettingsSchemeSubnav();
-        if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
-      });
-    });
-    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
-    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
   }
   function friendlyPair(triggerKey,targetKey,m){
     const lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';

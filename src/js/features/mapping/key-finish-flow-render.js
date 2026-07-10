@@ -76,10 +76,11 @@
     var seconds=((m.enterDelayMs||1200)/1000).toFixed(1);
     var html='<div class="keys-finish-delay-card">';
     html+='<div class="keys-finish-delay-head"><span class="keys-finish-delay-label">'+t('sendTimingTitle')+'</span>';
-    html+='<span class="keys-finish-delay-value">'+seconds+t('keysFinishDelayUnit')+'</span></div>';
-    html+='<div class="voice-end-inline-range keys-finish-delay-range"><input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+(m.enterDelayMs||1200)+'"></div>';
-    html+='<p class="keys-finish-delay-desc">'+t('sendTimingDesc').replace('{n}',seconds)+'</p>';
-    html+='</div>';
+    html+='<span class="keys-finish-delay-value">'+t('sendTimingDesc').replace('{n}',seconds)+'</span></div>';
+    html+='<div class="voice-end-inline-range keys-finish-delay-range keys-finish-delay-controls">';
+    html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+(m.enterDelayMs||1200)+'">';
+    html+='<input type="number" class="keys-finish-delay-input" data-timing-range="'+id+'" data-field="enterDelayMs" min="1" max="15" step="0.5" value="'+seconds+'">';
+  html+='</div></div>';
     return html;
   }
 
@@ -393,6 +394,7 @@
       hooks().save();
       renderKeyFinishFlowPanel();
       hooks().renderMappingList();
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
       return true;
     }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
@@ -440,16 +442,28 @@
   function liveUpdateTimingRange(range){
     var field=range.dataset.field;
     var val=Number(range.value);
+    if(range.type==='number'&&field==='enterDelayMs') val=Math.round(val*1000);
     var m=hooks().selectedMapping();
     if(!m) return;
     m[field]=val;
     scheduleTimingSave();
     syncTimingRangeFill(range);
     var block=range.closest('.map-timing-block')||range.closest('.keys-finish-delay-card');
-    var desc=block&&block.querySelector('.map-timing-desc,.keys-finish-delay-desc');
-    if(desc) desc.innerHTML=timingDescText(field,val);
+    var desc=block&&block.querySelector('.map-timing-desc,.keys-finish-delay-desc,.keys-finish-delay-value');
+    if(desc&&desc.classList.contains('keys-finish-delay-value')){
+      desc.textContent=t('sendTimingDesc').replace('{n}',formatTimingSec(val));
+    }else if(desc) desc.innerHTML=timingDescText(field,val);
     var valEl=block&&block.querySelector('.keys-finish-delay-value');
-    if(valEl&&field==='enterDelayMs') valEl.textContent=formatTimingSec(val)+t('keysFinishDelayUnit');
+    if(valEl&&field==='enterDelayMs'&&valEl.classList.contains('keys-finish-delay-value')){
+      valEl.textContent=t('sendTimingDesc').replace('{n}',formatTimingSec(val));
+    }
+    var numInput=block&&block.querySelector('.keys-finish-delay-input');
+    var rangeInput=block&&block.querySelector('.map-timing-range');
+    if(numInput&&rangeInput&&field==='enterDelayMs'){
+      if(range.type==='range') numInput.value=formatTimingSec(val);
+      else rangeInput.value=String(val);
+      syncTimingRangeFill(rangeInput);
+    }
     renderKeysFinishStrategyPreview(m);
   }
 

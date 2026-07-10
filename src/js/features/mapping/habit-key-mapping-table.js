@@ -129,7 +129,8 @@
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
       '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
-      '.keys-app-chip','.keys-ime-pill','.btn-cancel-record','input','button','select','textarea','label'
+      '.keys-app-chip','.keys-ime-pill','.btn-cancel-record','input','button','select','textarea','label',
+      '.keys-trigger-mode-seg','.keys-capture-change-btn','.keys-trigger-conflict-btn','.keys-finish-delay-input'
     ].join(','));
   }
 

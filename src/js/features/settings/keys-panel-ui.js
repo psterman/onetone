@@ -100,6 +100,253 @@
     return {name:imeStatusText(m),icon:''};
   }
 
+  function friendlyKey(key){
+    if(!key) return '—';
+    if(hooks().friendlyKeyName) return hooks().friendlyKeyName(key)||key;
+    return key;
+  }
+
+  function isEditorDirty(){
+    var m=core()&&core().selected?core().selected():null;
+    if(!m||!ed()) return false;
+    var edTrig=(ed().getEditorTriggerKey()||'').trim();
+    var edTgt=(ed().getEditorTargetKey()||'').trim();
+    var savedTrig=String(m.triggerKey||'').trim();
+    var savedTgt=String(m.targetKey||'').trim();
+    return edTrig!==savedTrig||edTgt!==savedTgt;
+  }
+
+  function scopeSummaryText(m){
+    if(!m) return '—';
+    var primary=String(m.appTargetId||'').trim();
+    if(!primary) return t('keysSummaryScopeAll');
+    var names=[];
+    if(appRules()&&appRules().appDisplayName) names.push(appRules().appDisplayName(primary));
+    var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
+    presets.forEach(function(p){
+      if(!p||!p.id||p.id===primary) return;
+      var hasRule=Array.isArray(m.appBehaviorRules)&&m.appBehaviorRules.some(function(r){ return r&&r.appId===p.id; });
+      if(hasRule&&appRules().appDisplayName) names.push(appRules().appDisplayName(p.id));
+    });
+    if(!names.length&&primary&&appRules().appDisplayName) return appRules().appDisplayName(primary);
+    if(names.length>3) return names.slice(0,3).join(' / ')+'…';
+    return names.length?names.join(' / '):t('keysSummaryScopeAll');
+  }
+
+  function schemeStatusTag(m){
+    if(!m) return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
+    var isDraft=core().isDraft&&core().isDraft(m);
+    var isIncomplete=core().isIncomplete&&core().isIncomplete(m);
+    if(isDraft) return {key:'keysSchemeTagDraft',cls:'is-draft'};
+    if(isIncomplete) return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
+    if(m.enabled) return {key:'keysSchemeTagActive',cls:'is-active'};
+    if(core().isSaved&&core().isSaved(m)) return {key:'keysSchemeTagSaved',cls:'is-saved'};
+    return {key:'keysSchemeTagIncomplete',cls:'is-incomplete'};
+  }
+
+  function recommendedTriggerKey(m){
+    var imeId=m&&String(m.imePresetId||'').trim();
+    if(imeId&&global.OneToneImePresets&&global.OneToneImePresets.presetById){
+      var preset=global.OneToneImePresets.presetById(imeId);
+      if(preset&&preset.targetKey) return preset.targetKey;
+    }
+    return 'RAlt';
+  }
+
+  function renderSchemeSummary(m){
+    var nameEl=$('keysSummaryName');
+    var statusEl=$('keysSummaryStatus');
+    var trigLbl=$('keysSummaryTriggerLbl');
+    var trigVal=$('keysSummaryTrigger');
+    var scopeLbl=$('keysSummaryScopeLbl');
+    var scopeVal=$('keysSummaryScope');
+    var saveBtn=$('btnKeysSave');
+    var testBtn=$('btnKeysTestTop');
+    var keycapHint=$('keysKeycapHint');
+    var keycapHost=$('habitKeyMapCellTrigger');
+    if(trigLbl) trigLbl.textContent=t('keysSummaryTriggerLbl');
+    if(scopeLbl) scopeLbl.textContent=t('keysSummaryScopeLbl');
+    if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+    if(saveBtn) saveBtn.textContent=t('keysSave');
+    if(testBtn) testBtn.textContent=t('keysTestOnce');
+    var changeBtn=$('btnKeysCaptureChange');
+    if(changeBtn) changeBtn.textContent=t('keysCaptureChange');
+    var imeHint=$('imePresetHintMapping');
+    if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
+    if(!m){
+      if(nameEl) nameEl.textContent='—';
+      if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill'; }
+      if(trigVal) trigVal.textContent='—';
+      if(scopeVal) scopeVal.textContent='—';
+      if(saveBtn) saveBtn.disabled=true;
+      if(testBtn) testBtn.disabled=true;
+      if(keycapHost) keycapHost.removeAttribute('title');
+      return;
+    }
+    var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+    var dirty=isEditorDirty();
+    var rec=global.OneToneMappingRecording;
+    var recMode=rec&&rec.mode?rec.mode():'none';
+    var recording=recMode==='trigger'||recMode==='target';
+    if(nameEl) nameEl.textContent=habitName(m)+(trig?' · '+friendlyKey(trig):'');
+    if(statusEl){
+      var pillCls='keys-scheme-summary-pill';
+      var pillText='';
+      if(recording){
+        pillText=recMode==='trigger'?t('keysStatusRecordingTrigger'):t('keysStatusRecordingTarget');
+      }else if(dirty){
+        pillText=t('keysSummaryStatusDirty');
+        pillCls+=' is-dirty';
+      }else if(m.enabled){
+        pillText=t('keysSummaryStatusActive');
+        pillCls+=' is-on';
+      }else if(core().isSaved&&core().isSaved(m)){
+        pillText=t('keysSummaryStatusSaved');
+      }else{
+        pillText=t('keysSummaryStatusInactive');
+        pillCls+=' is-off';
+      }
+      statusEl.textContent=pillText;
+      statusEl.className=pillCls;
+    }
+    if(trigVal) trigVal.textContent=trig?friendlyKey(trig):t('keysStatusUnset');
+    if(scopeVal) scopeVal.textContent=scopeSummaryText(m);
+    if(saveBtn) saveBtn.disabled=!dirty;
+    if(testBtn){
+      var tgt=core().editorTarget?core().editorTarget(m):((m.targetKey||'').trim());
+      testBtn.disabled=!trig||!tgt;
+    }
+    if(keycapHost){
+      keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
+    }
+    if(keycapHint&&recording&&recMode==='trigger') keycapHint.textContent=t('keysKeycapRecording');
+    else if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+  }
+
+  function renderCapturePrimary(m){
+    var wrap=$('keysCapturePrimary');
+    var icon=$('keysCapturePrimaryIcon');
+    var name=$('keysCapturePrimaryName');
+    if(!wrap||!name) return;
+    var info=imeDisplayInfo(m);
+    name.textContent=info.name;
+    if(icon){
+      if(info.icon){
+        icon.src=info.icon;
+        icon.hidden=false;
+      }else{
+        icon.hidden=true;
+        icon.removeAttribute('src');
+      }
+    }
+  }
+
+  function normalizeTriggerModeUi(raw){
+    raw=String(raw||'tap').toLowerCase();
+    if(raw==='hold'||raw==='longpress'||raw==='perpress') return 'hold';
+    if(raw==='double') return 'double';
+    return 'tap';
+  }
+
+  function renderTriggerModeSegments(m){
+    var host=$('keysTriggerModeHost');
+    if(!host) return;
+    if(!m){
+      host.innerHTML='';
+      return;
+    }
+    var current=normalizeTriggerModeUi(m.triggerMode);
+    var modes=[
+      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'},
+      {id:'tap',label:'keysTriggerModeTap',mode:'tap'},
+      {id:'double',label:'keysTriggerModeDouble',mode:'double'}
+    ];
+    var html='<div class="keys-trigger-modes" role="radiogroup" aria-label="'+esc(t('triggerModeTitle'))+'">';
+    modes.forEach(function(opt){
+      var active=current===opt.id;
+      html+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+'" data-trigger-mode="'+esc(m.id)+'" data-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'">'+esc(t(opt.label))+'</button>';
+    });
+    html+='</div>';
+    host.innerHTML=html;
+  }
+
+  function renderTriggerConflict(m){
+    var box=$('keysTriggerConflict');
+    if(!box) return;
+    var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
+    var msg=previewKeyConflict('trigger',trig);
+    if(!msg&&m&&core().schemeHasConflict&&core().schemeHasConflict(m)){
+      msg=t('keysRecordConflictScheme');
+    }
+    if(!msg){
+      box.hidden=true;
+      box.innerHTML='';
+      return;
+    }
+    box.hidden=false;
+    box.innerHTML='<span class="keys-trigger-conflict-text">'+esc(msg)+'</span>'
+      +'<div class="keys-trigger-conflict-actions">'
+      +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-recommend="1">'+esc(t('keysConflictRecommend'))+'</button>'
+      +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-view="1">'+esc(t('keysConflictView'))+'</button>'
+      +'</div>';
+  }
+
+  function saveCurrentScheme(){
+    if(!isEditorDirty()) return;
+    hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
+    if(hooks().save) hooks().save();
+    if(hooks().render) hooks().render();
+    render();
+    var saveBtn=$('btnKeysSave');
+    if(saveBtn){
+      var prev=t('keysSave');
+      saveBtn.textContent=t('keysSaveDone');
+      setTimeout(function(){ if(saveBtn) saveBtn.textContent=prev; },1200);
+    }
+  }
+
+  function applyRecommendedTriggerKey(){
+    var m=core()&&core().selected?core().selected():null;
+    if(!m||!ed()) return;
+    var key=recommendedTriggerKey(m);
+    ed().setEditorTriggerKey(key);
+    hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
+    if(hooks().save) hooks().save();
+    if(hooks().renderEditor) hooks().renderEditor();
+    render();
+  }
+
+  function viewConflicts(){
+    var banner=$('conflictBanner');
+    var stash=$('keysCompatStash');
+    if(stash) stash.hidden=false;
+    if(banner){
+      banner.classList.add('show');
+      banner.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+  }
+
+  function renderTestProgress(state){
+    var wrap=$('keysTestProgress');
+    var text=$('keysTestProgressText');
+    var trigRow=$('habitKeyMapRowTrigger');
+    if(!wrap||!text) return;
+    var label='';
+    if(state==='sending') label=t('keysTestProgressSending');
+    else if(state==='recognizing') label=t('keysTestProgressRecognizing');
+    else if(state==='recording') label=t('keysTestProgressRecording');
+    if(!label){
+      wrap.hidden=true;
+      text.textContent='';
+      if(trigRow) trigRow.classList.remove('is-test-active');
+      return;
+    }
+    wrap.hidden=false;
+    text.textContent=label;
+    if(trigRow) trigRow.classList.add('is-test-active');
+  }
+
+
   function renderImePill(m){
     var pill=$('keysImePill');
     if(pill) pill.hidden=true;
@@ -133,6 +380,7 @@
         toggle.setAttribute('aria-checked',wasOn?'true':'false');
         delete toggle.dataset.vpToggleBusy;
       }
+      renderSchemeSummary(m);
       return;
     }
     if(activePill) activePill.classList.remove('is-recording');
@@ -148,9 +396,10 @@
     if(toggle){
       toggle.classList.toggle('is-on',enabled);
       toggle.setAttribute('aria-checked',enabled?'true':'false');
-      toggle.disabled=!m;
+      toggle.disabled=!m||recording;
       delete toggle.dataset.vpToggleBusy;
     }
+    renderSchemeSummary(m);
   }
 
   function renderAppContextStrip(){
@@ -226,19 +475,29 @@
     return m.appBehaviorRules.length;
   }
 
+  function schemePairLine(m){
+    if(hooks().homeMappingPairLine) return hooks().homeMappingPairLine(m);
+    var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
+    var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
+    if(!trig&&!tgt) return '';
+    return friendlyKey(trig||'—')+' → '+friendlyKey(tgt||'—');
+  }
+
   function renderKeysHubSchemeRow(m,selected){
     var isEditing=m.id===selected;
     var comp=schemeCompletion(m);
     var stepsText=comp.done+'/'+comp.total;
     var enabled=!!m.enabled;
-    var isDraft=core().isIncomplete&&core().isIncomplete(m);
-    var isStrictDraft=core().isDraft&&core().isDraft(m);
+    var tag=schemeStatusTag(m);
     var canToggle=core().isSaved&&core().isSaved(m);
-    var draftBadge=isStrictDraft?t('homeLiveSchemeDraft'):t('keySchemeCompletenessIncomplete');
-    return '<div class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(isDraft?' is-draft':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'">'
+    var pair=schemePairLine(m);
+    return '<div class="keys-hub-scheme-row'+(isEditing?' is-editing':'')+(!enabled?' is-disabled-scheme':'')+(tag.cls==='is-draft'?' is-draft':'')+'" role="listitem" data-scheme-id="'+esc(m.id)+'">'
       +'<button type="button" class="keys-hub-scheme-main" data-scheme-select="'+esc(m.id)+'" aria-current="'+(isEditing?'true':'false')+'">'
+      +'<span class="keys-hub-scheme-copy">'
       +'<span class="keys-hub-scheme-name">'+esc(habitName(m))+'</span>'
-      +(isDraft?'<span class="keys-hub-scheme-draft">'+esc(draftBadge)+'</span>':'')
+      +(pair?'<span class="keys-hub-scheme-pair">'+esc(pair)+'</span>':'')
+      +'</span>'
+      +'<span class="keys-hub-scheme-tag '+esc(tag.cls)+'">'+esc(t(tag.key))+'</span>'
       +'<span class="keys-hub-scheme-steps">'+esc(stepsText)+'</span>'
       +'</button>'
       +'<div class="keys-hub-scheme-actions">'
@@ -256,10 +515,19 @@
     var countEl=$('keysHubCount');
     var titleLbl=$('keysHubTitleLbl');
     var tplLbl=$('keysHubTemplatesLbl');
+    var tplCountEl=$('keysHubTemplatesCount');
+    var tplHint=$('keysHubTemplatesHint');
+    var tplFillWrap=$('keysHubTemplatesFillWrap');
+    var tplFillList=$('keysHubTemplatesFillList');
+    var tplFillLbl=$('keysHubTemplatesFillLbl');
     var aside=$('keysPanelAside');
     var tplApi=global.OneToneKeysWorkflowTemplates;
     if(titleLbl) titleLbl.textContent=t('keysHubTitle');
     if(tplLbl) tplLbl.textContent=t('keysHubTemplatesLbl');
+    if(tplHint) tplHint.textContent=t('keysHubTemplatesHint');
+    if(tplFillLbl) tplFillLbl.textContent=t('keysTemplateFillLbl');
+    var addSchemeBtn=$('btnKeysHubAddScheme');
+    if(addSchemeBtn) addSchemeBtn.textContent='+ '+t('addKeysDraft');
     if(aside) aside.setAttribute('aria-label',t('keysHubTitle'));
     if(!schemeList) return;
     if(!core()||!core().sorted){
@@ -270,44 +538,41 @@
     }
     var schemes=core().sorted();
     var selected=state().selectedMappingId;
-    var saved=schemes.filter(function(m){ return core().isSaved&&core().isSaved(m); });
-    var drafts=schemes.filter(function(m){ return core().isIncomplete&&core().isIncomplete(m); });
     if(card) card.hidden=false;
     if(countEl) countEl.textContent=String(schemes.length);
-    if(!saved.length&&!drafts.length){
+    if(!schemes.length){
       schemeList.innerHTML='<p class="keys-hub-empty">'+esc(t('keysWorkflowOverviewEmpty'))+'</p>';
     }else{
-      var html='';
-      if(saved.length){
-        html+='<div class="keys-hub-scheme-group">';
-        html+='<p class="keys-hub-scheme-group-lbl">'+esc(t('settingsKeysSavedLbl'))+'</p>';
-        html+=saved.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('');
-        html+='</div>';
-      }
-      html+='<div class="keys-hub-scheme-group keys-hub-scheme-group--drafts">';
-      html+='<p class="keys-hub-scheme-group-lbl">'+esc(t('settingsKeysDraftBoxLbl'))+'</p>';
-      if(drafts.length){
-        html+=drafts.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('');
-      }else{
-        html+='<p class="keys-hub-empty keys-hub-draft-empty">'+esc(t('settingsKeysDraftBoxEmpty'))+'</p>';
-      }
-      html+='</div>';
-      schemeList.innerHTML=html;
+      var sorted=schemes.slice().sort(function(a,b){
+        if(a.id===selected) return -1;
+        if(b.id===selected) return 1;
+        var aSaved=core().isSaved&&core().isSaved(a);
+        var bSaved=core().isSaved&&core().isSaved(b);
+        if(aSaved!==bSaved) return aSaved?-1:1;
+        return (a.order||0)-(b.order||0);
+      });
+      schemeList.innerHTML='<div class="keys-hub-scheme-group">'
+        +sorted.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('')
+        +'</div>';
     }
     if(!tplList||!tplApi||!tplApi.list) return;
     var templates=tplApi.list();
     var m=core()&&core().selected?core().selected():null;
     var canFill=!!m;
+    if(tplCountEl) tplCountEl.textContent=String(templates.length);
+    if(tplFillWrap) tplFillWrap.hidden=!canFill;
     tplList.innerHTML=templates.map(function(tpl){
       var summary=tplApi.compactSummary?tplApi.compactSummary(tpl):'';
-      return '<article class="keys-hub-template-row" data-template-id="'+esc(tpl.id)+'">'
-        +'<div class="keys-hub-template-main"><strong class="keys-hub-template-name">'+esc(t(tpl.nameKey))+'</strong>'
-        +'<span class="keys-hub-template-summary">'+esc(summary)+'</span></div>'
-        +'<div class="keys-hub-template-actions">'
-        +'<button type="button" class="keys-hub-template-btn" data-apply-template="'+esc(tpl.id)+'"'+(canFill?'':' disabled')+'>'+esc(t('keysTemplateApply'))+'</button>'
-        +'<button type="button" class="keys-hub-template-btn is-new" data-new-template="'+esc(tpl.id)+'">'+esc(t('keysTemplateNew'))+'</button>'
-        +'</div></article>';
+      var title=esc(t(tpl.nameKey))+(summary?' — '+esc(summary):'');
+      return '<button type="button" class="keys-hub-template-chip" data-new-template="'+esc(tpl.id)+'" title="'+title+'">'
+        +esc(t(tpl.nameKey))+'</button>';
     }).join('');
+    if(tplFillList){
+      tplFillList.innerHTML=canFill?templates.map(function(tpl){
+        return '<button type="button" class="keys-hub-template-fill-chip" data-apply-template="'+esc(tpl.id)+'" title="'+esc(t(tpl.nameKey))+'">'
+          +esc(t(tpl.nameKey))+'</button>';
+      }).join(''):'';
+    }
   }
 
   function renderWorkflowOverview(){
@@ -369,7 +634,20 @@
 
   function switchActiveScheme(id){
     id=String(id||'').trim();
-    if(!id) return;
+    if(!id||id===state().selectedMappingId) return;
+    if(isEditorDirty()){
+      var modal=global.OneToneMappingConfirmModal;
+      if(modal&&modal.open){
+        modal.open(t('keysUnsavedSwitchPrompt')).then(function(ok){
+          if(ok) switchActiveSchemeNow(id);
+        });
+        return;
+      }
+    }
+    switchActiveSchemeNow(id);
+  }
+
+  function switchActiveSchemeNow(id){
     hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
     var sel=$('keysHabitSwitcher');
@@ -482,6 +760,7 @@
       syncCancelButtonHost();
       var mOff=core()&&core().selected?core().selected():null;
       renderFlowStatusBar(mOff);
+      renderTriggerConflict(mOff);
       return;
     }
     var trigRow=$('habitKeyMapRowTrigger');
@@ -501,6 +780,7 @@
     syncCancelButtonHost();
     var m=core()&&core().selected?core().selected():null;
     renderFlowStatusBar(m);
+    renderTriggerConflict(m);
   }
 
   function syncRecordButtons(){
@@ -549,18 +829,8 @@
     renderAppContext();
     renderFlowStatusBar(m);
     renderImePill(m);
-    var countEl=$('keysAppShortcutsCount');
-    if(countEl){
-      var n=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets.length:0;
-      countEl.textContent=t('keysAppShortcutsCount').replace('{n}',String(n));
-    }
-    var labels={
-      keysAppShortcutsTitleLbl:'habitAppShortcutsTitle'
-    };
-    Object.keys(labels).forEach(function(id){
-      var el=$(id);
-      if(el) el.textContent=t(labels[id]);
-    });
+    var shortcutsCard=$('keysAppShortcutsCard');
+    if(shortcutsCard) shortcutsCard.hidden=true;
     var advSummary=$('keysAdvancedSummary');
     if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
@@ -589,6 +859,10 @@
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
     renderAppContextStrip();
     renderTriggerContextBadge();
+    renderCapturePrimary(m);
+    renderTriggerModeSegments(m);
+    renderTriggerConflict(m);
+    renderSchemeSummary(m);
     syncRecordButtons();
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('mapping');
     renderRecordingFeedback();
@@ -641,6 +915,56 @@
         e.preventDefault();
         var main=$('btnKeysAddAppRule');
         if(main) main.click();
+      });
+    }
+    var saveBtn=$('btnKeysSave');
+    if(saveBtn){
+      saveBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        saveCurrentScheme();
+      });
+    }
+    var testTop=$('btnKeysTestTop');
+    if(testTop){
+      testTop.addEventListener('click',function(e){
+        e.preventDefault();
+        var main=$('btnTestSend');
+        if(main&&!main.disabled) main.click();
+      });
+    }
+    var captureChange=$('btnKeysCaptureChange');
+    if(captureChange){
+      captureChange.addEventListener('click',function(e){
+        e.preventDefault();
+        var voiceBtn=$('btnHabitFlowOpenVoice');
+        if(voiceBtn) voiceBtn.click();
+        else{
+          var tgtBtn=$('btnRecordTarget');
+          if(tgtBtn) tgtBtn.click();
+        }
+      });
+    }
+    var hubAdd=$('btnKeysHubAddScheme');
+    if(hubAdd){
+      hubAdd.addEventListener('click',function(e){
+        e.preventDefault();
+        var addBtn=$('btnAddMapping');
+        if(addBtn) addBtn.click();
+      });
+    }
+    var panel=$('settingsPanelKeys');
+    if(panel&&panel.dataset.keysPanelUiBound!=='1'){
+      panel.dataset.keysPanelUiBound='1';
+      panel.addEventListener('click',function(e){
+        if(e.target.closest&&e.target.closest('[data-keys-conflict-recommend]')){
+          e.preventDefault();
+          applyRecommendedTriggerKey();
+          return;
+        }
+        if(e.target.closest&&e.target.closest('[data-keys-conflict-view]')){
+          e.preventDefault();
+          viewConflicts();
+        }
       });
     }
     var hub=$('keysHubCard');
@@ -716,6 +1040,10 @@
     renameScheme:renameScheme,
     renderWorkflowOverview:renderWorkflowOverview,
     renderWorkflowTemplates:renderWorkflowTemplates,
-    switchActiveScheme:switchActiveScheme
+    switchActiveScheme:switchActiveScheme,
+    renderSchemeSummary:renderSchemeSummary,
+    renderTestProgress:renderTestProgress,
+    isEditorDirty:isEditorDirty,
+    saveCurrentScheme:saveCurrentScheme
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -282,31 +282,12 @@
   }
 
   function renderKeysAside(){
-    var list=$('keysAppRulesList');
-    var addBtn=$('btnKeysAddAppRule');
     var aside=$('keysPanelAside');
+    var shortcutsCard=$('keysAppShortcutsCard');
     var keysActive=keysPanelActive();
     if(aside) aside.hidden=!keysActive;
-    if(!keysActive||!list) return;
-    var m=core()&&core().selected?core().selected():null;
-    if(!m||!core().isSaved(m)){
-      list.innerHTML='<p class="habit-app-rules-empty">'+esc(t('habitAppRulesEmpty'))+'</p>';
-      if(addBtn) addBtn.hidden=true;
-      return;
-    }
-    seedDefaultBehaviorRules(m);
-    ensureRules(m);
-    var html='';
-    BEHAVIOR_PRESETS.forEach(function(preset){
-      html+=renderKeysExpandableRow(m,preset);
-    });
-    list.innerHTML=html;
-    if(addBtn){
-      addBtn.hidden=false;
-      addBtn.textContent='+ '+t('habitAppShortcutsAdd');
-      addBtn.disabled=false;
-      addBtn.title=t('habitAppShortcutsAddHint');
-    }
+    if(shortcutsCard) shortcutsCard.hidden=true;
+    if(!keysActive) return;
     var kpu=global.OneToneKeysPanelUi;
     if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
   }

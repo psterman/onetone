@@ -6,8 +6,8 @@
 }
 
 /* Scheme switching lives in the sidebar hub — hide duplicate top tabs */
-#settingsPanelKeys:has(#keysHubCard:not([hidden])) .keys-workflow-tabs-shell {
-  display: none;
+#settingsPanelKeys .keys-workflow-tabs-shell {
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-habit-switcher-assist {
@@ -637,6 +637,44 @@
   cursor: pointer;
 }
 
+#settingsPanelKeys .keys-hub-scheme-copy {
+  display: grid;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-hub-scheme-pair {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-hub-scheme-add {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 0 8px 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--outline-variant);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#settingsPanelKeys .keys-hub-scheme-add:hover {
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.28);
+}
+
 #settingsPanelKeys .keys-hub-scheme-main:hover {
   background: rgba(0, 0, 0, 0.03);
 }
@@ -757,79 +795,131 @@
   background: var(--outline-variant);
 }
 
-#settingsPanelKeys .keys-hub-templates-lbl {
-  margin: 8px 12px 6px;
-  font-size: 9px;
+#settingsPanelKeys .keys-hub-templates-disclosure {
+  margin: 0;
+  padding: 0 0 8px;
+}
+
+#settingsPanelKeys .keys-hub-templates-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: var(--on-surface-muted);
+  user-select: none;
+}
+
+#settingsPanelKeys .keys-hub-templates-summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelKeys .keys-hub-templates-summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--on-surface-muted);
+  transition: transform 0.15s ease;
+}
+
+#settingsPanelKeys .keys-hub-templates-disclosure[open] .keys-hub-templates-summary::before {
+  transform: rotate(90deg);
+}
+
+#settingsPanelKeys .keys-hub-templates-summary-lbl {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-hub-templates-summary-count {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  opacity: 0.85;
+}
+
+#settingsPanelKeys .keys-hub-templates-hint {
+  margin: 0 12px 8px;
+  font-size: 9px;
+  line-height: 1.4;
   color: var(--on-surface-muted);
 }
 
 #settingsPanelKeys .keys-hub-templates {
-  display: grid;
-  gap: 6px;
-  padding: 0 8px 10px;
-}
-
-#settingsPanelKeys .keys-hub-template-row {
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px dashed var(--outline-variant);
-  background: var(--surface-soft);
-}
-
-#settingsPanelKeys .keys-hub-template-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-#settingsPanelKeys .keys-hub-template-name {
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--on-surface);
-}
-
-#settingsPanelKeys .keys-hub-template-summary {
-  font-size: 9px;
-  line-height: 1.35;
-  color: var(--on-surface-muted);
-}
-
-#settingsPanelKeys .keys-hub-template-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  padding: 0 12px 6px;
 }
 
-#settingsPanelKeys .keys-hub-template-btn {
-  flex: 1;
+#settingsPanelKeys .keys-hub-template-chip {
   min-height: 26px;
-  padding: 0 8px;
-  border-radius: 7px;
-  border: 1px solid rgba(42, 156, 196, 0.24);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
   background: var(--surface);
   font: inherit;
   font-size: 9px;
   font-weight: 700;
   color: var(--primary-strong);
   cursor: pointer;
+  white-space: nowrap;
 }
 
-#settingsPanelKeys .keys-hub-template-btn.is-new {
-  border-style: solid;
+#settingsPanelKeys .keys-hub-template-chip:hover {
   background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.45);
 }
 
-#settingsPanelKeys .keys-hub-template-btn:hover {
-  background: var(--primary-soft);
+#settingsPanelKeys .keys-hub-templates-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--outline-variant);
 }
 
-#settingsPanelKeys .keys-hub-template-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+#settingsPanelKeys .keys-hub-templates-fill-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-hub-templates-fill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#settingsPanelKeys .keys-hub-template-fill-chip {
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelKeys .keys-hub-template-fill-chip:hover {
+  color: var(--on-surface);
+  border-color: var(--outline);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-aside-card.keys-app-shortcuts-panel {
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-compat-stash:not([hidden]) {
@@ -884,4 +974,462 @@
 
 #settingsPanelKeys #keysAppShortcutsCard {
   overflow: visible;
+}
+
+/* v3 — workflow editor layout */
+#settingsPanelKeys .keys-scheme-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 156, 196, 0.22);
+  background: linear-gradient(180deg, rgba(42, 156, 196, 0.08), rgba(42, 156, 196, 0.03));
+}
+
+#settingsPanelKeys .keys-scheme-summary-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+#settingsPanelKeys .keys-scheme-summary-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-scheme-summary-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--on-surface-muted);
+  border: 1px solid var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-scheme-summary-pill.is-on {
+  color: #2e7d4f;
+  background: rgba(46, 125, 79, 0.1);
+  border-color: rgba(46, 125, 79, 0.28);
+}
+
+#settingsPanelKeys .keys-scheme-summary-pill.is-dirty {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+#settingsPanelKeys .keys-scheme-summary-pill.is-off {
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-scheme-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#settingsPanelKeys .keys-scheme-summary-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 11px;
+}
+
+#settingsPanelKeys .keys-scheme-summary-lbl {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+
+#settingsPanelKeys .keys-scheme-summary-val {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+#settingsPanelKeys .keys-scheme-summary-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-scheme-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-summary-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+#settingsPanelKeys .keys-summary-btn:hover:not(:disabled) {
+  border-color: rgba(42, 156, 196, 0.32);
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-summary-btn.is-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+#settingsPanelKeys .keys-summary-btn.is-primary:hover:not(:disabled) {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+  color: var(--on-primary);
+}
+
+#settingsPanelKeys .keys-summary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#settingsPanelKeys .keys-summary-enable {
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-workflow-pipeline {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+#settingsPanelKeys .habit-default-flow.keys-workflow-grid {
+  gap: 6px 4px;
+}
+
+#settingsPanelKeys .habit-flow-step.keys-workflow-col {
+  border-radius: 8px;
+}
+
+#settingsPanelKeys .keys-step-card-head,
+#settingsPanelKeys .flow-step-card-head {
+  padding: 10px 12px;
+  border-radius: 8px 8px 0 0;
+}
+
+#settingsPanelKeys .keys-step-body {
+  padding: 10px 12px 12px;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-workflow-arrow {
+  position: relative;
+  align-self: center;
+}
+
+#settingsPanelKeys .keys-workflow-arrow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 2px;
+  margin-left: -14px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, rgba(42, 156, 196, 0.15), rgba(42, 156, 196, 0.45));
+  border-radius: 1px;
+}
+
+#settingsPanelKeys .keys-workflow-arrow-icon {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  font-size: 12px;
+}
+
+#settingsPanelKeys .keys-keycap-hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+#settingsPanelKeys .keys-keycap-host:hover + .keys-keycap-hint,
+#settingsPanelKeys .keys-keycap-host:focus-within + .keys-keycap-hint {
+  color: var(--primary-strong);
+}
+
+#settingsPanelKeys .keys-trigger-modes-host {
+  margin-top: 4px;
+}
+
+#settingsPanelKeys .keys-trigger-modes {
+  display: flex;
+  gap: 0;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-trigger-mode-seg {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelKeys .keys-trigger-mode-seg.is-active {
+  background: var(--surface);
+  color: var(--on-surface);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+#settingsPanelKeys .keys-trigger-conflict {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(232, 147, 12, 0.28);
+  background: rgba(232, 147, 12, 0.1);
+  font-size: 10px;
+  line-height: 1.4;
+  color: #9c6300;
+}
+
+#settingsPanelKeys .keys-trigger-conflict[hidden],
+#settingsPanelKeys .keys-test-progress[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-trigger-conflict-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-trigger-conflict-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-trigger-conflict-btn {
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: var(--surface);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#settingsPanelKeys .keys-trigger-conflict-btn:hover {
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-test-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 156, 196, 0.22);
+  background: var(--primary-soft);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+#settingsPanelKeys .keys-test-progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: keys-test-progress-pulse 1s ease-in-out infinite;
+}
+
+@keyframes keys-test-progress-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+#settingsPanelKeys .keys-capture-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelKeys .keys-capture-primary-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-capture-primary-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+#settingsPanelKeys .keys-capture-primary-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-capture-change-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+#settingsPanelKeys .keys-capture-ime-block {
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+#settingsPanelKeys .keys-capture-ime-block .ime-preset-item {
+  width: 28px;
+  height: 28px;
+}
+
+#settingsPanelKeys .keys-app-binding-strip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+#settingsPanelKeys .keys-hub-scheme-tag {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+}
+
+#settingsPanelKeys .keys-hub-scheme-tag.is-active {
+  color: #2e7d4f;
+  background: rgba(46, 125, 79, 0.12);
+}
+
+#settingsPanelKeys .keys-hub-scheme-tag.is-saved {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-hub-scheme-tag.is-draft {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+#settingsPanelKeys .keys-hub-scheme-tag.is-incomplete {
+  color: var(--on-surface-muted);
+  background: var(--surface-soft);
+  border: 1px dashed var(--outline-variant);
+}
+
+#settingsPanelKeys .keys-aside-card.keys-hub-card {
+  opacity: 0.96;
+}
+
+#settingsPanelKeys .keys-hub-scheme-group-lbl {
+  display: none;
+}
+
+#settingsPanelKeys .keys-hub-schemes {
+  max-height: min(280px, 40vh);
+}
+
+@media (max-width: 1040px) {
+  #settingsPanelKeys .keys-scheme-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #settingsPanelKeys .keys-scheme-summary-actions {
+    justify-content: flex-end;
+  }
+}
+
+#settingsPanelKeys .keys-finish-delay-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#settingsPanelKeys .keys-finish-delay-controls .map-timing-range {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-finish-delay-input {
+  width: 52px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--on-surface);
+}
+  border-color: rgba(42, 156, 196, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.12);
+}
+
+#settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display.display {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display.display:hover {
+  border-color: rgba(42, 156, 196, 0.5);
+  box-shadow: 0 2px 0 rgba(42, 156, 196, 0.15);
+}
+
+#settingsPanelKeys .keys-workflow-col .keys-finish-segments {
+  flex-direction: row;
 }

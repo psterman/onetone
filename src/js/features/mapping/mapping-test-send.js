@@ -343,6 +343,12 @@
     var hooks=h();
     var t=hooks.t;
     var btn=$('btnTestSend');
+    var panelUi=global.OneToneKeysPanelUi;
+    if(panelUi&&panelUi.renderTestProgress){
+      if(sendState==='sending'&&sendFromFooter) panelUi.renderTestProgress('sending');
+      else if(sendState==='sent'&&sendFromFooter) panelUi.renderTestProgress('');
+      else if(sendState==='idle') panelUi.renderTestProgress('');
+    }
     if(!btn) return;
     var rowSending=sendState==='sending'&&!sendFromFooter;
     btn.classList.toggle('sending',sendState==='sending'&&sendFromFooter);
