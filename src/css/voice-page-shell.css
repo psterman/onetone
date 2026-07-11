@@ -431,6 +431,29 @@
   margin-bottom: 8px;
 }
 
+#settingsPanelVoiceWake #voiceSapiPresets[hidden],
+#settingsPanelVoiceWake #voiceSettingsVoskWakeWrap[hidden],
+#settingsPanelVoiceWake #voiceVoskPresetsCn[hidden],
+#settingsPanelVoiceWake #voiceVoskPresetsEn[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-settings-wake-host[data-wake-lang="zh"] #voiceVoskPresetsEn,
+#settingsPanelVoiceWake .voice-settings-wake-host[data-wake-lang="en"] #voiceVoskPresetsCn,
+#settingsPanelVoiceWake .voice-settings-wake-host[data-wake-lang="en"] #voiceSapiPresets {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-settings-wake-host[data-wake-mode="vosk"] > #voiceSapiPresets,
+#settingsPanelVoiceWake .voice-settings-wake-host:has(#voiceSettingsVoskWakeWrap:not([hidden])) > #voiceSapiPresets {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-settings-wake-host[data-wake-mode="sapi"] #voiceSettingsVoskWakeWrap,
+#settingsPanelVoiceWake .voice-settings-wake-host:has(> #voiceSapiPresets:not([hidden])) > #voiceSettingsVoskWakeWrap {
+  display: none !important;
+}
+
 #settingsPanelVoiceWake.voice-page-v2 .voice-wake-card--presets .voice-wake-custom-details {
   margin-top: 4px;
   border: 1px dashed var(--outline-variant);
@@ -534,10 +557,6 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px 10px;
   align-items: stretch;
-}
-
-#settingsPanelVoiceWake.voice-page-v2 .keys-workflow-arrow {
-  display: flex;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col {

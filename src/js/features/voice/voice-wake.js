@@ -440,6 +440,7 @@
     global.OneToneVoiceEnd.syncModeUi();
     if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.renderVoiceSubnav();
     renderWakeCustomPhrases();
+    syncWakePresetHostVisibility();
   }
 
   function renderVoiceModeSwitch(){
@@ -940,6 +941,15 @@
     });
   }
 
+  function syncWakePresetHostVisibility(){
+    if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetPanels){
+      var vm=global.OneToneVoiceSettingsViewModel&&global.OneToneVoiceSettingsViewModel.build
+        ?global.OneToneVoiceSettingsViewModel.build(false)
+        :{loading:false,mode:currentVoiceMode()||'vosk'};
+      global.OneToneVoiceStepWake.syncPresetPanels(vm);
+    }
+  }
+
   function syncVoiceSapiPresets(phrases){
     const selected=normalizePhraseList(phrases);
     if(!selected.length) return;
@@ -953,6 +963,7 @@
       });
     }
     renderWakeCustomPhrases();
+    syncWakePresetHostVisibility();
   }
 
   function wakePresetPhraseSet(){
@@ -1134,7 +1145,9 @@
   }
 
   function syncVoiceWakeLangFromPreset(preset){
-    global.__vp_voice_wake_lang__=isEnglishVoskPreset(preset)?'en':'zh';
+    var resolved=resolvedVoskPreset(preset||'cn-light');
+    if(global.__vp_voice_wake_lang_manual__) return;
+    global.__vp_voice_wake_lang__=isEnglishVoskPreset(resolved)?'en':'zh';
   }
 
   function currentVoiceVoskPreset(){
@@ -1166,6 +1179,12 @@
   }
 
   function updateVoiceVoskPresetPanel(preset){
+    if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetLang){
+      global.OneToneVoiceStepWake.syncPresetLang({
+        lang:global.__vp_voice_wake_lang__
+      });
+      return;
+    }
     const p=preset||currentVoiceVoskPreset();
     const cn=$('voiceVoskPresetsCn');
     const en=$('voiceVoskPresetsEn');
@@ -1173,10 +1192,11 @@
     const enLabel=$('voiceVoskPresetsEnLabel');
     if(!cn||!en) return;
     const enOnly=isEnglishVoskPreset(p);
-    cn.hidden=enOnly;
-    en.hidden=!enOnly;
-    if(cnLabel) cnLabel.hidden=enOnly;
-    if(enLabel) enLabel.hidden=!enOnly;
+    const showEn=enOnly||(global.__vp_voice_wake_lang__||'zh')==='en';
+    cn.hidden=showEn;
+    en.hidden=!showEn;
+    if(cnLabel) cnLabel.hidden=true;
+    if(enLabel) enLabel.hidden=true;
   }
 
   function renderVoiceVoskStatus(res,opts){
@@ -1195,7 +1215,6 @@
         const uiPreset=voiceVoskPendingPreset||resolvedVoskPreset(res.modelPreset||'cn-light');
         syncVoiceVoskPresetButtons(uiPreset,voiceVoskTogglePending);
         updateVoiceVoskPresetPanel(uiPreset);
-        if(!voiceVoskPendingPreset) syncVoiceWakeLangFromPreset(uiPreset);
       }
       syncVoiceVoskPresets(res.phrases||[]);
     }
@@ -1498,6 +1517,7 @@
       });
     }
     renderWakeCustomPhrases();
+    syncWakePresetHostVisibility();
   }
 
   function changeVoiceVoskModelPreset(requestedPreset){
@@ -1507,7 +1527,13 @@
     syncVoiceVoskPresetButtons(preset,false);
     updateVoiceVoskPresetPanel(preset);
     if(preset===currentBackend){
-      syncVoiceWakeLangFromPreset(preset);
+      if(!global.__vp_voice_wake_lang_manual__){
+        syncVoiceWakeLangFromPreset(preset);
+      }
+      global.__vp_voice_wake_lang_manual__=false;
+      if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetLang){
+        global.OneToneVoiceStepWake.syncPresetLang({lang:global.__vp_voice_wake_lang__});
+      }
       hooks().renderVoiceSettingsFlow&&hooks().renderVoiceSettingsFlow();
       return;
     }
@@ -1523,7 +1549,11 @@
         renderVoskDownloadProgress('',0);
         hooks().toast(t('voiceVoskMissingModel'),'warn');
       }
+      global.__vp_voice_wake_lang_manual__=false;
       syncVoiceWakeLangFromPreset(preset);
+      if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetLang){
+        global.OneToneVoiceStepWake.syncPresetLang({lang:global.__vp_voice_wake_lang__});
+      }
       hooks().syncHomeFromVoiceSettings(res,null,null,{homeOnly:true,lightOnly:true});
       hooks().toast(t('voiceVoskModelUpdated'));
       hooks().stopMicLevelPoll();
@@ -1536,6 +1566,7 @@
     }).finally(function(){
       voiceVoskTogglePending=false;
       voiceVoskPendingPreset=null;
+      global.__vp_voice_wake_lang_manual__=false;
       syncVoiceVoskPresetButtons(backendVoiceVoskPreset(),false);
     });
   }

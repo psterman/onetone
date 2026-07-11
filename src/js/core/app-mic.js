@@ -340,11 +340,13 @@
       btn.className='mic-device-card'+((dev.id===activeMicId||(!activeMicId&&dev.isDefault))?' is-active':'');
       btn.setAttribute('data-id',dev.id);
       btn.innerHTML=
-        '<span class="mic-device-body">'+
-          '<div class="mic-device-name"></div>'+
-          '<div class="mic-device-sub"></div>'+
-        '</span>'+
-        '<span class="mic-level-bars" aria-hidden="true">'+buildMicLevelBars()+'</span>';
+        '<span class="mic-device-card-inner">'+
+          '<span class="mic-device-title-row">'+
+            '<span class="mic-device-name"></span>'+
+            '<span class="mic-device-sub"></span>'+
+          '</span>'+
+          '<span class="mic-level-bars mic-level-bars--wide" aria-hidden="true">'+buildMicLevelBars(20)+'</span>'+
+        '</span>';
       btn.querySelector('.mic-device-name').textContent=dev.name;
       btn.querySelector('.mic-device-sub').textContent=dev.isDefault?t('micAutoDetectSub'):t('micExternal');
       btn.disabled=recordingBusy;

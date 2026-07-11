@@ -151,10 +151,10 @@
   function firstSelectedPhrase(selector){
     if(global.OneToneVoiceWakePresets){
       if(selector.indexOf('En')>=0){
-        return global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_EN)[0]||'';
+        return global.OneToneVoiceWakePresets.firstSelectedPhrase('vosk','en');
       }
       if(selector.indexOf('Cn')>=0){
-        return global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_CN)[0]||'';
+        return global.OneToneVoiceWakePresets.firstSelectedPhrase('vosk','zh');
       }
       return global.OneToneVoiceWakePresets.firstSelectedPhrase('sapi');
     }
@@ -166,12 +166,14 @@
     if(vm.loading) return {zh:'',en:'',display:t('homeLiveLoading')};
     var zh='';
     var en='';
-    if(global.OneToneVoiceWakePresets){
+    var lang=global.__vp_voice_wake_lang__||'zh';
+    var presets=global.OneToneVoiceWakePresets;
+    if(presets){
       if(vm.mode==='sapi'){
-        zh=global.OneToneVoiceWakePresets.firstSelectedPhrase('sapi')||vm.wakePhrase;
+        zh=presets.firstSelectedPhrase('sapi')||vm.wakePhrase;
       }else if(vm.mode==='vosk'){
-        zh=global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_CN)[0]||'';
-        en=global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_EN)[0]||'';
+        zh=presets.firstSelectedPhrase('vosk','zh')||'';
+        en=presets.firstSelectedPhrase('vosk','en')||'';
         if(!zh&&!en) zh=vm.wakePhrase;
       }else{
         zh=vm.wakePhrase;
@@ -185,9 +187,8 @@
     }else{
       zh=vm.wakePhrase;
     }
-    var lang=global.__vp_voice_wake_lang__||'zh';
     var display='';
-    if(vm.mode==='vosk'&&en&&(lang==='en'||(!zh&&en))) display=en;
+    if(vm.mode==='vosk'&&lang==='en'&&(en||zh)) display=en||zh;
     else display=zh||en||'';
     if(!display) display=t('voiceChipWakeUnset');
     return {zh:zh,en:en,display:display,lang:lang};

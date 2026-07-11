@@ -5,9 +5,22 @@
   var VOSK_CN='#voiceVoskPresetsCn';
   var VOSK_EN='#voiceVoskPresetsEn';
 
+  function phraseCustom(){
+    return global.OneToneVoicePhraseCustom;
+  }
+
   function presetPhrasesIn(sel){
-    var pc=global.OneToneVoicePhraseCustom;
+    var pc=phraseCustom();
     return pc&&pc.presetPhrasesIn?pc.presetPhrasesIn(sel):[];
+  }
+
+  function selectedPhrasesIn(sel){
+    var pc=phraseCustom();
+    return pc&&pc.selectedPhrasesIn?pc.selectedPhrasesIn(sel):[];
+  }
+
+  function wakeLang(){
+    return global.__vp_voice_wake_lang__||'zh';
   }
 
   function getExpandedMode(){
@@ -22,40 +35,54 @@
     return 'sapi';
   }
 
-  function getActiveVoskPresetRoots(){
+  function getActiveVoskPresetRoots(lang){
+    lang=lang||wakeLang();
     var wake=global.OneToneVoiceWake;
     if(wake&&wake.currentVoskPreset&&wake.isEnglishVoskPreset){
       var preset=wake.currentVoskPreset();
-      return [wake.isEnglishVoskPreset(preset)?VOSK_EN:VOSK_CN];
+      if(wake.isEnglishVoskPreset(preset)) return [VOSK_EN];
+      if(lang==='en') return [VOSK_EN];
+      return [VOSK_CN];
     }
-    return [VOSK_CN];
+    return lang==='en'?[VOSK_EN]:[VOSK_CN];
   }
 
-  function getPresetRoots(mode){
+  function getPresetRoots(mode,lang){
     mode=mode||getExpandedMode();
-    if(mode==='vosk') return getActiveVoskPresetRoots();
+    if(mode==='vosk') return getActiveVoskPresetRoots(lang);
     return [SAPI_ROOT];
   }
 
-  function queryPresetButtons(mode){
+  function queryPresetButtons(mode,lang){
     var out=[];
-    getPresetRoots(mode).forEach(function(sel){
+    getPresetRoots(mode,lang).forEach(function(sel){
       document.querySelectorAll(sel+' [data-phrase]').forEach(function(btn){ out.push(btn); });
     });
     return out;
   }
 
-  function getSelectedPhrases(mode){
+  function getSelectedPhrases(mode,lang){
     mode=mode||getExpandedMode();
     if(mode==='vosk'){
-      return presetPhrasesIn(VOSK_CN).concat(presetPhrasesIn(VOSK_EN));
+      return selectedPhrasesIn(VOSK_CN).concat(selectedPhrasesIn(VOSK_EN));
     }
-    return presetPhrasesIn(SAPI_ROOT);
+    return selectedPhrasesIn(SAPI_ROOT);
   }
 
-  function firstSelectedPhrase(mode){
-    var phrases=getSelectedPhrases(mode);
-    return phrases.length?phrases[0]:'';
+  function firstSelectedPhrase(mode,lang){
+    mode=mode||getExpandedMode();
+    lang=lang||wakeLang();
+    if(mode==='vosk'){
+      var root=lang==='en'?VOSK_EN:VOSK_CN;
+      var selected=selectedPhrasesIn(root);
+      if(selected.length) return selected[0];
+      var fallback=presetPhrasesIn(root);
+      return fallback.length?fallback[0]:'';
+    }
+    var sapiSelected=selectedPhrasesIn(SAPI_ROOT);
+    if(sapiSelected.length) return sapiSelected[0];
+    var sapiFallback=presetPhrasesIn(SAPI_ROOT);
+    return sapiFallback.length?sapiFallback[0]:'';
   }
 
   function syncSelected(phrases,mode){
@@ -91,6 +118,7 @@
     firstSelectedPhrase:firstSelectedPhrase,
     syncSelected:syncSelected,
     presetPhrasesIn:presetPhrasesIn,
+    selectedPhrasesIn:selectedPhrasesIn,
     bindPresetClicks:bindPresetClicks
   };
 })((typeof window!=='undefined')?window:globalThis);

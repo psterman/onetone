@@ -1322,8 +1322,8 @@
                         <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
                       </div>
                     </div>
-                    <div class="voice-settings-wake-host" id="voiceSettingsWakeHost">
-                      <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
+                    <div class="voice-settings-wake-host" id="voiceSettingsWakeHost" data-wake-mode="off" data-wake-lang="zh">
+                      <div class="voice-sapi-preset-grid" id="voiceSapiPresets" hidden>
                         <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
                         <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
                         <button type="button" class="voice-sapi-preset" data-phrase="打开听写">打开听写</button>
@@ -1331,7 +1331,7 @@
                         <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
                       </div>
                       <div id="voiceSettingsVoskWakeWrap" hidden>
-                        <p class="mic-desc" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
+                        <p class="mic-desc sr-only" id="voiceVoskPresetsCnLabel">中文唤醒词</p>
                         <div class="voice-sapi-preset-grid" id="voiceVoskPresetsCn">
                           <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="开始听写">开始听写</button>
@@ -1339,8 +1339,8 @@
                           <button type="button" class="voice-sapi-preset" data-phrase="语音输入">语音输入</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="开启输入">开启输入</button>
                         </div>
-                        <p class="mic-desc" id="voiceVoskPresetsEnLabel" style="margin-top:8px">英文唤醒词</p>
-                        <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn">
+                        <p class="mic-desc sr-only" id="voiceVoskPresetsEnLabel">英文唤醒词</p>
+                        <div class="voice-sapi-preset-grid" id="voiceVoskPresetsEn" hidden>
                           <button type="button" class="voice-sapi-preset" data-phrase="start dictation">start dictation</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="start input">start input</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="begin dictation">begin dictation</button>
@@ -1385,7 +1385,7 @@
                     <div class="voice-wake-mic-body" id="voiceMicPickerDetails">
                       <div class="mic-settings-block drawer-section" id="voiceMicSection">
                         <div class="mini-title sr-only" id="micTitle">麦克风</div>
-                        <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
+                        <p class="mic-desc sr-only" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
                         <p class="mic-empty" id="micEmpty" hidden></p>
                         <div class="mic-device-list" id="micDeviceList"></div>
                       </div>

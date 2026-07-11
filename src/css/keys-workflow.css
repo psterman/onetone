@@ -245,22 +245,6 @@
   flex-direction: column;
 }
 
-#settingsPanelKeys .keys-workflow-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  padding: 0 2px;
-  color: var(--on-surface-muted);
-}
-
-#settingsPanelKeys .keys-workflow-arrow-icon {
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--primary);
-}
-
 #settingsPanelKeys .keys-workflow-col-head {
   flex-direction: column;
   align-items: stretch;
@@ -1133,38 +1117,6 @@
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-workflow-arrow {
-  position: relative;
-  align-self: center;
-}
-
-#settingsPanelKeys .keys-workflow-arrow::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 28px;
-  height: 2px;
-  margin-left: -14px;
-  margin-top: -1px;
-  background: linear-gradient(90deg, rgba(42, 156, 196, 0.15), rgba(42, 156, 196, 0.45));
-  border-radius: 1px;
-}
-
-#settingsPanelKeys .keys-workflow-arrow-icon {
-  position: relative;
-  z-index: 1;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid rgba(42, 156, 196, 0.28);
-  font-size: 12px;
-}
-
 #settingsPanelKeys .keys-keycap-hint {
   margin: 4px 0 0;
   font-size: 10px;
@@ -1497,15 +1449,26 @@
   align-items: center;
   justify-content: center;
   align-self: center;
-  padding: 0 2px;
+  flex-shrink: 0;
+  width: 28px;
+  padding: 0;
+  overflow: hidden;
   color: var(--on-surface-muted);
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow-icon {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid rgba(42, 156, 196, 0.24);
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
-  color: var(--primary);
+  color: var(--primary-strong);
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col-head {

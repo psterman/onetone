@@ -19,6 +19,17 @@
     return out;
   }
 
+  function selectedPhrasesIn(rootSelector){
+    var out=[];
+    var root=document.querySelector(rootSelector);
+    if(!root) return out;
+    root.querySelectorAll('[data-phrase].is-selected').forEach(function(btn){
+      var p=String(btn.getAttribute('data-phrase')||'').trim();
+      if(p) out.push(p);
+    });
+    return out;
+  }
+
   function customPhrases(activePhrases,presetPhrases){
     var presetSet={};
     (presetPhrases||[]).forEach(function(p){ presetSet[p]=true; });
@@ -75,6 +86,7 @@
 
   global.OneToneVoicePhraseCustom={
     presetPhrasesIn:presetPhrasesIn,
+    selectedPhrasesIn:selectedPhrasesIn,
     customPhrases:customPhrases,
     renderChips:renderChips,
     readInput:readInput,

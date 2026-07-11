@@ -354,19 +354,30 @@
         if(!btn) return;
         e.preventDefault();
         var lang=btn.getAttribute('data-lang')||'zh';
-        var eng=hooks.currentVoiceMode?hooks.currentVoiceMode():'off';
-        var wakeApi=global.OneToneVoiceWake;
-        if(eng==='vosk'&&wakeApi&&wakeApi.changeVoskModelPreset){
-          wakeApi.changeVoskModelPreset(lang==='en'?'en-light':'cn-light');
-          return;
-        }
         global.__vp_voice_wake_lang__=lang;
+        global.__vp_voice_wake_lang_manual__=true;
         host.querySelectorAll('.flow-lang-btn').forEach(function(b){
           b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
         });
+        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetLang){
+          global.OneToneVoiceStepWake.syncPresetLang({lang:lang});
+        }
         if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
           global.OneToneVoiceSettingsFlow.render();
         }
+        var eng=hooks.currentVoiceMode?hooks.currentVoiceMode():'off';
+        var wakeApi=global.OneToneVoiceWake;
+        if(eng==='vosk'&&wakeApi&&wakeApi.changeVoskModelPreset){
+          var target=lang==='en'?'en-light':'cn-light';
+          var current=wakeApi.currentVoskPreset?wakeApi.currentVoskPreset():'cn-light';
+          if(target!==current){
+            wakeApi.changeVoskModelPreset(target);
+          }else{
+            global.__vp_voice_wake_lang_manual__=false;
+          }
+          return;
+        }
+        global.__vp_voice_wake_lang_manual__=false;
       };
     }
     bindWakeLangToggle();
