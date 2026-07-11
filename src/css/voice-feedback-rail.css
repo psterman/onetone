@@ -34,7 +34,7 @@
 }
 
 #settingsPanelVoiceWake .voice-live-strip .voice-fb-status-pill {
-  font-size: 10px;
+  font-size: var(--type-caption);
   padding: 2px 8px;
   background: var(--surface-soft);
   color: var(--on-surface-muted);
@@ -57,7 +57,7 @@
 #settingsPanelVoiceWake .voice-live-strip .voice-live-mic-readonly {
   min-width: 0;
   flex: 1 1 auto;
-  font-size: 10px;
+  font-size: var(--type-caption);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -65,7 +65,7 @@
 
 #settingsPanelVoiceWake .voice-live-strip .voice-live-mic-row .voice-mic-change-btn {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--type-caption);
   padding: 0;
 }
 
@@ -82,7 +82,7 @@
 #settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn {
   min-height: 24px;
   padding: 0 8px;
-  font-size: 10px;
+  font-size: var(--type-caption);
   background: var(--surface-high);
   border-color: var(--outline-variant);
   color: var(--on-surface-muted);
@@ -105,7 +105,7 @@
 }
 
 #settingsPanelVoiceWake .voice-live-strip .voice-fb-transcript-lbl {
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
 }
@@ -138,7 +138,7 @@
 
 #settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-lbl,
 #settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-val {
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.3;
 }
 
@@ -299,7 +299,7 @@
 
 .voice-fb-transcript-lbl {
   display: block;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
   color: #64748b;
@@ -348,7 +348,7 @@
 }
 
 .voice-fb-metric-lbl {
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: #64748b;
   letter-spacing: 0.03em;

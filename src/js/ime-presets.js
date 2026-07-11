@@ -159,7 +159,7 @@
       if(wrap) wrap.classList.add('has-ime-badge');
       return;
     }
-    iconEl.hidden = false;
+    iconEl.hidden = true;
     iconEl.classList.add('is-placeholder');
     iconEl.removeAttribute('src');
     iconEl.alt = '';

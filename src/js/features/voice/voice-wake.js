@@ -1167,6 +1167,9 @@
       btn.classList.toggle('is-active',active);
       btn.setAttribute('aria-selected',active?'true':'false');
       btn.disabled=!!disabled;
+      if(global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.presetLabel){
+        btn.textContent=global.OneToneVoiceModelLabels.presetLabel(btn.getAttribute('data-preset')||'');
+      }
     });
   }
 

@@ -1,0 +1,221 @@
+/* Semantic typography tokens — md baseline, scaled via html { zoom: var(--ui-font-scale) } */
+:root {
+  --type-h1: 22px;
+  --type-h2: 16px;
+  --type-h3: 14px;
+  --type-body: 13px;
+  --type-body-sm: 12px;
+  --type-label: 12px;
+  --type-caption: 11px;
+  --type-status: 11px;
+  --type-tag: 11px;
+  --type-keycap: 16px;
+  --type-phrase: 17px;
+
+  --type-lh-title: 1.25;
+  --type-lh-body: 1.45;
+  --type-lh-label: 1.35;
+}
+
+/* --- Settings pages: unified typography overrides (Keys + Voice + Basic) --- */
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .home-key-map-step-label {
+  font-size: var(--type-h3);
+  line-height: var(--type-lh-label);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .habit-flow-step-status,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .flow-step-status {
+  font-size: var(--type-status);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-summary-btn {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelKeys .habit-flow-step-status {
+  font-size: var(--type-status);
+}
+
+#settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display .display-value,
+#settingsPanelKeys #habitKeyMapRowTarget .keys-key-hero .habit-basic-key-display .display-value {
+  font-size: var(--type-keycap);
+}
+
+#settingsPanelVoiceWake .voice-scheme-summary-name {
+  font-size: var(--type-h2);
+}
+
+#settingsPanelVoiceWake .voice-scheme-summary-pill {
+  font-size: var(--type-status);
+}
+
+#settingsPanelVoiceWake .voice-scheme-summary-item {
+  font-size: var(--type-body-sm);
+}
+
+#settingsPanelVoiceWake .voice-edit-section-title,
+#settingsPanelVoiceWake.voice-page-v2 .voice-edit-section-title {
+  font-size: var(--type-h3);
+  line-height: var(--type-lh-label);
+}
+
+#settingsPanelVoiceWake .voice-segment-btn {
+  font-size: var(--type-body);
+}
+
+#settingsPanelVoiceWake .voice-phrase-compact-zh {
+  font-size: var(--type-phrase);
+}
+
+#settingsPanelVoiceWake .voice-phrase-compact-en {
+  font-size: var(--type-body-sm);
+}
+
+#settingsPanelVoiceWake .voice-engine-capability-note,
+#settingsPanelVoiceWake .voice-end-detect-lite-body,
+#settingsPanelVoiceWake .voice-end-silence-note,
+#settingsPanelVoiceWake .voice-phrase-custom-hint,
+#settingsPanelVoiceWake .voice-finish-auto-desc {
+  font-size: var(--type-caption);
+  line-height: var(--type-lh-body);
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab-running {
+  font-size: var(--type-status);
+}
+
+#settingsPanelVoiceWake .voice-hub-edit-hint {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-title {
+  font-size: var(--type-tag);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-status-pill,
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-readonly,
+#settingsPanelVoiceWake .voice-live-strip .voice-mic-change-btn,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-transcript-lbl,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-lbl,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-val {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelVoiceWake .voice-live-strip #voiceFbTranscript {
+  font-size: var(--type-caption);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {
+  font-size: var(--type-body-sm);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-pair,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-steps,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-editing {
+  font-size: var(--type-caption);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-draft,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-tab-draft {
+  font-size: var(--type-status);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-aside-count,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-templates-summary-count {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelBasic .basic-note-body,
+#settingsPanelBasic .basic-note-title {
+  font-size: var(--type-body-sm);
+  line-height: var(--type-lh-body);
+}
+
+#settingsPanelBasic .basic-note-title {
+  font-size: var(--type-label);
+  font-weight: 800;
+}
+
+/* Font-scale layout: workflow cards stack on sm/xl to avoid overflow */
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-arrow {
+  transform: rotate(90deg);
+  margin: 0 auto;
+}
+
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body,
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-body,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-body {
+  grid-template-columns: 1fr;
+}
+
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside,
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-aside,
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-aside {
+  position: static;
+  max-height: none;
+}
+
+/* Voice settings — app.css legacy rules migrated to tokens */
+#settingsPanelVoiceWake .voice-settings-card-lbl,
+#settingsPanelVoiceWake .voice-settings-card-sub,
+#settingsPanelVoiceWake .voice-settings-card-hint,
+#settingsPanelVoiceWake .voice-phrase-custom-hint,
+#settingsPanelVoiceWake .voice-input-caret,
+#settingsPanelVoiceWake .voice-side-mic-meta,
+#settingsPanelVoiceWake .voice-summon-shortcuts .habit-kbd-plus,
+#settingsPanelVoiceWake .voice-side-advanced-stash .voice-aside-summary-hint,
+#settingsPanelVoiceWake .voice-side-advanced-stash .voice-aside-preview-desc,
+#settingsPanelVoiceWake .home-key-map-step-hint,
+#settingsPanelVoiceWake .voice-subtab-hint {
+  font-size: var(--type-caption);
+  line-height: var(--type-lh-body);
+}
+
+#settingsPanelVoiceWake .voice-side-live-title,
+#settingsPanelVoiceWake .voice-side-mic-name {
+  font-size: var(--type-body);
+}
+
+#settingsPanelVoiceWake .voice-subtab-btn,
+#settingsPanelVoiceWake .voice-subtab-num {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelVoiceWake .voice-recognize-end-summary,
+#settingsPanelVoiceWake .voice-end-rules-inline,
+#settingsPanelVoiceWake .voice-recognize-end-summary span {
+  font-size: var(--type-caption);
+}
+
+#settingsPanelKeys .home-key-map-step-hint,
+#settingsPanelKeys .keys-workflow-chain-lbl,
+#settingsPanelKeys .settings-scheme-subnav-status,
+#settingsPanelKeys .settings-scheme-subnav-empty {
+  font-size: var(--type-caption);
+  line-height: var(--type-lh-body);
+}
+
+#settingsPanelKeys .habit-finish-advanced .key-scheme-finish-row .setting-row-text,
+#settingsPanelKeys .habit-rerecord-link {
+  font-size: var(--type-caption);
+}
+
+html[data-font-scale="lg"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid {
+  gap: 8px 6px;
+}
+
+html[data-font-scale="lg"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-step-body,
+html[data-font-scale="lg"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .flow-step-body {
+  padding: 10px;
+}

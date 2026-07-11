@@ -71,7 +71,8 @@
       var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
       if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
         var preset=global.OneToneVoiceWake.currentVoskPreset();
-        recHint+=' · '+(preset==='en-light'?'small-en-us':'small-cn');
+        var labelApi=global.OneToneVoiceModelLabels;
+        if(labelApi&&labelApi.presetLabel) recHint+=' · '+labelApi.presetLabel(preset);
       }
       rec.textContent=recHint;
     }

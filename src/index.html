@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/voice-workflow.css" />
   <link rel="stylesheet" href="css/voice-page-shell.css" />
   <link rel="stylesheet" href="css/voice-feedback-rail.css" />
+  <link rel="stylesheet" href="css/typography.css" />
 </head>
 <body>
   <div class="app">
@@ -720,22 +721,15 @@
                       </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
-                    <div class="keys-capture-primary" id="keysCapturePrimary">
-                      <div class="keys-capture-primary-main">
-                        <img class="keys-capture-primary-icon" id="keysCapturePrimaryIcon" alt="" decoding="async" hidden>
-                        <span class="keys-capture-primary-name" id="keysCapturePrimaryName">—</span>
-                      </div>
-                      <button type="button" class="keys-summary-btn keys-capture-change-btn" id="btnKeysCaptureChange">更改</button>
-                    </div>
-                    <div class="keys-flow-row keys-flow-row--stash" id="keysTargetFlowRow" hidden aria-hidden="true">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-flow-key" id="habitKeyMapCellTarget"></div>
-                      <span class="keys-flow-arrow" aria-hidden="true">→</span>
-                      <div class="keys-ime-pill" id="keysImePill" aria-hidden="true">
-                        <svg class="keys-ime-pill-mic" id="keysImePillMic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                        <img class="keys-ime-pill-icon" id="keysImePillIcon" alt="" decoding="async" hidden>
-                        <span class="keys-ime-pill-name" id="keysImePillName">—</span>
-                      </div>
+                    <div class="keys-step-row keys-step-row--hero">
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
+                    </div>
+                    <p class="keys-keycap-hint" id="keysTargetKeycapHint">点击修改快捷键</p>
+                    <div class="keys-ime-pill sr-only" id="keysImePill" aria-hidden="true" hidden>
+                      <svg class="keys-ime-pill-mic" id="keysImePillMic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                      <img class="keys-ime-pill-icon" id="keysImePillIcon" alt="" decoding="async" hidden>
+                      <span class="keys-ime-pill-name" id="keysImePillName">—</span>
                     </div>
                     <div class="keys-capture-voice-summary sr-only" id="keysCaptureVoiceSummary" aria-hidden="true">
                       <span class="keys-capture-voice-text habit-flow-device-text" id="habitFlowDeviceText">—</span>
@@ -801,7 +795,7 @@
                   <div class="habit-basic-row-ctrl">
                     <div class="habit-basic-key-display display empty" id="triggerDisplay">
                       <span class="app-target-card-badge keys-trigger-context-badge is-placeholder" id="triggerAppBadgeMapping" aria-hidden="true"></span>
-                      <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      <span class="habit-key-icon-host" aria-hidden="true"></span>
                       <span class="display-value" id="triggerView">未设置</span>
                     </div>
                     <button class="habit-rerecord-link record-btn" id="btnRecordTrigger" type="button">
@@ -818,7 +812,7 @@
                     <div class="habit-basic-key-display display empty" id="targetDisplay">
                       <img class="target-ime-badge is-placeholder" id="targetImeIconMapping" alt="" decoding="async">
                       <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
-                      <svg class="habit-key-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/></svg>
+                      <span class="habit-key-icon-host" aria-hidden="true"></span>
                       <span class="display-value" id="targetView">未设置</span>
                     </div>
                     <button class="habit-rerecord-link record-btn" id="btnRecordTarget" type="button">
@@ -1416,8 +1410,8 @@
                       <div class="voice-sapi-row">
                         <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
                         <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
-                          <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
-                          <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
+                          <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音</button>
+                          <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音</button>
                         </div>
                       </div>
                     </div>
@@ -1482,8 +1476,8 @@
                         <span class="voice-status-badge" id="modelsVoskStatus">—</span>
                       </div>
                       <div class="voice-resource-panel-rows">
-                        <div class="voice-resource-row"><span>中文模型</span><strong id="modelsVoskCn">small-cn</strong></div>
-                        <div class="voice-resource-row"><span>英文模型</span><strong id="modelsVoskEn">small-en-us</strong></div>
+                        <div class="voice-resource-row"><span>中文模型</span><strong id="modelsVoskCn">中文语音</strong></div>
+                        <div class="voice-resource-row"><span>英文模型</span><strong id="modelsVoskEn">英文语音</strong></div>
                       </div>
                       <div id="voiceVoskDownloadProgress" hidden>
                         <div class="voice-vosk-download-bar"><div id="voiceVoskDownloadFill"></div></div>
@@ -2366,6 +2360,7 @@
     <div class="home-guide-banner" id="homeGuideBanner" hidden>    </div>
   </div>
   <script src="js/key-labels.js"></script>
+  <script src="js/key-icons.js"></script>
   <script src="js/locale-defaults.js"></script>
   <script src="js/ime-presets.js"></script>
   <script src="js/app-target-presets.js?v=20260705-icons"></script>
@@ -2374,6 +2369,7 @@
   <script src="js/core/dom.js"></script>
   <script src="js/core/state.js"></script>
   <script src="js/core/i18n.js?v=20260705-icons"></script>
+  <script src="js/voice-model-labels.js"></script>
   <script src="js/core/ipc.js"></script>
   <script src="js/core/events.js?v=20260706-sync"></script>
   <script src="js/core/render-loop.js"></script>

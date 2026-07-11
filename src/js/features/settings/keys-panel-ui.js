@@ -163,14 +163,15 @@
     var saveBtn=$('btnKeysSave');
     var testBtn=$('btnKeysTestTop');
     var keycapHint=$('keysKeycapHint');
+    var targetKeycapHint=$('keysTargetKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
+    var targetKeycapHost=$('habitKeyMapCellTarget');
     if(trigLbl) trigLbl.textContent=t('keysSummaryTriggerLbl');
     if(scopeLbl) scopeLbl.textContent=t('keysSummaryScopeLbl');
     if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+    if(targetKeycapHint) targetKeycapHint.textContent=t('keysKeycapHint');
     if(saveBtn) saveBtn.textContent=t('keysSave');
     if(testBtn) testBtn.textContent=t('keysTestOnce');
-    var changeBtn=$('btnKeysCaptureChange');
-    if(changeBtn) changeBtn.textContent=t('keysCaptureChange');
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
     if(!m){
@@ -181,6 +182,7 @@
       if(saveBtn) saveBtn.disabled=true;
       if(testBtn) testBtn.disabled=true;
       if(keycapHost) keycapHost.removeAttribute('title');
+      if(targetKeycapHost) targetKeycapHost.removeAttribute('title');
       return;
     }
     var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
@@ -219,26 +221,23 @@
     if(keycapHost){
       keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
     }
+    if(targetKeycapHost){
+      targetKeycapHost.setAttribute('title',recording&&recMode==='target'?t('keysKeycapRecording'):t('keysKeycapHint'));
+    }
     if(keycapHint&&recording&&recMode==='trigger') keycapHint.textContent=t('keysKeycapRecording');
     else if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+    if(targetKeycapHint&&recording&&recMode==='target') targetKeycapHint.textContent=t('keysKeycapRecording');
+    else if(targetKeycapHint) targetKeycapHint.textContent=t('keysKeycapHint');
   }
 
-  function renderCapturePrimary(m){
-    var wrap=$('keysCapturePrimary');
-    var icon=$('keysCapturePrimaryIcon');
-    var name=$('keysCapturePrimaryName');
-    if(!wrap||!name) return;
-    var info=imeDisplayInfo(m);
-    name.textContent=info.name;
-    if(icon){
-      if(info.icon){
-        icon.src=info.icon;
-        icon.hidden=false;
-      }else{
-        icon.hidden=true;
-        icon.removeAttribute('src');
-      }
-    }
+  function syncKeyDisplayIcons(m){
+    if(!global.OneToneKeyIcons||!global.OneToneKeyIcons.syncDisplayIcon) return;
+    var trigDisp=$('triggerDisplay');
+    var tgtDisp=$('targetDisplay');
+    var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
+    var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
+    if(trigDisp) global.OneToneKeyIcons.syncDisplayIcon(trigDisp,trig);
+    if(tgtDisp) global.OneToneKeyIcons.syncDisplayIcon(tgtDisp,tgt);
   }
 
   function normalizeTriggerModeUi(raw){
@@ -859,7 +858,7 @@
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
     renderAppContextStrip();
     renderTriggerContextBadge();
-    renderCapturePrimary(m);
+    syncKeyDisplayIcons(m);
     renderTriggerModeSegments(m);
     renderTriggerConflict(m);
     renderSchemeSummary(m);
@@ -930,18 +929,6 @@
         e.preventDefault();
         var main=$('btnTestSend');
         if(main&&!main.disabled) main.click();
-      });
-    }
-    var captureChange=$('btnKeysCaptureChange');
-    if(captureChange){
-      captureChange.addEventListener('click',function(e){
-        e.preventDefault();
-        var voiceBtn=$('btnHabitFlowOpenVoice');
-        if(voiceBtn) voiceBtn.click();
-        else{
-          var tgtBtn=$('btnRecordTarget');
-          if(tgtBtn) tgtBtn.click();
-        }
       });
     }
     var hubAdd=$('btnKeysHubAddScheme');

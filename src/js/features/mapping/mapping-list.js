@@ -179,6 +179,12 @@
     targetEl.textContent=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
     if(triggerDisp) triggerDisp.classList.toggle('empty',!trig);
     if(targetDisp) targetDisp.classList.toggle('empty',!tgt);
+    if(global.OneToneKeyIcons){
+      if(global.OneToneKeyIcons.syncDisplayIcon){
+        if(triggerDisp) global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,trig);
+        if(targetDisp) global.OneToneKeyIcons.syncDisplayIcon(targetDisp,tgt);
+      }
+    }
     const trace=OneToneMappingCore.formatTriggerTrace(m);
     if(traceEl){
       if(trace){

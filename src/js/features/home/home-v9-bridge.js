@@ -369,8 +369,11 @@
   }
 
   function modelLabel(preset){
+    if(global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.presetLabel){
+      return global.OneToneVoiceModelLabels.presetLabel(preset);
+    }
     preset=String(preset||'cn-light').trim();
-    return preset==='en-light'?'small-en-us':'small-cn';
+    return preset==='en-light'?'English':'Chinese';
   }
 
   function voskModelPreset(){

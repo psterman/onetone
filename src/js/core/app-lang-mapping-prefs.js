@@ -121,6 +121,7 @@
     var voiceVoskLabel=$('voiceVoskLabel'); if(voiceVoskLabel) voiceVoskLabel.textContent=d.voiceVoskLabel;
     var btnVoiceVoskTest=$('btnVoiceVoskTest'); if(btnVoiceVoskTest) btnVoiceVoskTest.textContent=d.voiceVoskTest;
     var voiceVoskModelLabel=$('voiceVoskModelLabel'); if(voiceVoskModelLabel) voiceVoskModelLabel.textContent=d.voiceVoskModelLabel;
+    if(global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.syncPresetButtons) global.OneToneVoiceModelLabels.syncPresetButtons();
     var voiceVoskPresetsCnLabel=$('voiceVoskPresetsCnLabel'); if(voiceVoskPresetsCnLabel) voiceVoskPresetsCnLabel.textContent=d.voiceVoskPresetsCnLabel;
     var voiceVoskPresetsEnLabel=$('voiceVoskPresetsEnLabel'); if(voiceVoskPresetsEnLabel) voiceVoskPresetsEnLabel.textContent=d.voiceVoskPresetsEnLabel;
     var voiceEndTitle=$('voiceEndTitle'); if(voiceEndTitle) voiceEndTitle.textContent=d.voiceEndTitle;

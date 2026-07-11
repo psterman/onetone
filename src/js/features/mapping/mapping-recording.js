@@ -166,11 +166,17 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       const disp=$('triggerDisplay');
       if(el) el.textContent=label;
       if(disp) disp.classList.toggle('empty',!normalized);
+      if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
+        global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
+      }
     }else if(mode==='target'){
       const el=$('targetView');
       const disp=$('targetDisplay');
       if(el) el.textContent=label;
       if(disp) disp.classList.toggle('empty',!normalized);
+      if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
+        global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
+      }
     }
     if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderRecordingFeedback) global.OneToneKeysPanelUi.renderRecordingFeedback();
     if(mode==='target'&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()){

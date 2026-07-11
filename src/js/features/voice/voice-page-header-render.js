@@ -101,6 +101,9 @@
     if(title) title.textContent=t('settingsPanelVoiceWakeTitle');
     var desc=$('settingsPanelVoiceWakeDesc');
     if(desc) desc.textContent=t('settingsPanelVoiceWakeDesc');
+    if(global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.syncPresetButtons){
+      global.OneToneVoiceModelLabels.syncPresetButtons();
+    }
   }
 
   function renderStepStatus(){

@@ -85,7 +85,9 @@
       var voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
       preset=(w.vosk&&w.vosk.modelPreset)||voskCfg.modelPreset||'cn-light';
     }
-    return String(preset)==='en-light'?'small-en-us':'small-cn';
+    return global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.presetLabel
+      ?global.OneToneVoiceModelLabels.presetLabel(preset)
+      :'—';
   }
 
   function resolveSendLabel(vm){

@@ -40,7 +40,7 @@
   border: 1px solid var(--outline-variant);
   background: var(--surface-soft);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -69,7 +69,7 @@
 }
 
 #settingsPanelKeys .keys-workflow-tab-draft {
-  font-size: 8px;
+  font-size: var(--type-status);
   font-weight: 700;
   color: #b45309;
   background: rgba(245, 158, 11, 0.14);
@@ -87,7 +87,7 @@
 
 #settingsPanelKeys .keys-workflow-tabs-empty {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--on-surface-muted);
 }
 
@@ -99,7 +99,7 @@
 
 #settingsPanelKeys .keys-workflow-overview-desc {
   margin: 0 0 10px;
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--on-surface-muted);
 }
@@ -148,7 +148,7 @@
 #settingsPanelKeys .keys-workflow-overview-name {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 800;
   color: var(--on-surface);
   overflow: hidden;
@@ -158,7 +158,7 @@
 
 #settingsPanelKeys .keys-workflow-overview-editing {
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
   padding: 2px 6px;
@@ -175,13 +175,13 @@
 
 #settingsPanelKeys .keys-workflow-overview-steps,
 #settingsPanelKeys .keys-workflow-overview-apps {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
 }
 
 #settingsPanelKeys .keys-workflow-overview-status {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 700;
 }
 
@@ -195,7 +195,7 @@
 
 #settingsPanelKeys .keys-workflow-overview-empty {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--type-caption);
   color: var(--on-surface-muted);
   line-height: 1.45;
 }
@@ -212,7 +212,7 @@
 }
 
 #settingsPanelKeys .keys-aside-card--demoted .keys-aside-title {
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
 }
@@ -224,11 +224,11 @@
 }
 
 #settingsPanelKeys .keys-aside-card--demoted .keys-aside-count {
-  font-size: 9px;
+  font-size: var(--type-caption);
 }
 
 #settingsPanelKeys .keys-aside-card--demoted .habit-app-shortcuts-add {
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 
 #settingsPanelKeys .habit-default-flow.keys-workflow-grid {
@@ -252,7 +252,7 @@
 }
 
 #settingsPanelKeys .keys-workflow-col-tag {
-  font-size: 10px;
+  font-size: var(--type-tag);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -287,7 +287,7 @@
 
 #settingsPanelKeys .keys-app-binding-lbl {
   display: block;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   margin-bottom: 8px;
@@ -308,7 +308,7 @@
   border-radius: 10px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-soft);
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.35;
 }
 
@@ -320,7 +320,7 @@
 
 #settingsPanelKeys .keys-capture-voice-link {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
 }
 
@@ -353,7 +353,7 @@
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1;
   color: var(--primary-strong);
   cursor: pointer;
@@ -374,7 +374,7 @@
 
 #settingsPanelKeys .keys-capture-ime-block .habit-flow-subsection-title {
   margin: 0 0 6px;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   text-align: left;
@@ -444,7 +444,7 @@
 }
 
 #settingsPanelKeys .keys-advanced-summary {
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 800;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -457,7 +457,7 @@
 
 #settingsPanelKeys .keys-advanced-desc,
 #settingsPanelKeys .keys-advanced-when {
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   color: var(--on-surface-muted);
 }
@@ -477,7 +477,7 @@
 
 #settingsPanelKeys .keys-template-desc {
   margin: 0 0 8px;
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--on-surface-muted);
 }
@@ -501,13 +501,13 @@
 }
 
 #settingsPanelKeys .keys-template-name {
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 800;
   color: var(--on-surface);
 }
 
 #settingsPanelKeys .keys-template-item-desc {
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.35;
   color: var(--on-surface-muted);
 }
@@ -520,7 +520,7 @@
 }
 
 #settingsPanelKeys .keys-template-preview-line {
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.35;
   color: var(--on-surface-muted);
 }
@@ -535,7 +535,7 @@
   border: 1px solid rgba(42, 156, 196, 0.28);
   background: var(--surface-soft);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
   cursor: pointer;
@@ -571,7 +571,7 @@
 #settingsPanelKeys .keys-hub-scheme-group-lbl {
   margin: 0;
   padding: 0 2px;
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--on-surface-muted);
@@ -588,7 +588,7 @@
   border: 1px dashed var(--outline-variant);
   border-radius: 8px;
   background: var(--surface-soft);
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--on-surface-muted);
 }
@@ -629,7 +629,7 @@
 }
 
 #settingsPanelKeys .keys-hub-scheme-pair {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   overflow: hidden;
@@ -647,7 +647,7 @@
   border: 1px dashed var(--outline-variant);
   background: var(--surface-soft);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
   cursor: pointer;
@@ -718,7 +718,7 @@
 #settingsPanelKeys .keys-hub-scheme-name {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface);
   overflow: hidden;
@@ -728,7 +728,7 @@
 
 #settingsPanelKeys .keys-hub-scheme-draft {
   flex-shrink: 0;
-  font-size: 8px;
+  font-size: var(--type-status);
   font-weight: 700;
   color: #b45309;
   background: rgba(245, 158, 11, 0.14);
@@ -744,7 +744,7 @@
 }
 
 #settingsPanelKeys .keys-hub-scheme-steps {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
 }
@@ -761,7 +761,7 @@
 }
 
 #settingsPanelKeys .keys-hub-scheme-editing {
-  font-size: 8px;
+  font-size: var(--type-status);
   font-weight: 700;
   color: var(--primary-strong);
 }
@@ -769,7 +769,7 @@
 #settingsPanelKeys .keys-hub-empty {
   margin: 0;
   padding: 4px 8px 8px;
-  font-size: 10px;
+  font-size: var(--type-caption);
   color: var(--on-surface-muted);
 }
 
@@ -792,7 +792,7 @@
   padding: 8px 12px;
   list-style: none;
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   user-select: none;
@@ -822,7 +822,7 @@
 }
 
 #settingsPanelKeys .keys-hub-templates-summary-count {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   opacity: 0.85;
@@ -830,7 +830,7 @@
 
 #settingsPanelKeys .keys-hub-templates-hint {
   margin: 0 12px 8px;
-  font-size: 9px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--on-surface-muted);
 }
@@ -849,7 +849,7 @@
   border: 1px solid rgba(42, 156, 196, 0.28);
   background: var(--surface);
   font: inherit;
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
   cursor: pointer;
@@ -872,7 +872,7 @@
 }
 
 #settingsPanelKeys .keys-hub-templates-fill-lbl {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
 }
@@ -890,7 +890,7 @@
   border: 1px solid var(--outline-variant);
   background: transparent;
   font: inherit;
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -931,7 +931,7 @@
 
 #settingsPanelKeys .keys-app-expand-fact {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   color: var(--on-surface);
 }
@@ -947,7 +947,7 @@
 
 #settingsPanelKeys .keys-app-expand-hint-inline {
   margin: 2px 0 0;
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.45;
   color: var(--on-surface-muted);
 }
@@ -982,13 +982,13 @@
 }
 
 #settingsPanelKeys .keys-scheme-summary-name {
-  font-size: 14px;
+  font-size: var(--type-h2);
   font-weight: 800;
   color: var(--on-surface);
 }
 
 #settingsPanelKeys .keys-scheme-summary-pill {
-  font-size: 9px;
+  font-size: var(--type-status);
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -1024,7 +1024,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--type-body-sm);
 }
 
 #settingsPanelKeys .keys-scheme-summary-lbl {
@@ -1057,7 +1057,7 @@
   border: 1px solid var(--outline-variant);
   background: var(--surface);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -1119,7 +1119,7 @@
 
 #settingsPanelKeys .keys-keycap-hint {
   margin: 4px 0 0;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   text-align: center;
@@ -1151,7 +1151,7 @@
   border-radius: 6px;
   background: transparent;
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -1173,7 +1173,7 @@
   border-radius: 8px;
   border: 1px solid rgba(232, 147, 12, 0.28);
   background: rgba(232, 147, 12, 0.1);
-  font-size: 10px;
+  font-size: var(--type-caption);
   line-height: 1.4;
   color: #9c6300;
 }
@@ -1201,7 +1201,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   font: inherit;
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
   cursor: pointer;
@@ -1220,7 +1220,7 @@
   border-radius: 8px;
   border: 1px solid rgba(42, 156, 196, 0.22);
   background: var(--primary-soft);
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--primary-strong);
 }
@@ -1273,7 +1273,7 @@
 #settingsPanelKeys .keys-capture-change-btn {
   min-height: 28px;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 
 #settingsPanelKeys .keys-capture-ime-block {
@@ -1294,7 +1294,7 @@
 
 #settingsPanelKeys .keys-hub-scheme-tag {
   flex-shrink: 0;
-  font-size: 8px;
+  font-size: var(--type-status);
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 999px;
@@ -1363,7 +1363,7 @@
   border: 1px solid var(--outline-variant);
   background: var(--surface);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   text-align: center;
   color: var(--on-surface);
@@ -1384,6 +1384,21 @@
   box-shadow: 0 2px 0 rgba(42, 156, 196, 0.15);
 }
 
+#settingsPanelKeys #habitKeyMapRowTarget .habit-basic-key-display.display:focus-visible {
+  border-color: rgba(42, 156, 196, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.12);
+}
+
+#settingsPanelKeys #habitKeyMapRowTarget .habit-basic-key-display.display {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelKeys #habitKeyMapRowTarget .habit-basic-key-display.display:hover {
+  border-color: rgba(42, 156, 196, 0.5);
+  box-shadow: 0 2px 0 rgba(42, 156, 196, 0.15);
+}
+
 #settingsPanelKeys .keys-workflow-col .keys-finish-segments {
   flex-direction: row;
 }
@@ -1396,7 +1411,7 @@
   border: 1px solid var(--outline-variant);
   background: var(--surface);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -1465,7 +1480,7 @@
   border-radius: 50%;
   background: var(--surface);
   border: 1px solid rgba(42, 156, 196, 0.24);
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   line-height: 1;
   color: var(--primary-strong);
@@ -1478,7 +1493,7 @@
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-col-tag {
-  font-size: 10px;
+  font-size: var(--type-tag);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1511,7 +1526,7 @@
   border-radius: 6px;
   background: transparent;
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   cursor: pointer;
@@ -1549,7 +1564,7 @@
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-name {
-  font-size: 13px;
+  font-size: var(--type-body);
   font-weight: 700;
   color: var(--on-surface);
 }
@@ -1557,7 +1572,7 @@
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-change-btn {
   min-height: 28px;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip {
@@ -1568,7 +1583,7 @@
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-tag {
   flex-shrink: 0;
-  font-size: 8px;
+  font-size: var(--type-status);
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 999px;
@@ -1589,7 +1604,7 @@
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-lbl {
   display: block;
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface-muted);
   margin-bottom: 8px;
@@ -1696,7 +1711,7 @@
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {
-  font-size: 11px;
+  font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface);
   overflow: hidden;
@@ -1705,7 +1720,7 @@
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-pair {
-  font-size: 9px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
 }
@@ -1729,7 +1744,7 @@
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-capture-primary-sub {
-  font-size: 10px;
+  font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
   line-height: 1.35;
