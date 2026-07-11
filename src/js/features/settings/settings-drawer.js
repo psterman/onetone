@@ -180,10 +180,18 @@
 
     }
 
-    if(focus==='wakePhrases'||focus==='engine'){
+    if(focus==='engine'){
 
       openVoiceAdvancedSection();
 
+    }
+
+    if(focus==='wakePhrases'){
+      if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.openPresetsEditor){
+        global.OneToneVoiceWakeNavigation.openPresetsEditor({skipScroll:true});
+      }else if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+        global.OneToneVoicePageState.setStep('wake');
+      }
     }
 
     if(focus==='endPhrases'){
@@ -239,11 +247,19 @@
 
     if(focus==='mic'){
 
-      const micDetails=$('voiceMicPickerDetails');
-
-      if(micDetails) micDetails.open=true;
+      if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.openMicPicker){
+        global.OneToneVoiceWakeNavigation.openMicPicker({block:'nearest'});
+      }else{
+        const micCard=$('voiceWakeMicCard')||$('voiceMicPickerDetails');
+        if(micCard) micCard.scrollIntoView({behavior:'smooth',block:'nearest'});
+      }
 
     }
+
+    var wakeNav=global.OneToneVoiceWakeNavigation;
+    var wakePhraseTargets=wakeNav&&wakeNav.resolveFocusTargets
+      ?wakeNav.resolveFocusTargets('wakePhrases')
+      :['voiceSettingsWakeCard','voiceWakeEditDetails'];
 
     const map={
 
@@ -259,7 +275,7 @@
 
       engine:['voiceRecognizeEngineDetails','voiceModePanel'],
 
-      wakePhrases:['voiceSettingsWakeCard','voiceWakeEditDetails'],
+      wakePhrases:wakePhraseTargets,
 
       modelResources:['voiceRecognizeResourcesDetails','voiceRecognizeResources'],
 

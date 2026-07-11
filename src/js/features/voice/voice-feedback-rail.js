@@ -3,16 +3,48 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var micLevel=0;
+  var cachedStep='wake';
 
   function hooks(){
     return global.__vp_voice_settings_flow_hooks__||{};
   }
 
-  function escHtml(s){
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  function currentStep(step){
+    if(step) return step;
+    return global.OneToneVoicePageState?global.OneToneVoicePageState.getStep():cachedStep;
   }
 
-  function resolveLatency(vm){
+  function wakeSnapshot(){
+    var snap=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot():{};
+    return snap.wake||{};
+  }
+
+  function wakeEngineRes(vm){
+    var w=wakeSnapshot();
+    return vm.mode==='vosk'?w.vosk:(vm.mode==='sapi'?w.sapi:null);
+  }
+
+  function slotNode(slot){
+    var root=$('voiceFbMetrics');
+    if(!root) return null;
+    return root.querySelector('[data-fb-slot="'+slot+'"]');
+  }
+
+  function setSlotLabel(slot,key){
+    var node=slotNode(slot);
+    if(!node) return;
+    var lbl=node.querySelector('.voice-fb-metric-lbl');
+    if(lbl) lbl.textContent=t(key);
+  }
+
+  function setSlotValue(slot,value){
+    var node=slotNode(slot);
+    if(!node) return;
+    var val=node.querySelector('.voice-fb-metric-val');
+    if(val) val.textContent=value==null||value===''?'—':String(value);
+  }
+
+  function resolveUsage(vm){
     if(vm.loading) return '—';
     var usage=global.OneToneAppProcessUsage;
     if(!usage||!usage.processUsageSummaryLine) return '—';
@@ -25,8 +57,7 @@
 
   function resolveConfidence(vm){
     if(vm.loading) return '—';
-    var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
-    var res=vm.mode==='vosk'?w.vosk:(vm.mode==='sapi'?w.sapi:null);
+    var res=wakeEngineRes(vm);
     if(!res) return '—';
     if(res.lastConfidence!=null&&res.lastConfidence!=='') return String(res.lastConfidence);
     if(vm.mode==='sapi'){
@@ -39,20 +70,22 @@
 
   function resolveEngineLabel(vm){
     if(vm.loading) return t('homeLiveLoading');
-    var label=vm.modeLabel||'—';
-    if(vm.mode==='vosk'){
-      var preset='cn-light';
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
-        preset=global.OneToneVoiceWake.currentVoskPreset();
-      }else{
-        var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
-        var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
-        var voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
-        preset=(w.vosk&&w.vosk.modelPreset)||voskCfg.modelPreset||'cn-light';
-      }
-      label+=' · '+(String(preset)==='en-light'?'small-en-us':'small-cn');
+    return vm.modeLabel||'—';
+  }
+
+  function resolveModelLabel(vm){
+    if(vm.loading) return t('homeLiveLoading');
+    if(vm.mode!=='vosk') return '—';
+    var preset='cn-light';
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
+      preset=global.OneToneVoiceWake.currentVoskPreset();
+    }else{
+      var w=wakeSnapshot();
+      var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
+      var voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+      preset=(w.vosk&&w.vosk.modelPreset)||voskCfg.modelPreset||'cn-light';
     }
-    return label;
+    return String(preset)==='en-light'?'small-en-us':'small-cn';
   }
 
   function resolveSendLabel(vm){
@@ -62,14 +95,106 @@
     return t('voiceSummaryOutputConfirm');
   }
 
-  function resolveStatus(vm){
+  function resolveTargetPhrase(vm){
+    if(vm.loading) return t('homeLiveLoading');
+    var V=global.OneToneVoiceSettingsViewModel;
+    if(!V||!V.resolveDisplayWakePhrase) return '—';
+    return V.resolveDisplayWakePhrase(vm).display||'—';
+  }
+
+  function resolveMicLabel(vm){
+    if(vm.loading) return t('homeLiveLoading');
+    return vm.wakeSourceLabel||t('homeVoiceMapMicEmpty');
+  }
+
+  function resolveWakeMatch(vm){
+    if(vm.loading) return '—';
+    var res=wakeEngineRes(vm);
+    if(!res) return '—';
+    var trigger=String(res.lastTrigger||'').trim();
+    if(trigger) return trigger;
+    var skip=String(res.lastSkip||'').trim();
+    if(skip) return skip;
+    return '—';
+  }
+
+  function resolveDelayLabel(vm){
+    if(vm.loading) return t('homeLiveLoading');
+    var ms=Number(vm.autoSendDelayMs);
+    if(!(ms>=0)) ms=4000;
+    return t('voiceEndDelaySec').replace('{n}',(ms/1000).toFixed(1));
+  }
+
+  function resolveCommitKeyLabel(vm){
+    if(vm.loading) return t('homeLiveLoading');
+    var key=String(vm.autoSendKey||'Enter').trim()||'Enter';
+    if(global.OneToneKeyLabels) return global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang());
+    return key;
+  }
+
+  function resolveSendStatus(vm){
+    return resolveSendLabel(vm);
+  }
+
+  var STEP_PROFILES={
+    wake:{
+      labels:{primary:'voiceFbLblTargetPhrase',secondary:'voiceFbLblMic',tertiary:'voiceFbLblWakeMatch',quaternary:'voiceFbLblEngine'},
+      values:function(vm){ return {
+        primary:resolveTargetPhrase(vm),
+        secondary:resolveMicLabel(vm),
+        tertiary:resolveWakeMatch(vm),
+        quaternary:resolveEngineLabel(vm)
+      }; },
+      transcriptKey:'voiceFbTranscriptWake'
+    },
+    recognize:{
+      labels:{primary:'voiceFbLblEngine',secondary:'voiceFbLblModel',tertiary:'voiceFbLblConfidence',quaternary:'voiceFbLblUsage'},
+      values:function(vm){ return {
+        primary:resolveEngineLabel(vm),
+        secondary:resolveModelLabel(vm),
+        tertiary:resolveConfidence(vm),
+        quaternary:resolveUsage(vm)
+      }; },
+      transcriptKey:'voiceFbTranscriptRecognize'
+    },
+    send:{
+      labels:{primary:'voiceFbLblSend',secondary:'voiceFbLblDelay',tertiary:'voiceFbLblCommitKey',quaternary:'voiceFbLblSendStatus'},
+      values:function(vm){ return {
+        primary:resolveSendLabel(vm),
+        secondary:resolveDelayLabel(vm),
+        tertiary:resolveCommitKeyLabel(vm),
+        quaternary:resolveSendStatus(vm)
+      }; },
+      transcriptKey:'voiceFbTranscriptSend'
+    }
+  };
+
+  function applyStepProfile(vm,step){
+    step=currentStep(step);
+    cachedStep=step;
+    var profile=STEP_PROFILES[step]||STEP_PROFILES.wake;
+    var slots=['primary','secondary','tertiary','quaternary'];
+    slots.forEach(function(slot){
+      setSlotLabel(slot,profile.labels[slot]);
+    });
+    var vals=profile.values(vm);
+    slots.forEach(function(slot){
+      setSlotValue(slot,vals[slot]);
+    });
+    var transcriptLbl=$('voiceFbTranscriptLbl');
+    if(transcriptLbl) transcriptLbl.textContent=t(profile.transcriptKey);
+  }
+
+  function resolveStatus(vm,step){
     if(vm.loading){
       return {text:t('homeLiveLoading'),cls:'is-loading'};
     }
-    var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
-    var res=vm.mode==='vosk'?w.vosk:(vm.mode==='sapi'?w.sapi:null);
+    step=currentStep(step);
+    var res=wakeEngineRes(vm);
     var end=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().end||{}:{};
-    if(end&&end.state==='dictating') return {text:t('voiceFbStatusDictating'),cls:'is-live'};
+    if(step==='send'&&end&&end.state==='dictating'){
+      return {text:t('voiceFbStatusDictating'),cls:'is-live'};
+    }
     if(res&&res.enabled&&(res.state==='listening'||res.state==='starting')){
       return {text:t('voiceFbStatusListening'),cls:'is-live'};
     }
@@ -79,19 +204,21 @@
     return {text:t('voiceFbStatusStandby'),cls:'is-standby'};
   }
 
-  function resolveTranscriptText(){
-    var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
+  function resolveTranscriptText(step){
+    step=currentStep(step);
+    var w=wakeSnapshot();
     var wakeApi=global.OneToneVoiceWake;
     var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
     var res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
-    if(!res) return {text:'',partial:false,placeholder:t('voiceFbTranscriptIdle')};
+    var idleKey=step==='send'?'voiceFbTranscriptSendIdle':(step==='recognize'?'voiceFbTranscriptRecognizeIdle':'voiceFbTranscriptIdle');
+    if(!res) return {text:'',partial:false,placeholder:t(idleKey)};
     var finalText=String(res.lastFinal||'').trim();
     var partial=String(res.lastPartial||'').trim();
     var heard=String(res.lastHeard||'').trim();
     if(finalText) return {text:finalText,partial:false,placeholder:''};
     if(partial) return {text:partial,partial:true,placeholder:''};
     if(heard) return {text:heard,partial:true,placeholder:''};
-    return {text:'',partial:false,placeholder:t('voiceFbTranscriptIdle')};
+    return {text:'',partial:false,placeholder:t(idleKey)};
   }
 
   function applyMicOrbLevel(level){
@@ -104,15 +231,40 @@
     orb.classList.toggle('is-hot',pct>8);
   }
 
-  function render(vm){
+  function updateTranscript(step){
+    var box=$('voiceFbTranscript');
+    if(!box) return;
+    var info=resolveTranscriptText(step);
+    box.classList.toggle('is-partial',!!info.partial);
+    if(info.text){
+      box.textContent=info.text;
+      box.classList.remove('is-placeholder');
+    }else{
+      box.textContent=info.placeholder||'';
+      box.classList.add('is-placeholder');
+    }
+  }
+
+  function updateLiveSlotValues(vm,step){
+    step=currentStep(step);
+    if(step==='wake'){
+      setSlotValue('tertiary',resolveWakeMatch(vm));
+    }else if(step==='recognize'){
+      setSlotValue('tertiary',resolveConfidence(vm));
+      setSlotValue('quaternary',resolveUsage(vm));
+    }
+  }
+
+  function render(vm,step){
     var rail=$('voiceFeedbackRail');
     if(!rail) return;
     rail.hidden=false;
+    step=currentStep(step);
 
     var titleEl=$('voiceFbTitle');
     if(titleEl) titleEl.textContent=t('voiceFbTitle');
 
-    var status=resolveStatus(vm);
+    var status=resolveStatus(vm,step);
     var pill=$('voiceFbStatusPill');
     if(pill){
       pill.textContent=status.text;
@@ -120,31 +272,10 @@
     }
 
     var metricsEl=$('voiceFbMetrics');
-    var showMetrics=status.cls==='is-live'||status.cls==='is-loading';
-    if(metricsEl) metricsEl.hidden=!showMetrics;
+    if(metricsEl) metricsEl.hidden=false;
 
-    var latencyEl=$('voiceFbMetricLatency');
-    var confEl=$('voiceFbMetricConfidence');
-    var engineEl=$('voiceFbMetricEngine');
-    var sendEl=$('voiceFbMetricSend');
-    if(latencyEl) latencyEl.textContent=resolveLatency(vm);
-    if(confEl) confEl.textContent=resolveConfidence(vm);
-    if(engineEl) engineEl.textContent=resolveEngineLabel(vm);
-    if(sendEl) sendEl.textContent=resolveSendLabel(vm);
-
-    var lblLatency=$('voiceFbLblLatency');
-    var lblConf=$('voiceFbLblConfidence');
-    var lblEngine=$('voiceFbLblEngine');
-    var lblSend=$('voiceFbLblSend');
-    if(lblLatency) lblLatency.textContent=t('voiceFbLblLatency');
-    if(lblConf) lblConf.textContent=t('voiceFbLblConfidence');
-    if(lblEngine) lblEngine.textContent=t('voiceFbLblEngine');
-    if(lblSend) lblSend.textContent=t('voiceFbLblSend');
-
-    var transcriptLbl=$('voiceFbTranscriptLbl');
-    if(transcriptLbl) transcriptLbl.textContent=t('voiceFbTranscriptLbl');
-
-    syncLiveText();
+    applyStepProfile(vm,step);
+    updateTranscript(step);
     applyMicOrbLevel(micLevel);
 
     var btnWake=$('voiceFbBtnSimulateWake');
@@ -153,18 +284,22 @@
     if(btnSpeak) btnSpeak.textContent=t('voiceFbBtnSimulateSpeak');
   }
 
-  function syncLiveText(){
-    var box=$('voiceFbTranscript');
-    if(!box) return;
-    var info=resolveTranscriptText();
-    box.classList.toggle('is-partial',!!info.partial);
-    if(info.text){
-      box.textContent=info.text;
-    }else{
-      box.textContent=info.placeholder||'';
-      box.classList.add('is-placeholder');
+  function syncLiveState(vm,step){
+    if(!vm) return;
+    step=currentStep(step);
+    var status=resolveStatus(vm,step);
+    var pill=$('voiceFbStatusPill');
+    if(pill){
+      pill.textContent=status.text;
+      pill.className='voice-fb-status-pill '+status.cls;
     }
-    if(info.text) box.classList.remove('is-placeholder');
+    updateTranscript(step);
+    updateLiveSlotValues(vm,step);
+    applyMicOrbLevel(micLevel);
+  }
+
+  function syncLiveText(){
+    updateTranscript(currentStep());
   }
 
   function setMicLevel(level){
@@ -174,6 +309,7 @@
 
   global.OneToneVoiceFeedbackRail={
     render:render,
+    syncLiveState:syncLiveState,
     syncLiveText:syncLiveText,
     setMicLevel:setMicLevel
   };

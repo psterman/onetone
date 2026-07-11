@@ -1238,30 +1238,29 @@
           <div class="voice-page-layout">
             <div class="voice-page-main">
               <section class="voice-step-stack voice-settings-flow" id="voiceSettingsFlow" aria-label="语音流程">
-                  <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col" id="voiceSettingsWakeCard" data-voice-subpage="wake">
-                    <div class="flow-step-body keys-step-body">
+                  <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col voice-wake-root" id="voiceSettingsWakeCard" data-voice-subpage="wake">
+                    <div class="flow-step-body keys-step-body voice-wake-stack">
+                    <section class="voice-wake-card voice-wake-card--hero" id="voiceWakeHeroCard" aria-labelledby="voiceWakeHeroTitle">
+                    <p class="voice-wake-card-kicker" id="voiceWakeHeroTitle">开始输入</p>
                     <div class="voice-wake-phrase-display" id="voiceWakePhraseDisplay">
                       <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
                       <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
                     </div>
                     <p class="voice-wake-display-hint" id="voiceWakeDisplayHint">说出以上文字，开始语音输入</p>
-                    <div class="voice-mic-status-row" id="voiceMicStatusRow">
-                      <div class="voice-mic-status-readonly voice-status-readonly" id="voiceMicStatusReadonly">
-                        <span class="voice-mic-status-dot" id="voiceMicStatusDot" aria-hidden="true"></span>
-                        <span id="voiceMicStatusName">默认麦克风</span>
-                        <span aria-hidden="true">·</span>
-                        <span id="voiceMicStatusState">正常</span>
-                      </div>
-                      <button type="button" class="voice-mic-change-btn" id="btnVoiceMicChange">更换设备</button>
-                    </div>
                     <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
                       <span id="voiceSettingsMicName">默认麦克风</span>
                     </button>
                     <span class="sr-only" id="voiceSettingsMicLbl">麦克风</span>
                     <span class="mic-level-bars sr-only" id="voiceSettingsMicBars" aria-hidden="true"></span>
-                    <details class="voice-wake-edit-details" id="voiceWakeEditDetails">
-                      <summary id="voiceWakeEditSummary">编辑唤醒词与预设</summary>
-                    <p class="voice-edit-section-title" id="voiceEditSectionPresets">预设唤醒词</p>
+                    </section>
+                    <section class="voice-wake-card voice-wake-card--presets" id="voiceWakePresetsPanel">
+                    <div class="voice-wake-card-head">
+                      <p class="voice-wake-card-title" id="voiceEditSectionPresets">预设唤醒词</p>
+                      <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言">
+                        <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
+                        <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
+                      </div>
+                    </div>
                     <div class="voice-settings-wake-host" id="voiceSettingsWakeHost">
                       <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
                         <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
@@ -1289,14 +1288,8 @@
                         </div>
                       </div>
                     </div>
-                    <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言">
-                      <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
-                      <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
-                    </div>
-                    <p class="voice-phrase-compact-hint sr-only" id="voiceWakeCompactHint">由识别方式切换中英文识别资源，唤醒词会同步更新</p>
-                    <p class="sr-only" id="voiceWakeCompactLbl">当前唤醒词</p>
-                    <div id="voiceWakeCompact" hidden aria-hidden="true"></div>
-                    <p class="voice-edit-section-title" id="voiceEditSectionCustom">自定义唤醒词</p>
+                    <details class="voice-wake-custom-details" id="voiceWakeCustomDetails">
+                      <summary id="voiceWakeCustomSummary">自定义唤醒词</summary>
                     <div class="voice-phrase-custom" id="voiceWakeCustomBlock">
                       <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                       <div class="voice-phrase-custom-row">
@@ -1307,36 +1300,37 @@
                       <div class="voice-phrase-custom-chips" id="voiceWakeCustomChips" hidden></div>
                       <p class="voice-phrase-custom-hint" id="voiceWakeCustomHint">可添加预设以外的短语；引擎按文字匹配，不是录声音</p>
                     </div>
-                    <p class="voice-edit-section-title" id="voiceEditSectionMic">麦克风</p>
-                    <details class="voice-settings-mic-details flow-preset-more" id="voiceMicPickerDetails">
-                      <summary id="voiceMicPickerSummary">麦克风与设备</summary>
-                      <div class="voice-side-mic-expand-body">
-                        <div class="mic-settings-block drawer-section" id="voiceMicSection">
-                          <div class="mic-head-row">
-                            <div class="mini-title sr-only" id="micTitle">麦克风</div>
-                            <button type="button" class="control-btn" id="btnMicRefresh">刷新设备</button>
-                          </div>
-                          <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
-                          <p class="mic-empty" id="micEmpty" hidden></p>
-                          <div class="mic-device-list" id="micDeviceList"></div>
-                        </div>
-                      </div>
                     </details>
-                    <p class="voice-input-row-help sr-only" id="voiceSettingsMicHint">点击更换输入设备</p>
-                    <p class="voice-edit-section-title" id="voiceEditSectionShortcut">语音快捷键</p>
-                    <section class="voice-target-shortcut-block drawer-section voice-input-shortcut-block" id="voiceInputShortcutBlock">
-                      <div class="mini-title sr-only" id="voiceTargetShortcutTitle">语音快捷键</div>
-                      <p class="mic-desc" id="voiceTargetShortcutDesc">选你的输入法，自动填入默认快捷键</p>
-                      <div class="voice-target-key-display target-key-display" id="voiceSettingsTargetKeyWrap">
-                        <img class="target-ime-badge" id="voiceSettingsTargetImeIcon" alt="" hidden decoding="async">
-                        <span id="voiceSettingsTargetKey">右 Alt</span>
-                      </div>
-                      <div class="ime-preset-block">
-                        <p class="ime-preset-hint" id="imePresetHintVoice" hidden>选择你的默认语音输入法，点击即可自动完成快捷键设置</p>
-                        <div class="ime-preset-strip" id="imePresetStripVoice" data-ime-context="voice"></div>
-                      </div>
+                    <p class="voice-phrase-compact-hint sr-only" id="voiceWakeCompactHint">由识别方式切换中英文识别资源，唤醒词会同步更新</p>
+                    <p class="sr-only" id="voiceWakeCompactLbl">当前唤醒词</p>
+                    <div id="voiceWakeCompact" hidden aria-hidden="true"></div>
                     </section>
-                    </details>
+                    <section class="voice-wake-card voice-wake-card--mic" id="voiceWakeMicCard">
+                    <div class="voice-wake-card-head">
+                      <p class="voice-wake-card-title" id="voiceMicPickerSummary">麦克风与设备</p>
+                      <div class="voice-wake-mic-head-actions">
+                        <div class="voice-mic-status-row voice-mic-status-row--compact" id="voiceMicStatusRow">
+                          <div class="voice-mic-status-readonly voice-status-readonly" id="voiceMicStatusReadonly">
+                            <span class="voice-mic-status-dot" id="voiceMicStatusDot" aria-hidden="true"></span>
+                            <span id="voiceMicStatusName">默认麦克风</span>
+                            <span aria-hidden="true">·</span>
+                            <span id="voiceMicStatusState">正常</span>
+                          </div>
+                        </div>
+                        <button type="button" class="voice-mic-change-btn" id="btnVoiceMicChange">更换设备</button>
+                        <button type="button" class="control-btn voice-mic-refresh-btn" id="btnMicRefresh">刷新设备</button>
+                      </div>
+                    </div>
+                    <div class="voice-wake-mic-body" id="voiceMicPickerDetails">
+                      <div class="mic-settings-block drawer-section" id="voiceMicSection">
+                        <div class="mini-title sr-only" id="micTitle">麦克风</div>
+                        <p class="mic-desc" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
+                        <p class="mic-empty" id="micEmpty" hidden></p>
+                        <div class="mic-device-list" id="micDeviceList"></div>
+                      </div>
+                    </div>
+                    <p class="voice-input-row-help sr-only" id="voiceSettingsMicHint">点击更换输入设备</p>
+                    </section>
                     </div>
                   </div>
                   <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col" id="voiceSettingsEndPhraseCard" data-voice-subpage="recognize">
@@ -1551,20 +1545,20 @@
                   <div id="voiceFbTranscript" class="is-placeholder" role="log" aria-live="polite" aria-atomic="false">等待唤醒词或长按说话…</div>
                 </div>
                 <div class="voice-fb-metrics" id="voiceFbMetrics" role="group" aria-label="语音链路指标">
-                  <div class="voice-fb-metric">
-                    <span class="voice-fb-metric-lbl" id="voiceFbLblLatency">Latency</span>
+                  <div class="voice-fb-metric" data-fb-slot="primary">
+                    <span class="voice-fb-metric-lbl" id="voiceFbLblLatency">—</span>
                     <span class="voice-fb-metric-val" id="voiceFbMetricLatency">—</span>
                   </div>
-                  <div class="voice-fb-metric">
-                    <span class="voice-fb-metric-lbl" id="voiceFbLblConfidence">Confidence</span>
+                  <div class="voice-fb-metric" data-fb-slot="secondary">
+                    <span class="voice-fb-metric-lbl" id="voiceFbLblConfidence">—</span>
                     <span class="voice-fb-metric-val" id="voiceFbMetricConfidence">—</span>
                   </div>
-                  <div class="voice-fb-metric">
-                    <span class="voice-fb-metric-lbl" id="voiceFbLblEngine">Engine</span>
+                  <div class="voice-fb-metric" data-fb-slot="tertiary">
+                    <span class="voice-fb-metric-lbl" id="voiceFbLblEngine">—</span>
                     <span class="voice-fb-metric-val" id="voiceFbMetricEngine">—</span>
                   </div>
-                  <div class="voice-fb-metric">
-                    <span class="voice-fb-metric-lbl" id="voiceFbLblSend">Send mode</span>
+                  <div class="voice-fb-metric" data-fb-slot="quaternary">
+                    <span class="voice-fb-metric-lbl" id="voiceFbLblSend">—</span>
                     <span class="voice-fb-metric-val" id="voiceFbMetricSend">—</span>
                   </div>
                 </div>
@@ -2364,6 +2358,7 @@
   <script src="js/features/voice/voice-phrase-listen.js"></script>
   <script src="js/features/voice/voice-engine-readiness.js"></script>
   <script src="js/features/voice/voice-wake-presets.js"></script>
+  <script src="js/features/voice/voice-wake-navigation.js"></script>
   <script src="js/features/voice/voice-wake.js"></script>
   <script src="js/features/voice/voice-home-summary.js"></script>
   <script src="js/features/input-flow-summary.js"></script>

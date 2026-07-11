@@ -3,6 +3,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var STEPS=['wake','recognize','send'];
   var activeStep='wake';
+  var stepChangeHook=null;
 
   function panel(){
     return $('settingsPanelVoiceWake');
@@ -32,6 +33,13 @@
     if(STEPS.indexOf(step)<0) step='wake';
     activeStep=step;
     applyStepToDom();
+    if(typeof stepChangeHook==='function'){
+      try{ stepChangeHook(activeStep); }catch(err){ console.error('voice step hook',err); }
+    }
+  }
+
+  function registerStepHook(fn){
+    stepChangeHook=fn;
   }
 
   function init(){
@@ -41,6 +49,7 @@
   global.OneToneVoicePageState={
     setStep:setStep,
     getStep:function(){ return activeStep; },
+    registerStepHook:registerStepHook,
     init:init,
     STEPS:STEPS
   };

@@ -6,12 +6,26 @@
 
   function hooks(){ return global.__vp_voice_settings_flow_hooks__||{}; }
 
+  var settingsRenderTimer=0;
+
+  function canRenderVoiceSettings(){
+    var ui=global.OneToneState&&global.OneToneState.ui;
+    if(!ui||!ui.drawerOpen||ui.settingsPanel!=='voiceWake') return false;
+    return !!hooks().configLoadedFromBackend();
+  }
+
+  function scheduleVoiceSettingsRender(){
+    clearTimeout(settingsRenderTimer);
+    settingsRenderTimer=setTimeout(function(){
+      if(canRenderVoiceSettings()) renderVoiceSettingsFlow(false);
+    },0);
+  }
+
   function syncVoiceAsideLiveStatus(){
-    if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
-      global.OneToneVoiceFeedbackRail.syncLiveText();
-    }
-    if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.render&&global.OneToneVoiceSettingsViewModel){
-      global.OneToneVoiceFeedbackRail.render(global.OneToneVoiceSettingsViewModel.build(false));
+    if(!canRenderVoiceSettings()) return;
+    var vm=buildVoiceSettingsViewModel(false);
+    if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveState){
+      global.OneToneVoiceFeedbackRail.syncLiveState(vm);
     }
   }
 
@@ -68,22 +82,21 @@
     hooks().syncVoiceEndCommitKeyUi(vm.autoSendKey);
     hooks().syncVoiceEndDelayRanges(vm.autoSendDelayMs);
 
-    var voiceTargetEl=$('voiceSettingsTargetKey');
-    if(voiceTargetEl){
-      const cfg=(state.config&&state.config.voiceSapi)||(state.config&&state.config.voice_sapi)||{};
-      const vosk=(state.config&&state.config.voiceVosk)||(state.config&&state.config.voice_vosk)||{};
-      const key=String(cfg.targetKey||vosk.targetKey||'RAlt').trim()||'RAlt';
-      voiceTargetEl.textContent=vm.loading?t('homeLiveLoading'):(global.OneToneKeyLabels?global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang()):key);
-    }
-    if(global.OneToneImePresets) global.OneToneImePresets.refresh('voice');
     if(global.OneToneVoiceModelsPanel) global.OneToneVoiceModelsPanel.render();
     if(global.OneToneVoicePageNav) global.OneToneVoicePageNav.render(vm);
     if(global.OneToneVoiceFeedbackRail) global.OneToneVoiceFeedbackRail.render(vm);
   }
 
+  if(global.OneToneVoicePageState&&global.OneToneVoicePageState.registerStepHook){
+    global.OneToneVoicePageState.registerStepHook(function(){
+      scheduleVoiceSettingsRender();
+    });
+  }
+
   global.OneToneVoiceSettingsFlow={
     render:renderVoiceSettingsFlow,
     buildViewModel:buildVoiceSettingsViewModel,
+    scheduleVoiceSettingsRender:scheduleVoiceSettingsRender,
     syncAsideLiveStatus:syncVoiceAsideLiveStatus,
     setRecognizeNavState:setRecognizeNavState
   };
