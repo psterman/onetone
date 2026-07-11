@@ -1471,6 +1471,15 @@
                       </div>
                     </div>
                     <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
+                    <div class="voice-recognize-model-row" id="voiceRecognizeModelRow" hidden>
+                      <div class="voice-sapi-row">
+                        <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
+                        <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
+                          <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
+                          <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
+                        </div>
+                      </div>
+                    </div>
                     <p class="voice-end-rules-inline" id="voiceEndRulesSummary">当前结束方式：结束词 + 静音判断</p>
                     </div>
                     <details class="voice-recognize-advanced-details" id="voiceRecognizeAdvancedDetails">
@@ -1636,13 +1645,6 @@
                 </div>
                 <div class="voice-mode-card-body" id="voiceVoskBlock">
                   <p class="mic-desc" id="voiceVoskDesc">与轻量版只能开一个；切换语言后识别资源与唤醒词会自动更新。</p>
-                  <div class="voice-sapi-row" style="margin-top:8px">
-                    <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
-                    <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
-                      <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音（small-cn）</button>
-                      <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音（small-en-us）</button>
-                    </div>
-                  </div>
                   <p class="mic-empty" id="voiceVoskError" hidden></p>
                   <div class="voice-vosk-missing-panel" id="voiceVoskMissingPanel" hidden>
                     <p class="voice-vosk-missing-body" id="voiceVoskMissingBody"></p>

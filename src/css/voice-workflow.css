@@ -89,9 +89,9 @@
   gap: 6px;
   margin: 12px 0 14px;
   padding: 6px;
-  border: 1px solid rgba(42, 156, 196, 0.18);
+  border: 1px solid var(--outline-variant);
   border-radius: 8px;
-  background: rgba(245, 251, 255, 0.96);
+  background: var(--surface-high);
   backdrop-filter: blur(10px);
 }
 
@@ -333,7 +333,8 @@
   padding: 12px 14px;
   border-radius: 14px;
   box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.05);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-high);
+  border: 1px solid var(--outline-variant);
 }
 
 
@@ -1263,8 +1264,8 @@
 
 .voice-models-page .models-current-card,
 .voice-models-page .models-resource-card {
-  border: 1px solid #d9e5ee;
-  background: #fff;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
   border-radius: 8px;
   padding: 16px;
 }
@@ -1311,7 +1312,7 @@
   align-content: start;
 }
 
-.voice-models-page .models-resource-card.is-muted { background: #f8fafc; }
+.voice-models-page .models-resource-card.is-muted { background: var(--surface-soft); }
 
 .voice-models-page .models-resource-head {
   display: flex;
@@ -1335,7 +1336,7 @@
   color: #57708b;
 }
 
-.voice-models-page .models-resource-row strong { color: #0f2744; }
+.voice-models-page .models-resource-row strong { color: var(--on-surface); }
 
 .voice-models-page .models-resource-actions {
   display: flex;

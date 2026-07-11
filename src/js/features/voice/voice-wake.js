@@ -1095,8 +1095,30 @@
     return p;
   }
 
+  function clearActiveMappingVoskPresetOverride(){
+    const cfg=state().config;
+    if(!cfg||!Array.isArray(cfg.mappings)) return;
+    const activeId=String(cfg.activeSceneId||'').trim();
+    if(!activeId) return;
+    const mapping=cfg.mappings.find(function(m){ return m&&m.id===activeId; });
+    if(!mapping||!mapping.voiceOverride) return;
+    if(mapping.voiceOverride.modelPreset){
+      delete mapping.voiceOverride.modelPreset;
+      if(!Object.keys(mapping.voiceOverride).some(function(k){
+        var v=mapping.voiceOverride[k];
+        return v!=null&&v!==''&&!(Array.isArray(v)&&!v.length);
+      })) mapping.voiceOverride=null;
+    }
+  }
+
   function backendVoiceVoskPreset(){
     const cfg=state().config||{};
+    const activeId=String(cfg.activeSceneId||'').trim();
+    const mapping=activeId&&Array.isArray(cfg.mappings)
+      ?cfg.mappings.find(function(m){ return m&&m.id===activeId; }):null;
+    if(global.OneToneSceneConfig&&global.OneToneSceneConfig.effectiveVoskModelPreset){
+      return resolvedVoskPreset(global.OneToneSceneConfig.effectiveVoskModelPreset(cfg,mapping));
+    }
     const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
     const raw=hooks().voiceUiSnapshot;
     const snap=(typeof raw==='function'?raw():raw)||{};
@@ -1490,6 +1512,7 @@
     syncVoiceVoskPresetButtons(preset,true);
     hooks().toast(t('voiceVoskModelSwitching'));
     global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:preset}).then(function(res){
+      clearActiveMappingVoskPresetOverride();
       renderVoiceVoskStatus(res);
       if(shouldShowVoskMissingPanel(res)){
         renderVoskDownloadProgress('',0);
@@ -1568,6 +1591,7 @@
     syncVoskPresets:syncVoiceVoskPresets,
     syncVoiceVoskPresetButtons:syncVoiceVoskPresetButtons,
     changeVoskModelPreset:changeVoiceVoskModelPreset,
+    currentVoskPreset:currentVoiceVoskPreset,
     isEnglishVoskPreset:isEnglishVoskPreset,
     openVoskResourcesDir:openVoskResourcesDir,
     downloadVoskModel:downloadVoskModel,

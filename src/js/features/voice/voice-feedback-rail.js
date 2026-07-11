@@ -40,9 +40,16 @@
     if(vm.loading) return t('homeLiveLoading');
     var label=vm.modeLabel||'—';
     if(vm.mode==='vosk'){
-      var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
-      var preset=(w.vosk&&w.vosk.modelPreset)||'cn-light';
-      label+=' · '+(preset==='en-light'?'small-en':'small-cn');
+      var preset='cn-light';
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
+        preset=global.OneToneVoiceWake.currentVoskPreset();
+      }else{
+        var w=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().wake||{}:{};
+        var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
+        var voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+        preset=(w.vosk&&w.vosk.modelPreset)||voskCfg.modelPreset||'cn-light';
+      }
+      label+=' · '+(String(preset)==='en-light'?'small-en-us':'small-cn');
     }
     return label;
   }

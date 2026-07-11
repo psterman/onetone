@@ -8,9 +8,10 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{
-    append_unique_phrases, save_config, vosk_preset_default_phrases, vosk_preset_model_path,
-    VoiceVoskConfig,
+    append_unique_phrases, normalize_voice_override, save_config, vosk_preset_default_phrases,
+    vosk_preset_model_path, VoiceVoskConfig,
 };
+use crate::scene_config::resolve_effective_vosk_config;
 use crate::voice_vosk::{
     probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, vosk_resource_issue,
     VoiceVoskEvent, VoskResourceProbe,
@@ -106,6 +107,35 @@ pub fn voice_vosk_start(
             }
             Err(e)
         }
+    }
+}
+
+fn phrase_matches_vosk_preset(preset: &str, phrase: &str) -> bool {
+    let p = phrase.trim();
+    if p.is_empty() {
+        return false;
+    }
+    let has_cjk = p.chars().any(|c| {
+        matches!(
+            c,
+            '\u{4E00}'..='\u{9FFF}' | '\u{3400}'..='\u{4DBF}' | '\u{F900}'..='\u{FAFF}'
+        )
+    });
+    let has_latin = p.chars().any(|c| c.is_ascii_alphabetic());
+    match preset.trim() {
+        "en-light" => has_latin && !has_cjk,
+        "cn-light" => has_cjk || !has_latin,
+        _ => true,
+    }
+}
+
+fn clear_active_mapping_vosk_preset_override(cfg: &mut crate::config::VoiceConfig) {
+    let active_id = cfg.active_scene_id.clone();
+    if let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == active_id) {
+        if let Some(ref mut ov) = mapping.voice_override {
+            ov.model_preset = None;
+        }
+        mapping.voice_override = normalize_voice_override(mapping.voice_override.take());
     }
 }
 
@@ -506,7 +536,7 @@ pub fn voice_vosk_set_model_preset(
         return Err(format!("unknown model preset: {preset}"));
     }
 
-    let enabled = {
+    let (enabled, vosk_cfg) = {
         let mut cfg = state.cfg.lock();
         let old_preset = cfg.voice_vosk.model_preset.clone();
         let old_defaults = vosk_preset_default_phrases(&old_preset).unwrap_or_default();
@@ -521,19 +551,22 @@ pub fn voice_vosk_set_model_preset(
                     .phrases
                     .iter()
                     .filter(|p| !old_defaults.iter().any(|d| d == *p))
+                    .filter(|p| phrase_matches_vosk_preset(&preset, p))
                     .cloned()
                     .collect();
                 cfg.voice_vosk.phrases = append_unique_phrases(defaults, &custom);
             }
         }
+        clear_active_mapping_vosk_preset_override(&mut cfg);
         cfg.normalize();
         save_config(&cfg);
-        cfg.voice_vosk.enabled
+        let enabled = cfg.voice_vosk.enabled;
+        let vosk_cfg = resolve_effective_vosk_config(&cfg);
+        (enabled, vosk_cfg)
     };
 
     if enabled {
-        let cfg = state.cfg.lock().voice_vosk.clone();
-        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
+        spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir.clone());
     }
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 

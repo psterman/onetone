@@ -356,7 +356,30 @@
         }
       };
     }
-    bindFlowLangToggle('voiceWakeLangToggle','__vp_voice_wake_lang__');
+    function bindWakeLangToggle(){
+      var host=$('voiceWakeLangToggle');
+      if(!host) return;
+      host.onclick=function(e){
+        var btn=e.target.closest&&e.target.closest('[data-lang]');
+        if(!btn) return;
+        e.preventDefault();
+        var lang=btn.getAttribute('data-lang')||'zh';
+        var eng=hooks.currentVoiceMode?hooks.currentVoiceMode():'off';
+        var wakeApi=global.OneToneVoiceWake;
+        if(eng==='vosk'&&wakeApi&&wakeApi.changeVoskModelPreset){
+          wakeApi.changeVoskModelPreset(lang==='en'?'en-light':'cn-light');
+          return;
+        }
+        global.__vp_voice_wake_lang__=lang;
+        host.querySelectorAll('.flow-lang-btn').forEach(function(b){
+          b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+        });
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
+          global.OneToneVoiceSettingsFlow.render();
+        }
+      };
+    }
+    bindWakeLangToggle();
     bindFlowLangToggle('voiceEndLangToggle','__vp_voice_end_lang__');
     var btnMicRefresh=$('btnMicRefresh');
     if(btnMicRefresh) btnMicRefresh.onclick=function(){

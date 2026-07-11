@@ -53,6 +53,11 @@
     }
   }
 
+  function renderModelPresetRow(vm){
+    const row=$('voiceRecognizeModelRow');
+    if(row) row.hidden=vm.loading||vm.mode!=='vosk';
+  }
+
   function renderRecognizePanel(vm){
     const primaryName=$('voiceRecognizePrimaryName');
     const primarySub=$('voiceRecognizePrimarySub');
@@ -195,6 +200,7 @@
   global.OneToneVoiceStepRecognize={
     render:function(vm){
       renderRecognizePanel(vm);
+    renderModelPresetRow(vm);
       renderStepPanels(vm);
       renderCompactEnd(vm);
       renderCapabilityNote(vm);

@@ -46,7 +46,14 @@
     var rec=$('voiceSubtabRecognizeHint');
     var send=$('voiceSubtabSendHint');
     if(wake) wake.textContent=vm.loading?t('homeLiveLoading'):V.resolveDisplayWakePhrase(vm).display;
-    if(rec) rec.textContent=vm.loading?t('homeLiveLoading'):vm.modeLabel;
+    if(rec){
+      var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
+      if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
+        var preset=global.OneToneVoiceWake.currentVoskPreset();
+        recHint+=' · '+(preset==='en-light'?'small-en-us':'small-cn');
+      }
+      rec.textContent=recHint;
+    }
     if(send) send.textContent=vm.loading?t('homeLiveLoading'):V.resolveOutputSummaryLabel(vm);
   }
 

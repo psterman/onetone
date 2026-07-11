@@ -211,3 +211,82 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.65; transform: scale(0.92); }
 }
+
+/* Light theme — feedback rail matches settings surface */
+html:not([data-theme="dark"]) #voiceFeedbackRail.voice-feedback-rail {
+  background: linear-gradient(180deg, var(--surface-high) 0%, var(--surface-soft) 100%);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+html:not([data-theme="dark"]) .voice-fb-title {
+  color: var(--on-surface-muted);
+}
+
+html:not([data-theme="dark"]) .voice-fb-status-pill {
+  background: var(--surface-soft);
+  color: var(--on-surface-muted);
+  border-color: var(--outline-variant);
+}
+
+html:not([data-theme="dark"]) .voice-fb-mic-ring {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(42, 156, 196, 0.12) 0%, transparent 68%),
+    conic-gradient(
+      from 210deg,
+      rgba(42, 156, 196, calc(var(--fb-mic-level, 0) / 100)) 0deg,
+      rgba(42, 156, 196, 0.08) 120deg,
+      transparent 240deg
+    );
+  border-color: rgba(42, 156, 196, 0.28);
+}
+
+html:not([data-theme="dark"]) #voiceFbMicOrb.is-hot .voice-fb-mic-ring {
+  box-shadow: 0 0 28px rgba(42, 156, 196, 0.18);
+}
+
+html:not([data-theme="dark"]) .voice-fb-mic-core {
+  background: var(--surface-high);
+  border-color: var(--outline-variant);
+  color: var(--on-surface);
+}
+
+html:not([data-theme="dark"]) .voice-fb-transcript-lbl,
+html:not([data-theme="dark"]) .voice-fb-metric-lbl {
+  color: var(--on-surface-muted);
+}
+
+html:not([data-theme="dark"]) #voiceFbTranscript {
+  background: var(--surface-soft);
+  border-color: var(--outline-variant);
+  color: var(--on-surface);
+}
+
+html:not([data-theme="dark"]) #voiceFbTranscript.is-partial {
+  color: var(--on-surface-muted);
+}
+
+html:not([data-theme="dark"]) #voiceFbTranscript.is-placeholder {
+  color: var(--on-surface-muted);
+}
+
+html:not([data-theme="dark"]) .voice-fb-metric-val {
+  color: var(--on-surface);
+}
+
+html:not([data-theme="dark"]) #voiceFbActions {
+  border-top-color: var(--outline-variant);
+}
+
+html:not([data-theme="dark"]) .voice-fb-action-btn {
+  background: var(--surface-high);
+  border-color: var(--outline-variant);
+  color: var(--on-surface-muted);
+}
+
+html:not([data-theme="dark"]) .voice-fb-action-btn:hover {
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.35);
+  color: var(--primary-strong);
+}
