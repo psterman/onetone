@@ -24,11 +24,9 @@
 
   function render(){
     var s=compute();
-    setText('modelsCurrentEngine',s.engineLabel);
-    setText('modelsCurrentDetail',s.naturalLine);
     setPill('modelsVoskStatus',s.engineMode==='vosk'?'当前使用':'可选',s.engineMode==='vosk');
     setPill('modelsSapiStatus',s.engineMode==='sapi'?'当前使用':'可选',s.engineMode==='sapi');
-    setText('modelsSapiUsage',s.engineMode==='sapi'?'当前用于语音输入':'可作为轻量识别备用');
+    setText('modelsSapiDesc',s.engineMode==='sapi'?'当前用于语音输入':'可作为轻量识别备用');
   }
 
   function clickExisting(id){
@@ -37,10 +35,6 @@
   }
 
   function bindEvents(){
-    var openVoice=$('btnModelsOpenVoice');
-    if(openVoice) openVoice.onclick=function(){
-      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.open({panel:'voiceWake',voiceSubpage:'wake'});
-    };
     var dl=$('btnModelsVoskDownload');
     if(dl) dl.onclick=function(){ clickExisting('btnVoskDownloadGuide'); };
     var retry=$('btnModelsVoskRetry');
@@ -49,12 +43,6 @@
     if(dir) dir.onclick=function(){ clickExisting('btnVoskOpenResources'); };
     var sapi=$('btnModelsSapiSetup');
     if(sapi) sapi.onclick=function(){ clickExisting('btnVoiceSapiSetup'); };
-    var useSapi=$('btnModelsUseSapi');
-    if(useSapi) useSapi.onclick=function(){
-      if(global.__vp_bootstrap_hooks__&&global.__vp_bootstrap_hooks__.switchVoiceMode){
-        global.__vp_bootstrap_hooks__.switchVoiceMode('sapi',{toastKind:'lite'});
-      }
-    };
   }
 
   global.OneToneVoiceModelsPanel={render:render,bindEvents:bindEvents};

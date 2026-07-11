@@ -24,12 +24,6 @@
       if(!btn) return;
       e.preventDefault();
       var page=btn.getAttribute('data-voice-subpage');
-      if(page==='resources'){
-        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
-          global.OneToneSettingsDrawer.setPanel('models');
-        }
-        return;
-      }
       if(STEPS.indexOf(page)>=0&&global.OneToneVoicePageState){
         global.OneToneVoicePageState.setStep(page);
       }

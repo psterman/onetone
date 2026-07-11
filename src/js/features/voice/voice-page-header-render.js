@@ -13,7 +13,6 @@
       ['voiceSubtabWakeLbl','voiceSubtabWakeLbl'],
       ['voiceSubtabRecognizeLbl','voiceSubtabRecognizeLbl'],
       ['voiceSubtabSendLbl','voiceSubtabSendLbl'],
-      ['voiceSubtabModelsLbl','voiceSubtabModelsLbl'],
       ['voiceSettingsEndPhraseLbl','voiceSettingsRecognizeLbl'],
       ['voiceSettingsAutoLbl','voiceSettingsOutputLbl'],
       ['voiceColInputLbl','voiceColWake'],

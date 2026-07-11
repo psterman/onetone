@@ -59,28 +59,13 @@
   }
 
   function renderRecognizePanel(vm){
-    const primaryName=$('voiceRecognizePrimaryName');
-    const primarySub=$('voiceRecognizePrimarySub');
-    const altCard=$('voiceRecognizeAltCard');
-    const altName=$('voiceRecognizeAltName');
-    const altSub=$('voiceRecognizeAltSub');
     const sourceGrid=$('voiceRecognizeSourceGrid');
     const endRulesSummary=$('voiceEndRulesSummary');
     const endRulesDetail=$('voiceEndRulesSummaryDetail');
-    const advancedDetails=$('voiceRecognizeAdvancedDetails');
+    const endDetails=$('voiceRecognizeEndDetails');
+    const engineDetails=$('voiceRecognizeEngineDetails');
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     var summaryText=V().resolveEndRuleSummary(vm);
-    if(primaryName){
-      primaryName.textContent=vm.loading?t('homeLiveLoading'):(
-        vm.mode==='vosk'?t('voiceRecognizeSourceVosk'):t('voiceRecognizeSourceSapi')
-      );
-    }
-    if(primarySub){
-      if(vm.loading) primarySub.textContent=t('homeLiveLoading');
-      else primarySub.textContent=vm.mode==='vosk'
-        ?t('voiceRecognizePrimarySubLocal')
-        :t('voiceRecognizePrimarySubSystem');
-    }
     if(endRulesSummary) endRulesSummary.textContent=summaryText;
     if(endRulesDetail) endRulesDetail.textContent=summaryText;
     if(sourceGrid){
@@ -91,25 +76,8 @@
         if(tab==='sapi') btn.hidden=!!voskOnly;
       });
     }
-    var altMode=vm.mode==='vosk'?'sapi':'vosk';
-    if(altCard){
-      if(vm.loading||vm.mode==='off'||(altMode==='sapi'&&voskOnly)){
-        altCard.hidden=true;
-      }else{
-        altCard.hidden=false;
-        altCard.setAttribute('data-voice-engine-tab',altMode);
-        if(altName){
-          altName.textContent=altMode==='vosk'?t('voiceRecognizeSourceVosk'):t('voiceRecognizeSourceSapi');
-        }
-        if(altSub){
-          altSub.textContent=altMode==='vosk'
-            ?t('voiceRecognizePrimarySubLocal')
-            :t('voiceRecognizePrimarySubSystem');
-        }
-      }
-    }
-    if(advancedDetails&&advancedDetails.open) setRecognizeNavState('voiceAdvancedSection');
-    else if($('voiceEndRulesSection')&&$('voiceEndRulesSection').classList.contains('is-active')) setRecognizeNavState('voiceEndRulesSection');
+    if(engineDetails&&engineDetails.open) setRecognizeNavState('voiceAdvancedSection');
+    else if(endDetails&&endDetails.open) setRecognizeNavState('voiceEndRulesSection');
     else setRecognizeNavState('voiceRecognizeMethodSection');
   }
 

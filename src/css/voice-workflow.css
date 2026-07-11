@@ -990,6 +990,8 @@
 
 #settingsPanelVoiceWake .voice-recognize-first-screen { display: grid; gap: 8px; }
 
+#settingsPanelVoiceWake .voice-recognize-layout { display: grid; gap: 12px; }
+
 #settingsPanelVoiceWake .voice-end-rules-inline {
   margin: 0;
   padding: 8px 10px;

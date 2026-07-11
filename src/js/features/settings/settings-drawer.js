@@ -79,7 +79,7 @@
 
 
   function openVoiceAdvancedSection(){
-    const el=$('voiceRecognizeAdvancedDetails');
+    const el=$('voiceRecognizeEngineDetails')||$('voiceRecognizeAdvancedDetails');
     if(el&&el.tagName==='DETAILS') el.open=true;
     if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
       global.OneToneVoicePageState.setStep('recognize');
@@ -170,6 +170,12 @@
 
     }
 
+    if(focus==='endPhrases'){
+      if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+        global.OneToneVoicePageState.setStep('recognize');
+      }
+    }
+
     if(focus==='wakePhrases'){
 
       hooks().setVoiceWakeExpandedMode(hooks().currentVoiceMode()==='vosk'?'vosk':(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()?'vosk':'sapi'));
@@ -195,7 +201,9 @@
 
       mic:'voiceMicSection',
 
-      engine:'voiceRecognizeAdvancedDetails',
+      engine:'voiceRecognizeEngineDetails',
+
+      endPhrases:'voiceRecognizeEndDetails',
 
       autoSend:'voiceSettingsAutoCard',
 
@@ -235,11 +243,11 @@
 
       mic:['micDeviceList','micTitle'],
 
-      engine:['voiceModeMeta','voiceRecognizeAdvancedDetails','voiceModePanel'],
+      engine:['voiceRecognizeEngineDetails','voiceModePanel'],
 
-      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceRecognizeAdvancedDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
+      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceRecognizeEngineDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
 
-      endPhrases:['voiceSettingsEndPhraseCard','voiceEndPresetsWrap'],
+      endPhrases:['voiceRecognizeEndDetails','voiceEndPresetsWrap'],
 
       autoSend:['voiceSettingsAutoCard'],
 
@@ -449,6 +457,11 @@
     opts=opts||{};
 
     if(panel==='voiceEnd') panel='voiceWake';
+
+    if(panel==='models'){
+      panel='voiceWake';
+      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
+    }
 
     if(panel==='habits'){
       setSettingsPanel('scenes');

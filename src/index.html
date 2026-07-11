@@ -1271,10 +1271,6 @@
               <span class="voice-subtab-label" id="voiceSubtabSendLbl">语音发送</span>
               <span class="voice-subtab-hint" id="voiceSubtabSendHint"></span>
             </button>
-            <button type="button" class="voice-subtab-btn" data-voice-subpage="resources" id="voiceSubtabModels" role="tab" aria-selected="false">
-              <span class="voice-subtab-num" aria-hidden="true">4</span>
-              <span class="voice-subtab-label" id="voiceSubtabModelsLbl">识别资源</span>
-            </button>
           </nav>
           <div class="voice-page-layout">
             <div class="voice-page-main">
@@ -1434,42 +1430,15 @@
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body">
-                    <div class="voice-recognize-first-screen">
+                    <div class="voice-recognize-layout">
+                    <section class="voice-recognize-block">
                     <p class="voice-edit-section-title" id="voiceEditSectionEngine">识别通道</p>
-                    <div class="keys-capture-primary" id="voiceRecognizePrimaryCard">
-                      <div class="keys-capture-primary-main">
-                        <div class="keys-capture-primary-copy">
-                          <span class="keys-capture-primary-name" id="voiceRecognizePrimaryName">系统语音输入</span>
-                          <span class="keys-capture-primary-sub" id="voiceRecognizePrimarySub">调用系统输入法的语音能力</span>
-                        </div>
-                        <span class="keys-scheme-summary-pill is-on" id="voiceRecognizePrimaryTag">当前使用</span>
-                      </div>
-                      <button type="button" class="keys-summary-btn keys-capture-change-btn" id="btnVoiceRecognizeChange">高级设置</button>
+                    <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
+                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统语音输入</button>
+                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地离线识别</button>
+                      <span class="voice-recognize-source-soon" id="voiceRecognizeSourceCustom" title="自定义识别引擎尚未开放">自定义 · 即将开放</span>
                     </div>
-                    <button type="button" class="keys-capture-primary is-secondary is-clickable" id="voiceRecognizeAltCard" hidden data-voice-engine-tab="">
-                      <div class="keys-capture-primary-main">
-                        <div class="keys-capture-primary-copy">
-                          <span class="keys-capture-primary-name" id="voiceRecognizeAltName">—</span>
-                          <span class="keys-capture-primary-sub" id="voiceRecognizeAltSub">—</span>
-                        </div>
-                        <span class="keys-scheme-summary-pill" id="voiceRecognizeAltTag">可选</span>
-                      </div>
-                    </button>
-                    <div class="keys-capture-primary is-secondary sr-only" id="voiceRecognizeSapiCard" hidden aria-hidden="true">
-                      <div class="keys-capture-primary-main">
-                        <span class="keys-capture-primary-name">Windows SAPI</span>
-                        <span class="keys-capture-primary-sub">系统自带语音识别</span>
-                      </div>
-                      <span class="keys-scheme-summary-pill">可选</span>
-                    </div>
-                    <div class="voice-recognize-source">
-                      <span class="voice-recognize-source-lbl" id="voiceRecognizeSourceLbl">识别来源</span>
-                      <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
-                        <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统语音输入</button>
-                        <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地离线识别</button>
-                        <span class="voice-recognize-source-soon" id="voiceRecognizeSourceCustom" title="自定义识别引擎尚未开放">自定义 · 即将开放</span>
-                      </div>
-                    </div>
+                    <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
                     <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
                     <div class="voice-recognize-model-row" id="voiceRecognizeModelRow" hidden>
                       <div class="voice-sapi-row">
@@ -1480,41 +1449,18 @@
                         </div>
                       </div>
                     </div>
-                    <p class="voice-end-rules-inline" id="voiceEndRulesSummary">当前结束方式：结束词 + 静音判断</p>
-                    </div>
-                    <details class="voice-recognize-advanced-details" id="voiceRecognizeAdvancedDetails">
-                      <summary id="voiceRecognizeAdvancedSummary">高级设置（识别语种 / 资源 / 引擎）</summary>
-                    <div class="voice-recognize-advanced-body">
-                    <nav class="voice-recognize-nav voice-recognize-nav--folded" id="voiceRecognizeNav" aria-label="识别设置导航">
-                      <a class="voice-recognize-nav-link is-active" id="voiceRecognizeNavMethod" href="#voiceRecognizeMethodSection">识别方式</a>
-                      <a class="voice-recognize-nav-link" id="voiceRecognizeNavRules" href="#voiceEndRulesSection">结束规则</a>
-                      <a class="voice-recognize-nav-link" id="voiceRecognizeNavAdvanced" href="#voiceAdvancedSection">高级设置</a>
-                    </nav>
-                    <section class="voice-recognize-section is-active" id="voiceRecognizeMethodSection" aria-labelledby="voiceRecognizeMethodTitle">
-                      <div class="voice-recognize-section-head sr-only">
-                        <div class="voice-recognize-section-copy">
-                          <p class="voice-recognize-section-kicker" id="voiceRecognizeMethodTitle">当前识别方式</p>
-                          <p class="voice-recognize-section-note" id="voiceRecognizeMethodNote">先决定语音走哪条识别通道，再继续配置结束规则。</p>
-                        </div>
-                      </div>
-                    <p class="voice-recognize-cloud-hint sr-only" id="voiceRecognizeCloudHint">云端识别：暂未接入</p>
-                    <p class="voice-settings-card-hint sr-only" id="voiceSettingsEndPhraseHint"></p>
                     </section>
-                    <section class="voice-recognize-section" id="voiceEndRulesSection" aria-labelledby="voiceEndRulesTitle">
-                      <div class="voice-recognize-section-head">
-                        <div class="voice-recognize-section-copy">
-                          <p class="voice-recognize-section-kicker" id="voiceEndRulesTitle">结束规则</p>
-                          <p class="voice-recognize-section-note sr-only" id="voiceEndRulesSummaryDetail">当前结束方式：结束词 + 静音判断</p>
-                        </div>
-                      </div>
+                    <details class="voice-recognize-end-details" id="voiceRecognizeEndDetails">
+                      <summary class="voice-recognize-end-summary">
+                        <span id="voiceEndRulesTitle">结束规则</span>
+                        <span class="voice-end-rules-inline" id="voiceEndRulesSummary">当前结束方式：结束词 + 静音判断</span>
+                      </summary>
                     <div class="voice-end-rules-body" id="voiceEndRulesBody">
-                    <div class="voice-subpage-finish-only">
+                    <p class="voice-recognize-section-note sr-only" id="voiceEndRulesSummaryDetail">当前结束方式：结束词 + 静音判断</p>
                     <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
                       <p class="voice-end-detect-lite-body" id="voiceEndDetectLiteBody">系统快速识别会根据停顿自动判断说话结束。需要自定义结束词，请切换到本地离线识别。</p>
                       <button type="button" class="voice-mode-meta-link" id="btnVoiceEndDetectSwitchVosk">切换到本地离线识别</button>
                     </div>
-                    </div>
-                    <div class="voice-subpage-phrases-only">
                     <div class="voice-phrase-sub-block" id="voiceEndCompact">
                       <p class="voice-phrase-sub-lbl" id="voiceEndCompactLbl">结束词</p>
                       <div class="voice-phrase-compact-row">
@@ -1555,128 +1501,144 @@
                       </div>
                     </div>
                     </div>
-                    </section>
-                    <section class="voice-recognize-section is-advanced" id="voiceAdvancedSection" aria-labelledby="voiceAdvancedTitle">
-                      <p class="voice-edit-section-title" id="voiceEditSectionLangModel">识别语言与模型</p>
-                      <div class="voice-recognize-section-head sr-only">
-                        <div class="voice-recognize-section-copy">
-                          <p class="voice-recognize-section-kicker" id="voiceAdvancedTitle">高级设置</p>
-                          <p class="voice-recognize-section-note" id="voiceAdvancedNote">语种、资源包与引擎细项在这里统一调整。</p>
-                        </div>
+                    </details>
+                    <section class="voice-recognize-block voice-recognize-resources" id="voiceRecognizeResources">
+                    <p class="voice-edit-section-title" id="voiceEditSectionModelRes">模型资源</p>
+                    <div class="voice-resource-panel" id="voiceResourceVoskPanel">
+                      <div class="voice-resource-panel-head">
+                        <span class="voice-resource-panel-name">本地离线模型</span>
+                        <span class="keys-scheme-summary-pill" id="modelsVoskStatus">—</span>
                       </div>
-                    <details class="flow-preset-more voice-recognize-engine-details" id="voiceRecognizeEngineDetails">
-                      <summary id="voiceRecognizeEngineSummary">展开引擎与语种设置</summary>
+                      <div class="voice-resource-panel-rows">
+                        <div class="voice-resource-row"><span>中文模型</span><strong id="modelsVoskCn">small-cn</strong></div>
+                        <div class="voice-resource-row"><span>英文模型</span><strong id="modelsVoskEn">small-en-us</strong></div>
+                      </div>
+                      <div class="voice-resource-panel-actions">
+                        <button type="button" class="keys-summary-btn" id="btnModelsVoskDownload">一键下载</button>
+                        <button type="button" class="keys-summary-btn" id="btnModelsVoskRetry">重试启动</button>
+                        <button type="button" class="keys-summary-btn" id="btnModelsVoskOpenDir">打开资源目录</button>
+                      </div>
+                    </div>
+                    <div class="voice-resource-panel" id="voiceResourceSapiPanel">
+                      <div class="voice-resource-panel-head">
+                        <span class="voice-resource-panel-name">系统语音识别</span>
+                        <span class="keys-scheme-summary-pill" id="modelsSapiStatus">—</span>
+                      </div>
+                      <p class="mic-desc" id="modelsSapiDesc">使用系统自带语音识别，适合低资源待机和快速唤醒。</p>
+                      <div class="voice-resource-panel-actions">
+                        <button type="button" class="keys-summary-btn" id="btnModelsSapiSetup">打开系统语音设置</button>
+                      </div>
+                    </div>
+                    <div class="voice-engine-recovery" id="voiceEngineRecovery" hidden>
+                      <p class="voice-engine-recovery-msg" id="voiceEngineRecoveryMsg">本地模型异常</p>
+                      <div class="voice-engine-recovery-actions">
+                        <button type="button" class="voice-side-engine-btn" id="btnVoskRetry">重试启动</button>
+                        <button type="button" class="voice-side-engine-btn voice-side-engine-btn-muted" id="btnVoiceEngineRecoveryHelp">查看说明</button>
+                      </div>
+                    </div>
+                    </section>
+                    <details class="voice-recognize-engine-details" id="voiceRecognizeEngineDetails">
+                      <summary id="voiceRecognizeEngineSummary">引擎细项</summary>
                       <span class="sr-only" id="voiceModeTitle">识别细项</span>
                       <span class="sr-only" id="voiceRecognitionAsideSummary">—</span>
-                      <section class="voice-mode-panel voice-mode-panel--inline" id="voiceModePanel">
-            <p class="mic-desc" id="voiceModeDesc">在上方切换识别来源，下方配置对应参数。</p>
-            <div class="voice-mode-grid">
-              <div class="voice-mode-card" id="btnVoiceModeSapi" data-voice-mode="sapi">
-                <div class="voice-mode-head">
-                  <div>
-                    <p class="voice-mode-kicker" id="voiceModeLiteTitle">轻量版</p>
-                    <p class="voice-mode-name" id="voiceModeLiteEngine">系统快速识别</p>
-                  </div>
-                  <div class="voice-mode-head-actions">
-                    <span class="chip" id="voiceModeLiteBadge">低资源</span>
-                  </div>
-                </div>
-                <span class="sr-only" id="voiceSapiTitle">轻量版细项</span>
-                <span class="sr-only" id="voiceSapiLabel">打开轻量版</span>
-                <p class="voice-mode-copy" id="voiceModeLiteDesc">更省资源，适合常驻待机和快速唤起。</p>
-                <p class="voice-mode-metric" id="voiceModeLiteMetric">实时占用读取中…</p>
-                <div class="voice-mode-points">
-                  <span class="voice-mode-point" id="voiceModeLitePoint1">资源占用低</span>
-                  <span class="voice-mode-point" id="voiceModeLitePoint2">唤起更快</span>
-                  <span class="voice-mode-point" id="voiceModeLitePoint3">不支持结束词</span>
-                </div>
-                <div class="voice-mode-card-body" id="voiceSapiBlock">
-                  <p class="mic-desc" id="voiceSapiDesc">对着麦克风说出下方选中的词，就会帮你按一次语音快捷键。</p>
-                  <div class="helper-note" id="voiceSapiSetupNotice" hidden>
-                    <strong id="voiceSapiSetupTitle">轻量版需要 Windows 语音组件</strong>
-                    <span id="voiceSapiSetupBody">如果这是第一次使用，请先安装或开启系统语音识别，并确认已装好对应语言的语音包。</span>
-                    <div class="voice-setup-actions">
-                      <button type="button" class="control-btn" id="btnVoiceSapiSetup">一键去安装</button>
-                    </div>
-                  </div>
-                  <div class="voice-sapi-box voice-mode-details-only">
-                    <div class="voice-sapi-heard-live" id="voiceSapiHeardLive">
-                      <p class="voice-sapi-heard-primary" id="voiceSapiHeardPrimary">—</p>
-                      <p class="voice-sapi-heard-extra" id="voiceSapiHeardExtra" hidden></p>
-                    </div>
-                    <div class="voice-sapi-sens-block">
-                      <p class="voice-sapi-sens-section-title" id="voiceSapiSensSectionTitle">语音转文字匹配</p>
-                      <p class="voice-sapi-sens-section-note" id="voiceSapiSensSectionNote">以下档位控制识别如何将你说的话匹配为文本</p>
-                      <div class="recording-audio-strength-row">
-                        <span class="setting-row-text" id="voiceSapiSensLbl">当前档位</span>
-                        <span class="recording-audio-strength-current" id="voiceSapiSensCurrent">标准</span>
+                      <div class="voice-engine-tuning" id="voiceModePanel">
+                        <div class="voice-engine-tuning-block" id="btnVoiceModeSapi" data-voice-mode="sapi">
+                          <div id="voiceSapiBlock">
+                            <div class="helper-note" id="voiceSapiSetupNotice" hidden>
+                              <strong id="voiceSapiSetupTitle">轻量版需要 Windows 语音组件</strong>
+                              <span id="voiceSapiSetupBody">如果这是第一次使用，请先安装或开启系统语音识别，并确认已装好对应语言的语音包。</span>
+                              <div class="voice-setup-actions">
+                                <button type="button" class="control-btn" id="btnVoiceSapiSetup">一键去安装</button>
+                              </div>
+                            </div>
+                            <div class="voice-sapi-sens-block">
+                              <p class="voice-sapi-sens-section-title" id="voiceSapiSensSectionTitle">语音转文字匹配</p>
+                              <p class="voice-sapi-sens-section-note" id="voiceSapiSensSectionNote">以下档位控制识别如何将你说的话匹配为文本</p>
+                              <div class="recording-audio-strength-row">
+                                <span class="setting-row-text" id="voiceSapiSensLbl">当前档位</span>
+                                <span class="recording-audio-strength-current" id="voiceSapiSensCurrent">标准</span>
+                              </div>
+                              <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroup" role="group" aria-labelledby="voiceSapiSensSectionTitle">
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSapiSens0">最易</button>
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSapiSens1">较易</button>
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSapiSens2">标准</button>
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSapiSens3">较严</button>
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSapiSens4">严格</button>
+                                <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSapiSens5">最严</button>
+                              </div>
+                              <input type="range" class="voice-sapi-range" id="voiceSapiConfidence" min="0" max="1" step="0.05" value="0.35" hidden aria-hidden="true">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="voice-engine-tuning-block" id="btnVoiceModeVosk" data-voice-mode="vosk">
+                          <div id="voiceVoskBlock">
+                            <p class="mic-desc" id="voiceVoskDesc">切换识别语言后，模型资源与唤醒词会自动更新。</p>
+                            <p class="mic-empty" id="voiceVoskError" hidden></p>
+                          </div>
+                        </div>
                       </div>
-                      <div class="pref-segmented is-wide voice-sapi-sens-group" id="voiceSapiSensGroup" role="group" aria-labelledby="voiceSapiSensSectionTitle">
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="0" id="btnVoiceSapiSens0">最易</button>
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="1" id="btnVoiceSapiSens1">较易</button>
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn is-active" data-sapi-sens="2" id="btnVoiceSapiSens2">标准</button>
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="3" id="btnVoiceSapiSens3">较严</button>
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="4" id="btnVoiceSapiSens4">严格</button>
-                        <button type="button" class="pref-segmented-btn voice-sapi-sens-btn" data-sapi-sens="5" id="btnVoiceSapiSens5">最严</button>
+                    </details>
+                    <div class="voice-recognize-legacy-stash" hidden aria-hidden="true">
+                      <details id="voiceRecognizeAdvancedDetails"></details>
+                      <nav id="voiceRecognizeNav"></nav>
+                      <section id="voiceRecognizeMethodSection"></section>
+                      <section id="voiceEndRulesSection"></section>
+                      <section id="voiceAdvancedSection"></section>
+                      <p id="voiceRecognizeCloudHint"></p>
+                      <p id="voiceSettingsEndPhraseHint"></p>
+                      <p id="voiceRecognizeAdvancedSummary"></p>
+                      <p id="voiceRecognizeMethodTitle"></p>
+                      <p id="voiceRecognizeMethodNote"></p>
+                      <p id="voiceAdvancedTitle"></p>
+                      <p id="voiceAdvancedNote"></p>
+                      <p id="voiceEditSectionLangModel"></p>
+                      <p id="voiceModeDesc"></p>
+                      <p id="voiceSapiTitle"></p>
+                      <p id="voiceSapiLabel"></p>
+                      <p id="voiceSapiDesc"></p>
+                      <p id="voiceVoskTitle"></p>
+                      <p id="voiceVoskLabel"></p>
+                      <p id="voiceModeLiteTitle"></p>
+                      <p id="voiceModeLiteEngine"></p>
+                      <p id="voiceModeLiteBadge"></p>
+                      <p id="voiceModeLiteDesc"></p>
+                      <p id="voiceModeLiteMetric"></p>
+                      <p id="voiceModeLitePoint1"></p>
+                      <p id="voiceModeLitePoint2"></p>
+                      <p id="voiceModeLitePoint3"></p>
+                      <p id="voiceModeProTitle"></p>
+                      <p id="voiceModeProEngine"></p>
+                      <p id="voiceModeProBadge"></p>
+                      <p id="voiceModeProDesc"></p>
+                      <p id="voiceModeProMetric"></p>
+                      <p id="voiceModeProPoint1"></p>
+                      <p id="voiceModeProPoint2"></p>
+                      <p id="voiceModeProPoint3"></p>
+                      <div id="voiceSapiHeardLive"><p id="voiceSapiHeardPrimary"></p><p id="voiceSapiHeardExtra"></p></div>
+                      <div id="voiceVoskMissingPanel"><p id="voiceVoskMissingBody"></p>
+                        <div id="voiceVoskDownloadProgress"><div class="voice-vosk-download-bar"><div id="voiceVoskDownloadFill"></div></div><p id="voiceVoskDownloadStatus"></p></div>
                       </div>
-                      <input type="range" class="voice-sapi-range" id="voiceSapiConfidence" min="0" max="1" step="0.05" value="0.35" hidden aria-hidden="true">
+                      <div id="voiceSideEngineActions">
+                        <button type="button" id="btnVoskDownloadGuide">一键下载</button>
+                        <button type="button" id="btnVoskUseLite">先用轻量模式</button>
+                        <button type="button" id="btnVoskOpenResources">打开资源目录</button>
+                      </div>
+                      <p id="voiceModeCurrent"></p>
+                      <p id="voiceModeHint"></p>
+                      <span id="voiceRecognizePrimaryName"></span>
+                      <span id="voiceRecognizePrimarySub"></span>
+                      <span id="voiceRecognizePrimaryTag"></span>
+                      <button type="button" id="btnVoiceRecognizeChange"></button>
+                      <button type="button" id="voiceRecognizeAltCard"></button>
+                      <span id="voiceRecognizeAltName"></span>
+                      <span id="voiceRecognizeAltSub"></span>
+                      <span id="voiceRecognizeAltTag"></span>
+                      <span id="modelsCurrentEngine"></span>
+                      <p id="modelsCurrentDetail"></p>
+                      <button type="button" id="btnModelsOpenVoice"></button>
+                      <button type="button" id="btnModelsUseSapi"></button>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div class="voice-mode-card" id="btnVoiceModeVosk" data-voice-mode="vosk">
-                <div class="voice-mode-head">
-                  <div>
-                    <p class="voice-mode-kicker" id="voiceModeProTitle">离线版</p>
-                    <p class="voice-mode-name" id="voiceModeProEngine">本地离线识别</p>
-                  </div>
-                  <div class="voice-mode-head-actions">
-                    <span class="chip" id="voiceModeProBadge">完整链路</span>
-                  </div>
-                </div>
-                <span class="sr-only" id="voiceVoskTitle">离线版细项</span>
-                <span class="sr-only" id="voiceVoskLabel">打开离线版</span>
-                <p class="voice-mode-copy" id="voiceModeProDesc">支持离线识别、结束词和更完整的语音链路。</p>
-                <p class="voice-mode-metric" id="voiceModeProMetric">实时占用读取中…</p>
-                <div class="voice-mode-points">
-                  <span class="voice-mode-point" id="voiceModeProPoint1">支持结束词</span>
-                  <span class="voice-mode-point" id="voiceModeProPoint2">离线可用</span>
-                  <span class="voice-mode-point" id="voiceModeProPoint3">资源更高</span>
-                </div>
-                <div class="voice-mode-card-body" id="voiceVoskBlock">
-                  <p class="mic-desc" id="voiceVoskDesc">与轻量版只能开一个；切换语言后识别资源与唤醒词会自动更新。</p>
-                  <p class="mic-empty" id="voiceVoskError" hidden></p>
-                  <div class="voice-vosk-missing-panel" id="voiceVoskMissingPanel" hidden>
-                    <p class="voice-vosk-missing-body" id="voiceVoskMissingBody"></p>
-                    <div class="voice-vosk-download-progress" id="voiceVoskDownloadProgress" hidden>
-                      <div class="voice-vosk-download-bar"><div class="voice-vosk-download-fill" id="voiceVoskDownloadFill"></div></div>
-                      <p class="voice-vosk-download-status" id="voiceVoskDownloadStatus"></p>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <p class="voice-edit-section-title voice-subpage-input-only" id="voiceEditSectionModelRes" hidden>模型资源</p>
-            <div class="voice-engine-recovery voice-subpage-input-only" id="voiceEngineRecovery" hidden>
-              <p class="voice-engine-recovery-msg" id="voiceEngineRecoveryMsg">本地模型异常</p>
-              <div class="voice-engine-recovery-actions">
-                <button type="button" class="voice-side-engine-btn" id="btnVoskRetry">重试启动</button>
-                <button type="button" class="voice-side-engine-btn voice-side-engine-btn-muted" id="btnVoiceEngineRecoveryHelp">查看说明</button>
-              </div>
-              <p class="mic-empty sr-only" id="voiceVoskMissingBody"></p>
-            </div>
-            <div class="voice-side-engine-actions sr-only" id="voiceSideEngineActions" hidden aria-hidden="true">
-              <button type="button" class="voice-side-engine-btn" id="btnVoskDownloadGuide" hidden tabindex="-1">一键下载</button>
-              <button type="button" class="voice-side-engine-btn" id="btnVoskUseLite" hidden tabindex="-1">先用轻量模式</button>
-              <button type="button" class="voice-side-engine-btn voice-side-engine-btn-muted" id="btnVoskOpenResources" hidden tabindex="-1">打开资源目录</button>
-            </div>
-            <div class="voice-mode-status sr-only" id="voiceModeCurrent">现在还没打开语音模式</div>
-            <p class="voice-mode-hint sr-only" id="voiceModeHint" hidden>轻量版更适合低资源待机；离线版更适合完整语音流程和结束词。</p>
-                      </section>
-                    </details>
-                    </section>
-                    </div>
-                    </details>
                     </div>
                   </div>
                   <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
@@ -1802,74 +1764,9 @@
             </div>
           </div>
         </section>
-        <section class="settings-panel drawer-section voice-models-page" id="settingsPanelModels" hidden>
-          <header class="pref-page-head">
-            <div>
-              <h3 class="pref-page-title" id="settingsPanelModelsTitle">识别资源</h3>
-              <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelModelsDesc">管理本地语音识别、系统识别与后续云端能力。</p>
-            </div>
-          </header>
-          <section class="models-current-card" id="modelsCurrentCard">
-            <div class="models-current-main">
-              <span class="models-kicker">当前用于语音输入</span>
-              <strong id="modelsCurrentEngine">—</strong>
-              <p id="modelsCurrentDetail">—</p>
-            </div>
-            <button type="button" class="keys-summary-btn is-primary" id="btnModelsOpenVoice">打开语音链路</button>
-          </section>
-          <div class="models-resource-grid">
-            <section class="models-resource-card" id="modelsVoskCard">
-              <div class="models-resource-head">
-                <div>
-                  <span class="models-kicker">本地模型</span>
-                  <h4>本地离线识别</h4>
-                </div>
-                <span class="keys-scheme-summary-pill" id="modelsVoskStatus">—</span>
-              </div>
-              <p class="models-resource-desc" id="modelsVoskDesc">用于离线唤醒词、结束词和完整语音链路。</p>
-              <div class="models-resource-row">
-                <span>中文模型</span>
-                <strong id="modelsVoskCn">small-cn</strong>
-              </div>
-              <div class="models-resource-row">
-                <span>英文模型</span>
-                <strong id="modelsVoskEn">small-en-us</strong>
-              </div>
-              <div class="models-resource-actions">
-                <button type="button" class="keys-summary-btn" id="btnModelsVoskDownload">一键下载</button>
-                <button type="button" class="keys-summary-btn" id="btnModelsVoskRetry">重试启动</button>
-                <button type="button" class="keys-summary-btn" id="btnModelsVoskOpenDir">打开资源目录</button>
-              </div>
-            </section>
-            <section class="models-resource-card" id="modelsSapiCard">
-              <div class="models-resource-head">
-                <div>
-                  <span class="models-kicker">系统识别</span>
-                  <h4>Windows SAPI</h4>
-                </div>
-                <span class="keys-scheme-summary-pill" id="modelsSapiStatus">—</span>
-              </div>
-              <p class="models-resource-desc" id="modelsSapiDesc">使用系统自带语音识别，适合低资源待机和快速唤醒。</p>
-              <div class="models-resource-row">
-                <span>当前用途</span>
-                <strong id="modelsSapiUsage">语音唤醒</strong>
-              </div>
-              <div class="models-resource-actions">
-                <button type="button" class="keys-summary-btn" id="btnModelsSapiSetup">打开系统语音设置</button>
-                <button type="button" class="keys-summary-btn" id="btnModelsUseSapi">设为当前识别</button>
-              </div>
-            </section>
-            <section class="models-resource-card is-muted" id="modelsCloudCard">
-              <div class="models-resource-head">
-                <div>
-                  <span class="models-kicker">后续能力</span>
-                  <h4>云端输入法与大模型</h4>
-                </div>
-                <span class="keys-scheme-summary-pill">暂未接入</span>
-              </div>
-              <p class="models-resource-desc">当前版本保持本地优先；接入后会在这里管理账号、模型和隐私模式。</p>
-            </section>
-          </div>
+        <section class="settings-panel drawer-section voice-models-page" id="settingsPanelModels" hidden aria-hidden="true">
+          <p class="sr-only" id="settingsPanelModelsTitle">识别资源</p>
+          <p class="sr-only" id="settingsPanelModelsDesc">已并入语音识别页</p>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>

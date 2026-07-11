@@ -106,6 +106,129 @@
   color: var(--primary-strong);
 }
 
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-layout {
+  display: grid;
+  gap: 14px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-block {
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-source-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details,
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-engine-details {
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 0 10px 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details > summary,
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-engine-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details > summary::-webkit-details-marker,
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-engine-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-summary .voice-end-rules-inline {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  text-align: right;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel-rows {
+  display: grid;
+  gap: 4px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-row strong {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-resource-panel-actions .keys-summary-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-engine-tuning {
+  display: grid;
+  gap: 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-engine-tuning-block[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-edit-section-title {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-engine-recovery {
+  margin-top: 0;
+}
+
 #settingsPanelVoiceWake.voice-page-v2 .voice-engine-capability-note {
   margin: 10px 0 0;
   padding: 8px 10px;

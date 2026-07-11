@@ -76,9 +76,7 @@
       voiceTargetEl.textContent=vm.loading?t('homeLiveLoading'):(global.OneToneKeyLabels?global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang()):key);
     }
     if(global.OneToneImePresets) global.OneToneImePresets.refresh('voice');
-    if(global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel==='models'&&global.OneToneVoiceModelsPanel){
-      global.OneToneVoiceModelsPanel.render();
-    }
+    if(global.OneToneVoiceModelsPanel) global.OneToneVoiceModelsPanel.render();
     if(global.OneToneVoicePageNav) global.OneToneVoicePageNav.render(vm);
     if(global.OneToneVoiceFeedbackRail) global.OneToneVoiceFeedbackRail.render(vm);
   }

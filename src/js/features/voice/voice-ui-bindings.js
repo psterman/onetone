@@ -115,9 +115,9 @@
     });
     function expandVoiceEditPanels(mode){
       var map={
-        input:['voiceRecognizeAdvancedDetails','voiceRecognizeEngineDetails'],
-        phrases:['voiceWakeEditDetails','voiceWakePresetMore','voiceMicPickerDetails','voiceRecognizeAdvancedDetails'],
-        finish:['voiceOutputMore']
+        input:['voiceRecognizeEngineDetails'],
+        phrases:['voiceWakeEditDetails','voiceMicPickerDetails'],
+        finish:['voiceOutputMore','voiceRecognizeEndDetails']
       };
       (map[mode]||[]).forEach(function(id){
         var el=$(id);
@@ -138,11 +138,13 @@
       var panel=$('settingsPanelVoiceWake');
       if(panel) panel.setAttribute('data-voice-engine',eng||'off');
       expandVoiceEditPanels(mode);
-      if(mode==='input'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
-        global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceAdvancedSection');
+      if(mode==='input'){
+        var engineDetails=$('voiceRecognizeEngineDetails');
+        if(engineDetails) engineDetails.open=true;
       }
-      if(mode==='finish'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
-        global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceEndRulesSection');
+      if(mode==='finish'){
+        var endDetails=$('voiceRecognizeEndDetails');
+        if(endDetails) endDetails.open=true;
       }
     }
     function closeVoiceEditMode(){
@@ -238,19 +240,7 @@
         if(hooks.homeToggleVoiceWake) hooks.homeToggleVoiceWake();
       };
     }
-    var btnVoiceRecognizeChange=$('btnVoiceRecognizeChange');
-    if(btnVoiceRecognizeChange){
-      btnVoiceRecognizeChange.onclick=function(){ setVoiceSubpage('recognize',{scrollIntoView:true}); };
-    }
-    var voiceRecognizeNav=$('voiceRecognizeNav');
-    if(voiceRecognizeNav){
-      voiceRecognizeNav.addEventListener('click',function(e){
-        var link=e.target.closest&&e.target.closest('.voice-recognize-nav-link');
-        if(!link) return;
-        e.preventDefault();
-        setRecognizeNavActive((link.getAttribute('href')||'').replace(/^#/,''));
-      });
-    }
+    bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');
     if(btnVoiceOutputSummonManage){
       btnVoiceOutputSummonManage.onclick=function(){
@@ -276,8 +266,6 @@
         if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
       };
     }
-    bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
-    bindVoiceEngineSwitch($('voiceRecognizeAltCard'));
     var voiceOutputModeSegments=$('voiceOutputModeSegments');
     if(voiceOutputModeSegments) bindVoiceOutputSwitch(voiceOutputModeSegments);
     var btnVoiceAppScopeAdd=$('btnVoiceAppScopeAdd');

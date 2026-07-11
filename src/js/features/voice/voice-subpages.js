@@ -15,11 +15,10 @@
 
   function normalize(page){
     page=String(page||'').trim();
-    if(page==='models') return 'resources';
+    if(page==='models'||page==='resources') return 'recognize';
     if(page==='overview') return 'wake';
     if(page==='test') return 'wake';
     if(LEGACY_TO_STEP[page]) return LEGACY_TO_STEP[page];
-    if(page==='resources') return 'resources';
     return 'wake';
   }
 
@@ -32,12 +31,6 @@
   function setPage(page,opts){
     opts=opts||{};
     page=normalize(page);
-    if(page==='resources'){
-      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
-        global.OneToneSettingsDrawer.setPanel('models');
-      }
-      return;
-    }
     if(global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel!=='voiceWake'){
       if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
         global.OneToneSettingsDrawer.setPanel('voiceWake');

@@ -400,31 +400,31 @@
   }
 
   function syncVoiceWakeExpandedUi(){
-    const mode=voiceWakeExpandedMode||'vosk';
-    const sapiCard=$('btnVoiceModeSapi');
-    const voskCard=$('btnVoiceModeVosk');
+    const mode=currentVoiceMode();
+    const expanded=voiceWakeExpandedMode||mode||'vosk';
+    const sapiWrap=$('btnVoiceModeSapi');
+    const voskWrap=$('btnVoiceModeVosk');
     const sapiBlock=$('voiceSapiBlock');
     const voskBlock=$('voiceVoskBlock');
+    const sapiPanel=$('voiceResourceSapiPanel');
+    const voskPanel=$('voiceResourceVoskPanel');
     if(voskOnlyUi()){
-      if(sapiCard) sapiCard.hidden=true;
+      if(sapiWrap) sapiWrap.hidden=true;
       if(sapiBlock) sapiBlock.hidden=true;
-      if(voskCard){
-        voskCard.hidden=false;
-        voskCard.classList.toggle('is-editing',true);
-      }
+      if(sapiPanel) sapiPanel.hidden=true;
+      if(voskWrap) voskWrap.hidden=false;
       if(voskBlock) voskBlock.hidden=false;
+      if(voskPanel) voskPanel.hidden=false;
       return;
     }
-    if(sapiBlock) sapiBlock.hidden=false;
-    if(voskBlock) voskBlock.hidden=false;
-    if(sapiCard){
-      sapiCard.hidden=mode!=='sapi';
-      sapiCard.classList.toggle('is-editing',mode==='sapi');
-    }
-    if(voskCard){
-      voskCard.hidden=mode!=='vosk';
-      voskCard.classList.toggle('is-editing',mode==='vosk');
-    }
+    const showSapi=mode==='sapi'||expanded==='sapi';
+    const showVosk=mode==='vosk'||expanded==='vosk';
+    if(sapiWrap) sapiWrap.hidden=!showSapi;
+    if(sapiBlock) sapiBlock.hidden=!showSapi;
+    if(sapiPanel) sapiPanel.hidden=!showSapi;
+    if(voskWrap) voskWrap.hidden=!showVosk;
+    if(voskBlock) voskBlock.hidden=!showVosk;
+    if(voskPanel) voskPanel.hidden=!showVosk;
   }
 
   function setVoiceWakeExpandedMode(mode){
