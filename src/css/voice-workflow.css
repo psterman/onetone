@@ -92,11 +92,13 @@
   background: var(--surface);
 }
 
-#settingsPanelVoiceWake .voice-settings-flow.voice-workflow-grid {
+#settingsPanelVoiceWake .voice-settings-flow.voice-workflow-grid,
+#settingsPanelVoiceWake .voice-settings-flow.keys-workflow-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 0.78fr) auto minmax(420px, 1.5fr) auto minmax(260px, 0.92fr);
+  grid-template-columns: minmax(220px, 0.85fr) auto minmax(380px, 1.35fr) auto minmax(260px, 0.9fr);
   gap: 10px 12px;
   align-items: start;
+  margin-bottom: 0;
 }
 
 #settingsPanelVoiceWake .voice-flow-step.voice-workflow-col {
@@ -420,16 +422,16 @@
   color: var(--on-surface-muted);
 }
 
-/* Guardrails: keep voice layout aligned with shared workflow styles */
-#settingsPanelVoiceWake .voice-settings-flow {
-  margin-bottom: 0;
+/* Guardrails: layout owned by voice-workflow.css */
+#settingsPanelVoiceWake #voiceSettingsEndPhraseCard {
+  border-color: rgba(42, 156, 196, 0.28);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
 }
 
-#settingsPanelVoiceWake .voice-settings-flow.keys-workflow-grid {
-  display: grid !important;
-  grid-template-columns: minmax(220px, 0.78fr) auto minmax(420px, 1.5fr) auto minmax(260px, 0.92fr) !important;
-  gap: 8px 10px;
-  align-items: start;
+#settingsPanelVoiceWake #voiceSettingsWakeCard,
+#settingsPanelVoiceWake #voiceSettingsAutoCard {
+  border-color: var(--outline-variant);
+  box-shadow: none;
 }
 
 #settingsPanelVoiceWake .voice-flow-step.keys-workflow-col {
@@ -472,11 +474,6 @@
 #settingsPanelVoiceWake .flow-step-body.keys-step-body {
   padding: 10px 12px 12px;
   gap: 8px;
-}
-
-#settingsPanelVoiceWake #voiceSettingsEndPhraseCard {
-  border-color: rgba(42, 156, 196, 0.18);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
 }
 
 #settingsPanelVoiceWake .flow-step-body.keys-step-body > * {
@@ -534,14 +531,18 @@
 }
 
 #settingsPanelVoiceWake .voice-recognize-section {
-  display: grid;
+  display: none;
   gap: 8px;
 }
 
+#settingsPanelVoiceWake .voice-recognize-section.is-active {
+  display: grid;
+}
+
 #settingsPanelVoiceWake .voice-recognize-section + .voice-recognize-section {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--outline-variant);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 #settingsPanelVoiceWake .voice-recognize-section-head {
@@ -765,11 +766,6 @@
   min-width: 0;
 }
 
-#settingsPanelVoiceWake .voice-settings-flow.keys-workflow-grid {
-  grid-template-columns: minmax(224px, 0.82fr) auto minmax(520px, 1.6fr) !important;
-  gap: 10px 12px;
-}
-
 #settingsPanelVoiceWake .voice-rail-card,
 #settingsPanelVoiceWake .voice-page-aside .voice-schemes-card {
   border-radius: 14px;
@@ -861,6 +857,935 @@
   display: none;
 }
 
+#settingsPanelVoiceWake .voice-trigger-mode-hint {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
 #settingsPanelVoiceWake .voice-aside-stash {
   display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-trigger-mode-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+#settingsPanelVoiceWake .voice-trigger-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: var(--primary-soft);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+#settingsPanelVoiceWake .voice-trigger-mode-soon {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--outline-variant);
+  background: var(--surface-soft);
+}
+
+#settingsPanelVoiceWake .voice-trigger-mode-soon-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-trigger-mode-soon-copy {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-recognize-source-soon {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 7px;
+  border: 1px dashed var(--outline-variant);
+  background: var(--surface-soft);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: help;
+}
+
+#settingsPanelVoiceWake .voice-output-summon-block {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--outline-variant);
+}
+
+#settingsPanelVoiceWake .voice-output-summon-lbl {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-output-summon-hint {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-output-summon-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake .voice-output-summon-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-schemes-add-inline.is-disabled,
+#settingsPanelVoiceWake .voice-schemes-add-inline:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#settingsPanelVoiceWake .voice-finish-habit-link {
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+#settingsPanelVoiceWake .voice-settings-mic-details:not([open]) .voice-side-mic-expand-body {
+  display: none;
+}
+
+/* wake first screen */
+#settingsPanelVoiceWake .voice-wake-phrase-display {
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+#settingsPanelVoiceWake .voice-wake-phrase-display .voice-phrase-compact-zh {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.35;
+}
+
+#settingsPanelVoiceWake .voice-wake-phrase-display .voice-phrase-compact-en {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  margin-top: 4px;
+}
+
+#settingsPanelVoiceWake .voice-wake-display-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+  text-align: center;
+}
+
+#settingsPanelVoiceWake .voice-mic-status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake .voice-mic-status-line:hover { color: var(--on-surface); }
+
+#settingsPanelVoiceWake .voice-mic-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2e7d4f;
+  flex-shrink: 0;
+}
+
+#settingsPanelVoiceWake .voice-mic-status-dot.is-warn { background: #d97706; }
+
+#settingsPanelVoiceWake .voice-wake-edit-details > summary {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelVoiceWake .voice-wake-edit-details > summary::-webkit-details-marker { display: none; }
+
+#settingsPanelVoiceWake .voice-wake-stash { display: none !important; }
+
+#settingsPanelVoiceWake .voice-recognize-first-screen { display: grid; gap: 8px; }
+
+#settingsPanelVoiceWake .voice-end-rules-inline {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-recognize-advanced-details > summary {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+
+#settingsPanelVoiceWake .voice-recognize-advanced-details > summary::-webkit-details-marker { display: none; }
+
+#settingsPanelVoiceWake .voice-recognize-advanced-body { display: grid; gap: 10px; padding-top: 8px; }
+
+#settingsPanelVoiceWake .keys-capture-primary.is-clickable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+}
+
+#settingsPanelVoiceWake .keys-capture-primary.is-clickable:hover {
+  border-color: rgba(42, 156, 196, 0.32);
+}
+
+#settingsPanelVoiceWake .voice-recognize-nav--folded { display: none !important; }
+
+#settingsPanelVoiceWake .voice-output-params { display: grid; gap: 10px; margin-top: 4px; }
+
+#settingsPanelVoiceWake .voice-output-params.is-hidden { display: none !important; }
+
+#settingsPanelVoiceWake .voice-output-delay-row.is-hidden { display: none !important; }
+
+#settingsPanelVoiceWake .voice-output-more > summary {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelVoiceWake .voice-output-more > summary::-webkit-details-marker { display: none; }
+
+#settingsPanelVoiceWake .voice-test-row--slim { display: grid; gap: 8px; padding: 10px 12px; }
+
+#settingsPanelVoiceWake .voice-test-row-top { display: flex; align-items: center; gap: 10px; }
+
+#settingsPanelVoiceWake .voice-test-anchors { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+
+#settingsPanelVoiceWake .voice-test-anchor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.3;
+}
+
+#settingsPanelVoiceWake .voice-test-anchor::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--outline-variant);
+  flex-shrink: 0;
+}
+
+#settingsPanelVoiceWake .voice-test-anchor.is-ok { color: var(--on-surface); }
+
+#settingsPanelVoiceWake .voice-test-anchor.is-ok::before { background: #2e7d4f; }
+
+#settingsPanelVoiceWake .voice-test-wave-wrap { display: none; align-items: center; gap: 8px; }
+
+#settingsPanelVoiceWake .voice-test-diagnostics.is-testing .voice-test-wave-wrap { display: flex; }
+
+#settingsPanelVoiceWake #voiceSchemesCurrentTag { display: none !important; }
+
+#settingsPanelVoiceWake .voice-trigger-mode-active,
+#settingsPanelVoiceWake .voice-trigger-mode-soon,
+#settingsPanelVoiceWake .voice-input-status-chips { display: none !important; }
+
+/* Decoupled voice home: state first, edit only when requested. */
+#settingsPanelVoiceWake .voice-flow-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-card {
+  border: 1px solid #d9e5ee;
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  min-height: 156px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .04);
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-card.is-primary {
+  border-color: #9bd6ff;
+  background: #f5fbff;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-step {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e8f6ff;
+  color: #0284c7;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-kicker {
+  color: #0284c7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-status {
+  margin-left: auto;
+  color: #16834f;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-card strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.25;
+  color: #06162f;
+  overflow-wrap: anywhere;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview-card p {
+  margin: 0;
+  color: #57708b;
+  line-height: 1.45;
+  min-height: 38px;
+}
+
+#settingsPanelVoiceWake .voice-overview-edit {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+#settingsPanelVoiceWake .voice-overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+#settingsPanelVoiceWake .voice-overview-actions .voice-overview-edit {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake .voice-overview-edit.is-subtle {
+  background: #fff;
+}
+
+#settingsPanelVoiceWake .voice-overview-segments {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #edf7fd;
+  border: 1px solid #cfe4f2;
+  min-height: 38px;
+}
+
+#settingsPanelVoiceWake .voice-overview-seg {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #375a75;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#settingsPanelVoiceWake .voice-overview-seg.is-active {
+  background: #fff;
+  color: #06162f;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
+}
+
+#settingsPanelVoiceWake .voice-overview-seg:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+#settingsPanelVoiceWake .voice-workflow-pipeline {
+  display: none;
+  margin-top: 12px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-workflow-pipeline { display: block; }
+
+#settingsPanelVoiceWake.is-editing-input #voiceSettingsWakeCard,
+#settingsPanelVoiceWake.is-editing-input #voiceSettingsAutoCard,
+#settingsPanelVoiceWake.is-editing-input .keys-workflow-arrow,
+#settingsPanelVoiceWake.is-editing-phrases #voiceSettingsAutoCard,
+#settingsPanelVoiceWake.is-editing-phrases .keys-workflow-arrow,
+#settingsPanelVoiceWake.is-editing-finish #voiceSettingsWakeCard,
+#settingsPanelVoiceWake.is-editing-finish .keys-workflow-arrow {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-input #voiceEndRulesSection,
+#settingsPanelVoiceWake.is-editing-input #voiceRecognizeMethodSection,
+#settingsPanelVoiceWake.is-editing-input .voice-end-rules-inline,
+#settingsPanelVoiceWake.is-editing-input .voice-subpage-phrases-only,
+#settingsPanelVoiceWake.is-editing-input .voice-subpage-finish-only {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-input .voice-recognize-first-screen > :not(#voiceEditSectionEngine):not(.voice-recognize-source) {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-phrases #voiceSettingsEndPhraseCard .voice-recognize-first-screen,
+#settingsPanelVoiceWake.is-editing-phrases #voiceAdvancedSection,
+#settingsPanelVoiceWake.is-editing-phrases #voiceRecognizeMethodSection,
+#settingsPanelVoiceWake.is-editing-phrases #voiceEngineRecovery,
+#settingsPanelVoiceWake.is-editing-phrases .voice-subpage-finish-only {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-phrases .voice-phrases-live {
+  display: block;
+}
+
+#settingsPanelVoiceWake.is-editing-finish #voiceSettingsWakeCard,
+#settingsPanelVoiceWake.is-editing-finish #voiceAdvancedSection,
+#settingsPanelVoiceWake.is-editing-finish .voice-recognize-first-screen,
+#settingsPanelVoiceWake.is-editing-finish .voice-subpage-phrases-only,
+#settingsPanelVoiceWake.is-editing-finish #voiceEngineRecovery {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-finish #voiceEndRulesSection {
+  display: block !important;
+}
+
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card:not(.is-editing),
+#settingsPanelVoiceWake.is-editing-phrases .voice-mode-card,
+#settingsPanelVoiceWake.is-editing-finish .voice-mode-card {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing-input .voice-mode-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card.is-editing {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card.is-editing .voice-mode-head,
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card.is-editing .voice-mode-copy,
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card.is-editing .voice-mode-metric,
+#settingsPanelVoiceWake.is-editing-input .voice-mode-card.is-editing .voice-mode-points,
+#settingsPanelVoiceWake.is-editing-input #voiceModeDesc {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-phrases-live {
+  display: none;
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid #cfe4f2;
+  border-radius: 8px;
+  background: #f5fbff;
+}
+
+#settingsPanelVoiceWake .voice-engine-recovery {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #f5c2c7;
+  border-radius: 8px;
+  background: #fff5f5;
+}
+
+#settingsPanelVoiceWake .voice-engine-recovery[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-engine-recovery-msg {
+  margin: 0;
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#settingsPanelVoiceWake .voice-engine-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake .voice-flow-overview {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#settingsPanelVoiceWake.is-editing .voice-settings-flow.keys-workflow-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#settingsPanelVoiceWake.is-editing .voice-flow-step.keys-workflow-col { min-height: 0; }
+
+#settingsPanelVoiceWake .voice-edit-surface-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 12px;
+  padding: 14px 16px;
+  border: 1px solid #cfe4f2;
+  border-radius: 8px;
+  background: #f5fbff;
+}
+
+#settingsPanelVoiceWake .voice-edit-surface-head[hidden] { display: none; }
+
+#settingsPanelVoiceWake .voice-edit-surface-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+#settingsPanelVoiceWake .voice-edit-surface-kicker {
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#settingsPanelVoiceWake .voice-edit-surface-head strong {
+  color: #06162f;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+#settingsPanelVoiceWake .voice-edit-surface-head p {
+  margin: 0;
+  color: #57708b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#settingsPanelVoiceWake .voice-edit-close {
+  flex: 0 0 auto;
+  background: #fff;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-workflow-pipeline {
+  border: 1px solid #d9e5ee;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .04);
+}
+
+#settingsPanelVoiceWake.is-editing .voice-settings-flow.keys-workflow-grid {
+  gap: 0;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-flow-step.keys-workflow-col {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+#settingsPanelVoiceWake.is-editing .keys-workflow-col-head {
+  padding: 2px 2px 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+#settingsPanelVoiceWake.is-editing .flow-step-body.keys-step-body {
+  display: grid;
+  gap: 0;
+  padding: 14px 2px 2px;
+}
+
+#settingsPanelVoiceWake .voice-edit-section-title {
+  display: none;
+  margin: 0;
+  padding: 0;
+  color: #0f2744;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-edit-section-title {
+  display: block;
+  margin: 18px 0 10px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-edit-section-title:first-child,
+#settingsPanelVoiceWake.is-editing .flow-step-body > .voice-edit-section-title:first-child {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake.is-editing .keys-workflow-col-head,
+#settingsPanelVoiceWake.is-editing .voice-wake-phrase-display,
+#settingsPanelVoiceWake.is-editing .voice-wake-display-hint,
+#settingsPanelVoiceWake.is-editing .voice-mic-status-line {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-page-aside {
+  display: none;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-page-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#settingsPanelVoiceWake.is-editing details {
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  margin: 0;
+}
+
+#settingsPanelVoiceWake.is-editing details > summary {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing details > :not(summary) {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-recognize-nav {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-recognize-section {
+  display: block !important;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-recognize-section-head.sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-recognize-advanced-body,
+#settingsPanelVoiceWake.is-editing .voice-settings-wake-host,
+#settingsPanelVoiceWake.is-editing .voice-side-mic-expand-body,
+#settingsPanelVoiceWake.is-editing .voice-output-more .voice-settings-auto-controls {
+  padding: 0;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-wake-edit-details > :not(summary),
+#settingsPanelVoiceWake.is-editing .voice-output-more > :not(summary) {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+#settingsPanelVoiceWake.is-editing-finish .voice-output-modes,
+#settingsPanelVoiceWake.is-editing-finish .voice-output-hint {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom,
+#settingsPanelVoiceWake.is-editing .voice-end-rules-body,
+#settingsPanelVoiceWake.is-editing .voice-output-params,
+#settingsPanelVoiceWake.is-editing .voice-settings-auto-controls,
+#settingsPanelVoiceWake.is-editing .voice-mode-panel--inline {
+  display: grid;
+  gap: 12px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-input,
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-listen,
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-add,
+#settingsPanelVoiceWake.is-editing .voice-side-engine-btn,
+#settingsPanelVoiceWake.is-editing .control-btn {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-sapi-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-sapi-preset,
+#settingsPanelVoiceWake.is-editing .voice-segment-btn,
+#settingsPanelVoiceWake.is-editing .pref-segmented-btn {
+  min-height: 36px;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-mode-card {
+  border: 1px solid #d9e5ee;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-side-engine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-phrase-sub-block,
+#settingsPanelVoiceWake.is-editing .voice-end-detect-lite,
+#settingsPanelVoiceWake.is-editing .voice-output-params {
+  padding: 12px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-output-delay-row {
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-settings-commit-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake.is-editing .voice-settings-commit-lbl,
+#settingsPanelVoiceWake.is-editing .flow-slider-lbl,
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-lbl,
+#settingsPanelVoiceWake.is-editing .voice-settings-step-sub,
+#settingsPanelVoiceWake.is-editing .voice-phrase-sub-lbl {
+  color: #0f2744;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#settingsPanelVoiceWake.is-editing .mic-desc,
+#settingsPanelVoiceWake.is-editing .voice-phrase-custom-hint,
+#settingsPanelVoiceWake.is-editing .voice-end-silence-note,
+#settingsPanelVoiceWake.is-editing .voice-recognize-section-note {
+  color: #57708b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.voice-models-page .models-current-card,
+.voice-models-page .models-resource-card {
+  border: 1px solid #d9e5ee;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.voice-models-page .models-current-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f5fbff;
+  border-color: #9bd6ff;
+}
+
+.voice-models-page .models-current-main { display: grid; gap: 5px; }
+
+.voice-models-page .models-current-main strong {
+  font-size: 20px;
+  color: #06162f;
+}
+
+.voice-models-page .models-current-main p,
+.voice-models-page .models-resource-desc {
+  margin: 0;
+  color: #57708b;
+  line-height: 1.5;
+}
+
+.voice-models-page .models-kicker {
+  color: #0284c7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.voice-models-page .models-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.voice-models-page .models-resource-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.voice-models-page .models-resource-card.is-muted { background: #f8fafc; }
+
+.voice-models-page .models-resource-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.voice-models-page .models-resource-head h4 {
+  margin: 3px 0 0;
+  font-size: 16px;
+  color: #06162f;
+}
+
+.voice-models-page .models-resource-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid #edf2f7;
+  color: #57708b;
+}
+
+.voice-models-page .models-resource-row strong { color: #0f2744; }
+
+.voice-models-page .models-resource-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 1200px) {
+  #settingsPanelVoiceWake .voice-flow-overview,
+  .voice-models-page .models-resource-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  #settingsPanelVoiceWake .voice-flow-overview,
+  .voice-models-page .models-resource-grid {
+    grid-template-columns: 1fr;
+  }
+  #settingsPanelVoiceWake .voice-edit-surface-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  #settingsPanelVoiceWake.is-editing .voice-phrase-custom-row {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+  #settingsPanelVoiceWake.is-editing .voice-phrase-custom-add {
+    grid-column: 1 / -1;
+  }
+  #settingsPanelVoiceWake.is-editing .voice-mode-grid {
+    grid-template-columns: 1fr;
+  }
+  .voice-models-page .models-current-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

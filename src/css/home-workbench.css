@@ -21,6 +21,8 @@
 .app-workbench-shell > .app-left-nav {
   width: 220px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 3;
 }
 
 .home-zone.home-workbench-active {
@@ -216,6 +218,19 @@ html[data-theme="dark"] .wb-sidebar-status {
   border: 1px solid var(--outline-variant);
   background: var(--surface-high);
   font-size: 12px;
+}
+
+.wb-status-overview .wb-status-item--primary {
+  flex: 1 1 100%;
+}
+
+.wb-status-overview .wb-status-item--primary strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.wb-status-dot.is-warn {
+  background: #f59e0b;
 }
 
 .wb-status-item {
@@ -562,6 +577,22 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   background: var(--surface-soft);
   color: var(--on-surface);
   border-color: var(--wb-border-strong);
+}
+
+.wb-trigger-btn-cancel {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.22);
+}
+
+.wb-trigger-btn-cancel:hover {
+  background: rgba(220, 38, 38, 0.14);
+  border-color: rgba(220, 38, 38, 0.35);
+  transform: translateY(-1px);
+}
+
+.wb-trigger-actions.is-dictating #wbBtnTestSend {
+  display: none;
 }
 
 .wb-trigger-btn:disabled {
@@ -1130,7 +1161,8 @@ html[data-theme="dark"] .wb-cmd-c4 .wb-cmd-ico { color: #38bdf8; }
 
 .app-header--slim .app-brand,
 .app-header--slim .vp-header-target,
-.app-header--slim .header-habits-btn {
+.app-header--slim .header-habits-btn,
+.app-header--slim .header-listen-toggle {
   display: none !important;
 }
 

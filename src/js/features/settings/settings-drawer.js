@@ -14,7 +14,7 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',models:'settingsPanelModels',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
 
@@ -421,16 +421,22 @@
       var detV=$('voiceRecognizeEngineDetails');
       if(detV) detV.open=true;
     }else if(navId==='voice:end'){
-      ids=['voiceSettingsEndPhraseCard','voiceEndPhraseMore'];
-      var endDet=$('voiceEndPhraseMore');
-      if(endDet) endDet.open=true;
+      ids=['voiceSettingsEndPhraseCard','voiceEndRulesSection'];
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
+        global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceEndRulesSection');
+      }
     }
     scrollSettingsToTarget(ids);
+    if((navId==='voice:sapi'||navId==='voice:vosk')&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
+      global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceAdvancedSection');
+    }
   }
 
   function setSettingsPanel(panel){
 
     if(panel==='voiceEnd') panel='voiceWake';
+
+    if(panel==='models') panel='voiceWake';
 
     if(panel==='habits'){
       setSettingsPanel('scenes');
@@ -502,6 +508,9 @@
     }else if(panel==='voiceWake'){
 
       if(enteringVoice){
+
+        var voicePanelEl=$('settingsPanelVoiceWake');
+        if(voicePanelEl) voicePanelEl.classList.remove('is-editing','is-editing-input','is-editing-phrases','is-editing-finish');
 
         const active=hooks().currentVoiceMode();
 
@@ -621,6 +630,24 @@
 
     syncSettingsChrome();
 
+    if((opts.panel||'basic')==='voiceWake'||opts.panel==='models'){
+      var sub=opts.voiceSubpage||'';
+      if(sub&&global.__vp_setVoiceEditMode__){
+        requestAnimationFrame(function(){
+          global.__vp_setVoiceEditMode__(sub);
+        });
+      }
+    }
+
+    if((opts.panel||'basic')==='debug'){
+      var debugMode=opts.debugMode||'overview';
+      if(global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
+        requestAnimationFrame(function(){
+          global.OneToneVoiceDiag.setFocusMode(debugMode);
+        });
+      }
+    }
+
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
       var navOpts={};
       if((opts.panel||'basic')==='debug'&&opts.debugMode) navOpts.debugMode=opts.debugMode;
@@ -648,12 +675,6 @@
       const focus=opts.focus||(opts.keyWakeFocus?'trigger':null);
 
       if(focus) focusSettingsField(focus);
-
-      if(opts.debugMode&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
-
-        global.OneToneVoiceDiag.setFocusMode(opts.debugMode);
-
-      }
 
     });
 

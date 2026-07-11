@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>方案 C · 4 功能卡 + 右侧诊断抽屉</title>
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --on-primary: #ffffff;
+      --surface-high: rgba(255, 255, 255, 0.97);
+      --surface-soft: #f0f7fb;
+      --on-surface: #152238;
+      --on-surface-muted: #5a7086;
+      --outline-variant: rgba(26, 45, 74, 0.10);
+      --radius-pill: 999px;
+      --shadow-card: 0 14px 34px rgba(26, 45, 74, .07);
+      --shadow-button: 0 10px 22px rgba(42, 156, 196, .20);
+      --ok: #2e7d4f;
+      --warn: #b9530a;
+      --err: #dc2626;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eaf4fa 0%, #f6fafd 100%);
+      color: var(--on-surface);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .scheme-banner {
+      background: #fff; border-bottom: 1px solid var(--outline-variant);
+      padding: 10px 24px; display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .scheme-tag {
+      background: var(--primary); color: #fff; padding: 3px 10px;
+      border-radius: var(--radius-pill); font-weight: 700; font-size: 11px;
+    }
+    .scheme-banner h1 { margin: 0; font-size: 14px; font-weight: 700; }
+    .scheme-banner p { margin: 0; color: var(--on-surface-muted); font-size: 12px; }
+    .scheme-banner .principle { margin-left: auto; font-size: 12px; color: var(--on-surface-muted); }
+    .scheme-banner .principle strong { color: var(--on-surface); }
+
+    /* 关键布局：4 功能卡 + 右抽屉 */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 14px;
+      padding: 16px 24px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* 顶部状态条（单层，薄） */
+    .status-bar {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 8px 14px;
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      box-shadow: var(--shadow-card);
+      font-size: 12px;
+    }
+    .status-name { font-weight: 800; color: var(--on-surface); }
+    .status-pill {
+      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-pill);
+      color: var(--ok); background: rgba(46,125,79,.1); border: 1px solid rgba(46,125,79,.28);
+    }
+    .status-meta { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; color: var(--on-surface-muted); }
+    .status-meta strong { color: var(--on-surface); font-weight: 700; }
+    .status-divider { width: 1px; height: 12px; background: var(--outline-variant); }
+    .status-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+    /* 4 功能卡 */
+    .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .feature-card {
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 180px;
+      display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .04);
+    }
+    .feature-card.is-primary { border-color: #9bd6ff; background: #f5fbff; }
+    .feature-card.is-warn { border-color: #fed7aa; }
+    .feature-card-head { display: flex; align-items: center; gap: 6px; }
+    .feature-card-num {
+      width: 20px; height: 20px; border-radius: 999px;
+      background: #e8f6ff; color: #0284c7; font-weight: 800; font-size: 11px;
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    }
+    .feature-card-name { font-size: 13px; font-weight: 800; color: #06162f; }
+    .feature-card-status { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ok); }
+    .feature-card-status.is-warn { color: var(--warn); }
+    .feature-card-title { font-size: 16px; font-weight: 800; color: #06162f; line-height: 1.3; }
+    .feature-card-sub { color: #57708b; font-size: 11px; }
+    .feature-card-actions { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .voice-overview-segments {
+      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+      gap: 4px; padding: 4px; border-radius: 8px;
+      background: #edf7fd; border: 1px solid #cfe4f2; min-height: 36px;
+    }
+    .voice-overview-seg {
+      min-width: 0; border: 0; border-radius: 6px; background: transparent;
+      color: #375a75; font: inherit; font-size: 12px; font-weight: 800;
+      cursor: pointer; white-space: nowrap; padding: 4px 6px;
+    }
+    .voice-overview-seg.is-active { background: #fff; color: #06162f; box-shadow: 0 1px 4px rgba(15,23,42,.08); }
+
+    .sys-pill {
+      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-pill);
+      background: var(--surface-soft); color: var(--on-surface-muted);
+      border: 1px solid var(--outline-variant);
+    }
+    .sys-pill.is-ok { color: var(--ok); background: rgba(46,125,79,.1); border-color: rgba(46,125,79,.28); }
+    .sys-pill.is-warn { color: var(--warn); background: #fff7ed; border-color: #fed7aa; }
+
+    .keys-summary-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 28px; padding: 0 10px; border-radius: var(--radius-pill);
+      border: 1px solid var(--outline-variant); background: var(--surface-high);
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--on-surface);
+      cursor: pointer;
+    }
+    .keys-summary-btn.is-primary {
+      background: var(--primary); border-color: var(--primary);
+      color: #fff; box-shadow: var(--shadow-button);
+    }
+    .keys-summary-btn.is-subtle { background: #fff; }
+
+    .resource-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 0; font-size: 12px;
+    }
+    .resource-row + .resource-row { border-top: 1px solid var(--outline-variant); }
+    .resource-row span { color: var(--on-surface-muted); }
+    .resource-row strong { color: var(--on-surface); font-weight: 700; }
+
+    .edit-section {
+      grid-column: 1 / -1;
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .edit-section-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px;
+      background: linear-gradient(180deg, rgba(42,156,196,.06), rgba(42,156,196,.02));
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .edit-section-kicker { font-size: 11px; color: #0284c7; font-weight: 800; }
+    .edit-section-title { font-size: 15px; font-weight: 800; color: var(--on-surface); }
+    .edit-section-sub { color: var(--on-surface-muted); font-size: 12px; margin-left: auto; }
+    .edit-section-body { padding: 14px 18px; }
+    .phrase-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+    .phrase-chip {
+      padding: 5px 12px; border-radius: var(--radius-pill);
+      background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 700;
+      border: 1px solid var(--primary);
+    }
+    .phrase-chip.is-muted { background: var(--surface-soft); color: var(--on-surface-muted); border: 1px solid var(--outline-variant); }
+    .phrase-add { padding: 5px 10px; border-radius: var(--radius-pill); background: #fff; color: var(--on-surface-muted); font-size: 12px; border: 1px dashed var(--outline-variant); }
+
+    /* === 右侧诊断抽屉 === */
+    .drawer {
+      position: sticky; top: 60px;
+      align-self: start;
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      max-height: calc(100vh - 80px);
+      display: flex; flex-direction: column;
+    }
+    .drawer-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, rgba(42,156,196,.08), rgba(42,156,196,.02));
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .drawer-title { font-size: 14px; font-weight: 800; color: var(--on-surface); }
+    .drawer-health {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+      color: var(--warn); font-weight: 700; font-size: 11px;
+    }
+    .drawer-health .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--warn); box-shadow: 0 0 0 3px rgba(185,83,10,.18); }
+    .drawer-health.is-ok { color: var(--ok); }
+    .drawer-health.is-ok .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(46,125,79,.18); }
+    .drawer-toggle {
+      background: transparent; border: 0; color: var(--on-surface-muted);
+      cursor: pointer; font-size: 14px; padding: 0;
+    }
+    .drawer-body { padding: 10px 14px; overflow-y: auto; }
+    .drawer-section { margin-bottom: 12px; }
+    .drawer-section-title {
+      font-size: 11px; font-weight: 800; color: #0284c7;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin: 0 0 6px;
+    }
+    .drawer-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; font-size: 12px;
+    }
+    .drawer-item + .drawer-item { border-top: 1px solid var(--outline-variant); }
+    .drawer-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--ok); flex: 0 0 auto; }
+    .drawer-dot.is-warn { background: var(--warn); }
+    .drawer-item-name { color: var(--on-surface); font-weight: 600; }
+    .drawer-item-meta { color: var(--on-surface-muted); font-size: 11px; margin-left: auto; }
+    .drawer-item-meta.is-warn { color: var(--warn); font-weight: 700; }
+
+    .drawer-foot {
+      padding: 10px 14px;
+      border-top: 1px solid var(--outline-variant);
+      background: rgba(42,156,196,.04);
+    }
+    .drawer-scheme-name { font-size: 13px; font-weight: 800; color: var(--on-surface); }
+    .drawer-scheme-meta { font-size: 11px; color: var(--on-surface-muted); margin-top: 2px; }
+    .drawer-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+    /* 底部应用作用域 */
+    .app-scope {
+      grid-column: 1 / -1;
+      padding: 12px 18px;
+      background: var(--surface-high);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      box-shadow: var(--shadow-card);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .app-scope-label { color: var(--on-surface); font-size: 13px; font-weight: 700; }
+    .app-chip {
+      padding: 4px 10px; border-radius: var(--radius-pill);
+      background: var(--surface-soft); color: var(--on-surface); font-size: 12px; font-weight: 600;
+      border: 1px solid var(--outline-variant);
+    }
+    .app-chip.is-active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); font-weight: 700; }
+    .app-chip-add { background: #fff; color: var(--on-surface-muted); border: 1px dashed var(--outline-variant); }
+
+    .annotation {
+      grid-column: 1 / -1;
+      background: #ecfdf5; border-left: 3px solid #10b981;
+      padding: 6px 10px; margin: 4px 0; font-size: 11px; color: #065f46;
+    }
+    .annotation strong { font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="scheme-banner">
+    <span class="scheme-tag">C</span>
+    <div>
+      <h1>4 功能卡 + 右侧诊断抽屉</h1>
+      <p>诊断信息作为右抽屉常驻：正常时绿色低饱和，异常时橙色高亮 + 列出具体问题</p>
+    </div>
+    <div class="principle"><strong>改动：</strong>中度 —— 布局从 4 列横向变 4 卡 2x2 + 右侧栏</div>
+  </div>
+
+  <div class="layout">
+    <!-- 顶部薄状态条 -->
+    <div class="status-bar">
+      <span class="status-name">默认 · 本地离线识别</span>
+      <span class="status-pill">已激活</span>
+      <div class="status-meta">
+        <span>唤醒词 <strong>「开始输入」</strong></span>
+        <span class="status-divider"></span>
+        <span>语音引擎 <strong>本地离线识别</strong></span>
+        <span class="status-divider"></span>
+        <span>输出 <strong>确认后发送</strong></span>
+        <span class="status-divider"></span>
+        <span>范围 <strong>4 个应用</strong></span>
+      </div>
+      <div class="status-actions">
+        <button class="keys-summary-btn">测试一次</button>
+        <button class="keys-summary-btn is-primary">保存</button>
+      </div>
+    </div>
+
+    <!-- 4 功能卡：2x2 网格（因为右侧给抽屉让出空间） -->
+    <div class="feature-grid">
+      <article class="feature-card is-primary">
+        <div class="feature-card-head">
+          <span class="feature-card-num">1</span>
+          <span class="feature-card-name">输入方式</span>
+          <span class="feature-card-status">● 当前</span>
+        </div>
+        <strong class="feature-card-title">本地离线识别</strong>
+        <p class="feature-card-sub">支持离线识别、结束词和完整语音链路</p>
+        <div class="voice-overview-segments">
+          <button class="voice-overview-seg is-active">本地离线</button>
+          <button class="voice-overview-seg">系统识别</button>
+        </div>
+        <div class="voice-overview-segments" style="margin-top:6px;">
+          <button class="voice-overview-seg is-active">中文 small-cn</button>
+          <button class="voice-overview-seg">English small-en-us</button>
+        </div>
+        <span class="sys-pill is-ok" style="align-self:flex-start;">● 识别可用</span>
+        <div class="feature-card-actions">
+          <button class="keys-summary-btn is-primary">识别细项</button>
+        </div>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card-head">
+          <span class="feature-card-num">2</span>
+          <span class="feature-card-name">口令与麦克风</span>
+          <span class="feature-card-status">● 可用</span>
+        </div>
+        <strong class="feature-card-title">说「开始输入」开始</strong>
+        <p class="feature-card-sub">默认麦克风 · 正常</p>
+        <div style="display:flex; gap:3px; align-items:end; height:14px;">
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:5px;"></span>
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:7px;"></span>
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:9px;"></span>
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:11px;"></span>
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:8px;"></span>
+          <span style="width:3px; background:#2a9cc4; border-radius:1px; height:6px;"></span>
+          <span style="width:3px; background:#cfe4f2; border-radius:1px; height:4px;"></span>
+        </div>
+        <p style="color:#5a7086; font-size:10px; margin:2px 0 0;">实时识别预览 · 等待语音…</p>
+        <div class="feature-card-actions">
+          <button class="keys-summary-btn">编辑口令</button>
+          <button class="keys-summary-btn is-subtle">麦克风</button>
+        </div>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card-head">
+          <span class="feature-card-num">3</span>
+          <span class="feature-card-name">结束与发送</span>
+          <span class="feature-card-status">● 已设置</span>
+        </div>
+        <strong class="feature-card-title">说完后确认发送</strong>
+        <p class="feature-card-sub">发送快捷键 Enter · 延迟 4.0 秒</p>
+        <div class="voice-overview-segments">
+          <button class="voice-overview-seg">自动</button>
+          <button class="voice-overview-seg is-active">确认</button>
+          <button class="voice-overview-seg">手动</button>
+        </div>
+        <div class="feature-card-actions">
+          <button class="keys-summary-btn">发送细项</button>
+        </div>
+      </article>
+
+      <article class="feature-card is-warn">
+        <div class="feature-card-head">
+          <span class="feature-card-num">4</span>
+          <span class="feature-card-name">模型资源</span>
+          <span class="feature-card-status is-warn">● 1 待处理</span>
+        </div>
+        <strong class="feature-card-title">1/2 模型就绪</strong>
+        <p class="feature-card-sub">small-cn 已就绪 · small-en-us 未下载</p>
+        <div class="resource-row"><span>中文模型</span><span><strong>small-cn · 42MB</strong> <span class="sys-pill is-ok">已就绪</span></span></div>
+        <div class="resource-row"><span>英文模型</span><span><strong style="color:var(--warn)">未下载</strong> <span class="sys-pill is-warn">缺失</span></span></div>
+        <div class="feature-card-actions">
+          <button class="keys-summary-btn is-primary">下载英文</button>
+          <button class="keys-summary-btn is-subtle">打开目录</button>
+        </div>
+      </article>
+    </div>
+
+    <!-- 展开区 -->
+    <div class="edit-section">
+      <div class="edit-section-head">
+        <div>
+          <p class="edit-section-kicker">正在编辑</p>
+          <p class="edit-section-title">口令与麦克风</p>
+        </div>
+        <span class="edit-section-sub">唤醒词、结束词、麦克风与实时反馈集中在这里</span>
+        <button class="keys-summary-btn">收起</button>
+      </div>
+      <div class="edit-section-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+          <div>
+            <p style="margin:0 0 6px; color:#0284c7; font-size:11px; font-weight:800;">唤醒词</p>
+            <div class="phrase-strip">
+              <span class="phrase-chip">开始输入 ✓</span>
+              <span class="phrase-chip is-muted">开始听写</span>
+              <span class="phrase-chip is-muted">打开听写</span>
+            </div>
+            <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+              <input placeholder="自定义唤醒词" style="flex:1; height:28px; padding:0 10px; border-radius:999px; border:1px solid var(--outline-variant); background:#fff; font:inherit; font-size:12px;">
+              <span class="phrase-add">+</span>
+            </div>
+          </div>
+          <div>
+            <p style="margin:0 0 6px; color:#0284c7; font-size:11px; font-weight:800;">结束词</p>
+            <div class="phrase-strip">
+              <span class="phrase-chip">结束输入 ✓</span>
+              <span class="phrase-chip is-muted">发出去</span>
+              <span class="phrase-chip is-muted">就这样</span>
+              <span class="phrase-chip is-muted">发送</span>
+            </div>
+            <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+              <input placeholder="自定义结束词" style="flex:1; height:28px; padding:0 10px; border-radius:999px; border:1px solid var(--outline-variant); background:#fff; font:inherit; font-size:12px;">
+              <span class="phrase-add">+</span>
+            </div>
+          </div>
+          <div>
+            <p style="margin:0 0 6px; color:#0284c7; font-size:11px; font-weight:800;">麦克风与预览</p>
+            <div style="display:flex; align-items:center; gap:6px; padding:4px 10px; background:#fff; border:1px solid var(--outline-variant); border-radius:999px;">
+              <span style="color:var(--primary);">🎙️</span>
+              <span style="font-size:12px; font-weight:600;">默认麦克风 · 正常</span>
+              <span style="margin-left:auto; color:var(--on-surface-muted);">▾</span>
+            </div>
+            <div style="margin-top:6px; display:flex; gap:3px; align-items:end; height:14px;">
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:5px;"></span>
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:7px;"></span>
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:9px;"></span>
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:11px;"></span>
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:8px;"></span>
+              <span style="width:3px; background:#2a9cc4; border-radius:1px; height:6px;"></span>
+              <span style="width:3px; background:#cfe4f2; border-radius:1px; height:4px;"></span>
+            </div>
+            <p style="color:#5a7086; font-size:10px; margin:2px 0 0;">实时识别预览 · 等待语音…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部应用作用域 -->
+    <div class="app-scope">
+      <span class="app-scope-label">在哪些程序中生效</span>
+      <span class="app-chip is-active">不限应用</span>
+      <span class="app-chip">Cursor</span>
+      <span class="app-chip">Codex</span>
+      <span class="app-chip">Claude Code</span>
+      <span class="app-chip">Minimax</span>
+      <span class="app-chip-add">+ 添加应用</span>
+      <span style="margin-left:auto; color:var(--on-surface-muted); font-size:12px;">
+        💡 应用召唤短语在 <a href="#" style="color:var(--primary); font-weight:700;">按键页管理</a>
+      </span>
+    </div>
+
+    <div class="annotation">
+      <strong>关键设计：</strong>4 卡变 2x2 让出空间给右侧诊断抽屉。抽屉是常驻 sticky，正常时绿色低饱和，异常时橙色高亮并列出具体问题——"麦克风正常·识别引擎可用·快捷键无冲突·small-en-us 未下载·SAPI 未配置"。
+    </div>
+
+    <!-- ============ 右侧诊断抽屉 ============ -->
+    <aside class="drawer">
+      <div class="drawer-head">
+        <span style="font-size:14px;">🩺</span>
+        <span class="drawer-title">诊断</span>
+        <span class="drawer-health"><span class="dot"></span>2 项待处理</span>
+        <button class="drawer-toggle" title="折叠/展开">▾</button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-section">
+          <p class="drawer-section-title">硬件</p>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">麦克风</span>
+            <span class="drawer-item-meta">正常</span>
+          </div>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">采样率</span>
+            <span class="drawer-item-meta">16000 Hz</span>
+          </div>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">磁盘占用</span>
+            <span class="drawer-item-meta">2.1 / 8.3 GB</span>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <p class="drawer-section-title">引擎</p>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">Vosk 引擎</span>
+            <span class="drawer-item-meta">运行中 · 1.2%</span>
+          </div>
+          <div class="drawer-item">
+            <span class="drawer-dot is-warn"></span>
+            <span class="drawer-item-name">SAPI 系统识别</span>
+            <span class="drawer-item-meta is-warn">未配置</span>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <p class="drawer-section-title">资源</p>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">small-cn</span>
+            <span class="drawer-item-meta">已就绪</span>
+          </div>
+          <div class="drawer-item">
+            <span class="drawer-dot is-warn"></span>
+            <span class="drawer-item-name">small-en-us</span>
+            <span class="drawer-item-meta is-warn">未下载</span>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <p class="drawer-section-title">快捷键</p>
+          <div class="drawer-item">
+            <span class="drawer-dot"></span>
+            <span class="drawer-item-name">冲突检测</span>
+            <span class="drawer-item-meta">无冲突</span>
+          </div>
+        </div>
+      </div>
+      <div class="drawer-foot">
+        <p class="drawer-scheme-name">默认 · 本地离线识别</p>
+        <p class="drawer-scheme-meta">已激活 · 范围 4 个应用</p>
+        <div class="drawer-actions">
+          <button class="keys-summary-btn is-primary" style="flex:1;">测试一次</button>
+          <button class="keys-summary-btn is-subtle">查看日志</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

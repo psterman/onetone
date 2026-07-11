@@ -834,6 +834,7 @@
     ensureRules:ensureRules,
     behaviorPresets:BEHAVIOR_PRESETS,
     renderActiveScenarioBanner:renderActiveScenarioBanner,
-    appDisplayName:appDisplayName
+    appDisplayName:appDisplayName,
+    voiceSummonPhrase:voiceSummonPhrase
   };
 })((typeof window!=='undefined')?window:globalThis);

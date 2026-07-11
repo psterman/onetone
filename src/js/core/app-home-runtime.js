@@ -46,14 +46,14 @@
 
   function toggleGlobalListen(){
     var runtime=hooks().runtime();
-    var headerListen=$('headerListenState');
-    if(headerListen) headerListen.classList.add('is-busy');
+    var basicToggle=$('btnBasicGlobalListen');
+    if(basicToggle) basicToggle.classList.add('is-busy');
     hooks().vpInvoke(runtime.paused?'cmd_resume':'cmd_pause',{}).catch(function(err){
       console.error('pause/resume',err);
       var msg=err&&err.message?String(err.message).trim():'';
       hooks().toast(msg||hooks().t('listenPause'));
     }).finally(function(){
-      if(headerListen) headerListen.classList.remove('is-busy');
+      if(basicToggle) basicToggle.classList.remove('is-busy');
     });
   }
 
@@ -63,23 +63,19 @@
     var paused=!!runtime.paused;
     if(grid) grid.classList.toggle('is-global-disabled',paused);
     var headerListen=$('headerListenState');
-    var headerLabel=$('headerListenLabel');
-    if(headerListen){
+    if(headerListen) headerListen.hidden=true;
+    var basicToggle=$('btnBasicGlobalListen');
+    if(basicToggle){
       var on=!paused;
-      headerListen.hidden=false;
-      headerListen.classList.toggle('is-off',!on);
-      headerListen.setAttribute('aria-checked',on?'true':'false');
-      headerListen.title=hooks().t(on?'headerListenTitleOn':'headerListenTitleOff');
+      basicToggle.classList.toggle('is-on',on);
+      basicToggle.setAttribute('aria-checked',on?'true':'false');
     }
-    if(headerLabel) headerLabel.textContent=hooks().t('headerGlobalOn');
   }
 
   function renderListenRuntime(){
     var runtime=hooks().runtime();
     var listenState=$('listenState');
     if(listenState) listenState.textContent=runtime.paused?hooks().t('listenPaused'):hooks().t('listenOn');
-    var btnListenToggle=$('btnListenToggle');
-    if(btnListenToggle) btnListenToggle.textContent=runtime.paused?hooks().t('listenResume'):hooks().t('listenPause');
     syncGlobalMasterUi();
     var liveAction=$('liveAction');
     if(liveAction) liveAction.textContent=runtime.lastAction||'-';

@@ -34,8 +34,10 @@
     if(targetHelp) targetHelp.innerHTML=d.targetHelp;
     var listenTitle=$('listenTitle');
     if(listenTitle) listenTitle.textContent=d.listenTitle;
-    var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.listenDesc;
+    var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.debugListenDesc||d.listenDesc;
     var prefBasicTitle=$('prefBasicTitle'); if(prefBasicTitle) prefBasicTitle.textContent=d.prefBasicTitle;
+    var basicGlobalListenLabel=$('basicGlobalListenLabel'); if(basicGlobalListenLabel) basicGlobalListenLabel.textContent=d.basicGlobalListenLabel;
+    var basicGlobalListenDesc=$('basicGlobalListenDesc'); if(basicGlobalListenDesc) basicGlobalListenDesc.textContent=d.basicGlobalListenDesc;
     var basicSummaryLaunchLabel=$('basicSummaryLaunchLabel'); if(basicSummaryLaunchLabel) basicSummaryLaunchLabel.textContent=d.basicSummaryLaunchLabel;
     var basicSummaryWindowLabel=$('basicSummaryWindowLabel'); if(basicSummaryWindowLabel) basicSummaryWindowLabel.textContent=d.basicSummaryWindowLabel;
     var basicSummaryStyleLabel=$('basicSummaryStyleLabel'); if(basicSummaryStyleLabel) basicSummaryStyleLabel.textContent=d.basicSummaryStyleLabel;

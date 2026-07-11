@@ -9,6 +9,7 @@
       global.OneToneSettingsNavBindings,
       global.OneToneMappingRecordingBindings,
       global.OneToneVoiceUiBindings,
+      global.OneToneVoiceModelsPanel,
       global.OneToneHomeUiBindings,
       global.OneToneKeyFinishFlowUi,
       global.OneToneKeysFlowInteraction,

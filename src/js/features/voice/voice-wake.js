@@ -606,7 +606,7 @@
   function settingsPanelNeedsVoicePoll(){
     if(!ui().drawerOpen) return false;
     const p=ui().settingsPanel;
-    return p==='voiceWake'||p==='debug';
+    return p==='voiceWake'||p==='models'||p==='debug';
   }
 
   function voiceStatusPollNeeded(){
@@ -629,7 +629,7 @@
     if(hooks().sessionActiveState(endSnap.state||'idle')) return 500;
     if(!ui().drawerOpen) return 2000;
     if(ui().drawerOpen&&!settingsPanelNeedsVoicePoll()) return 2000;
-    if(ui().drawerOpen&&(ui().settingsPanel==='debug'||ui().settingsPanel==='voiceWake')) return 1500;
+    if(ui().drawerOpen&&(ui().settingsPanel==='debug'||ui().settingsPanel==='voiceWake'||ui().settingsPanel==='models')) return 1500;
     if(!ui().drawerOpen&&(voiceWakeEnabledInConfig()||global.OneToneVoiceEnd.enabledInConfig())) return 2000;
     if(runtime().paused) return 1500;
     return 1500;
@@ -997,7 +997,21 @@
     const pc=global.OneToneVoicePhraseCustom;
     if(!pc) return;
     const active=currentWakePhraseList();
-    const custom=pc.customPhrases(active,wakePresetPhraseSet());
+    let custom=pc.customPhrases(active,wakePresetPhraseSet());
+    const appRules=global.OneToneAppBehaviorRules;
+    const m=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config
+      ?(global.OneToneState.state.config.mappings||[]).find(function(x){
+        return x&&x.id===global.OneToneState.state.config.activeSceneId;
+      }):null;
+    if(appRules&&appRules.voiceSummonPhrase&&m){
+      const summonSet={};
+      (appRules.behaviorPresets||[]).forEach(function(p){
+        const phrase=appRules.voiceSummonPhrase(p.id,m);
+        const clean=String(phrase||'').replace(/[「」""]/g,'').trim();
+        if(clean) summonSet[clean]=true;
+      });
+      custom=custom.filter(function(phrase){ return !summonSet[phrase]; });
+    }
     pc.renderChips('voiceWakeCustomChips',custom,function(phrase){
       removeCustomWakePhrase(phrase);
     });
@@ -1282,14 +1296,17 @@
   }
 
   function renderVoskMissingPanel(res){
-    const panel=$('voiceVoskMissingPanel');
+    const recovery=$('voiceEngineRecovery');
+    const msg=$('voiceEngineRecoveryMsg');
     const body=$('voiceVoskMissingBody');
-    if(!panel||!body) return;
+    const legacy=$('voiceVoskMissingPanel');
+    if(legacy) legacy.hidden=true;
     const show=shouldShowVoskMissingPanel(res);
-    panel.hidden=!show;
+    if(recovery) recovery.hidden=!show;
     if(!show) return;
-    const path=String(res.resolvedModelPath||res.resourcesDir||'').trim();
-    body.textContent=t('voiceVoskMissingTitle')+' — '+voskMissingBodyText(res)+(path?('\n'+path):'');
+    const detail=voskMissingBodyText(res);
+    if(msg) msg.textContent=t('voiceEngineRecoveryMsg');
+    if(body) body.textContent=detail;
   }
 
   function applyVoskMissingLang(){

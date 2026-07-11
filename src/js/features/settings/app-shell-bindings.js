@@ -32,10 +32,8 @@
     if(btnUpdateLater){
       btnUpdateLater.onclick=hooks.dismissAppUpdate;
     }
-    var btnListenToggle=$('btnListenToggle');
-    if(btnListenToggle) btnListenToggle.onclick=hooks.toggleGlobalListen;
-    var headerListenState=$('headerListenState');
-    if(headerListenState) headerListenState.onclick=hooks.toggleGlobalListen;
+    var btnBasicGlobalListen=$('btnBasicGlobalListen');
+    if(btnBasicGlobalListen) btnBasicGlobalListen.onclick=hooks.toggleGlobalListen;
     var btnRefreshRuntime=$('btnRefreshRuntime');
     if(btnRefreshRuntime){
       btnRefreshRuntime.onclick=function(){

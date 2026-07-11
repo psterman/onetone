@@ -10,7 +10,6 @@
     setText('debugInputExtTitle',d.debugInputExtTitle);
     setText('actionLabel',d.actionLabel);
     setText('sendLabel',d.sendLabel);
-    setText('btnListenToggle',hooks().runtimePaused()?hooks().t('listenResume'):hooks().t('listenPause'));
     setText('btnRefreshRuntime',hooks().t('refreshRuntime'));
     setText('btnRestartApp',hooks().t('restartApp'));
     setText('sourceTitle',d.sourceTitle);

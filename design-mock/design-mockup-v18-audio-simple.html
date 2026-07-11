@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1600" />
+<title>voice-pilot · 音频 · v18 · 简化版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   voice-pilot · v18 · 简化版
+   基于 v17 视觉,按「用户语言」重做三栏
+   主要改动:
+   ① 顶部 summary 一行展示当前方案(唤起/识别/输出/范围)
+   ② 三栏副标题:说什么开始 / 把语音变文字 / 说完后怎么处理
+   ③ 唤醒词做成可编辑 chip,不再是误以为按钮的大绿块
+   ④ 发送列参数(延迟/快捷键)直接展开,不再折叠
+   ⑤ 测试诊断保留三连状态徽章(权限/引擎/冲突)
+   ⑥ 激活徽章只在一处显示(顶部),右栏去重
+   ============================================================ */
+:root{
+  --bg:            #F5F5F7;
+  --surface:       #FFFFFF;
+  --surface-2:     #FBFBFD;
+  --surface-3:     #F4F4F6;
+  --surface-4:     #ECECEE;
+
+  --text:          #1c1c1e;
+  --text-2:        #6b6b70;
+  --text-3:        #a1a1a6;
+
+  --border:        #ECECEE;
+  --border-strong: #DCDCE0;
+
+  --brand:         #2A9CC4;
+  --brand-2:       #1F86AB;
+  --brand-soft:    rgba(42,156,196,.10);
+
+  --green:         #2BB673;
+  --green-soft:    rgba(43,182,115,.10);
+  --green-dark:    #1F8A56;
+
+  --orange:        #E8930C;
+  --orange-soft:   rgba(232,147,12,.10);
+  --orange-dark:   #B57108;
+
+  --error:         #E55353;
+
+  --r-card:        12px;
+  --r-stage:       14px;
+  --r-chip:        8px;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{
+  background:var(--bg); color:var(--text);
+  font-family:'Inter', system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body{ padding:28px 28px 90px; }
+
+.page{
+  max-width:1620px;
+  margin:0 auto;
+}
+
+/* ============================================================
+   页面标题
+   ============================================================ */
+.page-head{
+  display:flex; align-items:flex-end; justify-content:space-between; gap:32px;
+  margin-bottom:18px;
+}
+.page-head .ttl h1{
+  font-size:24px; font-weight:700; letter-spacing:-.02em; color:var(--text);
+}
+.page-head .ttl h1 em{ font-style:normal; color:var(--brand); }
+.page-head .ttl .sub{
+  font-size:12.5px; color:var(--text-2); max-width:540px; line-height:1.55; margin-top:6px;
+}
+.page-head .head-actions{
+  display:flex; align-items:center; gap:8px;
+}
+
+/* ============================================================
+   v18 关键: 顶部 summary 一行
+   当前方案 + 四段 mini info(唤起/识别/输出/范围)
+   ============================================================ */
+.summary-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-stage);
+  padding:14px 18px;
+  display:flex; align-items:center; gap:24px;
+  margin-bottom:16px;
+}
+.summary-card .plan{
+  display:flex; flex-direction:column; gap:2px;
+  min-width:200px;
+  border-right:1px solid var(--border);
+  padding-right:20px;
+}
+.summary-card .plan .lbl{
+  font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-3); font-weight:600;
+}
+.summary-card .plan .name{
+  font-size:14px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:8px;
+}
+.badge-active{
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 7px; border-radius:5px;
+  background:var(--green-soft);
+  color:var(--green-dark);
+  font-size:10.5px; font-weight:600;
+  font-family:'JetBrains Mono', monospace;
+}
+.badge-active::before{
+  content:""; width:5px; height:5px; border-radius:50%;
+  background:var(--green);
+}
+
+.summary-card .infos{
+  display:flex; align-items:center; gap:4px;
+  flex:1;
+}
+.info-cell{
+  display:flex; align-items:center; gap:8px;
+  padding:4px 14px;
+  border-right:1px dashed var(--border);
+  min-width:0;
+}
+.info-cell:last-child{ border-right:none; }
+.info-cell .ico{
+  width:26px; height:26px; border-radius:6px;
+  background:var(--surface-3);
+  color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; flex-shrink:0;
+}
+.info-cell .meta{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.info-cell .meta .k{
+  font-size:10.5px; color:var(--text-3); font-weight:500;
+}
+.info-cell .meta .v{
+  font-size:12.5px; color:var(--text); font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.info-cell .meta .v .chip-mini{
+  display:inline-flex; align-items:center;
+  padding:1px 6px; border-radius:4px;
+  background:var(--surface-3);
+  color:var(--text);
+  font-size:11.5px; font-weight:500;
+  font-family:'JetBrains Mono', monospace;
+}
+
+/* 头部按钮 */
+.head-btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:7px 12px;
+  border-radius:7px;
+  font-size:12px;
+  color:var(--text-2);
+  cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+  font-weight:500;
+  font-family:inherit;
+}
+.head-btn:hover{ border-color:var(--brand); color:var(--brand); }
+.head-btn.primary{
+  background:var(--brand);
+  border-color:var(--brand);
+  color:#fff;
+}
+.head-btn.primary:hover{ background:var(--brand-2); border-color:var(--brand-2); color:#fff; }
+.head-btn.test{
+  border-color:var(--brand);
+  color:var(--brand);
+  background:#fff;
+}
+
+.big-switch{
+  width:38px; height:22px; border-radius:11px;
+  background:var(--brand); position:relative; cursor:pointer;
+  border:none;
+}
+.big-switch::after{
+  content:""; position:absolute;
+  top:2px; left:18px;
+  width:18px; height:18px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+  transition:left .15s;
+}
+.big-switch.off{ background:#DCDCE0; }
+.big-switch.off::after{ left:2px; }
+
+/* ============================================================
+   三栏主舞台
+   ============================================================ */
+.pipeline{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 30px 320px;
+  gap:12px;
+  align-items:stretch;
+}
+.arrow{
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+  font-size:18px;
+  align-self:center;
+  height:60px;
+}
+
+.stage{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-stage);
+  padding:18px 18px 16px;
+  display:flex; flex-direction:column;
+  position:relative;
+  min-height:340px;
+}
+.stage .eyebrow{
+  font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  font-weight:700; margin-bottom:6px;
+}
+.stage .h2{
+  font-size:17px; font-weight:700; color:var(--text);
+  margin-bottom:14px;
+  letter-spacing:-.01em;
+}
+/* 三栏主题色 */
+.stage.wake   { --accent: var(--green); --accent-soft: var(--green-soft); --accent-dark: var(--green-dark); }
+.stage.recog  { --accent: var(--brand); --accent-soft: var(--brand-soft); --accent-dark: var(--brand-2); }
+.stage.send   { --accent: var(--orange); --accent-soft: var(--orange-soft); --accent-dark: var(--orange-dark); }
+
+.stage .eyebrow{ color: var(--accent); }
+.stage .accent-line{
+  position:absolute; left:0; top:18px; bottom:18px;
+  width:3px; border-radius:0 2px 2px 0;
+  background: var(--accent);
+  opacity:.85;
+}
+
+/* ====== 唤醒 stage ====== */
+.wake-word-card{
+  display:flex; align-items:center; justify-content:center;
+  padding:18px 12px;
+  background:var(--surface-2);
+  border:1.5px dashed var(--border-strong);
+  border-radius:10px;
+  margin-bottom:10px;
+}
+.wake-chip{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 16px;
+  background:#fff;
+  border:1.5px solid var(--accent);
+  border-radius:22px;
+  font-size:18px; font-weight:700; color:var(--text);
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .12s;
+}
+.wake-chip:hover{
+  background:var(--accent-soft);
+}
+.wake-chip .edit-ico{
+  font-size:11px; color:var(--text-3);
+}
+.wake-hint{
+  font-size:11.5px; color:var(--text-2);
+  text-align:center;
+  margin-bottom:14px;
+  line-height:1.5;
+}
+.wake-hint .accent{ color: var(--accent-dark); font-weight:600; }
+
+.mic-row{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin-bottom:10px;
+}
+.mic-row .ico{
+  width:20px; height:20px; color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+}
+.mic-row .name{ flex:1; font-size:12.5px; color:var(--text); font-weight:500; }
+.mic-row .status{
+  font-size:10.5px; color:var(--green-dark);
+  display:flex; align-items:center; gap:4px;
+  font-weight:600;
+}
+.mic-row .status::before{
+  content:""; width:5px; height:5px; border-radius:50%;
+  background:var(--green);
+}
+.mic-row .chev{ color:var(--text-3); font-size:11px; }
+
+/* 折叠组 */
+.disclosure{
+  border-top:1px dashed var(--border);
+  margin-top:auto;
+  padding-top:10px;
+}
+.disclosure summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; color:var(--text-2); font-weight:500;
+  padding:4px 0;
+}
+.disclosure summary::-webkit-details-marker{ display:none; }
+.disclosure summary:hover{ color:var(--text); }
+.disclosure summary::after{
+  content:"⌄";
+  margin-left:auto;
+  font-size:14px;
+  color:var(--text-3);
+  transition:transform .15s;
+}
+.disclosure[open] summary::after{ transform:rotate(180deg); }
+.disclosure .inner{
+  padding:10px 0 4px;
+  display:flex; flex-direction:column; gap:8px;
+}
+
+/* ====== 识别 stage ====== */
+.engine-list{
+  display:flex; flex-direction:column; gap:8px;
+  margin-bottom:12px;
+}
+.engine-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:9px;
+  cursor:pointer;
+  position:relative;
+}
+.engine-item.active{
+  background:#fff;
+  border-color: var(--accent);
+  box-shadow:0 0 0 2px var(--accent-soft);
+}
+.engine-item .ico{
+  width:32px; height:32px; border-radius:7px;
+  background:var(--surface-3);
+  color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0;
+}
+.engine-item.active .ico{
+  background:var(--accent-soft);
+  color: var(--accent-dark);
+}
+.engine-item .info{ flex:1; min-width:0; }
+.engine-item .info .name{
+  font-size:12.5px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:6px;
+}
+.engine-item .info .name .cur-tag{
+  font-size:9.5px; padding:1px 5px; border-radius:3px;
+  background:var(--accent);
+  color:#fff; font-weight:700;
+  font-family:'JetBrains Mono', monospace;
+}
+.engine-item .info .desc{
+  font-size:11px; color:var(--text-2); margin-top:2px;
+  line-height:1.4;
+}
+.engine-item .right{
+  font-size:11px; color:var(--text-3); font-weight:500;
+}
+.engine-item .right .act-link{
+  color: var(--accent-dark);
+  font-weight:600;
+  cursor:pointer;
+}
+
+.end-rule{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  font-size:12px;
+  color:var(--text-2);
+  cursor:pointer;
+  margin-bottom:12px;
+}
+.end-rule:hover{ border-color:var(--accent); }
+.end-rule .ico{
+  width:18px; height:18px; color:var(--text-3);
+  display:flex; align-items:center; justify-content:center;
+}
+.end-rule .label{ color:var(--text-3); }
+.end-rule .value{ color:var(--text); font-weight:600; flex:1; }
+.end-rule .chev{ color:var(--text-3); font-size:10px; }
+
+/* ====== 发送 stage ====== */
+.send-tabs{
+  display:flex; gap:0;
+  background:var(--surface-3);
+  padding:3px;
+  border-radius:8px;
+  margin-bottom:12px;
+}
+.send-tab{
+  flex:1;
+  text-align:center;
+  padding:7px 8px;
+  border-radius:6px;
+  font-size:12px;
+  color:var(--text-2);
+  font-weight:500;
+  cursor:pointer;
+  border:none; background:transparent;
+  font-family:inherit;
+  transition:all .12s;
+}
+.send-tab.on{
+  background:#fff;
+  color:var(--text);
+  font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+}
+.send-desc{
+  font-size:11.5px; color:var(--text-2);
+  line-height:1.55;
+  margin-bottom:12px;
+  padding:0 2px;
+}
+
+.send-params{
+  display:flex; flex-direction:column; gap:10px;
+  padding:12px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:9px;
+  margin-bottom:12px;
+}
+.param-row{
+  display:flex; align-items:center; gap:10px;
+  font-size:12px;
+}
+.param-row .pl{
+  flex:0 0 70px;
+  color:var(--text-2);
+  font-weight:500;
+}
+.param-row .pr{ flex:1; display:flex; align-items:center; gap:8px; }
+.param-row .val{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11.5px;
+  color: var(--accent-dark);
+  font-weight:600;
+  padding:1px 6px;
+  background:var(--accent-soft);
+  border-radius:4px;
+  min-width:48px;
+  text-align:center;
+}
+.kbd-chip{
+  display:inline-flex; align-items:center;
+  padding:2px 8px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-bottom-width:2px;
+  border-radius:5px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  color:var(--text);
+  font-weight:600;
+  cursor:pointer;
+}
+.kbd-chip:hover{ border-color:var(--accent); color: var(--accent-dark); }
+.kbd-chip.on{
+  background:var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+input[type=range]{
+  -webkit-appearance:none; flex:1; height:3px;
+  background:var(--border-strong);
+  border-radius:2px;
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px; height:14px; border-radius:50%;
+  background:#fff;
+  border:2px solid var(--accent);
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+  cursor:pointer;
+}
+
+.send-tip{
+  font-size:10.5px; color:var(--text-3);
+  font-style:italic;
+  margin-top:-2px;
+  padding:0 2px;
+  line-height:1.4;
+}
+
+/* ============================================================
+   右侧栏
+   ============================================================ */
+.side-col{
+  display:flex; flex-direction:column; gap:12px;
+}
+.side-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-stage);
+  padding:14px 16px;
+}
+.side-card .head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+.side-card .head .ttl{
+  font-size:13px; font-weight:700; color:var(--text);
+}
+.side-card .head .new-btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:4px 9px;
+  border-radius:5px;
+  font-size:11px;
+  color:var(--text-3);
+  cursor:pointer;
+  display:inline-flex; align-items:center; gap:3px;
+  font-family:inherit;
+}
+.side-card .head .new-btn.disabled{
+  color:var(--text-3);
+  cursor:not-allowed;
+  background:var(--surface-2);
+}
+
+.plan-row{
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px;
+  background:var(--brand-soft);
+  border:1px solid var(--brand);
+  border-radius:8px;
+}
+.plan-row .name{
+  flex:1; font-size:12.5px; font-weight:600; color:var(--text);
+}
+.plan-row .sub{
+  font-size:10.5px; color:var(--text-3);
+  margin-top:1px;
+}
+.plan-row .sw{
+  width:30px; height:18px; border-radius:9px;
+  background:var(--brand); position:relative; cursor:pointer;
+  border:none; flex-shrink:0;
+}
+.plan-row .sw::after{
+  content:""; position:absolute;
+  top:2px; right:2px;
+  width:14px; height:14px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+}
+.plan-row .sw.off{ background:#DCDCE0; }
+.plan-row .sw.off::after{ right:auto; left:2px; }
+
+.upcoming-note{
+  font-size:10.5px; color:var(--text-3);
+  margin-top:8px;
+  display:flex; align-items:flex-start; gap:5px;
+  line-height:1.5;
+}
+.upcoming-note .ico{
+  width:14px; height:14px; border-radius:50%;
+  background:var(--surface-3);
+  color:var(--text-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; flex-shrink:0;
+  margin-top:1px;
+}
+
+/* 测试诊断 */
+.diag-card .ttl-row{
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:10px;
+}
+.diag-card .ttl-row .ttl{
+  font-size:13px; font-weight:700; color:var(--text);
+}
+.diag-card .ttl-row .badge{
+  font-size:10px; padding:1px 6px; border-radius:4px;
+  background:var(--green-soft); color:var(--green-dark); font-weight:600;
+  font-family:'JetBrains Mono', monospace;
+  display:inline-flex; align-items:center; gap:4px;
+}
+.diag-card .ttl-row .badge::before{
+  content:""; width:4px; height:4px; border-radius:50%;
+  background:var(--green);
+}
+.test-btn{
+  width:100%;
+  padding:9px 12px;
+  background:#fff;
+  border:1.5px solid var(--brand);
+  color:var(--brand);
+  border-radius:8px;
+  font-size:12.5px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  font-family:inherit;
+  margin-bottom:10px;
+  transition:all .12s;
+}
+.test-btn:hover{ background:var(--brand-soft); }
+.test-btn .ico{ font-size:13px; }
+
+.diag-states{
+  display:flex; flex-direction:column; gap:6px;
+  padding:9px 11px;
+  background:var(--surface-2);
+  border-radius:7px;
+}
+.diag-state{
+  display:flex; align-items:center; gap:6px;
+  font-size:11px;
+  color:var(--text-2);
+}
+.diag-state .ico{
+  font-size:10px;
+  color:var(--green);
+  font-weight:700;
+}
+.diag-state .k{ flex:1; }
+
+/* ============================================================
+   底部 app 范围
+   ============================================================ */
+.scope-bar{
+  position:fixed;
+  bottom:18px; left:50%;
+  transform:translateX(-50%);
+  max-width:1580px; width:calc(100% - 56px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 16px;
+  display:flex; align-items:center; gap:14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.04);
+  z-index:10;
+}
+.scope-bar .lbl{
+  font-size:12px; color:var(--text-2); font-weight:500;
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:6px;
+}
+.scope-bar .lbl .ico{
+  width:18px; height:18px;
+  color:var(--text-2);
+  display:flex; align-items:center; justify-content:center;
+}
+.scope-bar .apps{
+  display:flex; align-items:center; gap:6px;
+  flex-wrap:nowrap; overflow:hidden;
+}
+.app-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 10px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  font-size:12px;
+  color:var(--text);
+  font-weight:500;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.app-chip:hover{ border-color:var(--brand); }
+.app-chip.all{
+  background:var(--brand-soft);
+  border-color:var(--brand);
+  color:var(--brand-2);
+  font-weight:600;
+}
+.app-chip .app-ico{
+  width:14px; height:14px; border-radius:3px;
+  background:var(--text-2);
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:9px; color:#fff; font-weight:700;
+  font-family:'JetBrains Mono', monospace;
+}
+.app-chip .app-ico.cu{ background:#000; }
+.app-chip .app-ico.co{ background:#3B82F6; }
+.app-chip .app-ico.cl{ background:#D97706; }
+.app-chip .app-ico.mn{ background:var(--brand); }
+.app-chip .app-ico.wx{ background:#07C160; }
+.app-chip.add{
+  background:transparent;
+  border-style:dashed;
+  color:var(--text-3);
+}
+
+/* ============================================================
+   浮动标签(v18 标记)
+   ============================================================ */
+.floating-tag{
+  position:fixed; right:18px; bottom:90px;
+  background:#1c1c1e; color:#fff;
+  font-size:10.5px; font-weight:600;
+  padding:5px 10px; border-radius:6px;
+  font-family:'JetBrains Mono', monospace;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  z-index:11;
+  cursor:pointer;
+}
+.floating-tag:hover{ background:#000; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ============================================================
+       页面标题 + 头部动作
+       ============================================================ -->
+  <div class="page-head">
+    <div class="ttl">
+      <h1>音频</h1>
+      <p class="sub">配置从声音采集到文本输出的本地语音输入流程</p>
+    </div>
+    <div class="head-actions">
+      <button class="head-btn test">▷ 测试一次</button>
+      <button class="head-btn primary">保存</button>
+      <button class="big-switch" title="启用音频方案"></button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       v18 关键: 顶部 summary 一行
+       ============================================================ -->
+  <div class="summary-card">
+    <div class="plan">
+      <div class="lbl">当前方案</div>
+      <div class="name">默认·本地离线识别 <span class="badge-active">已激活</span></div>
+    </div>
+    <div class="infos">
+      <div class="info-cell">
+        <div class="ico">🎙</div>
+        <div class="meta">
+          <div class="k">唤起</div>
+          <div class="v">「<span class="chip-mini">开始输入</span>」</div>
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="ico">🧠</div>
+        <div class="meta">
+          <div class="k">识别</div>
+          <div class="v">本地离线识别</div>
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="ico">📤</div>
+        <div class="meta">
+          <div class="k">输出</div>
+          <div class="v">确认后发送</div>
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="ico">🎯</div>
+        <div class="meta">
+          <div class="k">范围</div>
+          <div class="v">4 个应用</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       三栏主舞台
+       ============================================================ -->
+  <div class="pipeline">
+
+    <!-- 唤起 -->
+    <div class="stage wake">
+      <div class="accent-line"></div>
+      <div class="eyebrow">唤起</div>
+      <div class="h2">说什么词开始</div>
+
+      <div class="wake-word-card">
+        <button class="wake-chip" title="点击修改唤醒词">开始输入 <span class="edit-ico">✎</span></button>
+      </div>
+      <p class="wake-hint">说出 <span class="accent">"开始输入"</span>,开始语音输入</p>
+
+      <div class="mic-row">
+        <div class="ico">🎤</div>
+        <div class="name">默认麦克风</div>
+        <div class="status">正常</div>
+        <div class="chev">▾</div>
+      </div>
+
+      <details class="disclosure">
+        <summary>编辑唤醒词与预设</summary>
+        <div class="inner">
+          <p style="font-size:11.5px; color:var(--text-2); line-height:1.6;">
+            可添加多个唤醒词(如"嘿 Siri"+"开始输入")。
+            支持替换为英文、粤语等。
+          </p>
+        </div>
+      </details>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- 识别 -->
+    <div class="stage recog">
+      <div class="accent-line"></div>
+      <div class="eyebrow">识别</div>
+      <div class="h2">把语音变文字</div>
+
+      <div class="engine-list">
+        <div class="engine-item active">
+          <div class="ico">🔊</div>
+          <div class="info">
+            <div class="name">本地离线识别 <span class="cur-tag">当前使用</span></div>
+            <div class="desc">在本地离线识别,保护隐私</div>
+          </div>
+          <div class="right"><span class="act-link">更改</span></div>
+        </div>
+        <div class="engine-item">
+          <div class="ico">🪟</div>
+          <div class="info">
+            <div class="name">系统语音输入</div>
+            <div class="desc">调用系统输入法的语音能力</div>
+          </div>
+          <div class="right" style="color:var(--text-3);">可选</div>
+        </div>
+      </div>
+
+      <div class="end-rule">
+        <div class="ico">⌛</div>
+        <span class="label">结束方式</span>
+        <span class="value">结束词·静音判断</span>
+        <div class="chev">›</div>
+      </div>
+
+      <details class="disclosure">
+        <summary>高级设置(识别语种 / 资源 / 引擎)</summary>
+        <div class="inner">
+          <p style="font-size:11.5px; color:var(--text-2); line-height:1.6;">
+            语种切换、模型资源包管理、引擎参数微调。
+          </p>
+        </div>
+      </details>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- 发送 -->
+    <div class="stage send">
+      <div class="accent-line"></div>
+      <div class="eyebrow">发送</div>
+      <div class="h2">说完后怎么处理</div>
+
+      <div class="send-tabs">
+        <button class="send-tab">自动发送</button>
+        <button class="send-tab on">确认后发送</button>
+        <button class="send-tab">手动处理</button>
+      </div>
+
+      <p class="send-desc">识别完成预先预览文本,再由你确认发送</p>
+
+      <div class="send-params">
+        <div class="param-row">
+          <div class="pl">发送延迟</div>
+          <div class="pr">
+            <input type="range" min="0" max="8" step="0.5" value="2" />
+            <div class="val">2.0s</div>
+          </div>
+        </div>
+        <div class="param-row">
+          <div class="pl">发送快捷键</div>
+          <div class="pr">
+            <span class="kbd-chip on">Enter</span>
+            <span class="kbd-chip">Ctrl+Enter</span>
+            <span class="kbd-chip" style="opacity:.4;">自定义</span>
+          </div>
+        </div>
+      </div>
+      <p class="send-tip">仅在「自动发送」模式下生效,确认发送不受影响</p>
+
+      <details class="disclosure">
+        <summary>更多发送设置</summary>
+        <div class="inner">
+          <p style="font-size:11.5px; color:var(--text-2); line-height:1.6;">
+            发送前震动提醒、自动复制、错误重发策略等。
+          </p>
+        </div>
+      </details>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <!-- 右侧栏 -->
+    <div class="side-col">
+      <!-- 当前方案 -->
+      <div class="side-card">
+        <div class="head">
+          <div class="ttl">当前方案</div>
+          <button class="new-btn disabled" title="多方案缓存功能后续接入">+ 新建</button>
+        </div>
+        <div class="plan-row">
+          <div>
+            <div class="name">默认·本地离线识别</div>
+            <div class="sub">默认方案</div>
+          </div>
+          <button class="sw" title="启用"></button>
+        </div>
+        <div class="upcoming-note">
+          <div class="ico">i</div>
+          <div>多方案缓存功能后续接入</div>
+        </div>
+      </div>
+
+      <!-- 测试诊断 -->
+      <div class="side-card diag-card">
+        <div class="ttl-row">
+          <div class="ttl">测试诊断</div>
+          <span class="badge">可用</span>
+        </div>
+        <button class="test-btn">▷ 测试一次</button>
+        <div class="diag-states">
+          <div class="diag-state">
+            <div class="ico">●</div>
+            <div class="k">麦克风权限</div>
+            <div>正常</div>
+          </div>
+          <div class="diag-state">
+            <div class="ico">●</div>
+            <div class="k">离线引擎</div>
+            <div>可用</div>
+          </div>
+          <div class="diag-state">
+            <div class="ico">●</div>
+            <div class="k">快捷键</div>
+            <div>无冲突</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     底部 app 范围(sticky footer)
+     ============================================================ -->
+<div class="scope-bar">
+  <div class="lbl">
+    <div class="ico">◎</div>
+    <span>在哪些程序中生效</span>
+  </div>
+  <div class="apps">
+    <div class="app-chip all">不限应用</div>
+    <div class="app-chip"><span class="app-ico cu">C</span>Cursor</div>
+    <div class="app-chip"><span class="app-ico co">C</span>Codex</div>
+    <div class="app-chip"><span class="app-ico cl">C</span>Claude Code</div>
+    <div class="app-chip"><span class="app-ico mn">M</span>MiniMax</div>
+    <div class="app-chip"><span class="app-ico wx">微</span>微信</div>
+    <div class="app-chip add">+ 添加应用</div>
+  </div>
+</div>
+
+<!-- 浮动版本标签 -->
+<div class="floating-tag" title="点击关闭标签">v18 简化版 · 5 修</div>
+
+</body>
+</html>
