@@ -219,7 +219,9 @@
       btnVoiceSaveHabit.onclick=function(e){
         e.preventDefault();
         e.stopPropagation();
-        if(global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice){
+        if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.saveVoiceScheme){
+          global.OneToneVoiceSchemePersist.saveVoiceScheme();
+        }else if(global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice){
           global.OneToneHabitHub.createFromVoice();
         }
       };

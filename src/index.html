@@ -1237,6 +1237,8 @@
               <button type="button" class="toggle-switch keys-summary-enable" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
             </div>
           </div>
+          <div class="voice-page-body">
+            <div class="voice-page-main">
           <div class="voice-page-layout">
             <div class="voice-live-strip">
               <section class="voice-feedback-rail voice-feedback-rail--compact" id="voiceFeedbackRail" aria-label="实时交互预览">
@@ -1289,7 +1291,6 @@
                 <span class="sr-only" id="voiceModeProMetric" aria-hidden="true"></span>
               </section>
             </div>
-            <div class="voice-page-main">
               <div class="keys-workflow-pipeline voice-workflow-pipeline" id="voiceWorkflowPipeline">
               <section class="voice-step-stack voice-settings-flow keys-workflow-grid" id="voiceSettingsFlow" aria-label="语音流程">
                   <div class="voice-flow-step habit-flow-step voice-step-card voice-settings-card keys-step-card keys-workflow-col is-clickable voice-wake-root" id="voiceSettingsWakeCard" data-voice-subpage="wake">
@@ -1602,7 +1603,6 @@
                   </div>
               </section>
               </div>
-            </div>
             <div class="keys-app-binding-strip voice-app-scope-strip" id="voiceAppScopeStrip">
               <span class="keys-app-binding-lbl" id="voiceAppScopeLbl">在哪些程序中生效</span>
               <div class="keys-app-chips-wrap">
@@ -1610,6 +1610,32 @@
                 <button type="button" class="keys-app-chip keys-app-chip--add" id="btnVoiceAppScopeAdd">+ 添加应用</button>
               </div>
             </div>
+          </div>
+            </div>
+            <aside class="voice-page-aside" id="voicePanelAside" aria-label="方案与模板">
+              <section class="keys-aside-card keys-hub-card" id="voiceHubCard">
+                <header class="keys-aside-card-head keys-hub-head">
+                  <span class="keys-aside-title" id="voiceHubTitleLbl">方案</span>
+                  <span class="keys-aside-count" id="voiceHubCount">—</span>
+                </header>
+                <p class="voice-hub-edit-hint" id="voiceHubEditHint">编辑不会切换当前生效方案；点「启用」才会切换。</p>
+                <div class="keys-hub-schemes" id="voiceHubSchemeList" role="list"></div>
+                <button type="button" class="keys-hub-scheme-add" id="btnVoiceHubAddDraft">+ 新建草稿</button>
+                <div class="keys-hub-divider" id="voiceHubDivider" aria-hidden="true"></div>
+                <details class="keys-hub-templates-disclosure" id="voiceHubTemplatesDisclosure">
+                  <summary class="keys-hub-templates-summary" id="voiceHubTemplatesSummary">
+                    <span class="keys-hub-templates-summary-lbl" id="voiceHubTemplatesLbl">从模板创建</span>
+                    <span class="keys-hub-templates-summary-count" id="voiceHubTemplatesCount">—</span>
+                  </summary>
+                  <p class="keys-hub-templates-hint" id="voiceHubTemplatesHint">预设唤醒、识别与发送；不影响按键触发链路</p>
+                  <div class="keys-hub-templates" id="voiceHubTemplateList"></div>
+                  <div class="keys-hub-templates-fill" id="voiceHubTemplatesFillWrap" hidden>
+                    <span class="keys-hub-templates-fill-lbl" id="voiceHubTemplatesFillLbl">套用到当前：</span>
+                    <div class="keys-hub-templates-fill-chips" id="voiceHubTemplatesFillList"></div>
+                  </div>
+                </details>
+              </section>
+            </aside>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
@@ -2400,6 +2426,8 @@
   <script src="js/features/voice/voice-settings-view-model.js"></script>
   <script src="js/features/voice/voice-page-header-render.js"></script>
   <script src="js/features/voice/voice-schemes-ui.js"></script>
+  <script src="js/features/voice/voice-scheme-persist.js"></script>
+  <script src="js/features/voice/voice-workflow-templates.js"></script>
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>
   <script src="js/features/voice/voice-step-send-render.js"></script>

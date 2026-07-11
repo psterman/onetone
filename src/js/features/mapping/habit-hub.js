@@ -413,6 +413,9 @@
   }
 
   function createFromVoice(opts){
+    if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.saveVoiceScheme){
+      return global.OneToneVoiceSchemePersist.saveVoiceScheme(Object.assign({},opts||{},{forceCreate:true}));
+    }
     opts=opts||{};
     if(!core()) return null;
     core().ensureConfig&&core().ensureConfig();
@@ -449,21 +452,10 @@
       lastUsedAt:0,
       useCount:0
     };
-    var ctx=contextMapping();
-    var appId=primaryAppIdFromMapping(ctx);
-    if(appId){
-      m.appTargetId=appId;
-      m.appBehaviorRules=cloneAppBehaviorRulesFrom(ctx);
-      if(!m.appBehaviorRules.length){
-        m.appBehaviorRules=[{appId:appId,finishMode:'confirm',note:''}];
-      }
-    }
     if(core().ensureMappingExtras) core().ensureMappingExtras(m);
     cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
     cfg.mappings.push(m);
     state().selectedMappingId=id;
-    if(hooks().setEditorTriggerKey) hooks().setEditorTriggerKey('');
-    if(hooks().setEditorTargetKey) hooks().setEditorTargetKey('');
     if(hooks().save) hooks().save();
     render();
     if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
@@ -581,6 +573,8 @@
     bindEvents:bindEvents,
     classifyHabit:classifyHabit,
     habitName:habitName,
-    touchUpdated:touchUpdated
+    touchUpdated:touchUpdated,
+    snapshotVoiceOverride:currentVoiceOverride,
+    defaultVoiceHabitName:defaultVoiceHabitName
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -52,7 +52,7 @@
       if(el) el.textContent=t(pair[1]);
     });
     const saveHabitBtn=$('btnVoiceSaveHabit');
-    if(saveHabitBtn) saveHabitBtn.textContent=t('voiceSummarySave');
+    if(saveHabitBtn) saveHabitBtn.textContent=t('voiceStatusSaveHabit');
     const srcSapi=$('voiceRecognizeSourceSapi');
     if(srcSapi) srcSapi.textContent=t('voiceRecognizeSourceSapi');
     const srcVosk=$('voiceRecognizeSourceVosk');
@@ -130,18 +130,32 @@
     }
     var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
     var schemes=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.voiceSchemes(cfg):[];
-    var selectedId=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.selectedSchemeId(cfg,schemes):'';
+    var selectedId=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.editSchemeId(cfg,schemes):'';
+    var runtimeActive=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.activeRuntimeSchemeId(cfg,schemes):'';
     var mapping=vm.habitMapping;
     if(schemes.length&&selectedId&&selectedId!=='__global__'){
       mapping=schemes.find(function(m){ return m.id===selectedId; })||mapping;
     }
-    var displayName=schemes.length&&mapping?((global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)?global.OneToneHabitProfile.habitDisplayName(mapping):(mapping.group||mapping.label||'—')):(vm.habitName&&vm.habitName!=='—'?vm.habitName:t('voiceSchemeDefaultName').split('·')[0].trim());
+    var displayName;
+    if(selectedId==='__global__'){
+      displayName=t('voiceSchemeDefaultName').split('·')[0].trim();
+    }else if(schemes.length&&mapping){
+      displayName=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)?global.OneToneHabitProfile.habitDisplayName(mapping):(mapping.group||mapping.label||'—');
+    }else{
+      displayName=vm.habitName&&vm.habitName!=='—'?vm.habitName:t('voiceSchemeDefaultName').split('·')[0].trim();
+    }
     if(schemeName) schemeName.textContent=displayName;
     if(statusEl){
       var pillCls='keys-scheme-summary-pill voice-scheme-summary-pill';
       var pillText=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');
-      if(vm.voiceOn) pillCls+=' is-on';
-      else pillCls+=' is-off';
+      if(selectedId&&selectedId!=='__global__'&&runtimeActive&&selectedId===runtimeActive){
+        pillText=t('voiceSummaryStatusOn');
+        pillCls+=' is-on';
+      }else if(vm.voiceOn){
+        pillCls+=' is-on';
+      }else{
+        pillCls+=' is-off';
+      }
       statusEl.textContent=pillText;
       statusEl.className=pillCls;
     }
@@ -198,6 +212,9 @@
     if(!saveHabitBtn) return;
     saveHabitBtn.hidden=vm.loading||vm.mode==='off';
     saveHabitBtn.disabled=vm.loading||vm.mode==='off';
+    var persist=global.OneToneVoiceSchemePersist;
+    var isUpdate=!!(persist&&persist.resolveVoiceEditMapping&&persist.resolveVoiceEditMapping());
+    saveHabitBtn.textContent=t(isUpdate?'voiceSchemeSaveUpdate':'voiceStatusSaveHabit');
   }
 
   global.OneToneVoicePageHeaderRender={

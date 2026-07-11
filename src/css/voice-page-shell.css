@@ -7,6 +7,38 @@
   align-items: start;
 }
 
+#settingsPanelVoiceWake .voice-page-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 14px;
+  align-items: start;
+}
+
+#settingsPanelVoiceWake .voice-page-main {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake .voice-page-aside {
+  display: grid;
+  gap: 12px;
+  position: sticky;
+  top: 8px;
+  align-content: start;
+  min-width: 0;
+}
+
+@media (max-width: 1040px) {
+  #settingsPanelVoiceWake .voice-page-body {
+    grid-template-columns: 1fr;
+  }
+
+  #settingsPanelVoiceWake .voice-page-aside {
+    position: static;
+  }
+}
+
 #settingsPanelVoiceWake.voice-page-parallel {
   gap: 8px;
 }
@@ -87,6 +119,197 @@
   padding: 1px 5px;
   border-radius: 999px;
   margin-left: 4px;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab.is-voice-running:not(.is-active) {
+  border-color: rgba(46, 125, 79, 0.32);
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab.is-active.is-voice-running {
+  border-color: rgba(42, 156, 196, 0.42);
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab-running {
+  font-size: 7px;
+  line-height: 1;
+  color: #2e7d4f;
+  margin-left: 2px;
+}
+
+#settingsPanelVoiceWake .voice-hub-edit-hint {
+  margin: 0 12px 8px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-page-aside .keys-aside-card {
+  padding: 0;
+  overflow: visible;
+}
+
+#settingsPanelVoiceWake .voice-page-aside .keys-hub-card .keys-aside-card-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--outline-variant);
+  margin-bottom: 0;
+}
+
+#settingsPanelVoiceWake .voice-page-aside .keys-aside-count {
+  margin-left: auto;
+}
+
+#settingsPanelVoiceWake .voice-page-aside .keys-hub-schemes {
+  max-height: min(280px, 40vh);
+  overflow: auto;
+}
+
+#settingsPanelVoiceWake .keys-hub-scheme-activate {
+  border: 0;
+  background: transparent;
+  color: var(--primary-strong);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+#settingsPanelVoiceWake .keys-hub-scheme-activate:hover {
+  background: var(--primary-soft);
+}
+
+#settingsPanelVoiceWake .voice-hub-scheme-row.is-voice-running:not(.is-editing) {
+  border-color: rgba(46, 125, 79, 0.22);
+}
+
+#settingsPanelVoiceWake .keys-hub-scheme-add {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 0 8px 8px;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--outline-variant);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake .keys-hub-scheme-add:hover {
+  color: var(--on-surface);
+  border-color: rgba(42, 156, 196, 0.35);
+  background: var(--surface-soft);
+}
+
+#settingsPanelVoiceWake .keys-hub-divider {
+  height: 1px;
+  margin: 0 10px 8px;
+  background: var(--outline-variant);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-disclosure {
+  padding: 0 0 8px;
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-summary-count {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  margin-left: auto;
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-hint {
+  margin: 0 12px 8px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 6px;
+}
+
+#settingsPanelVoiceWake .keys-hub-template-chip {
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 156, 196, 0.28);
+  background: var(--surface);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#settingsPanelVoiceWake .keys-hub-template-chip:hover {
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.45);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--outline-variant);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-fill-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .keys-hub-templates-fill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#settingsPanelVoiceWake .keys-hub-template-fill-chip {
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake .keys-hub-template-fill-chip:hover {
+  color: var(--on-surface);
+  border-color: var(--outline);
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-parallel .voice-scheme-summary {

@@ -34,6 +34,16 @@
     function findById(id){
       return id&&Array.isArray(cfg.mappings)?cfg.mappings.find(function(m){ return m.id===id; }):null;
     }
+    var uiEdit=global.OneToneState.ui&&global.OneToneState.ui.voiceEditSchemeId;
+    if(uiEdit!=null&&String(uiEdit).trim()){
+      var editMapping=findById(String(uiEdit).trim());
+      if(editMapping&&isVoiceOnly(editMapping)){
+        return {id:editMapping.id,name:resolveHabitDisplayName(editMapping),mapping:editMapping};
+      }
+    }
+    if(uiEdit===null){
+      return {id:'',name:resolveHabitDisplayName(null),mapping:null};
+    }
     var activeId=cfg.activeSceneId;
     var active=findById(activeId);
     if(active&&isVoiceOnly(active)){

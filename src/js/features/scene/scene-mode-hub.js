@@ -342,11 +342,11 @@
   }
 
   function openVoiceProfile(id){
-    openKeys(id);
-    ui().habitAdvancedFocus='voice';
-    if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
-    var stash=$('keysCompatStash');
-    if(stash) stash.scrollIntoView({behavior:'smooth',block:'nearest'});
+    id=String(id||'').trim();
+    if(id&&global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.selectVoiceSchemeForEdit){
+      global.OneToneVoiceSchemesUi.selectVoiceSchemeForEdit(id);
+    }
+    openVoiceEdit(defaultVoiceNavId());
   }
 
   function defaultVoiceNavId(){
@@ -363,13 +363,14 @@
   }
 
   function triggerNewVoiceScenario(){
-    if(global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice){
-      var m=global.OneToneHabitHub.createFromVoice();
-      if(m&&m.id) openVoiceProfile(m.id);
-      render();
-      return;
+    var m=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.createVoiceDraft
+      ?global.OneToneVoiceSchemePersist.createVoiceDraft()
+      :null;
+    if(m&&m.id&&global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.selectVoiceSchemeForEdit){
+      global.OneToneVoiceSchemesUi.selectVoiceSchemeForEdit(m.id);
     }
     openVoiceEdit(defaultVoiceNavId());
+    render();
   }
 
   function triggerNewScenario(){
