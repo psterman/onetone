@@ -200,6 +200,8 @@
     }
     var btnVoiceMicChange=$('btnVoiceMicChange');
     if(btnVoiceMicChange) btnVoiceMicChange.onclick=openVoiceMicPicker;
+    var btnVoiceLiveMicChange=$('btnVoiceLiveMicChange');
+    if(btnVoiceLiveMicChange) btnVoiceLiveMicChange.onclick=openVoiceMicPicker;
     var btnVoiceEndDetectSwitchVosk=$('btnVoiceEndDetectSwitchVosk');
     if(btnVoiceEndDetectSwitchVosk){
       btnVoiceEndDetectSwitchVosk.onclick=function(){

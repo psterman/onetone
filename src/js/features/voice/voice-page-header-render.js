@@ -114,12 +114,40 @@
   function renderHeaderSummary(vm){
     var V=vmApi();
     var schemeName=$('voiceSummaryName');
-    var enabledToggle=$('btnVoiceEnabled');
+    var statusEl=$('voiceSummaryStatus');
+    var engineLbl=$('voiceSummaryEngineLbl');
+    var engineVal=$('voiceSummaryEngine');
+    var scopeLbl=$('voiceSummaryScopeLbl');
+    var scopeVal=$('voiceSummaryScope');
+    if(engineLbl) engineLbl.textContent=t('voiceSummaryEngineLbl');
+    if(scopeLbl) scopeLbl.textContent=t('voiceSummaryScopeLbl');
     if(vm.loading){
       if(schemeName) schemeName.textContent=t('homeLiveLoading');
+      if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill voice-scheme-summary-pill'; }
+      if(engineVal) engineVal.textContent='—';
+      if(scopeVal) scopeVal.textContent='—';
       return;
     }
-    if(schemeName) schemeName.textContent=V.resolveSchemeDisplayName(vm);
+    var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
+    var schemes=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.voiceSchemes(cfg):[];
+    var selectedId=global.OneToneVoiceSchemesUi?global.OneToneVoiceSchemesUi.selectedSchemeId(cfg,schemes):'';
+    var mapping=vm.habitMapping;
+    if(schemes.length&&selectedId&&selectedId!=='__global__'){
+      mapping=schemes.find(function(m){ return m.id===selectedId; })||mapping;
+    }
+    var displayName=schemes.length&&mapping?((global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)?global.OneToneHabitProfile.habitDisplayName(mapping):(mapping.group||mapping.label||'—')):(vm.habitName&&vm.habitName!=='—'?vm.habitName:t('voiceSchemeDefaultName').split('·')[0].trim());
+    if(schemeName) schemeName.textContent=displayName;
+    if(statusEl){
+      var pillCls='keys-scheme-summary-pill voice-scheme-summary-pill';
+      var pillText=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');
+      if(vm.voiceOn) pillCls+=' is-on';
+      else pillCls+=' is-off';
+      statusEl.textContent=pillText;
+      statusEl.className=pillCls;
+    }
+    if(engineVal) engineVal.textContent=vm.modeLabel||'—';
+    if(scopeVal&&V) scopeVal.textContent=V.resolveScopeSummary(Object.assign({},vm,{habitMapping:mapping}));
+    var enabledToggle=$('btnVoiceEnabled');
     if(enabledToggle){
       enabledToggle.classList.toggle('is-on',!!vm.voiceOn);
       enabledToggle.setAttribute('aria-checked',vm.voiceOn?'true':'false');

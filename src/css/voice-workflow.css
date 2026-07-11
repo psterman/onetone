@@ -4,9 +4,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 14px;
+  padding: 6px 10px;
+  margin-top: 6px;
   border-radius: 8px;
   border: 1px solid rgba(42, 156, 196, 0.22);
   background: linear-gradient(180deg, rgba(42, 156, 196, 0.08), rgba(42, 156, 196, 0.03));
@@ -17,11 +18,11 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 #settingsPanelVoiceWake .voice-scheme-summary-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--on-surface);
 }
@@ -40,6 +41,11 @@
   color: #2e7d4f;
   background: rgba(46, 125, 79, 0.1);
   border-color: rgba(46, 125, 79, 0.28);
+}
+
+#settingsPanelVoiceWake .voice-scheme-summary-pill.is-off,
+#settingsPanelVoiceWake .keys-scheme-summary-pill.is-off {
+  color: var(--on-surface-muted);
 }
 
 #settingsPanelVoiceWake .voice-scheme-summary-meta {
@@ -699,8 +705,8 @@
 
 #settingsPanelVoiceWake .voice-page-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 344px);
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   align-items: start;
 }
 

@@ -16,16 +16,25 @@
   function renderMicLine(vm){
     var micName=vm.wakeSourceLabel||t('homeVoiceMapMicEmpty');
     var micOk=!vm.loading&&!!vm.wakeSourceLabel&&vm.wakeSourceLabel!==t('homeVoiceMapMicEmpty');
+    var stateText=vm.loading?t('homeLiveLoading'):(micOk?t('voiceMicStatusOk'):t('voiceTestChipMicWarn'));
     var nameEl=$('voiceMicStatusName');
     var stateEl=$('voiceMicStatusState');
     var dot=$('voiceMicStatusDot');
     var legacyName=$('voiceSettingsMicName');
     if(nameEl) nameEl.textContent=micName;
     if(legacyName) legacyName.textContent=micName;
-    if(stateEl) stateEl.textContent=vm.loading?t('homeLiveLoading'):(micOk?t('voiceMicStatusOk'):t('voiceTestChipMicWarn'));
+    if(stateEl) stateEl.textContent=stateText;
     if(dot) dot.classList.toggle('is-warn',!vm.loading&&!micOk);
+    var liveName=$('voiceLiveMicName');
+    var liveState=$('voiceLiveMicState');
+    var liveDot=$('voiceLiveMicDot');
+    if(liveName) liveName.textContent=micName;
+    if(liveState) liveState.textContent=stateText;
+    if(liveDot) liveDot.classList.toggle('is-warn',!vm.loading&&!micOk);
     const changeBtn=$('btnVoiceMicChange');
     if(changeBtn) changeBtn.textContent=t('voiceMicChangeBtn');
+    const liveChangeBtn=$('btnVoiceLiveMicChange');
+    if(liveChangeBtn) liveChangeBtn.textContent=t('voiceMicChangeBtn');
   }
 
   function renderCompactWake(vm){

@@ -26,13 +26,32 @@
   }
 
   function resolveActiveHabit(){
-    const activeId=state.config&&state.config.activeSceneId;
-    const mapping=activeId&&state.config&&Array.isArray(state.config.mappings)
-      ?state.config.mappings.find(function(m){ return m.id===activeId; }):null;
+    const cfg=state.config||{};
+    const hp=global.OneToneHabitProfile;
+    function isVoiceOnly(m){
+      return !!(m&&hp&&hp.hasVoiceParts(m,cfg)&&!hp.hasKeyParts(m));
+    }
+    function findById(id){
+      return id&&Array.isArray(cfg.mappings)?cfg.mappings.find(function(m){ return m.id===id; }):null;
+    }
+    var activeId=cfg.activeSceneId;
+    var active=findById(activeId);
+    if(active&&isVoiceOnly(active)){
+      return {id:activeId,name:resolveHabitDisplayName(active),mapping:active};
+    }
+    var selId=state.selectedMappingId;
+    var sel=findById(selId);
+    if(sel&&isVoiceOnly(sel)){
+      return {id:selId,name:resolveHabitDisplayName(sel),mapping:sel};
+    }
+    var first=Array.isArray(cfg.mappings)?cfg.mappings.find(isVoiceOnly):null;
+    if(first){
+      return {id:first.id,name:resolveHabitDisplayName(first),mapping:first};
+    }
     return {
       id:activeId||'',
-      name:resolveHabitDisplayName(mapping),
-      mapping:mapping
+      name:resolveHabitDisplayName(active),
+      mapping:active
     };
   }
 

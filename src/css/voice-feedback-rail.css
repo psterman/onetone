@@ -1,4 +1,179 @@
-/* Right feedback rail — dark instrument panel only */
+/* Top live strip — compact toolbar layout */
+
+#settingsPanelVoiceWake .voice-live-strip {
+  min-width: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip #voiceFeedbackRail.voice-feedback-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: unset;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-head--compact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-status-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--surface-soft);
+  color: var(--on-surface-muted);
+  border-color: var(--outline-variant);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-readonly {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-row .voice-mic-change-btn {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-actions--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  margin-left: auto;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+  background: var(--surface-high);
+  border-color: var(--outline-variant);
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn:hover {
+  background: var(--primary-soft);
+  border-color: rgba(42, 156, 196, 0.35);
+  color: var(--primary-strong);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-orb-wrap--compact {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-transcript-block--compact {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-transcript-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelVoiceWake .voice-live-strip #voiceFbTranscript {
+  min-height: 0;
+  max-height: 2.8em;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  background: var(--surface-soft);
+  border-color: var(--outline-variant);
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-lbl,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-val {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-lbl {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-metrics--compact .voice-fb-metric-val {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+#settingsPanelVoiceWake .voice-page-main {
+  min-width: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-workflow-pipeline {
+  margin-top: 0;
+}
+
+@media (max-width: 719px) {
+  #settingsPanelVoiceWake .voice-live-strip .voice-fb-actions--compact {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  #settingsPanelVoiceWake .voice-live-strip .voice-live-mic-row {
+    width: 100%;
+    order: 3;
+  }
+}
+
+/* Right feedback rail — dark instrument panel only (legacy aside context) */
 
 #voiceFeedbackRail.voice-feedback-rail {
   display: none;

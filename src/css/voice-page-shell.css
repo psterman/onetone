@@ -2,17 +2,115 @@
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-page-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   align-items: start;
 }
 
-#settingsPanelVoiceWake.voice-page-v2 .voice-page-aside {
-  position: sticky;
-  top: 12px;
-  display: grid;
-  gap: 0;
-  align-content: start;
+#settingsPanelVoiceWake.voice-page-parallel {
+  gap: 8px;
+}
+
+#settingsPanelVoiceWake .voice-page-head-band {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+#settingsPanelVoiceWake .voice-page-head-band .voice-page-head {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tabs-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 280px;
+  min-width: 0;
+  margin: 0;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab:hover {
+  border-color: rgba(42, 156, 196, 0.28);
+  color: var(--on-surface);
+  background: var(--surface);
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab.is-active {
+  border-color: rgba(42, 156, 196, 0.42);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  box-shadow: 0 1px 0 rgba(42, 156, 196, 0.08);
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab.is-draft {
+  border-style: dashed;
+}
+
+#settingsPanelVoiceWake .voice-workflow-tab .keys-workflow-tab-draft {
+  font-size: 8px;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 4px;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-scheme-summary {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-page-head .pref-page-title {
+  margin: 0 0 2px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-page-head-desc {
+  display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-scheme-summary {
+  margin-top: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-live-strip {
+  min-width: 0;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 #voiceFeedbackRail {
@@ -20,17 +118,21 @@
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-workflow-pipeline {
-  display: block !important;
+  display: block;
   margin-top: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
+  padding: 8px;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel #voiceWakeHeroCard {
+  display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-wake-stack {
+  gap: 8px;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-scheme-summary {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-high);
   box-shadow: none;
@@ -38,16 +140,16 @@
 
 #settingsPanelVoiceWake.voice-page-v2 #voiceSettingsWakeCard.voice-wake-root.voice-flow-step.keys-workflow-col {
   min-height: 0;
-  align-self: start;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  align-self: stretch;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
 }
 
 #settingsPanelVoiceWake.voice-page-v2 #voiceSettingsWakeCard.voice-wake-root .keys-step-body {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   align-content: start;
-  padding: 0;
+  padding: 10px 12px 12px;
   gap: 10px;
 }
 
@@ -205,24 +307,62 @@
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
-  display: block;
-  grid-template-columns: 1fr;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: stretch;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .keys-workflow-arrow {
-  display: none !important;
+  display: flex;
 }
 
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="wake"]:not(.voice-subtab-btn),
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="recognize"]:not(.voice-subtab-btn),
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="send"]:not(.voice-subtab-btn) {
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col:not(.is-active-step) {
+  cursor: pointer;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
   display: none;
 }
 
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="wake"].is-active-step,
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="recognize"].is-active-step,
-#settingsPanelVoiceWake.voice-page-v2 [data-voice-subpage="send"].is-active-step {
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col.is-active-step .keys-step-body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col.is-active-step {
+  border-color: rgba(42, 156, 196, 0.35);
+  box-shadow: 0 10px 28px rgba(42, 156, 196, 0.08);
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-step-card-head {
+  cursor: pointer;
+  user-select: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.is-active-step .voice-step-card-head {
+  cursor: default;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-step-card-head .voice-subtab-hint {
   display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.is-active-step .voice-step-card-head .voice-subtab-hint {
+  color: var(--primary-strong);
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col {
@@ -250,40 +390,12 @@
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-subtab-btn {
+  display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step .flow-step-card-head,
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step .keys-workflow-col-head {
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  align-items: start;
-  gap: 2px 8px;
-  min-height: 44px;
-  padding: 6px 10px;
-}
-
-#settingsPanelVoiceWake.voice-page-v2 .voice-subtab-btn .voice-subtab-num {
-  grid-row: 1 / span 2;
-  align-self: center;
-}
-
-#settingsPanelVoiceWake.voice-page-v2 .voice-subtab-btn .voice-subtab-label {
-  grid-column: 2;
-  line-height: 1.2;
-}
-
-#settingsPanelVoiceWake.voice-page-v2 .voice-subtab-btn .voice-subtab-hint {
-  grid-column: 2;
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--on-surface-muted);
-  margin-top: 2px;
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#settingsPanelVoiceWake.voice-page-v2 .voice-subtab-btn.is-active .voice-subtab-hint {
-  color: var(--primary-strong);
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-recognize-layout {
@@ -348,8 +460,8 @@
   text-decoration: underline;
 }
 
-#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step .flow-step-card-head {
-  display: none;
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step .voice-step-card-head {
+  display: grid;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details > summary,
@@ -462,12 +574,20 @@
   line-height: 1.45;
 }
 
+@media (max-width: 1040px) {
+  #settingsPanelVoiceWake.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  #settingsPanelVoiceWake.voice-page-v2 .keys-workflow-arrow {
+    display: none;
+  }
+}
+
 @media (max-width: 960px) {
   #settingsPanelVoiceWake.voice-page-v2 .voice-page-layout {
     grid-template-columns: 1fr;
-  }
-  #settingsPanelVoiceWake.voice-page-v2 .voice-page-aside {
-    position: static;
   }
 }
 

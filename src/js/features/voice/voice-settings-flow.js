@@ -59,6 +59,7 @@
       header.renderSaveAction(vm);
       header.renderAppScope(vm);
     }
+    if(global.OneToneVoiceSchemesUi) global.OneToneVoiceSchemesUi.render(vm);
     if(global.OneToneVoiceStepRecognize) global.OneToneVoiceStepRecognize.render(vm);
     if(global.OneToneVoiceStepWake) global.OneToneVoiceStepWake.render(vm);
     if(global.OneToneVoiceStepSend) global.OneToneVoiceStepSend.render(vm);

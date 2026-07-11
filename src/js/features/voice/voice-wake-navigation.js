@@ -15,7 +15,8 @@
 
   function ensureWakeStep(){
     if(global.OneToneVoicePageState){
-      global.OneToneVoicePageState.setStep('wake');
+      var cur=global.OneToneVoicePageState.getStep();
+      if(cur!=='wake') global.OneToneVoicePageState.setStep('wake');
     }
   }
 

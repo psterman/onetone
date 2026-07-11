@@ -136,6 +136,29 @@
     return resolveSendLabel(vm);
   }
 
+  function isLiveStripLayout(){
+    return !!$('voiceLiveMicRow');
+  }
+
+  var LIVE_STRIP_PROFILE={
+    labels:{
+      primary:'voiceFbLblSend',
+      secondary:'voiceFbLblDelay',
+      tertiary:'voiceFbLblCommitKey',
+      quaternary:'voiceFbLblEngine'
+    },
+    values:function(vm){
+      return {
+        primary:resolveSendLabel(vm),
+        secondary:resolveDelayLabel(vm),
+        tertiary:resolveCommitKeyLabel(vm),
+        quaternary:resolveEngineLabel(vm)
+      };
+    },
+    transcriptKey:'voiceFbTranscriptSend',
+    idleKey:'voiceFbTranscriptSendIdle'
+  };
+
   var STEP_PROFILES={
     wake:{
       labels:{primary:'voiceFbLblTargetPhrase',secondary:'voiceFbLblMic',tertiary:'voiceFbLblWakeMatch',quaternary:'voiceFbLblEngine'},
@@ -145,7 +168,8 @@
         tertiary:resolveWakeMatch(vm),
         quaternary:resolveEngineLabel(vm)
       }; },
-      transcriptKey:'voiceFbTranscriptWake'
+      transcriptKey:'voiceFbTranscriptWake',
+      idleKey:'voiceFbTranscriptIdle'
     },
     recognize:{
       labels:{primary:'voiceFbLblEngine',secondary:'voiceFbLblModel',tertiary:'voiceFbLblConfidence',quaternary:'voiceFbLblUsage'},
@@ -155,7 +179,8 @@
         tertiary:resolveConfidence(vm),
         quaternary:resolveUsage(vm)
       }; },
-      transcriptKey:'voiceFbTranscriptRecognize'
+      transcriptKey:'voiceFbTranscriptRecognize',
+      idleKey:'voiceFbTranscriptRecognizeIdle'
     },
     send:{
       labels:{primary:'voiceFbLblSend',secondary:'voiceFbLblDelay',tertiary:'voiceFbLblCommitKey',quaternary:'voiceFbLblSendStatus'},
@@ -165,14 +190,20 @@
         tertiary:resolveCommitKeyLabel(vm),
         quaternary:resolveSendStatus(vm)
       }; },
-      transcriptKey:'voiceFbTranscriptSend'
+      transcriptKey:'voiceFbTranscriptSend',
+      idleKey:'voiceFbTranscriptSendIdle'
     }
   };
+
+  function profileForStep(step){
+    if(isLiveStripLayout()) return LIVE_STRIP_PROFILE;
+    return STEP_PROFILES[currentStep(step)]||STEP_PROFILES.wake;
+  }
 
   function applyStepProfile(vm,step){
     step=currentStep(step);
     cachedStep=step;
-    var profile=STEP_PROFILES[step]||STEP_PROFILES.wake;
+    var profile=profileForStep(step);
     var slots=['primary','secondary','tertiary','quaternary'];
     slots.forEach(function(slot){
       setSlotLabel(slot,profile.labels[slot]);
@@ -189,10 +220,9 @@
     if(vm.loading){
       return {text:t('homeLiveLoading'),cls:'is-loading'};
     }
-    step=currentStep(step);
     var res=wakeEngineRes(vm);
     var end=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().end||{}:{};
-    if(step==='send'&&end&&end.state==='dictating'){
+    if(end&&end.state==='dictating'){
       return {text:t('voiceFbStatusDictating'),cls:'is-live'};
     }
     if(res&&res.enabled&&(res.state==='listening'||res.state==='starting')){
@@ -210,7 +240,8 @@
     var wakeApi=global.OneToneVoiceWake;
     var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
     var res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
-    var idleKey=step==='send'?'voiceFbTranscriptSendIdle':(step==='recognize'?'voiceFbTranscriptRecognizeIdle':'voiceFbTranscriptIdle');
+    var profile=profileForStep(step);
+    var idleKey=profile.idleKey||'voiceFbTranscriptIdle';
     if(!res) return {text:'',partial:false,placeholder:t(idleKey)};
     var finalText=String(res.lastFinal||'').trim();
     var partial=String(res.lastPartial||'').trim();
@@ -246,6 +277,12 @@
   }
 
   function updateLiveSlotValues(vm,step){
+    if(isLiveStripLayout()){
+      var vals=LIVE_STRIP_PROFILE.values(vm);
+      setSlotValue('primary',vals.primary);
+      setSlotValue('secondary',vals.secondary);
+      return;
+    }
     step=currentStep(step);
     if(step==='wake'){
       setSlotValue('tertiary',resolveWakeMatch(vm));

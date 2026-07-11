@@ -4,26 +4,53 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   var STEPS=['wake','recognize','send'];
 
+  function flowRoot(){
+    return $('voiceSettingsFlow');
+  }
+
+  function stepCard(step){
+    var root=flowRoot();
+    if(!root) return null;
+    return root.querySelector('[data-voice-subpage="'+step+'"]');
+  }
+
   function syncActive(step){
-    var bar=$('voiceSubtabBar');
-    if(!bar) return;
-    bar.querySelectorAll('[data-voice-subpage]').forEach(function(btn){
-      var page=btn.getAttribute('data-voice-subpage');
+    STEPS.forEach(function(page){
+      var card=stepCard(page);
+      if(!card) return;
       var on=page===step;
-      btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
+      card.classList.toggle('is-active',on);
+      card.setAttribute('aria-expanded',on?'true':'false');
+      var head=card.querySelector('.voice-step-card-head');
+      if(head) head.setAttribute('aria-selected',on?'true':'false');
     });
   }
 
   function bind(){
-    var bar=$('voiceSubtabBar');
-    if(!bar||bar.dataset.voiceNavBound==='1') return;
-    bar.dataset.voiceNavBound='1';
-    bar.addEventListener('click',function(e){
-      var btn=e.target.closest&&e.target.closest('[data-voice-subpage]');
-      if(!btn) return;
+    var flow=flowRoot();
+    if(!flow||flow.dataset.voiceNavBound==='1') return;
+    flow.dataset.voiceNavBound='1';
+    flow.addEventListener('click',function(e){
+      if(e.target.closest('button,input,select,textarea,a,summary,details,[role="switch"],.voice-sapi-preset,.voice-segment-btn,.keys-trigger-mode-seg,.voice-recognize-source-btn,.home-mini-toggle,.mic-device-card,.keys-summary-btn,.control-btn,.voice-fb-action-btn,.voice-mic-change-btn')){
+        return;
+      }
+      var head=e.target.closest&&e.target.closest('.voice-step-card-head');
+      var card=head?head.closest('[data-voice-subpage]'):(e.target.closest&&e.target.closest('[data-voice-subpage]'));
+      if(!card||card.classList.contains('is-active-step')) return;
       e.preventDefault();
-      var page=btn.getAttribute('data-voice-subpage');
+      var page=card.getAttribute('data-voice-subpage');
+      if(STEPS.indexOf(page)>=0&&global.OneToneVoicePageState){
+        global.OneToneVoicePageState.setStep(page);
+      }
+    });
+    flow.addEventListener('keydown',function(e){
+      if(e.key!=='Enter'&&e.key!==' ') return;
+      var head=e.target.closest&&e.target.closest('.voice-step-card-head');
+      if(!head) return;
+      var card=head.closest('[data-voice-subpage]');
+      if(!card||card.classList.contains('is-active-step')) return;
+      e.preventDefault();
+      var page=card.getAttribute('data-voice-subpage');
       if(STEPS.indexOf(page)>=0&&global.OneToneVoicePageState){
         global.OneToneVoicePageState.setStep(page);
       }
