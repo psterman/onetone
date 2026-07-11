@@ -419,12 +419,6 @@
                     <span id="settingsNavVoiceWakeLabel">语音</span>
                   </button>
                 </div>
-                <div class="settings-nav-group" id="settingsNavModelsGroup" hidden aria-hidden="true">
-                  <button type="button" class="settings-nav-item" data-panel="models" id="settingsNavModels">
-                    <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>
-                    <span id="settingsNavModelsLabel">识别资源</span>
-                  </button>
-                </div>
                 <div class="settings-nav-group" id="settingsNavScenesGroup">
                 <button type="button" class="settings-nav-item" data-panel="scenes" id="settingsNavScenes">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M10 7.5h4M6.5 11v4M17.5 11v4M10 17.5h4"/><path d="M16 15h5v5h-5z"/></svg>
@@ -1214,42 +1208,11 @@
                 <div class="voice-scheme-summary-main">
                   <div class="voice-scheme-summary-title-row">
                     <span class="voice-scheme-summary-name" id="voiceSummaryName">默认 · 系统输入法</span>
-                    <span class="voice-scheme-summary-pill is-on" id="voiceSummaryStatus">已激活</span>
-                  </div>
-                  <div class="voice-scheme-summary-meta">
-                    <span class="voice-scheme-summary-item"><span class="voice-scheme-summary-lbl" id="voiceSummaryInputLbl">输入</span><span class="voice-scheme-summary-val" id="voiceSummaryInput">默认麦克风</span></span>
-                    <span class="voice-scheme-summary-divider" aria-hidden="true"></span>
-                    <span class="voice-scheme-summary-item"><span class="voice-scheme-summary-lbl" id="voiceSummaryEngineLbl">识别</span><span class="voice-scheme-summary-val" id="voiceSummaryEngine">系统输入法</span></span>
-                    <span class="voice-scheme-summary-divider" aria-hidden="true"></span>
-                    <span class="voice-scheme-summary-item"><span class="voice-scheme-summary-lbl" id="voiceSummaryOutputLbl">输出</span><span class="voice-scheme-summary-val" id="voiceSummaryOutput">确认后发送</span></span>
-                    <span class="voice-scheme-summary-divider" aria-hidden="true"></span>
-                    <span class="voice-scheme-summary-item"><span class="voice-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span><span class="voice-scheme-summary-val" id="voiceSummaryScope">不限应用</span></span>
                   </div>
                 </div>
                 <div class="voice-scheme-summary-actions">
                   <button type="button" class="keys-summary-btn is-primary" id="btnVoiceSaveHabit">保存</button>
                   <button type="button" class="toggle-switch keys-summary-enable" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
-                  <button type="button" class="flow-status-link sr-only" id="btnVoiceGoRuntime">查看实时状态</button>
-                  <button type="button" class="flow-status-pill is-action sr-only" id="btnVoiceSwitchHabit" hidden aria-hidden="true" tabindex="-1">切换习惯 ▾</button>
-                </div>
-              </div>
-              <div class="flow-status-bar sr-only" id="voiceFlowStatusBar" aria-hidden="true">
-                <span class="flow-status-pill is-on" id="voiceStatusEngine">—</span>
-                <span class="flow-status-divider" aria-hidden="true"></span>
-                <span class="flow-status-pill is-on" id="voiceStatusWake">—</span>
-                <span class="flow-status-divider" aria-hidden="true"></span>
-                <span class="flow-status-pill is-on" id="voiceStatusFinish">—</span>
-              </div>
-              <div class="voice-page-head-context" id="voiceScopeBar" hidden aria-hidden="true">
-                <div class="voice-scope-bar-row">
-                  <div class="voice-scope-bar-editing">
-                    <span class="voice-scope-bar-prefix" id="voiceScopePrefix">正在编辑：</span>
-                    <strong class="voice-scope-bar-habit" id="voiceScopeHabitName">—</strong>
-                  </div>
-                </div>
-                <p class="voice-scope-bar-hint" id="voiceScopeHint">修改这里会影响此习惯的语音唤醒、结束与发送规则</p>
-                <div class="voice-status-chips" id="voiceStatusChips" hidden>
-                  <span class="voice-status-chip" hidden>—</span>
                 </div>
               </div>
               <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
@@ -1274,28 +1237,23 @@
           </nav>
           <div class="voice-page-layout">
             <div class="voice-page-main">
-              <div class="voice-workflow-pipeline keys-workflow-pipeline" id="voiceWorkflowPipeline">
-              <section class="voice-step-stack voice-settings-flow voice-workflow-grid keys-workflow-grid" id="voiceSettingsFlow" aria-label="语音流程">
+              <section class="voice-step-stack voice-settings-flow" id="voiceSettingsFlow" aria-label="语音流程">
                   <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col" id="voiceSettingsWakeCard" data-voice-subpage="wake">
-                    <div class="flow-step-card-head keys-step-card-head keys-workflow-col-head">
-                      <span class="keys-workflow-col-tag" id="voiceColInputLbl">唤醒</span>
-                      <div class="keys-workflow-col-subhead">
-                        <span class="voice-settings-card-lbl" id="voiceSettingsWakeLbl">当前唤醒词</span>
-                        <span class="flow-step-status" id="voiceStep1Status">已启用</span>
-                      </div>
-                    </div>
                     <div class="flow-step-body keys-step-body">
                     <div class="voice-wake-phrase-display" id="voiceWakePhraseDisplay">
                       <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
                       <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
                     </div>
                     <p class="voice-wake-display-hint" id="voiceWakeDisplayHint">说出以上文字，开始语音输入</p>
-                    <button type="button" class="voice-mic-status-line" id="voiceMicStatusLine">
-                      <span class="voice-mic-status-dot" id="voiceMicStatusDot" aria-hidden="true"></span>
-                      <span id="voiceMicStatusName">默认麦克风</span>
-                      <span aria-hidden="true">·</span>
-                      <span id="voiceMicStatusState">正常</span>
-                    </button>
+                    <div class="voice-mic-status-row" id="voiceMicStatusRow">
+                      <div class="voice-mic-status-readonly voice-status-readonly" id="voiceMicStatusReadonly">
+                        <span class="voice-mic-status-dot" id="voiceMicStatusDot" aria-hidden="true"></span>
+                        <span id="voiceMicStatusName">默认麦克风</span>
+                        <span aria-hidden="true">·</span>
+                        <span id="voiceMicStatusState">正常</span>
+                      </div>
+                      <button type="button" class="voice-mic-change-btn" id="btnVoiceMicChange">更换设备</button>
+                    </div>
                     <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
                       <span id="voiceSettingsMicName">默认麦克风</span>
                     </button>
@@ -1304,8 +1262,6 @@
                     <details class="voice-wake-edit-details" id="voiceWakeEditDetails">
                       <summary id="voiceWakeEditSummary">编辑唤醒词与预设</summary>
                     <p class="voice-edit-section-title" id="voiceEditSectionPresets">预设唤醒词</p>
-                    <details class="flow-preset-more" id="voiceWakePresetMore">
-                      <summary id="voiceWakePresetMoreSummary">更多预设</summary>
                     <div class="voice-settings-wake-host" id="voiceSettingsWakeHost">
                       <div class="voice-sapi-preset-grid" id="voiceSapiPresets">
                         <button type="button" class="voice-sapi-preset" data-phrase="开始输入">开始输入</button>
@@ -1333,7 +1289,6 @@
                         </div>
                       </div>
                     </div>
-                    </details>
                     <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言">
                       <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
                       <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
@@ -1353,22 +1308,6 @@
                       <p class="voice-phrase-custom-hint" id="voiceWakeCustomHint">可添加预设以外的短语；引擎按文字匹配，不是录声音</p>
                     </div>
                     <p class="voice-edit-section-title" id="voiceEditSectionMic">麦克风</p>
-                    <div class="voice-mic-live voice-phrases-live" id="voiceMicLive">
-                      <div class="voice-mic-live-head">
-                        <span class="chip" id="voiceMicLiveState">—</span>
-                        <span class="mic-level-bars" id="voiceMicLiveBars" aria-hidden="true"></span>
-                      </div>
-                      <div class="voice-mic-live-progress" id="voiceMicLiveProgress" hidden>
-                        <div class="voice-mic-live-progress-track">
-                          <div class="voice-mic-live-progress-fill" id="voiceMicLiveProgressFill"></div>
-                        </div>
-                      </div>
-                      <div class="voice-live-status" id="voiceMicLiveStatus">
-                        <p class="voice-live-primary" id="voiceMicLivePrimary">—</p>
-                        <p id="voiceMicLiveSecondary" hidden>—</p>
-                        <p id="voiceMicLiveExtra" hidden></p>
-                      </div>
-                    </div>
                     <details class="voice-settings-mic-details flow-preset-more" id="voiceMicPickerDetails">
                       <summary id="voiceMicPickerSummary">麦克风与设备</summary>
                       <div class="voice-side-mic-expand-body">
@@ -1398,37 +1337,9 @@
                       </div>
                     </section>
                     </details>
-                    <div class="voice-wake-stash" id="voiceWakeStash" hidden aria-hidden="true">
-                      <div class="voice-trigger-mode-active" id="voiceInputTriggerActive">
-                        <span class="voice-trigger-mode-badge is-on" id="voiceTriggerModeActiveLbl">按键触发</span>
-                        <span class="voice-trigger-mode-hint" id="voiceTriggerModeHintKey">按住快捷键开始</span>
-                      </div>
-                      <div class="voice-trigger-mode-soon" id="voiceTriggerModeSoon" role="note">
-                        <span class="voice-trigger-mode-soon-title" id="voiceTriggerModeSoonTitle">更多触发方式开发中</span>
-                        <span class="voice-trigger-mode-soon-copy" id="voiceTriggerModeSoonCopy">点击录音、持续监听尚未开放，当前仅支持按键触发。</span>
-                      </div>
-                      <div class="voice-input-status-chips" id="voiceInputStatusChips"></div>
-                      <div class="voice-mode-meta" id="voiceModeMeta">
-                        <span class="voice-mode-dot" id="voiceModeMetaDot" aria-hidden="true"></span>
-                        <span class="voice-mode-meta-label" id="voiceModeMetaLabel">当前：系统快速识别</span>
-                        <button type="button" class="voice-mode-meta-link" id="btnVoiceModeMetaDetails">查看识别细项</button>
-                      </div>
-                      <p class="voice-mode-meta-hint" id="voiceModeMetaHint">由识别列「识别来源」切换</p>
-                      <details class="flow-preset-more voice-flow-advanced" id="voiceInputAdvanced">
-                        <summary id="voiceInputAdvancedSummary">唤醒词与高级设置</summary>
-                      </details>
-                    </div>
                     </div>
                   </div>
-                  <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col" id="voiceSettingsEndPhraseCard" data-voice-subpage="recognize">
-                    <div class="flow-step-card-head keys-step-card-head keys-workflow-col-head">
-                      <span class="keys-workflow-col-tag" id="voiceColRecognizeLbl">识别</span>
-                      <div class="keys-workflow-col-subhead">
-                        <span class="voice-settings-card-lbl" id="voiceSettingsEndPhraseLbl">把语音转文字</span>
-                        <span class="flow-step-status" id="voiceStep2Status">已启用</span>
-                      </div>
-                    </div>
                     <div class="flow-step-body keys-step-body">
                     <div class="voice-recognize-layout">
                     <section class="voice-recognize-block">
@@ -1436,7 +1347,6 @@
                     <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
                       <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统语音输入</button>
                       <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地离线识别</button>
-                      <span class="voice-recognize-source-soon" id="voiceRecognizeSourceCustom" title="自定义识别引擎尚未开放">自定义 · 即将开放</span>
                     </div>
                     <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
                     <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
@@ -1456,7 +1366,6 @@
                         <span class="voice-end-rules-inline" id="voiceEndRulesSummary">当前结束方式：结束词 + 静音判断</span>
                       </summary>
                     <div class="voice-end-rules-body" id="voiceEndRulesBody">
-                    <p class="voice-recognize-section-note sr-only" id="voiceEndRulesSummaryDetail">当前结束方式：结束词 + 静音判断</p>
                     <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
                       <p class="voice-end-detect-lite-body" id="voiceEndDetectLiteBody">系统快速识别会根据停顿自动判断说话结束。需要自定义结束词，请切换到本地离线识别。</p>
                       <button type="button" class="voice-mode-meta-link" id="btnVoiceEndDetectSwitchVosk">切换到本地离线识别</button>
@@ -1502,16 +1411,21 @@
                     </div>
                     </div>
                     </details>
+                    <details class="voice-recognize-resources-details" id="voiceRecognizeResourcesDetails">
+                      <summary id="voiceRecognizeResourcesSummary">模型资源</summary>
                     <section class="voice-recognize-block voice-recognize-resources" id="voiceRecognizeResources">
-                    <p class="voice-edit-section-title" id="voiceEditSectionModelRes">模型资源</p>
                     <div class="voice-resource-panel" id="voiceResourceVoskPanel">
                       <div class="voice-resource-panel-head">
                         <span class="voice-resource-panel-name">本地离线模型</span>
-                        <span class="keys-scheme-summary-pill" id="modelsVoskStatus">—</span>
+                        <span class="voice-status-badge" id="modelsVoskStatus">—</span>
                       </div>
                       <div class="voice-resource-panel-rows">
                         <div class="voice-resource-row"><span>中文模型</span><strong id="modelsVoskCn">small-cn</strong></div>
                         <div class="voice-resource-row"><span>英文模型</span><strong id="modelsVoskEn">small-en-us</strong></div>
+                      </div>
+                      <div id="voiceVoskDownloadProgress" hidden>
+                        <div class="voice-vosk-download-bar"><div id="voiceVoskDownloadFill"></div></div>
+                        <p id="voiceVoskDownloadStatus"></p>
                       </div>
                       <div class="voice-resource-panel-actions">
                         <button type="button" class="keys-summary-btn" id="btnModelsVoskDownload">一键下载</button>
@@ -1522,7 +1436,7 @@
                     <div class="voice-resource-panel" id="voiceResourceSapiPanel">
                       <div class="voice-resource-panel-head">
                         <span class="voice-resource-panel-name">系统语音识别</span>
-                        <span class="keys-scheme-summary-pill" id="modelsSapiStatus">—</span>
+                        <span class="voice-status-badge" id="modelsSapiStatus">—</span>
                       </div>
                       <p class="mic-desc" id="modelsSapiDesc">使用系统自带语音识别，适合低资源待机和快速唤醒。</p>
                       <div class="voice-resource-panel-actions">
@@ -1537,6 +1451,7 @@
                       </div>
                     </div>
                     </section>
+                    </details>
                     <details class="voice-recognize-engine-details" id="voiceRecognizeEngineDetails">
                       <summary id="voiceRecognizeEngineSummary">引擎细项</summary>
                       <span class="sr-only" id="voiceModeTitle">识别细项</span>
@@ -1578,78 +1493,10 @@
                         </div>
                       </div>
                     </details>
-                    <div class="voice-recognize-legacy-stash" hidden aria-hidden="true">
-                      <details id="voiceRecognizeAdvancedDetails"></details>
-                      <nav id="voiceRecognizeNav"></nav>
-                      <section id="voiceRecognizeMethodSection"></section>
-                      <section id="voiceEndRulesSection"></section>
-                      <section id="voiceAdvancedSection"></section>
-                      <p id="voiceRecognizeCloudHint"></p>
-                      <p id="voiceSettingsEndPhraseHint"></p>
-                      <p id="voiceRecognizeAdvancedSummary"></p>
-                      <p id="voiceRecognizeMethodTitle"></p>
-                      <p id="voiceRecognizeMethodNote"></p>
-                      <p id="voiceAdvancedTitle"></p>
-                      <p id="voiceAdvancedNote"></p>
-                      <p id="voiceEditSectionLangModel"></p>
-                      <p id="voiceModeDesc"></p>
-                      <p id="voiceSapiTitle"></p>
-                      <p id="voiceSapiLabel"></p>
-                      <p id="voiceSapiDesc"></p>
-                      <p id="voiceVoskTitle"></p>
-                      <p id="voiceVoskLabel"></p>
-                      <p id="voiceModeLiteTitle"></p>
-                      <p id="voiceModeLiteEngine"></p>
-                      <p id="voiceModeLiteBadge"></p>
-                      <p id="voiceModeLiteDesc"></p>
-                      <p id="voiceModeLiteMetric"></p>
-                      <p id="voiceModeLitePoint1"></p>
-                      <p id="voiceModeLitePoint2"></p>
-                      <p id="voiceModeLitePoint3"></p>
-                      <p id="voiceModeProTitle"></p>
-                      <p id="voiceModeProEngine"></p>
-                      <p id="voiceModeProBadge"></p>
-                      <p id="voiceModeProDesc"></p>
-                      <p id="voiceModeProMetric"></p>
-                      <p id="voiceModeProPoint1"></p>
-                      <p id="voiceModeProPoint2"></p>
-                      <p id="voiceModeProPoint3"></p>
-                      <div id="voiceSapiHeardLive"><p id="voiceSapiHeardPrimary"></p><p id="voiceSapiHeardExtra"></p></div>
-                      <div id="voiceVoskMissingPanel"><p id="voiceVoskMissingBody"></p>
-                        <div id="voiceVoskDownloadProgress"><div class="voice-vosk-download-bar"><div id="voiceVoskDownloadFill"></div></div><p id="voiceVoskDownloadStatus"></p></div>
-                      </div>
-                      <div id="voiceSideEngineActions">
-                        <button type="button" id="btnVoskDownloadGuide">一键下载</button>
-                        <button type="button" id="btnVoskUseLite">先用轻量模式</button>
-                        <button type="button" id="btnVoskOpenResources">打开资源目录</button>
-                      </div>
-                      <p id="voiceModeCurrent"></p>
-                      <p id="voiceModeHint"></p>
-                      <span id="voiceRecognizePrimaryName"></span>
-                      <span id="voiceRecognizePrimarySub"></span>
-                      <span id="voiceRecognizePrimaryTag"></span>
-                      <button type="button" id="btnVoiceRecognizeChange"></button>
-                      <button type="button" id="voiceRecognizeAltCard"></button>
-                      <span id="voiceRecognizeAltName"></span>
-                      <span id="voiceRecognizeAltSub"></span>
-                      <span id="voiceRecognizeAltTag"></span>
-                      <span id="modelsCurrentEngine"></span>
-                      <p id="modelsCurrentDetail"></p>
-                      <button type="button" id="btnModelsOpenVoice"></button>
-                      <button type="button" id="btnModelsUseSapi"></button>
-                    </div>
                     </div>
                     </div>
                   </div>
-                  <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
                   <div class="voice-flow-step voice-step-card voice-settings-card keys-workflow-col" id="voiceSettingsAutoCard" data-voice-subpage="send">
-                    <div class="flow-step-card-head keys-step-card-head keys-workflow-col-head">
-                      <span class="keys-workflow-col-tag" id="voiceColOutputLbl">发送</span>
-                      <div class="keys-workflow-col-subhead">
-                        <span class="voice-settings-card-lbl" id="voiceSettingsAutoLbl">说完后怎么处理</span>
-                        <span class="flow-step-status" id="voiceStep3Status">已启用</span>
-                      </div>
-                    </div>
                     <div class="flow-step-body keys-step-body">
                   <div class="voice-output-summon-block" id="voiceOutputSummonBlock" hidden>
                     <p class="voice-output-summon-lbl" id="voiceOutputSummonLbl">应用召唤短语</p>
@@ -1681,28 +1528,11 @@
                       </div>
                     </div>
                   </div>
-                  <details class="voice-output-more" id="voiceOutputMore">
-                    <summary id="voiceOutputMoreSummary">更多发送设置</summary>
-                  <div class="voice-output-info-box sr-only" id="voiceOutputInfoBox" hidden>自动发送相关设置仅在自动模式下显示</div>
-                  <div class="voice-settings-auto-controls voice-finish-block" id="voiceSettingsFinishBlock">
-                    <div class="voice-finish-send-block" id="voiceSettingsSendBlock">
-                      <div class="setting-row voice-finish-auto-row sr-only" id="voiceEndAutoSendRow" aria-hidden="true">
-                        <div class="setting-row-main">
-                          <span class="setting-row-text" id="voiceEndAutoSendLabel">语音结束后自动发送</span>
-                        </div>
-                        <button type="button" class="toggle-switch" id="btnVoiceEndAutoSend" role="switch" aria-checked="false" aria-labelledby="voiceEndAutoSendLabel"></button>
-                      </div>
-                      <div class="voice-finish-send-details" id="voiceSettingsSendDetails">
-                        <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc"></p>
-                      </div>
-                      <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
-                    </div>
-                  </div>
-                  </details>
+                  <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc" hidden></p>
+                  <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
                     </div>
                   </div>
               </section>
-              </div>
             </div>
             <aside class="voice-page-aside">
               <section class="voice-feedback-rail" id="voiceFeedbackRail" aria-label="实时交互预览">
@@ -1720,7 +1550,7 @@
                   <span class="voice-fb-transcript-lbl" id="voiceFbTranscriptLbl">TEXT OUTPUT [REAL-TIME]</span>
                   <div id="voiceFbTranscript" class="is-placeholder" role="log" aria-live="polite" aria-atomic="false">等待唤醒词或长按说话…</div>
                 </div>
-                <div class="voice-fb-metrics" role="group" aria-label="语音链路指标">
+                <div class="voice-fb-metrics" id="voiceFbMetrics" role="group" aria-label="语音链路指标">
                   <div class="voice-fb-metric">
                     <span class="voice-fb-metric-lbl" id="voiceFbLblLatency">Latency</span>
                     <span class="voice-fb-metric-val" id="voiceFbMetricLatency">—</span>
@@ -1738,20 +1568,11 @@
                     <span class="voice-fb-metric-val" id="voiceFbMetricSend">—</span>
                   </div>
                 </div>
+                <span class="sr-only" id="voiceModeLiteMetric" aria-hidden="true"></span>
+                <span class="sr-only" id="voiceModeProMetric" aria-hidden="true"></span>
                 <div id="voiceFbActions">
                   <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateWake">模拟唤醒</button>
                   <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateSpeak">模拟说话</button>
-                </div>
-              </section>
-              <section class="voice-side-card voice-cloud-placeholder drawer-section" id="voiceCloudPlaceholderSection" aria-labelledby="voiceCloudPlaceholderTitle" hidden>
-                <div class="mini-title" id="voiceCloudPlaceholderTitle" data-i18n="homeWbCloudEnhanceTitle">云端增强（即将推出）</div>
-                <p class="mic-desc" id="voiceCloudPlaceholderDesc" data-i18n="homeWbCloudEnhanceDesc">连接云端输入法与大模型后，可在本地识别之上获得增强能力。</p>
-                <div class="wb-diag-row"><span data-i18n="homeWbCloudIme">云端输入法</span><strong id="voiceCloudImeStatus" data-i18n="homeWbCloudNotConnected">未连接</strong></div>
-                <div class="wb-diag-row"><span data-i18n="homeWbCloudModel">大模型</span><strong id="voiceCloudModelStatus" data-i18n="homeWbCloudModelUnset">未选择</strong></div>
-                <div class="wb-diag-row"><span data-i18n="homeWbCloudPrivacy">隐私模式</span><strong id="voiceCloudPrivacyStatus" data-i18n="homeWbPrivacyLocal">本地优先</strong></div>
-                <div class="wb-cloud-actions">
-                  <button type="button" id="voiceCloudConnectBtn" data-i18n="homeWbCloudConnect" disabled>连接</button>
-                  <button type="button" id="voiceCloudConfigureBtn" data-i18n="homeWbCloudConfigure" disabled>配置</button>
                 </div>
               </section>
             </aside>
@@ -1763,10 +1584,6 @@
               </div>
             </div>
           </div>
-        </section>
-        <section class="settings-panel drawer-section voice-models-page" id="settingsPanelModels" hidden aria-hidden="true">
-          <p class="sr-only" id="settingsPanelModelsTitle">识别资源</p>
-          <p class="sr-only" id="settingsPanelModelsDesc">已并入语音识别页</p>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
@@ -2546,6 +2363,7 @@
   <script src="js/features/voice/voice-phrase-custom.js"></script>
   <script src="js/features/voice/voice-phrase-listen.js"></script>
   <script src="js/features/voice/voice-engine-readiness.js"></script>
+  <script src="js/features/voice/voice-wake-presets.js"></script>
   <script src="js/features/voice/voice-wake.js"></script>
   <script src="js/features/voice/voice-home-summary.js"></script>
   <script src="js/features/input-flow-summary.js"></script>

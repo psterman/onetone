@@ -14,11 +14,27 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',models:'settingsPanelModels',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
 
   };
+
+  function resolveSettingsPanelRequest(panel,opts){
+    opts=opts||{};
+    if(panel==='voiceEnd') panel='voiceWake';
+    if(panel==='models'){
+      return {
+        panel:'voiceWake',
+        opts:Object.assign({},opts,{
+          voiceSubpage:opts.voiceSubpage||'recognize',
+          scrollTarget:opts.scrollTarget||'voiceRecognizeResourcesDetails'
+        })
+      };
+    }
+    if(panel==='habits') return {redirectHabits:true};
+    return {panel:panel,opts:opts};
+  }
 
   var lastPanel='basic';
 
@@ -79,7 +95,7 @@
 
 
   function openVoiceAdvancedSection(){
-    const el=$('voiceRecognizeEngineDetails')||$('voiceRecognizeAdvancedDetails');
+    const el=$('voiceRecognizeEngineDetails');
     if(el&&el.tagName==='DETAILS') el.open=true;
     if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
       global.OneToneVoicePageState.setStep('recognize');
@@ -229,8 +245,6 @@
 
     }
 
-    const expanded=global.OneToneVoiceWake.getExpandedMode();
-
     const map={
 
       trigger:['habitKeyMappingSection','btnRecordTrigger','keySchemeEditTrigger'],
@@ -245,7 +259,9 @@
 
       engine:['voiceRecognizeEngineDetails','voiceModePanel'],
 
-      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceRecognizeEngineDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
+      wakePhrases:['voiceSettingsWakeCard','voiceWakeEditDetails'],
+
+      modelResources:['voiceRecognizeResourcesDetails','voiceRecognizeResources'],
 
       endPhrases:['voiceRecognizeEndDetails','voiceEndPresetsWrap'],
 
@@ -455,20 +471,13 @@
 
   function setSettingsPanel(panel,opts){
     opts=opts||{};
-
-    if(panel==='voiceEnd') panel='voiceWake';
-
-    if(panel==='models'){
-      panel='voiceWake';
-      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
-    }
-
-    if(panel==='habits'){
+    var resolved=resolveSettingsPanelRequest(panel,opts);
+    if(resolved.redirectHabits){
       setSettingsPanel('scenes');
       return;
     }
-
-    panel=normalizePanel(panel);
+    panel=normalizePanel(resolved.panel);
+    opts=resolved.opts||{};
 
     const ids=PANEL_IDS;
 
@@ -553,6 +562,13 @@
       if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
         var nextSubpage=opts.voiceSubpage||'wake';
         global.OneToneVoiceSubpages.setPage(nextSubpage,{keepScroll:true});
+      }
+
+      if(opts.scrollTarget){
+        requestAnimationFrame(function(){
+          var target=$(opts.scrollTarget);
+          if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+        });
       }
 
     }

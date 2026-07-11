@@ -32,12 +32,22 @@
     if(btnVoiceSapiTest) btnVoiceSapiTest.onclick=hooks.testVoiceSapiSend;
     var btnVoiceSapiSetup=$('btnVoiceSapiSetup');
     if(btnVoiceSapiSetup) btnVoiceSapiSetup.onclick=hooks.openVoiceSapiSetup;
-    var voiceSapiPresets=$('voiceSapiPresets');
-    if(voiceSapiPresets){
-      voiceSapiPresets.onclick=function(e){
-        e.stopPropagation();
-        hooks.addVoiceSapiPreset(e);
-      };
+    if(global.OneToneVoiceWakePresets){
+      global.OneToneVoiceWakePresets.bindPresetClicks(function(e,btn){
+        var mode=btn.closest('#voiceSettingsVoskWakeWrap')?'vosk':'sapi';
+        if(mode==='vosk') hooks.addVoiceVoskPreset(e);
+        else hooks.addVoiceSapiPreset(e);
+      });
+    }else{
+      var voiceSapiPresets=$('voiceSapiPresets');
+      if(voiceSapiPresets){
+        voiceSapiPresets.onclick=function(e){
+          e.stopPropagation();
+          hooks.addVoiceSapiPreset(e);
+        };
+      }
+      var voiceVoskWakeWrap=$('voiceSettingsVoskWakeWrap');
+      if(voiceVoskWakeWrap) voiceVoskWakeWrap.onclick=hooks.addVoiceVoskPreset;
     }
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeVosk','vosk');
     var btnVoiceVoskTest=$('btnVoiceVoskTest');
@@ -65,12 +75,8 @@
         else if(hooks.changeVoiceVoskModelPreset) hooks.changeVoiceVoskModelPreset(preset);
       };
     }
-    var voiceVoskWakeWrap=$('voiceSettingsVoskWakeWrap');
-    if(voiceVoskWakeWrap) voiceVoskWakeWrap.onclick=hooks.addVoiceVoskPreset;
     var btnVoiceEnd=$('btnVoiceEnd');
     if(btnVoiceEnd) btnVoiceEnd.onclick=hooks.toggleVoiceEnd;
-    var btnVoiceEndAutoSend=$('btnVoiceEndAutoSend');
-    if(btnVoiceEndAutoSend) btnVoiceEndAutoSend.onclick=hooks.toggleVoiceEndAutoSend;
     var voiceEndPresetsWrap=$('voiceEndPresetsWrap');
     if(voiceEndPresetsWrap) voiceEndPresetsWrap.onclick=hooks.addVoiceEndPreset;
     var voiceEndDelayRange=$('voiceEndDelayRange');
@@ -117,7 +123,7 @@
       var map={
         input:['voiceRecognizeEngineDetails'],
         phrases:['voiceWakeEditDetails','voiceMicPickerDetails'],
-        finish:['voiceOutputMore','voiceRecognizeEndDetails']
+        finish:['voiceRecognizeEndDetails']
       };
       (map[mode]||[]).forEach(function(id){
         var el=$(id);
@@ -192,16 +198,13 @@
         var mode=btn.getAttribute('data-voice-output-mode')||'';
         var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
         if(eng==='sapi'||eng==='off'||mode==='manual') return;
-        var autoBtn=$('btnVoiceEndAutoSend');
-        var isAuto=autoBtn&&autoBtn.classList.contains('is-on');
-        if(mode==='auto'&&!isAuto&&hooks.toggleVoiceEndAutoSend) hooks.toggleVoiceEndAutoSend();
-        else if(mode==='confirm'&&isAuto&&hooks.toggleVoiceEndAutoSend) hooks.toggleVoiceEndAutoSend();
+        if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.setOutputMode){
+          global.OneToneVoiceEnd.setOutputMode(mode);
+        }
       });
     }
-    var btnVoiceSettingsMic=$('btnVoiceSettingsMic');
-    if(btnVoiceSettingsMic) btnVoiceSettingsMic.onclick=openVoiceMicPicker;
-    var voiceMicStatusLine=$('voiceMicStatusLine');
-    if(voiceMicStatusLine) voiceMicStatusLine.onclick=openVoiceMicPicker;
+    var btnVoiceMicChange=$('btnVoiceMicChange');
+    if(btnVoiceMicChange) btnVoiceMicChange.onclick=openVoiceMicPicker;
     var btnVoiceEndDetectSwitchVosk=$('btnVoiceEndDetectSwitchVosk');
     if(btnVoiceEndDetectSwitchVosk){
       btnVoiceEndDetectSwitchVosk.onclick=function(){
@@ -247,24 +250,16 @@
         if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
       };
     }
-    var btnVoiceSendHabitLink=$('btnVoiceSendHabitLink');
-    var sendBlock=$('voiceSettingsSendBlock');
-    if(sendBlock&&!sendBlock.dataset.habitLinkBound){
-      sendBlock.dataset.habitLinkBound='1';
-      sendBlock.addEventListener('click',function(e){
+    var habitNote=$('voiceSendHabitNote');
+    if(habitNote&&!habitNote.dataset.habitLinkBound){
+      habitNote.dataset.habitLinkBound='1';
+      habitNote.addEventListener('click',function(e){
         var link=e.target.closest&&e.target.closest('#btnVoiceSendHabitLink');
         if(!link) return;
         e.preventDefault();
         e.stopPropagation();
         if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
       });
-    }
-    if(btnVoiceSendHabitLink){
-      btnVoiceSendHabitLink.onclick=function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
-      };
     }
     var voiceOutputModeSegments=$('voiceOutputModeSegments');
     if(voiceOutputModeSegments) bindVoiceOutputSwitch(voiceOutputModeSegments);

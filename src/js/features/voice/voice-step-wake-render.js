@@ -24,13 +24,13 @@
     if(legacyName) legacyName.textContent=micName;
     if(stateEl) stateEl.textContent=vm.loading?t('homeLiveLoading'):(micOk?t('voiceMicStatusOk'):t('voiceTestChipMicWarn'));
     if(dot) dot.classList.toggle('is-warn',!vm.loading&&!micOk);
+    const changeBtn=$('btnVoiceMicChange');
+    if(changeBtn) changeBtn.textContent=t('voiceMicChangeBtn');
   }
 
   function renderCompactWake(vm){
-    const presetMore=$('voiceWakePresetMore');
     const zhEl=$('voiceWakeCompactZh');
     const enEl=$('voiceWakeCompactEn');
-    if(presetMore) presetMore.hidden=vm.loading||vm.mode==='off';
     if(vm.loading){
       if(zhEl) zhEl.textContent=t('homeLiveLoading');
       if(enEl) enEl.textContent='';

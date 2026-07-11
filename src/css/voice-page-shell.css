@@ -22,6 +22,55 @@
 #settingsPanelVoiceWake.voice-page-v2 .voice-workflow-pipeline {
   display: block !important;
   margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-scheme-summary {
+  padding: 8px 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 #voiceSettingsEndPhraseCard.voice-flow-step.keys-workflow-col {
+  border-color: var(--outline-variant);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+#settingsPanelVoiceWake .voice-status-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+#settingsPanelVoiceWake .voice-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--on-surface-muted);
+  border: 1px solid var(--outline-variant);
+  pointer-events: none;
+}
+
+#settingsPanelVoiceWake .voice-status-badge.is-on {
+  color: #2e7d4f;
+  background: rgba(46, 125, 79, 0.08);
+  border-color: rgba(46, 125, 79, 0.22);
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
@@ -122,12 +171,54 @@
   gap: 6px;
 }
 
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-resources-details,
 #settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details,
 #settingsPanelVoiceWake.voice-page-v2 .voice-recognize-engine-details {
   border: 1px solid var(--outline-variant);
   border-radius: 8px;
   background: var(--surface-soft);
   padding: 0 10px 10px;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-recognize-resources-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+  cursor: pointer;
+  list-style: none;
+}
+
+#settingsPanelVoiceWake .voice-mic-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+#settingsPanelVoiceWake .voice-mic-change-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--primary-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+#settingsPanelVoiceWake .voice-mic-change-btn:hover {
+  text-decoration: underline;
+}
+
+#settingsPanelVoiceWake.voice-page-v2 .voice-flow-step .flow-step-card-head {
+  display: none;
 }
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-recognize-end-details > summary,

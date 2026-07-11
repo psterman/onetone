@@ -390,12 +390,13 @@
   }
 
   function latencyText(){
-    var eng=global.OneToneHomeLive.voiceEngineOn();
-    var voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
-    var metricEl=$(voskOnly||eng==='vosk'?'voiceModeProMetric':'voiceModeLiteMetric');
-    var text=metricEl?String(metricEl.textContent||'').trim():'';
-    if(!text||text.indexOf('…')>=0||/reading/i.test(text)) return '—';
-    return text;
+    var usage=global.OneToneAppProcessUsage;
+    if(!usage||!usage.processUsageSummaryLine) return '—';
+    var snap=usage.snapshot&&usage.snapshot();
+    if(!snap||!snap.loaded) return '—';
+    var line=usage.processUsageSummaryLine();
+    if(!line||/loading|读取|…|\.\.\./i.test(line)) return '—';
+    return line;
   }
 
   function engineStatusLine(summary){

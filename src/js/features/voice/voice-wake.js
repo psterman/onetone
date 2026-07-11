@@ -594,7 +594,7 @@
   function settingsPanelNeedsVoicePoll(){
     if(!ui().drawerOpen) return false;
     const p=ui().settingsPanel;
-    return p==='voiceWake'||p==='models'||p==='debug';
+    return p==='voiceWake'||p==='debug';
   }
 
   function voiceStatusPollNeeded(){
@@ -617,7 +617,7 @@
     if(hooks().sessionActiveState(endSnap.state||'idle')) return 500;
     if(!ui().drawerOpen) return 2000;
     if(ui().drawerOpen&&!settingsPanelNeedsVoicePoll()) return 2000;
-    if(ui().drawerOpen&&(ui().settingsPanel==='debug'||ui().settingsPanel==='voiceWake'||ui().settingsPanel==='models')) return 1500;
+    if(ui().drawerOpen&&(ui().settingsPanel==='debug'||ui().settingsPanel==='voiceWake')) return 1500;
     if(!ui().drawerOpen&&(voiceWakeEnabledInConfig()||global.OneToneVoiceEnd.enabledInConfig())) return 2000;
     if(runtime().paused) return 1500;
     return 1500;
@@ -944,14 +944,21 @@
     const selected=normalizePhraseList(phrases);
     if(!selected.length) return;
     voiceSapiSelectedPhrases=selected.slice();
-    document.querySelectorAll('#voiceSapiPresets [data-phrase]').forEach(function(btn){
-      const phrase=btn.getAttribute('data-phrase')||'';
-      btn.classList.toggle('is-selected',selected.indexOf(phrase)>=0);
-    });
+    if(global.OneToneVoiceWakePresets){
+      global.OneToneVoiceWakePresets.syncSelected(selected,'sapi');
+    }else{
+      document.querySelectorAll('#voiceSapiPresets [data-phrase]').forEach(function(btn){
+        const phrase=btn.getAttribute('data-phrase')||'';
+        btn.classList.toggle('is-selected',selected.indexOf(phrase)>=0);
+      });
+    }
     renderWakeCustomPhrases();
   }
 
   function wakePresetPhraseSet(){
+    if(global.OneToneVoiceWakePresets){
+      return global.OneToneVoiceWakePresets.getSelectedPhrases();
+    }
     const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
     if(mode==='vosk'){
       return presetPhrasesIn('#voiceVoskPresetsCn').concat(presetPhrasesIn('#voiceVoskPresetsEn'));
@@ -1151,6 +1158,9 @@
   }
 
   function activeVoiceVoskPresetRoots(){
+    if(global.OneToneVoiceWakePresets){
+      return global.OneToneVoiceWakePresets.getActiveVoskPresetRoots();
+    }
     const preset=currentVoiceVoskPreset();
     return [isEnglishVoskPreset(preset)?'#voiceVoskPresetsEn':'#voiceVoskPresetsCn'];
   }
@@ -1198,10 +1208,10 @@
     renderVoskMissingPanel(res);
     const errEl=$('voiceVoskError');
     if(errEl){
-      const panel=$('voiceVoskMissingPanel');
-      const showingPanel=panel&&!panel.hidden;
+      const recovery=$('voiceEngineRecovery');
+      const showingRecovery=recovery&&!recovery.hidden;
       const err=res.lastError||'';
-      if(err&&!showingPanel){
+      if(err&&!showingRecovery){
         errEl.hidden=false;
         errEl.textContent=err;
       }else{
@@ -1308,29 +1318,20 @@
   function renderVoskMissingPanel(res){
     const recovery=$('voiceEngineRecovery');
     const msg=$('voiceEngineRecoveryMsg');
-    const body=$('voiceVoskMissingBody');
-    const legacy=$('voiceVoskMissingPanel');
-    if(legacy) legacy.hidden=true;
     const show=shouldShowVoskMissingPanel(res);
     if(recovery) recovery.hidden=!show;
     if(!show) return;
     const detail=voskMissingBodyText(res);
-    if(msg) msg.textContent=t('voiceEngineRecoveryMsg');
-    if(body) body.textContent=detail;
+    if(msg) msg.textContent=detail||t('voiceEngineRecoveryMsg');
   }
 
   function applyVoskMissingLang(){
-    const openBtn=$('btnVoskOpenResources');
-    const dlBtn=$('btnVoskDownloadGuide');
+    const openBtn=$('btnModelsVoskOpenDir');
+    const dlBtn=$('btnModelsVoskDownload');
     const retryBtn=$('btnVoskRetry');
-    const liteBtn=$('btnVoskUseLite');
     if(openBtn) openBtn.textContent=t('voiceVoskOpenResources');
     if(dlBtn) dlBtn.textContent=t('voiceVoskDownloadGuide');
     if(retryBtn) retryBtn.textContent=t('voiceVoskRetry');
-    if(liteBtn){
-      liteBtn.textContent=t('voiceVoskUseLite');
-      liteBtn.hidden=voskOnlyUi();
-    }
     const snap=hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake;
     const vosk=snap&&snap.vosk;
     if(vosk) renderVoskMissingPanel(vosk);
@@ -1346,7 +1347,7 @@
     const wrap=$('voiceVoskDownloadProgress');
     const fill=$('voiceVoskDownloadFill');
     const status=$('voiceVoskDownloadStatus');
-    const dlBtn=$('btnVoskDownloadGuide');
+    const dlBtn=$('btnModelsVoskDownload')||$('btnVoskDownloadGuide');
     if(!wrap) return;
     const active=!!phase&&phase!=='done'&&phase!=='error';
     wrap.hidden=!active&&!voskDownloadInFlight;
@@ -1488,10 +1489,14 @@
 
   function syncVoiceVoskPresets(phrases){
     const selected=(Array.isArray(phrases)?phrases:[]).map(function(x){return String(x||'').trim();});
-    document.querySelectorAll('#voiceVoskPresetsCn [data-phrase], #voiceVoskPresetsEn [data-phrase]').forEach(function(btn){
-      const phrase=btn.getAttribute('data-phrase')||'';
-      btn.classList.toggle('is-selected',selected.includes(phrase));
-    });
+    if(global.OneToneVoiceWakePresets){
+      global.OneToneVoiceWakePresets.syncSelected(selected,'vosk');
+    }else{
+      document.querySelectorAll('#voiceVoskPresetsCn [data-phrase], #voiceVoskPresetsEn [data-phrase]').forEach(function(btn){
+        const phrase=btn.getAttribute('data-phrase')||'';
+        btn.classList.toggle('is-selected',selected.includes(phrase));
+      });
+    }
     renderWakeCustomPhrases();
   }
 

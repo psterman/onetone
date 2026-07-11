@@ -11,6 +11,7 @@
     var el=$(id);
     if(!el) return;
     el.textContent=text||'—';
+    el.classList.add('voice-status-badge');
     el.classList.toggle('is-on',!!on);
   }
 
@@ -29,20 +30,25 @@
     setText('modelsSapiDesc',s.engineMode==='sapi'?'当前用于语音输入':'可作为轻量识别备用');
   }
 
-  function clickExisting(id){
-    var el=$(id);
-    if(el) el.click();
-  }
-
   function bindEvents(){
+    var wake=global.OneToneVoiceWake;
     var dl=$('btnModelsVoskDownload');
-    if(dl) dl.onclick=function(){ clickExisting('btnVoskDownloadGuide'); };
+    if(dl) dl.onclick=function(){
+      if(wake&&wake.downloadVoskModelGuide) wake.downloadVoskModelGuide();
+    };
     var retry=$('btnModelsVoskRetry');
-    if(retry) retry.onclick=function(){ clickExisting('btnVoskRetry'); };
+    if(retry) retry.onclick=function(e){
+      e.stopPropagation();
+      if(wake&&wake.retryVoskStart) wake.retryVoskStart();
+    };
     var dir=$('btnModelsVoskOpenDir');
-    if(dir) dir.onclick=function(){ clickExisting('btnVoskOpenResources'); };
+    if(dir) dir.onclick=function(){
+      if(wake&&wake.openVoskResourcesDir) wake.openVoskResourcesDir();
+    };
     var sapi=$('btnModelsSapiSetup');
-    if(sapi) sapi.onclick=function(){ clickExisting('btnVoiceSapiSetup'); };
+    if(sapi) sapi.onclick=function(){
+      if(wake&&wake.openSapiSetup) wake.openSapiSetup();
+    };
   }
 
   global.OneToneVoiceModelsPanel={render:render,bindEvents:bindEvents};

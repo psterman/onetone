@@ -13,13 +13,14 @@
   }
 
   function resolveLatency(vm){
-    var voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
-    var metricEl=$(voskOnly||vm.mode==='vosk'?'voiceModeProMetric':'voiceModeLiteMetric');
-    var metric=metricEl?String(metricEl.textContent||'').trim():'';
-    if(vm.loading||!metric||metric.indexOf('…')>=0||metric.indexOf('读取')>=0){
-      return '—';
-    }
-    return metric;
+    if(vm.loading) return '—';
+    var usage=global.OneToneAppProcessUsage;
+    if(!usage||!usage.processUsageSummaryLine) return '—';
+    var snap=usage.snapshot&&usage.snapshot();
+    if(!snap||!snap.loaded) return '—';
+    var line=usage.processUsageSummaryLine();
+    if(!line||/loading|读取|…|\.\.\./i.test(line)) return '—';
+    return line;
   }
 
   function resolveConfidence(vm){
@@ -117,6 +118,10 @@
       pill.textContent=status.text;
       pill.className='voice-fb-status-pill '+status.cls;
     }
+
+    var metricsEl=$('voiceFbMetrics');
+    var showMetrics=status.cls==='is-live'||status.cls==='is-loading';
+    if(metricsEl) metricsEl.hidden=!showMetrics;
 
     var latencyEl=$('voiceFbMetricLatency');
     var confEl=$('voiceFbMetricConfidence');

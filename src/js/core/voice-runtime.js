@@ -46,11 +46,10 @@
         if(ui.drawerOpen){
           var panel=ui.settingsPanel;
           if(drawerPayload){
-            if((panel==='voiceWake'||panel==='models'||panel==='debug')&&drawerPayload.sapi) hooks().renderVoiceSapiStatus(drawerPayload.sapi,{liveOnly:panel==='voiceWake'});
-            if((panel==='voiceWake'||panel==='models'||panel==='debug')&&drawerPayload.vosk) hooks().renderVoiceVoskStatus(drawerPayload.vosk,{liveOnly:panel==='voiceWake'});
-            if((panel==='voiceWake'||panel==='models'||panel==='debug')&&drawerPayload.end) hooks().renderVoiceEndStatus(drawerPayload.end);
+            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.sapi) hooks().renderVoiceSapiStatus(drawerPayload.sapi,{liveOnly:panel==='voiceWake'});
+            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.vosk) hooks().renderVoiceVoskStatus(drawerPayload.vosk,{liveOnly:panel==='voiceWake'});
+            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.end) hooks().renderVoiceEndStatus(drawerPayload.end);
           }
-          if(panel==='models'&&global.OneToneVoiceModelsPanel) global.OneToneVoiceModelsPanel.render();
           if(panel==='voiceWake') maybeSyncMicLevelMonitor();
           if(panel==='voiceWake') maybeRenderMappingListFromVoice();
           if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(panel)||global.OneToneSettingsDrawer.isHabitsPanel(panel))) hooks().renderKeyFinishFlowPanel();

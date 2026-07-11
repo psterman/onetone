@@ -422,19 +422,33 @@
 
   function toggleVoiceEndAutoSend(){
 
-    const btn=$('btnVoiceEndAutoSend');
+    const snap=hooks().voiceUiSnapshot();
 
-    if(!btn) return;
+    const end=snap&&snap.end||{};
 
-    const next=!btn.classList.contains('is-on');
+    const cfg=hooks().state().config||{};
 
-    syncVoiceEndAutoSendToggle(next);
+    const endCfg=cfg.voiceEnd||cfg.voice_end||{};
 
-    global.OneToneIpc.invoke('cmd_voice_end_set_auto_send',{enabled:next}).then(function(res){
+    const current=!!end.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
+
+    return setAutoSendEnabled(!current);
+
+  }
+
+
+
+  function setAutoSendEnabled(enabled){
+
+    syncVoiceEndAutoSendToggle(!!enabled);
+
+    return global.OneToneIpc.invoke('cmd_voice_end_set_auto_send',{enabled:!!enabled}).then(function(res){
 
       renderVoiceEndStatus(res);
 
       hooks().syncHomeFromVoiceSettings(null,null,res);
+
+      return res;
 
     }).catch(function(){
 
@@ -443,6 +457,20 @@
       hooks().toast(t('voiceEndFail'));
 
     });
+
+  }
+
+
+
+  function setOutputMode(key){
+
+    key=String(key||'').trim();
+
+    if(key==='auto') return setAutoSendEnabled(true);
+
+    if(key==='confirm') return setAutoSendEnabled(false);
+
+    return Promise.resolve();
 
   }
 
@@ -859,6 +887,10 @@
     syncToggle:syncVoiceEndToggle,
 
     syncAutoSendToggle:syncVoiceEndAutoSendToggle,
+
+    setAutoSendEnabled:setAutoSendEnabled,
+
+    setOutputMode:setOutputMode,
 
     toggle:toggleVoiceEnd,
 

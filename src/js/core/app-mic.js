@@ -65,8 +65,6 @@
     if(wakeCard) pushTarget(wakeCard);
     var testWave=$('voiceTestWave');
     if(testWave) pushTarget(testWave);
-    var micLive=$('voiceMicLive');
-    if(micLive) pushTarget(micLive);
     var practiceMic=$('phrasePracticeMicRow');
     if(practiceMic) pushTarget(practiceMic);
     return targets;

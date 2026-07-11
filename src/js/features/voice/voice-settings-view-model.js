@@ -120,6 +120,15 @@
   }
 
   function firstSelectedPhrase(selector){
+    if(global.OneToneVoiceWakePresets){
+      if(selector.indexOf('En')>=0){
+        return global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_EN)[0]||'';
+      }
+      if(selector.indexOf('Cn')>=0){
+        return global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_CN)[0]||'';
+      }
+      return global.OneToneVoiceWakePresets.firstSelectedPhrase('sapi');
+    }
     const btn=document.querySelector(selector+' [data-phrase].is-selected');
     return btn?(btn.getAttribute('data-phrase')||'').trim():'';
   }
@@ -128,7 +137,17 @@
     if(vm.loading) return {zh:'',en:'',display:t('homeLiveLoading')};
     var zh='';
     var en='';
-    if(vm.mode==='sapi'){
+    if(global.OneToneVoiceWakePresets){
+      if(vm.mode==='sapi'){
+        zh=global.OneToneVoiceWakePresets.firstSelectedPhrase('sapi')||vm.wakePhrase;
+      }else if(vm.mode==='vosk'){
+        zh=global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_CN)[0]||'';
+        en=global.OneToneVoiceWakePresets.presetPhrasesIn(global.OneToneVoiceWakePresets.VOSK_EN)[0]||'';
+        if(!zh&&!en) zh=vm.wakePhrase;
+      }else{
+        zh=vm.wakePhrase;
+      }
+    }else if(vm.mode==='sapi'){
       zh=firstSelectedPhrase('#voiceSapiPresets')||vm.wakePhrase;
     }else if(vm.mode==='vosk'){
       zh=firstSelectedPhrase('#voiceVoskPresetsCn');

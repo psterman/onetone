@@ -18,17 +18,10 @@
       ['voiceColInputLbl','voiceColWake'],
       ['voiceColRecognizeLbl','voiceColRecognize'],
       ['voiceColOutputLbl','voiceColOutput'],
-      ['voiceSummaryInputLbl','voiceSummaryInputLbl'],
-      ['voiceSummaryEngineLbl','voiceSummaryEngineLbl'],
-      ['voiceSummaryOutputLbl','voiceSummaryOutputLbl'],
-      ['voiceSummaryScopeLbl','voiceSummaryScopeLbl'],
       ['voiceAppScopeLbl','voiceAppScopeLbl'],
       ['voiceRecognizeSourceLbl','voiceRecognizeSourceLbl'],
       ['voiceRecognizeCloudHint','voiceRecognizeCloudHint'],
       ['voiceRecognizePrimaryTag','voiceRecognizeCurrentTag'],
-      ['voiceRecognizeNavMethod','voiceRecognizeNavMethod'],
-      ['voiceRecognizeNavRules','voiceRecognizeNavRules'],
-      ['voiceRecognizeNavAdvanced','voiceRecognizeNavAdvanced'],
       ['voiceRecognizeMethodTitle','voiceRecognizeMethodTitle'],
       ['voiceRecognizeMethodNote','voiceRecognizeMethodNote'],
       ['voiceEndRulesTitle','voiceEndRulesTitle'],
@@ -44,18 +37,15 @@
       ['voiceWakeCompactLbl','voiceWakeCompactLbl'],
       ['voiceEndCompactLbl','voiceEndCompactLbl'],
       ['voiceWakeCompactHint','voiceWakeCompactHint'],
-      ['voiceWakePresetMoreSummary','voiceWakePresetMore'],
-      ['voiceEndPresetMoreSummary','voiceWakePresetMore'],
       ['voiceWakeEditSummary','voiceWakeEditSummary'],
       ['voiceEditSectionPresets','voiceEditSectionPresets'],
       ['voiceEditSectionCustom','voiceEditSectionCustom'],
       ['voiceEditSectionMic','voiceEditSectionMic'],
       ['voiceEditSectionEngine','voiceEditSectionEngine'],
       ['voiceEditSectionLangModel','voiceEditSectionLangModel'],
-      ['voiceEditSectionModelRes','voiceEditSectionModelRes'],
+      ['voiceRecognizeResourcesSummary','voiceEditSectionModelRes'],
       ['voiceEditSectionSend','voiceEditSectionSend'],
       ['voiceRecognizeAdvancedSummary','voiceRecognizeAdvancedSummary'],
-      ['voiceOutputMoreSummary','voiceOutputMoreSummary'],
       ['voiceWakeDisplayHint','voiceWakeDisplayHint']
     ];
     pairs.forEach(function(pair){
@@ -114,36 +104,23 @@
     if(desc) desc.textContent=t('settingsPanelVoiceWakeDesc');
   }
 
-  function renderStepStatus(vm){
-    const enabledLabel=vm.loading?t('homeLiveLoading'):t('voiceFlowStepEnabled');
-    ['voiceStep1Status','voiceStep2Status','voiceStep3Status'].forEach(function(id){
-      const el=$(id);
-      if(el) el.textContent=enabledLabel;
-    });
+  function renderStepStatus(){
+    /* step status pills removed in v2 */
+  }
+
+  function renderModeMeta(){
+    /* legacy wake stash meta removed */
   }
 
   function renderHeaderSummary(vm){
     var V=vmApi();
-    var schemeStatus=$('voiceSummaryStatus');
     var schemeName=$('voiceSummaryName');
-    var sumInput=$('voiceSummaryInput');
-    var sumEngine=$('voiceSummaryEngine');
-    var sumOutput=$('voiceSummaryOutput');
-    var sumScope=$('voiceSummaryScope');
     var enabledToggle=$('btnVoiceEnabled');
     if(vm.loading){
-      if(schemeStatus) schemeStatus.textContent=t('homeLiveLoading');
+      if(schemeName) schemeName.textContent=t('homeLiveLoading');
       return;
     }
     if(schemeName) schemeName.textContent=V.resolveSchemeDisplayName(vm);
-    if(sumInput) sumInput.textContent=V.resolveDisplayWakePhrase(vm).display;
-    if(sumEngine) sumEngine.textContent=vm.modeLabel;
-    if(sumOutput) sumOutput.textContent=V.resolveOutputSummaryLabel(vm);
-    if(sumScope) sumScope.textContent=V.resolveScopeSummary(vm);
-    if(schemeStatus){
-      schemeStatus.textContent=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');
-      schemeStatus.classList.toggle('is-on',!!vm.voiceOn);
-    }
     if(enabledToggle){
       enabledToggle.classList.toggle('is-on',!!vm.voiceOn);
       enabledToggle.setAttribute('aria-checked',vm.voiceOn?'true':'false');
@@ -187,21 +164,6 @@
       html+='<span>'+V.escHtml(name)+'</span></button>';
     });
     chips.innerHTML=html;
-  }
-
-  function renderModeMeta(vm){
-    const labelEl=$('voiceModeMetaLabel');
-    const dotEl=$('voiceModeMetaDot');
-    const hintEl=$('voiceModeMetaHint');
-    const linkEl=$('btnVoiceModeMetaDetails');
-    if(labelEl){
-      labelEl.textContent=vm.loading
-        ?t('homeLiveLoading')
-        :t('voiceModeMetaCurrent').replace('{mode}',vm.modeLabel);
-    }
-    if(dotEl) dotEl.classList.toggle('is-on',!vm.loading&&vm.mode!=='off');
-    if(hintEl) hintEl.textContent=t('voiceModeMetaHint');
-    if(linkEl) linkEl.textContent=t('voiceModeMetaDetails');
   }
 
   function renderSaveAction(vm){

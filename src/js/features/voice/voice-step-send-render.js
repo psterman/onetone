@@ -35,7 +35,6 @@
 
   function renderOutputPanel(vm){
     const hint=$('voiceOutputHint');
-    const finishBlock=$('voiceSettingsFinishBlock');
     const params=$('voiceOutputParams');
     const delayRow=$('voiceOutputDelayRow');
     const key=V().resolveOutputModeKey(vm);
@@ -46,22 +45,13 @@
       else if(key==='auto') hint.textContent=t('voiceOutputHintAuto');
       else hint.textContent=t('voiceOutputHintConfirm');
     }
-    if(finishBlock){
-      finishBlock.dataset.outputMode=key;
-      finishBlock.dataset.liteMode=liteMode?'true':'false';
-    }
     if(params){
+      params.dataset.outputMode=key;
+      params.dataset.liteMode=liteMode?'true':'false';
       var showParams=!vm.loading&&!liteMode&&key!=='manual';
       params.classList.toggle('is-hidden',!showParams);
       if(delayRow) delayRow.classList.toggle('is-hidden',!showParams||key!=='auto');
     }
-    var sendBlock=$('voiceSettingsSendBlock');
-    if(sendBlock){
-      sendBlock.classList.toggle('voice-output-lite',liteMode);
-      sendBlock.hidden=vm.loading||liteMode;
-    }
-    var sendDetails=$('voiceSettingsSendDetails');
-    if(sendDetails) sendDetails.hidden=vm.loading||liteMode;
   }
 
   global.OneToneVoiceStepSend={

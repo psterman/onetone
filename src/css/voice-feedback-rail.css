@@ -40,6 +40,8 @@
   color: #cbd5e1;
   border: 1px solid rgba(148, 163, 184, 0.2);
   white-space: nowrap;
+  pointer-events: none;
+  cursor: default;
 }
 
 .voice-fb-status-pill::before {
@@ -159,6 +161,10 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px 12px;
   margin-bottom: 14px;
+}
+
+.voice-fb-metrics[hidden] {
+  display: none !important;
 }
 
 .voice-fb-metric {

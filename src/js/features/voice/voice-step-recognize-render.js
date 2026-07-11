@@ -8,17 +8,14 @@
   function V(){ return global.OneToneVoiceSettingsViewModel; }
 
   function setRecognizeNavState(targetId){
-    const nav=$('voiceRecognizeNav');
-    if(nav){
-      nav.querySelectorAll('.voice-recognize-nav-link').forEach(function(link){
-        const href=(link.getAttribute('href')||'').replace(/^#/,'');
-        link.classList.toggle('is-active',href===targetId);
-      });
+    const endDetails=$('voiceRecognizeEndDetails');
+    const engineDetails=$('voiceRecognizeEngineDetails');
+    if(targetId==='voiceAdvancedSection'&&engineDetails) engineDetails.open=true;
+    else if(targetId==='voiceEndRulesSection'&&endDetails) endDetails.open=true;
+    else if(targetId==='voiceRecognizeResources'||targetId==='voiceRecognizeResourcesDetails'){
+      const resDetails=$('voiceRecognizeResourcesDetails');
+      if(resDetails) resDetails.open=true;
     }
-    ['voiceRecognizeMethodSection','voiceEndRulesSection','voiceAdvancedSection'].forEach(function(id){
-      const sec=$(id);
-      if(sec) sec.classList.toggle('is-active',id===targetId);
-    });
   }
 
   function renderCompactEnd(vm){
@@ -61,13 +58,11 @@
   function renderRecognizePanel(vm){
     const sourceGrid=$('voiceRecognizeSourceGrid');
     const endRulesSummary=$('voiceEndRulesSummary');
-    const endRulesDetail=$('voiceEndRulesSummaryDetail');
     const endDetails=$('voiceRecognizeEndDetails');
     const engineDetails=$('voiceRecognizeEngineDetails');
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     var summaryText=V().resolveEndRuleSummary(vm);
     if(endRulesSummary) endRulesSummary.textContent=summaryText;
-    if(endRulesDetail) endRulesDetail.textContent=summaryText;
     if(sourceGrid){
       sourceGrid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
         const tab=btn.getAttribute('data-voice-engine-tab')||'';
@@ -78,7 +73,6 @@
     }
     if(engineDetails&&engineDetails.open) setRecognizeNavState('voiceAdvancedSection');
     else if(endDetails&&endDetails.open) setRecognizeNavState('voiceEndRulesSection');
-    else setRecognizeNavState('voiceRecognizeMethodSection');
   }
 
   function renderStepPanels(vm){
@@ -87,9 +81,8 @@
     const liteBody=$('voiceEndDetectLiteBody');
     const switchBtn=$('btnVoiceEndDetectSwitchVosk');
     const silenceNote=$('voiceEndSilenceNote');
-    const autoDesc=$('voiceSettingsAutoSendDesc');
     const habitNote=$('voiceSendHabitNote');
-    const sendDetails=$('voiceSettingsSendDetails');
+    const autoDesc=$('voiceSettingsAutoSendDesc');
     const endSnap=hooks().voiceUiSnapshot().end||{};
     const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
     const zh=Array.isArray(endSnap.phrasesZh)?endSnap.phrasesZh:(endCfg.phrasesZh||[]);
@@ -104,28 +97,21 @@
       const sync=global.OneToneVoiceEnd.syncPresets;
       if(typeof sync==='function') sync(zh,en);
     }
-    if(sendDetails){
-      const key=V().resolveOutputModeKey(vm);
-      const liteMode=vm.mode==='sapi'||vm.mode==='off';
-      sendDetails.hidden=vm.loading||liteMode;
-    }
     if(autoDesc){
       const delaySec=(vm.autoSendDelayMs/1000).toFixed(1);
+      const key=V().resolveOutputModeKey(vm);
+      const liteMode=vm.mode==='sapi'||vm.mode==='off';
       autoDesc.textContent=vm.autoSendEnabled
         ?t('voiceSettingsAutoSendDesc')
           .replace('{n}',delaySec)
           .replace('{key}',vm.autoSendKey)
         :'';
+      autoDesc.hidden=vm.loading||liteMode||key!=='auto'||!vm.autoSendEnabled;
     }
     if(habitNote){
       const outputKey=V().resolveOutputModeKey(vm);
       habitNote.innerHTML=t('voiceSendHabitOverrideNote')+' <button type="button" class="voice-finish-habit-link" id="btnVoiceSendHabitLink">'+V().escHtml(t('voiceSendHabitLink'))+'</button>';
       habitNote.hidden=vm.loading||!vm.autoSendEnabled||!vm.habitHasKeyAutoSend||outputKey!=='auto';
-    }
-    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.syncAutoSendToggle){
-      global.OneToneVoiceEnd.syncAutoSendToggle(vm.autoSendEnabled);
-    }else if(hooks().syncVoiceEndAutoSendToggle){
-      hooks().syncVoiceEndAutoSendToggle(vm.autoSendEnabled);
     }
   }
 
