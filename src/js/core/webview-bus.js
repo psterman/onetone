@@ -14,6 +14,9 @@
         var id=msg.deviceId!=null?String(msg.deviceId):(msg.device_id!=null?String(msg.device_id):'');
         if(typeof msg.level==='number'){
           hooks.updateMicLevelBars(id,msg.level);
+          if(global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.setMicLevel){
+            global.OneToneVoiceFeedbackRail.setMicLevel(msg.level);
+          }
           if(msg.level>0||id) hooks.clearMicBackoff();
         }
         return;

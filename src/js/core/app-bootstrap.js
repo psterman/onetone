@@ -8,6 +8,7 @@
       global.OneToneDebugAboutBindings,
       global.OneToneSettingsNavBindings,
       global.OneToneMappingRecordingBindings,
+      global.OneToneVoiceSubpages,
       global.OneToneVoiceUiBindings,
       global.OneToneVoiceModelsPanel,
       global.OneToneHomeUiBindings,

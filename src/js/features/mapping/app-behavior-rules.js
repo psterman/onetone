@@ -770,10 +770,8 @@
   }
 
   function renderVoiceAside(){
-    var card=$('voiceAppShortcutsDetails');
     var uiState=global.OneToneState&&global.OneToneState.ui;
     var voiceActive=uiState&&uiState.drawerOpen&&uiState.settingsPanel==='voiceWake';
-    if(card) card.hidden=true;
     if(!voiceActive) return;
   }
 

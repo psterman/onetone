@@ -39,7 +39,7 @@
   function bindEvents(){
     var openVoice=$('btnModelsOpenVoice');
     if(openVoice) openVoice.onclick=function(){
-      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.open({panel:'voiceWake'});
+      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.open({panel:'voiceWake',voiceSubpage:'wake'});
     };
     var dl=$('btnModelsVoskDownload');
     if(dl) dl.onclick=function(){ clickExisting('btnVoskDownloadGuide'); };

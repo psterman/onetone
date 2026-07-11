@@ -79,11 +79,11 @@
 
 
   function openVoiceAdvancedSection(){
-
-    const el=$('settingsVoiceAdvancedDetails');
-
+    const el=$('voiceRecognizeAdvancedDetails');
     if(el&&el.tagName==='DETAILS') el.open=true;
-
+    if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+      global.OneToneVoicePageState.setStep('recognize');
+    }
   }
 
 
@@ -195,7 +195,7 @@
 
       mic:'voiceMicSection',
 
-      engine:'voiceModePanelDetails',
+      engine:'voiceRecognizeAdvancedDetails',
 
       autoSend:'voiceSettingsAutoCard',
 
@@ -235,9 +235,9 @@
 
       mic:['micDeviceList','micTitle'],
 
-      engine:['voiceModeMeta','voiceModePanelDetails','voiceModePanel'],
+      engine:['voiceModeMeta','voiceRecognizeAdvancedDetails','voiceModePanel'],
 
-      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceModePanelDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
+      wakePhrases:expanded==='vosk'?['voiceVoskPresetsCn','voiceRecognizeAdvancedDetails']:['voiceSapiPresets','voiceSettingsWakeCard'],
 
       endPhrases:['voiceSettingsEndPhraseCard','voiceEndPresetsWrap'],
 
@@ -411,6 +411,19 @@
   }
 
   function scrollToVoiceAction(navId){
+    if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
+      var page='wake';
+      if(navId==='voice:sapi'||navId==='voice:vosk') page='recognize';
+      else if(navId==='voice:end') page='recognize';
+      global.OneToneVoiceSubpages.setPage(page,{scrollIntoView:true});
+      if(page==='recognize'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
+        global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceAdvancedSection');
+      }
+      if(navId==='voice:end'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
+        global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceEndRulesSection');
+      }
+      return;
+    }
     var ids=['voiceSettingsWakeCard'];
     if(navId==='voice:sapi'){
       ids=['voiceSettingsEndPhraseCard','voiceRecognizeEngineDetails','voiceSapiBlock'];
@@ -432,11 +445,10 @@
     }
   }
 
-  function setSettingsPanel(panel){
+  function setSettingsPanel(panel,opts){
+    opts=opts||{};
 
     if(panel==='voiceEnd') panel='voiceWake';
-
-    if(panel==='models') panel='voiceWake';
 
     if(panel==='habits'){
       setSettingsPanel('scenes');
@@ -509,9 +521,6 @@
 
       if(enteringVoice){
 
-        var voicePanelEl=$('settingsPanelVoiceWake');
-        if(voicePanelEl) voicePanelEl.classList.remove('is-editing','is-editing-input','is-editing-phrases','is-editing-finish');
-
         const active=hooks().currentVoiceMode();
 
         hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
@@ -527,6 +536,11 @@
       }
 
       hooks().renderVoiceModeSwitch();
+
+      if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
+        var nextSubpage=opts.voiceSubpage||'wake';
+        global.OneToneVoiceSubpages.setPage(nextSubpage,{keepScroll:true});
+      }
 
     }
 
@@ -618,26 +632,25 @@
 
     hooks().closeHomeSchemeMenu();
 
-    if(opts.voiceTab==='end'){ opts.panel='voiceWake'; if(!opts.focus) opts.focus='endPhrases'; }
+    if(opts.voiceTab==='end'){
+      opts.panel='voiceWake';
+      if(!opts.focus) opts.focus='endPhrases';
+      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
+    }else if(opts.voiceTab==='wake'){
+      opts.panel=opts.keyWakeFocus?'keys':'voiceWake';
+      if(opts.panel==='voiceWake'&&!opts.voiceSubpage) opts.voiceSubpage='wake';
+    }
 
-    else if(opts.voiceTab==='wake') opts.panel=opts.keyWakeFocus?'keys':'voiceWake';
-
-    if(opts.panel==='voiceEnd') opts.panel='voiceWake';
+    if(opts.panel==='voiceEnd'){
+      opts.panel='voiceWake';
+      if(!opts.voiceSubpage) opts.voiceSubpage='recognize';
+    }
 
     ui.drawerOpen=true;
 
-    setSettingsPanel(opts.panel||'basic');
+    setSettingsPanel(opts.panel||'basic',opts);
 
     syncSettingsChrome();
-
-    if((opts.panel||'basic')==='voiceWake'||opts.panel==='models'){
-      var sub=opts.voiceSubpage||'';
-      if(sub&&global.__vp_setVoiceEditMode__){
-        requestAnimationFrame(function(){
-          global.__vp_setVoiceEditMode__(sub);
-        });
-      }
-    }
 
     if((opts.panel||'basic')==='debug'){
       var debugMode=opts.debugMode||'overview';

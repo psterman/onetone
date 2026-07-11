@@ -298,7 +298,6 @@
   }
 
   function renderVoiceEngineTabs(){
-    const tabbar=$('voiceEngineTabbar');
     const mode=voiceWakeExpandedMode||'sapi';
     const grid=$('voiceRecognizeSourceGrid');
     if(grid){
@@ -308,21 +307,10 @@
         btn.classList.toggle('is-active',on);
       });
     }
-    if(!tabbar) return;
     if(voskOnlyUi()){
       if(voiceWakeExpandedMode!=='vosk') setVoiceWakeExpandedMode('vosk');
       syncVoskOnlyCopy();
-      return;
     }
-    tabbar.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
-      const on=(btn.dataset.voiceEngineTab||'')===mode;
-      btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-    });
-    const lite=$('voiceEngineTabSapi');
-    const pro=$('voiceEngineTabVosk');
-    if(lite) lite.textContent=t('voiceModeLiteTitle');
-    if(pro) pro.textContent=t('voiceModeProTitle');
   }
 
   function syncVoskOnlyCopy(){

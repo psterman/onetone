@@ -3,6 +3,13 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   function h(){ return global.__vp_bootstrap_hooks__ || {}; }
   var VOICE_EDIT_MODES=['input','phrases','finish'];
+  function setVoiceSubpage(page,opts){
+    if(global.OneToneVoiceSubpages&&typeof global.OneToneVoiceSubpages.setPage==='function'){
+      global.OneToneVoiceSubpages.setPage(page,opts);
+      return true;
+    }
+    return false;
+  }
   function bindEvents(){
     var hooks=h();
     var t=hooks.t;
@@ -19,19 +26,6 @@
       }
       var sec=$(targetId);
       if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
-    }
-    var voiceEngineTabbar=$('voiceEngineTabbar');
-    if(voiceEngineTabbar){
-      voiceEngineTabbar.addEventListener('click',function(e){
-        var tab=e.target.closest&&e.target.closest('[data-voice-engine-tab]');
-        if(!tab) return;
-        e.preventDefault();
-        var mode=tab.dataset.voiceEngineTab;
-        if(mode!=='sapi'&&mode!=='vosk') return;
-        if(mode==='sapi'&&global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return;
-        hooks.setVoiceWakeExpandedMode(mode);
-        if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
-      });
     }
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeSapi','sapi');
     var btnVoiceSapiTest=$('btnVoiceSapiTest');
@@ -136,30 +130,14 @@
     }
     function setVoiceEditMode(mode){
       if(VOICE_EDIT_MODES.indexOf(mode)<0) mode='input';
-      var panel=$('settingsPanelVoiceWake');
-      if(!panel) return;
-      VOICE_EDIT_MODES.forEach(function(m){ panel.classList.remove('is-editing-'+m); });
-      panel.classList.add('is-editing','is-editing-'+mode);
-      var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
-      panel.setAttribute('data-voice-engine',eng||'off');
-      expandVoiceEditPanels(mode);
-      var head=$('voiceEditSurfaceHead');
-      var kicker=$('voiceEditSurfaceKicker');
-      var title=$('voiceEditSurfaceTitle');
-      var desc=$('voiceEditSurfaceDesc');
-      var copy={
-        input:['voiceEditKickerInput','voiceEditTitleInput','voiceEditDescInput'],
-        phrases:['voiceEditKickerPhrases','voiceEditTitlePhrases','voiceEditDescPhrases'],
-        finish:['voiceEditKickerFinish','voiceEditTitleFinish','voiceEditDescFinish']
-      }[mode]||['voiceEditKickerDefault','voiceEditTitleDefault','voiceEditDescDefault'];
-      if(head) head.hidden=false;
-      if(kicker) kicker.textContent=t(copy[0]);
-      if(title) title.textContent=t(copy[1]);
-      if(desc) desc.textContent=t(copy[2]);
-      var langTitle=$('voiceEditSectionLangModel');
-      if(langTitle){
-        langTitle.textContent=t(eng==='sapi'?'voiceEditSectionSapiMatch':'voiceEditSectionLangModel');
+      var stepMap={input:'recognize',phrases:'wake',finish:'send'};
+      if(global.OneToneVoicePageState){
+        global.OneToneVoicePageState.setStep(stepMap[mode]||'wake');
       }
+      var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
+      var panel=$('settingsPanelVoiceWake');
+      if(panel) panel.setAttribute('data-voice-engine',eng||'off');
+      expandVoiceEditPanels(mode);
       if(mode==='input'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.setRecognizeNavState){
         global.OneToneVoiceSettingsFlow.setRecognizeNavState('voiceAdvancedSection');
       }
@@ -168,14 +146,7 @@
       }
     }
     function closeVoiceEditMode(){
-      var panel=$('settingsPanelVoiceWake');
-      if(panel){
-        panel.classList.remove('is-editing');
-        VOICE_EDIT_MODES.forEach(function(m){ panel.classList.remove('is-editing-'+m); });
-        panel.removeAttribute('data-voice-engine');
-      }
-      var head=$('voiceEditSurfaceHead');
-      if(head) head.hidden=true;
+      /* v2: no overlay edit mode; step stays on OneToneVoicePageState */
     }
     function openVoicePhrasesEditor(){
       setVoiceEditMode('phrases');
@@ -257,10 +228,10 @@
       else if(eng==='sapi'&&hooks.testVoiceSapiSend) hooks.testVoiceSapiSend();
       else openVoiceMicPicker();
     }
-    var btnVoiceTestTop=$('btnVoiceTestTop');
-    if(btnVoiceTestTop) btnVoiceTestTop.onclick=runVoiceTestOnce;
-    var btnVoiceTestMic=$('btnVoiceTestMic');
-    if(btnVoiceTestMic) btnVoiceTestMic.onclick=runVoiceTestOnce;
+    var btnFbSimulateSpeak=$('voiceFbBtnSimulateSpeak');
+    if(btnFbSimulateSpeak) btnFbSimulateSpeak.onclick=runVoiceTestOnce;
+    var btnFbSimulateWake=$('voiceFbBtnSimulateWake');
+    if(btnFbSimulateWake) btnFbSimulateWake.onclick=runVoiceTestOnce;
     var btnVoiceEnabled=$('btnVoiceEnabled');
     if(btnVoiceEnabled){
       btnVoiceEnabled.onclick=function(){
@@ -269,24 +240,8 @@
     }
     var btnVoiceRecognizeChange=$('btnVoiceRecognizeChange');
     if(btnVoiceRecognizeChange){
-      btnVoiceRecognizeChange.onclick=function(){ setVoiceEditMode('input'); };
+      btnVoiceRecognizeChange.onclick=function(){ setVoiceSubpage('recognize',{scrollIntoView:true}); };
     }
-    var btnVoiceEditInput=$('btnVoiceEditInput');
-    if(btnVoiceEditInput) btnVoiceEditInput.onclick=function(){
-      setVoiceEditMode('input');
-      var target=$('voiceSettingsEndPhraseCard');
-      if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-    };
-    var btnVoiceEditPhrases=$('btnVoiceEditPhrases');
-    if(btnVoiceEditPhrases) btnVoiceEditPhrases.onclick=openVoicePhrasesEditor;
-    var btnVoiceEditFinish=$('btnVoiceEditFinish');
-    if(btnVoiceEditFinish) btnVoiceEditFinish.onclick=function(){
-      setVoiceEditMode('finish');
-      var target=$('voiceSettingsAutoCard');
-      if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-    };
-    var btnVoiceEditClose=$('btnVoiceEditClose');
-    if(btnVoiceEditClose) btnVoiceEditClose.onclick=closeVoiceEditMode;
     var voiceRecognizeNav=$('voiceRecognizeNav');
     if(voiceRecognizeNav){
       voiceRecognizeNav.addEventListener('click',function(e){
@@ -294,15 +249,6 @@
         if(!link) return;
         e.preventDefault();
         setRecognizeNavActive((link.getAttribute('href')||'').replace(/^#/,''));
-      });
-    }
-    var voiceSchemesAdd=$('voiceSchemesAdd');
-    if(voiceSchemesAdd){
-      voiceSchemesAdd.addEventListener('click',function(e){
-        if(voiceSchemesAdd.disabled){
-          e.preventDefault();
-          if(hooks.toast) hooks.toast(t('voiceSchemesAddSoon'));
-        }
       });
     }
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');
@@ -332,10 +278,8 @@
     }
     bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
     bindVoiceEngineSwitch($('voiceRecognizeAltCard'));
-    bindVoiceEngineSwitch($('voiceOverviewEngineSwitch'));
     var voiceOutputModeSegments=$('voiceOutputModeSegments');
     if(voiceOutputModeSegments) bindVoiceOutputSwitch(voiceOutputModeSegments);
-    bindVoiceOutputSwitch($('voiceOverviewOutputModes'));
     var btnVoiceAppScopeAdd=$('btnVoiceAppScopeAdd');
     if(btnVoiceAppScopeAdd){
       btnVoiceAppScopeAdd.onclick=function(){
@@ -426,17 +370,6 @@
         btnMicRefresh.disabled=false;
       });
     };
-    var voiceOverviewCards=$('voiceFlowOverview');
-    if(voiceOverviewCards){
-      voiceOverviewCards.addEventListener('click',function(e){
-        var card=e.target.closest&&e.target.closest('[data-voice-edit]');
-        if(!card||e.target.closest('.voice-overview-seg,[data-voice-engine-tab],[data-voice-output-mode],.voice-overview-edit')) return;
-        var mode=card.getAttribute('data-voice-edit');
-        if(mode==='input') setVoiceEditMode('input');
-        else if(mode==='phrases') openVoicePhrasesEditor();
-        else if(mode==='finish') setVoiceEditMode('finish');
-      });
-    }
   }
   global.OneToneVoiceUiBindings={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);
