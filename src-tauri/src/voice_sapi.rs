@@ -161,7 +161,10 @@ mod imp {
         let phrase_norm = normalize_phrase(phrase);
         if tokens_in_subsequence_order(&text_tokens, &phrase_tokens) {
             let joined_norm = normalize_phrase(&text_tokens.join(" "));
-            return joined_norm == phrase_norm || normalize_phrase(text) == phrase_norm;
+            if joined_norm == phrase_norm || normalize_phrase(text) == phrase_norm {
+                return true;
+            }
+            return crate::voice_vosk::wake_fuzzy_match_allowed(text, phrase);
         }
         false
     }
@@ -179,7 +182,9 @@ mod imp {
             if norm == target {
                 return Some((phrase.clone(), true));
             }
-            if norm.contains(&target) || target.contains(&norm) {
+            if (norm.contains(&target) || target.contains(&norm))
+                && crate::voice_vosk::wake_fuzzy_match_allowed(&text, phrase)
+            {
                 return Some((phrase.clone(), false));
             }
             if english_wake_token_match(text, phrase) {
@@ -346,13 +351,22 @@ mod imp {
                             },
                         );
                     } else if final_result {
-                        let targets = phrases.join("、");
-                        send_event(
-                            event_tx,
-                            VoiceSapiEvent::Trace(format!(
-                                "听到「{text}」，和你要说的「{targets}」不一样"
-                            )),
-                        );
+                        if let Some(reason) =
+                            crate::voice_vosk::wake_text_rejection_reason(&text, phrases)
+                        {
+                            send_event(
+                                event_tx,
+                                VoiceSapiEvent::Trace(reason),
+                            );
+                        } else {
+                            let targets = phrases.join("、");
+                            send_event(
+                                event_tx,
+                                VoiceSapiEvent::Trace(format!(
+                                    "听到「{text}」，和你要说的「{targets}」不一样"
+                                )),
+                            );
+                        }
                     }
                 }
                 Ok(_) => {}

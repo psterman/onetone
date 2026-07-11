@@ -20,6 +20,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
         mgr.stop_recording();
     }
     *state.paused.lock() = true;
+    crate::voice_bootstrap::pause_voice_engines(state);
     let ack = serde_json::json!({"type":"mvp_paused","ok":true});
     emit_to_main_if_available(app, Some(state), ack);
     push_runtime_via_app(app, state.as_ref(), "paused", "", None);
@@ -32,11 +33,13 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
         None,
     );
     crate::tray::refresh_menu(app);
+    crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::coach_hud::push_state(app, state.as_ref());
 }
 
 pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     *state.paused.lock() = false;
+    crate::voice_bootstrap::resume_voice_engines(app, state);
     let ack = serde_json::json!({"type":"mvp_resumed","ok":true});
     emit_to_main_if_available(app, Some(state), ack);
     push_runtime_via_app(app, state.as_ref(), "resumed", "", None);
@@ -49,5 +52,6 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
         None,
     );
     crate::tray::refresh_menu(app);
+    crate::tray::refresh_tray_tooltip(app, state.as_ref());
     crate::coach_hud::push_state(app, state.as_ref());
 }

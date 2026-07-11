@@ -18,10 +18,33 @@
   };
   var foregroundPollTimer=null;
   var foregroundAppId='';
+  var foregroundIdentity=null;
 
   function panelActive(){
     var drawer=global.OneToneSettingsDrawer;
-    return ui().drawerOpen&&drawer&&drawer.isHabitsPanel&&drawer.isHabitsPanel();
+    if(!ui().drawerOpen||!drawer) return false;
+    if(drawer.isHabitsPanel&&drawer.isHabitsPanel()) return true;
+    if(drawer.isKeysPanel&&drawer.isKeysPanel()) return true;
+    if((ui().settingsPanel||'')==='voiceWake') return true;
+    return false;
+  }
+
+  function refreshForegroundConsumers(){
+    if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderEffectivePreview){
+      global.OneToneSceneTabs.renderEffectivePreview();
+    }
+    var drawer=global.OneToneSettingsDrawer;
+    if(drawer&&drawer.isKeysPanel&&drawer.isKeysPanel()){
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+      if(global.OneToneKeyFinishFlowRender){
+        var core=global.OneToneMappingCore;
+        var m=core&&core.selected?core.selected():null;
+        global.OneToneKeyFinishFlowRender.refreshFinishModeSegment(m);
+      }
+    }
+    if((ui().settingsPanel||'')==='voiceWake'&&global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+    }
   }
 
   function setHabitLayer(layer,opts){
@@ -132,11 +155,13 @@
   function pollForegroundApp(){
     if(!global.OneToneIpc||!panelActive()) return;
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      foregroundIdentity=res||null;
       foregroundAppId=res&&res.appId?String(res.appId):'';
-      if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderEffectivePreview){
-        global.OneToneSceneTabs.renderEffectivePreview();
-      }
-    }).catch(function(){ foregroundAppId=''; });
+      refreshForegroundConsumers();
+    }).catch(function(){
+      foregroundAppId='';
+      foregroundIdentity=null;
+    });
   }
 
   function startForegroundPoll(){
@@ -163,6 +188,15 @@
   }
 
   function getForegroundAppId(){ return foregroundAppId; }
+  function getForegroundIdentity(){ return foregroundIdentity; }
+
+  function getForegroundContextRef(m){
+    var rules=global.OneToneAppBehaviorRules;
+    if(rules&&rules.resolveForegroundContextRef&&m&&foregroundIdentity){
+      return rules.resolveForegroundContextRef(m,foregroundIdentity)||foregroundAppId||'';
+    }
+    return foregroundAppId||'';
+  }
 
   function bindEvents(){
     var tabBar=$('habitLayerTabBar');
@@ -217,6 +251,8 @@
     scrollToMappingRow:scrollToMappingRow,
     onPanelVisibility:onPanelVisibility,
     getForegroundAppId:getForegroundAppId,
+    getForegroundIdentity:getForegroundIdentity,
+    getForegroundContextRef:getForegroundContextRef,
     bindEvents:bindEvents
   };
 })((typeof window!=='undefined')?window:globalThis);

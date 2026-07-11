@@ -328,7 +328,7 @@ pub fn restart_voice_sapi_runtime(state: &Arc<AppState>, cfg: VoiceSapiConfig, r
 
 pub fn voice_sapi_set_enabled(
     state: &Arc<AppState>,
-    _window: &WebviewWindow,
+    window: &WebviewWindow,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
     {
@@ -370,6 +370,7 @@ pub fn voice_sapi_set_enabled(
         crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     }
 
+    crate::tray::refresh_tray_tooltip(window.app_handle(), state.as_ref());
     Ok(voice_sapi_status(state))
 }
 

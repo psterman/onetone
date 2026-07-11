@@ -63,24 +63,30 @@
       if(disp) disp.classList.remove('has-app-target-badge');
       return;
     }
+    var m=core()&&core().selected?core().selected():null;
+    var rulesApi=appRules();
+    var rule=rulesApi&&rulesApi.ruleForContext?rulesApi.ruleForContext(m,appId):null;
+    var displayName=rule&&rulesApi.ruleDisplayName
+      ?rulesApi.ruleDisplayName(rule)
+      :(rulesApi?rulesApi.appDisplayName(appId):appId);
     var atp=global.OneToneAppTargetPresets;
-    var preset=atp&&atp.presetById?atp.presetById(appId):null;
+    var preset=(!rulesApi||!rulesApi.isContextRuleId||!rulesApi.isContextRuleId(appId))&&atp&&atp.presetById?atp.presetById(appId):null;
     if(preset&&preset.icon){
       badge.innerHTML='<img class="app-target-card-icon" src="'+esc(preset.icon)+'" alt="" decoding="async" />';
       badge.hidden=false;
       badge.classList.add('has-icon');
-      badge.setAttribute('title',appRules().appDisplayName(appId));
+      badge.setAttribute('title',displayName);
     }else if(preset){
       var isEn=global.OneToneI18n&&global.OneToneI18n.getLang&&global.OneToneI18n.getLang()==='en';
       badge.textContent=isEn?(preset.badgeEn||preset.badge):(preset.badge||'');
       badge.hidden=false;
       badge.classList.remove('has-icon');
-      badge.setAttribute('title',appRules().appDisplayName(appId));
+      badge.setAttribute('title',displayName);
     }else{
       badge.hidden=false;
-      badge.textContent='';
-      badge.innerHTML='';
+      badge.textContent=displayName.charAt(0).toUpperCase();
       badge.classList.remove('has-icon');
+      badge.setAttribute('title',displayName);
     }
     if(disp) disp.classList.toggle('has-app-target-badge',!!appId);
   }
@@ -118,19 +124,28 @@
 
   function scopeSummaryText(m){
     if(!m) return '—';
+    var rules=appRules();
     var primary=String(m.appTargetId||'').trim();
-    if(!primary) return t('keysSummaryScopeAll');
     var names=[];
-    if(appRules()&&appRules().appDisplayName) names.push(appRules().appDisplayName(primary));
-    var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
+    if(primary&&rules&&rules.appDisplayName) names.push(rules.appDisplayName(primary));
+    var presets=rules&&rules.behaviorPresets?rules.behaviorPresets:[];
     presets.forEach(function(p){
       if(!p||!p.id||p.id===primary) return;
       var hasRule=Array.isArray(m.appBehaviorRules)&&m.appBehaviorRules.some(function(r){ return r&&r.appId===p.id; });
-      if(hasRule&&appRules().appDisplayName) names.push(appRules().appDisplayName(p.id));
+      if(hasRule&&rules&&rules.appDisplayName) names.push(rules.appDisplayName(p.id));
     });
-    if(!names.length&&primary&&appRules().appDisplayName) return appRules().appDisplayName(primary);
+    if(rules&&rules.customRulesForMapping){
+      rules.customRulesForMapping(m).forEach(function(rule){
+        var label=rules.ruleDisplayName?rules.ruleDisplayName(rule):'';
+        if(label&&names.indexOf(label)<0) names.push(label);
+      });
+    }
+    if(!names.length){
+      if(primary&&rules&&rules.appDisplayName) return rules.appDisplayName(primary);
+      return t('keysSummaryScopeAll');
+    }
     if(names.length>3) return names.slice(0,3).join(' / ')+'…';
-    return names.length?names.join(' / '):t('keysSummaryScopeAll');
+    return names.join(' / ');
   }
 
   function schemeStatusTag(m){
@@ -418,8 +433,17 @@
     }
     wrap.hidden=false;
     if(bindingStrip) bindingStrip.hidden=false;
+    var rulesApi=appRules();
+    if(rulesApi&&rulesApi.renderContextChipsHtml){
+      strip.innerHTML=rulesApi.renderContextChipsHtml(m,{contextId:activeAppContextId()});
+      if(rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
+      return;
+    }
     var ctxId=activeAppContextId();
-    var presets=appRules()&&appRules().behaviorPresets?appRules().behaviorPresets:[];
+    var presets=rulesApi&&rulesApi.behaviorPresets?rulesApi.behaviorPresets:[];
+    if(!presets.length&&global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
+      presets=global.OneToneAppTargetPresets.presets.map(function(p){ return {id:p.id}; });
+    }
     var primaryId=m?String(m.appTargetId||'').trim():'';
     var noneSelected=!ctxId&&!primaryId;
     var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-app-chip-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
@@ -427,7 +451,11 @@
       var icon=presetIcon(p.id);
       var isSel=ctxId===p.id;
       var isPri=m&&String(m.appTargetId||'')===p.id;
-      var name=appRules().appDisplayName(p.id);
+      var name=rulesApi&&rulesApi.appDisplayName?rulesApi.appDisplayName(p.id):(function(){
+        var atp=global.OneToneAppTargetPresets;
+        var preset=atp&&atp.presetById?atp.presetById(p.id):null;
+        return preset&&preset.nameKey?t(preset.nameKey):p.id;
+      })();
       html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" data-app-context="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
       if(icon){
         html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
@@ -680,21 +708,33 @@
       return;
     }
     var appId=activeAppContextId();
+    var live=false;
+    if(!appId){
+      var nav=global.OneToneHabitLayerNav;
+      if(nav&&nav.getForegroundContextRef){
+        appId=nav.getForegroundContextRef(m)||'';
+        live=!!appId;
+      }
+    }
     if(!appId){
       wrap.hidden=true;
       return;
     }
     wrap.hidden=false;
-    var appName=appRules()&&appRules().appDisplayName?appRules().appDisplayName(appId):'';
+    var rules=appRules();
+    var rule=rules&&rules.ruleForContext?rules.ruleForContext(m,appId):null;
+    var appName=rule&&rules&&rules.ruleDisplayName
+      ?rules.ruleDisplayName(rule)
+      :(rules&&rules.appDisplayName?rules.appDisplayName(appId):'');
     if(val) val.textContent=appName||t('keysAppContextDefault');
     if(badge){
-      var isPrimary=appId&&String(m.appTargetId||'')===appId;
+      var isPrimary=appId&&String(m.appTargetId||'')===appId&&!(rules&&rules.isContextRuleId&&rules.isContextRuleId(appId));
       badge.hidden=!isPrimary;
       if(isPrimary) badge.textContent=t('habitAppRulePrimaryOn');
     }
     if(hint){
       if(appId){
-        hint.textContent=t('keysAppContextHintApp').replace('{app}',appName);
+        hint.textContent=(live?t('keysAppContextHintLive'):t('keysAppContextHintApp')).replace('{app}',appName);
       }else{
         hint.textContent=t('keysAppContextHintDefault');
       }
@@ -829,7 +869,6 @@
     renderFlowStatusBar(m);
     renderImePill(m);
     var shortcutsCard=$('keysAppShortcutsCard');
-    if(shortcutsCard) shortcutsCard.hidden=true;
     var advSummary=$('keysAdvancedSummary');
     if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
@@ -912,8 +951,8 @@
     if(addChip){
       addChip.addEventListener('click',function(e){
         e.preventDefault();
-        var main=$('btnKeysAddAppRule');
-        if(main) main.click();
+        e.stopPropagation();
+        if(appRules()&&appRules().openAppPicker) appRules().openAppPicker();
       });
     }
     var saveBtn=$('btnKeysSave');

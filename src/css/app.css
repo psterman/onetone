@@ -2050,6 +2050,8 @@
     }
     .habit-app-scenario-card.is-primary{border-color:rgba(42,156,196,.35);box-shadow:0 0 0 1px rgba(42,156,196,.12)}
     .habit-app-scenario-card.is-preview{background:var(--primary-soft)}
+    .habit-app-scenario-card--custom{border-style:dashed}
+    .habit-app-scenario-finish-pills{margin:0 10px 10px;padding-top:2px}
     .habit-app-scenario-head{
       display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 10px;
     }

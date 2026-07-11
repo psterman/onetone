@@ -94,82 +94,7 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
 
 pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
 
-struct BehaviorAppMatcher {
-    id: &'static str,
-    process_names: &'static [&'static str],
-    path_marker: Option<&'static str>,
-}
-
-const BEHAVIOR_APP_MATCHERS: &[BehaviorAppMatcher] = &[
-    BehaviorAppMatcher {
-        id: CURSOR_APP_TARGET_ID,
-        process_names: &["Cursor.exe"],
-        path_marker: None,
-    },
-    BehaviorAppMatcher {
-        id: CODEX_APP_TARGET_ID,
-        process_names: &["Codex.exe"],
-        path_marker: Some("OpenAI.Codex"),
-    },
-    BehaviorAppMatcher {
-        id: MINIMAX_APP_TARGET_ID,
-        process_names: &["MiniMax Code.exe"],
-        path_marker: Some("MiniMax Code"),
-    },
-    BehaviorAppMatcher {
-        id: CLAUDE_CODE_APP_TARGET_ID,
-        process_names: &["claude.exe", "Claude Code.exe"],
-        path_marker: None,
-    },
-];
-
-#[cfg(windows)]
-fn behavior_app_id_for_pid(pid: u32) -> Option<String> {
-    let path = process_image_path(pid)?;
-    let file_name = path.rsplit(['\\', '/']).next().unwrap_or_default();
-    for matcher in BEHAVIOR_APP_MATCHERS {
-        let name_ok = matcher
-            .process_names
-            .iter()
-            .any(|name| file_name.eq_ignore_ascii_case(name));
-        if !name_ok {
-            continue;
-        }
-        let path_ok = matcher
-            .path_marker
-            .map(|marker| path.contains(marker))
-            .unwrap_or(true);
-        if path_ok {
-            return Some(matcher.id.to_string());
-        }
-    }
-    None
-}
-
-/// Resolve the foreground app's behavior-rule id (cursor-chat, codex-chat, etc.).
-pub fn foreground_app_target_id() -> Option<String> {
-    #[cfg(windows)]
-    {
-        use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId};
-
-        unsafe {
-            let hwnd = GetForegroundWindow();
-            if hwnd.is_null() {
-                return None;
-            }
-            let mut pid = 0u32;
-            GetWindowThreadProcessId(hwnd, &mut pid);
-            if pid == 0 {
-                return None;
-            }
-            behavior_app_id_for_pid(pid)
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        None
-    }
-}
+pub use crate::app_identity::foreground_app_target_id;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppChatWorkflowError {
@@ -537,7 +462,7 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
 
 #[cfg(windows)]
 fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
-    process_image_path(pid).is_some_and(|path| {
+    crate::app_identity::process_image_path(pid).is_some_and(|path| {
         let file_name = path.rsplit(['\\', '/']).next().unwrap_or_default();
         let name_ok = profile
             .process_names
@@ -551,44 +476,6 @@ fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
             .map(|marker| path.contains(marker))
             .unwrap_or(true)
     })
-}
-
-#[cfg(windows)]
-fn process_image_path(pid: u32) -> Option<String> {
-    use winapi::shared::minwindef::DWORD;
-    use winapi::um::handleapi::CloseHandle;
-    use winapi::um::processthreadsapi::OpenProcess;
-    use winapi::um::psapi::GetModuleFileNameExW;
-    use winapi::um::winnt::{PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ};
-
-    unsafe {
-        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, 0, pid);
-        if handle.is_null() {
-            return None;
-        }
-        let mut buf = [0u16; 1024];
-        let mut len = buf.len() as DWORD;
-        let ok = windows::Win32::System::Threading::QueryFullProcessImageNameW(
-            windows::Win32::Foundation::HANDLE(handle as _),
-            windows::Win32::System::Threading::PROCESS_NAME_FORMAT(0),
-            windows::core::PWSTR(buf.as_mut_ptr()),
-            &mut len,
-        )
-        .is_ok();
-        if !ok || len == 0 {
-            len = GetModuleFileNameExW(
-                handle,
-                std::ptr::null_mut(),
-                buf.as_mut_ptr(),
-                buf.len() as u32,
-            );
-        }
-        CloseHandle(handle);
-        if len == 0 {
-            return None;
-        }
-        Some(String::from_utf16_lossy(&buf[..len as usize]))
-    }
 }
 
 #[cfg(windows)]

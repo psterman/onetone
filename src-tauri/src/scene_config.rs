@@ -45,6 +45,7 @@ pub struct VoiceSessionSnapshot {
 pub struct VoiceRuntimeFingerprint {
     pub engine: DesiredVoiceEngine,
     pub wake_phrases: Vec<String>,
+    pub summon_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
     pub cancel_phrases: PhraseBundle,
     pub vosk_model_path: String,
@@ -98,6 +99,7 @@ pub fn voice_runtime_fingerprint(
     Some(VoiceRuntimeFingerprint {
         engine: effective_desired_engine(cfg, mapping),
         wake_phrases: normalize_phrase_list(&effective.wake_phrases),
+        summon_phrases: normalize_phrase_list(&effective.summon_phrases),
         end_phrases: normalize_end_phrases(&effective.end_phrases),
         cancel_phrases: normalize_end_phrases(&effective.cancel_phrases),
         vosk_model_path: model_path,
@@ -160,6 +162,9 @@ pub fn vosk_grammar_from_effective(
         }
     };
     for p in &effective.wake_phrases {
+        push(p);
+    }
+    for p in &effective.summon_phrases {
         push(p);
     }
     if voice_end_enabled {
@@ -308,16 +313,10 @@ fn base_wake_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> Vec<Strin
 
 fn merge_wake_phrases(
     cfg: &VoiceConfig,
-    mapping: &crate::config::MappingEntry,
+    _mapping: &crate::config::MappingEntry,
     ov: Option<&VoiceOverride>,
 ) -> Vec<String> {
-    let base = base_wake_phrases(cfg, ov);
-    let preset = effective_vosk_model_preset(cfg, mapping);
-    let summon: Vec<String> = crate::config::summon_entries_for_mapping(mapping, &preset)
-        .into_iter()
-        .map(|(phrase, _)| phrase)
-        .collect();
-    crate::config::append_unique_phrases(base, &summon)
+    base_wake_phrases(cfg, ov)
 }
 
 fn merge_end_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> PhraseBundle {
@@ -619,7 +618,7 @@ mod tests {
     }
 
     #[test]
-    fn summon_phrases_merge_into_effective_wake() {
+    fn summon_phrases_do_not_merge_into_effective_wake() {
         use crate::config::AppBehaviorRule;
 
         let mut cfg = base_cfg();
@@ -627,14 +626,17 @@ mod tests {
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             m.app_target_id = "cursor-chat".into();
             m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: String::new(),
                 app_id: "cursor-chat".into(),
                 finish_mode: "confirm".into(),
                 note: None,
                 summon_phrase: Some("打开我的 Cursor".into()),
+                app_match: None,
+                display_name: None,
             }];
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
-        assert!(eff.wake_phrases.contains(&"打开我的 Cursor".to_string()));
+        assert!(!eff.wake_phrases.contains(&"打开我的 Cursor".to_string()));
         assert!(eff.summon_phrases.contains(&"打开我的 Cursor".to_string()));
     }
 
@@ -680,10 +682,13 @@ mod tests {
         let id = cfg.active_scene_id.clone();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: String::new(),
                 app_id: "cursor-chat".into(),
                 finish_mode: "confirm".into(),
                 note: None,
                 summon_phrase: Some("hey cursor".into()),
+                app_match: None,
+                display_name: None,
             }];
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
@@ -700,19 +705,23 @@ mod tests {
         cfg.voice_vosk.phrases = vec!["打开 Cursor".into()];
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: String::new(),
                 app_id: "cursor-chat".into(),
                 finish_mode: "confirm".into(),
                 note: None,
                 summon_phrase: None,
+                app_match: None,
+                display_name: None,
             }];
         }
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
-        let count = eff
+        let wake_count = eff
             .wake_phrases
             .iter()
             .filter(|p| *p == "打开 Cursor")
             .count();
-        assert_eq!(count, 1);
+        assert_eq!(wake_count, 1);
+        assert!(eff.summon_phrases.contains(&"打开 Cursor".to_string()));
     }
 
     #[test]
@@ -724,16 +733,19 @@ mod tests {
         let fp_before = idle_voice_fingerprint(&cfg).unwrap();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
             m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: String::new(),
                 app_id: "cursor-chat".into(),
                 finish_mode: "confirm".into(),
                 note: None,
                 summon_phrase: Some("unique summon xyz".into()),
+                app_match: None,
+                display_name: None,
             }];
         }
         let fp_after = idle_voice_fingerprint(&cfg).unwrap();
         assert_ne!(fp_before, fp_after);
         assert!(fp_after
-            .wake_phrases
+            .summon_phrases
             .contains(&"unique summon xyz".to_string()));
     }
 

@@ -19,6 +19,192 @@
 
   var activeAppContextId='';
   var keysExpandedAppId='';
+  var activeRuleId='';
+
+  function newRuleId(){
+    return 'rule-'+Date.now()+'-'+Math.floor(Math.random()*100000);
+  }
+
+  function isPresetAppId(appId){
+    return !!BEHAVIOR_PRESETS.find(function(p){ return p.id===appId; });
+  }
+
+  function isCustomRule(rule){
+    return !!(rule&&String(rule.appId||'')==='custom');
+  }
+
+  function isContextRuleId(id){
+    return String(id||'').indexOf('rule-')===0;
+  }
+
+  function ruleById(m,ruleId){
+    ensureRules(m);
+    ruleId=String(ruleId||'').trim();
+    if(!ruleId) return null;
+    return m.appBehaviorRules.find(function(r){ return r&&r.ruleId===ruleId; })||null;
+  }
+
+  function customRulesForMapping(m){
+    ensureRules(m);
+    return m.appBehaviorRules.filter(function(r){ return r&&isCustomRule(r); });
+  }
+
+  function ruleDisplayName(rule){
+    if(!rule) return '—';
+    var display='';
+    if(rule.displayName&&String(rule.displayName).trim()) display=String(rule.displayName).trim();
+    else if(isPresetAppId(rule.appId)) return appDisplayName(rule.appId);
+    else if(rule.match&&Array.isArray(rule.match.exeNames)&&rule.match.exeNames[0]) display=String(rule.match.exeNames[0]);
+    else display=rule.appId||'—';
+    var exe=rule.match&&Array.isArray(rule.match.exeNames)&&rule.match.exeNames[0]?String(rule.match.exeNames[0]).trim():'';
+    if(display&&exe){
+      var stem=exe.replace(/\.exe$/i,'');
+      if(stem.length>display.length&&stem.toLowerCase().indexOf(display.toLowerCase())===0) return stem;
+    }
+    return display;
+  }
+
+  function matchIdentityKey(identity){
+    if(!identity) return '';
+    var exe=String(identity.exeName||identity.exe_name||'').trim();
+    var path=String(identity.fullPath||identity.full_path||'').trim();
+    var pathContains='';
+    if(path){
+      var slash=Math.max(path.lastIndexOf('\\'),path.lastIndexOf('/'));
+      pathContains=slash>=0?path.slice(0,slash):path;
+    }
+    return exe.toLowerCase()+'::'+pathContains.toLowerCase();
+  }
+
+  function ruleMatchKey(rule){
+    if(!rule||!rule.match) return '';
+    var exe=(rule.match.exeNames||[]).map(function(x){ return String(x||'').trim().toLowerCase(); }).filter(Boolean).join('|');
+    var path=rule.match.pathContains!=null?String(rule.match.pathContains).trim().toLowerCase():'';
+    return exe+'::'+path;
+  }
+
+  function ruleSpecificity(rule){
+    if(!rule||!rule.match) return 0;
+    var score=0;
+    if(rule.match.pathContains&&String(rule.match.pathContains).trim()) score+=300;
+    if(rule.match.exeNames&&rule.match.exeNames.some(function(n){ return String(n||'').trim(); })) score+=200;
+    if(rule.match.titleContains&&String(rule.match.titleContains).trim()) score+=100;
+    return score;
+  }
+
+  function ruleIsExplicitMatch(rule){
+    if(!rule||!rule.match) return false;
+    return !!(rule.match.exeNames&&rule.match.exeNames.length)||!!(rule.match.pathContains&&String(rule.match.pathContains).trim())||!!(rule.match.titleContains&&String(rule.match.titleContains).trim());
+  }
+
+  function ruleMatchesIdentity(rule,identity){
+    if(!rule||!identity) return false;
+    var match=rule.match;
+    if(match){
+      var exe=String(identity.exeName||identity.exe_name||'');
+      var path=String(identity.fullPath||identity.full_path||'');
+      var title=String(identity.windowTitle||identity.window_title||'');
+      if(match.exeNames&&match.exeNames.length){
+        var exeOk=match.exeNames.some(function(name){
+          name=String(name||'').trim();
+          return name&&exe.toLowerCase()===name.toLowerCase();
+        });
+        if(!exeOk) return false;
+      }
+      if(match.pathContains){
+        var pathNeedle=String(match.pathContains).trim().toLowerCase();
+        if(!pathNeedle||path.toLowerCase().indexOf(pathNeedle)<0) return false;
+      }
+      if(match.titleContains){
+        var titleNeedle=String(match.titleContains).trim().toLowerCase();
+        if(!titleNeedle||title.toLowerCase().indexOf(titleNeedle)<0) return false;
+      }
+      return true;
+    }
+    if(!isPresetAppId(rule.appId)) return false;
+    var presetId=identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'';
+    return String(presetId)===String(rule.appId);
+  }
+
+  function matchRuleForMapping(m,identity){
+    if(!m||!identity) return null;
+    ensureRules(m);
+    var best=null;
+    m.appBehaviorRules.forEach(function(rule,idx){
+      if(!rule||!ruleMatchesIdentity(rule,identity)) return;
+      var explicit=ruleIsExplicitMatch(rule);
+      var specificity=ruleSpecificity(rule);
+      var replace=!best
+        ||(explicit&&!best.explicit)
+        ||(explicit===best.explicit&&specificity>best.specificity)
+        ||(explicit===best.explicit&&specificity===best.specificity&&idx<best.idx);
+      if(replace) best={rule:rule,explicit:explicit,specificity:specificity,idx:idx};
+    });
+    return best?best.rule:null;
+  }
+
+  function contextRefForRule(rule){
+    if(!rule) return '';
+    return isCustomRule(rule)?rule.ruleId:rule.appId;
+  }
+
+  function resolvePreviewContext(m){
+    var manual=activeContextRef();
+    if(manual) return manual;
+    var nav=global.OneToneHabitLayerNav;
+    if(nav&&nav.getForegroundContextRef&&m) return nav.getForegroundContextRef(m)||'';
+    return '';
+  }
+
+  function resolveForegroundContextRef(m,identity){
+    if(!m||!identity) return '';
+    var rule=matchRuleForMapping(m,identity);
+    if(rule) return contextRefForRule(rule);
+    var preset=identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'';
+    return String(preset||'');
+  }
+
+  function identityDisplayName(identity){
+    if(!identity) return '';
+    var preset=identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId;
+    if(preset&&isPresetAppId(String(preset))) return appDisplayName(String(preset));
+    return resolveCustomRuleDisplayName(identity);
+  }
+
+  function resolveCustomRuleDisplayName(identity){
+    var exe=String(identity.exeName||identity.exe_name||'').trim();
+    var stem=exe.replace(/\.exe$/i,'');
+    var listName=String(identity.displayName||identity.display_name||'').trim();
+    var title=String(identity.windowTitle||identity.window_title||'').trim();
+    if(listName){
+      if(!title||listName.length>=title.length) return listName;
+      if(title.length<listName.length&&listName.toLowerCase().indexOf(title.toLowerCase())===0) return listName;
+    }
+    if(title&&title.length>2&&title.toLowerCase()!==stem.toLowerCase()&&title.toLowerCase()!==exe.toLowerCase()){
+      if(!listName||title.length>=listName.length) return title;
+    }
+    if(listName) return listName;
+    return stem||exe;
+  }
+
+  function identityAlreadyInRules(m,identity){
+    if(!m||!identity) return false;
+    if(findCustomRuleForIdentity(m,identity)) return true;
+    var presetId=identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId;
+    if(presetId&&isPresetAppId(String(presetId))&&ruleForApp(m,String(presetId))) return true;
+    return false;
+  }
+
+  function findCustomRuleForIdentity(m,identity){
+    var key=matchIdentityKey(identity);
+    if(!key) return null;
+    var found=null;
+    customRulesForMapping(m).some(function(rule){
+      if(ruleMatchKey(rule)===key){ found=rule; return true; }
+      return false;
+    });
+    return found;
+  }
 
   function getKeysExpandedAppId(){
     var ed=global.OneToneMappingEditorState;
@@ -65,7 +251,8 @@
     return p&&p.icon?p.icon:'';
   }
 
-  function appDisplayName(appId){
+  function appDisplayName(appId,rule){
+    if(rule) return ruleDisplayName(rule);
     var meta=presetMeta(appId);
     if(meta&&meta.nameKey) return t(meta.nameKey);
     var p=presetById(appId);
@@ -281,12 +468,67 @@
     return html;
   }
 
+  function renderKeysCustomExpandFacts(m,rule,mode){
+    var meta=rule.match?(function(){
+      var parts=[];
+      if(rule.match.exeNames&&rule.match.exeNames.length) parts.push(rule.match.exeNames.join(', '));
+      if(rule.match.pathContains) parts.push(rule.match.pathContains);
+      return parts.join(' · ');
+    })():'';
+    var html='<div class="keys-app-expand-facts">';
+    if(meta){
+      html+='<p class="keys-app-expand-fact"><span class="keys-app-expand-fact-lbl">'+esc(t('habitAppRuleCustomMatch'))+'</span> <strong>'+esc(meta)+'</strong></p>';
+    }
+    html+='<p class="keys-app-expand-fact"><span class="keys-app-expand-fact-lbl">'+esc(t('keysAppExpandFinish'))+'</span> <strong>'+esc(finishModeLabel(mode))+'</strong></p>';
+    html+='<p class="keys-app-expand-hint-inline">'+esc(t('keysAppPriorityHint'))+'</p>';
+    html+='</div>';
+    html+='<div class="habit-app-rule-pills keys-app-custom-finish-pills" role="radiogroup" aria-label="'+esc(t('habitAppRulesPickFinish'))+'">';
+    MODE_CYCLE.forEach(function(modeOpt){
+      var on=mode===modeOpt;
+      html+='<button type="button" class="habit-app-rule-pill'+(on?' is-active':'')+' '+finishModeClass(modeOpt)+'" data-rule-pill="'+esc(rule.ruleId)+'" data-finish-mode="'+modeOpt+'" role="radio" aria-checked="'+(on?'true':'false')+'">'+esc(finishModeLabel(modeOpt))+'</button>';
+    });
+    html+='</div>';
+    html+='<button type="button" class="keys-app-custom-delete" data-rule-delete="'+esc(rule.ruleId)+'">'+esc(t('habitAppRuleDelete'))+'</button>';
+    return html;
+  }
+
+  function renderKeysCustomExpandableRow(m,rule){
+    var ruleId=rule.ruleId;
+    var expanded=getKeysExpandedAppId()===ruleId||activeAppContextId===ruleId;
+    var mode=rule.finishMode||'confirm';
+    var name=ruleDisplayName(rule);
+    var meta=rule.match&&rule.match.exeNames&&rule.match.exeNames[0]?String(rule.match.exeNames[0]):t('habitAppRuleCustomMatch');
+    var html='<div class="keys-app-expand-wrap keys-app-expand-wrap--custom'+(activeAppContextId===ruleId?' is-preview':'')+'" data-app-rule="'+esc(ruleId)+'" data-rule-id="'+esc(ruleId)+'">';
+    html+='<div class="keys-app-expand-head">';
+    html+='<details class="keys-app-expand-row'+(expanded?' is-open':'')+'" data-rule-id="'+esc(ruleId)+'"'+(expanded?' open':'')+'>';
+    html+='<summary class="keys-app-expand-summary">';
+    html+='<div class="keys-app-shortcut-main keys-app-expand-summary-main">';
+    html+=customRuleIconHtml(rule,'keys-app-shortcut-icon');
+    html+='<span><span class="keys-app-shortcut-name">'+esc(name)+'</span>';
+    html+='<span class="keys-app-expand-meta">'+esc(meta)+' · '+esc(finishModeLabel(mode))+'</span></span>';
+    html+='</div></summary>';
+    html+='<div class="keys-app-expand-body"><div class="keys-workflow-expand">';
+    html+=renderKeysCustomExpandFacts(m,rule,mode);
+    html+='</div></div></details></div></div>';
+    return html;
+  }
+
   function renderKeysAside(){
     var aside=$('keysPanelAside');
     var shortcutsCard=$('keysAppShortcutsCard');
+    var keysList=$('keysAppRulesList');
+    var countEl=$('keysAppShortcutsCount');
     var keysActive=keysPanelActive();
     if(aside) aside.hidden=!keysActive;
-    if(shortcutsCard) shortcutsCard.hidden=true;
+    var m=core()&&core().selected?core().selected():null;
+    var custom=m?customRulesForMapping(m):[];
+    if(shortcutsCard) shortcutsCard.hidden=!keysActive||!custom.length;
+    if(countEl) countEl.textContent=custom.length?t('keysAppShortcutsCount').replace('{n}',String(custom.length)):'';
+    if(keysList&&keysActive&&m&&core().isSaved&&core().isSaved(m)){
+      keysList.innerHTML=custom.map(function(rule){ return renderKeysCustomExpandableRow(m,rule); }).join('');
+    }else if(keysList){
+      keysList.innerHTML='';
+    }
     if(!keysActive) return;
     var kpu=global.OneToneKeysPanelUi;
     if(kpu&&kpu.renderAppContextStrip) kpu.renderAppContextStrip();
@@ -328,6 +570,42 @@
     return html;
   }
 
+  function customRuleMatchMeta(rule){
+    if(!rule||!rule.match) return '';
+    var parts=[];
+    if(rule.match.exeNames&&rule.match.exeNames.length) parts.push(rule.match.exeNames.join(', '));
+    if(rule.match.pathContains) parts.push(rule.match.pathContains);
+    if(rule.match.titleContains) parts.push(rule.match.titleContains);
+    return parts.join(' · ');
+  }
+
+  function renderCustomScenarioCard(m,rule){
+    var ruleId=rule.ruleId;
+    var mode=rule.finishMode||'confirm';
+    var name=ruleDisplayName(rule);
+    var meta=customRuleMatchMeta(rule)||t('habitAppRuleCustomMatch');
+    var html='<article class="habit-app-scenario-card habit-app-scenario-card--custom'+(activeAppContextId===ruleId?' is-preview':'')+'" data-rule-id="'+esc(ruleId)+'" data-app-rule="'+esc(ruleId)+'">';
+    html+='<div class="habit-app-scenario-head">';
+    html+=customRuleIconHtml(rule,'habit-app-scenario-icon');
+    html+='<div class="habit-app-scenario-main">';
+    html+='<div class="habit-app-scenario-name-row">';
+    html+='<h4 class="habit-app-scenario-name">'+esc(name)+'</h4>';
+    html+='<span class="habit-app-scenario-badge">'+esc(t('habitAppRuleCustomBadge'))+'</span>';
+    html+='</div>';
+    html+='<div class="habit-app-scenario-shortcut"><span class="habit-app-scenario-shortcut-empty">'+esc(meta)+'</span></div>';
+    html+='</div>';
+    html+='<div class="habit-app-scenario-actions">';
+    html+='<button type="button" class="habit-app-scenario-btn is-muted" data-rule-delete="'+esc(ruleId)+'">'+esc(t('habitAppRuleDelete'))+'</button>';
+    html+='</div></div>';
+    html+='<div class="habit-app-rule-pills habit-app-scenario-finish-pills" role="radiogroup" aria-label="'+esc(t('habitAppRulesPickFinish'))+'">';
+    MODE_CYCLE.forEach(function(modeOpt){
+      var on=mode===modeOpt;
+      html+='<button type="button" class="habit-app-rule-pill'+(on?' is-active':'')+' '+finishModeClass(modeOpt)+'" data-rule-pill="'+esc(ruleId)+'" data-finish-mode="'+modeOpt+'" role="radio" aria-checked="'+(on?'true':'false')+'">'+esc(finishModeLabel(modeOpt))+'</button>';
+    });
+    html+='</div></article>';
+    return html;
+  }
+
   function renderActiveScenarioBanner(){
     var wrap=$('habitActiveScenario');
     var nameEl=$('habitActiveScenarioName');
@@ -349,6 +627,8 @@
 
   function setActiveAppContextId(appId){
     activeAppContextId=appId||'';
+    activeRuleId=isContextRuleId(activeAppContextId)?activeAppContextId:'';
+    if(!isContextRuleId(activeAppContextId)) activeRuleId='';
     var ed=global.OneToneMappingEditorState;
     if(ed&&ed.setEditorActiveAppContextId) ed.setEditorActiveAppContextId(activeAppContextId);
     var m=core()&&core().selected?core().selected():null;
@@ -357,17 +637,23 @@
     var list=$('habitAppRulesList');
     if(list){
       list.querySelectorAll('.habit-app-scenario-card').forEach(function(card){
-        card.classList.toggle('is-preview',!!activeAppContextId&&card.dataset.appId===activeAppContextId);
+        var match=isContextRuleId(activeAppContextId)
+          ?card.dataset.ruleId===activeAppContextId
+          :card.dataset.appId===activeAppContextId;
+        card.classList.toggle('is-preview',!!activeAppContextId&&match);
       });
     }
     var keysList=$('keysAppRulesList');
     if(keysList){
       keysList.querySelectorAll('.keys-app-expand-row').forEach(function(row){
-        row.classList.toggle('is-preview',!!activeAppContextId&&row.dataset.appId===activeAppContextId);
-        if(activeAppContextId&&row.dataset.appId===activeAppContextId&&!row.open) row.open=true;
+        var match=isContextRuleId(activeAppContextId)
+          ?row.dataset.ruleId===activeAppContextId
+          :row.dataset.appId===activeAppContextId;
+        row.classList.toggle('is-preview',!!activeAppContextId&&match);
+        if(activeAppContextId&&match&&!row.open) row.open=true;
       });
     }
-    if(activeAppContextId) setKeysExpandedAppId(activeAppContextId);
+    if(activeAppContextId&&!isContextRuleId(activeAppContextId)) setKeysExpandedAppId(activeAppContextId);
     var kpu=global.OneToneKeysPanelUi;
     if(kpu){
       if(kpu.renderAppContextStrip) kpu.renderAppContextStrip();
@@ -377,6 +663,17 @@
     var kfr=global.OneToneKeyFinishFlowRender;
     if(kfr&&kfr.refreshFinishModeSegment) kfr.refreshFinishModeSegment(m);
     if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
+    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+    }
+  }
+
+  function setActiveRuleContext(ruleId){
+    setActiveAppContextId(ruleId||'');
+  }
+
+  function activeContextRef(){
+    return activeAppContextId||'';
   }
 
   function selectAppContext(appId){
@@ -392,6 +689,12 @@
     return m.appBehaviorRules.find(function(r){ return r.appId===appId; })||null;
   }
 
+  function ruleForContext(m,ctx){
+    if(!ctx) return null;
+    if(isContextRuleId(ctx)) return ruleById(m,ctx);
+    return ruleForApp(m,ctx);
+  }
+
   function saveAndRefresh(){
     if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
     renderAppBehaviorRules();
@@ -401,6 +704,7 @@
     if(global.OneToneSceneVoiceTab&&global.OneToneSceneVoiceTab.render) global.OneToneSceneVoiceTab.render();
     if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
     if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+    scheduleHydrateCustomRuleIcons();
   }
 
   function seedDefaultBehaviorRules(m){
@@ -408,6 +712,7 @@
     if(m.appBehaviorRules.length) return false;
     BEHAVIOR_PRESETS.forEach(function(p){
       m.appBehaviorRules.push({
+        ruleId:newRuleId(),
         appId:p.id,
         finishMode:p.defaultMode,
         note:defaultNoteForApp(p.id)
@@ -426,6 +731,7 @@
     ensureRules(m);
     if(ruleForApp(m,appId)) return false;
     m.appBehaviorRules.push({
+      ruleId:newRuleId(),
       appId:appId,
       finishMode:resolveGlobalFinishMode(m),
       note:defaultNoteForApp(appId)
@@ -469,22 +775,43 @@
       existing.finishMode=finishMode;
       if(note!==undefined) existing.note=note;
     }else{
-      m.appBehaviorRules.push({appId:appId,finishMode:finishMode,note:note||defaultNoteForApp(appId)});
+      m.appBehaviorRules.push({ruleId:newRuleId(),appId:appId,finishMode:finishMode,note:note||defaultNoteForApp(appId)});
     }
     if(keysPanelActive()) saveFinishModeChange(m);
     else saveAndRefresh();
   }
 
-  function setAppFinishMode(m,appId,mode){
-    if(!m||!appId||!mode) return;
-    var rule=ruleForApp(m,appId);
-    upsertRule(m,appId,mode,rule&&rule.note||defaultNoteForApp(appId));
+  function setRuleFinishMode(m,ruleId,mode){
+    if(!m||!ruleId||!mode) return;
+    var rule=ruleById(m,ruleId);
+    if(!rule) return;
+    rule.finishMode=mode;
+    if(keysPanelActive()) saveFinishModeChange(m);
+    else saveAndRefresh();
+  }
+
+  function setAppFinishMode(m,ctx,mode){
+    if(!m||!ctx||!mode) return;
+    if(isContextRuleId(ctx)){
+      setRuleFinishMode(m,ctx,mode);
+      return;
+    }
+    var rule=ruleForContext(m,ctx);
+    upsertRule(m,ctx,mode,rule&&rule.note||defaultNoteForApp(ctx));
   }
 
   function removeRule(m,appId){
     ensureRules(m);
     m.appBehaviorRules=m.appBehaviorRules.filter(function(r){ return r.appId!==appId; });
     if(activeAppContextId===appId) setActiveAppContextId('');
+    saveAndRefresh();
+  }
+
+  function removeRuleById(m,ruleId){
+    if(!m||!ruleId) return;
+    ensureRules(m);
+    m.appBehaviorRules=m.appBehaviorRules.filter(function(r){ return r.ruleId!==ruleId; });
+    if(activeAppContextId===ruleId) setActiveAppContextId('');
     saveAndRefresh();
   }
 
@@ -508,9 +835,16 @@
     ensureRules(m);
     if(addBtn){
       addBtn.hidden=false;
-      addBtn.textContent='+ '+t('habitAppShortcutsAdd');
-      addBtn.disabled=true;
-      addBtn.title=t('habitAppRulesEmpty');
+      addBtn.textContent='+ '+t('habitAppRulesAdd');
+      addBtn.disabled=false;
+      addBtn.title=t('habitAppRulesPickApp');
+      if(!addBtn.dataset.pickerBound){
+        addBtn.dataset.pickerBound='1';
+        addBtn.addEventListener('click',function(e){
+          e.preventDefault();
+          openAppPicker();
+        });
+      }
     }
     var shortcutsTitle=$('habitAppShortcutsTitle');
     var shortcutsDesc=$('habitAppShortcutsDesc');
@@ -520,10 +854,14 @@
     BEHAVIOR_PRESETS.forEach(function(preset){
       html+=renderScenarioCard(m,preset);
     });
+    customRulesForMapping(m).forEach(function(rule){
+      html+=renderCustomScenarioCard(m,rule);
+    });
     list.innerHTML=html;
     renderActiveScenarioBanner();
     renderKeysAside();
     renderVoiceAside();
+    scheduleHydrateCustomRuleIcons();
   }
 
   function handleAppRulesListClick(e){
@@ -586,6 +924,27 @@
       upsertRule(m3,appId3,mode3,rule3&&rule3.note||defaultNoteForApp(appId3));
       return true;
     }
+    var rulePillBtn=e.target.closest&&e.target.closest('[data-rule-pill]');
+    if(rulePillBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      var mRule=core()&&core().selected?core().selected():null;
+      if(!mRule) return true;
+      var ruleIdPill=rulePillBtn.getAttribute('data-rule-pill')||'';
+      var modeRule=rulePillBtn.getAttribute('data-finish-mode')||'';
+      if(!ruleIdPill||!modeRule) return true;
+      setRuleFinishMode(mRule,ruleIdPill,modeRule);
+      return true;
+    }
+    var ruleDeleteBtn=e.target.closest&&e.target.closest('[data-rule-delete]');
+    if(ruleDeleteBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      var mDel=core()&&core().selected?core().selected():null;
+      if(!mDel) return true;
+      removeRuleById(mDel,ruleDeleteBtn.getAttribute('data-rule-delete')||'');
+      return true;
+    }
     var primarySet=e.target.closest&&e.target.closest('[data-app-rule-primary]');
     if(primarySet){
       e.stopPropagation();
@@ -602,7 +961,20 @@
     }
     var card=e.target.closest&&e.target.closest('[data-app-rule]');
     if(card&&!e.target.closest('button,input,textarea,select,summary,.keys-flow-horizontal,.keys-workflow-expand,[data-summon-edit]')){
+      var ruleIdCard=card.dataset.ruleId;
       var appId=card.dataset.appId;
+      if(ruleIdCard){
+        if(card.classList&&card.classList.contains('keys-app-expand-wrap')){
+          var detailsR=card.querySelector('.keys-app-expand-row');
+          if(detailsR){
+            detailsR.open=true;
+            setKeysExpandedAppId(ruleIdCard);
+          }
+        }
+        setActiveRuleContext(ruleIdCard);
+        e.stopPropagation();
+        return true;
+      }
       if(card.classList&&card.classList.contains('keys-app-expand-wrap')){
         var details=card.querySelector('.keys-app-expand-row');
         if(details){
@@ -627,7 +999,9 @@
     if(opts.hoverPreview!==false){
       list.addEventListener('mouseenter',function(e){
         var card=e.target.closest&&e.target.closest('[data-app-rule]');
-        if(card) setActiveAppContextId(card.dataset.appId);
+        if(!card) return;
+        if(card.dataset.ruleId) setActiveRuleContext(card.dataset.ruleId);
+        else if(card.dataset.appId) setActiveAppContextId(card.dataset.appId);
       },true);
       list.addEventListener('mouseleave',function(e){
         if(!list.contains(e.relatedTarget)) setActiveAppContextId('');
@@ -647,8 +1021,10 @@
             if(other!==row) other.open=false;
           });
           var appId=row.dataset.appId||'';
-          setKeysExpandedAppId(appId);
-          setActiveAppContextId(appId);
+          var ruleId=row.dataset.ruleId||'';
+          setKeysExpandedAppId(ruleId||appId);
+          if(ruleId) setActiveRuleContext(ruleId);
+          else setActiveAppContextId(appId);
         }else if(getKeysExpandedAppId()===(row.dataset.appId||'')){
           setKeysExpandedAppId('');
         }
@@ -670,14 +1046,7 @@
       addBtn.dataset.summonBound='1';
       addBtn.addEventListener('click',function(e){
         e.preventDefault();
-        var first=list.querySelector('.keys-app-expand-row');
-        if(first){
-          first.open=true;
-          setKeysExpandedAppId(first.dataset.appId||'');
-          var input=first.querySelector('[data-summon-input]');
-          if(input) input.focus();
-        }
-        hooks().toast&&hooks().toast(t('habitAppShortcutsAddHint'));
+        if(appRules()&&appRules().openAppPicker) appRules().openAppPicker();
       });
     }
   }
@@ -715,6 +1084,7 @@
       rule.summonPhrase=phrase||undefined;
     }else{
       m.appBehaviorRules.push({
+        ruleId:newRuleId(),
         appId:appId,
         finishMode:defaultModeForApp(appId),
         note:defaultNoteForApp(appId),
@@ -799,17 +1169,518 @@
     bindAppRulesList($('habitAppRulesList'));
     bindKeysAsideEvents($('keysAppRulesList'));
     bindVoiceAsideEvents($('voiceAppShortcutsList'));
+    bindAppPickerEvents();
   }
 
-  function resolveEffectiveFinish(m,appId){
-    if(!m||!appId) return null;
+  function resolveEffectiveFinish(m,ctx){
+    if(!m||!ctx) return null;
     ensureRules(m);
-    var rule=m.appBehaviorRules.find(function(r){ return r.appId===appId; });
-    if(rule) return {mode:rule.finishMode,appName:appDisplayName(appId)};
-    if(String(m.appTargetId||'')===appId){
-      return {mode:resolveGlobalFinishMode(m),appName:appDisplayName(appId)};
+    var rule=ruleForContext(m,ctx);
+    if(rule) return {mode:rule.finishMode,appName:ruleDisplayName(rule)};
+    if(!isContextRuleId(ctx)&&String(m.appTargetId||'')===ctx){
+      return {mode:resolveGlobalFinishMode(m),appName:appDisplayName(ctx)};
     }
     return null;
+  }
+
+  function upgradeCustomRuleFromIdentity(rule,identity){
+    if(!rule||!identity) return;
+    var display=resolveCustomRuleDisplayName(identity);
+    if(display) rule.displayName=display;
+    var icon=resolveAppIconUrl(identity);
+    if(icon) rule.iconDataUrl=icon;
+    var path=String(identity.fullPath||identity.full_path||'').trim();
+    if(path){
+      if(!rule.match) rule.match={exeNames:[]};
+      rule.match.fullPath=path;
+    }
+  }
+
+  function addCustomRuleFromIdentity(m,identity){
+    if(!m||!identity) return null;
+    ensureRules(m);
+    var existing=findCustomRuleForIdentity(m,identity);
+    if(existing){
+      upgradeCustomRuleFromIdentity(existing,identity);
+      return existing;
+    }
+    var exe=String(identity.exeName||identity.exe_name||'').trim();
+    if(!exe) return null;
+    var path=String(identity.fullPath||identity.full_path||'').trim();
+    var pathContains='';
+    if(path){
+      var slash=Math.max(path.lastIndexOf('\\'),path.lastIndexOf('/'));
+      pathContains=slash>=0?path.slice(0,slash):path;
+    }
+    var display=resolveCustomRuleDisplayName(identity);
+    var match={exeNames:[exe]};
+    if(pathContains) match.pathContains=pathContains;
+    if(path) match.fullPath=path;
+    var iconUrl=resolveAppIconUrl(identity);
+    var rule={
+      ruleId:newRuleId(),
+      appId:'custom',
+      finishMode:resolveGlobalFinishMode(m),
+      note:'',
+      displayName:display,
+      match:match
+    };
+    if(iconUrl) rule.iconDataUrl=iconUrl;
+    m.appBehaviorRules.push(rule);
+    return rule;
+  }
+
+  function ensurePresetRule(m,appId){
+    if(!m||!appId||!isPresetAppId(appId)) return null;
+    var rule=ruleForApp(m,appId);
+    if(rule) return rule;
+    ensureRules(m);
+    rule={
+      ruleId:newRuleId(),
+      appId:appId,
+      finishMode:defaultModeForApp(appId),
+      note:defaultNoteForApp(appId)
+    };
+    m.appBehaviorRules.push(rule);
+    return rule;
+  }
+
+  function pickPresetApp(m,appId){
+    if(!m||!appId) return;
+    ensurePresetRule(m,appId);
+    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
+    setActiveRuleContext(appId);
+    saveAndRefresh();
+    hooks().toast&&hooks().toast(t('appPickerAdded'));
+  }
+
+  function pickRunningIdentity(m,identity){
+    if(!m||!identity) return;
+    var presetId=identity.matchedPresetAppId||identity.matched_preset_app_id;
+    if(presetId&&isPresetAppId(String(presetId))){
+      pickPresetApp(m,String(presetId));
+      return;
+    }
+    var rule=addCustomRuleFromIdentity(m,identity);
+    if(!rule) return;
+    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
+    setActiveRuleContext(rule.ruleId);
+    saveAndRefresh();
+    hooks().toast&&hooks().toast(t('appPickerAdded'));
+  }
+
+  function resolvePickerMapping(){
+    var m=core()&&core().selected?core().selected():null;
+    if(m&&core().isSaved&&core().isSaved(m)) return m;
+    var persist=global.OneToneVoiceSchemePersist;
+    if(persist&&persist.resolveVoiceEditMapping) return persist.resolveVoiceEditMapping();
+    return m;
+  }
+
+  function closeAppPicker(){
+    var overlay=$('appPickerOverlay');
+    if(!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+  }
+
+  function resolveAppIconUrl(app){
+    if(!app) return '';
+    return String(app.iconDataUrl||app.icon_data_url||'').trim();
+  }
+
+  function runningAppPickerMeta(displayName,exeName){
+    var name=String(displayName||'').trim();
+    var exe=String(exeName||'').trim();
+    if(!exe) return '';
+    var stem=exe.replace(/\.exe$/i,'');
+    if(!name||name.toLowerCase()===stem.toLowerCase()||name.toLowerCase()===exe.toLowerCase()) return '';
+    return exe;
+  }
+
+  function setPickerItemIcon(host,iconUrl,fallbackChar){
+    if(!host) return;
+    var url=String(iconUrl||'').trim();
+    if(url){
+      if(host.tagName==='IMG'){
+        host.src=url;
+        host.alt='';
+        return;
+      }
+      var img=document.createElement('img');
+      img.className=host.className.replace(/\s*app-picker-item-icon--fallback/,'');
+      img.classList.add('app-picker-item-icon');
+      img.src=url;
+      img.alt='';
+      img.decoding='async';
+      host.replaceWith(img);
+      return;
+    }
+    if(host.tagName!=='IMG'){
+      host.textContent=fallbackChar||'?';
+    }
+  }
+
+  function renderAppPickerItem(opts){
+    opts=opts||{};
+    var name=esc(opts.name||'—');
+    var meta=esc(opts.meta||'');
+    var html='<button type="button" class="app-picker-item" role="option"';
+    if(opts.presetId) html+=' data-pick-preset="'+esc(opts.presetId)+'"';
+    if(opts.pickIndex!=null) html+=' data-pick-running="'+opts.pickIndex+'"';
+    html+='>';
+    if(opts.icon){
+      html+='<img class="app-picker-item-icon" src="'+esc(opts.icon)+'" alt="" decoding="async" />';
+    }else{
+      html+='<span class="app-picker-item-icon app-picker-item-icon--fallback" aria-hidden="true">'+esc((opts.name||'?').charAt(0))+'</span>';
+    }
+    html+='<span class="app-picker-item-main"><span class="app-picker-item-name">'+name+'</span>';
+    if(meta) html+='<span class="app-picker-item-meta">'+meta+'</span>';
+    html+='</span></button>';
+    return html;
+  }
+
+  var pickerRunningCache=[];
+  var pickerForegroundIdentity=null;
+  var ruleIconCache={};
+
+  function ruleIconDataUrl(rule){
+    return String(rule&&(rule.iconDataUrl||rule.icon_data_url)||'').trim();
+  }
+
+  function resolveRuleIconPath(rule){
+    if(!rule||!rule.match) return '';
+    var path=String(rule.match.fullPath||rule.match.full_path||'').trim();
+    if(path) return path;
+    var exe=rule.match.exeNames&&rule.match.exeNames[0];
+    exe=exe?String(exe).trim():'';
+    var dir=rule.match.pathContains!=null?String(rule.match.pathContains).trim():'';
+    if(!exe||!dir) return '';
+    var sep=dir.indexOf('/')>=0?'/':'\\';
+    if(!dir.endsWith(sep)&&!dir.endsWith('/')&&!dir.endsWith('\\')) dir+=sep;
+    return dir+exe;
+  }
+
+  function backfillRuleIconPath(rule){
+    if(!rule||!rule.match) return;
+    if(String(rule.match.fullPath||rule.match.full_path||'').trim()) return;
+    var path=resolveRuleIconPath(rule);
+    if(path) rule.match.fullPath=path;
+  }
+
+  function applyRuleIconToDom(ruleId,url){
+    if(!ruleId||!url) return;
+    document.querySelectorAll('[data-rule-context="'+ruleId+'"]').forEach(function(btn){
+      var fallback=btn.querySelector('.keys-app-chip-icon--fallback');
+      if(fallback) replaceChipIconFallback(fallback,url);
+      var img=btn.querySelector('img.keys-app-chip-icon');
+      if(img&&img.getAttribute('src')!==url) img.setAttribute('src',url);
+    });
+    document.querySelectorAll('.keys-app-chip-icon--fallback[data-rule-id="'+ruleId+'"]').forEach(function(el){
+      replaceChipIconFallback(el,url);
+    });
+  }
+
+  function fetchRuleIcon(path,rule){
+    if(!path||!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    if(ruleIconCache[path]){
+      if(rule&&!ruleIconDataUrl(rule)) rule.iconDataUrl=ruleIconCache[path];
+      if(rule) applyRuleIconToDom(rule.ruleId,ruleIconCache[path]);
+      return;
+    }
+    var pendingKey='pending:'+path;
+    if(ruleIconCache[pendingKey]) return;
+    ruleIconCache[pendingKey]=true;
+    global.OneToneIpc.invoke('cmd_app_icon',{fullPath:path,full_path:path}).then(function(res){
+      delete ruleIconCache[pendingKey];
+      var url=res&&(res.iconDataUrl||res.icon_data_url)||'';
+      if(!url) return;
+      ruleIconCache[path]=url;
+      if(rule){
+        rule.iconDataUrl=url;
+        backfillRuleIconPath(rule);
+        applyRuleIconToDom(rule.ruleId,url);
+      }
+    }).catch(function(){ delete ruleIconCache[pendingKey]; });
+  }
+
+  function prefetchMappingRuleIcons(m){
+    if(!m) return;
+    customRulesForMapping(m).forEach(function(rule){
+      if(ruleIconDataUrl(rule)) return;
+      backfillRuleIconPath(rule);
+      var path=resolveRuleIconPath(rule);
+      if(path) fetchRuleIcon(path,rule);
+    });
+  }
+
+  function replaceChipIconFallback(el,url){
+    if(!el||!url||!el.parentNode) return;
+    var img=document.createElement('img');
+    img.className='keys-app-chip-icon';
+    img.src=url;
+    img.alt='';
+    img.decoding='async';
+    el.replaceWith(img);
+  }
+
+  function hydrateCustomRuleChipIcons(root){
+    root=root||document;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    var m=core()&&core().selected?core().selected():null;
+    root.querySelectorAll('.keys-app-chip-icon--fallback[data-rule-id]').forEach(function(el){
+      var path=el.getAttribute('data-rule-icon-path')||'';
+      var ruleId=el.getAttribute('data-rule-id')||'';
+      var rule=m&&ruleId?ruleById(m,ruleId):null;
+      if(!path&&rule){
+        backfillRuleIconPath(rule);
+        path=resolveRuleIconPath(rule);
+        if(path) el.setAttribute('data-rule-icon-path',path);
+      }
+      if(!path) return;
+      if(ruleIconCache[path]){
+        if(el.isConnected) replaceChipIconFallback(el,ruleIconCache[path]);
+        if(rule&&!ruleIconDataUrl(rule)) rule.iconDataUrl=ruleIconCache[path];
+        return;
+      }
+      fetchRuleIcon(path,rule);
+    });
+  }
+
+  function scheduleHydrateCustomRuleIcons(){
+    setTimeout(function(){
+      var m=core()&&core().selected?core().selected():null;
+      prefetchMappingRuleIcons(m);
+      hydrateCustomRuleChipIcons($('keysAppContextStrip'));
+      hydrateCustomRuleChipIcons($('voiceAppScopeChips'));
+      hydrateCustomRuleChipIcons($('habitAppRulesList'));
+      hydrateCustomRuleChipIcons($('keysAppRulesList'));
+    },0);
+  }
+
+  function customRuleIconHtml(rule,iconClass){
+    iconClass=iconClass||'keys-app-chip-icon';
+    var name=ruleDisplayName(rule);
+    var url=ruleIconDataUrl(rule);
+    if(url) return '<img class="'+esc(iconClass)+'" src="'+esc(url)+'" alt="" decoding="async" data-rule-id="'+esc(rule.ruleId)+'" />';
+    backfillRuleIconPath(rule);
+    var path=resolveRuleIconPath(rule);
+    var attrs=' data-rule-id="'+esc(rule.ruleId)+'"';
+    if(path) attrs+=' data-rule-icon-path="'+esc(path)+'"';
+    return '<span class="'+esc(iconClass)+' keys-app-chip-icon--fallback"'+attrs+' aria-hidden="true">'+esc(name.charAt(0))+'</span>';
+  }
+
+  function populateAppPickerForeground(){
+    var row=$('appPickerForegroundRow');
+    var nameEl=$('appPickerForegroundName');
+    var metaEl=$('appPickerForegroundMeta');
+    var btn=$('btnAppPickerForeground');
+    if(!row||!nameEl||!metaEl||!btn) return;
+    pickerForegroundIdentity=null;
+    row.hidden=true;
+    if(metaEl) metaEl.hidden=false;
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
+    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      if(!res||(!res.exeName&&!res.exe_name)) return;
+      pickerForegroundIdentity=res;
+      var m=resolvePickerMapping();
+      if(m&&identityAlreadyInRules(m,res)) return;
+      row.hidden=false;
+      var name=identityDisplayName(res)||t('appPickerForeground');
+      nameEl.textContent=name;
+      var exe=String(res.exeName||res.exe_name||'').trim();
+      var meta=runningAppPickerMeta(name,exe);
+      if(meta) metaEl.textContent=meta;
+      else{
+        metaEl.textContent='';
+        metaEl.hidden=true;
+      }
+      setPickerItemIcon(
+        btn.querySelector('.app-picker-item-icon'),
+        resolveAppIconUrl(res),
+        (name||'?').charAt(0)
+      );
+    }).catch(function(){ row.hidden=true; });
+  }
+
+  function pickForegroundIdentity(m,identity){
+    if(!m||!identity) return;
+    var presetId=identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId;
+    if(presetId&&isPresetAppId(String(presetId))){
+      pickPresetApp(m,String(presetId));
+      return;
+    }
+    pickRunningIdentity(m,identity);
+  }
+
+  function populateAppPicker(){
+    var title=$('appPickerTitle');
+    var desc=$('appPickerDesc');
+    var presetsLbl=$('appPickerPresetsLbl');
+    var runningLbl=$('appPickerRunningLbl');
+    var presetsHost=$('appPickerPresets');
+    var runningHost=$('appPickerRunning');
+    var emptyEl=$('appPickerRunningEmpty');
+    var cancelBtn=$('btnAppPickerCancel');
+    if(title) title.textContent=t('appPickerTitle');
+    if(desc) desc.textContent=t('appPickerDesc');
+    if(presetsLbl) presetsLbl.textContent=t('appPickerPresets');
+    if(runningLbl) runningLbl.textContent=t('appPickerRunning');
+    if(cancelBtn) cancelBtn.textContent=t('homeTestPickCancel');
+    populateAppPickerForeground();
+    if(!presetsHost||!runningHost) return;
+    var presetHtml='';
+    BEHAVIOR_PRESETS.forEach(function(p){
+      presetHtml+=renderAppPickerItem({
+        presetId:p.id,
+        name:appDisplayName(p.id),
+        meta:t(p.noteKey||'habitAppRulesPickApp'),
+        icon:iconForApp(p.id)
+      });
+    });
+    presetsHost.innerHTML=presetHtml;
+    runningHost.innerHTML='<p class="app-picker-empty">'+esc(t('homeLiveLoading'))+'</p>';
+    if(emptyEl) emptyEl.hidden=true;
+    pickerRunningCache=[];
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke){
+      runningHost.innerHTML='';
+      if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
+      return;
+    }
+    global.OneToneIpc.invoke('cmd_running_apps',{}).then(function(res){
+      var apps=res&&Array.isArray(res.apps)?res.apps:[];
+      var m=resolvePickerMapping();
+      if(m){
+        apps=apps.filter(function(app){ return !identityAlreadyInRules(m,app); });
+      }
+      pickerRunningCache=apps;
+      if(!apps.length){
+        runningHost.innerHTML='';
+        if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningEmpty'); }
+        return;
+      }
+      if(emptyEl) emptyEl.hidden=true;
+      runningHost.innerHTML=apps.map(function(app,idx){
+        var name=String(app.displayName||app.display_name||app.exeName||app.exe_name||'—');
+        var exe=String(app.exeName||app.exe_name||'');
+        var meta=runningAppPickerMeta(name,exe);
+        return renderAppPickerItem({
+          pickIndex:idx,
+          name:name,
+          meta:meta,
+          icon:resolveAppIconUrl(app)
+        });
+      }).join('');
+    }).catch(function(err){
+      console.error('cmd_running_apps',err);
+      runningHost.innerHTML='';
+      if(emptyEl){ emptyEl.hidden=false; emptyEl.textContent=t('appPickerRunningFailed'); }
+    });
+  }
+
+  function openAppPicker(){
+    bindAppPickerEvents();
+    var overlay=$('appPickerOverlay');
+    if(!overlay) return;
+    populateAppPicker();
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+  }
+
+  function handleAppPickerClick(e){
+    var presetBtn=e.target.closest&&e.target.closest('[data-pick-preset]');
+    if(presetBtn){
+      e.preventDefault();
+      var m=resolvePickerMapping();
+      if(!m) return;
+      pickPresetApp(m,presetBtn.getAttribute('data-pick-preset')||'');
+      closeAppPicker();
+      if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
+        var vm=global.OneToneVoiceSettingsViewModel;
+        if(vm&&vm.build) global.OneToneVoicePageHeaderRender.renderAppScope(vm.build());
+      }
+      return;
+    }
+    var runBtn=e.target.closest&&e.target.closest('[data-pick-running]');
+    if(runBtn){
+      e.preventDefault();
+      var m2=resolvePickerMapping();
+      if(!m2) return;
+      var idx=parseInt(runBtn.getAttribute('data-pick-running')||'',10);
+      var identity=pickerRunningCache[idx];
+      if(identity) pickRunningIdentity(m2,identity);
+      closeAppPicker();
+      if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
+        var vm2=global.OneToneVoiceSettingsViewModel;
+        if(vm2&&vm2.build) global.OneToneVoicePageHeaderRender.renderAppScope(vm2.build());
+      }
+    }
+  }
+
+  function bindAppPickerEvents(){
+    var overlay=$('appPickerOverlay');
+    if(!overlay||overlay.dataset.bound==='1') return;
+    overlay.dataset.bound='1';
+    overlay.addEventListener('click',function(e){
+      if(e.target===overlay) closeAppPicker();
+      handleAppPickerClick(e);
+    });
+    var closeBtn=$('btnAppPickerClose');
+    if(closeBtn) closeBtn.addEventListener('click',function(e){ e.preventDefault(); closeAppPicker(); });
+    var cancelBtn=$('btnAppPickerCancel');
+    if(cancelBtn) cancelBtn.addEventListener('click',function(e){ e.preventDefault(); closeAppPicker(); });
+    var fgBtn=$('btnAppPickerForeground');
+    if(fgBtn){
+      fgBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var m=resolvePickerMapping();
+        if(!m||!pickerForegroundIdentity) return;
+        pickForegroundIdentity(m,pickerForegroundIdentity);
+        closeAppPicker();
+        if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
+          var vm=global.OneToneVoiceSettingsViewModel;
+          if(vm&&vm.build) global.OneToneVoicePageHeaderRender.renderAppScope(vm.build());
+        }
+      });
+    }
+  }
+
+  function renderContextChipsHtml(m,opts){
+    opts=opts||{};
+    var ctxId=opts.contextId!=null?opts.contextId:activeContextRef();
+    var primaryId=m?String(m.appTargetId||'').trim():'';
+    var noneSelected=!ctxId&&!primaryId;
+    var chipAttr=opts.chipAttr||'data-app-context';
+    var noneAttr=opts.noneAttr||'data-app-chip-none';
+    var html='';
+    if(opts.includeNone!==false){
+      html+='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" '+noneAttr+'="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
+    }
+    BEHAVIOR_PRESETS.forEach(function(p){
+      var icon=presetIcon(p.id);
+      var isSel=ctxId===p.id;
+      var isPri=m&&primaryId===p.id;
+      var name=appDisplayName(p.id);
+      html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" '+chipAttr+'="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      if(icon) html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
+      html+='<span>'+esc(name)+'</span></button>';
+    });
+    if(m) customRulesForMapping(m).forEach(function(rule){
+      var isSel=ctxId===rule.ruleId;
+      var name=ruleDisplayName(rule);
+      html+='<span class="keys-app-chip-wrap keys-app-chip-wrap--custom">';
+      html+='<button type="button" class="keys-app-chip keys-app-chip--custom'+(isSel?' is-selected':'')+'" data-rule-context="'+esc(rule.ruleId)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      html+=customRuleIconHtml(rule);
+      html+='<span>'+esc(name)+'</span></button>';
+      html+='<button type="button" class="keys-app-chip-del" data-rule-delete="'+esc(rule.ruleId)+'" aria-label="'+esc(t('habitAppRuleDelete'))+'">×</button>';
+      html+='</span>';
+    });
+    return html;
+  }
+
+  function presetIcon(appId){
+    return iconForApp(appId);
   }
 
   global.OneToneAppBehaviorRules={
@@ -820,12 +1691,15 @@
     renderKeysAside:renderKeysAside,
     renderVoiceAside:renderVoiceAside,
     setActiveAppContextId:setActiveAppContextId,
+    setActiveRuleContext:setActiveRuleContext,
     selectAppContext:selectAppContext,
     setKeysExpandedAppId:setKeysExpandedAppId,
     getKeysExpandedAppId:getKeysExpandedAppId,
     getActiveAppContextId:function(){ return activeAppContextId; },
+    activeContextRef:activeContextRef,
     resolveEffectiveFinish:resolveEffectiveFinish,
     setAppFinishMode:setAppFinishMode,
+    setRuleFinishMode:setRuleFinishMode,
     ensurePrimaryAppRule:ensurePrimaryAppRule,
     ensureRulesBeforeSave:ensureRulesBeforeSave,
     finishModeLabel:finishModeLabel,
@@ -833,6 +1707,24 @@
     behaviorPresets:BEHAVIOR_PRESETS,
     renderActiveScenarioBanner:renderActiveScenarioBanner,
     appDisplayName:appDisplayName,
-    voiceSummonPhrase:voiceSummonPhrase
+    ruleDisplayName:ruleDisplayName,
+    voiceSummonPhrase:voiceSummonPhrase,
+    ruleById:ruleById,
+    ruleForContext:ruleForContext,
+    removeRuleById:removeRuleById,
+    customRulesForMapping:customRulesForMapping,
+    addCustomRuleFromIdentity:addCustomRuleFromIdentity,
+    openAppPicker:openAppPicker,
+    renderContextChipsHtml:renderContextChipsHtml,
+    isPresetAppId:isPresetAppId,
+    isCustomRule:isCustomRule,
+    isContextRuleId:isContextRuleId,
+    matchRuleForMapping:matchRuleForMapping,
+    resolveForegroundContextRef:resolveForegroundContextRef,
+    resolvePreviewContext:resolvePreviewContext,
+    identityDisplayName:identityDisplayName,
+    hydrateCustomRuleChipIcons:hydrateCustomRuleChipIcons,
+    scheduleHydrateCustomRuleIcons:scheduleHydrateCustomRuleIcons,
+    ruleMatchesIdentity:ruleMatchesIdentity
   };
 })((typeof window!=='undefined')?window:globalThis);

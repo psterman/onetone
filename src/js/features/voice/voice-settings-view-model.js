@@ -100,16 +100,28 @@
     if(!m) return t('voiceSummaryScopeAll');
     const appRules=global.OneToneAppBehaviorRules;
     const primary=String(m.appTargetId||'').trim();
-    const rules=Array.isArray(m.appBehaviorRules)?m.appBehaviorRules.filter(function(r){ return r&&r.appId; }):[];
+    const rules=Array.isArray(m.appBehaviorRules)?m.appBehaviorRules.filter(function(r){
+      return r&&r.appId;
+    }):[];
     if(!primary&&!rules.length) return t('voiceSummaryScopeAll');
-    if(primary&&appRules){
-      if(!rules.length||rules.length===0) return appRules.appDisplayName(primary);
-    }
     const ids=[];
-    if(primary) ids.push(primary);
+    const labels=[];
     rules.forEach(function(r){
-      if(ids.indexOf(r.appId)<0) ids.push(r.appId);
+      if(r.appId==='custom'){
+        if(appRules&&appRules.ruleDisplayName){
+          var customName=appRules.ruleDisplayName(r);
+          if(customName&&labels.indexOf(customName)<0) labels.push(customName);
+        }
+        return;
+      }
+      if(ids.indexOf(r.appId)<0){
+        ids.push(r.appId);
+        if(appRules) labels.push(appRules.appDisplayName(r.appId));
+      }
     });
+    if(!labels.length&&primary&&appRules) return appRules.appDisplayName(primary);
+    if(labels.length===1) return labels[0];
+    if(labels.length>1) return t('voiceSummaryScopeMulti').replace('{n}',String(labels.length));
     if(ids.length===1&&appRules) return appRules.appDisplayName(ids[0]);
     if(ids.length>1) return t('voiceSummaryScopeMulti').replace('{n}',String(ids.length));
     return t('voiceSummaryScopeAll');

@@ -351,6 +351,11 @@
   }
 
   function setPrimaryForMapping(appId){
+    appId=String(appId||'').trim();
+    if(!appId||!isWorkflowAppTarget(appId)){
+      if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(t('appTargetPresetOnly'));
+      return;
+    }
     var preset = presetById(appId);
     if(preset) applyMappingTarget(preset.targetKey, preset.id);
   }

@@ -1,4 +1,6 @@
 mod app_chat_workflow;
+mod app_exe_icon;
+mod app_identity;
 mod app_icon;
 mod app_log;
 mod audio_win;
@@ -534,6 +536,8 @@ pub fn run() {
             ipc::cmd_request_runtime,
             ipc::cmd_debug_effective_scene,
             ipc::cmd_foreground_app,
+            ipc::cmd_running_apps,
+            ipc::cmd_app_icon,
             ipc::cmd_capture_source,
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,

@@ -272,15 +272,46 @@
     if(voiceOutputModeSegments) bindVoiceOutputSwitch(voiceOutputModeSegments);
     var btnVoiceAppScopeAdd=$('btnVoiceAppScopeAdd');
     if(btnVoiceAppScopeAdd){
-      btnVoiceAppScopeAdd.onclick=function(){
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
+      btnVoiceAppScopeAdd.onclick=function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var rules=global.OneToneAppBehaviorRules;
+        if(rules&&rules.openAppPicker) rules.openAppPicker();
       };
     }
     var voiceAppScopeChips=$('voiceAppScopeChips');
     if(voiceAppScopeChips){
       voiceAppScopeChips.addEventListener('click',function(e){
-        if(e.target.closest&&e.target.closest('[data-voice-scope-app],[data-voice-scope-none]')){
-          if(hooks.setSettingsPanel) hooks.setSettingsPanel('keys');
+        var delBtn=e.target.closest&&e.target.closest('[data-rule-delete]');
+        if(delBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var persist=global.OneToneVoiceSchemePersist;
+          var m=persist&&persist.resolveVoiceEditMapping?persist.resolveVoiceEditMapping():null;
+          var rules=global.OneToneAppBehaviorRules;
+          if(m&&rules&&rules.removeRuleById) rules.removeRuleById(m,delBtn.getAttribute('data-rule-delete')||'');
+          if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
+            var vm=global.OneToneVoiceSettingsViewModel;
+            if(vm&&vm.build) global.OneToneVoicePageHeaderRender.renderAppScope(vm.build());
+          }
+          return;
+        }
+        var noneBtn=e.target.closest&&e.target.closest('[data-voice-scope-none]');
+        var appBtn=e.target.closest&&e.target.closest('[data-voice-scope-app]');
+        var ruleBtn=e.target.closest&&e.target.closest('[data-rule-context]');
+        if(!noneBtn&&!appBtn&&!ruleBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var rules=global.OneToneAppBehaviorRules;
+        if(noneBtn){
+          if(rules&&rules.setActiveAppContextId) rules.setActiveAppContextId('');
+        }else if(appBtn){
+          if(rules&&rules.setActiveAppContextId) rules.setActiveAppContextId(appBtn.getAttribute('data-voice-scope-app')||'');
+        }else if(ruleBtn){
+          if(rules&&rules.setActiveRuleContext) rules.setActiveRuleContext(ruleBtn.getAttribute('data-rule-context')||'');
+        }
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
         }
       });
     }

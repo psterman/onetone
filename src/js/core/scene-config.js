@@ -83,6 +83,8 @@
     var seen={};
     (Array.isArray(mapping.appBehaviorRules)?mapping.appBehaviorRules:[]).forEach(function(rule){
       if(!rule||!rule.appId) return;
+      if(rule.appId==='custom') return;
+      if(!isWorkflowAppTarget(rule.appId)) return;
       var phrase=String(rule.summonPhrase||'').trim()||defaultSummonPhrase(rule.appId,{preset:preset});
       if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
     });

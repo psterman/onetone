@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::AppHandle;
 use tauri::Manager;
 
-use crate::app_chat_workflow;
+use crate::app_identity;
 use crate::config::effective_mapping_for_trigger;
 use crate::press_gesture::parse_physical_event;
 use crate::runtime_event;
@@ -99,8 +99,8 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         };
         let mapping_id = mapping.id.clone();
         let duration_ms = cfg.key_press_duration_ms;
-        let foreground_app = app_chat_workflow::foreground_app_target_id();
-        let effective = effective_mapping_for_trigger(mapping, foreground_app.as_deref());
+        let foreground = app_identity::foreground_app_identity();
+        let effective = effective_mapping_for_trigger(mapping, foreground.as_ref());
         let actions = {
             let mut pool = state.machine_pool.lock();
             pool.get_or_create(&mapping_id)

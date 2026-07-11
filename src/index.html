@@ -1348,7 +1348,7 @@
                     <div class="voice-phrase-custom" id="voiceWakeCustomBlock">
                       <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                       <div class="voice-phrase-custom-row">
-                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：打开cursor">
+                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：小窗小窗">
                         <button type="button" class="voice-phrase-custom-listen" id="btnVoiceWakeCustomListen" title="说一句，用识别结果填入">🎤</button>
                         <button type="button" class="voice-phrase-custom-add" id="btnVoiceWakeCustomAdd">添加</button>
                       </div>
@@ -2340,6 +2340,32 @@
       </div>
     </div>
   </div>
+  <div class="template-pick-overlay" id="appPickerOverlay" aria-hidden="true">
+    <div class="template-pick-modal app-picker-modal" role="dialog" aria-modal="true" aria-labelledby="appPickerTitle">
+      <div class="template-pick-head">
+        <h3 class="template-pick-title" id="appPickerTitle">选择应用</h3>
+        <button type="button" class="btn icon-btn app-picker-close" id="btnAppPickerClose" aria-label="关闭">×</button>
+      </div>
+      <p class="template-pick-desc" id="appPickerDesc">从预设或当前运行的程序中选择，为其配置单独的发送方式</p>
+      <div class="app-picker-foreground-row" id="appPickerForegroundRow" hidden>
+        <button type="button" class="app-picker-item app-picker-item--foreground" id="btnAppPickerForeground">
+          <span class="app-picker-item-icon app-picker-item-icon--fallback" aria-hidden="true">▶</span>
+          <span class="app-picker-item-main">
+            <span class="app-picker-item-name" id="appPickerForegroundName">—</span>
+            <span class="app-picker-item-meta" id="appPickerForegroundMeta">—</span>
+          </span>
+        </button>
+      </div>
+      <h4 class="app-picker-section-title" id="appPickerPresetsLbl">AI 工作流</h4>
+      <div class="app-picker-grid" id="appPickerPresets" role="listbox"></div>
+      <h4 class="app-picker-section-title" id="appPickerRunningLbl">正在运行</h4>
+      <div class="app-picker-grid app-picker-grid--running" id="appPickerRunning" role="listbox"></div>
+      <p class="app-picker-empty" id="appPickerRunningEmpty" hidden>未检测到运行中的程序</p>
+      <div class="template-pick-actions">
+        <button type="button" class="btn secondary" id="btnAppPickerCancel">取消</button>
+      </div>
+    </div>
+  </div>
   <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
       <h3 class="confirm-title" id="confirmTitle">确认操作</h3>
@@ -2436,7 +2462,6 @@
   <script src="js/features/voice/voice-ui-bindings.js"></script>
   <script src="js/features/settings/settings-debug-hooks.js"></script>
   <script src="js/features/settings/basic-panel-ui.js"></script>
-  <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/settings/settings-drawer.js"></script>
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
@@ -2461,6 +2486,7 @@
   <script src="js/features/mapping/mapping-edit-actions.js"></script>
   <script src="js/features/mapping/mapping-hooks.js"></script>
   <script src="js/features/mapping/app-behavior-rules.js"></script>
+  <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
   <script src="js/features/mapping/habit-multi.js"></script>

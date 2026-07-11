@@ -105,6 +105,15 @@ pub fn idle_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Wake + summon phrases that may start a voice session (routes differ in dispatch).
+pub fn idle_start_phrases(cfg: &VoiceConfig) -> Vec<String> {
+    let Some(e) = crate::scene_config::resolve_idle_effective_scene(cfg) else {
+        return Vec::new();
+    };
+    let mut out = e.wake_phrases;
+    crate::config::append_unique_phrases(out, &e.summon_phrases)
+}
+
 fn status_label(state: &str) -> &'static str {
     match state {
         "dictating" => "正在听写，等待结束词",
@@ -208,51 +217,60 @@ pub fn handle_voice_wake_detected(
         (mapping_id, target_key, mapping)
     };
 
+    let is_generic_wake = {
+        let cfg = state.cfg.lock();
+        idle_wake_phrases(&cfg)
+            .iter()
+            .any(|w| crate::config::phrases_fuzzy_match(matched_phrase, w))
+    };
+
     if let Some(mapping) = mapping_snapshot.as_ref() {
         let preset = {
             let cfg = state.cfg.lock();
             crate::scene_config::effective_vosk_model_preset(&cfg, mapping)
         };
-        if let Some(app_target_id) =
-            crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase, &preset)
-        {
-            if crate::app_chat_workflow::profile_for(&app_target_id).is_some() {
-                if let Some(window) = crate::ipc::get_main_window(app) {
-                    match crate::app_chat_workflow::run_for_target_id(
-                        state,
-                        &window,
-                        &mapping_id,
-                        &app_target_id,
-                        duration_ms,
-                    ) {
-                        Ok(label) => {
-                            crate::runtime_event::publish_runtime_event(
-                                Some(app),
-                                state.as_ref(),
-                                "voice",
-                                crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                                &format!(
-                                    "{engine} summon workflow: {app_target_id} ({matched_phrase})"
-                                ),
-                                Some(serde_json::json!({
-                                    "engine": engine,
-                                    "phrase": matched_phrase,
-                                    "appTargetId": app_target_id,
-                                    "workflow": true
-                                })),
-                            );
-                            crate::tray::refresh_menu(app);
-                            return VoiceWakeDispatchResult {
-                                ok: true,
-                                target_key: target_key.clone(),
-                                mapping_id,
-                                used_summon_workflow: true,
-                                runtime_label: label,
-                            };
-                        }
-                        Err((reason, _)) => {
-                            *state.voice_session_last_action.lock() =
-                                format!("summon workflow failed: {reason}");
+        if !is_generic_wake {
+            if let Some(app_target_id) =
+                crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase, &preset)
+            {
+                if crate::app_chat_workflow::profile_for(&app_target_id).is_some() {
+                    if let Some(window) = crate::ipc::get_main_window(app) {
+                        match crate::app_chat_workflow::run_for_target_id(
+                            state,
+                            &window,
+                            &mapping_id,
+                            &app_target_id,
+                            duration_ms,
+                        ) {
+                            Ok(label) => {
+                                crate::runtime_event::publish_runtime_event(
+                                    Some(app),
+                                    state.as_ref(),
+                                    "voice",
+                                    crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                                    &format!(
+                                        "{engine} summon workflow: {app_target_id} ({matched_phrase})"
+                                    ),
+                                    Some(serde_json::json!({
+                                        "engine": engine,
+                                        "phrase": matched_phrase,
+                                        "appTargetId": app_target_id,
+                                        "workflow": true
+                                    })),
+                                );
+                                crate::tray::refresh_menu(app);
+                                return VoiceWakeDispatchResult {
+                                    ok: true,
+                                    target_key: target_key.clone(),
+                                    mapping_id,
+                                    used_summon_workflow: true,
+                                    runtime_label: label,
+                                };
+                            }
+                            Err((reason, _)) => {
+                                *state.voice_session_last_action.lock() =
+                                    format!("summon workflow failed: {reason}");
+                            }
                         }
                     }
                 }
@@ -483,7 +501,7 @@ pub fn try_match_end_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, tex
 
 pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
     let norm = normalize_end_text(phrase);
-    idle_wake_phrases(cfg).iter().any(|p| {
+    idle_start_phrases(cfg).iter().any(|p| {
         let np = normalize_end_text(p);
         !np.is_empty() && (norm == np || norm.contains(&np))
     })

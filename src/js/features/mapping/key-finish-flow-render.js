@@ -52,6 +52,10 @@
   function resolveDisplayedFinishMode(m){
     var fs=global.OneToneSceneFlowSummary;
     if(!fs) return 'manual';
+    var rules=global.OneToneAppBehaviorRules;
+    var ctx=activeAppContextId();
+    if(!ctx&&rules&&rules.resolvePreviewContext) ctx=rules.resolvePreviewContext(m)||'';
+    if(ctx&&fs.resolveEffectiveFinishMode) return fs.resolveEffectiveFinishMode(m,ctx);
     var appId=primaryAppIdForMapping(m);
     if(appId&&fs.resolveEffectiveFinishMode) return fs.resolveEffectiveFinishMode(m,appId);
     return fs.resolveFinishMode?fs.resolveFinishMode(m):'manual';
@@ -94,7 +98,10 @@
   function renderKeysFinishStrategyPreview(m){
     var el=$('keysFinishStrategyPreview');
     if(!el||!global.OneToneSceneFlowSummary||!global.OneToneSceneFlowSummary.finishStrategyPreviewText) return;
-    var ctx=primaryAppIdForMapping(m)||activeAppContextId();
+    var rules=global.OneToneAppBehaviorRules;
+    var ctx=activeAppContextId();
+    if(!ctx&&rules&&rules.resolvePreviewContext) ctx=rules.resolvePreviewContext(m)||'';
+    if(!ctx) ctx=primaryAppIdForMapping(m)||'';
     var preview=global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,ctx);
     el.textContent=preview.text||'—';
     el.className='keys-finish-strategy-preview'+(preview.saved?' is-set':' is-empty');
@@ -245,8 +252,11 @@
     if(trigSummary) trigSummary.textContent=trig?hooks().friendlyKeyName(trig):t('homeKeyMapEmptyKey');
     if(tgtSummary) tgtSummary.textContent=tgt?hooks().friendlyKeyName(tgt):t('homeKeyMapEmptyKey');
     if(finSummary){
+      var rules=global.OneToneAppBehaviorRules;
+      var ctx=activeAppContextId();
+      if(!ctx&&rules&&rules.resolvePreviewContext) ctx=rules.resolvePreviewContext(m)||'';
       var preview=global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.finishStrategyPreviewText
-        ?global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,'')
+        ?global.OneToneSceneFlowSummary.finishStrategyPreviewText(m,ctx)
         :hooks().keyFinishPreviewText(m);
       finSummary.textContent=(preview&&preview.text)||(preview&&preview.summary)||'—';
     }
@@ -367,8 +377,11 @@
       e.stopPropagation();
       var primaryApp=primaryAppIdForMapping(m);
       var abr=global.OneToneAppBehaviorRules;
-      if(primaryApp&&abr&&abr.setAppFinishMode){
-        abr.setAppFinishMode(m,primaryApp,mode);
+      var ctx=activeAppContextId();
+      if(!ctx&&abr&&abr.resolvePreviewContext) ctx=abr.resolvePreviewContext(m)||'';
+      if(!ctx) ctx=primaryApp;
+      if(ctx&&abr&&abr.setAppFinishMode){
+        abr.setAppFinishMode(m,ctx,mode);
         if(global.OneToneKeyFinishFlowRender&&global.OneToneKeyFinishFlowRender.refreshFinishModeSegment){
           global.OneToneKeyFinishFlowRender.refreshFinishModeSegment(m);
         }

@@ -19,27 +19,57 @@
     return !!(hookFn('newMappingId')&&hookFn('renderHome')&&hookFn('syncEditorFromSelection'));
   }
 
+  function newRuleId(){
+    return 'rule-'+Date.now()+'-'+Math.floor(Math.random()*100000);
+  }
+
+  function normalizeMatchSpec(raw){
+    if(!raw||typeof raw!=='object') return null;
+    var exeNames=Array.isArray(raw.exeNames)?raw.exeNames.map(function(x){ return String(x||'').trim(); }).filter(Boolean):[];
+    var pathContains=raw.pathContains!=null?String(raw.pathContains).trim():'';
+    var titleContains=raw.titleContains!=null?String(raw.titleContains).trim():'';
+    var fullPath=raw.fullPath!=null?String(raw.fullPath).trim():(raw.full_path!=null?String(raw.full_path).trim():'');
+    if(!exeNames.length&&!pathContains&&!titleContains&&!fullPath) return null;
+    var out={exeNames:exeNames};
+    if(pathContains) out.pathContains=pathContains;
+    if(titleContains) out.titleContains=titleContains;
+    if(fullPath) out.fullPath=fullPath;
+    return out;
+  }
+
   function normalizeAppBehaviorRules(rules){
     if(!Array.isArray(rules)) return [];
     return rules.map(function(r){
       if(!r||typeof r!=='object') return null;
       var appId=String(r.appId||r.app_id||'').trim();
       if(!appId) return null;
+      var ruleId=String(r.ruleId||r.rule_id||'').trim();
+      if(!ruleId) ruleId=newRuleId();
       var out={
+        ruleId:ruleId,
         appId:appId,
         finishMode:String(r.finishMode||r.finish_mode||'confirm').trim()||'confirm',
         note:r.note!=null?String(r.note):''
       };
       var summon=r.summonPhrase!=null?r.summonPhrase:r.summon_phrase;
       if(summon!=null&&String(summon).trim()) out.summonPhrase=String(summon).trim();
+      var display=r.displayName!=null?r.displayName:r.display_name;
+      if(display!=null&&String(display).trim()) out.displayName=String(display).trim();
+      var matchSpec=normalizeMatchSpec(r.match);
+      if(matchSpec) out.match=matchSpec;
+      var icon=r.iconDataUrl!=null?r.iconDataUrl:r.icon_data_url;
+      if(icon!=null&&String(icon).trim()) out.iconDataUrl=String(icon).trim();
       return out;
     }).filter(Boolean);
   }
 
   function serializeAppBehaviorRules(rules){
     return normalizeAppBehaviorRules(rules).map(function(r){
-      var out={appId:r.appId,finishMode:r.finishMode,note:r.note||''};
+      var out={ruleId:r.ruleId,appId:r.appId,finishMode:r.finishMode,note:r.note||''};
       if(r.summonPhrase) out.summonPhrase=r.summonPhrase;
+      if(r.displayName) out.displayName=r.displayName;
+      if(r.match) out.match=r.match;
+      if(r.iconDataUrl) out.iconDataUrl=r.iconDataUrl;
       return out;
     });
   }

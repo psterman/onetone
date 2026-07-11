@@ -192,6 +192,25 @@
     return m;
   }
 
+  function resolveMappingForAppScope(){
+    var m=resolveVoiceEditMapping();
+    if(m) return m;
+    if(!core()) return null;
+    var cfg=state().config||{};
+    var activeId=String(cfg.activeSceneId||'').trim();
+    return activeId&&core().byId?core().byId(activeId):null;
+  }
+
+  function setVoiceAppTarget(appId){
+    var m=resolveMappingForAppScope();
+    if(!m) return false;
+    m.appTargetId=appId?String(appId).trim():'';
+    touchUpdated(m);
+    persistConfig();
+    refreshVoiceSchemeSurfaces();
+    return true;
+  }
+
   global.OneToneVoiceSchemePersist={
     snapshotVoiceOverride:snapshotVoiceOverride,
     voiceEditSchemeId:voiceEditSchemeId,
@@ -200,6 +219,8 @@
     isVoiceOnly:isVoiceOnly,
     saveVoiceScheme:saveVoiceScheme,
     createVoiceDraft:createVoiceDraft,
-    refreshVoiceSchemeSurfaces:refreshVoiceSchemeSurfaces
+    refreshVoiceSchemeSurfaces:refreshVoiceSchemeSurfaces,
+    setVoiceAppTarget:setVoiceAppTarget,
+    resolveMappingForAppScope:resolveMappingForAppScope
   };
 })((typeof window!=='undefined')?window:globalThis);

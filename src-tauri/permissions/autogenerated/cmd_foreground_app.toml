@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-foreground-app"
+description = "Enables the cmd_foreground_app command without any pre-configured scope."
+commands.allow = ["cmd_foreground_app"]
+
+[[permission]]
+identifier = "deny-cmd-foreground-app"
+description = "Denies the cmd_foreground_app command without any pre-configured scope."
+commands.deny = ["cmd_foreground_app"]

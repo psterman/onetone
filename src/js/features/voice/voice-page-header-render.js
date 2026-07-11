@@ -181,28 +181,40 @@
     return preset&&preset.icon?preset.icon:'';
   }
 
+  function resolveScopeMapping(vm){
+    if(vm.habitMapping) return vm.habitMapping;
+    var core=global.OneToneMappingCore;
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:{};
+    var activeId=cfg&&cfg.activeSceneId?String(cfg.activeSceneId).trim():'';
+    if(core&&core.byId&&activeId) return core.byId(activeId)||null;
+    return null;
+  }
+
   function renderAppScope(vm){
     var V=vmApi();
     const strip=$('voiceAppScopeStrip');
     const chips=$('voiceAppScopeChips');
     const appRules=global.OneToneAppBehaviorRules;
     if(!strip||!chips||!appRules) return;
-    const m=vm.habitMapping;
-    if(!m){
-      strip.hidden=true;
+    const m=resolveScopeMapping(vm);
+    strip.hidden=false;
+    if(appRules.renderContextChipsHtml){
+      chips.innerHTML=appRules.renderContextChipsHtml(m,{
+        chipAttr:'data-voice-scope-app',
+        noneAttr:'data-voice-scope-none',
+        includeNone:true
+      });
+      if(appRules.scheduleHydrateCustomRuleIcons) appRules.scheduleHydrateCustomRuleIcons();
       return;
     }
-    strip.hidden=false;
     const presets=appRules.behaviorPresets||[];
-    const primaryId=String(m.appTargetId||'').trim();
+    const primaryId=m?String(m.appTargetId||'').trim():'';
     const noneSelected=!primaryId;
-    var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-voice-scope-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'"><span>'+V.escHtml(t('keysAppChipNone'))+'</span></button>';
+    var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-voice-scope-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+V.escHtml(t('keysAppChipNoneHint'))+'"><span>'+V.escHtml(t('keysAppChipNone'))+'</span></button>';
     presets.forEach(function(p){
       const icon=presetIcon(p.id);
       const isPri=primaryId===p.id;
       const name=appRules.appDisplayName(p.id);
-      const inRules=Array.isArray(m.appBehaviorRules)&&m.appBehaviorRules.some(function(r){ return r&&r.appId===p.id; });
-      if(!isPri&&!inRules) return;
       html+='<button type="button" class="keys-app-chip'+(isPri?' is-selected is-primary':'')+'" data-voice-scope-app="'+V.escHtml(p.id)+'" role="radio" aria-checked="'+(isPri?'true':'false')+'" title="'+V.escHtml(name)+'">';
       if(icon) html+='<img class="keys-app-chip-icon" src="'+V.escHtml(icon)+'" alt="" decoding="async" />';
       html+='<span>'+V.escHtml(name)+'</span></button>';

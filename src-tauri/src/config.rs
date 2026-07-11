@@ -96,8 +96,20 @@ pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverri
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AppMatchSpec {
+    #[serde(rename = "exeNames", default)]
+    pub exe_names: Vec<String>,
+    #[serde(rename = "pathContains", default, skip_serializing_if = "Option::is_none")]
+    pub path_contains: Option<String>,
+    #[serde(rename = "titleContains", default, skip_serializing_if = "Option::is_none")]
+    pub title_contains: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppBehaviorRule {
+    #[serde(rename = "ruleId", default)]
+    pub rule_id: String,
     #[serde(rename = "appId")]
     pub app_id: String,
     #[serde(rename = "finishMode")]
@@ -110,6 +122,167 @@ pub struct AppBehaviorRule {
         skip_serializing_if = "Option::is_none"
     )]
     pub summon_phrase: Option<String>,
+    #[serde(rename = "match", default, skip_serializing_if = "Option::is_none")]
+    pub app_match: Option<AppMatchSpec>,
+    #[serde(rename = "displayName", default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}
+
+pub fn new_rule_id() -> String {
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("rule-{ms}")
+}
+
+pub fn is_preset_app_id(app_id: &str) -> bool {
+    matches!(
+        app_id.trim(),
+        "cursor-chat" | "codex-chat" | "claude-code" | "minimax-chat"
+    )
+}
+
+pub fn app_match_has_constraints(spec: &AppMatchSpec) -> bool {
+    if spec
+        .exe_names
+        .iter()
+        .any(|name| !name.trim().is_empty())
+    {
+        return true;
+    }
+    spec.path_contains
+        .as_ref()
+        .is_some_and(|s| !s.trim().is_empty())
+        || spec
+            .title_contains
+            .as_ref()
+            .is_some_and(|s| !s.trim().is_empty())
+}
+
+pub fn normalize_behavior_rule(rule: &mut AppBehaviorRule) {
+    if rule.rule_id.trim().is_empty() {
+        rule.rule_id = new_rule_id();
+    }
+    if let Some(spec) = rule.app_match.as_ref() {
+        if !app_match_has_constraints(spec) {
+            rule.app_match = None;
+        }
+    }
+}
+
+pub fn rule_matches_identity(
+    rule: &AppBehaviorRule,
+    identity: &crate::app_identity::AppIdentity,
+) -> bool {
+    if let Some(spec) = rule.app_match.as_ref() {
+        if !app_match_has_constraints(spec) {
+            return false;
+        }
+        if !spec.exe_names.is_empty()
+            && !spec.exe_names.iter().any(|name| {
+                let n = name.trim();
+                !n.is_empty() && identity.exe_name.eq_ignore_ascii_case(n)
+            })
+        {
+            return false;
+        }
+        if let Some(path_needle) = spec
+            .path_contains
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
+            let Some(path) = identity.full_path.as_deref() else {
+                return false;
+            };
+            if !path.to_ascii_lowercase().contains(&path_needle.to_ascii_lowercase()) {
+                return false;
+            }
+        }
+        if let Some(title_needle) = spec
+            .title_contains
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
+            if !identity
+                .window_title
+                .to_ascii_lowercase()
+                .contains(&title_needle.to_ascii_lowercase())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if !is_preset_app_id(&rule.app_id) {
+        return false;
+    }
+    identity.matched_preset_app_id.as_deref() == Some(rule.app_id.as_str())
+}
+
+pub fn rule_specificity(rule: &AppBehaviorRule) -> u32 {
+    let Some(spec) = rule.app_match.as_ref() else {
+        return 0;
+    };
+    let mut score = 0u32;
+    if spec
+        .path_contains
+        .as_ref()
+        .is_some_and(|s| !s.trim().is_empty())
+    {
+        score += 300;
+    }
+    if spec
+        .exe_names
+        .iter()
+        .any(|n| !n.trim().is_empty())
+    {
+        score += 200;
+    }
+    if spec
+        .title_contains
+        .as_ref()
+        .is_some_and(|s| !s.trim().is_empty())
+    {
+        score += 100;
+    }
+    score
+}
+
+pub fn rule_is_explicit_match(rule: &AppBehaviorRule) -> bool {
+    rule.app_match
+        .as_ref()
+        .is_some_and(app_match_has_constraints)
+}
+
+pub fn match_behavior_rule<'a>(
+    rules: &'a [AppBehaviorRule],
+    identity: &crate::app_identity::AppIdentity,
+) -> Option<&'a AppBehaviorRule> {
+    let mut best: Option<(&AppBehaviorRule, u32, bool, usize)> = None;
+    for (idx, rule) in rules.iter().enumerate() {
+        if !rule_matches_identity(rule, identity) {
+            continue;
+        }
+        let explicit = rule_is_explicit_match(rule);
+        let specificity = rule_specificity(rule);
+        let replace = best.as_ref().is_none_or(|(_, best_spec, best_explicit, best_idx)| {
+            if explicit != *best_explicit {
+                return explicit && !*best_explicit;
+            }
+            if specificity != *best_spec {
+                return specificity > *best_spec;
+            }
+            idx < *best_idx
+        });
+        if replace {
+            best = Some((rule, specificity, explicit, idx));
+        }
+    }
+    best.map(|(rule, _, _, _)| rule)
 }
 
 pub fn default_summon_phrase(app_id: &str) -> Option<&'static str> {
@@ -128,6 +301,9 @@ pub fn default_summon_phrase_for_preset(app_id: &str, preset: &str) -> Option<&'
 }
 
 pub fn summon_phrase_for_rule(rule: &AppBehaviorRule, preset: &str) -> Option<String> {
+    if !is_preset_app_id(&rule.app_id) {
+        return None;
+    }
     if let Some(raw) = rule.summon_phrase.as_ref() {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
@@ -151,34 +327,20 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(
             }
         }
     }
-    let primary = mapping.app_target_id.trim();
-    if !primary.is_empty()
-        && mapping
-            .app_behavior_rules
-            .iter()
-            .all(|r| r.app_id.trim() != primary)
-    {
-        if let Some(phrase) = default_summon_phrase_for_preset(primary, preset) {
-            let phrase = phrase.to_string();
-            if seen.insert(phrase.clone()) {
-                out.push((phrase, primary.to_string()));
-            }
-        }
-    }
     out
 }
 
-fn summon_phrases_match(heard: &str, summon: &str) -> bool {
+pub fn phrases_fuzzy_match(heard: &str, reference: &str) -> bool {
     let heard = heard.trim();
-    let summon = summon.trim();
-    if heard.is_empty() || summon.is_empty() {
+    let reference = reference.trim();
+    if heard.is_empty() || reference.is_empty() {
         return false;
     }
-    if heard == summon {
+    if heard == reference {
         return true;
     }
-    crate::voice_vosk::matches_final(heard, &[summon.to_string()]).is_some()
-        || crate::voice_vosk::matches_final(summon, &[heard.to_string()]).is_some()
+    crate::voice_vosk::matches_final(heard, &[reference.to_string()]).is_some()
+        || crate::voice_vosk::matches_final(reference, &[heard.to_string()]).is_some()
 }
 
 pub fn resolve_summon_app_for_phrase(
@@ -187,7 +349,7 @@ pub fn resolve_summon_app_for_phrase(
     preset: &str,
 ) -> Option<String> {
     for (phrase, app_id) in summon_entries_for_mapping(mapping, preset) {
-        if summon_phrases_match(matched_phrase, &phrase) {
+        if phrases_fuzzy_match(matched_phrase, &phrase) {
             return Some(app_id);
         }
     }
@@ -1393,17 +1555,14 @@ pub fn apply_finish_mode_to_mapping(mapping: &mut MappingEntry, finish_mode: &st
 
 pub fn effective_mapping_for_trigger(
     mapping: &MappingEntry,
-    foreground_app_id: Option<&str>,
+    foreground: Option<&crate::app_identity::AppIdentity>,
 ) -> MappingEntry {
     let mut effective = mapping.clone();
-    if let Some(app_id) = foreground_app_id {
-        if let Some(rule) = mapping
-            .app_behavior_rules
-            .iter()
-            .find(|r| r.app_id == app_id)
-        {
-            apply_finish_mode_to_mapping(&mut effective, &rule.finish_mode);
-        }
+    let Some(identity) = foreground else {
+        return effective;
+    };
+    if let Some(rule) = match_behavior_rule(&mapping.app_behavior_rules, identity) {
+        apply_finish_mode_to_mapping(&mut effective, &rule.finish_mode);
     }
     effective
 }
@@ -1695,6 +1854,9 @@ impl VoiceConfig {
                 if stable.starts_with("dev:") {
                     m.trigger_device = stable;
                 }
+            }
+            for rule in &mut m.app_behavior_rules {
+                normalize_behavior_rule(rule);
             }
         }
         self.mappings.sort_by_key(|m| m.order);
@@ -2184,6 +2346,29 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app_identity::AppIdentity;
+
+    fn test_identity(preset: Option<&str>, exe: &str) -> AppIdentity {
+        AppIdentity {
+            pid: 1,
+            exe_name: exe.to_string(),
+            full_path: Some(format!(r"C:\fake\{exe}")),
+            window_title: String::new(),
+            matched_preset_app_id: preset.map(|s| s.to_string()),
+        }
+    }
+
+    fn test_rule(app_id: &str, finish_mode: &str) -> AppBehaviorRule {
+        AppBehaviorRule {
+            rule_id: new_rule_id(),
+            app_id: app_id.to_string(),
+            finish_mode: finish_mode.to_string(),
+            note: None,
+            summon_phrase: None,
+            app_match: None,
+            display_name: None,
+        }
+    }
 
     #[test]
     fn start_minimized_to_tray_missing_field_means_show() {
@@ -2701,18 +2886,77 @@ mod tests {
         mapping.trigger_mode = TriggerMode::Tap;
         mapping.cancel_enabled = true;
         mapping.auto_enter_enabled = true;
-        mapping.app_behavior_rules = vec![AppBehaviorRule {
-            app_id: "cursor-chat".into(),
-            finish_mode: "perpress".into(),
-            note: None,
-            summon_phrase: None,
-        }];
-        let effective = effective_mapping_for_trigger(&mapping, Some("cursor-chat"));
+        mapping.app_behavior_rules = vec![test_rule("cursor-chat", "perpress")];
+        let effective =
+            effective_mapping_for_trigger(&mapping, Some(&test_identity(Some("cursor-chat"), "Cursor.exe")));
         assert_eq!(effective.trigger_mode, TriggerMode::PerPress);
-        let fallback = effective_mapping_for_trigger(&mapping, Some("codex-chat"));
+        let fallback =
+            effective_mapping_for_trigger(&mapping, Some(&test_identity(Some("codex-chat"), "Codex.exe")));
         assert_eq!(fallback.trigger_mode, TriggerMode::Tap);
         assert!(fallback.cancel_enabled);
         assert!(fallback.auto_enter_enabled);
+    }
+
+    #[test]
+    fn explicit_custom_match_beats_preset_fallback() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.trigger_mode = TriggerMode::Tap;
+        mapping.app_behavior_rules = vec![
+            test_rule("cursor-chat", "perpress"),
+            AppBehaviorRule {
+                rule_id: new_rule_id(),
+                app_id: "custom".into(),
+                finish_mode: "manual".into(),
+                note: None,
+                summon_phrase: None,
+                display_name: Some("Cursor custom".into()),
+                app_match: Some(AppMatchSpec {
+                    exe_names: vec!["Cursor.exe".into()],
+                    path_contains: Some("Programs\\cursor".into()),
+                    title_contains: None,
+                }),
+            },
+        ];
+        let identity = AppIdentity {
+            pid: 2,
+            exe_name: "Cursor.exe".into(),
+            full_path: Some(r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe".into()),
+            window_title: "proj - Cursor".into(),
+            matched_preset_app_id: Some("cursor-chat".into()),
+        };
+        let effective = effective_mapping_for_trigger(&mapping, Some(&identity));
+        assert_eq!(effective.trigger_mode, TriggerMode::Tap);
+        assert!(!effective.cancel_enabled);
+    }
+
+    #[test]
+    fn app_match_requires_all_specified_fields() {
+        let rule = AppBehaviorRule {
+            rule_id: new_rule_id(),
+            app_id: "custom".into(),
+            finish_mode: "manual".into(),
+            note: None,
+            summon_phrase: None,
+            display_name: None,
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["Code.exe".into()],
+                path_contains: Some("Cursor".into()),
+                title_contains: None,
+            }),
+        };
+        let identity_exe_only = AppIdentity {
+            pid: 3,
+            exe_name: "Code.exe".into(),
+            full_path: None,
+            window_title: String::new(),
+            matched_preset_app_id: None,
+        };
+        assert!(!rule_matches_identity(&rule, &identity_exe_only));
+        let identity_both = AppIdentity {
+            full_path: Some(r"C:\Cursor\Code.exe".into()),
+            ..identity_exe_only
+        };
+        assert!(rule_matches_identity(&rule, &identity_both));
     }
 
     #[test]
@@ -2726,6 +2970,34 @@ mod tests {
             default_summon_phrase_for_preset("cursor-chat", "en-light"),
             Some("Open Cursor")
         );
+    }
+
+    #[test]
+    fn primary_app_without_behavior_rule_has_no_summon() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.app_target_id = "cursor-chat".into();
+        mapping.app_behavior_rules = vec![];
+        let entries = summon_entries_for_mapping(&mapping, "cn-light");
+        assert!(entries.is_empty());
+    }
+
+    #[test]
+    fn summon_requires_explicit_behavior_rule() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.app_target_id = "cursor-chat".into();
+        mapping.app_behavior_rules = vec![AppBehaviorRule {
+            rule_id: String::new(),
+            app_id: "cursor-chat".into(),
+            finish_mode: "confirm".into(),
+            note: None,
+            summon_phrase: None,
+            app_match: None,
+            display_name: None,
+        }];
+        let entries = summon_entries_for_mapping(&mapping, "cn-light");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, "打开 Cursor");
+        assert_eq!(entries[0].1, "cursor-chat");
     }
 
     #[test]
@@ -2743,5 +3015,135 @@ mod tests {
             vosk.phrases,
             vosk_preset_default_phrases("en-light").unwrap()
         );
+    }
+
+    #[test]
+    fn distinct_custom_rules_same_exe_resolve_by_path() {
+        let rules = vec![
+            AppBehaviorRule {
+                rule_id: "rule-wechat-a".into(),
+                app_id: "custom".into(),
+                finish_mode: "manual".into(),
+                note: None,
+                summon_phrase: None,
+                display_name: Some("WeChat A".into()),
+                app_match: Some(AppMatchSpec {
+                    exe_names: vec!["WeChat.exe".into()],
+                    path_contains: Some("Tencent\\WeChat".into()),
+                    title_contains: None,
+                }),
+            },
+            AppBehaviorRule {
+                rule_id: "rule-wechat-b".into(),
+                app_id: "custom".into(),
+                finish_mode: "perpress".into(),
+                note: None,
+                summon_phrase: None,
+                display_name: Some("WeChat B".into()),
+                app_match: Some(AppMatchSpec {
+                    exe_names: vec!["WeChat.exe".into()],
+                    path_contains: Some("Weixin".into()),
+                    title_contains: None,
+                }),
+            },
+        ];
+        let identity_a = AppIdentity {
+            pid: 10,
+            exe_name: "WeChat.exe".into(),
+            full_path: Some(r"C:\Program Files\Tencent\WeChat\WeChat.exe".into()),
+            window_title: "Chat".into(),
+            matched_preset_app_id: None,
+        };
+        let matched = match_behavior_rule(&rules, &identity_a).unwrap();
+        assert_eq!(matched.rule_id, "rule-wechat-a");
+        assert_eq!(matched.finish_mode, "manual");
+
+        let identity_b = AppIdentity {
+            full_path: Some(r"D:\Weixin\WeChat.exe".into()),
+            ..identity_a.clone()
+        };
+        let matched_b = match_behavior_rule(&rules, &identity_b).unwrap();
+        assert_eq!(matched_b.rule_id, "rule-wechat-b");
+    }
+
+    #[test]
+    fn path_contains_fails_when_full_path_missing() {
+        let rule = AppBehaviorRule {
+            rule_id: "rule-path-only".into(),
+            app_id: "custom".into(),
+            finish_mode: "manual".into(),
+            note: None,
+            summon_phrase: None,
+            display_name: None,
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["WeChat.exe".into()],
+                path_contains: Some("Tencent".into()),
+                title_contains: None,
+            }),
+        };
+        let identity = AppIdentity {
+            pid: 11,
+            exe_name: "WeChat.exe".into(),
+            full_path: None,
+            window_title: String::new(),
+            matched_preset_app_id: None,
+        };
+        assert!(!rule_matches_identity(&rule, &identity));
+    }
+
+    #[test]
+    fn exe_only_custom_matches_without_full_path() {
+        let rule = AppBehaviorRule {
+            rule_id: "rule-exe-only".into(),
+            app_id: "custom".into(),
+            finish_mode: "confirm".into(),
+            note: None,
+            summon_phrase: None,
+            display_name: Some("WeChat generic".into()),
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["WeChat.exe".into()],
+                path_contains: None,
+                title_contains: None,
+            }),
+        };
+        let identity = AppIdentity {
+            pid: 12,
+            exe_name: "WeChat.exe".into(),
+            full_path: None,
+            window_title: "联系人".into(),
+            matched_preset_app_id: None,
+        };
+        let rules_one = vec![rule];
+        let matched = match_behavior_rule(&rules_one, &identity).unwrap();
+        assert_eq!(matched.rule_id, "rule-exe-only");
+    }
+
+    #[test]
+    fn behavior_rules_json_round_trip_preserves_custom_fields() {
+        let rules = vec![AppBehaviorRule {
+            rule_id: "rule-save-1".into(),
+            app_id: "custom".into(),
+            finish_mode: "manual".into(),
+            note: Some("note".into()),
+            summon_phrase: None,
+            display_name: Some("Microsoft Word".into()),
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["WINWORD.EXE".into()],
+                path_contains: Some("Microsoft Office".into()),
+                title_contains: Some("Document".into()),
+            }),
+        }];
+        let json = serde_json::to_string(&rules).unwrap();
+        let back: Vec<AppBehaviorRule> = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.len(), 1);
+        let r = &back[0];
+        assert_eq!(r.rule_id, "rule-save-1");
+        assert_eq!(r.app_id, "custom");
+        assert_eq!(r.finish_mode, "manual");
+        assert_eq!(r.display_name.as_deref(), Some("Microsoft Word"));
+        let spec = r.app_match.as_ref().unwrap();
+        assert_eq!(spec.exe_names, vec!["WINWORD.EXE"]);
+        assert_eq!(spec.path_contains.as_deref(), Some("Microsoft Office"));
+        assert_eq!(spec.title_contains.as_deref(), Some("Document"));
     }
 }

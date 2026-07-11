@@ -23,6 +23,12 @@ const LEVEL_MIN_INTERVAL: Duration = Duration::from_millis(120);
 const EN_WAKE_BUFFER_TTL: Duration = Duration::from_millis(2800);
 /// Suppress partial+final double-fire within one utterance, not across repeats.
 const WAKE_PHRASE_DEDUP_MS: u64 = 1200;
+/// VAD: only run ASR while speech is likely present (saves CPU when idle).
+const VAD_SPEECH_LEVEL: u32 = 7;
+const VAD_SPEECH_HOLD_MS: u64 = 100;
+const VAD_SILENCE_HOLD_MS: u64 = 850;
+const WAKE_FUZZY_MAX_EXTRA_CHARS: usize = 4;
+const WAKE_EN_MAX_EXTRA_TOKENS: usize = 2;
 
 #[derive(Debug, Clone)]
 pub enum VoiceVoskEvent {
@@ -488,6 +494,7 @@ fn run_worker(
     let mut last_level_at = Instant::now() - LEVEL_MIN_INTERVAL;
     let mut wake_dedup = WakePhraseDedup::new();
     let mut en_wake_buffer = RecentEnWakeText::new();
+    let mut speech_gate = SpeechActivityGate::new();
 
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
@@ -496,7 +503,17 @@ fn run_worker(
                 if pcm.is_empty() {
                     continue;
                 }
-                emit_level_if_due(&event_tx, &pcm, &mut last_level_at);
+                let level = pcm_level_percent(&pcm);
+                emit_level_if_due_level(&event_tx, level, &mut last_level_at);
+                let (_, became_idle) = speech_gate.update(level);
+                if became_idle {
+                    recognizer.reset();
+                    last_partial_text.clear();
+                    en_wake_buffer.clear();
+                }
+                if !speech_gate.is_active() {
+                    continue;
+                }
                 let state = recognizer
                     .accept_waveform(&pcm)
                     .unwrap_or(DecodingState::Running);
@@ -661,6 +678,7 @@ fn run_dual_worker(
     let mut wake_dedup = WakePhraseDedup::new();
     let mut lang_lock: Option<(DualLangSide, Instant)> = None;
     let mut en_wake_buffer = RecentEnWakeText::new();
+    let mut speech_gate = SpeechActivityGate::new();
 
     while !stop.load(Ordering::Relaxed) {
         match audio_rx.recv_timeout(Duration::from_millis(50)) {
@@ -669,7 +687,18 @@ fn run_dual_worker(
                 if pcm.is_empty() {
                     continue;
                 }
-                emit_level_if_due(&event_tx, &pcm, &mut last_level_at);
+                let level = pcm_level_percent(&pcm);
+                emit_level_if_due_level(&event_tx, level, &mut last_level_at);
+                let (_, became_idle) = speech_gate.update(level);
+                if became_idle {
+                    cn_recognizer.reset();
+                    en_recognizer.reset();
+                    last_partial_text.clear();
+                    en_wake_buffer.clear();
+                }
+                if !speech_gate.is_active() {
+                    continue;
+                }
 
                 let cn_state = cn_recognizer
                     .accept_waveform(&pcm)
@@ -804,6 +833,122 @@ fn split_phrases_by_script(phrases: &[String]) -> (Vec<String>, Vec<String>) {
 
 const PHRASE_MATCH_STRONG: u32 = 500;
 
+/// Fuzzy wake matches reject long unrelated sentences (contains match only).
+pub fn wake_fuzzy_match_allowed(text: &str, phrase: &str) -> bool {
+    let norm_text = normalize_phrase(text);
+    let norm_phrase = normalize_phrase(phrase);
+    if norm_phrase.is_empty() {
+        return false;
+    }
+    if norm_text == norm_phrase {
+        return true;
+    }
+
+    let text_len = norm_text.chars().count();
+    let phrase_len = norm_phrase.chars().count();
+
+    if text_has_latin(phrase) && !text_has_cjk(phrase) {
+        let phrase_tokens = latin_word_tokens(phrase);
+        if phrase_tokens.is_empty() {
+            return false;
+        }
+        let text_tokens = latin_word_tokens(text);
+        return text_tokens.len() <= phrase_tokens.len() + WAKE_EN_MAX_EXTRA_TOKENS
+            && text_len <= phrase_len + 12;
+    }
+
+    let max_len = (phrase_len + WAKE_FUZZY_MAX_EXTRA_CHARS)
+        .max((phrase_len * 3 + 1) / 2)
+        .min(phrase_len * 2 + 2);
+    text_len <= max_len
+}
+
+/// When ASR hears speech but no wake phrase matched, explain likely long/noise rejections.
+pub fn wake_text_rejection_reason(text: &str, phrases: &[String]) -> Option<String> {
+    if matches_final(text, phrases).is_some() {
+        return None;
+    }
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    for phrase in phrases {
+        if !phrase_script_compatible(text, phrase) {
+            continue;
+        }
+        let norm_text = normalize_phrase(text);
+        let norm_phrase = normalize_phrase(phrase);
+        if norm_phrase.is_empty() {
+            continue;
+        }
+        if norm_text == norm_phrase {
+            continue;
+        }
+        if norm_text.contains(&norm_phrase) && !wake_fuzzy_match_allowed(text, phrase) {
+            return Some(format!(
+                "句子太长，不像唤醒词（听到「{}」）",
+                trimmed
+            ));
+        }
+    }
+    None
+}
+
+struct SpeechActivityGate {
+    active: bool,
+    candidate_since: Option<Instant>,
+    silence_since: Option<Instant>,
+}
+
+impl SpeechActivityGate {
+    fn new() -> Self {
+        Self {
+            active: false,
+            candidate_since: None,
+            silence_since: None,
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        self.active
+    }
+
+    /// Returns `(listening_now, became_idle)`.
+    fn update(&mut self, level: u32) -> (bool, bool) {
+        let now = Instant::now();
+        let mut became_idle = false;
+
+        if level >= VAD_SPEECH_LEVEL {
+            self.silence_since = None;
+            if self.candidate_since.is_none() {
+                self.candidate_since = Some(now);
+            } else if !self.active
+                && self
+                    .candidate_since
+                    .is_some_and(|t| now.duration_since(t) >= Duration::from_millis(VAD_SPEECH_HOLD_MS))
+            {
+                self.active = true;
+            }
+        } else if self.active {
+            if self.silence_since.is_none() {
+                self.silence_since = Some(now);
+            } else if self
+                .silence_since
+                .is_some_and(|t| now.duration_since(t) >= Duration::from_millis(VAD_SILENCE_HOLD_MS))
+            {
+                self.active = false;
+                self.candidate_since = None;
+                self.silence_since = None;
+                became_idle = true;
+            }
+        } else {
+            self.candidate_since = None;
+        }
+
+        (self.active, became_idle)
+    }
+}
+
 fn phrase_match_score(text: &str, phrase: &str) -> u32 {
     if !phrase_script_compatible(text, phrase) {
         return 0;
@@ -819,7 +964,7 @@ fn phrase_match_score(text: &str, phrase: &str) -> u32 {
     if norm_text.contains(&norm_phrase) {
         let min_len = ((norm_phrase.chars().count() as f64) * 0.7).ceil() as usize;
         let required = min_len.max(4.min(norm_phrase.chars().count()));
-        if norm_text.chars().count() >= required {
+        if norm_text.chars().count() >= required && wake_fuzzy_match_allowed(text, phrase) {
             return 500 + norm_phrase.chars().count() as u32;
         }
     }
@@ -871,7 +1016,9 @@ fn english_token_match_score(text: &str, phrase: &str) -> Option<u32> {
         if joined_norm == phrase_norm || collapsed == phrase_norm {
             return Some(1000);
         }
-        return Some(860 + phrase_tokens.len() as u32);
+        if wake_fuzzy_match_allowed(text, phrase) {
+            return Some(860 + phrase_tokens.len() as u32);
+        }
     }
 
     if let Some(score) = english_first_token_inflection_score(&collapsed, &phrase_tokens) {
@@ -1593,11 +1740,15 @@ fn emit_partial(
 
 #[cfg(all(windows, not(vosk_disabled)))]
 fn emit_level_if_due(event_tx: &Sender<VoiceVoskEvent>, pcm: &[i16], last_at: &mut Instant) {
+    emit_level_if_due_level(event_tx, pcm_level_percent(pcm), last_at);
+}
+
+#[cfg(all(windows, not(vosk_disabled)))]
+fn emit_level_if_due_level(event_tx: &Sender<VoiceVoskEvent>, level: u32, last_at: &mut Instant) {
     if last_at.elapsed() < LEVEL_MIN_INTERVAL {
         return;
     }
     *last_at = Instant::now();
-    let level = pcm_level_percent(pcm);
     send_event_try_partial(event_tx, VoiceVoskEvent::Level { level });
 }
 
@@ -1690,6 +1841,28 @@ mod tests {
             matches_final("请开始输入吧", &phrases),
             Some("开始输入".into())
         );
+    }
+
+    #[test]
+    fn matches_final_rejects_long_unrelated_cn() {
+        let phrases = vec!["开始输入".into()];
+        assert_eq!(
+            matches_final("今天下午我们开始输入很多内容", &phrases),
+            None
+        );
+        assert!(wake_text_rejection_reason("今天下午我们开始输入很多内容", &phrases).is_some());
+    }
+
+    #[test]
+    fn wake_fuzzy_allows_short_padding_en() {
+        assert!(wake_fuzzy_match_allowed(
+            "please start dictation",
+            "start dictation"
+        ));
+        assert!(!wake_fuzzy_match_allowed(
+            "please start dictation right now today",
+            "start dictation"
+        ));
     }
 
     #[test]

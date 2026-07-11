@@ -132,6 +132,28 @@
       return;
     }
 
+    var ruleChip=e.target.closest&&e.target.closest('#keysAppContextStrip [data-rule-context]');
+    if(ruleChip){
+      e.preventDefault();
+      e.stopPropagation();
+      var appRulesRule=global.OneToneAppBehaviorRules;
+      if(appRulesRule&&appRulesRule.setActiveRuleContext) appRulesRule.setActiveRuleContext(ruleChip.getAttribute('data-rule-context')||'');
+      return;
+    }
+
+    var ruleDeleteChip=e.target.closest&&e.target.closest('#keysAppContextStrip [data-rule-delete]');
+    if(ruleDeleteChip){
+      e.preventDefault();
+      e.stopPropagation();
+      var coreMod=global.OneToneMappingCore;
+      var mDel=coreMod&&coreMod.selected?coreMod.selected():null;
+      var rulesDel=global.OneToneAppBehaviorRules;
+      if(mDel&&rulesDel&&rulesDel.removeRuleById){
+        rulesDel.removeRuleById(mDel,ruleDeleteChip.getAttribute('data-rule-delete')||'');
+      }
+      return;
+    }
+
     var appChipNone=e.target.closest&&e.target.closest('#keysAppContextStrip [data-app-chip-none]');
     if(appChipNone){
       e.preventDefault();

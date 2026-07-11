@@ -279,6 +279,13 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
             VoiceVoskEvent::Final(text) => {
                 *state.voice_vosk_last_final.lock() = text.clone();
                 crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
+                if crate::voice_end_runtime::session_state(state) == "idle" {
+                    let phrases = crate::voice_end_runtime::idle_wake_phrases(&state.cfg.lock());
+                    if let Some(reason) = crate::voice_vosk::wake_text_rejection_reason(&text, &phrases)
+                    {
+                        *state.voice_vosk_last_skip.lock() = reason;
+                    }
+                }
             }
             VoiceVoskEvent::GrammarMode { grammar, note } => {
                 *state.voice_vosk_grammar_mode.lock() = Some(grammar);
@@ -452,7 +459,7 @@ fn stop_sapi_engine(state: &Arc<AppState>) {
 
 pub fn voice_vosk_set_enabled(
     state: &Arc<AppState>,
-    _window: &WebviewWindow,
+    window: &WebviewWindow,
     enabled: bool,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
@@ -493,6 +500,7 @@ pub fn voice_vosk_set_enabled(
         crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     }
 
+    crate::tray::refresh_tray_tooltip(window.app_handle(), state.as_ref());
     Ok(voice_vosk_status(state, resource_dir))
 }
 

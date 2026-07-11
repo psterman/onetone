@@ -77,6 +77,23 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Sync tray hover text with listen / voice state.
+pub fn refresh_tray_tooltip(app: &AppHandle, state: &AppState) {
+    let paused = *state.paused.lock();
+    let cfg = state.cfg.lock();
+    let voice_on = cfg.voice_vosk.enabled || cfg.voice_sapi.enabled;
+    let tip = if paused {
+        "一声 · 已暂停（按键与语音均不响应，已释放语音占用）"
+    } else if voice_on {
+        "一声 · 监听中（按键 + 语音唤醒）"
+    } else {
+        "一声 · 仅按键（语音已关，省内存）"
+    };
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        let _ = tray.set_tooltip(Some(tip));
+    }
+}
+
 fn configure_tray_menu_window(menu_win: &WebviewWindow) -> tauri::Result<()> {
     menu_win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = menu_win.set_shadow(false);
@@ -101,9 +118,9 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
     let cfg = state.cfg.lock().clone();
     let paused = *state.paused.lock();
     let listen_label = if paused {
-        "恢复监听（一声已暂停）"
+        "恢复监听（约 2 秒语音就绪）"
     } else {
-        "暂停监听"
+        "暂停监听（释放语音占用）"
     };
 
     let active_mode = cfg

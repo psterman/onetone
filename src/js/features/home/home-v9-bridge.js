@@ -5,6 +5,8 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   var bound=false;
   var foregroundAppId='';
+  var foregroundIdentity=null;
+  var foregroundLabelKey='';
   var foregroundPollTimer=null;
   var lastLiveText='';
   var dictationLive={ finals:[], lastFinalKey:'', sessionKey:'' };
@@ -345,19 +347,51 @@
   }
 
   function foregroundDisplayName(appId){
+    if(foregroundIdentity){
+      if(appId){
+        var meta=global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.behaviorPresets
+          ?global.OneToneAppBehaviorRules.behaviorPresets.find(function(p){ return p.id===appId; }):null;
+        if(meta&&meta.nameKey) return t(meta.nameKey);
+        if(global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
+          var appPreset=global.OneToneAppTargetPresets.presetById(appId);
+          if(appPreset&&appPreset.nameKey) return t(appPreset.nameKey);
+        }
+      }
+      var exe=String(foregroundIdentity.exeName||foregroundIdentity.exe_name||'').trim();
+      if(exe) return exe;
+      var title=String(foregroundIdentity.windowTitle||foregroundIdentity.window_title||'').trim();
+      if(title) return title;
+    }
     if(!appId) return t('homeV9TargetUnknown');
     if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.behaviorPresets){
       var preset=global.OneToneAppBehaviorRules.behaviorPresets.find(function(p){ return p.id===appId; });
       if(preset&&preset.nameKey) return t(preset.nameKey);
     }
     if(global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
-      var appPreset=global.OneToneAppTargetPresets.presetById(appId);
-      if(appPreset&&appPreset.nameKey) return t(appPreset.nameKey);
+      var appPreset2=global.OneToneAppTargetPresets.presetById(appId);
+      if(appPreset2&&appPreset2.nameKey) return t(appPreset2.nameKey);
     }
     return appId;
   }
 
   function targetAppLabel(m){
+    if(foregroundIdentity){
+      var rules=global.OneToneAppBehaviorRules;
+      if(m&&rules&&rules.matchRuleForMapping){
+        var matched=rules.matchRuleForMapping(m,foregroundIdentity);
+        if(matched&&rules.ruleDisplayName) return rules.ruleDisplayName(matched);
+      }
+      if(rules&&rules.identityDisplayName){
+        var idName=rules.identityDisplayName(foregroundIdentity);
+        if(idName) return idName;
+      }
+      var presetId=foregroundIdentity.appId||foregroundIdentity.matchedPresetAppId||foregroundIdentity.matched_preset_app_id;
+      if(presetId) return foregroundDisplayName(String(presetId));
+      var exe=String(foregroundIdentity.exeName||foregroundIdentity.exe_name||'').trim();
+      if(exe) return exe;
+      var title=String(foregroundIdentity.windowTitle||foregroundIdentity.window_title||'').trim();
+      if(title) return title;
+    }
     if(foregroundAppId) return foregroundDisplayName(foregroundAppId);
     if(m&&m.appTargetId) return foregroundDisplayName(String(m.appTargetId).trim());
     var cfg=global.OneToneState.state.config||{};
@@ -645,8 +679,11 @@
   function pollForegroundApp(){
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
     global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+      foregroundIdentity=res||null;
       var next=res&&res.appId?String(res.appId):'';
-      if(next!==foregroundAppId){
+      var labelKey=next+'|'+(res&&res.exeName||res&&res.exe_name||'')+'|'+(res&&res.windowTitle||res&&res.window_title||'');
+      if(labelKey!==foregroundLabelKey){
+        foregroundLabelKey=labelKey;
         foregroundAppId=next;
         render();
       }

@@ -188,11 +188,15 @@
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   }
 
-  function resolveEffectiveSource(m,foregroundId){
+  function resolveEffectiveSource(m,foregroundCtx){
     if(!m) return t('habitEffectiveSourceDefault');
-    var preview=foregroundId||'';
+    var preview=foregroundCtx||'';
     if(!preview&&global.OneToneAppBehaviorRules) preview=global.OneToneAppBehaviorRules.getActiveAppContextId()||'';
-    if(!preview&&global.OneToneHabitLayerNav) preview=global.OneToneHabitLayerNav.getForegroundAppId()||'';
+    if(!preview&&global.OneToneHabitLayerNav&&global.OneToneHabitLayerNav.getForegroundContextRef){
+      preview=global.OneToneHabitLayerNav.getForegroundContextRef(m)||'';
+    }else if(!preview&&global.OneToneHabitLayerNav){
+      preview=global.OneToneHabitLayerNav.getForegroundAppId()||'';
+    }
     if(preview&&global.OneToneAppBehaviorRules){
       var eff=global.OneToneAppBehaviorRules.resolveEffectiveFinish(m,preview);
       if(eff) return t('habitEffectiveSourceApp').replace('{app}',eff.appName);
@@ -200,10 +204,23 @@
     return t('habitEffectiveSourceDefault');
   }
 
-  function foregroundDisplayName(appId){
+  function foregroundDisplayName(appId,m){
+    var nav=global.OneToneHabitLayerNav;
+    var identity=nav&&nav.getForegroundIdentity?nav.getForegroundIdentity():null;
+    var rules=global.OneToneAppBehaviorRules;
+    if(identity&&rules&&rules.identityDisplayName){
+      var ctx=rules.resolveForegroundContextRef&&m?rules.resolveForegroundContextRef(m,identity):'';
+      if(ctx&&rules.resolveEffectiveFinish){
+        var eff=rules.resolveEffectiveFinish(m,ctx);
+        if(eff&&eff.appName) return eff.appName;
+      }
+      var name=rules.identityDisplayName(identity);
+      if(name) return name;
+    }
     if(!appId) return t('habitEffectiveForegroundUnknown');
-    if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.behaviorPresets){
-      var preset=global.OneToneAppBehaviorRules.behaviorPresets.find(function(p){ return p.id===appId; });
+    if(rules&&rules.appDisplayName) return rules.appDisplayName(appId);
+    if(rules&&rules.behaviorPresets){
+      var preset=rules.behaviorPresets.find(function(p){ return p.id===appId; });
       if(preset&&preset.nameKey) return t(preset.nameKey);
     }
     return appId;
@@ -225,10 +242,12 @@
     var activeM=findMapping(activeId)||m;
     var titleEl=$('sceneEffectivePreviewTitle');
     if(titleEl) titleEl.textContent=t('habitEffectivePreviewTitle');
-    var fgId=global.OneToneHabitLayerNav?global.OneToneHabitLayerNav.getForegroundAppId():'';
+    var fgId=global.OneToneHabitLayerNav&&global.OneToneHabitLayerNav.getForegroundContextRef
+      ?global.OneToneHabitLayerNav.getForegroundContextRef(activeM)
+      :(global.OneToneHabitLayerNav?global.OneToneHabitLayerNav.getForegroundAppId():'');
     var tagsEl=$('sceneEffectivePreviewTags');
     var schemeName=habitDisplayName(activeM);
-    var fgName=foregroundDisplayName(fgId);
+    var fgName=foregroundDisplayName(fgId,activeM);
     var source=resolveEffectiveSource(activeM,fgId);
     var tagsHtml=
       '<span class="scene-effective-tag"><span class="scene-effective-tag-lbl">'+escHtml(t('habitEffectiveTagScheme'))+'</span><span class="scene-effective-tag-val">'+escHtml(schemeName)+'</span></span>'+
