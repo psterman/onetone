@@ -13,6 +13,10 @@
       --on-surface-muted:#5a7086;
       --outline-variant:rgba(26,45,74,.10);
       --danger:#dc2626;
+      --green:#2e7d4f;
+      --green-soft:rgba(46,125,79,.1);
+      --orange:#b9530a;
+      --orange-soft:rgba(185,83,10,.1);
       --radius:12px;
       --radius-row:8px;
       --shadow:0 10px 28px rgba(26,45,74,.18);
@@ -27,51 +31,76 @@
         --on-surface-muted:#9aa8b8;
         --outline-variant:rgba(148,163,184,.16);
         --shadow:0 12px 32px rgba(0,0,0,.45);
+        --green-soft:rgba(46,125,79,.22);
+        --orange-soft:rgba(185,83,10,.22);
+      }
+      .status-card{
+        background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,rgba(94,200,232,.12) 100%)!important;
       }
     }
     *{box-sizing:border-box}
-    html{
-      margin:0;
-      height:100%;
-      background:transparent !important;
-    }
+    html{margin:0;height:100%;background:transparent!important}
     body{
-      margin:0;
-      padding:8px;
-      min-height:100%;
-      background:transparent !important;
-      overflow:hidden;
-      user-select:none;
+      margin:0;padding:8px;min-height:100%;
+      background:transparent!important;overflow:hidden;user-select:none;
     }
     .menu{
-      width:248px;
-      background:var(--surface);
-      border:1px solid var(--outline-variant);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:6px;
-      color:var(--on-surface);
+      width:312px;background:var(--surface);
+      border:1px solid var(--outline-variant);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:6px;color:var(--on-surface);
+    }
+    .status-card{
+      margin:4px 4px 6px;padding:10px 12px;
+      background:linear-gradient(135deg,#fff 0%,var(--primary-soft) 100%);
+      border:1px solid var(--outline-variant);border-radius:10px;
+    }
+    .status-card.is-paused .pulse{background:var(--orange);box-shadow:0 0 0 4px var(--orange-soft)}
+    .status-card.is-error .pulse{background:var(--danger);box-shadow:0 0 0 4px rgba(220,38,38,.12)}
+    .status-card .head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:18px}
+    .status-card .head .pulse{
+      width:8px;height:8px;border-radius:50%;background:var(--green);
+      box-shadow:0 0 0 4px var(--green-soft);flex:0 0 auto;
+    }
+    .status-card .head .title{font-size:12px;font-weight:700;color:var(--on-surface);flex:1;min-width:0}
+    .status-card .head .badge{
+      margin-left:auto;font-size:10px;padding:2px 6px;border-radius:4px;
+      background:var(--green-soft);color:var(--green);font-weight:600;white-space:nowrap;
+    }
+    .status-card.is-paused .badge{background:var(--orange-soft);color:var(--orange)}
+    .status-card.is-error .badge{background:rgba(220,38,38,.12);color:var(--danger)}
+    .status-card .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+    .status-card .cell{display:flex;flex-direction:column;gap:1px;min-width:0}
+    .status-card .cell .k{font-size:9.5px;color:var(--on-surface-muted);font-weight:500;letter-spacing:.04em}
+    .status-card .cell .v{
+      font-size:12px;font-weight:600;color:var(--on-surface);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     }
     .item{
-      display:flex;align-items:center;gap:10px;
-      width:100%;padding:9px 10px;
-      border:none;border-radius:var(--radius-row);
-      background:transparent;
-      color:inherit;font:inherit;text-align:left;
+      display:flex;align-items:center;gap:10px;width:100%;
+      padding:8px 10px;border:none;border-radius:var(--radius-row);
+      background:transparent;color:inherit;font:inherit;text-align:left;
       cursor:pointer;transition:background .14s ease;
     }
     .item:hover,.item:focus-visible{background:var(--primary-soft);outline:none}
     .item .ico{
-      flex:0 0 18px;width:18px;height:18px;
-      color:var(--primary);
+      flex:0 0 18px;width:18px;height:18px;color:var(--primary);
       display:flex;align-items:center;justify-content:center;
     }
-    .item .ico svg{display:block;width:18px;height:18px}
+    .item .ico svg{display:block;width:16px;height:16px}
     .item .ico.muted{color:var(--on-surface-muted)}
-    .item .label{flex:1;font-size:13px;line-height:1.2}
+    .item .ico.green{color:var(--green)}
+    .item .label{flex:1;font-size:13px;line-height:1.2;min-width:0}
+    .item .right{
+      flex:0 0 auto;font-size:11px;color:var(--on-surface-muted);
+      display:flex;align-items:center;gap:4px;max-width:46%;min-width:0;
+    }
+    .item .right .val{
+      color:var(--on-surface);font-weight:600;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+    }
+    .item .right .chev{font-size:10px;color:var(--on-surface-muted);flex-shrink:0}
     .item .check{
-      flex:0 0 14px;width:14px;height:14px;
-      color:var(--primary);opacity:0;
+      flex:0 0 14px;width:14px;height:14px;color:var(--primary);opacity:0;
       display:flex;align-items:center;justify-content:center;
     }
     .item .check svg{width:14px;height:14px}
@@ -79,17 +108,11 @@
     .item.danger{color:var(--danger)}
     .item.danger .ico{color:var(--danger)}
     .item.danger:hover{background:rgba(220,38,38,.08)}
-    .sep{height:1px;margin:5px 8px;background:var(--outline-variant)}
-    .section{padding:4px 10px 2px;font-size:11px;font-weight:600;color:var(--on-surface-muted)}
     .item.disabled{opacity:.45;pointer-events:none}
-    .status-line{
-      padding:4px 10px 2px;
-      font-size:11px;line-height:1.45;
-      color:var(--on-surface-muted);
-      word-break:break-word;
+    .sep{height:1px;margin:5px 8px;background:var(--outline-variant)}
+    .subhead{
+      padding:4px 10px 2px;font-size:11px;font-weight:600;color:var(--on-surface-muted);
     }
-    .status-line strong{color:var(--on-surface);font-weight:600}
-    .status-line.error{color:var(--danger)}
   </style>
 </head>
 <body>
@@ -99,14 +122,20 @@
 
     const ICONS={
       open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg>',
+      test:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
       pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
       play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
-      mode:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>',
-      scheme:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>',
       cycle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4h4"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-4H3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>',
+      scheme:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>',
+      mode:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>',
+      settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+      back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
       quit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
       check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>'
     };
+
+    let menuData={};
+    let menuView='main';
 
     function el(tag,cls,html){
       const n=document.createElement(tag);
@@ -115,81 +144,94 @@
       return n;
     }
 
+    function sep(){ return el('div','sep'); }
+
     function row(opts){
       const b=el('button','item'+(opts.active?' is-active':'')+(opts.danger?' danger':'')+(opts.disabled?' disabled':''));
-      b.innerHTML='<span class="ico'+(opts.mutedIco?' muted':'')+'">'+opts.icon+'</span><span class="label"></span><span class="check">'+ICONS.check+'</span>';
+      b.innerHTML='<span class="ico'+(opts.mutedIco?' muted':'')+(opts.greenIco?' green':'')+'">'+opts.icon+'</span><span class="label"></span><span class="check">'+ICONS.check+'</span>';
       b.querySelector('.label').textContent=opts.label;
-      if(!opts.disabled&&opts.action)b.addEventListener('click',function(){ invoke('cmd_tray_action',{action:opts.action,payload:opts.payload||null}).catch(function(){}); });
+      if(opts.rightHtml){
+        const r=el('span','right');
+        r.innerHTML=opts.rightHtml;
+        b.appendChild(r);
+      }
+      if(!opts.disabled){
+        if(opts.onClick) b.addEventListener('click',opts.onClick);
+        else if(opts.action) b.addEventListener('click',function(){
+          invoke('cmd_tray_action',{action:opts.action,payload:opts.payload||null}).catch(function(){});
+        });
+      }
       return b;
     }
 
-    function sep(){ return el('div','sep'); }
-    function section(title){ return el('div','section',title); }
-
-    function voiceEngineLabel(engine){
-      if(engine==='vosk') return 'Vosk';
-      if(engine==='sapi') return 'SAPI';
-      return '关闭';
+    function linkRow(opts){
+      return row({
+        icon:opts.icon,
+        mutedIco:opts.mutedIco!==false,
+        label:opts.label,
+        rightHtml:'<span class="val"></span><span class="chev">▸</span>',
+        onClick:opts.onClick
+      }).tap(function(node){
+        node.querySelector('.val').textContent=opts.value||'—';
+      });
     }
 
-    function truncate(s,max){
-      if(!s) return '';
-      s=String(s);
-      return s.length>max?s.slice(0,max-1)+'…':s;
+    Element.prototype.tap=function(fn){ fn(this); return this; };
+
+    function statusCard(data){
+      const card=el('div','status-card'+(data.paused?' is-paused':'')+(data.statusTone==='error'?' is-error':''));
+      card.innerHTML=
+        '<div class="head"><span class="pulse"></span><span class="title"></span><span class="badge"></span></div>'
+        +'<div class="grid">'
+        +'<div class="cell"><span class="k">触发键</span><span class="v" data-k="triggerKey"></span></div>'
+        +'<div class="cell"><span class="k">触发方式</span><span class="v" data-k="triggerMode"></span></div>'
+        +'<div class="cell"><span class="k">引擎</span><span class="v" data-k="engine"></span></div>'
+        +'<div class="cell"><span class="k">麦克风</span><span class="v" data-k="mic"></span></div>'
+        +'</div>';
+      card.querySelector('.title').textContent=data.statusTitle||'—';
+      card.querySelector('.badge').textContent=data.statusBadge||'';
+      card.querySelector('[data-k="triggerKey"]').textContent=data.triggerKeyLabel||'—';
+      card.querySelector('[data-k="triggerMode"]').textContent=data.triggerModeLabel||'—';
+      card.querySelector('[data-k="engine"]').textContent=data.engineLabel||'—';
+      card.querySelector('[data-k="mic"]').textContent=data.micLabel||'默认';
+      return card;
     }
 
-    function statusLine(html,cls){
-      return el('div','status-line'+(cls?' '+cls:''),html);
-    }
-
-    function renderStatus(data){
-      const listen=data.paused?'已暂停':'运行中';
-      const engine=voiceEngineLabel(data.voiceEngine||'off');
-      let voice=engine;
-      if(data.voiceState&&data.voiceState!=='off') voice+=' · '+data.voiceState;
-      if(data.voiceError) voice+=' · '+data.voiceError;
-      const session=data.sessionState||'idle';
-      let recent='—';
-      if(data.lastRuntimeEventKind||data.lastRuntimeEventMessage){
-        const kind=data.lastRuntimeEventKind||'';
-        const msg=truncate(data.lastRuntimeEventMessage||'',48);
-        recent=kind?(kind+(msg?(': '+msg):'')):msg;
-      }
-      return [
-        section('后台状态'),
-        statusLine('<strong>监听</strong> '+listen),
-        statusLine('<strong>语音</strong> '+truncate(voice,56),data.voiceError?'error':''),
-        statusLine('<strong>会话</strong> '+session),
-        statusLine('<strong>最近</strong> '+truncate(recent,56)),
-      ];
-    }
-
-    function render(data){
-      const root=document.getElementById('menu');
-      root.replaceChildren();
-      root.appendChild(row({icon:ICONS.open,label:'打开一声',action:'show'}));
+    function renderMain(root,data){
+      root.appendChild(statusCard(data));
       root.appendChild(sep());
+      root.appendChild(row({icon:ICONS.open,label:'打开主窗口',action:'show'}));
+      root.appendChild(sep());
+      root.appendChild(row({icon:ICONS.test,label:'测试一次触发',greenIco:true,action:'test_trigger',disabled:!!data.paused}));
       root.appendChild(row({
         icon:data.paused?ICONS.play:ICONS.pause,
-        label:data.listenLabel,
+        label:data.paused?'恢复监听':'暂停监听',
         action:'listen_toggle'
       }));
+      if(data.canCycle){
+        root.appendChild(row({icon:ICONS.cycle,label:'轮换到下一习惯',action:'cycle_scheme'}));
+      }
       root.appendChild(sep());
-      renderStatus(data).forEach(function(node){ root.appendChild(node); });
+      root.appendChild(linkRow({
+        icon:ICONS.scheme,label:'当前习惯',value:data.activeSchemeLabel,
+        onClick:function(){ menuView='schemes'; render(menuData); }
+      }));
+      root.appendChild(linkRow({
+        icon:ICONS.mode,label:'触发方式',value:data.triggerModeLabel,
+        onClick:function(){ menuView='modes'; render(menuData); }
+      }));
       root.appendChild(sep());
-      root.appendChild(section('触发模式'));
-      (data.modes||[]).forEach(function(m){
-        root.appendChild(row({
-          icon:ICONS.mode,
-          mutedIco:true,
-          label:m.label,
-          active:m.id===data.activeMode,
-          action:'set_mode',
-          payload:{mode:m.id}
-        }));
-      });
+      root.appendChild(row({icon:ICONS.settings,label:'打开设置',action:'show'}));
+      root.appendChild(row({icon:ICONS.quit,label:'退出一声',action:'quit',danger:true}));
+    }
+
+    function renderSchemes(root,data){
+      root.appendChild(row({
+        icon:ICONS.back,label:'返回',mutedIco:true,
+        onClick:function(){ menuView='main'; render(menuData); }
+      }));
       root.appendChild(sep());
-      root.appendChild(section('切换习惯'));
+      root.appendChild(el('div','subhead','当前习惯'));
       const schemes=data.schemes||[];
       if(!schemes.length){
         root.appendChild(row({icon:ICONS.scheme,mutedIco:true,label:'（暂无可用习惯）',disabled:true}));
@@ -199,7 +241,7 @@
             icon:ICONS.scheme,
             mutedIco:true,
             label:s.label,
-            active:!!s.enabled,
+            active:!!s.active,
             action:'select_scheme',
             payload:{id:s.id}
           }));
@@ -212,7 +254,40 @@
       root.appendChild(row({icon:ICONS.quit,label:'退出一声',action:'quit',danger:true}));
     }
 
-    window.__tray_init__=function(data){ render(data||{}); };
+    function renderModes(root,data){
+      root.appendChild(row({
+        icon:ICONS.back,label:'返回',mutedIco:true,
+        onClick:function(){ menuView='main'; render(menuData); }
+      }));
+      root.appendChild(sep());
+      root.appendChild(el('div','subhead','触发方式'));
+      (data.modes||[]).forEach(function(m){
+        root.appendChild(row({
+          icon:ICONS.mode,
+          mutedIco:true,
+          label:m.label,
+          active:m.id===data.activeMode,
+          action:'set_mode',
+          payload:{mode:m.id}
+        }));
+      });
+      root.appendChild(sep());
+      root.appendChild(row({icon:ICONS.quit,label:'退出一声',action:'quit',danger:true}));
+    }
+
+    function render(data){
+      menuData=data||{};
+      const root=document.getElementById('menu');
+      root.replaceChildren();
+      if(menuView==='schemes') renderSchemes(root,menuData);
+      else if(menuView==='modes') renderModes(root,menuData);
+      else renderMain(root,menuData);
+    }
+
+    window.__tray_init__=function(data){
+      menuView='main';
+      render(data||{});
+    };
   </script>
 </body>
 </html>

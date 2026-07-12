@@ -82,6 +82,7 @@
       if(!state().config.sounds[key].id) state().config.sounds[key].id=SOUND_SLOT_DEFAULTS[key].id;
     });
     if(state().config.sounds.masterEnabled===undefined) state().config.sounds.masterEnabled=true;
+    state().config.sounds.masterEnabled=true;
     if(state().config.sounds.recordingMuteEnabled===undefined) state().config.sounds.recordingMuteEnabled=false;
     state().config.sounds.recordingMuteStrength=normalizeRecordingMuteStrength(state().config.sounds.recordingMuteStrength);
     if(state().config.keyWakeSoundEnabled&&!state().config.sounds.keyWake.enabled){
@@ -189,11 +190,6 @@
 
   function syncSoundsSettingsUi(){
     var sounds=ensureSoundsConfig();
-    var master=$('btnSoundsMaster');
-    if(master){
-      master.classList.toggle('is-on',!!sounds.masterEnabled);
-      master.setAttribute('aria-checked',sounds.masterEnabled?'true':'false');
-    }
     SOUND_SLOT_KEYS.forEach(function(key){
       var slot=sounds[key]||SOUND_SLOT_DEFAULTS[key];
       var toggle=document.querySelector('.sound-slot-toggle[data-slot="'+key+'"]');
@@ -212,15 +208,15 @@
           });
         }
         select.value=slot.id||SOUND_SLOT_DEFAULTS[key].id;
-        select.disabled=!sounds.masterEnabled;
+        select.disabled=false;
       }
       var preview=document.querySelector('.sound-slot-preview[data-slot="'+key+'"]');
-      if(preview) preview.disabled=!sounds.masterEnabled;
+      if(preview) preview.disabled=false;
     });
     syncKeyWakeSoundToggle(!!sounds.keyWake.enabled);
     syncRecordingAudioUi();
     document.querySelectorAll('.sound-slot-toggle').forEach(function(btn){
-      btn.disabled=!sounds.masterEnabled;
+      btn.disabled=false;
     });
   }
 
@@ -230,7 +226,6 @@
     var sp=$('settingsPanelSoundsDesc'); if(sp) sp.textContent=d.settingsPanelSoundsDesc;
     var nav=$('settingsNavSoundsLabel'); if(nav) nav.textContent=d.settingsNavSounds;
     [
-      ['soundsMasterLabel',d.soundsMasterLabel],['soundsMasterHelp',d.soundsMasterHelp],
       ['soundSlotRecordTitle',d.soundSlotRecordTitle],['soundSlotRecordDesc',d.soundSlotRecordDesc],
       ['soundSlotVoiceWakeTitle',d.soundSlotVoiceWakeTitle],['soundSlotVoiceWakeDesc',d.soundSlotVoiceWakeDesc],
       ['soundSlotKeyWakeTitle',d.soundSlotKeyWakeTitle],['soundSlotKeyWakeDesc',d.soundSlotKeyWakeDesc],

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>tray-menu · A · 极简</title>
+<style>
+  :root{
+    --primary:#2a9cc4; --primary-soft:#e6f7fc; --primary-strong:#1f8fb8;
+    --surface:#f4f9fc; --on-surface:#152238; --on-muted:#5a7086;
+    --outline:rgba(26,45,74,.10); --danger:#dc2626;
+    --r:12px; --rr:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#dde3ea;padding:24px;font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;color:var(--on-surface)}
+  .stage{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+  .label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-muted);margin-bottom:8px}
+  .menu{
+    width:248px;background:var(--surface);
+    border:1px solid var(--outline);border-radius:var(--r);
+    box-shadow:0 10px 28px rgba(26,45,74,.18);
+    padding:6px;
+  }
+  .item{
+    display:flex;align-items:center;gap:10px;
+    width:100%;padding:9px 10px;border:none;border-radius:var(--rr);
+    background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;
+  }
+  .item:hover{background:var(--primary-soft)}
+  .ico{flex:0 0 18px;width:18px;height:18px;color:var(--primary);display:flex;align-items:center;justify-content:center}
+  .ico svg{display:block;width:16px;height:16px}
+  .ico.muted{color:var(--on-muted)}
+  .label-row{flex:1;font-size:13px}
+  .value{font-size:11px;color:var(--on-muted);font-family:"JetBrains Mono",monospace}
+  .value.active{color:var(--primary);font-weight:600}
+  .check{flex:0 0 14px;width:14px;height:14px;color:var(--primary);display:flex;align-items:center;justify-content:center}
+  .check svg{width:12px;height:12px}
+  .item.is-active .check{opacity:1}
+  .item .check{opacity:0}
+  .sep{height:1px;margin:5px 8px;background:var(--outline)}
+  .danger{color:var(--danger)}
+  .danger .ico{color:var(--danger)}
+  .danger:hover{background:rgba(220,38,38,.08)}
+  .footnote{font-size:11px;color:var(--on-muted);margin-top:6px;max-width:248px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div>
+    <div class="label">A · 极简（7 项，无子菜单）</div>
+    <div class="menu">
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg></span>
+        <span class="label-row">打开主窗口</span>
+      </button>
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+        <span class="label-row">暂停监听</span>
+      </button>
+      <div class="sep"></div>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg></span>
+        <span class="label-row">当前习惯</span>
+        <span class="value active">默认·音量键</span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+        <span class="label-row">触发方式</span>
+        <span class="value active">智能连按</span>
+      </button>
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="label-row">测试一次触发</span>
+      </button>
+      <div class="sep"></div>
+      <button class="item danger">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        <span class="label-row">退出一声</span>
+      </button>
+    </div>
+    <p class="footnote">只放高频动作 + 当前值显示。习惯/模式切换要去主窗口。适合"用得顺、懒得选"的老用户。</p>
+  </div>
+</div>
+</body>
+</html>

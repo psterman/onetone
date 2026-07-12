@@ -7,7 +7,7 @@ use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewWindow,
 };
 
-use crate::config::{mapping_is_complete, TriggerMode, VoiceConfig};
+use crate::config::{mapping_is_complete, MappingEntry, TriggerMode, VoiceConfig};
 use crate::ipc;
 use crate::AppState;
 
@@ -117,17 +117,20 @@ pub fn refresh_menu(app: &AppHandle) {
 pub fn tray_menu_init_json(state: &AppState) -> String {
     let cfg = state.cfg.lock().clone();
     let paused = *state.paused.lock();
-    let listen_label = if paused {
-        "恢复监听（约 2 秒语音就绪）"
-    } else {
-        "暂停监听（释放语音占用）"
-    };
 
-    let active_mode = cfg
-        .find_mapping_by_id(&cfg.active_scene_id)
+    let active_mapping = tray_active_mapping(&cfg);
+    let active_mode = active_mapping
         .map(|m| m.trigger_mode)
-        .or_else(|| cfg.active_mappings().first().map(|m| m.trigger_mode))
         .unwrap_or(TriggerMode::Tap);
+    let trigger_key_label = active_mapping
+        .map(|m| tray_friendly_key(&m.trigger_key))
+        .unwrap_or_else(|| "—".into());
+    let active_scheme_label = active_mapping
+        .map(|m| m.display_label())
+        .unwrap_or_else(|| "—".into());
+    let trigger_mode_label = tray_mode_label(active_mode).to_string();
+
+    let active_scheme_id = cfg.active_scene_id.clone();
 
     let schemes: Vec<serde_json::Value> = cfg
         .mappings
@@ -137,7 +140,7 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
             serde_json::json!({
                 "id": m.id,
                 "label": m.display_label(),
-                "enabled": m.enabled,
+                "active": m.id == active_scheme_id,
             })
         })
         .collect();
@@ -146,18 +149,22 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
 
     let voice_engine = tray_voice_engine(&cfg);
     let (voice_state, voice_error) = tray_voice_state_and_error(state, voice_engine);
-    let session_state = state.voice_session_state.lock().clone();
-    let (last_event_kind, last_event_message) = {
-        let ring = state.runtime_events.ring.lock();
-        ring.back()
-            .map(|e| (e.kind.clone(), e.message.clone()))
-            .unwrap_or_default()
-    };
+    let engine_label = tray_engine_label(voice_engine);
+    let mic_label = tray_mic_label();
+    let (status_title, status_badge, status_tone) =
+        tray_status_card(paused, voice_engine, &voice_state, &voice_error);
 
     let payload = serde_json::json!({
         "paused": paused,
-        "listenLabel": listen_label,
         "activeMode": mode_id(active_mode),
+        "triggerKeyLabel": trigger_key_label,
+        "triggerModeLabel": trigger_mode_label,
+        "activeSchemeLabel": active_scheme_label,
+        "engineLabel": engine_label,
+        "micLabel": mic_label,
+        "statusTitle": status_title,
+        "statusBadge": status_badge,
+        "statusTone": status_tone,
         "modes": [
             {"id": "perpress", "label": "每按即发"},
             {"id": "tap", "label": "智能连按"},
@@ -167,9 +174,6 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         "voiceEngine": voice_engine,
         "voiceState": voice_state,
         "voiceError": voice_error,
-        "sessionState": session_state,
-        "lastRuntimeEventKind": last_event_kind,
-        "lastRuntimeEventMessage": last_event_message,
     });
     serde_json::to_string(&payload).unwrap_or_else(|_| "{}".into())
 }
@@ -231,6 +235,10 @@ pub fn handle_tray_action(
                 ipc::handle_scheme_select(state, app, mapping_id);
             }
         }
+        "test_trigger" => {
+            let mapping_id = tray_active_mapping_id(state);
+            let _ = ipc::perform_test_send(state, app, mapping_id, None);
+        }
         "quit" => exit_app(app),
         _ => {}
     }
@@ -277,14 +285,13 @@ fn estimate_menu_size(state: &AppState) -> (f64, f64) {
         .iter()
         .filter(|m| mapping_is_complete(m))
         .count();
-    let scheme_rows = if scheme_count == 0 {
-        1
-    } else {
-        scheme_count + usize::from(scheme_count > 1)
-    };
-    let item_rows = 2 + 5 + 3 + scheme_rows + 1;
-    let height = 16.0 + 12.0 + item_rows as f64 * 36.0 + 44.0 + 55.0;
-    (264.0, height)
+    let can_cycle = scheme_count > 1;
+    let main_rows = 8 + usize::from(can_cycle);
+    let scheme_rows = 3 + scheme_count.max(1) + usize::from(can_cycle) + 1;
+    let mode_rows = 7;
+    let item_rows = main_rows.max(scheme_rows).max(mode_rows);
+    let height = 16.0 + 12.0 + 88.0 + item_rows as f64 * 34.0 + 44.0 + 16.0;
+    (328.0, height)
 }
 
 fn hide_tray_menu(app: &AppHandle) {
@@ -424,6 +431,105 @@ fn parse_mode_id(raw: &str) -> Option<TriggerMode> {
         "longpress" | "long_press" => Some(TriggerMode::LongPress),
         "double" | "doubleclick" => Some(TriggerMode::Double),
         _ => None,
+    }
+}
+
+fn tray_active_mapping<'a>(cfg: &'a VoiceConfig) -> Option<&'a MappingEntry> {
+    if !cfg.active_scene_id.is_empty() {
+        if let Some(m) = cfg.find_mapping_by_id(&cfg.active_scene_id) {
+            if mapping_is_complete(m) {
+                return Some(m);
+            }
+        }
+    }
+    cfg.mappings
+        .iter()
+        .find(|m| m.enabled && mapping_is_complete(m))
+        .or_else(|| cfg.mappings.iter().find(|m| mapping_is_complete(m)))
+}
+
+fn tray_active_mapping_id(state: &AppState) -> Option<String> {
+    let cfg = state.cfg.lock();
+    tray_active_mapping(&cfg).map(|m| m.id.clone())
+}
+
+fn tray_friendly_key(key: &str) -> String {
+    let k = key.trim();
+    match k {
+        "Volume_Down" | "VolumeDown" => "音量键".into(),
+        "Volume_Up" | "VolumeUp" => "音量+".into(),
+        "Volume_Mute" | "VolumeMute" => "静音键".into(),
+        "AutoTrigger" => "自动".into(),
+        "RAlt" | "Right Alt" | "RALT" => "右 Alt".into(),
+        "LAlt" | "Left Alt" | "LALT" => "左 Alt".into(),
+        "RCtrl" | "Right Ctrl" => "右 Ctrl".into(),
+        "LCtrl" | "Left Ctrl" => "左 Ctrl".into(),
+        "RShift" | "Right Shift" => "右 Shift".into(),
+        "LShift" | "Left Shift" => "左 Shift".into(),
+        _ => k.replace('_', " "),
+    }
+}
+
+fn tray_mode_label(mode: TriggerMode) -> &'static str {
+    match mode {
+        TriggerMode::Tap => "智能连按",
+        TriggerMode::PerPress => "每按即发",
+        TriggerMode::LongPress => "长按",
+        TriggerMode::Double => "双击",
+    }
+}
+
+fn tray_engine_label(engine: &str) -> &'static str {
+    match engine {
+        "vosk" => "Vosk",
+        "sapi" => "SAPI",
+        _ => "关闭",
+    }
+}
+
+fn tray_mic_label() -> String {
+    #[cfg(windows)]
+    {
+        if let Ok(devices) = crate::audio_win::list_input_devices() {
+            if let Some(d) = devices.iter().find(|d| d.is_default) {
+                return truncate_label(&d.name, 18);
+            }
+            if let Some(d) = devices.first() {
+                return truncate_label(&d.name, 18);
+            }
+        }
+    }
+    "默认".into()
+}
+
+fn truncate_label(s: &str, max_chars: usize) -> String {
+    let t = s.trim();
+    if t.chars().count() <= max_chars {
+        return t.to_string();
+    }
+    t.chars().take(max_chars.saturating_sub(1)).collect::<String>() + "…"
+}
+
+fn tray_status_card(
+    paused: bool,
+    engine: &str,
+    voice_state: &str,
+    voice_error: &str,
+) -> (String, String, &'static str) {
+    if paused {
+        return ("已暂停".into(), "暂停".into(), "paused");
+    }
+    if engine == "off" {
+        return ("仅按键".into(), "就绪".into(), "normal");
+    }
+    if voice_state == "error" || !voice_error.trim().is_empty() {
+        return ("监听异常".into(), "出错".into(), "error");
+    }
+    match voice_state {
+        "starting" | "stopping" => ("启动中".into(), "启动中".into(), "normal"),
+        "listening" | "cooldown" | "triggered" => ("监听中".into(), "就绪".into(), "normal"),
+        "stopped" => ("语音已停止".into(), "停止".into(), "normal"),
+        _ => ("监听中".into(), "就绪".into(), "normal"),
     }
 }
 

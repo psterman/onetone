@@ -211,14 +211,11 @@
       btnSceneModeNew:'sceneModeNew',
       btnSceneModeNewVoice:'sceneModeNewVoice',
       btnSceneModeManage:'sceneModeManage',
-      btnSceneModeOpenKeys:'sceneModeOpenKeys',
-      btnSceneModeOpenVoice:'sceneModeOpenVoice',
-      sceneModeTotalLabel:'sceneModeTotalLabel',
-      sceneModeKeyLabel:'sceneModeKeyLabel',
-      sceneModeVoiceLabel:'sceneModeVoiceLabel',
-      sceneModeFilterAll:'sceneModeFilterAll',
-      sceneModeFilterKey:'sceneModeFilterKey',
-      sceneModeFilterVoice:'sceneModeFilterVoice',
+      btnSceneModeOpenKeysText:'sceneModeOpenKeys',
+      btnSceneModeOpenVoiceText:'sceneModeOpenVoice',
+      sceneModeFilterAllLabel:'sceneModeFilterAll',
+      sceneModeFilterKeyLabel:'sceneModeFilterKey',
+      sceneModeFilterVoiceLabel:'sceneModeFilterVoice',
       sceneModeEmptyTitle:'sceneModeEmptyTitle',
       sceneModeEmptyDesc:'sceneModeEmptyDesc'
     };
@@ -237,15 +234,15 @@
     });
   }
 
-  function renderStats(items){
+  function renderFilterCounts(items){
     var keyCount=items.filter(function(it){ return it.kind==='key'; }).length;
     var voiceCount=items.filter(function(it){ return it.kind==='voice'; }).length;
-    var total=$('sceneModeTotalCount');
-    var key=$('sceneModeKeyCount');
-    var voice=$('sceneModeVoiceCount');
-    if(total) total.textContent=String(items.length);
-    if(key) key.textContent=String(keyCount);
-    if(voice) voice.textContent=String(voiceCount);
+    var allCount=$('sceneModeFilterAllCount');
+    var keyBadge=$('sceneModeFilterKeyCount');
+    var voiceBadge=$('sceneModeFilterVoiceCount');
+    if(allCount) allCount.textContent=String(items.length);
+    if(keyBadge) keyBadge.textContent=String(keyCount);
+    if(voiceBadge) voiceBadge.textContent=String(voiceCount);
   }
 
   function scenarioDisplayName(refId){
@@ -312,7 +309,7 @@
   function render(){
     renderLabels();
     var items=collectItems();
-    renderStats(items);
+    renderFilterCounts(items);
     renderFilters();
     renderVoiceSubnav();
     var visible=filteredItems(items);

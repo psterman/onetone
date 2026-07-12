@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>tray-menu · C · 完整平铺</title>
+<style>
+  :root{
+    --primary:#2a9cc4; --primary-soft:#e6f7fc;
+    --surface:#f4f9fc; --on-surface:#152238; --on-muted:#5a7086;
+    --outline:rgba(26,45,74,.10); --danger:#dc2626;
+    --green:#2e7d4f;
+    --r:12px; --rr:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#dde3ea;padding:24px;font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;color:var(--on-surface)}
+  .stage{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+  .col{max-width:320px}
+  .label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-muted);margin-bottom:8px}
+  .menu{
+    width:304px;background:var(--surface);
+    border:1px solid var(--outline);border-radius:var(--r);
+    box-shadow:0 10px 28px rgba(26,45,74,.18);
+    padding:6px;
+  }
+  .status{
+    display:flex;align-items:center;gap:6px;
+    padding:6px 10px 8px;border-radius:var(--rr);
+    font-size:11px;color:var(--on-muted);
+    line-height:1.5;word-break:break-all;
+  }
+  .status .dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:0 0 auto}
+  .status strong{color:var(--on-surface);font-weight:600}
+  .item{
+    display:flex;align-items:center;gap:10px;
+    width:100%;padding:7px 10px;border:none;border-radius:var(--rr);
+    background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;
+  }
+  .item:hover{background:var(--primary-soft)}
+  .ico{flex:0 0 18px;width:18px;height:18px;color:var(--primary);display:flex;align-items:center;justify-content:center}
+  .ico svg{display:block;width:15px;height:15px}
+  .ico.muted{color:var(--on-muted)}
+  .label-row{flex:1;font-size:12.5px}
+  .right{font-size:10.5px;color:var(--on-muted);display:flex;align-items:center;gap:3px}
+  .check{flex:0 0 12px;width:12px;height:12px;color:var(--primary);display:flex;align-items:center;justify-content:center}
+  .check svg{width:11px;height:11px}
+  .item.is-active .check{opacity:1}
+  .item .check{opacity:0}
+  .sep{height:1px;margin:5px 8px;background:var(--outline)}
+  .section{padding:3px 10px 2px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--on-muted)}
+  .danger{color:var(--danger)}
+  .danger .ico{color:var(--danger)}
+  .switch{position:relative;width:26px;height:15px;border-radius:8px;background:var(--primary);flex:0 0 auto}
+  .switch::after{content:"";position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+  .switch.off{background:#d4dae0}
+  .switch.off::after{right:auto;left:2px}
+  .footnote{font-size:11px;color:var(--on-muted);margin-top:6px;max-width:304px;line-height:1.55}
+  .small-indent{padding-left:28px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="col">
+    <div class="label">C · 完整平铺（所有功能全部暴露）</div>
+    <div class="menu">
+      <div class="status">
+        <span class="dot"></span>
+        <span><strong>监听中</strong> · 音量键 · <strong>智能连按</strong> · Vosk 就绪</span>
+      </div>
+      <div class="sep"></div>
+
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/></svg></span>
+        <span class="label-row">打开主窗口</span>
+      </button>
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="label-row">测试一次触发</span>
+      </button>
+      <button class="item">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></span>
+        <span class="label-row">暂停监听</span>
+      </button>
+      <div class="sep"></div>
+
+      <div class="section">习惯</div>
+      <button class="item is-active">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/></svg></span>
+        <span class="label-row">默认·音量键</span>
+        <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/></svg></span>
+        <span class="label-row">编程·Cursor</span>
+        <span class="check"></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/></svg></span>
+        <span class="label-row">会议·转写</span>
+        <span class="check"></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2v4h4"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M7 22v-4H3"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></span>
+        <span class="label-row">轮换到下一习惯</span>
+      </button>
+      <div class="sep"></div>
+
+      <div class="section">触发方式</div>
+      <button class="item is-active">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+        <span class="label-row">智能连按</span>
+        <span class="check"></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+        <span class="label-row">每按即发</span>
+        <span class="check"></span>
+      </button>
+      <div class="sep"></div>
+
+      <div class="section">设备</div>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>
+        <span class="label-row">默认麦克风（正常）</span>
+        <span class="right">▸</span>
+      </button>
+      <div class="sep"></div>
+
+      <div class="section">快捷开关</div>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+        <span class="label-row">主音效</span>
+        <span class="switch"></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6"/></svg></span>
+        <span class="label-row">语音引擎</span>
+        <span class="switch"></span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+        <span class="label-row">开机自启动</span>
+        <span class="switch off"></span>
+      </button>
+      <div class="sep"></div>
+
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83"/></svg></span>
+        <span class="label-row">打开设置</span>
+        <span class="right">▸</span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+        <span class="label-row">复制诊断信息</span>
+      </button>
+      <button class="item">
+        <span class="ico muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>
+        <span class="label-row">检查更新</span>
+      </button>
+      <div class="sep"></div>
+
+      <button class="item danger">
+        <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        <span class="label-row">退出一声</span>
+      </button>
+    </div>
+    <p class="footnote">所有功能全部平铺；不点 submenu 一眼看完 17 项。习惯 ≥5 个时菜单会拉得很高。</p>
+  </div>
+</div>
+</body>
+</html>

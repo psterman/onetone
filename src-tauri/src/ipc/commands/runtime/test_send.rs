@@ -5,10 +5,9 @@ use tauri::Manager;
 use crate::AppState;
 
 /// 测试发送目标键；直接返回结果 JSON。
-#[tauri::command]
-pub fn cmd_test_send(
-    state: tauri::State<Arc<AppState>>,
-    window: tauri::WebviewWindow,
+pub fn perform_test_send(
+    state: &AppState,
+    app: &tauri::AppHandle,
     mapping_id: Option<String>,
     target_key: Option<String>,
 ) -> serde_json::Value {
@@ -74,8 +73,8 @@ pub fn cmd_test_send(
     }
 
     let ok = crate::voice_end_runtime::send_wake_to_target(
-        Some(state.inner()),
-        Some(&window.app_handle()),
+        Some(state),
+        Some(app),
         &key,
         duration_ms,
     );
@@ -86,4 +85,19 @@ pub fn cmd_test_send(
         "key": key,
         "mappingLabel": mapping_label,
     })
+}
+
+#[tauri::command]
+pub fn cmd_test_send(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    mapping_id: Option<String>,
+    target_key: Option<String>,
+) -> serde_json::Value {
+    perform_test_send(
+        state.inner(),
+        &window.app_handle(),
+        mapping_id,
+        target_key,
+    )
 }
