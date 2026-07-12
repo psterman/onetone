@@ -233,8 +233,9 @@
       return end.statusLabel||hooks().voiceEndStateLabel(end.state||'idle');
     }
     if(tab==='usage'){
-      if(!hooks().processUsageSnapshot.loaded) return t('voiceModeMetricLoading');
-      if(hooks().processUsageSnapshot.memoryBytes>0||hooks().processUsageSnapshot.supported) return hooks().processUsageLine();
+      var snap=hooks().processUsageSnapshot||{};
+      if(!snap.loaded) return t('voiceModeMetricLoading');
+      if(snap.memoryBytes>0||snap.supported) return hooks().processUsageLine();
       return hooks().processUsageUnavailableLine();
     }
     return '';
@@ -255,10 +256,11 @@
       if(mode==='diagnostics'){
         const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
         const status=(w.state?hooks().voiceWakeStateLabel(w.state):'');
+        var snap=hooks().processUsageSnapshot||{};
         let usage='';
-        if(hooks().processUsageSnapshot.loaded&&(hooks().processUsageSnapshot.memoryBytes>0||hooks().processUsageSnapshot.supported)){
-          usage=hooks().formatProcessMemory(hooks().processUsageSnapshot.memoryMb)+' · '+hooks().formatProcessCpu(hooks().processUsageSnapshot.cpuPercent);
-        }else if(hooks().processUsageSnapshot.loaded){
+        if(snap.loaded&&(snap.memoryBytes>0||snap.supported)){
+          usage=hooks().formatProcessMemory(snap.memoryMb)+' · '+hooks().formatProcessCpu(snap.cpuPercent);
+        }else if(snap.loaded){
           usage=hooks().processUsageUnavailableLine();
         }else{
           usage=t('voiceModeMetricLoading');

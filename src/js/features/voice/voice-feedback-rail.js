@@ -236,6 +236,17 @@
     return {text:t('voiceFbStatusStandby'),cls:'is-standby'};
   }
 
+  function isTranscriptMatched(res,text){
+    if(!res) return false;
+    if(String(res.lastTrigger||'').trim()) return true;
+    if(String(res.lastDetectedPhrase||'').trim()) return true;
+    if(!text) return false;
+    var phrases=Array.isArray(res.phrases)?res.phrases:[];
+    if(!phrases.length) return false;
+    var matcher=global.OneTonePhrasePractice&&global.OneTonePhrasePractice.matchWakePhrase;
+    return !!(matcher&&matcher(text,phrases));
+  }
+
   function resolveTranscriptText(step){
     step=currentStep(step);
     var w=wakeSnapshot();
@@ -244,14 +255,20 @@
     var res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
     var profile=profileForStep(step);
     var idleKey=profile.idleKey||'voiceFbTranscriptIdle';
-    if(!res) return {text:'',partial:false,placeholder:t(idleKey)};
+    if(!res) return {text:'',partial:false,placeholder:t(idleKey),matched:false};
     var finalText=String(res.lastFinal||'').trim();
     var partial=String(res.lastPartial||'').trim();
     var heard=String(res.lastHeard||'').trim();
-    if(finalText) return {text:finalText,partial:false,placeholder:''};
-    if(partial) return {text:partial,partial:true,placeholder:''};
-    if(heard) return {text:heard,partial:true,placeholder:''};
-    return {text:'',partial:false,placeholder:t(idleKey)};
+    if(finalText){
+      return {text:finalText,partial:false,placeholder:'',matched:isTranscriptMatched(res,finalText)};
+    }
+    if(partial){
+      return {text:partial,partial:true,placeholder:'',matched:isTranscriptMatched(res,partial)};
+    }
+    if(heard){
+      return {text:heard,partial:true,placeholder:'',matched:isTranscriptMatched(res,heard)};
+    }
+    return {text:'',partial:false,placeholder:t(idleKey),matched:false};
   }
 
   function applyMicOrbLevel(level){
@@ -269,11 +286,13 @@
     if(!box) return;
     var info=resolveTranscriptText(step);
     box.classList.toggle('is-partial',!!info.partial);
+    box.classList.toggle('is-matched',!!info.matched);
     if(info.text){
-      box.textContent=info.text;
+      box.textContent=info.matched?(info.text+' ✓'):info.text;
       box.classList.remove('is-placeholder');
     }else{
       box.textContent=info.placeholder||'';
+      box.classList.remove('is-matched');
       box.classList.add('is-placeholder');
     }
   }

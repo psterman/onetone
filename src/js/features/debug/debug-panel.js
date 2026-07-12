@@ -137,7 +137,8 @@
       return '<div class="debug-overview-card '+cls+'"><div class="lbl">'+hooks().escHtml(label)+'</div><div class="val">'+hooks().escHtml(val)+'</div><div class="sub">'+hooks().escHtml(sub||'')+'</div></div>';
     }
     const cards=[];
-    cards.push(card(hooks().processUsageSnapshot.loaded?'is-ok':'is-warn',t('debugCardUsage'),hooks().processUsageSnapshot.loaded?hooks().processUsageLine():t('voiceModeMetricLoading'),usage));
+    var usageSnap=hooks().processUsageSnapshot||{};
+    cards.push(card(usageSnap.loaded?'is-ok':'is-warn',t('debugCardUsage'),usageSnap.loaded?hooks().processUsageLine():t('voiceModeMetricLoading'),usage));
     cards.push(card(m&&m.enabled?'is-ok':'is-warn',t('debugCardScheme'),mappingName,m?(m.enabled?t('enabled')+' · ':'')+cLine:t('debugCardSchemeHint')));
     host.innerHTML=cards.join('');
   }
@@ -146,7 +147,7 @@
     renderInputExtSummary();
     const grid=$('devRuntimeGrid');
     if(grid){
-      const m=hooks().selectedMapping();
+      const m=hooks().selectedMapping&&hooks().selectedMapping();
       const w=hooks().voiceUiSnapshot.wake||{};
       const endSnap=hooks().voiceUiSnapshot.end||{};
       const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
@@ -162,7 +163,7 @@
         [t('debugDevVoiceEngine'),eng+(w.phrase?' · '+w.phrase:'')],
         [t('debugDevVoiceState'),w.state?hooks().voiceWakeStateLabel(w.state):'—'],
         [t('debugDevEndState'),endSnap.statusLabel||hooks().voiceEndStateLabel(endSnap.state||'idle')],
-        [t('debugDevLogCount'),String(hooks().logLines.length)+' '+t('debugDevLogUnit')]
+        [t('debugDevLogCount'),String((hooks().logLines||[]).length)+' '+t('debugDevLogUnit')]
       ];
       grid.innerHTML=items.map(function(pair){
         return '<div class="dev-runtime-item"><div class="k">'+hooks().escHtml(pair[0])+'</div><div class="v">'+hooks().escHtml(pair[1])+'</div></div>';
@@ -182,7 +183,7 @@
     }
     const source=$('sourceExplain');
     if(source){
-      const m=hooks().selectedMapping();
+      const m=hooks().selectedMapping&&hooks().selectedMapping();
       const lines=[];
       if(m){
         lines.push((getAppLang()==='zh'?'习惯 ID: ':'Profile ID: ')+(m.id||'—'));
@@ -206,7 +207,10 @@
       source.textContent=lines.join('\n');
     }
     const rawLog=$('rawEventLog');
-    if(rawLog) rawLog.textContent=hooks().logLines.length?hooks().logLines.join('\n'):t('waitLog');
+    if(rawLog){
+      var lines=hooks().logLines||[];
+      rawLog.textContent=lines.length?lines.join('\n'):t('waitLog');
+    }
   }
 
   function renderDebugPanel(){

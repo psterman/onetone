@@ -2,12 +2,14 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   function hooks(){ return global.__vp_app_keyboard_hooks__ || {}; }
+  function recordingInput(){ return global.OneToneMappingRecordingInput; }
   function bindListeners(){
     var h=hooks();
     var ui=global.OneToneState.ui;
     var runtime=global.OneToneState.runtime;
     var t=h.t;
     document.addEventListener('keydown',function(e){
+      var rec=recordingInput();
       if(e.key==='Escape'){
         var habitSetupOpen=$('habitSetupOverlay')&&$('habitSetupOverlay').classList.contains('open');
         if(habitSetupOpen&&global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.handleEsc()){
@@ -20,14 +22,14 @@
         if(phraseOpen&&global.OneTonePhrasePractice){ e.preventDefault(); global.OneTonePhrasePractice.close(); return; }
         var confirmOpen=$('confirmOverlay')&&$('confirmOverlay').classList.contains('open');
         if(confirmOpen){ e.preventDefault(); h.closeConfirmModal(false); return; }
-        if(global.OneToneMappingRecordingInput.tryEscapeRecording(e)) return;
+        if(rec&&rec.tryEscapeRecording&&rec.tryEscapeRecording(e)) return;
         if(h.onboardIsOpen()){ e.preventDefault(); h.closeWelcome(false); return; }
         if(h.welcomeOpen()){ h.closeWelcome(true); return; }
         if(ui.drawerOpen){ h.closeDrawer(); return; }
       }
       h.setLastKeyDebug({
         key:h.friendlyKeyName(e.key),
-        code:h.friendlyKeyName(global.OneToneMappingRecordingInput.normalizeKeyFromCode(e.code, e.key)||e.code)
+        code:h.friendlyKeyName((rec&&rec.normalizeKeyFromCode?rec.normalizeKeyFromCode(e.code,e.key):null)||e.code)
       });
       if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag.getFocusMode()==='developer'){
         var lastKeyGrid=$('devLastKeyGrid');
@@ -44,13 +46,15 @@
         }
       }
       h.pushLog(new Date().toLocaleTimeString()+' key='+h.lastKeyDebug().key+' code='+h.lastKeyDebug().code);
-      global.OneToneMappingRecordingInput.handleKeyDown(e);
+      if(rec&&rec.handleKeyDown) rec.handleKeyDown(e);
     },true);
     document.addEventListener('mousedown',function(e){
-      global.OneToneMappingRecordingInput.handleMouseDown(e);
+      var rec=recordingInput();
+      if(rec&&rec.handleMouseDown) rec.handleMouseDown(e);
     },true);
     document.addEventListener('keyup',function(e){
-      global.OneToneMappingRecordingInput.handleKeyUp(e);
+      var rec=recordingInput();
+      if(rec&&rec.handleKeyUp) rec.handleKeyUp(e);
     },true);
   }
   global.OneToneAppKeyboard={bindListeners:bindListeners};

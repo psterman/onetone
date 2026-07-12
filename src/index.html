@@ -73,11 +73,16 @@
       </div>
     </section>
 
-    <main class="main-scroll app-workbench-shell" id="appWorkbenchShell">
+    <main class="main-scroll app-workbench-shell wb-dot-grid" id="appWorkbenchShell">
       <aside class="app-left-nav" id="wbLeftNav" aria-label="主导航">
               <div class="wb-nav-brand">
-                <img src="icon.png" width="32" height="32" alt="" decoding="async" />
-                <span class="wb-nav-brand-name" id="wbNavBrandName">一声</span>
+                <div class="wb-nav-brand-mark" aria-hidden="true">
+                  <img src="icon.png" width="32" height="32" alt="" decoding="async" />
+                </div>
+                <div class="wb-nav-brand-text">
+                  <span class="wb-nav-brand-name" id="wbNavBrandName">一声 OneTone</span>
+                  <span class="wb-nav-brand-sub" id="wbNavBrandSub" data-i18n="homeWbNavSubtitle">智能外设音频控制中心</span>
+                </div>
               </div>
               <div class="wb-nav-section" data-i18n="homeWbNavSectionMain">主面板</div>
               <button type="button" class="wb-nav-item is-active" data-wb-nav="home" id="wbNavHome">
@@ -133,54 +138,64 @@
                     <kbd>Ctrl K</kbd>
                     <div class="wb-cmdk-panel" id="wbCmdkPanel" role="listbox" hidden></div>
                   </div>
-                  <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbTriggerTitle">
-                    <div class="wb-trigger-head">
-                      <div class="wb-trigger-status" id="wbTriggerStatus">当前触发 · 已就绪</div>
-                      <button type="button" class="wb-trigger-edit" id="wbTriggerEdit" title="编辑规则" aria-label="编辑规则">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-                      </button>
-                    </div>
-                    <div class="wb-trigger-main">
-                      <div class="wb-trigger-key" id="wbTriggerKey" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                      </div>
-                      <div class="wb-trigger-info">
-                        <h2 class="wb-trigger-title" id="wbTriggerTitle">—</h2>
-                        <div class="wb-trigger-meta" id="wbTriggerMeta">
-                          <span class="wb-trigger-meta-text" id="wbTriggerMetaText">—</span>
+                  <div class="wb-dashboard-grid">
+                    <div class="wb-dashboard-main">
+                      <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbTriggerTitle">
+                        <div class="wb-trigger-head">
+                          <div class="wb-trigger-status" id="wbTriggerStatus">当前触发 · 已就绪</div>
+                          <button type="button" class="wb-trigger-edit" id="wbTriggerEdit" title="编辑规则" aria-label="编辑规则">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                          </button>
                         </div>
-                      </div>
+                        <div class="wb-trigger-main">
+                          <div class="wb-trigger-hero-wrap">
+                            <div class="wb-trigger-hero-glow" aria-hidden="true"></div>
+                            <button type="button" class="wb-trigger-hero" id="wbTriggerHero" aria-label="">
+                              <span class="wb-trigger-hero-label" id="wbTriggerHeroLabel">—</span>
+                              <span class="wb-trigger-hero-icon" id="wbTriggerHeroIcon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                              </span>
+                              <span class="wb-trigger-hero-hint" id="wbTriggerHeroHint" data-i18n="homeWbTriggerHeroHint">点击测试发送</span>
+                            </button>
+                          </div>
+                          <div class="wb-trigger-info">
+                            <h2 class="wb-trigger-title" id="wbTriggerTitle">—</h2>
+                            <div class="wb-trigger-meta" id="wbTriggerMeta">
+                              <span class="wb-trigger-meta-text" id="wbTriggerMetaText">—</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="wb-pipeline" id="wbPipeline" aria-label="桥接链路"></div>
+                        <div class="wb-trigger-wave" id="wbTriggerWave" aria-hidden="true">
+                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
+                        </div>
+                        <div class="wb-live-text" id="wbLiveText" aria-live="polite">
+                          <div class="vp-empty" data-i18n="homeWbLiveIdleHint">听写内容将显示在这里</div>
+                        </div>
+                        <div class="wb-trigger-actions" id="wbTriggerActions">
+                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnTestSend" data-i18n="homeLiveTestEndSend">测试发送</button>
+                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd">结束说话</button>
+                          <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消输入</button>
+                        </div>
+                      </section>
+                      <section class="wb-habit-section">
+                        <div class="wb-habit-head">
+                          <span class="wb-habit-label" data-i18n="homeWbHabitSection">我的高频联动习惯场景</span>
+                          <button type="button" class="wb-habit-new" id="wbHabitNew" data-i18n="homeWbQuickNewHabit">新建习惯</button>
+                        </div>
+                        <div class="wb-habit-grid" id="wbHabitGrid"></div>
+                      </section>
+                      <div class="wb-finish-summary" id="wbFinishSummary" aria-live="polite"></div>
                     </div>
-                    <div class="wb-trigger-wave" id="wbTriggerWave" aria-hidden="true">
-                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                      <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                    </div>
-                    <div class="wb-live-text" id="wbLiveText" aria-live="polite">
-                      <div class="vp-empty" data-i18n="homeWbLiveIdleHint">听写内容将显示在这里</div>
-                    </div>
-                    <div class="wb-trigger-actions" id="wbTriggerActions">
-                      <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnTestSend" data-i18n="homeLiveTestEndSend">测试发送</button>
-                      <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd">结束说话</button>
-                      <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消输入</button>
-                    </div>
-                  </section>
-                  <div class="wb-quick-section">
-                    <div class="wb-quick-label" data-i18n="homeWbQuickSection">快捷操作</div>
-                    <div class="wb-quick-bar">
-                      <button type="button" class="wb-quick-btn" id="wbQuickNewHabit">
-                        <span class="wb-quick-ico wb-quick-c2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-                        <span data-i18n="homeWbQuickNewHabit">新建习惯</span>
-                      </button>
-                      <button type="button" class="wb-quick-btn" id="wbQuickSwitchModel">
-                        <span class="wb-quick-ico wb-quick-c3" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg></span>
-                        <span data-i18n="homeWbQuickSwitchModel">切换模型</span>
-                      </button>
-                    </div>
+                    <aside class="wb-dashboard-side">
+                      <section class="wb-scenario-panel" id="wbScenarioPanel"></section>
+                      <section class="wb-voice-panel" id="wbVoicePanel"></section>
+                    </aside>
                   </div>
-                  <div class="wb-finish-summary" id="wbFinishSummary" aria-live="polite"></div>
                 </div>
               </div>
           </div>
@@ -1232,12 +1247,15 @@
                   <span class="voice-fb-title" id="voiceFbTitle">实时交互预览</span>
                   <span class="voice-fb-status-pill is-standby" id="voiceFbStatusPill">系统待命中</span>
                   <div class="voice-live-mic-row" id="voiceLiveMicRow">
-                    <div class="voice-mic-status-readonly voice-status-readonly voice-live-mic-readonly" id="voiceLiveMicReadonly">
-                      <span class="voice-mic-status-dot" id="voiceLiveMicDot" aria-hidden="true"></span>
-                      <span id="voiceLiveMicName">默认麦克风</span>
-                      <span aria-hidden="true">·</span>
-                      <span id="voiceLiveMicState">正常</span>
-                    </div>
+                    <button type="button" class="voice-live-mic-trigger" id="btnVoiceLiveMicToggle" aria-expanded="false" aria-controls="voiceLiveMicPicker">
+                      <span class="voice-mic-status-readonly voice-status-readonly voice-live-mic-readonly" id="voiceLiveMicReadonly">
+                        <span class="voice-mic-status-dot" id="voiceLiveMicDot" aria-hidden="true"></span>
+                        <span id="voiceLiveMicName">默认麦克风</span>
+                        <span aria-hidden="true">·</span>
+                        <span id="voiceLiveMicState">正常</span>
+                      </span>
+                      <span class="voice-live-mic-chevron" id="voiceLiveMicChevron" aria-hidden="true">▾</span>
+                    </button>
                     <button type="button" class="voice-mic-change-btn" id="btnVoiceLiveMicChange">更换设备</button>
                   </div>
                   <div class="voice-fb-actions voice-fb-actions--compact" id="voiceFbActions">
@@ -1245,6 +1263,18 @@
                     <button type="button" class="voice-fb-action-btn" id="voiceFbBtnSimulateSpeak">模拟说话</button>
                   </div>
                 </header>
+                <div class="voice-live-mic-picker" id="voiceLiveMicPicker" hidden>
+                  <div class="voice-live-mic-picker-head">
+                    <span class="voice-live-mic-picker-title" id="voiceMicPickerSummary">麦克风与设备</span>
+                    <button type="button" class="control-btn voice-mic-refresh-btn" id="btnMicRefresh">刷新设备</button>
+                  </div>
+                  <div class="mic-settings-block drawer-section" id="voiceMicSection">
+                    <div class="mini-title sr-only" id="micTitle">麦克风</div>
+                    <p class="mic-desc sr-only" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
+                    <p class="mic-empty" id="micEmpty" hidden></p>
+                    <div class="mic-device-list" id="micDeviceList"></div>
+                  </div>
+                </div>
                 <div class="voice-fb-orb-wrap voice-fb-orb-wrap--compact" aria-hidden="true">
                   <div id="voiceFbMicOrb" aria-hidden="true">
                     <div class="voice-fb-mic-ring"></div>
@@ -1351,32 +1381,6 @@
                     <p class="voice-phrase-compact-hint sr-only" id="voiceWakeCompactHint">由识别方式切换中英文识别资源，唤醒词会同步更新</p>
                     <p class="sr-only" id="voiceWakeCompactLbl">当前唤醒词</p>
                     <div id="voiceWakeCompact" hidden aria-hidden="true"></div>
-                    </section>
-                    <section class="voice-wake-card voice-wake-card--mic" id="voiceWakeMicCard">
-                    <div class="voice-wake-card-head">
-                      <p class="voice-wake-card-title" id="voiceMicPickerSummary">麦克风与设备</p>
-                      <div class="voice-wake-mic-head-actions">
-                        <div class="voice-mic-status-row voice-mic-status-row--compact" id="voiceMicStatusRow">
-                          <div class="voice-mic-status-readonly voice-status-readonly" id="voiceMicStatusReadonly">
-                            <span class="voice-mic-status-dot" id="voiceMicStatusDot" aria-hidden="true"></span>
-                            <span id="voiceMicStatusName">默认麦克风</span>
-                            <span aria-hidden="true">·</span>
-                            <span id="voiceMicStatusState">正常</span>
-                          </div>
-                        </div>
-                        <button type="button" class="voice-mic-change-btn" id="btnVoiceMicChange">更换设备</button>
-                        <button type="button" class="control-btn voice-mic-refresh-btn" id="btnMicRefresh">刷新设备</button>
-                      </div>
-                    </div>
-                    <div class="voice-wake-mic-body" id="voiceMicPickerDetails">
-                      <div class="mic-settings-block drawer-section" id="voiceMicSection">
-                        <div class="mini-title sr-only" id="micTitle">麦克风</div>
-                        <p class="mic-desc sr-only" id="micDesc">选择能捕捉到您声音的麦克风。电平条随声跳动时，下方会同步显示识别状态与实时文字。</p>
-                        <p class="mic-empty" id="micEmpty" hidden></p>
-                        <div class="mic-device-list" id="micDeviceList"></div>
-                      </div>
-                    </div>
-                    <p class="voice-input-row-help sr-only" id="voiceSettingsMicHint">点击更换输入设备</p>
                     </section>
                     </div>
                   </div>
@@ -2525,6 +2529,7 @@
   <script src="js/features/home/home-workbench-compat.js"></script>
   <script src="js/features/home/home-workbench-cmdk.js"></script>
   <script src="js/features/home/home-workbench-alerts.js"></script>
+  <script src="js/features/home/home-workbench-panels.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>

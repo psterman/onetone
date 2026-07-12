@@ -160,6 +160,11 @@
   margin-bottom: 0;
 }
 
+#settingsPanelVoiceWake.voice-page-parallel .voice-settings-flow.voice-workflow-grid,
+#settingsPanelVoiceWake.voice-page-parallel .voice-settings-flow.keys-workflow-grid {
+  align-items: stretch;
+}
+
 #settingsPanelVoiceWake .voice-flow-step.voice-workflow-col {
   border-radius: 8px;
 }
@@ -302,7 +307,7 @@
   position: sticky;
   bottom: 8px;
   z-index: 5;
-  margin-top: 14px;
+  margin-top: 8px;
   padding: 12px 14px;
   border-radius: 14px;
   box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.05);
@@ -442,6 +447,10 @@
 #settingsPanelVoiceWake .voice-flow-step.keys-workflow-col {
   min-height: auto;
   align-self: start;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-flow-step.keys-workflow-col {
+  align-self: stretch;
 }
 
 #settingsPanelVoiceWake .voice-recognize-nav {

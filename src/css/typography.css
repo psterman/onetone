@@ -104,7 +104,7 @@
 }
 
 #settingsPanelVoiceWake .voice-live-strip #voiceFbTranscript {
-  font-size: var(--type-caption);
+  font-size: var(--type-phrase);
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {

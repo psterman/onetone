@@ -578,6 +578,65 @@
   overflow-y: auto;
 }
 
+/* Parallel layout: keep all three workflow cards visible at once */
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
+  display: grid;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col .keys-step-body {
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col:not(.is-active-step) {
+  cursor: default;
+  border-color: var(--outline-variant);
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-workflow-arrow {
+  display: none;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col .voice-recognize-layout,
+#settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col .voice-wake-stack {
+  min-height: 100%;
+  align-content: start;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-page-layout {
+  gap: 6px;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-workflow-pipeline {
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel .voice-app-scope-strip {
+  margin-top: 0;
+}
+
+#settingsPanelVoiceWake.voice-page-parallel::after {
+  height: 8px;
+}
+
 #settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col.is-active-step {
   border-color: rgba(42, 156, 196, 0.35);
   box-shadow: 0 10px 28px rgba(42, 156, 196, 0.08);

@@ -438,6 +438,9 @@
       return ensureMicMonitor(activeMicId,{force:true});
     }).then(function(){
       if(micLevelPollAllowed()) startMicLevelPoll();
+      if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.closeMicPicker){
+        global.OneToneVoiceWakeNavigation.closeMicPicker();
+      }
     }).catch(function(err){
       console.error('mic switch',err);
       enterMicBackoff();

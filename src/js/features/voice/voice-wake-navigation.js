@@ -55,18 +55,61 @@
     }
   }
 
+  function syncMicPickerUi(open){
+    var panel=$('voiceLiveMicPicker');
+    var rail=$('voiceFeedbackRail');
+    var toggle=$('btnVoiceLiveMicToggle');
+    if(panel) panel.hidden=!open;
+    if(rail) rail.classList.toggle('is-mic-picker-open',open);
+    if(toggle) toggle.setAttribute('aria-expanded',open?'true':'false');
+  }
+
+  function loadMicDevicesIfNeeded(){
+    var mic=global.OneToneAppMic;
+    if(mic&&mic.loadMicDevices){
+      mic.loadMicDevices().catch(function(err){
+        console.error('voice mic picker load',err);
+      });
+    }
+  }
+
+  function setMicPickerOpen(open,opts){
+    opts=opts||{};
+    open=!!open;
+    var panel=$('voiceLiveMicPicker');
+    if(!panel) return false;
+    syncMicPickerUi(open);
+    if(open){
+      loadMicDevicesIfNeeded();
+      if(!opts.skipScroll){
+        var rail=$('voiceFeedbackRail');
+        if(rail) scrollToEl(rail,opts.block||'nearest');
+      }
+    }
+    return true;
+  }
+
+  function toggleMicPicker(){
+    var panel=$('voiceLiveMicPicker');
+    setMicPickerOpen(!!(panel&&panel.hidden));
+  }
+
   function openMicPicker(opts){
     opts=opts||{};
-    ensureWakeStep();
+    if(setMicPickerOpen(true,opts)) return;
     var micCard=$('voiceWakeMicCard')||$('voiceMicPickerDetails');
     if(micCard) scrollToEl(micCard,opts.block||'nearest');
+  }
+
+  function closeMicPicker(){
+    setMicPickerOpen(false,{skipScroll:true});
   }
 
   function expandForEditMode(mode){
     mode=String(mode||'').trim();
     var map={
       input:['voiceRecognizeEngineDetails'],
-      phrases:['voiceWakeMicCard','voiceMicPickerDetails'],
+      phrases:[],
       finish:['voiceRecognizeEndDetails']
     };
     if(mode==='phrases'){
@@ -86,7 +129,7 @@
       return ids;
     }
     if(focus==='mic'){
-      return ['voiceWakeMicCard','micDeviceList','micTitle'];
+      return ['voiceFeedbackRail','voiceLiveMicPicker','micDeviceList','micTitle'];
     }
     return [];
   }
@@ -94,6 +137,8 @@
   global.OneToneVoiceWakeNavigation={
     openPresetsEditor:openPresetsEditor,
     openMicPicker:openMicPicker,
+    toggleMicPicker:toggleMicPicker,
+    closeMicPicker:closeMicPicker,
     expandForEditMode:expandForEditMode,
     resolveFocusTargets:resolveFocusTargets
   };

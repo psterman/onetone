@@ -250,8 +250,8 @@
       if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.openMicPicker){
         global.OneToneVoiceWakeNavigation.openMicPicker({block:'nearest'});
       }else{
-        const micCard=$('voiceWakeMicCard')||$('voiceMicPickerDetails');
-        if(micCard) micCard.scrollIntoView({behavior:'smooth',block:'nearest'});
+        const micRail=$('voiceFeedbackRail');
+        if(micRail) micRail.scrollIntoView({behavior:'smooth',block:'nearest'});
       }
 
     }
