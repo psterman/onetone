@@ -1,8 +1,17 @@
 (function(global){
   'use strict';
 
-  function t(key){
-    return global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t(key):key;
+  function t(key, vars){
+    if(global.OneToneI18n&&global.OneToneI18n.t){
+      var out=global.OneToneI18n.t(key);
+      if(vars){
+        Object.keys(vars).forEach(function(k){
+          out=out.replace(new RegExp('\\{'+k+'\\}','g'),String(vars[k]));
+        });
+      }
+      return out;
+    }
+    return key;
   }
 
   function state(){
@@ -55,9 +64,9 @@
   }
 
   function engineLabel(mode){
-    if(mode==='vosk') return '本地离线识别';
-    if(mode==='sapi') return 'Windows 系统识别';
-    return '未启用';
+    if(mode==='vosk') return t('homeFlowEngineVosk');
+    if(mode==='sapi') return t('homeFlowEngineSapi');
+    return t('homeFlowEngineOff');
   }
 
   function voiceSummary(){
@@ -89,33 +98,47 @@
 
   function outputMode(){
     var end=(cfg().voiceEnd||cfg().voice_end||{});
+    var commit=friendlyKey(end.commitKey||end.commit_key||'Enter');
     if(end.autoSendEnabled||end.auto_send_enabled){
-      return {mode:'auto',label:'自动发送',detail:'静音后用 '+friendlyKey(end.commitKey||end.commit_key||'Enter')+' 发送'};
+      return {
+        mode:'auto',
+        label:t('homeFlowOutputAuto'),
+        detail:t('homeFlowOutputAutoDetail',{key:commit}),
+        short:t('homeFlowOutputAuto')
+      };
     }
-    return {mode:'confirm',label:'确认后发送',detail:friendlyKey(end.commitKey||end.commit_key||'Enter')};
+    return {
+      mode:'confirm',
+      label:t('homeFlowOutputConfirm'),
+      detail:t('homeFlowOutputConfirmDetail',{key:commit}),
+      short:t('homeFlowOutputConfirmDetail',{key:commit})
+    };
   }
 
   function scopeLabel(m){
-    if(!m) return '不限应用';
+    if(!m) return t('homeFlowScopeAll');
     var app=m.appTargetId||m.app_target_id||'';
     var rules=Array.isArray(m.appBehaviorRules||m.app_behavior_rules)?(m.appBehaviorRules||m.app_behavior_rules):[];
     var ids=[];
     if(app) ids.push(app);
     rules.forEach(function(r){ var id=r&&String(r.appId||r.app_id||''); if(id&&ids.indexOf(id)<0) ids.push(id); });
-    if(!ids.length) return '不限应用';
+    if(!ids.length) return t('homeFlowScopeAll');
     if(ids.length===1){
       var presets=global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presets?global.OneToneAppTargetPresets.presets:[];
       var p=presets.find(function(x){ return x&&x.id===ids[0]; });
-      return p?(p.name||p.label||ids[0]):ids[0];
+      if(p&&(p.nameKey||p.name||p.label)){
+        return p.nameKey?t(p.nameKey):(p.name||p.label||ids[0]);
+      }
+      return ids[0];
     }
-    return ids.length+' 个应用';
+    return t('homeFlowScopeN',{n:ids.length});
   }
 
   function micStatus(summary){
     var devices=global.OneToneAppMic&&global.OneToneAppMic.devices?global.OneToneAppMic.devices():[];
-    var label=summary&&summary.micLabel||'默认麦克风';
+    var label=summary&&summary.micLabel||t('homeWbVoiceMicDefault');
     var ok=!!devices.length||!!label;
-    return {label:label,state:ok?'正常':'需要检查',ok:ok};
+    return {label:label,state:ok?t('homeFlowMicOk'):t('homeFlowMicCheck'),ok:ok};
   }
 
   function conflictCount(){
@@ -136,25 +159,27 @@
     var mic=micStatus(summary);
     var ready=!!m&&!!(m.triggerKey||m.trigger_key)&&mode!=='off'&&mic.ok&&!conflicts;
     var target=targetLabel(m);
+    var naturalLine=m&&(m.triggerKey||m.trigger_key)
+      ?t('homeFlowNaturalWithTrigger',{key:triggerLabel(m),output:output.short,target:target})
+      :t('homeFlowNaturalNoTrigger');
     return {
       ready:ready,
       mapping:m,
-      schemeName:(m&&(m.label||m.group))||'默认方案',
+      schemeName:(m&&(m.label||m.group))||t('homeFlowSchemeDefault'),
       trigger:triggerLabel(m),
       target:target,
       engineMode:mode,
       engineLabel:engineLabel(mode),
       wakePhrase:wake,
       endPhrase:end,
-      endLabel:end?'说「'+end+'」或停顿后结束':'停顿后结束',
+      endLabel:end?t('homeFlowEndPhrase',{phrase:end}):t('homeFlowEndPause'),
       outputLabel:output.label,
       outputDetail:output.detail,
       scope:scopeLabel(m),
       mic:mic,
       conflictCount:conflicts,
-      statusText:ready?'当前可用':(mode==='off'?'语音识别未启用':(conflicts?'快捷键需要检查':'需要检查')),
-      naturalLine:(m&&m.triggerKey?'按「'+triggerLabel(m)+'」开始输入':'设置启动键后开始输入')
-        +'，使用'+engineLabel(mode)+'，'+output.label+'到 '+target
+      statusText:ready?t('homeFlowStatusReady'):(mode==='off'?t('homeFlowStatusVoiceOff'):(conflicts?t('homeFlowStatusConflict'):t('homeFlowStatusNeedSetup'))),
+      naturalLine:naturalLine
     };
   }
 

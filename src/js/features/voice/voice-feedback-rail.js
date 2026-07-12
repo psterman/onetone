@@ -4,6 +4,73 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   var micLevel=0;
   var cachedStep='wake';
+  var dictationLive={ finals:[], lastFinalKey:'', sessionKey:'' };
+
+  function resetDictationLive(){
+    dictationLive={ finals:[], lastFinalKey:'', sessionKey:'' };
+  }
+
+  function endSnapshot(){
+    var snap=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot():{};
+    return snap.end||{};
+  }
+
+  function dictationSessionKey(end){
+    end=end||{};
+    return String(end.mappingId||'')+'|'+String(end.state||'');
+  }
+
+  function syncDictationFinals(end,res,mode){
+    end=end||{};
+    var key=dictationSessionKey(end);
+    if(end.state!=='dictating'){
+      if(dictationLive.sessionKey) resetDictationLive();
+      return;
+    }
+    if(key!==dictationLive.sessionKey){
+      dictationLive={ finals:[], lastFinalKey:'', sessionKey:key };
+    }
+    if(!res) return;
+    var finalText='';
+    if(mode==='vosk') finalText=String(res.lastFinal||'').trim();
+    else if(mode==='sapi') finalText=String(res.lastHeard||'').trim();
+    if(finalText&&finalText!==dictationLive.lastFinalKey){
+      dictationLive.lastFinalKey=finalText;
+      dictationLive.finals.push(finalText);
+    }
+  }
+
+  function dictationDisplayText(res,mode){
+    syncDictationFinals(endSnapshot(),res,mode);
+    var finalized=dictationLive.finals.join('');
+    var partial='';
+    if(mode==='vosk'){
+      partial=String(res.lastPartial||'').trim();
+      if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
+        partial='';
+      }
+    }else if(mode==='sapi'){
+      partial=String(res.lastHeard||'').trim();
+      if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
+        partial='';
+      }
+    }
+    if(finalized||partial){
+      return {
+        text:finalized+(partial||''),
+        partial:!!partial,
+        placeholder:'',
+        matched:false
+      };
+    }
+    return null;
+  }
+
+  function isLiveCapture(res,end){
+    end=end||{};
+    var stateRaw=String(res&&res.state||'').trim();
+    return end.state==='dictating'||stateRaw==='listening'||stateRaw==='starting';
+  }
 
   function hooks(){
     return global.__vp_voice_settings_flow_hooks__||{};
@@ -250,15 +317,38 @@
   function resolveTranscriptText(step){
     step=currentStep(step);
     var w=wakeSnapshot();
+    var end=endSnapshot();
     var wakeApi=global.OneToneVoiceWake;
     var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
     var res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
     var profile=profileForStep(step);
     var idleKey=profile.idleKey||'voiceFbTranscriptIdle';
     if(!res) return {text:'',partial:false,placeholder:t(idleKey),matched:false};
+
+    if(end.state==='dictating'){
+      var dictation=dictationDisplayText(res,mode);
+      if(dictation) return dictation;
+      return {text:'',partial:false,placeholder:t('voiceFbTranscriptSendIdle'),matched:false};
+    }
+
     var finalText=String(res.lastFinal||'').trim();
     var partial=String(res.lastPartial||'').trim();
     var heard=String(res.lastHeard||'').trim();
+    var live=isLiveCapture(res,end);
+
+    if(live){
+      if(mode==='vosk'&&partial){
+        return {text:partial,partial:true,placeholder:'',matched:isTranscriptMatched(res,partial)};
+      }
+      if(mode==='sapi'&&heard){
+        return {text:heard,partial:true,placeholder:'',matched:isTranscriptMatched(res,heard)};
+      }
+      if(finalText){
+        return {text:finalText,partial:false,placeholder:'',matched:isTranscriptMatched(res,finalText)};
+      }
+      return {text:'',partial:false,placeholder:t(idleKey),matched:false};
+    }
+
     if(finalText){
       return {text:finalText,partial:false,placeholder:'',matched:isTranscriptMatched(res,finalText)};
     }

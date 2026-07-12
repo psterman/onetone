@@ -52,6 +52,9 @@
           }
           if(panel==='voiceWake') maybeSyncMicLevelMonitor();
           if(panel==='voiceWake') maybeRenderMappingListFromVoice();
+          if(panel==='voiceWake'&&global.OneToneVoiceFeedbackRail&&global.OneToneVoiceFeedbackRail.syncLiveText){
+            global.OneToneVoiceFeedbackRail.syncLiveText();
+          }
           if(global.OneToneSettingsDrawer&&(global.OneToneSettingsDrawer.isKeysPanel(panel)||global.OneToneSettingsDrawer.isHabitsPanel(panel))) hooks().renderKeyFinishFlowPanel();
           if(panel==='debug') hooks().scheduleDebugChromeRefresh();
         }else{
