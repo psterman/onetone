@@ -407,6 +407,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }
 
   function startTriggerRecord(pinnedMappingId){
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     hooks().ensureConfig();
     const pin=String(pinnedMappingId||'').trim();
@@ -457,6 +458,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   }
 
   function startTargetRecord(pinnedMappingId){
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     hooks().ensureConfig();
     const pin=String(pinnedMappingId||'').trim();
@@ -667,7 +669,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
-    if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
+    if(global.OneToneTargetKeyApply&&global.OneToneTargetKeyApply.applyCustomMappingTarget){
+      global.OneToneTargetKeyApply.applyCustomMappingTarget(combo,{source:'record',mapping:m,skipPersist:true});
+    }else if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
       global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m, combo);
     }else{
       m.targetKey=combo;
@@ -675,8 +679,6 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       m.appTargetId='';
     }
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(m.targetKey);
-    var labelTarget=(global.OneToneMappingCore.editorTarget&&global.OneToneMappingCore.editorTarget(m))||combo;
-    m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+labelTarget;
     armLocalCaptureGuard();
     updateRecordingPreview('target',combo);
     var wasNewDraft=hooks().getPendingNewDraftId()===m.id;

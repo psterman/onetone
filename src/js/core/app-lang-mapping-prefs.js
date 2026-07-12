@@ -32,6 +32,7 @@
     if(triggerHelp) triggerHelp.innerHTML=d.triggerHelp;
     var targetHelp=$('targetHelp');
     if(targetHelp) targetHelp.innerHTML=d.targetHelp;
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.applyLang) global.OneToneTargetKeyPicker.applyLang();
     var listenTitle=$('listenTitle');
     if(listenTitle) listenTitle.textContent=d.listenTitle;
     var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.debugListenDesc||d.listenDesc;

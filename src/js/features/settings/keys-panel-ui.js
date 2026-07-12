@@ -184,11 +184,13 @@
     if(trigLbl) trigLbl.textContent=t('keysSummaryTriggerLbl');
     if(scopeLbl) scopeLbl.textContent=t('keysSummaryScopeLbl');
     if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
-    if(targetKeycapHint) targetKeycapHint.textContent=t('keysKeycapHint');
+    if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
     if(saveBtn) saveBtn.textContent=t('keysSave');
     if(testBtn) testBtn.textContent=t('keysTestOnce');
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
+    var triggerFooterLbl=$('keysTriggerModeFooterLbl');
+    if(triggerFooterLbl) triggerFooterLbl.textContent=t('keysWorkflowFooterTrigger');
     if(!m){
       if(nameEl) nameEl.textContent='—';
       if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill'; }
@@ -204,6 +206,7 @@
     var dirty=isEditorDirty();
     var rec=global.OneToneMappingRecording;
     var recMode=rec&&rec.mode?rec.mode():'none';
+    var recPending=rec&&rec.isPending?rec.isPending():false;
     var recording=recMode==='trigger'||recMode==='target';
     if(nameEl) nameEl.textContent=habitName(m)+(trig?' · '+friendlyKey(trig):'');
     if(statusEl){
@@ -237,12 +240,17 @@
       keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
     }
     if(targetKeycapHost){
-      targetKeycapHost.setAttribute('title',recording&&recMode==='target'?t('keysKeycapRecording'):t('keysKeycapHint'));
+      targetKeycapHost.setAttribute('title',recording&&recMode==='target'?t('keysKeycapRecording'):t('keysTargetKeycapHint'));
+      targetKeycapHost.classList.toggle('is-record-pending',!!recPending);
+      targetKeycapHost.setAttribute('aria-disabled',recPending?'true':'false');
     }
+    var tgtRow=$('habitKeyMapRowTarget');
+    if(tgtRow) tgtRow.classList.toggle('is-record-pending',!!recPending);
     if(keycapHint&&recording&&recMode==='trigger') keycapHint.textContent=t('keysKeycapRecording');
     else if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
     if(targetKeycapHint&&recording&&recMode==='target') targetKeycapHint.textContent=t('keysKeycapRecording');
-    else if(targetKeycapHint) targetKeycapHint.textContent=t('keysKeycapHint');
+    else if(targetKeycapHint&&recPending) targetKeycapHint.textContent=t('targetKeyPickerPending');
+    else if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
   }
 
   function syncKeyDisplayIcons(m){
@@ -252,7 +260,6 @@
     var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
     var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
     if(trigDisp) global.OneToneKeyIcons.syncDisplayIcon(trigDisp,trig);
-    if(tgtDisp) global.OneToneKeyIcons.syncDisplayIcon(tgtDisp,tgt);
   }
 
   function normalizeTriggerModeUi(raw){
@@ -675,6 +682,7 @@
   }
 
   function switchActiveSchemeNow(id){
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
     state().selectedMappingId=id;
     var sel=$('keysHabitSwitcher');
@@ -837,10 +845,13 @@
       trigBtn.classList.add('keys-record-btn');
     }
     if(tgtBtn){
+      var inKeys=keysPanelActive();
+      if(inKeys) tgtBtn.setAttribute('aria-label',t('keysTargetKeycapHint'));
+      else tgtBtn.removeAttribute('aria-label');
       var tgtLbl=tgt?t('btnRerecordTarget'):t('keysRecordTarget');
       if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
-        global.OneToneMappingEditorChrome.setRecordBtnLabel(tgtBtn,tgtLbl);
-      }else tgtBtn.textContent=tgtLbl;
+        global.OneToneMappingEditorChrome.setRecordBtnLabel(tgtBtn,inKeys?'':tgtLbl);
+      }else if(!inKeys) tgtBtn.textContent=tgtLbl;
       tgtBtn.classList.add('keys-record-btn');
     }
     if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.updatePrimaryCTA){
@@ -1070,6 +1081,8 @@
     renderSchemeSummary:renderSchemeSummary,
     renderTestProgress:renderTestProgress,
     isEditorDirty:isEditorDirty,
-    saveCurrentScheme:saveCurrentScheme
+    saveCurrentScheme:saveCurrentScheme,
+    keysPanelActive:keysPanelActive,
+    previewKeyConflict:previewKeyConflict
   };
 })((typeof window!=='undefined')?window:globalThis);

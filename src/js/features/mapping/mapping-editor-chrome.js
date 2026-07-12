@@ -57,6 +57,12 @@
     return habitRecordBtnClass(isPrimary, recorded);
   }
 
+  function keysPanelActive(){
+    var kpu=global.OneToneKeysPanelUi;
+    if(kpu&&kpu.keysPanelActive) return kpu.keysPanelActive();
+    return false;
+  }
+
   function updatePrimaryCTA(){
     var triggerBtn=$('btnRecordTrigger');
     var targetBtn=$('btnRecordTarget');

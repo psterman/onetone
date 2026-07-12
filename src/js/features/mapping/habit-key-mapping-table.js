@@ -28,7 +28,7 @@
       var disp2=$('targetDisplay');
       var btn2=$('btnRecordTarget');
       if(disp2) moveChild(tgtCell,disp2);
-      if(btn2) moveChild(tgtAct||tgtCell,btn2);
+      if(btn2) moveChild(tgtCell||tgtAct,btn2);
     }
     var cancelCard=$('voiceEndCancelCard');
     var cancelCell=$('habitKeyMapCellCancel');
@@ -109,14 +109,33 @@
     }
   }
 
+  function openTargetKeyPicker(){
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.open){
+      global.OneToneTargetKeyPicker.open();
+    }
+  }
+
+  function startTargetRecordForKeysPanel(){
+    var rec=global.OneToneMappingRecording;
+    if(rec&&rec.isPending&&rec.isPending()) return;
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
+      global.OneToneTargetKeyPicker.close();
+    }
+    var bootHooks=global.__vp_bootstrap_hooks__||{};
+    if(bootHooks.startTargetRecord) bootHooks.startTargetRecord();
+  }
+
   function startRecordForStep(step){
     if(step!=='trigger'&&step!=='target') return;
+    if(step==='target'){
+      startTargetRecordForKeysPanel();
+      return;
+    }
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
     if(mode!=='none') return;
     var bootHooks=global.__vp_bootstrap_hooks__||{};
-    if(step==='trigger'&&bootHooks.startTriggerRecord) bootHooks.startTriggerRecord();
-    else if(step==='target'&&bootHooks.startTargetRecord) bootHooks.startTargetRecord();
+    if(bootHooks.startTriggerRecord) bootHooks.startTriggerRecord();
   }
 
   function isInteractiveFlowTarget(el){
@@ -127,9 +146,11 @@
       '.voice-end-key-mode-panel','.keys-finish-mode-host','.keys-finish-delay-host',
       '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
-      '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip',
+      '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip','.ime-preset-item','.habit-flow-ime-block','.keys-capture-ime-block',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
-      '.keys-app-chip','.keys-ime-pill','.btn-cancel-record','input','button','select','textarea','label',
+      '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',
+      '.keys-workflow-keycap-zone','.keys-workflow-footer-zone','.keys-trigger-modes-block','#keysTargetKeycapHint',
+      'input','button','select','textarea','label',
       '.keys-trigger-mode-seg','.keys-trigger-conflict-btn','.keys-finish-delay-input'
     ].join(','));
   }
@@ -143,6 +164,11 @@
           var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
           var step=stepEl&&stepEl.dataset.editStep;
           if(step==='trigger'||step==='target') highlightRow(step);
+          if(step==='target'){
+            e.preventDefault();
+            e.stopPropagation();
+            startTargetRecordForKeysPanel();
+          }
           return;
         }
         var keyArea=e.target.closest&&e.target.closest('.keys-step-key-area,.keys-flow-key,.habit-basic-key-display');
@@ -168,6 +194,8 @@
     mount:mount,
     syncRowStatus:syncRowStatus,
     highlightRow:highlightRow,
-    bindEvents:bindEvents
+    bindEvents:bindEvents,
+    openTargetKeyPicker:openTargetKeyPicker,
+    startTargetRecordForKeysPanel:startTargetRecordForKeysPanel
   };
 })((typeof window!=='undefined')?window:globalThis);

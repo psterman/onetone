@@ -265,7 +265,7 @@
 
       trigger:['habitKeyMappingSection','btnRecordTrigger','keySchemeEditTrigger'],
 
-      target:['habitKeyMappingSection','btnRecordTarget','keySchemeEditTarget'],
+      target:['habitKeyMapRowTarget','habitKeyMappingSection','keySchemeEditTarget'],
 
       mappings:['habitMappingsSection','mappingListTitle'],
 
@@ -503,6 +503,10 @@
 
     const panelChanged=panel!==lastPanel;
 
+    if(panelChanged&&panel!=='keys'&&global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
+      global.OneToneTargetKeyPicker.close();
+    }
+
     ui.settingsPanel=panel;
 
     const highlight=navHighlightPanel(panel);
@@ -739,6 +743,8 @@
   }
 
   function closeDrawer(){
+
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
 
     ui.drawerOpen=false;
 

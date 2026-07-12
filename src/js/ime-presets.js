@@ -129,9 +129,17 @@
     }
     if(ctx === 'mapping'){
       var rec = global.OneToneMappingRecording;
-      if(rec && rec.mode && rec.mode() === 'target') return true;
+      if(rec && rec.isPending && rec.isPending()) return true;
     }
     return false;
+  }
+
+  function prepareMappingImeApply(){
+    if(global.OneToneTargetKeyPicker && global.OneToneTargetKeyPicker.close){
+      global.OneToneTargetKeyPicker.close();
+    }
+    var rec = global.OneToneMappingRecording;
+    if(rec && rec.mode && rec.mode() !== 'none' && rec.cancel) rec.cancel();
   }
 
   function updateHintVisibility(){
@@ -144,26 +152,57 @@
     if(voiceHint) voiceHint.hidden = true;
   }
 
+  var PICKER_ICON_SVG = '<svg class="ime-preset-picker-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>';
+  var CUSTOM_ICON_SVG = '<svg class="ime-preset-custom-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+  function openPickerForContext(ctx){
+    if(ctx !== 'mapping' && ctx !== 'onboarding') return;
+    if(ctx === 'mapping' && global.OneToneTargetKeyPicker && global.OneToneTargetKeyPicker.open){
+      global.OneToneTargetKeyPicker.open();
+      return;
+    }
+    if(ctx === 'onboarding' && global.OneToneTargetKeyPicker && global.OneToneTargetKeyPicker.open){
+      global.OneToneTargetKeyPicker.open();
+    }
+  }
+
+  function startCustomRecordForContext(ctx){
+    if(ctx === 'mapping'){
+      if(global.OneToneTargetKeyPicker && global.OneToneTargetKeyPicker.close){
+        global.OneToneTargetKeyPicker.close();
+      }
+      var rec = global.OneToneMappingRecording;
+      if(rec && rec.isPending && rec.isPending()) return;
+      var hooks = global.__vp_bootstrap_hooks__ || {};
+      if(hooks.startTargetRecord) hooks.startTargetRecord();
+      return;
+    }
+    if(ctx === 'onboarding'){
+      var a = global.OneToneApp;
+      if(a && a.startTargetRecord) a.startTargetRecord();
+    }
+  }
+
   function renderMappingTargetImeBadge(iconEl){
-    var presetId = getSelectedId('mapping');
-    var preset = presetById(presetId);
-    var wrap = iconEl.closest ? iconEl.closest('.target-key-display, .display') : null;
-    if(global.OneToneAppTargetPresets && global.OneToneAppTargetPresets.clearMappingAppTargetBadge){
+    var presetId=getSelectedId('mapping');
+    var preset=presetById(presetId);
+    var wrap=iconEl.closest?iconEl.closest('.target-key-display, .display'):null;
+    if(global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.clearMappingAppTargetBadge){
       global.OneToneAppTargetPresets.clearMappingAppTargetBadge();
     }
+    if(wrap){
+      wrap.classList.remove('has-ime-badge','has-custom-badge');
+    }
     if(preset){
-      iconEl.src = preset.icon;
-      iconEl.hidden = false;
-      iconEl.classList.remove('is-placeholder');
-      iconEl.alt = t(preset.nameKey);
+      iconEl.src=preset.icon;
+      iconEl.hidden=false;
+      iconEl.alt=t(preset.nameKey);
       if(wrap) wrap.classList.add('has-ime-badge');
       return;
     }
-    iconEl.hidden = true;
-    iconEl.classList.add('is-placeholder');
+    iconEl.hidden=true;
     iconEl.removeAttribute('src');
-    iconEl.alt = '';
-    if(wrap) wrap.classList.remove('has-ime-badge');
+    iconEl.alt='';
   }
 
   function renderCardBadge(ctx){
@@ -195,6 +234,13 @@
   }
 
   function applyMappingTarget(combo, presetId){
+    if(global.OneToneTargetKeyApply&&global.OneToneTargetKeyApply.applyCustomMappingTarget){
+      global.OneToneTargetKeyApply.applyCustomMappingTarget(combo,{source:'ime',presetId:presetId||''});
+      setSelectedId('mapping', presetId || '');
+      if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
+      refresh('mapping');
+      return;
+    }
     var core = global.OneToneMappingCore;
     var ed = global.OneToneMappingEditorState;
     var hooks = global.__vp_mapping_list_hooks__ || {};
@@ -308,7 +354,9 @@
   }
 
   function applyPreset(ctx, preset){
-    if(!preset || isContextDisabled(ctx)) return;
+    if(!preset) return;
+    if(ctx === 'mapping') prepareMappingImeApply();
+    if(isContextDisabled(ctx)) return;
     if(ctx === 'mapping') applyMappingTarget(preset.targetKey, preset.id);
     else if(ctx === 'onboarding') applyOnboardingTarget(preset.targetKey, preset.id);
     else if(ctx === 'voice') applyVoiceTarget(preset.targetKey, preset.id);
@@ -321,10 +369,21 @@
     var selectedId = getSelectedId(ctx);
     var disabled = isContextDisabled(ctx);
     host.classList.toggle('is-disabled', disabled);
-    var customSelected = !selectedId;
-    var html = '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
-      +'<span class="ime-preset-custom-icon" aria-hidden="true">⌨</span>'
-      +'</button>';
+    var key = currentKeyForContext(ctx);
+    var customSelected = !selectedId && !!key;
+    var html = '';
+    if(ctx === 'mapping' || ctx === 'onboarding'){
+      html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
+        +PICKER_ICON_SVG
+        +'</button>';
+      html += '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
+        +CUSTOM_ICON_SVG
+        +'</button>';
+    } else {
+      html += '<button type="button" class="ime-preset-item ime-preset-item--custom'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
+        +CUSTOM_ICON_SVG
+        +'</button>';
+    }
     html += PRESETS.map(function(p){
       var selected = selectedId === p.id;
       var label = t(p.nameKey);
@@ -352,11 +411,23 @@
       var host = $(MOUNTS[ctx]);
       if(!host) return;
       host.addEventListener('click', function(ev){
+        var pickerBtn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-picker]') : null;
+        if(pickerBtn && !pickerBtn.disabled){
+          ev.stopPropagation();
+          var pickerCtx = pickerBtn.getAttribute('data-ime-context') || ctx;
+          openPickerForContext(pickerCtx);
+          pickerBtn.blur();
+          return;
+        }
         var customBtn = ev.target && ev.target.closest ? ev.target.closest('[data-ime-custom]') : null;
         if(customBtn && !customBtn.disabled){
           ev.stopPropagation();
           var customCtx = customBtn.getAttribute('data-ime-context') || ctx;
+          if(customCtx === 'mapping') prepareMappingImeApply();
           clearSelectedForManualRecord(customCtx);
+          if(customCtx === 'mapping' || customCtx === 'onboarding'){
+            startCustomRecordForContext(customCtx);
+          }
           customBtn.blur();
           return;
         }

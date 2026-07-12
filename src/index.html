@@ -697,16 +697,21 @@
                       </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
+                    <div class="keys-workflow-keycap-zone">
                     <div class="keys-step-row keys-step-row--hero">
                       <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
                     <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
-                    <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
-                    <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
-                    <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
-                      <span class="keys-test-progress-dot" aria-hidden="true"></span>
-                      <span class="keys-test-progress-text" id="keysTestProgressText">—</span>
+                    </div>
+                    <div class="keys-workflow-footer-zone keys-trigger-modes-block">
+                      <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">触发方式</p>
+                      <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
+                      <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
+                      <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
+                        <span class="keys-test-progress-dot" aria-hidden="true"></span>
+                        <span class="keys-test-progress-text" id="keysTestProgressText">—</span>
+                      </div>
                     </div>
                     <span class="home-key-map-step-hint sr-only" id="habitFlowStepTriggerHint">比如音量键、鼠标侧键</span>
                     </div>
@@ -721,11 +726,17 @@
                       </div>
                     </div>
                     <div class="keys-step-body flow-step-body">
+                    <div class="keys-workflow-keycap-zone">
                     <div class="keys-step-row keys-step-row--hero">
                       <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
-                    <p class="keys-keycap-hint" id="keysTargetKeycapHint">点击修改快捷键</p>
+                    <p class="keys-keycap-hint" id="keysTargetKeycapHint">点击录制语音快捷键</p>
+                    </div>
+                    <div class="habit-flow-ime-block keys-capture-ime-block keys-workflow-footer-zone" id="habitFlowImeBlock">
+                      <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入方式</p>
+                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                    </div>
                     <div class="keys-ime-pill sr-only" id="keysImePill" aria-hidden="true" hidden>
                       <svg class="keys-ime-pill-mic" id="keysImePillMic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                       <img class="keys-ime-pill-icon" id="keysImePillIcon" alt="" decoding="async" hidden>
@@ -734,10 +745,6 @@
                     <div class="keys-capture-voice-summary sr-only" id="keysCaptureVoiceSummary" aria-hidden="true">
                       <span class="keys-capture-voice-text habit-flow-device-text" id="habitFlowDeviceText">—</span>
                       <button type="button" class="habit-flow-device-link keys-capture-voice-link" id="btnHabitFlowOpenVoice">更改</button>
-                    </div>
-                    <div class="habit-flow-ime-block keys-capture-ime-block" id="habitFlowImeBlock">
-                      <p class="habit-flow-subsection-title" id="imePresetHintMapping">输入法来源</p>
-                      <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
                     </div>
                     <span class="home-key-map-step-hint sr-only" id="habitFlowStepTargetHint">输入法的语音输入快捷键</span>
                     </div>
@@ -810,9 +817,8 @@
                 <div class="habit-basic-row" data-edit-step="target" id="keySchemeEditTarget">
                   <div class="habit-basic-row-ctrl">
                     <div class="habit-basic-key-display display empty" id="targetDisplay">
-                      <img class="target-ime-badge is-placeholder" id="targetImeIconMapping" alt="" decoding="async">
+                      <img class="target-ime-badge" id="targetImeIconMapping" alt="" decoding="async" hidden>
                       <span class="app-target-card-badge" id="targetAppBadgeMapping" hidden aria-hidden="true"></span>
-                      <span class="habit-key-icon-host" aria-hidden="true"></span>
                       <span class="display-value" id="targetView">未设置</span>
                     </div>
                     <button class="habit-rerecord-link record-btn" id="btnRecordTarget" type="button">
@@ -2366,6 +2372,32 @@
       </div>
     </div>
   </div>
+  <div class="template-pick-overlay" id="targetKeyPickerOverlay" aria-hidden="true">
+    <div class="template-pick-modal target-key-picker-modal" role="dialog" aria-modal="true" aria-labelledby="targetKeyPickerTitle" tabindex="-1">
+      <div class="template-pick-head">
+        <h3 class="template-pick-title" id="targetKeyPickerTitle">选择语音快捷键</h3>
+        <button type="button" class="btn icon-btn target-key-picker-close" id="btnTargetKeyPickerClose" aria-label="关闭">×</button>
+      </div>
+      <p class="template-pick-desc" id="targetKeyPickerDesc">选择常用按键，或手动录制你的输入法语音快捷键</p>
+      <div class="target-key-picker-search-wrap">
+        <input type="search" class="target-key-picker-search" id="targetKeyPickerSearch" placeholder="搜索按键" autocomplete="off" />
+      </div>
+      <div class="target-key-picker-section" id="targetKeyPickerCombosWrap">
+        <h4 class="target-key-picker-section-title" id="targetKeyPickerCombosLbl">常用组合</h4>
+        <div class="target-key-picker-combo-row" id="targetKeyPickerCombos"></div>
+      </div>
+      <div class="target-key-picker-tabs" id="targetKeyPickerTabs" role="tablist"></div>
+      <div class="target-key-picker-grid" id="targetKeyPickerGrid" role="tabpanel"></div>
+      <p class="target-key-picker-empty" id="targetKeyPickerEmpty" hidden>未找到匹配的按键</p>
+      <div class="target-key-picker-footer">
+        <p class="target-key-picker-preview" id="targetKeyPickerPreview"></p>
+        <div class="target-key-picker-actions">
+          <button type="button" class="btn secondary" id="btnTargetKeyPickerManualRecord">手动录制</button>
+          <button type="button" class="btn secondary" id="btnTargetKeyPickerCancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
       <h3 class="confirm-title" id="confirmTitle">确认操作</h3>
@@ -2485,6 +2517,9 @@
   <script src="js/features/mapping/mapping-confirm-modal.js"></script>
   <script src="js/features/mapping/mapping-edit-actions.js"></script>
   <script src="js/features/mapping/mapping-hooks.js"></script>
+  <script src="js/target-key-catalog.js"></script>
+  <script src="js/features/mapping/target-key-apply.js"></script>
+  <script src="js/features/mapping/target-key-picker.js"></script>
   <script src="js/features/mapping/app-behavior-rules.js"></script>
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>

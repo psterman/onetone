@@ -12,6 +12,19 @@
     if(el) el.addEventListener(type,handler);
     return el;
   }
+  function handleRecordTargetClick(){
+    var hooks=h();
+    if(hooks.startTargetRecord) hooks.startTargetRecord();
+  }
+  function openTargetKeyPickerFromKeysPanel(){
+    if(global.OneToneHabitKeyMappingTable&&global.OneToneHabitKeyMappingTable.openTargetKeyPicker){
+      global.OneToneHabitKeyMappingTable.openTargetKeyPicker();
+      return;
+    }
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.open){
+      global.OneToneTargetKeyPicker.open();
+    }
+  }
   function bindEvents(){
     var hooks=h();
     var state=global.OneToneState.state;
@@ -43,7 +56,15 @@
     });
     bindClick('btnTestSend',function(){ hooks.fireTestSend(null); });
     bindClick('btnRecordTrigger',hooks.startTriggerRecord);
-    bindClick('btnRecordTarget',hooks.startTargetRecord);
+    bindClick('btnRecordTarget',handleRecordTargetClick);
+    bindClick('btnTargetKeyPickerManualRecord',function(){
+      if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.handleManualRecord){
+        global.OneToneTargetKeyPicker.handleManualRecord();
+      }
+    });
+    bindClick('btnTargetKeyPickerClose',function(){
+      if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
+    });
     bindClick('btnCancelRecord',hooks.cancelDraftOrRecording);
     var btnKeySchemeAdd=$('btnKeySchemeAdd');
     if(btnKeySchemeAdd){
@@ -98,6 +119,9 @@
       var btn=e.target.closest&&e.target.closest('[data-restore]');
       if(btn) hooks.restoreFromTrash(btn.dataset.restore);
     });
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.bindEvents){
+      global.OneToneTargetKeyPicker.bindEvents();
+    }
   }
   global.OneToneMappingRecordingBindings={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);

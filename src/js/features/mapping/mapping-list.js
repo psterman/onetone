@@ -182,7 +182,6 @@
     if(global.OneToneKeyIcons){
       if(global.OneToneKeyIcons.syncDisplayIcon){
         if(triggerDisp) global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,trig);
-        if(targetDisp) global.OneToneKeyIcons.syncDisplayIcon(targetDisp,tgt);
       }
     }
     const trace=OneToneMappingCore.formatTriggerTrace(m);
@@ -197,12 +196,14 @@
         traceEl.hidden=true;
       }
     }
+    var inKeysPanel=global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.keysPanelActive&&global.OneToneKeysPanelUi.keysPanelActive();
+    var tgtLbl=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
     if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
       global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trig?t('btnRerecordTrigger'):t('btnRecordTrigger'));
-      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),tgt?t('btnRerecordTarget'):t('btnRecordTarget'));
+      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),inKeysPanel?'':tgtLbl);
     }else{
       $('btnRecordTrigger').textContent=trig?t('btnRerecordTrigger'):t('btnRecordTrigger');
-      $('btnRecordTarget').textContent=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
+      if(!inKeysPanel) $('btnRecordTarget').textContent=tgtLbl;
     }
     hooks().updatePrimaryCTA();
     hooks().applyKeyWakeRecordingUi();

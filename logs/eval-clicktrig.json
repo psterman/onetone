@@ -1,0 +1,1 @@
+{"function":"() => { const el = document.getElementById('wbNavTriggers'); if (el) el.click(); return el ? 'clicked' : 'not found'; }"}

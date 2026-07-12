@@ -37,7 +37,7 @@
   font-size: var(--type-status);
 }
 
-#settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display .display-value,
+#settingsPanelKeys #habitKeyMapRowTrigger .keys-key-hero .habit-basic-key-display .display-value,
 #settingsPanelKeys #habitKeyMapRowTarget .keys-key-hero .habit-basic-key-display .display-value {
   font-size: var(--type-keycap);
 }

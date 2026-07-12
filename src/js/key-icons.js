@@ -41,6 +41,7 @@
 
   function ensureIconHost(displayEl){
     if(!displayEl) return null;
+    if(displayEl.id === 'targetDisplay') return null;
     var host = displayEl.querySelector('.habit-key-icon-host');
     if(host) return host;
     host = document.createElement('span');
