@@ -1,0 +1,412 @@
+/* Shared flow-desk layout skeleton — layout/spacing only; theme via page scoped CSS vars */
+
+.flow-nodes {
+  position: relative;
+  padding: 8px 0 4px;
+  --flow-node-btn-size: 80px;
+  --flow-node-tag-stack: 28px;
+  --flow-node-track-y: calc(8px + var(--flow-node-tag-stack) + (var(--flow-node-btn-size) / 2));
+}
+
+.flow-nodes-track {
+  position: absolute;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  top: var(--flow-node-track-y);
+  height: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: rgba(42, 156, 196, 0.18);
+  z-index: 0;
+}
+
+.flow-nodes-svg {
+  width: 100%;
+  height: 8px;
+  display: block;
+}
+
+.flow-nodes-path-base {
+  stroke: rgba(15, 23, 42, 0.1);
+}
+
+html[data-theme="dark"] .flow-nodes-path-base {
+  stroke: rgba(15, 22, 42, 0.72);
+}
+
+.flow-nodes-path {
+  stroke-dasharray: 8 4;
+  animation: flow-desk-dash 1.5s linear infinite;
+}
+
+@keyframes flow-desk-dash {
+  to { stroke-dashoffset: -40; }
+}
+
+.flow-nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+
+.flow-node-tag {
+  display: inline-flex;
+  margin-bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--flow-node-tag-border, rgba(42, 156, 196, 0.22));
+  background: var(--flow-node-tag-bg, rgba(42, 156, 196, 0.08));
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--flow-node-tag-color, var(--primary-strong));
+}
+
+.flow-node-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.flow-node-btn:hover {
+  transform: scale(1.04);
+  color: var(--flow-node-active-color, var(--primary-strong));
+  border-color: rgba(42, 156, 196, 0.35);
+}
+
+.flow-node-btn.is-active {
+  border-width: 2px;
+  border-color: var(--flow-node-active-border, rgba(42, 156, 196, 0.55));
+  color: var(--flow-node-active-color, var(--primary-strong));
+  box-shadow: var(--flow-node-active-shadow, 0 0 0 4px rgba(42, 156, 196, 0.12), 0 0 24px rgba(42, 156, 196, 0.18));
+}
+
+.flow-node-btn.is-recording {
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #b45309;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12), 0 0 24px rgba(245, 158, 11, 0.16);
+}
+
+.flow-node-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.flow-node-title {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-surface);
+}
+
+.flow-node-hint {
+  margin: 0;
+  max-width: 180px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.flow-desk-panel {
+  min-height: 260px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chips.flow-scope-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: stretch;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chips-wrap.flow-scope-tile-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip.keys-app-chip--tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 88px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: none;
+  width: 100%;
+  white-space: normal;
+  flex-shrink: 1;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip--tile > span:last-child {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-icon--tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-wrap--tile {
+  position: relative;
+  display: block;
+  min-width: 0;
+  width: 100%;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-wrap--tile .keys-app-chip-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  align-self: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.62);
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-wrap--tile:hover .keys-app-chip-del,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-wrap--tile:focus-within .keys-app-chip-del {
+  opacity: 1;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip-wrap--tile .keys-app-chip-del:hover {
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chip--tile.keys-app-chip--none {
+  border-style: dashed;
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .flow-scope-tile-wrap .keys-app-chip--add {
+  align-self: flex-start;
+  width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--outline-variant);
+  background: transparent;
+}
+
+@media (max-width: 960px) {
+  .flow-nodes-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .flow-nodes-track {
+    display: none;
+  }
+
+  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-chips.flow-scope-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Page status bar — voice + keys scheme header */
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .keys-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.page-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.page-status-bar-main {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.page-status-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.page-status-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.page-status-btn:hover:not(:disabled) {
+  background: var(--surface-soft);
+  border-color: rgba(42, 156, 196, 0.28);
+}
+
+.page-status-btn.is-primary {
+  border-color: transparent;
+  background: var(--primary);
+  color: #fff;
+}
+
+.page-status-btn.is-primary:hover:not(:disabled) {
+  background: var(--primary-strong);
+  border-color: transparent;
+}
+
+.page-status-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.page-status-toggle.toggle-switch {
+  flex-shrink: 0;
+}
+
+/* Bottom-fixed app scope dock — horizontal chip bar */
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--outline-variant);
+  border-bottom: none;
+  background: var(--surface-high);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-head {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.flow-scope-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.flow-scope-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.flow-scope-bar .keys-app-chip {
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 10px;
+}
+
+.flow-scope-bar-add {
+  flex-shrink: 0;
+  border: 1px dashed var(--outline-variant) !important;
+  background: transparent !important;
+  color: var(--on-surface-muted) !important;
+  font-weight: 600 !important;
+  min-height: 32px;
+  padding: 5px 10px !important;
+  border-radius: 10px !important;
+}
+
+.flow-scope-bar-add:hover {
+  border-color: rgba(42, 156, 196, 0.35) !important;
+  color: var(--primary-strong) !important;
+}

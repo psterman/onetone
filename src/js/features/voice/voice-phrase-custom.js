@@ -44,6 +44,70 @@
     return out;
   }
 
+  function buildPhraseTagModel(catalog,active){
+    var activeSet={};
+    (active||[]).forEach(function(p){ activeSet[String(p||'').trim()]=true; });
+    var seen={};
+    var tags=[];
+    (catalog||[]).forEach(function(raw){
+      var p=String(raw||'').trim();
+      if(!p||seen[p]) return;
+      seen[p]=true;
+      tags.push({phrase:p,active:!!activeSet[p]});
+    });
+    (active||[]).forEach(function(raw){
+      var p=String(raw||'').trim();
+      if(!p||seen[p]) return;
+      seen[p]=true;
+      tags.push({phrase:p,active:true});
+    });
+    return tags;
+  }
+
+  function renderPhraseTags(containerId,model){
+    var el=$(containerId);
+    if(!el) return;
+    if(!model||!model.length){
+      el.innerHTML='<span class="voice-phrase-tags-empty">—</span>';
+      return;
+    }
+    var html='';
+    model.forEach(function(tag){
+      html+='<span class="voice-phrase-tag'+(tag.active?' is-active':'')+'" data-phrase="'+esc(tag.phrase)+'">';
+      html+='<button type="button" class="voice-phrase-tag-btn" data-phrase="'+esc(tag.phrase)+'">'+esc(tag.phrase)+'</button>';
+      if(tag.active){
+        html+='<button type="button" class="voice-phrase-tag-del" data-phrase="'+esc(tag.phrase)+'" aria-label="'+esc(t('delete'))+'">×</button>';
+      }
+      html+='</span>';
+    });
+    el.innerHTML=html;
+  }
+
+  function bindPhraseTags(containerId,handlers){
+    handlers=handlers||{};
+    var el=$(containerId);
+    if(!el||el.dataset.phraseTagsBound==='1') return;
+    el.dataset.phraseTagsBound='1';
+    el.addEventListener('click',function(e){
+      var delBtn=e.target.closest&&e.target.closest('.voice-phrase-tag-del');
+      if(delBtn){
+        e.preventDefault();
+        e.stopPropagation();
+        var delPhrase=delBtn.getAttribute('data-phrase')||'';
+        if(delPhrase&&handlers.onRemove) handlers.onRemove(delPhrase);
+        return;
+      }
+      var mainBtn=e.target.closest&&e.target.closest('.voice-phrase-tag-btn');
+      if(!mainBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var phrase=mainBtn.getAttribute('data-phrase')||'';
+      var tag=mainBtn.closest('.voice-phrase-tag');
+      var active=!!(tag&&tag.classList.contains('is-active'));
+      if(phrase&&handlers.onToggle) handlers.onToggle(phrase,active);
+    });
+  }
+
   function renderChips(containerId,phrases,onRemove){
     var el=$(containerId);
     if(!el) return;
@@ -88,6 +152,9 @@
     presetPhrasesIn:presetPhrasesIn,
     selectedPhrasesIn:selectedPhrasesIn,
     customPhrases:customPhrases,
+    buildPhraseTagModel:buildPhraseTagModel,
+    renderPhraseTags:renderPhraseTags,
+    bindPhraseTags:bindPhraseTags,
     renderChips:renderChips,
     readInput:readInput,
     clearInput:clearInput

@@ -2198,3 +2198,109 @@
   .target-key-picker-footer { flex-direction: column; align-items: stretch; }
   .target-key-picker-actions { justify-content: flex-end; }
 }
+
+/* Keys page desk mode — single detail panel */
+
+#settingsPanelKeys.keys-page-desk {
+  --flow-node-active-color: var(--primary-strong);
+  --flow-node-tag-bg: rgba(42, 156, 196, 0.08);
+  --flow-node-tag-border: rgba(42, 156, 196, 0.22);
+}
+
+#settingsPanelKeys.keys-page-desk .flow-desk-panel {
+  background: var(--surface-high);
+  border-color: var(--outline-variant);
+}
+
+#settingsPanelKeys.keys-page-desk #habitDefaultFlow.keys-workflow-grid {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+}
+
+#settingsPanelKeys.keys-page-desk .keys-workflow-arrow {
+  display: none !important;
+}
+
+#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step) .keys-step-body {
+  display: none !important;
+}
+
+#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
+  display: flex !important;
+  flex-direction: column;
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}
+
+#settingsPanelKeys.keys-page-desk #habitKeyMapRowFinish.is-active-step .keys-step-body.flow-step-body {
+  display: grid !important;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  min-height: 0 !important;
+}
+
+#settingsPanelKeys.keys-page-desk .keys-step-card-head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#settingsPanelKeys.keys-page-desk .keys-workflow-pipeline {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+#settingsPanelKeys.keys-page-desk .keys-app-binding-strip.voice-app-scope-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin-top: auto;
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
+}
+
+#settingsPanelKeys.keys-page-desk .keys-app-binding-strip .voice-app-scope-head {
+  margin-bottom: 10px;
+}
+
+#settingsPanelKeys.keys-page-desk .flow-scope-tile-wrap .keys-app-chip--add {
+  align-self: flex-start;
+}
+
+#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="target"] .flow-node-tag {
+  border-color: rgba(42, 156, 196, 0.28);
+  background: rgba(42, 156, 196, 0.1);
+}
+
+#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="target"] .flow-node-btn.is-active {
+  --flow-node-active-border: rgba(42, 156, 196, 0.6);
+  --flow-node-active-shadow: 0 0 0 4px rgba(42, 156, 196, 0.14), 0 0 24px rgba(42, 156, 196, 0.2);
+}
+
+#settingsPanelKeys.keys-page-desk .flow-node[data-keys-node="finish"] .flow-node-btn.is-active {
+  --flow-node-active-border: rgba(245, 158, 11, 0.55);
+  --flow-node-active-color: #b45309;
+  --flow-node-active-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12), 0 0 24px rgba(245, 158, 11, 0.16);
+}
+
+html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-desk-panel {
+  background: rgba(22, 30, 44, 0.92);
+}
+
+html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
+  background: rgba(22, 30, 44, 0.92);
+}
+

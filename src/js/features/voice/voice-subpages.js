@@ -23,6 +23,15 @@
   }
 
   function scrollTarget(step){
+    var nodes=global.OneToneDom.$('voiceFlowNodes');
+    var desk=global.OneToneDom.$('voiceDeskPanel');
+    if(nodes&&nodes.scrollIntoView){
+      nodes.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    if(desk&&desk.scrollIntoView){
+      desk.scrollIntoView({behavior:'smooth',block:'nearest'});
+      return;
+    }
     var ids={wake:'voiceSettingsWakeCard',recognize:'voiceSettingsEndPhraseCard',send:'voiceSettingsAutoCard'};
     var el=global.OneToneDom.$(ids[step]);
     if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -37,7 +46,7 @@
       }
     }
     if(global.OneToneVoicePageState){
-      global.OneToneVoicePageState.setStep(page);
+      global.OneToneVoicePageState.setStep(page,opts.scrollIntoView?{skipScroll:true}:undefined);
     }
     if(opts.scrollIntoView) scrollTarget(page);
   }

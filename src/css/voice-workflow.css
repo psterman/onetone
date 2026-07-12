@@ -315,6 +315,23 @@
   border: 1px solid var(--outline-variant);
 }
 
+#settingsPanelVoiceWake .voice-app-scope-head {
+  margin-bottom: 10px;
+}
+
+#settingsPanelVoiceWake .voice-app-scope-title {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelVoiceWake .voice-app-scope-desc {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
 
 
 
@@ -781,12 +798,7 @@
 
 #settingsPanelVoiceWake .voice-app-scope-strip {
   grid-column: 1 / -1;
-  position: static;
-  z-index: auto;
   margin-top: 2px;
-  border-radius: 10px;
-  box-shadow: none;
-  background: var(--surface);
 }
 
 #settingsPanelVoiceWake .voice-schemes-head {

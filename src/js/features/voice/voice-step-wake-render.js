@@ -54,6 +54,9 @@
         b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===(showEn?'en':'zh'));
       });
     }
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakePhraseTags){
+      global.OneToneVoiceWake.renderWakePhraseTags();
+    }
   }
 
   function renderWakeHost(vm){
@@ -69,6 +72,9 @@
     if(sapiPresets) sapiPresets.hidden=!showSapi;
     if(voskWrap) voskWrap.hidden=!showVosk;
     if(showVosk) syncWakePresetLangVisibility({lang:global.__vp_voice_wake_lang__});
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakePhraseTags){
+      global.OneToneVoiceWake.renderWakePhraseTags();
+    }
   }
 
   function renderMicLine(vm){

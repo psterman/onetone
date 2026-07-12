@@ -71,14 +71,23 @@
         ev.preventDefault();
         ev.stopPropagation();
         var preset=btn.getAttribute('data-preset');
+        var endLang=(preset||'').indexOf('en')===0?'en':'zh';
+        global.__vp_voice_end_lang__=endLang;
+        var endToggle=$('voiceEndLangToggle');
+        if(endToggle){
+          endToggle.querySelectorAll('.flow-lang-btn').forEach(function(b){
+            b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===endLang);
+          });
+        }
         if(hooks.setVoiceVoskModelPreset) hooks.setVoiceVoskModelPreset(preset);
         else if(hooks.changeVoiceVoskModelPreset) hooks.changeVoiceVoskModelPreset(preset);
+        else if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
+          global.OneToneVoiceSettingsFlow.render();
+        }
       };
     }
     var btnVoiceEnd=$('btnVoiceEnd');
     if(btnVoiceEnd) btnVoiceEnd.onclick=hooks.toggleVoiceEnd;
-    var voiceEndPresetsWrap=$('voiceEndPresetsWrap');
-    if(voiceEndPresetsWrap) voiceEndPresetsWrap.onclick=hooks.addVoiceEndPreset;
     var voiceEndDelayRange=$('voiceEndDelayRange');
     if(voiceEndDelayRange){
       voiceEndDelayRange.oninput=hooks.onVoiceEndDelayInput;
@@ -126,7 +135,7 @@
       }
       var map={
         input:['voiceRecognizeEngineDetails'],
-        phrases:['voiceWakeEditDetails'],
+        phrases:['voiceWakeCustomDetails'],
         finish:['voiceRecognizeEndDetails']
       };
       (map[mode]||[]).forEach(function(id){
@@ -291,13 +300,20 @@
         if(delBtn){
           e.preventDefault();
           e.stopPropagation();
-          var persist=global.OneToneVoiceSchemePersist;
-          var m=persist&&persist.resolveVoiceEditMapping?persist.resolveVoiceEditMapping():null;
           var rules=global.OneToneAppBehaviorRules;
-          if(m&&rules&&rules.removeRuleById) rules.removeRuleById(m,delBtn.getAttribute('data-rule-delete')||'');
-          if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
-            var vm=global.OneToneVoiceSettingsViewModel;
-            if(vm&&vm.build) global.OneToneVoicePageHeaderRender.renderAppScope(vm.build());
+          var vmApi=global.OneToneVoiceSettingsViewModel;
+          var vm=vmApi&&vmApi.build?vmApi.build():null;
+          var m=null;
+          if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.resolveScopeMapping){
+            m=global.OneToneVoicePageHeaderRender.resolveScopeMapping(vm||{});
+          }
+          if(m&&rules&&rules.removeRuleById){
+            rules.removeRuleById(m,delBtn.getAttribute('data-rule-delete')||'');
+          }
+          if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope&&vm){
+            global.OneToneVoicePageHeaderRender.renderAppScope(vm);
+          }else if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+            global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
           }
           return;
         }
@@ -380,6 +396,9 @@
         if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
           global.OneToneVoiceSettingsFlow.render();
         }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility){
+          global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility();
+        }
       };
     }
     function bindWakeLangToggle(){
@@ -391,12 +410,22 @@
         e.preventDefault();
         var lang=btn.getAttribute('data-lang')||'zh';
         global.__vp_voice_wake_lang__=lang;
+        global.__vp_voice_end_lang__=lang;
         global.__vp_voice_wake_lang_manual__=true;
         host.querySelectorAll('.flow-lang-btn').forEach(function(b){
           b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
         });
+        var endToggle=$('voiceEndLangToggle');
+        if(endToggle){
+          endToggle.querySelectorAll('.flow-lang-btn').forEach(function(b){
+            b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+          });
+        }
         if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncPresetLang){
           global.OneToneVoiceStepWake.syncPresetLang({lang:lang});
+        }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility){
+          global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility();
         }
         if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
           global.OneToneVoiceSettingsFlow.render();
@@ -418,6 +447,32 @@
     }
     bindWakeLangToggle();
     bindFlowLangToggle('voiceEndLangToggle','__vp_voice_end_lang__');
+    var pc=global.OneToneVoicePhraseCustom;
+    var wakeApi=global.OneToneVoiceWake;
+    var endApi=global.OneToneVoiceEnd;
+    if(pc&&pc.bindPhraseTags){
+      pc.bindPhraseTags('voiceWakePhraseTags',{
+        onToggle:function(phrase,active){
+          if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,active);
+        },
+        onRemove:function(phrase){
+          if(wakeApi&&wakeApi.removeCustomWakePhrase) wakeApi.removeCustomWakePhrase(phrase);
+        }
+      });
+      pc.bindPhraseTags('voiceWakePhraseSuggestions',{
+        onToggle:function(phrase,active){
+          if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,active);
+        }
+      });
+      pc.bindPhraseTags('voiceEndPhraseTags',{
+        onToggle:function(phrase,active){
+          if(endApi&&endApi.toggleEndPhrase) endApi.toggleEndPhrase(phrase,active);
+        },
+        onRemove:function(phrase){
+          if(endApi&&endApi.removeCustomEndPhrase) endApi.removeCustomEndPhrase(phrase);
+        }
+      });
+    }
     var btnMicRefresh=$('btnMicRefresh');
     if(btnMicRefresh) btnMicRefresh.onclick=function(){
       btnMicRefresh.disabled=true;

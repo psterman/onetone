@@ -160,11 +160,13 @@
 
     }
 
-    if(focus==='trigger'||focus==='target'||focus==='keyFinishFlow'){
+    if(focus==='trigger'||focus==='target'||focus==='keyFinishFlow'||focus==='finish'||focus==='cancel'){
 
       setSettingsPanel('keys');
 
-      hooks().focusSchemeEditStep(focus==='keyFinishFlow'?'finish':focus);
+      var step=focus==='keyFinishFlow'||focus==='finish'?'finish':focus;
+
+      hooks().focusSchemeEditStep(step);
 
       return;
 
@@ -259,7 +261,7 @@
     var wakeNav=global.OneToneVoiceWakeNavigation;
     var wakePhraseTargets=wakeNav&&wakeNav.resolveFocusTargets
       ?wakeNav.resolveFocusTargets('wakePhrases')
-      :['voiceSettingsWakeCard','voiceWakeEditDetails'];
+      :['voiceSettingsWakeCard','voiceWakeCustomDetails'];
 
     const map={
 

@@ -704,6 +704,13 @@
     if(global.OneToneSceneVoiceTab&&global.OneToneSceneVoiceTab.render) global.OneToneSceneVoiceTab.render();
     if(global.OneToneHomeV9&&global.OneToneHomeV9.render) global.OneToneHomeV9.render();
     if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+    if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.renderAppContextStrip) global.OneToneKeysPanelUi.renderAppContextStrip();
+    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+    }else if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope){
+      var vmApi=global.OneToneVoiceSettingsViewModel;
+      if(vmApi&&vmApi.build) global.OneToneVoicePageHeaderRender.renderAppScope(vmApi.build());
+    }
     scheduleHydrateCustomRuleIcons();
   }
 
@@ -1648,30 +1655,33 @@
 
   function renderContextChipsHtml(m,opts){
     opts=opts||{};
+    var variant=opts.variant==='tile'?'tile':'chip';
     var ctxId=opts.contextId!=null?opts.contextId:activeContextRef();
     var primaryId=m?String(m.appTargetId||'').trim():'';
     var noneSelected=!ctxId&&!primaryId;
     var chipAttr=opts.chipAttr||'data-app-context';
     var noneAttr=opts.noneAttr||'data-app-chip-none';
+    var chipClass=variant==='tile'?'keys-app-chip keys-app-chip--tile':'keys-app-chip';
+    var iconClass=variant==='tile'?'keys-app-chip-icon keys-app-chip-icon--tile':'keys-app-chip-icon';
     var html='';
     if(opts.includeNone!==false){
-      html+='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" '+noneAttr+'="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
+      html+='<button type="button" class="'+chipClass+' keys-app-chip--none'+(noneSelected?' is-selected':'')+'" '+noneAttr+'="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+esc(t('keysAppChipNoneHint'))+'"><span>'+esc(t('keysAppChipNone'))+'</span></button>';
     }
     BEHAVIOR_PRESETS.forEach(function(p){
       var icon=presetIcon(p.id);
       var isSel=ctxId===p.id;
       var isPri=m&&primaryId===p.id;
       var name=appDisplayName(p.id);
-      html+='<button type="button" class="keys-app-chip'+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" '+chipAttr+'="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
-      if(icon) html+='<img class="keys-app-chip-icon" src="'+esc(icon)+'" alt="" decoding="async" />';
+      html+='<button type="button" class="'+chipClass+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" '+chipAttr+'="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      if(icon) html+='<img class="'+iconClass+'" src="'+esc(icon)+'" alt="" decoding="async" />';
       html+='<span>'+esc(name)+'</span></button>';
     });
     if(m) customRulesForMapping(m).forEach(function(rule){
       var isSel=ctxId===rule.ruleId;
       var name=ruleDisplayName(rule);
-      html+='<span class="keys-app-chip-wrap keys-app-chip-wrap--custom">';
-      html+='<button type="button" class="keys-app-chip keys-app-chip--custom'+(isSel?' is-selected':'')+'" data-rule-context="'+esc(rule.ruleId)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
-      html+=customRuleIconHtml(rule);
+      html+='<span class="keys-app-chip-wrap keys-app-chip-wrap--custom'+(variant==='tile'?' keys-app-chip-wrap--tile':'')+'">';
+      html+='<button type="button" class="'+chipClass+' keys-app-chip--custom'+(isSel?' is-selected':'')+'" data-rule-context="'+esc(rule.ruleId)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      html+=customRuleIconHtml(rule,iconClass);
       html+='<span>'+esc(name)+'</span></button>';
       html+='<button type="button" class="keys-app-chip-del" data-rule-delete="'+esc(rule.ruleId)+'" aria-label="'+esc(t('habitAppRuleDelete'))+'">×</button>';
       html+='</span>';

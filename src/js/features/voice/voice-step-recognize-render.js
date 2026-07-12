@@ -18,36 +18,23 @@
     }
   }
 
-  function renderCompactEnd(vm){
-    const compact=$('voiceEndCompact');
-    const presetMore=$('voiceEndPresetMore');
-    const zhEl=$('voiceEndCompactZh');
-    const enEl=$('voiceEndCompactEn');
-    const show=!vm.loading&&vm.mode==='vosk';
-    if(compact) compact.hidden=!show;
-    if(presetMore) presetMore.hidden=!show;
-    if(!show) return;
-    const zh=V().firstSelectedPhrase('#voiceEndPresetsZh');
-    const en=V().firstSelectedPhrase('#voiceEndPresetsEn');
-    if(zhEl) zhEl.textContent=zh||'—';
-    if(enEl) enEl.textContent=en||'';
+  function syncEndPresetLangVisibility(){
+    const lang=global.__vp_voice_end_lang__||'zh';
     const langToggle=$('voiceEndLangToggle');
     if(langToggle){
-      const hasBoth=!!en;
-      langToggle.hidden=!hasBoth;
-      const lang=global.__vp_voice_end_lang__||'zh';
       langToggle.querySelectorAll('.flow-lang-btn').forEach(function(b){
         b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
       });
-      if(hasBoth&&zhEl&&enEl){
-        const showEn=lang==='en';
-        zhEl.hidden=showEn;
-        enEl.hidden=!showEn;
-      }else if(zhEl){
-        zhEl.hidden=false;
-        if(enEl) enEl.hidden=!en;
-      }
     }
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderEndPhraseTags){
+      global.OneToneVoiceEnd.renderEndPhraseTags();
+    }
+  }
+
+  function renderCompactEnd(vm){
+    const compact=$('voiceEndCompact');
+    if(compact) compact.hidden=true;
+    syncEndPresetLangVisibility();
   }
 
   function renderModelPresetRow(vm){
@@ -117,18 +104,10 @@
 
   function renderCapabilityNote(vm){
     const note=$('voiceEngineCapabilityNote');
-    if(!note) return;
-    if(vm.loading){
-      note.textContent=t('homeLiveLoading');
-      return;
+    if(note){
+      note.hidden=true;
+      note.textContent='';
     }
-    if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()){
-      note.textContent=t('voiceEngineCapabilityNotePro');
-      return;
-    }
-    if(vm.mode==='sapi') note.textContent=t('voiceEngineCapabilityNoteLite');
-    else if(vm.mode==='vosk') note.textContent=t('voiceEngineCapabilityNotePro');
-    else note.textContent=t('voiceEngineCapabilityNoteOff');
   }
 
   function renderEndCustomPhrases(vm){
@@ -161,6 +140,7 @@
       renderEndCustomPhrases(vm);
       renderOutputModeSegments(vm);
     },
-    setRecognizeNavState:setRecognizeNavState
+    setRecognizeNavState:setRecognizeNavState,
+    syncEndPresetLangVisibility:syncEndPresetLangVisibility
   };
 })((typeof window!=='undefined')?window:globalThis);

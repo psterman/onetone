@@ -193,20 +193,42 @@
       var card=$(editIds[s]);
       if(card) card.classList.remove('is-focus-highlight');
     });
-    var card=$(editIds[step]);
+    if(global.OneToneKeysPageState){
+      global.OneToneKeysPageState.setStep(step,{skipScroll:true});
+    }
+    var focusStep=step;
+    var card=$(editIds[focusStep]);
     if(card){
       card.classList.add('is-focus-highlight');
       clearTimeout(schemeStepHighlightTimer);
       schemeStepHighlightTimer=setTimeout(function(){
         card.classList.remove('is-focus-highlight');
       },1500);
-      card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }else if(step==='cancel'){
+      var cancelCard=$('habitKeyMapRowCancel');
+      if(cancelCard){
+        cancelCard.classList.add('is-focus-highlight');
+        clearTimeout(schemeStepHighlightTimer);
+        schemeStepHighlightTimer=setTimeout(function(){
+          cancelCard.classList.remove('is-focus-highlight');
+        },1500);
+      }
     }else{
       var flowEl=$(flowIds[step]);
       if(flowEl) flowEl.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
-    if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.highlightRow(step);
-    syncKeySchemeTimeline(step);
+    var nodes=$('keysFlowNodes');
+    var desk=$('keysDeskPanel');
+    if(nodes&&nodes.scrollIntoView) nodes.scrollIntoView({behavior:'smooth',block:'nearest'});
+    if(desk&&desk.scrollIntoView) desk.scrollIntoView({behavior:'smooth',block:'nearest'});
+    if(global.OneToneHabitKeyMappingTable){
+      if(step==='cancel'){
+        global.OneToneHabitKeyMappingTable.highlightRow('cancel');
+      }else{
+        global.OneToneHabitKeyMappingTable.highlightRow(step);
+      }
+    }
+    syncKeySchemeTimeline(step==='cancel'?'finish':step);
   }
 
   function renderKeySchemeCardHeader(){

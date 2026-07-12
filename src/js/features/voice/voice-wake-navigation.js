@@ -109,11 +109,12 @@
     mode=String(mode||'').trim();
     var map={
       input:['voiceRecognizeEngineDetails'],
-      phrases:[],
+      phrases:['voiceWakeCustomDetails'],
       finish:['voiceRecognizeEndDetails']
     };
     if(mode==='phrases'){
       openLegacyWakeEditDetails();
+      openDetails('voiceWakeCustomDetails');
     }
     (map[mode]||[]).forEach(function(id){ openDetails(id); });
     if(mode==='input') openDetails('voiceRecognizeEngineDetails');
@@ -125,6 +126,7 @@
     if(focus==='wakePhrases'){
       var ids=['voiceSettingsWakeCard'];
       if($('voiceWakePresetsPanel')) ids.push('voiceWakePresetsPanel');
+      if($('voiceWakeCustomDetails')) ids.push('voiceWakeCustomDetails');
       else if(legacyWakeEditDetails()) ids.push('voiceWakeEditDetails');
       return ids;
     }

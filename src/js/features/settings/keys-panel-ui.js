@@ -177,6 +177,7 @@
     var scopeVal=$('keysSummaryScope');
     var saveBtn=$('btnKeysSave');
     var testBtn=$('btnKeysTestTop');
+    var schemeAddBtn=$('btnKeysSchemeAdd');
     var keycapHint=$('keysKeycapHint');
     var targetKeycapHint=$('keysTargetKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
@@ -187,6 +188,7 @@
     if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
     if(saveBtn) saveBtn.textContent=t('keysSave');
     if(testBtn) testBtn.textContent=t('keysTestOnce');
+    if(schemeAddBtn) schemeAddBtn.textContent='+ '+t('addKeysDraft');
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
     var triggerFooterLbl=$('keysTriggerModeFooterLbl');
@@ -442,7 +444,10 @@
     if(bindingStrip) bindingStrip.hidden=false;
     var rulesApi=appRules();
     if(rulesApi&&rulesApi.renderContextChipsHtml){
-      strip.innerHTML=rulesApi.renderContextChipsHtml(m,{contextId:activeAppContextId()});
+      strip.innerHTML=rulesApi.renderContextChipsHtml(m,{
+        variant:'chip',
+        contextId:activeAppContextId()
+      });
       if(rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
       return;
     }
@@ -619,23 +624,19 @@
 
   function renderWorkflowTabs(){
     var tabs=$('keysWorkflowTabs');
-    var bar=$('keysWorkflowTabsBar');
     var tabsLbl=$('keysWorkflowTabsLbl');
     if(tabsLbl) tabsLbl.textContent=t('keysWorkflowTabsLbl');
     if(!tabs) return;
     if(!core()||!core().sorted){
       tabs.innerHTML='';
-      if(bar) bar.hidden=true;
       return;
     }
     var schemes=core().sorted();
     var selected=state().selectedMappingId;
     if(!schemes.length){
       tabs.innerHTML='<p class="keys-workflow-tabs-empty">'+esc(t('mappingEmptyTitle'))+'</p>';
-      if(bar) bar.hidden=false;
       return;
     }
-    if(bar) bar.hidden=false;
     tabs.innerHTML=schemes.map(function(m){
       var isSel=m.id===selected;
       var enabled=!!m.enabled;
@@ -808,6 +809,9 @@
       var mOff=core()&&core().selected?core().selected():null;
       renderFlowStatusBar(mOff);
       renderTriggerConflict(mOff);
+      if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
+        global.OneToneKeysPageNav.renderStepHints(mOff);
+      }
       return;
     }
     var trigRow=$('habitKeyMapRowTrigger');
@@ -828,6 +832,9 @@
     var m=core()&&core().selected?core().selected():null;
     renderFlowStatusBar(m);
     renderTriggerConflict(m);
+    if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
+      global.OneToneKeysPageNav.renderStepHints(m);
+    }
   }
 
   function syncRecordButtons(){
@@ -894,7 +901,15 @@
     var colLbls=[
       ['keysColTriggerLbl','keysColTrigger'],
       ['keysColCaptureLbl','keysColCapture'],
-      ['keysColActionLbl','keysColAction']
+      ['keysColActionLbl','keysColAction'],
+      ['keysFlowNodeTriggerTag','keysFlowNodeTriggerTag'],
+      ['keysFlowNodeTargetTag','keysFlowNodeTargetTag'],
+      ['keysFlowNodeFinishTag','keysFlowNodeFinishTag'],
+      ['keysFlowNodeTriggerTitle','keysColTrigger'],
+      ['keysFlowNodeTargetTitle','keysColCapture'],
+      ['keysFlowNodeFinishTitle','keysColAction'],
+      ['keysAppScopeTitle','keysAppScopeTitle'],
+      ['keysAppScopeDesc','keysAppScopeDesc']
     ];
     colLbls.forEach(function(pair){
       var el=$(pair[0]);
@@ -917,6 +932,9 @@
     renderRecordingFeedback();
     if(global.OneToneMappingCore&&global.OneToneMappingCore.renderConflictBanner){
       global.OneToneMappingCore.renderConflictBanner();
+    }
+    if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.render){
+      global.OneToneKeysPageNav.render(m);
     }
   }
 
@@ -984,6 +1002,14 @@
     var hubAdd=$('btnKeysHubAddScheme');
     if(hubAdd){
       hubAdd.addEventListener('click',function(e){
+        e.preventDefault();
+        var addBtn=$('btnAddMapping');
+        if(addBtn) addBtn.click();
+      });
+    }
+    var schemeAdd=$('btnKeysSchemeAdd');
+    if(schemeAdd){
+      schemeAdd.addEventListener('click',function(e){
         e.preventDefault();
         var addBtn=$('btnAddMapping');
         if(addBtn) addBtn.click();

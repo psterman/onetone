@@ -628,7 +628,7 @@
 
     });
 
-    renderEndCustomPhrases();
+    renderEndPhraseTags();
 
   }
 
@@ -676,32 +676,52 @@
 
 
 
+  function endCatalogForLang(lang){
+    var sel=lang==='en'?'#voiceEndPresetsEn':'#voiceEndPresetsZh';
+    var pc=global.OneToneVoicePhraseCustom;
+    return pc&&pc.presetPhrasesIn?pc.presetPhrasesIn(sel):[];
+  }
+
+  function renderEndPhraseTags(){
+    var pc=global.OneToneVoicePhraseCustom;
+    if(!pc||!pc.renderPhraseTags) return;
+    var lang=global.__vp_voice_end_lang__||'zh';
+    var lists=currentEndPhraseLists();
+    var active=lang==='en'?lists.en:lists.zh;
+    var catalog=endCatalogForLang(lang);
+    var model=pc.buildPhraseTagModel(catalog,active);
+    pc.renderPhraseTags('voiceEndPhraseTags',model);
+    var legacy=$('voiceEndCustomChips');
+    if(legacy){ legacy.hidden=true; legacy.innerHTML=''; }
+  }
+
+  function toggleEndPhrase(phrase,wasActive){
+    phrase=String(phrase||'').trim();
+    if(!phrase) return;
+    var lists=currentEndPhraseLists();
+    var lang=global.__vp_voice_end_lang__||(/[\u4e00-\u9fff]/.test(phrase)?'zh':'en');
+    var target=lang==='en'?lists.en.slice():lists.zh.slice();
+    var idx=target.indexOf(phrase);
+    if(wasActive){
+      if(target.length<=1) return;
+      target.splice(idx,1);
+    }else if(idx<0){
+      target.push(phrase);
+    }
+    var nextZh=lang==='zh'?target:lists.zh;
+    var nextEn=lang==='en'?target:lists.en;
+    voiceEndPresetSavePending={phrasesZh:nextZh,phrasesEn:nextEn};
+    syncVoiceEndPresets(nextZh,nextEn);
+    clearTimeout(voiceEndPresetSaveTimer);
+    voiceEndPresetSaveTimer=setTimeout(flushVoiceEndPresetSave,280);
+  }
+
   function renderEndCustomPhrases(){
-
-    const pc=global.OneToneVoicePhraseCustom;
-
-    if(!pc) return;
-
-    const lists=currentEndPhraseLists();
-
-    const active=lists.zh.concat(lists.en);
-
-    const custom=pc.customPhrases(active,endPresetPhraseSet());
-
-    pc.renderChips('voiceEndCustomChips',custom,function(phrase){
-
-      removeCustomEndPhrase(phrase);
-
-    });
-
+    renderEndPhraseTags();
     const block=$('voiceEndCustomBlock');
-
     const wakeApi=global.OneToneVoiceWake;
-
     const mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
-
     if(block) block.hidden=mode!=='vosk';
-
   }
 
 
@@ -748,7 +768,7 @@
 
     const target=lang==='en'?lists.en.slice():lists.zh.slice();
 
-    if(target.indexOf(phrase)>=0||(lang==='en'?lists.zh:lists.en).indexOf(phrase)>=0){
+    if(target.indexOf(phrase)>=0){
 
       hooks().toast(t('voicePhraseAlreadyAdded'));
 
@@ -905,8 +925,10 @@
     syncPresets:syncVoiceEndPresets,
 
     addCustomEndPhrase:addCustomEndPhrase,
-
+    removeCustomEndPhrase:removeCustomEndPhrase,
     renderEndCustomPhrases:renderEndCustomPhrases,
+    renderEndPhraseTags:renderEndPhraseTags,
+    toggleEndPhrase:toggleEndPhrase,
 
     testStop:testVoiceEndStop,
 

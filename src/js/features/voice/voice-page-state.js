@@ -9,10 +9,23 @@
     return $('settingsPanelVoiceWake');
   }
 
+  function expandStepDetails(step){
+    var map={
+      wake:['voiceWakeCustomDetails'],
+      recognize:['voiceRecognizeEndDetails'],
+      send:[]
+    };
+    (map[step]||[]).forEach(function(id){
+      var el=$(id);
+      if(el&&el.tagName==='DETAILS') el.open=true;
+    });
+  }
+
   function applyStepToDom(){
     var p=panel();
     if(!p) return;
-    p.classList.add('voice-page-v2','voice-page-parallel');
+    p.classList.add('voice-page-v2','voice-page-desk');
+    p.classList.remove('voice-page-parallel');
     STEPS.forEach(function(s){
       p.classList.toggle('is-step-'+s,s===activeStep);
     });
@@ -23,6 +36,7 @@
       if(!el.classList.contains('voice-flow-step')) return;
       el.classList.toggle('is-active-step',el.getAttribute('data-voice-subpage')===activeStep);
     });
+    expandStepDetails(activeStep);
     if(global.OneToneVoicePageNav&&global.OneToneVoicePageNav.syncActive){
       global.OneToneVoicePageNav.syncActive(activeStep);
     }
@@ -30,11 +44,21 @@
 
   function scrollActiveStepIntoView(opts){
     var p=panel();
-    if(!p||!p.classList.contains('voice-page-parallel')) return;
+    if(!p) return;
+    var smooth=!(opts&&opts.smooth===false);
+    var behavior=smooth?'smooth':'auto';
+    var nodes=$('voiceFlowNodes');
+    if(nodes&&nodes.scrollIntoView){
+      nodes.scrollIntoView({behavior:behavior,block:'nearest'});
+    }
+    var desk=$('voiceDeskPanel');
+    if(desk&&desk.scrollIntoView){
+      desk.scrollIntoView({behavior:behavior,block:'nearest'});
+      return;
+    }
     var card=p.querySelector('.voice-flow-step.is-active-step');
     if(!card||!card.scrollIntoView) return;
-    var smooth=!(opts&&opts.smooth===false);
-    card.scrollIntoView({behavior:smooth?'smooth':'auto',block:'nearest'});
+    card.scrollIntoView({behavior:behavior,block:'nearest'});
   }
 
   function setStep(step,opts){

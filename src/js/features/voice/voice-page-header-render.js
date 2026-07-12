@@ -19,6 +19,14 @@
       ['voiceColRecognizeLbl','voiceColRecognize'],
       ['voiceColOutputLbl','voiceColOutput'],
       ['voiceAppScopeLbl','voiceAppScopeLbl'],
+      ['voiceAppScopeTitle','voiceAppScopeTitle'],
+      ['voiceAppScopeDesc','voiceAppScopeDesc'],
+      ['voiceFlowNodeWakeTag','voiceFlowNodeWakeTag'],
+      ['voiceFlowNodeRecognizeTag','voiceFlowNodeRecognizeTag'],
+      ['voiceFlowNodeSendTag','voiceFlowNodeSendTag'],
+      ['voiceFlowNodeWakeTitle','voiceSubtabWakeLbl'],
+      ['voiceFlowNodeRecognizeTitle','voiceSubtabRecognizeLbl'],
+      ['voiceFlowNodeSendTitle','voiceSubtabSendLbl'],
       ['voiceRecognizeSourceLbl','voiceRecognizeSourceLbl'],
       ['voiceRecognizeCloudHint','voiceRecognizeCloudHint'],
       ['voiceRecognizePrimaryTag','voiceRecognizeCurrentTag'],
@@ -36,6 +44,7 @@
       ['voiceSettingsMicLbl','voiceSettingsMicLbl'],
       ['voiceWakeCompactLbl','voiceWakeCompactLbl'],
       ['voiceEndCompactLbl','voiceEndCompactLbl'],
+      ['voiceEndPresetsZhLabel','voiceEndPresetsZhLabel'],
       ['voiceWakeCompactHint','voiceWakeCompactHint'],
       ['voiceWakeHeroTitle','voiceWakeHeroTitle'],
       ['voiceWakeCustomSummary','voiceWakeCustomSummary'],
@@ -75,6 +84,8 @@
     if(wakeCustomLbl) wakeCustomLbl.textContent=t('voiceWakeCustomLbl');
     const wakeCustomHint=$('voiceWakeCustomHint');
     if(wakeCustomHint) wakeCustomHint.textContent=t('voiceWakeCustomHint');
+    const wakePresetPoolLbl=$('voiceWakePresetPoolLbl');
+    if(wakePresetPoolLbl) wakePresetPoolLbl.textContent=t('voiceWakePresetPoolLbl');
     const wakeCustomInput=$('voiceWakeCustomInput');
     if(wakeCustomInput) wakeCustomInput.placeholder=t('voiceWakeCustomPlaceholder');
     const endCustomLbl=$('voiceEndCustomLbl');
@@ -182,7 +193,7 @@
   }
 
   function resolveScopeMapping(vm){
-    if(vm.habitMapping) return vm.habitMapping;
+    if(vm&&vm.habitMapping) return vm.habitMapping;
     var core=global.OneToneMappingCore;
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:{};
     var activeId=cfg&&cfg.activeSceneId?String(cfg.activeSceneId).trim():'';
@@ -200,6 +211,7 @@
     strip.hidden=false;
     if(appRules.renderContextChipsHtml){
       chips.innerHTML=appRules.renderContextChipsHtml(m,{
+        variant:'chip',
         chipAttr:'data-voice-scope-app',
         noneAttr:'data-voice-scope-none',
         includeNone:true
@@ -238,6 +250,7 @@
     renderHeaderSummary:renderHeaderSummary,
     renderAppScope:renderAppScope,
     renderModeMeta:renderModeMeta,
-    renderSaveAction:renderSaveAction
+    renderSaveAction:renderSaveAction,
+    resolveScopeMapping:resolveScopeMapping
   };
 })((typeof window!=='undefined')?window:globalThis);

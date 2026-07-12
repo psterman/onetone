@@ -86,26 +86,45 @@
       var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';
       global.OneToneSceneFlowSummary.syncFlowSummary(m,{context:'settings',prefix:'habitFlow',activeAppContextId:preview,focusStep:highlightStep});
     }
+    if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
+      global.OneToneKeysPageNav.renderStepHints(m);
+    }
   }
 
   function highlightRow(step){
     highlightStep=step||'';
     syncRowStatus();
-    var row=$('habitKeyMapRow'+step.charAt(0).toUpperCase()+step.slice(1));
-    if(row) row.scrollIntoView({behavior:'smooth',block:'nearest'});
-    if(step==='finish'){
+    if(step==='finish'||step==='cancel'){
       var more=$('habitFlowFinishMore');
       if(more) more.open=true;
+    }
+    if(step&&step!=='cancel'){
+      var row=$('habitKeyMapRow'+step.charAt(0).toUpperCase()+step.slice(1));
+      if(row) row.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    if(step==='cancel'){
+      var cancelRow=$('habitKeyMapRowCancel');
+      if(cancelRow) cancelRow.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
     if(!step) return;
     setTimeout(function(){ highlightStep=''; syncRowStatus(); },1600);
   }
 
-  function onStepClick(step){
+  function setDetailStep(step,opts){
+    if(global.OneToneKeysPageState){
+      global.OneToneKeysPageState.setStep(step,opts);
+      return;
+    }
     highlightRow(step);
-    if(step==='finish'){
-      var more=$('habitFlowFinishMore');
-      if(more) more.open=true;
+  }
+
+  function onStepClick(step){
+    if(step==='cancel'){
+      setDetailStep('cancel');
+      return;
+    }
+    if(step==='trigger'||step==='target'||step==='finish'){
+      setDetailStep(step);
     }
   }
 
@@ -125,17 +144,26 @@
     if(bootHooks.startTargetRecord) bootHooks.startTargetRecord();
   }
 
-  function startRecordForStep(step){
-    if(step!=='trigger'&&step!=='target') return;
-    if(step==='target'){
-      startTargetRecordForKeysPanel();
-      return;
-    }
+  function startTriggerRecord(){
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
     if(mode!=='none') return;
     var bootHooks=global.__vp_bootstrap_hooks__||{};
     if(bootHooks.startTriggerRecord) bootHooks.startTriggerRecord();
+  }
+
+  function handleKeycapStep(step){
+    if(step==='trigger'){
+      setDetailStep('trigger',{skipScroll:true});
+      startTriggerRecord();
+      highlightRow('trigger');
+      return;
+    }
+    if(step==='target'){
+      setDetailStep('target',{skipScroll:true});
+      openTargetKeyPicker();
+      highlightRow('target');
+    }
   }
 
   function isInteractiveFlowTarget(el){
@@ -157,17 +185,25 @@
 
   function bindEvents(){
     ensureMounted();
+    if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.bind) global.OneToneKeysPageNav.bind();
+    if(global.OneToneKeysPageState&&global.OneToneKeysPageState.init) global.OneToneKeysPageState.init();
     var flow=$('habitDefaultFlow');
     if(flow){
       flow.addEventListener('click',function(e){
         if(e.target.closest('.record-btn')){
           var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
           var step=stepEl&&stepEl.dataset.editStep;
-          if(step==='trigger'||step==='target') highlightRow(step);
+          if(step==='trigger'){
+            e.preventDefault();
+            e.stopPropagation();
+            startTriggerRecord();
+            highlightRow('trigger');
+          }
           if(step==='target'){
             e.preventDefault();
             e.stopPropagation();
             startTargetRecordForKeysPanel();
+            highlightRow('target');
           }
           return;
         }
@@ -176,8 +212,9 @@
           var stepFromKey=e.target.closest&&e.target.closest('[data-edit-step]');
           var keyStep=stepFromKey&&stepFromKey.dataset.editStep;
           if(keyStep==='trigger'||keyStep==='target'){
-            startRecordForStep(keyStep);
-            highlightRow(keyStep);
+            e.preventDefault();
+            e.stopPropagation();
+            handleKeycapStep(keyStep);
           }
           return;
         }
