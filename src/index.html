@@ -437,9 +437,9 @@
                   </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavScenesGroup">
-                <button type="button" class="settings-nav-item" data-panel="scenes" id="settingsNavScenes">
+                <button type="button" class="settings-nav-item" data-panel="habits" id="settingsNavScenes">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><path d="M10 7.5h4M6.5 11v4M17.5 11v4M10 17.5h4"/><path d="M16 15h5v5h-5z"/></svg>
-                  <span id="settingsNavScenesLabel">情景模式</span>
+                  <span id="settingsNavScenesLabel">我的习惯</span>
                 </button>
                 </div>
                 <button type="button" class="settings-nav-item sr-only" data-panel="sounds" id="settingsNavSounds" hidden aria-hidden="true" tabindex="-1">
@@ -638,6 +638,16 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelKeys" hidden>
+          <div class="habit-scenario-context-banner" id="habitScenarioContextBannerKeys" hidden role="status" aria-live="polite">
+            <div class="habit-scenario-context-banner-main">
+              <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
+              <div class="habit-scenario-context-banner-text-wrap">
+                <p class="habit-scenario-context-banner-text" id="habitScenarioContextBannerKeysText"></p>
+                <p class="habit-scenario-context-banner-sub" id="habitScenarioContextBannerKeysSub"></p>
+              </div>
+            </div>
+            <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
+          </div>
           <div class="page-status-bar keys-page-status-bar" id="keysWorkflowTabsBar">
             <div class="page-status-bar-main keys-scheme-status-main">
               <div class="keys-scheme-summary-title-row">
@@ -962,6 +972,19 @@
           <div class="keys-page-foot">
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
           </div>
+          <div class="keys-app-binding-strip voice-app-scope-dock keys-app-scope-dock" id="keysAppBindingStrip" hidden>
+            <div class="voice-app-scope-head">
+              <div class="voice-app-scope-head-text">
+                <h4 class="voice-app-scope-title" id="keysAppScopeTitle">生效应用</h4>
+              </div>
+            </div>
+            <span class="keys-app-binding-lbl sr-only" id="keysAppBindingLbl">在哪些程序中生效</span>
+            <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="keysAppContextStripWrap" hidden>
+              <div class="keys-app-chips flow-scope-bar" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
+              <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
+              <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
+            </div>
+          </div>
         </section>
         <section class="settings-panel drawer-section scene-mode-page" id="settingsPanelScenes" hidden>
           <header class="pref-page-head scene-mode-head">
@@ -991,25 +1014,23 @@
           <div class="scene-mode-list" id="sceneModeList" role="list"></div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelHabits" hidden>
-          <div class="habit-hub-shell" id="habitHubView" hidden aria-hidden="true">
+          <div class="habit-hub-shell" id="habitHubView">
             <header class="habit-hub-head">
               <div class="habit-hub-head-text">
-                <h3 class="pref-page-title" id="settingsPanelHabitsTitle">情景管理</h3>
+                <h3 class="pref-page-title" id="settingsPanelHabitsTitle">我的习惯</h3>
                 <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">重命名、复制、删除与高级语音/应用设置</p>
                 <p class="habit-hub-hint" id="habitHubAutoHint">不需要先选分类，保存后会自动出现在这里</p>
               </div>
               <div class="habit-hub-head-actions">
-                <button type="button" class="habit-hub-new-btn" id="btnHabitHubNew">从按键保存</button>
-                <button type="button" class="habit-hub-new-btn is-secondary" id="btnHabitHubSaveVoice">保存当前语音</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubNew">+ 新建情景</button>
               </div>
             </header>
             <div class="habit-hub-toolbar">
               <div class="habit-hub-filters" id="habitHubFilters" role="tablist" aria-label="习惯分类">
                 <button type="button" class="habit-hub-filter is-active" data-habit-filter="all" role="tab" aria-selected="true" id="habitHubFilterAll">全部</button>
+                <button type="button" class="habit-hub-filter" data-habit-filter="global" role="tab" aria-selected="false" id="habitHubFilterGlobal">全局</button>
+                <button type="button" class="habit-hub-filter" data-habit-filter="app" role="tab" aria-selected="false" id="habitHubFilterApp">应用场景</button>
                 <button type="button" class="habit-hub-filter" data-habit-filter="recent" role="tab" aria-selected="false" id="habitHubFilterRecent">最近使用</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="keys" role="tab" aria-selected="false" id="habitHubFilterKeys">按键</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="voice" role="tab" aria-selected="false" id="habitHubFilterVoice">语音</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="app" role="tab" aria-selected="false" id="habitHubFilterApp">应用</button>
               </div>
               <div class="habit-hub-toolbar-right">
                 <label class="habit-hub-sort-wrap">
@@ -1036,8 +1057,7 @@
                   <p class="habit-hub-empty-title" id="habitHubEmptyTitle">还没有习惯</p>
                   <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">在「按键」或「语音」里保存设置后，会自动出现在这里</p>
                   <div class="habit-hub-empty-actions">
-                    <button type="button" class="habit-hub-empty-btn" id="btnHabitHubEmptyNew">从按键保存</button>
-                    <button type="button" class="habit-hub-empty-btn is-secondary" id="btnHabitHubEmptySaveVoice">保存当前语音</button>
+                    <button type="button" class="habit-hub-empty-btn is-primary" id="btnHabitHubEmptyNew">+ 新建情景</button>
                   </div>
                 </div>
                 <div class="habit-hub-list is-list" id="habitHubList" role="list"></div>
@@ -1062,6 +1082,74 @@
                 <button type="button" class="habit-hub-aside-help" id="btnHabitHubHelp">如何使用习惯？</button>
               </aside>
             </div>
+          </div>
+          <div class="habit-scenario-shell" id="habitWizardView" hidden>
+            <button type="button" class="habit-detail-back" id="btnHabitWizardBack">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+              <span id="btnHabitWizardBackLabel">返回习惯列表</span>
+            </button>
+            <header class="habit-scenario-head habit-scenario-head--console">
+              <div class="habit-scenario-head-row">
+                <div class="habit-scenario-head-text">
+                  <h3 class="pref-page-title" id="habitScenarioTitle">新建应用情景</h3>
+                  <p class="pref-page-subtitle" id="habitScenarioDesc">选择应用后，仅保存相对全局的覆盖项</p>
+                </div>
+                <div class="habit-scenario-head-actions">
+                  <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSaveTop" disabled>保存情景</button>
+                </div>
+              </div>
+            </header>
+            <div class="habit-scenario-status-bar habit-scenario-status-bar--summary" id="habitScenarioStatusBar" aria-live="polite"></div>
+            <div class="habit-scenario-grid" id="habitScenarioGrid">
+              <aside class="habit-scenario-aside" id="habitScenarioAside">
+                <div class="habit-scenario-aside-new" id="habitScenarioAsideNew">
+                  <h4 class="habit-scenario-aside-title" id="habitScenarioPickAppTitle">选择应用场景</h4>
+                  <p class="habit-scenario-aside-desc" id="habitScenarioPickAppDesc">必选。情景将只覆盖该应用下的按键与语音设置。</p>
+                  <div class="habit-wizard-app-grid" id="habitScenarioAppGrid" role="list"></div>
+                </div>
+                <div class="habit-scenario-aside-edit" id="habitScenarioAsideEdit" hidden>
+                  <h4 class="habit-scenario-aside-title" id="habitScenarioEditAppTitle">当前应用</h4>
+                  <div class="habit-scenario-app-info" id="habitScenarioAppInfo"></div>
+                  <div class="habit-scenario-scenario-enable" id="habitScenarioEnableWrap">
+                    <span class="habit-scenario-enable-lbl" id="habitScenarioEnableLbl">情景启用</span>
+                    <button type="button" class="toggle-switch" id="habitScenarioEnabledToggle" role="switch" aria-checked="false"></button>
+                  </div>
+                  <button type="button" class="habit-hub-act habit-scenario-change-app" id="btnHabitScenarioChangeApp" hidden>更换应用</button>
+                </div>
+              </aside>
+              <main class="habit-scenario-main" id="habitScenarioMain">
+                <label class="habit-scenario-name-field">
+                  <span class="habit-wizard-name-lbl" id="habitScenarioNameLbl">情景名称</span>
+                  <input type="text" class="habit-wizard-name-input" id="habitScenarioNameInput" autocomplete="off" />
+                </label>
+                <div class="habit-scenario-access-cards" id="habitScenarioAccessCards">
+                  <div id="habitScenarioKeysAccessCard"></div>
+                  <div id="habitScenarioVoiceAccessCard"></div>
+                </div>
+                <p class="habit-scenario-main-placeholder" id="habitScenarioMainPlaceholder">请先选择应用场景</p>
+              </main>
+              <aside class="habit-scenario-preview" id="habitScenarioPreview">
+                <h4 class="habit-scenario-preview-title" id="habitScenarioPreviewTitle">当前情景预览</h4>
+                <div class="habit-scenario-preview-card habit-panel habit-panel--soft" id="habitScenarioPreviewCard"></div>
+                <div class="habit-scenario-enable-states" id="habitScenarioEnableStates"></div>
+                <p class="habit-scenario-flow-hint" id="habitScenarioFlowHint">全局兜底 → 应用覆盖 → 保存到习惯</p>
+                <h5 class="habit-scenario-diff-title" id="habitScenarioDiffTitle">将保存的内容</h5>
+                <ul class="habit-scenario-diff-list" id="habitScenarioDiffList"></ul>
+                <p class="habit-scenario-diff-empty" id="habitScenarioDiffEmpty" hidden></p>
+                <div class="habit-scenario-restore-actions" id="habitScenarioRestoreActions">
+                  <button type="button" class="habit-hub-act" id="btnHabitScenarioRestoreKeys" disabled>恢复按键为全局默认</button>
+                  <button type="button" class="habit-hub-act" id="btnHabitScenarioRestoreVoice" disabled>恢复语音为全局默认</button>
+                  <button type="button" class="habit-hub-act is-danger" id="btnHabitScenarioRestoreAll" disabled>恢复整个情景为全局默认</button>
+                </div>
+              </aside>
+            </div>
+            <footer class="habit-scenario-foot">
+              <p class="habit-scenario-foot-hint" id="habitScenarioFootHint">未修改项沿用全局默认；本次只保存当前应用情景，不影响全局。</p>
+              <div class="habit-scenario-foot-actions">
+                <button type="button" class="habit-hub-new-btn" id="btnHabitScenarioCancel">取消</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSave" disabled>保存情景</button>
+              </div>
+            </footer>
           </div>
           <div class="habit-detail-shell" id="habitDetailView" hidden>
             <button type="button" class="habit-detail-back" id="btnHabitHubBack">
@@ -1235,21 +1323,18 @@
             </div>
           </div>
           </div>
-          <div class="keys-app-binding-strip voice-app-scope-dock keys-app-scope-dock" id="keysAppBindingStrip" hidden>
-            <div class="voice-app-scope-head">
-              <div class="voice-app-scope-head-text">
-                <h4 class="voice-app-scope-title" id="keysAppScopeTitle">生效应用</h4>
-              </div>
-            </div>
-            <span class="keys-app-binding-lbl sr-only" id="keysAppBindingLbl">在哪些程序中生效</span>
-            <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="keysAppContextStripWrap" hidden>
-              <div class="keys-app-chips flow-scope-bar" id="keysAppContextStrip" role="radiogroup" aria-labelledby="keysAppContextStripLbl"></div>
-              <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
-              <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
-            </div>
-          </div>
         </section>
         <section class="settings-panel drawer-section voice-page" id="settingsPanelVoiceWake" hidden>
+          <div class="habit-scenario-context-banner" id="habitScenarioContextBannerVoice" hidden role="status" aria-live="polite">
+            <div class="habit-scenario-context-banner-main">
+              <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
+              <div class="habit-scenario-context-banner-text-wrap">
+                <p class="habit-scenario-context-banner-text" id="habitScenarioContextBannerVoiceText"></p>
+                <p class="habit-scenario-context-banner-sub" id="habitScenarioContextBannerVoiceSub"></p>
+              </div>
+            </div>
+            <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
+          </div>
           <div class="page-status-bar voice-page-status-bar" id="voiceWorkflowTabsBar">
             <div class="page-status-bar-main voice-scheme-status-main">
               <div class="keys-scheme-summary-title-row voice-scheme-summary-title-row">
@@ -1279,7 +1364,7 @@
               <button type="button" class="page-status-btn" id="btnVoiceSchemeAdd">+ 新建</button>
             </div>
             <span class="sr-only" id="voiceWorkflowTabsLbl">语音方案</span>
-            <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden></div>
+            <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden>            </div>
           </div>
           <div class="voice-page-body">
             <div class="voice-page-main">
@@ -1728,14 +1813,10 @@
             </aside>
           </div>
           <div class="keys-app-binding-strip voice-app-scope-strip voice-app-scope-dock" id="voiceAppScopeStrip">
-            <div class="voice-app-scope-head">
-              <div class="voice-app-scope-head-text">
-                <h4 class="voice-app-scope-title" id="voiceAppScopeTitle">生效应用</h4>
-              </div>
-            </div>
             <span class="keys-app-binding-lbl sr-only" id="voiceAppScopeLbl">在哪些程序中生效</span>
-            <div class="keys-app-chips-wrap flow-scope-bar-wrap">
-              <div class="keys-app-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
+            <div class="voice-app-scope-toolbar">
+              <h4 class="voice-app-scope-title" id="voiceAppScopeTitle">生效应用</h4>
+              <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
               <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加应用</button>
             </div>
           </div>
@@ -2569,6 +2650,7 @@
   <script src="js/core/ipc.js"></script>
   <script src="js/core/events.js?v=20260706-sync"></script>
   <script src="js/core/render-loop.js"></script>
+  <script src="js/core/app-voice-presets.js"></script>
   <script src="js/core/scene-config.js"></script>
   <script src="js/core/habit-profile.js"></script>
   <script src="js/core/config-persist.js?v=20260706-sync"></script>
@@ -2618,6 +2700,7 @@
   <script src="js/features/voice/voice-settings-view-model.js"></script>
   <script src="js/features/voice/voice-page-header-render.js"></script>
   <script src="js/features/voice/voice-schemes-ui.js"></script>
+  <script src="js/core/habit-override-diff.js"></script>
   <script src="js/features/voice/voice-scheme-context.js"></script>
   <script src="js/features/voice/voice-scheme-name-modal.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
@@ -2666,6 +2749,9 @@
   <script src="js/features/settings/keys-panel-ui.js"></script>
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
+  <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
+  <script src="js/features/mapping/habit-scenario-access-cards.js"></script>
+  <script src="js/features/mapping/habit-scenario-wizard.js"></script>
   <script src="js/features/mapping/habit-multi.js"></script>
   <script src="js/features/mapping/habit-key-mapping-table.js"></script>
   <script src="js/features/mapping/key-finish-flow-render.js"></script>

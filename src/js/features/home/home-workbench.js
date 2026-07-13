@@ -560,7 +560,7 @@
       };
     }
     var qNew=$('wbHabitNew');
-    if(qNew) qNew.onclick=function(){ openSettings({panel:'habits'}); };
+    if(qNew) qNew.onclick=function(){ openSettings({panel:'habits',habitWizard:true}); };
     var alertsHost=$('wbHomeAlerts');
     if(alertsHost){
       alertsHost.addEventListener('click',function(e){

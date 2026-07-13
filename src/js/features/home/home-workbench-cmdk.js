@@ -11,7 +11,7 @@
     return [
       {id:'home', labelKey:'homeWbCmdkHome', hintKey:'homeWbCmdkHintNav', action:'home'},
       {id:'test', labelKey:'homeWbQuickTest', hintKey:'homeWbCmdkHintAction', action:'test'},
-      {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits'},
+      {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitWizard:true},
       {id:'model', labelKey:'homeWbQuickSwitchModel', hintKey:'homeWbCmdkHintSettings', panel:'voiceWake'},
       {id:'triggers', labelKey:'homeWbNavTriggers', hintKey:'homeWbCmdkHintSettings', panel:'keys'},
       {id:'schemes', labelKey:'homeWbNavSchemes', hintKey:'homeWbCmdkHintSettings', panel:'habits'},
@@ -102,6 +102,7 @@
     if(item.panel&&global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
       var opts={panel:item.panel};
       if(item.debugMode) opts.debugMode=item.debugMode;
+      if(item.habitWizard) opts.habitWizard=true;
       global.OneToneSettingsDrawer.open(opts);
     }
   }

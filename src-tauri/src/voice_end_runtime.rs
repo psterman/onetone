@@ -108,10 +108,12 @@ pub fn idle_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
 
 /// Wake + summon phrases that may start a voice session (routes differ in dispatch).
 pub fn idle_start_phrases(cfg: &VoiceConfig) -> Vec<String> {
+    let global = crate::scene_config::global_summon_phrases(cfg);
     let Some(e) = crate::scene_config::resolve_idle_effective_scene(cfg) else {
-        return Vec::new();
+        return global;
     };
     let mut out = e.wake_phrases;
+    out = crate::config::append_unique_phrases(out, &global);
     crate::config::append_unique_phrases(out, &e.summon_phrases)
 }
 
@@ -203,6 +205,42 @@ pub struct VoiceWakeDispatchResult {
     pub runtime_label: String,
 }
 
+fn try_run_summon_workflow(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    mapping: &crate::config::MappingEntry,
+    mapping_id: &str,
+    summon_target: &str,
+    duration_ms: u32,
+) -> Option<String> {
+    let window = crate::ipc::get_main_window(app)?;
+    if let Some(rule_id) = crate::config::summon_rule_id_from_target(summon_target) {
+        let rule = mapping
+            .app_behavior_rules
+            .iter()
+            .find(|r| r.rule_id == rule_id)?;
+        return crate::app_chat_workflow::run_for_custom_rule(
+            state,
+            &window,
+            mapping_id,
+            rule,
+            duration_ms,
+        )
+        .ok();
+    }
+    if crate::app_chat_workflow::profile_for(summon_target).is_some() {
+        return crate::app_chat_workflow::run_for_target_id(
+            state,
+            &window,
+            mapping_id,
+            summon_target,
+            duration_ms,
+        )
+        .ok();
+    }
+    None
+}
+
 pub fn handle_voice_wake_detected(
     state: &Arc<AppState>,
     app: &AppHandle,
@@ -225,55 +263,142 @@ pub fn handle_voice_wake_detected(
             .any(|w| crate::config::phrases_fuzzy_match(matched_phrase, w))
     };
 
+    if !is_generic_wake {
+        let global_summon = {
+            let cfg = state.cfg.lock();
+            crate::scene_config::resolve_global_summon_for_phrase(&cfg, matched_phrase)
+        };
+        if let Some(gs) = global_summon {
+            let summon_mapping = {
+                let cfg = state.cfg.lock();
+                cfg.find_mapping_by_id(&gs.mapping_id).cloned()
+            };
+            if let Some(mapping) = summon_mapping {
+                if let Some(label) = try_run_summon_workflow(
+                    state,
+                    app,
+                    &mapping,
+                    &gs.mapping_id,
+                    &gs.target,
+                    duration_ms,
+                ) {
+                    {
+                        let mut cfg = state.cfg.lock();
+                        cfg.set_active_scenario(&gs.mapping_id);
+                    }
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state.as_ref(),
+                        "voice",
+                        crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                        &format!(
+                            "{engine} global summon: {} -> {} ({})",
+                            gs.phrase, gs.target, gs.mapping_id
+                        ),
+                        Some(serde_json::json!({
+                            "engine": engine,
+                            "phrase": matched_phrase,
+                            "appTargetId": gs.target,
+                            "mappingId": gs.mapping_id,
+                            "workflow": true,
+                            "global": true
+                        })),
+                    );
+                    crate::tray::refresh_menu(app);
+                    return VoiceWakeDispatchResult {
+                        ok: true,
+                        target_key: target_key.clone(),
+                        mapping_id: gs.mapping_id,
+                        used_summon_workflow: true,
+                        runtime_label: label,
+                    };
+                }
+            }
+        }
+    }
+
     if let Some(mapping) = mapping_snapshot.as_ref() {
         let preset = {
             let cfg = state.cfg.lock();
             crate::scene_config::effective_vosk_model_preset(&cfg, mapping)
         };
         if !is_generic_wake {
-            if let Some(app_target_id) =
+            if let Some(summon_target) =
                 crate::config::resolve_summon_app_for_phrase(mapping, matched_phrase, &preset)
             {
-                if crate::app_chat_workflow::profile_for(&app_target_id).is_some() {
-                    if let Some(window) = crate::ipc::get_main_window(app) {
-                        match crate::app_chat_workflow::run_for_target_id(
-                            state,
-                            &window,
-                            &mapping_id,
-                            &app_target_id,
-                            duration_ms,
-                        ) {
-                            Ok(label) => {
-                                crate::runtime_event::publish_runtime_event(
-                                    Some(app),
-                                    state.as_ref(),
-                                    "voice",
-                                    crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                                    &format!(
-                                        "{engine} summon workflow: {app_target_id} ({matched_phrase})"
-                                    ),
-                                    Some(serde_json::json!({
-                                        "engine": engine,
-                                        "phrase": matched_phrase,
-                                        "appTargetId": app_target_id,
-                                        "workflow": true
-                                    })),
-                                );
-                                crate::tray::refresh_menu(app);
-                                return VoiceWakeDispatchResult {
-                                    ok: true,
-                                    target_key: target_key.clone(),
-                                    mapping_id,
-                                    used_summon_workflow: true,
-                                    runtime_label: label,
-                                };
-                            }
-                            Err((reason, _)) => {
-                                *state.voice_session_last_action.lock() =
-                                    format!("summon workflow failed: {reason}");
-                            }
-                        }
-                    }
+                if let Some(label) = try_run_summon_workflow(
+                    state,
+                    app,
+                    mapping,
+                    &mapping_id,
+                    &summon_target,
+                    duration_ms,
+                ) {
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state.as_ref(),
+                        "voice",
+                        crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                        &format!(
+                            "{engine} summon workflow: {summon_target} ({matched_phrase})"
+                        ),
+                        Some(serde_json::json!({
+                            "engine": engine,
+                            "phrase": matched_phrase,
+                            "appTargetId": summon_target,
+                            "workflow": true
+                        })),
+                    );
+                    crate::tray::refresh_menu(app);
+                    return VoiceWakeDispatchResult {
+                        ok: true,
+                        target_key: target_key.clone(),
+                        mapping_id,
+                        used_summon_workflow: true,
+                        runtime_label: label,
+                    };
+                }
+            }
+        }
+    }
+
+    if is_generic_wake {
+        if let Some(mapping) = mapping_snapshot.as_ref() {
+            let primary = mapping.app_target_id.trim();
+            if !primary.is_empty() {
+                if let Some(label) = try_run_summon_workflow(
+                    state,
+                    app,
+                    mapping,
+                    &mapping_id,
+                    primary,
+                    duration_ms,
+                ) {
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state.as_ref(),
+                        "voice",
+                        crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                        &format!(
+                            "{engine} app-target wake: {primary} ({matched_phrase})"
+                        ),
+                        Some(serde_json::json!({
+                            "engine": engine,
+                            "phrase": matched_phrase,
+                            "appTargetId": primary,
+                            "mappingId": mapping_id,
+                            "workflow": true,
+                            "primaryAppTarget": true
+                        })),
+                    );
+                    crate::tray::refresh_menu(app);
+                    return VoiceWakeDispatchResult {
+                        ok: true,
+                        target_key: target_key.clone(),
+                        mapping_id,
+                        used_summon_workflow: true,
+                        runtime_label: label,
+                    };
                 }
             }
         }

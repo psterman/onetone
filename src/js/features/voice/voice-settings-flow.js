@@ -86,6 +86,7 @@
     if(global.OneToneVoiceModelsPanel) global.OneToneVoiceModelsPanel.render();
     if(global.OneToneVoicePageNav) global.OneToneVoicePageNav.render(vm);
     if(global.OneToneVoiceFeedbackRail) global.OneToneVoiceFeedbackRail.render(vm);
+    if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.render();
   }
 
   if(global.OneToneVoicePageState&&global.OneToneVoicePageState.registerStepHook){

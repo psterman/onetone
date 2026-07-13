@@ -229,11 +229,14 @@
     const m=resolveScopeMapping(vm);
     strip.hidden=false;
     if(appRules.renderContextChipsHtml){
+      var ctxId=appRules.getActiveAppContextId?appRules.getActiveAppContextId():'';
+      if(!ctxId&&m) ctxId=String(m.appTargetId||'').trim();
       chips.innerHTML=appRules.renderContextChipsHtml(m,{
         variant:'chip',
         chipAttr:'data-voice-scope-app',
         noneAttr:'data-voice-scope-none',
-        includeNone:true
+        includeNone:true,
+        contextId:ctxId
       });
       if(appRules.scheduleHydrateCustomRuleIcons) appRules.scheduleHydrateCustomRuleIcons();
       return;
@@ -259,7 +262,7 @@
     saveHabitBtn.hidden=vm.loading||vm.mode==='off';
     saveHabitBtn.disabled=vm.loading||vm.mode==='off';
     var persist=global.OneToneVoiceSchemePersist;
-    var isUpdate=!!(persist&&persist.resolveVoiceEditMapping&&persist.resolveVoiceEditMapping());
+    var isUpdate=!!(persist&&persist.resolveSaveTargetMapping&&persist.resolveSaveTargetMapping());
     saveHabitBtn.textContent=t(isUpdate?'voiceSchemeSaveUpdate':'voiceStatusSaveHabit');
   }
 

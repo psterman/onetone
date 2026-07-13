@@ -32,7 +32,7 @@
         })
       };
     }
-    if(panel==='habits') return {redirectHabits:true};
+    if(panel==='scenes') panel='habits';
     return {panel:panel,opts:opts};
   }
 
@@ -152,9 +152,9 @@
 
     if(focus==='mappings'){
 
-      setSettingsPanel('scenes');
+      setSettingsPanel('habits');
 
-      scrollSettingsToTarget(['sceneModeList','settingsPanelScenes']);
+      scrollSettingsToTarget(['habitHubList','settingsPanelHabits']);
 
       return;
 
@@ -334,7 +334,12 @@
 
   function refreshHabitsPanel(){
 
-    if((ui.habitView||'hub')==='hub'&&global.OneToneHabitHub) global.OneToneHabitHub.render();
+    var view=ui.habitView||'hub';
+    if(view==='wizard'&&global.OneToneHabitScenarioWizard){
+      global.OneToneHabitScenarioWizard.render();
+    }else if(view==='hub'&&global.OneToneHabitHub){
+      global.OneToneHabitHub.render();
+    }
 
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
 
@@ -433,12 +438,38 @@
   }
 
   function navHighlightPanel(panel){
-    return panel==='habits'?'scenes':panel;
+    if(panel==='scenes') return 'habits';
+    return panel;
   }
 
   function openScenarioDetail(id,opts){
     opts=opts||{};
     if(id) state().selectedMappingId=id;
+    var m=global.OneToneMappingCore&&global.OneToneMappingCore.byId
+      ?global.OneToneMappingCore.byId(id||state().selectedMappingId)
+      :null;
+    var isApp=m&&global.OneToneHabitHub&&global.OneToneHabitHub.isAppScope
+      ?global.OneToneHabitHub.isAppScope(m)
+      :!!(m&&String(m.appTargetId||'').trim());
+    if(isApp&&global.OneToneHabitScenarioWizard){
+      global.OneToneHabitScenarioWizard.openEdit(id||state().selectedMappingId,opts);
+      return;
+    }
+    if(m){
+      var api=global.OneToneHabitOverrideDiff;
+      var isBaseline=api&&api.isGlobalBaselineMapping
+        &&api.isGlobalBaselineMapping(m,state().config,global.OneToneMappingCore);
+      if(isBaseline&&global.OneToneHabitScenarioContextBanner){
+        var voice=opts.layer==='advanced'||opts.voiceTab;
+        if(voice) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+        else global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+        return;
+      }
+      setSettingsPanel('habits');
+      if(global.OneToneHabitHub) global.OneToneHabitHub.showHub();
+      if(global.OneToneAppToast) global.OneToneAppToast.show(global.OneToneI18n.t('habitHubLegacyGlobalHint'),'scheme');
+      return;
+    }
     var hooks=global.__vp_bootstrap_hooks__||{};
     if(hooks.syncEditorFromSelection) hooks.syncEditorFromSelection();
     setSettingsPanel('keys');
@@ -449,8 +480,18 @@
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
   }
 
+  function openHabitWizard(opts){
+    opts=opts||{};
+    if(global.OneToneHabitScenarioWizard){
+      if(opts.editId) global.OneToneHabitScenarioWizard.openEdit(opts.editId,opts);
+      else global.OneToneHabitScenarioWizard.openNew();
+    }else{
+      openScenarioHub();
+    }
+  }
+
   function openScenarioHub(){
-    setSettingsPanel('scenes');
+    setSettingsPanel('habits');
   }
 
   function scrollToVoiceAction(navId){
@@ -491,10 +532,6 @@
   function setSettingsPanel(panel,opts){
     opts=opts||{};
     var resolved=resolveSettingsPanelRequest(panel,opts);
-    if(resolved.redirectHabits){
-      setSettingsPanel('scenes');
-      return;
-    }
     panel=normalizePanel(resolved.panel);
     opts=resolved.opts||{};
 
@@ -549,6 +586,13 @@
     }else if(panel==='basic'){
 
       if(global.OneToneBasicPanelUi&&global.OneToneBasicPanelUi.render) global.OneToneBasicPanelUi.render();
+
+    }else if(panel==='habits'){
+
+      var habitView=ui.habitView||'hub';
+      if(habitView!=='wizard') ui.habitView='hub';
+
+      refreshHabitsPanel();
 
     }else if(panel==='scenes'){
 
@@ -719,6 +763,14 @@
       syncWorkbenchNav(ui.settingsPanel,navOpts);
     }
 
+    if(opts.habitWizard&&global.OneToneHabitScenarioWizard){
+      requestAnimationFrame(function(){
+        if(!ui.drawerOpen) return;
+        if(opts.editId) global.OneToneHabitScenarioWizard.openEdit(opts.editId,opts);
+        else global.OneToneHabitScenarioWizard.openNew();
+      });
+    }
+
     setTimeout(function(){
 
       if(!ui.drawerOpen) return;
@@ -797,7 +849,7 @@
 
     setPanel:setSettingsPanel,syncChrome:syncSettingsChrome,
 
-    openScenarioDetail:openScenarioDetail,openScenarioHub:openScenarioHub,scrollToVoiceAction:scrollToVoiceAction,
+    openScenarioDetail:openScenarioDetail,openScenarioHub:openScenarioHub,openHabitWizard:openHabitWizard,scrollToVoiceAction:scrollToVoiceAction,
 
     syncHeaderBtn:syncHeaderSettingsBtn,
 

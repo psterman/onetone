@@ -100,7 +100,15 @@ pub fn voice_runtime_fingerprint(
     Some(VoiceRuntimeFingerprint {
         engine: effective_desired_engine(cfg, mapping),
         wake_phrases: normalize_phrase_list(&effective.wake_phrases),
-        summon_phrases: normalize_phrase_list(&effective.summon_phrases),
+        summon_phrases: {
+            let mut phrases = normalize_phrase_list(&effective.summon_phrases);
+            for p in global_summon_phrases(cfg) {
+                if !phrases.iter().any(|existing| existing == &p) {
+                    phrases.push(p);
+                }
+            }
+            phrases
+        },
         end_phrases: normalize_end_phrases(&effective.end_phrases),
         cancel_phrases: normalize_end_phrases(&effective.cancel_phrases),
         vosk_model_path: model_path,
@@ -133,16 +141,113 @@ pub fn resolve_idle_effective_scene(cfg: &VoiceConfig) -> Option<EffectiveSceneC
     resolve_effective_scene(cfg, &idle_scene_ctx(cfg))
 }
 
+/// One summon phrase registered on a saved habit (mapping), usable from anywhere while voice is idle.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalSummonMatch {
+    pub phrase: String,
+    pub mapping_id: String,
+    pub target: String,
+}
+
+/// All summon phrases across every saved mapping: `(phrase, mapping_id, target_ref)`.
+pub fn global_summon_entries_for_cfg(cfg: &VoiceConfig) -> Vec<(String, String, String)> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for mapping in &cfg.mappings {
+        let preset = effective_vosk_model_preset(cfg, mapping);
+        for (phrase, target) in crate::config::summon_entries_for_mapping(mapping, &preset) {
+            if seen.insert(phrase.clone()) {
+                out.push((phrase, mapping.id.clone(), target));
+            }
+        }
+    }
+    out
+}
+
+pub fn global_summon_phrases(cfg: &VoiceConfig) -> Vec<String> {
+    global_summon_entries_for_cfg(cfg)
+        .into_iter()
+        .map(|(phrase, _, _)| phrase)
+        .collect()
+}
+
+/// Resolve a heard summon phrase to the owning habit + app target (prefers active scene on collision).
+pub fn resolve_global_summon_for_phrase(
+    cfg: &VoiceConfig,
+    matched_phrase: &str,
+) -> Option<GlobalSummonMatch> {
+    let entries = global_summon_entries_for_cfg(cfg);
+    let active = cfg.active_scene_id.trim();
+    for (phrase, mapping_id, target) in &entries {
+        if active == mapping_id.as_str()
+            && crate::config::phrases_fuzzy_match(matched_phrase, phrase)
+        {
+            return Some(GlobalSummonMatch {
+                phrase: phrase.clone(),
+                mapping_id: mapping_id.clone(),
+                target: target.clone(),
+            });
+        }
+    }
+    for (phrase, mapping_id, target) in entries {
+        if crate::config::phrases_fuzzy_match(matched_phrase, &phrase) {
+            return Some(GlobalSummonMatch {
+                phrase,
+                mapping_id,
+                target,
+            });
+        }
+    }
+    None
+}
+
 pub fn idle_voice_fingerprint(cfg: &VoiceConfig) -> Option<VoiceRuntimeFingerprint> {
     voice_runtime_fingerprint(cfg, &idle_scene_ctx(cfg))
 }
 
 /// Wake + end phrases for Vosk grammar from the active scene effective config.
 pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
+    use std::collections::HashSet;
+
+    let global_summon = global_summon_phrases(cfg);
     let Some(effective) = resolve_idle_effective_scene(cfg) else {
-        return Vec::new();
+        return global_summon;
     };
-    vosk_grammar_from_effective(&effective, cfg.voice_end.enabled)
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    let mut push = |p: &str| {
+        let t = p.trim();
+        if t.is_empty() {
+            return;
+        }
+        if seen.insert(t.to_string()) {
+            out.push(t.to_string());
+        }
+    };
+    for p in &effective.wake_phrases {
+        push(p);
+    }
+    for p in &effective.summon_phrases {
+        push(p);
+    }
+    for p in &global_summon {
+        push(p);
+    }
+    if cfg.voice_end.enabled {
+        for p in &effective.end_phrases.zh {
+            push(p);
+        }
+        for p in &effective.end_phrases.en {
+            push(p);
+        }
+        for p in &effective.cancel_phrases.zh {
+            push(p);
+        }
+        for p in &effective.cancel_phrases.en {
+            push(p);
+        }
+    }
+    out
 }
 
 pub fn vosk_grammar_from_effective(
@@ -227,10 +332,19 @@ pub fn kws_keyword_phrase_tiers(
 }
 
 pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKeywordPlan {
-    let Some(effective) = resolve_idle_effective_scene(cfg) else {
+    let global_summon = global_summon_phrases(cfg);
+    let tiers = if let Some(effective) = resolve_idle_effective_scene(cfg) {
+        let mut tiers = kws_keyword_phrase_tiers(&effective, cfg.voice_end.enabled);
+        if !global_summon.is_empty() {
+            // Global summon sits right after wake so habits work from anywhere.
+            tiers.insert(1, global_summon);
+        }
+        tiers
+    } else if global_summon.is_empty() {
         return KwsKeywordPlan::default();
+    } else {
+        vec![global_summon]
     };
-    let tiers = kws_keyword_phrase_tiers(&effective, cfg.voice_end.enabled);
     let mut seen = std::collections::HashSet::new();
     let mut candidates = Vec::new();
     for tier in tiers {
@@ -855,6 +969,41 @@ mod tests {
         assert!(fp_after
             .summon_phrases
             .contains(&"unique summon xyz".to_string()));
+    }
+
+    #[test]
+    fn global_summon_includes_inactive_mapping() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let active = cfg.active_scene_id.clone();
+        let other_id = add_mapping(&mut cfg, "m-feishu", 99, false);
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == other_id) {
+            m.group = "飞书".into();
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: "rule-feishu".into(),
+                app_id: "custom".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: Some("飞书旺".into()),
+                display_name: Some("飞书".into()),
+                app_match: Some(crate::config::AppMatchSpec {
+                    exe_names: vec!["Feishu.exe".into()],
+                    path_contains: None,
+                    title_contains: None,
+                    full_path: None,
+                }),
+            }];
+        }
+
+        let phrases = global_summon_phrases(&cfg);
+        assert!(phrases.iter().any(|p| p == "飞书旺"));
+        let resolved = resolve_global_summon_for_phrase(&cfg, "飞书旺").unwrap();
+        assert_eq!(resolved.mapping_id, other_id);
+        assert_ne!(resolved.mapping_id, active);
+        assert!(crate::voice_end_runtime::idle_start_phrases(&cfg)
+            .iter()
+            .any(|p| p == "飞书旺"));
     }
 
     #[test]

@@ -212,6 +212,22 @@ fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option
     })
 }
 
+#[cfg(windows)]
+pub fn identity_for_window(hwnd: winapi::shared::windef::HWND) -> Option<AppIdentity> {
+    if hwnd.is_null() {
+        return None;
+    }
+    use winapi::um::winuser::GetWindowThreadProcessId;
+    let mut pid = 0u32;
+    unsafe {
+        GetWindowThreadProcessId(hwnd, &mut pid);
+    }
+    if pid == 0 {
+        return None;
+    }
+    identity_for_pid_hwnd(pid, hwnd)
+}
+
 pub fn foreground_app_identity() -> Option<AppIdentity> {
     #[cfg(windows)]
     {

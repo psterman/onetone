@@ -61,6 +61,46 @@
     return voiceEditSchemeId();
   }
 
+  function resolveSaveTargetId(opts){
+    opts=opts||{};
+    if(opts.forceCreate) return null;
+    var id=voiceEditSchemeId();
+    if(!id){
+      id=String(state().selectedMappingId||'').trim();
+    }
+    return id||null;
+  }
+
+  function resolveSaveTargetMapping(opts){
+    var id=resolveSaveTargetId(opts);
+    if(!id||!core()||!core().byId) return null;
+    return core().byId(id)||null;
+  }
+
+  function normalizeOverrideForSave(rawOv,cfg){
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.diffOverrideFromGlobal){
+      return global.OneToneVoiceSchemeContext.diffOverrideFromGlobal(rawOv,cfg);
+    }
+    if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.normalizeVoiceOverrideForSave){
+      return global.OneToneHabitOverrideDiff.normalizeVoiceOverrideForSave(rawOv,cfg);
+    }
+    return cloneVoiceOverride(rawOv);
+  }
+
+  function applySparseVoiceOverride(mapping,sparse){
+    if(!mapping) return;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isEmptyOverride&&diff.isEmptyOverride(sparse)){
+      mapping.voiceOverride=null;
+      return;
+    }
+    if(!sparse||!Object.keys(sparse).length){
+      mapping.voiceOverride=null;
+      return;
+    }
+    mapping.voiceOverride=cloneVoiceOverride(sparse);
+  }
+
   function createVoiceDraft(opts){
     opts=opts||{};
     if(!core()) return null;
@@ -89,12 +129,13 @@
   }
 
   function persistConfig(){
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
+      return global.OneToneConfigPersist.saveAsync();
+    }
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
       global.OneToneConfigPersist.save();
-      return;
     }
-    var hooks=global.__vp_mapping_list_ui_hooks__||{};
-    if(hooks.save) hooks.save();
+    return Promise.resolve(false);
   }
 
   function refreshVoiceSchemeSurfaces(){
@@ -135,11 +176,31 @@
     else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg);
   }
 
-  function createVoiceMappingShell(name,ov){
+  function cloneAppBehaviorRules(rules){
+    return JSON.parse(JSON.stringify(Array.isArray(rules)?rules:[]));
+  }
+
+  function snapshotAppScope(){
+    var m=resolveMappingForAppScope();
+    if(!m) return {appTargetId:'',appBehaviorRules:[]};
+    return {
+      appTargetId:String(m.appTargetId||'').trim(),
+      appBehaviorRules:cloneAppBehaviorRules(m.appBehaviorRules)
+    };
+  }
+
+  function applyAppScopeToMapping(m,scope){
+    if(!m||!scope) return;
+    m.appTargetId=String(scope.appTargetId||'').trim();
+    m.appBehaviorRules=cloneAppBehaviorRules(scope.appBehaviorRules);
+  }
+
+  function createVoiceMappingShell(name,ov,scope){
     if(!core()) return null;
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config;
     var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    scope=scope||{appTargetId:'',appBehaviorRules:[]};
     var m={
       id:id,
       label:'',
@@ -156,8 +217,8 @@
       switchKeys:[],
       nativeKeyRestore:false,
       imePresetId:'',
-      appTargetId:'',
-      appBehaviorRules:[],
+      appTargetId:String(scope.appTargetId||'').trim(),
+      appBehaviorRules:cloneAppBehaviorRules(scope.appBehaviorRules),
       voiceOverride:cloneVoiceOverride(ov),
       updatedAt:Date.now(),
       lastUsedAt:0,
@@ -181,21 +242,22 @@
     return Promise.resolve(String(prompted||'').trim()||defaultName);
   }
 
-  function commitVoiceSchemeSave(opts, ov, defaultName){
+  function commitVoiceSchemeSave(opts, ov, defaultName, scope){
     return resolveVoiceSchemeName(opts, defaultName).then(function(name){
       if(name===null) return null;
-      var m=createVoiceMappingShell(name,ov);
+      var m=createVoiceMappingShell(name,ov,scope);
       if(!m) return null;
       ui().voiceEditSchemeId=m.id;
       state().selectedMappingId=m.id;
       mirrorSavedScheme(m);
       setTimeout(function(){
-        persistConfig();
-        refreshVoiceSchemeSurfaces();
-        showSavedToast(false);
-        if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
-          global.OneToneVoiceSchemeContext.activateEditingScheme();
-        }
+        persistConfig().then(function(){
+          refreshVoiceSchemeSurfaces();
+          showSavedToast(false);
+          if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+            global.OneToneVoiceSchemeContext.activateEditingScheme();
+          }
+        });
       },0);
       return m;
     });
@@ -206,42 +268,104 @@
     if(!core()) return Promise.resolve(null);
     try{
       core().ensureConfig&&core().ensureConfig();
-      var ov=snapshotVoiceOverride();
-      var targetId=opts.forceCreate?null:inferVoiceEditTargetId();
-      var existing=targetId&&core().byId?core().byId(targetId):null;
+      var cfg=state().config||{};
+      var rawOv=snapshotVoiceOverride();
+      var ov=normalizeOverrideForSave(rawOv,cfg);
+      var scope=snapshotAppScope();
+      var existing=resolveSaveTargetMapping(opts);
 
-      if(existing&&isVoiceOnly(existing)&&!opts.forceCreate){
-        existing.voiceOverride=cloneVoiceOverride(ov);
+      if(existing&&!opts.forceCreate){
+        applySparseVoiceOverride(existing,ov);
+        applyAppScopeToMapping(existing,scope);
         touchUpdated(existing);
         ui().voiceEditSchemeId=existing.id;
         state().selectedMappingId=existing.id;
-        persistConfig();
-        refreshVoiceSchemeSurfaces();
-        showSavedToast(true);
-        return Promise.resolve(existing);
+        return persistConfig().then(function(){
+          refreshVoiceSchemeSurfaces();
+          showSavedToast(true);
+          return existing;
+        });
       }
 
-      var defaultName=defaultVoiceHabitName(ov);
-      return commitVoiceSchemeSave(opts, ov, defaultName);
+      if(!opts.forceCreate){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceSchemeSaveNoTarget'),'warn');
+        return Promise.resolve(null);
+      }
+
+      var defaultName=defaultVoiceHabitName(rawOv);
+      return commitVoiceSchemeSave(opts, ov, defaultName, scope);
     }catch(err){
       console.error('saveVoiceScheme',err);
       return Promise.resolve(null);
     }
   }
 
-  function resolveMappingForAppScope(){
+  function resolveVoiceScopeMapping(){
+    var vmApi=global.OneToneVoiceSettingsViewModel;
+    var vm=vmApi&&vmApi.build?vmApi.build():null;
+    if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.resolveScopeMapping){
+      var scoped=global.OneToneVoicePageHeaderRender.resolveScopeMapping(vm||{});
+      if(scoped) return scoped;
+    }
     var m=resolveVoiceEditMapping();
     if(m) return m;
     if(!core()) return null;
     var cfg=state().config||{};
+    var selId=String(state().selectedMappingId||'').trim();
+    if(selId&&core().byId){
+      var sel=core().byId(selId);
+      if(sel) return sel;
+    }
     var activeId=String(cfg.activeSceneId||'').trim();
-    return activeId&&core().byId?core().byId(activeId):null;
+    if(activeId&&core().byId) return core().byId(activeId)||null;
+    var mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    return mappings.length?mappings[0]:null;
+  }
+
+  function ensureVoiceScopeMapping(opts){
+    opts=opts||{};
+    var m=resolveVoiceScopeMapping();
+    if(m){
+      if(!m.voiceOverride||typeof m.voiceOverride!=='object') m.voiceOverride={};
+      return m;
+    }
+    if(opts.allowDraft) return createVoiceDraft(opts);
+    return null;
+  }
+
+  function resolveMappingForAppScope(){
+    return resolveVoiceScopeMapping();
   }
 
   function setVoiceAppTarget(appId){
-    var m=resolveMappingForAppScope();
+    return applyVoiceAppScope({appId:appId||''});
+  }
+
+  function applyVoiceAppScope(opts){
+    opts=opts||{};
+    var m=ensureVoiceScopeMapping({allowDraft:false});
     if(!m) return false;
-    m.appTargetId=appId?String(appId).trim():'';
+    var rules=global.OneToneAppBehaviorRules;
+    var presets=global.OneToneAppVoicePresets;
+    if(opts.ruleId){
+      var ruleId=String(opts.ruleId||'').trim();
+      if(!ruleId) return false;
+      if(rules&&rules.setActiveRuleContext) rules.setActiveRuleContext(ruleId);
+      var rule=rules&&rules.ruleById?rules.ruleById(m,ruleId):null;
+      if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
+    }else{
+      var appId=opts.appId===undefined?'':String(opts.appId||'').trim();
+      m.appTargetId=appId;
+      if(appId){
+        if(rules&&rules.ensurePrimaryAppRule) rules.ensurePrimaryAppRule(m,appId);
+        if(rules&&rules.setActiveAppContextId) rules.setActiveAppContextId(appId);
+        if(presets&&presets.syncAppVoicePresets) presets.syncAppVoicePresets(m,appId);
+      }else if(rules&&rules.setActiveAppContextId){
+        rules.setActiveAppContextId('');
+      }
+    }
+    if(rules&&rules.ensureRulesBeforeSave) rules.ensureRulesBeforeSave(m);
+    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
     touchUpdated(m);
     persistConfig();
     refreshVoiceSchemeSurfaces();
@@ -252,12 +376,21 @@
     snapshotVoiceOverride:snapshotVoiceOverride,
     voiceEditSchemeId:voiceEditSchemeId,
     inferVoiceEditTargetId:inferVoiceEditTargetId,
+    resolveSaveTargetId:resolveSaveTargetId,
+    resolveSaveTargetMapping:resolveSaveTargetMapping,
     resolveVoiceEditMapping:resolveVoiceEditMapping,
     isVoiceOnly:isVoiceOnly,
     saveVoiceScheme:saveVoiceScheme,
+    saveVoiceSchemeAsNew:function(opts){
+      return saveVoiceScheme(Object.assign({},opts||{},{forceCreate:true}));
+    },
     createVoiceDraft:createVoiceDraft,
     refreshVoiceSchemeSurfaces:refreshVoiceSchemeSurfaces,
     setVoiceAppTarget:setVoiceAppTarget,
-    resolveMappingForAppScope:resolveMappingForAppScope
+    applyVoiceAppScope:applyVoiceAppScope,
+    snapshotAppScope:snapshotAppScope,
+    resolveMappingForAppScope:resolveMappingForAppScope,
+    resolveVoiceScopeMapping:resolveVoiceScopeMapping,
+    ensureVoiceScopeMapping:ensureVoiceScopeMapping
   };
 })((typeof window!=='undefined')?window:globalThis);

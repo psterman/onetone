@@ -133,6 +133,7 @@
       openFloatMenu:deps.openFloatMenu,
       escHtml:tx.escHtml,
       friendlyKeyName:deps.friendlyKeyName,
+      normalizeTriggerKey:deps.normalizeTriggerKey,
       pushLog:deps.pushLog,
       renderDebugPanel:deps.renderDebugPanel,
       onboardIsOpen:deps.onboardIsOpen,

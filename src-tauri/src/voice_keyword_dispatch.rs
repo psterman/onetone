@@ -71,9 +71,14 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         {
             return VoiceKeywordKind::End;
         }
+        for p in &crate::scene_config::global_summon_phrases(cfg) {
+            if crate::config::phrases_fuzzy_match(text, p) {
+                return VoiceKeywordKind::Wake;
+            }
+        }
         for p in &effective.summon_phrases {
             if crate::config::phrases_fuzzy_match(text, p) {
-                return VoiceKeywordKind::Summon;
+                return VoiceKeywordKind::Wake;
             }
         }
     } else {
@@ -86,6 +91,11 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         let end_en = &cfg.voice_end.phrases_en;
         if matches_end_phrase(text, end_zh, end_en).is_some() {
             return VoiceKeywordKind::End;
+        }
+        for p in &crate::scene_config::global_summon_phrases(cfg) {
+            if crate::config::phrases_fuzzy_match(text, p) {
+                return VoiceKeywordKind::Wake;
+            }
         }
     }
 

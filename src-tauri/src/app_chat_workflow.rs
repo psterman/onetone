@@ -620,3 +620,194 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
     }
     score
 }
+
+#[cfg(not(windows))]
+pub fn run_for_custom_rule(
+    _state: &Arc<AppState>,
+    _window: &WebviewWindow,
+    _mapping_id: &str,
+    _rule: &crate::config::AppBehaviorRule,
+    _duration_ms: u32,
+) -> Result<String, (String, AppChatWorkflowError)> {
+    Err(("custom".to_string(), AppChatWorkflowError::NotFound))
+}
+
+#[cfg(windows)]
+pub fn run_for_custom_rule(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    mapping_id: &str,
+    rule: &crate::config::AppBehaviorRule,
+    duration_ms: u32,
+) -> Result<String, (String, AppChatWorkflowError)> {
+    if !crate::send_guard::wait_until_inactive(800) {
+        return Err(("custom".to_string(), AppChatWorkflowError::VoiceFailed));
+    }
+
+    let app = window.app_handle();
+    let _hide_guard = MainWindowHideGuard::maybe_hide(&app, 200);
+
+    let (hwnd, freshly_launched) = ensure_custom_rule_window(rule)
+        .ok_or(("custom".to_string(), AppChatWorkflowError::NotFound))?;
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(1200));
+    }
+
+    if !crate::keyboard::focus_window(hwnd) {
+        return Err(("custom".to_string(), AppChatWorkflowError::FocusFailed));
+    }
+    std::thread::sleep(Duration::from_millis(120));
+
+    activate_voice_for_custom(state, &app, hwnd, mapping_id, duration_ms)?;
+
+    let label = rule
+        .display_name
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or("custom")
+        .to_string();
+    Ok(format!("{label}_summon"))
+}
+
+#[cfg(windows)]
+fn activate_voice_for_custom(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    hwnd: winapi::shared::windef::HWND,
+    mapping_id: &str,
+    duration_ms: u32,
+) -> Result<(), (String, AppChatWorkflowError)> {
+    let _ = crate::keyboard::focus_window(hwnd);
+    std::thread::sleep(Duration::from_millis(70));
+
+    let voice_key = {
+        let cfg = state.cfg.lock();
+        crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
+    }
+    .ok_or(("custom".to_string(), AppChatWorkflowError::VoiceFailed))?;
+
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        crate::voice_end_runtime::handle_trigger_press_while_dictating(state, app, mapping_id);
+        return Ok(());
+    }
+
+    if !crate::keyboard::send_chord(&voice_key, duration_ms) {
+        return Err(("custom".to_string(), AppChatWorkflowError::VoiceFailed));
+    }
+    crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
+
+    std::thread::sleep(Duration::from_millis(180));
+
+    if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {
+        crate::voice_end_runtime::enter_dictating(state, Some(app), mapping_id, "custom summon");
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn ensure_custom_rule_window(
+    rule: &crate::config::AppBehaviorRule,
+) -> Option<(winapi::shared::windef::HWND, bool)> {
+    if let Some(hwnd) = find_window_for_rule(rule) {
+        return Some((hwnd, false));
+    }
+    let spec = rule.app_match.as_ref()?;
+    let path = spec
+        .full_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())?;
+    let path = std::path::Path::new(path);
+    if !path.is_file() || !launch_gui_exe(path) {
+        return None;
+    }
+    for _ in 0..40 {
+        std::thread::sleep(Duration::from_millis(250));
+        if let Some(hwnd) = find_window_for_rule(rule) {
+            return Some((hwnd, true));
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn find_window_for_rule(
+    rule: &crate::config::AppBehaviorRule,
+) -> Option<winapi::shared::windef::HWND> {
+    use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
+    use winapi::shared::windef::{HWND, RECT};
+    use winapi::um::winuser::{
+        EnumWindows, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowRect,
+        GetWindowThreadProcessId, IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
+    };
+
+    struct EnumCtx<'a> {
+        rule: &'a crate::config::AppBehaviorRule,
+        candidates: Vec<Candidate>,
+    }
+
+    struct Candidate {
+        hwnd: HWND,
+        area: i64,
+        is_foreground: bool,
+    }
+
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let ctx = &mut *(lparam as *mut EnumCtx);
+        if IsWindowVisible(hwnd) == 0 {
+            return TRUE;
+        }
+        if !GetWindow(hwnd, GW_OWNER).is_null() {
+            return TRUE;
+        }
+        if GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW as i32 != 0 {
+            return TRUE;
+        }
+        let Some(identity) = crate::app_identity::identity_for_window(hwnd) else {
+            return TRUE;
+        };
+        if !crate::config::rule_matches_identity(ctx.rule, &identity) {
+            return TRUE;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetWindowRect(hwnd, &mut rect) == 0 {
+            return TRUE;
+        }
+        let area = (rect.right - rect.left) as i64 * (rect.bottom - rect.top) as i64;
+        if area <= 0 {
+            return TRUE;
+        }
+        let fg = GetForegroundWindow();
+        ctx.candidates.push(Candidate {
+            hwnd,
+            area,
+            is_foreground: fg == hwnd,
+        });
+        TRUE
+    }
+
+    let mut ctx = EnumCtx {
+        rule,
+        candidates: Vec::new(),
+    };
+    unsafe {
+        EnumWindows(Some(enum_proc), &mut ctx as *mut EnumCtx as LPARAM);
+    }
+    ctx.candidates
+        .into_iter()
+        .max_by_key(|c| (c.is_foreground, c.area))
+        .map(|c| c.hwnd)
+}
+
+#[cfg(not(windows))]
+fn find_window_for_rule(
+    _rule: &crate::config::AppBehaviorRule,
+) -> Option<isize> {
+    None
+}

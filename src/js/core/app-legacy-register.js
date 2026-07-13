@@ -531,6 +531,7 @@
               restoreFromTrash:d.restoreFromTrash,
               openFloatMenu:d.openFloatMenu,
               friendlyKeyName:d.friendlyKeyName,
+              normalizeTriggerKey:d.normalizeTriggerKey,
               pushLog:d.pushLog,
               renderDebugPanel:d.renderDebugPanel,
               onboardIsOpen:d.onboardIsOpen,

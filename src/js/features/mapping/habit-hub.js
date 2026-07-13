@@ -85,9 +85,79 @@
     return appId||'—';
   }
 
+  function appPreset(appId){
+    var atp=global.OneToneAppTargetPresets;
+    if(!atp||!atp.presetById) return null;
+    return atp.presetById(appId);
+  }
+
+  function primaryAppId(m){
+    var direct=String(m&&m.appTargetId||'').trim();
+    if(direct) return direct;
+    var ids=configuredAppIds(m);
+    if(ids&&ids.length) return String(ids[0]||'').trim();
+    return '';
+  }
+
+  function isAppScenario(m){
+    if(diff()&&diff().isAppScenarioMapping) return diff().isAppScenarioMapping(m);
+    return isAppScope(m)||hasAppParts(m);
+  }
+
+  function diff(){
+    return global.OneToneHabitOverrideDiff;
+  }
+
+  function globalBaselineMapping(){
+    var cfg=state().config||{};
+    return diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
+  }
+
+  function isLegacyUnclassified(m,baselineId){
+    if(!m||!baselineId) return false;
+    if(isAppScenario(m)) return false;
+    return m.id!==baselineId;
+  }
+
+  function isAppScope(m){
+    return isAppScenario(m);
+  }
+
+  function isGlobalScope(m){
+    return !isAppScope(m);
+  }
+
+  function renderAppIconBadge(appId, extraClass){
+    appId=String(appId||'').trim();
+    if(!appId) return '';
+    var preset=appPreset(appId);
+    var name=appDisplayName(appId);
+    var cls='habit-app-badge'+(extraClass?' '+extraClass:'');
+    if(preset&&preset.icon){
+      return '<span class="'+cls+' has-icon" title="'+esc(name)+'">'
+        +'<img class="habit-app-badge-icon" src="'+esc(preset.icon)+'" alt="" decoding="async" />'
+        +'</span>';
+    }
+    var fallback=name.slice(0,2).toUpperCase();
+    return '<span class="'+cls+'" title="'+esc(name)+'">'+esc(fallback)+'</span>';
+  }
+
+  function primaryActivationPhrase(m,cfg){
+    if(!m) return '';
+    var sc=global.OneToneSceneConfig;
+    if(!sc) return '';
+    var preset=sc.effectiveVoskModelPreset?sc.effectiveVoskModelPreset(cfg,m):'cn-light';
+    var phrases=sc.appWakePhrasesForMapping
+      ?sc.appWakePhrasesForMapping(m,{preset:preset})
+      : (sc.summonPhrasesForMapping?sc.summonPhrasesForMapping(m,{preset:preset}):[]);
+    return Array.isArray(phrases)&&phrases.length?String(phrases[0]||'').trim():'';
+  }
+
   function habitDescription(m,type,cfg,profile){
+    var activation=primaryActivationPhrase(m,cfg);
     if(type==='app'){
       var apps=configuredAppIds(m).map(appDisplayName);
+      if(apps.length&&activation) return t('habitHubDescAppPrefix')+' · '+apps.join(' / ')+' · '+t('habitHubDescWakePhrase')+' · '+activation;
       if(apps.length) return t('habitHubDescAppPrefix')+' · '+apps.join(' / ');
       return t('habitHubDescApp');
     }
@@ -96,6 +166,7 @@
       var end=profile&&profile.effectiveEndPhrases&&profile.effectiveEndPhrases.zh&&profile.effectiveEndPhrases.zh[0];
       var fin=flow&&flow.finishBehaviorTextSettings?flow.finishBehaviorTextSettings(m).text:'';
       var parts=[];
+      if(activation) parts.push(t('habitHubDescWakePhrase')+' · '+activation);
       if(end) parts.push(t('habitHubDescEndPhrase')+' · '+end);
       if(fin) parts.push(fin);
       return parts.length?parts.join(' + '):t('habitHubDescVoice');
@@ -105,8 +176,10 @@
       if(hasKeyParts(m)) bits.push(t('habitHubDescKeysShort'));
       if(hasAppParts(m)) bits.push(t('habitHubDescAppShort'));
       if(hasVoiceParts(m,cfg)) bits.push(t('habitHubDescVoiceShort'));
+      if(activation) bits.push(t('habitHubDescWakePhrase')+' · '+activation);
       return bits.join(' + ');
     }
+    if(activation) return t('habitHubDescKeys')+' · '+t('habitHubDescWakePhrase')+' · '+activation;
     return t('habitHubDescKeys');
   }
 
@@ -149,7 +222,7 @@
   }
 
   function filterItems(items){
-    var f=ui().habitHubFilter||'all';
+    var f=normalizeHubFilter();
     if(f==='all') return items;
     if(f==='recent'){
       var week=Date.now()-7*86400000;
@@ -159,9 +232,8 @@
         return (m.lastUsedAt&&m.lastUsedAt>=week)||active;
       });
     }
-    if(f==='keys') return items.filter(function(it){ return it.type==='keys'||it.type==='combo'; });
-    if(f==='voice') return items.filter(function(it){ return it.type==='voice'||it.type==='combo'; });
-    if(f==='app') return items.filter(function(it){ return it.type==='app'||it.type==='combo'; });
+    if(f==='global') return items.filter(function(it){ return isLegacyUnclassified(it.mapping,baselineId()); });
+    if(f==='app') return items.filter(function(it){ return isAppScenario(it.mapping); });
     return items;
   }
 
@@ -209,31 +281,160 @@
     });
   }
 
-  function renderCard(it){
+  function friendlyKey(key){
+    key=String(key||'').trim();
+    if(!key) return '—';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+      return global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n.getLang())||key;
+    }
+    return key;
+  }
+
+  function engineLabel(mode){
+    mode=String(mode||'').trim().toLowerCase();
+    if(mode==='vosk') return 'Vosk';
+    if(mode==='sapi') return t('voiceSummaryEngineSapi');
+    if(mode==='kws') return t('voiceSummaryEngineKws');
+    if(mode==='off'||!mode) return t('habitHubGlobalVoiceOff');
+    return mode;
+  }
+
+  function globalKeysSummaryText(cfg){
+    cfg=cfg||state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var baseline=diff&&diff.getGlobalKeyBaseline?diff.getGlobalKeyBaseline(cfg,core()):null;
+    if(!baseline) return '—';
+    var trig=friendlyKey(baseline.triggerKey);
+    var tgt=friendlyKey(baseline.targetKey);
+    return t('habitHubGlobalKeysSummary').replace('{trigger}',trig).replace('{target}',tgt);
+  }
+
+  function globalVoiceSummaryText(cfg){
+    cfg=cfg||state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var baseline=diff&&diff.getGlobalVoiceBaseline?diff.getGlobalVoiceBaseline(cfg):null;
+    if(!baseline) return t('habitHubGlobalVoiceOff');
+    var eng=engineLabel(baseline.engine||'off');
+    if(eng===t('habitHubGlobalVoiceOff')) return eng;
+    var wakeCount=Array.isArray(baseline.wakePhrases)?baseline.wakePhrases.length:0;
+    return t('habitHubGlobalVoiceSummary').replace('{engine}',eng).replace('{wakeCount}',String(wakeCount));
+  }
+
+  function normalizeHubFilter(){
+    var f=ui().habitHubFilter||'all';
+    if(f==='keys'||f==='voice'){
+      ui().habitHubFilter='all';
+      return 'all';
+    }
+    return f;
+  }
+
+  function renderGlobalDefaultCard(){
+    var cfg=state().config||{};
+    var keysLine=globalKeysSummaryText(cfg);
+    var voiceLine=globalVoiceSummaryText(cfg);
+    var html='<article class="habit-hub-card habit-hub-card--global-default" role="listitem">';
+    html+='<div class="habit-hub-card-open habit-hub-card-open--static">';
+    html+='<span class="habit-hub-card-icon habit-hub-card-icon--combo" aria-hidden="true">'
+      +'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>'
+      +'</span>';
+    html+='<span class="habit-hub-card-body">';
+    html+='<span class="habit-hub-card-title-row">';
+    html+='<span class="habit-hub-card-name">'+esc(t('habitHubGlobalDefaultTitle'))+'</span>';
+    html+='<span class="habit-hub-card-type">'+esc(t('habitHubFilterGlobal'))+'</span>';
+    html+='</span>';
+    html+='<span class="habit-hub-card-desc">'+esc(t('habitHubGlobalDefaultDesc'))+'</span>';
+    html+='<span class="habit-hub-global-summaries">';
+    html+='<span class="habit-hub-global-summary-row"><span class="habit-hub-global-summary-lbl">'+esc(t('habitHubGlobalKeysLbl'))+'</span>'
+      +'<span class="habit-hub-global-summary-val">'+esc(keysLine)+'</span></span>';
+    html+='<span class="habit-hub-global-summary-row"><span class="habit-hub-global-summary-lbl">'+esc(t('habitHubGlobalVoiceLbl'))+'</span>'
+      +'<span class="habit-hub-global-summary-val">'+esc(voiceLine)+'</span></span>';
+    html+='</span>';
+    html+='</span></div>';
+    html+='<div class="habit-hub-card-actions">';
+    html+='<button type="button" class="habit-hub-act is-primary" data-habit-global-keys>'+esc(t('habitHubGlobalOpenKeys'))+'</button>';
+    html+='<button type="button" class="habit-hub-act" data-habit-global-voice>'+esc(t('habitHubGlobalOpenVoice'))+'</button>';
+    html+='</div></article>';
+    return html;
+  }
+
+  function baselineId(){
+    var m=globalBaselineMapping();
+    return m&&m.id?m.id:'';
+  }
+
+  function renderSection(title,innerHtml,opts){
+    opts=opts||{};
+    if(!innerHtml) return '';
+    var extra=opts.extraClass?' habit-hub-section--'+opts.extraClass:'';
+    var html='<section class="habit-hub-section'+extra+'" aria-label="'+esc(title)+'">'
+      +'<h4 class="habit-hub-section-title">'+esc(title)+'</h4>';
+    if(opts.desc) html+='<p class="habit-hub-section-desc">'+esc(opts.desc)+'</p>';
+    html+='<div class="habit-hub-section-list habit-hub-section-list--cards">'+innerHtml+'</div></section>';
+    return html;
+  }
+
+  function splitHubItems(items){
+    var bid=baselineId();
+    var app=[],legacy=[];
+    items.forEach(function(it){
+      if(isAppScenario(it.mapping)) app.push(it);
+      else if(isLegacyUnclassified(it.mapping,bid)) legacy.push(it);
+    });
+    return {app:app,legacy:legacy};
+  }
+
+  function usesScopeGrouping(filter){
+    return filter==='all'||filter==='global'||filter==='app';
+  }
+
+  function renderCard(it,opts){
+    opts=opts||{};
     var m=it.mapping;
     var type=it.type;
     var profile=it.profile;
     var cfg=state().config||{};
     var isActive=profile?profile.isActive:!!(cfg.activeSceneId&&m.id===cfg.activeSceneId);
-    var html='<article class="habit-hub-card habit-hub-card--'+esc(type)+(isActive?' is-active-scene':'')+'" data-habit-card="'+esc(m.id)+'" role="listitem">';
-    html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
+    var appId=primaryAppId(m);
+    var legacy=!!opts.legacy;
+    var horizontal=!!opts.horizontal;
+    var html='<article class="habit-hub-card habit-hub-card--'+esc(type)
+      +(horizontal?' habit-hub-card--horizontal':'')
+      +(legacy?' habit-hub-card--legacy':'')
+      +(isActive?' is-active-scene':'')+'" data-habit-card="'+esc(m.id)+'" role="listitem">';
+    if(legacy){
+      html+='<div class="habit-hub-card-open habit-hub-card-open--static">';
+    }else{
+      html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
+    }
     html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
     html+='<span class="habit-hub-card-body">';
     html+='<span class="habit-hub-card-title-row">';
+    if(appId) html+=renderAppIconBadge(appId,'habit-hub-card-app-badge');
     html+='<span class="habit-hub-card-name">'+esc(habitName(m))+'</span>';
     html+='<span class="habit-hub-card-type">'+esc(typeLabel(type))+'</span>';
     if(isActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
+    var activation=primaryActivationPhrase(m,cfg);
+    if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
     html+='</span>';
     html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
     var meta=habitMetaLine(m,profile);
     if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
-    html+='</span></button>';
+    html+='</span>';
+    if(legacy) html+='</div>'; else html+='</button>';
     html+='<div class="habit-hub-card-actions">';
-    html+='<button type="button" class="habit-hub-act is-primary" data-habit-switch="'+esc(m.id)+'">'+esc(t('habitHubActSwitch'))+'</button>';
+    if(!legacy){
+      html+='<button type="button" class="habit-hub-act is-primary" data-habit-switch="'+esc(m.id)+'">'+esc(t('habitHubActSwitch'))+'</button>';
+    }
+    if(legacy){
+      html+='<button type="button" class="habit-hub-act is-primary" data-habit-migrate="'+esc(m.id)+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
+    }
     html+='<button type="button" class="habit-hub-act" data-habit-dup="'+esc(m.id)+'">'+esc(t('habitHubActCopy'))+'</button>';
     html+='<button type="button" class="habit-hub-act" data-habit-rename="'+esc(m.id)+'">'+esc(t('habitHubActRename'))+'</button>';
     html+='<button type="button" class="habit-hub-act is-danger" data-habit-del="'+esc(m.id)+'">'+esc(t('habitHubActDelete'))+'</button>';
-    html+='<button type="button" class="habit-hub-act-menu" data-habit-menu="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActMore'))+'">⋯</button>';
+    if(!legacy){
+      html+='<button type="button" class="habit-hub-act-menu" data-habit-menu="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActMore'))+'">⋯</button>';
+    }
     html+='</div></article>';
     return html;
   }
@@ -242,12 +443,11 @@
     var map={
       settingsPanelHabitsDesc:'settingsPanelHabitsDesc',
       habitHubAutoHint:'habitHubAutoHint',
-      btnHabitHubNew:'habitHubSaveFromKeys',
+      btnHabitHubNew:'habitHubNew',
       btnHabitHubSaveVoice:'habitHubSaveFromVoice',
       habitHubFilterAll:'habitHubFilterAll',
+      habitHubFilterGlobal:'habitHubFilterGlobal',
       habitHubFilterRecent:'habitHubFilterRecent',
-      habitHubFilterKeys:'habitHubFilterKeys',
-      habitHubFilterVoice:'habitHubFilterVoice',
       habitHubFilterApp:'habitHubFilterApp',
       habitHubSortLabel:'habitHubSortLabel',
       habitHubSortRecent:'habitHubSortRecent',
@@ -255,7 +455,7 @@
       habitHubSortType:'habitHubSortType',
       habitHubEmptyTitle:'habitHubEmptyTitle',
       habitHubEmptyDesc:'habitHubEmptyDesc',
-      btnHabitHubEmptyNew:'habitHubSaveFromKeys',
+      btnHabitHubEmptyNew:'habitHubNew',
       btnHabitHubEmptySaveVoice:'habitHubSaveFromVoice',
       habitHubAsideDiagramLbl:'habitHubAsideDiagramLbl',
       habitHubAsideTitle:'habitHubAsideTitle',
@@ -280,15 +480,14 @@
     document.querySelectorAll('[data-habit-filter]').forEach(function(btn){
       var key='habitHubFilter'+btn.dataset.habitFilter.charAt(0).toUpperCase()+btn.dataset.habitFilter.slice(1);
       if(key==='habitHubFilterAll') btn.textContent=t('habitHubFilterAll');
+      else if(key==='habitHubFilterGlobal') btn.textContent=t('habitHubFilterGlobal');
       else if(key==='habitHubFilterRecent') btn.textContent=t('habitHubFilterRecent');
-      else if(key==='habitHubFilterKeys') btn.textContent=t('habitHubFilterKeys');
-      else if(key==='habitHubFilterVoice') btn.textContent=t('habitHubFilterVoice');
       else if(key==='habitHubFilterApp') btn.textContent=t('habitHubFilterApp');
     });
   }
 
   function renderFilters(){
-    var f=ui().habitHubFilter||'all';
+    var f=normalizeHubFilter();
     document.querySelectorAll('[data-habit-filter]').forEach(function(btn){
       var on=btn.dataset.habitFilter===f;
       btn.classList.toggle('is-active',on);
@@ -303,11 +502,31 @@
     var list=$('habitHubList');
     var empty=$('habitHubEmpty');
     if(!list) return;
+    var filter=normalizeHubFilter();
     var items=sortItems(filterItems(collectHabits()));
-    if(empty) empty.hidden=items.length>0;
-    list.hidden=!items.length;
-    if(!items.length){ list.innerHTML=''; return; }
-    list.innerHTML=items.map(renderCard).join('');
+    var html='';
+    if(filter==='recent'){
+      html=items.map(function(it){ return renderCard(it,{horizontal:isAppScenario(it.mapping)}); }).join('');
+    }else if(usesScopeGrouping(filter)){
+      var split=splitHubItems(items);
+      if(filter==='all'||filter==='global'){
+        html+=renderSection(t('habitHubSectionGlobal'),renderGlobalDefaultCard());
+      }
+      if(filter==='all'||filter==='app'){
+        var appInner=split.app.map(function(it){ return renderCard(it,{horizontal:true}); }).join('');
+        if(appInner) html+=renderSection(t('habitHubSectionApp'),appInner);
+      }
+      if((filter==='all'||filter==='global')&&split.legacy.length){
+        var legacyInner=split.legacy.map(function(it){ return renderCard(it,{legacy:true}); }).join('');
+        html+=renderSection(t('habitHubSectionLegacy'),legacyInner,{desc:t('habitHubSectionLegacyDesc'),extraClass:'legacy'});
+      }
+    }else{
+      html=items.map(function(it){ return renderCard(it,{horizontal:isAppScenario(it.mapping)}); }).join('');
+    }
+    var hasContent=!!html.trim();
+    if(empty) empty.hidden=hasContent;
+    list.hidden=!hasContent;
+    list.innerHTML=hasContent?html:'';
   }
 
   function render(){
@@ -318,38 +537,99 @@
   }
 
   function applyShellVisibility(){
+    if((ui().habitView||'hub')==='wizard'&&global.OneToneHabitScenarioWizard){
+      global.OneToneHabitScenarioWizard.applyShellVisibility();
+      return;
+    }
     var hub=$('habitHubView');
+    var wizard=$('habitWizardView');
     var detail=$('habitDetailView');
     var isHub=(ui().habitView||'hub')==='hub';
-    if(hub) hub.hidden=!isHub;
-    if(detail) detail.hidden=isHub;
+    if(hub){
+      hub.hidden=!isHub;
+      hub.setAttribute('aria-hidden',isHub?'false':'true');
+    }
+    if(wizard){
+      wizard.hidden=true;
+      wizard.setAttribute('aria-hidden','true');
+    }
+    if(detail) detail.hidden=true;
+    var appStrip=$('keysAppBindingStrip');
+    if(appStrip) appStrip.hidden=true;
     var panel=$('settingsPanelHabits');
     if(panel) panel.classList.toggle('is-habit-hub',isHub);
-    if(panel) panel.classList.toggle('is-habit-detail',!isHub);
+    if(panel) panel.classList.toggle('is-habit-wizard',false);
     if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.applyVisibility();
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.applyVisibility();
   }
 
   function showHub(){
+    ui().habitView='hub';
     if(global.OneToneSettingsDrawer){
-      global.OneToneSettingsDrawer.setPanel('scenes');
+      global.OneToneSettingsDrawer.setPanel('habits');
       return;
     }
-    ui().habitView='hub';
     applyShellVisibility();
     render();
   }
 
   function showDetail(id,opts){
     opts=opts||{};
-    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.openScenarioDetail){
-      global.OneToneSettingsDrawer.openScenarioDetail(id||state().selectedMappingId,opts);
+    if(id) state().selectedMappingId=id;
+    var m=core()&&core().byId?core().byId(id||state().selectedMappingId):null;
+    if(m&&isAppScenario(m)&&global.OneToneHabitScenarioWizard){
+      global.OneToneHabitScenarioWizard.openEdit(m.id,opts);
       return;
     }
-    if(id) state().selectedMappingId=id;
+    if(m){
+      var api=diff();
+      var isBaseline=api&&api.isGlobalBaselineMapping&&api.isGlobalBaselineMapping(m,state().config||{},core());
+      if(isBaseline&&global.OneToneHabitScenarioContextBanner){
+        var voice=opts.layer==='advanced'||opts.voiceTab;
+        if(voice) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+        else global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+        return;
+      }
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubLegacyGlobalHint'),'scheme');
+      showHub();
+      return;
+    }
     var h=hooks();
     if(h.syncEditorFromSelection) h.syncEditorFromSelection();
     else if(global.OneToneRender) global.OneToneRender.render();
+  }
+
+  function deleteHabit(id){
+    id=String(id||'').trim();
+    var cfg=state().config||{};
+    if(!id||!Array.isArray(cfg.mappings)) return;
+    var idx=cfg.mappings.findIndex(function(m){ return m&&m.id===id; });
+    if(idx<0) return;
+    var removed=Object.assign({},cfg.mappings.splice(idx,1)[0]);
+    removed.enabled=false;
+    if(!Array.isArray(cfg.trash)) cfg.trash=[];
+    cfg.trash.unshift(removed);
+    if(state().selectedMappingId===id){
+      state().selectedMappingId=cfg.mappings[0]&&cfg.mappings[0].id||null;
+    }
+    if(String(cfg.activeSceneId||'')===id){
+      cfg.activeSceneId=cfg.mappings[0]&&cfg.mappings[0].id||'';
+    }
+    cfg.mappings.forEach(function(m,i){ if(m) m.order=i; });
+    var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+    var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
+    var done=function(){
+      if(global.OneToneMappingTrashMenu&&global.OneToneMappingTrashMenu.renderTrashList){
+        global.OneToneMappingTrashMenu.renderTrashList();
+      }
+      render();
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('movedToTrash'),'scheme');
+    };
+    if(saveAsync) saveAsync().then(done).catch(done);
+    else{
+      if(save) save();
+      done();
+    }
   }
 
   function touchUpdated(m){
@@ -470,7 +750,6 @@
       state().selectedMappingId=id;
       if(hooks().save) hooks().save();
       render();
-      if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
       if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
       if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubVoiceSaved'),'scheme');
       return m;
@@ -481,6 +760,14 @@
     var hub=$('habitHubView');
     if(hub){
       hub.addEventListener('click',function(e){
+        var delBtn=e.target.closest&&e.target.closest('[data-habit-del]');
+        if(!delBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+        deleteHabit(delBtn.getAttribute('data-habit-del')||'');
+      },true);
+      hub.addEventListener('click',function(e){
         var filterBtn=e.target.closest&&e.target.closest('[data-habit-filter]');
         if(filterBtn){
           e.preventDefault();
@@ -488,6 +775,24 @@
           renderFilters();
           renderList();
           return;
+        }
+        var globalKeysBtn=e.target.closest&&e.target.closest('[data-habit-global-keys]');
+        if(globalKeysBtn){
+          e.preventDefault();
+          if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+          else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
+          return;
+        }
+        var globalVoiceBtn=e.target.closest&&e.target.closest('[data-habit-global-voice]');
+        if(globalVoiceBtn){
+          e.preventDefault();
+          if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+          else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
+          return;
+        }
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-del],.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-switch],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-menu]');
+        if(actBtn){
+          e.stopPropagation();
         }
         var viewBtn=e.target.closest&&e.target.closest('[data-habit-view]');
         if(viewBtn){
@@ -534,12 +839,14 @@
           render();
           return;
         }
-        var delBtn=e.target.closest&&e.target.closest('[data-habit-del]');
-        if(delBtn){
+        var migrateBtn=e.target.closest&&e.target.closest('[data-habit-migrate]');
+        if(migrateBtn){
           e.preventDefault();
           e.stopPropagation();
-          if(global.OneToneMappingTrashMenu) global.OneToneMappingTrashMenu.deleteFromMenu(delBtn.dataset.habitDel);
-          render();
+          var mid=migrateBtn.getAttribute('data-habit-migrate')||'';
+          if(mid&&global.OneToneHabitScenarioWizard&&global.OneToneHabitScenarioWizard.openNew){
+            global.OneToneHabitScenarioWizard.openNew({migrateFrom:mid});
+          }
           return;
         }
         var menuBtn=e.target.closest&&e.target.closest('[data-habit-menu]');
@@ -557,23 +864,26 @@
       renderList();
     });
     var newBtn=$('btnHabitHubNew');
-    if(newBtn) newBtn.addEventListener('click',function(e){ e.preventDefault(); createFromKeys(); });
-    var saveVoiceBtn=$('btnHabitHubSaveVoice');
-    if(saveVoiceBtn) saveVoiceBtn.addEventListener('click',function(e){ e.preventDefault(); createFromVoice(); });
+    if(newBtn) newBtn.addEventListener('click',function(e){
+      e.preventDefault();
+      if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
+      else createFromKeys();
+    });
     var emptyNew=$('btnHabitHubEmptyNew');
-    if(emptyNew) emptyNew.addEventListener('click',function(e){ e.preventDefault(); createFromKeys(); });
-    var emptySaveVoice=$('btnHabitHubEmptySaveVoice');
-    if(emptySaveVoice) emptySaveVoice.addEventListener('click',function(e){ e.preventDefault(); createFromVoice(); });
+    if(emptyNew) emptyNew.addEventListener('click',function(e){
+      e.preventDefault();
+      if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
+      else createFromKeys();
+    });
     var back=$('btnHabitHubBack');
     if(back) back.addEventListener('click',function(e){
       e.preventDefault();
-      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('scenes');
-      else showHub();
+      showHub();
     });
     var help=$('btnHabitHubHelp');
     if(help) help.addEventListener('click',function(e){
       e.preventDefault();
-      if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubHelpHint'),'scheme');
     });
   }
 
@@ -584,10 +894,16 @@
     createFromKeys:createFromKeys,
     createFromVoice:createFromVoice,
     bindEvents:bindEvents,
+    collectHabits:collectHabits,
     classifyHabit:classifyHabit,
     habitName:habitName,
+    isAppScope:isAppScope,
+    isAppScenario:isAppScenario,
+    isGlobalScope:function(m){ return !isAppScenario(m); },
     touchUpdated:touchUpdated,
     snapshotVoiceOverride:currentVoiceOverride,
-    defaultVoiceHabitName:defaultVoiceHabitName
+    defaultVoiceHabitName:defaultVoiceHabitName,
+    deleteHabit:deleteHabit,
+    applyShellVisibility:applyShellVisibility
   };
 })((typeof window!=='undefined')?window:globalThis);

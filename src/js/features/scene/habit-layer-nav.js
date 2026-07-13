@@ -58,7 +58,8 @@
   }
 
   function applyHabitLayerVisibility(){
-    var showLayers=panelActive()&&(ui().habitView||'hub')!=='hub';
+    var view=ui().habitView||'hub';
+    var showLayers=panelActive()&&view==='detail';
     var activeLayer=showLayers?(ui().habitLayer||'global'):'';
     var tabBar=$('habitLayerTabBar');
     var pagesWrap=$('habitLayerPages');
@@ -98,7 +99,7 @@
 
   function renderHabitLayerNav(){
     var tabBar=$('habitLayerTabBar');
-    var showLayers=panelActive();
+    var showLayers=panelActive()&&(ui().habitView||'hub')==='detail';
     if(tabBar){
       tabBar.hidden=!showLayers;
       if(tabBar) tabBar.setAttribute('aria-label',t('settingsHabitSubnavLabel'));

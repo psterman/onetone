@@ -1286,12 +1286,31 @@
     return wakePresetPhraseSet();
   }
 
+  function activeAppScopeSummonPhrases(){
+    var persist=global.OneToneVoiceSchemePersist;
+    var m=persist&&persist.resolveVoiceScopeMapping?persist.resolveVoiceScopeMapping():null;
+    if(!m) return [];
+    var appId=String(m.appTargetId||'').trim();
+    if(!appId) return [];
+    var sc=global.OneToneSceneConfig;
+    if(sc&&sc.appWakePhrasesForMapping) return sc.appWakePhrasesForMapping(m,{});
+    var presets=global.OneToneAppVoicePresets;
+    if(!presets||!presets.defaultAppWakePhrases) return [];
+    var rule=null;
+    var ab=global.OneToneAppBehaviorRules;
+    if(ab&&ab.ruleForApp) rule=ab.ruleForApp(m,appId);
+    return presets.defaultAppWakePhrases(appId,{rule:rule});
+  }
+
   function renderWakePhraseTags(){
     var pc=global.OneToneVoicePhraseCustom;
     if(!pc||!pc.renderPhraseTags) return;
     var mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
     var lang=global.__vp_voice_wake_lang__||'zh';
     var active=currentWakePhraseList();
+    activeAppScopeSummonPhrases().forEach(function(p){
+      if(p&&active.indexOf(p)<0) active.push(p);
+    });
     if(mode==='vosk') active=filterWakePhrasesByLang(active,lang);
     var catalog=wakeCatalogForLang(lang,mode);
     var activeSet={};
@@ -1356,7 +1375,6 @@
   function flushWakePhraseSave(){
     const next=voiceWakePresetSavePending;
     if(!next) return Promise.resolve();
-    voiceWakePresetSavePending=null;
     const saveSeq=++voiceWakePresetSaveSeq;
     const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
     let invoke;
@@ -1374,22 +1392,31 @@
         hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
       }else if(mode==='kws'){
         renderVoiceKwsStatus(res);
+        renderWakePhraseTags();
         hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true},res);
       }else{
         if(res) renderVoiceSapiStatus(res);
         voiceSapiPresetPending=null;
         hooks().syncHomeFromVoiceSettings(null,res,null,{lightOnly:true});
       }
+      voiceWakePresetSavePending=null;
       if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
         global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
       }
       if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
         global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
       }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
+        global.OneToneConfigPersist.saveAsync();
+      }else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+        global.OneToneConfigPersist.save();
+      }
       return res;
     }).catch(function(err){
       if(saveSeq!==voiceWakePresetSaveSeq) return;
       console.error('voice_wake_phrase',err);
+      voiceWakePresetSavePending=next.slice();
+      applyWakePhrasesLocally(next);
       if(mode==='vosk') loadVoiceVoskStatus();
       else if(mode==='kws') loadVoiceKwsStatus();
       else loadVoiceSapiStatus();
@@ -1455,19 +1482,20 @@
     if(!phrase) return Promise.resolve();
     const next=currentWakePhraseList().slice();
     if(next.indexOf(phrase)>=0){
-      hooks().toast(t('voicePhraseAlreadyAdded'));
+      if(hooks().toast) hooks().toast(t('voicePhraseAlreadyAdded'));
       return Promise.resolve();
     }
     const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
     if(mode==='vosk'&&phraseHasLatinLetters(phrase)&&!isEnglishVoskPreset(backendVoiceVoskPreset())){
-      hooks().toast(t('voiceWakeMixedLangHint'));
+      if(hooks().toast) hooks().toast(t('voiceWakeMixedLangHint'));
     }
     next.push(phrase);
     return persistWakePhrases(next).then(function(){
-      hooks().toast(t('voicePhraseAdded'));
+      renderWakePhraseTags();
+      if(hooks().toast) hooks().toast(t('voicePhraseAdded'));
     }).catch(function(err){
       console.error('voice_custom_wake',err);
-      hooks().toast(t('voiceSapiFail'));
+      if(hooks().toast) hooks().toast(t('voiceSapiFail'));
     });
   }
 

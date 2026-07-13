@@ -242,7 +242,7 @@
     var btnVoiceSwitchHabit=$('btnVoiceSwitchHabit');
     if(btnVoiceSwitchHabit){
       btnVoiceSwitchHabit.onclick=function(){
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('habits');
       };
     }
     var btnVoiceSaveHabit=$('btnVoiceSaveHabit');
@@ -304,7 +304,7 @@
         if(!link) return;
         e.preventDefault();
         e.stopPropagation();
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('scenes');
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('habits');
       });
     }
     var voiceOutputModeSegments=$('voiceOutputModeSegments');
@@ -348,28 +348,46 @@
         if(!noneBtn&&!appBtn&&!ruleBtn) return;
         e.preventDefault();
         e.stopPropagation();
-        var rules=global.OneToneAppBehaviorRules;
+        var persist=global.OneToneVoiceSchemePersist;
+        var applied=false;
         if(noneBtn){
-          if(rules&&rules.setActiveAppContextId) rules.setActiveAppContextId('');
+          if(persist&&persist.applyVoiceAppScope) applied=!!persist.applyVoiceAppScope({appId:''});
         }else if(appBtn){
-          if(rules&&rules.setActiveAppContextId) rules.setActiveAppContextId(appBtn.getAttribute('data-voice-scope-app')||'');
+          if(persist&&persist.applyVoiceAppScope) applied=!!persist.applyVoiceAppScope({appId:appBtn.getAttribute('data-voice-scope-app')||''});
         }else if(ruleBtn){
-          if(rules&&rules.setActiveRuleContext) rules.setActiveRuleContext(ruleBtn.getAttribute('data-rule-context')||'');
+          if(persist&&persist.applyVoiceAppScope) applied=!!persist.applyVoiceAppScope({ruleId:ruleBtn.getAttribute('data-rule-context')||''});
         }
-        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        if(!applied&&global.OneToneAppToast) global.OneToneAppToast.show(t('voiceAppScopeApplyFailed'),'warn');
+        var vmApi=global.OneToneVoiceSettingsViewModel;
+        var vm=vmApi&&vmApi.build?vmApi.build():null;
+        if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.renderAppScope&&vm){
+          global.OneToneVoicePageHeaderRender.renderAppScope(vm);
+        }else if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
           global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
         }
       });
+    }
+    function readPhraseInput(inputId){
+      var pc=global.OneToneVoicePhraseCustom;
+      if(pc&&pc.readInput) return pc.readInput(inputId);
+      var input=$(inputId);
+      return input?String(input.value||'').trim():'';
     }
     function bindCustomPhraseAdd(inputId,btnId,addFn){
       var input=$(inputId);
       var btn=$(btnId);
       if(!btn||!addFn) return;
       function commit(){
-        var phrase=input&&global.OneToneVoicePhraseCustom?global.OneToneVoicePhraseCustom.readInput(inputId):'';
-        if(!phrase) return;
+        var phrase=readPhraseInput(inputId);
+        if(!phrase){
+          var toast=hooks.toast||function(msg){ console.warn(msg); };
+          toast(t('voicePhraseAddEmpty'));
+          return;
+        }
         addFn(phrase);
-        if(global.OneToneVoicePhraseCustom) global.OneToneVoicePhraseCustom.clearInput(inputId);
+        var pc=global.OneToneVoicePhraseCustom;
+        if(pc&&pc.clearInput) pc.clearInput(inputId);
+        else if(input) input.value='';
       }
       btn.onclick=function(e){
         e.preventDefault();

@@ -434,6 +434,11 @@
     if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
     if(addBtn) addBtn.textContent=t('keysAppChipAdd');
     if(!strip||!wrap) return;
+    if(!keysPanelActive()){
+      wrap.hidden=true;
+      if(bindingStrip) bindingStrip.hidden=true;
+      return;
+    }
     var m=core()&&core().selected?core().selected():null;
     if(!m||!core().isSaved||!core().isSaved(m)){
       wrap.hidden=true;
@@ -750,19 +755,27 @@
     }
   }
 
+  function normalizeTriggerKey(key){
+    var fn=hooks().normalizeTriggerKey;
+    if(typeof fn==='function') return fn(key);
+    var ku=global.OneToneAppKeyUtils;
+    if(ku&&typeof ku.normalizeTriggerKey==='function') return ku.normalizeTriggerKey(key);
+    return String(key||'').trim();
+  }
+
   function previewKeyConflict(mode,key){
     key=String(key||'').trim();
     if(!key||!core()) return '';
     var m=core().selected();
     if(!m) return '';
-    var norm=hooks().normalizeTriggerKey?hooks().normalizeTriggerKey(key):key;
+    var norm=normalizeTriggerKey(key);
     var mappings=(state().config&&state().config.mappings)||[];
     for(var i=0;i<mappings.length;i++){
       var other=mappings[i];
       if(!other||other.id===m.id||!other.enabled) continue;
       var otherTrig=core().editorTrigger?core().editorTrigger(other):(other.triggerKey||'');
       var otherTgt=core().editorTarget?core().editorTarget(other):(other.targetKey||'');
-      if(mode==='trigger'&&otherTrig&&hooks().normalizeTriggerKey(otherTrig)===norm){
+      if(mode==='trigger'&&otherTrig&&normalizeTriggerKey(otherTrig)===norm){
         return t('keysRecordConflictTrigger').replace('{habit}',habitName(other));
       }
       if(mode==='target'&&otherTgt&&String(otherTgt).trim()===key){
@@ -940,6 +953,7 @@
 
   function render(){
     if(!keysPanelActive()) return;
+    if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.render();
     renderStatusChips();
     if(appRules()&&appRules().renderKeysAside) appRules().renderKeysAside();
   }

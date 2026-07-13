@@ -48,10 +48,22 @@
     return 'off';
   }
 
+  function globalCancelPhrases(cfg){
+    if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.globalCancelPhrases){
+      return global.OneToneHabitOverrideDiff.globalCancelPhrases(cfg);
+    }
+    var end=cfg.voiceEnd||cfg.voice_end||{};
+    return {
+      zh:cloneList(end.cancelPhrasesZh||end.cancel_phrases_zh),
+      en:cloneList(end.cancelPhrasesEn||end.cancel_phrases_en)
+    };
+  }
+
   function snapshotFromGlobal(){
     var cfg=state().config||{};
     var scene=sc();
     var end=scene&&scene.globalEndPhrases?scene.globalEndPhrases(cfg):{zh:[],en:[]};
+    var cancel=globalCancelPhrases(cfg);
     var wakeApi=global.OneToneVoiceWake;
     var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
@@ -62,11 +74,22 @@
       endPhrases:{
         zh:cloneList(end.zh),
         en:cloneList(end.en)
+      },
+      cancelPhrases:{
+        zh:cloneList(cancel.zh),
+        en:cloneList(cancel.en)
       }
     };
     if(mode==='vosk'||mode==='sapi'||mode==='kws') ov.engine=mode;
     if(mode==='vosk') ov.modelPreset=modelPreset;
     return ov;
+  }
+
+  function diffOverrideFromGlobal(edited,cfg){
+    if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.normalizeVoiceOverrideForSave){
+      return global.OneToneHabitOverrideDiff.normalizeVoiceOverrideForSave(edited,cfg);
+    }
+    return edited||{};
   }
 
   function ensureOverride(mapping){
@@ -98,11 +121,26 @@
 
   function hydrateGlobalFromOverride(mapping){
     mapping=mapping||editingMapping();
-    if(!mapping||!isVoiceOnly(mapping)) return false;
+    if(!mapping) return false;
     var cfg=state().config||{};
     var scene=sc();
     if(!scene) return false;
     var ov=mapping.voiceOverride||null;
+    var hasOverride=!!(ov&&(
+      (Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length)||
+      (ov.endPhrases&&(ov.endPhrases.zh||[]).length||(ov.endPhrases.en||[]).length)
+    ));
+    var hasAppScope=!!String(mapping.appTargetId||'').trim();
+    if(!hasOverride&&!isVoiceOnly(mapping)&&!hasAppScope) return false;
+    if(!hasOverride&&hasAppScope){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
+        global.OneToneVoiceWake.renderWakeCustomPhrases();
+      }
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      }
+      return true;
+    }
     var mode=resolveEngine(cfg,ov);
     var wake=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length
       ?cloneList(ov.wakePhrases)
@@ -169,6 +207,7 @@
     editingMapping:editingMapping,
     isVoiceOnly:isVoiceOnly,
     snapshotFromGlobal:snapshotFromGlobal,
+    diffOverrideFromGlobal:diffOverrideFromGlobal,
     mirrorGlobalToOverride:mirrorGlobalToOverride,
     hydrateGlobalFromOverride:hydrateGlobalFromOverride,
     activateEditingScheme:activateEditingScheme

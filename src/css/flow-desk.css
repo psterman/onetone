@@ -357,6 +357,36 @@ html[data-theme="dark"] .flow-nodes-path-base {
   box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
 }
 
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-toolbar .voice-app-scope-title {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+}
+
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .flow-scope-bar-add {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
 :is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-head {
   margin: 0;
   flex-shrink: 0;

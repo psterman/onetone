@@ -252,6 +252,17 @@
           modelPreset:String(cfg.modelPreset||'cn-light').trim()||'cn-light'
         };
       })(),
+      voiceKws:(function(){
+        const cfg=st.config.voiceKws||st.config.voice_kws||{};
+        return {
+          enabled:!!cfg.enabled,
+          phrases:hooks().cloneStringList(cfg.phrases),
+          targetKey:String(cfg.targetKey||'RAlt').trim()||'RAlt',
+          cooldownMs:Number(cfg.cooldownMs)||2000,
+          modelPath:String(cfg.modelPath||'resources/kws/sherpa-kws-zh-small').trim(),
+          modelPreset:String(cfg.modelPreset||'cn-light').trim()||'cn-light'
+        };
+      })(),
       voiceEnd:(function(){
         const cfg=st.config.voiceEnd||st.config.voice_end||{};
         return {
@@ -273,7 +284,18 @@
   }
 
   function save(){
-    try{ global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage({type:'mvp_save',json:buildSavePayload()}); }catch(_){ }
+    var payload=buildSavePayload();
+    try{
+      if(global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage){
+        global.chrome.webview.postMessage({type:'mvp_save',json:payload});
+      }
+    }catch(_){ }
+    var invoke=global.__vp_invoke__;
+    if(invoke){
+      invoke('cmd_save',{json:payload}).catch(function(err){
+        console.error('cmd_save',err);
+      });
+    }
   }
 
   function saveAsync(){

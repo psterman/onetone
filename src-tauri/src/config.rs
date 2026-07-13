@@ -96,6 +96,15 @@ pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverri
     }
 }
 
+/// Voice-only / voice-override shells keep empty trigger/target through normalize.
+pub fn mapping_should_keep_empty_target_key(m: &MappingEntry) -> bool {
+    m.trigger_key.trim().is_empty()
+        && m
+            .voice_override
+            .as_ref()
+            .is_some_and(|ov| !ov.is_empty())
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppMatchSpec {
     #[serde(rename = "exeNames", default)]
@@ -104,6 +113,8 @@ pub struct AppMatchSpec {
     pub path_contains: Option<String>,
     #[serde(rename = "titleContains", default, skip_serializing_if = "Option::is_none")]
     pub title_contains: Option<String>,
+    #[serde(rename = "fullPath", default, skip_serializing_if = "Option::is_none")]
+    pub full_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -300,17 +311,90 @@ pub fn default_summon_phrase_for_preset(app_id: &str, preset: &str) -> Option<&'
     }
 }
 
-pub fn summon_phrase_for_rule(rule: &AppBehaviorRule, preset: &str) -> Option<String> {
-    if !is_preset_app_id(&rule.app_id) {
-        return None;
+pub fn preset_app_display_name(app_id: &str) -> Option<&'static str> {
+    match app_id.trim() {
+        "cursor-chat" => Some("Cursor"),
+        "codex-chat" => Some("Codex"),
+        "claude-code" => Some("Claude"),
+        "minimax-chat" => Some("MiniMax"),
+        _ => None,
     }
+}
+
+pub fn app_wake_phrases_for_rule(rule: &AppBehaviorRule, preset: &str) -> Vec<String> {
     if let Some(raw) = rule.summon_phrase.as_ref() {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
+            return vec![trimmed.to_string()];
         }
     }
-    default_summon_phrase_for_preset(&rule.app_id, preset).map(|s| s.to_string())
+    let mut out = Vec::new();
+    let mut push = |p: &str| {
+        let t = p.trim();
+        if t.is_empty() {
+            return;
+        }
+        if !out.iter().any(|x| x == t) {
+            out.push(t.to_string());
+        }
+    };
+    let en = preset.trim() == "en-light";
+    if is_preset_app_id(&rule.app_id) {
+        if let Some(name) = preset_app_display_name(&rule.app_id) {
+            if en {
+                push(name);
+                push(&format!("Open {name}"));
+            } else {
+                push(&format!("{name}旺"));
+                push(&format!("打开{name}"));
+            }
+        }
+        if let Some(default) = default_summon_phrase_for_preset(&rule.app_id, preset) {
+            push(default);
+        }
+    } else if rule.app_id.trim() == "custom" {
+        if let Some(name) = rule
+            .display_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            if en {
+                push(name);
+                push(&format!("Open {name}"));
+            } else {
+                push(&format!("{name}旺"));
+                push(&format!("打开{name}"));
+            }
+        }
+    }
+    out
+}
+
+pub fn summon_phrase_for_rule(rule: &AppBehaviorRule, preset: &str) -> Option<String> {
+    app_wake_phrases_for_rule(rule, preset).into_iter().next()
+}
+
+pub const SUMMON_RULE_TARGET_PREFIX: &str = "rule:";
+
+pub fn summon_target_ref_for_rule(rule: &AppBehaviorRule) -> Option<String> {
+    if rule.app_id.trim() == "custom" {
+        let id = rule.rule_id.trim();
+        if id.is_empty() {
+            return None;
+        }
+        return Some(format!("{SUMMON_RULE_TARGET_PREFIX}{id}"));
+    }
+    if is_preset_app_id(&rule.app_id) {
+        return Some(rule.app_id.trim().to_string());
+    }
+    None
+}
+
+pub fn summon_rule_id_from_target(target: &str) -> Option<&str> {
+    target
+        .strip_prefix(SUMMON_RULE_TARGET_PREFIX)
+        .filter(|id| !id.trim().is_empty())
 }
 
 pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(String, String)> {
@@ -321,9 +405,34 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(
         if app_id.is_empty() {
             continue;
         }
-        if let Some(phrase) = summon_phrase_for_rule(rule, preset) {
-            if seen.insert(phrase.clone()) {
-                out.push((phrase, app_id.to_string()));
+        if let Some(target) = summon_target_ref_for_rule(rule) {
+            for phrase in app_wake_phrases_for_rule(rule, preset) {
+                if seen.insert(phrase.clone()) {
+                    out.push((phrase, target.clone()));
+                }
+            }
+        }
+    }
+    let primary = mapping.app_target_id.trim();
+    if !primary.is_empty() && is_preset_app_id(primary) {
+        let has_rule = mapping
+            .app_behavior_rules
+            .iter()
+            .any(|r| r.app_id.trim() == primary);
+        if !has_rule {
+            let fallback_rule = AppBehaviorRule {
+                rule_id: String::new(),
+                app_id: primary.to_string(),
+                finish_mode: String::new(),
+                note: None,
+                summon_phrase: None,
+                app_match: None,
+                display_name: None,
+            };
+            for phrase in app_wake_phrases_for_rule(&fallback_rule, preset) {
+                if seen.insert(phrase.clone()) {
+                    out.push((phrase, primary.to_string()));
+                }
             }
         }
     }
@@ -1942,7 +2051,7 @@ impl VoiceConfig {
                 m.group = default_group();
             }
             m.order = i as u32;
-            if m.target_key.is_empty() {
+            if m.target_key.is_empty() && !mapping_should_keep_empty_target_key(m) {
                 m.target_key = "RAlt".into();
             }
             if m.interval_ms < 200 {
@@ -2624,6 +2733,49 @@ mod tests {
     }
 
     #[test]
+    fn voice_only_mapping_keeps_empty_keys_after_normalize() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings.push(MappingEntry {
+            id: "voice-only".into(),
+            label: String::new(),
+            group: "Voice shell".into(),
+            trigger_key: String::new(),
+            target_key: String::new(),
+            enabled: false,
+            order: 1,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: Some(VoiceOverride {
+                wake_phrases: Some(vec!["测试".into()]),
+                ..VoiceOverride::default()
+            }),
+        });
+        cfg.normalize();
+        let m = cfg
+            .mappings
+            .iter()
+            .find(|x| x.id == "voice-only")
+            .expect("voice-only mapping");
+        assert!(m.trigger_key.is_empty());
+        assert!(m.target_key.is_empty());
+        assert!(m.voice_override.is_some());
+    }
+
+    #[test]
     fn autotrigger_without_source_binds_volume_keys() {
         let mut cfg = VoiceConfig::default();
         cfg.mappings[0].trigger_source = None;
@@ -3044,6 +3196,7 @@ mod tests {
                     exe_names: vec!["Cursor.exe".into()],
                     path_contains: Some("Programs\\cursor".into()),
                     title_contains: None,
+                    full_path: None,
                 }),
             },
         ];
@@ -3072,6 +3225,7 @@ mod tests {
                 exe_names: vec!["Code.exe".into()],
                 path_contains: Some("Cursor".into()),
                 title_contains: None,
+                full_path: None,
             }),
         };
         let identity_exe_only = AppIdentity {
@@ -3103,12 +3257,15 @@ mod tests {
     }
 
     #[test]
-    fn primary_app_without_behavior_rule_has_no_summon() {
+    fn primary_app_without_behavior_rule_uses_target_fallback() {
         let mut mapping = VoiceConfig::default().mappings[0].clone();
         mapping.app_target_id = "cursor-chat".into();
         mapping.app_behavior_rules = vec![];
         let entries = summon_entries_for_mapping(&mapping, "cn-light");
-        assert!(entries.is_empty());
+        assert!(entries.len() >= 2);
+        assert!(entries.iter().any(|e| e.0 == "Cursor旺"));
+        assert!(entries.iter().any(|e| e.0 == "打开 Cursor"));
+        assert!(entries.iter().all(|e| e.1 == "cursor-chat"));
     }
 
     #[test]
@@ -3125,8 +3282,9 @@ mod tests {
             display_name: None,
         }];
         let entries = summon_entries_for_mapping(&mapping, "cn-light");
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].0, "打开 Cursor");
+        assert!(entries.len() >= 2);
+        assert!(entries.iter().any(|e| e.0 == "Cursor旺"));
+        assert!(entries.iter().any(|e| e.0 == "打开 Cursor"));
         assert_eq!(entries[0].1, "cursor-chat");
     }
 
@@ -3161,6 +3319,7 @@ mod tests {
                     exe_names: vec!["WeChat.exe".into()],
                     path_contains: Some("Tencent\\WeChat".into()),
                     title_contains: None,
+                    full_path: None,
                 }),
             },
             AppBehaviorRule {
@@ -3174,6 +3333,7 @@ mod tests {
                     exe_names: vec!["WeChat.exe".into()],
                     path_contains: Some("Weixin".into()),
                     title_contains: None,
+                    full_path: None,
                 }),
             },
         ];
@@ -3209,6 +3369,7 @@ mod tests {
                 exe_names: vec!["WeChat.exe".into()],
                 path_contains: Some("Tencent".into()),
                 title_contains: None,
+                full_path: None,
             }),
         };
         let identity = AppIdentity {
@@ -3234,6 +3395,7 @@ mod tests {
                 exe_names: vec!["WeChat.exe".into()],
                 path_contains: None,
                 title_contains: None,
+                full_path: None,
             }),
         };
         let identity = AppIdentity {
@@ -3261,6 +3423,7 @@ mod tests {
                 exe_names: vec!["WINWORD.EXE".into()],
                 path_contains: Some("Microsoft Office".into()),
                 title_contains: Some("Document".into()),
+                full_path: None,
             }),
         }];
         let json = serde_json::to_string(&rules).unwrap();

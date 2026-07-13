@@ -41,7 +41,7 @@
   function applySceneTabVisibility(){
     var keyWakeSection=$('quickKeyWakeSection');
     if(keyWakeSection) keyWakeSection.hidden=!keysPanelActive();
-    var hubView=ui().habitView==='hub';
+    var hubView=(ui().habitView||'hub')!=='detail';
     var statusBar=$('sceneStatusBar');
     if(statusBar) statusBar.hidden=!panelActive()||hubView;
     if(global.OneToneHabitLayerNav&&panelActive()){

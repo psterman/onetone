@@ -711,6 +711,10 @@
       var vmApi=global.OneToneVoiceSettingsViewModel;
       if(vmApi&&vmApi.build) global.OneToneVoicePageHeaderRender.renderAppScope(vmApi.build());
     }
+    if(global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.habitView==='wizard'
+      &&global.OneToneHabitScenarioWizard&&global.OneToneHabitScenarioWizard.render){
+      global.OneToneHabitScenarioWizard.render();
+    }
     scheduleHydrateCustomRuleIcons();
   }
 
@@ -751,7 +755,6 @@
     ensureRules(m);
     var primary=String(m.appTargetId||'').trim();
     if(primary) ensurePrimaryAppRule(m,primary);
-    if(!m.appBehaviorRules.length) seedDefaultBehaviorRules(m);
   }
 
   function refreshFinishModeUi(m){
@@ -889,7 +892,7 @@
     if(summonSave){
       e.preventDefault();
       e.stopPropagation();
-      var mSummon=core()&&core().selected?core().selected():null;
+      var mSummon=resolvePickerMapping();
       if(!mSummon) return true;
       var appIdSummon=summonSave.getAttribute('data-summon-save')||'';
       var input=summonSave.closest('[data-summon-edit]');
@@ -1065,7 +1068,34 @@
     'minimax-chat':'voiceAppSummonMiniMax'
   };
 
-  function voiceSummonPhrase(appId,m){
+  function defaultSummonPhraseForRule(rule,m){
+    if(!rule) return '';
+    if(String(rule.summonPhrase||'').trim()) return String(rule.summonPhrase).trim();
+    if(rule.appId&&rule.appId!=='custom') return voiceSummonPhrase(rule.appId,m);
+    var name=ruleDisplayName(rule);
+    if(!name) return '';
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config||{}:{};
+    var sc=global.OneToneSceneConfig;
+    var preset=sc&&sc.effectiveVoskModelPreset&&m?sc.effectiveVoskModelPreset(cfg,m):'cn-light';
+    if(sc&&sc.defaultSummonPhrase){
+      var fromSc=sc.defaultSummonPhrase('custom',{preset:preset,displayName:name});
+      if(fromSc) return fromSc;
+    }
+    return '打开'+name;
+  }
+
+  function ensureCustomSummonPhrase(m,rule){
+    if(!m||!rule||rule.appId!=='custom') return;
+    if(String(rule.summonPhrase||'').trim()) return;
+    var phrase=defaultSummonPhraseForRule(rule,m);
+    if(phrase) rule.summonPhrase=phrase;
+  }
+
+  function voiceSummonPhrase(appId,m,ruleId){
+    if(ruleId&&isContextRuleId(ruleId)){
+      var rule=ruleById(m,ruleId);
+      return defaultSummonPhraseForRule(rule,m);
+    }
     var rule=m?ruleForApp(m,appId):null;
     if(rule&&String(rule.summonPhrase||'').trim()) return String(rule.summonPhrase).trim();
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config||{}:{};
@@ -1082,41 +1112,61 @@
     return m2?m2[0]:phrase;
   }
 
-  function saveSummonPhrase(m,appId,phrase){
-    if(!m||!appId) return;
+  function saveSummonPhrase(m,key,phrase){
+    if(!m||!key) return;
     ensureRules(m);
-    var rule=ruleForApp(m,appId);
     phrase=String(phrase||'').trim();
+    var rule=null;
+    if(isContextRuleId(key)) rule=ruleById(m,key);
+    else rule=ruleForApp(m,key);
     if(rule){
       rule.summonPhrase=phrase||undefined;
-    }else{
+    }else if(!isContextRuleId(key)){
       m.appBehaviorRules.push({
         ruleId:newRuleId(),
-        appId:appId,
-        finishMode:defaultModeForApp(appId),
-        note:defaultNoteForApp(appId),
+        appId:key,
+        finishMode:defaultModeForApp(key),
+        note:defaultNoteForApp(key),
         summonPhrase:phrase||undefined
       });
     }
-    saveAndRefresh();
+    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
+    refreshVoiceSchemeSurfaces();
     hooks().toast&&hooks().toast(t('habitAppSummonPhraseSaved'));
+  }
+
+  function refreshVoiceSchemeSurfaces(){
+    if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces){
+      global.OneToneVoiceSchemePersist.refreshVoiceSchemeSurfaces();
+      return;
+    }
+    saveAndRefresh();
   }
 
   function hooks(){
     return global.__vp_bootstrap_hooks__||{};
   }
 
-  function renderSummonPhraseEditor(m,presetId){
-    var rule=ruleForApp(m,presetId);
+  function renderSummonPhraseEditor(m,key,opts){
+    opts=opts||{};
+    var rule=null;
+    if(opts.ruleId&&isContextRuleId(opts.ruleId)) rule=ruleById(m,opts.ruleId);
+    else if(isContextRuleId(key)) rule=ruleById(m,key);
+    else rule=ruleForApp(m,key);
     var value=rule&&rule.summonPhrase?String(rule.summonPhrase):'';
-    if(!value) value=voiceSummonPhrase(presetId,m);
+    if(!value){
+      if(opts.ruleId||isContextRuleId(key)) value=defaultSummonPhraseForRule(rule,m);
+      else value=voiceSummonPhrase(key,m);
+    }
+    var presetId=rule&&rule.appId&&rule.appId!=='custom'?rule.appId:key;
     var workflow=global.OneToneSceneConfig&&global.OneToneSceneConfig.isWorkflowAppTarget
       ?global.OneToneSceneConfig.isWorkflowAppTarget(presetId):false;
-    var html='<div class="keys-app-summon-edit" data-summon-edit="'+esc(presetId)+'">';
+    var saveKey=opts.ruleId||key;
+    var html='<div class="keys-app-summon-edit" data-summon-edit="'+esc(saveKey)+'">';
     html+='<p class="keys-app-summon-edit-lbl">'+esc(t('habitAppSummonPhraseLbl'))+'</p>';
     html+='<div class="keys-app-summon-edit-row">';
-    html+='<input type="text" class="keys-app-summon-edit-input" data-summon-input="'+esc(presetId)+'" value="'+esc(value)+'" maxlength="48" placeholder="'+esc(t('habitAppSummonPhrasePlaceholder'))+'" spellcheck="false" autocomplete="off" />';
-    html+='<button type="button" class="keys-app-summon-edit-save" data-summon-save="'+esc(presetId)+'">'+esc(t('habitAppSummonPhraseSave'))+'</button>';
+    html+='<input type="text" class="keys-app-summon-edit-input" data-summon-input="'+esc(saveKey)+'" value="'+esc(value)+'" maxlength="48" placeholder="'+esc(t('habitAppSummonPhrasePlaceholder'))+'" spellcheck="false" autocomplete="off" />';
+    html+='<button type="button" class="keys-app-summon-edit-save" data-summon-save="'+esc(saveKey)+'">'+esc(t('habitAppSummonPhraseSave'))+'</button>';
     html+='</div>';
     html+='<p class="keys-app-summon-edit-hint'+(workflow?' sr-only':'')+'">'+esc(workflow?t('habitAppSummonPhraseHint'):t('keysAppSummonNoWorkflowHint'))+'</p>';
     html+='</div>';
@@ -1254,7 +1304,19 @@
 
   function pickPresetApp(m,appId){
     if(!m||!appId) return;
+    var persist=global.OneToneVoiceSchemePersist;
+    if(persist&&persist.applyVoiceAppScope){
+      ensurePresetRule(m,appId);
+      if(persist.applyVoiceAppScope({appId:appId})){
+        hooks().toast&&hooks().toast(t('appPickerAdded'));
+      }
+      return;
+    }
     ensurePresetRule(m,appId);
+    m.appTargetId=String(appId).trim();
+    var presets=global.OneToneAppVoicePresets;
+    if(presets&&presets.syncAppVoicePresets) presets.syncAppVoicePresets(m,appId);
+    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
     if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
     setActiveRuleContext(appId);
     saveAndRefresh();
@@ -1270,6 +1332,16 @@
     }
     var rule=addCustomRuleFromIdentity(m,identity);
     if(!rule) return;
+    var persist=global.OneToneVoiceSchemePersist;
+    if(persist&&persist.applyVoiceAppScope){
+      if(persist.applyVoiceAppScope({ruleId:rule.ruleId})){
+        hooks().toast&&hooks().toast(t('appPickerAdded'));
+      }
+      return;
+    }
+    var presets=global.OneToneAppVoicePresets;
+    if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
+    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
     if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
     setActiveRuleContext(rule.ruleId);
     saveAndRefresh();
@@ -1277,9 +1349,13 @@
   }
 
   function resolvePickerMapping(){
+    var persist=global.OneToneVoiceSchemePersist;
+    if(persist&&persist.ensureVoiceScopeMapping){
+      return persist.ensureVoiceScopeMapping({allowDraft:false});
+    }
+    if(persist&&persist.resolveVoiceScopeMapping) return persist.resolveVoiceScopeMapping();
     var m=core()&&core().selected?core().selected():null;
     if(m&&core().isSaved&&core().isSaved(m)) return m;
-    var persist=global.OneToneVoiceSchemePersist;
     if(persist&&persist.resolveVoiceEditMapping) return persist.resolveVoiceEditMapping();
     return m;
   }
@@ -1671,8 +1747,9 @@
       var icon=presetIcon(p.id);
       var isSel=ctxId===p.id;
       var isPri=m&&primaryId===p.id;
+      var isActive=isSel||isPri;
       var name=appDisplayName(p.id);
-      html+='<button type="button" class="'+chipClass+(isSel?' is-selected':'')+(isPri?' is-primary':'')+'" '+chipAttr+'="'+esc(p.id)+'" role="radio" aria-checked="'+(isSel?'true':'false')+'" title="'+esc(name)+'">';
+      html+='<button type="button" class="'+chipClass+(isActive?' is-selected':'')+(isPri&&!isSel?' is-primary':'')+'" '+chipAttr+'="'+esc(p.id)+'" role="radio" aria-checked="'+(isActive?'true':'false')+'" title="'+esc(name)+'">';
       if(icon) html+='<img class="'+iconClass+'" src="'+esc(icon)+'" alt="" decoding="async" />';
       html+='<span>'+esc(name)+'</span></button>';
     });
@@ -1719,6 +1796,9 @@
     appDisplayName:appDisplayName,
     ruleDisplayName:ruleDisplayName,
     voiceSummonPhrase:voiceSummonPhrase,
+    saveSummonPhrase:saveSummonPhrase,
+    renderSummonPhraseEditor:renderSummonPhraseEditor,
+    ensureCustomSummonPhrase:ensureCustomSummonPhrase,
     ruleById:ruleById,
     ruleForContext:ruleForContext,
     removeRuleById:removeRuleById,

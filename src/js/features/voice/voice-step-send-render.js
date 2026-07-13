@@ -22,6 +22,14 @@
       const clean=String(phrase||'').replace(/[「」""]/g,'').trim();
       if(clean&&phrases.indexOf(clean)<0) phrases.push(clean);
     });
+    if(appRules.customRulesForMapping){
+      appRules.customRulesForMapping(m).forEach(function(rule){
+        if(!rule||!appRules.voiceSummonPhrase) return;
+        const phrase=appRules.voiceSummonPhrase('custom',m,rule.ruleId);
+        const clean=String(phrase||'').replace(/[「」""]/g,'').trim();
+        if(clean&&phrases.indexOf(clean)<0) phrases.push(clean);
+      });
+    }
     if(!phrases.length){
       block.hidden=true;
       chipsEl.innerHTML='';

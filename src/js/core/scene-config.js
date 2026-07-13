@@ -62,10 +62,41 @@
     return String(preset||'').trim()==='en-light';
   }
 
+  function defaultAppWakePhrases(appId,opts){
+    if(global.OneToneAppVoicePresets&&global.OneToneAppVoicePresets.defaultAppWakePhrases){
+      return global.OneToneAppVoicePresets.defaultAppWakePhrases(appId,opts);
+    }
+    return defaultSummonPhrase(appId,opts)?[defaultSummonPhrase(appId,opts)]:[];
+  }
+
+  function defaultAppEndPhrases(appId,opts){
+    if(global.OneToneAppVoicePresets&&global.OneToneAppVoicePresets.defaultAppEndPhrases){
+      return global.OneToneAppVoicePresets.defaultAppEndPhrases(appId,opts);
+    }
+    return {zh:[],en:[]};
+  }
+
+  function appWakePhrasesForRule(rule,mapping,opts){
+    opts=opts||{};
+    if(!rule) return [];
+    var preset=opts.preset||effectiveVoskModelPreset(global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:{},mapping);
+    var custom=String(rule.summonPhrase||'').trim();
+    var out=[];
+    if(custom) out.push(custom);
+    defaultAppWakePhrases(rule.appId,{preset:preset,displayName:rule.displayName,rule:rule}).forEach(function(p){
+      if(p&&out.indexOf(p)<0) out.push(p);
+    });
+    return out;
+  }
+
   function defaultSummonPhrase(appId,opts){
     opts=opts||{};
     appId=String(appId||'').trim();
     var en=isEnglishVoskPreset(opts.preset);
+    var display=String(opts.displayName||'').trim();
+    if(appId==='custom'&&display){
+      return en?('Open '+display):('打开'+display);
+    }
     if(appId==='cursor-chat') return en?'Open Cursor':'打开 Cursor';
     if(appId==='codex-chat') return en?'Open Codex':'打开 Codex';
     if(appId==='claude-code') return en?'Open Claude':'打开 Claude';
@@ -86,18 +117,18 @@
     var out=[];
     var seen={};
     (Array.isArray(mapping.appBehaviorRules)?mapping.appBehaviorRules:[]).forEach(function(rule){
-      if(!rule||!rule.appId) return;
-      if(rule.appId==='custom') return;
-      if(!isWorkflowAppTarget(rule.appId)) return;
-      var phrase=String(rule.summonPhrase||'').trim()||defaultSummonPhrase(rule.appId,{preset:preset});
-      if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+      if(!rule) return;
+      appWakePhrasesForRule(rule,mapping,{preset:preset}).forEach(function(phrase){
+        if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+      });
     });
     var primary=String(mapping.appTargetId||'').trim();
     if(primary){
       var hasRule=(mapping.appBehaviorRules||[]).some(function(r){ return r&&r.appId===primary; });
-      if(!hasRule){
-        var fallback=defaultSummonPhrase(primary,{preset:preset});
-        if(fallback&&!seen[fallback]) out.push(fallback);
+      if(!hasRule&&isWorkflowAppTarget(primary)){
+        defaultAppWakePhrases(primary,{preset:preset}).forEach(function(phrase){
+          if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+        });
       }
     }
     return out;
@@ -156,8 +187,33 @@
     globalVoiceTargetKey:globalVoiceTargetKey,
     baseWakePhrases:baseWakePhrases,
     effectiveVoskModelPreset:effectiveVoskModelPreset,
+    defaultAppWakePhrases:defaultAppWakePhrases,
+    defaultAppEndPhrases:defaultAppEndPhrases,
+    appWakePhrasesForRule:appWakePhrasesForRule,
     defaultSummonPhrase:defaultSummonPhrase,
     summonPhrasesForMapping:summonPhrasesForMapping,
+    appWakePhrasesForMapping:function(mapping,opts){
+      opts=opts||{};
+      if(!mapping) return [];
+      var preset=opts.preset||'cn-light';
+      var out=[];
+      var seen={};
+      (Array.isArray(mapping.appBehaviorRules)?mapping.appBehaviorRules:[]).forEach(function(rule){
+        appWakePhrasesForRule(rule,mapping,{preset:preset}).forEach(function(phrase){
+          if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+        });
+      });
+      var primary=String(mapping.appTargetId||'').trim();
+      if(primary){
+        var hasRule=(mapping.appBehaviorRules||[]).some(function(r){ return r&&r.appId===primary; });
+        if(!hasRule&&isWorkflowAppTarget(primary)){
+          defaultAppWakePhrases(primary,{preset:preset}).forEach(function(phrase){
+            if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+          });
+        }
+      }
+      return out;
+    },
     isWorkflowAppTarget:isWorkflowAppTarget
   };
 })((typeof window!=='undefined')?window:globalThis);
