@@ -3395,6 +3395,14 @@
     .confirm-body{margin:10px 0 0;font-size:13px;line-height:1.65;color:var(--on-surface-muted)}
     .confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
     .confirm-actions .btn{width:auto;min-width:96px;height:40px;font-size:13px}
+    .voice-scheme-name-input{
+      display:block;width:100%;margin-top:14px;box-sizing:border-box;height:42px;padding:0 12px;
+      border:1px solid var(--outline-variant);border-radius:12px;background:var(--surface-high);
+      font-size:14px;color:var(--on-surface);
+    }
+    .voice-scheme-name-input:focus{
+      outline:none;border-color:rgba(42,156,196,.55);box-shadow:0 0 0 3px rgba(42,156,196,.14);
+    }
     html[data-theme="dark"] .confirm-modal{background:rgba(28,38,54,.97)}
     .test-modal-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
     .test-status-icon{

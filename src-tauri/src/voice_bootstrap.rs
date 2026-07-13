@@ -5,8 +5,9 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Manager};
 
-use crate::config::{VoiceConfig, VoiceVoskConfig};
+use crate::config::{VoiceConfig, VoiceKwsConfig, VoiceVoskConfig};
 use crate::scene_config::DesiredVoiceEngine as EffectiveVoiceEngine;
+use crate::voice_kws_runtime;
 use crate::voice_sapi_runtime;
 use crate::voice_vosk_runtime;
 use crate::AppState;
@@ -29,6 +30,14 @@ fn voice_reload_snapshot(cfg: &VoiceConfig) -> onetone_logic::voice_reload::Voic
             min_confidence: cfg.voice_sapi.min_confidence,
             target_key: cfg.voice_sapi.target_key.clone(),
             cooldown_ms: cfg.voice_sapi.cooldown_ms,
+        },
+        kws: onetone_logic::voice_reload::VoiceKwsReload {
+            enabled: cfg.voice_kws.enabled,
+            phrases: cfg.voice_kws.phrases.clone(),
+            model_path: cfg.voice_kws.model_path.clone(),
+            model_preset: cfg.voice_kws.model_preset.clone(),
+            target_key: cfg.voice_kws.target_key.clone(),
+            cooldown_ms: cfg.voice_kws.cooldown_ms,
         },
         voice_end: onetone_logic::voice_reload::VoiceEndReload {
             enabled: cfg.voice_end.enabled,
@@ -56,7 +65,15 @@ fn desired_engine_label(engine: EffectiveVoiceEngine) -> &'static str {
         EffectiveVoiceEngine::None => "none",
         EffectiveVoiceEngine::Vosk => "vosk",
         EffectiveVoiceEngine::Sapi => "sapi",
+        EffectiveVoiceEngine::Kws => "kws",
     }
+}
+
+pub fn kws_runtime_relevant_changed(old: &VoiceConfig, new: &VoiceConfig) -> bool {
+    onetone_logic::voice_reload::kws_runtime_relevant_changed(
+        &voice_reload_snapshot(old),
+        &voice_reload_snapshot(new),
+    )
 }
 
 pub fn vosk_runtime_relevant_changed(old: &VoiceConfig, new: &VoiceConfig) -> bool {
@@ -123,6 +140,22 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
                     Some(serde_json::json!({ "engine": "sapi" })),
                 );
             }
+        }
+        EffectiveVoiceEngine::Kws => {
+            try_start_kws_runtime(
+                app,
+                state,
+                crate::scene_config::resolve_effective_kws_config(&cfg),
+                "bootstrap",
+            );
+            crate::runtime_event::publish_runtime_event(
+                Some(app),
+                state.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_BOOTSTRAP,
+                "voice bootstrap: starting kws",
+                Some(serde_json::json!({ "engine": "kws" })),
+            );
         }
         EffectiveVoiceEngine::None => {
             crate::app_log::log_line(state, "voice", "voice bootstrap: no engine enabled");
@@ -199,6 +232,38 @@ pub fn apply_voice_config_change(
                         crate::runtime_event::kind::VOICE_RESTART,
                         "voice config changed: sapi restart (fingerprint changed)",
                         Some(serde_json::json!({ "engine": "sapi" })),
+                    );
+                } else {
+                    crate::app_log::log_line(
+                        state,
+                        "voice",
+                        "voice config changed: no runtime change",
+                    );
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state.as_ref(),
+                        "voice",
+                        crate::runtime_event::kind::VOICE_NO_CHANGE,
+                        "voice config changed: no runtime change",
+                        None,
+                    );
+                }
+            }
+            EffectiveVoiceEngine::Kws => {
+                if old_fp != new_fp {
+                    restart_kws_runtime(
+                        app,
+                        state,
+                        crate::scene_config::resolve_effective_kws_config(new_cfg),
+                        "effective fingerprint changed",
+                    );
+                    crate::runtime_event::publish_runtime_event(
+                        Some(app),
+                        state.as_ref(),
+                        "voice",
+                        crate::runtime_event::kind::VOICE_RESTART,
+                        "voice config changed: kws restart (fingerprint changed)",
+                        Some(serde_json::json!({ "engine": "kws" })),
                     );
                 } else {
                     crate::app_log::log_line(
@@ -299,7 +364,31 @@ pub fn apply_voice_config_change(
                 "config change",
             );
         }
-        _ => {}
+        _ => {
+            voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+            voice_sapi_runtime::voice_sapi_stop(state);
+            voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(state));
+            let _started = match new_desired {
+                EffectiveVoiceEngine::Vosk => try_start_vosk_runtime(
+                    app,
+                    state,
+                    crate::scene_config::resolve_effective_vosk_config(new_cfg),
+                    "config change",
+                ),
+                EffectiveVoiceEngine::Sapi => voice_sapi_runtime::start_voice_sapi_runtime_only(
+                    state,
+                    crate::scene_config::resolve_effective_sapi_config(new_cfg),
+                    "config change",
+                ),
+                EffectiveVoiceEngine::Kws => try_start_kws_runtime(
+                    app,
+                    state,
+                    crate::scene_config::resolve_effective_kws_config(new_cfg),
+                    "config change",
+                ),
+                EffectiveVoiceEngine::None => false,
+            };
+        }
     }
 
     *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(new_cfg);
@@ -315,6 +404,7 @@ pub fn pause_voice_engines(state: &Arc<AppState>) {
     crate::app_log::log_line(state, "voice", "voice engines paused (listen paused)");
     voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
     voice_sapi_runtime::voice_sapi_stop(state);
+    voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(state));
 }
 
 /// Restart voice wake workers after listen resumes.
@@ -333,6 +423,14 @@ pub fn resume_voice_engines(app: &AppHandle, state: &Arc<AppState>) {
             voice_sapi_runtime::start_voice_sapi_runtime_only(
                 state,
                 crate::scene_config::resolve_effective_sapi_config(&cfg),
+                "listen resume",
+            );
+        }
+        crate::scene_config::DesiredVoiceEngine::Kws => {
+            try_start_kws_runtime(
+                app,
+                state,
+                crate::scene_config::resolve_effective_kws_config(&cfg),
                 "listen resume",
             );
         }
@@ -366,6 +464,7 @@ fn try_start_vosk_runtime(
 
     crate::app_log::log_line(state, "voice", &format!("starting vosk ({reason})"));
     voice_sapi_runtime::voice_sapi_stop(state);
+    voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(state));
     let resource_dir = app.path().resource_dir().ok();
     voice_vosk_runtime::spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir);
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
@@ -384,7 +483,72 @@ fn restart_vosk_runtime(
         &format!("voice config changed: vosk restart ({reason})"),
     );
     voice_sapi_runtime::voice_sapi_stop(state);
+    voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(state));
     let resource_dir = app.path().resource_dir().ok();
     voice_vosk_runtime::spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir);
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+}
+
+fn try_start_kws_runtime(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    kws_cfg: VoiceKwsConfig,
+    reason: &str,
+) -> bool {
+    if !kws_cfg.enabled {
+        return false;
+    }
+    if state.voice_kws.lock().is_some() {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("skip start kws ({reason}): handle exists"),
+        );
+        return false;
+    }
+    let current = state.voice_kws_state.lock().clone();
+    if voice_engine_state_is_busy(&current) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("skip start kws ({reason}): state={current}"),
+        );
+        return false;
+    }
+
+    crate::app_log::log_line(state, "voice", &format!("starting kws ({reason})"));
+    voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+    voice_sapi_runtime::voice_sapi_stop(state);
+    let resource_dir = app.path().resource_dir().ok();
+    voice_kws_runtime::spawn_voice_kws_start(Arc::clone(state), kws_cfg, resource_dir);
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    true
+}
+
+fn restart_kws_runtime(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    kws_cfg: VoiceKwsConfig,
+    reason: &str,
+) {
+    if state.voice_kws.lock().is_some() {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("skip hot restart kws ({reason}): native worker keeps current keywords until next start"),
+        );
+        *state.voice_kws_last_error.lock() =
+            "KWS 关键词已保存；为避免原生引擎热重启崩溃，将在下次启动 KWS 时生效".into();
+        return;
+    }
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!("voice config changed: kws restart ({reason})"),
+    );
+    voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+    voice_sapi_runtime::voice_sapi_stop(state);
+    let resource_dir = app.path().resource_dir().ok();
+    voice_kws_runtime::spawn_voice_kws_start(Arc::clone(state), kws_cfg, resource_dir);
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }

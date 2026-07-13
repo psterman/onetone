@@ -88,7 +88,15 @@
 
   function wakeEngineRes(vm){
     var w=wakeSnapshot();
-    return vm.mode==='vosk'?w.vosk:(vm.mode==='sapi'?w.sapi:null);
+    return engineRes(vm.mode,w);
+  }
+
+  function engineRes(mode,w){
+    w=w||wakeSnapshot();
+    if(mode==='vosk') return w.vosk||null;
+    if(mode==='sapi') return w.sapi||null;
+    if(mode==='kws') return w.kws||null;
+    return null;
   }
 
   function slotNode(slot){
@@ -126,6 +134,11 @@
     if(vm.loading) return '—';
     var res=wakeEngineRes(vm);
     if(!res) return '—';
+    if(vm.mode==='kws'){
+      var kind=String(res.lastDetectedKind||'').trim();
+      if(kind) return kind;
+      return '—';
+    }
     if(res.lastConfidence!=null&&res.lastConfidence!=='') return String(res.lastConfidence);
     if(vm.mode==='sapi'){
       var cfg=(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config)||{};
@@ -142,6 +155,12 @@
 
   function resolveModelLabel(vm){
     if(vm.loading) return t('homeLiveLoading');
+    if(vm.mode==='kws'){
+      var kws=(wakeSnapshot().kws)||{};
+      if(kws.modelExists) return t('voiceKwsModelReady');
+      if(kws.stubMode) return t('voiceKwsStubMode');
+      return t('voiceKwsModelMissing');
+    }
     if(vm.mode!=='vosk') return '—';
     var preset='cn-light';
     if(global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
@@ -289,12 +308,25 @@
     if(vm.loading){
       return {text:t('homeLiveLoading'),cls:'is-loading'};
     }
-    var res=wakeEngineRes(vm);
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()){
+      return {text:t('voiceModeSwitching'),cls:'is-loading'};
+    }
+    var w=wakeSnapshot();
+    var runtime=global.OneToneVoiceWake&&global.OneToneVoiceWake.resolveRuntimeEngine
+      ?global.OneToneVoiceWake.resolveRuntimeEngine(w):vm.mode;
+    var res=engineRes(runtime,w);
     var end=hooks().voiceUiSnapshot?hooks().voiceUiSnapshot().end||{}:{};
     if(end&&end.state==='dictating'){
       return {text:t('voiceFbStatusDictating'),cls:'is-live'};
     }
-    if(res&&res.enabled&&(res.state==='listening'||res.state==='starting')){
+    if(runtime==='kws'&&res){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening&&global.OneToneVoiceWake.isKwsNativeListening(res,w)){
+        return {text:t('voiceFbStatusListening'),cls:'is-live'};
+      }
+      if(res.stubMode||res.resourceIssue){
+        return {text:t('voiceKwsStatusStubOnly'),cls:'is-standby'};
+      }
+    }else if(res&&res.enabled&&(res.state==='listening'||res.state==='starting')){
       return {text:t('voiceFbStatusListening'),cls:'is-live'};
     }
     if(!vm.voiceOn||vm.mode==='off'){
@@ -314,16 +346,73 @@
     return !!(matcher&&matcher(text,phrases));
   }
 
+  function resolveKwsTranscript(res,end){
+    end=end||{};
+    if(end.state==='dictating'){
+      var action=String(end.lastAction||'').trim();
+      if(action){
+        return {text:action,partial:false,placeholder:'',matched:true};
+      }
+      return {text:'',partial:false,placeholder:t('voiceFbTranscriptKwsDictating'),matched:false};
+    }
+    var trigger=String(res.lastTrigger||'').trim();
+    if(trigger){
+      return {text:trigger,partial:false,placeholder:'',matched:true};
+    }
+    var phrase=String(res.lastDetectedPhrase||'').trim();
+    if(phrase){
+      return {text:phrase,partial:false,placeholder:'',matched:isTranscriptMatched(res,phrase)};
+    }
+    var skip=String(res.lastSkip||'').trim();
+    if(skip){
+      return {text:skip,partial:false,placeholder:'',matched:false};
+    }
+    var partial=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+      ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+      :'';
+    if(partial){
+      return {text:partial,partial:false,placeholder:'',matched:isTranscriptMatched(res,partial)};
+    }
+    if(res.stubMode||res.resourceIssue){
+      return {text:'',partial:false,placeholder:String(res.resourceIssue||t('voiceKwsStubNativeMissing')),matched:false};
+    }
+    var wake=wakeSnapshot();
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening&&global.OneToneVoiceWake.isKwsNativeListening(res,wake)){
+      var phrases=Array.isArray(res.phrases)?res.phrases.filter(function(p){return String(p||'').trim();}):[];
+      var hint=phrases.length?phrases.slice(0,3).join(' / '):'';
+      var placeholder=t('voiceFbTranscriptKwsListening');
+      if(hint) placeholder+=' · '+hint;
+      if(micLevel>8) placeholder+=' · '+t('voiceFbTranscriptKwsMicHot');
+      else if(micLevel<=1) placeholder+=' · '+t('voiceFbTranscriptKwsMicQuiet');
+      return {text:'',partial:false,placeholder:placeholder,matched:false};
+    }
+    return null;
+  }
+
+  function resolveFeedbackMode(){
+    var wakeApi=global.OneToneVoiceWake;
+    if(wakeApi&&wakeApi.resolveRuntimeEngine) return wakeApi.resolveRuntimeEngine();
+    if(wakeApi&&wakeApi.currentMode) return wakeApi.currentMode();
+    return 'off';
+  }
+
   function resolveTranscriptText(step){
     step=currentStep(step);
     var w=wakeSnapshot();
     var end=endSnapshot();
-    var wakeApi=global.OneToneVoiceWake;
-    var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
-    var res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
+    var mode=resolveFeedbackMode();
+    var res=engineRes(mode,w);
     var profile=profileForStep(step);
     var idleKey=profile.idleKey||'voiceFbTranscriptIdle';
-    if(!res) return {text:'',partial:false,placeholder:t(idleKey),matched:false};
+    if(!res){
+      return {text:'',partial:false,placeholder:t(idleKey),matched:false};
+    }
+
+    if(mode==='kws'){
+      var kwsInfo=resolveKwsTranscript(res,end);
+      if(kwsInfo) return kwsInfo;
+      return {text:'',partial:false,placeholder:t('voiceFbTranscriptRecognizeIdle'),matched:false};
+    }
 
     if(end.state==='dictating'){
       var dictation=dictationDisplayText(res,mode);

@@ -188,10 +188,14 @@
     function updateVoiceSapiConfidence(saveNow){ return OneToneVoiceWake.updateSapiConfidence(saveNow); }
     function applyVoiceSapiSensLevel(index){ return OneToneVoiceWake.applySapiSensLevel(index); }
     function renderVoiceVoskStatus(res,opts){ return OneToneVoiceWake.renderVoskStatus(res,opts); }
+    function renderVoiceKwsStatus(res,opts){ return OneToneVoiceWake.renderKwsStatus(res,opts); }
     function loadVoiceVoskStatus(){ return OneToneVoiceWake.loadVoskStatus(); }
     function syncVoiceVoskToggle(enabled){ return OneToneVoiceWake.syncVoskToggle(enabled); }
     function toggleVoiceVosk(explicitNext){ return OneToneVoiceWake.toggleVosk(explicitNext); }
     function testVoiceVoskSend(){ return OneToneVoiceWake.testVoskSend(); }
+    function setVoiceKwsEnabled(enabled){ return OneToneVoiceWake.setKwsEnabled(enabled); }
+    function testVoiceKwsSend(){ return OneToneVoiceWake.testKwsSend(); }
+    function testVoiceKwsDetect(phrase){ return OneToneVoiceWake.testKwsDetect(phrase); }
     function openVoskResourcesDir(){ return OneToneVoiceWake.openVoskResourcesDir(); }
     function downloadVoskModelGuide(){ return OneToneVoiceWake.downloadVoskModelGuide(); }
     function downloadVoskModel(){ return OneToneVoiceWake.downloadVoskModel(); }
@@ -601,6 +605,7 @@
       renderVoiceModeUsage:renderVoiceModeUsage,
       renderVoiceSapiStatus:renderVoiceSapiStatus,
       renderVoiceVoskStatus:renderVoiceVoskStatus,
+      renderVoiceKwsStatus:renderVoiceKwsStatus,
       retryVoskStart:retryVoskStart,
       retryVoskStart:retryVoskStart,
       reorderMapping:reorderMapping,
@@ -675,6 +680,9 @@
       testVoiceEndStop:testVoiceEndStop,
       testVoiceSapiSend:testVoiceSapiSend,
       testVoiceVoskSend:testVoiceVoskSend,
+      setVoiceKwsEnabled:setVoiceKwsEnabled,
+      testVoiceKwsSend:testVoiceKwsSend,
+      testVoiceKwsDetect:testVoiceKwsDetect,
       toast:toast,
       toggleGlobalListen:toggleGlobalListen,
       toggleHomeSchemeMappingEnabled:toggleHomeSchemeMappingEnabled,

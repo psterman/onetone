@@ -1,7 +1,8 @@
 param(
   [switch]$Rebuild,
   [switch]$LaunchOnly,
-  [switch]$Safe
+  [switch]$Safe,
+  [switch]$Kws
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,8 @@ $releaseExe = Join-Path $buildRoot 'release\onetone.exe'
 $logDir = Join-Path $root 'logs'
 $logFile = Join-Path $logDir 'launch.log'
 $voskDir = Join-Path $tauri 'resources\vosk'
+$kwsDir = Join-Path $tauri 'resources\kws'
+$kwsModelName = 'sherpa-kws-zh-small'
 $voskDlls = @(
   'libvosk.dll',
   'libgcc_s_seh-1.dll',
@@ -65,6 +68,32 @@ function Sync-VoskBundleResources {
     if ((Test-Path (Join-Path $srcModel 'conf\model.conf')) -and -not (Test-Path $marker)) {
       Write-LaunchLog "syncing vosk model: $modelName"
       Copy-Item -LiteralPath $srcModel -Destination $destModel -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+function Sync-KwsBundleResources {
+  param([string]$ReleaseDir)
+  if (-not (Test-Path $ReleaseDir)) { return }
+  $srcModel = Join-Path $kwsDir $kwsModelName
+  $marker = Join-Path $srcModel 'tokens.txt'
+  if (-not (Test-Path $marker)) {
+    Write-LaunchLog "kws model missing at $srcModel (download via app or place sherpa-kws-zh-small)"
+    return
+  }
+  $bundleKws = Join-Path $ReleaseDir 'resources\kws'
+  $destModel = Join-Path $bundleKws $kwsModelName
+  $destMarker = Join-Path $destModel 'tokens.txt'
+  if (-not (Test-Path $destMarker)) {
+    Write-LaunchLog "syncing kws model: $kwsModelName"
+    New-Item -ItemType Directory -Path $bundleKws -Force | Out-Null
+    Copy-Item -LiteralPath $srcModel -Destination $destModel -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  $bundledKeywords = Join-Path $kwsDir 'onetone-keywords.txt'
+  if (Test-Path $bundledKeywords) {
+    $destKeywords = Join-Path $destModel 'keywords.txt'
+    if ((Test-Path $destModel) -and -not (Test-Path $destKeywords)) {
+      Copy-Item -LiteralPath $bundledKeywords -Destination $destKeywords -Force -ErrorAction SilentlyContinue
     }
   }
 }
@@ -125,6 +154,7 @@ function Start-OnetoneExe {
   Copy-VoskRuntimeDlls -DestDir $exeDir
   $releaseDir = Split-Path -Parent $ExePath
   Sync-VoskBundleResources -ReleaseDir $releaseDir
+  Sync-KwsBundleResources -ReleaseDir $releaseDir
   Write-LaunchLog "runtime log: $(Join-Path $logDir 'runtime-live.log')"
   $oldLogDir = $env:ONETONE_LOG_DIR
   if ($Safe) {
@@ -269,6 +299,7 @@ try {
 
   if (-not $needBuild -and (Test-Path $releaseExe)) {
     Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
+    Sync-KwsBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
     Write-LaunchLog "launch dev build (up to date): $releaseExe"
     Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
     exit 0
@@ -316,7 +347,8 @@ try {
   try {
     Enter-BuildLock
     Clear-StaleBundleResources -BuildRoot $buildRoot
-    & cargo tauri build --no-bundle -- --target-dir $buildRoot
+    $kwsFeature = if ($Kws) { @('--features', 'kws-engine') } else { @() }
+    & cargo tauri build --no-bundle @kwsFeature -- --target-dir $buildRoot
     if ($LASTEXITCODE -ne 0) {
       throw "cargo tauri build failed with exit code $LASTEXITCODE"
     }
@@ -331,6 +363,7 @@ try {
   }
 
   Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
+  Sync-KwsBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
 
   Write-LaunchLog 'build ok'
   Start-OnetoneExe -ExePath $releaseExe -Safe:$Safe

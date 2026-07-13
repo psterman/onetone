@@ -333,7 +333,9 @@ mod imp {
             (
                 cfg.sounds.recording_mute_enabled,
                 cfg.sounds.recording_mute_strength.clone(),
-                state.voice_sapi.lock().is_some() || state.voice_vosk.lock().is_some(),
+                state.voice_sapi.lock().is_some()
+                    || state.voice_vosk.lock().is_some()
+                    || state.voice_kws.lock().is_some(),
             )
         };
         let result = if enabled && active {

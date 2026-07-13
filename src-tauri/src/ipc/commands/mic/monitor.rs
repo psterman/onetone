@@ -19,7 +19,10 @@ pub fn cmd_mic_monitor_start(
     device_id: Option<String>,
     force: Option<bool>,
 ) -> Result<(), String> {
-    if state.voice_vosk.lock().is_some() || state.voice_sapi.lock().is_some() {
+    if state.voice_vosk.lock().is_some()
+        || state.voice_sapi.lock().is_some()
+        || state.voice_kws.lock().is_some()
+    {
         return Ok(());
     }
     let force = force.unwrap_or(false);

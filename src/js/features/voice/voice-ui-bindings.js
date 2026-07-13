@@ -52,6 +52,22 @@
     if(hooks.bindVoiceModeCard) hooks.bindVoiceModeCard('btnVoiceModeVosk','vosk');
     var btnVoiceVoskTest=$('btnVoiceVoskTest');
     if(btnVoiceVoskTest) btnVoiceVoskTest.onclick=hooks.testVoiceVoskSend;
+    var btnVoiceKwsEnable=$('btnVoiceKwsEnable');
+    if(btnVoiceKwsEnable) btnVoiceKwsEnable.onclick=function(){ if(hooks.setVoiceKwsEnabled) hooks.setVoiceKwsEnabled(true); };
+    var btnVoiceKwsDisable=$('btnVoiceKwsDisable');
+    if(btnVoiceKwsDisable) btnVoiceKwsDisable.onclick=function(){ if(hooks.setVoiceKwsEnabled) hooks.setVoiceKwsEnabled(false); };
+    var btnVoiceKwsTestSend=$('btnVoiceKwsTestSend');
+    if(btnVoiceKwsTestSend) btnVoiceKwsTestSend.onclick=hooks.testVoiceKwsSend;
+    var btnVoiceKwsDownload=$('btnVoiceKwsDownload');
+    if(btnVoiceKwsDownload) btnVoiceKwsDownload.onclick=function(){ if(hooks.downloadKwsModel) hooks.downloadKwsModel(); };
+    var btnVoiceKwsRetry=$('btnVoiceKwsRetry');
+    if(btnVoiceKwsRetry) btnVoiceKwsRetry.onclick=function(){ if(hooks.retryKwsStart) hooks.retryKwsStart(); };
+    document.querySelectorAll('[data-kws-phrase]').forEach(function(btn){
+      btn.onclick=function(){
+        var phrase=btn.getAttribute('data-kws-phrase')||'';
+        if(hooks.testVoiceKwsDetect) hooks.testVoiceKwsDetect(phrase);
+      };
+    });
     var btnVoskOpenResources=$('btnVoskOpenResources');
     if(btnVoskOpenResources) btnVoskOpenResources.onclick=hooks.openVoskResourcesDir;
     var btnVoskRetry=$('btnVoskRetry');
@@ -191,7 +207,8 @@
         if(!btn||btn.disabled||btn.hidden) return;
         e.preventDefault();
         var mode=btn.getAttribute('data-voice-engine-tab');
-        if(mode!=='sapi'&&mode!=='vosk') return;
+        if(mode!=='sapi'&&mode!=='vosk'&&mode!=='kws') return;
+        if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()) return;
         if(mode==='sapi'&&global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return;
         if(hooks.setVoiceWakeExpandedMode) hooks.setVoiceWakeExpandedMode(mode);
         if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
@@ -233,11 +250,18 @@
       btnVoiceSaveHabit.onclick=function(e){
         e.preventDefault();
         e.stopPropagation();
-        if(global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.saveVoiceScheme){
-          global.OneToneVoiceSchemePersist.saveVoiceScheme();
-        }else if(global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice){
-          global.OneToneHabitHub.createFromVoice();
-        }
+        var saveFn=global.OneToneVoiceSchemePersist&&global.OneToneVoiceSchemePersist.saveVoiceScheme;
+        var legacyFn=global.OneToneHabitHub&&global.OneToneHabitHub.createFromVoice;
+        var run=saveFn||legacyFn;
+        if(!run) return;
+        Promise.resolve(run()).then(function(saved){
+          if(saved===null&&global.OneToneAppToast){
+            global.OneToneAppToast.show(t('voiceSchemeSaveCancelled'),'warn');
+          }
+        }).catch(function(err){
+          console.error('saveVoiceScheme',err);
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceSchemeSaveCancelled'),'warn');
+        });
       };
     }
     function runVoiceTestOnce(){
@@ -265,6 +289,7 @@
       };
     }
     bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
+    bindVoiceEngineSwitch($('voiceSummaryEngineSwitch'));
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');
     if(btnVoiceOutputSummonManage){
       btnVoiceOutputSummonManage.onclick=function(){
@@ -456,7 +481,7 @@
           if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,active);
         },
         onRemove:function(phrase){
-          if(wakeApi&&wakeApi.removeCustomWakePhrase) wakeApi.removeCustomWakePhrase(phrase);
+          if(wakeApi&&wakeApi.toggleWakePhrase) wakeApi.toggleWakePhrase(phrase,true);
         }
       });
       pc.bindPhraseTags('voiceWakePhraseSuggestions',{
@@ -476,8 +501,8 @@
     var btnMicRefresh=$('btnMicRefresh');
     if(btnMicRefresh) btnMicRefresh.onclick=function(){
       btnMicRefresh.disabled=true;
-      if(hooks.micRecoveryTimer()) hooks.clearMicRecoveryTimer();
-      hooks.clearMicBackoff();
+      if(typeof hooks.micRecoveryTimer==='function'&&hooks.micRecoveryTimer()) hooks.clearMicRecoveryTimer();
+      if(typeof hooks.clearMicBackoff==='function') hooks.clearMicBackoff();
       hooks.loadMicDevices({manual:true}).catch(function(err){
         var detail=err&&(err.message||String(err))||'';
         hooks.toast(detail?(t('micRefreshFail')+'：'+detail):t('micRefreshFail'));

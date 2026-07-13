@@ -35,7 +35,9 @@
 
   function isMicUnavailable(vm){
     if(!vm.summary||vm.summary.loading||vm.summary.engine==='off') return false;
-    var devices=global.OneToneAppMic&&global.OneToneAppMic.devices?global.OneToneAppMic.devices():[];
+    var micApi=global.OneToneAppMic;
+    if(micApi&&typeof micApi.listLoaded==='function'&&!micApi.listLoaded()) return false;
+    var devices=micApi&&micApi.devices?micApi.devices():[];
     if(!devices||!devices.length) return true;
     var label=vm.micLabel||'';
     return label===t('homeLiveMicUnknown')||label===t('homeLiveMicUnset');
@@ -435,6 +437,13 @@
   function render(){
     if(!global.OneToneHomeV9||!global.OneToneHomeV9.buildViewModel) return;
     if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen&&global.OneToneHabitTriggerSetup.isOpen()) return;
+    var micApi=global.OneToneAppMic;
+    if(micApi&&typeof micApi.listLoaded==='function'&&!micApi.listLoaded()&&typeof micApi.loadMicDevices==='function'){
+      var bootHooks=global.__vp_bootstrap_hooks__||{};
+      if(!bootHooks.uiBootstrapping||!bootHooks.uiBootstrapping()){
+        micApi.loadMicDevices().catch(function(){});
+      }
+    }
     var vm=enrichViewModel(global.OneToneHomeV9.buildViewModel());
     if(global.vp9&&global.vp9.updateState) global.vp9.updateState(vm.vpState);
     renderNavSidebar(vm);

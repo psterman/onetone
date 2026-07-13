@@ -1,0 +1,435 @@
+//! Runtime integration for KWS keyword command engine.
+
+use std::path::PathBuf;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+
+use tauri::{AppHandle, Manager, WebviewWindow};
+
+use crate::config::{save_config, VoiceKwsConfig};
+use crate::scene_config::resolve_effective_kws_config;
+use crate::voice_keyword_dispatch::{
+    classify_voice_keyword, dispatch_voice_keyword_detected, VoiceKeywordDetection,
+    VoiceKeywordKind,
+};
+use crate::voice_kws::{probe_kws_resources, start_voice_kws, stop_voice_kws, VoiceKwsEvent};
+use crate::AppState;
+
+#[derive(Debug, Clone, Default)]
+pub struct KwsKeywordStatusSnapshot {
+    pub encoded: Vec<String>,
+    pub skipped: Vec<String>,
+    pub truncated: Vec<String>,
+    pub issue: String,
+}
+
+fn compose_keyword_build_issue(
+    plan: &crate::scene_config::KwsKeywordPlan,
+    build: &crate::voice_kws_keywords::KwsKeywordBuildResult,
+) -> String {
+    if build.encoded.is_empty() {
+        if plan.included.is_empty() {
+            return "未配置有效关键词".into();
+        }
+        return format!(
+            "无法编码任何关键词（已跳过 {} 条）",
+            build.skipped.len()
+        );
+    }
+    let mut parts = Vec::new();
+    if !build.skipped.is_empty() {
+        parts.push(format!("{} 条无法编码已跳过", build.skipped.len()));
+    }
+    if !plan.truncated.is_empty() {
+        parts.push(format!("{} 条因上限未载入", plan.truncated.len()));
+    }
+    parts.join("；")
+}
+
+fn store_kws_keyword_build_snapshot(
+    state: &AppState,
+    plan: &crate::scene_config::KwsKeywordPlan,
+    build: &crate::voice_kws_keywords::KwsKeywordBuildResult,
+) {
+    *state.voice_kws_keyword_build.lock() = KwsKeywordStatusSnapshot {
+        encoded: build.encoded.clone(),
+        skipped: build.skipped.clone(),
+        truncated: plan.truncated.clone(),
+        issue: compose_keyword_build_issue(plan, build),
+    };
+}
+
+fn next_kws_epoch(state: &AppState) -> u64 {
+    state.voice_kws_epoch.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn kws_epoch_matches(state: &AppState, epoch: u64) -> bool {
+    state.voice_kws_epoch.load(Ordering::SeqCst) == epoch
+}
+
+pub fn spawn_voice_kws_stop(state: Arc<AppState>) {
+    let _epoch = next_kws_epoch(state.as_ref());
+    *state.voice_kws_cooldown_until.lock() = None;
+    *state.voice_kws_last_error.lock() = String::new();
+    let handle = state.voice_kws.lock().take();
+    if let Some(handle) = handle {
+        *state.voice_kws_state.lock() = "stopping".into();
+        std::thread::Builder::new()
+            .name("voice-kws-stop".into())
+            .spawn(move || {
+                stop_voice_kws(handle);
+                *state.voice_kws_state.lock() = "stopped".into();
+            })
+            .ok();
+    } else {
+        *state.voice_kws_state.lock() = "stopped".into();
+    }
+}
+
+fn voice_kws_stop_sync(state: &AppState) {
+    if let Some(handle) = state.voice_kws.lock().take() {
+        stop_voice_kws(handle);
+    }
+    *state.voice_kws_state.lock() = "stopped".into();
+}
+
+pub fn voice_kws_start(
+    state: &AppState,
+    cfg: &VoiceKwsConfig,
+    resource_dir: Option<PathBuf>,
+    epoch: u64,
+) -> Result<(), String> {
+    if !kws_epoch_matches(state, epoch) {
+        return Ok(());
+    }
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    voice_kws_stop_sync(state);
+    if !kws_epoch_matches(state, epoch) {
+        return Ok(());
+    }
+    *state.voice_kws_state.lock() = "starting".into();
+
+    let keyword_plan = {
+        let cfg_guard = state.cfg.lock();
+        crate::scene_config::kws_keyword_plan_for_cfg(
+            &cfg_guard,
+            crate::scene_config::KWS_MAX_KEYWORD_ENTRIES,
+        )
+    };
+    let model_dir = crate::voice_kws::resolve_kws_model_dir(cfg, resource_dir.as_deref());
+    let build_result = crate::voice_kws::prepare_runtime_keywords(&model_dir, &keyword_plan.included);
+    store_kws_keyword_build_snapshot(state, &keyword_plan, &build_result);
+    if build_result.encoded.is_empty() {
+        eprintln!(
+            "kws: runtime keywords empty (skipped={:?}, truncated={:?}); falling back to bundled keywords.txt",
+            build_result.skipped, keyword_plan.truncated
+        );
+    }
+
+    let handle = start_voice_kws(cfg, resource_dir.as_deref())?;
+    *state.voice_kws.lock() = Some(handle);
+    *state.voice_kws_last_error.lock() = String::new();
+    Ok(())
+}
+
+pub fn spawn_voice_kws_start(
+    state: Arc<AppState>,
+    cfg: VoiceKwsConfig,
+    resource_dir: Option<PathBuf>,
+) {
+    let epoch = next_kws_epoch(state.as_ref());
+    *state.voice_kws_state.lock() = "starting".into();
+    std::thread::Builder::new()
+        .name("voice-kws-start".into())
+        .spawn(move || {
+            if let Err(e) = voice_kws_start(state.as_ref(), &cfg, resource_dir, epoch) {
+                *state.voice_kws_last_error.lock() = e.clone();
+                *state.voice_kws_state.lock() = "error".into();
+            }
+        })
+        .ok();
+}
+
+fn emit_kws_mic_level(app: &AppHandle, state: &AppState, level: u32) {
+    let payload = serde_json::json!({
+        "type": "mic_level",
+        "deviceId": "",
+        "level": level,
+    });
+    crate::ipc::emit_to_main_if_available(app, Some(state), payload);
+}
+
+pub fn drain_voice_kws_events(state: &Arc<AppState>, app: &AppHandle) {
+    let events: Vec<VoiceKwsEvent> = {
+        let guard = state.voice_kws.lock();
+        let Some(handle) = guard.as_ref() else {
+            tick_kws_cooldown_state(state);
+            return;
+        };
+        let mut out = Vec::new();
+        while let Some(ev) = handle.try_recv() {
+            out.push(ev);
+        }
+        out
+    };
+
+    for ev in events {
+        match ev {
+            VoiceKwsEvent::StateChanged(s) => {
+                if s == "stopped" || s == "error" {
+                    state.mic_level.clear();
+                    *state.voice_kws_last_partial.lock() = String::new();
+                    emit_kws_mic_level(app, state.as_ref(), 0);
+                }
+                *state.voice_kws_state.lock() = s;
+            }
+            VoiceKwsEvent::Error(e) => {
+                *state.voice_kws_last_error.lock() = e;
+                *state.voice_kws_state.lock() = "error".into();
+                state.mic_level.clear();
+                *state.voice_kws_last_partial.lock() = String::new();
+                emit_kws_mic_level(app, state.as_ref(), 0);
+            }
+            VoiceKwsEvent::Level { level } => {
+                state.mic_level.set("", level);
+                emit_kws_mic_level(app, state, level);
+            }
+            VoiceKwsEvent::Partial(text) => {
+                *state.voice_kws_last_partial.lock() = text;
+            }
+            VoiceKwsEvent::Detected {
+                phrase,
+                keyword,
+                kind,
+            } => {
+                process_kws_detected(state, app, phrase, keyword, kind);
+            }
+        }
+    }
+
+    tick_kws_cooldown_state(state);
+}
+
+fn tick_kws_cooldown_state(state: &AppState) {
+    let until = *state.voice_kws_cooldown_until.lock();
+    if let Some(until) = until {
+        if until <= std::time::Instant::now() {
+            *state.voice_kws_cooldown_until.lock() = None;
+            if state.voice_kws_state.lock().as_str() == "cooldown" {
+                *state.voice_kws_state.lock() = "listening".into();
+            }
+        }
+    }
+}
+
+fn process_kws_detected(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    phrase: String,
+    keyword: String,
+    _kind: VoiceKeywordKind,
+) {
+    let kind = {
+        let cfg = state.cfg.lock();
+        classify_voice_keyword(&cfg, &phrase)
+    };
+    *state.voice_kws_last_detected_phrase.lock() = phrase.clone();
+    *state.voice_kws_last_detected_kind.lock() = kind.as_str().to_string();
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!("kws detected: phrase={phrase} kind={}", kind.as_str()),
+    );
+
+    let detection = VoiceKeywordDetection {
+        phrase: phrase.clone(),
+        keyword,
+        kind,
+    };
+    let result = dispatch_voice_keyword_detected(state, app, "kws", &detection);
+
+    if result.skipped {
+        *state.voice_kws_last_skip.lock() = result.skip_reason;
+        *state.voice_kws_last_trigger.lock() = String::new();
+        if !result.handled {
+            *state.voice_kws_state.lock() = "listening".into();
+        }
+        return;
+    }
+
+    *state.voice_kws_last_skip.lock() = String::new();
+    *state.voice_kws_last_trigger.lock() = result.trigger_label;
+    *state.voice_kws_state.lock() = if result.handled {
+        if kind == VoiceKeywordKind::End || kind == VoiceKeywordKind::Cancel {
+            "listening".into()
+        } else {
+            "triggered".into()
+        }
+    } else {
+        "error".into()
+    };
+}
+
+pub fn voice_kws_inject_test_detect(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    phrase: String,
+) -> Result<serde_json::Value, String> {
+    let kind = {
+        let cfg = state.cfg.lock();
+        classify_voice_keyword(&cfg, &phrase)
+    };
+    let keyword = phrase.clone();
+
+    if let Some(handle) = state.voice_kws.lock().as_ref() {
+        handle.inject_detected(phrase.clone(), keyword.clone(), kind)?;
+        drain_voice_kws_events(state, app);
+    } else {
+        process_kws_detected(state, app, phrase.clone(), keyword, kind);
+    }
+
+    Ok(voice_kws_status(state, None))
+}
+
+pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
+    let cfg = state.cfg.lock();
+    let plan = crate::scene_config::kws_keyword_plan_for_cfg(
+        &cfg,
+        crate::scene_config::KWS_MAX_KEYWORD_ENTRIES,
+    );
+    let build = state.voice_kws_keyword_build.lock().clone();
+    let probe = probe_kws_resources(&cfg.voice_kws, resource_dir.as_deref());
+    let target_key =
+        crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_kws.target_key);
+    let resource_issue = crate::voice_kws::kws_resource_issue(&probe);
+    let resources_dir = crate::voice_kws::kws_resources_dir(resource_dir.as_deref());
+    let download_url = crate::config::kws_model_download_url(&probe.model_preset)
+        .unwrap_or("https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models");
+    let keyword_build_issue = if build.issue.is_empty() {
+        compose_keyword_build_issue(&plan, &crate::voice_kws_keywords::KwsKeywordBuildResult {
+            encoded: build.encoded.clone(),
+            skipped: build.skipped.clone(),
+        })
+    } else {
+        build.issue.clone()
+    };
+    serde_json::json!({
+        "enabled": cfg.voice_kws.enabled,
+        "engine": "kws",
+        "stubMode": probe.stub_mode,
+        "state": state.voice_kws_state.lock().clone(),
+        "lastError": state.voice_kws_last_error.lock().clone(),
+        "lastSkip": state.voice_kws_last_skip.lock().clone(),
+        "lastTrigger": state.voice_kws_last_trigger.lock().clone(),
+        "lastDetectedPhrase": state.voice_kws_last_detected_phrase.lock().clone(),
+        "lastDetectedKind": state.voice_kws_last_detected_kind.lock().clone(),
+        "lastPartial": state.voice_kws_last_partial.lock().clone(),
+        "phrases": plan.included,
+        "phrasesActive": build.encoded,
+        "phrasesSkipped": build.skipped,
+        "phrasesTruncated": plan.truncated,
+        "keywordBuildIssue": keyword_build_issue,
+        "targetKey": target_key,
+        "cooldownMs": cfg.voice_kws.cooldown_ms,
+        "modelPath": probe.model_path,
+        "modelPreset": probe.model_preset,
+        "resolvedModelPath": probe.resolved_model_path,
+        "modelExists": probe.model_exists,
+        "keywordsExists": probe.keywords_exists,
+        "resourceIssue": resource_issue,
+        "resourcesDir": resources_dir.display().to_string(),
+        "modelDownloadUrl": download_url,
+    })
+}
+
+fn stop_other_engines(state: &Arc<AppState>) {
+    crate::voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
+    crate::voice_sapi_runtime::voice_sapi_stop(state);
+}
+
+pub fn voice_kws_set_enabled(
+    state: &Arc<AppState>,
+    _window: &WebviewWindow,
+    enabled: bool,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_kws.enabled = enabled;
+        if enabled {
+            cfg.voice_vosk.enabled = false;
+            cfg.voice_sapi.enabled = false;
+        }
+        crate::config::reconcile_voice_engine_flags(&mut cfg);
+        cfg.normalize();
+        save_config(&cfg);
+    }
+
+    if enabled {
+        stop_other_engines(state);
+        let cfg = state.cfg.lock().voice_kws.clone();
+        spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
+    } else {
+        spawn_voice_kws_stop(Arc::clone(state));
+    }
+
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    Ok(voice_kws_status(state, resource_dir))
+}
+
+pub fn voice_kws_set_phrases(
+    state: &Arc<AppState>,
+    phrases: Vec<String>,
+    resource_dir: Option<PathBuf>,
+) -> Result<serde_json::Value, String> {
+    let enabled = {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_kws.phrases = phrases;
+        cfg.normalize();
+        save_config(&cfg);
+        cfg.voice_kws.enabled
+            && crate::scene_config::idle_desired_voice_engine(&cfg) == crate::scene_config::DesiredVoiceEngine::Kws
+    };
+
+    if enabled {
+        let cfg = resolve_effective_kws_config(&state.cfg.lock());
+        spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
+    }
+    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    Ok(voice_kws_status(state, resource_dir))
+}
+
+pub fn voice_kws_test_send(state: &AppState, window: &WebviewWindow) -> serde_json::Value {
+    let (target_key, duration_ms) = {
+        let cfg = state.cfg.lock();
+        (
+            crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_kws.target_key),
+            cfg.key_press_duration_ms,
+        )
+    };
+    let app = window.app_handle();
+    let sent = crate::voice_end_runtime::send_wake_to_target(
+        Some(state),
+        Some(&app),
+        &target_key,
+        duration_ms,
+    );
+    serde_json::json!({
+        "ok": sent,
+        "targetKey": target_key,
+    })
+}
+
+pub fn voice_kws_retry_start(state: &Arc<AppState>, resource_dir: Option<PathBuf>) -> serde_json::Value {
+    let cfg = resolve_effective_kws_config(&state.cfg.lock());
+    if !cfg.enabled {
+        return voice_kws_status(state, resource_dir);
+    }
+    stop_other_engines(state);
+    spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
+    voice_kws_status(state, resource_dir)
+}
+
+pub fn voice_kws_stop(state: &Arc<AppState>) {
+    spawn_voice_kws_stop(Arc::clone(state));
+}

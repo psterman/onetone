@@ -2,16 +2,20 @@
   'use strict';
 
   function desiredEngine(cfg){
+    const kws=!!((cfg.voiceKws||cfg.voice_kws||{}).enabled);
     const vosk=!!((cfg.voiceVosk||cfg.voice_vosk||{}).enabled);
     const sapi=!!((cfg.voiceSapi||cfg.voice_sapi||{}).enabled);
+    if(kws&&!vosk&&!sapi) return 'kws';
     if(vosk) return 'vosk';
     if(sapi) return 'sapi';
+    if(kws) return 'kws';
     return 'none';
   }
 
   function globalWakePhrases(cfg){
     const engine=desiredEngine(cfg);
     if(engine==='sapi') return cloneList((cfg.voiceSapi||cfg.voice_sapi||{}).phrases);
+    if(engine==='kws') return cloneList((cfg.voiceKws||cfg.voice_kws||{}).phrases);
     return cloneList((cfg.voiceVosk||cfg.voice_vosk||{}).phrases);
   }
 
@@ -145,6 +149,7 @@
   }
 
   global.OneToneSceneConfig={
+    desiredEngine:desiredEngine,
     resolveEffectiveScene:resolveEffectiveScene,
     globalWakePhrases:globalWakePhrases,
     globalEndPhrases:globalEndPhrases,

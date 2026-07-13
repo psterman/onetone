@@ -68,10 +68,12 @@
   function resolveModeLabel(mode){
     if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()){
       if(mode==='off') return t('voiceModeCurrentOff');
+      if(mode==='kws') return t('voiceModeKwsEngine');
       return t('voiceModeProEngine');
     }
     if(mode==='sapi') return t('voiceModeLiteEngine');
     if(mode==='vosk') return t('voiceModeProEngine');
+    if(mode==='kws') return t('voiceModeKwsEngine');
     return t('voiceModeCurrentOff');
   }
 
@@ -187,6 +189,8 @@
         zh=presets.firstSelectedPhrase('vosk','zh')||'';
         en=presets.firstSelectedPhrase('vosk','en')||'';
         if(!zh&&!en) zh=vm.wakePhrase;
+      }else if(vm.mode==='kws'){
+        zh=vm.wakePhrase;
       }else{
         zh=vm.wakePhrase;
       }
@@ -212,7 +216,7 @@
       ?global.OneToneVoiceHomeSummary.compute()
       :null;
     const eng=summary?summary.engine:hooks().homeVoiceEngineOn();
-    const mode=eng==='vosk'?'vosk':(eng==='sapi'?'sapi':'off');
+    const mode=eng==='vosk'?'vosk':(eng==='sapi'?'sapi':(eng==='kws'?'kws':'off'));
     const endSnap=hooks().voiceUiSnapshot().end||{};
     const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
     const habit=resolveActiveHabit();

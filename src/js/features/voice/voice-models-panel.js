@@ -27,6 +27,7 @@
     var s=compute();
     setPill('modelsVoskStatus',s.engineMode==='vosk'?'当前使用':'可选',s.engineMode==='vosk');
     setPill('modelsSapiStatus',s.engineMode==='sapi'?'当前使用':'可选',s.engineMode==='sapi');
+    setPill('modelsKwsStatus',s.engineMode==='kws'?'当前使用':'可选',s.engineMode==='kws');
     setText('modelsSapiDesc',s.engineMode==='sapi'?'当前用于语音输入':'可作为轻量识别备用');
     if(global.OneToneVoiceModelLabels&&global.OneToneVoiceModelLabels.syncPresetButtons){
       global.OneToneVoiceModelLabels.syncPresetButtons();
@@ -51,6 +52,15 @@
     var sapi=$('btnModelsSapiSetup');
     if(sapi) sapi.onclick=function(){
       if(wake&&wake.openSapiSetup) wake.openSapiSetup();
+    };
+    var kwsDl=$('btnModelsKwsDownload');
+    if(kwsDl) kwsDl.onclick=function(){
+      if(wake&&wake.downloadKwsModel) wake.downloadKwsModel();
+    };
+    var kwsRetry=$('btnModelsKwsRetry');
+    if(kwsRetry) kwsRetry.onclick=function(e){
+      e.stopPropagation();
+      if(wake&&wake.retryKwsStart) wake.retryKwsStart();
     };
   }
 

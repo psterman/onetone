@@ -55,17 +55,19 @@
   function engineMode(){
     if(global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn){
       var live=global.OneToneHomeLive.voiceEngineOn();
-      if(live==='vosk'||live==='sapi'||live==='off') return live;
+      if(live==='vosk'||live==='sapi'||live==='kws'||live==='off') return live;
     }
     var c=cfg();
     if(c.voiceVosk&&c.voiceVosk.enabled) return 'vosk';
     if(c.voiceSapi&&c.voiceSapi.enabled) return 'sapi';
+    if(c.voiceKws&&c.voiceKws.enabled) return 'kws';
     return 'off';
   }
 
   function engineLabel(mode){
     if(mode==='vosk') return t('homeFlowEngineVosk');
     if(mode==='sapi') return t('homeFlowEngineSapi');
+    if(mode==='kws') return t('homeFlowEngineKws');
     return t('homeFlowEngineOff');
   }
 
@@ -85,6 +87,7 @@
     var c=cfg();
     if(mode==='vosk') return first((c.voiceVosk||c.voice_vosk||{}).phrases)||'开始输入';
     if(mode==='sapi') return first((c.voiceSapi||c.voice_sapi||{}).phrases)||'开始输入';
+    if(mode==='kws') return first((c.voiceKws||c.voice_kws||{}).phrases)||'开始输入';
     return '';
   }
 
@@ -134,10 +137,18 @@
     return t('homeFlowScopeN',{n:ids.length});
   }
 
+  function micUnavailable(summary){
+    var micApi=global.OneToneAppMic;
+    if(micApi&&typeof micApi.listLoaded==='function'&&!micApi.listLoaded()) return false;
+    var devices=micApi&&micApi.devices?micApi.devices():[];
+    if(!devices.length) return true;
+    var label=summary&&summary.micLabel||'';
+    return label===t('homeLiveMicUnknown')||label===t('homeLiveMicUnset')||label===t('homeLiveLoading');
+  }
+
   function micStatus(summary){
-    var devices=global.OneToneAppMic&&global.OneToneAppMic.devices?global.OneToneAppMic.devices():[];
     var label=summary&&summary.micLabel||t('homeWbVoiceMicDefault');
-    var ok=!!devices.length||!!label;
+    var ok=!micUnavailable(summary);
     return {label:label,state:ok?t('homeFlowMicOk'):t('homeFlowMicCheck'),ok:ok};
   }
 

@@ -85,7 +85,7 @@
     render();
   }
 
-  function selectVoiceSchemeForEdit(id){
+  function activateSchemeEditing(id){
     id=String(id||'').trim();
     if(!id||id===GLOBAL_SCHEME_ID){
       selectVoiceRuntimeGlobal();
@@ -93,10 +93,17 @@
     }
     ui().voiceEditSchemeId=id;
     state().selectedMappingId=id;
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+      global.OneToneVoiceSchemeContext.activateEditingScheme();
+    }
     scheduleVoiceRender();
     render();
     var tab=$('voiceWorkflowTab-'+id);
     if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+  }
+
+  function selectVoiceSchemeForEdit(id){
+    activateSchemeEditing(id);
   }
 
   function switchVoiceScheme(id,opts){
@@ -110,10 +117,7 @@
     ui().voiceEditSchemeId=id;
     state().selectedMappingId=id;
     if(!activate){
-      scheduleVoiceRender();
-      render();
-      var editTab=$('voiceWorkflowTab-'+id);
-      if(editTab&&editTab.scrollIntoView) editTab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+      activateSchemeEditing(id);
       return;
     }
     var st=state();

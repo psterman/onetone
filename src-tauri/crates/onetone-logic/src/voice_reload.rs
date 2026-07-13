@@ -6,6 +6,7 @@ pub enum DesiredVoiceEngine {
     None,
     Vosk,
     Sapi,
+    Kws,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -36,10 +37,21 @@ pub struct VoiceEndReload {
     pub cancel_phrases_en: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct VoiceKwsReload {
+    pub enabled: bool,
+    pub phrases: Vec<String>,
+    pub model_path: String,
+    pub model_preset: String,
+    pub target_key: String,
+    pub cooldown_ms: u32,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct VoiceReloadConfig {
     pub vosk: VoiceVoskReload,
     pub sapi: VoiceSapiReload,
+    pub kws: VoiceKwsReload,
     pub voice_end: VoiceEndReload,
 }
 
@@ -48,6 +60,8 @@ pub fn desired_voice_engine(cfg: &VoiceReloadConfig) -> DesiredVoiceEngine {
         DesiredVoiceEngine::Vosk
     } else if cfg.sapi.enabled {
         DesiredVoiceEngine::Sapi
+    } else if cfg.kws.enabled {
+        DesiredVoiceEngine::Kws
     } else {
         DesiredVoiceEngine::None
     }
@@ -66,6 +80,17 @@ pub fn vosk_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadC
 
 pub fn sapi_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadConfig) -> bool {
     old.sapi.phrases != new.sapi.phrases
+}
+
+pub fn kws_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadConfig) -> bool {
+    old.kws.phrases != new.kws.phrases
+        || old.kws.model_path != new.kws.model_path
+        || old.kws.model_preset != new.kws.model_preset
+        || old.voice_end.enabled != new.voice_end.enabled
+        || old.voice_end.phrases_zh != new.voice_end.phrases_zh
+        || old.voice_end.phrases_en != new.voice_end.phrases_en
+        || old.voice_end.cancel_phrases_zh != new.voice_end.cancel_phrases_zh
+        || old.voice_end.cancel_phrases_en != new.voice_end.cancel_phrases_en
 }
 
 #[cfg(test)]
@@ -101,6 +126,21 @@ mod tests {
         let mut cfg = base_cfg();
         cfg.vosk.enabled = true;
         cfg.sapi.enabled = true;
+        assert_eq!(desired_voice_engine(&cfg), DesiredVoiceEngine::Vosk);
+    }
+
+    #[test]
+    fn desired_voice_engine_kws_only() {
+        let mut cfg = base_cfg();
+        cfg.kws.enabled = true;
+        assert_eq!(desired_voice_engine(&cfg), DesiredVoiceEngine::Kws);
+    }
+
+    #[test]
+    fn desired_voice_engine_vosk_beats_kws() {
+        let mut cfg = base_cfg();
+        cfg.vosk.enabled = true;
+        cfg.kws.enabled = true;
         assert_eq!(desired_voice_engine(&cfg), DesiredVoiceEngine::Vosk);
     }
 
@@ -182,5 +222,21 @@ mod tests {
         let mut new = old.clone();
         new.sapi.target_key = "F2".into();
         assert!(!sapi_runtime_relevant_changed(&old, &new));
+    }
+
+    #[test]
+    fn kws_runtime_relevant_phrases_changed() {
+        let old = base_cfg();
+        let mut new = old.clone();
+        new.kws.phrases.push("新关键词".into());
+        assert!(kws_runtime_relevant_changed(&old, &new));
+    }
+
+    #[test]
+    fn kws_runtime_not_relevant_target_key_only() {
+        let old = base_cfg();
+        let mut new = old.clone();
+        new.kws.target_key = "F2".into();
+        assert!(!kws_runtime_relevant_changed(&old, &new));
     }
 }

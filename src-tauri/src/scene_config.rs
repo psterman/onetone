@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::config::{
     is_workflow_app_target, vosk_preset_model_path, MappingEntry, PhraseBundle, VoiceConfig,
-    VoiceOverride, VoiceSapiConfig, VoiceVoskConfig,
+    VoiceKwsConfig, VoiceOverride, VoiceSapiConfig, VoiceVoskConfig,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -12,6 +12,7 @@ use crate::config::{
 pub enum DesiredVoiceEngine {
     Vosk,
     Sapi,
+    Kws,
     None,
 }
 
@@ -184,11 +185,78 @@ pub fn vosk_grammar_from_effective(
     out
 }
 
+/// Max keyword lines written to sherpa-onnx runtime keywords file.
+pub const KWS_MAX_KEYWORD_ENTRIES: usize = 20;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct KwsKeywordPlan {
+    /// Phrases selected for runtime keyword file (priority order, deduped).
+    pub included: Vec<String>,
+    /// Phrases dropped because `max_entries` was reached.
+    pub truncated: Vec<String>,
+}
+
+fn push_unique_phrase(out: &mut Vec<String>, seen: &mut std::collections::HashSet<String>, phrase: &str) {
+    let t = phrase.trim();
+    if t.is_empty() {
+        return;
+    }
+    if seen.insert(t.to_string()) {
+        out.push(t.to_string());
+    }
+}
+
+/// Ordered tiers: wake, summon, end (zh+en), cancel (zh+en).
+pub fn kws_keyword_phrase_tiers(
+    effective: &EffectiveSceneConfig,
+    voice_end_enabled: bool,
+) -> Vec<Vec<String>> {
+    let mut tiers = vec![
+        effective.wake_phrases.clone(),
+        effective.summon_phrases.clone(),
+    ];
+    if voice_end_enabled {
+        let mut end = effective.end_phrases.zh.clone();
+        end.extend(effective.end_phrases.en.clone());
+        let mut cancel = effective.cancel_phrases.zh.clone();
+        cancel.extend(effective.cancel_phrases.en.clone());
+        tiers.push(end);
+        tiers.push(cancel);
+    }
+    tiers
+}
+
+pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKeywordPlan {
+    let Some(effective) = resolve_idle_effective_scene(cfg) else {
+        return KwsKeywordPlan::default();
+    };
+    let tiers = kws_keyword_phrase_tiers(&effective, cfg.voice_end.enabled);
+    let mut seen = std::collections::HashSet::new();
+    let mut candidates = Vec::new();
+    for tier in tiers {
+        for phrase in tier {
+            push_unique_phrase(&mut candidates, &mut seen, &phrase);
+        }
+    }
+    if candidates.len() <= max_entries {
+        return KwsKeywordPlan {
+            included: candidates,
+            truncated: Vec::new(),
+        };
+    }
+    KwsKeywordPlan {
+        included: candidates[..max_entries].to_vec(),
+        truncated: candidates[max_entries..].to_vec(),
+    }
+}
+
 fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     if cfg.voice_vosk.enabled {
         DesiredVoiceEngine::Vosk
     } else if cfg.voice_sapi.enabled {
         DesiredVoiceEngine::Sapi
+    } else if cfg.voice_kws.enabled {
+        DesiredVoiceEngine::Kws
     } else {
         DesiredVoiceEngine::None
     }
@@ -210,6 +278,7 @@ pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> De
         match raw.trim().to_ascii_lowercase().as_str() {
             "vosk" | "pro" | "advanced" => return DesiredVoiceEngine::Vosk,
             "sapi" | "lite" => return DesiredVoiceEngine::Sapi,
+            "kws" | "keyword" | "keywords" => return DesiredVoiceEngine::Kws,
             "none" | "off" => return DesiredVoiceEngine::None,
             _ => {}
         }
@@ -261,10 +330,17 @@ pub fn resolve_effective_sapi_config(cfg: &VoiceConfig) -> VoiceSapiConfig {
     sapi
 }
 
+pub fn resolve_effective_kws_config(cfg: &VoiceConfig) -> VoiceKwsConfig {
+    let mut kws = cfg.voice_kws.clone();
+    kws.enabled = idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Kws;
+    kws
+}
+
 fn global_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
     match global_desired_voice_engine(cfg) {
         DesiredVoiceEngine::Vosk => cfg.voice_vosk.phrases.clone(),
         DesiredVoiceEngine::Sapi => cfg.voice_sapi.phrases.clone(),
+        DesiredVoiceEngine::Kws => cfg.voice_kws.phrases.clone(),
         DesiredVoiceEngine::None => cfg.voice_vosk.phrases.clone(),
     }
 }
@@ -638,6 +714,38 @@ mod tests {
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
         assert!(!eff.wake_phrases.contains(&"打开我的 Cursor".to_string()));
         assert!(eff.summon_phrases.contains(&"打开我的 Cursor".to_string()));
+    }
+
+    #[test]
+    fn kws_plan_prioritizes_wake_and_summon_before_end() {
+        use crate::config::AppBehaviorRule;
+
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.app_behavior_rules = vec![AppBehaviorRule {
+                rule_id: String::new(),
+                app_id: "cursor-chat".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: Some("打开 Cursor".into()),
+                app_match: None,
+                display_name: None,
+            }];
+        }
+        let plan = kws_keyword_plan_for_cfg(&cfg, 20);
+        assert!(plan.included.contains(&"打开 Cursor".to_string()));
+        assert!(plan.included.iter().any(|p| p.contains("开始") || p.contains("输入")));
+    }
+
+    #[test]
+    fn kws_plan_truncates_low_priority_phrases() {
+        let mut cfg = base_cfg();
+        let plan = kws_keyword_plan_for_cfg(&cfg, 2);
+        assert!(plan.included.len() <= 2);
+        if plan.included.len() == 2 {
+            assert!(!plan.truncated.is_empty());
+        }
     }
 
     fn cn_wake_defaults() -> Vec<String> {

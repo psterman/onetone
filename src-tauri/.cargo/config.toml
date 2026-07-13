@@ -2,5 +2,7 @@
 #   cargo t runtime_event
 #   cargo t voice_bootstrap
 # Vosk integration (ignored hardware): cargo test -p onetone --features vosk-engine -- --ignored
+# KWS native build: cargo kws   (alias → build --features kws-engine)
 [alias]
 t = ["test", "-p", "onetone-logic"]
+kws = ["build", "--features", "kws-engine"]

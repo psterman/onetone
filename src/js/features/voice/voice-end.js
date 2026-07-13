@@ -17,9 +17,8 @@
 
 
   function voiceEndUiUsesLiteMode(){
-
-    return hooks().getVoiceWakeExpandedMode()!=='vosk';
-
+    const mode=hooks().getVoiceWakeExpandedMode();
+    return mode!=='vosk'&&mode!=='kws';
   }
 
 
@@ -747,6 +746,10 @@
       renderEndCustomPhrases();
 
       hooks().renderVoiceSettingsFlow();
+
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
 
       return res;
 

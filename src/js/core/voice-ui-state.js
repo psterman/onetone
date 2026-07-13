@@ -14,12 +14,13 @@
 
   function setVoiceListRenderTimer(v){ voiceListRenderTimer=v; }
 
-  function applyStatusFromPoll(voskRes,sapiRes,endRes){
-    if(voskRes||sapiRes){
+  function applyStatusFromPoll(voskRes,sapiRes,endRes,kwsRes){
+    if(voskRes||sapiRes||kwsRes){
       var wake=voiceUiSnapshot.wake||{};
       voiceUiSnapshot.wake=global.OneToneVoiceWake.mergeWakeSnapshot(
         sapiRes||(wake.sapi),
-        voskRes||(wake.vosk)
+        voskRes||(wake.vosk),
+        kwsRes||(wake.kws)
       );
     }
     if(endRes) voiceUiSnapshot.end=Object.assign({},voiceUiSnapshot.end||{},endRes);

@@ -66,6 +66,22 @@
     if(srcSapi) srcSapi.textContent=t('voiceRecognizeSourceSapi');
     const srcVosk=$('voiceRecognizeSourceVosk');
     if(srcVosk) srcVosk.textContent=t('voiceRecognizeSourceVosk');
+    const srcKws=$('voiceRecognizeSourceKws');
+    if(srcKws) srcKws.textContent=t('voiceRecognizeSourceKws');
+    const sumSapi=$('voiceSummaryEngineSapi');
+    if(sumSapi) sumSapi.textContent=t('voiceSummaryEngineSapi');
+    const sumVosk=$('voiceSummaryEngineVosk');
+    if(sumVosk) sumVosk.textContent=t('voiceSummaryEngineVosk');
+    const sumKws=$('voiceSummaryEngineKws');
+    if(sumKws) sumKws.textContent=t('voiceSummaryEngineKws');
+    const kwsName=$('modelsKwsName');
+    if(kwsName) kwsName.textContent=t('modelsKwsName');
+    const kwsDesc=$('modelsKwsDesc');
+    if(kwsDesc) kwsDesc.textContent=t('modelsKwsDesc');
+    const kwsDl=$('btnModelsKwsDownload');
+    if(kwsDl) kwsDl.textContent=t('voiceKwsDownloadGuide');
+    const kwsRetry=$('btnModelsKwsRetry');
+    if(kwsRetry) kwsRetry.textContent=t('voiceVoskRetry');
     const primarySub=$('voiceRecognizePrimarySub');
     if(primarySub) primarySub.textContent=t('voiceRecognizePrimarySubSystem');
     const outAuto=$('voiceOutputModeAuto');
@@ -174,6 +190,9 @@
       statusEl.className=pillCls;
     }
     if(engineVal) engineVal.textContent=vm.modeLabel||'—';
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.syncEngineTabButtons){
+      global.OneToneVoiceWake.syncEngineTabButtons(vm.mode,!!vm.loading);
+    }
     if(scopeVal&&V) scopeVal.textContent=V.resolveScopeSummary(Object.assign({},vm,{habitMapping:mapping}));
     var enabledToggle=$('btnVoiceEnabled');
     if(enabledToggle){

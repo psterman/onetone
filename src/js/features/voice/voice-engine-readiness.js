@@ -60,8 +60,11 @@
   }
 
   function checkAfterBoot(){
-    if(isVoskOnlyUi()&&global.OneToneVoiceWake&&global.OneToneVoiceWake.setExpandedMode){
-      global.OneToneVoiceWake.setExpandedMode('vosk');
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.setExpandedMode){
+      var c=cfg();
+      var kws=c.voiceKws||c.voice_kws||{};
+      if(kws.enabled) global.OneToneVoiceWake.setExpandedMode('kws');
+      else if(isVoskOnlyUi()) global.OneToneVoiceWake.setExpandedMode('vosk');
     }
     if(!entryWantsVoice()) return Promise.resolve();
     return probe().then(function(st){
@@ -80,8 +83,10 @@
   }
 
   function preferredEngine(){
-    if(isVoskOnlyUi()) return 'vosk';
     var c=cfg();
+    var kws=c.voiceKws||c.voice_kws||{};
+    if(kws.enabled) return 'kws';
+    if(isVoskOnlyUi()) return 'vosk';
     var vosk=c.voiceVosk||c.voice_vosk||{};
     var sapi=c.voiceSapi||c.voice_sapi||{};
     if(vosk.enabled) return 'vosk';

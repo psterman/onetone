@@ -28,10 +28,6 @@
       }else{
         global.OneToneConfigPersist.applyMvpInit(result);
       }
-      return;
-    }
-    if(cmd==='cmd_save'&&global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
-      global.OneToneConfigPersist.pullBackendConfig();
     }
   }
   global.chrome=global.chrome||{};

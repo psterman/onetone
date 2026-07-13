@@ -5,8 +5,28 @@
   var ui=function(){ return global.OneToneState.ui; };
   function getAppLang(){ return global.OneToneI18n.getLang(); }
   function hooks(){ return global.__vp_voice_diag_hooks__ || {}; }
+  function escHtml(value){
+    var fn=hooks().escHtml;
+    if(typeof fn==='function') return fn(value);
+    return String(value==null?'':value)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+  function currentVoiceMode(){
+    var fn=hooks().currentVoiceMode;
+    return typeof fn==='function'?fn():'sapi';
+  }
+  function hookCall(name){
+    var args=Array.prototype.slice.call(arguments,1);
+    var fn=hooks()[name];
+    if(typeof fn!=='function') return undefined;
+    try{ return fn.apply(null,args); }catch(err){ console.error('voice-diag hook',name,err); return undefined; }
+  }
   var debugFocusMode='overview';
   var voiceDiagTab='sapi';
+  var voiceDiagBound=false;
   function syncDebugFocusSections(){
     const show=ui().drawerOpen&&ui().settingsPanel==='debug';
     const map={
@@ -20,39 +40,32 @@
       section.hidden=show&&(debugFocusMode!==key);
     });
   }
+  function refreshDiagnosticsPanel(){
+    renderVoiceDiagTabs();
+    ['sapi','vosk','kws','end','usage'].forEach(renderVoiceDiagMetrics);
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
+      global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
+    }
+  }
   function setDebugFocusMode(mode){
     const allowed={overview:true,diagnostics:true,developer:true};
     if(!allowed[mode]) mode='overview';
-    if(debugFocusMode===mode&&ui().drawerOpen&&ui().settingsPanel==='debug'){
-      syncDebugFocusSections();
-      renderSettingsDebugSubnav();
-      if(mode==='diagnostics'){
-        renderVoiceDiagTabs();
-        ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
-        if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
-          global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
-        }
-      }
-      return;
-    }
+    const sameMode=debugFocusMode===mode;
     debugFocusMode=mode;
-    if(mode==='diagnostics'){
-      const eng=hooks().currentVoiceMode();
-      if(eng==='vosk') voiceDiagTab='vosk';
-      else if(eng==='sapi') voiceDiagTab='sapi';
-      else if(voiceDiagTab!=='end'&&voiceDiagTab!=='usage') voiceDiagTab='end';
-      hooks().voiceStatusPollTick();
-    }
     syncDebugFocusSections();
     renderSettingsDebugSubnav();
     if(mode==='diagnostics'){
-      renderVoiceDiagTabs();
-      ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
-      if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
-        global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
-      }
+      const eng=currentVoiceMode();
+      if(eng==='vosk') voiceDiagTab='vosk';
+      else if(eng==='sapi') voiceDiagTab='sapi';
+      else if(eng==='kws') voiceDiagTab='kws';
+      else if(voiceDiagTab!=='end'&&voiceDiagTab!=='usage'&&voiceDiagTab!=='kws') voiceDiagTab='end';
+      if(!sameMode) hookCall('voiceStatusPollTick');
+      try{ refreshDiagnosticsPanel(); }catch(err){ console.error('voice diagnostics render',err); }
     }else if(mode==='developer'){
-      hooks().renderDebugDeveloperPanel();
+      hookCall('renderDebugDeveloperPanel');
+    }else if(mode==='overview'){
+      hookCall('renderDebugOverview');
     }
     if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncWorkbenchNav){
       global.OneToneSettingsDrawer.syncWorkbenchNav('debug',{debugMode:mode});
@@ -83,8 +96,8 @@
       html+='<button type="button" class="settings-scheme-subnav-item'+(sel?' is-selected':'')+'" data-debug-nav="'+item.mode+'" role="tab" aria-selected="'+(sel?'true':'false')+'">';
       html+='<span class="settings-scheme-subnav-dot" aria-hidden="true"></span>';
       html+='<span class="settings-scheme-subnav-text">';
-      html+='<span class="settings-scheme-subnav-pair">'+hooks().escHtml(item.title)+'</span>';
-      html+='<span class="settings-scheme-subnav-status">'+hooks().escHtml(item.sub)+'</span>';
+      html+='<span class="settings-scheme-subnav-pair">'+escHtml(item.title)+'</span>';
+      html+='<span class="settings-scheme-subnav-status">'+escHtml(item.sub)+'</span>';
       html+='</span></button>';
     });
     listEl.innerHTML=html;
@@ -92,7 +105,7 @@
   }
 
   function setVoiceDiagTab(tab){
-    const allowed={sapi:true,vosk:true,end:true,usage:true};
+    const allowed={sapi:true,vosk:true,kws:true,end:true,usage:true};
     if(!allowed[tab]) tab='sapi';
     if(voiceDiagTab===tab) return;
     voiceDiagTab=tab;
@@ -109,7 +122,7 @@
     fields.forEach(function(f){
       const live=liveVoiceDiagMetricValue(kind,f.key);
       const val=(live&&live!=='—')?live:((voiceDiagLast[kind]||{})[f.key]||'—');
-      html+='<div class="voice-diag-metric"><span class="k">'+hooks().escHtml(t(f.labelKey))+'</span><span class="v">'+hooks().escHtml(val)+'</span></div>';
+      html+='<div class="voice-diag-metric"><span class="k">'+escHtml(t(f.labelKey))+'</span><span class="v">'+escHtml(val)+'</span></div>';
     });
     host.innerHTML=html;
   }
@@ -120,6 +133,7 @@
     const items=[
       {id:'sapi',label:t('voiceDiagTabSapi')},
       {id:'vosk',label:t('voiceDiagTabVosk')},
+      {id:'kws',label:t('voiceDiagTabKws')},
       {id:'end',label:t('voiceDiagTabEnd')},
       {id:'usage',label:t('voiceDiagTabUsage')}
     ];
@@ -128,12 +142,12 @@
       const sel=voiceDiagTab===item.id;
       const sub=voiceDiagTabDynamicSub(item.id);
       html+='<button type="button" class="voice-diag-tab'+(sel?' is-active':'')+'" data-diag-tab="'+item.id+'" role="tab" aria-selected="'+(sel?'true':'false')+'">';
-      html+='<span class="voice-diag-tab-label">'+hooks().escHtml(item.label)+'</span>';
-      if(sub) html+='<span class="voice-diag-tab-sub">'+hooks().escHtml(sub)+'</span>';
+      html+='<span class="voice-diag-tab-label">'+escHtml(item.label)+'</span>';
+      if(sub) html+='<span class="voice-diag-tab-sub">'+escHtml(sub)+'</span>';
       html+='</button>';
     });
     tabs.innerHTML=html;
-    ['sapi','vosk','end','usage'].forEach(function(id){
+    ['sapi','vosk','kws','end','usage'].forEach(function(id){
       const pane=$('voiceDiagPane'+id.charAt(0).toUpperCase()+id.slice(1));
       if(pane) pane.hidden=voiceDiagTab!==id;
     });
@@ -150,14 +164,12 @@
 
   function scheduleDebugChromeRefresh(){
     if(!ui().drawerOpen||ui().settingsPanel!=='debug') return;
-    hooks().renderDebugOverview();
+    hookCall('renderDebugOverview');
     renderSettingsDebugSubnav();
     if(debugFocusMode==='diagnostics'){
-      renderVoiceDiagTabs();
-      ['sapi','vosk','end','usage'].forEach(renderVoiceDiagMetrics);
-      if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.renderTriggerDiagBlocks){
-        global.OneToneHomeWorkbench.renderTriggerDiagBlocks();
-      }
+      try{ refreshDiagnosticsPanel(); }catch(err){ console.error('voice diagnostics refresh',err); }
+    }else if(debugFocusMode==='developer'){
+      hookCall('renderDebugDeveloperPanel');
     }
   }
 
@@ -189,6 +201,43 @@
       if(key==='skip') return r.lastSkip||'';
       if(key==='error') return r.lastError||'';
     }
+    if(kind==='kws'){
+      const r=w.kws||{};
+      if(key==='state') return hookCall('voiceWakeStateLabel',r.state||'stopped')||r.state||'';
+      if(key==='phrases'){
+        const phrases=Array.isArray(r.phrases)?r.phrases:[];
+        return phrases.length?phrases.join(' / '):'';
+      }
+      if(key==='active'){
+        const phrases=Array.isArray(r.phrasesActive)?r.phrasesActive:[];
+        return phrases.length?phrases.join(' / '):'';
+      }
+      if(key==='skippedPhrases'){
+        const phrases=Array.isArray(r.phrasesSkipped)?r.phrasesSkipped:[];
+        return phrases.length?phrases.join(' / '):'';
+      }
+      if(key==='truncatedPhrases'){
+        const phrases=Array.isArray(r.phrasesTruncated)?r.phrasesTruncated:[];
+        return phrases.length?phrases.join(' / '):'';
+      }
+      if(key==='buildIssue') return r.keywordBuildIssue||'';
+      if(key==='model'){
+        const modelPath=r.resolvedModelPath||r.modelPath||'';
+        const modelOk=r.modelExists?'OK':(getAppLang()==='zh'?'缺失':'missing');
+        return modelPath?modelPath+' ('+modelOk+')':'';
+      }
+      if(key==='partial'){
+        return global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+          ?global.OneToneVoiceWake.kwsHeardDisplayText(r)
+          :(r.lastDetectedPhrase||'');
+      }
+      if(key==='kind') return r.lastDetectedKind||'';
+      if(key==='hit') return r.lastDetectedPhrase||'';
+      if(key==='trigger') return r.lastTrigger||'';
+      if(key==='skip') return r.lastSkip||'';
+      if(key==='error') return r.lastError||'';
+      if(key==='stub') return r.resourceIssue||((r.stubMode?t('voiceKwsStubMode'):'')||'');
+    }
     if(kind==='end'){
       if(key==='state') return end.statusLabel||hooks().voiceEndStateLabel(end.state||'idle');
       if(key==='phrase') return end.lastEndPhrase||'';
@@ -206,9 +255,9 @@
       }
     }
     if(kind==='usage'){
-      if(key==='mode') return hooks().processUsageModeLabel(hooks().currentVoiceMode());
-      if(key==='sample') return hooks().processUsageSummaryLine();
-      if(key==='status') return hooks().processUsageStatusLabel();
+      if(key==='mode') return hookCall('processUsageModeLabel',currentVoiceMode())||'';
+      if(key==='sample') return hookCall('processUsageSummaryLine')||'';
+      if(key==='status') return hookCall('processUsageStatusLabel')||'';
     }
     const bucket=voiceDiagLast[kind]||{};
     return bucket[key]||'';
@@ -227,6 +276,12 @@
       const r=w.vosk||{};
       const state=hooks().voiceWakeStateLabel(r.state||'stopped');
       const hit=r.lastDetectedPhrase||r.lastPartial||'';
+      return hit?(state+' · '+hit):state;
+    }
+    if(tab==='kws'){
+      const r=w.kws||{};
+      const state=hooks().voiceWakeStateLabel(r.state||'stopped');
+      const hit=r.lastDetectedPhrase||r.lastDetectedKind||'';
       return hit?(state+' · '+hit):state;
     }
     if(tab==='end'){
@@ -254,7 +309,7 @@
         return t('listenOn');
       }
       if(mode==='diagnostics'){
-        const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
+        const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):(w.engine==='kws')?t('wakeEngineKws'):t('wakeEngineOff');
         const status=(w.state?hooks().voiceWakeStateLabel(w.state):'');
         var snap=hooks().processUsageSnapshot||{};
         let usage='';
@@ -292,6 +347,22 @@
       {key:'skip',labelKey:'voiceDiagLogSkip'},
       {key:'error',labelKey:'voiceDiagLogError'}
     ],
+    kws:[
+      {key:'state',labelKey:'voiceDiagLogState'},
+      {key:'phrases',labelKey:'voiceKwsPhrasesEffective'},
+      {key:'active',labelKey:'voiceKwsPhrasesActive'},
+      {key:'skippedPhrases',labelKey:'voiceKwsPhrasesSkipped'},
+      {key:'truncatedPhrases',labelKey:'voiceKwsPhrasesTruncated'},
+      {key:'buildIssue',labelKey:'voiceKwsKeywordBuildIssue'},
+      {key:'model',labelKey:'voiceKwsModelStatus'},
+      {key:'partial',labelKey:'voiceDiagLogHeard'},
+      {key:'kind',labelKey:'voiceKwsLastKind'},
+      {key:'hit',labelKey:'voiceDiagLogHit'},
+      {key:'trigger',labelKey:'voiceKwsLastTrigger'},
+      {key:'skip',labelKey:'voiceDiagLogSkip'},
+      {key:'error',labelKey:'voiceDiagLogError'},
+      {key:'stub',labelKey:'voiceKwsStubNote'}
+    ],
     end:[
       {key:'state',labelKey:'voiceDiagLogState'},
       {key:'phrase',labelKey:'voiceDiagLogPhrase'},
@@ -308,12 +379,13 @@
     ]
   };
   const VOICE_DIAG_LOG_LIMIT=18;
-  const voiceDiagLogs={sapi:[],vosk:[],end:[],usage:[]};
-  const voiceDiagLast={sapi:{},vosk:{},end:{},usage:{}};
+  const voiceDiagLogs={sapi:[],vosk:[],kws:[],end:[],usage:[]};
+  const voiceDiagLast={sapi:{},vosk:{},kws:{},end:{},usage:{}};
   let voiceDiagNonce=0;
   function voiceDiagElementId(kind){
     if(kind==='sapi') return 'voiceSapiLog';
     if(kind==='vosk') return 'voiceVoskLog';
+    if(kind==='kws') return 'voiceKwsLog';
     if(kind==='end') return 'voiceEndLog';
     if(kind==='usage') return 'voiceUsageLog';
     return '';
@@ -363,7 +435,22 @@
     }
   }
 
+  function bindEvents(){
+    if(voiceDiagBound) return;
+    voiceDiagBound=true;
+    var tabs=$('voiceDiagTabs');
+    if(tabs){
+      tabs.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-diag-tab]');
+        if(!btn) return;
+        var tab=btn.getAttribute('data-diag-tab')||'';
+        if(tab) setVoiceDiagTab(tab);
+      });
+    }
+  }
+
   global.OneToneVoiceDiag={
+    bindEvents:bindEvents,
     syncFocusSections:syncDebugFocusSections,
     setFocusMode:setDebugFocusMode,
     renderSubnav:renderSettingsDebugSubnav,

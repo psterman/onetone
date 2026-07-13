@@ -29,10 +29,17 @@ mod update;
 mod vendor_hid;
 mod voice_bootstrap;
 mod voice_end_runtime;
+mod voice_keyword_dispatch;
+mod voice_kws;
+pub mod voice_kws_keywords;
+#[cfg(feature = "kws-engine")]
+mod voice_kws_native;
+mod voice_kws_runtime;
 mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
+mod kws_model_download;
 mod vosk_model_download;
 mod window_layout;
 
@@ -101,6 +108,17 @@ pub struct AppState {
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
+    pub voice_kws: Mutex<Option<crate::voice_kws::VoiceKwsHandle>>,
+    pub voice_kws_cooldown_until: Mutex<Option<std::time::Instant>>,
+    pub voice_kws_state: Mutex<String>,
+    pub voice_kws_last_error: Mutex<String>,
+    pub voice_kws_last_skip: Mutex<String>,
+    pub voice_kws_last_trigger: Mutex<String>,
+    pub voice_kws_last_detected_phrase: Mutex<String>,
+    pub voice_kws_last_detected_kind: Mutex<String>,
+    pub voice_kws_last_partial: Mutex<String>,
+    pub voice_kws_keyword_build: Mutex<crate::voice_kws_runtime::KwsKeywordStatusSnapshot>,
+    pub voice_kws_epoch: AtomicU64,
     pub update: Mutex<crate::update::UpdateUiState>,
     pub update_checking: Mutex<bool>,
     pub update_installing: Mutex<bool>,
@@ -131,6 +149,7 @@ fn shutdown_runtime(state: &Arc<AppState>) {
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     crate::voice_vosk_runtime::voice_vosk_stop(state);
+    crate::voice_kws_runtime::voice_kws_stop(state);
     crate::audio_win::sync_recording_audio_policy_now(state.as_ref());
     let _ = state.hotkey_mgr.lock().take();
     *state.paused.lock() = true;
@@ -194,6 +213,17 @@ pub fn run() {
         voice_wake_last_key_at: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
+        voice_kws: Mutex::new(None),
+        voice_kws_cooldown_until: Mutex::new(None),
+        voice_kws_state: Mutex::new("stopped".into()),
+        voice_kws_last_error: Mutex::new(String::new()),
+        voice_kws_last_skip: Mutex::new(String::new()),
+        voice_kws_last_trigger: Mutex::new(String::new()),
+        voice_kws_last_detected_phrase: Mutex::new(String::new()),
+        voice_kws_last_detected_kind: Mutex::new(String::new()),
+        voice_kws_last_partial: Mutex::new(String::new()),
+        voice_kws_keyword_build: Mutex::new(crate::voice_kws_runtime::KwsKeywordStatusSnapshot::default()),
+        voice_kws_epoch: AtomicU64::new(0),
         update: Mutex::new(crate::update::UpdateUiState::new()),
         update_checking: Mutex::new(false),
         update_installing: Mutex::new(false),
@@ -424,6 +454,7 @@ pub fn run() {
                     }
                     voice_sapi_runtime::drain_voice_sapi_events(&state2, &app2);
                     voice_vosk_runtime::drain_voice_vosk_events(&state2, &app2);
+                    voice_kws_runtime::drain_voice_kws_events(&state2, &app2);
                     voice_end_runtime::maybe_timeout_dictation(&state2, &app2);
 
                     ipc::poll_trigger_compat_probe(&state2, &win2);
@@ -579,6 +610,13 @@ pub fn run() {
             ipc::cmd_open_vosk_resources_dir,
             ipc::cmd_voice_vosk_retry_start,
             ipc::cmd_vosk_download_model,
+            ipc::cmd_voice_kws_status,
+            ipc::cmd_voice_kws_set_enabled,
+            ipc::cmd_voice_kws_set_phrases,
+            ipc::cmd_voice_kws_test_detect,
+            ipc::cmd_voice_kws_test_send,
+            ipc::cmd_voice_kws_retry_start,
+            ipc::cmd_kws_download_model,
             ipc::cmd_voice_end_status,
             ipc::cmd_voice_end_set_enabled,
             ipc::cmd_voice_end_set_auto_send,

@@ -1,0 +1,7 @@
+k āi sh ǐ sh ū r ù @开始输入
+k āi sh ǐ t īng x iě @开始听写
+y ǔ y īn sh ū r ù @语音输入
+k āi q ǐ sh ū r ù @开启输入
+f ā ch ū q ù @发出去
+j ié sh ù sh ū r ù @结束输入
+q ǔ x iāo sh ū r ù @取消输入

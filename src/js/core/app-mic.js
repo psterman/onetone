@@ -7,6 +7,7 @@
   function hooks(){ return global.__vp_app_mic_hooks__ || {}; }
 
   var micDevices=[];
+  var micListLoaded=false;
   var activeMicId='';
   var micMonitorDeviceId='';
   var micPollTimer=0;
@@ -143,11 +144,12 @@
 
   function voiceCaptureActive(){
     var w=hooks().voiceUiSnapshot().wake||{};
-    if(w.voskEnabled||w.sapiEnabled) return true;
+    if(w.voskEnabled||w.sapiEnabled||w.kwsEnabled) return true;
     var cfg=hooks().state().config||{};
     var vosk=cfg.voiceVosk||cfg.voice_vosk;
     var sapi=cfg.voiceSapi||cfg.voice_sapi;
-    return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled);
+    var kws=cfg.voiceKws||cfg.voice_kws;
+    return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled)||!!(kws&&kws.enabled);
   }
 
   function onboardingMicContextOpen(){
@@ -382,6 +384,7 @@
     return prep.then(function(){
       return vpInvoke('cmd_mic_list',listPayload);
     }).then(function(devices){
+      micListLoaded=true;
       replaceMicDevices(Array.isArray(devices)?devices:[]);
       clearMicBackoff();
       if(!micDevices.length){
@@ -404,6 +407,7 @@
         if(opts.reconnect) hooks().toast(t('micReconnected'));
       });
     }).catch(function(err){
+      micListLoaded=true;
       replaceMicDevices([]);
       renderMicDevices();
       var emptyEl=$('micEmpty');
@@ -474,6 +478,7 @@
     loadMicDevices:loadMicDevices,
     handleMicMonitorError:handleMicMonitorError,
     devices:function(){ return micDevices; },
+    listLoaded:function(){ return micListLoaded; },
     activeMicId:function(){ return activeMicId; },
     activeMicLabel:activeMicLabel,
     micRecoveryTimer:function(){ return micRecoveryTimer; },

@@ -32,9 +32,20 @@
     return String(vosk.modelPreset||voskCfg.modelPreset||'cn-light').trim()||'cn-light';
   }
 
-  function engineOn(w, voskCfg, sapiCfg){
-    if(w.engine==='vosk'||voskCfg.enabled) return 'vosk';
-    if(w.engine==='sapi'||sapiCfg.enabled) return 'sapi';
+  function engineOn(w, voskCfg, sapiCfg, kwsCfg){
+    kwsCfg=kwsCfg||{};
+    voskCfg=voskCfg||{};
+    sapiCfg=sapiCfg||{};
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.resolveRuntimeEngine){
+      var runtime=global.OneToneVoiceWake.resolveRuntimeEngine(w);
+      if(runtime!=='off') return runtime;
+    }
+    if(w.engine==='vosk') return 'vosk';
+    if(w.engine==='sapi') return 'sapi';
+    if(w.engine==='kws') return 'kws';
+    if(voskCfg.enabled&&!kwsCfg.enabled&&!sapiCfg.enabled) return 'vosk';
+    if(sapiCfg.enabled&&!voskCfg.enabled&&!kwsCfg.enabled) return 'sapi';
+    if(kwsCfg.enabled&&!voskCfg.enabled&&!sapiCfg.enabled) return 'kws';
     return 'off';
   }
 
@@ -62,6 +73,12 @@
       var sapiSnap=Array.isArray(w.sapi&&w.sapi.phrases)?cloneList(w.sapi.phrases):[];
       if(sapiSnap.length) return sapiSnap;
       return cloneList(sapiCfg.phrases||[]);
+    }
+    if(eng==='kws'){
+      var kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
+      var kwsSnap=Array.isArray(w.kws&&w.kws.phrases)?cloneList(w.kws.phrases):[];
+      if(kwsSnap.length) return kwsSnap;
+      return cloneList(kwsCfg.phrases||[]);
     }
     var pref=preferredEngine();
     if(pref==='vosk'){
@@ -101,6 +118,13 @@
     return t('homeLiveMicUnset');
   }
 
+  function wakeEngineRes(eng,w){
+    if(eng==='kws') return w.kws||null;
+    if(eng==='vosk') return w.vosk||null;
+    if(eng==='sapi') return w.sapi||null;
+    return null;
+  }
+
   function wakeHeardAndStatus(eng, voiceOn, w){
     var heardLine=null;
     var statusLine='';
@@ -108,7 +132,7 @@
     if(!voiceOn){
       return { heardLine:null, statusLine:t('homeVoiceSimpleStatusOff'), statusMode:'off' };
     }
-    var res=eng==='vosk'?w.vosk:w.sapi;
+    var res=wakeEngineRes(eng,w);
     var raw=(res&&res.state)||'stopped';
     var trigger=(res&&res.lastTrigger)||'';
     var isTriggered=raw==='triggered'||!!trigger;
@@ -119,10 +143,22 @@
         statusMode:'triggered'
       };
     }
-    if(raw==='listening'||raw==='starting'){
+    if(eng==='kws'&&res&&(res.stubMode||res.resourceIssue)){
+      statusMode='ready';
+      statusLine=t('voiceKwsStatusStubOnly');
+      return { heardLine:heardLine, statusLine:statusLine, statusMode:statusMode };
+    }
+    var kwsListening=eng==='kws'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening
+      &&global.OneToneVoiceWake.isKwsNativeListening(res,w);
+    if(kwsListening||(eng!=='kws'&&(raw==='listening'||raw==='starting'))){
       statusMode='listening';
-      statusLine=t('homeVoiceSimpleStatusListening');
-      if(eng==='sapi'){
+      statusLine=eng==='kws'?t('voiceFbTranscriptKwsListening'):t('homeVoiceSimpleStatusListening');
+      if(eng==='kws'){
+        var kwsText=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+          ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+          :String((res&&res.lastDetectedPhrase)||'').trim();
+        if(kwsText) heardLine=kwsText;
+      }else if(eng==='sapi'){
         var heard=(res&&res.lastHeard)||'';
         if(heard) heardLine=t('voiceSapiHeard')+'：'+heard;
       }else{
@@ -136,6 +172,11 @@
       var finalText=String(res.lastFinal||'').trim();
       if(partialText) heardLine=t('voiceVoskPartial')+'：'+partialText;
       else if(finalText) heardLine=t('voiceVoskFinal')+'：'+finalText;
+    }else if(eng==='kws'&&res){
+      var kwsHit=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+        ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+        :String(res.lastDetectedPhrase||res.lastTrigger||'').trim();
+      if(kwsHit) heardLine=kwsHit;
     }
     statusLine=t('homeVoiceSimpleStatusReady');
     statusMode='ready';
@@ -180,10 +221,11 @@
     var cfg=state().config||{};
     var voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     var sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
+    var kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
     var endCfg=cfg.voiceEnd||cfg.voice_end||{};
     var w=snap().wake||{};
     var endSnap=snap().end||{};
-    var eng=engineOn(w,voskCfg,sapiCfg);
+    var eng=engineOn(w,voskCfg,sapiCfg,kwsCfg);
     var voiceOn=eng!=='off';
     var paused=!!runtime().paused;
     var phrases=wakePhrases(eng,w,voskCfg,sapiCfg);
@@ -207,7 +249,7 @@
       var endHint=endList[0]||t('homeEndPhraseDefault');
       endLine=t('homeVoiceSimpleEndLine').replace('{phrase}',endHint);
       var wSnap=snap().wake||{};
-      var res=eng==='vosk'?wSnap.vosk:wSnap.sapi;
+      var res=wakeEngineRes(eng,wSnap);
       if(res){
         if(eng==='vosk'){
           var partial=String(res.lastPartial||'').trim();
@@ -217,6 +259,11 @@
         }else if(eng==='sapi'){
           var heard=String(res.lastHeard||'').trim();
           if(heard) heardLine=t('voiceSapiHeard')+'：'+heard;
+        }else if(eng==='kws'){
+          var kwsPartialDict=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+            ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+            :String(res.lastDetectedPhrase||'').trim();
+          if(kwsPartialDict) heardLine=kwsPartialDict;
         }
       }
     }else if(stateRaw==='error'){

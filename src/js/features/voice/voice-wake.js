@@ -29,6 +29,8 @@
   var voiceWakePresetSaveTimer=0;
   var voiceWakePresetSaveSeq=0;
   var voskDownloadInFlight=false;
+  var kwsDownloadInFlight=false;
+  var kwsDownloadPercent=0;
   var voskDownloadPercent=0;
   var SAPI_SENS_LEVELS=[0.15,0.25,0.35,0.50,0.65,0.80];
 
@@ -93,6 +95,30 @@
       if(na[i]!==nb[i]) return false;
     }
     return true;
+  }
+
+  function pendingWakePhrases(){
+    if(voiceWakePresetSavePending&&voiceWakePresetSavePending.length){
+      return voiceWakePresetSavePending.slice();
+    }
+    return null;
+  }
+
+  function syncVoiceEngineTabButtons(tabMode,loading){
+    const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
+    const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
+    ['voiceRecognizeSourceGrid','voiceSummaryEngineSwitch'].forEach(function(id){
+      const grid=document.getElementById(id);
+      if(!grid) return;
+      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+        const tab=btn.getAttribute('data-voice-engine-tab')||'';
+        const active=!loading&&tabMode===tab;
+        btn.classList.toggle('is-active',active);
+        btn.disabled=pending;
+        if(tab==='sapi') btn.hidden=!!voskOnly;
+        else btn.hidden=false;
+      });
+    });
   }
 
   function currentSapiPresetPhrases(){
@@ -300,18 +326,69 @@
     }
   }
 
+  function resolveRuntimeEngine(wake){
+    wake=wake||(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    const eng=String(wake.engine||'').trim();
+    if(eng==='vosk'||eng==='kws'||eng==='sapi') return eng;
+    if(eng==='none'||eng==='off') return 'off';
+    if(wake.voskEnabled) return 'vosk';
+    if(wake.kwsEnabled) return 'kws';
+    if(wake.sapiEnabled) return 'sapi';
+    return 'off';
+  }
+
+  function isKwsNativeListening(kwsRes,wake){
+    wake=wake||{};
+    kwsRes=kwsRes||(wake.kws)||{};
+    if(!kwsRes||!kwsRes.enabled) return false;
+    if(kwsRes.stubMode||kwsRes.resourceIssue) return false;
+    if(wake.vosk&&wake.vosk.enabled) return false;
+    if(wake.sapi&&wake.sapi.enabled) return false;
+    const st=String(kwsRes.state||'').trim();
+    return st==='listening'||st==='starting';
+  }
+
+  function kwsPhraseListText(list){
+    if(!Array.isArray(list)||!list.length) return '';
+    return list.map(function(p){ return String(p||'').trim(); }).filter(Boolean).join('、');
+  }
+
+  function kwsHeardDisplayText(res){
+    res=res||{};
+    const hit=String(res.lastDetectedPhrase||res.lastTrigger||'').trim();
+    if(hit) return hit;
+    const partial=String(res.lastPartial||'').trim();
+    if(partial&&/[\u3400-\u9fff]/.test(partial)) return partial;
+    return '';
+  }
+
+  function resolveActiveTabMode(){
+    if(voiceModeSwitchInFlight&&voiceWakeExpandedMode){
+      return voiceWakeExpandedMode;
+    }
+    const runtime=resolveRuntimeEngine();
+    if(runtime!=='off') return runtime;
+    if(voiceWakeExpandedMode==='kws'||voiceWakeExpandedMode==='vosk'||voiceWakeExpandedMode==='sapi'){
+      return voiceWakeExpandedMode;
+    }
+    return voskOnlyUi()?'vosk':'sapi';
+  }
+
   function renderVoiceEngineTabs(){
-    const mode=voiceWakeExpandedMode||'sapi';
+    let tabMode=resolveActiveTabMode();
+    if(tabMode==='off'||tabMode==='none') tabMode='sapi';
     const grid=$('voiceRecognizeSourceGrid');
     if(grid){
       grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
         const tab=btn.getAttribute('data-voice-engine-tab')||'';
-        const on=tab===mode;
+        const on=tab===tabMode;
         btn.classList.toggle('is-active',on);
+        if(tab==='sapi') btn.hidden=!!voskOnlyUi();
+        else btn.hidden=false;
       });
     }
     if(voskOnlyUi()){
-      if(voiceWakeExpandedMode!=='vosk') setVoiceWakeExpandedMode('vosk');
+      if(voiceWakeExpandedMode!=='vosk'&&voiceWakeExpandedMode!=='kws') setVoiceWakeExpandedMode('vosk');
       syncVoskOnlyCopy();
     }
   }
@@ -323,33 +400,48 @@
     const modeDesc=$('voiceModeDesc');
     if(modeDesc) modeDesc.textContent=t('voiceModeDescSingle');
     const cap=$('voiceEngineCapabilityNote');
-    if(cap) cap.textContent=t('voiceEngineCapabilityNotePro');
+    if(cap&&voiceWakeExpandedMode!=='kws'){
+      cap.textContent=t('voiceEngineCapabilityNotePro');
+    }
   }
-  function mergeWakeSnapshot(sapiRes,voskRes){
+  function mergeWakeSnapshot(sapiRes,voskRes,kwsRes){
     sapiRes=sapiRes||{};
     voskRes=voskRes||{};
+    kwsRes=kwsRes||{};
     const voskOn=!!voskRes.enabled;
     const sapiOn=!!sapiRes.enabled;
-    let engine='none',phrase='',state='off';
+    const kwsOn=!!kwsRes.enabled;
+    let engine='none',phrase='',wakeState='off';
     if(voskOn){
       engine='vosk';
       const phrases=Array.isArray(voskRes.phrases)?voskRes.phrases:[];
       const cn=Array.isArray(voskRes.phrasesCn)?voskRes.phrasesCn:[];
       const en=Array.isArray(voskRes.phrasesEn)?voskRes.phrasesEn:[];
       phrase=(phrases[0]||cn[0]||en[0]||'').trim();
-      state=voskRes.state||'stopped';
+      wakeState=voskRes.state||'stopped';
+    }else if(kwsOn){
+      engine='kws';
+      const phrases=Array.isArray(kwsRes.phrases)?kwsRes.phrases:[];
+      phrase=(phrases[0]||kwsRes.lastDetectedPhrase||'').trim();
+      wakeState=kwsRes.state||'stopped';
     }else if(sapiOn){
       engine='sapi';
       const phrases=Array.isArray(sapiRes.phrases)?sapiRes.phrases:[];
       phrase=(phrases[0]||'').trim();
-      state=sapiRes.state||'stopped';
+      wakeState=sapiRes.state||'stopped';
     }
-    return {engine,voskEnabled:voskOn,sapiEnabled:sapiOn,phrase,state,sapi:sapiRes,vosk:voskRes};
+    return {engine,voskEnabled:voskOn,sapiEnabled:sapiOn,kwsEnabled:kwsOn,phrase,state:wakeState,sapi:sapiOn?sapiRes:Object.assign({},sapiRes,{enabled:false,state:'stopped'}),vosk:voskOn?voskRes:Object.assign({},voskRes,{enabled:false,state:'stopped'}),kws:kwsOn?kwsRes:Object.assign({},kwsRes,{enabled:false,state:'stopped'})};
   }
   function syncVoiceSapiConfigFromStatus(res){
     if(!state().config||!res) return;
     const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
     state().config.voiceSapi=cfg;
+    const kws=state().config.voiceKws||state().config.voice_kws||{};
+    const vosk=state().config.voiceVosk||state().config.voice_vosk||{};
+    if(kws.enabled||vosk.enabled){
+      cfg.enabled=false;
+      return;
+    }
     cfg.enabled=!!res.enabled;
     if(voiceSapiPresetPending) cfg.phrases=hooks().cloneStringList(voiceSapiPresetPending);
     else if(Array.isArray(res.phrases)&&res.phrases.length) cfg.phrases=hooks().cloneStringList(res.phrases);
@@ -362,24 +454,92 @@
     if(!state().config||!res) return;
     const cfg=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
     state().config.voiceVosk=cfg;
+    const kws=state().config.voiceKws||state().config.voice_kws||{};
+    const sapi=state().config.voiceSapi||state().config.voice_sapi||{};
+    if(kws.enabled||sapi.enabled){
+      cfg.enabled=false;
+      return;
+    }
     cfg.enabled=!!res.enabled;
-    if(Array.isArray(res.phrases)) cfg.phrases=hooks().cloneStringList(res.phrases);
+    const pending=pendingWakePhrases();
+    if(pending) cfg.phrases=hooks().cloneStringList(pending);
+    else if(Array.isArray(res.phrases)) cfg.phrases=hooks().cloneStringList(res.phrases);
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
     if(res.cooldownMs!=null) cfg.cooldownMs=Number(res.cooldownMs)||2000;
     if(res.modelPath!=null) cfg.modelPath=String(res.modelPath||'').trim();
     if(res.modelPreset!=null) cfg.modelPreset=String(res.modelPreset||'').trim();
   }
 
+  function syncVoiceKwsConfigFromStatus(res){
+    if(!state().config||!res) return;
+    const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
+    state().config.voiceKws=cfg;
+    cfg.enabled=!!res.enabled;
+    if(res.enabled){
+      const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
+      const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+      state().config.voiceVosk=vosk;
+      state().config.voiceSapi=sapi;
+      vosk.enabled=false;
+      sapi.enabled=false;
+    }
+    // status.phrases is the runtime effective list (wake + summon + end); do not mirror into persisted wake config.
+    if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
+    if(res.cooldownMs!=null) cfg.cooldownMs=Number(res.cooldownMs)||2000;
+    if(res.modelPath!=null) cfg.modelPath=String(res.modelPath||'').trim();
+    if(res.modelPreset!=null) cfg.modelPreset=String(res.modelPreset||'').trim();
+  }
+
+  function voiceBackendMatchesMode(mode){
+    return resolveRuntimeEngine()===mode;
+  }
+
   function currentVoiceMode(){
-    const w=hooks().voiceUiSnapshot.wake||{};
-    if(w.engine==='vosk'||w.voskEnabled) return 'vosk';
-    if(w.engine==='sapi'||w.sapiEnabled) return 'sapi';
+    const runtime=resolveRuntimeEngine();
+    if(runtime!=='off') return runtime;
     const cfg=state().config||{};
-    const vosk=cfg.voiceVosk||cfg.voice_vosk;
-    const sapi=cfg.voiceSapi||cfg.voice_sapi;
-    if(vosk&&vosk.enabled) return 'vosk';
-    if(sapi&&sapi.enabled) return 'sapi';
+    const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+    const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
+    const kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
+    if(voskCfg.enabled&&!kwsCfg.enabled&&!sapiCfg.enabled) return 'vosk';
+    if(sapiCfg.enabled&&!voskCfg.enabled&&!kwsCfg.enabled) return 'sapi';
+    if(kwsCfg.enabled&&!voskCfg.enabled&&!sapiCfg.enabled) return 'kws';
     return voskOnlyUi()?'vosk':'off';
+  }
+
+  function rollbackVoiceModeSwitch(){
+    return Promise.all([
+      loadVoiceKwsStatus().catch(function(){return null;}),
+      loadVoiceVoskStatus().catch(function(){return null;}),
+      loadVoiceSapiStatus().catch(function(){return null;})
+    ]).then(function(arr){
+      const kwsRes=arr[0], voskRes=arr[1], sapiRes=arr[2];
+      if(kwsRes) syncVoiceKwsConfigFromStatus(kwsRes);
+      if(voskRes) syncVoiceVoskConfigFromStatus(voskRes);
+      if(sapiRes) syncVoiceSapiConfigFromStatus(sapiRes);
+      const snap=hooks().voiceUiSnapshot;
+      if(snap){
+        snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+      }
+      const runtime=resolveRuntimeEngine(snap&&snap.wake);
+      voiceWakeExpandedMode=runtime!=='off'?runtime:(voskOnlyUi()?'vosk':'sapi');
+      syncVoiceWakeExpandedUi();
+      renderVoiceEngineTabs();
+      applyHomeVoiceModeSwitchUi();
+      if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+      else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+    });
+  }
+
+  function stopStaleVoskForKws(){
+    const cfg=state().config||{};
+    const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
+    const kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
+    if(!(kwsCfg&&kwsCfg.enabled)||(voskCfg&&voskCfg.enabled)) return Promise.resolve(null);
+    return global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).catch(function(){return null;}).then(function(voskRes){
+      if(!voskRes||!voskRes.enabled) return null;
+      return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){return null;});
+    });
   }
 
   function isVoiceModeCardInteractiveTarget(target){
@@ -400,42 +560,56 @@
         card.setAttribute('aria-busy',busy?'true':'false');
       }
     });
+    const grid=$('voiceRecognizeSourceGrid');
+    if(grid){
+      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+        btn.disabled=!!busy;
+        btn.setAttribute('aria-busy',busy?'true':'false');
+      });
+    }
   }
 
   function syncVoiceWakeExpandedUi(){
-    const mode=currentVoiceMode();
-    const expanded=voiceWakeExpandedMode||mode||'vosk';
+    const expanded=voiceWakeExpandedMode||resolveRuntimeEngine()||'vosk';
     const sapiWrap=$('btnVoiceModeSapi');
     const voskWrap=$('btnVoiceModeVosk');
     const sapiBlock=$('voiceSapiBlock');
     const voskBlock=$('voiceVoskBlock');
     const sapiPanel=$('voiceResourceSapiPanel');
     const voskPanel=$('voiceResourceVoskPanel');
+    const kwsPanel=$('voiceResourceKwsPanel');
     if(voskOnlyUi()){
       if(sapiWrap) sapiWrap.hidden=true;
       if(sapiBlock) sapiBlock.hidden=true;
       if(sapiPanel) sapiPanel.hidden=true;
-      if(voskWrap) voskWrap.hidden=false;
-      if(voskBlock) voskBlock.hidden=false;
-      if(voskPanel) voskPanel.hidden=false;
+      const showKws=expanded==='kws';
+      const showVosk=expanded==='vosk'||!showKws;
+      if(kwsPanel) kwsPanel.hidden=!showKws;
+      if(voskWrap) voskWrap.hidden=!showVosk;
+      if(voskBlock) voskBlock.hidden=!showVosk;
+      if(voskPanel) voskPanel.hidden=!showVosk;
       return;
     }
-    const showSapi=mode==='sapi'||expanded==='sapi';
-    const showVosk=mode==='vosk'||expanded==='vosk';
+    const showSapi=expanded==='sapi';
+    const showVosk=expanded==='vosk';
+    const showKws=expanded==='kws';
     if(sapiWrap) sapiWrap.hidden=!showSapi;
     if(sapiBlock) sapiBlock.hidden=!showSapi;
     if(sapiPanel) sapiPanel.hidden=!showSapi;
     if(voskWrap) voskWrap.hidden=!showVosk;
     if(voskBlock) voskBlock.hidden=!showVosk;
     if(voskPanel) voskPanel.hidden=!showVosk;
+    if(kwsPanel) kwsPanel.hidden=!showKws;
   }
 
   function setVoiceWakeExpandedMode(mode){
     if(voskOnlyUi()&&mode==='sapi') mode='vosk';
-    if(mode!=='sapi'&&mode!=='vosk') return;
+    if(mode!=='sapi'&&mode!=='vosk'&&mode!=='kws') return;
     voiceWakeExpandedMode=mode;
     if(ui().selectedSceneVoiceNav!=='voice:end'){
-      ui().selectedSceneVoiceNav=mode==='vosk'?'voice:vosk':'voice:sapi';
+      if(mode==='vosk') ui().selectedSceneVoiceNav='voice:vosk';
+      else if(mode==='sapi') ui().selectedSceneVoiceNav='voice:sapi';
+      else if(mode==='kws') ui().selectedSceneVoiceNav='voice:recognize';
     }
     syncVoiceWakeExpandedUi();
     renderVoiceEngineTabs();
@@ -447,7 +621,7 @@
   }
 
   function renderVoiceModeSwitch(){
-    const mode=currentVoiceMode();
+    const mode=resolveRuntimeEngine();
     const endEnabled=global.OneToneVoiceEnd.enabledInConfig();
     const sapiCard=$('btnVoiceModeSapi');
     const voskCard=$('btnVoiceModeVosk');
@@ -462,12 +636,14 @@
     }
     syncVoiceWakeExpandedUi();
     if(currentEl){
-      if(voskOnlyUi()||mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
+      if(mode==='kws') currentEl.textContent=t('voiceModeCurrentKws');
+      else if(voskOnlyUi()||mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
       else if(mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
       else currentEl.textContent=t('voiceModeCurrentOff');
     }
     if(hintEl){
-      if(voskOnlyUi()||mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
+      if(mode==='kws') hintEl.textContent=t('voiceModeHintKws');
+      else if(voskOnlyUi()||mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
       else if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
       else hintEl.textContent=t('voiceModeHintOff');
     }
@@ -476,28 +652,10 @@
     global.OneToneVoiceEnd.syncModeUi();
     renderVoiceEngineTabs();
     renderSettingsVoiceSubnav();
-    hooks().renderVoiceSettingsFlow();
-  }
-
-  function optimisticVoiceEngineConfig(mode){
-    if(!state().config) return;
-    const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
-    const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
-    state().config.voiceVosk=vosk;
-    state().config.voiceSapi=sapi;
-    if(mode==='vosk'){
-      vosk.enabled=true;
-      sapi.enabled=false;
+    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
     }else{
-      sapi.enabled=true;
-      vosk.enabled=false;
-    }
-    const snap=hooks().voiceUiSnapshot;
-    if(snap){
-      if(!snap.wake) snap.wake={};
-      snap.wake.engine=mode;
-      snap.wake.voskEnabled=mode==='vosk';
-      snap.wake.sapiEnabled=mode==='sapi';
+      hooks().renderVoiceSettingsFlow();
     }
   }
 
@@ -507,14 +665,28 @@
     else if(hooks().renderHomeVoiceModeSwitchUi) hooks().renderHomeVoiceModeSwitchUi();
   }
 
+  function ipcWithTimeout(cmd,args,ms){
+    ms=ms||15000;
+    return Promise.race([
+      global.OneToneIpc.invoke(cmd,args),
+      new Promise(function(_,reject){
+        setTimeout(function(){ reject(new Error('IPC timeout: '+cmd)); },ms);
+      })
+    ]);
+  }
+
   function pumpVoiceModeSwitch(opts){
     if(voiceModeSwitchInFlight) return;
     const mode=voiceWakeExpandedMode;
-    if(mode!=='sapi'&&mode!=='vosk') return;
+    if(mode!=='sapi'&&mode!=='vosk'&&mode!=='kws') return;
     const seq=voiceModeSwitchSeq;
     const toastKind=(opts&&opts.toastKind)||'default';
     const toastLite=toastKind==='lite';
     function modeToast(){
+      if(mode==='kws'){
+        hooks().toast(t('voiceModeSwitchedKws'));
+        return;
+      }
       if(toastLite) hooks().toast(mode==='sapi'?t('voiceNavToastLite'):t('voiceNavToastPro'),'lite');
       else hooks().toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
     }
@@ -535,7 +707,7 @@
       else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
     };
     if(mode==='sapi'){
-      global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
+      ipcWithTimeout('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
         if(seq!==voiceModeSwitchSeq) return;
         renderVoiceSapiStatus(res,statusOpts);
         if(!handleVoiceSapiEnableResult(res,true)) return;
@@ -551,10 +723,73 @@
       }).finally(finish);
       return;
     }
-    global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
+    if(mode==='kws'){
+      ipcWithTimeout('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){return null;})
+      .then(function(){
+        return ipcWithTimeout('cmd_voice_sapi_set_enabled',{enabled:false}).catch(function(){return null;});
+      })
+      .then(function(){
+        return ipcWithTimeout('cmd_voice_kws_set_enabled',{enabled:true});
+      })
+      .then(function(kwsSetRes){
+        if(seq!==voiceModeSwitchSeq) return;
+        if(!kwsSetRes||!kwsSetRes.enabled){
+          throw new Error((kwsSetRes&&kwsSetRes.lastError)||t('voiceKwsFail'));
+        }
+        return Promise.all([
+          ipcWithTimeout('cmd_voice_kws_status',{}).catch(function(){return kwsSetRes;}),
+          ipcWithTimeout('cmd_voice_vosk_status',{}).catch(function(){return null;}),
+          ipcWithTimeout('cmd_voice_sapi_status',{}).catch(function(){return null;})
+        ]).then(function(arr){
+          return {kwsRes:arr[0]||kwsSetRes,voskRes:arr[1],sapiRes:arr[2]};
+        });
+      })
+      .then(function(status){
+        if(seq!==voiceModeSwitchSeq||!status) return;
+        const kwsRes=status.kwsRes,voskRes=status.voskRes,sapiRes=status.sapiRes;
+        if(!kwsRes||!kwsRes.enabled){
+          throw new Error((kwsRes&&kwsRes.lastError)||t('voiceKwsFail'));
+        }
+        if(voskRes&&voskRes.enabled){
+          throw new Error(t('voiceKwsFail'));
+        }
+        if(sapiRes&&sapiRes.enabled){
+          throw new Error(t('voiceKwsFail'));
+        }
+        syncVoiceKwsConfigFromStatus(kwsRes);
+        syncVoiceVoskConfigFromStatus(voskRes);
+        syncVoiceSapiConfigFromStatus(sapiRes);
+        renderVoiceKwsStatus(kwsRes,statusOpts);
+        if(voskRes) renderVoiceVoskStatus(voskRes,statusOpts);
+        if(sapiRes) renderVoiceSapiStatus(sapiRes,statusOpts);
+        const snap=hooks().voiceUiSnapshot;
+        if(snap){
+          snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+        }
+        voiceWakeExpandedMode='kws';
+        return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
+          if(seq!==voiceModeSwitchSeq) return;
+          if(endRes){
+            global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
+            const snap=hooks().voiceUiSnapshot;
+            if(snap) snap.end=Object.assign({},snap.end||{},endRes);
+          }
+          hooks().syncHomeFromVoiceSettings(voskRes||{enabled:false,state:'stopped'},sapiRes||{enabled:false,state:'stopped'},endRes,syncOpts,kwsRes);
+          modeToast();
+          scheduleVoiceToggleRefresh();
+        });
+      }).catch(function(err){
+        if(seq!==voiceModeSwitchSeq) return;
+        rollbackVoiceModeSwitch();
+        hooks().toast(err&&err.message?String(err.message):t('voiceKwsFail'));
+        console.error('voice_mode_kws',err);
+      }).finally(finish);
+      return;
+    }
+    ipcWithTimeout('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
       if(seq!==voiceModeSwitchSeq) return;
       renderVoiceVoskStatus(res,statusOpts);
-      return global.OneToneIpc.invoke('cmd_voice_end_status',{}).catch(function(){return null;}).then(function(endRes){
+      return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
         if(seq!==voiceModeSwitchSeq) return;
         if(endRes){
           global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
@@ -582,16 +817,22 @@
       if(toastLite) hooks().toast(mode==='sapi'?t('voiceNavToastLite'):t('voiceNavToastPro'),'lite');
       else hooks().toast(mode==='sapi'?t('voiceModeSwitchedLite'):t('voiceModeSwitchedPro'));
     }
-    if(mode!=='sapi'&&mode!=='vosk') return;
+    if(mode!=='sapi'&&mode!=='vosk'&&mode!=='kws') return;
     voiceModeSwitchSeq++;
     hooks().markVoiceEngineBootHandled();
     setVoiceWakeExpandedMode(mode);
-    if(currentVoiceMode()===mode&&!voiceModeSwitchInFlight){
+    if(voiceBackendMatchesMode(mode)&&!voiceModeSwitchInFlight){
       applyHomeVoiceModeSwitchUi();
+      if(mode==='kws') stopStaleVoskForKws();
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
       return;
     }
-    optimisticVoiceEngineConfig(mode);
     applyHomeVoiceModeSwitchUi();
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+      global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+    }
     pumpVoiceModeSwitch(opts);
   }
 
@@ -615,7 +856,8 @@
     const w=hooks().voiceUiSnapshot.wake||{};
     const voskState=(w.vosk&&w.vosk.state)||'';
     const sapiState=(w.sapi&&w.sapi.state)||'';
-    if(voskState==='starting'||sapiState==='starting') return 3000;
+    const kwsState=(w.kws&&w.kws.state)||'';
+    if(voskState==='starting'||sapiState==='starting'||kwsState==='starting') return 3000;
     if(document.hidden&&!ui().drawerOpen) return 2000;
     const endSnap=hooks().voiceUiSnapshot.end||{};
     if(hooks().sessionActiveState(endSnap.state||'idle')) return 500;
@@ -656,6 +898,7 @@
     const cfg=state().config||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi;
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk;
+    const kwsCfg=cfg.voiceKws||cfg.voice_kws;
     const snap=hooks().voiceUiSnapshot.end||{};
     const panel=ui().settingsPanel;
     const drawerVoice=ui().drawerOpen&&settingsPanelNeedsVoicePoll();
@@ -668,25 +911,40 @@
     const needSapi=(sapiCfg&&sapiCfg.enabled)
       &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
       ||(homeVoice&&!!(sapiCfg&&sapiCfg.enabled));
-    const needVosk=(voskCfg&&voskCfg.enabled)
+    const kwsActive=!!(kwsCfg&&kwsCfg.enabled)&&!(voskCfg&&voskCfg.enabled);
+    const needVosk=((voskCfg&&voskCfg.enabled)
       &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
-      ||(homeVoice&&!!(voskCfg&&voskCfg.enabled));
+      ||(homeVoice&&!!(voskCfg&&voskCfg.enabled)))
+      ||kwsActive;
+    const needKws=(kwsCfg&&kwsCfg.enabled)
+      &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
+      ||(homeVoice&&!!(kwsCfg&&kwsCfg.enabled))
+      ||(drawerVoice&&panel==='debug')
+      ||voiceWakeExpandedMode==='kws';
     const pEnd=needEnd?global.OneToneIpc.invoke('cmd_voice_end_status',{}).catch(function(){return null;}):Promise.resolve(null);
     const pSapi=needSapi?global.OneToneIpc.invoke('cmd_voice_sapi_status',{}).catch(function(){return null;}):Promise.resolve(null);
     const pVosk=needVosk?global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).catch(function(){return null;}):Promise.resolve(null);
-    Promise.all([pEnd,pSapi,pVosk]).then(function(arr){
+    const pKws=needKws?global.OneToneIpc.invoke('cmd_voice_kws_status',{}).catch(function(){return null;}):Promise.resolve(null);
+    Promise.all([pEnd,pSapi,pVosk,pKws]).then(function(arr){
       try{
-        const endRes=arr[0],sapiRes=arr[1],voskRes=arr[2];
+        const endRes=arr[0],sapiRes=arr[1],letVoskRes=arr[2],kwsRes=arr[3];
+        let voskRes=letVoskRes;
+        if(kwsActive&&voskRes&&voskRes.enabled){
+          global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){});
+          voskRes=Object.assign({},voskRes,{enabled:false,state:'stopping'});
+        }
         const snap=hooks().voiceUiSnapshot;
         if(!snap) return;
         if(endRes) snap.end=endRes;
-        if(sapiRes||voskRes) snap.wake=mergeWakeSnapshot(sapiRes,voskRes);
-        const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(endRes&&endRes.state||'');
+        if(sapiRes||voskRes||kwsRes){
+          snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+        }
+        const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(kwsRes&&[kwsRes.state,kwsRes.lastPartial,kwsRes.lastDetectedPhrase,kwsRes.lastDetectedKind,kwsRes.lastTrigger,kwsRes.lastSkip].join('|')||'')+'|'+(endRes&&endRes.state||'');
         if(wakeFp===lastVoicePollWakeFp&&!ui().drawerOpen){
           return;
         }
         lastVoicePollWakeFp=wakeFp;
-        hooks().scheduleVoiceUiRender(ui().drawerOpen?{sapi:sapiRes,vosk:voskRes,end:endRes}:null);
+        hooks().scheduleVoiceUiRender(ui().drawerOpen?{sapi:sapiRes,vosk:voskRes,kws:kwsRes,end:endRes}:null);
       }catch(err){
         console.error('voiceStatusPollTick',err);
       }
@@ -988,6 +1246,12 @@
   function currentWakePhraseList(){
     const cfg=state().config||{};
     const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const pending=pendingWakePhrases();
+    if(pending&&pending.length) return pending;
+    if(mode==='kws'){
+      const kws=cfg.voiceKws||cfg.voice_kws||{};
+      return normalizePhraseList(kws.phrases);
+    }
     if(mode==='vosk'){
       const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
       const w=hooks().voiceUiSnapshot.wake||{};
@@ -1071,6 +1335,15 @@
       syncVoiceVoskPresets(next);
       return;
     }
+    if(mode==='kws'){
+      if(state().config){
+        const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
+        state().config.voiceKws=cfg;
+        cfg.phrases=hooks().cloneStringList(next);
+      }
+      renderWakePhraseTags();
+      return;
+    }
     voiceSapiPresetPending=next.slice();
     if(state().config){
       const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
@@ -1086,14 +1359,22 @@
     voiceWakePresetSavePending=null;
     const saveSeq=++voiceWakePresetSaveSeq;
     const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
-    const invoke=mode==='vosk'
-      ?global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next})
-      :global.OneToneIpc.invoke('cmd_voice_sapi_set_phrases',{phrases:next});
+    let invoke;
+    if(mode==='vosk'){
+      invoke=global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next});
+    }else if(mode==='kws'){
+      invoke=global.OneToneIpc.invoke('cmd_voice_kws_set_phrases',{phrases:next});
+    }else{
+      invoke=global.OneToneIpc.invoke('cmd_voice_sapi_set_phrases',{phrases:next});
+    }
     return invoke.then(function(res){
       if(saveSeq!==voiceWakePresetSaveSeq) return res;
       if(mode==='vosk'){
         renderVoiceVoskStatus(res);
         hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
+      }else if(mode==='kws'){
+        renderVoiceKwsStatus(res);
+        hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true},res);
       }else{
         if(res) renderVoiceSapiStatus(res);
         voiceSapiPresetPending=null;
@@ -1102,11 +1383,15 @@
       if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
         global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
       }
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
       return res;
     }).catch(function(err){
       if(saveSeq!==voiceWakePresetSaveSeq) return;
       console.error('voice_wake_phrase',err);
       if(mode==='vosk') loadVoiceVoskStatus();
+      else if(mode==='kws') loadVoiceKwsStatus();
       else loadVoiceSapiStatus();
       hooks().toast(t('voiceSapiFail'));
       throw err;
@@ -1147,7 +1432,7 @@
     }else{
       return;
     }
-    scheduleWakePhrasePersist(next);
+    scheduleWakePhrasePersist(next,wasActive?{immediate:true}:{});
   }
 
   function renderWakeCustomPhrases(){
@@ -1194,7 +1479,7 @@
       hooks().toast(t('voicePhraseKeepOne'));
       return;
     }
-    scheduleWakePhrasePersist(next);
+    scheduleWakePhrasePersist(next,{immediate:true});
   }
 
   function updateVoiceSapiConfidence(saveNow){
@@ -1340,7 +1625,14 @@
         syncVoiceVoskPresetButtons(uiPreset,voiceVoskTogglePending);
         updateVoiceVoskPresetPanel(uiPreset);
       }
-      syncVoiceVoskPresets(res.phrases||[]);
+      const serverPhrases=normalizePhraseList(res.phrases);
+      const pending=pendingWakePhrases();
+      if(pending){
+        if(serverPhrases.length&&phraseListsEqual(serverPhrases,pending)) voiceWakePresetSavePending=null;
+        syncVoiceVoskPresets(pending);
+      }else if(serverPhrases.length){
+        syncVoiceVoskPresets(serverPhrases);
+      }
     }
     const partial=res.lastPartial||'';
     const finalText=res.lastFinal||'';
@@ -1381,7 +1673,7 @@
       const snap=hooks().voiceUiSnapshot;
       if(snap){
         const wake=snap.wake||{};
-        snap.wake=mergeWakeSnapshot(wake.sapi,res);
+        snap.wake=mergeWakeSnapshot(wake.sapi,res,wake.kws);
       }
       renderVoiceVoskStatus(res);
       hooks().syncHomeFromVoiceSettings&&hooks().syncHomeFromVoiceSettings(res,null,null,{lightOnly:true});
@@ -1697,11 +1989,222 @@
     });
   }
 
+  function renderVoiceKwsSettingsBadge(res){
+    const stubNotice=$('voiceKwsStubNotice');
+    const kwsStatusPill=$('modelsKwsStatus');
+    const isStub=!!(res&&(res.stubMode||res.resourceIssue));
+    if(stubNotice){
+      stubNotice.hidden=!isStub;
+      stubNotice.textContent=isStub?t('voiceKwsStubNativeMissing'):'';
+    }
+    if(!kwsStatusPill||!res) return;
+    if(isStub){
+      kwsStatusPill.textContent=t('voiceKwsStatusStubOnly');
+      kwsStatusPill.classList.remove('is-on');
+      return;
+    }
+    const wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    const listening=isKwsNativeListening(res,wake);
+    kwsStatusPill.textContent=voiceWakeStateLabel(res.state||'stopped');
+    kwsStatusPill.classList.toggle('is-on',listening);
+  }
+
+  function renderVoiceKwsStatus(res,opts){
+    opts=opts||{};
+    if(!res) return;
+    const descEl=$('voiceKwsDiagDesc');
+    const dlBtn=$('btnVoiceKwsDownload');
+    const retryBtn=$('btnVoiceKwsRetry');
+    if(descEl) descEl.textContent=t('voiceKwsDiagDesc');
+    if(dlBtn) dlBtn.textContent=t('voiceKwsDownloadGuide');
+    if(retryBtn) retryBtn.textContent=t('voiceVoskRetry');
+    const kwsName=$('modelsKwsName');
+    if(kwsName) kwsName.textContent=t('modelsKwsName');
+    const kwsDesc=$('modelsKwsDesc');
+    if(kwsDesc) kwsDesc.textContent=t('modelsKwsDesc');
+    const kwsDl=$('btnModelsKwsDownload');
+    if(kwsDl) kwsDl.textContent=t('voiceKwsDownloadGuide');
+    const kwsRetry=$('btnModelsKwsRetry');
+    if(kwsRetry) kwsRetry.textContent=t('voiceVoskRetry');
+    syncVoiceKwsConfigFromStatus(res);
+    const snap=hooks().voiceUiSnapshot;
+    if(snap){
+      const wake=snap.wake||{};
+      snap.wake=mergeWakeSnapshot(wake.sapi,wake.vosk,res);
+    }
+    if(global.OneToneVoiceDiag){
+      global.OneToneVoiceDiag.updateMetric('kws','state',voiceWakeStateLabel(res.state||'stopped'),t('voiceDiagLogState'));
+      global.OneToneVoiceDiag.updateMetric('kws','phrases',kwsPhraseListText(res.phrases),t('voiceKwsPhrasesEffective'));
+      global.OneToneVoiceDiag.updateMetric('kws','active',kwsPhraseListText(res.phrasesActive),t('voiceKwsPhrasesActive'));
+      global.OneToneVoiceDiag.updateMetric('kws','skippedPhrases',kwsPhraseListText(res.phrasesSkipped),t('voiceKwsPhrasesSkipped'));
+      global.OneToneVoiceDiag.updateMetric('kws','truncatedPhrases',kwsPhraseListText(res.phrasesTruncated),t('voiceKwsPhrasesTruncated'));
+      global.OneToneVoiceDiag.updateMetric('kws','buildIssue',res.keywordBuildIssue||'',t('voiceKwsKeywordBuildIssue'));
+      global.OneToneVoiceDiag.updateMetric('kws','kind',res.lastDetectedKind||'',t('voiceKwsLastKind'));
+      global.OneToneVoiceDiag.updateMetric('kws','hit',res.lastDetectedPhrase||'',t('voiceDiagLogHit'));
+      global.OneToneVoiceDiag.updateMetric('kws','trigger',res.lastTrigger||'',t('voiceKwsLastTrigger'));
+      global.OneToneVoiceDiag.updateMetric('kws','skip',res.lastSkip||'',t('voiceDiagLogSkip'));
+      global.OneToneVoiceDiag.updateMetric('kws','error',res.lastError||'',t('voiceDiagLogError'));
+      if(res.resourceIssue) global.OneToneVoiceDiag.updateMetric('kws','stub',res.resourceIssue,t('voiceKwsStubNote'));
+      global.OneToneVoiceDiag.updateMetric('kws','model',res.modelExists?t('voiceKwsModelReady'):t('voiceKwsModelMissing'),t('voiceKwsModelStatus'));
+      global.OneToneVoiceDiag.updateMetric('kws','partial',kwsHeardDisplayText(res),t('voiceDiagLogHeard'));
+    }
+    if(!opts.lightOnly) hooks().renderVoiceModeUsage();
+    if(global.OneToneVoiceModelsPanel) global.OneToneVoiceModelsPanel.render();
+    renderVoiceKwsSettingsBadge(res);
+  }
+
+  function loadVoiceKwsStatus(){
+    return global.OneToneIpc.invoke('cmd_voice_kws_status',{}).then(function(res){
+      renderVoiceKwsStatus(res);
+      return res;
+    });
+  }
+
+  function setVoiceKwsEnabled(enabled){
+    return global.OneToneIpc.invoke('cmd_voice_kws_set_enabled',{enabled:!!enabled}).then(function(res){
+      renderVoiceKwsStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true});
+      hooks().toast(enabled?t('voiceKwsEnabled'):t('voiceKwsDisabled'));
+      return res;
+    }).catch(function(err){
+      hooks().toast(t('voiceKwsFail'));
+      console.error('voice_kws_set_enabled',err);
+      return loadVoiceKwsStatus();
+    });
+  }
+
+  function testVoiceKwsSend(){
+    global.OneToneIpc.invoke('cmd_voice_kws_test_send',{}).then(function(res){
+      let msg=t('testFailed');
+      if(res&&res.ok) msg=t('testSent');
+      hooks().toast(msg);
+      global.OneToneVoiceDiag.forceLog('kws',t('voiceDiagLogTest'),msg);
+    }).catch(function(){
+      hooks().toast(t('testFailed'));
+      global.OneToneVoiceDiag.forceLog('kws',t('voiceDiagLogTest'),t('testFailed'));
+    });
+  }
+
+  function testVoiceKwsDetect(phrase){
+    const p=String(phrase||'').trim();
+    if(!p) return Promise.resolve(null);
+    return global.OneToneIpc.invoke('cmd_voice_kws_test_detect',{phrase:p}).then(function(res){
+      renderVoiceKwsStatus(res);
+      const label=(res&&res.lastTrigger)||(res&&res.lastSkip)||(res&&res.lastDetectedKind)||p;
+      global.OneToneVoiceDiag.forceLog('kws',t('voiceKwsTestDetect'),label);
+      hooks().scheduleVoiceUiRender({kws:res,end:hooks().voiceUiSnapshot.end});
+      return res;
+    }).catch(function(err){
+      hooks().toast(err&&err.message?String(err.message):t('voiceKwsFail'));
+      console.error('voice_kws_test_detect',err);
+      return null;
+    });
+  }
+
+  function renderKwsDownloadProgress(phase,percent){
+    const active=!!phase&&phase!=='done'&&phase!=='error';
+    const pct=String(Math.max(0,Math.min(100,percent||0)))+'%';
+    let statusText='';
+    if(phase==='extracting') statusText=t('voiceKwsExtracting');
+    else if(phase==='downloading') statusText=t('voiceKwsDownloading').replace('{n}',String(percent||0));
+    else if(phase==='error') statusText=t('voiceKwsDownloadFail').replace('{error}','');
+    [
+      {wrap:'voiceKwsDownloadProgress',fill:'voiceKwsDownloadFill',status:'voiceKwsDownloadStatus',dlBtn:'btnVoiceKwsDownload'},
+      {wrap:'voiceKwsSettingsDownloadProgress',fill:'voiceKwsSettingsDownloadFill',status:'voiceKwsSettingsDownloadStatus',dlBtn:'btnModelsKwsDownload'}
+    ].forEach(function(tgt){
+      const wrap=$(tgt.wrap);
+      if(!wrap) return;
+      wrap.hidden=!active&&!kwsDownloadInFlight;
+      const fill=$(tgt.fill);
+      if(fill) fill.style.width=pct;
+      const status=$(tgt.status);
+      if(status) status.textContent=statusText;
+      const dlBtn=$(tgt.dlBtn);
+      if(dlBtn) dlBtn.disabled=!!kwsDownloadInFlight;
+    });
+  }
+
+  function handleKwsDownloadMessage(msg){
+    if(!msg||msg.type!=='mvp_kws_download') return;
+    const phase=msg.phase||'';
+    const percent=typeof msg.percent==='number'?msg.percent:kwsDownloadPercent;
+    if(phase==='downloading') kwsDownloadPercent=percent;
+    if(phase==='downloading'||phase==='extracting'){
+      kwsDownloadInFlight=true;
+      renderKwsDownloadProgress(phase,percent);
+      return;
+    }
+    kwsDownloadInFlight=false;
+    if(phase==='done'&&msg.ok){
+      renderKwsDownloadProgress('',100);
+      hooks().toast(t('voiceKwsDownloadDone'));
+      loadVoiceKwsStatus();
+      hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+      return;
+    }
+    if(phase==='error'||!msg.ok){
+      renderKwsDownloadProgress('error',0);
+      const err=msg.error||t('voiceKwsFail');
+      hooks().toast(t('voiceKwsDownloadFail').replace('{error}',err),'warn');
+    }
+  }
+
+  function downloadKwsModel(preset){
+    if(kwsDownloadInFlight) return;
+    const cfg=state().config||{};
+    const kws=cfg.voiceKws||cfg.voice_kws||{};
+    preset=preset||String(kws.modelPreset||'cn-light').trim()||'cn-light';
+    kwsDownloadInFlight=true;
+    kwsDownloadPercent=0;
+    renderKwsDownloadProgress('downloading',0);
+    global.OneToneIpc.invoke('cmd_kws_download_model',{preset:preset}).then(function(res){
+      if(res&&res.reason==='already_running'){
+        kwsDownloadInFlight=false;
+        renderKwsDownloadProgress('',0);
+        hooks().toast(t('voiceKwsDownloadBusy'));
+        return;
+      }
+      if(res&&res.alreadyPresent){
+        kwsDownloadInFlight=false;
+        renderKwsDownloadProgress('',100);
+        hooks().toast(t('voiceKwsDownloadDone'));
+        loadVoiceKwsStatus();
+        return;
+      }
+      if(!res||!res.ok){
+        kwsDownloadInFlight=false;
+        renderKwsDownloadProgress('error',0);
+        const errMsg=(res&&res.error)||(res&&res.reason)||t('voiceKwsFail');
+        hooks().toast(t('voiceKwsDownloadFail').replace('{error}',errMsg),'warn');
+      }
+    }).catch(function(err){
+      kwsDownloadInFlight=false;
+      renderKwsDownloadProgress('error',0);
+      hooks().toast(t('voiceKwsDownloadFail').replace('{error}',err&&err.message?String(err.message):t('voiceKwsFail')),'warn');
+    });
+  }
+
+  function retryKwsStart(){
+    global.OneToneIpc.invoke('cmd_voice_kws_retry_start',{}).then(function(res){
+      renderVoiceKwsStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true});
+    }).catch(function(err){
+      hooks().toast(err&&err.message?String(err.message):t('voiceKwsFail'));
+    });
+  }
+
+  function voiceKwsEnabledNow(){
+    const cfg=state().config||{};
+    const kws=cfg.voiceKws||cfg.voice_kws;
+    return !!(kws&&kws.enabled);
+  }
+
   function voiceWakeEnabledInConfig(){
     const cfg=state().config||{};
     const vosk=cfg.voiceVosk||cfg.voice_vosk;
     const sapi=cfg.voiceSapi||cfg.voice_sapi;
-    return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled);
+    const kws=cfg.voiceKws||cfg.voice_kws;
+    return !!(vosk&&vosk.enabled)||!!(sapi&&sapi.enabled)||!!(kws&&kws.enabled);
   }
 
   global.OneToneVoiceWake={
@@ -1713,14 +2216,20 @@
     renderSubnav:renderSettingsVoiceSubnav,
     renderEngineTabs:renderVoiceEngineTabs,
     mergeWakeSnapshot:mergeWakeSnapshot,
+    resolveRuntimeEngine:resolveRuntimeEngine,
+    isKwsNativeListening:isKwsNativeListening,
+    kwsHeardDisplayText:kwsHeardDisplayText,
+    resolveActiveTabMode:resolveActiveTabMode,
     syncSapiConfigFromStatus:syncVoiceSapiConfigFromStatus,
     syncVoskConfigFromStatus:syncVoiceVoskConfigFromStatus,
+    syncKwsConfigFromStatus:syncVoiceKwsConfigFromStatus,
     currentMode:currentVoiceMode,
     syncExpandedUi:syncVoiceWakeExpandedUi,
     setExpandedMode:setVoiceWakeExpandedMode,
     getExpandedMode:function(){ return voiceWakeExpandedMode; },
     renderModeSwitch:renderVoiceModeSwitch,
     switchMode:switchVoiceMode,
+    syncEngineTabButtons:syncVoiceEngineTabButtons,
     enabledInConfig:voiceWakeEnabledInConfig,
     pollNeeded:voiceStatusPollNeeded,
     pollTick:voiceStatusPollTick,
@@ -1732,6 +2241,7 @@
     loadSapiStatus:loadVoiceSapiStatus,
     sapiEnabledNow:voiceSapiEnabledNow,
     voskEnabledNow:voiceVoskEnabledNow,
+    kwsEnabledNow:voiceKwsEnabledNow,
     openSapiSetup:openVoiceSapiSetup,
     toggleSapi:toggleVoiceSapi,
     testSapiSend:testVoiceSapiSend,
@@ -1752,6 +2262,14 @@
     syncVoskToggle:syncVoiceVoskToggle,
     toggleVosk:toggleVoiceVosk,
     testVoskSend:testVoiceVoskSend,
+    renderKwsStatus:renderVoiceKwsStatus,
+    loadKwsStatus:loadVoiceKwsStatus,
+    setKwsEnabled:setVoiceKwsEnabled,
+    testKwsSend:testVoiceKwsSend,
+    testKwsDetect:testVoiceKwsDetect,
+    downloadKwsModel:downloadKwsModel,
+    handleKwsDownloadMessage:handleKwsDownloadMessage,
+    retryKwsStart:retryKwsStart,
     addVoskPreset:addVoiceVoskPreset,
     syncVoskPresets:syncVoiceVoskPresets,
     syncVoiceVoskPresetButtons:syncVoiceVoskPresetButtons,

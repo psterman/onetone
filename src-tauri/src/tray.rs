@@ -396,6 +396,8 @@ fn tray_voice_engine(cfg: &VoiceConfig) -> &'static str {
         "vosk"
     } else if cfg.voice_sapi.enabled {
         "sapi"
+    } else if cfg.voice_kws.enabled {
+        "kws"
     } else {
         "off"
     }
@@ -410,6 +412,10 @@ fn tray_voice_state_and_error(state: &AppState, engine: &str) -> (String, String
         "sapi" => (
             state.voice_sapi_state.lock().clone(),
             state.voice_sapi_last_error.lock().clone(),
+        ),
+        "kws" => (
+            state.voice_kws_state.lock().clone(),
+            state.voice_kws_last_error.lock().clone(),
         ),
         _ => ("off".into(), String::new()),
     }

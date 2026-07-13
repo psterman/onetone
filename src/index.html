@@ -1261,6 +1261,11 @@
                   <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">引擎</span>
                   <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
                 </span>
+                <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">系统</button>
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">离线</button>
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">关键词</button>
+                </div>
                 <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
                 <span class="keys-scheme-summary-item">
                   <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
@@ -1412,6 +1417,7 @@
                     <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
                       <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统语音输入</button>
                       <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地离线识别</button>
+                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceRecognizeSourceKws">关键词（实验）</button>
                     </div>
                     <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
                     <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
@@ -1484,6 +1490,22 @@
                     <details class="voice-recognize-resources-details" id="voiceRecognizeResourcesDetails">
                       <summary id="voiceRecognizeResourcesSummary">模型资源</summary>
                     <section class="voice-recognize-block voice-recognize-resources" id="voiceRecognizeResources">
+                    <div class="voice-resource-panel" id="voiceResourceKwsPanel" hidden>
+                      <div class="voice-resource-panel-head">
+                        <span class="voice-resource-panel-name" id="modelsKwsName">关键词触发（实验）</span>
+                        <span class="voice-status-badge" id="modelsKwsStatus">—</span>
+                      </div>
+                      <p class="mic-desc" id="modelsKwsDesc">sherpa-onnx 短词命令识别，需单独下载 KWS 模型。</p>
+                      <p class="helper-note voice-kws-stub-notice" id="voiceKwsStubNotice" hidden></p>
+                      <div id="voiceKwsSettingsDownloadProgress" hidden>
+                        <div class="voice-vosk-download-bar"><div id="voiceKwsSettingsDownloadFill"></div></div>
+                        <p id="voiceKwsSettingsDownloadStatus"></p>
+                      </div>
+                      <div class="voice-resource-panel-actions">
+                        <button type="button" class="keys-summary-btn" id="btnModelsKwsDownload">下载 KWS 模型</button>
+                        <button type="button" class="keys-summary-btn" id="btnModelsKwsRetry">重试启动</button>
+                      </div>
+                    </div>
                     <div class="voice-resource-panel" id="voiceResourceVoskPanel">
                       <div class="voice-resource-panel-head">
                         <span class="voice-resource-panel-name">本地离线模型</span>
@@ -1873,6 +1895,28 @@
                 <button type="button" class="control-btn" id="btnVoiceVoskTest">测试快捷键（不走麦克风）</button>
               </div>
               <div class="voice-diagnostics-log" id="voiceVoskLog">等待语音状态…</div>
+            </section>
+            <section class="voice-diag-pane" id="voiceDiagPaneKws" data-diag-tab="kws" hidden>
+              <p class="mic-desc" id="voiceKwsDiagDesc"></p>
+              <div class="voice-diag-metrics" id="voiceDiagMetricsKws"></div>
+              <div id="voiceKwsDownloadProgress" hidden>
+                <div class="voice-vosk-download-bar"><div id="voiceKwsDownloadFill"></div></div>
+                <p id="voiceKwsDownloadStatus"></p>
+              </div>
+              <div class="voice-diagnostics-actions">
+                <button type="button" class="control-btn" id="btnVoiceKwsDownload"></button>
+                <button type="button" class="control-btn" id="btnVoiceKwsRetry">重试启动</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsEnable">启用 KWS（实验）</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsDisable">关闭 KWS</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsTestSend">测试快捷键</button>
+              </div>
+              <div class="voice-diagnostics-actions">
+                <button type="button" class="control-btn" id="btnVoiceKwsTestWake" data-kws-phrase="开始输入">模拟：开始输入</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsTestEnd" data-kws-phrase="发出去">模拟：发出去</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsTestCancel" data-kws-phrase="取消输入">模拟：取消输入</button>
+                <button type="button" class="control-btn" id="btnVoiceKwsTestSummon" data-kws-phrase="打开 Cursor">模拟：打开 Cursor</button>
+              </div>
+              <div class="voice-diagnostics-log" id="voiceKwsLog">等待 KWS 状态…</div>
             </section>
             <section class="voice-diag-pane" id="voiceDiagPaneEnd" data-diag-tab="end" hidden>
               <div class="voice-diag-metrics" id="voiceDiagMetricsEnd"></div>
@@ -2482,6 +2526,16 @@
       </div>
     </div>
   </div>
+  <div class="confirm-overlay voice-scheme-name-overlay" id="voiceSchemeNameOverlay" aria-hidden="true">
+    <div class="confirm-modal voice-scheme-name-modal" role="dialog" aria-modal="true" aria-labelledby="voiceSchemeNameTitle">
+      <h3 class="confirm-title" id="voiceSchemeNameTitle">给这套语音习惯起个名字</h3>
+      <input type="text" class="voice-scheme-name-input" id="voiceSchemeNameInput" autocomplete="off" spellcheck="false" maxlength="80">
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="btnVoiceSchemeNameCancel">取消</button>
+        <button type="button" class="btn primary" id="btnVoiceSchemeNameOk">确定</button>
+      </div>
+    </div>
+  </div>
   <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
       <h3 class="confirm-title" id="confirmTitle">确认操作</h3>
@@ -2564,6 +2618,8 @@
   <script src="js/features/voice/voice-settings-view-model.js"></script>
   <script src="js/features/voice/voice-page-header-render.js"></script>
   <script src="js/features/voice/voice-schemes-ui.js"></script>
+  <script src="js/features/voice/voice-scheme-context.js"></script>
+  <script src="js/features/voice/voice-scheme-name-modal.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
   <script src="js/features/voice/voice-workflow-templates.js"></script>
   <script src="js/features/voice/voice-step-wake-render.js"></script>

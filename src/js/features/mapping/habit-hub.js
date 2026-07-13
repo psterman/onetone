@@ -357,6 +357,9 @@
   }
 
   function currentVoiceOverride(){
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.snapshotFromGlobal){
+      return global.OneToneVoiceSchemeContext.snapshotFromGlobal();
+    }
     var cfg=state().config||{};
     var sc=global.OneToneSceneConfig;
     var end=sc&&sc.globalEndPhrases?sc.globalEndPhrases(cfg):{zh:[],en:[]};
@@ -372,7 +375,7 @@
         en:Array.isArray(end.en)?end.en.slice():[]
       }
     };
-    if(mode==='vosk'||mode==='sapi') ov.engine=mode;
+    if(mode==='vosk'||mode==='sapi'||mode==='kws') ov.engine=mode;
     if(mode==='vosk') ov.modelPreset=modelPreset;
     return ov;
   }
@@ -417,51 +420,61 @@
       return global.OneToneVoiceSchemePersist.saveVoiceScheme(Object.assign({},opts||{},{forceCreate:true}));
     }
     opts=opts||{};
-    if(!core()) return null;
+    if(!core()) return Promise.resolve(null);
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config;
     var ov=currentVoiceOverride();
     var defaultName=defaultVoiceHabitName(ov);
-    var name=opts.name;
-    if(name===undefined){
-      name=prompt(t('habitHubVoiceNamePrompt'),defaultName);
+    var modal=global.OneToneVoiceSchemeNameModal;
+    var namePromise;
+    if(opts.name!==undefined){
+      namePromise=Promise.resolve(String(opts.name||'').trim()||defaultName);
+    }else if(modal&&typeof modal.open==='function'){
+      namePromise=modal.open(t('habitHubVoiceNamePrompt'),defaultName);
+    }else if(typeof window.prompt==='function'){
+      var prompted=window.prompt(t('habitHubVoiceNamePrompt'),defaultName);
+      namePromise=Promise.resolve(prompted===null?null:(String(prompted||'').trim()||defaultName));
+    }else{
+      namePromise=Promise.resolve(defaultName);
     }
-    if(name===null) return null;
-    name=String(name||'').trim()||defaultName;
-    var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
-    var m={
-      id:id,
-      label:'',
-      group:name,
-      triggerKey:'',
-      targetKey:'',
-      enabled:false,
-      order:Array.isArray(cfg.mappings)?cfg.mappings.length:0,
-      triggerMode:'tap',
-      intervalMs:cfg.intervalMs||1200,
-      enterDelayMs:cfg.enterDelayMs||5000,
-      cancelEnabled:cfg.cancelEnabled!==false,
-      autoEnterEnabled:cfg.autoEnterEnabled!==false,
-      switchKeys:[],
-      nativeKeyRestore:false,
-      imePresetId:'',
-      appTargetId:'',
-      appBehaviorRules:[],
-      voiceOverride:ov,
-      updatedAt:Date.now(),
-      lastUsedAt:0,
-      useCount:0
-    };
-    if(core().ensureMappingExtras) core().ensureMappingExtras(m);
-    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
-    cfg.mappings.push(m);
-    state().selectedMappingId=id;
-    if(hooks().save) hooks().save();
-    render();
-    if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
-    if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
-    if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubVoiceSaved'),'scheme');
-    return m;
+    return namePromise.then(function(name){
+      if(name===null) return null;
+      name=String(name||'').trim()||defaultName;
+      var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+      var m={
+        id:id,
+        label:'',
+        group:name,
+        triggerKey:'',
+        targetKey:'',
+        enabled:false,
+        order:Array.isArray(cfg.mappings)?cfg.mappings.length:0,
+        triggerMode:'tap',
+        intervalMs:cfg.intervalMs||1200,
+        enterDelayMs:cfg.enterDelayMs||5000,
+        cancelEnabled:cfg.cancelEnabled!==false,
+        autoEnterEnabled:cfg.autoEnterEnabled!==false,
+        switchKeys:[],
+        nativeKeyRestore:false,
+        imePresetId:'',
+        appTargetId:'',
+        appBehaviorRules:[],
+        voiceOverride:ov,
+        updatedAt:Date.now(),
+        lastUsedAt:0,
+        useCount:0
+      };
+      if(core().ensureMappingExtras) core().ensureMappingExtras(m);
+      cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+      cfg.mappings.push(m);
+      state().selectedMappingId=id;
+      if(hooks().save) hooks().save();
+      render();
+      if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
+      if(global.OneToneAppBehaviorRules) global.OneToneAppBehaviorRules.render();
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubVoiceSaved'),'scheme');
+      return m;
+    });
   }
 
   function bindEvents(){

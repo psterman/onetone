@@ -185,6 +185,7 @@
     if(focus==='engine'){
 
       openVoiceAdvancedSection();
+      scrollSettingsToTarget(['voiceSummaryEngineSwitch','voiceRecognizeSourceGrid']);
 
     }
 
@@ -213,7 +214,7 @@
       const active=hooks().currentVoiceMode();
       var fallback=(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk');
 
-      hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':fallback);
+      hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':active==='kws'?'kws':fallback);
 
       hooks().renderVoiceModeSwitch();
 

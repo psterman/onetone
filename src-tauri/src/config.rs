@@ -536,6 +536,8 @@ pub struct VoiceConfig {
     pub voice_sapi: VoiceSapiConfig,
     #[serde(default, rename = "voiceVosk")]
     pub voice_vosk: VoiceVoskConfig,
+    #[serde(default, rename = "voiceKws")]
+    pub voice_kws: VoiceKwsConfig,
     #[serde(default, rename = "voiceEnd")]
     pub voice_end: VoiceEndConfig,
     #[serde(default, skip_serializing)]
@@ -977,6 +979,87 @@ impl Default for VoiceVoskConfig {
             model_preset: default_voice_vosk_model_preset(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceKwsConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_voice_vosk_phrases")]
+    pub phrases: Vec<String>,
+    #[serde(default = "default_voice_vosk_target_key")]
+    pub target_key: String,
+    #[serde(default = "default_voice_vosk_cooldown_ms")]
+    pub cooldown_ms: u32,
+    #[serde(default = "default_voice_kws_model_path")]
+    pub model_path: String,
+    #[serde(default = "default_voice_kws_model_preset")]
+    pub model_preset: String,
+}
+
+fn default_voice_kws_model_path() -> String {
+    "resources/kws/sherpa-kws-zh-small".into()
+}
+
+fn default_voice_kws_model_preset() -> String {
+    "cn-light".into()
+}
+
+impl Default for VoiceKwsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            phrases: default_voice_vosk_phrases(),
+            target_key: default_voice_vosk_target_key(),
+            cooldown_ms: default_voice_vosk_cooldown_ms(),
+            model_path: default_voice_kws_model_path(),
+            model_preset: default_voice_kws_model_preset(),
+        }
+    }
+}
+
+/// Built-in KWS model preset → relative path (Phase 2 native).
+pub fn kws_preset_model_path(preset: &str) -> Option<&'static str> {
+    match preset.trim() {
+        "cn-light" => Some("resources/kws/sherpa-kws-zh-small"),
+        _ => None,
+    }
+}
+
+pub fn kws_model_download_url(preset: &str) -> Option<&'static str> {
+    match preset.trim() {
+        "cn-light" => Some(
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile.tar.bz2",
+        ),
+        _ => None,
+    }
+}
+
+/// Normalize mutually exclusive voice engine enabled flags. Priority: Vosk > SAPI > KWS.
+pub fn reconcile_voice_engine_flags(cfg: &mut VoiceConfig) -> bool {
+    let mut changed = false;
+    let count = [cfg.voice_vosk.enabled, cfg.voice_sapi.enabled, cfg.voice_kws.enabled]
+        .iter()
+        .filter(|&&x| x)
+        .count();
+    if count <= 1 {
+        return false;
+    }
+    if cfg.voice_vosk.enabled {
+        if cfg.voice_sapi.enabled {
+            cfg.voice_sapi.enabled = false;
+            changed = true;
+        }
+        if cfg.voice_kws.enabled {
+            cfg.voice_kws.enabled = false;
+            changed = true;
+        }
+    } else if cfg.voice_sapi.enabled && cfg.voice_kws.enabled {
+        cfg.voice_kws.enabled = false;
+        changed = true;
+    }
+    changed
 }
 
 /// Built-in Vosk model preset → relative path under project/resources.
@@ -1438,6 +1521,7 @@ impl Default for VoiceConfig {
             key_press_duration_ms: default_key_press_duration_ms(),
             voice_sapi: VoiceSapiConfig::default(),
             voice_vosk: VoiceVoskConfig::default(),
+            voice_kws: VoiceKwsConfig::default(),
             voice_end: VoiceEndConfig::default(),
             scenes: None,
             scheme_switch_key: String::new(),
@@ -1748,6 +1832,26 @@ impl VoiceConfig {
         if self.voice_vosk.cooldown_ms < 200 {
             self.voice_vosk.cooldown_ms = default_voice_vosk_cooldown_ms();
         }
+        if self.voice_kws.phrases.iter().all(|p| p.trim().is_empty()) {
+            self.voice_kws.phrases = default_voice_vosk_phrases();
+        }
+        if self.voice_kws.target_key.trim().is_empty() {
+            self.voice_kws.target_key = default_voice_vosk_target_key();
+        }
+        if self.voice_kws.cooldown_ms < 200 {
+            self.voice_kws.cooldown_ms = default_voice_vosk_cooldown_ms();
+        }
+        if self.voice_kws.model_preset.trim().is_empty() {
+            self.voice_kws.model_preset = default_voice_kws_model_preset();
+        }
+        if self.voice_kws.model_path.trim().is_empty() {
+            if let Some(path) = kws_preset_model_path(&self.voice_kws.model_preset) {
+                self.voice_kws.model_path = path.to_string();
+            } else {
+                self.voice_kws.model_path = default_voice_kws_model_path();
+            }
+        }
+        reconcile_voice_engine_flags(self);
         if self.voice_vosk.model_preset == "auto" {
             self.voice_vosk.model_preset = "cn-light".to_string();
         }
@@ -2210,6 +2314,7 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     }
     cfg.voice_vosk = existing.voice_vosk.clone();
     cfg.voice_sapi = existing.voice_sapi.clone();
+    cfg.voice_kws = existing.voice_kws.clone();
     cfg.voice_end = existing.voice_end.clone();
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
     cfg.window_layout_seen = existing.window_layout_seen;
@@ -2226,11 +2331,7 @@ pub fn should_show_main_on_startup(cfg: &VoiceConfig) -> bool {
 }
 
 pub fn prefer_vosk_when_both_voice_engines_enabled(cfg: &mut VoiceConfig) -> bool {
-    if cfg.voice_vosk.enabled && cfg.voice_sapi.enabled {
-        cfg.voice_sapi.enabled = false;
-        return true;
-    }
-    false
+    reconcile_voice_engine_flags(cfg)
 }
 
 fn legacy_config_candidates() -> Vec<PathBuf> {
@@ -2406,6 +2507,35 @@ mod tests {
         assert!(!prefer_vosk_when_both_voice_engines_enabled(&mut cfg));
         assert!(!cfg.voice_vosk.enabled);
         assert!(cfg.voice_sapi.enabled);
+    }
+
+    #[test]
+    fn reconcile_voice_engine_flags_prefers_vosk_over_kws() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_kws.enabled = true;
+        assert!(reconcile_voice_engine_flags(&mut cfg));
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn reconcile_voice_engine_flags_prefers_sapi_over_kws() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_sapi.enabled = true;
+        cfg.voice_kws.enabled = true;
+        assert!(reconcile_voice_engine_flags(&mut cfg));
+        assert!(cfg.voice_sapi.enabled);
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_voice_kws() {
+        let mut existing = VoiceConfig::default();
+        existing.voice_kws.enabled = true;
+        let json = r#"{"version":5,"mappings":[],"trash":[],"voiceKws":{"enabled":false}}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(merged.voice_kws.enabled);
     }
 
     #[test]

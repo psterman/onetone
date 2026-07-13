@@ -13,9 +13,11 @@ edition = "2021"
 test = false
 
 [features]
-default = ["vosk-engine"]
+default = ["vosk-engine", "kws-engine"]
 # Offline Vosk wake word (native libvosk). Disabled in `cargo test` via .cargo/config.toml alias.
 vosk-engine = ["dep:vosk"]
+# Experimental sherpa-onnx keyword spotting (requires KWS model under resources/kws/).
+kws-engine = ["dep:sherpa-onnx"]
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
@@ -37,7 +39,11 @@ raw-window-handle = "0.6"
 image = "0.25"
 cpal = "0.15"
 crossbeam-channel = "0.5"
+tar = "0.4"
+bzip2 = "0.4"
+pinyin = "0.10"
 onetone-logic = { path = "crates/onetone-logic" }
+sherpa-onnx = { version = "1.13.4", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 vosk = { version = "0.3.1", optional = true }

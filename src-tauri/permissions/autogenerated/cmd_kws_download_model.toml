@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-kws-download-model"
+description = "Enables the cmd_kws_download_model command without any pre-configured scope."
+commands.allow = ["cmd_kws_download_model"]
+
+[[permission]]
+identifier = "deny-cmd-kws-download-model"
+description = "Denies the cmd_kws_download_model command without any pre-configured scope."
+commands.deny = ["cmd_kws_download_model"]

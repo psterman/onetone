@@ -3,8 +3,10 @@
   function hooks(){ return global.__vp_bootstrap_hooks__ || {}; }
   function bindUiEvents(){
     [
+      global.OneToneVoiceSchemeNameModal,
       global.OneToneAppPrefsBindings,
       global.OneToneAppShellBindings,
+      global.OneToneVoiceDiag,
       global.OneToneDebugAboutBindings,
       global.OneToneSettingsNavBindings,
       global.OneToneMappingRecordingBindings,

@@ -48,6 +48,7 @@
           if(drawerPayload){
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.sapi) hooks().renderVoiceSapiStatus(drawerPayload.sapi,{liveOnly:panel==='voiceWake'});
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.vosk) hooks().renderVoiceVoskStatus(drawerPayload.vosk,{liveOnly:panel==='voiceWake'});
+            if((panel==='voiceWake'||panel==='debug')&&drawerPayload.kws&&hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(drawerPayload.kws,{liveOnly:panel==='voiceWake'});
             if((panel==='voiceWake'||panel==='debug')&&drawerPayload.end) hooks().renderVoiceEndStatus(drawerPayload.end);
           }
           if(panel==='voiceWake') maybeSyncMicLevelMonitor();
@@ -73,6 +74,7 @@
     var cfg=hooks().state().config||{};
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
     var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    var kws=cfg.voiceKws||cfg.voice_kws||{};
     var end=cfg.voiceEnd||cfg.voice_end||{};
     hooks().syncVoiceVoskToggle(!!vosk.enabled);
     hooks().syncVoiceSapiToggle(!!sapi.enabled);
@@ -84,7 +86,8 @@
       {enabled:!!vosk.enabled,phrases:vosk.phrases||[],state:'stopped'},
       {enabled:!!sapi.enabled,phrases:sapi.phrases||[],state:'stopped'},
       {enabled:!!end.enabled,autoSendEnabled:!!end.autoSendEnabled,phrasesZh:end.phrasesZh||end.phrases_zh||[],phrasesEn:end.phrasesEn||end.phrases_en||[],state:'idle'},
-      {homeOnly:true,lightOnly:true}
+      {homeOnly:true,lightOnly:true},
+      kws.enabled?{enabled:true,phrases:kws.phrases||[],state:'stopped'}:null
     );
   }
 

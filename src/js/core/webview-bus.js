@@ -130,6 +130,9 @@
       if(msg.type==='mvp_vosk_download'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.handleVoskDownloadMessage){
         global.OneToneVoiceWake.handleVoskDownloadMessage(msg);
       }
+      if(msg.type==='mvp_kws_download'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.handleKwsDownloadMessage){
+        global.OneToneVoiceWake.handleKwsDownloadMessage(msg);
+      }
       if(msg.type==='mvp_scheme_switched'){
         if(hooks().applyMvpInit){
           hooks().applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});

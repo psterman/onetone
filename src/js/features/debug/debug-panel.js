@@ -78,7 +78,7 @@
     function card(cls,label,val,sub){
       return '<div class="debug-overview-card '+cls+'"><div class="lbl">'+hooks().escHtml(label)+'</div><div class="val">'+hooks().escHtml(val)+'</div><div class="sub">'+hooks().escHtml(sub||'')+'</div></div>';
     }
-    const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
+    const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):(w.engine==='kws')?t('wakeEngineKws'):t('wakeEngineOff');
     const voiceState=w.state?hooks().voiceWakeStateLabel(w.state):'';
     let voiceSub=voiceOn?(voiceState||''):t('debugCardVoiceHint');
     if(endEnabled){
@@ -150,7 +150,7 @@
       const m=hooks().selectedMapping&&hooks().selectedMapping();
       const w=hooks().voiceUiSnapshot.wake||{};
       const endSnap=hooks().voiceUiSnapshot.end||{};
-      const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):t('wakeEngineOff');
+      const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):(w.engine==='kws')?t('wakeEngineKws'):t('wakeEngineOff');
       const items=[
         [t('debugDevListen'),runtime().paused?t('listenPaused'):t('listenOn')],
         [t('debugDevLastAction'),runtime().lastAction||'—'],
@@ -171,9 +171,11 @@
     }
     const lastKeyGrid=$('devLastKeyGrid');
     if(lastKeyGrid){
+      const lastKeyFn=hooks().lastKeyDebug;
+      const lastKey=typeof lastKeyFn==='function'?lastKeyFn():{};
       const keyItems=[
-        [t('debugKeyLabel'),hooks().lastKeyDebug().key||'—'],
-        [t('debugCodeLabel'),hooks().lastKeyDebug().code||'—'],
+        [t('debugKeyLabel'),lastKey.key||'—'],
+        [t('debugCodeLabel'),lastKey.code||'—'],
         [t('actionLabel'),runtime().lastAction||'—'],
         [t('sendLabel'),runtime().timerActive?t('debugDevTimerOn'):t('debugDevTimerOff')]
       ];
@@ -216,7 +218,7 @@
   function renderDebugPanel(){
     renderDebugOverview();
     global.OneToneVoiceDiag.renderTabs();
-    ['sapi','vosk','end','usage'].forEach(global.OneToneVoiceDiag.renderMetrics);
+    ['sapi','vosk','kws','end','usage'].forEach(global.OneToneVoiceDiag.renderMetrics);
     renderDebugDeveloperPanel();
   }
   global.OneToneDebugPanel={

@@ -57,6 +57,7 @@
   function processUsageModeLabel(mode){
     if(mode==='sapi') return hooks().t('voiceModeCurrentLite');
     if(mode==='vosk') return hooks().t('voiceModeCurrentPro');
+    if(mode==='kws') return hooks().t('voiceModeKwsEngine');
     return hooks().t('voiceModeCurrentOff');
   }
 

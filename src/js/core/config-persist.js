@@ -95,6 +95,7 @@
     if(!cfg.activeSceneId&&cfg.active_scene_id) cfg.activeSceneId=String(cfg.active_scene_id);
     if(!cfg.voiceVosk&&cfg.voice_vosk) cfg.voiceVosk=cfg.voice_vosk;
     if(!cfg.voiceSapi&&cfg.voice_sapi) cfg.voiceSapi=cfg.voice_sapi;
+    if(!cfg.voiceKws&&cfg.voice_kws) cfg.voiceKws=cfg.voice_kws;
     if(!cfg.voiceEnd&&cfg.voice_end) cfg.voiceEnd=cfg.voice_end;
     if(Array.isArray(cfg.mappings)){
       cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
@@ -122,11 +123,12 @@
     const maps=Array.isArray(c.mappings)?c.mappings:[];
     const vosk=!!((c.voiceVosk||c.voice_vosk||{}).enabled);
     const sapi=!!((c.voiceSapi||c.voice_sapi||{}).enabled);
+    const kws=!!((c.voiceKws||c.voice_kws||{}).enabled);
     return maps.length+'|'+String(c.activeSceneId||c.active_scene_id||'')+'|'+maps.map(function(m){
       var rules=serializeAppBehaviorRules(m.appBehaviorRules||m.app_behavior_rules||[]);
       var rulesSig=rules.map(function(r){ return r.appId+':'+r.finishMode+':'+(r.summonPhrase||''); }).join(',');
       return String(m.id||'')+':'+(m.enabled?1:0)+':'+String(m.triggerKey||m.trigger_key||'')+':'+String(m.targetKey||m.target_key||'')+':'+String(m.appTargetId||m.app_target_id||'')+':'+rulesSig;
-    }).join(';')+'|v'+(vosk?1:0)+'|s'+(sapi?1:0);
+    }).join(';')+'|v'+(vosk?1:0)+'|s'+(sapi?1:0)+'|k'+(kws?1:0);
   }
 
   function defaultConfig(){
@@ -146,6 +148,7 @@
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
+      voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
       voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','发出去'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation','send it'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind'],commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'}
     };
   }
@@ -456,18 +459,25 @@
     return !!(trig&&tgt);
   }
 
+  var pullBackendConfigTimer=0;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
-    return global.OneToneIpc.invokeTimeout('cmd_ready',{},4000).then(function(raw){
-      const msg=unwrapMvpInitMsg(raw);
-      if(msg){
-        applyMvpInit(msg);
-        return true;
-      }
-      return false;
-    }).catch(function(err){
-      console.error('pullBackendConfig',err);
-      return false;
+    clearTimeout(pullBackendConfigTimer);
+    return new Promise(function(resolve){
+      pullBackendConfigTimer=setTimeout(function(){
+        global.OneToneIpc.invokeTimeout('cmd_ready',{},4000).then(function(raw){
+          const msg=unwrapMvpInitMsg(raw);
+          if(msg){
+            applyMvpInit(msg);
+            resolve(true);
+            return;
+          }
+          resolve(false);
+        }).catch(function(err){
+          console.error('pullBackendConfig',err);
+          resolve(false);
+        });
+      },150);
     });
   }
 

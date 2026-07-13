@@ -25,6 +25,7 @@
     var eng=summary.engine;
     if(eng==='vosk') return w.vosk||{};
     if(eng==='sapi') return w.sapi||{};
+    if(eng==='kws') return w.kws||{};
     return {};
   }
 
@@ -83,6 +84,13 @@
       }
     }else if(eng==='sapi'){
       partial=String(res.lastHeard||'').trim();
+      if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
+        partial='';
+      }
+    }else if(eng==='kws'){
+      partial=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+        ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+        :String(res.lastDetectedPhrase||'').trim();
       if(partial&&dictationLive.finals.length&&dictationLive.finals[dictationLive.finals.length-1]===partial){
         partial='';
       }
@@ -436,6 +444,13 @@
     return line;
   }
 
+  function engineLineFor(eng,preset){
+    if(eng==='off') return t('homeCapVoiceOff');
+    if(eng==='kws') return t('voiceModeKwsEngine');
+    if(eng==='sapi') return t('voiceModeLiteEngine');
+    return modelLabel(preset)+' · '+t('homeV9EngineLocal');
+  }
+
   function engineStatusLine(summary){
     if(summary.loading) return t('homeLiveLoading');
     if(summary.statusMode==='error') return t('homeV9EngineOffline');
@@ -486,7 +501,7 @@
   function liveTextParts(summary,hs){
     var w=global.OneToneVoiceUiState.snapshot().wake||{};
     var eng=summary.engine;
-    var res=eng==='vosk'?w.vosk:w.sapi;
+    var res=eng==='vosk'?w.vosk:(eng==='kws'?w.kws:w.sapi);
     if(summary.dictating){
       return dictationTextParts(summary);
     }
@@ -503,6 +518,14 @@
           pending:partialText&&partialText!==finalText?partialText:'',
           placeholder:false
         };
+      }
+    }
+    if(eng==='kws'&&res){
+      var kwsText=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
+        ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
+        :String(res.lastDetectedPhrase||res.lastTrigger||'').trim();
+      if(kwsText){
+        return { finalized:'', pending:kwsText, placeholder:false };
       }
     }
     if(summary.statusMode==='listening'&&res){
@@ -545,7 +568,7 @@
       wakePrimary:wakePhrases[0]||t('homeLiveUnset'),
       wakeAlt:wakePhrases.slice(1,3).join(' · ')||'—',
       endPhraseLine:endPhrases.slice(0,2).join(' · ')||'—',
-      engineLine:eng==='off'?t('homeCapVoiceOff'):(modelLabel(preset)+' · '+t('homeV9EngineLocal')),
+      engineLine:engineLineFor(eng,preset),
       engineStatus:engineStatusLine(summary),
       latency:latencyText(),
       micLabel:summary.micLabel,

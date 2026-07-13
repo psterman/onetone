@@ -10,7 +10,8 @@ use crate::voice_vosk::{matches_final, normalize_phrase};
 use crate::AppState;
 
 pub fn can_enter_dictating(cfg: &VoiceConfig) -> bool {
-    cfg.voice_end.enabled && (cfg.voice_vosk.enabled || cfg.voice_sapi.enabled)
+    cfg.voice_end.enabled
+        && (cfg.voice_vosk.enabled || cfg.voice_sapi.enabled || cfg.voice_kws.enabled)
 }
 
 pub fn session_state(state: &AppState) -> String {
@@ -974,6 +975,16 @@ fn clean_phrases(phrases: Vec<String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_enter_dictating_with_kws_only() {
+        let mut cfg = crate::config::VoiceConfig::default();
+        cfg.voice_end.enabled = true;
+        cfg.voice_vosk.enabled = false;
+        cfg.voice_sapi.enabled = false;
+        cfg.voice_kws.enabled = true;
+        assert!(can_enter_dictating(&cfg));
+    }
 
     #[test]
     fn end_phrase_zh_match() {

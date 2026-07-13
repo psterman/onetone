@@ -53,6 +53,14 @@
     var voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
     var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    var kws=cfg.voiceKws||cfg.voice_kws||{};
+    if(kws.enabled){
+      var kSnap=snapshot&&(snapshot.voiceKws||snapshot.voice_kws);
+      var kst=kSnap&&kSnap.state;
+      if(voiceStateBusy(kst)) return null;
+      if(kst==='stopped'||kst==null||kst==='') return 'kws';
+      return null;
+    }
     if(!vosk.enabled&&!sapi.enabled) return null;
     var vSnap=snapshot&&(snapshot.voiceVosk||snapshot.voice_vosk);
     var sSnap=snapshot&&(snapshot.voiceSapi||snapshot.voice_sapi);
@@ -74,7 +82,15 @@
 
   function runVoiceFallback(which){
     voiceEngineBootDone=true;
-    if(which==='vosk'){
+    if(which==='kws'){
+      hooks().vpInvoke('cmd_voice_kws_set_enabled',{enabled:true}).then(function(res){
+        if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(res);
+        hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},{enabled:false,state:'stopped'},null,{homeOnly:true,lightOnly:true},res);
+        hooks().renderHomeLiveZone();
+      }).catch(function(){
+        voiceEngineBootDone=false;
+      });
+    }else if(which==='vosk'){
       hooks().vpInvoke('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
         hooks().renderVoiceVoskStatus(res);
         hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null,{homeOnly:true,lightOnly:true});
@@ -102,7 +118,8 @@
       var cfg=hooks().state().config||{};
       var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
       var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
-      if(!vosk.enabled&&!sapi.enabled) return;
+      var kws=cfg.voiceKws||cfg.voice_kws||{};
+      if(!vosk.enabled&&!sapi.enabled&&!kws.enabled) return;
 
       if(!global.OneToneIpc||!global.OneToneIpc.invoke){
         markVoiceEngineBootHandled();

@@ -468,7 +468,9 @@ pub fn voice_vosk_set_enabled(
         cfg.voice_vosk.enabled = enabled;
         if enabled {
             cfg.voice_sapi.enabled = false;
+            cfg.voice_kws.enabled = false;
         }
+        crate::config::reconcile_voice_engine_flags(&mut cfg);
         cfg.normalize();
         save_config(&cfg);
     }
@@ -482,6 +484,7 @@ pub fn voice_vosk_set_enabled(
             .name("voice-vosk-enable".into())
             .spawn(move || {
                 stop_sapi_engine(&state2);
+                crate::voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(&state2));
                 let cfg = state2.cfg.lock().voice_vosk.clone();
                 spawn_voice_vosk_start(Arc::clone(&state2), cfg, resource_dir_bg);
                 crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));

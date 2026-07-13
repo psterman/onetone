@@ -31,9 +31,18 @@
   }
 
   function snapshotVoiceOverride(){
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.snapshotFromGlobal){
+      return cloneVoiceOverride(global.OneToneVoiceSchemeContext.snapshotFromGlobal());
+    }
     var hub=global.OneToneHabitHub;
     if(hub&&hub.snapshotVoiceOverride) return cloneVoiceOverride(hub.snapshotVoiceOverride());
     return {};
+  }
+
+  function mirrorSavedScheme(mapping){
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+      global.OneToneVoiceSchemeContext.mirrorGlobalToOverride(mapping);
+    }
   }
 
   function defaultVoiceHabitName(ov){
@@ -89,21 +98,27 @@
   }
 
   function refreshVoiceSchemeSurfaces(){
-    if(global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.render){
-      global.OneToneVoiceSchemesUi.render();
-    }
-    if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.render){
-      global.OneToneSceneModeHub.render();
-    }
-    if(global.OneToneHabitHub&&global.OneToneHabitHub.render){
-      global.OneToneHabitHub.render();
-    }
-    if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
-      global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
-    }
-    if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.render){
-      global.OneToneAppBehaviorRules.render();
-    }
+    requestAnimationFrame(function(){
+      try{
+        if(global.OneToneVoiceSchemesUi&&global.OneToneVoiceSchemesUi.render){
+          global.OneToneVoiceSchemesUi.render();
+        }
+        if(global.OneToneSceneModeHub&&global.OneToneSceneModeHub.render){
+          global.OneToneSceneModeHub.render();
+        }
+        if(global.OneToneHabitHub&&global.OneToneHabitHub.render){
+          global.OneToneHabitHub.render();
+        }
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+        if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.render){
+          global.OneToneAppBehaviorRules.render();
+        }
+      }catch(err){
+        console.error('refreshVoiceSchemeSurfaces',err);
+      }
+    });
   }
 
   function touchUpdated(m){
@@ -154,42 +169,64 @@
     return m;
   }
 
+  function resolveVoiceSchemeName(opts, defaultName){
+    if(opts.name!==undefined) return Promise.resolve(String(opts.name||'').trim()||defaultName);
+    var modal=global.OneToneVoiceSchemeNameModal;
+    if(modal&&typeof modal.open==='function'){
+      return modal.open(t('habitHubVoiceNamePrompt'),defaultName);
+    }
+    if(typeof window.prompt!=='function') return Promise.resolve(defaultName);
+    var prompted=window.prompt(t('habitHubVoiceNamePrompt'),defaultName);
+    if(prompted===null) return Promise.resolve(null);
+    return Promise.resolve(String(prompted||'').trim()||defaultName);
+  }
+
+  function commitVoiceSchemeSave(opts, ov, defaultName){
+    return resolveVoiceSchemeName(opts, defaultName).then(function(name){
+      if(name===null) return null;
+      var m=createVoiceMappingShell(name,ov);
+      if(!m) return null;
+      ui().voiceEditSchemeId=m.id;
+      state().selectedMappingId=m.id;
+      mirrorSavedScheme(m);
+      setTimeout(function(){
+        persistConfig();
+        refreshVoiceSchemeSurfaces();
+        showSavedToast(false);
+        if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+          global.OneToneVoiceSchemeContext.activateEditingScheme();
+        }
+      },0);
+      return m;
+    });
+  }
+
   function saveVoiceScheme(opts){
     opts=opts||{};
-    if(!core()) return null;
-    core().ensureConfig&&core().ensureConfig();
-    var ov=snapshotVoiceOverride();
-    var targetId=opts.forceCreate?null:inferVoiceEditTargetId();
-    var existing=targetId&&core().byId?core().byId(targetId):null;
+    if(!core()) return Promise.resolve(null);
+    try{
+      core().ensureConfig&&core().ensureConfig();
+      var ov=snapshotVoiceOverride();
+      var targetId=opts.forceCreate?null:inferVoiceEditTargetId();
+      var existing=targetId&&core().byId?core().byId(targetId):null;
 
-    if(existing&&isVoiceOnly(existing)&&!opts.forceCreate){
-      existing.voiceOverride=cloneVoiceOverride(ov);
-      touchUpdated(existing);
-      ui().voiceEditSchemeId=existing.id;
-      state().selectedMappingId=existing.id;
-      persistConfig();
-      refreshVoiceSchemeSurfaces();
-      showSavedToast(true);
-      return existing;
+      if(existing&&isVoiceOnly(existing)&&!opts.forceCreate){
+        existing.voiceOverride=cloneVoiceOverride(ov);
+        touchUpdated(existing);
+        ui().voiceEditSchemeId=existing.id;
+        state().selectedMappingId=existing.id;
+        persistConfig();
+        refreshVoiceSchemeSurfaces();
+        showSavedToast(true);
+        return Promise.resolve(existing);
+      }
+
+      var defaultName=defaultVoiceHabitName(ov);
+      return commitVoiceSchemeSave(opts, ov, defaultName);
+    }catch(err){
+      console.error('saveVoiceScheme',err);
+      return Promise.resolve(null);
     }
-
-    var defaultName=defaultVoiceHabitName(ov);
-    var name=opts.name;
-    if(name===undefined){
-      name=prompt(t('habitHubVoiceNamePrompt'),defaultName);
-    }
-    if(name===null) return null;
-    name=String(name||'').trim()||defaultName;
-
-    var m=createVoiceMappingShell(name,ov);
-    if(!m) return null;
-
-    ui().voiceEditSchemeId=m.id;
-    state().selectedMappingId=m.id;
-    persistConfig();
-    refreshVoiceSchemeSurfaces();
-    showSavedToast(false);
-    return m;
   }
 
   function resolveMappingForAppScope(){
