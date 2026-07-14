@@ -348,18 +348,19 @@ pub fn prepare_runtime_keywords(
 pub fn start_voice_kws(
     cfg: &VoiceKwsConfig,
     resource_dir: Option<&Path>,
+    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
 ) -> Result<VoiceKwsHandle, String> {
     #[cfg(feature = "kws-engine")]
     {
         if let Some(issue) = kws_resource_issue(&probe_kws_resources(cfg, resource_dir)) {
             return Err(issue);
         }
-        return crate::voice_kws_native::start_voice_kws_native(cfg, resource_dir);
+        return crate::voice_kws_native::start_voice_kws_native(cfg, resource_dir, frame_tx);
     }
 
     #[cfg(not(feature = "kws-engine"))]
     {
-        let _ = resource_dir;
+        let _ = (resource_dir, frame_tx);
         start_voice_kws_stub(cfg)
     }
 }

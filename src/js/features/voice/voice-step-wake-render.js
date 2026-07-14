@@ -18,7 +18,7 @@
       if(live==='vosk'||live==='sapi') return live;
     }
     if(vm.mode==='vosk'||vm.mode==='sapi') return vm.mode;
-    return 'sapi';
+    return (global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':'sapi';
   }
 
   function resolveWakePresetLang(opts){
@@ -64,6 +64,15 @@
     const sapiPresets=$('voiceSapiPresets');
     const voskWrap=$('voiceSettingsVoskWakeWrap');
     const host=$('voiceSettingsWakeHost');
+    if(isScenarioVoiceEdit()){
+      if(host){
+        host.hidden=true;
+        host.setAttribute('aria-hidden','true');
+      }
+      if(sapiPresets) sapiPresets.hidden=true;
+      if(voskWrap) voskWrap.hidden=true;
+      return;
+    }
     var hideLite=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     var mode=resolveWakePresetMode(vm);
     var showSapi=!hideLite&&mode==='sapi'&&!vm.loading;
@@ -93,6 +102,75 @@
     if(liveChangeBtn) liveChangeBtn.textContent=t('voiceMicChangeBtn');
   }
 
+  function scenarioVoiceMapping(){
+    var uiState=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
+    var id=String(uiState.habitScenarioReturnId||uiState.voiceEditSchemeId||'').trim();
+    if(!id) return null;
+    var c=global.OneToneMappingCore;
+    if(!c||!c.byId) return null;
+    var m=c.byId(id);
+    if(!m) return null;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isAppScenarioMapping&&!diff.isAppScenarioMapping(m)) return null;
+    if(!String(m.appTargetId||'').trim()) return null;
+    return m;
+  }
+
+  function isScenarioVoiceEdit(){
+    return !!scenarioVoiceMapping();
+  }
+
+  function syncScenarioVoiceEditor(){
+    var scenarioM=scenarioVoiceMapping();
+    var stack=$('voiceSettingsWakeBody');
+    var body=$('habitScenarioVoiceBody');
+    var hero=$('voiceWakeHeroCard');
+    var presets=$('voiceWakePresetsPanel');
+    var custom=$('voiceWakeCustomBlock');
+    var wakeHost=$('voiceSettingsWakeHost');
+    var suggestions=$('voiceWakePhraseSuggestions');
+    var poolLbl=$('voiceWakePresetPoolLbl');
+    if(stack) stack.classList.toggle('is-scenario-voice-edit',!!scenarioM);
+    if(body){
+      body.hidden=!scenarioM;
+      var calibrating=global.OneToneHabitScenarioVoiceCommand
+        &&global.OneToneHabitScenarioVoiceCommand.isCalibrating
+        &&global.OneToneHabitScenarioVoiceCommand.isCalibrating();
+      if(scenarioM&&global.OneToneHabitScenarioVoiceEditor){
+        if(!calibrating){
+          if(global.OneToneHabitScenarioVoiceEditor.bindEvents){
+            global.OneToneHabitScenarioVoiceEditor.bindEvents({});
+          }
+          if(global.OneToneHabitScenarioVoiceEditor.sync){
+            global.OneToneHabitScenarioVoiceEditor.sync(scenarioM);
+          }else{
+            global.OneToneHabitScenarioVoiceEditor.render(scenarioM);
+          }
+        }
+      }else if(!scenarioM){
+        body.innerHTML='';
+      }
+    }
+    var hideGlobal=!!scenarioM;
+    if(hero) hero.hidden=hideGlobal;
+    if(presets) presets.hidden=hideGlobal;
+    if(custom) custom.hidden=hideGlobal;
+    if(wakeHost){
+      wakeHost.hidden=hideGlobal;
+      wakeHost.setAttribute('aria-hidden',hideGlobal?'true':'false');
+    }
+    if(suggestions) suggestions.hidden=hideGlobal;
+    if(poolLbl) poolLbl.hidden=hideGlobal;
+    if(global.OneToneHabitScenarioVoiceCommand){
+      if(global.OneToneHabitScenarioVoiceCommand.bindEvents){
+        global.OneToneHabitScenarioVoiceCommand.bindEvents({});
+      }
+      if(global.OneToneHabitScenarioVoiceCommand.render){
+        global.OneToneHabitScenarioVoiceCommand.render();
+      }
+    }
+  }
+
   function renderCompactWake(vm){
     const zhEl=$('voiceWakeCompactZh');
     const enEl=$('voiceWakeCompactEn');
@@ -101,6 +179,7 @@
       if(enEl) enEl.textContent='';
       renderMicLine(vm);
       renderWakeHost(vm);
+      syncScenarioVoiceEditor();
       return;
     }
     var phrase=V().resolveDisplayWakePhrase(vm);
@@ -123,17 +202,14 @@
     syncWakePresetLangVisibility({lang:presetLang});
     renderMicLine(vm);
     renderWakeHost(vm);
-    if(global.OneToneHabitScenarioVoiceCommand){
-      if(global.OneToneHabitScenarioVoiceCommand.bindEvents){
-        global.OneToneHabitScenarioVoiceCommand.bindEvents({});
-      }
-      if(global.OneToneHabitScenarioVoiceCommand.render){
-        global.OneToneHabitScenarioVoiceCommand.render();
-      }
-    }
+    syncScenarioVoiceEditor();
   }
 
   function renderCustomPhrases(vm){
+    if(isScenarioVoiceEdit()){
+      syncScenarioVoiceEditor();
+      return;
+    }
     if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
       global.OneToneVoiceWake.renderWakeCustomPhrases();
     }
@@ -147,9 +223,15 @@
       renderCustomPhrases(vm);
     },
     syncPresetPanels:function(vm){
+      if(isScenarioVoiceEdit()){
+        syncScenarioVoiceEditor();
+        return;
+      }
       renderWakeHost(vm||{loading:true});
     },
     syncPresetLang:syncWakePresetLangVisibility,
-    resolveWakePresetMode:resolveWakePresetMode
+    resolveWakePresetMode:resolveWakePresetMode,
+    syncScenarioVoiceEditor:syncScenarioVoiceEditor,
+    isScenarioVoiceEdit:isScenarioVoiceEdit
   };
 })((typeof window!=='undefined')?window:globalThis);

@@ -109,6 +109,9 @@
       }
       if(msg.type==='mvp_runtime_event'){
         appendRuntimeEvent(msg.event);
+        if(global.OneToneVoiceAcousticMatcher&&global.OneToneVoiceAcousticMatcher.onRuntimeEvent){
+          try{ global.OneToneVoiceAcousticMatcher.onRuntimeEvent(msg.event); }catch(_){}
+        }
         if(global.OneToneDebugPanel&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='developer'){
           global.OneToneDebugPanel.renderDeveloper();
         }

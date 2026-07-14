@@ -212,12 +212,23 @@
   }
 
   function resolveScopeMapping(vm){
-    if(vm&&vm.habitMapping) return vm.habitMapping;
     var core=global.OneToneMappingCore;
+    var ui=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
+    var scenarioId=String(ui.habitScenarioReturnId||'').trim();
+    if(scenarioId&&core&&core.byId){
+      var scenarioM=core.byId(scenarioId);
+      if(scenarioM) return scenarioM;
+    }
+    if(vm&&vm.habitMapping) return vm.habitMapping;
     var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:{};
     var activeId=cfg&&cfg.activeSceneId?String(cfg.activeSceneId).trim():'';
     if(core&&core.byId&&activeId) return core.byId(activeId)||null;
     return null;
+  }
+
+  function isScenarioVoiceEditContext(){
+    var ui=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
+    return !!String(ui.habitScenarioReturnId||'').trim();
   }
 
   function renderAppScope(vm){
@@ -227,15 +238,18 @@
     const appRules=global.OneToneAppBehaviorRules;
     if(!strip||!chips||!appRules) return;
     const m=resolveScopeMapping(vm);
+    const scenarioEdit=isScenarioVoiceEditContext();
     strip.hidden=false;
     if(appRules.renderContextChipsHtml){
-      var ctxId=appRules.getActiveAppContextId?appRules.getActiveAppContextId():'';
-      if(!ctxId&&m) ctxId=String(m.appTargetId||'').trim();
+      // Prefer primary appTargetId in scenario edit so chip highlight matches save requirements.
+      var ctxId=m?String(m.appTargetId||'').trim():'';
+      if(!ctxId&&appRules.getActiveAppContextId) ctxId=appRules.getActiveAppContextId()||'';
       chips.innerHTML=appRules.renderContextChipsHtml(m,{
         variant:'chip',
         chipAttr:'data-voice-scope-app',
         noneAttr:'data-voice-scope-none',
-        includeNone:true,
+        // App scenarios must bind an app — hide "any app" while editing a scenario.
+        includeNone:!scenarioEdit,
         contextId:ctxId
       });
       if(appRules.scheduleHydrateCustomRuleIcons) appRules.scheduleHydrateCustomRuleIcons();
@@ -244,7 +258,10 @@
     const presets=appRules.behaviorPresets||[];
     const primaryId=m?String(m.appTargetId||'').trim():'';
     const noneSelected=!primaryId;
-    var html='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-voice-scope-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+V.escHtml(t('keysAppChipNoneHint'))+'"><span>'+V.escHtml(t('keysAppChipNone'))+'</span></button>';
+    var html='';
+    if(!scenarioEdit){
+      html+='<button type="button" class="keys-app-chip keys-app-chip--none'+(noneSelected?' is-selected':'')+'" data-voice-scope-none="1" role="radio" aria-checked="'+(noneSelected?'true':'false')+'" title="'+V.escHtml(t('keysAppChipNoneHint'))+'"><span>'+V.escHtml(t('keysAppChipNone'))+'</span></button>';
+    }
     presets.forEach(function(p){
       const icon=presetIcon(p.id);
       const isPri=primaryId===p.id;

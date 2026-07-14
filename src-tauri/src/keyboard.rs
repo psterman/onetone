@@ -63,13 +63,24 @@ pub fn restore_external_foreground() -> bool {
     focus_window(target_hwnd)
 }
 
+/// Show a window without activating it (does not steal foreground).
+#[cfg(windows)]
+pub fn show_window_no_activate(target_hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::winuser::{IsWindow, ShowWindow, SW_SHOWNOACTIVATE};
+    unsafe {
+        if target_hwnd.is_null() || IsWindow(target_hwnd) == 0 {
+            return false;
+        }
+        ShowWindow(target_hwnd, SW_SHOWNOACTIVATE) != 0
+    }
+}
+
 #[cfg(windows)]
 pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
     use winapi::um::processthreadsapi::GetCurrentThreadId;
     use winapi::um::winuser::{
         AllowSetForegroundWindow, AttachThreadInput, BringWindowToTop, GetForegroundWindow,
-        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow,
-        SwitchToThisWindow, SW_RESTORE,
+        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
     };
 
     const ASFW_ANY: u32 = 0xFFFF_FFFF;
@@ -78,6 +89,8 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
         if target_hwnd.is_null() || IsWindow(target_hwnd) == 0 {
             return false;
         }
+        // Only restore when minimized. Unconditional SW_RESTORE demotes a maximized
+        // window back to normal size (looks like a random resize).
         if IsIconic(target_hwnd) != 0 {
             ShowWindow(target_hwnd, SW_RESTORE);
         }
@@ -97,9 +110,7 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
             AttachThreadInput(current_thread, target_thread, 1);
         }
         AllowSetForegroundWindow(ASFW_ANY);
-        ShowWindow(target_hwnd, SW_RESTORE);
         BringWindowToTop(target_hwnd);
-        SwitchToThisWindow(target_hwnd, 1);
         let ok = SetForegroundWindow(target_hwnd) != 0;
         if fg_thread != 0 && fg_thread != target_thread {
             AttachThreadInput(fg_thread, target_thread, 0);

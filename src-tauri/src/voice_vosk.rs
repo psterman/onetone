@@ -276,16 +276,17 @@ pub fn start_voice_vosk(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
+    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx);
         return Err("Vosk is Windows-only".into());
     }
 
     #[cfg(all(windows, vosk_disabled))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases);
+        let _ = (cfg, resource_dir, grammar_phrases, frame_tx);
         return Err(
             "Vosk native library not linked: place libvosk.lib and libvosk.dll in src-tauri/resources/vosk/ and rebuild"
                 .into(),
@@ -294,7 +295,7 @@ pub fn start_voice_vosk(
 
     #[cfg(all(windows, not(vosk_disabled)))]
     {
-        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases)
+        start_voice_vosk_impl(cfg, resource_dir, grammar_phrases, frame_tx)
     }
 }
 
@@ -303,6 +304,7 @@ fn start_voice_vosk_impl(
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
     grammar_phrases: Vec<String>,
+    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
 ) -> Result<VoiceVoskHandle, String> {
     let probe = probe_vosk_resources(&cfg, resource_dir.as_deref());
     if !probe.dll_exists {
@@ -330,6 +332,7 @@ fn start_voice_vosk_impl(
     let model_preset = cfg.model_preset.clone();
     let event_tx_err = event_tx.clone();
     let resource_dir = resource_dir;
+    let frame_tx_dual = frame_tx.clone();
 
     let thread = if vosk_preset_is_dual(&model_preset) {
         let cn_path = resolve_path(VOSK_CN_LIGHT_REL, resource_dir.as_deref());
@@ -337,9 +340,15 @@ fn start_voice_vosk_impl(
         thread::Builder::new()
             .name("voice-vosk".into())
             .spawn(move || {
-                if let Err(e) =
-                    run_dual_worker(cn_path, en_path, dll_dir, phrases, stop_thread, event_tx)
-                {
+                if let Err(e) = run_dual_worker(
+                    cn_path,
+                    en_path,
+                    dll_dir,
+                    phrases,
+                    stop_thread,
+                    event_tx,
+                    frame_tx_dual,
+                ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
                 }
@@ -357,6 +366,7 @@ fn start_voice_vosk_impl(
                     &model_preset,
                     stop_thread,
                     event_tx,
+                    frame_tx,
                 ) {
                     send_event_blocking(&event_tx_err, VoiceVoskEvent::Error(e));
                     let _ = event_tx_err.send(VoiceVoskEvent::StateChanged("error".into()));
@@ -380,6 +390,7 @@ fn run_worker(
     model_preset: &str,
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
+    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -503,6 +514,7 @@ fn run_worker(
                 if pcm.is_empty() {
                     continue;
                 }
+                publish_i16_pcm_to_bus(&frame_tx, &pcm);
                 let level = pcm_level_percent(&pcm);
                 emit_level_if_due_level(&event_tx, level, &mut last_level_at);
                 let (_, became_idle) = speech_gate.update(level);
@@ -582,6 +594,7 @@ fn run_dual_worker(
     phrases: Vec<String>,
     stop: Arc<AtomicBool>,
     event_tx: Sender<VoiceVoskEvent>,
+    frame_tx: Option<crossbeam_channel::Sender<Vec<f32>>>,
 ) -> Result<(), String> {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::SampleFormat;
@@ -687,6 +700,7 @@ fn run_dual_worker(
                 if pcm.is_empty() {
                     continue;
                 }
+                publish_i16_pcm_to_bus(&frame_tx, &pcm);
                 let level = pcm_level_percent(&pcm);
                 emit_level_if_due_level(&event_tx, level, &mut last_level_at);
                 let (_, became_idle) = speech_gate.update(level);
@@ -1750,6 +1764,17 @@ fn emit_level_if_due_level(event_tx: &Sender<VoiceVoskEvent>, level: u32, last_a
     }
     *last_at = Instant::now();
     send_event_try_partial(event_tx, VoiceVoskEvent::Level { level });
+}
+
+#[cfg(all(windows, not(vosk_disabled)))]
+fn publish_i16_pcm_to_bus(frame_tx: &Option<crossbeam_channel::Sender<Vec<f32>>>, pcm: &[i16]) {
+    if let Some(tx) = frame_tx {
+        let out: Vec<f32> = pcm
+            .iter()
+            .map(|&s| f32::from(s) / i16::MAX as f32)
+            .collect();
+        let _ = tx.try_send(out);
+    }
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]

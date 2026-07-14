@@ -27,6 +27,10 @@ mod state;
 mod tray;
 mod update;
 mod vendor_hid;
+pub mod voice_acoustic_command;
+pub mod voice_acoustic_runtime;
+mod audio_frame_bus;
+mod voice_acoustic_record;
 mod voice_bootstrap;
 mod voice_end_runtime;
 mod voice_keyword_dispatch;
@@ -129,6 +133,8 @@ pub struct AppState {
     pub log_ring: Mutex<VecDeque<String>>,
     pub runtime_events: onetone_logic::runtime_event::RuntimeEventRing,
     pub coach_hud_session_dismissed: Mutex<bool>,
+    pub acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime,
+    pub audio_frame_bus: audio_frame_bus::AudioFrameBus,
 }
 
 pub fn graceful_exit(app: &tauri::AppHandle) {
@@ -150,6 +156,7 @@ fn shutdown_runtime(state: &Arc<AppState>) {
     crate::voice_sapi_runtime::voice_sapi_stop(state);
     crate::voice_vosk_runtime::voice_vosk_stop(state);
     crate::voice_kws_runtime::voice_kws_stop(state);
+    voice_acoustic_runtime::stop_acoustic_match_runtime(state);
     crate::audio_win::sync_recording_audio_policy_now(state.as_ref());
     let _ = state.hotkey_mgr.lock().take();
     *state.paused.lock() = true;
@@ -234,6 +241,8 @@ pub fn run() {
         log_ring: Mutex::new(VecDeque::new()),
         runtime_events: onetone_logic::runtime_event::RuntimeEventRing::new(),
         coach_hud_session_dismissed: Mutex::new(false),
+        acoustic_voice: voice_acoustic_runtime::AcousticVoiceRuntime::new(),
+        audio_frame_bus: audio_frame_bus::AudioFrameBus::new(),
     });
 
     app_log::log_line(&app_state, "startup", "OneTone backend initialized");
@@ -635,6 +644,10 @@ pub fn run() {
             ipc::cmd_coach_hud_get_state,
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
+            ipc::cmd_acoustic_voice_command_status,
+            ipc::cmd_acoustic_voice_command_set_suspend,
+            ipc::cmd_acoustic_voice_command_record_once,
+            ipc::cmd_acoustic_voice_command_build_from_samples,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

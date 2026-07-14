@@ -118,6 +118,11 @@
         });
       });
     }
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rekeyAcousticVoiceCommandsForMapping){
+      copy.acousticVoiceCommands=global.OneToneConfigPersist.rekeyAcousticVoiceCommandsForMapping(copy.acousticVoiceCommands,newId);
+    }else{
+      copy.acousticVoiceCommands=[];
+    }
     state.config.mappings.push(copy);
     state.selectedMappingId=newId;
     hooks.syncEditorFromSelection();

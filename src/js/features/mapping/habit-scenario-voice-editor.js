@@ -7,6 +7,8 @@
   var onChangeCb=null;
   var boundHost=null;
   var lastMappingId='';
+  var advancedOpen=false;
+  var lastVoiceModeEnabled=null;
 
   function state(){ return global.OneToneState.state; }
   function core(){ return global.OneToneMappingCore; }
@@ -29,21 +31,52 @@
     return Array.isArray(arr)?arr.map(function(s){ return String(s); }):[];
   }
 
+  function sanitizePhrase(s){
+    s=String(s||'').trim();
+    if(!s) return '';
+    if(/^[\?？.\-_]+$/.test(s)) return '';
+    if(s==='[unk]'||s==='[UNK]') return '';
+    return s;
+  }
+
+  function sanitizePhraseList(arr){
+    return cloneList(arr).map(sanitizePhrase).filter(Boolean);
+  }
+
+  function hasAcousticCommands(m){
+    var list=m&&Array.isArray(m.acousticVoiceCommands)?m.acousticVoiceCommands:[];
+    return list.some(function(c){ return c&&c.enabled!==false; });
+  }
+
+  function preferredScenarioEngine(baseline){
+    var raw=String((baseline&&baseline.engine)||'').trim();
+    if(raw==='vosk'||raw==='kws') return raw;
+    // Vosk is best for scenario voice (custom Chinese phrases + PCM for acoustic).
+    // SAPI has no AudioFrameBus PCM and is a poor default here.
+    return 'vosk';
+  }
+
   function mergeEffective(m,baseline){
     var ov=m&&m.voiceOverride&&typeof m.voiceOverride==='object'?m.voiceOverride:{};
     baseline=baseline||{};
+    var eng=String(ov.engine||baseline.engine||'').trim()||'off';
+    if(hasAcousticCommands(m)&&(eng==='off'||eng==='none'||eng==='sapi')){
+      eng=preferredScenarioEngine(baseline);
+    }
+    var modelPreset=String(ov.modelPreset||baseline.modelPreset||'').trim();
+    if(eng==='vosk'&&!modelPreset) modelPreset='cn-light';
     return {
       targetKey:String(ov.targetKey||baseline.targetKey||'').trim(),
       wakePhrases:Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length
-        ?cloneList(ov.wakePhrases):cloneList(baseline.wakePhrases),
+        ?sanitizePhraseList(ov.wakePhrases):sanitizePhraseList(baseline.wakePhrases),
       endPhrases:{
         zh:Array.isArray(ov.endPhrases&&ov.endPhrases.zh)&&ov.endPhrases.zh.length
-          ?cloneList(ov.endPhrases.zh):cloneList(baseline.endPhrases&&baseline.endPhrases.zh),
+          ?sanitizePhraseList(ov.endPhrases.zh):sanitizePhraseList(baseline.endPhrases&&baseline.endPhrases.zh),
         en:Array.isArray(ov.endPhrases&&ov.endPhrases.en)&&ov.endPhrases.en.length
-          ?cloneList(ov.endPhrases.en):cloneList(baseline.endPhrases&&baseline.endPhrases.en)
+          ?sanitizePhraseList(ov.endPhrases.en):sanitizePhraseList(baseline.endPhrases&&baseline.endPhrases.en)
       },
-      engine:String(ov.engine||baseline.engine||'off').trim()||'off',
-      modelPreset:String(ov.modelPreset||baseline.modelPreset||'').trim()
+      engine:eng,
+      modelPreset:modelPreset
     };
   }
 
@@ -56,10 +89,36 @@
   }
 
   function fieldBadge(field,ov,baseline){
-    var st=diffApi()&&diffApi().fieldVoiceStatus?diffApi().fieldVoiceStatus(field,ov,baseline):'inherited';
+    var st=fieldVoiceStatus(field,ov,baseline);
     var cls=st==='overridden'?'is-override':'is-inherit';
     var lbl=st==='overridden'?t('habitOverridden'):t('habitInheritGlobal');
     return '<span class="habit-scenario-field-badge '+cls+'">'+esc(lbl)+'</span>';
+  }
+
+  function fieldVoiceStatus(field,ov,baseline){
+    return diffApi()&&diffApi().fieldVoiceStatus?diffApi().fieldVoiceStatus(field,ov,baseline):'inherited';
+  }
+
+  function renderWakeField(eff,ov,baseline,disabled){
+    var st=fieldVoiceStatus('wakePhrases',ov,baseline);
+    if(st==='inherited'){
+      var chips=sanitizePhraseList(eff.wakePhrases);
+      var chipHtml=chips.length
+        ? chips.map(function(p){
+          return '<span class="habit-scenario-voice-phrase-chip">'+esc(p)+'</span>';
+        }).join('')
+        : '<span class="habit-scenario-voice-inherit-empty">'+esc(t('habitInheritGlobal'))+'</span>';
+      return '<div class="habit-scenario-voice-phrase-chips">'+chipHtml+'</div>'
+        +'<p class="habit-scenario-voice-inherit-note">'+esc(t('habitScenarioVoiceWakeInheritNote'))+'</p>';
+    }
+    return '<textarea class="habit-scenario-voice-phrases" id="habitScenarioVoiceWakeInput" rows="4"'
+      +' placeholder="'+esc(t('habitScenarioVoiceWakeHint'))+'"'
+      +(disabled?' disabled':'')+'>'+esc(phraseLines(eff.wakePhrases))+'</textarea>';
+  }
+
+  function renderEndField(id,phrases,disabled){
+    return '<textarea class="habit-scenario-voice-phrases" id="'+id+'" rows="3"'
+      +(disabled?' disabled':'')+'>'+esc(phraseLines(phrases))+'</textarea>';
   }
 
   function parsePhraseLines(text){
@@ -67,7 +126,7 @@
   }
 
   function phraseLines(phrases){
-    return cloneList(phrases).join('\n');
+    return sanitizePhraseList(phrases).join('\n');
   }
 
   function notifyChange(){
@@ -92,7 +151,7 @@
       {id:'sapi',label:'SAPI'},
       {id:'kws',label:'KWS'}
     ];
-    var engHtml='<div class="habit-scenario-voice-engines" role="radiogroup">';
+    var engHtml='<div class="keys-trigger-modes habit-scenario-voice-engines" role="radiogroup">';
     engines.forEach(function(opt){
       var active=eff.engine===opt.id;
       engHtml+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+'"'
@@ -107,6 +166,12 @@
       +'<button type="button" class="toggle-switch habit-scenario-voice-mode-toggle" id="habitScenarioVoiceModeToggle"'
       +' role="switch" aria-checked="'+(modeOn?'true':'false')+'"></button>'
       +'</div>'
+      +'<div class="habit-scenario-voice-command-wrap'+(disabled?' is-disabled':'')+'">'
+      +'<div id="habitScenarioVoiceCommandHost" class="habit-scenario-voice-command-host"></div>'
+      +'</div>'
+      +'<details class="habit-scenario-voice-advanced"'+(advancedOpen?' open':'')+'>'
+      +'<summary class="habit-scenario-voice-advanced-summary">'+esc(t('habitScenarioVoiceAdvanced'))+'</summary>'
+      +'<p class="habit-scenario-voice-advanced-hint">'+esc(t('habitScenarioVoiceAdvancedHint'))+'</p>'
       +'<div class="habit-scenario-voice-fields'+(disabled?' is-disabled':'')+'">'
       +'<div class="habit-scenario-voice-field">'
       +'<div class="habit-scenario-keys-field-head">'
@@ -115,14 +180,12 @@
       +'</div>'
       +engHtml
       +'</div>'
-      +'<div class="habit-scenario-voice-field">'
+      +'<div class="habit-scenario-voice-field habit-scenario-voice-field--wake">'
       +'<div class="habit-scenario-keys-field-head">'
       +'<span class="habit-scenario-keys-field-lbl">'+esc(t('voiceColWake'))+'</span>'
       +fieldBadge('wakePhrases',ov,baseline)
       +'</div>'
-      +'<textarea class="habit-scenario-voice-phrases" id="habitScenarioVoiceWakeInput" rows="3"'
-      +' placeholder="'+esc(t('habitScenarioVoiceWakeHint'))+'"'
-      +(disabled?' disabled':'')+'>'+esc(phraseLines(eff.wakePhrases))+'</textarea>'
+      +renderWakeField(eff,ov,baseline,disabled)
       +'</div>'
       +'<div class="habit-scenario-voice-field">'
       +'<div class="habit-scenario-keys-field-head">'
@@ -133,22 +196,47 @@
       +' value="'+esc(eff.targetKey)+'" autocomplete="off"'
       +(disabled?' disabled':'')+' />'
       +'</div>'
-      +'<details class="habit-scenario-keys-advanced">'
-      +'<summary class="habit-scenario-keys-advanced-summary">'+esc(t('habitScenarioKeysAdvanced'))+'</summary>'
-      +'<div class="habit-scenario-keys-advanced-body">'
+      +'<div class="habit-scenario-voice-field habit-scenario-voice-field--end">'
       +'<label class="habit-scenario-voice-end-lbl">'+esc(t('endPhrasesLabel'))+' (ZH)'
       +fieldBadge('endPhrases',ov,baseline)+'</label>'
-      +'<textarea class="habit-scenario-voice-phrases" id="habitScenarioVoiceEndZh" rows="2"'
-      +(disabled?' disabled':'')+'>'+esc(phraseLines(eff.endPhrases.zh))+'</textarea>'
+      +renderEndField('habitScenarioVoiceEndZh',eff.endPhrases.zh,disabled)
       +'<label class="habit-scenario-voice-end-lbl">'+esc(t('endPhrasesLabel'))+' (EN)</label>'
-      +'<textarea class="habit-scenario-voice-phrases" id="habitScenarioVoiceEndEn" rows="2"'
-      +(disabled?' disabled':'')+'>'+esc(phraseLines(eff.endPhrases.en))+'</textarea>'
+      +renderEndField('habitScenarioVoiceEndEn',eff.endPhrases.en,disabled)
+      +'</div>'
       +'</div>'
       +'</details>'
-      +'</div>'
       +'</div>';
     var modeToggle=$('habitScenarioVoiceModeToggle');
     if(modeToggle) modeToggle.classList.toggle('is-on',modeOn);
+    if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.render){
+      global.OneToneHabitScenarioVoiceCommand.render();
+    }
+    var advanced=$('habitScenarioVoiceBody')&&$('habitScenarioVoiceBody').querySelector('.habit-scenario-voice-advanced');
+    if(advanced&&!advanced._boundToggle){
+      advanced._boundToggle=true;
+      advanced.addEventListener('toggle',function(){
+        advancedOpen=!!advanced.open;
+      });
+    }
+  }
+
+  function sync(m){
+    if(!m){
+      lastMappingId='';
+      lastVoiceModeEnabled=null;
+      render(m);
+      return;
+    }
+    var id=m.id||'';
+    var modeOn=voiceModeEnabled(m);
+    var sameMapping=id===lastMappingId;
+    var sameMode=lastVoiceModeEnabled===modeOn;
+    lastMappingId=id;
+    lastVoiceModeEnabled=modeOn;
+    if(!sameMapping||!sameMode){
+      render(m);
+      return;
+    }
     if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.render){
       global.OneToneHabitScenarioVoiceCommand.render();
     }
@@ -187,6 +275,15 @@
     if(modeToggle){
       e.preventDefault();
       m.voiceModeEnabled=!voiceModeEnabled(m);
+      if(voiceModeEnabled(m)){
+        var baseline=voiceBaseline();
+        var eff=mergeEffective(m,baseline);
+        if(!eff.engine||eff.engine==='off'||eff.engine==='none'||eff.engine==='sapi'){
+          eff.engine=preferredScenarioEngine(baseline);
+          if(eff.engine==='vosk'&&!eff.modelPreset) eff.modelPreset='cn-light';
+          applyVoiceState(m,eff);
+        }
+      }
       render(m);
       notifyChange();
       return true;
@@ -233,6 +330,7 @@
 
   global.OneToneHabitScenarioVoiceEditor={
     render:render,
+    sync:sync,
     bindEvents:bindEvents,
     setOnChange:setOnChange,
     voiceModeEnabled:voiceModeEnabled

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-acoustic-voice-command-build-from-samples"
+description = "Enables the cmd_acoustic_voice_command_build_from_samples command without any pre-configured scope."
+commands.allow = ["cmd_acoustic_voice_command_build_from_samples"]
+
+[[permission]]
+identifier = "deny-cmd-acoustic-voice-command-build-from-samples"
+description = "Denies the cmd_acoustic_voice_command_build_from_samples command without any pre-configured scope."
+commands.deny = ["cmd_acoustic_voice_command_build_from_samples"]

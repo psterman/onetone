@@ -69,6 +69,7 @@
       chipKeysOverride:t('habitScenarioChipKeysOverride'),
       chipVoiceInherit:t('habitScenarioChipVoiceInherit'),
       chipVoiceOverride:t('habitScenarioChipVoiceOverride'),
+      chipVoiceAcoustic:t('habitScenarioChipVoiceAcoustic'),
       chipSaveReady:t('habitScenarioChipSaveReady'),
       chipSaveEmpty:t('habitScenarioChipSaveEmpty'),
       chipSaveBlocked:t('habitScenarioChipSaveBlocked'),
@@ -618,13 +619,41 @@
 
   function saveScenario(opts){
     opts=opts||{};
-    var m=currentMapping();
-    if(!m&&core()&&core().byId){
+    var m=null;
+    // Panel save must use the scenario being edited, not whatever selectedMappingId drifted to.
+    if(opts.fromPanel){
       var rid=String(ui().habitScenarioReturnId||'').trim();
-      if(rid) m=core().byId(rid);
+      if(rid&&core()&&core().byId) m=core().byId(rid);
+    }
+    if(!m) m=currentMapping();
+    if(!m&&core()&&core().byId){
+      var rid2=String(ui().habitScenarioReturnId||'').trim();
+      if(rid2) m=core().byId(rid2);
     }
     if(!m) return Promise.resolve(null);
     state().selectedMappingId=m.id;
+    // Recover missing app binding from chip context / existing rules so save isn't blocked
+    // after UI selection that didn't write appTargetId.
+    if(!String(m.appTargetId||'').trim()){
+      var recover='';
+      if(appRules()&&appRules().getActiveAppContextId){
+        recover=String(appRules().getActiveAppContextId()||'').trim();
+      }
+      if(!recover&&Array.isArray(m.appBehaviorRules)){
+        for(var ri=0;ri<m.appBehaviorRules.length;ri++){
+          var rr=m.appBehaviorRules[ri];
+          if(rr&&String(rr.appId||'').trim()&&String(rr.appId).trim()!=='custom'){
+            recover=String(rr.appId).trim();
+            break;
+          }
+        }
+      }
+      if(recover){
+        m.appTargetId=recover;
+        if(appRules()&&appRules().ensurePrimaryAppRule) appRules().ensurePrimaryAppRule(m,recover);
+        pickedAppId=recover;
+      }
+    }
     var cfg=state().config||{};
     var nameInput=$('habitScenarioNameInput');
     var name=nameInput&&!opts.fromPanel?String(nameInput.value||'').trim():'';
@@ -643,7 +672,15 @@
     }else{
       preview=buildPreview();
     }
-    if(!preview||!preview.canSave) return Promise.resolve(null);
+    if(!preview||!preview.canSave){
+      if(global.OneToneAppToast){
+        var block=preview&&preview.saveBlockReason==='no_app'
+          ?t('habitScenarioSaveNeedApp')
+          :t('habitScenarioSaveBlocked');
+        global.OneToneAppToast.show(block,'scheme');
+      }
+      return Promise.resolve(null);
+    }
     if(appRules()&&appRules().ensureRulesBeforeSave) appRules().ensureRulesBeforeSave(m);
     if(diffApi()&&diffApi().normalizeKeyFieldsForSave){
       diffApi().normalizeKeyFieldsForSave(m,diffApi().getGlobalKeyBaseline(cfg,core()),true);
@@ -651,12 +688,27 @@
     if(diffApi()&&diffApi().isEmptyOverride&&diffApi().isEmptyOverride(m.voiceOverride)){
       m.voiceOverride=null;
     }
+    // Keep acoustic commands normalized before persist so invalid samples don't get silently dropped later.
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.normalizeAcousticVoiceCommands){
+      var beforeAcoustic=Array.isArray(m.acousticVoiceCommands)?m.acousticVoiceCommands.length:0;
+      m.acousticVoiceCommands=global.OneToneConfigPersist.normalizeAcousticVoiceCommands(
+        m.acousticVoiceCommands||[],
+        m.id
+      );
+      if(beforeAcoustic>0&&!(m.acousticVoiceCommands&&m.acousticVoiceCommands.length)){
+        if(global.OneToneAppToast){
+          global.OneToneAppToast.show(t('habitScenarioSaveAcousticInvalid'),'scheme');
+        }
+        return Promise.resolve(null);
+      }
+    }
     m.updatedAt=Date.now();
     if(global.OneToneHabitHub&&global.OneToneHabitHub.touchUpdated) global.OneToneHabitHub.touchUpdated(m);
     var saveFn=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync
       ?global.OneToneConfigPersist.saveAsync
       :null;
     var toastKey=preview.saveKind==='empty'?'habitScenarioSavedEmpty':'habitScenarioSaved';
+    if(preview.acousticCommandCount>0) toastKey='habitScenarioSaved';
     var legacyMigrateId=migrateFromId;
     var done=function(){
       pendingDraftId=null;
@@ -673,7 +725,16 @@
         }
       }
     };
-    if(saveFn) return saveFn().then(done);
+    if(saveFn){
+      return saveFn().then(function(ok){
+        if(ok===false){
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitScenarioSaveFailed'),'scheme');
+          return null;
+        }
+        done();
+        return m;
+      });
+    }
     if(hooks().save) hooks().save();
     done();
     return Promise.resolve(m);

@@ -16,7 +16,7 @@
   }
   function currentVoiceMode(){
     var fn=hooks().currentVoiceMode;
-    return typeof fn==='function'?fn():'sapi';
+    return typeof fn==='function'?fn():'vosk';
   }
   function hookCall(name){
     var args=Array.prototype.slice.call(arguments,1);
@@ -25,7 +25,7 @@
     try{ return fn.apply(null,args); }catch(err){ console.error('voice-diag hook',name,err); return undefined; }
   }
   var debugFocusMode='overview';
-  var voiceDiagTab='sapi';
+  var voiceDiagTab='vosk';
   var voiceDiagBound=false;
   function syncDebugFocusSections(){
     const show=ui().drawerOpen&&ui().settingsPanel==='debug';
@@ -106,7 +106,7 @@
 
   function setVoiceDiagTab(tab){
     const allowed={sapi:true,vosk:true,kws:true,end:true,usage:true};
-    if(!allowed[tab]) tab='sapi';
+    if(!allowed[tab]) tab='vosk';
     if(voiceDiagTab===tab) return;
     voiceDiagTab=tab;
     renderVoiceDiagTabs();

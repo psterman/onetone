@@ -1,3 +1,4 @@
+// @legacy-unused — scenario ASR voiceCommands migrated to acousticVoiceCommands; not loaded in index.html
 (function(global){
   'use strict';
 

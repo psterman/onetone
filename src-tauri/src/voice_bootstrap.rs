@@ -171,6 +171,7 @@ pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode
     }
     *state.last_voice_fingerprint.lock() = boot_fingerprint;
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
+    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
 }
 
 pub fn apply_voice_config_change(
@@ -393,6 +394,7 @@ pub fn apply_voice_config_change(
 
     *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(new_cfg);
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
 }
 
 /// Stop voice wake workers when listen is paused (saves CPU/RAM).
@@ -405,6 +407,7 @@ pub fn pause_voice_engines(state: &Arc<AppState>) {
     voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
     voice_sapi_runtime::voice_sapi_stop(state);
     voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(state));
+    crate::voice_acoustic_runtime::stop_acoustic_match_runtime(state);
 }
 
 /// Restart voice wake workers after listen resumes.
@@ -436,6 +439,7 @@ pub fn resume_voice_engines(app: &AppHandle, state: &Arc<AppState>) {
         }
         crate::scene_config::DesiredVoiceEngine::None => {}
     }
+    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
 }
 
 fn try_start_vosk_runtime(

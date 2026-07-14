@@ -78,6 +78,140 @@
     return 'cmd_'+Date.now()+'_'+Math.floor(Math.random()*100000);
   }
 
+  var ACOUSTIC_FEATURE_DIMS=13;
+  var ACOUSTIC_MAX_FEATURE_FRAMES=200;
+  var ACOUSTIC_MAX_SAMPLES_PER_COMMAND=3;
+  var ACOUSTIC_MAX_COMMANDS_PER_MAPPING=1;
+
+  function newAcousticVoiceCommandId(){
+    return 'acmd_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+  }
+
+  function newAcousticVoiceSampleId(){
+    return 'sample_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+  }
+
+  function acousticFeatureValuesValid(feature){
+    if(!Array.isArray(feature)||!feature.length) return false;
+    for(var i=0;i<feature.length;i++){
+      var v=Number(feature[i]);
+      if(!isFinite(v)) return false;
+    }
+    return true;
+  }
+
+  function normalizeAcousticQualitySignals(raw){
+    if(!raw||typeof raw!=='object') return null;
+    var agreement=Number(raw.sampleAgreement);
+    if(!isFinite(agreement)) agreement=0;
+    return {
+      hasSpeech:!!raw.hasSpeech,
+      tooShort:!!raw.tooShort,
+      tooLong:!!raw.tooLong,
+      sampleAgreement:agreement
+    };
+  }
+
+  function normalizeAcousticVoiceCommandSample(raw){
+    if(!raw||typeof raw!=='object') return null;
+    var kind=String(raw.featureKind||'mfcc-v1').trim()||'mfcc-v1';
+    if(kind!=='mfcc-v1') return null;
+    var dims=Number(raw.featureDims);
+    if(!isFinite(dims)||dims<=0) dims=ACOUSTIC_FEATURE_DIMS;
+    if(dims!==ACOUSTIC_FEATURE_DIMS) return null;
+    var frames=Number(raw.featureFrames);
+    if(!isFinite(frames)||frames<=0||frames>ACOUSTIC_MAX_FEATURE_FRAMES) return null;
+    var feature=Array.isArray(raw.feature)?raw.feature.map(function(v){ return Number(v); }):[];
+    if(feature.length!==frames*dims||!acousticFeatureValuesValid(feature)) return null;
+    var durationMs=Number(raw.durationMs);
+    if(!isFinite(durationMs)||durationMs<0) durationMs=0;
+    var sampleRate=Number(raw.sampleRate);
+    if(!isFinite(sampleRate)||sampleRate<=0) sampleRate=16000;
+    var createdAt=Number(raw.createdAt);
+    if(!isFinite(createdAt)) createdAt=Date.now();
+    var sample={
+      id:String(raw.id||'').trim()||newAcousticVoiceSampleId(),
+      durationMs:Math.round(durationMs),
+      feature:feature,
+      featureKind:kind,
+      featureFrames:Math.round(frames),
+      featureDims:ACOUSTIC_FEATURE_DIMS,
+      sampleRate:Math.round(sampleRate),
+      createdAt:createdAt
+    };
+    var qs=normalizeAcousticQualitySignals(raw.qualitySignals);
+    if(qs) sample.qualitySignals=qs;
+    return sample;
+  }
+
+  function normalizeAcousticVoiceCommand(raw,scenarioId){
+    if(!raw||typeof raw!=='object') return null;
+    var quality=String(raw.quality||'').trim();
+    if(quality!=='good'&&quality!=='ok') return null;
+    var samples=Array.isArray(raw.samples)
+      ?raw.samples.map(normalizeAcousticVoiceCommandSample).filter(Boolean).slice(0,ACOUSTIC_MAX_SAMPLES_PER_COMMAND)
+      :[];
+    if(!samples.length) return null;
+    var activationScope=String(raw.activationScope||'global').trim();
+    if(activationScope!=='global'&&activationScope!=='foreground-app') activationScope='global';
+    var threshold=Number(raw.threshold);
+    if(!isFinite(threshold)) threshold=quality==='ok'?0.86:0.78;
+    var margin=Number(raw.margin);
+    if(!isFinite(margin)) margin=quality==='ok'?0.10:0.08;
+    var createdAt=Number(raw.createdAt);
+    if(!isFinite(createdAt)) createdAt=Date.now();
+    var updatedAt=Number(raw.updatedAt);
+    if(!isFinite(updatedAt)) updatedAt=createdAt;
+    var version=Number(raw.version);
+    if(!isFinite(version)||version<1) version=1;
+    return {
+      id:String(raw.id||'').trim()||newAcousticVoiceCommandId(),
+      version:version,
+      kind:String(raw.kind||'scenario-acoustic-activate').trim()||'scenario-acoustic-activate',
+      scenarioId:String(raw.scenarioId||scenarioId||'').trim(),
+      label:String(raw.label||'我的语音命令').trim()||'我的语音命令',
+      displayText:String(raw.displayText||'').trim(),
+      samples:samples,
+      threshold:threshold,
+      margin:margin,
+      quality:quality,
+      activationScope:activationScope,
+      appBoost:raw.appBoost!==false,
+      enabled:raw.enabled!==false,
+      createdAt:createdAt,
+      updatedAt:updatedAt
+    };
+  }
+
+  function normalizeAcousticVoiceCommands(list,scenarioId){
+    if(!Array.isArray(list)) return [];
+    var out=[];
+    for(var i=0;i<list.length;i++){
+      var c=normalizeAcousticVoiceCommand(list[i],scenarioId);
+      if(c) out.push(c);
+      if(out.length>=ACOUSTIC_MAX_COMMANDS_PER_MAPPING) break;
+    }
+    return out;
+  }
+
+  function serializeAcousticVoiceCommands(list,scenarioId){
+    return normalizeAcousticVoiceCommands(list,scenarioId);
+  }
+
+  function rekeyAcousticVoiceCommandsForMapping(commands,scenarioId){
+    return normalizeAcousticVoiceCommands(commands,scenarioId).map(function(c){
+      var next=Object.assign({},c,{
+        id:newAcousticVoiceCommandId(),
+        scenarioId:String(scenarioId||'').trim(),
+        updatedAt:Date.now(),
+        samples:(Array.isArray(c.samples)?c.samples:[]).map(function(s){
+          return Object.assign({},s,{id:newAcousticVoiceSampleId()});
+        })
+      });
+      return next;
+    });
+  }
+
   function normalizeQualitySignals(raw){
     if(!raw||typeof raw!=='object') return null;
     var out={
@@ -196,6 +330,10 @@
       out.voiceCommands=out.voice_commands;
     }
     out.voiceCommands=normalizeVoiceCommands(out.voiceCommands,out.id);
+    if(!Array.isArray(out.acousticVoiceCommands)&&Array.isArray(out.acoustic_voice_commands)){
+      out.acousticVoiceCommands=out.acoustic_voice_commands;
+    }
+    out.acousticVoiceCommands=normalizeAcousticVoiceCommands(out.acousticVoiceCommands,out.id);
     return out;
   }
 
@@ -311,14 +449,14 @@
         const tgt=hooks().editorTargetForMapping(m);
         var order=Number(m.order);
         if(!isFinite(order)) order=i;
-        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id)};
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id)};
       }),
       trash:(st.config.trash||[]).map(function(m){
         hooks().ensureMappingExtras(m);
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
-        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id)};
+        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id)};
       }),
       intervalMs:st.config.intervalMs||1200,
       enterDelayMs:st.config.enterDelayMs||5000,
@@ -414,8 +552,17 @@
     const invoke=global.__vp_invoke__;
     if(!invoke) return Promise.resolve(false);
     try{
-      return invoke('cmd_save',{json:buildSavePayload()}).then(function(){ return true; }).catch(function(){ return false; });
-    }catch(_){
+      var payload=buildSavePayload();
+      return invoke('cmd_save',{json:payload}).then(function(){ return true; }).catch(function(err){
+        if(typeof console!=='undefined'&&console.error){
+          console.error('cmd_save',err);
+        }
+        return false;
+      });
+    }catch(err){
+      if(typeof console!=='undefined'&&console.error){
+        console.error('cmd_save build failed',err);
+      }
       return Promise.resolve(false);
     }
   }
@@ -737,7 +884,14 @@
     normalizeVoiceCommands:normalizeVoiceCommands,
     serializeVoiceCommands:serializeVoiceCommands,
     rekeyVoiceCommandsForMapping:rekeyVoiceCommandsForMapping,
-    newVoiceCommandId:newVoiceCommandId
+    newVoiceCommandId:newVoiceCommandId,
+    normalizeAcousticVoiceCommands:normalizeAcousticVoiceCommands,
+    serializeAcousticVoiceCommands:serializeAcousticVoiceCommands,
+    rekeyAcousticVoiceCommandsForMapping:rekeyAcousticVoiceCommandsForMapping,
+    newAcousticVoiceCommandId:newAcousticVoiceCommandId,
+    newAcousticVoiceSampleId:newAcousticVoiceSampleId,
+    ACOUSTIC_FEATURE_DIMS:ACOUSTIC_FEATURE_DIMS,
+    ACOUSTIC_MAX_FEATURE_FRAMES:ACOUSTIC_MAX_FEATURE_FRAMES
   };
   installToJsReady();
 })((typeof window!=='undefined')?window:globalThis);

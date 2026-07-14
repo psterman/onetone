@@ -86,6 +86,16 @@ pub fn spawn_voice_kws_stop(state: Arc<AppState>) {
     }
 }
 
+/// Release the default capture device for a short external recording (e.g. acoustic calibration).
+pub fn pause_for_external_capture(state: &AppState) -> bool {
+    if state.voice_kws.lock().is_none() {
+        return false;
+    }
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    voice_kws_stop_sync(state);
+    true
+}
+
 fn voice_kws_stop_sync(state: &AppState) {
     if let Some(handle) = state.voice_kws.lock().take() {
         stop_voice_kws(handle);
@@ -126,7 +136,11 @@ pub fn voice_kws_start(
         );
     }
 
-    let handle = start_voice_kws(cfg, resource_dir.as_deref())?;
+    let handle = start_voice_kws(
+        cfg,
+        resource_dir.as_deref(),
+        Some(state.audio_frame_bus.publisher()),
+    )?;
     *state.voice_kws.lock() = Some(handle);
     *state.voice_kws_last_error.lock() = String::new();
     Ok(())
@@ -208,6 +222,7 @@ pub fn drain_voice_kws_events(state: &Arc<AppState>, app: &AppHandle) {
     }
 
     tick_kws_cooldown_state(state);
+    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
 }
 
 fn tick_kws_cooldown_state(state: &AppState) {

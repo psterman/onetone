@@ -2,7 +2,7 @@
 
 pub use crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
 
-pub const CURSOR_CHAT_OPEN_KEY: &str = "Ctrl+L";
+pub const CURSOR_CHAT_OPEN_KEY: &str = "Ctrl+I";
 
 use std::sync::Arc;
 

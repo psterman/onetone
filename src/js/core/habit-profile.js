@@ -77,7 +77,10 @@
       var ov=m.voiceOverride;
       if(ov){
         if(Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length) return true;
-        if(ov.endPhrases&&(ov.endPhrases.zh&&ov.endPhrases.zh.length||ov.endPhrases.en&&ov.endPhrases.en.length)) return true;
+        if(ov.endPhrases&&typeof ov.endPhrases==='object'&&(
+          (Array.isArray(ov.endPhrases.zh)&&ov.endPhrases.zh.length)||
+          (Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length)
+        )) return true;
         if(ov.targetKey&&String(ov.targetKey).trim()) return true;
         if(ov.engine&&String(ov.engine).trim()) return true;
         if(ov.modelPreset&&String(ov.modelPreset).trim()) return true;

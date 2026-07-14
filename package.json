@@ -12,7 +12,10 @@
     "build": "tauri build",
     "test:habit-profile": "node scripts/reconcile-habit-profile.js",
     "test:home-alerts": "node scripts/test-home-workbench-alerts.js",
-    "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs"
+    "test:target-key-catalog": "node scripts/verify-target-key-catalog.mjs",
+    "test:voice-acoustic": "node scripts/voice-acoustic-config.test.js && node scripts/voice-acoustic-matcher.test.js && node scripts/voice-acoustic-ui.test.js",
+    "test:voice-acoustic:rust": "cargo test --test voice_acoustic_command --manifest-path src-tauri/Cargo.toml -- --nocapture",
+    "test:voice-acoustic:all": "npm run test:voice-acoustic && npm run test:voice-acoustic:rust"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

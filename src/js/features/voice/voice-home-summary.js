@@ -55,30 +55,36 @@
     return hp.projectActive(cfg||{})||null;
   }
 
+  function sanitizePhraseList(arr){
+    var V=global.OneToneVoiceSettingsViewModel;
+    if(V&&V.sanitizePhraseList) return V.sanitizePhraseList(arr);
+    return Array.isArray(arr)?arr.map(function(s){ return String(s||'').trim(); }).filter(Boolean):[];
+  }
+
   function wakePhrases(eng, w, voskCfg, sapiCfg){
     var cfg=state().config||{};
     var active=activeHabitProfile(cfg);
     if(active&&Array.isArray(active.baseWakePhrases)&&active.baseWakePhrases.length){
-      return cloneList(active.baseWakePhrases);
+      return sanitizePhraseList(active.baseWakePhrases);
     }
     if(eng==='vosk'){
       var enOnly=global.OneToneVoiceWake&&global.OneToneVoiceWake.isEnglishVoskPreset(voskModelPreset(w,voskCfg));
       var cn=Array.isArray(w.vosk&&w.vosk.phrasesCn)?cloneList(w.vosk.phrasesCn):[];
       var en=Array.isArray(w.vosk&&w.vosk.phrasesEn)?cloneList(w.vosk.phrasesEn):[];
       var fromSnap=enOnly?en:cn;
-      if(fromSnap.length) return fromSnap;
-      return cloneList(voskCfg.phrases||[]);
+      if(fromSnap.length) return sanitizePhraseList(fromSnap);
+      return sanitizePhraseList(voskCfg.phrases||[]);
     }
     if(eng==='sapi'){
       var sapiSnap=Array.isArray(w.sapi&&w.sapi.phrases)?cloneList(w.sapi.phrases):[];
-      if(sapiSnap.length) return sapiSnap;
-      return cloneList(sapiCfg.phrases||[]);
+      if(sapiSnap.length) return sanitizePhraseList(sapiSnap);
+      return sanitizePhraseList(sapiCfg.phrases||[]);
     }
     if(eng==='kws'){
       var kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
       var kwsSnap=Array.isArray(w.kws&&w.kws.phrases)?cloneList(w.kws.phrases):[];
-      if(kwsSnap.length) return kwsSnap;
-      return cloneList(kwsCfg.phrases||[]);
+      if(kwsSnap.length) return sanitizePhraseList(kwsSnap);
+      return sanitizePhraseList(kwsCfg.phrases||[]);
     }
     var pref=preferredEngine();
     if(pref==='vosk'){
@@ -86,12 +92,12 @@
       var cn2=Array.isArray(w.vosk&&w.vosk.phrasesCn)?cloneList(w.vosk.phrasesCn):[];
       var en2=Array.isArray(w.vosk&&w.vosk.phrasesEn)?cloneList(w.vosk.phrasesEn):[];
       var fromSnap2=enOnly2?en2:cn2;
-      if(fromSnap2.length) return fromSnap2;
-      return cloneList(voskCfg.phrases||[]);
+      if(fromSnap2.length) return sanitizePhraseList(fromSnap2);
+      return sanitizePhraseList(voskCfg.phrases||[]);
     }
     var sapiList=Array.isArray(w.sapi&&w.sapi.phrases)?cloneList(w.sapi.phrases):[];
-    if(sapiList.length) return sapiList;
-    return cloneList(sapiCfg.phrases||[]);
+    if(sapiList.length) return sanitizePhraseList(sapiList);
+    return sanitizePhraseList(sapiCfg.phrases||[]);
   }
 
   function endPhrases(endSnap, endCfg){

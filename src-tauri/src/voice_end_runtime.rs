@@ -20,9 +20,9 @@ pub fn session_state(state: &AppState) -> String {
 
 pub fn wake_phrase_skip_reason(state: &AppState) -> Option<&'static str> {
     match session_state(state).as_str() {
-        "stopping" => Some("正在结束上一轮听写，请稍候再说。"),
-        "committing" => Some("正在等待上一轮上屏，请稍候再说。"),
-        "sent" => Some("上一轮刚发送完成，请稍候再说。"),
+        "stopping" => Some("\u{6b63}\u{5728}\u{7ed3}\u{675f}\u{4e0a}\u{4e00}\u{8f6e}\u{542c}\u{5199}\u{ff0c}\u{8bf7}\u{7a0d}\u{5019}\u{518d}\u{8bf4}\u{3002}"),
+        "committing" => Some("\u{6b63}\u{5728}\u{7b49}\u{5f85}\u{4e0a}\u{4e00}\u{8f6e}\u{4e0a}\u{5c4f}\u{ff0c}\u{8bf7}\u{7a0d}\u{5019}\u{518d}\u{8bf4}\u{3002}"),
+        "sent" => Some("\u{4e0a}\u{4e00}\u{8f6e}\u{521a}\u{53d1}\u{9001}\u{5b8c}\u{6210}\u{ff0c}\u{8bf7}\u{7a0d}\u{5019}\u{518d}\u{8bf4}\u{3002}"),
         _ => None,
     }
 }
@@ -59,7 +59,7 @@ pub fn resolve_wake_target_key(cfg: &VoiceConfig, fallback: &str) -> String {
 
 /// IME / voice-engine shortcut for activating dictation in the foreground app.
 /// Unlike `resolve_wake_target_key`, this never falls back to mapping `target_key`
-/// (which for Cursor is Ctrl+L, not the voice shortcut).
+/// (which for Cursor schemes may be Ctrl+L/Ctrl+I, not the voice shortcut).
 pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
     let vosk_key = cfg.voice_vosk.target_key.trim();
     let sapi_key = cfg.voice_sapi.target_key.trim();
@@ -263,7 +263,9 @@ pub fn handle_voice_wake_detected(
             .any(|w| crate::config::phrases_fuzzy_match(matched_phrase, w))
     };
 
-    if !is_generic_wake {
+    // Prefer app-scenario summon (incl. acoustic command names) over generic wake,
+    // so saying 「开始编程」 from the Default home scheme still opens Cursor.
+    {
         let global_summon = {
             let cfg = state.cfg.lock();
             crate::scene_config::resolve_global_summon_for_phrase(&cfg, matched_phrase)
@@ -301,7 +303,8 @@ pub fn handle_voice_wake_detected(
                             "appTargetId": gs.target,
                             "mappingId": gs.mapping_id,
                             "workflow": true,
-                            "global": true
+                            "global": true,
+                            "preferSummon": true
                         })),
                     );
                     crate::tray::refresh_menu(app);
@@ -441,6 +444,118 @@ pub fn handle_voice_wake_detected(
         } else {
             format!("voice_{engine}_send_failed")
         },
+    }
+}
+
+/// Acoustic scene command hit: select scenario and open/focus the mapped app + start voice.
+pub fn handle_acoustic_scene_command(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    scenario_id: &str,
+    command_id: &str,
+    score: f64,
+) -> VoiceWakeDispatchResult {
+    let mapping = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_by_id(scenario_id).cloned()
+    };
+    let Some(mapping) = mapping else {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "acoustic",
+            "acoustic_voice_matched",
+            "acoustic match: mapping missing",
+            Some(serde_json::json!({
+                "scenarioId": scenario_id,
+                "commandId": command_id,
+                "score": score,
+                "ok": false,
+                "reason": "mapping_missing"
+            })),
+        );
+        return VoiceWakeDispatchResult {
+            ok: false,
+            target_key: String::new(),
+            mapping_id: scenario_id.to_string(),
+            used_summon_workflow: false,
+            runtime_label: "acoustic_mapping_missing".into(),
+        };
+    };
+
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.set_active_scenario(scenario_id);
+    }
+
+    let app_target = mapping.app_target_id.trim().to_string();
+    let duration_ms = 280u32;
+    let mut used_workflow = false;
+    let mut runtime_label = String::new();
+    let mut target_key = {
+        let cfg = state.cfg.lock();
+        resolve_wake_target_key(&cfg, "")
+    };
+
+    if !app_target.is_empty() {
+        if let Some(label) = try_run_summon_workflow(
+            state,
+            app,
+            &mapping,
+            scenario_id,
+            &app_target,
+            duration_ms,
+        ) {
+            used_workflow = true;
+            runtime_label = label;
+        }
+    }
+
+    let ok = if used_workflow {
+        true
+    } else {
+        // No app-chat profile: fall back to wake-key / dictation entry for the active scene.
+        let sent = send_wake_to_target(Some(state.as_ref()), Some(app), &target_key, duration_ms);
+        if sent {
+            enter_dictating(state, Some(app), scenario_id, "acoustic command");
+            runtime_label = format!("acoustic_key_{target_key}");
+        } else {
+            runtime_label = "acoustic_summon_failed".into();
+        }
+        sent
+    };
+
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "acoustic",
+        "acoustic_voice_matched",
+        &format!(
+            "acoustic command matched -> {} (score={score:.3}, workflow={used_workflow})",
+            if app_target.is_empty() {
+                target_key.as_str()
+            } else {
+                app_target.as_str()
+            }
+        ),
+        Some(serde_json::json!({
+            "scenarioId": scenario_id,
+            "commandId": command_id,
+            "score": score,
+            "appTargetId": app_target,
+            "workflow": used_workflow,
+            "ok": ok,
+            "runtimeLabel": runtime_label
+        })),
+    );
+    crate::tray::refresh_menu(app);
+
+    VoiceWakeDispatchResult {
+        ok,
+        target_key,
+        mapping_id: scenario_id.to_string(),
+        used_summon_workflow: used_workflow,
+        runtime_label,
     }
 }
 
@@ -1113,11 +1228,12 @@ mod tests {
 
     #[test]
     fn end_phrase_zh_match() {
-        let zh = vec!["结束输入".into()];
+        let phrase = "\u{53d1}\u{9001}\u{5b8c}\u{6210}";
+        let zh = vec![phrase.into()];
         let en: Vec<String> = vec![];
         assert_eq!(
-            matches_end_phrase("结束输入", &zh, &en),
-            Some("结束输入".into())
+            matches_end_phrase(phrase, &zh, &en),
+            Some(phrase.into())
         );
     }
 
@@ -1134,21 +1250,24 @@ mod tests {
 
     #[test]
     fn cancel_phrase_zh_match() {
-        let zh = vec!["取消输入".into()];
+        let phrase = "\u{53d6}\u{6d88}\u{8f93}\u{5165}";
+        let zh = vec![phrase.into()];
         let en: Vec<String> = vec![];
         assert_eq!(
-            matches_cancel_phrase("取消输入", &zh, &en),
-            Some("取消输入".into())
+            matches_cancel_phrase(phrase, &zh, &en),
+            Some(phrase.into())
         );
     }
 
     #[test]
     fn cancel_phrase_prefers_longer_match() {
-        let zh = vec!["取消".into(), "取消输入".into()];
+        let short = "\u{53d6}\u{6d88}";
+        let long = "\u{53d6}\u{6d88}\u{8f93}\u{5165}";
+        let zh = vec![short.into(), long.into()];
         let en: Vec<String> = vec![];
         assert_eq!(
-            matches_cancel_phrase("取消输入", &zh, &en),
-            Some("取消输入".into())
+            matches_cancel_phrase(long, &zh, &en),
+            Some(long.into())
         );
     }
 
@@ -1180,7 +1299,7 @@ mod tests {
         cfg.mappings = vec![MappingEntry {
             id,
             label: "test".into(),
-            group: "默认".into(),
+            group: "\u{9ed8}\u{8ba4}".into(),
             trigger_key: "F13".into(),
             target_key: "Win+H".into(),
             enabled: true,
@@ -1208,6 +1327,7 @@ mod tests {
                 ..Default::default()
             }),
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -1245,6 +1365,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

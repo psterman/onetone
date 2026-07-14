@@ -35,10 +35,11 @@ const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
     error_prefix: "cursor",
     process_names: &["Cursor.exe"],
     path_marker: None,
-    open_key: Some("Ctrl+L"),
+    // Cursor Agent / chat composer focus (not Ctrl+L, which is Chat history search).
+    open_key: Some("Ctrl+I"),
     composer_anchor: (0.50, 0.88),
     accept_click_without_uia: true,
-    post_voice_key_ms: 180,
+    post_voice_key_ms: 220,
     restore_main_delay_ms: 120,
     launch_localappdata_rel: &[],
 };
@@ -119,11 +120,10 @@ impl AppChatWorkflowError {
 struct MainWindowHideGuard {
     app: AppHandle,
     hidden: bool,
-    restore_delay_ms: u64,
 }
 
 impl MainWindowHideGuard {
-    fn maybe_hide(app: &AppHandle, restore_delay_ms: u64) -> Self {
+    fn maybe_hide(app: &AppHandle) -> Self {
         let hidden = if let Some(main) = crate::ipc::get_main_window(app) {
             let _ = main.run_on_main_thread({
                 let w = main.clone();
@@ -139,27 +139,17 @@ impl MainWindowHideGuard {
         Self {
             app: app.clone(),
             hidden,
-            restore_delay_ms,
         }
     }
 }
 
 impl Drop for MainWindowHideGuard {
     fn drop(&mut self) {
-        if !self.hidden {
-            return;
-        }
-        if self.restore_delay_ms > 0 {
-            std::thread::sleep(Duration::from_millis(self.restore_delay_ms));
-        }
-        if let Some(main) = crate::ipc::get_main_window(&self.app) {
-            let _ = main.run_on_main_thread({
-                let w = main.clone();
-                move || {
-                    let _ = w.show();
-                }
-            });
-        }
+        // Intentionally leave the main window hidden after summon/voice start.
+        // Re-showing (even with SW_SHOWNOACTIVATE) unminimizes OneTone and can still
+        // disturb focus so the IME never commits into Cursor's composer.
+        // User restores OneTone from the tray when needed.
+        let _ = (&self.app, self.hidden);
     }
 }
 
@@ -211,7 +201,7 @@ fn run_app_chat_workflow(
     }
 
     let app = window.app_handle();
-    let _hide_guard = MainWindowHideGuard::maybe_hide(&app, profile.restore_main_delay_ms);
+    let _hide_guard = MainWindowHideGuard::maybe_hide(&app);
 
     let (hwnd, freshly_launched) =
         ensure_app_window(profile).ok_or((prefix.to_string(), AppChatWorkflowError::NotFound))?;
@@ -244,13 +234,8 @@ fn activate_voice_input(
     duration_ms: u32,
     prefix: &str,
 ) -> Result<(), (String, AppChatWorkflowError)> {
-    let _ = crate::keyboard::focus_window(hwnd);
-    std::thread::sleep(Duration::from_millis(70));
-
-    if profile.accept_click_without_uia {
-        let _ = click_composer_anchor(hwnd, profile.composer_anchor);
-        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
-    }
+    // focus_chat_input already made the composer ready (soft focus or one Ctrl+I).
+    // Do not send open_key again here — Cursor Ctrl+I toggles and would close an open panel.
 
     let voice_key = {
         let cfg = state.cfg.lock();
@@ -285,9 +270,19 @@ fn activate_voice_input(
 }
 
 #[cfg(windows)]
-const STABILIZE_AFTER_OPEN_MS: u64 = 200;
+const STABILIZE_AFTER_OPEN_MS: u64 = 280;
 #[cfg(windows)]
-const STABILIZE_AFTER_CLICK_MS: u64 = 140;
+const STABILIZE_AFTER_CLICK_MS: u64 = 160;
+
+#[cfg(windows)]
+fn uia_min_score(profile: &AppChatProfile) -> i32 {
+    // With open_key (Cursor Ctrl+I), reject weak "input" matches that aren't the composer.
+    if profile.open_key.is_some() {
+        55
+    } else {
+        20
+    }
+}
 
 #[cfg(windows)]
 fn focus_chat_input(
@@ -295,32 +290,56 @@ fn focus_chat_input(
     profile: &AppChatProfile,
     duration_ms: u32,
 ) -> bool {
-    if uia_focus_chat_input(hwnd) {
+    let min_score = uia_min_score(profile);
+
+    // Soft path first: panel already open → focus without Ctrl+I.
+    // Ctrl+I toggles Agent/composer; sending it while open closes the input.
+    if uia_focus_chat_input(hwnd, min_score) {
+        return true;
+    }
+    if profile.accept_click_without_uia && click_then_confirm(hwnd, profile, min_score) {
         return true;
     }
 
+    // Hard open once: only when soft probe failed (panel likely closed).
     if let Some(open_key) = profile.open_key.filter(|k| !k.trim().is_empty()) {
+        let _ = crate::keyboard::focus_window(hwnd);
+        std::thread::sleep(Duration::from_millis(80));
         if crate::keyboard::send_chord(open_key, duration_ms) {
             std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_OPEN_MS));
-            if uia_focus_chat_input(hwnd) {
+            if uia_focus_chat_input(hwnd, min_score) {
                 return true;
             }
+            // Newly opened panel: land in the box with a click (no second Ctrl+I).
+            if click_then_confirm(hwnd, profile, min_score) {
+                return true;
+            }
+            return profile.accept_click_without_uia;
         }
     }
 
-    let _ = crate::keyboard::focus_window(hwnd);
-    std::thread::sleep(Duration::from_millis(60));
-    if click_composer_anchor(hwnd, profile.composer_anchor) {
-        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
-        if uia_focus_chat_input(hwnd) {
-            return true;
-        }
-        if profile.accept_click_without_uia {
-            return true;
-        }
+    if !profile.accept_click_without_uia && click_then_confirm(hwnd, profile, min_score) {
+        return true;
     }
 
     false
+}
+
+#[cfg(windows)]
+fn click_then_confirm(
+    hwnd: winapi::shared::windef::HWND,
+    profile: &AppChatProfile,
+    min_score: i32,
+) -> bool {
+    if !click_composer_anchor(hwnd, profile.composer_anchor) {
+        return false;
+    }
+    std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+    // Keep click focus for Electron composers; a follow-up UIA SetFocus often displaces it.
+    if profile.accept_click_without_uia {
+        return true;
+    }
+    uia_focus_chat_input(hwnd, min_score)
 }
 
 #[cfg(windows)]
@@ -479,7 +498,7 @@ fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
 }
 
 #[cfg(windows)]
-fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND) -> bool {
+fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
     use windows::core::VARIANT;
     use windows::Win32::Foundation::HWND as WinHwnd;
     use windows::Win32::System::Com::{
@@ -489,8 +508,6 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND) -> bool {
         CUIAutomation, IUIAutomation, IUIAutomationElement, TreeScope_Descendants,
         UIA_ControlTypePropertyId, UIA_DocumentControlTypeId, UIA_EditControlTypeId,
     };
-
-    const MIN_SCORE: i32 = 20;
 
     unsafe {
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
@@ -532,12 +549,10 @@ fn uia_focus_chat_input(hwnd: winapi::shared::windef::HWND) -> bool {
             }
         }
 
-        let Some((element, score)) = best.filter(|(_, score)| *score >= MIN_SCORE) else {
+        let Some((element, score)) = best.filter(|(_, score)| *score >= min_score) else {
             return false;
         };
-        if score < MIN_SCORE {
-            return false;
-        }
+        let _ = score;
         element.SetFocus().is_ok()
     }
 }
@@ -645,7 +660,7 @@ pub fn run_for_custom_rule(
     }
 
     let app = window.app_handle();
-    let _hide_guard = MainWindowHideGuard::maybe_hide(&app, 200);
+    let _hide_guard = MainWindowHideGuard::maybe_hide(&app);
 
     let (hwnd, freshly_launched) = ensure_custom_rule_window(rule)
         .ok_or(("custom".to_string(), AppChatWorkflowError::NotFound))?;

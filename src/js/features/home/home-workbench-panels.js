@@ -67,23 +67,37 @@
 
   function wakePhrases(vm){
     var out=[];
+    var seen={};
+    function push(p){
+      var clean=String(p||'').trim();
+      if(!clean||seen[clean]) return;
+      if(/^[\?？.\-_]+$/.test(clean)) return;
+      seen[clean]=true;
+      out.push(clean);
+    }
     var m=vm&&vm.m;
     if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)){
-      m.voiceOverride.wakePhrases.forEach(function(p){
-        var clean=String(p||'').trim();
-        if(clean) out.push(clean);
+      m.voiceOverride.wakePhrases.forEach(push);
+    }
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    if(cfg&&Array.isArray(cfg.mappings)){
+      cfg.mappings.forEach(function(map){
+        if(!map||!map.enabled) return;
+        if(!Array.isArray(map.acousticVoiceCommands)) return;
+        map.acousticVoiceCommands.forEach(function(cmd){
+          if(!cmd||cmd.enabled===false) return;
+          push(cmd.displayText);
+          push(cmd.label);
+        });
       });
     }
-    if(out.length) return out.slice(0,6);
-    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    if(out.length>=6) return out.slice(0,6);
     if(!cfg) return out;
     var sapi=cfg.voiceSapi||{};
     var vosk=cfg.voiceVosk||{};
-    var list=(sapi.phrases||vosk.phrases||[]).slice();
-    list.forEach(function(p){
-      var clean=String(p||'').trim();
-      if(clean) out.push(clean);
-    });
+    var kws=cfg.voiceKws||cfg.voice_kws||{};
+    var list=(sapi.phrases||vosk.phrases||kws.phrases||[]).slice();
+    list.forEach(push);
     return out.slice(0,6);
   }
 

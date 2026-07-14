@@ -34,6 +34,14 @@
     function findById(id){
       return id&&Array.isArray(cfg.mappings)?cfg.mappings.find(function(m){ return m.id===id; }):null;
     }
+    // App-scenario voice/keys edit: always bind to the scenario mapping being edited.
+    var scenarioEditId=global.OneToneState.ui&&global.OneToneState.ui.habitScenarioReturnId;
+    if(scenarioEditId!=null&&String(scenarioEditId).trim()){
+      var scenarioMapping=findById(String(scenarioEditId).trim());
+      if(scenarioMapping){
+        return {id:scenarioMapping.id,name:resolveHabitDisplayName(scenarioMapping),mapping:scenarioMapping};
+      }
+    }
     var uiEdit=global.OneToneState.ui&&global.OneToneState.ui.voiceEditSchemeId;
     if(uiEdit!=null&&String(uiEdit).trim()){
       var editMapping=findById(String(uiEdit).trim());
@@ -176,6 +184,18 @@
     return btn?(btn.getAttribute('data-phrase')||'').trim():'';
   }
 
+  function sanitizePhrase(s){
+    s=String(s||'').trim();
+    if(!s) return '';
+    if(/^[\?？.\-_]+$/.test(s)) return '';
+    if(s==='[unk]'||s==='[UNK]') return '';
+    return s;
+  }
+
+  function sanitizePhraseList(arr){
+    return Array.isArray(arr)?arr.map(function(p){ return sanitizePhrase(p); }).filter(Boolean):[];
+  }
+
   function resolveDisplayWakePhrase(vm){
     if(vm.loading) return {zh:'',en:'',display:t('homeLiveLoading')};
     var zh='';
@@ -206,8 +226,9 @@
     var display='';
     if(vm.mode==='vosk'&&lang==='en'&&(en||zh)) display=en||zh;
     else display=zh||en||'';
+    display=sanitizePhrase(display);
     if(!display) display=t('voiceChipWakeUnset');
-    return {zh:zh,en:en,display:display,lang:lang};
+    return {zh:sanitizePhrase(zh),en:sanitizePhrase(en),display:display,lang:lang};
   }
 
   function build(loading){
@@ -221,7 +242,7 @@
     const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
     const habit=resolveActiveHabit();
     const mapping=habit.mapping;
-    const wakePhrase=summary?summary.wakePhrase:hooks().homeVoiceWakePhrase();
+    const wakePhrase=summary?sanitizePhrase(summary.wakePhrase):sanitizePhrase(hooks().homeVoiceWakePhrase());
     const autoSendEnabled=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
     const autoSendDelayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
     const autoSendKey=String(endSnap.commitKey||endCfg.commitKey||endCfg.commit_key||'Enter').trim()||'Enter';
@@ -261,6 +282,8 @@
     resolveScopeSummary:resolveScopeSummary,
     resolveSchemeDisplayName:resolveSchemeDisplayName,
     resolveDisplayWakePhrase:resolveDisplayWakePhrase,
+    sanitizePhrase:sanitizePhrase,
+    sanitizePhraseList:sanitizePhraseList,
     resolveShortcutChipLabel:resolveShortcutChipLabel,
     resolveFinishChipLabel:resolveFinishChipLabel,
     firstSelectedPhrase:firstSelectedPhrase

@@ -376,11 +376,29 @@ fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     }
 }
 
+fn cfg_has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
+    cfg.mappings.iter().any(|m| {
+        m.acoustic_voice_commands
+            .iter()
+            .any(|c| c.enabled && !c.samples.is_empty())
+    })
+}
+
+/// SAPI cannot publish AudioFrameBus PCM. When acoustic scenario commands exist,
+/// prefer Vosk so matching + Chinese summon phrases both work.
+fn prefer_vosk_for_acoustic(cfg: &VoiceConfig, desired: DesiredVoiceEngine) -> DesiredVoiceEngine {
+    if desired == DesiredVoiceEngine::Sapi && cfg_has_enabled_acoustic_commands(cfg) {
+        DesiredVoiceEngine::Vosk
+    } else {
+        desired
+    }
+}
+
 pub fn idle_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     let Some(mapping) = cfg.find_mapping_by_id(&cfg.active_scene_id) else {
-        return global_desired_voice_engine(cfg);
+        return prefer_vosk_for_acoustic(cfg, global_desired_voice_engine(cfg));
     };
-    effective_desired_engine(cfg, mapping)
+    prefer_vosk_for_acoustic(cfg, effective_desired_engine(cfg, mapping))
 }
 
 pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> DesiredVoiceEngine {
@@ -390,14 +408,20 @@ pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> De
         .and_then(|o| o.engine.as_ref())
     {
         match raw.trim().to_ascii_lowercase().as_str() {
-            "vosk" | "pro" | "advanced" => return DesiredVoiceEngine::Vosk,
-            "sapi" | "lite" => return DesiredVoiceEngine::Sapi,
-            "kws" | "keyword" | "keywords" => return DesiredVoiceEngine::Kws,
+            "vosk" | "pro" | "advanced" => {
+                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Vosk)
+            }
+            "sapi" | "lite" => {
+                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Sapi)
+            }
+            "kws" | "keyword" | "keywords" => {
+                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Kws)
+            }
             "none" | "off" => return DesiredVoiceEngine::None,
             _ => {}
         }
     }
-    global_desired_voice_engine(cfg)
+    prefer_vosk_for_acoustic(cfg, global_desired_voice_engine(cfg))
 }
 
 pub fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) -> String {
@@ -596,7 +620,8 @@ mod tests {
     use super::*;
     use crate::config::{
         default_voice_end_phrases_en, normalize_voice_override, vosk_preset_default_phrases,
-        MappingEntry, TriggerMode, VoiceConfig, VoiceOverride,
+        AcousticVoiceCommand, AcousticVoiceCommandQualitySignals, AcousticVoiceCommandSample,
+        MappingEntry, TriggerMode, VoiceConfig, VoiceOverride, ACOUSTIC_FEATURE_DIMS,
     };
 
     fn base_cfg() -> VoiceConfig {
@@ -639,6 +664,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         id.to_string()
     }
@@ -850,7 +876,11 @@ mod tests {
         }
         let plan = kws_keyword_plan_for_cfg(&cfg, 20);
         assert!(plan.included.contains(&"打开 Cursor".to_string()));
-        assert!(plan.included.iter().any(|p| p.contains("开始") || p.contains("输入")));
+        assert!(
+            plan.included
+                .iter()
+                .any(|p| p.contains("开始") || p.contains("输入"))
+        );
     }
 
     #[test]
@@ -1027,5 +1057,53 @@ mod tests {
             .iter()
             .any(|m| m.id == cfg.active_scene_id && m.enabled));
         assert!(cfg.mappings.iter().all(|m| m.voice_override.is_none()));
+    }
+
+    #[test]
+    fn acoustic_commands_upgrade_sapi_idle_engine_to_vosk() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_vosk.enabled = false;
+        cfg.voice_sapi.enabled = true;
+        cfg.voice_kws.enabled = false;
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Sapi);
+
+        let active = cfg.active_scene_id.clone();
+        let frames = 20u32;
+        let feature_len = (frames as usize) * (ACOUSTIC_FEATURE_DIMS as usize);
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == active) {
+            m.acoustic_voice_commands = vec![AcousticVoiceCommand {
+                id: "ac1".into(),
+                version: 1,
+                kind: "scenario-acoustic-activate".into(),
+                scenario_id: active.clone(),
+                label: "开始编程".into(),
+                display_text: "开始编程".into(),
+                samples: vec![AcousticVoiceCommandSample {
+                    id: "s1".into(),
+                    duration_ms: 800,
+                    feature: vec![0.1; feature_len],
+                    feature_kind: "mfcc-v1".into(),
+                    feature_frames: frames,
+                    feature_dims: ACOUSTIC_FEATURE_DIMS,
+                    sample_rate: 16000,
+                    quality_signals: Some(AcousticVoiceCommandQualitySignals {
+                        has_speech: true,
+                        too_short: false,
+                        too_long: false,
+                        sample_agreement: 0.9,
+                    }),
+                    created_at: 1,
+                }],
+                threshold: 0.78,
+                margin: 0.08,
+                quality: "good".into(),
+                activation_scope: "global".into(),
+                app_boost: true,
+                enabled: true,
+                created_at: 1,
+                updated_at: 1,
+            }];
+        }
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Vosk);
     }
 }

@@ -32,7 +32,7 @@
     var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
     if(eng==='vosk') return 'vosk';
     if(eng==='sapi') return 'sapi';
-    return 'sapi';
+    return (global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':'sapi';
   }
 
   function getActiveVoskPresetRoots(lang){

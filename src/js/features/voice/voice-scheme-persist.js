@@ -301,6 +301,12 @@
   }
 
   function resolveVoiceScopeMapping(){
+    var coreApi=core();
+    var scenarioId=String(ui().habitScenarioReturnId||'').trim();
+    if(scenarioId&&coreApi&&coreApi.byId){
+      var scenarioM=coreApi.byId(scenarioId);
+      if(scenarioM) return scenarioM;
+    }
     var vmApi=global.OneToneVoiceSettingsViewModel;
     var vm=vmApi&&vmApi.build?vmApi.build():null;
     if(global.OneToneVoicePageHeaderRender&&global.OneToneVoicePageHeaderRender.resolveScopeMapping){
@@ -309,15 +315,15 @@
     }
     var m=resolveVoiceEditMapping();
     if(m) return m;
-    if(!core()) return null;
+    if(!coreApi) return null;
     var cfg=state().config||{};
     var selId=String(state().selectedMappingId||'').trim();
-    if(selId&&core().byId){
-      var sel=core().byId(selId);
+    if(selId&&coreApi.byId){
+      var sel=coreApi.byId(selId);
       if(sel) return sel;
     }
     var activeId=String(cfg.activeSceneId||'').trim();
-    if(activeId&&core().byId) return core().byId(activeId)||null;
+    if(activeId&&coreApi.byId) return coreApi.byId(activeId)||null;
     var mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
     return mappings.length?mappings[0]:null;
   }
@@ -347,6 +353,10 @@
     if(!m) return false;
     var rules=global.OneToneAppBehaviorRules;
     var presets=global.OneToneAppVoicePresets;
+    var scenarioEditId=global.OneToneState.ui&&global.OneToneState.ui.habitScenarioReturnId
+      ?String(global.OneToneState.ui.habitScenarioReturnId).trim()
+      :'';
+    var editingScenario=!!(scenarioEditId&&m.id===scenarioEditId);
     if(opts.ruleId){
       var ruleId=String(opts.ruleId||'').trim();
       if(!ruleId) return false;
@@ -355,6 +365,14 @@
       if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
     }else{
       var appId=opts.appId===undefined?'':String(opts.appId||'').trim();
+      // Scenario edit requires a bound app. Clearing would make "Save scenario" fail
+      // while chips still look selected via active context.
+      if(editingScenario&&!appId){
+        if(global.OneToneAppToast){
+          global.OneToneAppToast.show(t('habitScenarioSaveNeedApp'),'scheme');
+        }
+        return false;
+      }
       m.appTargetId=appId;
       if(appId){
         if(rules&&rules.ensurePrimaryAppRule) rules.ensurePrimaryAppRule(m,appId);
@@ -375,6 +393,9 @@
     touchUpdated(m);
     persistConfig();
     refreshVoiceSchemeSurfaces();
+    if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
+      global.OneToneHabitScenarioContextBanner.render();
+    }
     return true;
   }
 

@@ -138,9 +138,13 @@
     var scene=sc();
     if(!scene) return false;
     var ov=mapping.voiceOverride||null;
+    var hasEndOverride=!!(ov&&ov.endPhrases&&typeof ov.endPhrases==='object'&&(
+      (Array.isArray(ov.endPhrases.zh)&&ov.endPhrases.zh.length)||
+      (Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length)
+    ));
     var hasOverride=!!(ov&&(
       (Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length)||
-      (ov.endPhrases&&(ov.endPhrases.zh||[]).length||(ov.endPhrases.en||[]).length)
+      hasEndOverride
     ));
     var hasAppScope=!!String(mapping.appTargetId||'').trim();
     if(!hasOverride&&!isVoiceOnly(mapping)&&!hasAppScope) return false;
@@ -157,13 +161,13 @@
     var wake=ov&&Array.isArray(ov.wakePhrases)&&ov.wakePhrases.length
       ?cloneList(ov.wakePhrases)
       :cloneList(scene.globalWakePhrases(cfg));
-    var globalEnd=scene.globalEndPhrases(cfg);
+    var globalEnd=scene.globalEndPhrases(cfg)||{zh:[],en:[]};
     var endZh=ov&&ov.endPhrases&&Array.isArray(ov.endPhrases.zh)&&ov.endPhrases.zh.length
       ?cloneList(ov.endPhrases.zh)
-      :cloneList(globalEnd.zh);
+      :cloneList(globalEnd.zh||[]);
     var endEn=ov&&ov.endPhrases&&Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length
       ?cloneList(ov.endPhrases.en)
-      :cloneList(globalEnd.en);
+      :cloneList(globalEnd.en||[]);
 
     if(mode==='sapi'){
       var sapi=cfg.voiceSapi||cfg.voice_sapi||(cfg.voiceSapi={});

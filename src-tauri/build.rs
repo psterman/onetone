@@ -96,6 +96,10 @@ fn main() {
         "cmd_coach_hud_get_state",
         "cmd_coach_hud_dismiss",
         "cmd_coach_hud_set_enabled",
+        "cmd_acoustic_voice_command_status",
+        "cmd_acoustic_voice_command_set_suspend",
+        "cmd_acoustic_voice_command_record_once",
+        "cmd_acoustic_voice_command_build_from_samples",
     ];
 
     tauri_build::try_build(

@@ -495,7 +495,7 @@
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     if(voskCfg.enabled) return 'vosk';
     if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()) return 'vosk';
-    return 'sapi';
+    return 'vosk';
   }
 
   function renderHomeVoiceSimpleLinks(linkIds){

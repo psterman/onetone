@@ -310,6 +310,20 @@
     return items;
   }
 
+  function countAcousticCommands(m){
+    if(!m||!Array.isArray(m.acousticVoiceCommands)) return 0;
+    var n=0;
+    for(var i=0;i<m.acousticVoiceCommands.length;i++){
+      var c=m.acousticVoiceCommands[i];
+      if(!c) continue;
+      var q=String(c.quality||'').trim();
+      if(q!=='good'&&q!=='ok') continue;
+      if(!Array.isArray(c.samples)||!c.samples.length) continue;
+      n+=1;
+    }
+    return n;
+  }
+
   function buildScenarioSavePreview(mapping,cfg,opts){
     opts=opts||{};
     cfg=cfg||{};
@@ -323,10 +337,11 @@
     var ov=m&&m.voiceOverride&&typeof m.voiceOverride==='object'?m.voiceOverride:{};
     var keysOverrideCount=m?countKeyOverrides(m,keyBaseline):0;
     var voiceOverrideCount=m?countVoiceOverrides(ov,voiceBaseline):0;
+    var acousticCommandCount=m?countAcousticCommands(m):0;
     var keysOverrides=m?buildKeyOverrideItems(m,keyBaseline,labels):[];
     var voiceOverrides=m?buildVoiceOverrideItems(ov,voiceBaseline,labels):[];
     var stateOverrides=m?buildStateOverrideItems(m,labels):[];
-    var savedChangeCount=keysOverrideCount+voiceOverrideCount+stateOverrides.length;
+    var savedChangeCount=keysOverrideCount+voiceOverrideCount+stateOverrides.length+acousticCommandCount;
     var saveKind='blocked';
     var canSave=false;
     var saveBlockReason='no_app';
@@ -359,13 +374,19 @@
       ok:true,
       tone:keysOverrideCount>0?'accent':'muted'
     });
+    var voiceChipLabel;
+    if(acousticCommandCount>0){
+      voiceChipLabel=(labels.chipVoiceAcoustic||'voice_acoustic').replace('{n}',String(acousticCommandCount));
+    }else if(voiceOverrideCount>0){
+      voiceChipLabel=(labels.chipVoiceOverride||'voice_override').replace('{n}',String(voiceOverrideCount));
+    }else{
+      voiceChipLabel=labels.chipVoiceInherit||'voice_inherit';
+    }
     statusChips.push({
       id:'voice',
-      label:voiceOverrideCount>0
-        ?(labels.chipVoiceOverride||'voice_override').replace('{n}',String(voiceOverrideCount))
-        :(labels.chipVoiceInherit||'voice_inherit'),
+      label:voiceChipLabel,
       ok:true,
-      tone:voiceOverrideCount>0?'accent':'muted'
+      tone:(acousticCommandCount>0||voiceOverrideCount>0)?'accent':'muted'
     });
     var saveLabel;
     if(!canSave) saveLabel=labels.chipSaveBlocked||'save_blocked';
@@ -385,6 +406,7 @@
       stateOverrides:stateOverrides,
       keysOverrideCount:keysOverrideCount,
       voiceOverrideCount:voiceOverrideCount,
+      acousticCommandCount:acousticCommandCount,
       saveKind:saveKind,
       canSave:canSave,
       saveBlockReason:saveBlockReason,

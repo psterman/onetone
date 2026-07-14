@@ -19,7 +19,8 @@
     {
       id:'writing',
       nameKey:'keysTemplateWriting',
-      engine:'sapi',
+      engine:'vosk',
+      modelPreset:'cn-light',
       wakePhrases:['开始听写'],
       endPhrases:{zh:[],en:[]}
     },

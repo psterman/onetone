@@ -36,6 +36,16 @@ pub fn voice_sapi_stop(state: &AppState) {
     *state.voice_sapi_state.lock() = "stopped".into();
 }
 
+/// Release the default capture device for a short external recording (e.g. acoustic calibration).
+pub fn pause_for_external_capture(state: &AppState) -> bool {
+    if state.voice_sapi.lock().is_none() {
+        return false;
+    }
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    voice_sapi_stop(state);
+    true
+}
+
 fn tick_cooldown_state(state: &AppState) {
     let mut current = state.voice_sapi_state.lock();
     if *current == "error" || *current == "stopped" {

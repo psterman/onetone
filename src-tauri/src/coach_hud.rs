@@ -179,7 +179,25 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
                 HUD_HEIGHT
             };
             let _ = hud_win.set_size(Size::Logical(LogicalSize::new(HUD_WIDTH, height)));
-            let _ = hud_win.show();
+            // Prefer no-activate show so the coach HUD never steals focus from the target app.
+            #[cfg(windows)]
+            {
+                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                if let Ok(handle) = hud_win.window_handle() {
+                    if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                        let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
+                        let _ = crate::keyboard::show_window_no_activate(hwnd);
+                    } else {
+                        let _ = hud_win.show();
+                    }
+                } else {
+                    let _ = hud_win.show();
+                }
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = hud_win.show();
+            }
         } else {
             let _ = hud_win.hide();
         }
@@ -275,6 +293,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: ov,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         }
     }
 

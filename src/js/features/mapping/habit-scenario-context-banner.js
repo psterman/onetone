@@ -144,6 +144,7 @@
       chipKeysOverride:t('habitScenarioChipKeysOverride'),
       chipVoiceInherit:t('habitScenarioChipVoiceInherit'),
       chipVoiceOverride:t('habitScenarioChipVoiceOverride'),
+      chipVoiceAcoustic:t('habitScenarioChipVoiceAcoustic'),
       chipSaveReady:t('habitScenarioChipSaveReady'),
       chipSaveEmpty:t('habitScenarioChipSaveEmpty'),
       chipSaveBlocked:t('habitScenarioChipSaveBlocked'),
@@ -178,9 +179,14 @@
     var keysLbl=(preview&&preview.keysOverrideCount>0)
       ?t('habitScenarioStatusKeysOverride').replace('{n}',String(preview.keysOverrideCount))
       :t('habitScenarioStatusKeysInherit');
-    var voiceLbl=(preview&&preview.voiceOverrideCount>0)
-      ?t('habitScenarioStatusVoiceOverride').replace('{n}',String(preview.voiceOverrideCount))
-      :t('habitScenarioStatusVoiceInherit');
+    var voiceLbl;
+    if(preview&&preview.acousticCommandCount>0){
+      voiceLbl=t('habitScenarioStatusVoiceAcoustic').replace('{n}',String(preview.acousticCommandCount));
+    }else if(preview&&preview.voiceOverrideCount>0){
+      voiceLbl=t('habitScenarioStatusVoiceOverride').replace('{n}',String(preview.voiceOverrideCount));
+    }else{
+      voiceLbl=t('habitScenarioStatusVoiceInherit');
+    }
     return t('habitScenarioStatusSummary')
       .replace('{app}',appDisplayName(m.appTargetId)||m.appTargetId||'—')
       .replace('{keys}',keysLbl)
@@ -264,6 +270,9 @@
     if(global.OneToneHabitScenarioVoiceCommand){
       if(global.OneToneHabitScenarioVoiceCommand.bindEvents) global.OneToneHabitScenarioVoiceCommand.bindEvents({});
       if(global.OneToneHabitScenarioVoiceCommand.render) global.OneToneHabitScenarioVoiceCommand.render();
+    }
+    if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncScenarioVoiceEditor){
+      global.OneToneVoiceStepWake.syncScenarioVoiceEditor();
     }
   }
 

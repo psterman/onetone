@@ -43,6 +43,7 @@ tar = "0.4"
 bzip2 = "0.4"
 pinyin = "0.10"
 onetone-logic = { path = "crates/onetone-logic" }
+rustfft = "6.2"
 sherpa-onnx = { version = "1.13.4", optional = true }
 
 [target.'cfg(windows)'.dependencies]

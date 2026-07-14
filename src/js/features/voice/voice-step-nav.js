@@ -107,6 +107,14 @@
     var V=global.OneToneVoiceSettingsViewModel;
     if(!V||!vm) return {wake:'',recognize:'',send:''};
     var wakeHint=vm.loading?t('homeLiveLoading'):V.resolveDisplayWakePhrase(vm).display;
+    var wake=global.OneToneVoiceStepWake;
+    if(!vm.loading&&wake&&wake.isScenarioVoiceEdit&&wake.isScenarioVoiceEdit()){
+      var cmd=global.OneToneHabitScenarioVoiceCommand;
+      if(cmd&&cmd.feedbackInfo){
+        var info=cmd.feedbackInfo();
+        if(info&&info.wakeHint) wakeHint=info.wakeHint;
+      }
+    }
     var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
     if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
       var preset=global.OneToneVoiceWake.currentVoskPreset();

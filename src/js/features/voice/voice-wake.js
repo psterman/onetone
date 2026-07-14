@@ -9,6 +9,10 @@
   function voskOnlyUi(){
     return !!(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.isVoskOnlyUi());
   }
+  /** Product default: Vosk (SAPI cannot feed PCM for scenario acoustic matching). */
+  function defaultUiVoiceMode(){
+    return voskOnlyUi()?'vosk':'sapi';
+  }
   var voiceWakeExpandedMode='vosk';
   var voiceModeSwitchSeq=0;
   var voiceModeSwitchInFlight=false;
@@ -191,7 +195,7 @@
   }
 
   function renderSapiHeardInline(w, mode){
-    const previewMode=mode==='off'?(voiceWakeExpandedMode||'sapi'):mode;
+    const previewMode=mode==='off'?(voiceWakeExpandedMode||defaultUiVoiceMode()):mode;
     if(previewMode!=='sapi'&&mode!=='sapi'){
       updateSapiHeardInline('', '');
       return;
@@ -233,7 +237,7 @@
     const w=hooks().voiceUiSnapshot.wake||{};
     const mode=currentVoiceMode();
     const res=mode==='vosk'?w.vosk:(mode==='sapi'?w.sapi:null);
-    const previewMode=mode==='off'?(voiceWakeExpandedMode||'sapi'):mode;
+    const previewMode=mode==='off'?(voiceWakeExpandedMode||defaultUiVoiceMode()):mode;
     if(!res||!res.enabled){
       stateEl.textContent=voiceWakeStateLabel('stopped');
       const offKey=previewMode==='vosk'?'voiceVoskOff':'voiceSapiOff';
@@ -355,9 +359,13 @@
 
   function kwsHeardDisplayText(res){
     res=res||{};
-    const hit=String(res.lastDetectedPhrase||res.lastTrigger||'').trim();
+    var sanitize=global.OneToneVoiceSettingsViewModel&&global.OneToneVoiceSettingsViewModel.sanitizePhrase;
+    function clean(s){
+      return sanitize?sanitize(s):String(s||'').trim();
+    }
+    const hit=clean(res.lastDetectedPhrase||res.lastTrigger||'');
     if(hit) return hit;
-    const partial=String(res.lastPartial||'').trim();
+    const partial=clean(res.lastPartial||'');
     if(partial&&/[\u3400-\u9fff]/.test(partial)) return partial;
     return '';
   }
@@ -371,12 +379,12 @@
     if(voiceWakeExpandedMode==='kws'||voiceWakeExpandedMode==='vosk'||voiceWakeExpandedMode==='sapi'){
       return voiceWakeExpandedMode;
     }
-    return voskOnlyUi()?'vosk':'sapi';
+    return defaultUiVoiceMode();
   }
 
   function renderVoiceEngineTabs(){
     let tabMode=resolveActiveTabMode();
-    if(tabMode==='off'||tabMode==='none') tabMode='sapi';
+    if(tabMode==='off'||tabMode==='none') tabMode=defaultUiVoiceMode();
     const grid=$('voiceRecognizeSourceGrid');
     if(grid){
       grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
@@ -522,7 +530,7 @@
         snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
       }
       const runtime=resolveRuntimeEngine(snap&&snap.wake);
-      voiceWakeExpandedMode=runtime!=='off'?runtime:(voskOnlyUi()?'vosk':'sapi');
+      voiceWakeExpandedMode=runtime!=='off'?runtime:defaultUiVoiceMode();
       syncVoiceWakeExpandedUi();
       renderVoiceEngineTabs();
       applyHomeVoiceModeSwitchUi();
@@ -939,24 +947,6 @@
         if(sapiRes||voskRes||kwsRes){
           snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
         }
-        try{
-          var matcher=global.OneToneVoiceCommandMatcher;
-          if(matcher&&typeof matcher.onFinalTranscript==='function'&&!matcher.isSuspended()){
-            var finalText='';
-            if(voskRes&&String(voskRes.lastFinal||'').trim()) finalText=String(voskRes.lastFinal).trim();
-            else if(sapiRes&&String(sapiRes.lastHeard||'').trim()) finalText=String(sapiRes.lastHeard).trim();
-            if(finalText){
-              var fp='vc:'+finalText;
-              if(fp!==(global.__vp_voice_cmd_last_fp__||'')){
-                global.__vp_voice_cmd_last_fp__=fp;
-                matcher.onFinalTranscript(finalText,{
-                  config:global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config,
-                  engine:voskRes&&voskRes.lastFinal?'vosk':(sapiRes?'sapi':'')
-                });
-              }
-            }
-          }
-        }catch(_vcErr){}
         const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(kwsRes&&[kwsRes.state,kwsRes.lastPartial,kwsRes.lastDetectedPhrase,kwsRes.lastDetectedKind,kwsRes.lastTrigger,kwsRes.lastSkip].join('|')||'')+'|'+(endRes&&endRes.state||'');
         if(wakeFp===lastVoicePollWakeFp&&!ui().drawerOpen){
           return;
@@ -1249,7 +1239,7 @@
     if(global.OneToneVoiceWakePresets){
       return global.OneToneVoiceWakePresets.getSelectedPhrases();
     }
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     if(mode==='vosk'){
       return presetPhrasesIn('#voiceVoskPresetsCn').concat(presetPhrasesIn('#voiceVoskPresetsEn'));
     }
@@ -1263,7 +1253,7 @@
 
   function currentWakePhraseList(){
     const cfg=state().config||{};
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     const pending=pendingWakePhrases();
     if(pending&&pending.length) return pending;
     if(mode==='kws'){
@@ -1291,7 +1281,7 @@
   }
 
   function wakeCatalogForLang(lang,mode){
-    mode=mode||voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    mode=mode||voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     var presets=global.OneToneVoiceWakePresets;
     if(presets&&presets.getPresetRoots){
       var roots=presets.getPresetRoots(mode,lang);
@@ -1323,7 +1313,7 @@
   function renderWakePhraseTags(){
     var pc=global.OneToneVoicePhraseCustom;
     if(!pc||!pc.renderPhraseTags) return;
-    var mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    var mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     var lang=global.__vp_voice_wake_lang__||'zh';
     var active=currentWakePhraseList();
     activeAppScopeSummonPhrases().forEach(function(p){
@@ -1357,7 +1347,7 @@
   function applyWakePhrasesLocally(next){
     next=normalizePhraseList(next);
     if(!next.length) next=['开始输入'];
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     if(mode==='vosk'){
       if(state().config){
         const cfg=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
@@ -1394,7 +1384,7 @@
     const next=voiceWakePresetSavePending;
     if(!next) return Promise.resolve();
     const saveSeq=++voiceWakePresetSaveSeq;
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     let invoke;
     if(mode==='vosk'){
       invoke=global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next});
@@ -1483,7 +1473,7 @@
   function renderWakeCustomPhrases(){
     renderWakePhraseTags();
     const block=$('voiceWakeCustomBlock');
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     if(block) block.hidden=mode==='off';
   }
 
@@ -1503,7 +1493,7 @@
       if(hooks().toast) hooks().toast(t('voicePhraseAlreadyAdded'));
       return Promise.resolve();
     }
-    const mode=voiceWakeExpandedMode||currentVoiceMode()||'sapi';
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     if(mode==='vosk'&&phraseHasLatinLetters(phrase)&&!isEnglishVoskPreset(backendVoiceVoskPreset())){
       if(hooks().toast) hooks().toast(t('voiceWakeMixedLangHint'));
     }

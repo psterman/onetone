@@ -15,7 +15,7 @@ pub enum TriggerMode {
     #[default]
     #[serde(alias = "toggle")]
     Tap,
-    /// Each keydown fires once (UI: 每按即发). Formerly named `Hold`.
+    /// Each keydown fires once (UI: ???????). Formerly named `Hold`.
     #[serde(alias = "hold")]
     PerPress,
     LongPress,
@@ -582,26 +582,35 @@ fn default_voice_command_scope() -> String {
 pub fn voice_command_summon_phrases(mapping: &MappingEntry) -> Vec<String> {
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
+    let mut push = |raw: &str| {
+        let text = raw.trim();
+        if text.is_empty() || text == "我的语音命令" {
+            return;
+        }
+        if text.chars().all(|c| matches!(c, '?' | '？' | '.' | '-' | '_')) {
+            return;
+        }
+        if seen.insert(text.to_string()) {
+            out.push(text.to_string());
+        }
+    };
     for cmd in &mapping.voice_commands {
         if !cmd.enabled {
             continue;
         }
-        let mut phrases = Vec::new();
-        let canon = cmd.canonical_phrase.trim();
-        if !canon.is_empty() {
-            phrases.push(canon.to_string());
-        }
+        push(&cmd.canonical_phrase);
         for alias in cmd.aliases.iter().take(2) {
-            let a = alias.trim();
-            if !a.is_empty() {
-                phrases.push(a.to_string());
-            }
+            push(alias);
         }
-        for phrase in phrases {
-            if seen.insert(phrase.clone()) {
-                out.push(phrase);
-            }
+    }
+    // Acoustic labels are text names for management and KWS/Vosk summon from the home page.
+    // Acoustic sound matching stays separate on AudioFrameBus.
+    for cmd in &mapping.acoustic_voice_commands {
+        if !cmd.enabled {
+            continue;
         }
+        push(&cmd.display_text);
+        push(&cmd.label);
     }
     out
 }
@@ -620,6 +629,293 @@ pub fn rekey_voice_commands_for_mapping(
             next
         })
         .collect()
+}
+
+/// MFCC feature dimensions for `featureKind: "mfcc-v1"`.
+pub const ACOUSTIC_FEATURE_DIMS: u32 = 13;
+/// Max MFCC frames per sample (~2s @ 10ms hop).
+pub const ACOUSTIC_MAX_FEATURE_FRAMES: u32 = 200;
+const ACOUSTIC_MAX_SAMPLES_PER_COMMAND: usize = 3;
+const ACOUSTIC_MAX_COMMANDS_PER_MAPPING: usize = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AcousticVoiceCommandQualitySignals {
+    #[serde(rename = "hasSpeech", default)]
+    pub has_speech: bool,
+    #[serde(rename = "tooShort", default)]
+    pub too_short: bool,
+    #[serde(rename = "tooLong", default)]
+    pub too_long: bool,
+    #[serde(rename = "sampleAgreement", default)]
+    pub sample_agreement: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AcousticVoiceCommandSample {
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "durationMs", default)]
+    pub duration_ms: u32,
+    #[serde(default)]
+    pub feature: Vec<f32>,
+    #[serde(rename = "featureKind", default = "default_acoustic_feature_kind")]
+    pub feature_kind: String,
+    #[serde(rename = "featureFrames", default)]
+    pub feature_frames: u32,
+    #[serde(rename = "featureDims", default = "default_acoustic_feature_dims")]
+    pub feature_dims: u32,
+    #[serde(rename = "sampleRate", default = "default_acoustic_sample_rate")]
+    pub sample_rate: u32,
+    #[serde(rename = "qualitySignals", default, skip_serializing_if = "Option::is_none")]
+    pub quality_signals: Option<AcousticVoiceCommandQualitySignals>,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: u64,
+}
+
+fn default_acoustic_feature_kind() -> String {
+    "mfcc-v1".into()
+}
+fn default_acoustic_feature_dims() -> u32 {
+    ACOUSTIC_FEATURE_DIMS
+}
+fn default_acoustic_sample_rate() -> u32 {
+    16000
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AcousticVoiceCommand {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default = "default_acoustic_command_version")]
+    pub version: u32,
+    #[serde(default = "default_acoustic_command_kind")]
+    pub kind: String,
+    #[serde(rename = "scenarioId", default)]
+    pub scenario_id: String,
+    #[serde(default = "default_acoustic_command_label")]
+    pub label: String,
+    #[serde(rename = "displayText", default)]
+    pub display_text: String,
+    #[serde(default)]
+    pub samples: Vec<AcousticVoiceCommandSample>,
+    #[serde(default = "default_acoustic_command_threshold")]
+    pub threshold: f64,
+    #[serde(default = "default_acoustic_command_margin")]
+    pub margin: f64,
+    #[serde(default = "default_acoustic_command_quality")]
+    pub quality: String,
+    #[serde(rename = "activationScope", default = "default_acoustic_command_scope")]
+    pub activation_scope: String,
+    #[serde(rename = "appBoost", default = "default_true")]
+    pub app_boost: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: u64,
+    #[serde(rename = "updatedAt", default)]
+    pub updated_at: u64,
+}
+
+fn default_acoustic_command_version() -> u32 {
+    1
+}
+fn default_acoustic_command_kind() -> String {
+    "scenario-acoustic-activate".into()
+}
+fn default_acoustic_command_label() -> String {
+    "我的语音命令".into()
+}
+fn default_acoustic_command_threshold() -> f64 {
+    0.78
+}
+fn default_acoustic_command_margin() -> f64 {
+    0.08
+}
+fn default_acoustic_command_quality() -> String {
+    "good".into()
+}
+fn default_acoustic_command_scope() -> String {
+    "global".into()
+}
+
+pub fn new_acoustic_voice_command_id() -> String {
+    format!("acmd_{}", new_mapping_id())
+}
+
+pub fn new_acoustic_voice_sample_id() -> String {
+    format!("sample_{}", new_mapping_id())
+}
+
+fn acoustic_feature_values_valid(feature: &[f32]) -> bool {
+    !feature.is_empty() && feature.iter().all(|v| v.is_finite())
+}
+
+fn normalize_acoustic_quality_signals(
+    raw: Option<AcousticVoiceCommandQualitySignals>,
+) -> Option<AcousticVoiceCommandQualitySignals> {
+    raw.map(|qs| AcousticVoiceCommandQualitySignals {
+        has_speech: qs.has_speech,
+        too_short: qs.too_short,
+        too_long: qs.too_long,
+        sample_agreement: if qs.sample_agreement.is_finite() {
+            qs.sample_agreement
+        } else {
+            0.0
+        },
+    })
+}
+
+/// Normalize and validate one acoustic sample; returns None if invalid.
+pub fn normalize_acoustic_voice_command_sample(
+    mut sample: AcousticVoiceCommandSample,
+) -> Option<AcousticVoiceCommandSample> {
+    let id = sample.id.trim();
+    sample.id = if id.is_empty() {
+        new_acoustic_voice_sample_id()
+    } else {
+        id.to_string()
+    };
+    let kind = sample.feature_kind.trim();
+    sample.feature_kind = if kind.is_empty() {
+        default_acoustic_feature_kind()
+    } else {
+        kind.to_string()
+    };
+    if sample.feature_kind != "mfcc-v1" {
+        return None;
+    }
+    let dims = if sample.feature_dims == 0 {
+        ACOUSTIC_FEATURE_DIMS
+    } else {
+        sample.feature_dims
+    };
+    if dims != ACOUSTIC_FEATURE_DIMS {
+        return None;
+    }
+    sample.feature_dims = dims;
+    let frames = sample.feature_frames;
+    if frames == 0 || frames > ACOUSTIC_MAX_FEATURE_FRAMES {
+        return None;
+    }
+    let expected_len = (frames as usize).saturating_mul(dims as usize);
+    if sample.feature.len() != expected_len || !acoustic_feature_values_valid(&sample.feature) {
+        return None;
+    }
+    if sample.sample_rate == 0 {
+        sample.sample_rate = default_acoustic_sample_rate();
+    }
+    if sample.created_at == 0 {
+        sample.created_at = now_ms();
+    }
+    sample.quality_signals = normalize_acoustic_quality_signals(sample.quality_signals);
+    Some(sample)
+}
+
+/// Normalize acoustic commands for a mapping. Drops weak/invalid entries; MVP keeps one command.
+pub fn normalize_acoustic_voice_commands(
+    commands: Vec<AcousticVoiceCommand>,
+    scenario_id: &str,
+) -> Vec<AcousticVoiceCommand> {
+    let sid = scenario_id.trim();
+    let mut out = Vec::new();
+    for mut cmd in commands {
+        let quality = cmd.quality.trim();
+        if quality != "good" && quality != "ok" {
+            continue;
+        }
+        let samples: Vec<AcousticVoiceCommandSample> = cmd
+            .samples
+            .into_iter()
+            .filter_map(normalize_acoustic_voice_command_sample)
+            .take(ACOUSTIC_MAX_SAMPLES_PER_COMMAND)
+            .collect();
+        if samples.is_empty() {
+            continue;
+        }
+        let id = cmd.id.trim();
+        cmd.id = if id.is_empty() {
+            new_acoustic_voice_command_id()
+        } else {
+            id.to_string()
+        };
+        cmd.version = if cmd.version == 0 { 1 } else { cmd.version };
+        let kind = cmd.kind.trim();
+        cmd.kind = if kind.is_empty() {
+            default_acoustic_command_kind()
+        } else {
+            kind.to_string()
+        };
+        cmd.scenario_id = if cmd.scenario_id.trim().is_empty() {
+            sid.to_string()
+        } else {
+            cmd.scenario_id.trim().to_string()
+        };
+        let label = cmd.label.trim();
+        cmd.label = if label.is_empty() {
+            default_acoustic_command_label()
+        } else {
+            label.to_string()
+        };
+        cmd.display_text = cmd.display_text.trim().to_string();
+        cmd.samples = samples;
+        if !cmd.threshold.is_finite() {
+            cmd.threshold = default_acoustic_command_threshold();
+        }
+        if !cmd.margin.is_finite() {
+            cmd.margin = default_acoustic_command_margin();
+        }
+        cmd.quality = quality.to_string();
+        let scope = cmd.activation_scope.trim();
+        cmd.activation_scope = if scope == "foreground-app" {
+            "foreground-app".into()
+        } else {
+            default_acoustic_command_scope()
+        };
+        let now = now_ms();
+        if cmd.created_at == 0 {
+            cmd.created_at = now;
+        }
+        if cmd.updated_at == 0 {
+            cmd.updated_at = cmd.created_at;
+        }
+        out.push(cmd);
+        if out.len() >= ACOUSTIC_MAX_COMMANDS_PER_MAPPING {
+            break;
+        }
+    }
+    out
+}
+
+/// Rekey acoustic commands when duplicating a mapping.
+pub fn rekey_acoustic_voice_commands_for_mapping(
+    commands: &[AcousticVoiceCommand],
+    scenario_id: &str,
+) -> Vec<AcousticVoiceCommand> {
+    let normalized = normalize_acoustic_voice_commands(commands.to_vec(), scenario_id);
+    normalized
+        .into_iter()
+        .map(|mut cmd| {
+            cmd.id = new_acoustic_voice_command_id();
+            cmd.scenario_id = scenario_id.to_string();
+            cmd.samples = cmd
+                .samples
+                .into_iter()
+                .map(|mut s| {
+                    s.id = new_acoustic_voice_sample_id();
+                    s
+                })
+                .collect();
+            cmd.updated_at = now_ms();
+            cmd
+        })
+        .collect()
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 /// Persisted habit/scene row. Runtime display uses read-only [`crate::habit_profile::HabitProfile`] projection.
@@ -654,13 +950,13 @@ pub struct MappingEntry {
     pub cancel_enabled: bool,
     #[serde(rename = "autoEnterEnabled", default = "default_true")]
     pub auto_enter_enabled: bool,
-    /// 按下这些组合键时直接切换到此方案（可多个）。
+    /// ?????????????????????????????????????????????????
     #[serde(rename = "switchKeys", default)]
     pub switch_keys: Vec<String>,
-    /// 为 true 时不拦截物理启动键，恢复系统原生功能。
+    /// ? true ????????????????????????????????????????????
     #[serde(rename = "nativeKeyRestore", default)]
     pub native_key_restore: bool,
-    /// 录制时绑定的输入设备（Raw Input 路径）；空表示任意设备。
+    /// ?????????????????????????Raw Input ????????????????????
     #[serde(rename = "triggerDevice", default)]
     pub trigger_device: String,
     #[serde(rename = "longPressMs", default = "default_long_press_ms")]
@@ -681,6 +977,8 @@ pub struct MappingEntry {
     pub voice_override: Option<VoiceOverride>,
     #[serde(rename = "voiceCommands", default)]
     pub voice_commands: Vec<VoiceCommand>,
+    #[serde(rename = "acousticVoiceCommands", default)]
+    pub acoustic_voice_commands: Vec<AcousticVoiceCommand>,
 }
 
 fn default_long_press_ms() -> u32 {
@@ -1274,7 +1572,7 @@ impl Default for VoiceKwsConfig {
     }
 }
 
-/// Built-in KWS model preset → relative path (Phase 2 native).
+/// Built-in KWS model preset ??? relative path (Phase 2 native).
 pub fn kws_preset_model_path(preset: &str) -> Option<&'static str> {
     match preset.trim() {
         "cn-light" => Some("resources/kws/sherpa-kws-zh-small"),
@@ -1317,7 +1615,7 @@ pub fn reconcile_voice_engine_flags(cfg: &mut VoiceConfig) -> bool {
     changed
 }
 
-/// Built-in Vosk model preset → relative path under project/resources.
+/// Built-in Vosk model preset ??? relative path under project/resources.
 pub fn vosk_preset_model_path(preset: &str) -> Option<&'static str> {
     match preset.trim() {
         "cn-light" => Some(VOSK_CN_LIGHT_REL),
@@ -1767,6 +2065,7 @@ impl Default for VoiceConfig {
                 app_behavior_rules: vec![],
                 voice_override: None,
                 voice_commands: vec![],
+                acoustic_voice_commands: vec![],
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -2003,6 +2302,7 @@ impl VoiceConfig {
                 app_behavior_rules: vec![],
                 voice_override: None,
                 voice_commands: vec![],
+                acoustic_voice_commands: vec![],
             });
         }
 
@@ -2209,7 +2509,7 @@ impl VoiceConfig {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
             m.voice_override = normalize_voice_override(m.voice_override.take());
-            // Legacy configs may still carry triggerDevice full paths — migrate below.
+            // Legacy configs may still carry triggerDevice full paths ??? migrate below.
             if !m.trigger_device.trim().is_empty() {
                 let stable = crate::device_identity::normalize_device_id(&m.trigger_device);
                 if stable.starts_with("dev:") {
@@ -2224,8 +2524,8 @@ impl VoiceConfig {
         self.ensure_active_scene_id();
     }
 
-    /// 在同一 canonical trigger 的已完成方案间轮换 enabled；返回 (from_id, to_id)。
-    /// 只改按键启用状态，不切换 `active_scene_id`。
+    /// ??????? canonical trigger ??????????????????? enabled??????? (from_id, to_id)???
+    /// ??????????????????????????? `active_scene_id`???
     pub fn cycle_scheme_same_trigger(&mut self) -> Option<(String, String)> {
         let active = self
             .mappings
@@ -2252,8 +2552,8 @@ impl VoiceConfig {
         Some((from_id, to_id))
     }
 
-    /// 切换当前生效情景（语音合并上下文）；返回 (from_id, to_id)。
-    /// 不修改 `mapping.enabled`。
+    /// ?????????????????????????????????????????????? (from_id, to_id)???
+    /// ????? `mapping.enabled`???
     pub fn select_scheme(&mut self, target_id: &str) -> Option<(String, String)> {
         if self.find_mapping_by_id(target_id).is_none() {
             return None;
@@ -2266,7 +2566,7 @@ impl VoiceConfig {
         Some((from_id, target_id.to_string()))
     }
 
-    /// 仅设置当前生效情景 id（语音合并上下文）。
+    /// ????????????????????? id?????????????????????
     pub fn set_active_scenario(&mut self, id: &str) -> bool {
         if self.find_mapping_by_id(id).is_none() {
             return false;
@@ -2278,7 +2578,7 @@ impl VoiceConfig {
         true
     }
 
-    /// 所有方案的切换快捷键 (combo, mapping_id)。
+    /// ??????????????????????? (combo, mapping_id)???
     pub fn switch_bindings(&self) -> Vec<(String, String)> {
         let mut out = Vec::new();
         for m in &self.mappings {
@@ -2840,6 +3140,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -2876,6 +3177,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -2910,10 +3212,11 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
-                wake_phrases: Some(vec!["测试".into()]),
+                wake_phrases: Some(vec!["????".into()]),
                 ..VoiceOverride::default()
             }),
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         cfg.normalize();
         let m = cfg
@@ -2944,7 +3247,7 @@ mod tests {
         let id_a = cfg.mappings[0].id.clone();
         cfg.mappings.push(MappingEntry {
             id: "b".into(),
-            label: "AutoTrigger → F2".into(),
+            label: "AutoTrigger ??? F2".into(),
             group: "  ".into(),
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
@@ -2968,6 +3271,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -3020,6 +3324,7 @@ mod tests {
                 }],
             }),
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -3053,6 +3358,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -3068,7 +3374,7 @@ mod tests {
         let id_a = cfg.mappings[0].id.clone();
         cfg.mappings.push(MappingEntry {
             id: "b".into(),
-            label: "AutoTrigger → F2".into(),
+            label: "AutoTrigger ??? F2".into(),
             group: "  ".into(),
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),
@@ -3092,6 +3398,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -3106,7 +3413,7 @@ mod tests {
         let active_id = cfg.active_scene_id.clone();
         cfg.mappings.push(MappingEntry {
             id: "b".into(),
-            label: "AutoTrigger → F2".into(),
+            label: "AutoTrigger ??? F2".into(),
             group: "  ".into(),
             trigger_key: "F1".into(),
             target_key: "F2".into(),
@@ -3130,6 +3437,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -3164,6 +3472,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -3247,6 +3556,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -3284,6 +3594,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -3561,7 +3872,7 @@ mod tests {
             pid: 12,
             exe_name: "WeChat.exe".into(),
             full_path: None,
-            window_title: "联系人".into(),
+            window_title: "????".into(),
             matched_preset_app_id: None,
         };
         let rules_one = vec![rule];
@@ -3664,5 +3975,153 @@ mod tests {
         }];
         let phrases = voice_command_summon_phrases(&mapping);
         assert!(phrases.is_empty());
+    }
+
+    #[test]
+    fn acoustic_display_text_injects_global_summon() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.app_target_id = "cursor-chat".into();
+        mapping.voice_commands = vec![];
+        mapping.acoustic_voice_commands = vec![AcousticVoiceCommand {
+            id: "ac1".into(),
+            version: 1,
+            kind: "scenario-acoustic-activate".into(),
+            scenario_id: mapping.id.clone(),
+            label: "开始编程".into(),
+            display_text: "开始编程".into(),
+            samples: vec![],
+            threshold: 0.72,
+            margin: 0.08,
+            quality: "good".into(),
+            activation_scope: "global".into(),
+            app_boost: true,
+            enabled: true,
+            created_at: 0,
+            updated_at: 0,
+        }];
+        let phrases = voice_command_summon_phrases(&mapping);
+        assert!(phrases.contains(&"开始编程".to_string()));
+        let entries = summon_entries_for_mapping(&mapping, "cn-light");
+        assert!(entries.iter().any(|(p, t)| p == "开始编程" && t == "cursor-chat"));
+    }
+
+    fn sample_acoustic_feature(frames: u32) -> Vec<f32> {
+        let len = (frames as usize) * (ACOUSTIC_FEATURE_DIMS as usize);
+        (0..len).map(|i| (i as f32) * 0.01 + 0.1).collect()
+    }
+
+    fn sample_acoustic_command(scenario_id: &str, quality: &str) -> AcousticVoiceCommand {
+        let frames = 40u32;
+        AcousticVoiceCommand {
+            id: "acmd_test".into(),
+            version: 1,
+            kind: "scenario-acoustic-activate".into(),
+            scenario_id: scenario_id.into(),
+            label: "????".into(),
+            display_text: String::new(),
+            samples: vec![AcousticVoiceCommandSample {
+                id: "sample_test".into(),
+                duration_ms: 900,
+                feature: sample_acoustic_feature(frames),
+                feature_kind: "mfcc-v1".into(),
+                feature_frames: frames,
+                feature_dims: ACOUSTIC_FEATURE_DIMS,
+                sample_rate: 16000,
+                quality_signals: Some(AcousticVoiceCommandQualitySignals {
+                    has_speech: true,
+                    too_short: false,
+                    too_long: false,
+                    sample_agreement: 0.91,
+                }),
+                created_at: 1,
+            }],
+            threshold: 0.78,
+            margin: 0.08,
+            quality: quality.into(),
+            activation_scope: "global".into(),
+            app_boost: true,
+            enabled: true,
+            created_at: 1,
+            updated_at: 1,
+        }
+    }
+
+    #[test]
+    fn acoustic_voice_commands_round_trip_json() {
+        let cmd = sample_acoustic_command("sc1", "good");
+        let mapping = MappingEntry {
+            id: "sc1".into(),
+            label: "test".into(),
+            group: default_group(),
+            trigger_key: String::new(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: "wechat".into(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![cmd],
+        };
+        let json = serde_json::to_string(&mapping).expect("serialize");
+        let back: MappingEntry = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.acoustic_voice_commands.len(), 1);
+        assert_eq!(back.acoustic_voice_commands[0].samples[0].feature_frames, 40);
+        assert_eq!(
+            back.acoustic_voice_commands[0].samples[0].feature.len(),
+            40 * ACOUSTIC_FEATURE_DIMS as usize
+        );
+    }
+
+    #[test]
+    fn acoustic_voice_commands_reject_nan_and_weak() {
+        let mut bad = sample_acoustic_command("sc1", "good");
+        bad.samples[0].feature[0] = f32::NAN;
+        assert!(normalize_acoustic_voice_command_sample(bad.samples[0].clone()).is_none());
+
+        let weak = sample_acoustic_command("sc1", "weak");
+        let out = normalize_acoustic_voice_commands(vec![weak], "sc1");
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn acoustic_voice_commands_rekey_on_duplicate() {
+        let cmd = sample_acoustic_command("old", "good");
+        let old_id = cmd.id.clone();
+        let old_sample = cmd.samples[0].id.clone();
+        let rekeyed = rekey_acoustic_voice_commands_for_mapping(&[cmd], "new");
+        assert_eq!(rekeyed.len(), 1);
+        assert_ne!(rekeyed[0].id, old_id);
+        assert_eq!(rekeyed[0].scenario_id, "new");
+        assert_ne!(rekeyed[0].samples[0].id, old_sample);
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_acoustic_voice_commands() {
+        let mut existing = VoiceConfig::default();
+        let mut cmd = sample_acoustic_command("sc1", "good");
+        cmd.scenario_id = existing.mappings[0].id.clone();
+        existing.mappings[0].acoustic_voice_commands = vec![cmd];
+        let payload = serde_json::to_string(&existing).expect("payload");
+        let merged = merge_save_payload(&existing, &payload).expect("merge");
+        assert_eq!(merged.mappings[0].acoustic_voice_commands.len(), 1);
+        assert_eq!(
+            merged.mappings[0].acoustic_voice_commands[0].samples[0].feature_dims,
+            ACOUSTIC_FEATURE_DIMS
+        );
     }
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// @legacy-unused — tests ASR voiceCommands; acoustic tests: npm run test:voice-acoustic
 
 var assert=require('assert');
 

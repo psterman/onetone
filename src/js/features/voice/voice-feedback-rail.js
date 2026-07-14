@@ -76,6 +76,24 @@
     return global.__vp_voice_settings_flow_hooks__||{};
   }
 
+  function isScenarioVoiceEdit(){
+    var wake=global.OneToneVoiceStepWake;
+    if(wake&&wake.isScenarioVoiceEdit) return wake.isScenarioVoiceEdit();
+    var cmd=global.OneToneHabitScenarioVoiceCommand;
+    return !!(cmd&&cmd.isScenarioEdit&&cmd.isScenarioEdit());
+  }
+
+  function scenarioFeedbackInfo(){
+    var cmd=global.OneToneHabitScenarioVoiceCommand;
+    return cmd&&cmd.feedbackInfo?cmd.feedbackInfo():null;
+  }
+
+  function sanitizePhrase(s){
+    var V=global.OneToneVoiceSettingsViewModel;
+    if(V&&V.sanitizePhrase) return V.sanitizePhrase(s);
+    return String(s||'').trim();
+  }
+
   function currentStep(step){
     if(step) return step;
     return global.OneToneVoicePageState?global.OneToneVoicePageState.getStep():cachedStep;
@@ -185,6 +203,11 @@
 
   function resolveTargetPhrase(vm){
     if(vm.loading) return t('homeLiveLoading');
+    if(isScenarioVoiceEdit()){
+      var info=scenarioFeedbackInfo();
+      if(info&&info.wakeLabel) return info.wakeLabel;
+      return t('habitAcousticCmdTitle');
+    }
     var V=global.OneToneVoiceSettingsViewModel;
     if(!V||!V.resolveDisplayWakePhrase) return '—';
     return V.resolveDisplayWakePhrase(vm).display||'—';
@@ -308,6 +331,15 @@
     if(vm.loading){
       return {text:t('homeLiveLoading'),cls:'is-loading'};
     }
+    if(isScenarioVoiceEdit()){
+      var info=scenarioFeedbackInfo();
+      if(info&&info.statusKey){
+        return {
+          text:t(info.statusKey),
+          cls:info.live?'is-live':(info.calibrating?'is-loading':'is-standby')
+        };
+      }
+    }
     if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()){
       return {text:t('voiceModeSwitching'),cls:'is-loading'};
     }
@@ -355,15 +387,15 @@
       }
       return {text:'',partial:false,placeholder:t('voiceFbTranscriptKwsDictating'),matched:false};
     }
-    var trigger=String(res.lastTrigger||'').trim();
+    var trigger=sanitizePhrase(res.lastTrigger||'');
     if(trigger){
       return {text:trigger,partial:false,placeholder:'',matched:true};
     }
-    var phrase=String(res.lastDetectedPhrase||'').trim();
+    var phrase=sanitizePhrase(res.lastDetectedPhrase||'');
     if(phrase){
       return {text:phrase,partial:false,placeholder:'',matched:isTranscriptMatched(res,phrase)};
     }
-    var skip=String(res.lastSkip||'').trim();
+    var skip=sanitizePhrase(res.lastSkip||'');
     if(skip){
       return {text:skip,partial:false,placeholder:'',matched:false};
     }
@@ -378,7 +410,7 @@
     }
     var wake=wakeSnapshot();
     if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening&&global.OneToneVoiceWake.isKwsNativeListening(res,wake)){
-      var phrases=Array.isArray(res.phrases)?res.phrases.filter(function(p){return String(p||'').trim();}):[];
+      var phrases=Array.isArray(res.phrases)?res.phrases.map(sanitizePhrase).filter(Boolean):[];
       var hint=phrases.length?phrases.slice(0,3).join(' / '):'';
       var placeholder=t('voiceFbTranscriptKwsListening');
       if(hint) placeholder+=' · '+hint;
@@ -398,6 +430,13 @@
 
   function resolveTranscriptText(step){
     step=currentStep(step);
+    if(isScenarioVoiceEdit()){
+      var scenarioInfo=scenarioFeedbackInfo();
+      var transcriptKey=scenarioInfo&&scenarioInfo.transcriptKey
+        ?scenarioInfo.transcriptKey
+        :'habitAcousticCmdFbNoTranscript';
+      return {text:'',partial:false,placeholder:t(transcriptKey),matched:false};
+    }
     var w=wakeSnapshot();
     var end=endSnapshot();
     var mode=resolveFeedbackMode();

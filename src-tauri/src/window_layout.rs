@@ -100,6 +100,10 @@ pub fn schedule_save(state: Arc<AppState>, window: WebviewWindow) {
 }
 
 fn capture_into(cfg: &mut VoiceConfig, window: &WebviewWindow) {
+    // Minimized / tray-hidden geometry is not meaningful and must not overwrite layout.
+    if window.is_minimized().unwrap_or(false) {
+        return;
+    }
     cfg.window_maximized = window.is_maximized().unwrap_or(false);
     if cfg.window_maximized {
         return;

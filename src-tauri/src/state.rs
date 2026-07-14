@@ -205,6 +205,7 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: None,
             voice_commands: vec![],
+            acoustic_voice_commands: vec![],
         }
     }
 

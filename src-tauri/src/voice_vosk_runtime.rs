@@ -26,6 +26,16 @@ fn vosk_epoch_matches(state: &AppState, epoch: u64) -> bool {
     state.voice_vosk_epoch.load(Ordering::SeqCst) == epoch
 }
 
+/// Release the default capture device for a short external recording (e.g. acoustic calibration).
+pub fn pause_for_external_capture(state: &AppState) -> bool {
+    if state.voice_vosk.lock().is_none() {
+        return false;
+    }
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    voice_vosk_stop_sync(state);
+    true
+}
+
 /// Stop on a background thread (IPC-safe). Invalidates in-flight start workers.
 pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
     let epoch = next_vosk_epoch(state.as_ref());
@@ -82,6 +92,7 @@ pub fn voice_vosk_start(
         cfg.clone(),
         resource_dir,
         crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock()),
+        Some(state.audio_frame_bus.publisher()),
     ) {
         Ok(handle) => {
             if !vosk_epoch_matches(state, epoch) {
@@ -228,6 +239,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
         let guard = state.voice_vosk.lock();
         let Some(handle) = guard.as_ref() else {
             tick_cooldown_state(state);
+            crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
             return;
         };
         let mut out = Vec::new();
@@ -315,6 +327,7 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
     }
 
     tick_cooldown_state(state);
+    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
 }
 
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
