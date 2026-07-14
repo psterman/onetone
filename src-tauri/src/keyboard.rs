@@ -80,7 +80,8 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
     use winapi::um::processthreadsapi::GetCurrentThreadId;
     use winapi::um::winuser::{
         AllowSetForegroundWindow, AttachThreadInput, BringWindowToTop, GetForegroundWindow,
-        GetWindowThreadProcessId, IsIconic, IsWindow, SetForegroundWindow, ShowWindow, SW_RESTORE,
+        GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow,
+        ShowWindow, SW_RESTORE, SW_SHOW,
     };
 
     const ASFW_ANY: u32 = 0xFFFF_FFFF;
@@ -88,6 +89,10 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
     unsafe {
         if target_hwnd.is_null() || IsWindow(target_hwnd) == 0 {
             return false;
+        }
+        // Tray / hidden main windows (common for WeChat): make visible before focus.
+        if IsWindowVisible(target_hwnd) == 0 {
+            ShowWindow(target_hwnd, SW_SHOW);
         }
         // Only restore when minimized. Unconditional SW_RESTORE demotes a maximized
         // window back to normal size (looks like a random resize).

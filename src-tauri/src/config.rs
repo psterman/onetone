@@ -234,6 +234,51 @@ pub fn rule_matches_identity(
     identity.matched_preset_app_id.as_deref() == Some(rule.app_id.as_str())
 }
 
+fn is_wechat_family_token(s: &str) -> bool {
+    let l = s.to_ascii_lowercase();
+    l.contains("weixin") || l.contains("wechat") || l.contains("xwechat")
+}
+
+/// True when the rule targets WeChat / Weixin (including legacy installers).
+pub fn is_wechat_family_rule(rule: &AppBehaviorRule) -> bool {
+    if rule
+        .display_name
+        .as_deref()
+        .is_some_and(|n| n.contains("微信") || is_wechat_family_token(n))
+    {
+        return true;
+    }
+    let Some(spec) = rule.app_match.as_ref() else {
+        return false;
+    };
+    spec.exe_names.iter().any(|n| is_wechat_family_token(n))
+        || spec
+            .path_contains
+            .as_deref()
+            .is_some_and(is_wechat_family_token)
+        || spec.full_path.as_deref().is_some_and(is_wechat_family_token)
+}
+
+pub fn is_wechat_family_identity(identity: &crate::app_identity::AppIdentity) -> bool {
+    is_wechat_family_token(&identity.exe_name)
+        || identity
+            .full_path
+            .as_deref()
+            .is_some_and(is_wechat_family_token)
+}
+
+/// Summon matching: exact rule match, or WeChat family cross-process
+/// (`Weixin.exe` rule ↔ `WeChatAppEx.exe` chat UI under xwechat).
+pub fn rule_matches_identity_for_summon(
+    rule: &AppBehaviorRule,
+    identity: &crate::app_identity::AppIdentity,
+) -> bool {
+    if rule_matches_identity(rule, identity) {
+        return true;
+    }
+    is_wechat_family_rule(rule) && is_wechat_family_identity(identity)
+}
+
 pub fn rule_specificity(rule: &AppBehaviorRule) -> u32 {
     let Some(spec) = rule.app_match.as_ref() else {
         return 0;
@@ -4051,6 +4096,37 @@ mod tests {
         };
         let matched_b = match_behavior_rule(&rules, &identity_b).unwrap();
         assert_eq!(matched_b.rule_id, "rule-wechat-b");
+    }
+
+    #[test]
+    fn summon_matches_wechat_appex_for_weixin_rule() {
+        let rule = AppBehaviorRule {
+            rule_id: "rule-weixin".into(),
+            app_id: "custom".into(),
+            finish_mode: "manual".into(),
+            note: None,
+            summon_phrase: None,
+            display_name: Some("微信".into()),
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["Weixin.exe".into()],
+                path_contains: Some(r"C:\Program Files\Tencent\Weixin".into()),
+                title_contains: None,
+                full_path: Some(r"C:\Program Files\Tencent\Weixin\Weixin.exe".into()),
+            }),
+        };
+        let chat_ui = AppIdentity {
+            pid: 42,
+            exe_name: "WeChatAppEx.exe".into(),
+            full_path: Some(
+                r"C:\Users\me\AppData\Roaming\Tencent\xwechat\xplugin\WeChatAppEx.exe".into(),
+            ),
+            window_title: "文件传输助手".into(),
+            matched_preset_app_id: None,
+        };
+        assert!(!rule_matches_identity(&rule, &chat_ui));
+        assert!(rule_matches_identity_for_summon(&rule, &chat_ui));
+        assert!(is_wechat_family_rule(&rule));
+        assert!(is_wechat_family_identity(&chat_ui));
     }
 
     #[test]

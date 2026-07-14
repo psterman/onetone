@@ -1,11 +1,32 @@
 //! Shared runtime workflow: activate target app, focus chat/composer input, start voice.
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::AppState;
+
+fn recent_custom_launches() -> &'static Mutex<HashMap<String, Instant>> {
+    static MAP: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
+    MAP.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// True if we ShellExecuted this rule within the last few seconds (anti double-open).
+fn custom_rule_launched_recently(rule_id: &str, within: Duration) -> bool {
+    let Ok(map) = recent_custom_launches().lock() else {
+        return false;
+    };
+    map.get(rule_id)
+        .is_some_and(|t| t.elapsed() < within)
+}
+
+fn mark_custom_rule_launched(rule_id: &str) {
+    if let Ok(mut map) = recent_custom_launches().lock() {
+        map.insert(rule_id.to_string(), Instant::now());
+    }
+}
 
 pub const CURSOR_APP_TARGET_ID: &str = "cursor-chat";
 pub const CODEX_APP_TARGET_ID: &str = "codex-chat";
@@ -724,9 +745,43 @@ fn activate_voice_for_custom(
 fn ensure_custom_rule_window(
     rule: &crate::config::AppBehaviorRule,
 ) -> Option<(winapi::shared::windef::HWND, bool)> {
-    if let Some(hwnd) = find_window_for_rule(rule) {
+    // Prefer a visible main window; fall back to tray/hidden (WeChat etc.).
+    if let Some(hwnd) = find_window_for_rule(rule, false) {
         return Some((hwnd, false));
     }
+    if let Some(hwnd) = find_window_for_rule(rule, true) {
+        return Some((hwnd, false));
+    }
+
+    // Process already running: never ShellExecute a second instance.
+    if rule_process_running(rule) {
+        for _ in 0..24 {
+            std::thread::sleep(Duration::from_millis(250));
+            if let Some(hwnd) = find_window_for_rule(rule, true) {
+                return Some((hwnd, false));
+            }
+        }
+        eprintln!(
+            "custom rule {}: process running but no activatable window; refusing relaunch",
+            rule.rule_id
+        );
+        return None;
+    }
+
+    // Concurrent acoustic + phrase hits: poll instead of a second ShellExecute.
+    if custom_rule_launched_recently(&rule.rule_id, Duration::from_secs(4)) {
+        for _ in 0..24 {
+            std::thread::sleep(Duration::from_millis(250));
+            if let Some(hwnd) = find_window_for_rule(rule, true) {
+                return Some((hwnd, false));
+            }
+            if rule_process_running(rule) {
+                continue;
+            }
+        }
+        return None;
+    }
+
     let spec = rule.app_match.as_ref()?;
     let path = spec
         .full_path
@@ -734,43 +789,157 @@ fn ensure_custom_rule_window(
         .map(str::trim)
         .filter(|s| !s.is_empty())?;
     let path = std::path::Path::new(path);
+    mark_custom_rule_launched(&rule.rule_id);
     if !path.is_file() || !launch_gui_exe(path) {
         return None;
     }
     for _ in 0..40 {
         std::thread::sleep(Duration::from_millis(250));
-        if let Some(hwnd) = find_window_for_rule(rule) {
+        if let Some(hwnd) = find_window_for_rule(rule, true) {
             return Some((hwnd, true));
+        }
+        // Another concurrent summon or slow show: bail without a second ShellExecute.
+        if rule_process_running(rule) {
+            if let Some(hwnd) = find_window_for_rule(rule, true) {
+                return Some((hwnd, true));
+            }
         }
     }
     None
 }
 
+/// True when a live process matches the rule's exe / path constraints.
+#[cfg(windows)]
+fn rule_process_running(rule: &crate::config::AppBehaviorRule) -> bool {
+    use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
+    use winapi::um::tlhelp32::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+
+    let Some(spec) = rule.app_match.as_ref() else {
+        return false;
+    };
+    if !crate::config::app_match_has_constraints(spec) {
+        return false;
+    }
+
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snap.is_null() || snap == INVALID_HANDLE_VALUE {
+            return false;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut found = false;
+        if Process32FirstW(snap, &mut entry) != 0 {
+            loop {
+                let pid = entry.th32ProcessID;
+                if pid > 0 {
+                    let exe_name = String::from_utf16_lossy(
+                        &entry.szExeFile[..entry
+                            .szExeFile
+                            .iter()
+                            .position(|&c| c == 0)
+                            .unwrap_or(entry.szExeFile.len())],
+                    );
+                    let full_path = crate::app_identity::process_image_path(pid);
+                    let identity = crate::app_identity::AppIdentity {
+                        pid,
+                        exe_name,
+                        full_path,
+                        window_title: String::new(),
+                        matched_preset_app_id: None,
+                    };
+                    if crate::config::rule_matches_identity_for_summon(rule, &identity) {
+                        found = true;
+                        break;
+                    }
+                }
+                if Process32NextW(snap, &mut entry) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snap);
+        found
+    }
+}
+
+#[cfg(windows)]
+fn window_class_name(hwnd: winapi::shared::windef::HWND) -> String {
+    use winapi::um::winuser::GetClassNameW;
+    unsafe {
+        let mut buf = [0u16; 256];
+        let len = GetClassNameW(hwnd, buf.as_mut_ptr(), buf.len() as i32);
+        if len <= 0 {
+            return String::new();
+        }
+        String::from_utf16_lossy(&buf[..len as usize])
+    }
+}
+
+/// WeChat and similar apps keep tiny tray / IPC HWNDs that share the exe name.
+/// Activating those shows a blank `WxTrayIconMessageWindow` instead of the chat UI.
+#[cfg(windows)]
+fn is_helper_app_window(title: &str, class_name: &str, area: i64) -> bool {
+    let title = title.trim();
+    let class_name = class_name.trim();
+    let hay = format!("{title} {class_name}").to_ascii_lowercase();
+    const NOISE: &[&str] = &[
+        "trayicon",
+        "messagewindow",
+        "tooltip",
+        "shadow",
+        "notifyicon",
+        "ime",
+        "candidate",
+    ];
+    if NOISE.iter().any(|n| hay.contains(n)) {
+        return true;
+    }
+    // WeChat tray IPC window title itself.
+    if title.eq_ignore_ascii_case("WxTrayIconMessageWindow") {
+        return true;
+    }
+    // Tiny blank windows (helpers often report near-zero size).
+    if area > 0 && area < 8_000 && title.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return true;
+    }
+    false
+}
+
 #[cfg(windows)]
 fn find_window_for_rule(
     rule: &crate::config::AppBehaviorRule,
+    include_hidden: bool,
 ) -> Option<winapi::shared::windef::HWND> {
     use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
     use winapi::shared::windef::{HWND, RECT};
     use winapi::um::winuser::{
         EnumWindows, GetForegroundWindow, GetWindow, GetWindowLongW, GetWindowRect,
-        GetWindowThreadProcessId, IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
+        IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
     };
 
     struct EnumCtx<'a> {
         rule: &'a crate::config::AppBehaviorRule,
+        include_hidden: bool,
         candidates: Vec<Candidate>,
     }
 
     struct Candidate {
         hwnd: HWND,
         area: i64,
+        visible: bool,
         is_foreground: bool,
+        has_real_title: bool,
+        prefers_chat_ui: bool,
     }
 
     unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let ctx = &mut *(lparam as *mut EnumCtx);
-        if IsWindowVisible(hwnd) == 0 {
+        let visible = IsWindowVisible(hwnd) != 0;
+        if !visible && !ctx.include_hidden {
             return TRUE;
         }
         if !GetWindow(hwnd, GW_OWNER).is_null() {
@@ -782,7 +951,7 @@ fn find_window_for_rule(
         let Some(identity) = crate::app_identity::identity_for_window(hwnd) else {
             return TRUE;
         };
-        if !crate::config::rule_matches_identity(ctx.rule, &identity) {
+        if !crate::config::rule_matches_identity_for_summon(ctx.rule, &identity) {
             return TRUE;
         }
         let mut rect = RECT {
@@ -791,24 +960,42 @@ fn find_window_for_rule(
             right: 0,
             bottom: 0,
         };
-        if GetWindowRect(hwnd, &mut rect) == 0 {
+        let area = if GetWindowRect(hwnd, &mut rect) != 0 {
+            ((rect.right - rect.left) as i64 * (rect.bottom - rect.top) as i64).max(0)
+        } else {
+            0
+        };
+        let class_name = window_class_name(hwnd);
+        if is_helper_app_window(&identity.window_title, &class_name, area) {
             return TRUE;
         }
-        let area = (rect.right - rect.left) as i64 * (rect.bottom - rect.top) as i64;
-        if area <= 0 {
+        // Hidden candidates must look like a real UI surface (not a zero-size IPC hwnd).
+        if !visible && area < 20_000 {
             return TRUE;
         }
+        if area <= 0 && visible {
+            return TRUE;
+        }
+        let title = identity.window_title.trim();
+        let has_real_title = !title.is_empty()
+            && !(title.starts_with("Wx") && title.contains("Window"));
+        // Prefer Chromium chat UI process over Weixin.exe launcher shells.
+        let prefers_chat_ui = identity.exe_name.eq_ignore_ascii_case("WeChatAppEx.exe");
         let fg = GetForegroundWindow();
         ctx.candidates.push(Candidate {
             hwnd,
-            area,
+            area: area.max(1),
+            visible,
             is_foreground: fg == hwnd,
+            has_real_title,
+            prefers_chat_ui,
         });
         TRUE
     }
 
     let mut ctx = EnumCtx {
         rule,
+        include_hidden,
         candidates: Vec::new(),
     };
     unsafe {
@@ -816,13 +1003,14 @@ fn find_window_for_rule(
     }
     ctx.candidates
         .into_iter()
-        .max_by_key(|c| (c.is_foreground, c.area))
+        .max_by_key(|c| {
+            (
+                c.visible,
+                c.prefers_chat_ui,
+                c.has_real_title,
+                c.is_foreground,
+                c.area,
+            )
+        })
         .map(|c| c.hwnd)
-}
-
-#[cfg(not(windows))]
-fn find_window_for_rule(
-    _rule: &crate::config::AppBehaviorRule,
-) -> Option<isize> {
-    None
 }
