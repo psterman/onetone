@@ -2967,16 +2967,39 @@
     .habit-hub-filter.is-active{background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.22)}
     .habit-hub-toolbar-right{display:flex;align-items:center;gap:8px}
     .habit-hub-section-head{
-      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     }
     .habit-hub-section-head-text{min-width:0;flex:1;display:grid;gap:4px}
-    .habit-hub-section-title-row{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    .habit-hub-section-tools{
+      display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;
     }
+    .habit-hub-section-tools .habit-hub-app-toolbar{display:contents}
+    .habit-hub-section-tools .habit-hub-filters{
+      display:inline-flex;align-items:center;gap:0;padding:2px;border-radius:999px;
+      background:var(--surface-soft);border:1px solid var(--outline-variant);
+    }
+    .habit-hub-filter-like,
     .habit-hub-section-new{
-      height:28px;padding:0 10px;font-size:11px;border-radius:8px;flex-shrink:0;
+      height:30px;padding:0 12px;border-radius:999px;border:1px solid transparent;
+      font:inherit;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;
+      display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
     }
+    .habit-hub-filter-like.is-primary,
+    .habit-hub-section-new.is-primary,
+    .habit-hub-section-tools .habit-hub-filter-like.is-primary{
+      background:var(--primary);color:var(--on-primary);border-color:var(--primary);
+    }
+    .habit-hub-filter-like.is-primary:hover{filter:brightness(1.05)}
     .habit-hub-app-toolbar{flex-shrink:0}
+    .habit-hub-section-tools .habit-hub-filter{
+      height:26px;padding:0 10px;border-radius:999px;border:1px solid transparent;background:transparent;
+      font:inherit;font-size:11px;font-weight:700;color:var(--on-surface-muted);cursor:pointer;
+    }
+    .habit-hub-section-tools .habit-hub-filter:hover{background:rgba(255,255,255,.7);color:var(--on-surface)}
+    .habit-hub-section-tools .habit-hub-filter.is-active{
+      background:var(--surface);color:var(--primary);border-color:transparent;
+      box-shadow:0 1px 3px rgba(15,23,42,.08);
+    }
     .habit-hub-section--hero{padding-bottom:2px}
     .habit-hub-section--hero+.habit-hub-section{border-top:0;margin-top:0;padding-top:8px}
     .habit-hub-sort{
@@ -3221,6 +3244,43 @@
     }
     .habit-scenario-voice-end-lbl{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:700}
     .habit-hub-list.is-grid .habit-hub-section-list{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+    .habit-hub-list.is-grid .habit-hub-section--hero .habit-hub-section-list{grid-template-columns:1fr}
+    .habit-hub-list.is-grid .habit-hub-channels{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      align-items:stretch;
+    }
+    .habit-hub-list.is-grid .habit-hub-channel{
+      grid-template-columns:1fr;
+      grid-auto-rows:auto;
+      justify-items:stretch;
+      align-content:start;
+      min-height:168px;
+      height:100%;
+      gap:10px;
+      padding:14px 14px 34px;
+      background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);
+      box-shadow:0 8px 22px rgba(15,23,42,.05);
+    }
+    .habit-hub-list.is-grid .habit-hub-channel-end,
+    .habit-hub-list.is-grid .habit-hub-channel-end.is-output{
+      justify-content:flex-start;
+      text-align:left;
+      width:100%;
+    }
+    .habit-hub-list.is-grid .habit-hub-channel-rail{
+      width:100%;
+      height:28px;
+      justify-content:center;
+    }
+    .habit-hub-list.is-grid .habit-hub-channel .habit-hub-act.is-cta{
+      width:100%;
+      justify-self:stretch;
+    }
+    .habit-hub-list.is-grid .habit-hub-channel-hover-tip{
+      font-size:10px;
+      line-height:1.35;
+    }
     .habit-hub-list.is-list .habit-hub-section-list{grid-template-columns:1fr}
     .habit-hub-empty{
       padding:28px 16px;border-radius:14px;border:1px dashed var(--outline-variant);
@@ -3233,10 +3293,12 @@
       color:var(--primary);font:inherit;font-size:12px;font-weight:700;cursor:pointer;
     }
     .habit-hub-card{
-      min-height:86px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;
+      min-height:86px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;
       padding:14px 16px;border-radius:14px;border:1px solid var(--outline-variant);background:var(--surface);
       box-shadow:0 8px 24px rgba(15,23,42,.04);
     }
+    .habit-hub-card-open{flex:1;min-width:180px}
+    .habit-hub-card-actions{flex-shrink:0;margin-left:auto}
     .habit-hub-card:hover{border-color:rgba(42,156,196,.24);box-shadow:0 12px 28px rgba(15,23,42,.07)}
     .habit-hub-card.is-active-scene{border-color:rgba(42,156,196,.45);box-shadow:inset 3px 0 0 var(--primary),0 12px 28px rgba(42,156,196,.08)}
     .habit-hub-card-open{
@@ -3274,18 +3336,43 @@
     .habit-hub-card-desc{font-size:11px;line-height:1.4;color:var(--on-surface-muted)}
     .habit-hub-card-meta{font-size:10px;color:var(--on-surface-muted);opacity:.85}
     .habit-hub-card-actions{
-      display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px;
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;
       padding-left:12px;border-left:1px dashed var(--outline-variant);
     }
     .habit-hub-act{
-      height:26px;padding:0 8px;border:0;border-radius:6px;background:transparent;
-      font:inherit;font-size:10px;font-weight:700;color:var(--on-surface-muted);cursor:pointer;white-space:nowrap;
+      height:32px;padding:0 10px;border:1px solid transparent;border-radius:8px;background:transparent;
+      font:inherit;font-size:12px;font-weight:700;color:var(--on-surface-muted);cursor:pointer;white-space:nowrap;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;position:relative;
     }
-    .habit-hub-act:hover{background:var(--surface-soft);color:var(--on-surface)}
+    .habit-hub-act:hover{background:var(--surface-soft);color:var(--on-surface);border-color:var(--outline-variant)}
     .habit-hub-act.is-primary{color:var(--primary)}
+    .habit-hub-act.is-primary:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.28)}
     .habit-hub-act.is-danger{color:#c62828}
-    .habit-hub-act.is-danger:hover{background:rgba(198,40,40,.08)}
-    .habit-hub-act-menu{width:26px;padding:0;font-size:14px;line-height:1}
+    .habit-hub-act.is-danger:hover{background:rgba(198,40,40,.08);border-color:rgba(198,40,40,.22)}
+    .habit-hub-act.is-cta{
+      height:34px;padding:0 12px;border-radius:9px;border:1px solid rgba(42,156,196,.28);
+      background:var(--primary-soft);color:var(--primary);box-shadow:0 1px 2px rgba(15,23,42,.04);
+      transition:transform .16s ease,box-shadow .16s ease,background .16s ease,border-color .16s ease;
+    }
+    .habit-hub-act.is-cta.is-primary{
+      background:var(--primary-soft);border-color:rgba(42,156,196,.32);color:var(--primary);
+    }
+    .habit-hub-act.is-cta:hover{
+      transform:translateY(-1px);background:#e7f6fc;border-color:rgba(42,156,196,.45);
+      box-shadow:0 6px 14px rgba(42,156,196,.16);color:var(--primary);
+    }
+    .habit-hub-act.is-cta:active{transform:translateY(0);box-shadow:0 1px 2px rgba(15,23,42,.06)}
+    .habit-hub-act.is-cta svg{flex-shrink:0;transition:transform .16s ease}
+    .habit-hub-act.is-cta:hover svg{transform:scale(1.08)}
+    .habit-hub-act.is-disabled,.habit-hub-act:disabled{opacity:.35;cursor:default;transform:none!important;box-shadow:none!important}
+    .habit-hub-act-sep{width:1px;height:22px;background:var(--outline-variant);margin:0 2px;flex-shrink:0}
+    .habit-hub-act[data-tip]:hover::after,.habit-hub-act[data-tip]:focus-visible::after,
+    .habit-hub-enable-toggle[data-tip]:hover::after,.habit-hub-enable-toggle[data-tip]:focus-visible::after{
+      content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
+      padding:5px 8px;border-radius:6px;background:#1f2937;color:#fff;font-size:11px;font-weight:600;line-height:1.2;
+      white-space:nowrap;z-index:8;pointer-events:none;box-shadow:0 6px 16px rgba(15,23,42,.18);
+    }
+    .habit-hub-act-menu{width:32px;padding:0;font-size:14px;line-height:1}
     .habit-hub-section-desc{margin:0 0 8px;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
     .habit-hub-section--legacy .habit-hub-section-title{color:var(--on-surface-muted)}
     .habit-hub-card--legacy{border-style:dashed;background:var(--surface-soft)}
@@ -3388,7 +3475,9 @@
     .habit-hub-section-desc{margin:0;font-size:11px}
     .habit-hub-section-list{gap:0}
     .habit-hub-section-list--cards>.habit-hub-card{border-width:0;border-radius:0;box-shadow:none}
+    .habit-hub-section-list--cards>.habit-hub-card.is-selected{box-shadow:inset 3px 0 0 var(--primary)}
     .habit-hub-section-list--cards>.habit-hub-card+.habit-hub-card{border-top:1px solid var(--outline-variant)}
+    .habit-hub-section-list--cards>.habit-hub-selection-bar+.habit-hub-card{border-top:0}
     .habit-hub-section--hero{padding-bottom:0;border:0;background:transparent;box-shadow:none;overflow:visible}
     .habit-hub-section--hero .habit-hub-section-head{display:none}
     .habit-hub-section--hero .habit-hub-section-list{gap:0}
@@ -3406,9 +3495,19 @@
     .habit-hub-guide-bubble{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:12px;border:1px solid rgba(42,156,196,.22);background:var(--primary-soft);color:var(--primary);font-size:11px;line-height:1.45;font-weight:700}
     .habit-hub-guide-close{width:22px;height:22px;border:0;border-radius:999px;background:rgba(255,255,255,.72);color:inherit;font:inherit;font-size:15px;line-height:1;cursor:pointer}
     .habit-hub-channels{display:grid;gap:10px}
-    .habit-hub-channel{display:grid;grid-template-columns:minmax(145px,1.1fr) minmax(96px,.8fr) minmax(128px,1fr) auto;align-items:center;gap:12px;min-height:72px;padding:12px;border-radius:13px;border:1px solid var(--outline-variant);background:var(--surface);cursor:pointer;user-select:none}
+    .habit-hub-channel{display:grid;grid-template-columns:minmax(145px,1.1fr) minmax(96px,.8fr) minmax(128px,1fr) auto;align-items:center;gap:12px;min-height:72px;padding:12px 12px 30px;border-radius:13px;border:1px solid var(--outline-variant);background:var(--surface);cursor:pointer;user-select:none;position:relative}
     .habit-hub-channel:hover,.habit-hub-channel.is-hover{border-color:rgba(42,156,196,.34);background:linear-gradient(180deg,#fbfdff 0%,#fff 100%);box-shadow:0 12px 28px rgba(15,23,42,.06)}
     .habit-hub-channel.is-pressed{transform:translateY(1px)}
+    .habit-hub-channel-hover-tip{
+      position:absolute;left:12px;right:12px;bottom:8px;margin:0;text-align:center;
+      font-size:11px;font-weight:600;line-height:1.3;color:var(--primary);
+      opacity:0;transform:translateY(3px);pointer-events:none;
+      transition:opacity .18s ease,transform .18s ease;
+    }
+    .habit-hub-channel:hover .habit-hub-channel-hover-tip,
+    .habit-hub-channel.is-hover .habit-hub-channel-hover-tip{
+      opacity:1;transform:translateY(0);
+    }
     .habit-hub-channel-end{display:flex;align-items:center;gap:10px;min-width:0}
     .habit-hub-channel-end.is-output{justify-content:flex-end;text-align:right}
     .habit-hub-channel-copy{display:grid;gap:2px;min-width:0}
@@ -3437,9 +3536,39 @@
     .habit-hub-card-app-main.has-icon{background:transparent}
     .habit-hub-card-app-main .habit-app-badge-icon{width:100%;height:100%;object-fit:contain}
     .habit-hub-card-active{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:999px;background:rgba(42,156,196,.1);font-size:9px;font-weight:800}
-    .habit-hub-card-actions{gap:4px;padding-left:10px}
-    .habit-hub-act.is-icon,.habit-hub-act-menu{width:28px;height:28px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent}
-    .habit-hub-act.is-icon:hover,.habit-hub-act-menu:hover{border-color:var(--outline-variant);background:var(--surface-soft)}
+    .habit-hub-card-actions{gap:6px;padding-left:10px}
+    .habit-hub-act.is-icon,.habit-hub-act-menu{width:36px;height:36px;min-width:36px;padding:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--outline-variant);background:var(--surface);transition:transform .16s ease,background .16s ease,border-color .16s ease}
+    .habit-hub-act.is-icon:hover,.habit-hub-act-menu:hover{border-color:rgba(42,156,196,.28);background:var(--primary-soft);color:var(--primary);transform:translateY(-1px)}
+    .habit-hub-act.is-icon.is-danger:hover{border-color:rgba(198,40,40,.28);background:rgba(198,40,40,.08);color:#c62828}
+    .habit-hub-act.is-cta.is-danger{color:#c62828;border-color:rgba(198,40,40,.28);background:rgba(198,40,40,.06)}
+    .habit-hub-act.is-cta.is-danger:hover{background:rgba(198,40,40,.12);color:#c62828}
+    .habit-hub-enable-toggle{position:relative;transform:scale(1.08)}
+    .habit-hub-guide-lead{margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--on-surface)}
+    .habit-hub-guide-detail{display:grid;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--outline-variant)}
+    .habit-hub-guide-detail p{margin:0;font-size:11px;line-height:1.5;color:var(--on-surface-muted)}
+    .habit-hub-guide-detail strong{color:var(--on-surface);font-weight:800}
+    .habit-hub-card-check{
+      display:inline-flex;align-items:center;justify-content:center;align-self:center;
+      width:28px;height:28px;margin-right:2px;flex-shrink:0;cursor:pointer;
+    }
+    .habit-hub-card-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+    .habit-hub-card.is-selected{background:linear-gradient(180deg,#f3faff 0%,#fff 100%);box-shadow:inset 3px 0 0 var(--primary)}
+    .habit-hub-card.is-confirm-del{background:#fff8f7}
+    .habit-hub-selection-bar{
+      display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;
+      border-bottom:1px solid var(--outline-variant);background:var(--primary-soft);
+    }
+    .habit-hub-selection-count,.habit-hub-selection-ask{font-size:12px;font-weight:700;color:var(--on-surface)}
+    .habit-hub-selection-ask{color:#c62828}
+    .habit-hub-rename-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;flex:1}
+    .habit-hub-rename-input{
+      min-width:140px;flex:1;height:34px;padding:0 10px;border-radius:8px;
+      border:1px solid rgba(42,156,196,.35);background:#fff;font:inherit;font-size:13px;font-weight:700;
+    }
+    .habit-hub-inline-confirm{
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;
+    }
+    .habit-hub-inline-confirm-text{font-size:12px;font-weight:700;color:#c62828}
     .habit-hub-app-empty{justify-items:center;text-align:center;padding:26px 16px;border:0;border-radius:0;background:var(--surface)}
     .habit-hub-app-empty-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:var(--primary);background:var(--primary-soft);border:1px solid rgba(42,156,196,.16)}
     .habit-hub-aside{border-radius:16px;background:var(--surface);box-shadow:0 10px 28px rgba(15,23,42,.04)}
@@ -3454,12 +3583,16 @@
     .habit-hub-guide-num{width:26px;height:26px;background:var(--surface);border-color:var(--outline-variant)}
     .habit-hub-aside-tip{padding-top:10px;border-top:1px solid var(--outline-variant)}
     @media(max-width:820px){
-      .habit-hub-channel{grid-template-columns:1fr;align-items:stretch}
+      .habit-hub-channel{grid-template-columns:1fr;align-items:stretch;padding-bottom:34px}
       .habit-hub-channel-end.is-output{justify-content:flex-start;text-align:left}
       .habit-hub-channel-rail{height:22px}
       .habit-hub-channel .habit-hub-act{justify-self:start}
-      .habit-hub-card{grid-template-columns:1fr}
-      .habit-hub-card-actions{justify-content:flex-start;padding-left:0;padding-top:8px;border-left:0;border-top:1px dashed var(--outline-variant)}
+      .habit-hub-channel-hover-tip{font-size:10px}
+      .habit-hub-list.is-grid .habit-hub-channels{grid-template-columns:1fr}
+      .habit-hub-list.is-grid .habit-hub-channel{min-height:0}
+      .habit-hub-card{align-items:stretch}
+      .habit-hub-card-open{min-width:0;width:100%}
+      .habit-hub-card-actions{justify-content:flex-start;padding-left:0;padding-top:8px;border-left:0;border-top:1px dashed var(--outline-variant);margin-left:0;width:100%}
     }
     @media(prefers-reduced-motion:reduce){
       .habit-hub-hero-pulse span,.habit-hub-channel:hover .habit-hub-data-flow,.habit-hub-channel.is-hover .habit-hub-data-flow,.habit-hub-channel:hover .habit-hub-voice-bar,.habit-hub-channel.is-hover .habit-hub-voice-bar{animation:none!important}

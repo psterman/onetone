@@ -280,6 +280,10 @@
     var cfg=state().config||{};
     var activeId=cfg.activeSceneId;
     var out=items.slice();
+    if(sort==='manual'){
+      out.sort(function(a,b){ return (a.mapping.order||0)-(b.mapping.order||0); });
+      return out;
+    }
     if(sort==='name'){
       out.sort(function(a,b){ return habitName(a.mapping).localeCompare(habitName(b.mapping),'zh'); });
       return out;
@@ -301,7 +305,7 @@
       var au=am.lastUsedAt||am.updatedAt||0;
       var bu=bm.lastUsedAt||bm.updatedAt||0;
       if(bu!==au) return bu-au;
-      return (bm.order||0)-(am.order||0);
+      return (am.order||0)-(bm.order||0);
     });
     return out;
   }
@@ -387,6 +391,39 @@
       +'</span>';
   }
 
+  function actIcon(paths,size){
+    size=size||16;
+    return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths+'</svg>';
+  }
+
+  var ACT_ICON={
+    keys:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
+    voice:'<path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/>',
+    copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    rename:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    del:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
+    up:'<path d="m18 15-6-6-6 6"/>',
+    down:'<path d="m6 9 6 6 6-6"/>'
+  };
+
+  function ctaActBtn(attr,label,iconPath,opts){
+    opts=opts||{};
+    var tip=opts.tip||label;
+    var cls='habit-hub-act is-cta'+(opts.primary?' is-primary':'');
+    return '<button type="button" class="'+cls+'" '+attr
+      +' data-tip="'+esc(tip)+'" aria-label="'+esc(tip)+'">'
+      +actIcon(iconPath)+'<span>'+esc(label)+'</span></button>';
+  }
+
+  function iconActBtn(attr,label,iconPath,opts){
+    opts=opts||{};
+    var cls='habit-hub-act is-icon'+(opts.danger?' is-danger':'')+(opts.disabled?' is-disabled':'');
+    return '<button type="button" class="'+cls+'" '+attr
+      +(opts.disabled?' disabled aria-disabled="true"':'')
+      +' data-tip="'+esc(label)+'" aria-label="'+esc(label)+'">'
+      +actIcon(iconPath,18)+'<span class="sr-only">'+esc(label)+'</span></button>';
+  }
+
   function normalizeHubFilter(){
     var f=ui().habitHubFilter||'all';
     if(f==='keys'||f==='voice'||f==='global'||f==='app'){
@@ -421,6 +458,8 @@
     var keyChannel=globalKeyChannel(cfg);
     var voiceChannel=globalVoiceChannel(cfg);
     var setup=universalSetupState(cfg);
+    var keysTip=t('habitHubChannelKeysHoverTip');
+    var voiceTip=t('habitHubChannelVoiceHoverTip');
     var html='<article class="habit-hub-hero'+(setup.ready?' is-ready':' is-pending')+'" role="region" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
     if(ui().habitGuideMode){
       html+='<div class="habit-hub-guide-bubble" role="status">'
@@ -440,22 +479,24 @@
       +esc(setup.ready?t('habitHubUniversalReady'):t('habitHubUniversalPending'))+'</span>';
     html+='</div>';
     html+='<div class="habit-hub-channels">';
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="keys" tabindex="0" role="button">';
+    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="keys" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalKeysLbl')+'。'+keysTip)+'">';
     html+='<div class="habit-hub-channel-end is-input">'
       +channelKeycap(keyChannel.trigger,'')
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysInput'))+'</span><strong>'+esc(keyChannel.trigger)+'</strong></span></div>';
     html+='<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 220 28" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M8 14H212"/><path class="habit-hub-data-flow" d="M8 14H212"/></svg></div>';
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysOutput'))+'</span><strong>'+esc(keyChannel.target)+'</strong></span>'
       +channelKeycap(keyChannel.target,'is-output')+'</div>';
-    html+='<button type="button" class="habit-hub-act is-primary" data-habit-global-keys>'+esc(t('habitHubGlobalOpenKeys'))+'</button>';
+    html+=ctaActBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
+    html+='<span class="habit-hub-channel-hover-tip">'+esc(keysTip)+'</span>';
     html+='</div>';
-    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="voice" tabindex="0" role="button">';
+    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="voice" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalVoiceLbl')+'。'+voiceTip)+'">';
     html+='<div class="habit-hub-channel-end is-input">'
       +channelKeycap('MIC','is-mic')
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceInput'))+'</span><strong>'+esc(voiceChannel.engine)+'</strong><em>'+esc(voiceChannel.wake)+'</em></span></div>';
     html+='<div class="habit-hub-channel-rail is-voice" aria-hidden="true"><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span></div>';
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceOutput'))+'</span><strong>'+esc(voiceChannel.status)+'</strong></span></div>';
-    html+='<button type="button" class="habit-hub-act" data-habit-global-voice>'+esc(t('habitHubGlobalOpenVoice'))+'</button>';
+    html+=ctaActBtn('data-habit-global-voice',t('habitHubGlobalOpenVoice'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
+    html+='<span class="habit-hub-channel-hover-tip">'+esc(voiceTip)+'</span>';
     html+='</div>';
     html+='</div></article>';
     return html;
@@ -495,11 +536,17 @@
     var step2=setup.ready?(appCount>0?'is-done':'is-current'):'';
     var step3=setup.ready&&appCount>0?'is-current':'';
     return ''
+      +'<p class="habit-hub-guide-lead">'+esc(t('habitHubGuideLead'))+'</p>'
       +'<ol class="habit-hub-guide-steps">'
       +'<li class="habit-hub-guide-step '+step1+'"><span class="habit-hub-guide-num" aria-hidden="true">1</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep1'))+'</span></li>'
       +'<li class="habit-hub-guide-step '+step2+'"><span class="habit-hub-guide-num" aria-hidden="true">2</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep2'))+'</span></li>'
       +'<li class="habit-hub-guide-step '+step3+'"><span class="habit-hub-guide-num" aria-hidden="true">3</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep3'))+'</span></li>'
-      +'</ol>';
+      +'</ol>'
+      +'<div class="habit-hub-guide-detail">'
+      +'<p><strong>'+esc(t('habitHubGuideDiffTitle'))+'</strong> '+esc(t('habitHubGuideDiffBody'))+'</p>'
+      +'<p><strong>'+esc(t('habitHubGuideWhenTitle'))+'</strong> '+esc(t('habitHubGuideWhenBody'))+'</p>'
+      +'<p><strong>'+esc(t('habitHubGuideBenefitTitle'))+'</strong> '+esc(t('habitHubGuideBenefitBody'))+'</p>'
+      +'</div>';
   }
 
   function baselineId(){
@@ -514,13 +561,15 @@
     var html='<section class="habit-hub-section'+extra+'" aria-label="'+esc(title)+'">'
       +'<div class="habit-hub-section-head">'
       +'<div class="habit-hub-section-head-text">'
-      +'<div class="habit-hub-section-title-row">'
       +'<h4 class="habit-hub-section-title">'+esc(title)+'</h4>';
-    if(opts.actionsHtml) html+=opts.actionsHtml;
-    html+='</div>';
     if(opts.desc) html+='<p class="habit-hub-section-desc">'+esc(opts.desc)+'</p>';
     html+='</div>';
-    if(opts.toolbarHtml) html+=opts.toolbarHtml;
+    if(opts.actionsHtml||opts.toolbarHtml){
+      html+='<div class="habit-hub-section-tools">';
+      if(opts.actionsHtml) html+=opts.actionsHtml;
+      if(opts.toolbarHtml) html+=opts.toolbarHtml;
+      html+='</div>';
+    }
     html+='</div>';
     html+='<div class="habit-hub-section-list habit-hub-section-list--cards">'+(innerHtml||'')+'</div></section>';
     return html;
@@ -536,6 +585,26 @@
     return {app:app,legacy:legacy};
   }
 
+  function renderSelectionBar(totalCount){
+    var n=selectedIds().length;
+    if(!n) return '';
+    var html='<div class="habit-hub-selection-bar" role="status">';
+    html+='<span class="habit-hub-selection-count">'+esc(t('habitHubSelectedCount').replace('{n}',String(n)))+'</span>';
+    if(ui().habitHubBatchConfirm){
+      html+='<span class="habit-hub-selection-ask">'+esc(t('habitHubBatchDeleteConfirm').replace('{n}',String(n)))+'</span>';
+      html+='<button type="button" class="habit-hub-act is-cta is-danger" data-habit-batch-del-confirm>'+esc(t('habitHubBatchDeleteDo'))+'</button>';
+      html+='<button type="button" class="habit-hub-act is-cta" data-habit-batch-del-cancel>'+esc(t('habitScenarioCancel'))+'</button>';
+    }else{
+      html+='<button type="button" class="habit-hub-act is-cta is-danger" data-habit-batch-del>'+esc(t('habitHubBatchDelete'))+'</button>';
+      if(totalCount>n){
+        html+='<button type="button" class="habit-hub-act is-cta" data-habit-select-all>'+esc(t('habitHubSelectAll'))+'</button>';
+      }
+      html+='<button type="button" class="habit-hub-act is-cta" data-habit-clear-sel>'+esc(t('habitHubClearSelection'))+'</button>';
+    }
+    html+='</div>';
+    return html;
+  }
+
   function renderCard(it,opts){
     opts=opts||{};
     var m=it.mapping;
@@ -546,11 +615,24 @@
     var appId=primaryAppId(m);
     var legacy=!!opts.legacy;
     var horizontal=!!opts.horizontal;
+    var appScenario=!legacy&&isAppScenario(m);
+    var renaming=appScenario&&String(ui().habitHubRenameId||'')===m.id;
+    var confirmingDel=appScenario&&String(ui().habitHubConfirmDelId||'')===m.id;
+    var selected=appScenario&&isSelected(m.id);
     var html='<article class="habit-hub-card habit-hub-card--'+esc(type)
       +(horizontal?' habit-hub-card--horizontal':'')
       +(legacy?' habit-hub-card--legacy':'')
-      +(isActive?' is-active-scene':'')+'" data-habit-card="'+esc(m.id)+'" role="listitem">';
-    if(legacy){
+      +(isActive?' is-active-scene':'')
+      +(selected?' is-selected':'')
+      +(renaming?' is-renaming':'')
+      +(confirmingDel?' is-confirm-del':'')
+      +'" data-habit-card="'+esc(m.id)+'" role="listitem">';
+    if(appScenario){
+      html+='<label class="habit-hub-card-check" title="'+esc(t('habitHubSelectScenario'))+'">'
+        +'<input type="checkbox" data-habit-select="'+esc(m.id)+'"'+(selected?' checked':'')+' />'
+        +'<span class="sr-only">'+esc(t('habitHubSelectScenario'))+'</span></label>';
+    }
+    if(legacy||renaming){
       html+='<div class="habit-hub-card-open habit-hub-card-open--static">';
     }else{
       html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
@@ -559,36 +641,53 @@
     else html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
     html+='<span class="habit-hub-card-body">';
     html+='<span class="habit-hub-card-title-row">';
-    html+='<span class="habit-hub-card-name">'+esc(habitName(m))+'</span>';
-    html+='<span class="habit-hub-card-type">'+esc(typeLabel(type))+'</span>';
-    if(isActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
-    var activation=primaryActivationPhrase(m,cfg);
-    if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
-    html+='</span>';
-    // App scenarios: no canned description; keep meta status only.
-    if(!isAppScenario(m)){
-      html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
+    if(renaming){
+      html+='<span class="habit-hub-rename-wrap">'
+        +'<input type="text" class="habit-hub-rename-input" data-habit-rename-input="'+esc(m.id)+'" value="'+esc(habitName(m))+'" maxlength="48" aria-label="'+esc(t('habitHubRenamePrompt'))+'" />'
+        +'<button type="button" class="habit-hub-act is-cta is-primary" data-habit-rename-save="'+esc(m.id)+'">'+esc(t('habitHubRenameSave'))+'</button>'
+        +'<button type="button" class="habit-hub-act is-cta" data-habit-rename-cancel>'+esc(t('habitScenarioCancel'))+'</button>'
+        +'</span>';
+    }else{
+      html+='<span class="habit-hub-card-name">'+esc(habitName(m))+'</span>';
+      html+='<span class="habit-hub-card-type">'+esc(typeLabel(type))+'</span>';
+      if(isActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
+      var activation=primaryActivationPhrase(m,cfg);
+      if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
     }
-    var meta=habitMetaLine(m,profile);
-    if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
     html+='</span>';
-    if(legacy) html+='</div>'; else html+='</button>';
+    if(!renaming){
+      if(!isAppScenario(m)){
+        html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
+      }
+      var meta=habitMetaLine(m,profile);
+      if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
+    }
+    html+='</span>';
+    if(legacy||renaming) html+='</div>'; else html+='</button>';
     html+='<div class="habit-hub-card-actions">';
-    if(!legacy&&isAppScenario(m)){
-      var enOn=!!m.enabled;
-      html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
-      html+='<button type="button" class="habit-hub-act is-primary" data-habit-scenario-keys="'+esc(m.id)+'">'+esc(t('habitHubGlobalOpenKeys'))+'</button>';
-      html+='<button type="button" class="habit-hub-act" data-habit-scenario-voice="'+esc(m.id)+'">'+esc(t('habitHubGlobalOpenVoice'))+'</button>';
+    if(confirmingDel){
+      html+='<div class="habit-hub-inline-confirm" role="group" aria-label="'+esc(t('habitHubDeleteConfirm'))+'">'
+        +'<span class="habit-hub-inline-confirm-text">'+esc(t('habitHubDeleteConfirm'))+'</span>'
+        +'<button type="button" class="habit-hub-act is-cta is-danger" data-habit-del-confirm="'+esc(m.id)+'">'+esc(t('habitHubDeleteDo'))+'</button>'
+        +'<button type="button" class="habit-hub-act is-cta" data-habit-del-cancel>'+esc(t('habitScenarioCancel'))+'</button>'
+        +'</div>';
+    }else if(!renaming){
+      if(appScenario){
+        var enOn=!!m.enabled;
+        html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" data-tip="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
+        html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
+        html+='<span class="habit-hub-act-sep" aria-hidden="true"></span>';
+        html+=iconActBtn('data-habit-move="up" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveUp'),ACT_ICON.up,{disabled:!opts.canMoveUp});
+        html+=iconActBtn('data-habit-move="down" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveDown'),ACT_ICON.down,{disabled:!opts.canMoveDown});
+      }
+      if(legacy){
+        html+='<button type="button" class="habit-hub-act is-primary is-cta" data-habit-migrate="'+esc(m.id)+'" title="'+esc(t('habitHubLegacyMigrate'))+'" data-tip="'+esc(t('habitHubLegacyMigrate'))+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
+      }
+      html+=iconActBtn('data-habit-dup="'+esc(m.id)+'"',t('habitHubActCopy'),ACT_ICON.copy);
+      html+=iconActBtn('data-habit-rename="'+esc(m.id)+'"',t('habitHubActRename'),ACT_ICON.rename);
+      html+=iconActBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),ACT_ICON.del,{danger:true});
     }
-    if(!legacy){
-      html+='<button type="button" class="habit-hub-act is-primary is-icon" data-habit-switch="'+esc(m.id)+'" title="'+esc(t('habitHubActSwitch'))+'" aria-label="'+esc(t('habitHubActSwitch'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg><span class="sr-only">'+esc(t('habitHubActSwitch'))+'</span></button>';
-    }
-    if(legacy){
-      html+='<button type="button" class="habit-hub-act is-primary" data-habit-migrate="'+esc(m.id)+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
-    }
-    html+='<button type="button" class="habit-hub-act is-icon" data-habit-dup="'+esc(m.id)+'" title="'+esc(t('habitHubActCopy'))+'" aria-label="'+esc(t('habitHubActCopy'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="sr-only">'+esc(t('habitHubActCopy'))+'</span></button>';
-    html+='<button type="button" class="habit-hub-act is-icon" data-habit-rename="'+esc(m.id)+'" title="'+esc(t('habitHubActRename'))+'" aria-label="'+esc(t('habitHubActRename'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="sr-only">'+esc(t('habitHubActRename'))+'</span></button>';
-    html+='<button type="button" class="habit-hub-act is-danger is-icon" data-habit-del="'+esc(m.id)+'" title="'+esc(t('habitHubActDelete'))+'" aria-label="'+esc(t('habitHubActDelete'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span class="sr-only">'+esc(t('habitHubActDelete'))+'</span></button>';
     html+='</div></article>';
     return html;
   }
@@ -625,9 +724,10 @@
     var sort=$('habitHubSort');
     if(sort){
       var opts=sort.querySelectorAll('option');
-      if(opts[0]) opts[0].textContent=t('habitHubSortRecent');
-      if(opts[1]) opts[1].textContent=t('habitHubSortName');
-      if(opts[2]) opts[2].textContent=t('habitHubSortType');
+      if(opts[0]) opts[0].textContent=t('habitHubSortManual');
+      if(opts[1]) opts[1].textContent=t('habitHubSortRecent');
+      if(opts[2]) opts[2].textContent=t('habitHubSortName');
+      if(opts[3]) opts[3].textContent=t('habitHubSortType');
     }
     var guideBtn=$('btnHabitHubGuideMode');
     if(guideBtn){
@@ -645,7 +745,7 @@
       btn.setAttribute('aria-selected',on?'true':'false');
     });
     var sort=$('habitHubSort');
-    if(sort) sort.value=ui().habitHubSort||'recent';
+    if(sort) sort.value=ui().habitHubSort||'manual';
     applyViewMode();
   }
 
@@ -683,15 +783,24 @@
         allowEmpty:true
       });
     }else{
-      var appInner=filtered.map(function(it){ return renderCard(it,{horizontal:true}); }).join('');
+      var appInner=filtered.map(function(it,idx){
+        return renderCard(it,{
+          horizontal:true,
+          canMoveUp:idx>0,
+          canMoveDown:idx<filtered.length-1
+        });
+      }).join('');
+      pruneSelection(filtered.map(function(it){ return it&&it.mapping&&it.mapping.id; }).filter(Boolean));
       if(ui().habitHubCreating){
         appInner=renderInlineCreatePicker()+(appInner||'');
       }else if(!appInner){
         appInner=renderAppSectionEmpty();
+      }else{
+        appInner=renderSelectionBar(filtered.length)+appInner;
       }
       html+=renderSection(t('habitHubSectionApp'),appInner,{
         desc:t('habitHubSectionAppDesc'),
-        actionsHtml:'<button type="button" class="habit-hub-new-btn is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>',
+        actionsHtml:'<button type="button" class="habit-hub-filter-like is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>',
         toolbarHtml:renderAppFilterBar({showLegacy:hasLegacy}),
         allowEmpty:true
       });
@@ -710,6 +819,16 @@
     list.innerHTML=hasContent?html:'';
     applyViewMode();
     hydrateHubAppIcons();
+    focusRenameInput();
+  }
+
+  function focusRenameInput(){
+    var id=String(ui().habitHubRenameId||'').trim();
+    if(!id) return;
+    var input=document.querySelector('[data-habit-rename-input="'+id+'"]');
+    if(!input) return;
+    input.focus();
+    if(input.select) input.select();
   }
 
   function hydrateHubAppIcons(){
@@ -798,23 +917,68 @@
     else if(global.OneToneRender) global.OneToneRender.render();
   }
 
-  function deleteHabit(id){
+  function selectedIds(){
+    if(!Array.isArray(ui().habitHubSelectedIds)) ui().habitHubSelectedIds=[];
+    return ui().habitHubSelectedIds;
+  }
+
+  function isSelected(id){
     id=String(id||'').trim();
+    return id&&selectedIds().indexOf(id)>=0;
+  }
+
+  function toggleSelected(id){
+    id=String(id||'').trim();
+    if(!id) return;
+    var list=selectedIds();
+    var idx=list.indexOf(id);
+    if(idx>=0) list.splice(idx,1);
+    else list.push(id);
+    ui().habitHubBatchConfirm=false;
+  }
+
+  function clearSelection(){
+    ui().habitHubSelectedIds=[];
+    ui().habitHubBatchConfirm=false;
+  }
+
+  function pruneSelection(validIds){
+    var allow={};
+    (validIds||[]).forEach(function(id){ allow[String(id)]=true; });
+    ui().habitHubSelectedIds=selectedIds().filter(function(id){ return allow[id]; });
+    if(!ui().habitHubSelectedIds.length) ui().habitHubBatchConfirm=false;
+  }
+
+  function persistHub(){
+    if(hooks().save) hooks().save();
+    else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+  }
+
+  function deleteHabits(ids){
+    ids=(Array.isArray(ids)?ids:[]).map(function(id){ return String(id||'').trim(); }).filter(Boolean);
+    if(!ids.length) return;
     var cfg=state().config||{};
-    if(!id||!Array.isArray(cfg.mappings)) return;
-    var idx=cfg.mappings.findIndex(function(m){ return m&&m.id===id; });
-    if(idx<0) return;
-    var removed=Object.assign({},cfg.mappings.splice(idx,1)[0]);
-    removed.enabled=false;
+    if(!Array.isArray(cfg.mappings)) return;
     if(!Array.isArray(cfg.trash)) cfg.trash=[];
-    cfg.trash.unshift(removed);
-    if(state().selectedMappingId===id){
+    var remove={};
+    ids.forEach(function(id){ remove[id]=true; });
+    var kept=[];
+    cfg.mappings.forEach(function(m){
+      if(!m||!remove[m.id]){ kept.push(m); return; }
+      var removed=Object.assign({},m);
+      removed.enabled=false;
+      cfg.trash.unshift(removed);
+    });
+    cfg.mappings=kept;
+    if(remove[String(state().selectedMappingId||'')]){
       state().selectedMappingId=cfg.mappings[0]&&cfg.mappings[0].id||null;
     }
-    if(String(cfg.activeSceneId||'')===id){
+    if(remove[String(cfg.activeSceneId||'')]){
       cfg.activeSceneId=cfg.mappings[0]&&cfg.mappings[0].id||'';
     }
     cfg.mappings.forEach(function(m,i){ if(m) m.order=i; });
+    ui().habitHubConfirmDelId='';
+    clearSelection();
     var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
     var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
     var done=function(){
@@ -829,6 +993,63 @@
       if(save) save();
       done();
     }
+  }
+
+  function deleteHabit(id){
+    deleteHabits([id]);
+  }
+
+  function commitRename(id,name){
+    id=String(id||'').trim();
+    name=String(name||'').trim();
+    if(!id||!name) return false;
+    var m=core()&&core().byId?core().byId(id):null;
+    if(!m) return false;
+    if(hp()&&hp().isReservedHabitName&&hp().isReservedHabitName(name)){
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubRenameReserved'),'scheme');
+      return false;
+    }
+    m.group=name;
+    touchUpdated(m);
+    ui().habitHubRenameId='';
+    persistHub();
+    render();
+    return true;
+  }
+
+  function reorderAppScenario(id,dir){
+    id=String(id||'').trim();
+    dir=dir==='up'?'up':'down';
+    if(!id) return;
+    var cfg=state().config||{};
+    if(!Array.isArray(cfg.mappings)) return;
+    // Visual list order (what the user sees). Persist by swapping in cfg.mappings —
+    // save payload uses array index as order, so in-memory .order alone is wiped on save/reload.
+    var visual=sortItems(filterItems(collectHabits())).map(function(it){ return it&&it.mapping; }).filter(Boolean);
+    var idx=-1;
+    for(var i=0;i<visual.length;i++){
+      if(visual[i].id===id){ idx=i; break; }
+    }
+    if(idx<0) return;
+    var swap=dir==='up'?idx-1:idx+1;
+    if(swap<0||swap>=visual.length) return;
+    var aId=visual[idx].id;
+    var bId=visual[swap].id;
+    var ai=-1,bi=-1;
+    for(var j=0;j<cfg.mappings.length;j++){
+      if(!cfg.mappings[j]) continue;
+      if(cfg.mappings[j].id===aId) ai=j;
+      if(cfg.mappings[j].id===bId) bi=j;
+    }
+    if(ai<0||bi<0||ai===bi) return;
+    var tmp=cfg.mappings[ai];
+    cfg.mappings[ai]=cfg.mappings[bi];
+    cfg.mappings[bi]=tmp;
+    cfg.mappings.forEach(function(m,orderIdx){ if(m) m.order=orderIdx; });
+    ui().habitHubSort='manual';
+    touchUpdated(cfg.mappings[bi]);
+    persistHub();
+    render();
   }
 
   function touchUpdated(m){
@@ -1151,19 +1372,68 @@
   function bindEvents(){
     var hub=$('habitHubView');
     if(hub){
+      // Capture: move / delete intent must win over card-open bubbling.
       hub.addEventListener('click',function(e){
+        var moveBtn=e.target.closest&&e.target.closest('[data-habit-move]');
+        if(moveBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+          if(moveBtn.classList.contains('is-disabled')||moveBtn.hasAttribute('disabled')) return;
+          reorderAppScenario(moveBtn.getAttribute('data-habit-id')||'',moveBtn.getAttribute('data-habit-move')||'');
+          return;
+        }
+        var delConfirm=e.target.closest&&e.target.closest('[data-habit-del-confirm]');
+        if(delConfirm){
+          e.preventDefault();
+          e.stopPropagation();
+          if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+          deleteHabits([delConfirm.getAttribute('data-habit-del-confirm')||'']);
+          return;
+        }
         var delBtn=e.target.closest&&e.target.closest('[data-habit-del]');
-        if(!delBtn) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-        deleteHabit(delBtn.getAttribute('data-habit-del')||'');
+        if(delBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+          ui().habitHubConfirmDelId=delBtn.getAttribute('data-habit-del')||'';
+          ui().habitHubRenameId='';
+          ui().habitHubBatchConfirm=false;
+          render();
+          return;
+        }
       },true);
+      hub.addEventListener('change',function(e){
+        var sel=e.target.closest&&e.target.closest('[data-habit-select]');
+        if(!sel) return;
+        var sid=sel.getAttribute('data-habit-select')||'';
+        var list=selectedIds();
+        var idx=list.indexOf(sid);
+        if(sel.checked){
+          if(idx<0) list.push(sid);
+        }else if(idx>=0){
+          list.splice(idx,1);
+        }
+        ui().habitHubBatchConfirm=false;
+        renderList();
+      });
+      hub.addEventListener('keydown',function(e){
+        var renameInput=e.target.closest&&e.target.closest('[data-habit-rename-input]');
+        if(!renameInput) return;
+        if(e.key==='Enter'){
+          e.preventDefault();
+          commitRename(renameInput.getAttribute('data-habit-rename-input')||'',renameInput.value);
+        }else if(e.key==='Escape'){
+          e.preventDefault();
+          ui().habitHubRenameId='';
+          render();
+        }
+      });
       hub.addEventListener('click',function(e){
         var filterBtn=e.target.closest&&e.target.closest('[data-habit-filter]');
         if(filterBtn){
           e.preventDefault();
-      ui().habitHubFilter=filterBtn.dataset.habitFilter;
+          ui().habitHubFilter=filterBtn.dataset.habitFilter;
           renderFilters();
           renderList();
           var stepsHost=$('habitHubGuideSteps');
@@ -1198,7 +1468,7 @@
           return;
         }
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
-        if(channel){
+        if(channel&&!(e.target.closest&&e.target.closest('.habit-hub-act'))){
           e.preventDefault();
           channel.classList.add('is-pressed');
           global.setTimeout(function(){ channel.classList.remove('is-pressed'); },120);
@@ -1240,7 +1510,70 @@
           }
           return;
         }
-        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-del],.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-switch],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-enable]');
+        var batchDel=e.target.closest&&e.target.closest('[data-habit-batch-del]');
+        if(batchDel){
+          e.preventDefault();
+          if(!selectedIds().length) return;
+          ui().habitHubBatchConfirm=true;
+          ui().habitHubConfirmDelId='';
+          renderList();
+          return;
+        }
+        var batchDelConfirm=e.target.closest&&e.target.closest('[data-habit-batch-del-confirm]');
+        if(batchDelConfirm){
+          e.preventDefault();
+          deleteHabits(selectedIds().slice());
+          return;
+        }
+        var batchDelCancel=e.target.closest&&e.target.closest('[data-habit-batch-del-cancel]');
+        if(batchDelCancel){
+          e.preventDefault();
+          ui().habitHubBatchConfirm=false;
+          renderList();
+          return;
+        }
+        var clearSel=e.target.closest&&e.target.closest('[data-habit-clear-sel]');
+        if(clearSel){
+          e.preventDefault();
+          clearSelection();
+          renderList();
+          return;
+        }
+        var selectAll=e.target.closest&&e.target.closest('[data-habit-select-all]');
+        if(selectAll){
+          e.preventDefault();
+          var all=sortItems(filterItems(collectHabits())).map(function(it){ return it&&it.mapping&&it.mapping.id; }).filter(Boolean);
+          ui().habitHubSelectedIds=all.slice();
+          ui().habitHubBatchConfirm=false;
+          renderList();
+          return;
+        }
+        var delCancel=e.target.closest&&e.target.closest('[data-habit-del-cancel]');
+        if(delCancel){
+          e.preventDefault();
+          e.stopPropagation();
+          ui().habitHubConfirmDelId='';
+          render();
+          return;
+        }
+        var renameSave=e.target.closest&&e.target.closest('[data-habit-rename-save]');
+        if(renameSave){
+          e.preventDefault();
+          e.stopPropagation();
+          var saveId=renameSave.getAttribute('data-habit-rename-save')||'';
+          var input=document.querySelector('[data-habit-rename-input="'+saveId+'"]');
+          commitRename(saveId,input?input.value:'');
+          return;
+        }
+        var renameCancel=e.target.closest&&e.target.closest('[data-habit-rename-cancel]');
+        if(renameCancel){
+          e.preventDefault();
+          e.stopPropagation();
+          ui().habitHubRenameId='';
+          render();
+          return;
+        }
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-enable]');
         if(actBtn){
           e.stopPropagation();
         }
@@ -1260,8 +1593,7 @@
           if(enableM){
             enableM.enabled=!enableM.enabled;
             touchUpdated(enableM);
-            if(hooks().save) hooks().save();
-            else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+            persistHub();
             render();
           }
           return;
@@ -1292,13 +1624,6 @@
           showDetail(openBtn.dataset.habitOpen);
           return;
         }
-        var switchBtn=e.target.closest&&e.target.closest('[data-habit-switch]');
-        if(switchBtn){
-          e.preventDefault();
-          e.stopPropagation();
-          if(global.OneToneSceneActivate) global.OneToneSceneActivate.activateScene(switchBtn.dataset.habitSwitch);
-          return;
-        }
         var dupBtn=e.target.closest&&e.target.closest('[data-habit-dup]');
         if(dupBtn){
           e.preventDefault();
@@ -1311,20 +1636,8 @@
         if(renameBtn){
           e.preventDefault();
           e.stopPropagation();
-          var id=renameBtn.dataset.habitRename;
-          var m=core()&&core().byId?core().byId(id):null;
-          if(!m) return;
-          var next=prompt(t('habitHubRenamePrompt'),habitName(m));
-          if(next===null) return;
-          next=String(next).trim();
-          if(!next) return;
-          if(hp()&&hp().isReservedHabitName&&hp().isReservedHabitName(next)){
-            if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubRenameReserved'),'scheme');
-            return;
-          }
-          m.group=next;
-          touchUpdated(m);
-          if(hooks().save) hooks().save();
+          ui().habitHubRenameId=renameBtn.getAttribute('data-habit-rename')||'';
+          ui().habitHubConfirmDelId='';
           render();
           return;
         }
@@ -1381,6 +1694,7 @@
       hub.addEventListener('keydown',function(e){
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
         if(!channel||(e.key!=='Enter'&&e.key!==' ')) return;
+        if(e.target.closest&&e.target.closest('.habit-hub-act,[data-habit-rename-input]')) return;
         e.preventDefault();
         channel.click();
       });
