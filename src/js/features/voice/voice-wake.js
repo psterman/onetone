@@ -939,6 +939,24 @@
         if(sapiRes||voskRes||kwsRes){
           snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
         }
+        try{
+          var matcher=global.OneToneVoiceCommandMatcher;
+          if(matcher&&typeof matcher.onFinalTranscript==='function'&&!matcher.isSuspended()){
+            var finalText='';
+            if(voskRes&&String(voskRes.lastFinal||'').trim()) finalText=String(voskRes.lastFinal).trim();
+            else if(sapiRes&&String(sapiRes.lastHeard||'').trim()) finalText=String(sapiRes.lastHeard).trim();
+            if(finalText){
+              var fp='vc:'+finalText;
+              if(fp!==(global.__vp_voice_cmd_last_fp__||'')){
+                global.__vp_voice_cmd_last_fp__=fp;
+                matcher.onFinalTranscript(finalText,{
+                  config:global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config,
+                  engine:voskRes&&voskRes.lastFinal?'vosk':(sapiRes?'sapi':'')
+                });
+              }
+            }
+          }
+        }catch(_vcErr){}
         const wakeFp=voiceWakeLiveFingerprint(sapiRes||{})+'|'+voiceWakeLiveFingerprint(voskRes||{})+'|'+(kwsRes&&[kwsRes.state,kwsRes.lastPartial,kwsRes.lastDetectedPhrase,kwsRes.lastDetectedKind,kwsRes.lastTrigger,kwsRes.lastSkip].join('|')||'')+'|'+(endRes&&endRes.state||'');
         if(wakeFp===lastVoicePollWakeFp&&!ui().drawerOpen){
           return;

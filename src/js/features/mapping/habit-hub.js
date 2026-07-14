@@ -661,6 +661,9 @@
       }
       var meta=habitMetaLine(m,profile);
       if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
+      if(appScenario&&global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.hubChipHtml){
+        html+=global.OneToneHabitScenarioVoiceCommand.hubChipHtml(m)||'';
+      }
     }
     html+='</span>';
     if(legacy||renaming) html+='</div>'; else html+='</button>';
@@ -1615,6 +1618,16 @@
           var voiceId=scenarioVoiceBtn.getAttribute('data-habit-scenario-voice')||'';
           if(voiceId&&global.OneToneHabitScenarioContextBanner){
             global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(voiceId,{returnToHub:true});
+          }
+          return;
+        }
+        var voiceCmdChip=e.target.closest&&e.target.closest('[data-habit-voice-cmd]');
+        if(voiceCmdChip){
+          e.preventDefault();
+          e.stopPropagation();
+          var chipId=voiceCmdChip.getAttribute('data-habit-voice-cmd')||'';
+          if(chipId&&global.OneToneHabitScenarioContextBanner){
+            global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(chipId,{returnToHub:true});
           }
           return;
         }

@@ -149,6 +149,9 @@
       +'</div>';
     var modeToggle=$('habitScenarioVoiceModeToggle');
     if(modeToggle) modeToggle.classList.toggle('is-on',modeOn);
+    if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.render){
+      global.OneToneHabitScenarioVoiceCommand.render();
+    }
   }
 
   function readFormIntoEffective(m){

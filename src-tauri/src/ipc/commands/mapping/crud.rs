@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::Emitter;
 
-use crate::config::{new_mapping_id, MappingEntry};
+use crate::config::{new_mapping_id, rekey_voice_commands_for_mapping, MappingEntry};
 use crate::ipc::core::persist_and_rebind;
 use crate::AppState;
 
@@ -92,6 +92,7 @@ pub fn cmd_mapping_duplicate(
                 app_target_id: src.app_target_id.clone(),
                 app_behavior_rules: src.app_behavior_rules.clone(),
                 voice_override: src.voice_override.clone(),
+                voice_commands: rekey_voice_commands_for_mapping(&src.voice_commands, &new_id),
             });
             cfg.normalize();
         }

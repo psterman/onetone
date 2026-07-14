@@ -106,6 +106,18 @@
     copy.enabled=false;
     copy.order=state.config.mappings.length;
     copy.label=(copy.label||'').trim();
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rekeyVoiceCommandsForMapping){
+      copy.voiceCommands=global.OneToneConfigPersist.rekeyVoiceCommandsForMapping(copy.voiceCommands,newId);
+    }else if(Array.isArray(copy.voiceCommands)){
+      copy.voiceCommands=copy.voiceCommands.map(function(c,i){
+        if(!c||typeof c!=='object') return c;
+        return Object.assign({},c,{
+          id:'cmd_'+Date.now()+'_'+i+'_'+Math.floor(Math.random()*100000),
+          scenarioId:newId,
+          updatedAt:Date.now()
+        });
+      });
+    }
     state.config.mappings.push(copy);
     state.selectedMappingId=newId;
     hooks.syncEditorFromSelection();

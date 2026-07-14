@@ -436,6 +436,16 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(
             }
         }
     }
+    let inject_target = if !primary.is_empty() {
+        primary.to_string()
+    } else {
+        mapping.id.clone()
+    };
+    for phrase in voice_command_summon_phrases(mapping) {
+        if seen.insert(phrase.clone()) {
+            out.push((phrase, inject_target.clone()));
+        }
+    }
     out
 }
 
@@ -476,6 +486,140 @@ pub fn append_unique_phrases(mut phrases: Vec<String>, extra: &[String]) -> Vec<
         }
     }
     phrases
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceCommandQualitySignals {
+    #[serde(rename = "hasFinalText", default)]
+    pub has_final_text: bool,
+    #[serde(rename = "micTooLow", default)]
+    pub mic_too_low: bool,
+    #[serde(rename = "textLengthOk", default = "default_true")]
+    pub text_length_ok: bool,
+    #[serde(rename = "sampleAgreement", default)]
+    pub sample_agreement: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceCommandSample {
+    #[serde(default)]
+    pub transcript: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f64>,
+    #[serde(default)]
+    pub source: String,
+    #[serde(rename = "qualitySignals", default, skip_serializing_if = "Option::is_none")]
+    pub quality_signals: Option<VoiceCommandQualitySignals>,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceCommand {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default = "default_voice_command_version")]
+    pub version: u32,
+    #[serde(default = "default_voice_command_kind")]
+    pub kind: String,
+    #[serde(rename = "engineHint", default = "default_voice_command_engine_hint")]
+    pub engine_hint: String,
+    #[serde(default = "default_voice_command_locale")]
+    pub locale: String,
+    #[serde(rename = "scenarioId", default)]
+    pub scenario_id: String,
+    #[serde(rename = "canonicalPhrase", default)]
+    pub canonical_phrase: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub samples: Vec<VoiceCommandSample>,
+    #[serde(rename = "phoneticKey", default)]
+    pub phonetic_key: String,
+    #[serde(default = "default_voice_command_threshold")]
+    pub threshold: f64,
+    #[serde(default = "default_voice_command_margin")]
+    pub margin: f64,
+    #[serde(default = "default_voice_command_quality")]
+    pub quality: String,
+    #[serde(rename = "activationScope", default = "default_voice_command_scope")]
+    pub activation_scope: String,
+    #[serde(rename = "appBoost", default = "default_true")]
+    pub app_boost: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(rename = "createdAt", default)]
+    pub created_at: u64,
+    #[serde(rename = "updatedAt", default)]
+    pub updated_at: u64,
+}
+
+fn default_voice_command_version() -> u32 {
+    1
+}
+fn default_voice_command_kind() -> String {
+    "scenario-activate".into()
+}
+fn default_voice_command_engine_hint() -> String {
+    "asr-text".into()
+}
+fn default_voice_command_locale() -> String {
+    "zh-CN".into()
+}
+fn default_voice_command_threshold() -> f64 {
+    0.80
+}
+fn default_voice_command_margin() -> f64 {
+    0.06
+}
+fn default_voice_command_quality() -> String {
+    "good".into()
+}
+fn default_voice_command_scope() -> String {
+    "global".into()
+}
+
+pub fn voice_command_summon_phrases(mapping: &MappingEntry) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for cmd in &mapping.voice_commands {
+        if !cmd.enabled {
+            continue;
+        }
+        let mut phrases = Vec::new();
+        let canon = cmd.canonical_phrase.trim();
+        if !canon.is_empty() {
+            phrases.push(canon.to_string());
+        }
+        for alias in cmd.aliases.iter().take(2) {
+            let a = alias.trim();
+            if !a.is_empty() {
+                phrases.push(a.to_string());
+            }
+        }
+        for phrase in phrases {
+            if seen.insert(phrase.clone()) {
+                out.push(phrase);
+            }
+        }
+    }
+    out
+}
+
+/// Rekey voice commands when duplicating a mapping.
+pub fn rekey_voice_commands_for_mapping(
+    commands: &[VoiceCommand],
+    scenario_id: &str,
+) -> Vec<VoiceCommand> {
+    commands
+        .iter()
+        .map(|c| {
+            let mut next = c.clone();
+            next.id = format!("cmd-{}", new_mapping_id());
+            next.scenario_id = scenario_id.to_string();
+            next
+        })
+        .collect()
 }
 
 /// Persisted habit/scene row. Runtime display uses read-only [`crate::habit_profile::HabitProfile`] projection.
@@ -535,6 +679,8 @@ pub struct MappingEntry {
         skip_serializing_if = "Option::is_none"
     )]
     pub voice_override: Option<VoiceOverride>,
+    #[serde(rename = "voiceCommands", default)]
+    pub voice_commands: Vec<VoiceCommand>,
 }
 
 fn default_long_press_ms() -> u32 {
@@ -1620,6 +1766,7 @@ impl Default for VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
+                voice_commands: vec![],
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -1855,6 +2002,7 @@ impl VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
+                voice_commands: vec![],
             });
         }
 
@@ -2691,6 +2839,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -2726,6 +2875,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -2763,6 +2913,7 @@ mod tests {
                 wake_phrases: Some(vec!["测试".into()]),
                 ..VoiceOverride::default()
             }),
+            voice_commands: vec![],
         });
         cfg.normalize();
         let m = cfg
@@ -2816,6 +2967,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -2867,6 +3019,7 @@ mod tests {
                     button: None,
                 }],
             }),
+            voice_commands: vec![],
         };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -2899,6 +3052,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -2937,6 +3091,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -2974,6 +3129,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -3007,6 +3163,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -3089,6 +3246,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -3125,6 +3283,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -3438,5 +3597,72 @@ mod tests {
         assert_eq!(spec.exe_names, vec!["WINWORD.EXE"]);
         assert_eq!(spec.path_contains.as_deref(), Some("Microsoft Office"));
         assert_eq!(spec.title_contains.as_deref(), Some("Document"));
+    }
+
+    #[test]
+    fn voice_commands_inject_canonical_and_two_aliases() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.app_target_id = "cursor-chat".into();
+        mapping.voice_commands = vec![VoiceCommand {
+            id: "cmd1".into(),
+            version: 1,
+            kind: "scenario-activate".into(),
+            engine_hint: "asr-text".into(),
+            locale: "zh-CN".into(),
+            scenario_id: mapping.id.clone(),
+            canonical_phrase: "微信输入".into(),
+            aliases: vec!["微信语音输入".into(), "微信开始输入".into(), "第三alias".into()],
+            samples: vec![VoiceCommandSample {
+                transcript: "采样不应注入".into(),
+                confidence: None,
+                source: "vosk".into(),
+                quality_signals: None,
+                created_at: 0,
+            }],
+            phonetic_key: String::new(),
+            threshold: 0.8,
+            margin: 0.06,
+            quality: "good".into(),
+            activation_scope: "global".into(),
+            app_boost: true,
+            enabled: true,
+            created_at: 0,
+            updated_at: 0,
+        }];
+        let phrases = voice_command_summon_phrases(&mapping);
+        assert!(phrases.contains(&"微信输入".to_string()));
+        assert!(phrases.contains(&"微信语音输入".to_string()));
+        assert!(phrases.contains(&"微信开始输入".to_string()));
+        assert!(!phrases.iter().any(|p| p == "第三alias"));
+        assert!(!phrases.iter().any(|p| p.contains("采样")));
+        let entries = summon_entries_for_mapping(&mapping, "cn-light");
+        assert!(entries.iter().any(|(p, t)| p == "微信输入" && t == "cursor-chat"));
+    }
+
+    #[test]
+    fn voice_commands_disabled_are_skipped() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.voice_commands = vec![VoiceCommand {
+            id: "cmd-disabled".into(),
+            version: 1,
+            kind: "scenario-activate".into(),
+            engine_hint: "asr-text".into(),
+            locale: "zh-CN".into(),
+            scenario_id: mapping.id.clone(),
+            canonical_phrase: "不应出现".into(),
+            aliases: vec!["也不应出现".into()],
+            samples: vec![],
+            phonetic_key: String::new(),
+            threshold: 0.8,
+            margin: 0.06,
+            quality: "good".into(),
+            activation_scope: "global".into(),
+            app_boost: true,
+            enabled: false,
+            created_at: 0,
+            updated_at: 0,
+        }];
+        let phrases = voice_command_summon_phrases(&mapping);
+        assert!(phrases.is_empty());
     }
 }

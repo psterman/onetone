@@ -110,6 +110,23 @@
     return globalWakePhrases(cfg);
   }
 
+  /** High-confidence phrases only: canonical + first 2 aliases. Samples never inject. */
+  function voiceCommandSummonPhrases(mapping){
+    var out=[];
+    var seen={};
+    (Array.isArray(mapping&&mapping.voiceCommands)?mapping.voiceCommands:[]).forEach(function(cmd){
+      if(!cmd||cmd.enabled===false) return;
+      var phrases=[String(cmd.canonicalPhrase||'').trim()];
+      (Array.isArray(cmd.aliases)?cmd.aliases:[]).slice(0,2).forEach(function(a){
+        phrases.push(String(a||'').trim());
+      });
+      phrases.forEach(function(phrase){
+        if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+      });
+    });
+    return out;
+  }
+
   function summonPhrasesForMapping(mapping,opts){
     opts=opts||{};
     if(!mapping) return [];
@@ -131,6 +148,9 @@
         });
       }
     }
+    voiceCommandSummonPhrases(mapping).forEach(function(phrase){
+      if(phrase&&!seen[phrase]){ seen[phrase]=true; out.push(phrase); }
+    });
     return out;
   }
 
@@ -192,6 +212,7 @@
     appWakePhrasesForRule:appWakePhrasesForRule,
     defaultSummonPhrase:defaultSummonPhrase,
     summonPhrasesForMapping:summonPhrasesForMapping,
+    voiceCommandSummonPhrases:voiceCommandSummonPhrases,
     appWakePhrasesForMapping:function(mapping,opts){
       opts=opts||{};
       if(!mapping) return [];

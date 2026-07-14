@@ -123,6 +123,14 @@
     syncWakePresetLangVisibility({lang:presetLang});
     renderMicLine(vm);
     renderWakeHost(vm);
+    if(global.OneToneHabitScenarioVoiceCommand){
+      if(global.OneToneHabitScenarioVoiceCommand.bindEvents){
+        global.OneToneHabitScenarioVoiceCommand.bindEvents({});
+      }
+      if(global.OneToneHabitScenarioVoiceCommand.render){
+        global.OneToneHabitScenarioVoiceCommand.render();
+      }
+    }
   }
 
   function renderCustomPhrases(vm){

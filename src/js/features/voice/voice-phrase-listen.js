@@ -25,9 +25,14 @@
     return wake.vosk||wake.sapi||null;
   }
 
+  function stripListeningSuffix(text){
+    return String(text||'').replace(/（还在听…）\s*$/,'').replace(/\s*\(listening…\)\s*$/i,'').trim();
+  }
+
   function pickHeardText(res){
     if(!res) return '';
-    var text=String(res.lastFinal||res.lastPartial||'').trim();
+    // Vosk: lastFinal/lastPartial; SAPI: lastHeard (no lastFinal field)
+    var text=stripListeningSuffix(res.lastFinal||res.lastHeard||res.lastPartial||'');
     if(text) return text;
     var hit=String(res.lastDetectedPhrase||'').trim();
     return hit;
@@ -37,6 +42,7 @@
     if(!res) return '';
     return [
       res.lastFinal||'',
+      res.lastHeard||'',
       res.lastPartial||'',
       res.lastDetectedPhrase||''
     ].join('\x1e');
@@ -87,7 +93,8 @@
     var baseline=heardFingerprint(currentEngineRes());
     setListenBtnBusy(btn,true);
     hooks().toast&&hooks().toast(t('voicePhraseListenListening'));
-    var deadline=Date.now()+3200;
+    // SAPI/Vosk status is polled; give enough time for a final utterance.
+    var deadline=Date.now()+8000;
     return new Promise(function(resolve){
       function tick(){
         var res=currentEngineRes();

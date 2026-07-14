@@ -1207,6 +1207,7 @@ mod tests {
                 end_phrases: None,
                 ..Default::default()
             }),
+            voice_commands: vec![],
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -1243,6 +1244,7 @@ mod tests {
             app_target_id: "cursor-chat".into(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

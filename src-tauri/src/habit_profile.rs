@@ -200,6 +200,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            voice_commands: vec![],
         });
         id.to_string()
     }

@@ -42,6 +42,9 @@
     ui().habitScenarioReturnHub=false;
     ui().habitHubEditReturn=false;
     ui().voiceEditSchemeId=null;
+    if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.discardDraft){
+      global.OneToneHabitScenarioVoiceCommand.discardDraft();
+    }
   }
 
   function syncEditor(id){
@@ -258,6 +261,10 @@
       'btnHabitScenarioContextBackVoice','btnHabitScenarioContextSaveVoice','btnHabitScenarioContextToKeysVoice',
       false
     );
+    if(global.OneToneHabitScenarioVoiceCommand){
+      if(global.OneToneHabitScenarioVoiceCommand.bindEvents) global.OneToneHabitScenarioVoiceCommand.bindEvents({});
+      if(global.OneToneHabitScenarioVoiceCommand.render) global.OneToneHabitScenarioVoiceCommand.render();
+    }
   }
 
   function saveCurrentScenario(){
