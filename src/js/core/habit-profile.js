@@ -9,9 +9,51 @@
     return global.OneToneMappingCore;
   }
 
+  function isReservedHabitName(name){
+    name=String(name||'').trim();
+    if(!name) return true;
+    if(name==='默认'||name==='旧习惯'||name==='通用设置') return true;
+    if(/^default$/i.test(name)||/^universal settings$/i.test(name)||/^legacy habit$/i.test(name)) return true;
+    return false;
+  }
+
+  function appDisplayNameForId(appId){
+    appId=String(appId||'').trim();
+    if(!appId) return '';
+    var rules=global.OneToneAppBehaviorRules;
+    if(rules&&rules.appDisplayName) return String(rules.appDisplayName(appId)||appId);
+    if(global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
+      var p=global.OneToneAppTargetPresets.presetById(appId);
+      if(p&&p.name) return String(p.name);
+    }
+    return appId;
+  }
+
   function habitDisplayName(m){
     if(!m) return '—';
-    if((m.group||'').trim()) return m.group.trim();
+    var t=function(key,fallback){
+      return (global.OneToneI18n&&global.OneToneI18n.t)?global.OneToneI18n.t(key):(fallback||key);
+    };
+    var universal=function(){ return t('habitHubUniversalName','通用设置'); };
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isGlobalBaselineMapping&&diff.isGlobalBaselineMapping(m,cfg||{},mappingCore())){
+      return universal();
+    }
+    var group=String(m.group||'').trim();
+    var appId=String(m.appTargetId||'').trim();
+    if(appId){
+      if(isReservedHabitName(group)){
+        return t('habitWizardDefaultName','{app} 场景').replace('{app}',appDisplayNameForId(appId)||appId);
+      }
+      if(group) return group;
+      return t('habitWizardDefaultName','{app} 场景').replace('{app}',appDisplayNameForId(appId)||appId);
+    }
+    if(isReservedHabitName(group)){
+      if(group==='通用设置'||/^universal settings$/i.test(group)) return universal();
+      return t('habitHubLegacyUnnamed','旧习惯');
+    }
+    if(group) return group;
     if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(m);
     if((m.label||'').trim()) return m.label.trim();
     return m.id||'—';
@@ -179,6 +221,7 @@
     projectActive:projectActive,
     habitType:habitType,
     habitDisplayName:habitDisplayName,
+    isReservedHabitName:isReservedHabitName,
     isLibraryHabit:isLibraryHabit,
     hasKeyParts:hasKeyParts,
     hasVoiceParts:hasVoiceParts,

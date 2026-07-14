@@ -136,7 +136,7 @@
       }
       hooks().ensureConfig();
       const id=hooks().newMappingId();
-      state.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:state.config.mappings.length,triggerMode:'tap',intervalMs:state.config.intervalMs||1200,enterDelayMs:state.config.enterDelayMs||5000,cancelEnabled:state.config.cancelEnabled!==false,autoEnterEnabled:state.config.autoEnterEnabled!==false,appBehaviorRules:[]});
+      state.config.mappings.push({id:id,label:'',group:'通用设置',triggerKey:'',targetKey:'',enabled:false,order:state.config.mappings.length,triggerMode:'tap',intervalMs:state.config.intervalMs||1200,enterDelayMs:state.config.enterDelayMs||5000,cancelEnabled:state.config.cancelEnabled!==false,autoEnterEnabled:state.config.autoEnterEnabled!==false,appBehaviorRules:[]});
       state.selectedMappingId=id;
       hooks().setPendingNewDraftId(id);
       hooks().setEditorTriggerKey("");

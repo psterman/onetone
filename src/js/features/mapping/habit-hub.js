@@ -223,18 +223,25 @@
 
   function filterItems(items){
     var f=normalizeHubFilter();
-    if(f==='all') return items;
+    var bid=baselineId();
+    if(f==='legacy'){
+      return items.filter(function(it){ return isLegacyUnclassified(it.mapping,bid); });
+    }
+    // 场景区只看应用场景；通用设置不进筛选列表
+    var apps=items.filter(function(it){ return isAppScenario(it.mapping); });
     if(f==='recent'){
       var week=Date.now()-7*86400000;
-      return items.filter(function(it){
+      return apps.filter(function(it){
         var m=it.mapping;
         var active=it.profile?it.profile.isActive:(state().config&&state().config.activeSceneId===m.id);
         return (m.lastUsedAt&&m.lastUsedAt>=week)||active;
       });
     }
-    if(f==='global') return items.filter(function(it){ return isLegacyUnclassified(it.mapping,baselineId()); });
-    if(f==='app') return items.filter(function(it){ return isAppScenario(it.mapping); });
-    return items;
+    return apps;
+  }
+
+  function usesScopeGrouping(){
+    return true;
   }
 
   function sortItems(items){
@@ -320,42 +327,148 @@
     return t('habitHubGlobalVoiceSummary').replace('{engine}',eng).replace('{wakeCount}',String(wakeCount));
   }
 
+  function globalKeyChannel(cfg){
+    cfg=cfg||state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var baseline=diff&&diff.getGlobalKeyBaseline?diff.getGlobalKeyBaseline(cfg,core()):null;
+    return {
+      trigger:friendlyKey(baseline&&baseline.triggerKey),
+      target:friendlyKey(baseline&&baseline.targetKey)
+    };
+  }
+
+  function globalVoiceChannel(cfg){
+    cfg=cfg||state().config||{};
+    var diff=global.OneToneHabitOverrideDiff;
+    var baseline=diff&&diff.getGlobalVoiceBaseline?diff.getGlobalVoiceBaseline(cfg):null;
+    var engine=baseline?engineLabel(baseline.engine||'off'):t('habitHubGlobalVoiceOff');
+    var wakeCount=baseline&&Array.isArray(baseline.wakePhrases)?baseline.wakePhrases.length:0;
+    return {
+      engine:engine,
+      wake:wakeCount?t('habitHubVoiceWakeCount').replace('{wakeCount}',String(wakeCount)):t('habitHubVoiceWakeNone'),
+      status:engine===t('habitHubGlobalVoiceOff')?t('habitHubVoiceStatusOff'):t('habitHubVoiceStatusOn')
+    };
+  }
+
+  function channelKeycap(label,iconClass){
+    return '<span class="habit-hub-keycap '+esc(iconClass||'')+'">'
+      +'<span class="habit-hub-keycap-face">'+esc(label||'—')+'</span>'
+      +'</span>';
+  }
+
   function normalizeHubFilter(){
     var f=ui().habitHubFilter||'all';
-    if(f==='keys'||f==='voice'){
+    if(f==='keys'||f==='voice'||f==='global'||f==='app'){
+      ui().habitHubFilter='all';
+      return 'all';
+    }
+    if(f!=='all'&&f!=='recent'&&f!=='legacy'){
       ui().habitHubFilter='all';
       return 'all';
     }
     return f;
   }
 
+  function universalSetupState(cfg){
+    cfg=cfg||state().config||{};
+    var baseline=globalBaselineMapping();
+    var trig=baseline?String(baseline.triggerKey||'').trim():'';
+    var tgt=baseline?String(baseline.targetKey||'').trim():'';
+    var keysReady=!!(trig||tgt);
+    var wakeApi=global.OneToneVoiceWake;
+    var mode=wakeApi&&wakeApi.currentMode?String(wakeApi.currentMode()||'off'):'off';
+    var voiceReady=mode==='vosk'||mode==='sapi'||mode==='kws';
+    return {
+      keysReady:keysReady,
+      voiceReady:voiceReady,
+      ready:keysReady
+    };
+  }
+
   function renderGlobalDefaultCard(){
     var cfg=state().config||{};
-    var keysLine=globalKeysSummaryText(cfg);
-    var voiceLine=globalVoiceSummaryText(cfg);
-    var html='<article class="habit-hub-card habit-hub-card--global-default" role="listitem">';
-    html+='<div class="habit-hub-card-open habit-hub-card-open--static">';
-    html+='<span class="habit-hub-card-icon habit-hub-card-icon--combo" aria-hidden="true">'
-      +'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>'
-      +'</span>';
-    html+='<span class="habit-hub-card-body">';
-    html+='<span class="habit-hub-card-title-row">';
-    html+='<span class="habit-hub-card-name">'+esc(t('habitHubGlobalDefaultTitle'))+'</span>';
-    html+='<span class="habit-hub-card-type">'+esc(t('habitHubFilterGlobal'))+'</span>';
-    html+='</span>';
-    html+='<span class="habit-hub-card-desc">'+esc(t('habitHubGlobalDefaultDesc'))+'</span>';
-    html+='<span class="habit-hub-global-summaries">';
-    html+='<span class="habit-hub-global-summary-row"><span class="habit-hub-global-summary-lbl">'+esc(t('habitHubGlobalKeysLbl'))+'</span>'
-      +'<span class="habit-hub-global-summary-val">'+esc(keysLine)+'</span></span>';
-    html+='<span class="habit-hub-global-summary-row"><span class="habit-hub-global-summary-lbl">'+esc(t('habitHubGlobalVoiceLbl'))+'</span>'
-      +'<span class="habit-hub-global-summary-val">'+esc(voiceLine)+'</span></span>';
-    html+='</span>';
-    html+='</span></div>';
-    html+='<div class="habit-hub-card-actions">';
+    var keyChannel=globalKeyChannel(cfg);
+    var voiceChannel=globalVoiceChannel(cfg);
+    var setup=universalSetupState(cfg);
+    var html='<article class="habit-hub-hero'+(setup.ready?' is-ready':' is-pending')+'" role="region" aria-label="'+esc(t('habitHubGlobalDefaultTitle'))+'">';
+    if(ui().habitGuideMode){
+      html+='<div class="habit-hub-guide-bubble" role="status">'
+        +'<span>'+esc(t('habitHubGuideBubble'))+'</span>'
+        +'<button type="button" class="habit-hub-guide-close" data-habit-guide-close aria-label="'+esc(t('habitHubGuideClose'))+'">×</button>'
+        +'</div>';
+    }
+    html+='<div class="habit-hub-hero-head">';
+    html+='<span class="habit-hub-hero-pulse" aria-hidden="true"><span></span></span>';
+    html+='<div class="habit-hub-hero-head-text">';
+    html+='<div class="habit-hub-hero-title-row">';
+    html+='<h5 class="habit-hub-hero-title">'+esc(t('habitHubGlobalDefaultTitle'))+'</h5>';
+    html+='</div>';
+    html+='<p class="habit-hub-hero-desc">'+esc(t('habitHubGlobalDefaultDesc'))+'</p>';
+    html+='</div>';
+    html+='<span class="habit-hub-card-status '+(setup.ready?'is-ready':'is-pending')+'">'
+      +esc(setup.ready?t('habitHubUniversalReady'):t('habitHubUniversalPending'))+'</span>';
+    html+='</div>';
+    html+='<div class="habit-hub-channels">';
+    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="keys" tabindex="0" role="button">';
+    html+='<div class="habit-hub-channel-end is-input">'
+      +channelKeycap(keyChannel.trigger,'')
+      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysInput'))+'</span><strong>'+esc(keyChannel.trigger)+'</strong></span></div>';
+    html+='<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 220 28" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M8 14H212"/><path class="habit-hub-data-flow" d="M8 14H212"/></svg></div>';
+    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysOutput'))+'</span><strong>'+esc(keyChannel.target)+'</strong></span>'
+      +channelKeycap(keyChannel.target,'is-output')+'</div>';
     html+='<button type="button" class="habit-hub-act is-primary" data-habit-global-keys>'+esc(t('habitHubGlobalOpenKeys'))+'</button>';
+    html+='</div>';
+    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="voice" tabindex="0" role="button">';
+    html+='<div class="habit-hub-channel-end is-input">'
+      +channelKeycap('MIC','is-mic')
+      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceInput'))+'</span><strong>'+esc(voiceChannel.engine)+'</strong><em>'+esc(voiceChannel.wake)+'</em></span></div>';
+    html+='<div class="habit-hub-channel-rail is-voice" aria-hidden="true"><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span></div>';
+    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceOutput'))+'</span><strong>'+esc(voiceChannel.status)+'</strong></span></div>';
     html+='<button type="button" class="habit-hub-act" data-habit-global-voice>'+esc(t('habitHubGlobalOpenVoice'))+'</button>';
+    html+='</div>';
     html+='</div></article>';
     return html;
+  }
+
+  function renderAppFilterBar(opts){
+    opts=opts||{};
+    var f=normalizeHubFilter();
+    var showLegacy=!!opts.showLegacy;
+    function tab(id,labelKey){
+      var on=f===id;
+      return '<button type="button" class="habit-hub-filter'+(on?' is-active':'')+'" data-habit-filter="'+id+'" role="tab" aria-selected="'+(on?'true':'false')+'">'
+        +esc(t(labelKey))+'</button>';
+    }
+    var html='<div class="habit-hub-app-toolbar">';
+    html+='<div class="habit-hub-filters" role="tablist" aria-label="'+esc(t('habitHubAppFilterAria'))+'">';
+    html+=tab('all','habitHubFilterAllScenarios');
+    html+=tab('recent','habitHubFilterRecent');
+    if(showLegacy) html+=tab('legacy','habitHubFilterLegacy');
+    html+='</div></div>';
+    return html;
+  }
+
+  function renderAppSectionEmpty(){
+    return '<div class="habit-hub-app-empty" role="status">'
+      +'<span class="habit-hub-app-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M8 21h8M12 18v3"/></svg></span>'
+      +'<p class="habit-hub-app-empty-title">'+esc(t('habitHubAppEmptyTitle'))+'</p>'
+      +'<p class="habit-hub-app-empty-desc">'+esc(t('habitHubAppEmptyDesc'))+'</p>'
+      +'<button type="button" class="habit-hub-new-btn is-primary" data-habit-app-empty-new>'+esc(t('habitHubAppNewCta'))+'</button>'
+      +'</div>';
+  }
+
+  function renderGuideAside(setup,appCount){
+    setup=setup||universalSetupState();
+    appCount=appCount||0;
+    var step1=setup.ready?'is-done':'is-current';
+    var step2=setup.ready?(appCount>0?'is-done':'is-current'):'';
+    var step3=setup.ready&&appCount>0?'is-current':'';
+    return ''
+      +'<ol class="habit-hub-guide-steps">'
+      +'<li class="habit-hub-guide-step '+step1+'"><span class="habit-hub-guide-num" aria-hidden="true">1</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep1'))+'</span></li>'
+      +'<li class="habit-hub-guide-step '+step2+'"><span class="habit-hub-guide-num" aria-hidden="true">2</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep2'))+'</span></li>'
+      +'<li class="habit-hub-guide-step '+step3+'"><span class="habit-hub-guide-num" aria-hidden="true">3</span><span class="habit-hub-guide-text">'+esc(t('habitHubGuideStep3'))+'</span></li>'
+      +'</ol>';
   }
 
   function baselineId(){
@@ -365,12 +478,17 @@
 
   function renderSection(title,innerHtml,opts){
     opts=opts||{};
-    if(!innerHtml) return '';
+    if(!innerHtml&&!opts.toolbarHtml&&!opts.allowEmpty) return '';
     var extra=opts.extraClass?' habit-hub-section--'+opts.extraClass:'';
     var html='<section class="habit-hub-section'+extra+'" aria-label="'+esc(title)+'">'
+      +'<div class="habit-hub-section-head">'
+      +'<div class="habit-hub-section-head-text">'
       +'<h4 class="habit-hub-section-title">'+esc(title)+'</h4>';
     if(opts.desc) html+='<p class="habit-hub-section-desc">'+esc(opts.desc)+'</p>';
-    html+='<div class="habit-hub-section-list habit-hub-section-list--cards">'+innerHtml+'</div></section>';
+    html+='</div>';
+    if(opts.toolbarHtml) html+=opts.toolbarHtml;
+    html+='</div>';
+    html+='<div class="habit-hub-section-list habit-hub-section-list--cards">'+(innerHtml||'')+'</div></section>';
     return html;
   }
 
@@ -382,10 +500,6 @@
       else if(isLegacyUnclassified(it.mapping,bid)) legacy.push(it);
     });
     return {app:app,legacy:legacy};
-  }
-
-  function usesScopeGrouping(filter){
-    return filter==='all'||filter==='global'||filter==='app';
   }
 
   function renderCard(it,opts){
@@ -407,31 +521,31 @@
     }else{
       html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
     }
-    html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
+    if(appId) html+=renderAppIconBadge(appId,'habit-hub-card-icon habit-hub-card-app-main');
+    else html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
     html+='<span class="habit-hub-card-body">';
     html+='<span class="habit-hub-card-title-row">';
-    if(appId) html+=renderAppIconBadge(appId,'habit-hub-card-app-badge');
     html+='<span class="habit-hub-card-name">'+esc(habitName(m))+'</span>';
     html+='<span class="habit-hub-card-type">'+esc(typeLabel(type))+'</span>';
     if(isActive) html+='<span class="habit-hub-card-active">'+esc(t('habitHubActiveBadge'))+'</span>';
     var activation=primaryActivationPhrase(m,cfg);
     if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
     html+='</span>';
-    html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
+    html+='<span class="habit-hub-card-desc">'+esc(isAppScenario(m)?t('habitHubDescAppOnly'):habitDescription(m,type,cfg,profile))+'</span>';
     var meta=habitMetaLine(m,profile);
     if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
     html+='</span>';
     if(legacy) html+='</div>'; else html+='</button>';
     html+='<div class="habit-hub-card-actions">';
     if(!legacy){
-      html+='<button type="button" class="habit-hub-act is-primary" data-habit-switch="'+esc(m.id)+'">'+esc(t('habitHubActSwitch'))+'</button>';
+      html+='<button type="button" class="habit-hub-act is-primary is-icon" data-habit-switch="'+esc(m.id)+'" title="'+esc(t('habitHubActSwitch'))+'" aria-label="'+esc(t('habitHubActSwitch'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg><span class="sr-only">'+esc(t('habitHubActSwitch'))+'</span></button>';
     }
     if(legacy){
       html+='<button type="button" class="habit-hub-act is-primary" data-habit-migrate="'+esc(m.id)+'">'+esc(t('habitHubLegacyMigrate'))+'</button>';
     }
-    html+='<button type="button" class="habit-hub-act" data-habit-dup="'+esc(m.id)+'">'+esc(t('habitHubActCopy'))+'</button>';
-    html+='<button type="button" class="habit-hub-act" data-habit-rename="'+esc(m.id)+'">'+esc(t('habitHubActRename'))+'</button>';
-    html+='<button type="button" class="habit-hub-act is-danger" data-habit-del="'+esc(m.id)+'">'+esc(t('habitHubActDelete'))+'</button>';
+    html+='<button type="button" class="habit-hub-act is-icon" data-habit-dup="'+esc(m.id)+'" title="'+esc(t('habitHubActCopy'))+'" aria-label="'+esc(t('habitHubActCopy'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="sr-only">'+esc(t('habitHubActCopy'))+'</span></button>';
+    html+='<button type="button" class="habit-hub-act is-icon" data-habit-rename="'+esc(m.id)+'" title="'+esc(t('habitHubActRename'))+'" aria-label="'+esc(t('habitHubActRename'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="sr-only">'+esc(t('habitHubActRename'))+'</span></button>';
+    html+='<button type="button" class="habit-hub-act is-danger is-icon" data-habit-del="'+esc(m.id)+'" title="'+esc(t('habitHubActDelete'))+'" aria-label="'+esc(t('habitHubActDelete'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span class="sr-only">'+esc(t('habitHubActDelete'))+'</span></button>';
     if(!legacy){
       html+='<button type="button" class="habit-hub-act-menu" data-habit-menu="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActMore'))+'">⋯</button>';
     }
@@ -446,9 +560,6 @@
       btnHabitHubNew:'habitHubNew',
       btnHabitHubSaveVoice:'habitHubSaveFromVoice',
       habitHubFilterAll:'habitHubFilterAll',
-      habitHubFilterGlobal:'habitHubFilterGlobal',
-      habitHubFilterRecent:'habitHubFilterRecent',
-      habitHubFilterApp:'habitHubFilterApp',
       habitHubSortLabel:'habitHubSortLabel',
       habitHubSortRecent:'habitHubSortRecent',
       habitHubSortName:'habitHubSortName',
@@ -457,12 +568,9 @@
       habitHubEmptyDesc:'habitHubEmptyDesc',
       btnHabitHubEmptyNew:'habitHubNew',
       btnHabitHubEmptySaveVoice:'habitHubSaveFromVoice',
-      habitHubAsideDiagramLbl:'habitHubAsideDiagramLbl',
       habitHubAsideTitle:'habitHubAsideTitle',
-      habitHubAsideItem1:'habitHubAsideItem1',
-      habitHubAsideItem2:'habitHubAsideItem2',
-      habitHubAsideItem3:'habitHubAsideItem3',
       habitHubAsideTip:'habitHubAsideTip',
+      btnHabitHubGuideMode:'habitHubGuideMode',
       btnHabitHubHelp:'habitHubHelp',
       btnHabitHubBackLabel:'habitHubBack'
     };
@@ -470,6 +578,11 @@
       var el=$(id);
       if(el) el.textContent=t(map[id]);
     });
+    var stepsHost=$('habitHubGuideSteps');
+    if(stepsHost){
+      var splitForGuide=splitHubItems(collectHabits());
+      stepsHost.innerHTML=renderGuideAside(universalSetupState(),splitForGuide.app.length);
+    }
     var sort=$('habitHubSort');
     if(sort){
       var opts=sort.querySelectorAll('option');
@@ -477,13 +590,12 @@
       if(opts[1]) opts[1].textContent=t('habitHubSortName');
       if(opts[2]) opts[2].textContent=t('habitHubSortType');
     }
-    document.querySelectorAll('[data-habit-filter]').forEach(function(btn){
-      var key='habitHubFilter'+btn.dataset.habitFilter.charAt(0).toUpperCase()+btn.dataset.habitFilter.slice(1);
-      if(key==='habitHubFilterAll') btn.textContent=t('habitHubFilterAll');
-      else if(key==='habitHubFilterGlobal') btn.textContent=t('habitHubFilterGlobal');
-      else if(key==='habitHubFilterRecent') btn.textContent=t('habitHubFilterRecent');
-      else if(key==='habitHubFilterApp') btn.textContent=t('habitHubFilterApp');
-    });
+    var guideBtn=$('btnHabitHubGuideMode');
+    if(guideBtn){
+      var guideOn=!!ui().habitGuideMode;
+      guideBtn.classList.toggle('is-active',guideOn);
+      guideBtn.setAttribute('aria-pressed',guideOn?'true':'false');
+    }
   }
 
   function renderFilters(){
@@ -503,36 +615,62 @@
     var empty=$('habitHubEmpty');
     if(!list) return;
     var filter=normalizeHubFilter();
-    var items=sortItems(filterItems(collectHabits()));
+    var allItems=collectHabits();
+    var splitAll=splitHubItems(allItems);
+    var hasLegacy=splitAll.legacy.length>0;
+    var filtered=sortItems(filterItems(allItems));
     var html='';
-    if(filter==='recent'){
-      html=items.map(function(it){ return renderCard(it,{horizontal:isAppScenario(it.mapping)}); }).join('');
-    }else if(usesScopeGrouping(filter)){
-      var split=splitHubItems(items);
-      if(filter==='all'||filter==='global'){
-        html+=renderSection(t('habitHubSectionGlobal'),renderGlobalDefaultCard());
-      }
-      if(filter==='all'||filter==='app'){
-        var appInner=split.app.map(function(it){ return renderCard(it,{horizontal:true}); }).join('');
-        if(appInner) html+=renderSection(t('habitHubSectionApp'),appInner);
-      }
-      if((filter==='all'||filter==='global')&&split.legacy.length){
-        var legacyInner=split.legacy.map(function(it){ return renderCard(it,{legacy:true}); }).join('');
-        html+=renderSection(t('habitHubSectionLegacy'),legacyInner,{desc:t('habitHubSectionLegacyDesc'),extraClass:'legacy'});
-      }
-    }else{
-      html=items.map(function(it){ return renderCard(it,{horizontal:isAppScenario(it.mapping)}); }).join('');
+
+    // Hero：通用设置始终置顶，不进场景筛选
+    if(filter!=='legacy'){
+      html+='<section class="habit-hub-section habit-hub-section--hero" aria-label="'+esc(t('habitHubSectionGlobal'))+'">'
+        +'<div class="habit-hub-section-head"><div class="habit-hub-section-head-text">'
+        +'<h4 class="habit-hub-section-title">'+esc(t('habitHubSectionGlobal'))+'</h4>'
+        +'<p class="habit-hub-section-desc">'+esc(t('habitHubSectionGlobalDesc'))+'</p>'
+        +'</div></div>'
+        +'<div class="habit-hub-section-list">'+renderGlobalDefaultCard()+'</div></section>';
     }
+
+    if(filter==='legacy'){
+      var legacyOnly=sortItems(splitAll.legacy);
+      var legacyInner=legacyOnly.map(function(it){ return renderCard(it,{legacy:true}); }).join('');
+      if(!legacyInner){
+        legacyInner='<p class="habit-hub-section-desc">'+esc(t('habitHubSectionLegacyDesc'))+'</p>';
+      }
+      html+=renderSection(t('habitHubSectionLegacy'),legacyInner,{
+        desc:t('habitHubSectionLegacyDesc'),
+        extraClass:'legacy',
+        toolbarHtml:renderAppFilterBar({showLegacy:hasLegacy}),
+        allowEmpty:true
+      });
+    }else{
+      var appInner=filtered.map(function(it){ return renderCard(it,{horizontal:true}); }).join('');
+      if(!appInner) appInner=renderAppSectionEmpty();
+      html+=renderSection(t('habitHubSectionApp'),appInner,{
+        desc:t('habitHubSectionAppDesc'),
+        toolbarHtml:renderAppFilterBar({showLegacy:hasLegacy}),
+        allowEmpty:true
+      });
+      if(filter==='all'&&hasLegacy){
+        var legacyInnerAll=splitAll.legacy.map(function(it){ return renderCard(it,{legacy:true}); }).join('');
+        html+=renderSection(t('habitHubSectionLegacy'),legacyInnerAll,{
+          desc:t('habitHubSectionLegacyDesc'),
+          extraClass:'legacy'
+        });
+      }
+    }
+
     var hasContent=!!html.trim();
     if(empty) empty.hidden=hasContent;
     list.hidden=!hasContent;
     list.innerHTML=hasContent?html:'';
+    applyViewMode();
   }
 
   function render(){
     renderLabels();
-    renderFilters();
     renderList();
+    renderFilters();
     applyShellVisibility();
   }
 
@@ -771,14 +909,20 @@
         var filterBtn=e.target.closest&&e.target.closest('[data-habit-filter]');
         if(filterBtn){
           e.preventDefault();
-          ui().habitHubFilter=filterBtn.dataset.habitFilter;
+      ui().habitHubFilter=filterBtn.dataset.habitFilter;
           renderFilters();
           renderList();
+          var stepsHost=$('habitHubGuideSteps');
+          if(stepsHost){
+            var splitForGuide=splitHubItems(collectHabits());
+            stepsHost.innerHTML=renderGuideAside(universalSetupState(),splitForGuide.app.length);
+          }
           return;
         }
         var globalKeysBtn=e.target.closest&&e.target.closest('[data-habit-global-keys]');
         if(globalKeysBtn){
           e.preventDefault();
+          e.stopPropagation();
           if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
           else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
           return;
@@ -786,8 +930,38 @@
         var globalVoiceBtn=e.target.closest&&e.target.closest('[data-habit-global-voice]');
         if(globalVoiceBtn){
           e.preventDefault();
+          e.stopPropagation();
           if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
           else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
+          return;
+        }
+        var guideClose=e.target.closest&&e.target.closest('[data-habit-guide-close]');
+        if(guideClose){
+          e.preventDefault();
+          e.stopPropagation();
+          ui().habitGuideMode=false;
+          render();
+          return;
+        }
+        var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
+        if(channel){
+          e.preventDefault();
+          channel.classList.add('is-pressed');
+          global.setTimeout(function(){ channel.classList.remove('is-pressed'); },120);
+          if(channel.getAttribute('data-habit-channel')==='voice'){
+            if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+            else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
+          }else{
+            if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+            else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
+          }
+          return;
+        }
+        var appEmptyNew=e.target.closest&&e.target.closest('[data-habit-app-empty-new]');
+        if(appEmptyNew){
+          e.preventDefault();
+          if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
+          else createFromKeys();
           return;
         }
         var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-del],.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-switch],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-menu]');
@@ -833,6 +1007,10 @@
           if(next===null) return;
           next=String(next).trim();
           if(!next) return;
+          if(hp()&&hp().isReservedHabitName&&hp().isReservedHabitName(next)){
+            if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubRenameReserved'),'scheme');
+            return;
+          }
           m.group=next;
           touchUpdated(m);
           if(hooks().save) hooks().save();
@@ -883,8 +1061,32 @@
     var help=$('btnHabitHubHelp');
     if(help) help.addEventListener('click',function(e){
       e.preventDefault();
+      ui().habitGuideMode=true;
+      render();
       if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubHelpHint'),'scheme');
     });
+    var guideMode=$('btnHabitHubGuideMode');
+    if(guideMode) guideMode.addEventListener('click',function(e){
+      e.preventDefault();
+      ui().habitGuideMode=!ui().habitGuideMode;
+      render();
+    });
+    if(hub){
+      hub.addEventListener('mouseover',function(e){
+        var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
+        if(channel) channel.classList.add('is-hover');
+      });
+      hub.addEventListener('mouseout',function(e){
+        var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
+        if(channel&&(!e.relatedTarget||!channel.contains(e.relatedTarget))) channel.classList.remove('is-hover');
+      });
+      hub.addEventListener('keydown',function(e){
+        var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
+        if(!channel||(e.key!=='Enter'&&e.key!==' ')) return;
+        e.preventDefault();
+        channel.click();
+      });
+    }
   }
 
   global.OneToneHabitHub={

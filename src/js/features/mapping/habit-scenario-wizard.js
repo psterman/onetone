@@ -122,10 +122,7 @@
       habitScenarioFootHint:'habitScenarioFootHint',
       btnHabitScenarioCancel:'habitScenarioCancel',
       btnHabitScenarioSave:'habitScenarioSaveBtn',
-      btnHabitScenarioSaveTop:'habitScenarioSaveBtn',
-      btnHabitScenarioRestoreKeys:'habitScenarioRestoreKeys',
-      btnHabitScenarioRestoreVoice:'habitScenarioRestoreVoice',
-      btnHabitScenarioRestoreAll:'habitScenarioRestoreAll'
+      btnHabitScenarioSaveTop:'habitScenarioSaveBtn'
     };
     Object.keys(map).forEach(function(id){
       var el=$(id);
@@ -255,8 +252,12 @@
       var appId=String(m&&m.appTargetId||pickedAppId||'').trim();
       var info=$('habitScenarioAppInfo');
       if(info){
-        info.innerHTML='<div class="habit-scenario-app-info-name">'+esc(appDisplayName(appId))+'</div>'
-          +'<div class="habit-scenario-app-info-scope">'+esc(t('habitScenarioScopeLine').replace('{scope}',t('habitScenarioAppExe').replace('{app}',appDisplayName(appId))))+'</div>';
+        if(!appId){
+          info.innerHTML='<div class="habit-scenario-app-info-name">'+esc(t('habitScenarioChipAppMissing'))+'</div>';
+        }else{
+          info.innerHTML='<div class="habit-scenario-app-info-name">'+esc(appDisplayName(appId))+'</div>'
+            +'<div class="habit-scenario-app-info-scope">'+esc(t('habitScenarioScopeLine').replace('{scope}',t('habitScenarioAppExe').replace('{app}',appDisplayName(appId))))+'</div>';
+        }
       }
       var toggle=$('habitScenarioEnabledToggle');
       if(toggle&&m){
@@ -284,9 +285,11 @@
     var bar=$('habitScenarioStatusBar');
     if(!bar) return;
     if(!preview||!preview.appId){
-      bar.innerHTML='<span class="habit-scenario-status-text">'+esc(t('habitScenarioMainPlaceholder'))+'</span>';
+      bar.hidden=true;
+      bar.innerHTML='';
       return;
     }
+    bar.hidden=false;
     var keysLbl=preview.keysOverrideCount>0
       ?t('habitScenarioStatusKeysOverride').replace('{n}',String(preview.keysOverrideCount))
       :t('habitScenarioStatusKeysInherit');
@@ -309,9 +312,6 @@
     var empty=$('habitScenarioDiffEmpty');
     var saveBtn=$('btnHabitScenarioSave');
     var saveTop=$('btnHabitScenarioSaveTop');
-    var restoreKeys=$('btnHabitScenarioRestoreKeys');
-    var restoreVoice=$('btnHabitScenarioRestoreVoice');
-    var restoreAll=$('btnHabitScenarioRestoreAll');
     if(!preview){
       if(card) card.textContent='—';
       if(list) list.innerHTML='';
@@ -349,19 +349,30 @@
     }
     if(saveBtn) saveBtn.disabled=!preview.canSave;
     if(saveTop) saveTop.disabled=!preview.canSave;
-    var canRestore=preview.canSave&&preview.saveKind==='overrides';
-    if(restoreKeys) restoreKeys.disabled=!canRestore||!preview.keysOverrideCount;
-    if(restoreVoice) restoreVoice.disabled=!canRestore||!preview.voiceOverrideCount;
-    if(restoreAll) restoreAll.disabled=!canRestore;
   }
 
   function setMainDisabled(disabled){
-    ['habitScenarioMain','habitScenarioPreview'].forEach(function(id){
-      var el=$(id);
-      if(el) el.classList.toggle('is-disabled',!!disabled);
-    });
+    var main=$('habitScenarioMain');
+    var preview=$('habitScenarioPreview');
+    var grid=$('habitScenarioGrid');
+    var nameField=main?main.querySelector('.habit-scenario-name-field'):null;
+    var access=$('habitScenarioAccessCards');
     var ph=$('habitScenarioMainPlaceholder');
-    if(ph) ph.hidden=!disabled;
+    if(grid) grid.classList.toggle('is-pick-app',!!disabled);
+    if(main){
+      main.classList.toggle('is-pick-hint',!!disabled);
+      main.classList.toggle('is-disabled',false);
+    }
+    if(preview){
+      preview.hidden=!!disabled;
+      preview.classList.toggle('is-disabled',false);
+    }
+    if(nameField) nameField.hidden=!!disabled;
+    if(access) access.hidden=!!disabled;
+    if(ph){
+      ph.hidden=!disabled;
+      if(disabled) ph.textContent=t('habitScenarioMainPlaceholder');
+    }
   }
 
   function isEditableAppScenario(m){
@@ -657,12 +668,6 @@
         renderPreviewPanel(buildPreview());
       });
     }
-    var restoreKeys=$('btnHabitScenarioRestoreKeys');
-    if(restoreKeys) restoreKeys.addEventListener('click',function(e){ e.preventDefault(); restoreKeysToGlobal(); });
-    var restoreVoice=$('btnHabitScenarioRestoreVoice');
-    if(restoreVoice) restoreVoice.addEventListener('click',function(e){ e.preventDefault(); restoreVoiceToGlobal(); });
-    var restoreAll=$('btnHabitScenarioRestoreAll');
-    if(restoreAll) restoreAll.addEventListener('click',function(e){ e.preventDefault(); restoreAllToGlobal(); });
     var changeApp=$('btnHabitScenarioChangeApp');
     if(changeApp) changeApp.addEventListener('click',function(e){
       e.preventDefault();

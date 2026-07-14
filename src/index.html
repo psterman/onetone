@@ -1018,20 +1018,15 @@
             <header class="habit-hub-head">
               <div class="habit-hub-head-text">
                 <h3 class="pref-page-title" id="settingsPanelHabitsTitle">我的习惯</h3>
-                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">重命名、复制、删除与高级语音/应用设置</p>
-                <p class="habit-hub-hint" id="habitHubAutoHint">不需要先选分类，保存后会自动出现在这里</p>
+                <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">先设好大家共用的，再给某个应用开例外</p>
+                <p class="habit-hub-hint" id="habitHubAutoHint">建议先完成通用按键与语音，日常先用通用；某个应用需要不一样时再新建场景。</p>
               </div>
               <div class="habit-hub-head-actions">
-                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubNew">+ 新建情景</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubNew">+ 新建应用场景</button>
               </div>
             </header>
             <div class="habit-hub-toolbar">
-              <div class="habit-hub-filters" id="habitHubFilters" role="tablist" aria-label="习惯分类">
-                <button type="button" class="habit-hub-filter is-active" data-habit-filter="all" role="tab" aria-selected="true" id="habitHubFilterAll">全部</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="global" role="tab" aria-selected="false" id="habitHubFilterGlobal">全局</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="app" role="tab" aria-selected="false" id="habitHubFilterApp">应用场景</button>
-                <button type="button" class="habit-hub-filter" data-habit-filter="recent" role="tab" aria-selected="false" id="habitHubFilterRecent">最近使用</button>
-              </div>
+              <div class="habit-hub-toolbar-spacer" aria-hidden="true"></div>
               <div class="habit-hub-toolbar-right">
                 <label class="habit-hub-sort-wrap">
                   <span class="sr-only" id="habitHubSortLabel">排序</span>
@@ -1057,28 +1052,18 @@
                   <p class="habit-hub-empty-title" id="habitHubEmptyTitle">还没有习惯</p>
                   <p class="habit-hub-empty-desc" id="habitHubEmptyDesc">在「按键」或「语音」里保存设置后，会自动出现在这里</p>
                   <div class="habit-hub-empty-actions">
-                    <button type="button" class="habit-hub-empty-btn is-primary" id="btnHabitHubEmptyNew">+ 新建情景</button>
+                    <button type="button" class="habit-hub-empty-btn is-primary" id="btnHabitHubEmptyNew">+ 新建应用场景</button>
                   </div>
                 </div>
                 <div class="habit-hub-list is-list" id="habitHubList" role="list"></div>
               </div>
               <aside class="habit-hub-aside" id="habitHubAside" aria-labelledby="habitHubAsideTitle">
-                <div class="habit-hub-aside-diagram" aria-hidden="true">
-                  <div class="habit-hub-aside-flow">
-                    <span class="habit-hub-aside-node is-keys">⌨</span>
-                    <span class="habit-hub-aside-node is-voice">🎤</span>
-                    <span class="habit-hub-aside-arrow">→</span>
-                    <span class="habit-hub-aside-node is-hub">📁</span>
-                  </div>
-                  <p class="habit-hub-aside-diagram-lbl" id="habitHubAsideDiagramLbl">自动汇入</p>
+                <div class="habit-hub-aside-head">
+                  <h4 class="habit-hub-aside-title" id="habitHubAsideTitle">怎么用</h4>
+                  <button type="button" class="habit-hub-guide-toggle" id="btnHabitHubGuideMode" aria-pressed="false">引导模式</button>
                 </div>
-                <h4 class="habit-hub-aside-title" id="habitHubAsideTitle">这里汇集你的情景模式</h4>
-                <ul class="habit-hub-aside-list">
-                  <li id="habitHubAsideItem1">在「按键」里保存的触发与收尾方案</li>
-                  <li id="habitHubAsideItem2">在「语音」里保存的唤醒与结束词</li>
-                  <li id="habitHubAsideItem3">应用例外与工作流也会一并收录</li>
-                </ul>
-                <p class="habit-hub-aside-tip" id="habitHubAsideTip">小提示：给习惯起个清晰的名字，方便搜索和切换。</p>
+                <div class="habit-hub-guide-steps" id="habitHubGuideSteps"></div>
+                <p class="habit-hub-aside-tip" id="habitHubAsideTip">应用场景不会改动通用设置，可以放心单独调试。</p>
                 <button type="button" class="habit-hub-aside-help" id="btnHabitHubHelp">如何使用习惯？</button>
               </aside>
             </div>
@@ -1091,11 +1076,11 @@
             <header class="habit-scenario-head habit-scenario-head--console">
               <div class="habit-scenario-head-row">
                 <div class="habit-scenario-head-text">
-                  <h3 class="pref-page-title" id="habitScenarioTitle">新建应用情景</h3>
-                  <p class="pref-page-subtitle" id="habitScenarioDesc">选择应用后，仅保存相对全局的覆盖项</p>
+                  <h3 class="pref-page-title" id="habitScenarioTitle">新建应用场景</h3>
+                  <p class="pref-page-subtitle" id="habitScenarioDesc">选择应用后，仅保存相对通用设置的覆盖项</p>
                 </div>
                 <div class="habit-scenario-head-actions">
-                  <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSaveTop" disabled>保存情景</button>
+                  <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSaveTop" disabled>保存场景</button>
                 </div>
               </div>
             </header>
@@ -1104,14 +1089,14 @@
               <aside class="habit-scenario-aside" id="habitScenarioAside">
                 <div class="habit-scenario-aside-new" id="habitScenarioAsideNew">
                   <h4 class="habit-scenario-aside-title" id="habitScenarioPickAppTitle">选择应用场景</h4>
-                  <p class="habit-scenario-aside-desc" id="habitScenarioPickAppDesc">必选。情景将只覆盖该应用下的按键与语音设置。</p>
+                  <p class="habit-scenario-aside-desc" id="habitScenarioPickAppDesc">必选。场景将只覆盖该应用下的按键与语音设置。</p>
                   <div class="habit-wizard-app-grid" id="habitScenarioAppGrid" role="list"></div>
                 </div>
                 <div class="habit-scenario-aside-edit" id="habitScenarioAsideEdit" hidden>
                   <h4 class="habit-scenario-aside-title" id="habitScenarioEditAppTitle">当前应用</h4>
                   <div class="habit-scenario-app-info" id="habitScenarioAppInfo"></div>
                   <div class="habit-scenario-scenario-enable" id="habitScenarioEnableWrap">
-                    <span class="habit-scenario-enable-lbl" id="habitScenarioEnableLbl">情景启用</span>
+                    <span class="habit-scenario-enable-lbl" id="habitScenarioEnableLbl">场景启用</span>
                     <button type="button" class="toggle-switch" id="habitScenarioEnabledToggle" role="switch" aria-checked="false"></button>
                   </div>
                   <button type="button" class="habit-hub-act habit-scenario-change-app" id="btnHabitScenarioChangeApp" hidden>更换应用</button>
@@ -1119,35 +1104,30 @@
               </aside>
               <main class="habit-scenario-main" id="habitScenarioMain">
                 <label class="habit-scenario-name-field">
-                  <span class="habit-wizard-name-lbl" id="habitScenarioNameLbl">情景名称</span>
+                  <span class="habit-wizard-name-lbl" id="habitScenarioNameLbl">场景名称</span>
                   <input type="text" class="habit-wizard-name-input" id="habitScenarioNameInput" autocomplete="off" />
                 </label>
                 <div class="habit-scenario-access-cards" id="habitScenarioAccessCards">
                   <div id="habitScenarioKeysAccessCard"></div>
                   <div id="habitScenarioVoiceAccessCard"></div>
                 </div>
-                <p class="habit-scenario-main-placeholder" id="habitScenarioMainPlaceholder">请先选择应用场景</p>
+                <p class="habit-scenario-main-placeholder" id="habitScenarioMainPlaceholder">请先选择应用</p>
               </main>
               <aside class="habit-scenario-preview" id="habitScenarioPreview">
-                <h4 class="habit-scenario-preview-title" id="habitScenarioPreviewTitle">当前情景预览</h4>
+                <h4 class="habit-scenario-preview-title" id="habitScenarioPreviewTitle">当前场景预览</h4>
                 <div class="habit-scenario-preview-card habit-panel habit-panel--soft" id="habitScenarioPreviewCard"></div>
                 <div class="habit-scenario-enable-states" id="habitScenarioEnableStates"></div>
-                <p class="habit-scenario-flow-hint" id="habitScenarioFlowHint">全局兜底 → 应用覆盖 → 保存到习惯</p>
+                <p class="habit-scenario-flow-hint" id="habitScenarioFlowHint">通用设置 → 本应用覆盖 → 保存到习惯</p>
                 <h5 class="habit-scenario-diff-title" id="habitScenarioDiffTitle">将保存的内容</h5>
                 <ul class="habit-scenario-diff-list" id="habitScenarioDiffList"></ul>
                 <p class="habit-scenario-diff-empty" id="habitScenarioDiffEmpty" hidden></p>
-                <div class="habit-scenario-restore-actions" id="habitScenarioRestoreActions">
-                  <button type="button" class="habit-hub-act" id="btnHabitScenarioRestoreKeys" disabled>恢复按键为全局默认</button>
-                  <button type="button" class="habit-hub-act" id="btnHabitScenarioRestoreVoice" disabled>恢复语音为全局默认</button>
-                  <button type="button" class="habit-hub-act is-danger" id="btnHabitScenarioRestoreAll" disabled>恢复整个情景为全局默认</button>
-                </div>
               </aside>
             </div>
             <footer class="habit-scenario-foot">
-              <p class="habit-scenario-foot-hint" id="habitScenarioFootHint">未修改项沿用全局默认；本次只保存当前应用情景，不影响全局。</p>
+              <p class="habit-scenario-foot-hint" id="habitScenarioFootHint">未修改项沿用通用设置；本次只保存当前应用场景，不影响通用设置。</p>
               <div class="habit-scenario-foot-actions">
                 <button type="button" class="habit-hub-new-btn" id="btnHabitScenarioCancel">取消</button>
-                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSave" disabled>保存情景</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSave" disabled>保存场景</button>
               </div>
             </footer>
           </div>

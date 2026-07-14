@@ -103,8 +103,7 @@
     var voiceHost=$('habitScenarioVoiceAccessCard');
     if(!keysHost&&!voiceHost) return;
     if(!m){
-      var ph='<p class="habit-scenario-main-placeholder">'+esc(t('habitScenarioMainPlaceholder'))+'</p>';
-      if(keysHost) keysHost.innerHTML=ph;
+      if(keysHost) keysHost.innerHTML='';
       if(voiceHost) voiceHost.innerHTML='';
       return;
     }

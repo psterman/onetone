@@ -141,7 +141,7 @@
     return {
       version:6,
       activeSceneId:id,
-      mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'默认',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
+      mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
@@ -160,7 +160,7 @@
     if(!st.config.mappings.length){
       const newMappingId=hookFn('newMappingId');
       const id=newMappingId?newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
-      st.config.mappings.push({id:id,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
+      st.config.mappings.push({id:id,label:'',group:'通用设置',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
     }
     if(!st.config.activeSceneId){
       var enabled=st.config.mappings.find(function(m){return m.enabled;});
@@ -199,14 +199,14 @@
         }
         const trig=hooks().editorTriggerForMapping(m);
         const tgt=hooks().editorTargetForMapping(m);
-        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'默认',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:i,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
       }),
       trash:(st.config.trash||[]).map(function(m){
         hooks().ensureMappingExtras(m);
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
-        return {id:m.id,label:m.label||'',group:m.group||'默认',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
+        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride};
       }),
       intervalMs:st.config.intervalMs||1200,
       enterDelayMs:st.config.enterDelayMs||5000,

@@ -61,7 +61,7 @@
     }
     if(!state.config.mappings.length){
       var newId=hooks.newMappingId();
-      state.config.mappings.push({id:newId,label:'',group:'默认',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
+      state.config.mappings.push({id:newId,label:'',group:'通用设置',triggerKey:'',targetKey:'',enabled:false,order:0,triggerMode:'tap'});
       state.selectedMappingId=newId;
     }
     state.config.mappings.forEach(function(m,i){ m.order=i; });
