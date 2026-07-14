@@ -436,11 +436,13 @@ pub fn summon_entries_for_mapping(mapping: &MappingEntry, preset: &str) -> Vec<(
             }
         }
     }
-    let inject_target = if !primary.is_empty() {
-        primary.to_string()
-    } else {
-        mapping.id.clone()
-    };
+    let inject_target = resolve_mapping_summon_target(mapping).unwrap_or_else(|| {
+        if !primary.is_empty() {
+            primary.to_string()
+        } else {
+            mapping.id.clone()
+        }
+    });
     for phrase in voice_command_summon_phrases(mapping) {
         if seen.insert(phrase.clone()) {
             out.push((phrase, inject_target.clone()));
@@ -473,6 +475,49 @@ pub fn resolve_summon_app_for_phrase(
         }
     }
     None
+}
+
+/// Resolve the summon workflow target for a mapping's primary app.
+/// Custom app scenarios use `appTargetId=custom` plus a concrete behavior rule;
+/// workflow needs `rule:<ruleId>`, not the literal `"custom"`.
+pub fn resolve_mapping_summon_target(mapping: &MappingEntry) -> Option<String> {
+    let primary = mapping.app_target_id.trim();
+    if primary.is_empty() {
+        return mapping
+            .app_behavior_rules
+            .iter()
+            .find_map(summon_target_ref_for_rule);
+    }
+    if is_preset_app_id(primary) {
+        return Some(primary.to_string());
+    }
+    if primary == "custom" {
+        let mut loose: Option<String> = None;
+        for rule in &mapping.app_behavior_rules {
+            if rule.app_id.trim() != "custom" {
+                continue;
+            }
+            let Some(target) = summon_target_ref_for_rule(rule) else {
+                continue;
+            };
+            let concrete = rule
+                .app_match
+                .as_ref()
+                .is_some_and(app_match_has_constraints);
+            if concrete {
+                return Some(target);
+            }
+            if loose.is_none() {
+                loose = Some(target);
+            }
+        }
+        return loose;
+    }
+    mapping
+        .app_behavior_rules
+        .iter()
+        .find(|r| r.app_id.trim() == primary)
+        .and_then(summon_target_ref_for_rule)
 }
 
 pub fn append_unique_phrases(mut phrases: Vec<String>, extra: &[String]) -> Vec<String> {
@@ -1093,6 +1138,10 @@ pub struct VoiceConfig {
     pub voice_kws: VoiceKwsConfig,
     #[serde(default, rename = "voiceEnd")]
     pub voice_end: VoiceEndConfig,
+    /// Global desired wake engine: "vosk" | "sapi" | "kws" | "none".
+    /// Source of truth for which engine should run; per-engine `enabled` flags are mirrors.
+    #[serde(default = "default_desired_engine", rename = "desiredEngine")]
+    pub desired_engine: String,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -1135,7 +1184,11 @@ pub struct VoiceConfig {
 }
 
 fn default_version() -> u32 {
-    6
+    7
+}
+
+fn default_desired_engine() -> String {
+    "none".into()
 }
 
 fn default_window_width() -> f64 {
@@ -1590,29 +1643,96 @@ pub fn kws_model_download_url(preset: &str) -> Option<&'static str> {
 }
 
 /// Normalize mutually exclusive voice engine enabled flags. Priority: Vosk > SAPI > KWS.
+/// Also keeps [`VoiceConfig::desired_engine`] aligned with the surviving flag.
 pub fn reconcile_voice_engine_flags(cfg: &mut VoiceConfig) -> bool {
-    let mut changed = false;
-    let count = [cfg.voice_vosk.enabled, cfg.voice_sapi.enabled, cfg.voice_kws.enabled]
+    let before_flags = (
+        cfg.voice_vosk.enabled,
+        cfg.voice_sapi.enabled,
+        cfg.voice_kws.enabled,
+    );
+    let multi = [cfg.voice_vosk.enabled, cfg.voice_sapi.enabled, cfg.voice_kws.enabled]
         .iter()
         .filter(|&&x| x)
-        .count();
-    if count <= 1 {
-        return false;
+        .count()
+        > 1;
+    heal_desired_engine_from_flags_if_needed(cfg);
+    sync_enabled_flags_from_desired(cfg);
+    let after_flags = (
+        cfg.voice_vosk.enabled,
+        cfg.voice_sapi.enabled,
+        cfg.voice_kws.enabled,
+    );
+    multi || before_flags != after_flags
+}
+
+/// Label for persisted `desiredEngine` (lowercase canonical).
+pub fn desired_engine_label(engine: crate::scene_config::DesiredVoiceEngine) -> &'static str {
+    match engine {
+        crate::scene_config::DesiredVoiceEngine::Vosk => "vosk",
+        crate::scene_config::DesiredVoiceEngine::Sapi => "sapi",
+        crate::scene_config::DesiredVoiceEngine::Kws => "kws",
+        crate::scene_config::DesiredVoiceEngine::None => "none",
     }
+}
+
+/// Parse a desired-engine label. Returns `None` only for unrecognized non-empty values.
+pub fn parse_desired_engine_label(raw: &str) -> Option<crate::scene_config::DesiredVoiceEngine> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "" | "none" | "off" => Some(crate::scene_config::DesiredVoiceEngine::None),
+        "vosk" | "pro" | "advanced" => Some(crate::scene_config::DesiredVoiceEngine::Vosk),
+        "sapi" | "lite" => Some(crate::scene_config::DesiredVoiceEngine::Sapi),
+        "kws" | "keyword" | "keywords" => Some(crate::scene_config::DesiredVoiceEngine::Kws),
+        _ => None,
+    }
+}
+
+/// Derive desired engine from enabled flags (priority: Vosk > SAPI > KWS).
+pub fn desired_engine_from_enabled_flags(
+    cfg: &VoiceConfig,
+) -> crate::scene_config::DesiredVoiceEngine {
     if cfg.voice_vosk.enabled {
-        if cfg.voice_sapi.enabled {
-            cfg.voice_sapi.enabled = false;
-            changed = true;
-        }
-        if cfg.voice_kws.enabled {
-            cfg.voice_kws.enabled = false;
-            changed = true;
-        }
-    } else if cfg.voice_sapi.enabled && cfg.voice_kws.enabled {
-        cfg.voice_kws.enabled = false;
-        changed = true;
+        crate::scene_config::DesiredVoiceEngine::Vosk
+    } else if cfg.voice_sapi.enabled {
+        crate::scene_config::DesiredVoiceEngine::Sapi
+    } else if cfg.voice_kws.enabled {
+        crate::scene_config::DesiredVoiceEngine::Kws
+    } else {
+        crate::scene_config::DesiredVoiceEngine::None
     }
-    changed
+}
+
+/// Write `desired_engine` and mirror it onto the three `enabled` flags. Does not save.
+pub fn apply_desired_engine(cfg: &mut VoiceConfig, engine: &str) {
+    let parsed = parse_desired_engine_label(engine)
+        .unwrap_or(crate::scene_config::DesiredVoiceEngine::None);
+    cfg.desired_engine = desired_engine_label(parsed).to_string();
+    sync_enabled_flags_from_desired(cfg);
+}
+
+/// Mirror `desired_engine` onto mutually exclusive `enabled` flags.
+pub fn sync_enabled_flags_from_desired(cfg: &mut VoiceConfig) {
+    let engine = parse_desired_engine_label(&cfg.desired_engine)
+        .unwrap_or(crate::scene_config::DesiredVoiceEngine::None);
+    cfg.desired_engine = desired_engine_label(engine).to_string();
+    cfg.voice_vosk.enabled = engine == crate::scene_config::DesiredVoiceEngine::Vosk;
+    cfg.voice_sapi.enabled = engine == crate::scene_config::DesiredVoiceEngine::Sapi;
+    cfg.voice_kws.enabled = engine == crate::scene_config::DesiredVoiceEngine::Kws;
+}
+
+fn heal_desired_engine_from_flags_if_needed(cfg: &mut VoiceConfig) {
+    let from_flags = desired_engine_from_enabled_flags(cfg);
+    match parse_desired_engine_label(&cfg.desired_engine) {
+        Some(crate::scene_config::DesiredVoiceEngine::None)
+            if from_flags != crate::scene_config::DesiredVoiceEngine::None =>
+        {
+            // Legacy callers may flip enabled flags without desiredEngine.
+            cfg.desired_engine = desired_engine_label(from_flags).to_string();
+        }
+        Some(_) => {}
+        None => {
+            cfg.desired_engine = desired_engine_label(from_flags).to_string();
+        }
+    }
 }
 
 /// Built-in Vosk model preset ??? relative path under project/resources.
@@ -2038,7 +2158,7 @@ impl Default for VoiceConfig {
     fn default() -> Self {
         let id = new_mapping_id();
         Self {
-            version: 6,
+            version: 7,
             mappings: vec![MappingEntry {
                 id: id.clone(),
                 label: "AutoTrigger  ?RAlt".into(),
@@ -2078,6 +2198,7 @@ impl Default for VoiceConfig {
             voice_vosk: VoiceVoskConfig::default(),
             voice_kws: VoiceKwsConfig::default(),
             voice_end: VoiceEndConfig::default(),
+            desired_engine: default_desired_engine(),
             scenes: None,
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
@@ -2208,13 +2329,20 @@ pub fn effective_mapping_for_trigger(
 
 impl VoiceConfig {
     pub fn migrate(&mut self) {
+        if self.version >= 7 && !self.mappings.is_empty() {
+            self.normalize();
+            return;
+        }
+
         if self.version >= 6 && !self.mappings.is_empty() {
+            self.migrate_v6_to_v7();
             self.normalize();
             return;
         }
 
         if self.version >= 5 && !self.mappings.is_empty() {
             self.migrate_v5_to_v6();
+            self.migrate_v6_to_v7();
             self.normalize();
             return;
         }
@@ -2232,6 +2360,7 @@ impl VoiceConfig {
             }
             self.version = 5;
             self.migrate_v5_to_v6();
+            self.migrate_v6_to_v7();
             self.normalize();
             return;
         }
@@ -2261,6 +2390,7 @@ impl VoiceConfig {
             }
             self.version = 5;
             self.migrate_v5_to_v6();
+            self.migrate_v6_to_v7();
             self.normalize();
             return;
         }
@@ -2308,6 +2438,7 @@ impl VoiceConfig {
 
         self.version = 5;
         self.migrate_v5_to_v6();
+        self.migrate_v6_to_v7();
         self.record_key.clear();
         self.target_key.clear();
         self.trigger_source = None;
@@ -2326,6 +2457,14 @@ impl VoiceConfig {
             self.active_scene_id = self.resolve_default_active_scene_id();
         }
         self.version = 6;
+    }
+
+    fn migrate_v6_to_v7(&mut self) {
+        // Always derive from flags on upgrade (JSON default "none" would be wrong when an engine was on).
+        self.desired_engine =
+            desired_engine_label(desired_engine_from_enabled_flags(self)).to_string();
+        sync_enabled_flags_from_desired(self);
+        self.version = 7;
     }
 
     pub fn resolve_default_active_scene_id(&self) -> String {
@@ -2869,10 +3008,11 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             }
         }
     }
-    cfg.voice_vosk = existing.voice_vosk.clone();
+        cfg.voice_vosk = existing.voice_vosk.clone();
     cfg.voice_sapi = existing.voice_sapi.clone();
     cfg.voice_kws = existing.voice_kws.clone();
     cfg.voice_end = existing.voice_end.clone();
+    cfg.desired_engine = existing.desired_engine.clone();
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
     cfg.window_layout_seen = existing.window_layout_seen;
     cfg.window_maximized = existing.window_maximized;
@@ -3074,6 +3214,7 @@ mod tests {
         assert!(reconcile_voice_engine_flags(&mut cfg));
         assert!(cfg.voice_vosk.enabled);
         assert!(!cfg.voice_kws.enabled);
+        assert_eq!(cfg.desired_engine, "vosk");
     }
 
     #[test]
@@ -3084,6 +3225,57 @@ mod tests {
         assert!(reconcile_voice_engine_flags(&mut cfg));
         assert!(cfg.voice_sapi.enabled);
         assert!(!cfg.voice_kws.enabled);
+        assert_eq!(cfg.desired_engine, "sapi");
+    }
+
+    #[test]
+    fn apply_desired_engine_mirrors_enabled_flags() {
+        let mut cfg = VoiceConfig::default();
+        apply_desired_engine(&mut cfg, "kws");
+        assert_eq!(cfg.desired_engine, "kws");
+        assert!(cfg.voice_kws.enabled);
+        assert!(!cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_sapi.enabled);
+        apply_desired_engine(&mut cfg, "none");
+        assert_eq!(cfg.desired_engine, "none");
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn migrate_v6_to_v7_derives_desired_from_flags() {
+        let mut cfg = VoiceConfig::default();
+        cfg.version = 6;
+        cfg.desired_engine = "none".into();
+        cfg.voice_vosk.enabled = true;
+        cfg.migrate();
+        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.desired_engine, "vosk");
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_sapi.enabled);
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn migrate_v6_to_v7_heals_dual_enabled_flags() {
+        let mut cfg = VoiceConfig::default();
+        cfg.version = 6;
+        cfg.voice_vosk.enabled = true;
+        cfg.voice_kws.enabled = true;
+        cfg.migrate();
+        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.desired_engine, "vosk");
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn normalize_rejects_invalid_desired_engine() {
+        let mut cfg = VoiceConfig::default();
+        cfg.desired_engine = "not-a-real-engine".into();
+        cfg.voice_sapi.enabled = true;
+        cfg.normalize();
+        assert_eq!(cfg.desired_engine, "sapi");
+        assert!(cfg.voice_sapi.enabled);
     }
 
     #[test]
@@ -3105,7 +3297,7 @@ mod tests {
             ..Default::default()
         };
         cfg.migrate();
-        assert_eq!(cfg.version, 6);
+        assert_eq!(cfg.version, 7);
         assert_eq!(cfg.mappings.len(), 1);
         assert_eq!(cfg.mappings[0].trigger_key, "AutoTrigger");
         assert_eq!(cfg.mappings[0].target_key, "F2");
@@ -3736,6 +3928,41 @@ mod tests {
         assert!(entries.iter().any(|e| e.0 == "Cursor旺"));
         assert!(entries.iter().any(|e| e.0 == "打开 Cursor"));
         assert!(entries.iter().all(|e| e.1 == "cursor-chat"));
+    }
+
+    #[test]
+    fn resolve_mapping_summon_target_custom_uses_rule_ref() {
+        let mut mapping = VoiceConfig::default().mappings[0].clone();
+        mapping.app_target_id = "custom".into();
+        mapping.app_behavior_rules = vec![
+            AppBehaviorRule {
+                rule_id: "rule-noise".into(),
+                app_id: "cursor-chat".into(),
+                finish_mode: "manual".into(),
+                note: None,
+                summon_phrase: None,
+                display_name: None,
+                app_match: None,
+            },
+            AppBehaviorRule {
+                rule_id: "rule-weixin".into(),
+                app_id: "custom".into(),
+                finish_mode: "confirm".into(),
+                note: None,
+                summon_phrase: None,
+                display_name: Some("微信".into()),
+                app_match: Some(AppMatchSpec {
+                    exe_names: vec!["Weixin.exe".into()],
+                    path_contains: Some(r"Tencent\Weixin".into()),
+                    title_contains: None,
+                    full_path: Some(r"C:\Program Files\Tencent\Weixin\Weixin.exe".into()),
+                }),
+            },
+        ];
+        assert_eq!(
+            resolve_mapping_summon_target(&mapping).as_deref(),
+            Some("rule:rule-weixin")
+        );
     }
 
     #[test]

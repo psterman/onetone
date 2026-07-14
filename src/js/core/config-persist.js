@@ -155,9 +155,9 @@
     var activationScope=String(raw.activationScope||'global').trim();
     if(activationScope!=='global'&&activationScope!=='foreground-app') activationScope='global';
     var threshold=Number(raw.threshold);
-    if(!isFinite(threshold)) threshold=quality==='ok'?0.86:0.78;
+    if(!isFinite(threshold)) threshold=quality==='ok'?0.80:0.78;
     var margin=Number(raw.margin);
-    if(!isFinite(margin)) margin=quality==='ok'?0.10:0.08;
+    if(!isFinite(margin)) margin=0.08;
     var createdAt=Number(raw.createdAt);
     if(!isFinite(createdAt)) createdAt=Date.now();
     var updatedAt=Number(raw.updatedAt);
@@ -345,6 +345,13 @@
     if(!cfg.voiceSapi&&cfg.voice_sapi) cfg.voiceSapi=cfg.voice_sapi;
     if(!cfg.voiceKws&&cfg.voice_kws) cfg.voiceKws=cfg.voice_kws;
     if(!cfg.voiceEnd&&cfg.voice_end) cfg.voiceEnd=cfg.voice_end;
+    if(!cfg.desiredEngine&&cfg.desired_engine) cfg.desiredEngine=String(cfg.desired_engine);
+    if(cfg.desiredEngine==null){
+      var voskOn=!!((cfg.voiceVosk||{}).enabled);
+      var sapiOn=!!((cfg.voiceSapi||{}).enabled);
+      var kwsOn=!!((cfg.voiceKws||{}).enabled);
+      cfg.desiredEngine=voskOn?'vosk':(sapiOn?'sapi':(kwsOn?'kws':'none'));
+    }
     if(Array.isArray(cfg.mappings)){
       cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
     }
@@ -387,8 +394,9 @@
     const labelSuffix=pack?pack.mappingLabelSuffix:'RAlt';
     const id=hooks().newMappingId();
     return {
-      version:6,
+      version:7,
       activeSceneId:id,
+      desiredEngine:'none',
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,

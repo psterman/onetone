@@ -1,15 +1,17 @@
-//! Unified command dispatch for keyword spotting engines (KWS stub + future native).
+//! Keyword classification helpers for KWS (and other spotters).
+//! Business dispatch goes through [`crate::voice_command_router`].
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::config::VoiceConfig;
+use crate::voice_command_router::{
+    handle_detection, VoiceCommandRouterResult, VoiceDetection, VoiceDetectionKind,
+};
 use crate::voice_end_runtime::{
-    handle_cancel_phrase, handle_end_phrase, handle_voice_wake_detected, idle_wake_phrases,
-    matches_cancel_phrase, matches_end_phrase, session_state,
+    idle_wake_phrases, matches_cancel_phrase, matches_end_phrase,
 };
 use crate::AppState;
 
@@ -49,6 +51,17 @@ pub struct VoiceKeywordDispatchResult {
     pub skipped: bool,
     pub skip_reason: String,
     pub trigger_label: String,
+}
+
+impl From<VoiceCommandRouterResult> for VoiceKeywordDispatchResult {
+    fn from(r: VoiceCommandRouterResult) -> Self {
+        Self {
+            handled: r.handled,
+            skipped: r.skipped,
+            skip_reason: r.skip_reason,
+            trigger_label: r.trigger_label,
+        }
+    }
 }
 
 pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKind {
@@ -109,143 +122,27 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
     VoiceKeywordKind::Custom
 }
 
+/// Legacy entry used by KWS; forwards to [`handle_detection`].
 pub fn dispatch_voice_keyword_detected(
     state: &Arc<AppState>,
     app: &AppHandle,
     engine: &str,
     detection: &VoiceKeywordDetection,
 ) -> VoiceKeywordDispatchResult {
-    let session = session_state(state);
-    let idle = session == "idle";
-    let active = session == "dictating";
-
-    match detection.kind {
-        VoiceKeywordKind::Wake | VoiceKeywordKind::Summon => {
-            if !idle {
-                return skip_result(format!(
-                    "会话中忽略 {} 词「{}」",
-                    detection.kind.as_str(),
-                    detection.phrase
-                ));
-            }
-            if let Some(reason) = crate::voice_end_runtime::wake_phrase_skip_reason(state) {
-                return skip_result(reason.into());
-            }
-            if !crate::voice_end_runtime::is_start_phrase(&state.cfg.lock(), &detection.phrase) {
-                return skip_result(format!("未识别的启动词「{}」", detection.phrase));
-            }
-            dispatch_wake_or_summon(state, app, engine, detection)
-        }
-        VoiceKeywordKind::End => {
-            if !active {
-                return skip_result(format!("idle 状态下忽略 end 词「{}」", detection.phrase));
-            }
-            if !state.cfg.lock().voice_end.enabled {
-                return skip_result("结束词功能未启用".into());
-            }
-            handle_end_phrase(state, app, &detection.phrase);
-            VoiceKeywordDispatchResult {
-                handled: true,
-                trigger_label: format!("结束（{}）", detection.phrase),
-                ..Default::default()
-            }
-        }
-        VoiceKeywordKind::Cancel => {
-            if !active {
-                return skip_result(format!("idle 状态下忽略 cancel 词「{}」", detection.phrase));
-            }
-            if !state.cfg.lock().voice_end.enabled {
-                return skip_result("结束词功能未启用".into());
-            }
-            handle_cancel_phrase(state, app, &detection.phrase);
-            VoiceKeywordDispatchResult {
-                handled: true,
-                trigger_label: format!("取消（{}）", detection.phrase),
-                ..Default::default()
-            }
-        }
-        VoiceKeywordKind::Custom => skip_result(format!("未归类关键词「{}」", detection.phrase)),
-    }
-}
-
-fn skip_result(reason: String) -> VoiceKeywordDispatchResult {
-    VoiceKeywordDispatchResult {
-        skipped: true,
-        skip_reason: reason,
-        ..Default::default()
-    }
-}
-
-fn dispatch_wake_or_summon(
-    state: &Arc<AppState>,
-    app: &AppHandle,
-    engine: &str,
-    detection: &VoiceKeywordDetection,
-) -> VoiceKeywordDispatchResult {
-    let (duration_ms, cooldown_ms) = {
-        let cfg = state.cfg.lock();
-        let cooldown = if engine == "kws" {
-            cfg.voice_kws.cooldown_ms
-        } else {
-            cfg.voice_vosk.cooldown_ms
-        };
-        (cfg.key_press_duration_ms, cooldown)
-    };
-
-    if *state.paused.lock() {
-        return skip_result("监听已暂停，请先在上方点「恢复」。".into());
-    }
-
-    if let Some(remain_ms) =
-        crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
-    {
-        return skip_result(format!("防连按冷却中，请 {remain_ms} ms 后再说。"));
-    }
-
-    let now = Instant::now();
-    if engine == "kws" {
-        *state.voice_kws_cooldown_until.lock() =
-            Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
-    }
-
-    if crate::send_guard::is_active() && !crate::send_guard::wait_until_inactive(800) {
-        return skip_result("快捷键发送通道忙，请再说一次。".into());
-    }
-
-    let result = handle_voice_wake_detected(state, app, &detection.phrase, duration_ms, engine);
-
-    let trigger_label = if result.ok {
-        if result.used_summon_workflow {
-            format!("{}（召唤「{}」）", result.target_key, detection.phrase)
-        } else {
-            format!("{}（命中「{}」）", result.target_key, detection.phrase)
-        }
+    let matched = if detection.keyword.trim().is_empty() {
+        detection.phrase.clone()
     } else {
-        String::new()
+        detection.keyword.clone()
     };
-
-    if result.ok {
-        let cue = "voice_wake";
-        let sound_cue = crate::config::runtime_sound_cue(&state.cfg.lock(), cue);
-        crate::ipc::push_runtime_via_app(
-            app,
-            state.as_ref(),
-            &result.runtime_label,
-            "",
-            sound_cue.as_deref(),
-        );
-    }
-
-    VoiceKeywordDispatchResult {
-        handled: result.ok,
-        skipped: !result.ok,
-        skip_reason: if result.ok {
-            String::new()
-        } else {
-            format!("快捷键发送失败：{}", result.target_key)
-        },
-        trigger_label,
-    }
+    let det = VoiceDetection {
+        engine: engine.to_string(),
+        kind: VoiceDetectionKind::from_keyword_kind(detection.kind),
+        text: detection.phrase.clone(),
+        confidence: None,
+        matched_phrase: matched,
+        timestamp_ms: VoiceDetection::now_ms(),
+    };
+    handle_detection(state, app, &det).into()
 }
 
 #[cfg(test)]

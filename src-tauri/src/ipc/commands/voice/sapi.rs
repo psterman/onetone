@@ -25,9 +25,10 @@ pub fn cmd_voice_sapi_set_enabled(
 #[tauri::command]
 pub fn cmd_voice_sapi_set_phrases(
     state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
     phrases: Vec<String>,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_sapi_runtime::voice_sapi_set_phrases(&state, phrases)
+    crate::voice_sapi_runtime::voice_sapi_set_phrases(&state, &app, phrases)
 }
 
 #[tauri::command]

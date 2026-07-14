@@ -51,6 +51,7 @@ permissions = [
   "allow-cmd-voice-sapi-set-min-confidence",
   "allow-cmd-voice-sapi-test-send",
   "allow-cmd-open-windows-speech-setup",
+  "allow-cmd-voice-set-desired-engine",
   "allow-cmd-voice-vosk-status",
   "allow-cmd-voice-vosk-set-enabled",
   "allow-cmd-voice-vosk-set-phrases",

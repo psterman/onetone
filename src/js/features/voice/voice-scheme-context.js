@@ -138,7 +138,7 @@
     var scene=sc();
     if(!scene) return false;
     var ov=mapping.voiceOverride||null;
-    var hasEndOverride=!!(ov&&ov.endPhrases&&typeof ov.endPhrases==='object'&&(
+    let hasEndOverride=!!(ov&&ov.endPhrases!=null&&typeof ov.endPhrases==='object'&&(
       (Array.isArray(ov.endPhrases.zh)&&ov.endPhrases.zh.length)||
       (Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length)
     ));

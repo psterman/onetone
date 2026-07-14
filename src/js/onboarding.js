@@ -753,19 +753,14 @@
     var choice = voskOnlyUi() ? 'pro' : getEngineChoice();
     if(!global.OneToneIpc || !global.OneToneIpc.invoke) return Promise.resolve();
     if(choice === 'lite'){
-      return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){})
-        .then(function(){
-          return global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:true});
-        });
+      return global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:'sapi'});
     }
-    return global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:false}).catch(function(){})
+    return global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:'cn-light'})
       .then(function(){
-        return global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:'cn-light'});
+        return global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:'vosk'});
       })
-      .then(function(){
-        return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:true});
-      })
-      .then(function(voskRes){
+      .then(function(bundle){
+        var voskRes=(bundle&&bundle.voiceVosk)||bundle;
         if(global.OneToneVoiceEngineReadiness && global.OneToneVoiceEngineReadiness.voskNeedsModel(voskRes)){
           if(global.OneToneVoiceWake && global.OneToneVoiceWake.downloadVoskModel){
             global.OneToneVoiceWake.downloadVoskModel('cn-light');

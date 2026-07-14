@@ -51,7 +51,11 @@ pub fn start_vosk_model_download(
             resource_dir.as_deref(),
         );
         if state.cfg.lock().voice_vosk.enabled {
-            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(&state, resource_dir.clone());
+            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
+                &app,
+                &state,
+                resource_dir.clone(),
+            );
         }
         return Ok(serde_json::json!({
             "ok": true,
@@ -102,6 +106,7 @@ pub fn start_vosk_model_download(
                     );
                     if state.cfg.lock().voice_vosk.enabled {
                         let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
+                            &app2,
                             &state,
                             resource_dir.clone(),
                         );

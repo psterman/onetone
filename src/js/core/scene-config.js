@@ -2,6 +2,11 @@
   'use strict';
 
   function desiredEngine(cfg){
+    cfg=cfg||{};
+    const raw=String(cfg.desiredEngine||cfg.desired_engine||'').trim().toLowerCase();
+    if(raw==='vosk'||raw==='sapi'||raw==='kws'||raw==='none'||raw==='off'){
+      return raw==='off'?'none':raw;
+    }
     const kws=!!((cfg.voiceKws||cfg.voice_kws||{}).enabled);
     const vosk=!!((cfg.voiceVosk||cfg.voice_vosk||{}).enabled);
     const sapi=!!((cfg.voiceSapi||cfg.voice_sapi||{}).enabled);

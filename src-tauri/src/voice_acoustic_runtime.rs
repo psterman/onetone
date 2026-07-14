@@ -75,14 +75,23 @@ pub fn acoustic_set_suspend(state: &Arc<AppState>, suspended: bool, app: Option<
             .acoustic_voice
             .record_in_progress
             .store(false, Ordering::SeqCst);
+        // Calibration finished: wake engines may still be down if MicLease skipped
+        // resume while suspended=true. Force reconcile.
         if was_suspended && !*state.paused.lock() {
             if let Some(app) = app {
-                resume_voice_engines_after_capture(state, Some(app));
+                crate::voice_bootstrap::activate_desired_engine(app, state, "acoustic_unsuspend");
             }
         }
     } else if !was_suspended {
-        let _ = pause_voice_engines_for_capture(state);
+        // Quiet matcher only — do NOT pause wake engines here.
+        // Exclusive mic capture is handled by MicLease inside record_once.
+        crate::app_log::log_line(
+            state.as_ref(),
+            "voice",
+            "acoustic_set_suspend: matcher suspended (engines keep running until record lease)",
+        );
     }
+    sync_acoustic_match_runtime(app, state);
 }
 
 struct RecordInProgressGuard<'a> {
@@ -111,13 +120,15 @@ pub fn record_once(state: &Arc<AppState>, app: Option<&AppHandle>) -> serde_json
 
     eprintln!("acoustic record_once begin");
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    let paused_voice = pause_voice_engines_for_capture(state);
 
-    let pcm_result = capture_pcm_mono_16k(RECORD_TIMEOUT_MS);
-
-    if paused_voice && !state.acoustic_voice.is_suspended() {
-        resume_voice_engines_after_capture(state, app);
-    }
+    let pcm_result = {
+        // MicLease Drop resumes the desired engine even on panic / early return.
+        let mut lease =
+            crate::voice_bootstrap::acquire_mic_lease(app, state, "acoustic_record_once");
+        let captured = capture_pcm_mono_16k(RECORD_TIMEOUT_MS);
+        lease.release();
+        captured
+    };
 
     let pcm = match pcm_result {
         Ok(p) => p,
@@ -142,27 +153,6 @@ fn capture_error_json(err: &str) -> serde_json::Value {
         (RecordReason::NoSpeech, "habitAcousticCmdTimeout")
     };
     record_error_json(reason, key, None)
-}
-
-fn pause_voice_engines_for_capture(state: &AppState) -> bool {
-    let sapi = crate::voice_sapi_runtime::pause_for_external_capture(state);
-    let vosk = crate::voice_vosk_runtime::pause_for_external_capture(state);
-    let kws = crate::voice_kws_runtime::pause_for_external_capture(state);
-    if sapi || vosk || kws {
-        std::thread::sleep(Duration::from_millis(220));
-    }
-    sapi || vosk || kws
-}
-
-fn resume_voice_engines_after_capture(state: &Arc<AppState>, app: Option<&AppHandle>) {
-    let Some(app) = app else {
-        return;
-    };
-    if *state.paused.lock() {
-        return;
-    }
-    crate::voice_bootstrap::bootstrap_voice_engines(app, state, false);
-    sync_acoustic_match_runtime(Some(app), state);
 }
 
 /// Process captured PCM into a sample response (testable without hardware mic).
@@ -411,12 +401,27 @@ fn try_emit_acoustic_match(
     }
     let sample = match extract_mfcc_from_pcm_f32(pcm, TARGET_SAMPLE_RATE) {
         Some(s) => s,
-        None => return,
+        None => {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "acoustic",
+                &format!(
+                    "match skip: feature extract failed (pcm_ms≈{})",
+                    pcm.len() as u64 * 1000 / TARGET_SAMPLE_RATE as u64
+                ),
+            );
+            return;
+        }
     };
     let cfg = state.cfg.lock().clone();
     let foreground = foreground_app_target_id();
     let commands = collect_match_commands(&cfg, foreground.as_deref());
     if commands.is_empty() {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "acoustic",
+            "match skip: no enabled acoustic commands in scope",
+        );
         return;
     }
     let matched = match_acoustic_commands(
@@ -424,7 +429,24 @@ fn try_emit_acoustic_match(
         sample.feature_frames,
         &commands,
     );
-    let Some(hit) = matched else { return };
+    let Some(hit) = matched else {
+        let best = best_match_score_hint(
+            &sample.feature,
+            sample.feature_frames,
+            &commands,
+        );
+        crate::app_log::log_line(
+            state.as_ref(),
+            "acoustic",
+            &format!(
+                "match miss: frames={} best≈{:.3} cmds={}",
+                sample.feature_frames,
+                best.unwrap_or(0.0),
+                commands.len()
+            ),
+        );
+        return;
+    };
 
     let now = Instant::now();
     if let Some(prev) = *last_emit_at {
@@ -433,6 +455,15 @@ fn try_emit_acoustic_match(
         }
     }
     *last_emit_at = Some(now);
+
+    crate::app_log::log_line(
+        state.as_ref(),
+        "acoustic",
+        &format!(
+            "match hit: scenario={} cmd={} score={:.3}",
+            hit.scenario_id, hit.command_id, hit.score
+        ),
+    );
 
     if let Some(app) = app {
         crate::voice_end_runtime::handle_acoustic_scene_command(
@@ -455,6 +486,36 @@ fn try_emit_acoustic_match(
                 "score": hit.score,
             })),
         );
+    }
+}
+
+fn best_match_score_hint(
+    live: &[f32],
+    live_frames: u32,
+    commands: &[AcousticVoiceCommand],
+) -> Option<f64> {
+    use crate::voice_acoustic_command::dtw_similarity;
+    let mut best = 0.0f64;
+    let mut any = false;
+    for cmd in commands {
+        for sample in &cmd.samples {
+            let sim = dtw_similarity(
+                live,
+                live_frames,
+                &sample.feature,
+                sample.feature_frames,
+                sample.feature_dims,
+            );
+            any = true;
+            if sim > best {
+                best = sim;
+            }
+        }
+    }
+    if any {
+        Some(best)
+    } else {
+        None
     }
 }
 

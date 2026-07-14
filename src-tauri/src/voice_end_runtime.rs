@@ -367,14 +367,13 @@ pub fn handle_voice_wake_detected(
 
     if is_generic_wake {
         if let Some(mapping) = mapping_snapshot.as_ref() {
-            let primary = mapping.app_target_id.trim();
-            if !primary.is_empty() {
+            if let Some(summon_target) = crate::config::resolve_mapping_summon_target(mapping) {
                 if let Some(label) = try_run_summon_workflow(
                     state,
                     app,
                     mapping,
                     &mapping_id,
-                    primary,
+                    &summon_target,
                     duration_ms,
                 ) {
                     crate::runtime_event::publish_runtime_event(
@@ -383,12 +382,13 @@ pub fn handle_voice_wake_detected(
                         "voice",
                         crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
                         &format!(
-                            "{engine} app-target wake: {primary} ({matched_phrase})"
+                            "{engine} app-target wake: {summon_target} ({matched_phrase})"
                         ),
                         Some(serde_json::json!({
                             "engine": engine,
                             "phrase": matched_phrase,
-                            "appTargetId": primary,
+                            "appTargetId": mapping.app_target_id,
+                            "summonTarget": summon_target,
                             "mappingId": mapping_id,
                             "workflow": true,
                             "primaryAppTarget": true
@@ -488,7 +488,9 @@ pub fn handle_acoustic_scene_command(
         cfg.set_active_scenario(scenario_id);
     }
 
-    let app_target = mapping.app_target_id.trim().to_string();
+    let primary_app = mapping.app_target_id.trim().to_string();
+    let summon_target = crate::config::resolve_mapping_summon_target(&mapping)
+        .unwrap_or_else(|| primary_app.clone());
     let duration_ms = 280u32;
     let mut used_workflow = false;
     let mut runtime_label = String::new();
@@ -497,13 +499,13 @@ pub fn handle_acoustic_scene_command(
         resolve_wake_target_key(&cfg, "")
     };
 
-    if !app_target.is_empty() {
+    if !summon_target.is_empty() {
         if let Some(label) = try_run_summon_workflow(
             state,
             app,
             &mapping,
             scenario_id,
-            &app_target,
+            &summon_target,
             duration_ms,
         ) {
             used_workflow = true;
@@ -532,17 +534,18 @@ pub fn handle_acoustic_scene_command(
         "acoustic_voice_matched",
         &format!(
             "acoustic command matched -> {} (score={score:.3}, workflow={used_workflow})",
-            if app_target.is_empty() {
+            if summon_target.is_empty() {
                 target_key.as_str()
             } else {
-                app_target.as_str()
+                summon_target.as_str()
             }
         ),
         Some(serde_json::json!({
             "scenarioId": scenario_id,
             "commandId": command_id,
             "score": score,
-            "appTargetId": app_target,
+            "appTargetId": primary_app,
+            "summonTarget": summon_target,
             "workflow": used_workflow,
             "ok": ok,
             "runtimeLabel": runtime_label

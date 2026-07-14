@@ -46,6 +46,8 @@
     return invoke('cmd_acoustic_voice_command_status',{});
   }
 
+  // Suspend only quiets the acoustic matcher (backend). Engines keep running
+  // until MicLease in record_once; do NOT call pause/set_enabled here.
   function setSuspend(on){
     return invoke('cmd_acoustic_voice_command_set_suspend',{suspended:!!on});
   }

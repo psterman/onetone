@@ -33,7 +33,12 @@ pub fn cmd_voice_vosk_set_phrases(
     app: tauri::AppHandle,
     phrases: Vec<String>,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_vosk_runtime::voice_vosk_set_phrases(&state, phrases, app_resource_dir(&app))
+    crate::voice_vosk_runtime::voice_vosk_set_phrases(
+        &state,
+        &app,
+        phrases,
+        app_resource_dir(&app),
+    )
 }
 
 #[tauri::command]
@@ -42,7 +47,12 @@ pub fn cmd_voice_vosk_set_model_preset(
     app: tauri::AppHandle,
     preset: String,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_vosk_runtime::voice_vosk_set_model_preset(&state, preset, app_resource_dir(&app))
+    crate::voice_vosk_runtime::voice_vosk_set_model_preset(
+        &state,
+        &app,
+        preset,
+        app_resource_dir(&app),
+    )
 }
 
 #[tauri::command]
@@ -51,7 +61,12 @@ pub fn cmd_voice_vosk_set_model_path(
     app: tauri::AppHandle,
     path: String,
 ) -> Result<serde_json::Value, String> {
-    crate::voice_vosk_runtime::voice_vosk_set_model_path(&state, path, app_resource_dir(&app))
+    crate::voice_vosk_runtime::voice_vosk_set_model_path(
+        &state,
+        &app,
+        path,
+        app_resource_dir(&app),
+    )
 }
 
 #[tauri::command]
@@ -73,6 +88,7 @@ pub fn cmd_voice_vosk_retry_start(
     app: tauri::AppHandle,
 ) -> serde_json::Value {
     crate::voice_vosk_runtime::voice_vosk_retry_start(
+        &app,
         state.inner(),
         super::sapi::app_resource_dir(&app),
     )

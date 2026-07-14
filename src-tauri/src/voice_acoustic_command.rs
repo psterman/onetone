@@ -17,8 +17,8 @@ pub const AGREE_GOOD: f64 = 0.85;
 pub const AGREE_OK: f64 = 0.68;
 pub const DEFAULT_THRESHOLD: f64 = 0.78;
 pub const DEFAULT_MARGIN: f64 = 0.08;
-pub const THRESHOLD_OK: f64 = 0.86;
-pub const MARGIN_OK: f64 = 0.10;
+pub const THRESHOLD_OK: f64 = 0.80;
+pub const MARGIN_OK: f64 = 0.08;
 /// Reject clips shorter than this (absolute floor).
 pub const MIN_SPEECH_MS: u32 = 450;
 /// Prefer not to end capture until speech reaches this length.

@@ -365,14 +365,18 @@ pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKey
 }
 
 fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
-    if cfg.voice_vosk.enabled {
-        DesiredVoiceEngine::Vosk
-    } else if cfg.voice_sapi.enabled {
-        DesiredVoiceEngine::Sapi
-    } else if cfg.voice_kws.enabled {
-        DesiredVoiceEngine::Kws
-    } else {
-        DesiredVoiceEngine::None
+    match crate::config::parse_desired_engine_label(&cfg.desired_engine) {
+        Some(DesiredVoiceEngine::None) => {
+            // Stale in-memory: enabled flags set before desiredEngine synced.
+            let from_flags = crate::config::desired_engine_from_enabled_flags(cfg);
+            if from_flags != DesiredVoiceEngine::None {
+                from_flags
+            } else {
+                DesiredVoiceEngine::None
+            }
+        }
+        Some(engine) => engine,
+        None => crate::config::desired_engine_from_enabled_flags(cfg),
     }
 }
 
@@ -384,13 +388,19 @@ fn cfg_has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
     })
 }
 
-/// SAPI cannot publish AudioFrameBus PCM. When acoustic scenario commands exist,
-/// prefer Vosk so matching + Chinese summon phrases both work.
+/// True when any mapping has enabled acoustic commands with samples (needs PCM).
+pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
+    cfg_has_enabled_acoustic_commands(cfg)
+}
+
+/// SAPI/KWS: prefer Vosk when acoustic scenario commands exist (need PCM + usable STT).
 fn prefer_vosk_for_acoustic(cfg: &VoiceConfig, desired: DesiredVoiceEngine) -> DesiredVoiceEngine {
-    if desired == DesiredVoiceEngine::Sapi && cfg_has_enabled_acoustic_commands(cfg) {
-        DesiredVoiceEngine::Vosk
-    } else {
-        desired
+    if !cfg_has_enabled_acoustic_commands(cfg) {
+        return desired;
+    }
+    match desired {
+        DesiredVoiceEngine::Sapi | DesiredVoiceEngine::Kws => DesiredVoiceEngine::Vosk,
+        other => other,
     }
 }
 
@@ -626,7 +636,7 @@ mod tests {
 
     fn base_cfg() -> VoiceConfig {
         let mut cfg = VoiceConfig::default();
-        cfg.voice_vosk.enabled = true;
+        crate::config::apply_desired_engine(&mut cfg, "vosk");
         cfg.voice_end.enabled = true;
         cfg
     }
@@ -1050,7 +1060,7 @@ mod tests {
             ..VoiceConfig::default()
         };
         cfg.migrate();
-        assert_eq!(cfg.version, 6);
+        assert_eq!(cfg.version, 7);
         assert!(!cfg.active_scene_id.is_empty());
         assert!(cfg
             .mappings

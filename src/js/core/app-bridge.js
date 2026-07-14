@@ -188,21 +188,21 @@
         hooks().setVoiceEngineBootDone(true);
         hooks().clearVoiceEngineBootTimer();
         var useVosk=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
-        var cmd=useVosk?'cmd_voice_vosk_set_enabled':'cmd_voice_sapi_set_enabled';
-        return hooks().vpInvoke(cmd,{enabled:true}).then(function(res){
-          if(useVosk){
-            hooks().renderVoiceVoskStatus(res);
-            if(res&&res.enabled) hooks().syncVoiceSapiToggle(false);
-            hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'});
-          }else{
-            hooks().renderVoiceSapiStatus(res);
-            if(!hooks().handleVoiceSapiEnableResult(res,true)) return false;
-            if(res&&res.enabled) hooks().syncVoiceVoskToggle(false);
-            hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+        var engine=useVosk?'vosk':'sapi';
+        return hooks().vpInvoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+          if(!bundle||bundle.ok===false) return false;
+          var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
+          var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
+          var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
+          if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
+          if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
+          if(engine==='sapi'&&hooks().handleVoiceSapiEnableResult&&!hooks().handleVoiceSapiEnableResult(sapiRes,true)){
+            return false;
           }
+          hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{lightOnly:true},kwsRes);
           hooks().renderHomeLiveZone();
           hooks().renderHome();
-          return !!(res&&res.enabled);
+          return !!(bundle.engine===engine||(useVosk?voskRes.enabled:sapiRes.enabled));
         });
       },
       enableVoicePractice:function(opts){

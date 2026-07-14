@@ -332,6 +332,8 @@
 
   function resolveRuntimeEngine(wake){
     wake=wake||(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    const active=String((wake.supervisor&&wake.supervisor.activeEngine)||'').trim();
+    if(active==='vosk'||active==='kws'||active==='sapi') return active;
     const eng=String(wake.engine||'').trim();
     if(eng==='vosk'||eng==='kws'||eng==='sapi') return eng;
     if(eng==='none'||eng==='off') return 'off';
@@ -416,29 +418,53 @@
     sapiRes=sapiRes||{};
     voskRes=voskRes||{};
     kwsRes=kwsRes||{};
+    const supervisor={
+      desiredEngine:String(voskRes.desiredEngine||sapiRes.desiredEngine||kwsRes.desiredEngine||'').trim(),
+      activeEngine:String(voskRes.activeEngine||sapiRes.activeEngine||kwsRes.activeEngine||'').trim(),
+      degraded:!!(voskRes.degraded||sapiRes.degraded||kwsRes.degraded),
+      degradedReason:String(voskRes.degradedReason||sapiRes.degradedReason||kwsRes.degradedReason||'').trim()
+    };
     const voskOn=!!voskRes.enabled;
     const sapiOn=!!sapiRes.enabled;
     const kwsOn=!!kwsRes.enabled;
     let engine='none',phrase='',wakeState='off';
-    if(voskOn){
+    const active=supervisor.activeEngine;
+    if(active==='vosk'||active==='kws'||active==='sapi'){
+      engine=active;
+    }else if(voskOn){
       engine='vosk';
+    }else if(kwsOn){
+      engine='kws';
+    }else if(sapiOn){
+      engine='sapi';
+    }
+    if(engine==='vosk'){
       const phrases=Array.isArray(voskRes.phrases)?voskRes.phrases:[];
       const cn=Array.isArray(voskRes.phrasesCn)?voskRes.phrasesCn:[];
       const en=Array.isArray(voskRes.phrasesEn)?voskRes.phrasesEn:[];
       phrase=(phrases[0]||cn[0]||en[0]||'').trim();
       wakeState=voskRes.state||'stopped';
-    }else if(kwsOn){
-      engine='kws';
+    }else if(engine==='kws'){
       const phrases=Array.isArray(kwsRes.phrases)?kwsRes.phrases:[];
       phrase=(phrases[0]||kwsRes.lastDetectedPhrase||'').trim();
       wakeState=kwsRes.state||'stopped';
-    }else if(sapiOn){
-      engine='sapi';
+    }else if(engine==='sapi'){
       const phrases=Array.isArray(sapiRes.phrases)?sapiRes.phrases:[];
       phrase=(phrases[0]||'').trim();
       wakeState=sapiRes.state||'stopped';
     }
-    return {engine,voskEnabled:voskOn,sapiEnabled:sapiOn,kwsEnabled:kwsOn,phrase,state:wakeState,sapi:sapiOn?sapiRes:Object.assign({},sapiRes,{enabled:false,state:'stopped'}),vosk:voskOn?voskRes:Object.assign({},voskRes,{enabled:false,state:'stopped'}),kws:kwsOn?kwsRes:Object.assign({},kwsRes,{enabled:false,state:'stopped'})};
+    return {
+      engine:engine,
+      phrase:phrase,
+      state:wakeState,
+      voskEnabled:voskOn,
+      sapiEnabled:sapiOn,
+      kwsEnabled:kwsOn,
+      sapi:(sapiOn||active==='sapi')?sapiRes:Object.assign({},sapiRes,{enabled:false,state:'stopped'}),
+      vosk:(voskOn||active==='vosk')?voskRes:Object.assign({},voskRes,{enabled:false,state:'stopped'}),
+      kws:(kwsOn||active==='kws')?kwsRes:Object.assign({},kwsRes,{enabled:false,state:'stopped'}),
+      supervisor:supervisor
+    };
   }
   function syncVoiceSapiConfigFromStatus(res){
     if(!state().config||!res) return;
@@ -506,6 +532,8 @@
     const runtime=resolveRuntimeEngine();
     if(runtime!=='off') return runtime;
     const cfg=state().config||{};
+    const desired=String(cfg.desiredEngine||cfg.desired_engine||'').trim().toLowerCase();
+    if(desired==='vosk'||desired==='sapi'||desired==='kws') return desired;
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
@@ -540,14 +568,8 @@
   }
 
   function stopStaleVoskForKws(){
-    const cfg=state().config||{};
-    const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
-    const kwsCfg=cfg.voiceKws||cfg.voice_kws||{};
-    if(!(kwsCfg&&kwsCfg.enabled)||(voskCfg&&voskCfg.enabled)) return Promise.resolve(null);
-    return global.OneToneIpc.invoke('cmd_voice_vosk_status',{}).catch(function(){return null;}).then(function(voskRes){
-      if(!voskRes||!voskRes.enabled) return null;
-      return global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){return null;});
-    });
+    // Supervisor exclusivity keeps peers stopped; no side-channel vosk disable.
+    return Promise.resolve(null);
   }
 
   function isVoiceModeCardInteractiveTarget(target){
@@ -683,6 +705,40 @@
     ]);
   }
 
+  function syncDesiredEngineConfig(engine){
+    if(!state().config) return;
+    const eng=String(engine||'none').trim().toLowerCase();
+    state().config.desiredEngine=eng;
+    const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
+    const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+    const kws=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
+    state().config.voiceVosk=vosk;
+    state().config.voiceSapi=sapi;
+    state().config.voiceKws=kws;
+    vosk.enabled=eng==='vosk';
+    sapi.enabled=eng==='sapi';
+    kws.enabled=eng==='kws';
+  }
+
+  function applyDesiredEngineResult(bundle,mode,statusOpts,syncOpts){
+    const voskRes=bundle&&bundle.voiceVosk?bundle.voiceVosk:null;
+    const sapiRes=bundle&&bundle.voiceSapi?bundle.voiceSapi:null;
+    const kwsRes=bundle&&bundle.voiceKws?bundle.voiceKws:null;
+    const eng=String((bundle&&bundle.engine)||mode||'').trim().toLowerCase();
+    syncDesiredEngineConfig(eng);
+    if(voskRes) syncVoiceVoskConfigFromStatus(voskRes);
+    if(sapiRes) syncVoiceSapiConfigFromStatus(sapiRes);
+    if(kwsRes) syncVoiceKwsConfigFromStatus(kwsRes);
+    if(voskRes) renderVoiceVoskStatus(voskRes,statusOpts);
+    if(sapiRes) renderVoiceSapiStatus(sapiRes,statusOpts);
+    if(kwsRes) renderVoiceKwsStatus(kwsRes,statusOpts);
+    const snap=hooks().voiceUiSnapshot;
+    if(snap){
+      snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
+    }
+    return {voskRes:voskRes,sapiRes:sapiRes,kwsRes:kwsRes,engine:eng};
+  }
+
   function pumpVoiceModeSwitch(opts){
     if(voiceModeSwitchInFlight) return;
     const mode=voiceWakeExpandedMode;
@@ -714,65 +770,35 @@
       if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
       else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
     };
-    if(mode==='sapi'){
-      ipcWithTimeout('cmd_voice_sapi_set_enabled',{enabled:true}).then(function(res){
-        if(seq!==voiceModeSwitchSeq) return;
-        renderVoiceSapiStatus(res,statusOpts);
-        if(!handleVoiceSapiEnableResult(res,true)) return;
-        hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res,null,syncOpts);
+    ipcWithTimeout('cmd_voice_set_desired_engine',{engine:mode}).then(function(bundle){
+      if(seq!==voiceModeSwitchSeq) return;
+      if(!bundle||bundle.ok===false){
+        throw new Error((bundle&&bundle.error)||t('voiceVoskFail'));
+      }
+      const applied=applyDesiredEngineResult(bundle,mode,statusOpts,syncOpts);
+      if(mode==='sapi'){
+        if(!handleVoiceSapiEnableResult(applied.sapiRes||{enabled:false},true)) return;
+        hooks().syncHomeFromVoiceSettings(
+          {enabled:false,state:'stopped'},
+          applied.sapiRes||{enabled:false,state:'stopped'},
+          null,
+          syncOpts,
+          applied.kwsRes
+        );
         modeToast();
         scheduleVoiceToggleRefresh();
-      }).catch(function(err){
-        if(seq!==voiceModeSwitchSeq) return;
-        loadVoiceSapiStatus();
-        const msg=err&&err.message?String(err.message).trim():'';
-        hooks().toast(msg||t('voiceSapiFail'));
-        console.error('voice_mode_sapi',err);
-      }).finally(finish);
-      return;
-    }
-    if(mode==='kws'){
-      ipcWithTimeout('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){return null;})
-      .then(function(){
-        return ipcWithTimeout('cmd_voice_sapi_set_enabled',{enabled:false}).catch(function(){return null;});
-      })
-      .then(function(){
-        return ipcWithTimeout('cmd_voice_kws_set_enabled',{enabled:true});
-      })
-      .then(function(kwsSetRes){
-        if(seq!==voiceModeSwitchSeq) return;
-        if(!kwsSetRes||!kwsSetRes.enabled){
-          throw new Error((kwsSetRes&&kwsSetRes.lastError)||t('voiceKwsFail'));
-        }
-        return Promise.all([
-          ipcWithTimeout('cmd_voice_kws_status',{}).catch(function(){return kwsSetRes;}),
-          ipcWithTimeout('cmd_voice_vosk_status',{}).catch(function(){return null;}),
-          ipcWithTimeout('cmd_voice_sapi_status',{}).catch(function(){return null;})
-        ]).then(function(arr){
-          return {kwsRes:arr[0]||kwsSetRes,voskRes:arr[1],sapiRes:arr[2]};
-        });
-      })
-      .then(function(status){
-        if(seq!==voiceModeSwitchSeq||!status) return;
-        const kwsRes=status.kwsRes,voskRes=status.voskRes,sapiRes=status.sapiRes;
+        return null;
+      }
+      if(mode==='kws'){
+        const kwsRes=applied.kwsRes;
         if(!kwsRes||!kwsRes.enabled){
           throw new Error((kwsRes&&kwsRes.lastError)||t('voiceKwsFail'));
         }
-        if(voskRes&&voskRes.enabled){
+        if(applied.voskRes&&applied.voskRes.enabled){
           throw new Error(t('voiceKwsFail'));
         }
-        if(sapiRes&&sapiRes.enabled){
+        if(applied.sapiRes&&applied.sapiRes.enabled){
           throw new Error(t('voiceKwsFail'));
-        }
-        syncVoiceKwsConfigFromStatus(kwsRes);
-        syncVoiceVoskConfigFromStatus(voskRes);
-        syncVoiceSapiConfigFromStatus(sapiRes);
-        renderVoiceKwsStatus(kwsRes,statusOpts);
-        if(voskRes) renderVoiceVoskStatus(voskRes,statusOpts);
-        if(sapiRes) renderVoiceSapiStatus(sapiRes,statusOpts);
-        const snap=hooks().voiceUiSnapshot;
-        if(snap){
-          snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
         }
         voiceWakeExpandedMode='kws';
         return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
@@ -782,21 +808,17 @@
             const snap=hooks().voiceUiSnapshot;
             if(snap) snap.end=Object.assign({},snap.end||{},endRes);
           }
-          hooks().syncHomeFromVoiceSettings(voskRes||{enabled:false,state:'stopped'},sapiRes||{enabled:false,state:'stopped'},endRes,syncOpts,kwsRes);
+          hooks().syncHomeFromVoiceSettings(
+            applied.voskRes||{enabled:false,state:'stopped'},
+            applied.sapiRes||{enabled:false,state:'stopped'},
+            endRes,
+            syncOpts,
+            kwsRes
+          );
           modeToast();
           scheduleVoiceToggleRefresh();
         });
-      }).catch(function(err){
-        if(seq!==voiceModeSwitchSeq) return;
-        rollbackVoiceModeSwitch();
-        hooks().toast(err&&err.message?String(err.message):t('voiceKwsFail'));
-        console.error('voice_mode_kws',err);
-      }).finally(finish);
-      return;
-    }
-    ipcWithTimeout('cmd_voice_vosk_set_enabled',{enabled:true}).then(function(res){
-      if(seq!==voiceModeSwitchSeq) return;
-      renderVoiceVoskStatus(res,statusOpts);
+      }
       return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
         if(seq!==voiceModeSwitchSeq) return;
         if(endRes){
@@ -804,15 +826,25 @@
           const snap=hooks().voiceUiSnapshot;
           if(snap) snap.end=Object.assign({},snap.end||{},endRes);
         }
-        hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},endRes,syncOpts);
+        hooks().syncHomeFromVoiceSettings(
+          applied.voskRes||{enabled:false,state:'stopped'},
+          {enabled:false,state:'stopped'},
+          endRes,
+          syncOpts,
+          applied.kwsRes
+        );
         modeToast();
         scheduleVoiceToggleRefresh();
       });
     }).catch(function(err){
       if(seq!==voiceModeSwitchSeq) return;
-      loadVoiceVoskStatus();
-      hooks().toast(t('voiceVoskFail'));
-      console.error('voice_mode_vosk',err);
+      if(mode==='kws') rollbackVoiceModeSwitch();
+      else if(mode==='sapi') loadVoiceSapiStatus();
+      else loadVoiceVoskStatus();
+      const failKey=mode==='kws'?'voiceKwsFail':(mode==='sapi'?'voiceSapiFail':'voiceVoskFail');
+      const msg=err&&err.message?String(err.message).trim():'';
+      hooks().toast(msg||t(failKey));
+      console.error('voice_mode_'+mode,err);
     }).finally(finish);
   }
 
@@ -938,7 +970,7 @@
         const endRes=arr[0],sapiRes=arr[1],letVoskRes=arr[2],kwsRes=arr[3];
         let voskRes=letVoskRes;
         if(kwsActive&&voskRes&&voskRes.enabled){
-          global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:false}).catch(function(){});
+          // Desired=kws: supervisor owns exclusivity; only mirror UI state locally.
           voskRes=Object.assign({},voskRes,{enabled:false,state:'stopping'});
         }
         const snap=hooks().voiceUiSnapshot;
@@ -1130,11 +1162,21 @@
     if(homeBtn) homeBtn.disabled=true;
     syncVoiceSapiToggle(next);
     hooks().stopMicMonitor();
-    global.OneToneIpc.invoke('cmd_voice_sapi_set_enabled',{enabled:next}).then(function(res){
-      renderVoiceSapiStatus(res);
-      if(!handleVoiceSapiEnableResult(res,next)) return;
-      if(next) syncVoiceVoskToggle(false);
-      hooks().syncHomeFromVoiceSettings({enabled:false,state:'stopped'},res);
+    const engine=next?'sapi':'none';
+    global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+      if(!bundle||bundle.ok===false){
+        throw new Error((bundle&&bundle.error)||t('voiceSapiFail'));
+      }
+      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const sapiRes=applied.sapiRes||{enabled:false,state:'stopped'};
+      if(!handleVoiceSapiEnableResult(sapiRes,next)) return;
+      hooks().syncHomeFromVoiceSettings(
+        {enabled:false,state:'stopped'},
+        sapiRes,
+        null,
+        {lightOnly:true,homeOnly:!ui().drawerOpen},
+        applied.kwsRes
+      );
       if(!next) hooks().syncHomeMicMonitor().catch(function(){});
       scheduleVoiceToggleRefresh();
     }).catch(function(err){
@@ -1742,10 +1784,20 @@
     if(next){
       hooks().stopMicMonitor();
     }
-    global.OneToneIpc.invoke('cmd_voice_vosk_set_enabled',{enabled:next}).then(function(res){
-      renderVoiceVoskStatus(res);
-      if(next) syncVoiceSapiToggle(false);
-      hooks().syncHomeFromVoiceSettings(res,{enabled:false,state:'stopped'},null,{lightOnly:true});
+    const engine=next?'vosk':'none';
+    global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+      if(!bundle||bundle.ok===false){
+        throw new Error((bundle&&bundle.error)||t('voiceVoskFail'));
+      }
+      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const voskRes=applied.voskRes||{enabled:false,state:'stopped'};
+      hooks().syncHomeFromVoiceSettings(
+        voskRes,
+        {enabled:false,state:'stopped'},
+        null,
+        {lightOnly:true,homeOnly:!ui().drawerOpen},
+        applied.kwsRes
+      );
       hooks().stopMicMonitor();
       scheduleVoiceToggleRefresh();
       if(!next) hooks().syncHomeMicMonitor().catch(function(){});
@@ -2097,11 +2149,15 @@
   }
 
   function setVoiceKwsEnabled(enabled){
-    return global.OneToneIpc.invoke('cmd_voice_kws_set_enabled',{enabled:!!enabled}).then(function(res){
-      renderVoiceKwsStatus(res);
-      hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true});
+    const engine=enabled?'kws':'none';
+    return global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+      if(!bundle||bundle.ok===false){
+        throw new Error((bundle&&bundle.error)||t('voiceKwsFail'));
+      }
+      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true},applied.kwsRes);
       hooks().toast(enabled?t('voiceKwsEnabled'):t('voiceKwsDisabled'));
-      return res;
+      return applied.kwsRes;
     }).catch(function(err){
       hooks().toast(t('voiceKwsFail'));
       console.error('voice_kws_set_enabled',err);
@@ -2259,6 +2315,7 @@
     syncSapiConfigFromStatus:syncVoiceSapiConfigFromStatus,
     syncVoskConfigFromStatus:syncVoiceVoskConfigFromStatus,
     syncKwsConfigFromStatus:syncVoiceKwsConfigFromStatus,
+    syncDesiredEngineConfig:syncDesiredEngineConfig,
     currentMode:currentVoiceMode,
     syncExpandedUi:syncVoiceWakeExpandedUi,
     setExpandedMode:setVoiceWakeExpandedMode,

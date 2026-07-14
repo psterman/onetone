@@ -351,15 +351,28 @@
     if(end&&end.state==='dictating'){
       return {text:t('voiceFbStatusDictating'),cls:'is-live'};
     }
+    var supervisor=w.supervisor||{};
+    if(supervisor.degraded&&!supervisor.activeEngine){
+      return {text:t('voiceDegradedStatus').replace('{reason}',supervisor.degradedReason||''),cls:'is-standby'};
+    }
     if(runtime==='kws'&&res){
       if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening&&global.OneToneVoiceWake.isKwsNativeListening(res,w)){
+        if(supervisor.degraded){
+          return {text:t('voiceDegradedListening').replace('{reason}',supervisor.degradedReason||''),cls:'is-live'};
+        }
         return {text:t('voiceFbStatusListening'),cls:'is-live'};
       }
       if(res.stubMode||res.resourceIssue){
         return {text:t('voiceKwsStatusStubOnly'),cls:'is-standby'};
       }
-    }else if(res&&res.enabled&&(res.state==='listening'||res.state==='starting')){
+    }else if(res&&(res.enabled||(supervisor.activeEngine===runtime))&&(res.state==='listening'||res.state==='starting')){
+      if(supervisor.degraded){
+        return {text:t('voiceDegradedListening').replace('{reason}',supervisor.degradedReason||''),cls:'is-live'};
+      }
       return {text:t('voiceFbStatusListening'),cls:'is-live'};
+    }
+    if(supervisor.degraded){
+      return {text:t('voiceDegradedStatus').replace('{reason}',supervisor.degradedReason||''),cls:'is-standby'};
     }
     if(!vm.voiceOn||vm.mode==='off'){
       return {text:t('voiceFbStatusOff'),cls:'is-idle'};

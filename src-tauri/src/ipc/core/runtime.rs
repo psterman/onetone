@@ -124,6 +124,7 @@ pub fn build_runtime_snapshot(app: &AppHandle, state: &AppState) -> serde_json::
         "voiceVosk": crate::voice_vosk_runtime::voice_vosk_status(state, resource_dir.clone()),
         "voiceKws": crate::voice_kws_runtime::voice_kws_status(state, resource_dir),
         "voiceEnd": crate::voice_end_runtime::voice_end_status(state),
+        "voiceSupervisor": crate::voice_bootstrap::supervisor_status_json(state),
         "sendGuardBlockedCount": crate::send_guard::blocked_count(),
         "logs": logs,
         "recentEvents": crate::runtime_event::recent_runtime_events(state, 100),

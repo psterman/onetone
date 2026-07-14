@@ -51,6 +51,7 @@ pub async fn cmd_mic_list(
 #[tauri::command]
 pub fn cmd_mic_set_default(
     state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
     #[allow(non_snake_case)] deviceId: Option<String>,
     device_id: Option<String>,
     force: Option<bool>,
@@ -77,10 +78,13 @@ pub fn cmd_mic_set_default(
         crate::audio_win::set_default_input_device(&id_for_op)
     }) {
         Ok(()) => {
-            let cfg = state.cfg.lock().voice_sapi.clone();
-            if cfg.enabled {
-                crate::voice_sapi_runtime::voice_sapi_start(&state, &cfg)?;
-                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state.inner()));
+            let desired = crate::scene_config::idle_desired_voice_engine(&state.cfg.lock());
+            if desired != crate::scene_config::DesiredVoiceEngine::None {
+                crate::voice_bootstrap::activate_desired_engine(
+                    &app,
+                    state.inner(),
+                    "force:mic_default_changed",
+                );
             }
             Ok(())
         }

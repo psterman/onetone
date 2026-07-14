@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use crate::AppState;
 
-use super::sapi::app_resource_dir;
-
 #[tauri::command]
 pub fn cmd_voice_end_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
     crate::voice_end_runtime::voice_end_status(&state)
@@ -17,10 +15,7 @@ pub fn cmd_voice_end_set_enabled(
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
     let status = crate::voice_end_runtime::voice_end_set_enabled(&state, Some(&app), enabled);
-    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(
-        Arc::clone(&state),
-        app_resource_dir(&app),
-    );
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(&app, state.inner());
     Ok(status)
 }
 
@@ -66,10 +61,7 @@ pub fn cmd_voice_end_set_phrases(
     let zh = phrases_zh.or(phrasesZh).unwrap_or_default();
     let en = phrases_en.or(phrasesEn).unwrap_or_default();
     let status = crate::voice_end_runtime::voice_end_set_phrases(&state, zh, en);
-    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(
-        Arc::clone(&state),
-        app_resource_dir(&app),
-    );
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(&app, state.inner());
     Ok(status)
 }
 

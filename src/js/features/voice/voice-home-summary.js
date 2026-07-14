@@ -131,12 +131,34 @@
     return null;
   }
 
+  function degradeReasonLabel(reason){
+    var key={
+      vosk_model_missing:'voiceDegradedReasonVoskModelMissing',
+      vosk_start_failed:'voiceDegradedReasonVoskStartFailed',
+      vosk_unavailable_acoustic_requires_pcm:'voiceDegradedReasonVoskAcousticPcm',
+      vosk_unavailable_acoustic_fallback_kws:'voiceDegradedReasonVoskAcousticKws',
+      kws_start_failed_acoustic_fallback_sapi:'voiceDegradedReasonKwsAcousticSapi',
+      kws_start_failed:'voiceDegradedReasonKwsStartFailed',
+      sapi_start_failed:'voiceDegradedReasonSapiStartFailed'
+    }[String(reason||'').trim()];
+    return key?t(key):(reason||'');
+  }
+
   function wakeHeardAndStatus(eng, voiceOn, w){
     var heardLine=null;
     var statusLine='';
     var statusMode='idle';
+    var supervisor=(w&&w.supervisor)||{};
     if(!voiceOn){
       return { heardLine:null, statusLine:t('homeVoiceSimpleStatusOff'), statusMode:'off' };
+    }
+    if(supervisor.degraded&&!supervisor.activeEngine){
+      return {
+        heardLine:null,
+        statusLine:t('voiceDegradedStatus').replace('{reason}',degradeReasonLabel(supervisor.degradedReason)),
+        statusMode:'error',
+        statusKind:'warn'
+      };
     }
     var res=wakeEngineRes(eng,w);
     var raw=(res&&res.state)||'stopped';
@@ -159,6 +181,9 @@
     if(kwsListening||(eng!=='kws'&&(raw==='listening'||raw==='starting'))){
       statusMode='listening';
       statusLine=eng==='kws'?t('voiceFbTranscriptKwsListening'):t('homeVoiceSimpleStatusListening');
+      if(supervisor.degraded){
+        statusLine=t('voiceDegradedListening').replace('{reason}',degradeReasonLabel(supervisor.degradedReason));
+      }
       if(eng==='kws'){
         var kwsText=global.OneToneVoiceWake&&global.OneToneVoiceWake.kwsHeardDisplayText
           ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
@@ -171,7 +196,12 @@
         var partial=(res&&res.lastPartial)||'';
         if(partial) heardLine=t('voiceVoskPartial')+'：'+partial;
       }
-      return { heardLine:heardLine, statusLine:statusLine, statusMode:statusMode };
+      return {
+        heardLine:heardLine,
+        statusLine:statusLine,
+        statusMode:statusMode,
+        statusKind:supervisor.degraded?'warn':'pending'
+      };
     }
     if(eng==='vosk'&&res){
       var partialText=String(res.lastPartial||'').trim();
@@ -183,6 +213,14 @@
         ?global.OneToneVoiceWake.kwsHeardDisplayText(res)
         :String(res.lastDetectedPhrase||res.lastTrigger||'').trim();
       if(kwsHit) heardLine=kwsHit;
+    }
+    if(supervisor.degraded){
+      return {
+        heardLine:heardLine,
+        statusLine:t('voiceDegradedStatus').replace('{reason}',degradeReasonLabel(supervisor.degradedReason)),
+        statusMode:'ready',
+        statusKind:'warn'
+      };
     }
     statusLine=t('homeVoiceSimpleStatusReady');
     statusMode='ready';
@@ -290,7 +328,8 @@
       statusMode=wakeStatus.statusMode;
       statusLine=wakeStatus.statusLine;
       heardLine=wakeStatus.heardLine;
-      if(statusMode==='triggered') statusKind='ok';
+      if(wakeStatus.statusKind) statusKind=wakeStatus.statusKind;
+      else if(statusMode==='triggered') statusKind='ok';
       else if(statusMode==='listening') statusKind='pending';
       else statusKind='';
     }

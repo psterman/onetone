@@ -533,9 +533,12 @@
       if(partial) return { finalized:'', pending:partial, placeholder:false };
     }
     if(hs.triggerLabel&&hs.keyActive){
-      return { finalized:'', pending:'', placeholder:true, trigger:hs.triggerLabel };
+      return { finalized:'', pending:'', placeholder:true, trigger:hs.triggerLabel, hintKey:'' };
     }
-    return { finalized:'', pending:'', placeholder:true, trigger:'' };
+    var hintKey='';
+    if(eng==='kws') hintKey='homeWbLiveKwsNoSttHint';
+    else if(eng==='off'||!eng) hintKey='homeWbLiveEngineOffHint';
+    return { finalized:'', pending:'', placeholder:true, trigger:'', hintKey:hintKey };
   }
 
   function buildViewModel(){
@@ -604,7 +607,11 @@
       return;
     }
     if(vm.live.placeholder){
-      renderEmptyState(liveEl,vm.live.trigger);
+      if(vm.live.hintKey){
+        liveEl.innerHTML='<div class="vp-empty">'+esc(t(vm.live.hintKey))+'</div>';
+      }else{
+        renderEmptyState(liveEl,vm.live.trigger);
+      }
       lastLiveText='';
       return;
     }

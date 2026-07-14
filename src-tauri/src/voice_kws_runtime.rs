@@ -8,10 +8,7 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 
 use crate::config::{save_config, VoiceKwsConfig};
 use crate::scene_config::resolve_effective_kws_config;
-use crate::voice_keyword_dispatch::{
-    classify_voice_keyword, dispatch_voice_keyword_detected, VoiceKeywordDetection,
-    VoiceKeywordKind,
-};
+use crate::voice_keyword_dispatch::{classify_voice_keyword, VoiceKeywordKind};
 use crate::voice_kws::{probe_kws_resources, start_voice_kws, stop_voice_kws, VoiceKwsEvent};
 use crate::AppState;
 
@@ -96,7 +93,16 @@ pub fn pause_for_external_capture(state: &AppState) -> bool {
     true
 }
 
-fn voice_kws_stop_sync(state: &AppState) {
+/// Synchronous self-stop (supervisor may call this for exclusive activate).
+/// Bumps the epoch so any in-flight start worker aborts.
+pub fn voice_kws_stop_sync(state: &AppState) {
+    let _epoch = next_kws_epoch(state);
+    release_kws_capture_handle(state);
+}
+
+/// Stop capture handle without bumping epoch (safe to call from an in-flight start worker).
+fn release_kws_capture_handle(state: &AppState) {
+    *state.voice_kws_cooldown_until.lock() = None;
     if let Some(handle) = state.voice_kws.lock().take() {
         stop_voice_kws(handle);
     }
@@ -110,11 +116,22 @@ pub fn voice_kws_start(
     epoch: u64,
 ) -> Result<(), String> {
     if !kws_epoch_matches(state, epoch) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("kws start aborted (stale epoch {epoch} before stop)"),
+        );
         return Ok(());
     }
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    voice_kws_stop_sync(state);
+    // Do not bump epoch here — that would cancel this very start worker.
+    release_kws_capture_handle(state);
     if !kws_epoch_matches(state, epoch) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("kws start aborted (stale epoch {epoch} after stop)"),
+        );
         return Ok(());
     }
     *state.voice_kws_state.lock() = "starting".into();
@@ -141,8 +158,18 @@ pub fn voice_kws_start(
         resource_dir.as_deref(),
         Some(state.audio_frame_bus.publisher()),
     )?;
+    if !kws_epoch_matches(state, epoch) {
+        stop_voice_kws(handle);
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("kws start aborted (stale epoch {epoch} after open)"),
+        );
+        return Ok(());
+    }
     *state.voice_kws.lock() = Some(handle);
     *state.voice_kws_last_error.lock() = String::new();
+    crate::app_log::log_line(state, "voice", "kws start worker opened handle");
     Ok(())
 }
 
@@ -150,15 +177,30 @@ pub fn spawn_voice_kws_start(
     state: Arc<AppState>,
     cfg: VoiceKwsConfig,
     resource_dir: Option<PathBuf>,
+    app: Option<AppHandle>,
 ) {
     let epoch = next_kws_epoch(state.as_ref());
     *state.voice_kws_state.lock() = "starting".into();
     std::thread::Builder::new()
         .name("voice-kws-start".into())
         .spawn(move || {
-            if let Err(e) = voice_kws_start(state.as_ref(), &cfg, resource_dir, epoch) {
-                *state.voice_kws_last_error.lock() = e.clone();
-                *state.voice_kws_state.lock() = "error".into();
+            match voice_kws_start(state.as_ref(), &cfg, resource_dir, epoch) {
+                Ok(()) => {
+                    crate::voice_bootstrap::on_engine_start_ok(
+                        state.as_ref(),
+                        crate::scene_config::DesiredVoiceEngine::Kws,
+                    );
+                }
+                Err(e) => {
+                    *state.voice_kws_last_error.lock() = e.clone();
+                    *state.voice_kws_state.lock() = "error".into();
+                    crate::voice_bootstrap::on_engine_start_failed(
+                        app.as_ref(),
+                        &state,
+                        crate::voice_bootstrap::DegradeFailedEngine::Kws,
+                        "start_failed",
+                    );
+                }
             }
         })
         .ok();
@@ -256,12 +298,39 @@ fn process_kws_detected(
         &format!("kws detected: phrase={phrase} kind={}", kind.as_str()),
     );
 
-    let detection = VoiceKeywordDetection {
-        phrase: phrase.clone(),
-        keyword,
-        kind,
+    // Cooldown stays in runtime (M2); start gap before business dispatch for wake/summon.
+    if matches!(kind, VoiceKeywordKind::Wake | VoiceKeywordKind::Summon) {
+        let cooldown_ms = state.cfg.lock().voice_kws.cooldown_ms;
+        if let Some(remain_ms) =
+            crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
+        {
+            *state.voice_kws_last_skip.lock() =
+                format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+            *state.voice_kws_last_trigger.lock() = String::new();
+            *state.voice_kws_state.lock() = "cooldown".into();
+            return;
+        }
+        let now = std::time::Instant::now();
+        *state.voice_kws_cooldown_until.lock() = Some(
+            now + std::time::Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(
+                cooldown_ms,
+            )),
+        );
+    }
+
+    let detection = crate::voice_command_router::VoiceDetection {
+        engine: "kws".into(),
+        kind: crate::voice_command_router::VoiceDetectionKind::from_keyword_kind(kind),
+        text: phrase.clone(),
+        confidence: None,
+        matched_phrase: if keyword.trim().is_empty() {
+            phrase.clone()
+        } else {
+            keyword
+        },
+        timestamp_ms: crate::voice_command_router::VoiceDetection::now_ms(),
     };
-    let result = dispatch_voice_keyword_detected(state, app, "kws", &detection);
+    let result = crate::voice_command_router::handle_detection(state, app, &detection);
 
     if result.skipped {
         *state.voice_kws_last_skip.lock() = result.skip_reason;
@@ -328,7 +397,7 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
     } else {
         build.issue.clone()
     };
-    serde_json::json!({
+    let mut value = serde_json::json!({
         "enabled": cfg.voice_kws.enabled,
         "engine": "kws",
         "stubMode": probe.stub_mode,
@@ -354,63 +423,59 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
         "resourceIssue": resource_issue,
         "resourcesDir": resources_dir.display().to_string(),
         "modelDownloadUrl": download_url,
-    })
-}
-
-fn stop_other_engines(state: &Arc<AppState>) {
-    crate::voice_vosk_runtime::spawn_voice_vosk_stop(Arc::clone(state));
-    crate::voice_sapi_runtime::voice_sapi_stop(state);
+    });
+    drop(cfg);
+    crate::voice_bootstrap::attach_supervisor_status(state, &mut value);
+    value
 }
 
 pub fn voice_kws_set_enabled(
     state: &Arc<AppState>,
-    _window: &WebviewWindow,
+    window: &WebviewWindow,
     enabled: bool,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
     {
         let mut cfg = state.cfg.lock();
-        cfg.voice_kws.enabled = enabled;
         if enabled {
-            cfg.voice_vosk.enabled = false;
-            cfg.voice_sapi.enabled = false;
+            crate::config::apply_desired_engine(&mut cfg, "kws");
+        } else if crate::config::parse_desired_engine_label(&cfg.desired_engine)
+            == Some(crate::scene_config::DesiredVoiceEngine::Kws)
+        {
+            crate::config::apply_desired_engine(&mut cfg, "none");
         }
-        crate::config::reconcile_voice_engine_flags(&mut cfg);
         cfg.normalize();
         save_config(&cfg);
     }
 
-    if enabled {
-        stop_other_engines(state);
-        let cfg = state.cfg.lock().voice_kws.clone();
-        spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
-    } else {
-        spawn_voice_kws_stop(Arc::clone(state));
-    }
+    crate::voice_bootstrap::activate_desired_engine(
+        window.app_handle(),
+        state,
+        if enabled {
+            "kws_set_enabled"
+        } else {
+            "kws_set_disabled"
+        },
+    );
 
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     Ok(voice_kws_status(state, resource_dir))
 }
 
 pub fn voice_kws_set_phrases(
     state: &Arc<AppState>,
+    app: &AppHandle,
     phrases: Vec<String>,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
-    let enabled = {
+    let old_cfg = state.cfg.lock().clone();
+    {
         let mut cfg = state.cfg.lock();
         cfg.voice_kws.phrases = phrases;
         cfg.normalize();
         save_config(&cfg);
-        cfg.voice_kws.enabled
-            && crate::scene_config::idle_desired_voice_engine(&cfg) == crate::scene_config::DesiredVoiceEngine::Kws
-    };
-
-    if enabled {
-        let cfg = resolve_effective_kws_config(&state.cfg.lock());
-        spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
     }
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    let new_cfg = state.cfg.lock().clone();
+    crate::voice_bootstrap::apply_voice_config_change(app, state, &old_cfg, &new_cfg);
     Ok(voice_kws_status(state, resource_dir))
 }
 
@@ -435,13 +500,16 @@ pub fn voice_kws_test_send(state: &AppState, window: &WebviewWindow) -> serde_js
     })
 }
 
-pub fn voice_kws_retry_start(state: &Arc<AppState>, resource_dir: Option<PathBuf>) -> serde_json::Value {
+pub fn voice_kws_retry_start(
+    app: &tauri::AppHandle,
+    state: &Arc<AppState>,
+    resource_dir: Option<PathBuf>,
+) -> serde_json::Value {
     let cfg = resolve_effective_kws_config(&state.cfg.lock());
     if !cfg.enabled {
         return voice_kws_status(state, resource_dir);
     }
-    stop_other_engines(state);
-    spawn_voice_kws_start(Arc::clone(state), cfg, resource_dir.clone());
+    crate::voice_bootstrap::activate_desired_engine(app, state, "kws_retry_start");
     voice_kws_status(state, resource_dir)
 }
 

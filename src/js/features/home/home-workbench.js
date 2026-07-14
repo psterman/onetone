@@ -273,7 +273,8 @@
       return;
     }
     if(vm.live.placeholder){
-      liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeWbLiveIdleHint'))+'</div>';
+      var hintKey=vm.live.hintKey||'homeWbLiveIdleHint';
+      liveEl.innerHTML='<div class="vp-empty">'+esc(t(hintKey))+'</div>';
       return;
     }
     if(global.vp9&&global.vp9.setText){

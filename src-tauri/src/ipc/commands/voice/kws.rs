@@ -36,7 +36,7 @@ pub fn cmd_voice_kws_set_phrases(
     phrases: Vec<String>,
 ) -> Result<serde_json::Value, String> {
     let resource_dir = app.path().resource_dir().ok();
-    crate::voice_kws_runtime::voice_kws_set_phrases(&state, phrases, resource_dir)
+    crate::voice_kws_runtime::voice_kws_set_phrases(&state, &app, phrases, resource_dir)
 }
 
 #[tauri::command]
@@ -62,7 +62,7 @@ pub fn cmd_voice_kws_retry_start(
     app: tauri::AppHandle,
 ) -> serde_json::Value {
     let resource_dir = app.path().resource_dir().ok();
-    crate::voice_kws_runtime::voice_kws_retry_start(state.inner(), resource_dir)
+    crate::voice_kws_runtime::voice_kws_retry_start(&app, state.inner(), resource_dir)
 }
 
 #[tauri::command]

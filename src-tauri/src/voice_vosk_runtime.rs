@@ -11,7 +11,6 @@ use crate::config::{
     append_unique_phrases, normalize_voice_override, save_config, vosk_preset_default_phrases,
     vosk_preset_model_path, VoiceVoskConfig,
 };
-use crate::scene_config::resolve_effective_vosk_config;
 use crate::voice_vosk::{
     probe_vosk_resources, shutdown_sync, start_voice_vosk, stop_voice_vosk, vosk_resource_issue,
     VoiceVoskEvent, VoskResourceProbe,
@@ -58,8 +57,18 @@ pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
     }
 }
 
-/// Block until the worker exits. Background start threads only.
-fn voice_vosk_stop_sync(state: &AppState) {
+/// Block until the worker exits. Supervisor uses this for exclusive activate.
+/// Bumps the epoch so any in-flight start worker aborts.
+pub fn voice_vosk_stop_sync(state: &AppState) {
+    let _epoch = next_vosk_epoch(state);
+    release_vosk_capture_handle(state);
+}
+
+/// Stop capture handle without bumping epoch (safe to call from an in-flight start worker).
+fn release_vosk_capture_handle(state: &AppState) {
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    *state.voice_vosk_cooldown_until.lock() = None;
+    *state.voice_vosk_last_error.lock() = String::new();
     if let Some(handle) = state.voice_vosk.lock().take() {
         shutdown_sync(handle);
     }
@@ -73,17 +82,28 @@ pub fn voice_vosk_start(
     epoch: u64,
 ) -> Result<(), String> {
     if !vosk_epoch_matches(state, epoch) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("vosk start aborted (stale epoch {epoch} before stop)"),
+        );
         return Ok(());
     }
 
-    // Release mic level monitor so WASAPI default capture can reopen cleanly.
-    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    voice_vosk_stop_sync(state);
+    // Release mic level monitor / prior handle without invalidating *this* start epoch.
+    release_vosk_capture_handle(state);
     clear_vosk_recognition_state(state);
 
     if !vosk_epoch_matches(state, epoch) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!("vosk start aborted (stale epoch {epoch} after stop)"),
+        );
         return Ok(());
     }
+
+    *state.voice_vosk_state.lock() = "starting".into();
 
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
     *state.voice_vosk_probe.lock() = Some(probe.clone());
@@ -97,11 +117,17 @@ pub fn voice_vosk_start(
         Ok(handle) => {
             if !vosk_epoch_matches(state, epoch) {
                 stop_voice_vosk(handle);
+                crate::app_log::log_line(
+                    state,
+                    "voice",
+                    &format!("vosk start aborted (stale epoch {epoch} after open)"),
+                );
                 return Ok(());
             }
             *state.voice_vosk.lock() = Some(handle);
             *state.voice_vosk_last_error.lock() = String::new();
             *state.voice_vosk_state.lock() = "starting".into();
+            crate::app_log::log_line(state, "voice", "vosk start worker opened handle");
             Ok(())
         }
         Err(e) => {
@@ -154,6 +180,7 @@ pub fn spawn_voice_vosk_start(
     state: Arc<AppState>,
     cfg: VoiceVoskConfig,
     resource_dir: Option<PathBuf>,
+    app: Option<AppHandle>,
 ) {
     let epoch = next_vosk_epoch(state.as_ref());
     *state.voice_vosk_state.lock() = "starting".into();
@@ -161,8 +188,32 @@ pub fn spawn_voice_vosk_start(
     std::thread::Builder::new()
         .name("voice-vosk-start".into())
         .spawn(move || {
-            if let Err(e) = voice_vosk_start(state.as_ref(), &cfg, resource_dir, epoch) {
-                eprintln!("voice_vosk background start failed: {e}");
+            match voice_vosk_start(state.as_ref(), &cfg, resource_dir, epoch) {
+                Ok(()) => {
+                    crate::voice_bootstrap::on_engine_start_ok(
+                        state.as_ref(),
+                        crate::scene_config::DesiredVoiceEngine::Vosk,
+                    );
+                }
+                Err(e) => {
+                    eprintln!("voice_vosk background start failed: {e}");
+                    let code = {
+                        let err = state.voice_vosk_last_error.lock().clone();
+                        if err.contains("model_missing") {
+                            "model_missing"
+                        } else if err.contains("dll_missing") {
+                            "dll_missing"
+                        } else {
+                            "start_failed"
+                        }
+                    };
+                    crate::voice_bootstrap::on_engine_start_failed(
+                        app.as_ref(),
+                        &state,
+                        crate::voice_bootstrap::DegradeFailedEngine::Vosk,
+                        code,
+                    );
+                }
             }
             crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state));
         })
@@ -170,18 +221,15 @@ pub fn spawn_voice_vosk_start(
 }
 
 /// End-phrase changes apply live from config; only grammar mode needs a Vosk reload.
-pub fn maybe_restart_vosk_for_grammar(state: Arc<AppState>, resource_dir: Option<PathBuf>) {
-    let cfg = {
-        let lock = state.cfg.lock();
-        if !lock.voice_vosk.enabled {
-            return;
-        }
-        lock.voice_vosk.clone()
-    };
+pub fn maybe_restart_vosk_for_grammar(app: &AppHandle, state: &Arc<AppState>) {
+    let cfg = state.cfg.lock().clone();
+    if !cfg.voice_vosk.enabled {
+        return;
+    }
     if *state.voice_vosk_grammar_mode.lock() != Some(true) {
         return;
     }
-    spawn_voice_vosk_start(state, cfg, resource_dir);
+    crate::voice_bootstrap::activate_desired_engine(app, state, "force:vosk_grammar_reload");
 }
 
 pub fn voice_vosk_stop(state: &AppState) {
@@ -331,17 +379,13 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
 }
 
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
-    let (_target_key, duration_ms, cooldown_ms) = {
+    let cooldown_ms = {
         let cfg = state.cfg.lock();
-        (
-            crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key),
-            cfg.key_press_duration_ms,
-            cfg.voice_vosk.cooldown_ms,
-        )
+        cfg.voice_vosk.cooldown_ms
     };
 
     if *state.paused.lock() {
-        *state.voice_vosk_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
+        *state.voice_vosk_last_skip.lock() = "?????????????????".into();
         *state.voice_vosk_last_trigger.lock() = String::new();
         return;
     }
@@ -349,7 +393,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
     {
-        *state.voice_vosk_last_skip.lock() = format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+        *state.voice_vosk_last_skip.lock() = format!("???????? {remain_ms} ms ????");
         *state.voice_vosk_last_trigger.lock() = String::new();
         *state.voice_vosk_state.lock() = "cooldown".into();
         return;
@@ -361,52 +405,34 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
 
     let state2 = Arc::clone(state);
     let app2 = app.clone();
-    let phrase2 = phrase.to_string();
+    let detection = crate::voice_command_router::VoiceDetection::wake("vosk", phrase, None);
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
-            *state2.voice_vosk_last_skip.lock() = "等待上一轮快捷键发送完成。".into();
+            *state2.voice_vosk_last_skip.lock() = "?????????????".into();
         }
-        if !crate::send_guard::wait_until_inactive(800) {
-            *state2.voice_vosk_last_skip.lock() = "快捷键发送通道忙，请再说一次。".into();
-            *state2.voice_vosk_last_trigger.lock() = String::new();
-            return;
-        }
-        let result = crate::voice_end_runtime::handle_voice_wake_detected(
-            &state2,
-            &app2,
-            &phrase2,
-            duration_ms,
-            "vosk",
-        );
-        *state2.voice_vosk_state.lock() = if result.ok {
+        let result = crate::voice_command_router::handle_detection(&state2, &app2, &detection);
+        *state2.voice_vosk_state.lock() = if result.handled {
             "triggered".into()
+        } else if result.skipped {
+            "listening".into()
         } else {
             "error".into()
         };
-        if !result.ok {
-            *state2.voice_vosk_last_error.lock() = format!("快捷键发送失败：{}", result.target_key);
-            *state2.voice_vosk_last_trigger.lock() = String::new();
+        if result.skipped || !result.handled {
+            if !result.skip_reason.is_empty() {
+                *state2.voice_vosk_last_skip.lock() = result.skip_reason;
+            }
+            if !result.handled {
+                *state2.voice_vosk_last_trigger.lock() = String::new();
+            }
+            if !result.handled && !result.skipped {
+                *state2.voice_vosk_last_error.lock() = "???????".into();
+            }
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();
             *state2.voice_vosk_last_skip.lock() = String::new();
-            if result.used_summon_workflow {
-                *state2.voice_vosk_last_trigger.lock() =
-                    format!("{}（召唤「{}」）", result.target_key, phrase2);
-            } else {
-                *state2.voice_vosk_last_trigger.lock() =
-                    format!("{}（命中「{}」）", result.target_key, phrase2);
-            }
+            *state2.voice_vosk_last_trigger.lock() = result.trigger_label;
         }
-
-        let cue = if result.ok { "voice_wake" } else { "send_fail" };
-        let sound_cue = crate::config::runtime_sound_cue(&state2.cfg.lock(), cue);
-        crate::ipc::push_runtime_via_app(
-            &app2,
-            state2.as_ref(),
-            &result.runtime_label,
-            "",
-            sound_cue.as_deref(),
-        );
     });
 }
 
@@ -420,7 +446,7 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
     let resource_issue = crate::voice_vosk::vosk_resource_issue(&probe);
     let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
         .unwrap_or("https://alphacephei.com/vosk/models");
-    serde_json::json!({
+    let mut value = serde_json::json!({
         "enabled": cfg.voice_vosk.enabled,
         "state": state.voice_vosk_state.lock().clone(),
         "lastError": state.voice_vosk_last_error.lock().clone(),
@@ -444,7 +470,10 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "resourceIssue": resource_issue,
         "resourcesDir": resources_dir.display().to_string(),
         "modelDownloadUrl": download_url,
-    })
+    });
+    drop(cfg);
+    crate::voice_bootstrap::attach_supervisor_status(state, &mut value);
+    value
 }
 
 fn cached_vosk_probe(
@@ -465,11 +494,6 @@ pub fn refresh_vosk_probe_cache(state: &AppState, resource_dir: Option<&std::pat
     *state.voice_vosk_probe.lock() = Some(probe_vosk_resources(&cfg, resource_dir));
 }
 
-fn stop_sapi_engine(state: &Arc<AppState>) {
-    crate::voice_sapi_runtime::voice_sapi_stop(state);
-    *state.voice_sapi_cooldown_until.lock() = None;
-}
-
 pub fn voice_vosk_set_enabled(
     state: &Arc<AppState>,
     window: &WebviewWindow,
@@ -478,33 +502,28 @@ pub fn voice_vosk_set_enabled(
 ) -> Result<serde_json::Value, String> {
     {
         let mut cfg = state.cfg.lock();
-        cfg.voice_vosk.enabled = enabled;
         if enabled {
-            cfg.voice_sapi.enabled = false;
-            cfg.voice_kws.enabled = false;
+            crate::config::apply_desired_engine(&mut cfg, "vosk");
+        } else if crate::config::parse_desired_engine_label(&cfg.desired_engine)
+            == Some(crate::scene_config::DesiredVoiceEngine::Vosk)
+        {
+            crate::config::apply_desired_engine(&mut cfg, "none");
         }
-        crate::config::reconcile_voice_engine_flags(&mut cfg);
         cfg.normalize();
         save_config(&cfg);
     }
 
-    if enabled {
-        *state.voice_vosk_state.lock() = "starting".into();
-        *state.voice_vosk_last_error.lock() = String::new();
-        let state2 = Arc::clone(state);
-        let resource_dir_bg = resource_dir.clone();
-        std::thread::Builder::new()
-            .name("voice-vosk-enable".into())
-            .spawn(move || {
-                stop_sapi_engine(&state2);
-                crate::voice_kws_runtime::spawn_voice_kws_stop(Arc::clone(&state2));
-                let cfg = state2.cfg.lock().voice_vosk.clone();
-                spawn_voice_vosk_start(Arc::clone(&state2), cfg, resource_dir_bg);
-                crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state2));
-            })
-            .ok();
-    } else {
-        spawn_voice_vosk_stop(Arc::clone(state));
+    crate::voice_bootstrap::activate_desired_engine(
+        window.app_handle(),
+        state,
+        if enabled {
+            "vosk_set_enabled"
+        } else {
+            "vosk_set_disabled"
+        },
+    );
+
+    if !enabled {
         let state2 = Arc::clone(state);
         let resource_dir2 = resource_dir.clone();
         std::thread::Builder::new()
@@ -513,42 +532,38 @@ pub fn voice_vosk_set_enabled(
                 refresh_vosk_probe_cache(state2.as_ref(), resource_dir2.as_deref());
             })
             .ok();
-        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
     }
 
-    crate::tray::refresh_tray_tooltip(window.app_handle(), state.as_ref());
     Ok(voice_vosk_status(state, resource_dir))
 }
 
 pub fn voice_vosk_set_phrases(
     state: &Arc<AppState>,
+    app: &AppHandle,
     phrases: Vec<String>,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
     let cleaned = clean_phrases(phrases);
-    let enabled = {
+    let old_cfg = state.cfg.lock().clone();
+    {
         let mut cfg = state.cfg.lock();
         cfg.voice_vosk.phrases = if cleaned.is_empty() {
-            vec!["开始输入".into()]
+            vec!["????".into()]
         } else {
             cleaned
         };
         cfg.normalize();
         save_config(&cfg);
-        cfg.voice_vosk.enabled
-    };
-
-    if enabled {
-        let cfg = state.cfg.lock().voice_vosk.clone();
-        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    let new_cfg = state.cfg.lock().clone();
+    crate::voice_bootstrap::apply_voice_config_change(app, state, &old_cfg, &new_cfg);
 
     Ok(voice_vosk_status(state, resource_dir))
 }
 
 pub fn voice_vosk_set_model_preset(
     state: &Arc<AppState>,
+    app: &AppHandle,
     preset: String,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
@@ -560,7 +575,8 @@ pub fn voice_vosk_set_model_preset(
         return Err(format!("unknown model preset: {preset}"));
     }
 
-    let (enabled, vosk_cfg) = {
+    let old_cfg = state.cfg.lock().clone();
+    {
         let mut cfg = state.cfg.lock();
         let old_preset = cfg.voice_vosk.model_preset.clone();
         let old_defaults = vosk_preset_default_phrases(&old_preset).unwrap_or_default();
@@ -584,21 +600,16 @@ pub fn voice_vosk_set_model_preset(
         clear_active_mapping_vosk_preset_override(&mut cfg);
         cfg.normalize();
         save_config(&cfg);
-        let enabled = cfg.voice_vosk.enabled;
-        let vosk_cfg = resolve_effective_vosk_config(&cfg);
-        (enabled, vosk_cfg)
-    };
-
-    if enabled {
-        spawn_voice_vosk_start(Arc::clone(state), vosk_cfg, resource_dir.clone());
     }
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    let new_cfg = state.cfg.lock().clone();
+    crate::voice_bootstrap::apply_voice_config_change(app, state, &old_cfg, &new_cfg);
 
     Ok(voice_vosk_status(state, resource_dir))
 }
 
 pub fn voice_vosk_set_model_path(
     state: &Arc<AppState>,
+    app: &AppHandle,
     path: String,
     resource_dir: Option<PathBuf>,
 ) -> Result<serde_json::Value, String> {
@@ -607,20 +618,16 @@ pub fn voice_vosk_set_model_path(
         return Err("model path is empty".into());
     }
 
-    let enabled = {
+    let old_cfg = state.cfg.lock().clone();
+    {
         let mut cfg = state.cfg.lock();
         cfg.voice_vosk.model_preset = "custom".into();
         cfg.voice_vosk.model_path = path;
         cfg.normalize();
         save_config(&cfg);
-        cfg.voice_vosk.enabled
-    };
-
-    if enabled {
-        let cfg = state.cfg.lock().voice_vosk.clone();
-        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
     }
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+    let new_cfg = state.cfg.lock().clone();
+    crate::voice_bootstrap::apply_voice_config_change(app, state, &old_cfg, &new_cfg);
 
     Ok(voice_vosk_status(state, resource_dir))
 }
@@ -700,17 +707,14 @@ pub fn voice_vosk_open_resources_dir(resource_dir: Option<PathBuf>) -> Result<()
 }
 
 pub fn voice_vosk_retry_start(
+    app: &AppHandle,
     state: &Arc<AppState>,
     resource_dir: Option<PathBuf>,
 ) -> serde_json::Value {
     refresh_vosk_probe_cache(state, resource_dir.as_deref());
     let enabled = state.cfg.lock().voice_vosk.enabled;
     if enabled {
-        *state.voice_vosk_state.lock() = "starting".into();
-        *state.voice_vosk_last_error.lock() = String::new();
-        let cfg = state.cfg.lock().voice_vosk.clone();
-        spawn_voice_vosk_start(Arc::clone(state), cfg, resource_dir.clone());
-        crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
+        crate::voice_bootstrap::activate_desired_engine(app, state, "vosk_retry_start");
     }
     voice_vosk_status(state, resource_dir)
 }

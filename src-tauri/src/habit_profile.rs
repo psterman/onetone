@@ -169,7 +169,7 @@ mod tests {
 
     fn base_cfg() -> VoiceConfig {
         let mut cfg = VoiceConfig::default();
-        cfg.voice_vosk.enabled = true;
+        crate::config::apply_desired_engine(&mut cfg, "vosk");
         cfg.voice_end.enabled = true;
         cfg
     }

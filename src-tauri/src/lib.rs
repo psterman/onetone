@@ -32,6 +32,7 @@ pub mod voice_acoustic_runtime;
 mod audio_frame_bus;
 mod voice_acoustic_record;
 mod voice_bootstrap;
+mod voice_command_router;
 mod voice_end_runtime;
 mod voice_keyword_dispatch;
 mod voice_kws;
@@ -107,6 +108,9 @@ pub struct AppState {
     pub voice_session_mapping_id: Mutex<String>,
     pub voice_session_snapshot: Mutex<Option<crate::scene_config::VoiceSessionSnapshot>>,
     pub last_voice_fingerprint: Mutex<Option<crate::scene_config::VoiceRuntimeFingerprint>>,
+    /// Runtime fallover (desired engine failed); not persisted.
+    pub voice_degraded: Mutex<bool>,
+    pub voice_degraded_reason: Mutex<String>,
     pub voice_session_commit_token: Mutex<u64>,
     /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
@@ -216,6 +220,8 @@ pub fn run() {
         voice_session_mapping_id: Mutex::new(String::new()),
         voice_session_snapshot: Mutex::new(None),
         last_voice_fingerprint: Mutex::new(None),
+        voice_degraded: Mutex::new(false),
+        voice_degraded_reason: Mutex::new(String::new()),
         voice_session_commit_token: Mutex::new(0),
         voice_wake_last_key_at: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
@@ -610,6 +616,7 @@ pub fn run() {
             ipc::cmd_voice_sapi_test_send,
             ipc::cmd_open_windows_speech_setup,
             ipc::cmd_process_usage,
+            ipc::cmd_voice_set_desired_engine,
             ipc::cmd_voice_vosk_status,
             ipc::cmd_voice_vosk_set_enabled,
             ipc::cmd_voice_vosk_set_phrases,

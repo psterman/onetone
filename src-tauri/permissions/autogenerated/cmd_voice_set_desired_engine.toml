@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-set-desired-engine"
+description = "Enables the cmd_voice_set_desired_engine command without any pre-configured scope."
+commands.allow = ["cmd_voice_set_desired_engine"]
+
+[[permission]]
+identifier = "deny-cmd-voice-set-desired-engine"
+description = "Denies the cmd_voice_set_desired_engine command without any pre-configured scope."
+commands.deny = ["cmd_voice_set_desired_engine"]
