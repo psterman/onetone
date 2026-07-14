@@ -1304,27 +1304,54 @@
 
   function pickPresetApp(m,appId){
     if(!m||!appId) return;
+    appId=String(appId).trim();
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.findAppScenarioByAppId){
+      var existing=hub.findAppScenarioByAppId(appId,m.id);
+      if(existing){
+        hooks().toast&&hooks().toast(t('habitHubAppScenarioExists'));
+        return;
+      }
+    }
     var persist=global.OneToneVoiceSchemePersist;
+    var isAppScenario=global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
     if(persist&&persist.applyVoiceAppScope){
       ensurePresetRule(m,appId);
+      m.appTargetId=appId;
       if(persist.applyVoiceAppScope({appId:appId})){
         hooks().toast&&hooks().toast(t('appPickerAdded'));
       }
+      clearPickerCreateTarget();
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
       return;
     }
     ensurePresetRule(m,appId);
-    m.appTargetId=String(appId).trim();
+    m.appTargetId=appId;
     var presets=global.OneToneAppVoicePresets;
     if(presets&&presets.syncAppVoicePresets) presets.syncAppVoicePresets(m,appId);
-    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
+    if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
+      presets.hydrateGlobalWakeEndFromMapping(m);
+    }
     if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
     setActiveRuleContext(appId);
     saveAndRefresh();
+    clearPickerCreateTarget();
+    if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
     hooks().toast&&hooks().toast(t('appPickerAdded'));
   }
 
   function pickRunningIdentity(m,identity){
     if(!m||!identity) return;
+    var hub=global.OneToneHabitHub;
+    if(hub&&hub.findAppScenarioForIdentity){
+      var taken=hub.findAppScenarioForIdentity(identity,m.id);
+      if(taken){
+        hooks().toast&&hooks().toast(t('habitHubAppScenarioExists'));
+        return;
+      }
+    }
     var presetId=identity.matchedPresetAppId||identity.matched_preset_app_id;
     if(presetId&&isPresetAppId(String(presetId))){
       pickPresetApp(m,String(presetId));
@@ -1332,23 +1359,42 @@
     }
     var rule=addCustomRuleFromIdentity(m,identity);
     if(!rule) return;
+    // Keep scenario bound to custom primary + concrete rule (exe/icon/displayName).
+    m.appTargetId='custom';
+    if(rule.displayName){
+      m.group=t('habitWizardDefaultName').replace('{app}',String(rule.displayName).trim());
+    }
     var persist=global.OneToneVoiceSchemePersist;
+    var isAppScenario=global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
     if(persist&&persist.applyVoiceAppScope){
       if(persist.applyVoiceAppScope({ruleId:rule.ruleId})){
         hooks().toast&&hooks().toast(t('appPickerAdded'));
       }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+      clearPickerCreateTarget();
       return;
     }
     var presets=global.OneToneAppVoicePresets;
     if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
-    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
+    if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
+      presets.hydrateGlobalWakeEndFromMapping(m);
+    }
     if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
     setActiveRuleContext(rule.ruleId);
     saveAndRefresh();
+    if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+    clearPickerCreateTarget();
     hooks().toast&&hooks().toast(t('appPickerAdded'));
   }
 
   function resolvePickerMapping(){
+    if(pickerCreateMappingId&&core()&&core().byId){
+      var pinned=core().byId(pickerCreateMappingId);
+      if(pinned) return pinned;
+    }
     var persist=global.OneToneVoiceSchemePersist;
     if(persist&&persist.ensureVoiceScopeMapping){
       return persist.ensureVoiceScopeMapping({allowDraft:false});
@@ -1362,9 +1408,14 @@
 
   function closeAppPicker(){
     var overlay=$('appPickerOverlay');
-    if(!overlay) return;
-    overlay.classList.remove('open');
-    overlay.setAttribute('aria-hidden','true');
+    if(overlay){
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+    }
+    if(pickerCreateMappingId){
+      discardIncompleteCustomCreate(pickerCreateMappingId);
+      clearPickerCreateTarget();
+    }
   }
 
   function resolveAppIconUrl(app){
@@ -1425,6 +1476,46 @@
 
   var pickerRunningCache=[];
   var pickerForegroundIdentity=null;
+  var pickerCreateMappingId='';
+
+  function setPickerCreateTarget(mappingId){
+    pickerCreateMappingId=String(mappingId||'').trim();
+  }
+
+  function clearPickerCreateTarget(){
+    pickerCreateMappingId='';
+  }
+
+  function discardIncompleteCustomCreate(mappingId){
+    mappingId=String(mappingId||pickerCreateMappingId||'').trim();
+    if(!mappingId||!core()||!core().byId) return;
+    var m=core().byId(mappingId);
+    if(!m) return;
+    var customs=customRulesForMapping(m);
+    var hasRealCustom=customs.some(function(rule){
+      return !!(rule&&rule.match&&(
+        (Array.isArray(rule.match.exeNames)&&rule.match.exeNames.length)||
+        String(rule.match.fullPath||'').trim()||
+        String(rule.match.pathContains||'').trim()
+      ));
+    });
+    var appId=String(m.appTargetId||'').trim();
+    // Incomplete stub: still on "custom" with no concrete running-app rule.
+    if(appId==='custom'&&!hasRealCustom){
+      var cfg=state().config||{};
+      if(Array.isArray(cfg.mappings)){
+        cfg.mappings=cfg.mappings.filter(function(x){ return x&&x.id!==mappingId; });
+      }
+      if(String(state().selectedMappingId||'')===mappingId){
+        var baseline=global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.findGlobalBaselineMapping
+          ?global.OneToneHabitOverrideDiff.findGlobalBaselineMapping(cfg,core())
+          :null;
+        state().selectedMappingId=baseline&&baseline.id||null;
+      }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+    }
+  }
   var ruleIconCache={};
 
   function ruleIconDataUrl(rule){
@@ -1462,6 +1553,26 @@
     document.querySelectorAll('.keys-app-chip-icon--fallback[data-rule-id="'+ruleId+'"]').forEach(function(el){
       replaceChipIconFallback(el,url);
     });
+    document.querySelectorAll('.habit-app-badge-fallback[data-rule-id="'+ruleId+'"]').forEach(function(el){
+      replaceHabitBadgeFallback(el,url);
+    });
+  }
+
+  function replaceHabitBadgeFallback(el,url){
+    if(!el||!url||!el.parentNode) return;
+    var name=el.getAttribute('title')||'';
+    var cls=String(el.className||'').replace(/\bhabit-app-badge-fallback\b/g,'').trim();
+    if(cls.indexOf('has-icon')<0) cls+=' has-icon';
+    var wrap=document.createElement('span');
+    wrap.className=cls;
+    if(name) wrap.title=name;
+    var img=document.createElement('img');
+    img.className='habit-app-badge-icon';
+    img.src=url;
+    img.alt='';
+    img.decoding='async';
+    wrap.appendChild(img);
+    el.replaceWith(wrap);
   }
 
   function fetchRuleIcon(path,rule){
@@ -1528,6 +1639,25 @@
       }
       fetchRuleIcon(path,rule);
     });
+    root.querySelectorAll('.habit-app-badge-fallback[data-rule-id]').forEach(function(el){
+      var path=el.getAttribute('data-rule-icon-path')||'';
+      var ruleId=el.getAttribute('data-rule-id')||'';
+      var mappingId=el.getAttribute('data-habit-mapping')||'';
+      var map=mappingId&&core()&&core().byId?core().byId(mappingId):m;
+      var rule=map&&ruleId?ruleById(map,ruleId):null;
+      if(!path&&rule){
+        backfillRuleIconPath(rule);
+        path=resolveRuleIconPath(rule);
+        if(path) el.setAttribute('data-rule-icon-path',path);
+      }
+      if(!path) return;
+      if(ruleIconCache[path]){
+        if(el.isConnected) replaceHabitBadgeFallback(el,ruleIconCache[path]);
+        if(rule&&!ruleIconDataUrl(rule)) rule.iconDataUrl=ruleIconCache[path];
+        return;
+      }
+      fetchRuleIcon(path,rule);
+    });
   }
 
   function scheduleHydrateCustomRuleIcons(){
@@ -1538,6 +1668,7 @@
       hydrateCustomRuleChipIcons($('voiceAppScopeChips'));
       hydrateCustomRuleChipIcons($('habitAppRulesList'));
       hydrateCustomRuleChipIcons($('keysAppRulesList'));
+      hydrateCustomRuleChipIcons($('habitHubList'));
     },0);
   }
 
@@ -1661,7 +1792,9 @@
     });
   }
 
-  function openAppPicker(){
+  function openAppPicker(opts){
+    opts=opts||{};
+    if(opts.mappingId) setPickerCreateTarget(opts.mappingId);
     bindAppPickerEvents();
     var overlay=$('appPickerOverlay');
     if(!overlay) return;
@@ -1805,6 +1938,9 @@
     customRulesForMapping:customRulesForMapping,
     addCustomRuleFromIdentity:addCustomRuleFromIdentity,
     openAppPicker:openAppPicker,
+    ruleIconDataUrl:ruleIconDataUrl,
+    setPickerCreateTarget:setPickerCreateTarget,
+    clearPickerCreateTarget:clearPickerCreateTarget,
     renderContextChipsHtml:renderContextChipsHtml,
     isPresetAppId:isPresetAppId,
     isCustomRule:isCustomRule,
@@ -1815,6 +1951,9 @@
     identityDisplayName:identityDisplayName,
     hydrateCustomRuleChipIcons:hydrateCustomRuleChipIcons,
     scheduleHydrateCustomRuleIcons:scheduleHydrateCustomRuleIcons,
+    prefetchMappingRuleIcons:prefetchMappingRuleIcons,
+    backfillRuleIconPath:backfillRuleIconPath,
+    resolveRuleIconPath:resolveRuleIconPath,
     ruleMatchesIdentity:ruleMatchesIdentity
   };
 })((typeof window!=='undefined')?window:globalThis);

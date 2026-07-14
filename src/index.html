@@ -644,9 +644,14 @@
               <div class="habit-scenario-context-banner-text-wrap">
                 <p class="habit-scenario-context-banner-text" id="habitScenarioContextBannerKeysText"></p>
                 <p class="habit-scenario-context-banner-sub" id="habitScenarioContextBannerKeysSub"></p>
+                <p class="habit-scenario-context-banner-preview" id="habitScenarioContextBannerKeysPreview" hidden></p>
               </div>
             </div>
-            <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
+            <div class="habit-scenario-context-banner-actions">
+              <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToVoiceKeys" hidden>配语音</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveKeys" hidden>保存场景</button>
+              <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
+            </div>
           </div>
           <div class="page-status-bar keys-page-status-bar" id="keysWorkflowTabsBar">
             <div class="page-status-bar-main keys-scheme-status-main">
@@ -1021,9 +1026,6 @@
                 <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelHabitsDesc">先设好大家共用的，再给某个应用开例外</p>
                 <p class="habit-hub-hint" id="habitHubAutoHint">建议先完成通用按键与语音，日常先用通用；某个应用需要不一样时再新建场景。</p>
               </div>
-              <div class="habit-hub-head-actions">
-                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitHubNew">+ 新建应用场景</button>
-              </div>
             </header>
             <div class="habit-hub-toolbar">
               <div class="habit-hub-toolbar-spacer" aria-hidden="true"></div>
@@ -1108,8 +1110,11 @@
                   <input type="text" class="habit-wizard-name-input" id="habitScenarioNameInput" autocomplete="off" />
                 </label>
                 <div class="habit-scenario-access-cards" id="habitScenarioAccessCards">
-                  <div id="habitScenarioKeysAccessCard"></div>
-                  <div id="habitScenarioVoiceAccessCard"></div>
+                  <p class="habit-scenario-direct-hint" id="habitScenarioDirectHint">按键与语音请直接在设置页中调整；此处只改名称与应用。</p>
+                  <div class="habit-scenario-direct-actions" id="habitScenarioDirectActions">
+                    <button type="button" class="habit-hub-new-btn is-primary" data-scenario-adjust="keys" id="btnHabitScenarioGoKeys">在按键设置中调整</button>
+                    <button type="button" class="habit-hub-new-btn" data-scenario-adjust="voice" id="btnHabitScenarioGoVoice">在语音设置中调整</button>
+                  </div>
                 </div>
                 <p class="habit-scenario-main-placeholder" id="habitScenarioMainPlaceholder">请先选择应用</p>
               </main>
@@ -1311,9 +1316,14 @@
               <div class="habit-scenario-context-banner-text-wrap">
                 <p class="habit-scenario-context-banner-text" id="habitScenarioContextBannerVoiceText"></p>
                 <p class="habit-scenario-context-banner-sub" id="habitScenarioContextBannerVoiceSub"></p>
+                <p class="habit-scenario-context-banner-preview" id="habitScenarioContextBannerVoicePreview" hidden></p>
               </div>
             </div>
-            <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
+            <div class="habit-scenario-context-banner-actions">
+              <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToKeysVoice" hidden>改按键</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveVoice" hidden>保存场景</button>
+              <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
+            </div>
           </div>
           <div class="page-status-bar voice-page-status-bar" id="voiceWorkflowTabsBar">
             <div class="page-status-bar-main voice-scheme-status-main">

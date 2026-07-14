@@ -122,6 +122,18 @@
   function hydrateGlobalFromOverride(mapping){
     mapping=mapping||editingMapping();
     if(!mapping) return false;
+    // Never write app-scenario overrides back into the shared global voice tables.
+    if(global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(mapping)){
+      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.renderWakeCustomPhrases){
+        global.OneToneVoiceWake.renderWakeCustomPhrases();
+      }
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      }
+      return false;
+    }
     var cfg=state().config||{};
     var scene=sc();
     if(!scene) return false;

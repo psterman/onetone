@@ -91,7 +91,14 @@
       ends:{zh:cloneList(ends&&ends.zh),en:cloneList(ends&&ends.en)}
     };
     ov.primaryAppScopeId=appId;
-    ov.endPhrases=mergeEndBundle(ov.endPhrases,ends);
+    // Keep default app phrases in appPhraseLinks only for app scenarios —
+    // merging into ov.endPhrases would look like a global override and can hydrate into cfg.
+    var isAppScenario=global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(mapping);
+    if(!isAppScenario){
+      ov.endPhrases=mergeEndBundle(ov.endPhrases,ends);
+    }
     if(rule){
       if(!String(rule.summonPhrase||'').trim()&&wakes[0]) rule.summonPhrase=wakes[0];
     }else if(appRules()&&appRules().ruleForApp){

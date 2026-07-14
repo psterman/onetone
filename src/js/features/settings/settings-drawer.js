@@ -451,8 +451,11 @@
     var isApp=m&&global.OneToneHabitHub&&global.OneToneHabitHub.isAppScope
       ?global.OneToneHabitHub.isAppScope(m)
       :!!(m&&String(m.appTargetId||'').trim());
-    if(isApp&&global.OneToneHabitScenarioWizard){
-      global.OneToneHabitScenarioWizard.openEdit(id||state().selectedMappingId,opts);
+    if(isApp&&global.OneToneHabitScenarioContextBanner){
+      var sid=id||state().selectedMappingId;
+      var openVoice=opts.layer==='advanced'||opts.voiceTab||opts.openVoice;
+      if(openVoice) global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(sid,{returnToHub:true});
+      else global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(sid,{returnToHub:true});
       return;
     }
     if(m){
@@ -482,6 +485,14 @@
 
   function openHabitWizard(opts){
     opts=opts||{};
+    if(opts.editId&&global.OneToneHabitScenarioContextBanner){
+      global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(opts.editId,{returnToHub:true});
+      return;
+    }
+    if(global.OneToneHabitHub&&global.OneToneHabitHub.startInlineCreate){
+      global.OneToneHabitHub.startInlineCreate();
+      return;
+    }
     if(global.OneToneHabitScenarioWizard){
       if(opts.editId) global.OneToneHabitScenarioWizard.openEdit(opts.editId,opts);
       else global.OneToneHabitScenarioWizard.openNew();

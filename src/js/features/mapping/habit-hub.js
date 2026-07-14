@@ -142,6 +142,37 @@
     return '<span class="'+cls+'" title="'+esc(name)+'">'+esc(fallback)+'</span>';
   }
 
+  function renderMappingAppIcon(m,extraClass){
+    var appId=primaryAppId(m);
+    var rulesApi=global.OneToneAppBehaviorRules;
+    var customs=rulesApi&&rulesApi.customRulesForMapping?rulesApi.customRulesForMapping(m):[];
+    var rule=customs&&customs[0];
+    // Prefer extracted/custom app icons over preset letter fallbacks.
+    if(rule){
+      var name=rulesApi.ruleDisplayName?rulesApi.ruleDisplayName(rule):(rule.displayName||'App');
+      var cls='habit-app-badge'+(extraClass?' '+extraClass:'');
+      var url=String(rule.iconDataUrl||'').trim();
+      if(!url&&rulesApi.ruleIconDataUrl) url=String(rulesApi.ruleIconDataUrl(rule)||'').trim();
+      if(url){
+        return '<span class="'+cls+' has-icon" title="'+esc(name)+'">'
+          +'<img class="habit-app-badge-icon" src="'+esc(url)+'" alt="" decoding="async" />'
+          +'</span>';
+      }
+      if(rulesApi.backfillRuleIconPath) rulesApi.backfillRuleIconPath(rule);
+      var path='';
+      if(rulesApi.resolveRuleIconPath) path=String(rulesApi.resolveRuleIconPath(rule)||'').trim();
+      if(!path&&rule.match) path=String(rule.match.fullPath||rule.match.full_path||'').trim();
+      var fb=String(name||'App').slice(0,2).toUpperCase();
+      return '<span class="'+cls+' habit-app-badge-fallback" title="'+esc(name)+'"'
+        +' data-rule-id="'+esc(rule.ruleId||'')+'"'
+        +' data-habit-mapping="'+esc(m&&m.id||'')+'"'
+        +(path?' data-rule-icon-path="'+esc(path)+'"':'')
+        +'>'+esc(fb)+'</span>';
+    }
+    if(appId&&appId!=='custom') return renderAppIconBadge(appId,extraClass);
+    return renderAppIconBadge(appId||'custom',extraClass);
+  }
+
   function primaryActivationPhrase(m,cfg){
     if(!m) return '';
     var sc=global.OneToneSceneConfig;
@@ -478,12 +509,15 @@
 
   function renderSection(title,innerHtml,opts){
     opts=opts||{};
-    if(!innerHtml&&!opts.toolbarHtml&&!opts.allowEmpty) return '';
+    if(!innerHtml&&!opts.toolbarHtml&&!opts.actionsHtml&&!opts.allowEmpty) return '';
     var extra=opts.extraClass?' habit-hub-section--'+opts.extraClass:'';
     var html='<section class="habit-hub-section'+extra+'" aria-label="'+esc(title)+'">'
       +'<div class="habit-hub-section-head">'
       +'<div class="habit-hub-section-head-text">'
+      +'<div class="habit-hub-section-title-row">'
       +'<h4 class="habit-hub-section-title">'+esc(title)+'</h4>';
+    if(opts.actionsHtml) html+=opts.actionsHtml;
+    html+='</div>';
     if(opts.desc) html+='<p class="habit-hub-section-desc">'+esc(opts.desc)+'</p>';
     html+='</div>';
     if(opts.toolbarHtml) html+=opts.toolbarHtml;
@@ -521,7 +555,7 @@
     }else{
       html+='<button type="button" class="habit-hub-card-open" data-habit-open="'+esc(m.id)+'">';
     }
-    if(appId) html+=renderAppIconBadge(appId,'habit-hub-card-icon habit-hub-card-app-main');
+    if(appId) html+=renderMappingAppIcon(m,'habit-hub-card-icon habit-hub-card-app-main');
     else html+='<span class="habit-hub-card-icon habit-hub-card-icon--'+esc(type)+'">'+TYPE_ICON[type]+'</span>';
     html+='<span class="habit-hub-card-body">';
     html+='<span class="habit-hub-card-title-row">';
@@ -531,12 +565,21 @@
     var activation=primaryActivationPhrase(m,cfg);
     if(activation) html+='<span class="habit-hub-card-wake" title="'+esc(t('habitHubDescWakePhrase'))+'">'+esc(activation)+'</span>';
     html+='</span>';
-    html+='<span class="habit-hub-card-desc">'+esc(isAppScenario(m)?t('habitHubDescAppOnly'):habitDescription(m,type,cfg,profile))+'</span>';
+    // App scenarios: no canned description; keep meta status only.
+    if(!isAppScenario(m)){
+      html+='<span class="habit-hub-card-desc">'+esc(habitDescription(m,type,cfg,profile))+'</span>';
+    }
     var meta=habitMetaLine(m,profile);
     if(meta) html+='<span class="habit-hub-card-meta">'+esc(meta)+'</span>';
     html+='</span>';
     if(legacy) html+='</div>'; else html+='</button>';
     html+='<div class="habit-hub-card-actions">';
+    if(!legacy&&isAppScenario(m)){
+      var enOn=!!m.enabled;
+      html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
+      html+='<button type="button" class="habit-hub-act is-primary" data-habit-scenario-keys="'+esc(m.id)+'">'+esc(t('habitHubGlobalOpenKeys'))+'</button>';
+      html+='<button type="button" class="habit-hub-act" data-habit-scenario-voice="'+esc(m.id)+'">'+esc(t('habitHubGlobalOpenVoice'))+'</button>';
+    }
     if(!legacy){
       html+='<button type="button" class="habit-hub-act is-primary is-icon" data-habit-switch="'+esc(m.id)+'" title="'+esc(t('habitHubActSwitch'))+'" aria-label="'+esc(t('habitHubActSwitch'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg><span class="sr-only">'+esc(t('habitHubActSwitch'))+'</span></button>';
     }
@@ -546,9 +589,6 @@
     html+='<button type="button" class="habit-hub-act is-icon" data-habit-dup="'+esc(m.id)+'" title="'+esc(t('habitHubActCopy'))+'" aria-label="'+esc(t('habitHubActCopy'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="sr-only">'+esc(t('habitHubActCopy'))+'</span></button>';
     html+='<button type="button" class="habit-hub-act is-icon" data-habit-rename="'+esc(m.id)+'" title="'+esc(t('habitHubActRename'))+'" aria-label="'+esc(t('habitHubActRename'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="sr-only">'+esc(t('habitHubActRename'))+'</span></button>';
     html+='<button type="button" class="habit-hub-act is-danger is-icon" data-habit-del="'+esc(m.id)+'" title="'+esc(t('habitHubActDelete'))+'" aria-label="'+esc(t('habitHubActDelete'))+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span class="sr-only">'+esc(t('habitHubActDelete'))+'</span></button>';
-    if(!legacy){
-      html+='<button type="button" class="habit-hub-act-menu" data-habit-menu="'+esc(m.id)+'" aria-label="'+esc(t('habitHubActMore'))+'">⋯</button>';
-    }
     html+='</div></article>';
     return html;
   }
@@ -557,7 +597,6 @@
     var map={
       settingsPanelHabitsDesc:'settingsPanelHabitsDesc',
       habitHubAutoHint:'habitHubAutoHint',
-      btnHabitHubNew:'habitHubNew',
       btnHabitHubSaveVoice:'habitHubSaveFromVoice',
       habitHubFilterAll:'habitHubFilterAll',
       habitHubSortLabel:'habitHubSortLabel',
@@ -645,9 +684,14 @@
       });
     }else{
       var appInner=filtered.map(function(it){ return renderCard(it,{horizontal:true}); }).join('');
-      if(!appInner) appInner=renderAppSectionEmpty();
+      if(ui().habitHubCreating){
+        appInner=renderInlineCreatePicker()+(appInner||'');
+      }else if(!appInner){
+        appInner=renderAppSectionEmpty();
+      }
       html+=renderSection(t('habitHubSectionApp'),appInner,{
         desc:t('habitHubSectionAppDesc'),
+        actionsHtml:'<button type="button" class="habit-hub-new-btn is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>',
         toolbarHtml:renderAppFilterBar({showLegacy:hasLegacy}),
         allowEmpty:true
       });
@@ -665,6 +709,21 @@
     list.hidden=!hasContent;
     list.innerHTML=hasContent?html:'';
     applyViewMode();
+    hydrateHubAppIcons();
+  }
+
+  function hydrateHubAppIcons(){
+    var list=$('habitHubList');
+    var rulesApi=global.OneToneAppBehaviorRules;
+    if(!list||!rulesApi) return;
+    var cfg=state().config||{};
+    (Array.isArray(cfg.mappings)?cfg.mappings:[]).forEach(function(m){
+      if(m&&isAppScenario(m)&&rulesApi.prefetchMappingRuleIcons){
+        rulesApi.prefetchMappingRuleIcons(m);
+      }
+    });
+    if(rulesApi.hydrateCustomRuleChipIcons) rulesApi.hydrateCustomRuleChipIcons(list);
+    if(rulesApi.scheduleHydrateCustomRuleIcons) rulesApi.scheduleHydrateCustomRuleIcons();
   }
 
   function render(){
@@ -715,16 +774,18 @@
     opts=opts||{};
     if(id) state().selectedMappingId=id;
     var m=core()&&core().byId?core().byId(id||state().selectedMappingId):null;
-    if(m&&isAppScenario(m)&&global.OneToneHabitScenarioWizard){
-      global.OneToneHabitScenarioWizard.openEdit(m.id,opts);
+    if(m&&isAppScenario(m)&&global.OneToneHabitScenarioContextBanner){
+      var voice=opts.layer==='advanced'||opts.voiceTab||opts.openVoice;
+      if(voice) global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(m.id,{returnToHub:true});
+      else global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(m.id,{returnToHub:true});
       return;
     }
     if(m){
       var api=diff();
       var isBaseline=api&&api.isGlobalBaselineMapping&&api.isGlobalBaselineMapping(m,state().config||{},core());
       if(isBaseline&&global.OneToneHabitScenarioContextBanner){
-        var voice=opts.layer==='advanced'||opts.voiceTab;
-        if(voice) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+        var voiceLegacy=opts.layer==='advanced'||opts.voiceTab;
+        if(voiceLegacy) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
         else global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
         return;
       }
@@ -831,6 +892,199 @@
   function createFromKeys(){
     var add=$('btnAddMapping');
     if(add) add.click();
+  }
+
+  function defaultScenarioName(appId){
+    return t('habitWizardDefaultName').replace('{app}',appDisplayName(appId)||appId||'—');
+  }
+
+  function findAppScenarioByAppId(appId,exceptMappingId){
+    appId=String(appId||'').trim();
+    // All custom picks share appTargetId "custom"; uniqueness is by process identity, not this id.
+    if(!appId||appId==='custom'||!core()) return null;
+    exceptMappingId=String(exceptMappingId||'').trim();
+    var cfg=state().config||{};
+    var list=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    for(var i=0;i<list.length;i++){
+      var m=list[i];
+      if(!m||!isAppScenario(m)) continue;
+      if(exceptMappingId&&m.id===exceptMappingId) continue;
+      if(String(m.appTargetId||'')===appId) return m;
+    }
+    return null;
+  }
+
+  function findAppScenarioForIdentity(identity,exceptMappingId){
+    if(!identity||!core()) return null;
+    exceptMappingId=String(exceptMappingId||'').trim();
+    var rulesApi=global.OneToneAppBehaviorRules;
+    var cfg=state().config||{};
+    var list=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var presetId=String(identity.matchedPresetAppId||identity.matched_preset_app_id||'').trim();
+    if(presetId&&presetId!=='custom'){
+      var byPreset=findAppScenarioByAppId(presetId,exceptMappingId);
+      if(byPreset) return byPreset;
+    }
+    for(var i=0;i<list.length;i++){
+      var m=list[i];
+      if(!m||!isAppScenario(m)) continue;
+      if(exceptMappingId&&m.id===exceptMappingId) continue;
+      if(rulesApi&&rulesApi.matchRuleForMapping&&rulesApi.matchRuleForMapping(m,identity)) return m;
+      if(rulesApi&&rulesApi.customRulesForMapping){
+        var customs=rulesApi.customRulesForMapping(m)||[];
+        for(var j=0;j<customs.length;j++){
+          if(rulesApi.ruleMatchesIdentity&&rulesApi.ruleMatchesIdentity(customs[j],identity)) return m;
+        }
+      }
+    }
+    return null;
+  }
+
+  function restoreBaselineSelection(prevSelected){
+    var cfg=state().config||{};
+    var api=diff();
+    var baseline=api&&api.findGlobalBaselineMapping
+      ?api.findGlobalBaselineMapping(cfg,core())
+      :null;
+    if(baseline&&baseline.id){
+      state().selectedMappingId=baseline.id;
+      ui().voiceEditSchemeId=baseline.id;
+      return;
+    }
+    if(prevSelected&&core()&&core().byId&&core().byId(prevSelected)){
+      state().selectedMappingId=prevSelected;
+      return;
+    }
+    state().selectedMappingId=null;
+  }
+
+  function startInlineCreate(){
+    ui().habitHubCreating=true;
+    ui().habitView='hub';
+    if(ui().habitHubFilter==='legacy') ui().habitHubFilter='all';
+    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
+    applyShellVisibility();
+    render();
+  }
+
+  function cancelInlineCreate(){
+    ui().habitHubCreating=false;
+    render();
+  }
+
+  /**
+   * Create an app scenario as a sparse override. Does NOT mutate the global baseline
+   * mapping or activeSceneId — only appends an app-scoped mapping.
+   */
+  function createAppScenario(appId,opts){
+    opts=opts||{};
+    appId=String(appId||'').trim();
+    if(!appId||!core()) return null;
+    core().ensureConfig&&core().ensureConfig();
+    var cfg=state().config;
+    // Preset apps: one scenario per app. Custom: unlimited (each pick binds its own process).
+    if(appId!=='custom'){
+      var existing=findAppScenarioByAppId(appId);
+      if(existing&&!opts.migrateFrom){
+        ui().habitHubCreating=false;
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
+        render();
+        return existing;
+      }
+    }
+    var prevSelected=String(state().selectedMappingId||'');
+    var id=core().newMappingId?core().newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+    var m={
+      id:id,
+      label:'',
+      group:defaultScenarioName(appId),
+      triggerKey:'',
+      targetKey:'',
+      enabled:true,
+      order:Array.isArray(cfg.mappings)?cfg.mappings.length:0,
+      triggerMode:'tap',
+      intervalMs:cfg.intervalMs||1200,
+      enterDelayMs:cfg.enterDelayMs||5000,
+      cancelEnabled:cfg.cancelEnabled!==false,
+      autoEnterEnabled:cfg.autoEnterEnabled!==false,
+      switchKeys:[],
+      nativeKeyRestore:false,
+      imePresetId:'',
+      appTargetId:appId,
+      appBehaviorRules:[],
+      voiceOverride:null,
+      updatedAt:Date.now(),
+      lastUsedAt:0,
+      useCount:0
+    };
+    if(core().ensureMappingExtras) core().ensureMappingExtras(m);
+    var rules=global.OneToneAppBehaviorRules;
+    // Do not create a blank "custom" primary rule before the user picks a real process.
+    if(appId&&appId!=='custom'&&rules&&rules.ensurePrimaryAppRule){
+      rules.ensurePrimaryAppRule(m,appId);
+    }
+    if(opts.migrateFrom&&core().byId){
+      var src=core().byId(String(opts.migrateFrom||'').trim());
+      if(src){
+        ['triggerKey','targetKey','triggerMode','autoEnterEnabled','cancelEnabled','keyModeEnabled','voiceModeEnabled'].forEach(function(k){
+          if(src[k]!==undefined) m[k]=src[k];
+        });
+        if(src.voiceOverride) m.voiceOverride=JSON.parse(JSON.stringify(src.voiceOverride));
+      }
+    }
+    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    cfg.mappings.push(m);
+    ui().habitHubCreating=false;
+    touchUpdated(m);
+    if(opts.deferPersist){
+      // Keep selection on the draft so the app picker can bind identity/icon.
+      state().selectedMappingId=m.id;
+      return m;
+    }
+    // Keep global baseline selected so Keys/Voice "universal" context is not stolen.
+    restoreBaselineSelection(prevSelected);
+    var saveFn=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+    var done=function(){
+      render();
+      if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioCreated'),'scheme');
+    };
+    if(saveFn) saveFn().then(done).catch(done);
+    else{
+      if(hooks().save) hooks().save();
+      else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+      done();
+    }
+    return m;
+  }
+
+  function renderInlineCreatePicker(){
+    var presets=[];
+    if(global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
+      presets=global.OneToneAppTargetPresets.presets.slice();
+    }
+    var html='<div class="habit-hub-inline-create" id="habitHubInlineCreate">';
+    html+='<div class="habit-hub-inline-create-head">';
+    html+='<p class="habit-hub-inline-create-title">'+esc(t('habitHubInlineCreateTitle'))+'</p>';
+    html+='<p class="habit-hub-inline-create-hint">'+esc(t('habitHubInlineCreateHint'))+'</p>';
+    html+='</div>';
+    html+='<div class="habit-hub-inline-create-grid" role="list">';
+    presets.forEach(function(p){
+      var id=String(p&&p.id||'').trim();
+      if(!id) return;
+      var name=appDisplayName(id);
+      var icon=p.icon?'<img class="habit-wizard-app-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />':'';
+      var exists=!!findAppScenarioByAppId(id);
+      html+='<button type="button" class="habit-wizard-app-card'+(exists?' is-exists':'')+'" data-habit-create-app="'+esc(id)+'" role="listitem"'
+        +(exists?' title="'+esc(t('habitHubAppScenarioExists'))+'"':'')+'>'
+        +icon+'<span class="habit-wizard-app-name">'+esc(name)+'</span></button>';
+    });
+    html+='<button type="button" class="habit-wizard-app-card habit-wizard-app-card--custom" data-habit-create-custom role="listitem">'
+      +'<span class="habit-wizard-app-icon habit-wizard-app-icon--custom" aria-hidden="true">＋</span>'
+      +'<span class="habit-wizard-app-name">'+esc(t('habitScenarioCustomApp'))+'</span></button>';
+    html+='</div>';
+    html+='<button type="button" class="habit-hub-act" data-habit-create-cancel>'+esc(t('habitScenarioCancel'))+'</button>';
+    html+='</div>';
+    return html;
   }
 
   function createFromVoice(opts){
@@ -957,14 +1211,36 @@
           }
           return;
         }
-        var appEmptyNew=e.target.closest&&e.target.closest('[data-habit-app-empty-new]');
-        if(appEmptyNew){
+        var hubNew=e.target.closest&&e.target.closest('[data-habit-hub-new],[data-habit-app-empty-new]');
+        if(hubNew){
           e.preventDefault();
-          if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
-          else createFromKeys();
+          startInlineCreate();
           return;
         }
-        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-del],.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-switch],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-menu]');
+        var createCancel=e.target.closest&&e.target.closest('[data-habit-create-cancel]');
+        if(createCancel){
+          e.preventDefault();
+          cancelInlineCreate();
+          return;
+        }
+        var createAppBtn=e.target.closest&&e.target.closest('[data-habit-create-app]');
+        if(createAppBtn){
+          e.preventDefault();
+          var migrateFrom=String(ui().habitHubMigrateFrom||'').trim();
+          ui().habitHubMigrateFrom='';
+          createAppScenario(createAppBtn.getAttribute('data-habit-create-app')||'',migrateFrom?{migrateFrom:migrateFrom}:{});
+          return;
+        }
+        var createCustom=e.target.closest&&e.target.closest('[data-habit-create-custom]');
+        if(createCustom){
+          e.preventDefault();
+          var mCustom=createAppScenario('custom',{deferPersist:true});
+          if(mCustom&&global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.openAppPicker){
+            global.OneToneAppBehaviorRules.openAppPicker({mappingId:mCustom.id});
+          }
+          return;
+        }
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-del],.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-switch],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-enable]');
         if(actBtn){
           e.stopPropagation();
         }
@@ -973,6 +1249,41 @@
           e.preventDefault();
           ui().habitHubViewMode=viewBtn.dataset.habitView;
           applyViewMode();
+          return;
+        }
+        var enableBtn=e.target.closest&&e.target.closest('[data-habit-enable]');
+        if(enableBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var enableId=enableBtn.getAttribute('data-habit-enable')||'';
+          var enableM=core()&&core().byId?core().byId(enableId):null;
+          if(enableM){
+            enableM.enabled=!enableM.enabled;
+            touchUpdated(enableM);
+            if(hooks().save) hooks().save();
+            else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+            render();
+          }
+          return;
+        }
+        var scenarioKeysBtn=e.target.closest&&e.target.closest('[data-habit-scenario-keys]');
+        if(scenarioKeysBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var keysId=scenarioKeysBtn.getAttribute('data-habit-scenario-keys')||'';
+          if(keysId&&global.OneToneHabitScenarioContextBanner){
+            global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(keysId,{returnToHub:true});
+          }
+          return;
+        }
+        var scenarioVoiceBtn=e.target.closest&&e.target.closest('[data-habit-scenario-voice]');
+        if(scenarioVoiceBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          var voiceId=scenarioVoiceBtn.getAttribute('data-habit-scenario-voice')||'';
+          if(voiceId&&global.OneToneHabitScenarioContextBanner){
+            global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(voiceId,{returnToHub:true});
+          }
           return;
         }
         var openBtn=e.target.closest&&e.target.closest('[data-habit-open]');
@@ -1022,16 +1333,10 @@
           e.preventDefault();
           e.stopPropagation();
           var mid=migrateBtn.getAttribute('data-habit-migrate')||'';
-          if(mid&&global.OneToneHabitScenarioWizard&&global.OneToneHabitScenarioWizard.openNew){
-            global.OneToneHabitScenarioWizard.openNew({migrateFrom:mid});
+          if(mid){
+            startInlineCreate();
+            ui().habitHubMigrateFrom=mid;
           }
-          return;
-        }
-        var menuBtn=e.target.closest&&e.target.closest('[data-habit-menu]');
-        if(menuBtn){
-          e.preventDefault();
-          e.stopPropagation();
-          showDetail(menuBtn.dataset.habitMenu,{layer:'advanced'});
           return;
         }
       });
@@ -1041,17 +1346,10 @@
       ui().habitHubSort=sort.value;
       renderList();
     });
-    var newBtn=$('btnHabitHubNew');
-    if(newBtn) newBtn.addEventListener('click',function(e){
-      e.preventDefault();
-      if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
-      else createFromKeys();
-    });
     var emptyNew=$('btnHabitHubEmptyNew');
     if(emptyNew) emptyNew.addEventListener('click',function(e){
       e.preventDefault();
-      if(global.OneToneHabitScenarioWizard) global.OneToneHabitScenarioWizard.openNew();
-      else createFromKeys();
+      startInlineCreate();
     });
     var back=$('btnHabitHubBack');
     if(back) back.addEventListener('click',function(e){
@@ -1095,6 +1393,11 @@
     showDetail:showDetail,
     createFromKeys:createFromKeys,
     createFromVoice:createFromVoice,
+    createAppScenario:createAppScenario,
+    findAppScenarioByAppId:findAppScenarioByAppId,
+    findAppScenarioForIdentity:findAppScenarioForIdentity,
+    startInlineCreate:startInlineCreate,
+    cancelInlineCreate:cancelInlineCreate,
     bindEvents:bindEvents,
     collectHabits:collectHabits,
     classifyHabit:classifyHabit,

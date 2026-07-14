@@ -365,7 +365,13 @@
       }
     }
     if(rules&&rules.ensureRulesBeforeSave) rules.ensureRulesBeforeSave(m);
-    if(presets&&presets.hydrateGlobalWakeEndFromMapping) presets.hydrateGlobalWakeEndFromMapping(m);
+    // App scenarios are sparse overrides — never push their voice into global config.
+    var isAppScenario=global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
+    if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
+      presets.hydrateGlobalWakeEndFromMapping(m);
+    }
     touchUpdated(m);
     persistConfig();
     refreshVoiceSchemeSurfaces();

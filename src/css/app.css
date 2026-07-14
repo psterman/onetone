@@ -2970,6 +2970,12 @@
       display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;
     }
     .habit-hub-section-head-text{min-width:0;flex:1;display:grid;gap:4px}
+    .habit-hub-section-title-row{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    }
+    .habit-hub-section-new{
+      height:28px;padding:0 10px;font-size:11px;border-radius:8px;flex-shrink:0;
+    }
     .habit-hub-app-toolbar{flex-shrink:0}
     .habit-hub-section--hero{padding-bottom:2px}
     .habit-hub-section--hero+.habit-hub-section{border-top:0;margin-top:0;padding-top:8px}
@@ -3314,6 +3320,25 @@
       margin:0 0 10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(42,156,196,.35);
       background:linear-gradient(90deg,rgba(42,156,196,.16),rgba(245,158,11,.1));box-shadow:inset 3px 0 0 var(--primary);
     }
+    .habit-scenario-context-banner-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .habit-scenario-context-banner-preview{
+      margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--on-surface);font-weight:600;
+    }
+    .habit-hub-enable-toggle{
+      width:36px;height:22px;flex-shrink:0;margin-right:2px;
+    }
+    .habit-hub-card-actions .habit-hub-enable-toggle{align-self:center}
+    .habit-hub-inline-create{
+      display:grid;gap:10px;padding:14px;margin-bottom:10px;border-radius:14px;
+      border:1px solid rgba(42,156,196,.28);background:linear-gradient(180deg,#f7fcff,#fff);
+    }
+    .habit-hub-inline-create-title{margin:0;font-size:13px;font-weight:800;color:var(--on-surface)}
+    .habit-hub-inline-create-hint{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
+    .habit-hub-inline-create-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .habit-hub-inline-create .habit-wizard-app-card{min-width:112px}
+    .habit-hub-inline-create .habit-wizard-app-card.is-exists{opacity:.72}
+    #settingsPanelKeys.is-scenario-config .keys-scheme-status-actions #btnKeysSchemeAdd,
+    #settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
     .habit-scenario-context-banner[hidden]{display:none!important}
     .habit-scenario-context-banner-main{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
     .habit-scenario-context-banner-icon{
