@@ -234,17 +234,13 @@ html[data-theme="dark"] .wb-dot-grid {
   background-image: radial-gradient(rgba(148, 163, 184, 0.08) 1.2px, transparent 1.2px);
 }
 
-.wb-dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+.wb-dashboard-grid,
+.wb-dashboard-stack {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .wb-dashboard-grid {
-    grid-template-columns: 1fr;
-  }
+  align-items: stretch;
+  min-width: 0;
 }
 
 .wb-dashboard-main,
@@ -253,6 +249,259 @@ html[data-theme="dark"] .wb-dot-grid {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+.wb-trigger-card--hero {
+  padding: 20px 22px 24px;
+}
+
+.wb-howto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wb-howto-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wb-howto-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 960px) {
+  .wb-howto-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wb-howto-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
+}
+
+.wb-howto-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--outline-variant));
+}
+
+.wb-howto-card.is-active {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--outline-variant));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent), var(--shadow-card);
+}
+
+.wb-howto-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-howto-card-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.wb-howto-card-ico svg {
+  width: 15px;
+  height: 15px;
+}
+
+.wb-howto-card-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.wb-howto-card-value {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--on-surface);
+  word-break: break-word;
+}
+
+.wb-howto-card-art {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.wb-howto-keycaps {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.wb-howto-keycaps i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid var(--outline-variant);
+  background: linear-gradient(180deg, var(--surface-high), var(--surface-soft));
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--on-surface);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+}
+
+.wb-howto-keycaps.is-empty::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px dashed var(--outline-variant);
+}
+
+.wb-howto-bubbles {
+  display: block;
+  width: 42px;
+  height: 36px;
+  border-radius: 14px 14px 14px 4px;
+  background: color-mix(in srgb, var(--primary-soft) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  position: relative;
+}
+
+.wb-howto-bubbles::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 4px;
+  width: 22px;
+  height: 18px;
+  border-radius: 10px 10px 10px 4px;
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.wb-howto-radar {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background:
+    radial-gradient(circle at 50% 50%, var(--primary) 0 3px, transparent 4px),
+    conic-gradient(from 200deg, color-mix(in srgb, var(--primary) 35%, transparent), transparent 55%);
+}
+
+.wb-howto-card-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.wb-howto-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-meta-row strong {
+  font-weight: 700;
+  color: var(--on-surface);
+  text-align: right;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-howto-card-tip {
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--primary-strong);
+  transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+
+.wb-howto-card:hover .wb-howto-card-tip,
+.wb-howto-card:focus-visible .wb-howto-card-tip {
+  max-height: 48px;
+  opacity: 1;
+  margin-top: 2px;
+}
+
+.wb-detail-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .wb-detail-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wb-mic-card,
+.wb-detail-row .wb-scenario-panel,
+.wb-detail-row .wb-live-preview {
+  min-width: 0;
+}
+
+.wb-mic-card {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-high);
+  box-shadow: var(--shadow-card);
+}
+
+.wb-detail-row .wb-live-preview {
+  margin: 0;
+}
+
+.wb-detail-row .wb-live-voice {
+  display: none;
 }
 
 .wb-status-overview {
@@ -455,8 +704,8 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 8px 4px 4px;
+  gap: 18px;
+  padding: 12px 8px 8px;
 }
 
 .wb-hero-orb-wrap {
@@ -471,9 +720,9 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 128px;
-  height: 128px;
-  margin: -64px 0 0 -64px;
+  width: 160px;
+  height: 160px;
+  margin: -80px 0 0 -80px;
   border-radius: 50%;
   background: radial-gradient(circle, color-mix(in srgb, var(--primary) 35%, transparent) 0%, transparent 70%);
   opacity: 0.55;
@@ -488,8 +737,8 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 
 .wb-hero-orb {
   position: relative;
-  width: 108px;
-  height: 108px;
+  width: 136px;
+  height: 136px;
   border: none;
   border-radius: 50%;
   background: linear-gradient(180deg, var(--primary), var(--primary-strong));
@@ -542,12 +791,12 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero-orb-icon svg {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
 }
 
 .wb-hero-orb-hint {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--on-surface-muted);
   text-align: center;
@@ -625,14 +874,14 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 }
 
 .wb-hero-mode {
-  min-height: 34px;
-  padding: 0 16px;
+  min-height: 38px;
+  padding: 0 20px;
   border: none;
   border-radius: 999px;
   background: transparent;
   color: var(--on-surface-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);

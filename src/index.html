@@ -134,9 +134,8 @@
                     <kbd>Ctrl K</kbd>
                     <div class="wb-cmdk-panel" id="wbCmdkPanel" role="listbox" hidden></div>
                   </div>
-                  <div class="wb-dashboard-grid">
-                    <div class="wb-dashboard-main">
-                      <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbHeroOrbHint">
+                  <div class="wb-dashboard-stack">
+                      <section class="wb-trigger-card wb-trigger-card--hero" id="wbTriggerCard" aria-labelledby="wbHeroOrbHint">
                         <div class="wb-trigger-head">
                           <div class="wb-trigger-status" id="wbTriggerStatus">状态 · 准备好了</div>
                           <button type="button" class="wb-trigger-edit" id="wbTriggerEdit" title="改设置" aria-label="改设置">
@@ -161,8 +160,35 @@
                           </div>
                           <div class="wb-hero-stats" id="wbHeroStats"></div>
                         </div>
-                        <div class="wb-pipeline" id="wbPipeline" aria-label="怎么用"></div>
                       </section>
+
+                      <section class="wb-howto" id="wbHowTo" aria-label="怎么用"></section>
+
+                      <div class="wb-detail-row" id="wbDetailRow">
+                        <section class="wb-live-preview" id="wbLivePreview" aria-label="听写内容">
+                          <header class="wb-live-preview-head">
+                            <span class="wb-live-preview-title" id="wbLivePreviewTitle" data-i18n="homeWbLivePreviewTitle">听写内容</span>
+                            <div class="wb-live-preview-head-right">
+                              <span class="wb-live-preview-status is-standby" id="wbLivePreviewStatus" data-i18n="homeWbLivePreviewStandby">待命</span>
+                              <button type="button" class="wb-live-listen-toggle" id="wbBtnListenToggle" aria-pressed="false" title="暂停后可省 CPU/内存；恢复后语音约 2 秒就绪">
+                                <span id="wbBtnListenToggleLabel" data-i18n="homeWbListenPause">暂停监听</span>
+                              </button>
+                            </div>
+                          </header>
+                          <div class="wb-live-text is-placeholder" id="wbLiveText" role="log" aria-live="polite" aria-atomic="false">
+                            <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
+                          </div>
+                          <div class="wb-live-actions" id="wbTriggerActions">
+                            <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd" hidden>说完了</button>
+                            <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
+                          </div>
+                        </section>
+                        <section class="wb-mic-card" id="wbMicCard" aria-label="麦克风">
+                          <div id="wbVoicePanel"></div>
+                        </section>
+                        <section class="wb-scenario-panel" id="wbScenarioPanel"></section>
+                      </div>
+
                       <section class="wb-habit-section">
                         <div class="wb-habit-head">
                           <span class="wb-habit-label" data-i18n="homeWbHabitSection">我的常用方案</span>
@@ -174,29 +200,6 @@
                         <div class="wb-habit-grid" id="wbHabitGrid"></div>
                       </section>
                       <div class="wb-finish-summary" id="wbFinishSummary" aria-live="polite"></div>
-                    </div>
-                    <aside class="wb-dashboard-side">
-                      <section class="wb-live-preview" id="wbLivePreview" aria-label="听写内容">
-                        <header class="wb-live-preview-head">
-                          <span class="wb-live-preview-title" id="wbLivePreviewTitle" data-i18n="homeWbLivePreviewTitle">听写内容</span>
-                          <div class="wb-live-preview-head-right">
-                            <span class="wb-live-preview-status is-standby" id="wbLivePreviewStatus" data-i18n="homeWbLivePreviewStandby">待命</span>
-                            <button type="button" class="wb-live-listen-toggle" id="wbBtnListenToggle" aria-pressed="false" title="暂停后可省 CPU/内存；恢复后语音约 2 秒就绪">
-                              <span id="wbBtnListenToggleLabel" data-i18n="homeWbListenPause">暂停监听</span>
-                            </button>
-                          </div>
-                        </header>
-                        <div class="wb-live-text is-placeholder" id="wbLiveText" role="log" aria-live="polite" aria-atomic="false">
-                          <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
-                        </div>
-                        <div class="wb-live-actions" id="wbTriggerActions">
-                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd" hidden>说完了</button>
-                          <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
-                        </div>
-                        <div class="wb-live-voice" id="wbVoicePanel"></div>
-                      </section>
-                      <section class="wb-scenario-panel" id="wbScenarioPanel"></section>
-                    </aside>
                   </div>
                 </div>
               </div>

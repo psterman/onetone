@@ -470,6 +470,20 @@
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic');
       if(micBtn){
         openSettings({panel:'voiceWake',focus:'mic'});
+        return;
+      }
+      var howto=e.target.closest&&e.target.closest('[data-wb-howto]');
+      if(howto){
+        var kind=howto.getAttribute('data-wb-howto')||'';
+        if(kind==='keys'){
+          var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel
+            ?global.OneToneHomeV9.buildViewModel():null;
+          openSettings({panel:'keys',focus:vm&&vm.m&&vm.m.id?vm.m.id:null});
+        }else if(kind==='voice'){
+          openSettings({panel:'voiceWake'});
+        }else if(kind==='engine'){
+          openSettings({panel:'voiceWake',focus:'mic'});
+        }
       }
     });
   }
@@ -791,6 +805,8 @@
     enrichViewModel:enrichViewModel,
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
+    getHeroMode:function(){ return heroMode==='keys'?'keys':'voice'; },
+    setHeroMode:setHeroMode,
     onCompatResult:function(msg){
       if(global.OneToneHomeWorkbenchCompat&&msg){
         global.OneToneHomeWorkbenchCompat.store(msg.mappingId,msg);

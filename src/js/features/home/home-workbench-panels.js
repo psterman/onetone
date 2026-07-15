@@ -99,37 +99,126 @@
     return out.slice(0,6);
   }
 
-  function pipelineNode(lbl,val,extraClass){
-    return '<div class="wb-pipeline-node">'
-      +'<span class="wb-pipeline-node-lbl">'+esc(lbl)+'</span>'
-      +'<span class="wb-pipeline-node-val'+(extraClass?' '+extraClass:'')+'">'+esc(val)+'</span>'
+  function currentHeroMode(){
+    if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.getHeroMode){
+      return global.OneToneHomeWorkbench.getHeroMode();
+    }
+    return 'voice';
+  }
+
+  function dash(v){
+    var s=String(v==null?'':v).trim();
+    if(!s||s==='—'||s===t('homeLiveUnset')) return '—';
+    return s;
+  }
+
+  function howToCardHtml(opts){
+    return '<button type="button" class="wb-howto-card'+(opts.active?' is-active':'')+(opts.kind?' is-'+opts.kind:'')+'" data-wb-howto="'+esc(opts.kind)+'" title="'+esc(opts.tip||'')+'">'
+      +'<div class="wb-howto-card-head">'
+      +'<span class="wb-howto-card-ico" aria-hidden="true">'+opts.icon+'</span>'
+      +'<span class="wb-howto-card-title">'+esc(opts.title)+'</span>'
+      +'</div>'
+      +'<div class="wb-howto-card-main">'
+      +'<strong class="wb-howto-card-value">'+esc(opts.value)+'</strong>'
+      +'<span class="wb-howto-card-art" aria-hidden="true">'+opts.art+'</span>'
+      +'</div>'
+      +'<div class="wb-howto-card-meta">'
+      +'<div class="wb-howto-meta-row"><span>'+esc(opts.meta1Lbl)+'</span><strong>'+esc(opts.meta1Val)+'</strong></div>'
+      +'<div class="wb-howto-meta-row"><span>'+esc(opts.meta2Lbl)+'</span><strong>'+esc(opts.meta2Val)+'</strong></div>'
+      +'</div>'
+      +'<p class="wb-howto-card-tip">'+esc(opts.tip)+'</p>'
+      +'</button>';
+  }
+
+  function renderHowTo(vm){
+    var host=$('wbHowTo');
+    if(!host) return;
+    var mode=currentHeroMode();
+    var trig=dash(vm&&vm.triggerKey);
+    var finish=dash(vm&&vm.finishText);
+    var silence='—';
+    if(vm&&vm.m&&vm.m.intervalMs!=null&&vm.cancelDelaySec){
+      silence=String(vm.cancelDelaySec)+' '+t('homeWbHowToSec');
+    }
+    var phrases=wakePhrases(vm);
+    var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
+    var wakeAlt=phrases.length>1?phrases.slice(1,3).join(' · '):'—';
+    var endLine=dash(vm&&vm.endPhraseLine);
+    var engineRaw=String(vm&&vm.engineLine||'').trim();
+    var engineMain='—';
+    if(engineRaw){
+      var split=engineRaw.indexOf(' · ');
+      engineMain=split>=0?engineRaw.slice(0,split):engineRaw;
+    }
+    var engineOn=vm&&vm.summary&&vm.summary.engine&&vm.summary.engine!=='off';
+    var engOk=engineOn&&vm.summary.statusMode!=='error'&&vm.engineStatus!==t('homeV9EngineOffline');
+    var statusLine=engineOn
+      ?(engOk?t('homeWbHeroEngineOnline'):t('homeWbVoiceOffline'))
+      :t('homeWbVoiceOff');
+    var latency=vm&&vm.perf&&vm.perf.keyLatency&&vm.perf.keyLatency!=='—'
+      ?vm.perf.keyLatency
+      :(vm&&vm.perf&&vm.perf.sendLatency&&vm.perf.sendLatency!=='—'
+        ?vm.perf.sendLatency
+        :'');
+    if(engOk&&latency) statusLine+=' · '+latency;
+    var mic=dash(vm&&vm.micLabel);
+
+    var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
+    var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
+    var engIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+
+    host.innerHTML=
+      '<div class="wb-howto-head"><span class="wb-howto-title">'+esc(t('homeWbHowToTitle'))+'</span></div>'
+      +'<div class="wb-howto-grid">'
+      +howToCardHtml({
+        kind:'keys',
+        active:mode==='keys',
+        title:t('homeWbHowToKeysTitle'),
+        value:trig,
+        meta1Lbl:t('homeWbHowToFinish'),
+        meta1Val:finish,
+        meta2Lbl:t('homeWbHowToSilence'),
+        meta2Val:silence,
+        tip:t('homeWbHowToKeysTip'),
+        icon:keyIcon,
+        art:keycapArt(trig)
+      })
+      +howToCardHtml({
+        kind:'voice',
+        active:mode==='voice',
+        title:t('homeWbHowToVoiceTitle'),
+        value:wakeMain,
+        meta1Lbl:t('homeWbHowToWakeAlt'),
+        meta1Val:wakeAlt,
+        meta2Lbl:t('homeWbHowToEnd'),
+        meta2Val:endLine,
+        tip:t('homeWbHowToVoiceTip'),
+        icon:voiceIcon,
+        art:'<span class="wb-howto-bubbles" aria-hidden="true"></span>'
+      })
+      +howToCardHtml({
+        kind:'engine',
+        active:false,
+        title:t('homeWbHowToEngineTitle'),
+        value:engineMain,
+        meta1Lbl:t('homeWbHowToStatus'),
+        meta1Val:statusLine,
+        meta2Lbl:t('homeWbHowToMic'),
+        meta2Val:mic,
+        tip:t('homeWbHowToEngineTip'),
+        icon:engIcon,
+        art:'<span class="wb-howto-radar" aria-hidden="true"></span>'
+      })
       +'</div>';
   }
 
-  function renderPipeline(vm){
-    var host=$('wbPipeline');
-    if(!host) return;
-    var m=vm&&vm.m;
-    if(!m){
-      host.innerHTML='';
-      return;
-    }
-    var trig=vm.triggerKey||t('homeLiveUnset');
-    var tgt=vm.targetLabel||t('homeLiveUnset');
-    var finish='—';
-    if(global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.finishBehaviorTextHome){
-      finish=global.OneToneSceneFlowSummary.finishBehaviorTextHome(m).text||'—';
-    }
-    host.setAttribute('aria-label',t('homeWbPipelineTitle'));
-    host.innerHTML=
-      '<span class="wb-pipeline-title">'+esc(t('homeWbPipelineTitle'))+'</span>'
-      +'<div class="wb-pipeline-row">'
-      +pipelineNode(t('homeWbPipelineTrigger'),trig)
-      +'<span class="wb-pipeline-arrow" aria-hidden="true">›</span>'
-      +pipelineNode(t('homeWbPipelineTarget'),tgt)
-      +'<span class="wb-pipeline-arrow" aria-hidden="true">›</span>'
-      +pipelineNode(t('homeWbPipelineFinish'),finish,'is-finish')
-      +'</div>';
+  function keycapArt(trig){
+    if(!trig||trig==='—') return '<span class="wb-howto-keycaps is-empty" aria-hidden="true"></span>';
+    var parts=String(trig).split(/[\s+]+/).filter(Boolean).slice(0,4);
+    if(!parts.length) return '<span class="wb-howto-keycaps is-empty" aria-hidden="true"></span>';
+    return '<span class="wb-howto-keycaps" aria-hidden="true">'+parts.map(function(p){
+      return '<i>'+esc(p)+'</i>';
+    }).join('')+'</span>';
   }
 
   function habitCardHtml(m,activeId){
@@ -201,7 +290,7 @@
     return html;
   }
 
-  function renderVoicePanel(vm){
+  function renderMicCard(vm){
     var host=$('wbVoicePanel');
     if(!host) return;
     var listening=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating)
@@ -214,7 +303,11 @@
       :'<span class="wb-voice-phrase is-muted">'+esc(t('homeWbVoicePhrasesEmpty'))+'</span>';
 
     host.innerHTML=
-      '<div class="wb-live-voice-block">'
+      '<div class="wb-panel-head">'
+      +'<span class="wb-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>'
+      +'<span>'+esc(t('homeWbMicCardTitle'))+'</span></span>'
+      +(listening?'<span class="wb-panel-badge is-live">'+esc(t('homeWbVoiceListening'))+'</span>':'')
+      +'</div>'
       +'<div class="wb-voice-phrases">'
       +'<span class="wb-voice-phrases-lbl">'+esc(t('homeWbVoicePhrases'))+'</span>'
       +'<div class="wb-voice-phrase-list">'+phraseHtml+'</div>'
@@ -228,14 +321,14 @@
       +'<div class="wb-voice-mic-name"><span>'+esc(vm.micLabel||t('homeLiveMicUnset'))+'</span>'
       +'<span class="wb-voice-mic-default">'+esc(t('homeWbVoiceMicDefault'))+'</span></div>'
       +'<div class="mic-level-bars mic-level-bars--home" id="wbHomeMicLevel" aria-hidden="true">'+buildHomeMicBars()+'</div>'
-      +'</div></div></div>';
+      +'</div></div>';
   }
 
   function renderAll(vm){
-    renderPipeline(vm);
+    renderHowTo(vm);
     renderHabitGrid(vm);
     renderScenarioPanel(vm);
-    renderVoicePanel(vm);
+    renderMicCard(vm);
   }
 
   function bindOnce(){
@@ -245,10 +338,12 @@
 
   global.OneToneHomeWorkbenchPanels={
     renderAll:renderAll,
-    renderPipeline:renderPipeline,
+    renderHowTo:renderHowTo,
+    renderPipeline:renderHowTo,
     renderHabitGrid:renderHabitGrid,
     renderScenarioPanel:renderScenarioPanel,
-    renderVoicePanel:renderVoicePanel,
+    renderVoicePanel:renderMicCard,
+    renderMicCard:renderMicCard,
     bindOnce:bindOnce,
     stopWave:function(){}
   };
