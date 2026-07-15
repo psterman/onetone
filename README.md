@@ -2,6 +2,8 @@
 
 官网：**https://www.onetone.app**
 
+言出即行，万象成形 · *speak to create*
+
 [English](README.en.md) | 中文
 
 [![Release](https://img.shields.io/github/v/release/psterman/onetone)](https://github.com/psterman/onetone/releases)
@@ -29,43 +31,60 @@
 
 - 手在鼠标上：按鼠标侧键，直接开始语音输入。
 - 离键盘较远：用手柄、遥控器或蓝牙戒指触发。
-- 不想动手：用麦克风口令唤醒输入法，或用结束词完成上屏/发送。
-- 频繁输入：为邮件、笔记、聊天、文档配置不同方案。
+- 不想动手：用麦克风口令唤醒输入法，或用结束词 / 取消词完成或丢掉这一轮。
+- 多场景切换：邮件、笔记、聊天、文档各自一套方案（习惯 / 情景）。
 
 ## 核心功能
 
-- **任意设备触发**：支持 Windows 可识别的键盘、鼠标、音量键、组合键、手柄、轨迹球、蓝牙外设等输入。
-- **输入法快捷键映射**：把触发源映射到语音输入法/流式输入法的激活键。
-- **输入法预设**：内置 Typeless、智谱、千问、闪电说、搜狗、讯飞、微信输入法等预设入口，也支持手动录制任意快捷键。
-- **语音唤醒**：可选 Windows SAPI 或离线 Vosk，用口令触发输入法。
-- **语音结束与说完动作**：可设置结束词、延迟、Enter/发送等说完后的动作。
-- **多方案管理**：为不同触发源、输入法或使用场景保存多套方案并快速切换。
-- **Coach HUD**：底部轻提示显示当前映射、监听/听写状态和触发成功反馈。
-- **系统托盘常驻**：支持托盘控制、暂停、设置入口和开机自启。
-- **本地优先**：配置保存在本机；语音唤醒可使用本地 SAPI/Vosk，不上传到 OneTone 服务器。
+### 首页 Workbench
+
+- **Hero 工作台**：听写字幕、待命/听写状态、停止/恢复转写；语音与按键两种激活方式一键切换。
+- **快速入门**：引导完成触发链路试跑。
+- **按键 / 语音联动卡**：展示当前快捷键或唤醒词，点进对应设置。
+- **麦克风与引擎**：设备、电平与识别引擎合在一张卡；唤醒词悬停可见。
+- **情景底栏**：横向切换常用方案，末尾可新建习惯。
+
+### 触发与方案
+
+- **任意设备触发**：键盘、鼠标、音量键、组合键、手柄、轨迹球、蓝牙外设等 Windows 可识别输入。
+- **输入法快捷键映射**：触发源 → 语音 / 流式输入法激活键。
+- **输入法预设**：Typeless、智谱、千问、闪电说、搜狗、讯飞、微信输入法等；也可手动录制任意快捷键。
+- **习惯 / 情景方案**：多套映射按场景保存、排序与切换；支持目标按键目录与应用定向。
+
+### 语音链路（唤起 → 识别 → 发送）
+
+- **语音唤醒**：Windows SAPI、离线 Vosk，以及关键词唤醒（KWS）。
+- **声学命令**：为习惯配置声学口令与样本；取消词、结束词、说完/丢掉本轮。
+- **说完动作**：静音等待、Enter / 发送等，按方案配置。
+- **本地优先**：配置在本机；唤醒与 KWS 可走本地引擎，不上传到 OneTone 服务器。
+
+### 常驻与反馈
+
+- **Coach HUD**：底部轻提示（映射、监听/听写状态、触发反馈）。
+- **系统托盘**：暂停/恢复、设置入口、开机自启。
+- **应用内更新**：启动时检查新版本（不覆盖本地配置）。
 
 ## 快速上手
 
 1. 从 [GitHub Releases](https://github.com/psterman/onetone/releases) 下载 Windows 安装包。
 2. 首次安装若出现 SmartScreen，点击 **更多信息** -> **仍要运行**。
-3. 打开 OneTone，完成首次引导。
-4. 录入一个触发源，例如音量键、鼠标侧键或蓝牙外设按键。
-5. 选择输入法预设，或手动录入你的语音输入法激活键。
-6. 在任意输入框里触发一次；看到输入法进入听写或文字上屏，即表示链路跑通。
+3. 打开 OneTone，完成首次引导（或首页 **快速入门**）。
+4. 录入一个触发源（音量键、鼠标侧键、蓝牙外设等）。
+5. 选择输入法预设，或手动录入语音输入法激活键。
+6. 在任意输入框里触发一次；输入法进入听写或文字上屏，即表示链路跑通。
 
-建议先用内置输入法预设跑通，再按需开启语音唤醒、结束词和自动发送。
+建议先用内置预设跑通按键链路，再按需开启语音唤醒、结束/取消词和自动发送。
 
 ## 系统要求
 
 - Windows 10 / 11（x64）
 - 一个可通过快捷键激活的语音输入法或流式输入法
-- 可选：麦克风，用于语音唤醒和结束词
+- 可选：麦克风（语音唤醒、KWS、结束/取消词）
 
 ## 安装与更新
 
-- 安装包：见 [GitHub Releases](https://github.com/psterman/onetone/releases)
-- 应用启动后会检查新版本，并在界面顶部提示更新。
-- 更新只替换程序文件，不会覆盖本地配置。
+- 安装包：[GitHub Releases](https://github.com/psterman/onetone/releases)
+- 启动后检查更新；只替换程序文件，不覆盖本地配置。
 
 配置位置：
 
@@ -73,23 +92,21 @@
 %APPDATA%\onetone\config\settings.json
 ```
 
-首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录下的旧配置文件存在，会自动迁移到新路径。
+首次启动时，若 `%APPDATA%\Voice Pilot\config\settings.json` 或 exe 同目录旧配置存在，会自动迁移。
 
 ## 开发
 
 技术栈：
 
-- 前端：`src/index.html` + 原生 JavaScript
-- 后端：Rust + Tauri 2
-- 热键与设备输入：Windows 低级钩子 + Raw Input + RegisterHotKey
-- 语音唤醒：Windows SAPI + 可选离线 Vosk
+- 前端：`src/` 原生 HTML / CSS / JavaScript（首页 workbench + 设置页）
+- 后端：Rust + Tauri 2（`src-tauri/`，含 `onetone-logic` 等 crate）
+- 热键与设备：Windows 低级钩子 + Raw Input + RegisterHotKey
+- 语音：SAPI / Vosk / KWS + 声学命令运行时
 
-环境要求：
+环境：
 
 - [Rust](https://rustup.rs/)（含 `cargo`）
 - [Tauri CLI](https://v2.tauri.app/)：`cargo install tauri-cli`
-
-启动开发环境：
 
 ```powershell
 cd src-tauri
@@ -99,14 +116,13 @@ cargo tauri dev
 构建发布版：
 
 ```powershell
-# 方式一：npm script
 npm run build
 
-# 方式二：脚本（默认直接启动已构建的 exe；需要重编译时加 -Rebuild）
+# 或
 .\run_onetone.ps1
 .\run_onetone.ps1 -Rebuild
 
-# 方式三：直接 cargo（推荐 NSIS 安装包）
+# NSIS 安装包
 cd src-tauri
 cargo clean -p onetone
 cargo tauri build --bundles nsis
@@ -114,36 +130,30 @@ cargo tauri build --bundles nsis
 
 产物：
 
-- 可执行文件：`src-tauri/target/release/onetone.exe`
-- 安装包：`src-tauri/target/release/bundle/nsis/*-setup.exe`
+- `src-tauri/target/release/onetone.exe`
+- `src-tauri/target/release/bundle/nsis/*-setup.exe`
 
-本地构建若提示 `TAURI_SIGNING_PRIVATE_KEY` 未设置，安装包仍会生成，但 updater 签名文件需在有 Secrets 的 CI 环境中产出。
-
-发布前需要在 GitHub 仓库 Secrets 中配置：
+本地构建若缺少 `TAURI_SIGNING_PRIVATE_KEY`，安装包仍可生成；updater 签名需在配置 Secrets 的 CI 中产出。发布前请在仓库 Secrets 配置：
 
 ```
 TAURI_SIGNING_PRIVATE_KEY
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ```
 
-其中 `TAURI_SIGNING_PRIVATE_KEY` 必须与 `src-tauri/tauri.conf.json` 中的 updater 公钥匹配，否则已安装用户无法校验并安装新版本。
+私钥须与 `src-tauri/tauri.conf.json` 中的 updater 公钥匹配。
 
 ## 目录结构
 
 ```
 onetone/
 ├── assets/              # 品牌图标源文件
-├── src/                 # 桌面应用前端、图标、声音、IME 预设
+├── src/                 # 桌面前端（首页 / 设置 / 托盘 / HUD）
 ├── src-tauri/           # Rust 后端与 Tauri 配置
-│   ├── icons/
-│   ├── src/
-│   │   ├── hotkey_win.rs
-│   │   ├── config.rs
-│   │   ├── key_chord.rs
-│   │   └── ipc/
+│   ├── crates/          # 逻辑与共享 crate
+│   ├── src/             # 热键、语音运行时、IPC
 │   └── tauri.conf.json
-├── website/             # 官网静态页面
-├── docs/                # 隐私政策、服务条款、发布说明
+├── website/             # 官网
+├── docs/                # 隐私、条款、发布说明
 ├── package.json
 ├── run_onetone.ps1
 └── Start-OneTone.vbs
@@ -153,7 +163,7 @@ onetone/
 
 本仓库自牛马（niuma）实验目录独立而来，GitHub：**https://github.com/psterman/onetone**
 
-旧 AHK 实现仅作历史参考，不在此仓库内（牛马仓库 `archive/voice-pilot-legacy-ahk-20260625/`）。
+旧 AHK 实现仅作历史参考，不在此仓库内。
 
 ## 法律信息
 

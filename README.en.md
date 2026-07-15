@@ -2,6 +2,8 @@
 
 Website: **https://www.onetone.app**
 
+言出即行，万象成形 · *speak to create*
+
 [English](README.en.md) | [中文](README.md)
 
 [![Release](https://img.shields.io/github/v/release/psterman/onetone)](https://github.com/psterman/onetone/releases)
@@ -29,67 +31,82 @@ Typical scenarios:
 
 - Your hand is on the mouse: press a side button and start dictating.
 - You are away from the keyboard: trigger with a gamepad, remote, Bluetooth ring, or trackball.
-- You want hands-free control: use a microphone phrase to wake voice input, then an end phrase to commit or send.
-- You type often: keep different schemes for email, notes, chat, and documents.
+- You want hands-free control: wake with a microphone phrase, then finish or cancel with end/cancel phrases.
+- You switch contexts often: keep separate habits/scenes for email, notes, chat, and documents.
 
 ## Features
 
-- **Trigger from many devices**: keyboard keys, mouse buttons, volume keys, key chords, gamepads, trackballs, Bluetooth devices, and other Windows-recognized inputs.
-- **IME shortcut mapping**: map your trigger source to the shortcut that activates your voice-input or streaming IME.
-- **IME presets**: built-in entries for Typeless, Zhipu, Qianwen, Shandianshuo, Sogou, Xunfei, WeChat IME, and manual shortcuts.
-- **Voice wake**: optional Windows SAPI or offline Vosk wake phrases.
-- **Voice end and after-speaking actions**: end phrases, delay, Enter/send behavior, and commit actions.
-- **Multiple schemes**: save and switch mappings for different devices, IMEs, or workflows.
-- **Coach HUD**: a small bottom overlay for current mapping, listening/dictation state, and success feedback.
-- **System tray workflow**: tray control, pause, settings, and autostart.
-- **Local-first behavior**: settings stay on your machine; voice wake can run through local SAPI/Vosk and is not uploaded to OneTone servers.
+### Home workbench
+
+- **Hero dashboard**: live caption, standby/dictating state, pause/resume transcription; switch voice vs hotkey activation.
+- **Quick start**: walk through a first successful trigger chain.
+- **Hotkey / voice cards**: show the current shortcut or wake phrases; open the matching settings.
+- **Mic + engine card**: device, level meters, and recognition engine in one place; wake phrases appear on hover.
+- **Scene rail**: switch habits horizontally; add a new habit from the trailing card.
+
+### Triggers and schemes
+
+- **Many device triggers**: keyboard, mouse, volume keys, chords, gamepads, trackballs, Bluetooth devices, and other Windows-recognized inputs.
+- **IME shortcut mapping**: map a trigger to the shortcut that activates your voice-input or streaming IME.
+- **IME presets**: Typeless, Zhipu, Qianwen, Shandianshuo, Sogou, Xunfei, WeChat IME, plus manual shortcut capture.
+- **Habits / scenes**: save, sort, and switch mappings per workflow; target-key catalog and app targeting.
+
+### Voice pipeline (wake → recognize → send)
+
+- **Voice wake**: Windows SAPI, offline Vosk, and keyword spotting (KWS).
+- **Acoustic commands**: habit-level acoustic phrases and samples; cancel phrases, end phrases, finish/discard the current turn.
+- **After-speaking actions**: silence wait, Enter/send, and scheme-specific finish behavior.
+- **Local-first**: settings stay on disk; wake/KWS can run locally and are not uploaded to OneTone servers.
+
+### Always-on UX
+
+- **Coach HUD**: compact overlay for mapping, listening/dictation state, and feedback.
+- **System tray**: pause/resume, settings, autostart.
+- **In-app updates**: checks on launch without overwriting local config.
 
 ## Quick Start
 
 1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/onetone/releases).
 2. If SmartScreen appears, choose **More info** -> **Run anyway**.
-3. Launch OneTone and complete the first-run guide.
-4. Record a trigger source, such as a volume key, mouse side button, or Bluetooth device button.
-5. Pick an IME preset, or manually record the shortcut your voice-input method uses.
+3. Launch OneTone and complete onboarding (or use **Quick start** on the home page).
+4. Record a trigger source (volume key, mouse side button, Bluetooth button, etc.).
+5. Pick an IME preset, or manually record your voice-input shortcut.
 6. Focus any text field and trigger once. If the IME starts listening or text lands in the field, the chain is working.
 
-Start with an IME preset, then enable voice wake, end phrases, or auto-send if you need them.
+Start with an IME preset and a hotkey path, then enable voice wake, end/cancel phrases, or auto-send as needed.
 
 ## Requirements
 
 - Windows 10 or 11 (x64)
 - A voice-input method or streaming IME that exposes a keyboard shortcut
-- Optional: microphone for voice wake and end phrases
+- Optional: microphone for wake, KWS, and end/cancel phrases
 
 ## Install and Updates
 
 - Installer: [GitHub Releases](https://github.com/psterman/onetone/releases)
-- The app checks for new versions on startup and shows an in-app update banner.
-- Updates replace application files only. Your local configuration is preserved.
+- The app checks for updates on startup; only application files are replaced.
 
-User settings are stored at:
+User settings:
 
 ```
 %APPDATA%\onetone\config\settings.json
 ```
 
-On first launch, OneTone migrates legacy configs from `%APPDATA%\Voice Pilot\config\settings.json` or an exe-adjacent `settings.json` if present.
+On first launch, legacy configs migrate from `%APPDATA%\Voice Pilot\config\settings.json` or an exe-adjacent `settings.json` if present.
 
 ## Development
 
 Stack:
 
-- Frontend: `src/index.html` + plain JavaScript
-- Backend: Rust + Tauri 2
-- Hotkeys and device input: Windows low-level hooks + Raw Input + RegisterHotKey
-- Voice wake: Windows SAPI + optional offline Vosk
+- Frontend: plain HTML / CSS / JavaScript under `src/` (home workbench + settings)
+- Backend: Rust + Tauri 2 (`src-tauri/`, including shared crates such as `onetone-logic`)
+- Hotkeys and devices: Windows low-level hooks + Raw Input + RegisterHotKey
+- Voice: SAPI / Vosk / KWS + acoustic-command runtime
 
 Requirements:
 
 - [Rust](https://rustup.rs/) with `cargo`
 - [Tauri CLI](https://v2.tauri.app/): `cargo install tauri-cli`
-
-Run locally:
 
 ```powershell
 cd src-tauri
@@ -99,14 +116,13 @@ cargo tauri dev
 Build release:
 
 ```powershell
-# Option 1: npm script
 npm run build
 
-# Option 2: helper script
+# or
 .\run_onetone.ps1
 .\run_onetone.ps1 -Rebuild
 
-# Option 3: cargo directly, NSIS installer recommended
+# NSIS installer
 cd src-tauri
 cargo clean -p onetone
 cargo tauri build --bundles nsis
@@ -114,36 +130,30 @@ cargo tauri build --bundles nsis
 
 Output:
 
-- Executable: `src-tauri/target/release/onetone.exe`
-- Installer: `src-tauri/target/release/bundle/nsis/*-setup.exe`
+- `src-tauri/target/release/onetone.exe`
+- `src-tauri/target/release/bundle/nsis/*-setup.exe`
 
-If local builds warn that `TAURI_SIGNING_PRIVATE_KEY` is not set, the installer can still be generated. Updater signature files require CI with repository secrets.
-
-Maintainers need these GitHub repository secrets before publishing updater releases:
+If `TAURI_SIGNING_PRIVATE_KEY` is missing locally, the installer can still build; updater signatures need CI secrets. Before publishing updater releases:
 
 ```
 TAURI_SIGNING_PRIVATE_KEY
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 ```
 
-`TAURI_SIGNING_PRIVATE_KEY` must match the updater public key in `src-tauri/tauri.conf.json`.
+The private key must match the updater public key in `src-tauri/tauri.conf.json`.
 
 ## Project Layout
 
 ```
 onetone/
 ├── assets/              # Brand source assets
-├── src/                 # Desktop frontend, icons, sounds, IME presets
+├── src/                 # Desktop frontend (home / settings / tray / HUD)
 ├── src-tauri/           # Rust backend and Tauri config
-│   ├── icons/
-│   ├── src/
-│   │   ├── hotkey_win.rs
-│   │   ├── config.rs
-│   │   ├── key_chord.rs
-│   │   └── ipc/
+│   ├── crates/          # Shared logic crates
+│   ├── src/             # Hotkeys, voice runtime, IPC
 │   └── tauri.conf.json
 ├── website/             # Static website
-├── docs/                # Privacy policy, terms, release notes
+├── docs/                # Privacy, terms, release notes
 ├── package.json
 ├── run_onetone.ps1
 └── Start-OneTone.vbs
@@ -153,7 +163,7 @@ onetone/
 
 **https://github.com/psterman/onetone**
 
-This repository was split out from an experimental voice-pilot prototype. The legacy AutoHotkey implementation lives in a separate archive and is not part of this repo.
+Split out from an experimental voice-pilot prototype. The legacy AutoHotkey implementation lives in a separate archive and is not part of this repo.
 
 ## Legal
 
