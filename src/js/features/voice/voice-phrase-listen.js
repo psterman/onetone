@@ -38,6 +38,40 @@
     return hit;
   }
 
+  /** Prefer a known cancel/end/send chip when listen-fill captures a long utterance. */
+  function preferConfiguredPhrase(text,inputId){
+    text=String(text||'').trim();
+    if(!text||!global.OneToneVoiceEnd) return text;
+    var lists=null;
+    if(inputId==='voiceCancelCustomInput'&&global.OneToneVoiceEnd.currentCancelPhraseLists){
+      lists=global.OneToneVoiceEnd.currentCancelPhraseLists();
+    }else if(inputId==='voiceEndCustomInput'&&global.OneToneVoiceEnd.currentEndPhraseLists){
+      lists=global.OneToneVoiceEnd.currentEndPhraseLists();
+    }else if(inputId==='voiceSendCustomInput'&&global.OneToneVoiceEnd.currentSendPhraseLists){
+      lists=global.OneToneVoiceEnd.currentSendPhraseLists();
+    }
+    if(!lists) return text;
+    var pool=[].concat(lists.zh||[],lists.en||[]);
+    var norm=function(s){ return String(s||'').replace(/[^\u4e00-\u9fffA-Za-z0-9]/g,'').toLowerCase(); };
+    var hay=norm(text);
+    var best='';
+    pool.forEach(function(p){
+      var n=norm(p);
+      if(!n||hay.indexOf(n)<0) return;
+      if(n.length>best.length) best=String(p||'').trim();
+    });
+    return best||text;
+  }
+
+  function fillHeardIntoInput(input,text,inputId){
+    if(!input||!text) return '';
+    var next=preferConfiguredPhrase(text,inputId);
+    input.value=next;
+    input.focus();
+    input.select&&input.select();
+    return next;
+  }
+
   function heardFingerprint(res){
     if(!res) return '';
     return [
@@ -74,11 +108,9 @@
     if(!input) return '';
     var text=capturePhraseFromVoice();
     if(!text) return '';
-    input.value=text;
-    input.focus();
-    input.select&&input.select();
+    fillHeardIntoInput(input,text,inputId);
     hooks().toast&&hooks().toast(t('voicePhraseListenFilled'));
-    return text;
+    return input.value;
   }
 
   function fillInputAsync(inputId,btn){
@@ -101,12 +133,10 @@
         var fp=heardFingerprint(res);
         var text=pickHeardText(res);
         if(text&&fp!==baseline){
-          input.value=text;
-          input.focus();
-          input.select&&input.select();
+          fillHeardIntoInput(input,text,inputId);
           setListenBtnBusy(btn,false);
           hooks().toast&&hooks().toast(t('voicePhraseListenFilled'));
-          resolve(text);
+          resolve(input.value);
           return;
         }
         if(Date.now()>=deadline){

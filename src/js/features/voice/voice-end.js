@@ -1203,6 +1203,9 @@
     removeCustomSendPhrase:function(phrase){ removeCustomBundlePhrase('send',phrase); },
     persistCancelPhrases:persistCancelPhrases,
     persistSendPhrases:persistSendPhrases,
+    currentCancelPhraseLists:currentCancelPhraseLists,
+    currentSendPhraseLists:currentSendPhraseLists,
+    currentEndPhraseLists:currentEndPhraseLists,
 
     testStop:testVoiceEndStop,
 

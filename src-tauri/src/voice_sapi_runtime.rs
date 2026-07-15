@@ -114,11 +114,12 @@ pub fn drain_voice_sapi_events(state: &Arc<AppState>, app: &AppHandle) {
                 confidence: _,
                 final_result,
             } => {
-                *state.voice_sapi_last_heard.lock() = if final_result {
-                    text
+                if final_result {
+                    *state.voice_sapi_last_heard.lock() = text.clone();
+                    crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
                 } else {
-                    format!("{text}（还在听…）")
-                };
+                    *state.voice_sapi_last_heard.lock() = format!("{text}（还在听…）");
+                }
             }
             VoiceSapiEvent::Trace(message) => {
                 *state.voice_sapi_last_skip.lock() = message;

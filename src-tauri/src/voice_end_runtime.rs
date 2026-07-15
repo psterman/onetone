@@ -726,11 +726,21 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
     let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode) = {
         let cfg = state.cfg.lock();
         if !cfg.voice_end.enabled {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                "session phrase match skipped: voice_end disabled",
+            );
             return;
         }
         let send_mode = cfg.voice_end.send_mode.clone();
         let snapshot = state.voice_session_snapshot.lock();
         let Some(snap) = snapshot.as_ref() else {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                "session phrase match skipped: no session snapshot",
+            );
             return;
         };
         (
@@ -845,6 +855,14 @@ fn refresh_coach_hud(app: Option<&AppHandle>, state: &AppState) {
 
 pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if session_state(state) != "dictating" {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "cancel phrase ignored (session={}): {phrase}",
+                session_state(state)
+            ),
+        );
         return;
     }
     crate::runtime_event::publish_runtime_event(
@@ -855,6 +873,7 @@ pub fn handle_cancel_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str
         phrase,
         None,
     );
+    crate::app_log::log_line(state, "voice", &format!("cancel phrase matched: {phrase}"));
     cancel_dictation_session(state, Some(app), phrase);
 }
 
@@ -1262,6 +1281,7 @@ pub fn voice_end_set_phrases(
         if cfg.voice_end.phrases_en.is_empty() {
             cfg.voice_end.phrases_en = crate::config::default_voice_end_phrases_en();
         }
+        cfg.voice_end.enabled = true;
         cfg.normalize();
         crate::config::save_config(&cfg);
     }
@@ -1283,6 +1303,8 @@ pub fn voice_end_set_cancel_phrases(
         if cfg.voice_end.cancel_phrases_en.is_empty() {
             cfg.voice_end.cancel_phrases_en = crate::config::default_voice_end_cancel_phrases_en();
         }
+        // Configuring cancel phrases implies end-session control should be on.
+        cfg.voice_end.enabled = true;
         cfg.normalize();
         crate::config::save_config(&cfg);
     }
@@ -1382,6 +1404,18 @@ mod tests {
         let en: Vec<String> = vec![];
         assert_eq!(
             matches_cancel_phrase(phrase, &zh, &en),
+            Some(phrase.into())
+        );
+    }
+
+    #[test]
+    fn cancel_phrase_matches_embedded_utterance() {
+        let phrase = "\u{53d6}\u{6d88}\u{8f93}\u{5165}";
+        let zh = vec![phrase.into()];
+        let en: Vec<String> = vec![];
+        let text = "\u{4f60}\u{597d}\u{ff0c}\u{6211}\u{8fd8}\u{5728}\u{60f3}\u{4e00}\u{4e9b}\u{4e1c}\u{897f}\u{53d6}\u{6d88}\u{8f93}\u{5165}\u{3002}";
+        assert_eq!(
+            matches_cancel_phrase(text, &zh, &en),
             Some(phrase.into())
         );
     }

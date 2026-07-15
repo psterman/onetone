@@ -397,9 +397,24 @@
       return;
     }
     if(draft&&draft.state==='label'){
+      var hostReady=ensureHost();
+      var existingInput=$(roleCfg().labelInputId);
+      // External refreshes must not rebuild the name field mid-typing.
+      if(hostReady&&existingInput&&hostReady.contains(existingInput)) return;
       host.innerHTML=renderLabelEditor(draft.pendingLabel||'');
       var input=$(roleCfg().labelInputId);
-      if(input) global.setTimeout(function(){ try{ input.focus(); input.select(); }catch(_e){} },30);
+      if(input){
+        if(!input.dataset.acousticLabelBound){
+          input.dataset.acousticLabelBound='1';
+          input.addEventListener('input',function(){
+            if(draft&&draft.state==='label') draft.pendingLabel=String(input.value||'');
+          });
+        }
+        if(!draft.labelBootstrapped){
+          draft.labelBootstrapped=true;
+          global.setTimeout(function(){ try{ input.focus(); input.select(); }catch(_e){} },30);
+        }
+      }
       return;
     }
     if(draft&&draft.state==='done'){
@@ -733,7 +748,16 @@
   }
 
   function paintFromOutside(){
-    if(draft&&(draft.state==='recording'||draft.state==='building'||draft.state==='label')){
+    if(draft&&draft.state==='label'){
+      // Keep the live name input; status polls must not wipe typing.
+      if(draft.role) setActiveRole(draft.role);
+      var host=ensureHost();
+      var input=$(roleCfg().labelInputId);
+      if(host&&input&&host.contains(input)) return;
+      paint();
+      return;
+    }
+    if(draft&&(draft.state==='recording'||draft.state==='building')){
       paint();
       return;
     }

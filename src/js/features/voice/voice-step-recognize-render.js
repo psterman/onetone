@@ -206,6 +206,11 @@
       if(kind!=='sound') return;
       var api=global.OneToneVoiceControlAcoustic;
       if(!api) return;
+      if(api.isCalibrating&&api.isCalibrating()){
+        // Avoid recreating the name field while the user is typing a sample label.
+        if(api.bindEvents) api.bindEvents(role);
+        return;
+      }
       if(api.bindEvents) api.bindEvents(role);
       if(api.render) api.render(role);
     }
