@@ -130,6 +130,13 @@
       +'</button>';
   }
 
+  function engineName(vm){
+    var engineRaw=String(vm&&vm.engineLine||'').trim();
+    if(!engineRaw) return '—';
+    var split=engineRaw.indexOf(' · ');
+    return split>=0?engineRaw.slice(0,split):engineRaw;
+  }
+
   function renderHowTo(vm){
     var host=$('wbHowTo');
     if(!host) return;
@@ -144,32 +151,12 @@
     var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
     var wakeAlt=phrases.length>1?phrases.slice(1,3).join(' · '):'—';
     var endLine=dash(vm&&vm.endPhraseLine);
-    var engineRaw=String(vm&&vm.engineLine||'').trim();
-    var engineMain='—';
-    if(engineRaw){
-      var split=engineRaw.indexOf(' · ');
-      engineMain=split>=0?engineRaw.slice(0,split):engineRaw;
-    }
-    var engineOn=vm&&vm.summary&&vm.summary.engine&&vm.summary.engine!=='off';
-    var engOk=engineOn&&vm.summary.statusMode!=='error'&&vm.engineStatus!==t('homeV9EngineOffline');
-    var statusLine=engineOn
-      ?(engOk?t('homeWbHeroEngineOnline'):t('homeWbVoiceOffline'))
-      :t('homeWbVoiceOff');
-    var latency=vm&&vm.perf&&vm.perf.keyLatency&&vm.perf.keyLatency!=='—'
-      ?vm.perf.keyLatency
-      :(vm&&vm.perf&&vm.perf.sendLatency&&vm.perf.sendLatency!=='—'
-        ?vm.perf.sendLatency
-        :'');
-    if(engOk&&latency) statusLine+=' · '+latency;
-    var mic=dash(vm&&vm.micLabel);
 
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
-    var engIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
 
     host.innerHTML=
-      '<div class="wb-howto-head"><span class="wb-howto-title">'+esc(t('homeWbHowToTitle'))+'</span></div>'
-      +'<div class="wb-howto-grid">'
+      '<div class="wb-howto-grid wb-howto-grid--duo">'
       +howToCardHtml({
         kind:'keys',
         active:mode==='keys',
@@ -195,19 +182,6 @@
         tip:t('homeWbHowToVoiceTip'),
         icon:voiceIcon,
         art:'<span class="wb-howto-bubbles" aria-hidden="true"></span>'
-      })
-      +howToCardHtml({
-        kind:'engine',
-        active:false,
-        title:t('homeWbHowToEngineTitle'),
-        value:engineMain,
-        meta1Lbl:t('homeWbHowToStatus'),
-        meta1Val:statusLine,
-        meta2Lbl:t('homeWbHowToMic'),
-        meta2Val:mic,
-        tip:t('homeWbHowToEngineTip'),
-        icon:engIcon,
-        art:'<span class="wb-howto-radar" aria-hidden="true"></span>'
       })
       +'</div>';
   }
@@ -246,19 +220,24 @@
     host.innerHTML=items.map(function(m){ return habitCardHtml(m,activeId); }).join('');
   }
 
-  function scenarioPillHtml(m,activeId){
+  function sceneDesc(m){
+    if(m&&typeof m.description==='string'&&m.description.trim()) return m.description.trim();
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
+      var pair=global.OneToneHomeScheme.pairLine(m);
+      if(pair&&pair!=='—') return pair;
+    }
+    return '—';
+  }
+
+  function sceneCardHtml(m,activeId){
     var active=m.id===activeId;
     var name=global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—';
-    var meta=global.OneToneHomeScheme?global.OneToneHomeScheme.pairLine(m):'—';
-    var status=active?t('homeWbScenarioActive'):t('homeWbScenarioSwitch');
-    return '<button type="button" class="wb-scenario-pill'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
-      +'<span class="wb-scenario-pill-main">'
-      +'<span class="wb-scenario-pill-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg></span>'
-      +'<span class="wb-scenario-pill-text">'
-      +'<span class="wb-scenario-pill-name">'+esc(name)+'</span>'
-      +'<span class="wb-scenario-pill-meta">'+esc(meta)+'</span>'
-      +'</span></span>'
-      +'<span class="wb-scenario-pill-status">'+esc(status)+'</span>'
+    return '<button type="button" class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
+      +'<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg></span>'
+      +'<span class="wb-scene-card-body">'
+      +'<span class="wb-scene-card-name">'+esc(name)+'</span>'
+      +'<span class="wb-scene-card-desc">'+esc(sceneDesc(m))+'</span>'
+      +'</span>'
       +'</button>';
   }
 
@@ -266,21 +245,16 @@
     var host=$('wbScenarioPanel');
     if(!host) return;
     var activeId=activeSceneId();
-    var items=sortedMappings().filter(function(m){ return !!m.enabled; }).slice(0,5);
-    var count=items.length;
-    var html=
-      '<div class="wb-panel-head">'
-      +'<span class="wb-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>'
-      +'<span>'+esc(t('homeWbScenarioTitle'))+'</span></span>'
-      +'<span class="wb-panel-badge">'+esc(t('homeWbScenarioCount').replace('{n}',String(count)))+'</span>'
-      +'</div>'
-      +'<div class="wb-scenario-list">';
-    if(!items.length){
-      html+='<div class="wb-habit-empty">'+esc(t('homeWbHabitEmpty'))+'</div>';
-    }else{
-      items.forEach(function(m){ html+=scenarioPillHtml(m,activeId); });
-    }
-    html+='</div>';
+    var items=sortedMappings().filter(function(m){ return !!m.enabled; }).slice(0,8);
+    var html='';
+    items.forEach(function(m){ html+=sceneCardHtml(m,activeId); });
+    html+='<button type="button" class="wb-scene-card wb-scene-card--new" id="wbHabitNew">'
+      +'<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'
+      +'<span class="wb-scene-card-body">'
+      +'<span class="wb-scene-card-name">'+esc(t('homeWbSceneNewHabit'))+'</span>'
+      +'<span class="wb-scene-card-desc">'+esc(t('homeWbSceneNewHabitDesc'))+'</span>'
+      +'</span>'
+      +'</button>';
     host.innerHTML=html;
   }
 
@@ -301,6 +275,7 @@
         return '<span class="wb-voice-phrase'+(i>1?' is-muted':'')+'">'+esc(p)+'</span>';
       }).join('')
       :'<span class="wb-voice-phrase is-muted">'+esc(t('homeWbVoicePhrasesEmpty'))+'</span>';
+    var eng=engineName(vm);
 
     host.innerHTML=
       '<div class="wb-panel-head">'
@@ -308,9 +283,9 @@
       +'<span>'+esc(t('homeWbMicCardTitle'))+'</span></span>'
       +(listening?'<span class="wb-panel-badge is-live">'+esc(t('homeWbVoiceListening'))+'</span>':'')
       +'</div>'
-      +'<div class="wb-voice-phrases">'
-      +'<span class="wb-voice-phrases-lbl">'+esc(t('homeWbVoicePhrases'))+'</span>'
-      +'<div class="wb-voice-phrase-list">'+phraseHtml+'</div>'
+      +'<div class="wb-mic-engine-row">'
+      +'<span class="wb-mic-engine-lbl">'+esc(t('homeWbHowToEngineTitle'))+'</span>'
+      +'<strong class="wb-mic-engine-name">'+esc(eng)+'</strong>'
       +'</div>'
       +'<div class="wb-voice-mic">'
       +'<div class="wb-voice-mic-head">'
@@ -321,12 +296,15 @@
       +'<div class="wb-voice-mic-name"><span>'+esc(vm.micLabel||t('homeLiveMicUnset'))+'</span>'
       +'<span class="wb-voice-mic-default">'+esc(t('homeWbVoiceMicDefault'))+'</span></div>'
       +'<div class="mic-level-bars mic-level-bars--home" id="wbHomeMicLevel" aria-hidden="true">'+buildHomeMicBars()+'</div>'
-      +'</div></div>';
+      +'</div></div>'
+      +'<div class="wb-voice-phrases wb-voice-phrases--hover">'
+      +'<span class="wb-voice-phrases-lbl">'+esc(t('homeWbVoicePhrases'))+'</span>'
+      +'<div class="wb-voice-phrase-list">'+phraseHtml+'</div>'
+      +'</div>';
   }
 
   function renderAll(vm){
     renderHowTo(vm);
-    renderHabitGrid(vm);
     renderScenarioPanel(vm);
     renderMicCard(vm);
   }

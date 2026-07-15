@@ -78,10 +78,12 @@
 
   function updateMicLevelBars(deviceId,level){
     var targets=resolveMicLevelTargets(deviceId);
-    if(!targets.length) return;
     homeMicLastLevel=Number(level)||0;
     micWavePhase+=0.38;
     var norm=Math.max(0,Math.min(1,homeMicLastLevel/48));
+    var hero=$('wbHero')||document.documentElement;
+    if(hero&&hero.style) hero.style.setProperty('--wb-mic-level',norm.toFixed(3));
+    if(!targets.length) return;
     targets.forEach(function(card){
       var wrap=card.classList&&card.classList.contains('mic-level-bars')
         ?card
