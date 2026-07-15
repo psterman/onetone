@@ -136,39 +136,32 @@
                   </div>
                   <div class="wb-dashboard-grid">
                     <div class="wb-dashboard-main">
-                      <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbTriggerTitle">
+                      <section class="wb-trigger-card" id="wbTriggerCard" aria-labelledby="wbHeroOrbHint">
                         <div class="wb-trigger-head">
                           <div class="wb-trigger-status" id="wbTriggerStatus">状态 · 准备好了</div>
                           <button type="button" class="wb-trigger-edit" id="wbTriggerEdit" title="改设置" aria-label="改设置">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
                           </button>
                         </div>
-                        <div class="wb-trigger-main">
-                          <div class="wb-trigger-hero-wrap">
-                            <div class="wb-trigger-hero-glow" aria-hidden="true"></div>
-                            <button type="button" class="wb-trigger-hero" id="wbTriggerHero" aria-label="">
-                              <span class="wb-trigger-hero-label" id="wbTriggerHeroLabel">—</span>
-                              <span class="wb-trigger-hero-icon" id="wbTriggerHeroIcon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                        <div class="wb-hero" id="wbHero">
+                          <div class="wb-hero-orb-wrap">
+                            <div class="wb-hero-orb-glow" aria-hidden="true"></div>
+                            <button type="button" class="wb-hero-orb" id="wbHeroOrb" data-mode="voice" aria-label="">
+                              <span class="wb-hero-orb-ring" aria-hidden="true"></span>
+                              <span class="wb-hero-orb-icon" id="wbHeroOrbIcon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                               </span>
-                              <span class="wb-trigger-hero-hint" id="wbTriggerHeroHint" data-i18n="homeWbTriggerHeroHint">点一下打开按键设置</span>
                             </button>
+                            <span class="wb-hero-orb-hint" id="wbHeroOrbHint" data-i18n="homeWbHeroHintVoice">点一下打开语音设置</span>
                           </div>
-                          <div class="wb-trigger-info">
-                            <h2 class="wb-trigger-title" id="wbTriggerTitle">—</h2>
-                            <div class="wb-trigger-meta" id="wbTriggerMeta">
-                              <span class="wb-trigger-meta-text" id="wbTriggerMetaText">—</span>
-                            </div>
+                          <div class="wb-hero-pills" id="wbHeroPills" role="list"></div>
+                          <div class="wb-hero-modes" role="tablist" aria-label="激活方式">
+                            <button type="button" class="wb-hero-mode is-active" id="wbHeroModeVoice" role="tab" aria-selected="true" data-wb-hero-mode="voice" data-i18n="homeWbHeroModeVoice">语音激活</button>
+                            <button type="button" class="wb-hero-mode" id="wbHeroModeKeys" role="tab" aria-selected="false" data-wb-hero-mode="keys" data-i18n="homeWbHeroModeKeys">按键激活</button>
                           </div>
+                          <div class="wb-hero-stats" id="wbHeroStats"></div>
                         </div>
                         <div class="wb-pipeline" id="wbPipeline" aria-label="怎么用"></div>
-                        <div class="wb-trigger-wave" id="wbTriggerWave" aria-hidden="true">
-                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                          <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
-                        </div>
                       </section>
                       <section class="wb-habit-section">
                         <div class="wb-habit-head">
@@ -2926,6 +2919,7 @@
   <script src="js/features/home/home-workbench-cmdk.js"></script>
   <script src="js/features/home/home-workbench-alerts.js"></script>
   <script src="js/features/home/home-workbench-panels.js"></script>
+  <script src="js/features/home/home-workbench-stats.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>
   <script src="js/features/home/home-hooks.js"></script>

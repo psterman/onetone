@@ -4,6 +4,23 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   var bound=false;
+  var HERO_MODE_KEY='onetone.wbHeroMode';
+  var heroMode='voice';
+  var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+  var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
+
+  function readHeroMode(){
+    try{
+      var raw=String(sessionStorage.getItem(HERO_MODE_KEY)||'').toLowerCase();
+      if(raw==='keys'||raw==='voice') return raw;
+    }catch(_){}
+    return 'voice';
+  }
+
+  function writeHeroMode(mode){
+    heroMode=mode==='keys'?'keys':'voice';
+    try{ sessionStorage.setItem(HERO_MODE_KEY,heroMode); }catch(_){}
+  }
 
   function openSettings(opts){
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.open(opts||{panel:'basic'});
@@ -204,23 +221,130 @@
   }
 
   function renderTriggerHero(vm){
-    var hero=$('wbTriggerHero');
-    var label=$('wbTriggerHeroLabel');
-    var hint=$('wbTriggerHeroHint');
-    if(!hero) return;
-    var trig=vm.triggerKey||'';
-    var unset=trig===t('homeLiveUnset')||!trig;
-    if(label){
-      if(unset) label.textContent='—';
-      else label.textContent=trig.length>8?trig.slice(0,7)+'…':trig;
+    renderHero(vm);
+  }
+
+  function pillHtml(label,extraClass,dotClass){
+    return '<span class="wb-hero-pill'+(extraClass?' '+extraClass:'')+'" role="listitem">'
+      +(dotClass?'<span class="wb-hero-pill-dot '+dotClass+'" aria-hidden="true"></span>':'')
+      +'<span>'+esc(label)+'</span></span>';
+  }
+
+  function renderHeroPills(vm,stats){
+    var host=$('wbHeroPills');
+    if(!host) return;
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var listening=!paused&&(dictating||(vm.summary&&vm.summary.statusMode==='listening'));
+    var html='';
+    if(paused) html+=pillHtml(t('homeWbLivePreviewPaused'),'is-warn','is-warn');
+    else if(listening) html+=pillHtml(t('homeWbLivePreviewListening'),'is-live','is-live');
+    else html+=pillHtml(t('homeWbLivePreviewStandby'),'','is-standby');
+
+    var engineOn=vm.summary&&vm.summary.engine&&vm.summary.engine!=='off';
+    if(engineOn){
+      var engOk=vm.summary.statusMode!=='error'&&vm.engineStatus!==t('homeV9EngineOffline');
+      html+=pillHtml(engOk?t('homeWbHeroEngineOnline'):t('homeWbVoiceOffline'),engOk?'is-ok':'is-warn',engOk?'is-ok':'is-warn');
+      var engineLine=String(vm.engineLine||'').trim();
+      if(engineLine){
+        var split=engineLine.indexOf(' · ');
+        html+=pillHtml(split>=0?engineLine.slice(0,split):engineLine,'','');
+      }
+    }else{
+      html+=pillHtml(t('homeWbVoiceOff'),'is-muted','');
     }
-    if(hint) hint.textContent=dictatingHint(vm);
-    hero.setAttribute('aria-label',unset?t('homeWbTriggerHeroUnset'):trig);
+
+    if(heroMode==='keys'){
+      var trig=vm.triggerKey||'';
+      if(trig&&trig!==t('homeLiveUnset')) html+=pillHtml(trig,'is-key','');
+    }else if(vm.micLabel&&vm.micLabel!==t('homeLiveMicUnset')&&vm.micLabel!==t('homeLiveMicUnknown')){
+      html+=pillHtml(vm.micLabel,'is-mic','');
+    }
+
+    if(stats&&stats.latency&&stats.latency!=='—') html+=pillHtml(stats.latency,'is-latency','');
+    host.innerHTML=html;
+  }
+
+  function renderHeroStats(stats){
+    var host=$('wbHeroStats');
+    if(!host) return;
+    var cells=[
+      {lbl:t('homeWbHeroStatUptime'),val:stats.uptime},
+      {lbl:t('homeWbHeroStatOps'),val:stats.opCount},
+      {lbl:t('homeWbHeroStatApp'),val:stats.topTarget},
+      {lbl:t('homeWbHeroStatShortcut'),val:stats.topShortcut}
+    ];
+    host.innerHTML=cells.map(function(c){
+      return '<div class="wb-hero-stat">'
+        +'<span class="wb-hero-stat-lbl">'+esc(c.lbl)+'</span>'
+        +'<strong class="wb-hero-stat-val">'+esc(c.val||'—')+'</strong>'
+        +'</div>';
+    }).join('');
+  }
+
+  function renderHero(vm){
+    var mode=heroMode==='keys'?'keys':'voice';
+    var hero=$('wbHero');
+    var orb=$('wbHeroOrb');
+    var icon=$('wbHeroOrbIcon');
+    var hint=$('wbHeroOrbHint');
+    var modeVoice=$('wbHeroModeVoice');
+    var modeKeys=$('wbHeroModeKeys');
+    var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    if(hero){
+      hero.classList.toggle('is-mode-voice',mode==='voice');
+      hero.classList.toggle('is-mode-keys',mode==='keys');
+      hero.classList.toggle('is-live',live);
+      hero.classList.toggle('is-paused',paused);
+    }
+    if(orb){
+      orb.setAttribute('data-mode',mode);
+      orb.classList.toggle('is-live',live);
+      orb.classList.toggle('is-paused',paused);
+      orb.setAttribute('aria-label',mode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice'));
+    }
+    if(icon){
+      var next=mode==='keys'?KEY_SVG:MIC_SVG;
+      if(icon.getAttribute('data-icon')!==mode){
+        icon.classList.add('is-switching');
+        icon.setAttribute('data-icon',mode);
+        icon.innerHTML=next;
+        requestAnimationFrame(function(){ icon.classList.remove('is-switching'); });
+      }
+    }
+    if(hint){
+      hint.textContent=live
+        ?t('homeWbTriggerHeroLive')
+        :(mode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice'));
+    }
+    if(modeVoice){
+      modeVoice.classList.toggle('is-active',mode==='voice');
+      modeVoice.setAttribute('aria-selected',mode==='voice'?'true':'false');
+    }
+    if(modeKeys){
+      modeKeys.classList.toggle('is-active',mode==='keys');
+      modeKeys.setAttribute('aria-selected',mode==='keys'?'true':'false');
+    }
+    var stats=global.OneToneHomeWorkbenchStats
+      ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
+      :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
+    renderHeroPills(vm,stats);
+    renderHeroStats(stats);
+  }
+
+  function setHeroMode(mode,opts){
+    opts=opts||{};
+    var next=mode==='keys'?'keys':'voice';
+    if(next===heroMode&&!opts.force) return;
+    writeHeroMode(next);
+    if(opts.render!==false) render();
   }
 
   function dictatingHint(vm){
     var live=vm.vpState==='DICTATING'||!!vm.summary.dictating;
-    return live?t('homeWbTriggerHeroLive'):t('homeWbTriggerHeroHint');
+    if(live) return t('homeWbTriggerHeroLive');
+    return heroMode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice');
   }
 
   function renderCommandCard(vm){
@@ -230,11 +354,11 @@
       card.classList.toggle('is-live',live);
       card.classList.toggle('is-paused',!!(vm.runtime&&vm.runtime.paused));
       card.classList.toggle('is-error',!!(vm.hs&&vm.hs.statusMode==='error'));
+      card.classList.toggle('is-mode-keys',heroMode==='keys');
+      card.classList.toggle('is-mode-voice',heroMode==='voice');
     }
     setText($('wbTriggerStatus'),t('homeWbTriggerLabel')+' · '+triggerStatusLine(vm));
-    setText($('wbTriggerTitle'),triggerCardTitle(vm));
-    setText($('wbTriggerMetaText'),triggerMetaLine(vm));
-    renderTriggerHero(vm);
+    renderHero(vm);
     renderLiveText(vm);
     var dictating=vm.vpState==='DICTATING'||!!vm.summary.dictating;
     var actions=$('wbTriggerActions');
@@ -253,7 +377,6 @@
       cancelBtn.disabled=!dictating;
       if(dictating) cancelBtn.textContent=t('homeWbBtnCancel');
     }
-    renderTriggerHero(vm);
   }
 
   function esc(s){
@@ -528,6 +651,7 @@
   function bindOnce(){
     if(bound) return;
     bound=true;
+    heroMode=readHeroMode();
     bindNav();
     bindPanelActions();
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
@@ -583,18 +707,20 @@
     var editBtn=$('wbTriggerEdit');
     if(editBtn){
       editBtn.onclick=function(){
-        var vm=global.OneToneHomeV9.buildViewModel();
-        var id=vm.m&&vm.m.id?vm.m.id:null;
-        openSettings({panel:'keys',focus:id});
+        openHeroSettings();
       };
     }
-    var heroBtn=$('wbTriggerHero');
-    if(heroBtn){
-      heroBtn.onclick=function(){
-        var vm=global.OneToneHomeV9.buildViewModel();
-        var id=vm.m&&vm.m.id?vm.m.id:null;
-        openSettings({panel:'keys',focus:id});
-      };
+    var heroOrb=$('wbHeroOrb');
+    if(heroOrb){
+      heroOrb.onclick=function(){ openHeroSettings(); };
+    }
+    var heroModes=$('wbHero');
+    if(heroModes){
+      heroModes.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-wb-hero-mode]');
+        if(!btn) return;
+        setHeroMode(btn.getAttribute('data-wb-hero-mode')||'voice');
+      });
     }
     var qNew=$('wbHabitNew');
     if(qNew) qNew.onclick=function(){ openSettings({panel:'habits',habitWizard:true}); };
@@ -616,6 +742,13 @@
     if(global.OneToneHomeV9.startForegroundPoll) global.OneToneHomeV9.startForegroundPoll();
   }
 
+  function openHeroSettings(){
+    var vm=global.OneToneHomeV9.buildViewModel();
+    var id=vm.m&&vm.m.id?vm.m.id:null;
+    if(heroMode==='keys') openSettings({panel:'keys',focus:id});
+    else openSettings({panel:'voiceWake'});
+  }
+
   function applyLang(){
     var shell=$('appWorkbenchShell')||$('homeWorkbench');
     if(shell){
@@ -634,8 +767,10 @@
       (global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused)
         ?t('homeWbListenResume')
         :t('homeWbListenPause'));
-    var heroHint=$('wbTriggerHeroHint');
-    if(heroHint) heroHint.textContent=t('homeWbTriggerHeroHint');
+    setText($('wbHeroModeVoice'),t('homeWbHeroModeVoice'));
+    setText($('wbHeroModeKeys'),t('homeWbHeroModeKeys'));
+    setText($('wbHeroOrbHint'),
+      heroMode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice'));
     var triggerEdit=$('wbTriggerEdit');
     if(triggerEdit){
       triggerEdit.title=t('homeWbPipelineEdit');
