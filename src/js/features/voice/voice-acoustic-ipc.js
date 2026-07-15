@@ -1,8 +1,11 @@
 (function(global){
   'use strict';
 
-  var RECORD_TIMEOUT_MS=12000;
+  var DEFAULT_RECORD_TIMEOUT_MS=8000;
+  var DEFAULT_MANUAL_MAX_MS=3500;
+  var INVOKE_BUFFER_MS=4000;
   var backendReady=null;
+  var levelUnlisten=null;
 
   function ipc(){
     return global.OneToneIpc;
@@ -17,13 +20,21 @@
   function invokeTimeout(name,args,ms){
     var api=ipc();
     if(api&&typeof api.invokeTimeout==='function'){
-      return api.invokeTimeout(name,args||{},ms||RECORD_TIMEOUT_MS);
+      return api.invokeTimeout(name,args||{},ms);
     }
     return invoke(name,args);
   }
 
   function isAvailable(){
     return !!(ipc()&&typeof ipc().invoke==='function');
+  }
+
+  function tauriEventApi(){
+    try{
+      var t=global.__TAURI__;
+      if(t&&t.event&&typeof t.event.listen==='function') return t.event;
+    }catch(_e){}
+    return null;
   }
 
   function probeBackend(){
@@ -46,14 +57,88 @@
     return invoke('cmd_acoustic_voice_command_status',{});
   }
 
-  // Suspend only quiets the acoustic matcher (backend). Engines keep running
-  // until MicLease in record_once; do NOT call pause/set_enabled here.
+  function preflight(){
+    return invoke('cmd_acoustic_voice_command_preflight',{});
+  }
+
   function setSuspend(on){
     return invoke('cmd_acoustic_voice_command_set_suspend',{suspended:!!on});
   }
 
-  function recordOnce(){
-    return invokeTimeout('cmd_acoustic_voice_command_record_once',{},RECORD_TIMEOUT_MS);
+  function recordStart(opts){
+    opts=opts||{};
+    var sessionId=String(opts.sessionId||'').trim();
+    if(!sessionId) return Promise.reject(new Error('sessionId required'));
+    // Cap wait so UI never sits forever on「正在打开麦克风」.
+    return invokeTimeout('cmd_acoustic_voice_command_record_start',{
+      sessionId:sessionId
+    },10000).catch(function(err){
+      var msg=err&&err.message?String(err.message):'';
+      if(msg.indexOf('timeout')>=0){
+        // Best-effort abort of a stuck open (IPC may still finish later).
+        return recordCancel({sessionId:sessionId}).then(function(){
+          return {ok:false,messageKey:'habitAcousticCmdMicBusy',reason:'timeout'};
+        });
+      }
+      throw err;
+    });
+  }
+
+  function recordStop(opts){
+    opts=opts||{};
+    var sessionId=String(opts.sessionId||'').trim();
+    var manualMax=Number(opts.manualMaxMs)||DEFAULT_MANUAL_MAX_MS;
+    return invokeTimeout('cmd_acoustic_voice_command_record_stop',{
+      sessionId:sessionId
+    },manualMax+INVOKE_BUFFER_MS);
+  }
+
+  function recordCancel(opts){
+    opts=opts||{};
+    var sessionId=String(opts.sessionId||'').trim();
+    // Empty id still hits backend so parked multi-take lease can be released.
+    return invoke('cmd_acoustic_voice_command_record_cancel',{
+      sessionId:sessionId||''
+    }).catch(function(){
+      return {ok:true};
+    });
+  }
+
+  /** @deprecated Prefer recordStart/Stop; kept for backward compatibility. */
+  function recordOnce(opts){
+    opts=opts||{};
+    var sessionId=String(opts.sessionId||'').trim();
+    var timeoutMs=Number(opts.recordTimeoutMs)||DEFAULT_RECORD_TIMEOUT_MS;
+    var args={};
+    if(sessionId) args.sessionId=sessionId;
+    return invokeTimeout('cmd_acoustic_voice_command_record_once',args,timeoutMs+INVOKE_BUFFER_MS);
+  }
+
+  function unlistenLevel(){
+    if(typeof levelUnlisten==='function'){
+      try{ levelUnlisten(); }catch(_e){}
+    }
+    levelUnlisten=null;
+  }
+
+  function listenLevel(handler){
+    unlistenLevel();
+    var ev=tauriEventApi();
+    if(!ev){
+      return Promise.resolve(function(){});
+    }
+    return ev.listen('acoustic_record_level',function(event){
+      if(typeof handler!=='function') return;
+      handler(event&&event.payload!=null?event.payload:event);
+    }).then(function(unlisten){
+      levelUnlisten=typeof unlisten==='function'?unlisten:null;
+      return unlisten;
+    }).catch(function(err){
+      if(typeof console!=='undefined'&&console.warn){
+        console.warn('[acoustic] listen level failed',err);
+      }
+      return function(){};
+    });
   }
 
   function buildFromSamples(samples,opts){
@@ -72,9 +157,9 @@
     if(!res) return;
     if(typeof console!=='undefined'&&console.debug){
       if(res.debugSummary){
-        console.debug('[acoustic record_once debugSummary]',res.debugSummary);
+        console.debug('[acoustic record debugSummary]',res.debugSummary);
       }else if(!res.ok){
-        console.debug('[acoustic record_once failed]',res);
+        console.debug('[acoustic record failed]',res);
       }
     }
   }
@@ -83,9 +168,18 @@
     isAvailable:isAvailable,
     probeBackend:probeBackend,
     status:status,
+    preflight:preflight,
     setSuspend:setSuspend,
+    recordStart:recordStart,
+    recordStop:recordStop,
+    recordCancel:recordCancel,
     recordOnce:recordOnce,
+    listenLevel:listenLevel,
+    unlistenLevel:unlistenLevel,
     buildFromSamples:buildFromSamples,
-    logDebugSummary:logDebugSummary
+    logDebugSummary:logDebugSummary,
+    DEFAULT_RECORD_TIMEOUT_MS:DEFAULT_RECORD_TIMEOUT_MS,
+    DEFAULT_MANUAL_MAX_MS:DEFAULT_MANUAL_MAX_MS,
+    INVOKE_BUFFER_MS:INVOKE_BUFFER_MS
   };
 })((typeof window!=='undefined')?window:globalThis);

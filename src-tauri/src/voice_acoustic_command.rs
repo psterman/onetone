@@ -24,6 +24,8 @@ pub const MIN_SPEECH_MS: u32 = 450;
 /// Prefer not to end capture until speech reaches this length.
 pub const PREFER_SPEECH_MS: u32 = 700;
 pub const MAX_SPEECH_MS: u32 = 2000;
+/// Hard cap for manual calibration capture (user forgot to stop). Separate from MAX_SPEECH_MS.
+pub const MANUAL_MAX_MS: u32 = 3500;
 pub const RECORD_TIMEOUT_MS: u32 = 8000;
 pub const RUNTIME_COOLDOWN_MS: u64 = 1500;
 
@@ -270,11 +272,36 @@ pub fn extract_mfcc_from_pcm_f32(pcm: &[f32], sample_rate: u32) -> Option<Acoust
     })
 }
 
+/// Duration handling after energy segmentation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DurationPolicy {
+    /// Truncate to MAX_SPEECH_MS for features (auto + manual enrol).
+    TruncateToMax,
+}
+
 /// Record pipeline helper: segment + validate duration + extract features.
 pub fn extract_sample_from_pcm_with_segmenter(
     pcm: &[f32],
     sample_rate: u32,
     segmenter: &dyn SpeechSegmenter,
+) -> Result<(AcousticVoiceCommandSample, RecordDebugSummary), RecordReason> {
+    extract_sample_from_pcm_with_policy(pcm, sample_rate, segmenter, DurationPolicy::TruncateToMax)
+}
+
+/// Manual calibration: same truncation as auto, but exposes raw length for UI warnings.
+pub fn extract_sample_from_pcm_manual(
+    pcm: &[f32],
+    sample_rate: u32,
+    segmenter: &dyn SpeechSegmenter,
+) -> Result<(AcousticVoiceCommandSample, RecordDebugSummary), RecordReason> {
+    extract_sample_from_pcm_with_policy(pcm, sample_rate, segmenter, DurationPolicy::TruncateToMax)
+}
+
+fn extract_sample_from_pcm_with_policy(
+    pcm: &[f32],
+    sample_rate: u32,
+    segmenter: &dyn SpeechSegmenter,
+    _policy: DurationPolicy,
 ) -> Result<(AcousticVoiceCommandSample, RecordDebugSummary), RecordReason> {
     if pcm.is_empty() {
         return Err(RecordReason::NoSpeech);
@@ -284,7 +311,9 @@ pub fn extract_sample_from_pcm_with_segmenter(
     if seg.end_sample <= seg.start_sample {
         return Err(RecordReason::NoSpeech);
     }
-    if seg.duration_ms > MAX_SPEECH_MS {
+    let raw_speech_ms = seg.duration_ms;
+    let truncated = raw_speech_ms > MAX_SPEECH_MS;
+    if truncated {
         let max_samples = (MAX_SPEECH_MS as u64 * sample_rate as u64 / 1000) as usize;
         seg.end_sample = (seg.start_sample + max_samples).min(seg.end_sample).min(pcm.len());
         seg.duration_ms = ((seg.end_sample.saturating_sub(seg.start_sample)) as u64 * 1000
@@ -321,14 +350,15 @@ pub fn extract_sample_from_pcm_with_segmenter(
         quality_signals: Some(AcousticVoiceCommandQualitySignals {
             has_speech: true,
             too_short: false,
-            too_long: false,
+            too_long: truncated,
             sample_agreement: 1.0,
         }),
         created_at: now_ms(),
     };
     let debug = RecordDebugSummary {
         duration_ms,
-        speech_ms: seg.duration_ms,
+        // Preserve pre-truncate length so FE can warn without failing the take.
+        speech_ms: raw_speech_ms,
         rms,
         feature_frames,
     };

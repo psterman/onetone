@@ -466,17 +466,40 @@
       supervisor:supervisor
     };
   }
+  function applySupervisorEngineToConfig(desired){
+    desired=String(desired||'').trim().toLowerCase();
+    if(desired!=='vosk'&&desired!=='sapi'&&desired!=='kws'&&desired!=='none') return false;
+    const root=state().config;
+    if(!root) return false;
+    root.desiredEngine=desired;
+    const vosk=root.voiceVosk||root.voice_vosk||(root.voiceVosk={});
+    const sapi=root.voiceSapi||root.voice_sapi||(root.voiceSapi={});
+    const kws=root.voiceKws||root.voice_kws||(root.voiceKws={});
+    root.voiceVosk=vosk;
+    root.voiceSapi=sapi;
+    root.voiceKws=kws;
+    vosk.enabled=desired==='vosk';
+    sapi.enabled=desired==='sapi';
+    kws.enabled=desired==='kws';
+    return true;
+  }
+
   function syncVoiceSapiConfigFromStatus(res){
     if(!state().config||!res) return;
     const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
     state().config.voiceSapi=cfg;
-    const kws=state().config.voiceKws||state().config.voice_kws||{};
-    const vosk=state().config.voiceVosk||state().config.voice_vosk||{};
-    if(kws.enabled||vosk.enabled){
-      cfg.enabled=false;
-      return;
+    const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    if(desired){
+      applySupervisorEngineToConfig(desired);
+    }else{
+      const kws=state().config.voiceKws||state().config.voice_kws||{};
+      const vosk=state().config.voiceVosk||state().config.voice_vosk||{};
+      if(kws.enabled||vosk.enabled){
+        cfg.enabled=false;
+      }else{
+        cfg.enabled=!!res.enabled;
+      }
     }
-    cfg.enabled=!!res.enabled;
     if(voiceSapiPresetPending) cfg.phrases=hooks().cloneStringList(voiceSapiPresetPending);
     else if(Array.isArray(res.phrases)&&res.phrases.length) cfg.phrases=hooks().cloneStringList(res.phrases);
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
@@ -488,13 +511,18 @@
     if(!state().config||!res) return;
     const cfg=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
     state().config.voiceVosk=cfg;
-    const kws=state().config.voiceKws||state().config.voice_kws||{};
-    const sapi=state().config.voiceSapi||state().config.voice_sapi||{};
-    if(kws.enabled||sapi.enabled){
-      cfg.enabled=false;
-      return;
+    const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    if(desired){
+      applySupervisorEngineToConfig(desired);
+    }else{
+      const kws=state().config.voiceKws||state().config.voice_kws||{};
+      const sapi=state().config.voiceSapi||state().config.voice_sapi||{};
+      if(kws.enabled||sapi.enabled){
+        cfg.enabled=false;
+      }else{
+        cfg.enabled=!!res.enabled;
+      }
     }
-    cfg.enabled=!!res.enabled;
     const pending=pendingWakePhrases();
     if(pending) cfg.phrases=hooks().cloneStringList(pending);
     else if(Array.isArray(res.phrases)) cfg.phrases=hooks().cloneStringList(res.phrases);
@@ -508,14 +536,19 @@
     if(!state().config||!res) return;
     const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
     state().config.voiceKws=cfg;
-    cfg.enabled=!!res.enabled;
-    if(res.enabled){
-      const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
-      const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
-      state().config.voiceVosk=vosk;
-      state().config.voiceSapi=sapi;
-      vosk.enabled=false;
-      sapi.enabled=false;
+    const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    if(desired){
+      applySupervisorEngineToConfig(desired);
+    }else{
+      cfg.enabled=!!res.enabled;
+      if(res.enabled){
+        const vosk=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
+        const sapi=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+        state().config.voiceVosk=vosk;
+        state().config.voiceSapi=sapi;
+        vosk.enabled=false;
+        sapi.enabled=false;
+      }
     }
     // status.phrases is the runtime effective list (wake + summon + end); do not mirror into persisted wake config.
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
@@ -948,18 +981,13 @@
       ||hooks().sessionActiveState(snap.state||'idle')
       ||(drawerVoice&&(panel==='voiceWake'||panel==='debug'))
       ||homeEnd;
-    const needSapi=(sapiCfg&&sapiCfg.enabled)
-      &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
-      ||(homeVoice&&!!(sapiCfg&&sapiCfg.enabled));
-    const kwsActive=!!(kwsCfg&&kwsCfg.enabled)&&!(voskCfg&&voskCfg.enabled);
-    const needVosk=((voskCfg&&voskCfg.enabled)
-      &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
-      ||(homeVoice&&!!(voskCfg&&voskCfg.enabled)))
-      ||kwsActive;
-    const needKws=(kwsCfg&&kwsCfg.enabled)
-      &&(!ui().drawerOpen||(drawerVoice&&(panel==='voiceWake'||panel==='debug')))
-      ||(homeVoice&&!!(kwsCfg&&kwsCfg.enabled))
-      ||(drawerVoice&&panel==='debug')
+    // Acoustic override may run Vosk while config still says SAPI enabled — always
+    // poll every wake backend when any is on so the active card is not stuck on「已停止」.
+    const anyWake=!!(sapiCfg&&sapiCfg.enabled)||!!(voskCfg&&voskCfg.enabled)||!!(kwsCfg&&kwsCfg.enabled);
+    const needSapi=anyWake||(drawerVoice&&(panel==='voiceWake'||panel==='debug'));
+    const needVosk=anyWake||(drawerVoice&&(panel==='voiceWake'||panel==='debug'));
+    const needKws=anyWake
+      ||(drawerVoice&&(panel==='voiceWake'||panel==='debug'||panel==='debug'))
       ||voiceWakeExpandedMode==='kws';
     const pEnd=needEnd?global.OneToneIpc.invoke('cmd_voice_end_status',{}).catch(function(){return null;}):Promise.resolve(null);
     const pSapi=needSapi?global.OneToneIpc.invoke('cmd_voice_sapi_status',{}).catch(function(){return null;}):Promise.resolve(null);
@@ -969,6 +997,17 @@
       try{
         const endRes=arr[0],sapiRes=arr[1],letVoskRes=arr[2],kwsRes=arr[3];
         let voskRes=letVoskRes;
+        const desired=String(
+          (voskRes&&voskRes.desiredEngine)||(sapiRes&&sapiRes.desiredEngine)||(kwsRes&&kwsRes.desiredEngine)||''
+        ).trim().toLowerCase();
+        if(desired){
+          // Do not rewrite enabled flags while acoustic calibration owns the mic —
+          // that used to trigger config saves / fingerprint restarts mid-record.
+          var acoustic=global.OneToneHabitScenarioVoiceCommand;
+          var calibrating=acoustic&&acoustic.isCalibrating&&acoustic.isCalibrating();
+          if(!calibrating) applySupervisorEngineToConfig(desired);
+        }
+        const kwsActive=desired==='kws'||(!!(kwsCfg&&kwsCfg.enabled)&&!(voskCfg&&voskCfg.enabled)&&desired!=='vosk'&&desired!=='sapi');
         if(kwsActive&&voskRes&&voskRes.enabled){
           // Desired=kws: supervisor owns exclusivity; only mirror UI state locally.
           voskRes=Object.assign({},voskRes,{enabled:false,state:'stopping'});

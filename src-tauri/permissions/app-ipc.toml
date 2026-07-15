@@ -85,7 +85,11 @@ permissions = [
   "allow-cmd-coach-hud-dismiss",
   "allow-cmd-coach-hud-set-enabled",
   "allow-cmd-acoustic-voice-command-status",
+  "allow-cmd-acoustic-voice-command-preflight",
   "allow-cmd-acoustic-voice-command-set-suspend",
   "allow-cmd-acoustic-voice-command-record-once",
+  "allow-cmd-acoustic-voice-command-record-start",
+  "allow-cmd-acoustic-voice-command-record-stop",
+  "allow-cmd-acoustic-voice-command-record-cancel",
   "allow-cmd-acoustic-voice-command-build-from-samples",
 ]

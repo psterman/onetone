@@ -1333,16 +1333,16 @@
                 <span class="keys-scheme-summary-pill voice-scheme-summary-pill" id="voiceSummaryStatus">—</span>
               </div>
               <div class="keys-scheme-summary-meta voice-scheme-summary-meta">
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">引擎</span>
+                <span class="keys-scheme-summary-item" hidden>
+                  <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">语音模式</span>
                   <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
                 </span>
-                <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">系统</button>
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">离线</button>
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">关键词</button>
+                <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl" hidden>
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">备用</button>
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">标准</button>
+                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">轻量</button>
                 </div>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                <span class="keys-scheme-summary-divider" aria-hidden="true" hidden></span>
                 <span class="keys-scheme-summary-item">
                   <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
                   <span class="keys-scheme-summary-val" id="voiceSummaryScope">—</span>
@@ -1489,25 +1489,6 @@
                     </div>
                     <div class="flow-step-body keys-step-body" id="voiceSettingsRecognizeBody">
                     <div class="voice-recognize-layout">
-                    <section class="voice-recognize-block">
-                    <p class="voice-edit-section-title" id="voiceEditSectionEngine">识别通道</p>
-                    <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
-                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统语音输入</button>
-                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地离线识别</button>
-                      <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceRecognizeSourceKws">关键词（实验）</button>
-                    </div>
-                    <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
-                    <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
-                    <div class="voice-recognize-model-row" id="voiceRecognizeModelRow" hidden>
-                      <div class="voice-sapi-row">
-                        <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
-                        <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
-                          <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音</button>
-                          <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音</button>
-                        </div>
-                      </div>
-                    </div>
-                    </section>
                     <details class="voice-recognize-end-details" id="voiceRecognizeEndDetails" open>
                       <summary class="voice-recognize-end-summary">
                         <span id="voiceEndRulesTitle">结束规则</span>
@@ -1625,6 +1606,25 @@
                       <summary id="voiceRecognizeEngineSummary">引擎细项</summary>
                       <span class="sr-only" id="voiceModeTitle">识别细项</span>
                       <span class="sr-only" id="voiceRecognitionAsideSummary">—</span>
+                      <section class="voice-recognize-block">
+                        <p class="voice-edit-section-title" id="voiceEditSectionEngine">临时切换</p>
+                        <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
+                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统兼容</button>
+                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">标准模式</button>
+                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceRecognizeSourceKws">轻量模式</button>
+                        </div>
+                        <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
+                        <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>
+                        <div class="voice-recognize-model-row" id="voiceRecognizeModelRow" hidden>
+                          <div class="voice-sapi-row">
+                            <span class="mic-desc" id="voiceVoskModelLabel">识别语言</span>
+                            <div class="voice-segment" id="voiceVoskModelPreset" role="tablist" aria-labelledby="voiceVoskModelLabel">
+                              <button type="button" class="voice-segment-btn is-active" data-preset="cn-light" role="tab" aria-selected="true">中文语音</button>
+                              <button type="button" class="voice-segment-btn" data-preset="en-light" role="tab" aria-selected="false">英文语音</button>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
                       <div class="voice-engine-tuning" id="voiceModePanel">
                         <div class="voice-engine-tuning-block" id="btnVoiceModeSapi" data-voice-mode="sapi">
                           <div id="voiceSapiBlock">

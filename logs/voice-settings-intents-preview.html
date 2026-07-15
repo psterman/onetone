@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voice Settings Intent Preview</title>
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --panel: #ffffff;
+      --line: #dce5ee;
+      --line-strong: #bdd7eb;
+      --text: #102033;
+      --muted: #64748b;
+      --soft: #f1f7fc;
+      --blue: #0a95e8;
+      --blue-2: #e8f6ff;
+      --teal: #0f9f8a;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --shadow: 0 18px 45px rgba(15, 36, 59, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    .canvas {
+      width: 1353px;
+      height: 760px;
+      margin: 0 auto;
+      padding: 18px 20px 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,249,251,0.98)),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .flow {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: start;
+      height: 156px;
+      padding: 4px 124px 0;
+    }
+
+    .flow::before {
+      content: "";
+      position: absolute;
+      left: 245px;
+      right: 245px;
+      top: 68px;
+      height: 3px;
+      background: linear-gradient(90deg, #2aa7ff 0%, #16a3d8 45%, #c8912a 100%);
+      border-radius: 999px;
+      opacity: 0.85;
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .step-badge {
+      min-width: 80px;
+      height: 18px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid #98d8f5;
+      background: #eefaff;
+      color: #007ed0;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 17px;
+      text-align: center;
+    }
+
+    .step:nth-child(3) .step-badge {
+      border-color: #f4c879;
+      background: #fff8ea;
+      color: #be6b00;
+    }
+
+    .step-circle {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(16, 32, 51, 0.06);
+      color: #5b7189;
+    }
+
+    .step.active .step-circle {
+      border: 3px solid #90d8f6;
+      box-shadow: 0 0 0 5px #e6f8ff, 0 18px 34px rgba(10,149,232,0.16);
+      color: var(--blue);
+    }
+
+    .step-title {
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .step-sub {
+      margin-top: -3px;
+      color: #506680;
+      font-size: 11px;
+    }
+
+    .panel {
+      height: 566px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: var(--shadow);
+      padding: 12px 14px 14px;
+    }
+
+    .panel-inner {
+      height: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 18px 18px 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .title-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: var(--blue-2);
+      color: var(--blue);
+      border: 1px solid #bde7ff;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 3px;
+      background: #fbfdff;
+    }
+
+    .seg span {
+      height: 26px;
+      min-width: 38px;
+      padding: 0 10px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #4d6178;
+      font-weight: 700;
+    }
+
+    .seg .on {
+      color: #05233d;
+      background: #eaf7ff;
+      box-shadow: inset 0 0 0 1px #a7dcfb;
+    }
+
+    .ghost-btn,
+    .solid-btn {
+      height: 32px;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .ghost-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #31506f;
+    }
+
+    .solid-btn {
+      border: 1px solid #0788d4;
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .intent-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .intent-card {
+      min-height: 322px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: linear-gradient(180deg, #fff, #fbfdff);
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .intent-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .intent-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .intent-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #eaf7ff;
+      color: var(--blue);
+      border: 1px solid #b9e5ff;
+    }
+
+    .intent-card.end .intent-dot {
+      background: #ecfbf8;
+      color: var(--teal);
+      border-color: #bcece3;
+    }
+
+    .intent-card.send .intent-dot {
+      background: #fff7e8;
+      color: var(--orange);
+      border-color: #f6d38a;
+    }
+
+    .intent-card.cancel .intent-dot {
+      background: #fff0f0;
+      color: var(--red);
+      border-color: #ffc7c7;
+    }
+
+    .intent-desc {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    .tag {
+      white-space: nowrap;
+      height: 22px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      border: 1px solid #cfe6f7;
+      background: #f1f9ff;
+      color: #0877bd;
+    }
+
+    .tag.soft {
+      border-color: #e1e8ef;
+      background: #f7fafc;
+      color: #58708a;
+    }
+
+    .section {
+      border-top: 1px solid #edf2f7;
+      padding-top: 10px;
+    }
+
+    .section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 7px;
+      color: #314966;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .mini-tabs {
+      display: inline-flex;
+      height: 22px;
+      border-radius: 7px;
+      padding: 2px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+    }
+
+    .mini-tabs span {
+      border-radius: 5px;
+      padding: 0 7px;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748b;
+    }
+
+    .mini-tabs .on {
+      background: #fff;
+      color: #0f2f4d;
+      box-shadow: 0 1px 4px rgba(15, 36, 59, 0.08);
+    }
+
+    .chips {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 7px;
+      min-height: 60px;
+    }
+
+    .chip {
+      max-width: 138px;
+      height: 26px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid #a9ddfb;
+      background: #eff9ff;
+      color: #007bd0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip.gray {
+      border-color: #d4dee9;
+      background: #f8fafc;
+      color: #53677f;
+    }
+
+    .chip.teal {
+      border-color: #abded6;
+      background: #effbf8;
+      color: #087f6f;
+    }
+
+    .chip.orange {
+      border-color: #f2d393;
+      background: #fff8e8;
+      color: #ae6500;
+    }
+
+    .chip.red {
+      border-color: #fac2c2;
+      background: #fff5f5;
+      color: #d12f2f;
+    }
+
+    .sound-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 40px;
+      padding: 8px 9px;
+      border-radius: 8px;
+      border: 1px dashed #cddbea;
+      background: #fbfdff;
+    }
+
+    .sound-main {
+      min-width: 0;
+    }
+
+    .sound-title {
+      font-size: 12px;
+      font-weight: 900;
+      color: #28455f;
+    }
+
+    .sound-sub {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid #cddbea;
+      background: #fff;
+      color: #35607e;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .setting-box {
+      min-height: 46px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #f8fbfe;
+      border: 1px solid #e3edf6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #48617a;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .setting-strong {
+      color: #17334e;
+      font-weight: 900;
+      display: block;
+      font-size: 12px;
+    }
+
+    .keyseg {
+      display: flex;
+      gap: 5px;
+      flex: 0 0 auto;
+    }
+
+    .keyseg span {
+      height: 24px;
+      padding: 0 8px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      border: 1px solid #d3e0eb;
+      background: #fff;
+      color: #3a5068;
+      font-weight: 900;
+      font-size: 11px;
+    }
+
+    .keyseg .on {
+      border-color: #f0c36c;
+      background: #fff7e8;
+      color: #9b5b00;
+    }
+
+    .bottom {
+      margin-top: 13px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+    }
+
+    .priority,
+    .add-row {
+      height: 82px;
+      border: 1px solid #e2eaf2;
+      border-radius: 9px;
+      background: #fbfdff;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .priority-title,
+    .add-title {
+      font-size: 12px;
+      font-weight: 900;
+      color: #183552;
+      margin-bottom: 4px;
+    }
+
+    .priority-sub,
+    .add-sub {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .priority-chain {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 900;
+      color: #516a84;
+    }
+
+    .pill {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid #d4e1ed;
+      background: #fff;
+    }
+
+    .pill.cancel {
+      color: var(--red);
+      border-color: #ffc7c7;
+      background: #fff5f5;
+    }
+
+    .pill.send {
+      color: #ae6500;
+      border-color: #f2d393;
+      background: #fff8e8;
+    }
+
+    .pill.end {
+      color: #087f6f;
+      border-color: #abded6;
+      background: #effbf8;
+    }
+
+    .pill.wake {
+      color: #0877bd;
+      border-color: #a9ddfb;
+      background: #eff9ff;
+    }
+
+    .input {
+      flex: 1;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid #d9e4ee;
+      background: #fff;
+      color: #8aa0b6;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    svg {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="flow">
+      <div class="step active">
+        <div class="step-badge">01 / 声源采集</div>
+        <div class="step-circle" aria-hidden="true">
+          <svg width="31" height="31" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="step-title">语音唤醒</div>
+        <div class="step-sub">按键 / 文字短语 / 声音样本</div>
+      </div>
+      <div class="step">
+        <div class="step-badge">02 / 语音识别</div>
+        <div class="step-circle" aria-hidden="true">
+          <svg width="31" height="31" viewBox="0 0 24 24" fill="none">
+            <path d="M4 13h3l2-7 4 14 2-7h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="step-title">语音识别</div>
+        <div class="step-sub">听写中匹配结束 / 发送 / 取消</div>
+      </div>
+      <div class="step">
+        <div class="step-badge">03 / 语音发送</div>
+        <div class="step-circle" aria-hidden="true">
+          <svg width="31" height="31" viewBox="0 0 24 24" fill="none">
+            <path d="m4 11 15-7-7 15-2-6-6-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="step-title">语音发送</div>
+        <div class="step-sub">确认后发送 / 发送词直发</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-inner">
+        <div class="toolbar">
+          <div class="title-block">
+            <div class="title-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="title">指令词</div>
+              <div class="subtitle">把唤醒、结束、发送、取消按动作管理；每个动作都可配置文字短语和声音样本。</div>
+            </div>
+          </div>
+          <div class="actions">
+            <div class="seg" aria-label="language">
+              <span class="on">中</span>
+              <span>EN</span>
+            </div>
+            <button class="ghost-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              添加指令
+            </button>
+            <button class="solid-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              保存设置
+            </button>
+          </div>
+        </div>
+
+        <div class="intent-grid">
+          <div class="intent-card wake">
+            <div class="intent-head">
+              <div>
+                <div class="intent-name">
+                  <span class="intent-dot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" stroke="currentColor" stroke-width="2"/>
+                      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  唤醒输入
+                </div>
+                <div class="intent-desc">开始监听并把目标应用拉到前台。</div>
+              </div>
+              <span class="tag">声学优先</span>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                <span>文字短语</span>
+                <span class="mini-tabs"><span class="on">常用</span><span>高级</span></span>
+              </div>
+              <div class="chips">
+                <span class="chip">开始输入</span>
+                <span class="chip">语音输入</span>
+                <span class="chip">打开听写</span>
+                <span class="chip gray">打开 Cursor</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">声音样本</div>
+              <div class="sound-row">
+                <div class="sound-main">
+                  <div class="sound-title">已录 3 个样本</div>
+                  <div class="sound-sub">用于低误触发唤醒，适合常驻监听。</div>
+                </div>
+                <button class="icon-btn" aria-label="record">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 3v2M12 19v2M3 12h2M19 12h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-box">
+              <div><span class="setting-strong">默认动作</span>启动听写，不发送内容。</div>
+            </div>
+          </div>
+
+          <div class="intent-card end">
+            <div class="intent-head">
+              <div>
+                <div class="intent-name">
+                  <span class="intent-dot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 6h12v12H6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  结束输入
+                </div>
+                <div class="intent-desc">停止录音，文字留在输入框里等待确认。</div>
+              </div>
+              <span class="tag soft">听写中</span>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                <span>文字短语</span>
+                <span class="mini-tabs"><span class="on">中</span><span>EN</span></span>
+              </div>
+              <div class="chips">
+                <span class="chip teal">结束输入</span>
+                <span class="chip teal">就这样</span>
+                <span class="chip teal">停止听写</span>
+                <span class="chip gray">end dictation</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">声音样本</div>
+              <div class="sound-row">
+                <div class="sound-main">
+                  <div class="sound-title">可选录制</div>
+                  <div class="sound-sub">ASR 已在运行，通常不用录。</div>
+                </div>
+                <button class="icon-btn" aria-label="record">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-box">
+              <div><span class="setting-strong">结束后</span>保留文本，不按 Enter。</div>
+            </div>
+          </div>
+
+          <div class="intent-card send">
+            <div class="intent-head">
+              <div>
+                <div class="intent-name">
+                  <span class="intent-dot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="m4 11 15-7-7 15-2-6-6-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                  发送内容
+                </div>
+                <div class="intent-desc">停止录音，等待上屏，然后发送给目标应用。</div>
+              </div>
+              <span class="tag">直发</span>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                <span>文字短语</span>
+                <span class="mini-tabs"><span class="on">中</span><span>EN</span></span>
+              </div>
+              <div class="chips">
+                <span class="chip orange">发送</span>
+                <span class="chip orange">发出去</span>
+                <span class="chip orange">提交</span>
+                <span class="chip gray">send it</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">声音样本</div>
+              <div class="sound-row">
+                <div class="sound-main">
+                  <div class="sound-title">可选录制</div>
+                  <div class="sound-sub">高噪声环境可增加发送样本。</div>
+                </div>
+                <button class="icon-btn" aria-label="record">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-box">
+              <div><span class="setting-strong">发送键与延迟</span>等待 3.0s 后按发送键。</div>
+              <div class="keyseg"><span class="on">Enter</span><span>Ctrl+Enter</span></div>
+            </div>
+          </div>
+
+          <div class="intent-card cancel">
+            <div class="intent-head">
+              <div>
+                <div class="intent-name">
+                  <span class="intent-dot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  取消本轮
+                </div>
+                <div class="intent-desc">停止录音并丢弃本轮输入，避免误发送。</div>
+              </div>
+              <span class="tag soft">安全</span>
+            </div>
+
+            <div class="section">
+              <div class="section-title">
+                <span>文字短语</span>
+                <span class="mini-tabs"><span class="on">中</span><span>EN</span></span>
+              </div>
+              <div class="chips">
+                <span class="chip red">取消输入</span>
+                <span class="chip red">不要了</span>
+                <span class="chip red">撤掉</span>
+                <span class="chip gray">cancel input</span>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">声音样本</div>
+              <div class="sound-row">
+                <div class="sound-main">
+                  <div class="sound-title">可选录制</div>
+                  <div class="sound-sub">适合把“取消”设成强保护动作。</div>
+                </div>
+                <button class="icon-btn" aria-label="record">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="setting-box">
+              <div><span class="setting-strong">取消后</span>按 Esc，回到空闲状态。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom">
+          <div class="priority">
+            <div>
+              <div class="priority-title">匹配优先级</div>
+              <div class="priority-sub">同一句话命中多个短语时，优先保护用户输入安全，再决定是否发送。</div>
+            </div>
+            <div class="priority-chain">
+              <span class="pill cancel">取消词</span>
+              <span>&gt;</span>
+              <span class="pill send">发送词</span>
+              <span>&gt;</span>
+              <span class="pill end">结束词</span>
+              <span>&gt;</span>
+              <span class="pill wake">唤醒词</span>
+            </div>
+          </div>
+          <div class="add-row">
+            <div style="min-width: 164px;">
+              <div class="add-title">新增短语</div>
+              <div class="add-sub">先选动作，再添加文字短语或录声音样本。</div>
+            </div>
+            <div class="input">例如：就这样、发出去、不要了</div>
+            <button class="solid-btn">添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

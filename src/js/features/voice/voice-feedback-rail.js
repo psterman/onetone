@@ -117,6 +117,20 @@
     return null;
   }
 
+  function degradeReasonLabel(reason){
+    var key={
+      vosk_model_missing:'voiceDegradedReasonVoskModelMissing',
+      vosk_start_failed:'voiceDegradedReasonVoskStartFailed',
+      vosk_unavailable_acoustic_requires_pcm:'voiceDegradedReasonVoskAcousticPcm',
+      vosk_unavailable_acoustic_fallback_kws:'voiceDegradedReasonVoskAcousticKws',
+      kws_start_failed_acoustic_fallback_sapi:'voiceDegradedReasonKwsAcousticSapi',
+      kws_start_failed_acoustic_fallback_vosk:'voiceDegradedReasonKwsAcousticVosk',
+      kws_start_failed:'voiceDegradedReasonKwsStartFailed',
+      sapi_start_failed:'voiceDegradedReasonSapiStartFailed'
+    }[String(reason||'').trim()];
+    return key?t(key):(reason||'');
+  }
+
   function slotNode(slot){
     var root=$('voiceFbMetrics');
     if(!root) return null;
@@ -352,13 +366,14 @@
       return {text:t('voiceFbStatusDictating'),cls:'is-live'};
     }
     var supervisor=w.supervisor||{};
+    var degradedReason=degradeReasonLabel(supervisor.degradedReason);
     if(supervisor.degraded&&!supervisor.activeEngine){
-      return {text:t('voiceDegradedStatus').replace('{reason}',supervisor.degradedReason||''),cls:'is-standby'};
+      return {text:t('voiceDegradedStatus').replace('{reason}',degradedReason),cls:'is-standby'};
     }
     if(runtime==='kws'&&res){
       if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isKwsNativeListening&&global.OneToneVoiceWake.isKwsNativeListening(res,w)){
         if(supervisor.degraded){
-          return {text:t('voiceDegradedListening').replace('{reason}',supervisor.degradedReason||''),cls:'is-live'};
+          return {text:t('voiceDegradedListening').replace('{reason}',degradedReason),cls:'is-live'};
         }
         return {text:t('voiceFbStatusListening'),cls:'is-live'};
       }
@@ -367,12 +382,12 @@
       }
     }else if(res&&(res.enabled||(supervisor.activeEngine===runtime))&&(res.state==='listening'||res.state==='starting')){
       if(supervisor.degraded){
-        return {text:t('voiceDegradedListening').replace('{reason}',supervisor.degradedReason||''),cls:'is-live'};
+        return {text:t('voiceDegradedListening').replace('{reason}',degradedReason),cls:'is-live'};
       }
       return {text:t('voiceFbStatusListening'),cls:'is-live'};
     }
     if(supervisor.degraded){
-      return {text:t('voiceDegradedStatus').replace('{reason}',supervisor.degradedReason||''),cls:'is-standby'};
+      return {text:t('voiceDegradedStatus').replace('{reason}',degradedReason),cls:'is-standby'};
     }
     if(!vm.voiceOn||vm.mode==='off'){
       return {text:t('voiceFbStatusOff'),cls:'is-idle'};

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::config::AcousticVoiceCommandSample;
 use crate::voice_acoustic_runtime::{
-    acoustic_set_suspend, acoustic_status, build_command_json, record_once,
+    acoustic_set_suspend, acoustic_status, build_command_json, preflight_record, record_once,
+    record_session_cancel, record_session_start, record_session_stop,
 };
 use crate::AppState;
 
@@ -11,6 +12,13 @@ pub fn cmd_acoustic_voice_command_status(
     state: tauri::State<Arc<AppState>>,
 ) -> serde_json::Value {
     acoustic_status(state.inner())
+}
+
+#[tauri::command]
+pub fn cmd_acoustic_voice_command_preflight(
+    state: tauri::State<Arc<AppState>>,
+) -> serde_json::Value {
+    preflight_record(state.inner())
 }
 
 #[tauri::command]
@@ -27,8 +35,34 @@ pub fn cmd_acoustic_voice_command_set_suspend(
 pub fn cmd_acoustic_voice_command_record_once(
     app: tauri::AppHandle,
     state: tauri::State<Arc<AppState>>,
+    session_id: Option<String>,
 ) -> serde_json::Value {
-    record_once(state.inner(), Some(&app))
+    record_once(state.inner(), Some(&app), session_id.as_deref())
+}
+
+#[tauri::command]
+pub fn cmd_acoustic_voice_command_record_start(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    session_id: Option<String>,
+) -> serde_json::Value {
+    record_session_start(state.inner(), Some(&app), session_id.as_deref())
+}
+
+#[tauri::command]
+pub fn cmd_acoustic_voice_command_record_stop(
+    state: tauri::State<Arc<AppState>>,
+    session_id: Option<String>,
+) -> serde_json::Value {
+    record_session_stop(state.inner(), session_id.as_deref())
+}
+
+#[tauri::command]
+pub fn cmd_acoustic_voice_command_record_cancel(
+    state: tauri::State<Arc<AppState>>,
+    session_id: Option<String>,
+) -> serde_json::Value {
+    record_session_cancel(state.inner(), session_id.as_deref())
 }
 
 #[tauri::command]

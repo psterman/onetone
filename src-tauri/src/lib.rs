@@ -30,7 +30,7 @@ mod vendor_hid;
 pub mod voice_acoustic_command;
 pub mod voice_acoustic_runtime;
 mod audio_frame_bus;
-mod voice_acoustic_record;
+pub mod voice_acoustic_record;
 mod voice_bootstrap;
 mod voice_command_router;
 mod voice_end_runtime;
@@ -652,8 +652,12 @@ pub fn run() {
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
             ipc::cmd_acoustic_voice_command_status,
+            ipc::cmd_acoustic_voice_command_preflight,
             ipc::cmd_acoustic_voice_command_set_suspend,
             ipc::cmd_acoustic_voice_command_record_once,
+            ipc::cmd_acoustic_voice_command_record_start,
+            ipc::cmd_acoustic_voice_command_record_stop,
+            ipc::cmd_acoustic_voice_command_record_cancel,
             ipc::cmd_acoustic_voice_command_build_from_samples,
         ])
         .run(tauri::generate_context!())

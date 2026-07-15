@@ -99,7 +99,13 @@ impl Drop for VoiceKwsHandle {
         self.stop.store(true, Ordering::SeqCst);
         #[cfg(feature = "kws-engine")]
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            // Never join on the dropper thread — model/engine teardown can hang IPC.
+            std::thread::Builder::new()
+                .name("voice-kws-join".into())
+                .spawn(move || {
+                    let _ = thread.join();
+                })
+                .ok();
         }
     }
 }

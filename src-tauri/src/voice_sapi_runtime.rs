@@ -227,7 +227,7 @@ pub fn voice_sapi_status(state: &AppState) -> serde_json::Value {
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_sapi.target_key);
     let mut value = serde_json::json!({
-        "enabled": cfg.voice_sapi.enabled,
+        "enabled": crate::scene_config::resolve_effective_sapi_config(&cfg).enabled,
         "state": state.voice_sapi_state.lock().clone(),
         "lastError": state.voice_sapi_last_error.lock().clone(),
         "lastHeard": state.voice_sapi_last_heard.lock().clone(),
@@ -392,14 +392,19 @@ pub fn voice_sapi_set_phrases(
 
 pub fn voice_sapi_set_min_confidence(
     state: &Arc<AppState>,
+    app: &AppHandle,
     min_confidence: f32,
 ) -> Result<serde_json::Value, String> {
+    let old_cfg = state.cfg.lock().clone();
     {
         let mut cfg = state.cfg.lock();
         cfg.voice_sapi.min_confidence = min_confidence.clamp(0.0, 1.0);
         cfg.normalize();
         save_config(&cfg);
     }
+    let new_cfg = state.cfg.lock().clone();
+    crate::voice_bootstrap::apply_voice_config_change(app, state, &old_cfg, &new_cfg);
+
     Ok(voice_sapi_status(state))
 }
 

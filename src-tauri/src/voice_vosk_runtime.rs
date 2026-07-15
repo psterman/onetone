@@ -26,13 +26,27 @@ fn vosk_epoch_matches(state: &AppState, epoch: u64) -> bool {
 }
 
 /// Release the default capture device for a short external recording (e.g. acoustic calibration).
+/// Never blocks on joining the worker — Vosk model load ignores the stop flag and a sync join
+/// freezes `record_start` IPC (UI stuck on「正在打开麦克风」).
 pub fn pause_for_external_capture(state: &AppState) -> bool {
-    if state.voice_vosk.lock().is_none() {
-        return false;
-    }
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    voice_vosk_stop_sync(state);
-    true
+    let was_active = {
+        let st = state.voice_vosk_state.lock().clone();
+        matches!(
+            st.as_str(),
+            "starting" | "listening" | "cooldown" | "triggered" | "stopping"
+        ) || state.voice_vosk.lock().is_some()
+    };
+    let handle = state.voice_vosk.lock().take();
+    let _epoch = next_vosk_epoch(state);
+    *state.voice_vosk_cooldown_until.lock() = None;
+    *state.voice_vosk_last_error.lock() = String::new();
+    *state.voice_vosk_state.lock() = "stopped".into();
+    if let Some(handle) = handle {
+        stop_voice_vosk(handle);
+        return true;
+    }
+    was_active
 }
 
 /// Stop on a background thread (IPC-safe). Invalidates in-flight start workers.
@@ -447,7 +461,7 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
     let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
         .unwrap_or("https://alphacephei.com/vosk/models");
     let mut value = serde_json::json!({
-        "enabled": cfg.voice_vosk.enabled,
+        "enabled": crate::scene_config::resolve_effective_vosk_config(&cfg).enabled,
         "state": state.voice_vosk_state.lock().clone(),
         "lastError": state.voice_vosk_last_error.lock().clone(),
         "lastPartial": state.voice_vosk_last_partial.lock().clone(),

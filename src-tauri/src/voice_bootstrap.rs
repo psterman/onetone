@@ -624,10 +624,10 @@ pub fn resolve_degrade_decision(
         }
         DegradeFailedEngine::Kws => {
             if has_acoustic {
-                // Avoid Vosk↔KWS bounce when both are unhealthy; keep wake via SAPI.
+                // Acoustic matching needs a PCM-capable backend; never fall straight to SAPI.
                 DegradeDecision::Fallback {
-                    to: EffectiveVoiceEngine::Sapi,
-                    reason: "kws_start_failed_acoustic_fallback_sapi",
+                    to: EffectiveVoiceEngine::Vosk,
+                    reason: "kws_start_failed_acoustic_fallback_vosk",
                 }
             } else {
                 DegradeDecision::Fallback {
@@ -828,7 +828,9 @@ pub fn acquire_mic_lease(
 ) -> MicLease {
     let did_pause = pause_active_engine_for_external_capture(state, reason);
     if did_pause {
-        std::thread::sleep(std::time::Duration::from_millis(220));
+        // Pause is non-blocking (async engine teardown). Give WASAPI longer to free
+        // the endpoint before acoustic capture tries to open it.
+        std::thread::sleep(std::time::Duration::from_millis(700));
     }
     crate::app_log::log_line(
         state,
@@ -871,17 +873,18 @@ impl MicLease {
             );
             return;
         }
-        // Acoustic "suspend" only pauses the matcher. Recording leases must still restore
-        // wake engines — otherwise engines stay stopped until a later setSuspend(false).
+        // During acoustic calibration, keep wake engines paused so multi-take
+        // recording can reuse the mic. Resume happens on setSuspend(false).
         if self.state.acoustic_voice.is_suspended() {
             crate::app_log::log_line(
                 &self.state,
                 "voice",
                 &format!(
-                    "voice_bootstrap mic_lease resume while matcher suspended reason={}",
+                    "voice_bootstrap mic_lease skip resume (matcher suspended) reason={}",
                     self.reason
                 ),
             );
+            return;
         }
         let Some(app) = self.app.as_ref() else {
             crate::app_log::log_line(
@@ -901,6 +904,11 @@ impl MicLease {
             &format!("voice_bootstrap mic_lease resume → activate_desired reason={reason}"),
         );
         activate_desired_engine(app, &self.state, &reason);
+    }
+
+    /// Drop lease ownership without restarting engines (park / replace).
+    pub fn disarm(&mut self) {
+        self.released = true;
     }
 }
 
@@ -1103,8 +1111,8 @@ mod degrade_policy_tests {
         assert_eq!(
             resolve_degrade_decision(DegradeFailedEngine::Kws, "start_failed", true),
             DegradeDecision::Fallback {
-                to: EffectiveVoiceEngine::Sapi,
-                reason: "kws_start_failed_acoustic_fallback_sapi",
+                to: EffectiveVoiceEngine::Vosk,
+                reason: "kws_start_failed_acoustic_fallback_vosk",
             }
         );
         assert_eq!(

@@ -138,6 +138,7 @@
       vosk_unavailable_acoustic_requires_pcm:'voiceDegradedReasonVoskAcousticPcm',
       vosk_unavailable_acoustic_fallback_kws:'voiceDegradedReasonVoskAcousticKws',
       kws_start_failed_acoustic_fallback_sapi:'voiceDegradedReasonKwsAcousticSapi',
+      kws_start_failed_acoustic_fallback_vosk:'voiceDegradedReasonKwsAcousticVosk',
       kws_start_failed:'voiceDegradedReasonKwsStartFailed',
       sapi_start_failed:'voiceDegradedReasonSapiStartFailed'
     }[String(reason||'').trim()];
@@ -236,7 +237,7 @@
     else{
       ids.push('editWake');
       ids.push('mic');
-      if(ctx.engine!=='off'&&!hideEngine) ids.push('engine');
+      if(ctx.engine!=='off'&&!hideEngine&&(ctx.statusKind==='warn'||ctx.statusMode==='error')) ids.push('engine');
     }
     return ids.slice(0,4);
   }
@@ -341,7 +342,8 @@
       wakePhrase:wakePhrase,
       statusMode:statusMode,
       dictating:dictating,
-      engine:eng
+      engine:eng,
+      statusKind:statusKind
     };
 
     return {

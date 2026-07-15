@@ -34,13 +34,14 @@ pub fn cmd_voice_sapi_set_phrases(
 #[tauri::command]
 pub fn cmd_voice_sapi_set_min_confidence(
     state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
     #[allow(non_snake_case)] minConfidence: Option<f32>,
     min_confidence: Option<f32>,
 ) -> Result<serde_json::Value, String> {
     let value = min_confidence
         .or(minConfidence)
         .ok_or_else(|| "missing min confidence".to_string())?;
-    crate::voice_sapi_runtime::voice_sapi_set_min_confidence(&state, value)
+    crate::voice_sapi_runtime::voice_sapi_set_min_confidence(&state, &app, value)
 }
 
 #[tauri::command]

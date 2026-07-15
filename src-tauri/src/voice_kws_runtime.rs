@@ -84,13 +84,25 @@ pub fn spawn_voice_kws_stop(state: Arc<AppState>) {
 }
 
 /// Release the default capture device for a short external recording (e.g. acoustic calibration).
+/// Uses async stop — a sync join can freeze `record_start` while the native worker winds down.
 pub fn pause_for_external_capture(state: &AppState) -> bool {
-    if state.voice_kws.lock().is_none() {
-        return false;
-    }
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
-    voice_kws_stop_sync(state);
-    true
+    let was_active = {
+        let st = state.voice_kws_state.lock().clone();
+        matches!(
+            st.as_str(),
+            "starting" | "listening" | "cooldown" | "triggered" | "stopping"
+        ) || state.voice_kws.lock().is_some()
+    };
+    let handle = state.voice_kws.lock().take();
+    let _epoch = next_kws_epoch(state);
+    *state.voice_kws_cooldown_until.lock() = None;
+    *state.voice_kws_state.lock() = "stopped".into();
+    if let Some(handle) = handle {
+        stop_voice_kws(handle);
+        return true;
+    }
+    was_active
 }
 
 /// Synchronous self-stop (supervisor may call this for exclusive activate).
@@ -398,7 +410,7 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
         build.issue.clone()
     };
     let mut value = serde_json::json!({
-        "enabled": cfg.voice_kws.enabled,
+        "enabled": crate::scene_config::resolve_effective_kws_config(&cfg).enabled,
         "engine": "kws",
         "stubMode": probe.stub_mode,
         "state": state.voice_kws_state.lock().clone(),

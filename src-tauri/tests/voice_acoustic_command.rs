@@ -108,3 +108,74 @@ fn process_pcm_buffer_returns_valid_sample() {
         .expect("feature");
     assert!(feature.iter().any(|v| v.as_f64().unwrap_or(0.0).abs() > 1e-6));
 }
+
+#[test]
+fn process_pcm_buffer_empty_and_short_fail() {
+    use onetone::voice_acoustic_runtime::process_pcm_buffer;
+    let empty = process_pcm_buffer(&[]);
+    assert_eq!(empty.get("ok").and_then(|v| v.as_bool()), Some(false));
+
+    let short = process_pcm_buffer(&sine_pcm(440.0, 80));
+    assert_eq!(short.get("ok").and_then(|v| v.as_bool()), Some(false));
+    let key = short
+        .get("messageKey")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    assert!(
+        key.contains("Short") || key.contains("Timeout") || key.contains("Audio") || !key.is_empty(),
+        "unexpected messageKey={key}"
+    );
+}
+
+#[test]
+fn process_pcm_manual_accepts_long_with_trim_warning() {
+    use onetone::voice_acoustic_runtime::process_pcm_buffer_manual;
+    // Long continuous tone → above maxSpeechMs; manual path trims and warns (no hard fail).
+    let pcm = sine_pcm(440.0, 2800);
+    let res = process_pcm_buffer_manual(&pcm);
+    assert_eq!(res.get("ok").and_then(|v| v.as_bool()), Some(true));
+    assert!(res.get("sample").is_some());
+    let warnings = res
+        .get("warnings")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        warnings.iter().any(|w| w.as_str() == Some("habitAcousticCmdWarnTrimmed")),
+        "expected trim warning, got {warnings:?}"
+    );
+}
+
+#[test]
+fn capture_error_kind_maps_message_key() {
+    use onetone::voice_acoustic_record::{CaptureError, CaptureErrorKind};
+    use onetone::voice_acoustic_runtime::capture_error_json;
+
+    let no_audio = capture_error_json(&CaptureError::new(
+        CaptureErrorKind::NoAudioCaptured,
+        "none",
+    ));
+    assert_eq!(
+        no_audio.get("messageKey").and_then(|v| v.as_str()),
+        Some("habitAcousticCmdNoAudio")
+    );
+    assert_eq!(
+        no_audio.get("captureKind").and_then(|v| v.as_str()),
+        Some("noAudio")
+    );
+
+    let little = capture_error_json(&CaptureError::new(
+        CaptureErrorKind::TooLittleAudio,
+        "short",
+    ));
+    assert_eq!(
+        little.get("messageKey").and_then(|v| v.as_str()),
+        Some("habitAcousticCmdTooShort")
+    );
+
+    let timeout = capture_error_json(&CaptureError::new(CaptureErrorKind::Timeout, "deadline"));
+    assert_eq!(
+        timeout.get("messageKey").and_then(|v| v.as_str()),
+        Some("habitAcousticCmdTimeout")
+    );
+}

@@ -13,15 +13,39 @@
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   }
 
-  var PROMPT_DELAY_MS=500;
   var draft=null;
   var promptTimer=null;
   var recordVisTimer=null;
+  var hardCapTimer=null;
   var recordStartedAt=0;
+  var liveLevel=null;
+  var hasLiveLevel=false;
   var bound=false;
   var onChangeCb=null;
-  var MIN_SPEECH_MS=450;
-  var MAX_SPEECH_MS=2000;
+  var finishInFlight=false;
+
+  var DEFAULT_THRESHOLDS={
+    minSpeechMs:450,
+    preferSpeechMs:700,
+    maxSpeechMs:2000,
+    manualMaxMs:3500,
+    recordTimeoutMs:8000
+  };
+
+  function thresholdsFrom(src){
+    var base=src&&src.thresholds?src.thresholds:src;
+    return {
+      minSpeechMs:Math.max(100,Number(base&&base.minSpeechMs)||DEFAULT_THRESHOLDS.minSpeechMs),
+      preferSpeechMs:Math.max(100,Number(base&&base.preferSpeechMs)||DEFAULT_THRESHOLDS.preferSpeechMs),
+      maxSpeechMs:Math.max(200,Number(base&&base.maxSpeechMs)||DEFAULT_THRESHOLDS.maxSpeechMs),
+      manualMaxMs:Math.max(1000,Number(base&&base.manualMaxMs)||DEFAULT_THRESHOLDS.manualMaxMs),
+      recordTimeoutMs:Math.max(1000,Number(base&&base.recordTimeoutMs)||DEFAULT_THRESHOLDS.recordTimeoutMs)
+    };
+  }
+
+  function currentThresholds(){
+    return thresholdsFrom(draft||DEFAULT_THRESHOLDS);
+  }
 
   function buildMicBars(count){
     count=count||16;
@@ -30,12 +54,126 @@
     return html;
   }
 
+  function newSessionId(){
+    return 'acr_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+  }
+
   function sampleStepIndex(){
     if(!draft) return 1;
     var n=Array.isArray(draft.samples)?draft.samples.length:0;
     if(draft.state==='recording') return Math.min(2,n+1);
-    if(draft.state==='prompt') return Math.min(2,n+1);
     return Math.min(2,Math.max(1,n));
+  }
+
+  function levelToBarScales(level,count){
+    count=count||16;
+    var norm=Math.max(0,Math.min(1,Number(level)||0));
+    if(norm<=0.02) norm=0.08+Math.sin(Date.now()/280)*0.03;
+    var out=[];
+    var center=(count-1)/2;
+    for(var i=0;i<count;i++){
+      var dist=Math.abs(i-center)/Math.max(center,1);
+      out.push(Math.max(0.1,Math.min(1,norm*(1-dist*0.42))));
+    }
+    return out;
+  }
+
+  function durationMeterState(elapsedMs,speechMs,thresholds){
+    thresholds=thresholdsFrom(thresholds);
+    var ms=Math.max(0,Number(speechMs!=null?speechMs:elapsedMs)||0);
+    var maxMs=thresholds.maxSpeechMs;
+    var minMs=thresholds.minSpeechMs;
+    var preferMs=thresholds.preferSpeechMs;
+    var pct=Math.min(100,Math.round((ms/maxMs)*100));
+    var zone='idle';
+    if(ms>=minMs&&ms<=maxMs) zone='good';
+    else if(ms>maxMs) zone='warn';
+    else if(ms>0) zone='low';
+    return {
+      ms:ms,
+      pct:pct,
+      zone:zone,
+      preferPct:Math.min(100,Math.round((preferMs/maxMs)*100)),
+      minPct:Math.min(100,Math.round((minMs/maxMs)*100))
+    };
+  }
+
+  function voiceHintFromMetrics(metrics,thresholds){
+    metrics=metrics||{};
+    thresholds=thresholdsFrom(thresholds);
+    var level=Number(metrics.level)||0;
+    var speechMs=Number(metrics.speechMs)||0;
+    var peak=Number(metrics.peak)||0;
+    if(speechMs>thresholds.maxSpeechMs) return 'tooLong';
+    if(level>0.02||speechMs>80){
+      if(level<0.12&&peak<0.2) return 'tooQuiet';
+      if(speechMs>=thresholds.minSpeechMs) return 'good';
+      return 'speaking';
+    }
+    return 'waiting';
+  }
+
+  function recordPhaseText(phase,metrics,thresholds){
+    thresholds=thresholdsFrom(thresholds);
+    phase=String(phase||'');
+    if(phase==='preparing') return t('habitAcousticCmdPhasePreparing');
+    if(phase==='armed') return t('habitAcousticCmdPhaseArmed');
+    if(phase==='startingMic') return t('habitAcousticCmdPhaseStartingMic');
+    if(phase==='processing') return t('habitAcousticCmdPhaseProcessing');
+    if(phase==='recording'||phase==='listening'){
+      var hint=voiceHintFromMetrics(metrics,thresholds);
+      if(hint==='tooQuiet') return t('habitAcousticCmdPhaseTooQuiet');
+      if(hint==='good') return t('habitAcousticCmdPhaseGood');
+      if(hint==='tooLong') return t('habitAcousticCmdPhaseTooLongSoft');
+      if(hint==='speaking') return t('habitAcousticCmdPhaseSpeaking');
+      return t('habitAcousticCmdPhaseSpeakNow');
+    }
+    return t('habitAcousticCmdRecording');
+  }
+
+  function recordErrorHint(messageKey,reason,debugSummary){
+    var key=String(messageKey||'');
+    if(key==='habitAcousticCmdNoMic'||key==='habitAcousticCmdStreamFailed'){
+      return t('habitAcousticCmdErrHintMic');
+    }
+    if(key==='habitAcousticCmdMicBusy') return t('habitAcousticCmdErrHintBusy');
+    if(key==='habitAcousticCmdNoAudio') return t('habitAcousticCmdErrHintNoAudio');
+    if(key==='habitAcousticCmdTooShort') return t('habitAcousticCmdTooShortHint');
+    if(key==='habitAcousticCmdTooLong') return t('habitAcousticCmdTooLongHint');
+    if(key==='habitAcousticCmdTimeout') return t('habitAcousticCmdTimeoutHint');
+    if(key==='habitAcousticCmdTryClearer'||key==='habitAcousticCmdUnstable'){
+      return t('habitAcousticCmdMatchFailHint');
+    }
+    if(key==='habitAcousticCmdNeedRebuild') return t('habitAcousticCmdNeedRebuild');
+    var speechMs=debugSummary&&debugSummary.speechMs!=null?Number(debugSummary.speechMs):0;
+    var rms=debugSummary&&debugSummary.rms!=null?Number(debugSummary.rms):0;
+    if(speechMs>0&&speechMs<DEFAULT_THRESHOLDS.minSpeechMs) return t('habitAcousticCmdTooShortHint');
+    if(rms>0&&rms<0.01) return t('habitAcousticCmdErrHintNoAudio');
+    if(reason) return t('habitAcousticCmdErrHintGeneric');
+    return t('habitAcousticCmdTimeoutHint');
+  }
+
+  function recordQualityLabel(quality,agreement){
+    var q=String(quality||'');
+    if(q==='good') return t('habitAcousticCmdLearned');
+    if(q==='ok'){
+      if(Number(agreement)>0&&Number(agreement)<0.75) return t('habitAcousticCmdSuggestMoreSpecific');
+      return t('habitAcousticCmdSuggestRerecord');
+    }
+    if(q==='weak') return t('habitAcousticCmdSuggestRerecord');
+    return t('habitAcousticCmdLearned');
+  }
+
+  function debugSummaryLine(debug){
+    if(!debug) return '';
+    var speechMs=debug.speechMs!=null?Number(debug.speechMs):0;
+    var rms=debug.rms!=null?Number(debug.rms):0;
+    var parts=[];
+    if(speechMs>0) parts.push(t('habitAcousticCmdDebugSpeech',{s:(speechMs/1000).toFixed(1)}));
+    if(rms>0){
+      parts.push(rms<0.01?t('habitAcousticCmdDebugQuiet'):t('habitAcousticCmdDebugLevelOk'));
+    }
+    return parts.join(t('habitAcousticCmdDebugJoin'));
   }
 
   function renderSampleProgress(activeStep){
@@ -55,26 +193,23 @@
 
   function renderDurationMeter(ms,opts){
     opts=opts||{};
-    ms=Math.max(0,Number(ms)||0);
-    var pct=Math.min(100,Math.round((ms/MAX_SPEECH_MS)*100));
-    var zone='is-idle';
-    if(ms>=MIN_SPEECH_MS&&ms<=MAX_SPEECH_MS) zone='is-good';
-    else if(ms>MAX_SPEECH_MS) zone='is-warn';
-    else if(ms>0) zone='is-low';
+    var th=opts.thresholds||currentThresholds();
+    var st=durationMeterState(ms,ms,th);
     var marker='';
     if(opts.showIdeal!==false){
-      marker='<span class="habit-voice-cmd-meter-ideal" style="left:'+Math.round((MIN_SPEECH_MS/MAX_SPEECH_MS)*100)+'%"></span>'
+      marker='<span class="habit-voice-cmd-meter-ideal" style="left:'+st.minPct+'%"></span>'
+        +'<span class="habit-voice-cmd-meter-prefer" style="left:'+st.preferPct+'%"></span>'
         +'<span class="habit-voice-cmd-meter-max" style="left:100%"></span>';
     }
-    return '<div class="habit-voice-cmd-meter '+zone+(opts.compact?' is-compact':'')+'">'
+    return '<div class="habit-voice-cmd-meter is-'+st.zone+(opts.compact?' is-compact':'')+'">'
       +'<div class="habit-voice-cmd-meter-track">'+marker
-      +'<span class="habit-voice-cmd-meter-fill" style="width:'+pct+'%"></span></div>'
+      +'<span class="habit-voice-cmd-meter-fill" style="width:'+st.pct+'%"></span></div>'
       +'<div class="habit-voice-cmd-meter-labels">'
       +'<span>'+esc(t('habitAcousticCmdRecordZoneMin'))+'</span>'
       +'<span>'+esc(t('habitAcousticCmdRecordZone'))+'</span>'
       +'<span>'+esc(t('habitAcousticCmdRecordZoneMax'))+'</span>'
       +'</div>'
-      +(ms>0?'<p class="habit-voice-cmd-meter-val">'+esc(t('habitAcousticCmdRecordDuration',{s:(ms/1000).toFixed(1)}))+'</p>':'')
+      +(st.ms>0?'<p class="habit-voice-cmd-meter-val">'+esc(t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)}))+'</p>':'')
       +'</div>';
   }
 
@@ -94,6 +229,10 @@
       global.clearTimeout(promptTimer);
       promptTimer=null;
     }
+    if(hardCapTimer){
+      global.clearTimeout(hardCapTimer);
+      hardCapTimer=null;
+    }
   }
 
   function setSuspended(on){
@@ -102,10 +241,59 @@
     return api.setSuspend(!!on).catch(function(){ return null; });
   }
 
-  function discardDraft(){
-    clearPromptTimer();
+  function stopRecordVis(){
+    if(recordVisTimer){
+      global.clearInterval(recordVisTimer);
+      recordVisTimer=null;
+    }
+    recordStartedAt=0;
+  }
+
+  function cleanupRecordingSession(opts){
+    opts=opts||{};
+    var api=acoustic();
+    var sid=draft&&draft.recordSessionId?String(draft.recordSessionId):'';
+    var phase=draft&&draft.uiPhase?String(draft.uiPhase):'';
+    // Mid-take abort must be explicit. Accidental unsuspend during recording
+    // restarts Vosk on the wrong thread and freezes the webview.
+    var midTake=phase==='startingMic'||phase==='recording'||phase==='processing';
+    if(midTake&&!opts.force){
+      if(api&&api.unlistenLevel) api.unlistenLevel();
+      stopRecordVis();
+      clearPromptTimer();
+      liveLevel=null;
+      hasLiveLevel=false;
+      if(api&&api.recordCancel){
+        return api.recordCancel({sessionId:sid}).catch(function(){ return null; });
+      }
+      return Promise.resolve();
+    }
+    finishInFlight=false;
+    if(api&&api.unlistenLevel) api.unlistenLevel();
     stopRecordVis();
-    setSuspended(false);
+    clearPromptTimer();
+    liveLevel=null;
+    hasLiveLevel=false;
+    // Always cancel — releases parked multi-take mic lease even if sessionId cleared.
+    var cancelP=api&&api.recordCancel
+      ?api.recordCancel({sessionId:sid})
+      :Promise.resolve();
+    if(draft){
+      draft.recordSessionId='';
+      draft.uiPhase='';
+      draft.nextTakeCountdownMs=0;
+    }
+    return cancelP.then(function(){
+      if(opts.unsuspend!==false) return setSuspended(false);
+      return null;
+    }).catch(function(){
+      if(opts.unsuspend!==false) return setSuspended(false);
+      return null;
+    });
+  }
+
+  function discardDraft(){
+    cleanupRecordingSession({unsuspend:true,force:true});
     draft=null;
   }
 
@@ -154,14 +342,13 @@
     if(cmd.enabled===false) return t('habitAcousticCmdPaused');
     var text=String(cmd.displayText||'').trim();
     if(text) return text;
-    if(cmd.quality==='ok') return t('habitAcousticCmdSuggestRerecord');
-    return t('habitAcousticCmdLearned');
+    return recordQualityLabel(cmd.quality,cmd.agreement);
   }
 
   function chipClass(cmd){
     if(!cmd) return '';
     if(cmd.enabled===false) return 'is-disabled';
-    if(cmd.quality==='ok') return 'is-warn';
+    if(cmd.quality==='ok'||cmd.quality==='weak') return 'is-warn';
     return 'is-good';
   }
 
@@ -202,8 +389,10 @@
       +'<p class="habit-voice-cmd-desc habit-voice-cmd-desc--muted habit-voice-cmd-disclaimer">'+esc(t('habitAcousticCmdDisclaimer'))+'</p>'
       +(scope==='foreground-app'?'<p class="habit-voice-cmd-scope-hint">'+esc(t('habitAcousticCmdScopeFgHint'))+'</p>':'');
     if(cmd){
+      var qualityText=recordQualityLabel(cmd.quality,cmd.agreement);
       html+='<div class="habit-voice-cmd-status">'
         +'<span class="habit-voice-cmd-chip '+chipClass(cmd)+'">'+esc(chipLabel(cmd))+'</span>'
+        +(String(cmd.displayText||'').trim()?'<span class="habit-voice-cmd-quality">'+esc(qualityText)+'</span>':'')
         +(hint?'<span class="habit-voice-cmd-display-hint">'+esc(hint)+'</span>':'')
         +'<div class="habit-voice-cmd-actions">'
         +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="edit-label">'+esc(t('habitAcousticCmdEditLabel'))+'</button>'
@@ -223,77 +412,133 @@
     return html;
   }
 
-  function renderRecording(){
-    var step=sampleStepIndex();
+  function phaseChipClass(phase,metrics){
+    if(phase==='preparing'||phase==='processing') return 'is-idle';
+    var hint=voiceHintFromMetrics(metrics,currentThresholds());
+    if(hint==='good') return 'is-good';
+    if(hint==='tooQuiet'||hint==='tooLong') return 'is-warn';
+    return 'is-idle';
+  }
+
+  function renderRecordPanel(opts){
+    opts=opts||{};
+    var phase=opts.phase||'listening';
+    var th=opts.thresholds||currentThresholds();
+    var metrics=opts.metrics||{};
+    var step=opts.step||sampleStepIndex();
+    var speechMs=Number(metrics.speechMs)||0;
+    var actionText=opts.actionText||recordPhaseText(phase,metrics,th);
+    var chipText=opts.chipText||t('habitAcousticCmdRecordStep',{n:step});
+    var barsTone=voiceHintFromMetrics(metrics,th);
+    var barsCls='mic-level-bars habit-voice-cmd-rec-bars is-active';
+    if(barsTone==='tooQuiet') barsCls+=' is-too-quiet';
+    else if(barsTone==='good') barsCls+=' is-good';
+    else if(barsTone==='tooLong') barsCls+=' is-too-long';
+    var hintText=opts.hint?String(opts.hint):'';
+    var hintHtml='<p class="habit-voice-cmd-rec-hint" id="habitAcousticRecordHint"'
+      +(hintText?'':' hidden')+'>'+esc(hintText)+'</p>';
+    var primary=opts.primaryAction||'';
     return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-listening" id="habitAcousticRecordPanel">'
       +renderSampleProgress(step)
-      +'<div class="habit-voice-cmd-rec-card">'
+      +'<div class="habit-voice-cmd-rec-card habit-voice-cmd-rec-panel">'
+      +'<div class="habit-voice-cmd-rec-top">'
+      +'<span class="habit-voice-cmd-chip '+phaseChipClass(phase,metrics)+'" id="habitAcousticRecordChip">'+esc(chipText)+'</span>'
+      +'<span class="habit-voice-cmd-phase" id="habitAcousticRecordPhase">'+esc(actionText)+'</span>'
+      +'</div>'
       +'<div class="habit-voice-cmd-rec-visual">'
       +'<span class="habit-voice-cmd-rec-ring" aria-hidden="true"></span>'
-      +'<span class="mic-level-bars habit-voice-cmd-rec-bars is-active" id="habitAcousticRecordBars" aria-hidden="true">'
+      +'<span class="'+barsCls+'" id="habitAcousticRecordBars" aria-hidden="true">'
       +buildMicBars(16)+'</span>'
       +'</div>'
-      +'<p class="habit-voice-cmd-status" id="habitAcousticRecordStatus">'+esc(t('habitAcousticCmdRecording'))+'</p>'
-      +'<p class="habit-voice-cmd-rec-hint" id="habitAcousticRecordHint">'+esc(t('habitAcousticCmdRecordWait'))+'</p>'
-      +renderDurationMeter(0)
+      +'<div class="habit-voice-cmd-rec-meter" id="habitAcousticRecordMeterHost">'
+      +renderDurationMeter(speechMs,{thresholds:th})
       +'</div>'
-      +'<p class="habit-voice-cmd-desc habit-voice-cmd-desc--muted">'+esc(t('habitAcousticCmdRecordTip'))+'</p>'
-      +'<div class="habit-voice-cmd-actions">'
-      +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
+      +hintHtml
+      +'</div>'
+      +'<div class="habit-voice-cmd-footer">'
+      +primary
+      +'<button type="button" class="habit-voice-cmd-cancel" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
       +'</div></div>';
   }
 
-  function renderPrompt(sampleCount){
-    var msg=sampleCount>=1?t('habitAcousticCmdNeedMore'):t('habitAcousticCmdRecordAgain');
-    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-confirm">'
-      +renderSampleProgress(Math.min(2,sampleCount+1))
-      +'<div class="habit-voice-cmd-rec-card is-confirm">'
-      +'<p class="habit-voice-cmd-status">'+esc(msg)+'</p>'
-      +'<p class="habit-voice-cmd-desc habit-voice-cmd-desc--muted">'+esc(t('habitAcousticCmdRecordConfirmHint'))+'</p>'
-      +'</div>'
-      +'<div class="habit-voice-cmd-actions">'
-      +'<button type="button" class="habit-hub-new-btn is-primary" data-voice-cmd-act="confirm-yes">'+esc(t('habitAcousticCmdConfirmYes'))+'</button>'
-      +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="confirm-no">'+esc(t('habitAcousticCmdConfirmNo'))+'</button>'
-      +'</div></div>';
+  function renderRecording(){
+    var phase=(draft&&draft.uiPhase)||'armed';
+    var metrics=liveLevel||{};
+    var th=currentThresholds();
+    var tone=voiceHintFromMetrics(metrics,th);
+    var actionText=recordPhaseText(phase,metrics,th);
+    if(phase==='armed'&&draft&&draft.inlineHint){
+      actionText=t(draft.inlineHint);
+    }
+    var hint='';
+    if(phase==='recording'&&(tone==='tooQuiet'||tone==='tooLong')){
+      hint=actionText;
+    }
+    var primary='';
+    if(phase==='armed'){
+      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" data-voice-cmd-act="begin-speak">'
+        +esc(t('habitAcousticCmdBeginSpeak'))+'</button>';
+    }else if(phase==='startingMic'){
+      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" disabled>'
+        +esc(t('habitAcousticCmdPhaseStartingMic'))+'</button>';
+    }else if(phase==='recording'){
+      primary='<button type="button" class="habit-hub-new-btn is-primary is-block" data-voice-cmd-act="finish-speak">'
+        +esc(t('habitAcousticCmdFinishSpeak'))+'</button>';
+    }
+    return renderRecordPanel({
+      phase:phase,
+      metrics:metrics,
+      thresholds:th,
+      step:sampleStepIndex(),
+      chipText:t('habitAcousticCmdPhaseChip',{n:sampleStepIndex()}),
+      actionText:actionText,
+      hint:hint,
+      primaryAction:primary
+    });
   }
 
   function renderBuilding(){
-    return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-listening is-building">'
-      +renderSampleProgress(2)
-      +'<div class="habit-voice-cmd-rec-card">'
-      +'<span class="habit-voice-cmd-build-spinner" aria-hidden="true"></span>'
-      +'<p class="habit-voice-cmd-status">'+esc(t('habitAcousticCmdBuilding'))+'</p>'
-      +'</div></div>';
+    return renderRecordPanel({
+      phase:'processing',
+      metrics:{},
+      step:2,
+      chipText:t('habitAcousticCmdPhaseChip',{n:2}),
+      actionText:recordPhaseText('processing'),
+      hint:'',
+      primaryAction:''
+    });
   }
 
   function renderError(messageKey,debug){
     var msg=t(messageKey||'habitAcousticCmdTimeout');
+    var hint=recordErrorHint(messageKey,null,debug);
+    var debugLine=debugSummaryLine(debug);
     var speechMs=debug&&debug.speechMs!=null?Number(debug.speechMs):0;
-    var hint='';
-    if(messageKey==='habitAcousticCmdTooShort') hint=t('habitAcousticCmdTooShortHint');
-    else if(messageKey==='habitAcousticCmdTooLong') hint=t('habitAcousticCmdTooLongHint');
-    else if(messageKey==='habitAcousticCmdTimeout') hint=t('habitAcousticCmdTimeoutHint');
-    else if(messageKey==='habitAcousticCmdTryClearer'||messageKey==='habitAcousticCmdUnstable'){
-      hint=t('habitAcousticCmdMatchFailHint');
-    }
     return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-error">'
       +renderSampleProgress(sampleStepIndex())
-      +'<div class="habit-voice-cmd-rec-card is-error">'
-      +'<p class="habit-voice-cmd-status is-warn">'+esc(msg)+'</p>'
-      +(hint?'<p class="habit-voice-cmd-rec-hint">'+esc(hint)+'</p>':'')
-      +(speechMs>0?renderDurationMeter(speechMs,{compact:true}):renderDurationMeter(0,{compact:true}))
+      +'<div class="habit-voice-cmd-rec-card habit-voice-cmd-rec-panel is-error">'
+      +'<div class="habit-voice-cmd-rec-top">'
+      +'<span class="habit-voice-cmd-chip is-warn">'+esc(t('habitAcousticCmdErrChip'))+'</span>'
+      +'<span class="habit-voice-cmd-phase is-warn">'+esc(msg)+'</span>'
+      +'</div>'
+      +'<p class="habit-voice-cmd-rec-hint">'+esc(hint)+'</p>'
+      +(debugLine?'<p class="habit-voice-cmd-debug">'+esc(debugLine)+'</p>':'')
+      +renderDurationMeter(speechMs,{compact:true})
       +'</div>'
       +'<div class="habit-voice-cmd-actions">'
       +'<button type="button" class="habit-hub-new-btn is-primary" data-voice-cmd-act="record">'+esc(t('habitAcousticCmdRecordAgain'))+'</button>'
+      +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="change-mic">'+esc(t('habitAcousticCmdChangeMic'))+'</button>'
       +'<button type="button" class="habit-hub-act is-cta" data-voice-cmd-act="cancel">'+esc(t('habitAcousticCmdCancel'))+'</button>'
       +'</div></div>';
   }
 
   function renderLabelEditor(prefill){
     prefill=String(prefill||'').trim();
+    var quality=draft&&draft.pendingQuality?recordQualityLabel(draft.pendingQuality,draft.pendingAgreement):'';
     return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-label">'
       +'<div class="habit-voice-cmd-rec-card is-confirm">'
       +'<p class="habit-voice-cmd-status">'+esc(t('habitAcousticCmdLabelTitle'))+'</p>'
+      +(quality?'<p class="habit-voice-cmd-quality">'+esc(quality)+'</p>':'')
       +'<p class="habit-voice-cmd-desc habit-voice-cmd-desc--muted">'+esc(t('habitAcousticCmdLabelHint'))+'</p>'
       +'<input type="text" class="habit-voice-cmd-label-input" id="habitAcousticCmdLabelInput" maxlength="32"'
       +' value="'+esc(prefill)+'" placeholder="'+esc(t('habitAcousticCmdLabelPlaceholder'))+'" autocomplete="off" />'
@@ -306,70 +551,94 @@
 
   function renderDone(){
     var text=draft&&draft.pendingLabel?String(draft.pendingLabel).trim():'';
+    var quality=draft&&draft.pendingQuality?recordQualityLabel(draft.pendingQuality,draft.pendingAgreement):t('habitAcousticCmdLearned');
     return '<div class="habit-scenario-voice-field habit-scenario-voice-command is-done">'
       +'<p class="habit-voice-cmd-status"><span class="habit-voice-cmd-chip is-good">'
-      +esc(text||t('habitAcousticCmdLearned'))+'</span></p>'
+      +esc(text||quality)+'</span></p>'
       +'<p class="habit-voice-cmd-foot">'+esc(t('habitAcousticCmdReadyHint'))+'</p>'
       +'</div>';
   }
 
-  function stopRecordVis(){
-    if(recordVisTimer){
-      global.clearInterval(recordVisTimer);
-      recordVisTimer=null;
-    }
-    recordStartedAt=0;
-  }
-
-  function animateRecordBars(elapsed){
+  function applyBarScales(scales){
     var wrap=$('habitAcousticRecordBars');
     if(!wrap) return;
     var bars=wrap.querySelectorAll('span');
     if(!bars.length) return;
-    var norm=Math.min(1,elapsed/1800);
-    if(elapsed<250) norm=0.15+Math.sin(elapsed/80)*0.08;
-    else if(elapsed<MAX_SPEECH_MS) norm=0.35+norm*0.55+Math.sin(elapsed/120)*0.12;
-    else norm=0.55+Math.sin(elapsed/90)*0.2;
-    var n=bars.length;
-    var center=(n-1)/2;
+    scales=scales||levelToBarScales(0.08,bars.length);
     bars.forEach(function(bar,i){
-      bar.className='';
-      var dist=Math.abs(i-center)/Math.max(center,1);
-      var scale=Math.max(0.12,Math.min(1,norm*(1-dist*0.42)));
-      bar.style.transform='scaleY('+scale.toFixed(3)+')';
-      if(scale>0.55) bar.classList.add('is-hot');
+      var scale=scales[i]!=null?scales[i]:0.12;
+      bar.className=scale>0.55?'is-hot':'';
+      bar.style.transform='scaleY('+Number(scale).toFixed(3)+')';
     });
   }
 
   function updateRecordVis(){
-    if(!draft||draft.state!=='recording'||!recordStartedAt) return;
-    var elapsed=Date.now()-recordStartedAt;
-    var statusEl=$('habitAcousticRecordStatus');
+    if(!draft) return;
+    if(draft.state!=='recording') return;
+    var th=currentThresholds();
+    var metrics=liveLevel||{
+      level:0,
+      speechMs:0,
+      elapsedMs:recordStartedAt?Date.now()-recordStartedAt:0,
+      peak:0
+    };
+    if(!hasLiveLevel&&draft.uiPhase==='recording'&&recordStartedAt){
+      var elapsed=Date.now()-recordStartedAt;
+      metrics={
+        level:0.1+Math.sin(elapsed/180)*0.04,
+        speechMs:0,
+        elapsedMs:elapsed,
+        peak:0
+      };
+    }
+    var phase=draft.uiPhase||'armed';
+    var phaseEl=$('habitAcousticRecordPhase');
     var hintEl=$('habitAcousticRecordHint');
+    var chipEl=$('habitAcousticRecordChip');
     var meterFill=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter-fill');
     var meterVal=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter-val');
     var meter=document.querySelector('#habitAcousticRecordPanel .habit-voice-cmd-meter');
-    if(statusEl){
-      if(elapsed<MIN_SPEECH_MS) statusEl.textContent=t('habitAcousticCmdRecordWait');
-      else if(elapsed<=MAX_SPEECH_MS) statusEl.textContent=t('habitAcousticCmdRecording');
-      else statusEl.textContent=t('habitAcousticCmdRecordTooLongLive');
-    }
+    var bars=$('habitAcousticRecordBars');
+    var tone=voiceHintFromMetrics(metrics,th);
+    var action=recordPhaseText(phase,metrics,th);
+    if(phase==='armed'&&draft.inlineHint) action=t(draft.inlineHint);
+    if(phaseEl) phaseEl.textContent=action;
     if(hintEl){
-      if(elapsed<400) hintEl.textContent=t('habitAcousticCmdRecordWait');
-      else if(elapsed<1500) hintEl.textContent=t('habitAcousticCmdRecordGo');
-      else if(elapsed<=MAX_SPEECH_MS) hintEl.textContent=t('habitAcousticCmdRecordStop');
-      else hintEl.textContent=t('habitAcousticCmdRecordTooLongHint');
+      if(phase==='recording'&&(tone==='tooQuiet'||tone==='tooLong')){
+        hintEl.textContent=action;
+        hintEl.hidden=false;
+      }else{
+        hintEl.textContent='';
+        hintEl.hidden=true;
+      }
     }
-    if(meterFill) meterFill.style.width=Math.min(100,Math.round((elapsed/MAX_SPEECH_MS)*100))+'%';
+    if(chipEl&&draft.state==='recording'){
+      chipEl.textContent=t('habitAcousticCmdPhaseChip',{n:sampleStepIndex()});
+      chipEl.className='habit-voice-cmd-chip '+phaseChipClass(phase,metrics);
+    }
+    var st=durationMeterState(metrics.elapsedMs,metrics.speechMs,th);
+    if(meterFill) meterFill.style.width=st.pct+'%';
     if(meter){
       meter.classList.remove('is-idle','is-good','is-low','is-warn');
-      if(elapsed>=MIN_SPEECH_MS&&elapsed<=MAX_SPEECH_MS) meter.classList.add('is-good');
-      else if(elapsed>MAX_SPEECH_MS) meter.classList.add('is-warn');
-      else if(elapsed>0) meter.classList.add('is-low');
-      else meter.classList.add('is-idle');
+      meter.classList.add('is-'+st.zone);
     }
-    if(meterVal) meterVal.textContent=t('habitAcousticCmdRecordDuration',{s:(elapsed/1000).toFixed(1)});
-    animateRecordBars(elapsed);
+    if(meterVal){
+      if(st.ms>0) meterVal.textContent=t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)});
+    }else if(st.ms>0){
+      var host=$('habitAcousticRecordMeterHost');
+      if(host&&!host.querySelector('.habit-voice-cmd-meter-val')){
+        var p=document.createElement('p');
+        p.className='habit-voice-cmd-meter-val';
+        p.textContent=t('habitAcousticCmdRecordDuration',{s:(st.ms/1000).toFixed(1)});
+        host.appendChild(p);
+      }
+    }
+    if(bars){
+      bars.classList.toggle('is-too-quiet',voiceHintFromMetrics(metrics,th)==='tooQuiet');
+      bars.classList.toggle('is-good',voiceHintFromMetrics(metrics,th)==='good');
+      bars.classList.toggle('is-too-long',voiceHintFromMetrics(metrics,th)==='tooLong');
+    }
+    applyBarScales(levelToBarScales(metrics.level,16));
   }
 
   function startRecordVis(){
@@ -377,6 +646,20 @@
     recordStartedAt=Date.now();
     updateRecordVis();
     recordVisTimer=global.setInterval(updateRecordVis,100);
+  }
+
+  function onLevelEvent(payload){
+    if(!draft||!draft.recordSessionId) return;
+    if(!payload||String(payload.sessionId||'')!==String(draft.recordSessionId)) return;
+    hasLiveLevel=true;
+    liveLevel={
+      level:Number(payload.level)||0,
+      rms:Number(payload.rms)||0,
+      peak:Number(payload.peak)||0,
+      elapsedMs:Number(payload.elapsedMs)||0,
+      speechMs:Number(payload.speechMs)||0
+    };
+    updateRecordVis();
   }
 
   function feedbackInfo(){
@@ -389,10 +672,10 @@
         return {
           statusKey:'habitAcousticCmdFbRecording',
           transcriptKey:'habitAcousticCmdFbNoTranscript',
-          wakeHint:t('habitAcousticCmdRecording'),
+          wakeHint:recordPhaseText(draft.uiPhase||'armed',liveLevel,currentThresholds()),
           wakeLabel:t('habitAcousticCmdTitle'),
           calibrating:true,
-          live:true
+          live:draft.uiPhase==='recording'
         };
       }
       if(draft.state==='building'){
@@ -400,16 +683,6 @@
           statusKey:'habitAcousticCmdFbBuilding',
           transcriptKey:'habitAcousticCmdFbNoTranscript',
           wakeHint:t('habitAcousticCmdBuilding'),
-          wakeLabel:t('habitAcousticCmdTitle'),
-          calibrating:true,
-          live:false
-        };
-      }
-      if(draft.state==='prompt'){
-        return {
-          statusKey:'habitAcousticCmdFbPrompt',
-          transcriptKey:'habitAcousticCmdFbNoTranscript',
-          wakeHint:t('habitAcousticCmdNeedMore'),
           wakeLabel:t('habitAcousticCmdTitle'),
           calibrating:true,
           live:false
@@ -453,7 +726,7 @@
   }
 
   function isCalibrating(){
-    return !!(draft&&(draft.state==='recording'||draft.state==='prompt'||draft.state==='building'||draft.state==='label'));
+    return !!(draft&&(draft.state==='recording'||draft.state==='building'||draft.state==='label'));
   }
 
   function isLabelEditorMounted(){
@@ -483,12 +756,12 @@
     if(draft&&draft.mappingId===m.id){
       if(draft.state==='recording'){
         host.innerHTML=renderRecording();
-        startRecordVis();
+        if(draft.uiPhase==='recording') startRecordVis();
+        else stopRecordVis();
         syncFeedbackRail();
         return;
       }
       stopRecordVis();
-      if(draft.state==='prompt'){ host.innerHTML=renderPrompt((draft.samples||[]).length); syncFeedbackRail(); return; }
       if(draft.state==='building'){ host.innerHTML=renderBuilding(); syncFeedbackRail(); return; }
       if(draft.state==='error'){
         host.innerHTML=renderError(draft.messageKey||'habitAcousticCmdTimeout',draft.debugSummary);
@@ -501,7 +774,6 @@
         return;
       }
       if(draft.state==='label'){
-        // Keep the live input — polling re-paints were wiping typed text / stealing focus.
         if(isLabelEditorMounted()){
           syncFeedbackRail();
           return;
@@ -531,23 +803,38 @@
 
   function failRecording(messageKey,debug){
     if(!draft) return;
-    stopRecordVis();
+    cleanupRecordingSession({unsuspend:true,force:true});
     draft.state='error';
+    draft.uiPhase='error';
     draft.messageKey=messageKey||'habitAcousticCmdTimeout';
     draft.debugSummary=debug||null;
-    setSuspended(false);
     paint();
   }
 
   function scheduleNextRecording(){
     clearPromptTimer();
-    promptTimer=global.setTimeout(function(){
-      if(!draft||draft.state!=='prompt') return;
-      startRecording();
-    },PROMPT_DELAY_MS);
+    if(!draft) return;
+    // Skip readyNext confirm — go straight to「开始说」for take 2+.
+    armForNextTake({inlineHint:'habitAcousticCmdNeedMore'});
   }
 
-  function startRecording(){
+  function armForNextTake(opts){
+    // Between takes: stay armed without suspend false/true churn (would restart Vosk).
+    opts=opts||{};
+    if(!draft) return;
+    clearPromptTimer();
+    draft.recordSessionId='';
+    draft.state='recording';
+    draft.uiPhase='armed';
+    draft.inlineHint=opts.inlineHint||'';
+    liveLevel=null;
+    hasLiveLevel=false;
+    setSuspended(true);
+    paint();
+  }
+
+  function enterArmedSession(opts){
+    opts=opts||{};
     var m=currentMapping();
     if(!m) return;
     var api=acoustic();
@@ -557,56 +844,175 @@
         samples:(draft&&draft.mappingId===m.id&&Array.isArray(draft.samples))?draft.samples.slice():[],
         state:'error',
         messageKey:'habitAcousticCmdUnavailable',
-        pendingScope:draft&&draft.pendingScope
+        pendingScope:draft&&draft.pendingScope,
+        thresholds:currentThresholds()
       };
       paint();
       return;
     }
     clearPromptTimer();
+    var keepSamples=opts.resetSamples?[]:
+      ((draft&&draft.mappingId===m.id&&Array.isArray(draft.samples))?draft.samples.slice():[]);
+    var keepScope=draft&&draft.pendingScope;
+    var keepTh=draft&&draft.thresholds?draft.thresholds:null;
     draft={
       mappingId:m.id,
-      samples:(draft&&draft.mappingId===m.id&&Array.isArray(draft.samples))?draft.samples.slice():[],
+      samples:keepSamples,
       state:'recording',
-      pendingScope:draft&&draft.pendingScope
+      uiPhase:'preparing',
+      pendingScope:keepScope,
+      thresholds:keepTh||DEFAULT_THRESHOLDS,
+      recordSessionId:'',
+      inlineHint:opts.inlineHint||''
     };
+    liveLevel=null;
+    hasLiveLevel=false;
     paint();
-    setSuspended(true);
+
     var probe=api.probeBackend?api.probeBackend():Promise.resolve(true);
     probe.then(function(ok){
       if(!ok){
         failRecording('habitAcousticCmdNeedRebuild');
         return null;
       }
-      return setSuspended(true).then(function(){
-        return api.recordOnce();
-      });
-    }).then(function(res){
-      if(!res) return;
-      if(api.logDebugSummary) api.logDebugSummary(res);
+      return api.preflight?api.preflight():Promise.resolve({ok:true});
+    }).then(function(pf){
       if(!draft||draft.state!=='recording') return;
-      if(!res.ok||!res.sample){
-        failRecording(res.messageKey||'habitAcousticCmdTimeout',res.debugSummary);
+      if(pf&&pf.ok===false){
+        failRecording(pf.messageKey||'habitAcousticCmdNoMic',pf.debugSummary||null);
         return;
       }
-      stopRecordVis();
+      draft.thresholds=thresholdsFrom(pf||DEFAULT_THRESHOLDS);
+      // Stay suspended for the whole calibration; never flip false→true (that
+      // races MicLease and can leave wake engines stuck on「已停止」).
+      return setSuspended(true).then(function(){
+        if(!draft||draft.state!=='recording') return;
+        draft.uiPhase='armed';
+        paint();
+      });
+    }).catch(function(err){
+      if(typeof console!=='undefined'&&console.warn){
+        console.warn('[acoustic] armed preflight failed',err);
+      }
+      failRecording('habitAcousticCmdUnavailable');
+    });
+  }
+
+  function startRecording(){
+    enterArmedSession({resetSamples:true});
+  }
+
+  function beginSpeak(){
+    var m=currentMapping();
+    var api=acoustic();
+    if(!m||!draft||!api||!api.recordStart) return;
+    if(draft.uiPhase!=='armed') return;
+    if(finishInFlight) return;
+    var sessionId=newSessionId();
+    draft.recordSessionId=sessionId;
+    draft.uiPhase='startingMic';
+    draft.inlineHint='';
+    liveLevel=null;
+    hasLiveLevel=false;
+    paint();
+
+    var listenP=api.listenLevel?api.listenLevel(onLevelEvent):Promise.resolve();
+    listenP.then(function(){
+      if(!draft||draft.recordSessionId!==sessionId) return null;
+      return api.recordStart({sessionId:sessionId});
+    }).then(function(res){
+      if(!draft||draft.recordSessionId!==sessionId) return;
+      if(!res||!res.ok){
+        failRecording((res&&res.messageKey)||'habitAcousticCmdStreamFailed',res&&res.debugSummary);
+        return;
+      }
+      if(res.minSpeechMs||res.manualMaxMs){
+        draft.thresholds=thresholdsFrom(Object.assign({},draft.thresholds||{},res));
+      }
+      draft.uiPhase='recording';
+      draft.state='recording';
+      paint();
+      clearPromptTimer();
+      var maxMs=currentThresholds().manualMaxMs;
+      hardCapTimer=global.setTimeout(function(){
+        if(draft&&draft.recordSessionId===sessionId&&draft.uiPhase==='recording'){
+          finishSpeak({fromHardCap:true});
+        }
+      },maxMs);
+    }).catch(function(err){
+      if(typeof console!=='undefined'&&console.warn){
+        console.warn('[acoustic] recordStart failed',err);
+      }
+      var msg=err&&err.message?String(err.message):'';
+      if(msg.indexOf('not found')>=0||msg.indexOf('unknown command')>=0){
+        failRecording('habitAcousticCmdNeedRebuild');
+      }else if(msg.indexOf('timeout')>=0||msg.indexOf('busy')>=0){
+        failRecording('habitAcousticCmdMicBusy');
+      }else failRecording('habitAcousticCmdStreamFailed');
+    });
+  }
+
+  function finishSpeak(opts){
+    opts=opts||{};
+    var api=acoustic();
+    if(!draft||!api||!api.recordStop||finishInFlight) return;
+    if(draft.uiPhase!=='recording') return;
+    var sessionId=String(draft.recordSessionId||'');
+    if(!sessionId) return;
+    finishInFlight=true;
+    clearPromptTimer();
+    // Stop level events before join — avoids capture↔main thread deadlock under load.
+    if(api.unlistenLevel) api.unlistenLevel();
+    stopRecordVis();
+    draft.uiPhase='processing';
+    paint();
+    api.recordStop({
+      sessionId:sessionId,
+      manualMaxMs:currentThresholds().manualMaxMs
+    }).then(function(res){
+      finishInFlight=false;
+      if(api.logDebugSummary) api.logDebugSummary(res);
+      if(!draft) return;
+      if(res&&(res.reason==='stale'||res.reason==='mismatch')){
+        draft.recordSessionId='';
+        draft.uiPhase='armed';
+        draft.state='recording';
+        setSuspended(true);
+        paint();
+        return;
+      }
+      if(!res||!res.ok||!res.sample){
+        var key=(res&&res.messageKey)||'habitAcousticCmdTimeout';
+        if(key==='habitAcousticCmdTooShort'){
+          draft.recordSessionId='';
+          draft.uiPhase='armed';
+          draft.state='recording';
+          draft.inlineHint='habitAcousticCmdTooShort';
+          setSuspended(true);
+          paint();
+          return;
+        }
+        failRecording(key,res&&res.debugSummary);
+        return;
+      }
+      draft.recordSessionId='';
       draft.samples=draft.samples||[];
       draft.samples.push(res.sample);
       if(draft.samples.length>3) draft.samples=draft.samples.slice(-3);
+      if(res.warnings&&res.warnings.length&&global.OneToneAppToast){
+        global.OneToneAppToast.show(t(res.warnings[0]),'scheme');
+      }
       if(draft.samples.length<2){
-        draft.state='prompt';
-        paint();
         scheduleNextRecording();
         return;
       }
       tryBuildCommand();
     }).catch(function(err){
+      finishInFlight=false;
       if(typeof console!=='undefined'&&console.warn){
-        console.warn('[acoustic] recordOnce failed',err);
+        console.warn('[acoustic] recordStop failed',err);
       }
-      var msg=err&&err.message?String(err.message):'';
-      if(msg.indexOf('invoke timeout')>=0) failRecording('habitAcousticCmdTimeout');
-      else if(msg.indexOf('not found')>=0||msg.indexOf('unknown command')>=0) failRecording('habitAcousticCmdNeedRebuild');
-      else failRecording('habitAcousticCmdUnavailable');
+      failRecording('habitAcousticCmdUnavailable');
     });
   }
 
@@ -619,6 +1025,7 @@
       return;
     }
     draft.state='building';
+    draft.uiPhase='processing';
     paint();
     var old=primaryCommand(m);
     var pendingScope=resolvePendingScope(m,old);
@@ -632,8 +1039,6 @@
       if(!draft||draft.state!=='building') return;
       if(!built||!built.ok){
         if(built&&built.reason==='unstable'&&draft.samples.length<3){
-          draft.state='prompt';
-          paint();
           scheduleNextRecording();
           return;
         }
@@ -645,18 +1050,23 @@
             draft.debugSummary={speechMs:Number(last.durationMs)||0};
           }
         }
-        setSuspended(false);
+        cleanupRecordingSession({unsuspend:true,force:true});
         paint();
         return;
       }
-      setSuspended(false);
+      cleanupRecordingSession({unsuspend:true,force:true});
       draft={
         mappingId:m.id,
         samples:[],
         state:'label',
         pendingScope:pendingScope,
         pendingCommand:built.command,
-        pendingLabel:String((built.command&&built.command.displayText)||(old&&old.displayText)||'').trim()
+        pendingQuality:built.quality||(built.command&&built.command.quality),
+        pendingAgreement:built.agreement!=null
+          ?built.agreement
+          :(built.command&&built.command.qualitySignals&&built.command.qualitySignals.sampleAgreement),
+        pendingLabel:String((built.command&&built.command.displayText)||(old&&old.displayText)||'').trim(),
+        thresholds:draft.thresholds
       };
       paint();
       if(built.warnings&&built.warnings.length&&global.OneToneAppToast){
@@ -681,7 +1091,15 @@
     }
     cmd.updatedAt=Date.now();
     m.acousticVoiceCommands=[cmd];
-    draft={mappingId:m.id,samples:[],state:'done',pendingScope:draft.pendingScope,pendingLabel:label};
+    draft={
+      mappingId:m.id,
+      samples:[],
+      state:'done',
+      pendingScope:draft.pendingScope,
+      pendingLabel:label,
+      pendingQuality:cmd.quality,
+      pendingAgreement:cmd.agreement
+    };
     paint();
     persistMapping(m).then(function(){
       global.setTimeout(function(){
@@ -691,11 +1109,20 @@
   }
 
   function endSessionToIdle(){
-    clearPromptTimer();
-    stopRecordVis();
-    setSuspended(false);
+    cleanupRecordingSession({unsuspend:true,force:true});
     draft=null;
     paint();
+  }
+
+  function openChangeMic(){
+    endSessionToIdle();
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+      global.OneToneSettingsDrawer.open({panel:'voiceWake',focus:'mic'});
+      return;
+    }
+    if(global.OneToneVoiceWakeNavigation&&global.OneToneVoiceWakeNavigation.openMicPicker){
+      global.OneToneVoiceWakeNavigation.openMicPicker();
+    }
   }
 
   function applyScope(scope){
@@ -721,6 +1148,10 @@
       endSessionToIdle();
       return;
     }
+    if(act==='change-mic'){
+      openChangeMic();
+      return;
+    }
     if(act==='save-label'){
       var input=$('habitAcousticCmdLabelInput');
       commitPendingCommand(input?input.value:'');
@@ -739,6 +1170,8 @@
         state:'label',
         pendingScope:resolvePendingScope(m,editCmd),
         pendingCommand:Object.assign({},editCmd),
+        pendingQuality:editCmd.quality,
+        pendingAgreement:editCmd.agreement,
         pendingLabel:String(editCmd.displayText||'').trim()
       };
       paint();
@@ -750,19 +1183,12 @@
       startRecording();
       return;
     }
-    if(act==='confirm-yes'){
-      if(draft&&draft.state==='prompt') startRecording();
+    if(act==='begin-speak'){
+      beginSpeak();
       return;
     }
-    if(act==='confirm-no'){
-      if(draft){
-        if(Array.isArray(draft.samples)&&draft.samples.length) draft.samples.pop();
-        if(!draft.samples.length){
-          endSessionToIdle();
-          return;
-        }
-      }
-      startRecording();
+    if(act==='finish-speak'){
+      finishSpeak();
       return;
     }
     if(act==='toggle'){
@@ -824,9 +1250,15 @@
     bindEvents:bindEvents,
     setOnChange:setOnChange,
     discardDraft:discardDraft,
+    cleanupRecordingSession:cleanupRecordingSession,
     hubChipHtml:hubChipHtml,
     isCalibrating:isCalibrating,
     isScenarioEdit:isScenarioEdit,
-    feedbackInfo:feedbackInfo
+    feedbackInfo:feedbackInfo,
+    recordPhaseText:recordPhaseText,
+    recordErrorHint:recordErrorHint,
+    recordQualityLabel:recordQualityLabel,
+    levelToBarScales:levelToBarScales,
+    durationMeterState:durationMeterState
   };
 })((typeof window!=='undefined')?window:globalThis);
