@@ -58,9 +58,9 @@
     const modePanel=$('voiceSendModePanel');
     const key=V().resolveOutputModeKey(vm);
     const liteMode=vm.mode==='sapi'||vm.mode==='off';
-    const sendPhrasesActive=!vm.loading&&!liteMode&&key!=='confirm';
-    const delayActive=!vm.loading&&!liteMode&&(key==='auto'||key==='phrase');
-    const showMoreCue=!vm.loading&&(liteMode||key==='confirm');
+    // Beginner UX: only show advanced blocks when they actually apply.
+    const showSendExtras=!vm.loading&&!liteMode&&key!=='confirm';
+    const delayActive=showSendExtras&&(key==='auto'||key==='phrase');
 
     if(modePanel) modePanel.hidden=!!vm.loading;
     if(hint){
@@ -69,10 +69,8 @@
       else if(key==='phrase') hint.textContent=t('voiceOutputHintPhrase');
       else hint.textContent=t('voiceOutputHintConfirm');
     }
-    if(moreCue){
-      moreCue.hidden=!showMoreCue;
-      if(!moreCue.hidden) moreCue.textContent=t('voiceSendMoreCue');
-    }
+    // Drop the old "look below" cue — extras are hidden until needed.
+    if(moreCue) moreCue.hidden=true;
     if(liteNotice){
       liteNotice.hidden=vm.loading||!liteMode;
       if(liteNoticeText) liteNoticeText.textContent=t('voiceSendLiteNotice');
@@ -86,33 +84,45 @@
       if(!confirmHint.hidden) confirmHint.textContent=t('voiceSendConfirmHint');
     }
 
-    // Always show send phrases + params; lock/dim when inactive.
     if(sendPanel){
-      sendPanel.hidden=false;
-      sendPanel.classList.remove('is-hidden-confirm');
-      sendPanel.classList.toggle('is-section-inactive',!sendPhrasesActive);
-      setSectionLock(sendPanel,liteMode,'lite');
-      sendPanel.setAttribute('aria-hidden','false');
+      sendPanel.hidden=!showSendExtras;
+      sendPanel.classList.toggle('is-hidden-confirm',!showSendExtras);
+      sendPanel.classList.remove('is-section-inactive');
+      setSectionLock(sendPanel,false,'');
+      sendPanel.setAttribute('aria-hidden',showSendExtras?'false':'true');
+      var sendHint=$('voiceSendCustomHint');
+      if(sendHint&&showSendExtras){
+        sendHint.textContent=key==='auto'
+          ?t('voiceSendCustomHintAuto')
+          :t('voiceSendCustomHint');
+      }
     }
     if(paramsBar){
-      paramsBar.hidden=false;
-      setSectionLock(paramsBar,liteMode,'lite');
+      paramsBar.hidden=!showSendExtras;
+      paramsBar.setAttribute('aria-hidden',showSendExtras?'false':'true');
+      setSectionLock(paramsBar,false,'');
     }
     if(params){
       params.dataset.outputMode=key;
       params.dataset.liteMode=liteMode?'true':'false';
-      params.classList.remove('is-hidden');
+      params.classList.toggle('is-hidden',!showSendExtras);
       syncDelayLabel(key);
       if(delayRow){
         delayRow.classList.toggle('is-hidden',!delayActive);
         delayRow.hidden=!delayActive;
-        setSectionLock(delayRow,liteMode,'lite');
+        setSectionLock(delayRow,false,'');
       }
       var commitPills=$('voiceSettingsCommitPills');
-      setSectionLock(commitPills,liteMode,'lite');
+      setSectionLock(commitPills,false,'');
+      var commitTitle=$('voiceSettingsCommitAsideTitle');
+      if(commitTitle&&showSendExtras){
+        commitTitle.textContent=delayActive
+          ?t('voiceSendParamsTitle')
+          :t('voiceSendParamsTitleKeyOnly');
+      }
     }
     forceTextPhraseKinds();
-    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderSendCustomPhrases){
+    if(showSendExtras&&global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderSendCustomPhrases){
       global.OneToneVoiceEnd.renderSendCustomPhrases();
     }
   }
@@ -135,6 +145,10 @@
   function renderSendPage(vm){
     renderOutputModeSegments(vm);
     renderOutputPanel(vm);
+    var title=$('voiceSendPageTitle');
+    var sub=$('voiceSendPageSub');
+    if(title) title.textContent=t('voiceSendPageTitle');
+    if(sub) sub.textContent=t('voiceSendPageSub');
   }
 
   global.OneToneVoiceStepSend={

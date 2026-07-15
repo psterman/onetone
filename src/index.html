@@ -1801,22 +1801,22 @@
                     <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody">
                     <header class="voice-step-page-head" id="voiceSendPageHead">
                       <h3 class="voice-step-page-title" id="voiceSendPageTitle">语音发送</h3>
-                      <p class="voice-step-page-sub" id="voiceSendPageSub">配置什么时候发出去</p>
+                      <p class="voice-step-page-sub" id="voiceSendPageSub">选一种方式即可；不确定就用「先确认」</p>
                     </header>
                     <div class="voice-step-page-stack voice-send-page-stack" id="voiceSendPageGrid">
                       <section class="voice-phrase-panel voice-send-mode-panel" id="voiceSendModePanel">
                         <p class="voice-phrase-panel-title" id="voiceEditSectionSend">发送方式</p>
                         <div class="keys-trigger-modes voice-output-modes" id="voiceOutputModeSegments" role="group" aria-label="发送方式">
-                          <button type="button" class="keys-trigger-mode-seg is-active" data-voice-output-mode="confirm" id="voiceOutputModeConfirm">先确认</button>
+                          <button type="button" class="keys-trigger-mode-seg is-active" data-voice-output-mode="confirm" id="voiceOutputModeConfirm">先确认（推荐）</button>
                           <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="phrase" id="voiceOutputModePhrase">说发送才发</button>
                           <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="auto" id="voiceOutputModeAuto">自动发送</button>
                         </div>
-                        <p class="voice-output-hint" id="voiceOutputHint">结束后停在输入框，手动按发送键发出去</p>
-                        <p class="voice-output-auto-guard" id="voiceOutputAutoGuard" hidden>说「结束输入」只会停下；自然停顿才会自动发送。</p>
+                        <p class="voice-output-hint" id="voiceOutputHint">说完后文字留在输入框，你自己按发送键。最不容易发错。</p>
+                        <p class="voice-output-auto-guard" id="voiceOutputAutoGuard" hidden>说结束词只会停下；自然停顿后才会自动发送。</p>
                       </section>
-                      <p class="voice-send-more-cue" id="voiceSendMoreCue" hidden>↓ 下方可配置发送词、发送快捷键与等待时间</p>
-                      <p class="voice-send-confirm-hint" id="voiceSendConfirmHint" hidden>先确认模式下无需配置发送词；切换到「说发送才发」或「自动发送」可展开下方选项。</p>
-                      <section class="voice-phrase-panel voice-send-phrase-panel" id="voiceSendPhrasePanel">
+                      <p class="voice-send-more-cue" id="voiceSendMoreCue" hidden></p>
+                      <p class="voice-send-confirm-hint" id="voiceSendConfirmHint">当前不用配发送词。想用嘴发送或自动发送时，再切换上方另外两种方式。</p>
+                      <section class="voice-phrase-panel voice-send-phrase-panel" id="voiceSendPhrasePanel" hidden>
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceSendPresetsZhLabel">发送词</p>
                           <div class="flow-lang-toggle" id="voiceSendLangToggle" role="group" aria-label="发送词语言">
@@ -1846,7 +1846,7 @@
                           </div>
                         </div>
                       </section>
-                      <section class="voice-send-params-bar" id="voiceSendParamsAside" aria-labelledby="voiceSettingsCommitAsideTitle">
+                      <section class="voice-send-params-bar" id="voiceSendParamsAside" aria-labelledby="voiceSettingsCommitAsideTitle" hidden>
                         <div class="voice-output-params" id="voiceOutputParams">
                           <p class="voice-phrase-panel-title" id="voiceSettingsCommitAsideTitle">发送键与等待</p>
                           <div class="voice-send-params-row">

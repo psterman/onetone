@@ -1856,8 +1856,21 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   min-width: 0;
 }
 
-#settingsPanelVoiceWake.voice-page-desk .voice-send-phrase-panel.is-section-inactive {
-  opacity: 0.72;
+#settingsPanelVoiceWake.voice-page-desk .voice-send-phrase-panel.is-hidden-confirm,
+#settingsPanelVoiceWake.voice-page-desk .voice-send-params-bar[hidden],
+#settingsPanelVoiceWake.voice-page-desk .voice-send-phrase-panel[hidden] {
+  display: none !important;
+}
+
+#settingsPanelVoiceWake.voice-page-desk .voice-send-confirm-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft, #f8fafc);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--on-surface-variant, #64748b);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-send-phrase-panel.is-section-locked,
