@@ -6,8 +6,8 @@
   var bound=false;
   var HERO_MODE_KEY='onetone.wbHeroMode';
   var heroMode='voice';
-  var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
-  var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
+  var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>';
+  var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.2" class="wb-key-frame"/><circle cx="6" cy="10" r="1.1" class="wb-key-el wb-key-1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.1" class="wb-key-el wb-key-2" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1.1" class="wb-key-el wb-key-3" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r="1.1" class="wb-key-el wb-key-4" fill="currentColor" stroke="none"/><rect x="7" y="13.5" width="10" height="1.8" rx="0.9" class="wb-key-el wb-key-space" fill="currentColor" stroke="none"/></svg>';
 
   function readHeroMode(){
     try{
@@ -309,8 +309,10 @@
       if(icon.getAttribute('data-icon')!==mode){
         icon.classList.add('is-switching');
         icon.setAttribute('data-icon',mode);
-        icon.innerHTML=next;
-        requestAnimationFrame(function(){ icon.classList.remove('is-switching'); });
+        setTimeout(function(){
+          icon.innerHTML=next;
+          requestAnimationFrame(function(){ icon.classList.remove('is-switching'); });
+        },150);
       }
     }
     if(hint){
@@ -391,6 +393,7 @@
     if(!liveEl) return;
     var card=$('wbTriggerCard')||$('wbHero');
     var status=$('wbLivePreviewStatus');
+    var statusLbl=$('wbLivePreviewStatusLabel')||status;
     var listenBtn=$('wbBtnListenToggle');
     var listenLbl=$('wbBtnListenToggleLabel');
     var paused=!!(vm.runtime&&vm.runtime.paused);
@@ -404,7 +407,9 @@
       status.classList.toggle('is-live',!!listening);
       status.classList.toggle('is-standby',!listening&&!paused);
       status.classList.toggle('is-paused',paused);
-      status.textContent=paused
+    }
+    if(statusLbl){
+      statusLbl.textContent=paused
         ?t('homeWbLivePreviewPaused')
         :(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby'));
     }
@@ -727,6 +732,10 @@
     var heroOrb=$('wbHeroOrb');
     if(heroOrb){
       heroOrb.onclick=function(){ openHeroSettings(); };
+    }
+    var hintBtn=$('wbHeroOrbHintBtn');
+    if(hintBtn){
+      hintBtn.onclick=function(){ openHeroSettings(); };
     }
     var heroModes=$('wbHero');
     if(heroModes){

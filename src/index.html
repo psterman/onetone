@@ -136,42 +136,59 @@
                   <div class="wb-dashboard-stack">
                       <section class="wb-trigger-card wb-trigger-card--hero" id="wbTriggerCard" aria-labelledby="wbHeroOrbHint">
                         <div class="wb-trigger-head">
-                          <span class="wb-trigger-head-spacer" aria-hidden="true"></span>
-                          <button type="button" class="wb-habit-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
+                          <span class="wb-hero-dict-status is-standby" id="wbLivePreviewStatus">
+                            <i class="wb-hero-dict-dot" aria-hidden="true"></i>
+                            <span id="wbLivePreviewStatusLabel" data-i18n="homeWbLivePreviewStandby">待命</span>
+                          </span>
+                          <div class="wb-trigger-head-actions">
+                            <button type="button" class="wb-live-listen-toggle" id="wbBtnListenToggle" aria-pressed="false">
+                              <span id="wbBtnListenToggleLabel" data-i18n="homeWbListenPause">停止转写</span>
+                            </button>
+                            <button type="button" class="wb-habit-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
+                          </div>
                         </div>
                         <div class="wb-hero" id="wbHero">
                           <div class="wb-hero-caption">
-                            <div class="wb-hero-caption-top">
-                              <span class="wb-hero-dict-status is-standby" id="wbLivePreviewStatus" data-i18n="homeWbLivePreviewStandby">待命</span>
-                              <button type="button" class="wb-live-listen-toggle" id="wbBtnListenToggle" aria-pressed="false">
-                                <span id="wbBtnListenToggleLabel" data-i18n="homeWbListenPause">停止转写</span>
-                              </button>
-                            </div>
-                            <div class="wb-live-text is-placeholder" id="wbLiveText" role="log" aria-live="polite" aria-atomic="false">
-                              <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
+                            <div class="wb-hero-caption-glass">
+                              <div class="wb-live-text is-placeholder" id="wbLiveText" role="log" aria-live="polite" aria-atomic="false">
+                                <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
+                              </div>
                             </div>
                             <div class="wb-live-actions" id="wbTriggerActions">
                               <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd" hidden>说完了</button>
                               <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
                             </div>
                           </div>
-                          <div class="wb-hero-orb-wrap">
-                            <div class="wb-hero-orb-glow" aria-hidden="true"></div>
-                            <div class="wb-hero-waves" id="wbHeroWaves" aria-hidden="true">
-                              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-                              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                          <div class="wb-hero-stage">
+                            <div class="wb-hero-wave wb-hero-wave--left" id="wbHeroWavesLeft" aria-hidden="true">
+                              <span style="--h:1"></span><span style="--h:1.5"></span><span style="--h:2"></span><span style="--h:2.5"></span>
+                              <span style="--h:3"></span><span style="--h:4"></span><span style="--h:6"></span><span style="--h:9"></span>
+                              <span style="--h:12"></span><span style="--h:9"></span><span style="--h:6"></span><span style="--h:4"></span>
+                              <span style="--h:3"></span><span style="--h:2"></span><span style="--h:1.5"></span><span style="--h:1"></span><span style="--h:1"></span>
                             </div>
-                            <svg class="wb-hero-key-trail" id="wbHeroKeyTrail" viewBox="0 0 140 140" aria-hidden="true">
-                              <circle cx="70" cy="70" r="58" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 10" pathLength="100"/>
-                            </svg>
-                            <button type="button" class="wb-hero-orb" id="wbHeroOrb" data-mode="voice" aria-label="">
-                              <span class="wb-hero-orb-ring" aria-hidden="true"></span>
-                              <span class="wb-hero-orb-icon" id="wbHeroOrbIcon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                              </span>
-                            </button>
-                            <span class="wb-hero-orb-hint" id="wbHeroOrbHint" data-i18n="homeWbHeroHintVoice">点一下打开语音设置</span>
+                            <div class="wb-hero-orb-wrap">
+                              <div class="wb-hero-ripple" aria-hidden="true"></div>
+                              <div class="wb-hero-ring-outer" aria-hidden="true">
+                                <div class="wb-hero-ring-middle">
+                                  <button type="button" class="wb-hero-orb" id="wbHeroOrb" data-mode="voice" aria-label="">
+                                    <span class="wb-hero-orb-icon" id="wbHeroOrbIcon" aria-hidden="true">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="wb-hero-wave wb-hero-wave--right" id="wbHeroWavesRight" aria-hidden="true">
+                              <span style="--h:1"></span><span style="--h:1"></span><span style="--h:1.5"></span><span style="--h:2"></span>
+                              <span style="--h:3"></span><span style="--h:4"></span><span style="--h:6"></span><span style="--h:9"></span>
+                              <span style="--h:12"></span><span style="--h:9"></span><span style="--h:6"></span><span style="--h:4"></span>
+                              <span style="--h:3"></span><span style="--h:2"></span><span style="--h:1.5"></span><span style="--h:1"></span><span style="--h:1"></span>
+                            </div>
                           </div>
+                          <button type="button" class="wb-hero-orb-hint" id="wbHeroOrbHintBtn">
+                            <span id="wbHeroOrbHint" data-i18n="homeWbHeroHintVoice">点一下打开语音设置</span>
+                            <svg class="wb-hero-orb-hint-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                          </button>
                           <div class="wb-hero-pills" id="wbHeroPills" role="list"></div>
                           <div class="wb-hero-modes" role="tablist" aria-label="激活方式">
                             <button type="button" class="wb-hero-mode is-active" id="wbHeroModeVoice" role="tab" aria-selected="true" data-wb-hero-mode="voice" data-i18n="homeWbHeroModeVoice">语音激活</button>
