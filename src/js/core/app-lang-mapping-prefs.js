@@ -134,7 +134,6 @@
     var voiceEndPresetsZhLabel=$('voiceEndPresetsZhLabel'); if(voiceEndPresetsZhLabel) voiceEndPresetsZhLabel.textContent=d.voiceEndPresetsZhLabel;
     var voiceEndPresetsEnLabel=$('voiceEndPresetsEnLabel'); if(voiceEndPresetsEnLabel) voiceEndPresetsEnLabel.textContent=d.voiceEndPresetsEnLabel;
     var voiceEndDelayLabel=$('voiceEndDelayLabel'); if(voiceEndDelayLabel) voiceEndDelayLabel.textContent=d.voiceEndDelay;
-    var voiceSettingsDelayLbl=$('voiceSettingsDelayLbl'); if(voiceSettingsDelayLbl) voiceSettingsDelayLbl.textContent=d.voiceEndDelay;
     var voiceSettingsCommitLbl=$('voiceSettingsCommitLbl'); if(voiceSettingsCommitLbl) voiceSettingsCommitLbl.textContent=d.voiceEndCommitKeyLbl;
     var voiceTargetShortcutTitle=$('voiceTargetShortcutTitle'); if(voiceTargetShortcutTitle) voiceTargetShortcutTitle.textContent=d.voiceTargetShortcutTitle;
     var voiceTargetShortcutDesc=$('voiceTargetShortcutDesc'); if(voiceTargetShortcutDesc) voiceTargetShortcutDesc.textContent=d.voiceTargetShortcutDesc;

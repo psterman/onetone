@@ -48,6 +48,8 @@ pub struct VoiceOverride {
     pub end_phrases: Option<PhraseBundle>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cancel_phrases: Option<PhraseBundle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub send_phrases: Option<PhraseBundle>,
     /// Per-scene engine preference: "sapi" | "vosk" | "none".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub engine: Option<String>,
@@ -74,6 +76,10 @@ impl VoiceOverride {
             _ => {}
         }
         match &self.cancel_phrases {
+            Some(b) if !b.is_empty() => return false,
+            _ => {}
+        }
+        match &self.send_phrases {
             Some(b) if !b.is_empty() => return false,
             _ => {}
         }
@@ -976,6 +982,33 @@ pub fn normalize_acoustic_voice_commands(
     out
 }
 
+/// Shared wake/end/cancel samples: keep at most one valid command per scenario_id.
+pub fn normalize_global_acoustic_voice_commands(
+    commands: Vec<AcousticVoiceCommand>,
+) -> Vec<AcousticVoiceCommand> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for cmd in commands {
+        let sid = {
+            let raw = cmd.scenario_id.trim();
+            if raw.is_empty() {
+                "__voice_wake__".to_string()
+            } else {
+                raw.to_string()
+            }
+        };
+        if !seen.insert(sid.clone()) {
+            continue;
+        }
+        let mut normalized = normalize_acoustic_voice_commands(vec![cmd], &sid);
+        if let Some(mut keep) = normalized.pop() {
+            keep.scenario_id = sid;
+            out.push(keep);
+        }
+    }
+    out
+}
+
 /// Rekey acoustic commands when duplicating a mapping.
 pub fn rekey_acoustic_voice_commands_for_mapping(
     commands: &[AcousticVoiceCommand],
@@ -1217,6 +1250,9 @@ pub struct VoiceConfig {
     /// Current scene truth for voice/runtime (Rule A). Not the UI selection highlight.
     #[serde(rename = "activeSceneId", default)]
     pub active_scene_id: String,
+    /// Global acoustic wake samples (not scenario-bound). Matched in idle to start dictation.
+    #[serde(default, rename = "voiceWakeAcousticCommands")]
+    pub voice_wake_acoustic_commands: Vec<AcousticVoiceCommand>,
     // --- migrate-only (read, never serialize) ---
     #[serde(default, rename = "recordKey", skip_serializing)]
     pub record_key: String,
@@ -1326,6 +1362,13 @@ pub struct VoiceEndConfig {
     pub cancel_phrases_zh: Vec<String>,
     #[serde(default = "default_voice_end_cancel_phrases_en")]
     pub cancel_phrases_en: Vec<String>,
+    #[serde(default = "default_voice_end_send_phrases_zh")]
+    pub send_phrases_zh: Vec<String>,
+    #[serde(default = "default_voice_end_send_phrases_en")]
+    pub send_phrases_en: Vec<String>,
+    /// "confirm" | "phrase" | "auto"
+    #[serde(default = "default_voice_end_send_mode")]
+    pub send_mode: String,
     #[serde(default = "default_voice_end_commit_delay_ms")]
     pub commit_delay_ms: u32,
     #[serde(default = "default_voice_end_commit_key")]
@@ -1339,19 +1382,35 @@ pub struct VoiceEndConfig {
 }
 
 pub fn default_voice_end_phrases_zh() -> Vec<String> {
-    vec!["结束输入".into(), "发出去".into()]
+    vec!["结束输入".into(), "就这样".into(), "停止听写".into()]
 }
 
 pub fn default_voice_end_phrases_en() -> Vec<String> {
-    vec!["end dictation".into(), "send it".into()]
+    vec![
+        "end dictation".into(),
+        "that's it".into(),
+        "stop dictation".into(),
+    ]
 }
 
 pub fn default_voice_end_cancel_phrases_zh() -> Vec<String> {
-    vec!["取消输入".into(), "不要了".into()]
+    vec!["取消输入".into(), "不要了".into(), "撤掉".into()]
 }
 
 pub fn default_voice_end_cancel_phrases_en() -> Vec<String> {
     vec!["cancel input".into(), "never mind".into()]
+}
+
+pub fn default_voice_end_send_phrases_zh() -> Vec<String> {
+    vec!["发送".into(), "发出去".into(), "提交".into()]
+}
+
+pub fn default_voice_end_send_phrases_en() -> Vec<String> {
+    vec!["send it".into(), "send".into(), "submit".into()]
+}
+
+pub fn default_voice_end_send_mode() -> String {
+    "confirm".into()
 }
 
 fn default_voice_end_commit_delay_ms() -> u32 {
@@ -1370,6 +1429,105 @@ fn default_voice_end_target_key() -> String {
     "RAlt".into()
 }
 
+fn normalize_phrase_key(s: &str) -> String {
+    s.chars()
+        .filter(|c| {
+            c.is_ascii_alphanumeric()
+                || ('\u{4e00}'..='\u{9fff}').contains(c)
+                || ('\u{3400}'..='\u{4dbf}').contains(c)
+        })
+        .map(|c| {
+            if c.is_ascii_alphabetic() {
+                c.to_ascii_lowercase()
+            } else {
+                c
+            }
+        })
+        .collect::<String>()
+        .to_ascii_lowercase()
+}
+
+fn is_send_like_phrase(phrase: &str) -> bool {
+    const SEND_LIKE: &[&str] = &["发送", "发出去", "提交", "send", "sendit", "submit"];
+    let key = normalize_phrase_key(phrase);
+    SEND_LIKE.iter().any(|p| *p == key)
+}
+
+fn peel_send_like_phrases(phrases: &[String]) -> (Vec<String>, Vec<String>) {
+    let mut peeled = Vec::new();
+    let mut remain = Vec::new();
+    for p in phrases {
+        if is_send_like_phrase(p) {
+            peeled.push(p.clone());
+        } else {
+            remain.push(p.clone());
+        }
+    }
+    (peeled, remain)
+}
+
+fn merge_phrase_vec(dest: &mut Vec<String>, extra: &[String]) {
+    for p in extra {
+        let t = p.trim();
+        if t.is_empty() {
+            continue;
+        }
+        if !dest.iter().any(|x| normalize_phrase_key(x) == normalize_phrase_key(t)) {
+            dest.push(t.to_string());
+        }
+    }
+}
+
+fn ensure_cancel_zh_has_chediao(cancel_zh: &mut Vec<String>) {
+    if !cancel_zh
+        .iter()
+        .any(|p| normalize_phrase_key(p) == normalize_phrase_key("撤掉"))
+    {
+        cancel_zh.push("撤掉".into());
+    }
+}
+
+fn peel_send_from_voice_override(ov: Option<&mut VoiceOverride>) {
+    let Some(ov) = ov else {
+        return;
+    };
+    let Some(end) = ov.end_phrases.as_mut() else {
+        return;
+    };
+    let (peeled_zh, remain_zh) = peel_send_like_phrases(&end.zh);
+    let (peeled_en, remain_en) = peel_send_like_phrases(&end.en);
+    end.zh = remain_zh;
+    end.en = remain_en;
+    if peeled_zh.is_empty() && peeled_en.is_empty() {
+        return;
+    }
+    let send = ov.send_phrases.get_or_insert_with(|| PhraseBundle {
+        zh: Vec::new(),
+        en: Vec::new(),
+    });
+    merge_phrase_vec(&mut send.zh, &peeled_zh);
+    merge_phrase_vec(&mut send.en, &peeled_en);
+}
+
+pub fn sync_send_mode_and_auto_send(voice_end: &mut VoiceEndConfig) {
+    let mode = voice_end.send_mode.trim().to_ascii_lowercase();
+    let mode = match mode.as_str() {
+        "auto" | "phrase" | "confirm" => mode,
+        _ => default_voice_end_send_mode(),
+    };
+    voice_end.send_mode = mode.clone();
+    voice_end.auto_send_enabled = mode == "auto";
+}
+
+pub fn apply_auto_send_to_send_mode(voice_end: &mut VoiceEndConfig, enabled: bool) {
+    voice_end.auto_send_enabled = enabled;
+    if enabled {
+        voice_end.send_mode = "auto".into();
+    } else if voice_end.send_mode.trim().eq_ignore_ascii_case("auto") {
+        voice_end.send_mode = "confirm".into();
+    }
+}
+
 impl Default for VoiceEndConfig {
     fn default() -> Self {
         Self {
@@ -1378,6 +1536,9 @@ impl Default for VoiceEndConfig {
             phrases_en: default_voice_end_phrases_en(),
             cancel_phrases_zh: default_voice_end_cancel_phrases_zh(),
             cancel_phrases_en: default_voice_end_cancel_phrases_en(),
+            send_phrases_zh: default_voice_end_send_phrases_zh(),
+            send_phrases_en: default_voice_end_send_phrases_en(),
+            send_mode: default_voice_end_send_mode(),
             commit_delay_ms: default_voice_end_commit_delay_ms(),
             commit_key: default_voice_end_commit_key(),
             dictation_timeout_ms: default_voice_end_dictation_timeout_ms(),
@@ -2203,7 +2364,7 @@ impl Default for VoiceConfig {
     fn default() -> Self {
         let id = new_mapping_id();
         Self {
-            version: 7,
+            version: 8,
             mappings: vec![MappingEntry {
                 id: id.clone(),
                 label: "AutoTrigger  ?RAlt".into(),
@@ -2258,6 +2419,7 @@ impl Default for VoiceConfig {
             window_y: None,
             ime_preset_id: String::new(),
             active_scene_id: id,
+            voice_wake_acoustic_commands: vec![],
             record_key: String::new(),
             target_key: String::new(),
             trigger_source: None,
@@ -2374,13 +2536,20 @@ pub fn effective_mapping_for_trigger(
 
 impl VoiceConfig {
     pub fn migrate(&mut self) {
+        if self.version >= 8 && !self.mappings.is_empty() {
+            self.normalize();
+            return;
+        }
+
         if self.version >= 7 && !self.mappings.is_empty() {
+            self.migrate_v7_to_v8();
             self.normalize();
             return;
         }
 
         if self.version >= 6 && !self.mappings.is_empty() {
             self.migrate_v6_to_v7();
+            self.migrate_v7_to_v8();
             self.normalize();
             return;
         }
@@ -2388,6 +2557,7 @@ impl VoiceConfig {
         if self.version >= 5 && !self.mappings.is_empty() {
             self.migrate_v5_to_v6();
             self.migrate_v6_to_v7();
+            self.migrate_v7_to_v8();
             self.normalize();
             return;
         }
@@ -2406,6 +2576,7 @@ impl VoiceConfig {
             self.version = 5;
             self.migrate_v5_to_v6();
             self.migrate_v6_to_v7();
+            self.migrate_v7_to_v8();
             self.normalize();
             return;
         }
@@ -2436,6 +2607,7 @@ impl VoiceConfig {
             self.version = 5;
             self.migrate_v5_to_v6();
             self.migrate_v6_to_v7();
+            self.migrate_v7_to_v8();
             self.normalize();
             return;
         }
@@ -2484,6 +2656,7 @@ impl VoiceConfig {
         self.version = 5;
         self.migrate_v5_to_v6();
         self.migrate_v6_to_v7();
+        self.migrate_v7_to_v8();
         self.record_key.clear();
         self.target_key.clear();
         self.trigger_source = None;
@@ -2510,6 +2683,40 @@ impl VoiceConfig {
             desired_engine_label(desired_engine_from_enabled_flags(self)).to_string();
         sync_enabled_flags_from_desired(self);
         self.version = 7;
+    }
+
+    fn migrate_v7_to_v8(&mut self) {
+        let (peeled_zh, remain_zh) = peel_send_like_phrases(&self.voice_end.phrases_zh);
+        let (peeled_en, remain_en) = peel_send_like_phrases(&self.voice_end.phrases_en);
+        self.voice_end.phrases_zh = remain_zh;
+        self.voice_end.phrases_en = remain_en;
+        merge_phrase_vec(&mut self.voice_end.send_phrases_zh, &peeled_zh);
+        merge_phrase_vec(&mut self.voice_end.send_phrases_en, &peeled_en);
+        if self.voice_end.send_phrases_zh.is_empty() {
+            self.voice_end.send_phrases_zh = default_voice_end_send_phrases_zh();
+        }
+        if self.voice_end.send_phrases_en.is_empty() {
+            self.voice_end.send_phrases_en = default_voice_end_send_phrases_en();
+        }
+        if self.voice_end.phrases_zh.is_empty() {
+            self.voice_end.phrases_zh = default_voice_end_phrases_zh();
+        }
+        if self.voice_end.phrases_en.is_empty() {
+            self.voice_end.phrases_en = default_voice_end_phrases_en();
+        }
+
+        ensure_cancel_zh_has_chediao(&mut self.voice_end.cancel_phrases_zh);
+
+        for m in self.mappings.iter_mut().chain(self.trash.iter_mut()) {
+            peel_send_from_voice_override(m.voice_override.as_mut());
+        }
+
+        let mode = self.voice_end.send_mode.trim().to_ascii_lowercase();
+        if self.voice_end.auto_send_enabled && (mode.is_empty() || mode == "confirm") {
+            self.voice_end.send_mode = "auto".into();
+        }
+        sync_send_mode_and_auto_send(&mut self.voice_end);
+        self.version = 8;
     }
 
     pub fn resolve_default_active_scene_id(&self) -> String {
@@ -2643,6 +2850,24 @@ impl VoiceConfig {
         {
             self.voice_end.cancel_phrases_en = default_voice_end_cancel_phrases_en();
         }
+        if self
+            .voice_end
+            .send_phrases_zh
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
+            self.voice_end.send_phrases_zh = default_voice_end_send_phrases_zh();
+        }
+        if self
+            .voice_end
+            .send_phrases_en
+            .iter()
+            .all(|p| p.trim().is_empty())
+        {
+            self.voice_end.send_phrases_en = default_voice_end_send_phrases_en();
+        }
+        ensure_cancel_zh_has_chediao(&mut self.voice_end.cancel_phrases_zh);
+        sync_send_mode_and_auto_send(&mut self.voice_end);
         if self.voice_end.commit_key.trim().is_empty() {
             self.voice_end.commit_key = default_voice_end_commit_key();
         }
@@ -3034,7 +3259,8 @@ pub fn config_path() -> PathBuf {
 /// Apply a frontend mapping save. Voice sections always stay from `existing` because
 /// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
 pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceConfig> {
-    let mut cfg: VoiceConfig = serde_json::from_str(json).ok()?;
+    let raw: serde_json::Value = serde_json::from_str(json).ok()?;
+    let mut cfg: VoiceConfig = serde_json::from_value(raw.clone()).ok()?;
     for m in &mut cfg.mappings {
         if m.app_behavior_rules.is_empty() {
             if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
@@ -3058,6 +3284,26 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.voice_kws = existing.voice_kws.clone();
     cfg.voice_end = existing.voice_end.clone();
     cfg.desired_engine = existing.desired_engine.clone();
+    if raw.get("voiceWakeAcousticCommands").is_none() {
+        cfg.voice_wake_acoustic_commands = existing.voice_wake_acoustic_commands.clone();
+    } else {
+        cfg.voice_wake_acoustic_commands = normalize_global_acoustic_voice_commands(
+            std::mem::take(&mut cfg.voice_wake_acoustic_commands),
+        );
+        for cmd in &mut cfg.voice_wake_acoustic_commands {
+            if cmd.scenario_id.trim().is_empty() {
+                cmd.scenario_id = "__voice_wake__".into();
+            }
+            if cmd.kind.trim().is_empty() || cmd.kind == "scenario-acoustic-activate" {
+                cmd.kind = match cmd.scenario_id.as_str() {
+                    "__voice_end__" => "voice-end-acoustic".into(),
+                    "__voice_cancel__" => "voice-cancel-acoustic".into(),
+                    _ => "voice-wake-acoustic".into(),
+                };
+            }
+            cmd.activation_scope = "global".into();
+        }
+    }
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
     cfg.window_layout_seen = existing.window_layout_seen;
     cfg.window_maximized = existing.window_maximized;
@@ -3287,13 +3533,83 @@ mod tests {
     }
 
     #[test]
+    fn migrate_v7_to_v8_peels_send_like_from_end_phrases() {
+        let mut cfg = VoiceConfig::default();
+        cfg.version = 7;
+        cfg.voice_end.phrases_zh = vec![
+            "结束输入".into(),
+            "发出去".into(),
+            "发送".into(),
+            "就这样".into(),
+        ];
+        cfg.voice_end.phrases_en = vec![
+            "end dictation".into(),
+            "send it".into(),
+            "submit".into(),
+        ];
+        cfg.voice_end.send_phrases_zh.clear();
+        cfg.voice_end.send_phrases_en.clear();
+        cfg.voice_end.auto_send_enabled = true;
+        cfg.voice_end.send_mode = "confirm".into();
+        let scene_id = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == scene_id) {
+            m.voice_override = Some(VoiceOverride {
+                end_phrases: Some(PhraseBundle {
+                    zh: vec!["情景结束".into(), "提交".into()],
+                    en: vec!["send".into(), "wrap up".into()],
+                }),
+                ..Default::default()
+            });
+        }
+        cfg.migrate();
+        assert_eq!(cfg.version, 8);
+        assert!(!cfg.voice_end.phrases_zh.iter().any(|p| is_send_like_phrase(p)));
+        assert!(!cfg.voice_end.phrases_en.iter().any(|p| is_send_like_phrase(p)));
+        assert!(cfg
+            .voice_end
+            .send_phrases_zh
+            .iter()
+            .any(|p| normalize_phrase_key(p) == normalize_phrase_key("发出去")));
+        assert!(cfg
+            .voice_end
+            .send_phrases_en
+            .iter()
+            .any(|p| normalize_phrase_key(p) == "sendit"));
+        assert_eq!(cfg.voice_end.send_mode, "auto");
+        assert!(cfg.voice_end.auto_send_enabled);
+        assert!(cfg
+            .voice_end
+            .cancel_phrases_zh
+            .iter()
+            .any(|p| normalize_phrase_key(p) == normalize_phrase_key("撤掉")));
+        let ov = cfg
+            .mappings
+            .iter()
+            .find(|m| m.id == scene_id)
+            .and_then(|m| m.voice_override.as_ref())
+            .expect("override");
+        let end = ov.end_phrases.as_ref().expect("end");
+        assert!(!end.zh.iter().any(|p| is_send_like_phrase(p)));
+        assert!(!end.en.iter().any(|p| is_send_like_phrase(p)));
+        let send = ov.send_phrases.as_ref().expect("send");
+        assert!(send
+            .zh
+            .iter()
+            .any(|p| normalize_phrase_key(p) == normalize_phrase_key("提交")));
+        assert!(send
+            .en
+            .iter()
+            .any(|p| normalize_phrase_key(p) == "send"));
+    }
+
+    #[test]
     fn migrate_v6_to_v7_derives_desired_from_flags() {
         let mut cfg = VoiceConfig::default();
         cfg.version = 6;
         cfg.desired_engine = "none".into();
         cfg.voice_vosk.enabled = true;
         cfg.migrate();
-        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.version, 8);
         assert_eq!(cfg.desired_engine, "vosk");
         assert!(cfg.voice_vosk.enabled);
         assert!(!cfg.voice_sapi.enabled);
@@ -3307,7 +3623,7 @@ mod tests {
         cfg.voice_vosk.enabled = true;
         cfg.voice_kws.enabled = true;
         cfg.migrate();
-        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.version, 8);
         assert_eq!(cfg.desired_engine, "vosk");
         assert!(cfg.voice_vosk.enabled);
         assert!(!cfg.voice_kws.enabled);
@@ -3342,7 +3658,7 @@ mod tests {
             ..Default::default()
         };
         cfg.migrate();
-        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.version, 8);
         assert_eq!(cfg.mappings.len(), 1);
         assert_eq!(cfg.mappings[0].trigger_key, "AutoTrigger");
         assert_eq!(cfg.mappings[0].target_key, "F2");
@@ -4414,17 +4730,70 @@ mod tests {
     }
 
     #[test]
-    fn merge_save_payload_preserves_acoustic_voice_commands() {
+    fn merge_save_payload_preserves_voice_wake_acoustic_when_omitted() {
         let mut existing = VoiceConfig::default();
-        let mut cmd = sample_acoustic_command("sc1", "good");
-        cmd.scenario_id = existing.mappings[0].id.clone();
-        existing.mappings[0].acoustic_voice_commands = vec![cmd];
-        let payload = serde_json::to_string(&existing).expect("payload");
-        let merged = merge_save_payload(&existing, &payload).expect("merge");
-        assert_eq!(merged.mappings[0].acoustic_voice_commands.len(), 1);
+        let mut cmd = sample_acoustic_command("__voice_wake__", "good");
+        cmd.scenario_id = "__voice_wake__".into();
+        cmd.kind = "voice-wake-acoustic".into();
+        existing.voice_wake_acoustic_commands = vec![cmd];
+        let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert_eq!(merged.voice_wake_acoustic_commands.len(), 1);
         assert_eq!(
-            merged.mappings[0].acoustic_voice_commands[0].samples[0].feature_dims,
-            ACOUSTIC_FEATURE_DIMS
+            merged.voice_wake_acoustic_commands[0].kind,
+            "voice-wake-acoustic"
         );
+    }
+
+    #[test]
+    fn merge_save_payload_accepts_voice_wake_acoustic_commands() {
+        let existing = VoiceConfig::default();
+        let mut cmd = sample_acoustic_command("__voice_wake__", "good");
+        cmd.scenario_id = "__voice_wake__".into();
+        cmd.kind = "voice-wake-acoustic".into();
+        let payload = serde_json::json!({
+            "version": 8,
+            "mappings": [],
+            "trash": [],
+            "voiceWakeAcousticCommands": [cmd]
+        });
+        let merged =
+            merge_save_payload(&existing, &payload.to_string()).expect("merge");
+        assert_eq!(merged.voice_wake_acoustic_commands.len(), 1);
+        assert_eq!(
+            merged.voice_wake_acoustic_commands[0].scenario_id,
+            "__voice_wake__"
+        );
+    }
+
+    #[test]
+    fn merge_save_payload_keeps_end_and_cancel_acoustic_scenarios() {
+        let existing = VoiceConfig::default();
+        let mut wake = sample_acoustic_command("__voice_wake__", "good");
+        wake.scenario_id = "__voice_wake__".into();
+        wake.kind = "voice-wake-acoustic".into();
+        let mut end = sample_acoustic_command("__voice_end__", "good");
+        end.scenario_id = "__voice_end__".into();
+        end.kind = "voice-end-acoustic".into();
+        let mut cancel = sample_acoustic_command("__voice_cancel__", "good");
+        cancel.scenario_id = "__voice_cancel__".into();
+        cancel.kind = "voice-cancel-acoustic".into();
+        let payload = serde_json::json!({
+            "version": 8,
+            "mappings": [],
+            "trash": [],
+            "voiceWakeAcousticCommands": [wake, end, cancel]
+        });
+        let merged =
+            merge_save_payload(&existing, &payload.to_string()).expect("merge");
+        assert_eq!(merged.voice_wake_acoustic_commands.len(), 3);
+        let ids: Vec<_> = merged
+            .voice_wake_acoustic_commands
+            .iter()
+            .map(|c| c.scenario_id.as_str())
+            .collect();
+        assert!(ids.contains(&"__voice_wake__"));
+        assert!(ids.contains(&"__voice_end__"));
+        assert!(ids.contains(&"__voice_cancel__"));
     }
 }

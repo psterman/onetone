@@ -11,7 +11,7 @@ use crate::voice_command_router::{
     handle_detection, VoiceCommandRouterResult, VoiceDetection, VoiceDetectionKind,
 };
 use crate::voice_end_runtime::{
-    idle_wake_phrases, matches_cancel_phrase, matches_end_phrase,
+    idle_wake_phrases, matches_cancel_phrase, matches_end_phrase, matches_send_phrase,
 };
 use crate::AppState;
 
@@ -21,6 +21,7 @@ pub enum VoiceKeywordKind {
     Wake,
     End,
     Cancel,
+    Send,
     Summon,
     Custom,
 }
@@ -31,6 +32,7 @@ impl VoiceKeywordKind {
             Self::Wake => "wake",
             Self::End => "end",
             Self::Cancel => "cancel",
+            Self::Send => "send",
             Self::Summon => "summon",
             Self::Custom => "custom",
         }
@@ -80,6 +82,15 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         {
             return VoiceKeywordKind::Cancel;
         }
+        if matches_send_phrase(
+            text,
+            &effective.send_phrases.zh,
+            &effective.send_phrases.en,
+        )
+        .is_some()
+        {
+            return VoiceKeywordKind::Send;
+        }
         if matches_end_phrase(text, &effective.end_phrases.zh, &effective.end_phrases.en).is_some()
         {
             return VoiceKeywordKind::End;
@@ -99,6 +110,11 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         let cancel_en = &cfg.voice_end.cancel_phrases_en;
         if matches_cancel_phrase(text, cancel_zh, cancel_en).is_some() {
             return VoiceKeywordKind::Cancel;
+        }
+        let send_zh = &cfg.voice_end.send_phrases_zh;
+        let send_en = &cfg.voice_end.send_phrases_en;
+        if matches_send_phrase(text, send_zh, send_en).is_some() {
+            return VoiceKeywordKind::Send;
         }
         let end_zh = &cfg.voice_end.phrases_zh;
         let end_en = &cfg.voice_end.phrases_en;
@@ -159,6 +175,10 @@ mod tests {
         );
         assert_eq!(
             classify_voice_keyword(&cfg, "发出去"),
+            VoiceKeywordKind::Send
+        );
+        assert_eq!(
+            classify_voice_keyword(&cfg, "结束输入"),
             VoiceKeywordKind::End
         );
         assert_eq!(

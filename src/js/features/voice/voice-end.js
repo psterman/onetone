@@ -81,6 +81,16 @@
 
     if(Array.isArray(res.phrasesEn)) cfg.phrasesEn=hooks().cloneStringList(res.phrasesEn);
 
+    if(Array.isArray(res.cancelPhrasesZh)) cfg.cancelPhrasesZh=hooks().cloneStringList(res.cancelPhrasesZh);
+
+    if(Array.isArray(res.cancelPhrasesEn)) cfg.cancelPhrasesEn=hooks().cloneStringList(res.cancelPhrasesEn);
+
+    if(Array.isArray(res.sendPhrasesZh)) cfg.sendPhrasesZh=hooks().cloneStringList(res.sendPhrasesZh);
+
+    if(Array.isArray(res.sendPhrasesEn)) cfg.sendPhrasesEn=hooks().cloneStringList(res.sendPhrasesEn);
+
+    if(res.sendMode!=null) cfg.sendMode=normalizeSendMode(res.sendMode);
+
     if(res.commitDelayMs!=null) cfg.commitDelayMs=Number(res.commitDelayMs)||4000;
 
     if(res.commitKey!=null) cfg.commitKey=String(res.commitKey||'').trim();
@@ -317,6 +327,16 @@
 
     syncVoiceEndPresets(zh,en);
 
+    syncCancelPresets(
+      Array.isArray(res.cancelPhrasesZh)?res.cancelPhrasesZh:[],
+      Array.isArray(res.cancelPhrasesEn)?res.cancelPhrasesEn:[]
+    );
+
+    syncSendPresets(
+      Array.isArray(res.sendPhrasesZh)?res.sendPhrasesZh:[],
+      Array.isArray(res.sendPhrasesEn)?res.sendPhrasesEn:[]
+    );
+
     global.OneToneVoiceDiag.updateMetric('end','state',stateLabel,t('voiceDiagLogState'));
 
     global.OneToneVoiceDiag.updateMetric('end','phrase',res.lastEndPhrase||'',t('voiceDiagLogPhrase'));
@@ -461,15 +481,59 @@
 
 
 
+  function normalizeSendMode(raw){
+
+    var key=String(raw||'').trim().toLowerCase();
+
+    if(key==='auto'||key==='phrase'||key==='confirm') return key;
+
+    return 'confirm';
+
+  }
+
+
+
+  function resolveSendModeFromConfig(){
+
+    var endSnap=(hooks().voiceUiSnapshot().end)||{};
+
+    var endCfg=(state().config&&(state().config.voiceEnd||state().config.voice_end))||{};
+
+    if(endSnap.sendMode) return normalizeSendMode(endSnap.sendMode);
+
+    if(endCfg.sendMode) return normalizeSendMode(endCfg.sendMode);
+
+    if(endSnap.autoSendEnabled||endCfg.autoSendEnabled) return 'auto';
+
+    return 'confirm';
+
+  }
+
+
+
   function setOutputMode(key){
 
-    key=String(key||'').trim();
+    key=normalizeSendMode(key);
 
-    if(key==='auto') return setAutoSendEnabled(true);
+    return global.OneToneIpc.invoke('cmd_voice_end_set_send_mode',{sendMode:key}).then(function(res){
 
-    if(key==='confirm') return setAutoSendEnabled(false);
+      renderVoiceEndStatus(res);
 
-    return Promise.resolve();
+      hooks().syncHomeFromVoiceSettings(null,null,res);
+
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+
+      }
+
+      return res;
+
+    }).catch(function(){
+
+      return setAutoSendEnabled(key==='auto');
+
+    });
 
   }
 
@@ -871,6 +935,194 @@
 
 
 
+  function currentCancelPhraseLists(){
+    const cfg=state().config||{};
+    const endCfg=cfg.voiceEnd||cfg.voice_end||{};
+    const snap=(hooks().voiceUiSnapshot&&typeof hooks().voiceUiSnapshot==='function'
+      ?hooks().voiceUiSnapshot()
+      :hooks().voiceUiSnapshot)||{};
+    const endSnap=snap.end||{};
+    const zh=normalizePhraseList(endSnap.cancelPhrasesZh&&endSnap.cancelPhrasesZh.length
+      ?endSnap.cancelPhrasesZh
+      :(endCfg.cancelPhrasesZh||endCfg.cancel_phrases_zh));
+    const en=normalizePhraseList(endSnap.cancelPhrasesEn&&endSnap.cancelPhrasesEn.length
+      ?endSnap.cancelPhrasesEn
+      :(endCfg.cancelPhrasesEn||endCfg.cancel_phrases_en));
+    return {zh:zh.length?zh:['取消输入','不要了'],en:en.length?en:['cancel input','never mind']};
+  }
+
+  function currentSendPhraseLists(){
+    const cfg=state().config||{};
+    const endCfg=cfg.voiceEnd||cfg.voice_end||{};
+    const snap=(hooks().voiceUiSnapshot&&typeof hooks().voiceUiSnapshot==='function'
+      ?hooks().voiceUiSnapshot()
+      :hooks().voiceUiSnapshot)||{};
+    const endSnap=snap.end||{};
+    const zh=normalizePhraseList(endSnap.sendPhrasesZh&&endSnap.sendPhrasesZh.length
+      ?endSnap.sendPhrasesZh
+      :(endCfg.sendPhrasesZh||endCfg.send_phrases_zh));
+    const en=normalizePhraseList(endSnap.sendPhrasesEn&&endSnap.sendPhrasesEn.length
+      ?endSnap.sendPhrasesEn
+      :(endCfg.sendPhrasesEn||endCfg.send_phrases_en));
+    return {zh:zh.length?zh:['发送','发出去','提交'],en:en.length?en:['send it','send','submit']};
+  }
+
+  function catalogForLang(zhSel,enSel,lang){
+    var pc=global.OneToneVoicePhraseCustom;
+    var sel=lang==='en'?enSel:zhSel;
+    return pc&&pc.presetPhrasesIn?pc.presetPhrasesIn(sel):[];
+  }
+
+  function renderCancelPhraseTags(){
+    var pc=global.OneToneVoicePhraseCustom;
+    if(!pc||!pc.renderPhraseTags) return;
+    var lang=global.__vp_voice_cancel_lang__||'zh';
+    var lists=currentCancelPhraseLists();
+    var active=lang==='en'?lists.en:lists.zh;
+    var catalog=catalogForLang('#voiceCancelPresetsZh','#voiceCancelPresetsEn',lang);
+    pc.renderPhraseTags('voiceCancelPhraseTags',pc.buildPhraseTagModel(catalog,active));
+  }
+
+  function renderSendPhraseTags(){
+    var pc=global.OneToneVoicePhraseCustom;
+    if(!pc||!pc.renderPhraseTags) return;
+    var lang=global.__vp_voice_send_lang__||'zh';
+    var lists=currentSendPhraseLists();
+    var active=lang==='en'?lists.en:lists.zh;
+    var catalog=catalogForLang('#voiceSendPresetsZh','#voiceSendPresetsEn',lang);
+    pc.renderPhraseTags('voiceSendPhraseTags',pc.buildPhraseTagModel(catalog,active));
+  }
+
+  function syncCancelPresets(zh,en){
+    var zhSet=normalizePhraseList(zh);
+    var enSet=normalizePhraseList(en);
+    document.querySelectorAll('#voiceCancelPresetsZh [data-phrase]').forEach(function(btn){
+      btn.classList.toggle('is-selected',zhSet.indexOf(btn.getAttribute('data-phrase')||'')>=0);
+    });
+    document.querySelectorAll('#voiceCancelPresetsEn [data-phrase]').forEach(function(btn){
+      btn.classList.toggle('is-selected',enSet.indexOf(btn.getAttribute('data-phrase')||'')>=0);
+    });
+    renderCancelPhraseTags();
+  }
+
+  function syncSendPresets(zh,en){
+    var zhSet=normalizePhraseList(zh);
+    var enSet=normalizePhraseList(en);
+    document.querySelectorAll('#voiceSendPresetsZh [data-phrase]').forEach(function(btn){
+      btn.classList.toggle('is-selected',zhSet.indexOf(btn.getAttribute('data-phrase')||'')>=0);
+    });
+    document.querySelectorAll('#voiceSendPresetsEn [data-phrase]').forEach(function(btn){
+      btn.classList.toggle('is-selected',enSet.indexOf(btn.getAttribute('data-phrase')||'')>=0);
+    });
+    renderSendPhraseTags();
+  }
+
+  function persistCancelPhrases(zh,en){
+    zh=normalizePhraseList(zh);
+    en=normalizePhraseList(en);
+    if(!zh.length) zh=['取消输入'];
+    if(!en.length) en=['cancel input'];
+    syncCancelPresets(zh,en);
+    return global.OneToneIpc.invoke('cmd_voice_end_set_cancel_phrases',{phrasesZh:zh,phrasesEn:en}).then(function(res){
+      renderVoiceEndStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,null,res);
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
+      if(hooks().renderVoiceSettingsFlow) hooks().renderVoiceSettingsFlow();
+      return res;
+    });
+  }
+
+  function persistSendPhrases(zh,en){
+    zh=normalizePhraseList(zh);
+    en=normalizePhraseList(en);
+    if(!zh.length) zh=['发送'];
+    if(!en.length) en=['send it'];
+    syncSendPresets(zh,en);
+    return global.OneToneIpc.invoke('cmd_voice_end_set_send_phrases',{phrasesZh:zh,phrasesEn:en}).then(function(res){
+      renderVoiceEndStatus(res);
+      hooks().syncHomeFromVoiceSettings(null,null,res);
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
+      if(hooks().renderVoiceSettingsFlow) hooks().renderVoiceSettingsFlow();
+      return res;
+    });
+  }
+
+  function toggleBundlePhrase(kind,phrase,wasActive){
+    phrase=String(phrase||'').trim();
+    if(!phrase) return;
+    var lists=kind==='send'?currentSendPhraseLists():currentCancelPhraseLists();
+    var langKey=kind==='send'?'__vp_voice_send_lang__':'__vp_voice_cancel_lang__';
+    var lang=global[langKey]||(/[\u4e00-\u9fff]/.test(phrase)?'zh':'en');
+    var target=lang==='en'?lists.en.slice():lists.zh.slice();
+    var idx=target.indexOf(phrase);
+    if(wasActive){
+      if(target.length<=1) return;
+      target.splice(idx,1);
+    }else if(idx<0){
+      target.push(phrase);
+    }
+    var nextZh=lang==='zh'?target:lists.zh;
+    var nextEn=lang==='en'?target:lists.en;
+    if(kind==='send') persistSendPhrases(nextZh,nextEn).catch(function(){ hooks().toast(t('voiceEndFail')); });
+    else persistCancelPhrases(nextZh,nextEn).catch(function(){ hooks().toast(t('voiceEndFail')); });
+  }
+
+  function addCustomBundlePhrase(kind,raw){
+    var phrase=String(raw||'').trim();
+    if(!phrase) return Promise.resolve();
+    var lists=kind==='send'?currentSendPhraseLists():currentCancelPhraseLists();
+    var langKey=kind==='send'?'__vp_voice_send_lang__':'__vp_voice_cancel_lang__';
+    var lang=global[langKey]||(/[\u4e00-\u9fff]/.test(phrase)?'zh':'en');
+    var target=lang==='en'?lists.en.slice():lists.zh.slice();
+    if(target.indexOf(phrase)>=0){
+      hooks().toast(t('voicePhraseAlreadyAdded'));
+      return Promise.resolve();
+    }
+    target.push(phrase);
+    var nextZh=lang==='zh'?target:lists.zh;
+    var nextEn=lang==='en'?target:lists.en;
+    var persist=kind==='send'?persistSendPhrases:persistCancelPhrases;
+    return persist(nextZh,nextEn).then(function(){
+      hooks().toast(t('voicePhraseAdded'));
+    }).catch(function(err){
+      console.error('voice_custom_'+kind,err);
+      hooks().toast(t('voiceEndFail'));
+    });
+  }
+
+  function removeCustomBundlePhrase(kind,phrase){
+    phrase=String(phrase||'').trim();
+    if(!phrase) return;
+    var lists=kind==='send'?currentSendPhraseLists():currentCancelPhraseLists();
+    var nextZh=lists.zh.filter(function(p){ return p!==phrase; });
+    var nextEn=lists.en.filter(function(p){ return p!==phrase; });
+    if(kind==='send'){
+      persistSendPhrases(nextZh.length?nextZh:['发送'],nextEn.length?nextEn:['send it']);
+    }else{
+      persistCancelPhrases(nextZh.length?nextZh:['取消输入'],nextEn.length?nextEn:['cancel input']);
+    }
+  }
+
+  function renderCancelCustomPhrases(){
+    renderCancelPhraseTags();
+    var block=$('voiceCancelCustomBlock');
+    var wakeApi=global.OneToneVoiceWake;
+    var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
+    if(block) block.hidden=mode!=='vosk'&&mode!=='kws';
+  }
+
+  function renderSendCustomPhrases(){
+    renderSendPhraseTags();
+    var block=$('voiceSendCustomBlock');
+    var wakeApi=global.OneToneVoiceWake;
+    var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
+    if(block) block.hidden=mode!=='vosk'&&mode!=='kws';
+  }
+
   function voiceEndEnabledInConfig(){
 
     const cfg=state().config||{};
@@ -915,6 +1167,10 @@
 
     setOutputMode:setOutputMode,
 
+    resolveSendMode:resolveSendModeFromConfig,
+
+    normalizeSendMode:normalizeSendMode,
+
     toggle:toggleVoiceEnd,
 
     toggleAutoSend:toggleVoiceEndAutoSend,
@@ -932,6 +1188,21 @@
     renderEndCustomPhrases:renderEndCustomPhrases,
     renderEndPhraseTags:renderEndPhraseTags,
     toggleEndPhrase:toggleEndPhrase,
+
+    syncCancelPresets:syncCancelPresets,
+    syncSendPresets:syncSendPresets,
+    renderCancelPhraseTags:renderCancelPhraseTags,
+    renderSendPhraseTags:renderSendPhraseTags,
+    renderCancelCustomPhrases:renderCancelCustomPhrases,
+    renderSendCustomPhrases:renderSendCustomPhrases,
+    toggleCancelPhrase:function(phrase,wasActive){ toggleBundlePhrase('cancel',phrase,wasActive); },
+    toggleSendPhrase:function(phrase,wasActive){ toggleBundlePhrase('send',phrase,wasActive); },
+    addCustomCancelPhrase:function(raw){ return addCustomBundlePhrase('cancel',raw); },
+    addCustomSendPhrase:function(raw){ return addCustomBundlePhrase('send',raw); },
+    removeCustomCancelPhrase:function(phrase){ removeCustomBundlePhrase('cancel',phrase); },
+    removeCustomSendPhrase:function(phrase){ removeCustomBundlePhrase('send',phrase); },
+    persistCancelPhrases:persistCancelPhrases,
+    persistSendPhrases:persistSendPhrases,
 
     testStop:testVoiceEndStop,
 

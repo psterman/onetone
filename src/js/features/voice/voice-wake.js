@@ -726,6 +726,19 @@
     global.OneToneVoiceEnd.syncModeUi();
     if(ui().drawerOpen) renderVoiceModeSwitch();
     else if(hooks().renderHomeVoiceModeSwitchUi) hooks().renderHomeVoiceModeSwitchUi();
+    applyPendingVoiceSendMode();
+  }
+
+  function applyPendingVoiceSendMode(){
+    var pending=global.__vp_voice_pending_send_mode__;
+    if(!pending||pending==='confirm') return;
+    var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
+    if(eng!=='vosk'&&eng!=='kws') return;
+    global.__vp_voice_pending_send_mode__=null;
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.setOutputMode){
+      global.OneToneVoiceEnd.setOutputMode(pending);
+    }
+    if(hooks().renderVoiceSettingsFlow) hooks().renderVoiceSettingsFlow();
   }
 
   function ipcWithTimeout(cmd,args,ms){
@@ -1391,15 +1404,28 @@
     return presets.defaultAppWakePhrases(appId,{rule:rule});
   }
 
+  /** Shared: current-scope app summon phrases + binding meta (one source for UI). */
+  function resolveActiveAppSummonInfo(mapping){
+    var persist=global.OneToneVoiceSchemePersist;
+    var m=mapping||(persist&&persist.resolveVoiceScopeMapping?persist.resolveVoiceScopeMapping():null)||null;
+    var appId=m?String(m.appTargetId||'').trim():'';
+    var phrases=[];
+    if(m&&appId){
+      phrases=normalizePhraseList(activeAppScopeSummonPhrases());
+    }
+    return {
+      mapping:m,
+      appBound:!!appId,
+      phrases:phrases
+    };
+  }
+
   function renderWakePhraseTags(){
     var pc=global.OneToneVoicePhraseCustom;
     if(!pc||!pc.renderPhraseTags) return;
     var mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     var lang=global.__vp_voice_wake_lang__||'zh';
     var active=currentWakePhraseList();
-    activeAppScopeSummonPhrases().forEach(function(p){
-      if(p&&active.indexOf(p)<0) active.push(p);
-    });
     if(mode==='vosk') active=filterWakePhrasesByLang(active,lang);
     var catalog=wakeCatalogForLang(lang,mode);
     var activeSet={};
@@ -1408,19 +1434,25 @@
     pc.renderPhraseTags('voiceWakePhraseTags',activeModel);
     var suggestions=catalog.filter(function(p){ return !activeSet[p]; });
     var pool=$('voiceWakePhraseSuggestions');
+    var section=$('voiceWakePresetSection');
     var poolLbl=$('voiceWakePresetPoolLbl');
     if(pool){
       if(suggestions.length){
+        if(section) section.hidden=false;
         pool.hidden=false;
-        if(poolLbl) poolLbl.hidden=false;
+        pool.setAttribute('aria-hidden','false');
+        if(poolLbl) poolLbl.textContent=t('voiceWakePresetQuickLbl');
         var suggestModel=suggestions.map(function(p){ return {phrase:p,active:false}; });
         pc.renderPhraseTags('voiceWakePhraseSuggestions',suggestModel);
       }else{
+        if(section) section.hidden=true;
         pool.hidden=true;
         pool.innerHTML='';
-        if(poolLbl) poolLbl.hidden=true;
+        pool.setAttribute('aria-hidden','true');
       }
     }
+    var collapse=$('voiceWakePresetCollapse');
+    if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
     var legacy=$('voiceWakeCustomChips');
     if(legacy){ legacy.hidden=true; legacy.innerHTML=''; }
   }
@@ -2383,6 +2415,8 @@
     removeCustomWakePhrase:removeCustomWakePhrase,
     renderWakeCustomPhrases:renderWakeCustomPhrases,
     renderWakePhraseTags:renderWakePhraseTags,
+    resolveActiveAppSummonInfo:resolveActiveAppSummonInfo,
+    activeAppScopeSummonPhrases:activeAppScopeSummonPhrases,
     toggleWakePhrase:toggleWakePhrase,
     initSapiPresetsFromConfig:initSapiPresetsFromConfig,
     updateSapiConfidence:updateVoiceSapiConfidence,

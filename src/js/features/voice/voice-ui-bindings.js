@@ -222,8 +222,15 @@
         if(!btn||btn.disabled) return;
         e.preventDefault();
         var mode=btn.getAttribute('data-voice-output-mode')||'';
+        if(mode!=='confirm'&&mode!=='phrase'&&mode!=='auto') return;
         var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
-        if(eng==='sapi'||eng==='off'||mode==='manual') return;
+        if(eng==='sapi'||eng==='off'){
+          if(mode==='confirm') return;
+          global.__vp_voice_pending_send_mode__=mode;
+          if(hooks.switchVoiceMode) hooks.switchVoiceMode('vosk');
+          if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceSendSwitchEngineToast'),'lite');
+          return;
+        }
         if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.setOutputMode){
           global.OneToneVoiceEnd.setOutputMode(mode);
         }
@@ -236,6 +243,13 @@
     var btnVoiceEndDetectSwitchVosk=$('btnVoiceEndDetectSwitchVosk');
     if(btnVoiceEndDetectSwitchVosk){
       btnVoiceEndDetectSwitchVosk.onclick=function(){
+        if(hooks.switchVoiceMode) hooks.switchVoiceMode('vosk');
+      };
+    }
+    var btnVoiceSendSwitchVosk=$('btnVoiceSendSwitchVosk');
+    if(btnVoiceSendSwitchVosk){
+      btnVoiceSendSwitchVosk.onclick=function(e){
+        e.preventDefault();
         if(hooks.switchVoiceMode) hooks.switchVoiceMode('vosk');
       };
     }
@@ -388,6 +402,9 @@
         var pc=global.OneToneVoicePhraseCustom;
         if(pc&&pc.clearInput) pc.clearInput(inputId);
         else if(input) input.value='';
+        if(inputId==='voiceWakeCustomInput'&&global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
+          global.OneToneVoiceStepWake.syncWakeInputCount();
+        }
       }
       btn.onclick=function(e){
         e.preventDefault();
@@ -407,9 +424,26 @@
       var wake=global.OneToneVoiceWake;
       if(wake&&wake.addCustomWakePhrase) wake.addCustomWakePhrase(phrase);
     });
+    var wakeInput=$('voiceWakeCustomInput');
+    if(wakeInput&&wakeInput.dataset.countBound!=='1'){
+      wakeInput.dataset.countBound='1';
+      wakeInput.addEventListener('input',function(){
+        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncWakeInputCount){
+          global.OneToneVoiceStepWake.syncWakeInputCount();
+        }
+      });
+    }
     bindCustomPhraseAdd('voiceEndCustomInput','btnVoiceEndCustomAdd',function(phrase){
       var end=global.OneToneVoiceEnd;
       if(end&&end.addCustomEndPhrase) end.addCustomEndPhrase(phrase);
+    });
+    bindCustomPhraseAdd('voiceCancelCustomInput','btnVoiceCancelCustomAdd',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomCancelPhrase) end.addCustomCancelPhrase(phrase);
+    });
+    bindCustomPhraseAdd('voiceSendCustomInput','btnVoiceSendCustomAdd',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomSendPhrase) end.addCustomSendPhrase(phrase);
     });
     function bindPhraseListen(btnId,inputId){
       var btn=$(btnId);
@@ -424,6 +458,72 @@
     }
     bindPhraseListen('btnVoiceWakeCustomListen','voiceWakeCustomInput');
     bindPhraseListen('btnVoiceEndCustomListen','voiceEndCustomInput');
+    bindPhraseListen('btnVoiceCancelCustomListen','voiceCancelCustomInput');
+    bindPhraseListen('btnVoiceSendCustomListen','voiceSendCustomInput');
+    function bindPhraseKindTabs(hostId,storageKey){
+      var host=$(hostId);
+      if(!host||host.dataset.kindBound==='1') return;
+      host.dataset.kindBound='1';
+      host.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-phrase-kind]');
+        if(!btn) return;
+        e.preventDefault();
+        var kind=btn.getAttribute('data-phrase-kind')||'text';
+        global[storageKey]=kind;
+        if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
+          global.OneToneVoiceStepSend.syncPhraseKindTabs(hostId,kind);
+        }
+        if(hostId==='voiceEndKindTabs'||hostId==='voiceCancelKindTabs'){
+          if(global.OneToneVoiceStepRecognize){
+            if(global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility){
+              global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility();
+            }
+            if(global.OneToneVoiceStepRecognize.syncCancelLangVisibility){
+              global.OneToneVoiceStepRecognize.syncCancelLangVisibility();
+            }
+            if(kind==='sound'&&global.OneToneVoiceStepRecognize.syncControlAcousticKinds){
+              global.OneToneVoiceStepRecognize.syncControlAcousticKinds();
+            }
+          }
+        }
+      });
+    }
+    bindPhraseKindTabs('voiceWakeKindTabs','__vp_voice_wake_kind__');
+    bindPhraseKindTabs('voiceEndKindTabs','__vp_voice_end_kind__');
+    bindPhraseKindTabs('voiceCancelKindTabs','__vp_voice_cancel_kind__');
+    global.__vp_voice_send_kind__='text';
+    if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.forceTextPhraseKinds){
+      global.OneToneVoiceStepSend.forceTextPhraseKinds();
+    }
+    function bindControlAcousticTabs(hostId,storageKey,role){
+      var host=$(hostId);
+      if(!host||host.dataset.controlAcousticBound==='1') return;
+      host.dataset.controlAcousticBound='1';
+      host.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-phrase-kind]');
+        if(!btn) return;
+        if((btn.getAttribute('data-phrase-kind')||'')!=='sound') return;
+        if(global.OneToneVoiceControlAcoustic){
+          if(global.OneToneVoiceControlAcoustic.bindEvents) global.OneToneVoiceControlAcoustic.bindEvents(role);
+          if(global.OneToneVoiceControlAcoustic.render) global.OneToneVoiceControlAcoustic.render(role);
+        }
+      });
+    }
+    bindControlAcousticTabs('voiceEndKindTabs','__vp_voice_end_kind__','end');
+    bindControlAcousticTabs('voiceCancelKindTabs','__vp_voice_cancel_kind__','cancel');
+    var wakeKindHost=$('voiceWakeKindTabs');
+    if(wakeKindHost&&wakeKindHost.dataset.wakeAcousticBound!=='1'){
+      wakeKindHost.dataset.wakeAcousticBound='1';
+      wakeKindHost.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-phrase-kind]');
+        if(!btn) return;
+        if((btn.getAttribute('data-phrase-kind')||'')!=='sound') return;
+        if(global.OneToneVoiceWakeAcoustic){
+          if(global.OneToneVoiceWakeAcoustic.bindEvents) global.OneToneVoiceWakeAcoustic.bindEvents();
+          if(global.OneToneVoiceWakeAcoustic.render) global.OneToneVoiceWakeAcoustic.render();
+        }
+      });
+    }
     function bindFlowLangToggle(hostId,storageKey){
       var host=$(hostId);
       if(!host) return;
@@ -441,6 +541,9 @@
         }
         if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility){
           global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility();
+        }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncCancelLangVisibility){
+          global.OneToneVoiceStepRecognize.syncCancelLangVisibility();
         }
       };
     }
@@ -490,6 +593,51 @@
     }
     bindWakeLangToggle();
     bindFlowLangToggle('voiceEndLangToggle','__vp_voice_end_lang__');
+    bindFlowLangToggle('voiceCancelLangToggle','__vp_voice_cancel_lang__');
+    bindFlowLangToggle('voiceSendLangToggle','__vp_voice_send_lang__');
+    var recognizeIntentTabs=$('voiceRecognizeIntentTabs');
+    if(recognizeIntentTabs&&recognizeIntentTabs.dataset.intentBound!=='1'){
+      recognizeIntentTabs.dataset.intentBound='1';
+      recognizeIntentTabs.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-recognize-intent]');
+        if(!btn) return;
+        e.preventDefault();
+        var intent=btn.getAttribute('data-recognize-intent')||'cancel';
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncRecognizeIntentTabs){
+          global.OneToneVoiceStepRecognize.syncRecognizeIntentTabs(intent);
+        }
+      });
+    }
+    var openRecognizeAudio=$('btnRecordingAudioOpenRecognize');
+    if(openRecognizeAudio){
+      openRecognizeAudio.onclick=function(e){
+        e.preventDefault();
+        if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel('voiceWake');
+        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setSettingsPanel){
+          global.OneToneSettingsDrawer.setSettingsPanel('voiceWake');
+        }
+        if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+          global.OneToneVoicePageState.setStep('recognize');
+        }else if(global.OneToneVoiceStepNav&&global.OneToneVoiceStepNav.goToStep){
+          global.OneToneVoiceStepNav.goToStep('recognize');
+        }
+        setTimeout(function(){
+          var card=$('recordingAudioCard');
+          if(card&&card.scrollIntoView) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+        },60);
+      };
+    }
+    var btnVoiceEndAudioSettings=$('btnVoiceEndAudioSettings');
+    if(btnVoiceEndAudioSettings){
+      btnVoiceEndAudioSettings.onclick=function(e){
+        e.preventDefault();
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.focusField){
+          global.OneToneSettingsDrawer.focusField('recordingAudio');
+          return;
+        }
+        if(openRecognizeAudio) openRecognizeAudio.click();
+      };
+    }
     var pc=global.OneToneVoicePhraseCustom;
     var wakeApi=global.OneToneVoiceWake;
     var endApi=global.OneToneVoiceEnd;
@@ -513,6 +661,22 @@
         },
         onRemove:function(phrase){
           if(endApi&&endApi.removeCustomEndPhrase) endApi.removeCustomEndPhrase(phrase);
+        }
+      });
+      pc.bindPhraseTags('voiceCancelPhraseTags',{
+        onToggle:function(phrase,active){
+          if(endApi&&endApi.toggleCancelPhrase) endApi.toggleCancelPhrase(phrase,active);
+        },
+        onRemove:function(phrase){
+          if(endApi&&endApi.removeCustomCancelPhrase) endApi.removeCustomCancelPhrase(phrase);
+        }
+      });
+      pc.bindPhraseTags('voiceSendPhraseTags',{
+        onToggle:function(phrase,active){
+          if(endApi&&endApi.toggleSendPhrase) endApi.toggleSendPhrase(phrase,active);
+        },
+        onRemove:function(phrase){
+          if(endApi&&endApi.removeCustomSendPhrase) endApi.removeCustomSendPhrase(phrase);
         }
       });
     }

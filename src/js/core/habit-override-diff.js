@@ -17,6 +17,14 @@
     };
   }
 
+  function globalSendPhrases(cfg){
+    var end=cfg.voiceEnd||cfg.voice_end||{};
+    return {
+      zh:cloneList(end.sendPhrasesZh||end.send_phrases_zh),
+      en:cloneList(end.sendPhrasesEn||end.send_phrases_en)
+    };
+  }
+
   function getGlobalVoiceBaseline(cfg){
     cfg=cfg||{};
     var sc=sceneCfg();
@@ -31,7 +39,8 @@
         zh:cloneList(end.zh),
         en:cloneList(end.en)
       },
-      cancelPhrases:globalCancelPhrases(cfg)
+      cancelPhrases:globalCancelPhrases(cfg),
+      sendPhrases:globalSendPhrases(cfg)
     };
     if(mode==='vosk'||mode==='sapi'||mode==='kws') baseline.engine=mode;
     if(mode==='vosk'){
@@ -70,6 +79,11 @@
       var cen=cloneList(edited.cancelPhrases.en);
       if(czh.length||cen.length) out.cancelPhrases={zh:czh,en:cen};
     }
+    if(edited.sendPhrases&&!bundleEqual(edited.sendPhrases,baseline.sendPhrases)){
+      var szh=cloneList(edited.sendPhrases.zh);
+      var sen=cloneList(edited.sendPhrases.en);
+      if(szh.length||sen.length) out.sendPhrases={zh:szh,en:sen};
+    }
     if(edited.engine){
       var eng=String(edited.engine).trim();
       if(eng&&(eng!==String(baseline.engine||''))) out.engine=eng;
@@ -103,6 +117,10 @@
     }
     if(field==='cancelPhrases'){
       if(!edited.cancelPhrases||bundleEqual(edited.cancelPhrases,baseline.cancelPhrases)) return 'inherited';
+      return 'overridden';
+    }
+    if(field==='sendPhrases'){
+      if(!edited.sendPhrases||bundleEqual(edited.sendPhrases,baseline.sendPhrases)) return 'inherited';
       return 'overridden';
     }
     if(field==='engine'){
@@ -247,7 +265,7 @@
     ov=ov||{};
     baseline=baseline||{};
     var n=0;
-    ['targetKey','wakePhrases','endPhrases','cancelPhrases','engine','modelPreset'].forEach(function(field){
+    ['targetKey','wakePhrases','endPhrases','cancelPhrases','sendPhrases','engine','modelPreset'].forEach(function(field){
       if(fieldVoiceStatus(field,ov,baseline)==='overridden') n++;
     });
     return n;
@@ -424,6 +442,7 @@
     getKeysAccessState:getKeysAccessState,
     getVoiceAccessState:getVoiceAccessState,
     globalCancelPhrases:globalCancelPhrases,
+    globalSendPhrases:globalSendPhrases,
     diffVoiceOverride:diffVoiceOverride,
     normalizeVoiceOverrideForSave:normalizeVoiceOverrideForSave,
     normalizeKeyFieldsForSave:normalizeKeyFieldsForSave,

@@ -18,10 +18,32 @@
     }
   }
 
+  function syncPhraseKindTabs(rootId,kind){
+    if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
+      global.OneToneVoiceStepSend.syncPhraseKindTabs(rootId,kind);
+      return;
+    }
+    var root=$(rootId);
+    if(!root) return;
+    kind=kind==='sound'?'sound':'text';
+    root.querySelectorAll('[data-phrase-kind]').forEach(function(btn){
+      var on=(btn.getAttribute('data-phrase-kind')||'')===kind;
+      btn.classList.toggle('is-on',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
+    });
+    var panel=root.closest('.voice-phrase-panel')||root.parentElement;
+    if(!panel) return;
+    panel.querySelectorAll('[data-phrase-kind-pane]').forEach(function(pane){
+      pane.hidden=(pane.getAttribute('data-phrase-kind-pane')||'')!==kind;
+    });
+  }
+
   function syncEndPresetLangVisibility(){
     const lang=global.__vp_voice_end_lang__||'zh';
     const langToggle=$('voiceEndLangToggle');
+    const soundKind=(global.__vp_voice_end_kind__||'text')==='sound';
     if(langToggle){
+      langToggle.hidden=soundKind;
       langToggle.querySelectorAll('.flow-lang-btn').forEach(function(b){
         b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
       });
@@ -31,10 +53,26 @@
     }
   }
 
+  function syncCancelLangVisibility(){
+    const lang=global.__vp_voice_cancel_lang__||'zh';
+    const langToggle=$('voiceCancelLangToggle');
+    const soundKind=(global.__vp_voice_cancel_kind__||'text')==='sound';
+    if(langToggle){
+      langToggle.hidden=soundKind;
+      langToggle.querySelectorAll('.flow-lang-btn').forEach(function(b){
+        b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+      });
+    }
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderCancelPhraseTags){
+      global.OneToneVoiceEnd.renderCancelPhraseTags();
+    }
+  }
+
   function renderCompactEnd(vm){
     const compact=$('voiceEndCompact');
     if(compact) compact.hidden=true;
     syncEndPresetLangVisibility();
+    syncCancelLangVisibility();
   }
 
   function renderModelPresetRow(vm){
@@ -64,8 +102,6 @@
   function renderRecognizePanel(vm){
     const sourceGrid=$('voiceRecognizeSourceGrid');
     const endRulesSummary=$('voiceEndRulesSummary');
-    const endDetails=$('voiceRecognizeEndDetails');
-    const engineDetails=$('voiceRecognizeEngineDetails');
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     const tabMode=resolveRecognizeTabMode(vm);
     var summaryText=V().resolveEndRuleSummary(vm);
@@ -84,8 +120,28 @@
         });
       }
     }
-    if(engineDetails&&engineDetails.open) setRecognizeNavState('voiceAdvancedSection');
-    else if(endDetails&&endDetails.open) setRecognizeNavState('voiceEndRulesSection');
+    var ruleBar=$('voiceRecognizeRuleBar');
+    if(ruleBar) ruleBar.textContent=t('voiceRecognizeRuleBar');
+  }
+
+  function syncRecognizeIntentTabs(intent){
+    intent=intent==='confirm'?'confirm':'cancel';
+    global.__vp_voice_recognize_intent__=intent;
+    var tabs=$('voiceRecognizeIntentTabs');
+    if(tabs){
+      tabs.querySelectorAll('[data-recognize-intent]').forEach(function(btn){
+        var on=(btn.getAttribute('data-recognize-intent')||'')===intent;
+        btn.classList.toggle('is-on',on);
+        btn.setAttribute('aria-selected',on?'true':'false');
+      });
+    }
+    var wrap=$('voiceEndPresetsWrap');
+    if(!wrap) return;
+    wrap.querySelectorAll('[data-recognize-intent-pane]').forEach(function(pane){
+      var show=(pane.getAttribute('data-recognize-intent-pane')||'')===intent;
+      pane.hidden=!show;
+      pane.setAttribute('aria-hidden',show?'false':'true');
+    });
   }
 
   function renderStepPanels(vm){
@@ -95,21 +151,34 @@
     const liteBody=$('voiceEndDetectLiteBody');
     const switchBtn=$('btnVoiceEndDetectSwitchVosk');
     const silenceNote=$('voiceEndSilenceNote');
+    const intentTabs=$('voiceRecognizeIntentTabs');
     const habitNote=$('voiceSendHabitNote');
     const autoDesc=$('voiceSettingsAutoSendDesc');
     const endSnap=hooks().voiceUiSnapshot().end||{};
     const endCfg=(state.config&&state.config.voiceEnd)||(state.config&&state.config.voice_end)||{};
     const zh=Array.isArray(endSnap.phrasesZh)?endSnap.phrasesZh:(endCfg.phrasesZh||[]);
     const en=Array.isArray(endSnap.phrasesEn)?endSnap.phrasesEn:(endCfg.phrasesEn||[]);
+    const cancelZh=Array.isArray(endSnap.cancelPhrasesZh)?endSnap.cancelPhrasesZh:(endCfg.cancelPhrasesZh||endCfg.cancel_phrases_zh||[]);
+    const cancelEn=Array.isArray(endSnap.cancelPhrasesEn)?endSnap.cancelPhrasesEn:(endCfg.cancelPhrasesEn||endCfg.cancel_phrases_en||[]);
     var hideLite=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
-    if(liteEl) liteEl.hidden=hideLite||vm.loading||tabMode!=='sapi';
-    if(voskEl) voskEl.hidden=vm.loading||!(tabMode==='vosk'||tabMode==='kws');
+    var phraseEditable=!vm.loading&&(tabMode==='vosk'||tabMode==='kws');
+    var showLite= !hideLite&&!vm.loading&&tabMode==='sapi';
+    if(liteEl) liteEl.hidden=!showLite;
+    // Always keep cancel/confirm tabs visible so the page structure is obvious on first entry.
+    if(intentTabs) intentTabs.hidden=!!vm.loading;
+    // Phrase panels stay available to browse; lite mode just dims/locks editing.
+    if(voskEl){
+      voskEl.hidden=!!vm.loading||tabMode==='off';
+      voskEl.classList.toggle('is-lite-locked',showLite);
+      voskEl.setAttribute('aria-disabled',showLite?'true':'false');
+    }
     if(liteBody) liteBody.textContent=t('voiceEndDetectLiteBody');
     if(switchBtn) switchBtn.textContent=t('voiceEndDetectSwitchVosk');
-    if(silenceNote) silenceNote.textContent=t('voiceEndSilenceNote');
-    if(!vm.loading&&(tabMode==='vosk'||tabMode==='kws')&&global.OneToneVoiceEnd){
-      const sync=global.OneToneVoiceEnd.syncPresets;
-      if(typeof sync==='function') sync(zh,en);
+    if(silenceNote) silenceNote.textContent=t('voiceEndStopOnlyNote');
+    syncRecognizeIntentTabs(global.__vp_voice_recognize_intent__||'cancel');
+    if(phraseEditable&&global.OneToneVoiceEnd){
+      if(typeof global.OneToneVoiceEnd.syncPresets==='function') global.OneToneVoiceEnd.syncPresets(zh,en);
+      if(typeof global.OneToneVoiceEnd.syncCancelPresets==='function') global.OneToneVoiceEnd.syncCancelPresets(cancelZh,cancelEn);
     }
     if(autoDesc){
       const delaySec=(vm.autoSendDelayMs/1000).toFixed(1);
@@ -127,6 +196,21 @@
       habitNote.innerHTML=t('voiceSendHabitOverrideNote')+' <button type="button" class="voice-finish-habit-link" id="btnVoiceSendHabitLink">'+V().escHtml(t('voiceSendHabitLink'))+'</button>';
       habitNote.hidden=vm.loading||!vm.autoSendEnabled||!vm.habitHasKeyAutoSend||outputKey!=='auto';
     }
+    syncPhraseKindTabs('voiceEndKindTabs',global.__vp_voice_end_kind__||'text');
+    syncPhraseKindTabs('voiceCancelKindTabs',global.__vp_voice_cancel_kind__||'text');
+    syncControlAcousticKinds();
+  }
+
+  function syncControlAcousticKinds(){
+    function paint(role,kind){
+      if(kind!=='sound') return;
+      var api=global.OneToneVoiceControlAcoustic;
+      if(!api) return;
+      if(api.bindEvents) api.bindEvents(role);
+      if(api.render) api.render(role);
+    }
+    paint('cancel',global.__vp_voice_cancel_kind__||'text');
+    paint('end',global.__vp_voice_end_kind__||'text');
   }
 
   function renderCapabilityNote(vm){
@@ -149,33 +233,43 @@
     if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderEndCustomPhrases){
       global.OneToneVoiceEnd.renderEndCustomPhrases();
     }
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderCancelCustomPhrases){
+      global.OneToneVoiceEnd.renderCancelCustomPhrases();
+    }
     const endBlock=$('voiceEndCustomBlock');
-    if(endBlock) endBlock.hidden=vm.loading||!(tabMode==='vosk'||tabMode==='kws');
+    const cancelBlock=$('voiceCancelCustomBlock');
+    const show= !vm.loading&&(tabMode==='vosk'||tabMode==='kws');
+    if(endBlock) endBlock.hidden=!show;
+    if(cancelBlock) cancelBlock.hidden=!show;
   }
 
-  function renderOutputModeSegments(vm){
-    var modeSeg=$('voiceOutputModeSegments');
-    if(!modeSeg) return;
-    var key=V().resolveOutputModeKey(vm);
-    var liteMode=vm.mode==='sapi'||vm.mode==='off';
-    modeSeg.querySelectorAll('.keys-trigger-mode-seg').forEach(function(btn){
-      var segKey=btn.getAttribute('data-voice-output-mode')||'';
-      btn.classList.toggle('is-active',segKey===key);
-      btn.disabled=vm.loading||(liteMode&&segKey!=='manual');
-    });
+  function renderRecognizePage(vm){
+    renderRecognizePanel(vm);
+    renderModelPresetRow(vm);
+    renderStepPanels(vm);
+    renderCompactEnd(vm);
+    renderCapabilityNote(vm);
+    renderEndCustomPhrases(vm);
+    var title=$('voiceRecognizePageTitle');
+    var sub=$('voiceRecognizePageSub');
+    if(title) title.textContent=t('voiceRecognizePageTitle');
+    if(sub) sub.textContent=t('voiceRecognizePageSub');
+    var cancelTab=$('btnVoiceRecognizeIntentCancel');
+    var confirmTab=$('btnVoiceRecognizeIntentConfirm');
+    if(cancelTab) cancelTab.textContent=t('voiceRecognizeIntentCancel');
+    if(confirmTab) confirmTab.textContent=t('voiceRecognizeIntentConfirm');
+    if(global.OneToneAppThemePrefs&&global.OneToneAppThemePrefs.syncRecordingAudioUi){
+      global.OneToneAppThemePrefs.syncRecordingAudioUi();
+    }
   }
 
   global.OneToneVoiceStepRecognize={
-    render:function(vm){
-      renderRecognizePanel(vm);
-    renderModelPresetRow(vm);
-      renderStepPanels(vm);
-      renderCompactEnd(vm);
-      renderCapabilityNote(vm);
-      renderEndCustomPhrases(vm);
-      renderOutputModeSegments(vm);
-    },
+    render:renderRecognizePage,
+    renderRecognizePage:renderRecognizePage,
     setRecognizeNavState:setRecognizeNavState,
-    syncEndPresetLangVisibility:syncEndPresetLangVisibility
+    syncEndPresetLangVisibility:syncEndPresetLangVisibility,
+    syncCancelLangVisibility:syncCancelLangVisibility,
+    syncRecognizeIntentTabs:syncRecognizeIntentTabs,
+    syncControlAcousticKinds:syncControlAcousticKinds
   };
 })((typeof window!=='undefined')?window:globalThis);

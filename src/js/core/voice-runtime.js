@@ -81,6 +81,18 @@
     hooks().syncVoiceEndToggle(!!end.enabled);
     hooks().syncVoiceEndAutoSendToggle(!!end.autoSendEnabled);
     hooks().syncVoiceEndPresets(end.phrasesZh||end.phrases_zh||[],end.phrasesEn||end.phrases_en||[]);
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.syncCancelPresets){
+      global.OneToneVoiceEnd.syncCancelPresets(
+        end.cancelPhrasesZh||end.cancel_phrases_zh||[],
+        end.cancelPhrasesEn||end.cancel_phrases_en||[]
+      );
+    }
+    if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.syncSendPresets){
+      global.OneToneVoiceEnd.syncSendPresets(
+        end.sendPhrasesZh||end.send_phrases_zh||[],
+        end.sendPhrasesEn||end.send_phrases_en||[]
+      );
+    }
     global.OneToneVoiceWake.initSapiPresetsFromConfig();
     hooks().syncHomeFromVoiceSettings(
       {enabled:!!vosk.enabled,phrases:vosk.phrases||[],state:'stopped'},

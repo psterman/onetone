@@ -57,6 +57,9 @@ fn voice_reload_snapshot(cfg: &VoiceConfig) -> onetone_logic::voice_reload::Voic
             phrases_en: cfg.voice_end.phrases_en.clone(),
             cancel_phrases_zh: cfg.voice_end.cancel_phrases_zh.clone(),
             cancel_phrases_en: cfg.voice_end.cancel_phrases_en.clone(),
+            send_phrases_zh: cfg.voice_end.send_phrases_zh.clone(),
+            send_phrases_en: cfg.voice_end.send_phrases_en.clone(),
+            send_mode: cfg.voice_end.send_mode.clone(),
         },
     }
 }
@@ -528,14 +531,28 @@ pub fn restart_active_engine_if_fingerprint_changed(
             stop_all_voice_engines(Some(app), state, reason);
         }
         EffectiveVoiceEngine::Vosk => {
-            crate::app_log::log_line(state, "voice", "stop self vosk (supervisor)");
-            voice_vosk_runtime::voice_vosk_stop_sync(state);
-            start_self_vosk(
-                app,
-                state,
-                crate::scene_config::resolve_effective_vosk_config(new_cfg),
-                reason,
-            );
+            let vosk_state = state.voice_vosk_state.lock().clone();
+            // Fingerprint can change during bootstrap while Vosk is still loading the
+            // model. Sync join would hang the config watcher (UI fake-freeze). Skip the
+            // restart; the in-flight start already picks up config via epoch / next activate.
+            if vosk_state == "starting" {
+                crate::app_log::log_line(
+                    state,
+                    "voice",
+                    &format!(
+                        "voice_bootstrap skip fingerprint restart vosk ({reason}): still starting"
+                    ),
+                );
+            } else {
+                crate::app_log::log_line(state, "voice", "stop self vosk (supervisor)");
+                voice_vosk_runtime::voice_vosk_stop_sync(state);
+                start_self_vosk(
+                    app,
+                    state,
+                    crate::scene_config::resolve_effective_vosk_config(new_cfg),
+                    reason,
+                );
+            }
         }
         EffectiveVoiceEngine::Sapi => {
             crate::app_log::log_line(state, "voice", "stop self sapi (supervisor)");

@@ -35,6 +35,9 @@ pub struct VoiceEndReload {
     pub phrases_en: Vec<String>,
     pub cancel_phrases_zh: Vec<String>,
     pub cancel_phrases_en: Vec<String>,
+    pub send_phrases_zh: Vec<String>,
+    pub send_phrases_en: Vec<String>,
+    pub send_mode: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -76,6 +79,9 @@ pub fn vosk_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadC
         || old.voice_end.phrases_en != new.voice_end.phrases_en
         || old.voice_end.cancel_phrases_zh != new.voice_end.cancel_phrases_zh
         || old.voice_end.cancel_phrases_en != new.voice_end.cancel_phrases_en
+        || old.voice_end.send_phrases_zh != new.voice_end.send_phrases_zh
+        || old.voice_end.send_phrases_en != new.voice_end.send_phrases_en
+        || old.voice_end.send_mode != new.voice_end.send_mode
 }
 
 pub fn sapi_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadConfig) -> bool {
@@ -91,6 +97,9 @@ pub fn kws_runtime_relevant_changed(old: &VoiceReloadConfig, new: &VoiceReloadCo
         || old.voice_end.phrases_en != new.voice_end.phrases_en
         || old.voice_end.cancel_phrases_zh != new.voice_end.cancel_phrases_zh
         || old.voice_end.cancel_phrases_en != new.voice_end.cancel_phrases_en
+        || old.voice_end.send_phrases_zh != new.voice_end.send_phrases_zh
+        || old.voice_end.send_phrases_en != new.voice_end.send_phrases_en
+        || old.voice_end.send_mode != new.voice_end.send_mode
 }
 
 #[cfg(test)]

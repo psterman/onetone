@@ -11,8 +11,8 @@
 
   function expandStepDetails(step){
     var map={
-      wake:['voiceWakeCustomDetails'],
-      recognize:['voiceRecognizeEndDetails'],
+      wake:[],
+      recognize:[],
       send:[]
     };
     (map[step]||[]).forEach(function(id){

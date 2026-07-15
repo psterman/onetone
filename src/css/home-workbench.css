@@ -164,11 +164,7 @@ html[data-theme="dark"] .home-workbench {
 }
 
 .wb-sidebar-status {
-  margin-top: auto;
-  padding: 10px 12px;
-  border-radius: var(--radius-row);
-  background: var(--surface-soft);
-  border: 1px solid var(--outline-variant);
+  display: none !important;
 }
 
 html[data-theme="dark"] .wb-sidebar-status {

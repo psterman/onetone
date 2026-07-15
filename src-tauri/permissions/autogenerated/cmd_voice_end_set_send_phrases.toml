@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-end-set-send-phrases"
+description = "Enables the cmd_voice_end_set_send_phrases command without any pre-configured scope."
+commands.allow = ["cmd_voice_end_set_send_phrases"]
+
+[[permission]]
+identifier = "deny-cmd-voice-end-set-send-phrases"
+description = "Denies the cmd_voice_end_set_send_phrases command without any pre-configured scope."
+commands.deny = ["cmd_voice_end_set_send_phrases"]

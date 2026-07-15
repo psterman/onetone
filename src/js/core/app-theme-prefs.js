@@ -74,7 +74,11 @@
 
   function ensureSoundsConfig(){
     var cfg=state().config;
-    if(!cfg) state().config=hooks().defaultConfig();
+    if(!cfg){
+      var make=hooks().defaultConfig;
+      if(typeof make==='function') state().config=make();
+      else state().config={};
+    }
     if(!state().config.sounds) state().config.sounds=defaultSoundsConfig();
     SOUND_SLOT_KEYS.forEach(function(key){
       if(!state().config.sounds[key]) state().config.sounds[key]=Object.assign({},SOUND_SLOT_DEFAULTS[key]);
@@ -186,6 +190,11 @@
     });
     var label=$('recordingAudioStrengthCurrent');
     if(label) label.textContent=recordingMuteStrengthLabel(sounds.recordingMuteStrength);
+    var intensity=$('recordingAudioIntensityPanel');
+    if(intensity){
+      intensity.classList.toggle('is-muted-off',!sounds.recordingMuteEnabled);
+      intensity.setAttribute('aria-disabled',sounds.recordingMuteEnabled?'false':'true');
+    }
   }
 
   function syncSoundsSettingsUi(){
@@ -235,7 +244,10 @@
       ['recordingAudioStrengthLbl',d.recordingAudioStrengthLbl],['recordingAudioHint',d.recordingAudioHint],
       ['btnRecordingAudioStrengthLight',d.recordingMuteStrengthLight],['btnRecordingAudioStrengthBalanced',d.recordingMuteStrengthBalanced],
       ['btnRecordingAudioStrengthStrong',d.recordingMuteStrengthStrong],['btnRecordingAudioStrengthMute',d.recordingMuteStrengthMute],
-      ['recordingAudioDiagHint',d.recordingAudioDiagHint],['recordingAudioDiagAction',d.recordingAudioDiagAction]
+      ['recordingAudioDiagHint',d.recordingAudioDiagHint],['recordingAudioDiagAction',d.recordingAudioDiagAction],
+      ['recordingAudioSoundsLinkTitle',d.recordingAudioTitle],
+      ['recordingAudioSoundsLinkDesc',d.recordingAudioSoundsLinkDesc],
+      ['btnRecordingAudioOpenRecognize',d.recordingAudioOpenRecognize]
     ].forEach(function(pair){
       var el=$(pair[0]); if(el) el.textContent=pair[1];
     });
@@ -267,14 +279,36 @@
     ensureSoundsConfig();
     state().config.sounds.recordingMuteEnabled=!!enabled;
     syncRecordingAudioUi();
-    hooks().save();
+    try{
+      var save=hooks().save;
+      if(typeof save==='function') save();
+      else if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.save==='function'){
+        global.OneToneConfigPersist.save();
+      }
+    }catch(err){
+      if(typeof console!=='undefined'&&console.error) console.error('setRecordingAudioMuteEnabled save',err);
+    }
+    try{
+      var ipc=global.OneToneIpc;
+      if(ipc&&typeof ipc.invoke==='function'){
+        ipc.invoke('cmd_app_log',{line:'ui recordingMuteEnabled='+(enabled?'1':'0')}).catch(function(){});
+      }
+    }catch(_e){}
   }
 
   function setRecordingAudioStrength(strength){
     ensureSoundsConfig();
     state().config.sounds.recordingMuteStrength=normalizeRecordingMuteStrength(strength);
     syncRecordingAudioUi();
-    hooks().save();
+    try{
+      var save=hooks().save;
+      if(typeof save==='function') save();
+      else if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.save==='function'){
+        global.OneToneConfigPersist.save();
+      }
+    }catch(err){
+      if(typeof console!=='undefined'&&console.error) console.error('setRecordingAudioStrength save',err);
+    }
   }
 
   function toggleSoundsMaster(){

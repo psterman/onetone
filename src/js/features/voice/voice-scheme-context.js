@@ -59,11 +59,23 @@
     };
   }
 
+  function globalSendPhrases(cfg){
+    if(global.OneToneHabitOverrideDiff&&global.OneToneHabitOverrideDiff.globalSendPhrases){
+      return global.OneToneHabitOverrideDiff.globalSendPhrases(cfg);
+    }
+    var end=cfg.voiceEnd||cfg.voice_end||{};
+    return {
+      zh:cloneList(end.sendPhrasesZh||end.send_phrases_zh),
+      en:cloneList(end.sendPhrasesEn||end.send_phrases_en)
+    };
+  }
+
   function snapshotFromGlobal(){
     var cfg=state().config||{};
     var scene=sc();
     var end=scene&&scene.globalEndPhrases?scene.globalEndPhrases(cfg):{zh:[],en:[]};
     var cancel=globalCancelPhrases(cfg);
+    var send=globalSendPhrases(cfg);
     var wakeApi=global.OneToneVoiceWake;
     var mode=wakeApi&&wakeApi.currentMode?wakeApi.currentMode():'off';
     var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
@@ -78,6 +90,10 @@
       cancelPhrases:{
         zh:cloneList(cancel.zh),
         en:cloneList(cancel.en)
+      },
+      sendPhrases:{
+        zh:cloneList(send.zh),
+        en:cloneList(send.en)
       }
     };
     if(mode==='vosk'||mode==='sapi'||mode==='kws') ov.engine=mode;
@@ -110,6 +126,14 @@
     ov.endPhrases={
       zh:cloneList(snap.endPhrases.zh),
       en:cloneList(snap.endPhrases.en)
+    };
+    ov.cancelPhrases={
+      zh:cloneList(snap.cancelPhrases.zh),
+      en:cloneList(snap.cancelPhrases.en)
+    };
+    ov.sendPhrases={
+      zh:cloneList(snap.sendPhrases.zh),
+      en:cloneList(snap.sendPhrases.en)
     };
     if(snap.engine) ov.engine=snap.engine;
     else delete ov.engine;
@@ -168,6 +192,20 @@
     var endEn=ov&&ov.endPhrases&&Array.isArray(ov.endPhrases.en)&&ov.endPhrases.en.length
       ?cloneList(ov.endPhrases.en)
       :cloneList(globalEnd.en||[]);
+    var globalCancel=globalCancelPhrases(cfg);
+    var cancelZh=ov&&ov.cancelPhrases&&Array.isArray(ov.cancelPhrases.zh)&&ov.cancelPhrases.zh.length
+      ?cloneList(ov.cancelPhrases.zh)
+      :cloneList(globalCancel.zh||[]);
+    var cancelEn=ov&&ov.cancelPhrases&&Array.isArray(ov.cancelPhrases.en)&&ov.cancelPhrases.en.length
+      ?cloneList(ov.cancelPhrases.en)
+      :cloneList(globalCancel.en||[]);
+    var globalSend=globalSendPhrases(cfg);
+    var sendZh=ov&&ov.sendPhrases&&Array.isArray(ov.sendPhrases.zh)&&ov.sendPhrases.zh.length
+      ?cloneList(ov.sendPhrases.zh)
+      :cloneList(globalSend.zh||[]);
+    var sendEn=ov&&ov.sendPhrases&&Array.isArray(ov.sendPhrases.en)&&ov.sendPhrases.en.length
+      ?cloneList(ov.sendPhrases.en)
+      :cloneList(globalSend.en||[]);
 
     if(mode==='sapi'){
       var sapi=cfg.voiceSapi||cfg.voice_sapi||(cfg.voiceSapi={});
@@ -188,6 +226,10 @@
     cfg.voiceEnd=endCfg;
     endCfg.phrasesZh=endZh;
     endCfg.phrasesEn=endEn;
+    endCfg.cancelPhrasesZh=cancelZh;
+    endCfg.cancelPhrasesEn=cancelEn;
+    endCfg.sendPhrasesZh=sendZh;
+    endCfg.sendPhrasesEn=sendEn;
     if(ov&&ov.targetKey&&String(ov.targetKey).trim()){
       var key=String(ov.targetKey).trim();
       if(cfg.voiceSapi||cfg.voice_sapi) (cfg.voiceSapi||cfg.voice_sapi).targetKey=key;
@@ -207,6 +249,8 @@
     }
     var endApi=global.OneToneVoiceEnd;
     if(endApi&&endApi.syncPresets) endApi.syncPresets(endZh,endEn);
+    if(endApi&&endApi.syncCancelPresets) endApi.syncCancelPresets(cancelZh,cancelEn);
+    if(endApi&&endApi.syncSendPresets) endApi.syncSendPresets(sendZh,sendEn);
     if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
       global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
     }

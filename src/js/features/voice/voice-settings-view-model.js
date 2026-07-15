@@ -85,16 +85,19 @@
     return t('voiceModeCurrentOff');
   }
 
+  function resolveOutputModeKey(vm){
+    if(vm.mode==='sapi'||vm.mode==='off') return 'confirm';
+    if(vm.sendMode==='phrase'||vm.sendMode==='auto'||vm.sendMode==='confirm') return vm.sendMode;
+    return vm.autoSendEnabled?'auto':'confirm';
+  }
+
   function resolveOutputSummaryLabel(vm){
     if(vm.loading) return t('homeLiveLoading');
     if(vm.mode==='sapi'||vm.mode==='off') return t('voiceSummaryOutputSilence');
-    if(vm.autoSendEnabled) return t('voiceSummaryOutputAuto').replace('{key}',vm.autoSendKey);
+    var key=resolveOutputModeKey(vm);
+    if(key==='auto') return t('voiceSummaryOutputAuto').replace('{key}',vm.autoSendKey);
+    if(key==='phrase') return t('voiceSummaryOutputPhrase');
     return t('voiceSummaryOutputConfirm');
-  }
-
-  function resolveOutputModeKey(vm){
-    if(vm.mode==='sapi'||vm.mode==='off') return 'manual';
-    return vm.autoSendEnabled?'auto':'confirm';
   }
 
   function resolveEndRuleSummary(vm){
@@ -244,9 +247,12 @@
     const mapping=habit.mapping;
     const wakePhrase=summary?sanitizePhrase(summary.wakePhrase):sanitizePhrase(hooks().homeVoiceWakePhrase());
     const autoSendEnabled=!!endSnap.autoSendEnabled||!!(endCfg&&endCfg.autoSendEnabled);
+    const sendMode=String(endSnap.sendMode||endCfg.sendMode||(autoSendEnabled?'auto':'confirm')).trim().toLowerCase()||'confirm';
     const autoSendDelayMs=endSnap.commitDelayMs!=null?endSnap.commitDelayMs:(endCfg&&endCfg.commitDelayMs!=null?endCfg.commitDelayMs:4000);
     const autoSendKey=String(endSnap.commitKey||endCfg.commitKey||endCfg.commit_key||'Enter').trim()||'Enter';
     const endPhrases=((endSnap.phrasesZh||[]).concat(endSnap.phrasesEn||[]));
+    const cancelPhrases=((endSnap.cancelPhrasesZh||endSnap.cancel_phrases_zh||[]).concat(endSnap.cancelPhrasesEn||endSnap.cancel_phrases_en||[]));
+    const sendPhrases=((endSnap.sendPhrasesZh||endSnap.send_phrases_zh||[]).concat(endSnap.sendPhrasesEn||endSnap.send_phrases_en||[]));
     const vm={
       loading:loading,
       mode:mode,
@@ -255,8 +261,11 @@
       wakeSourceLabel:loading?t('homeLiveLoading'):resolveMicLabel(summary),
       endPhraseEnabled:!!endSnap.enabled||!!(endCfg&&endCfg.enabled),
       endPhrases:endPhrases,
+      cancelPhrases:cancelPhrases,
+      sendPhrases:sendPhrases,
+      sendMode:sendMode==='phrase'||sendMode==='auto'||sendMode==='confirm'?sendMode:(autoSendEnabled?'auto':'confirm'),
       endDetectionLabel:'',
-      autoSendEnabled:autoSendEnabled,
+      autoSendEnabled:autoSendEnabled||sendMode==='auto',
       autoSendDelayMs:autoSendDelayMs,
       autoSendKey:autoSendKey,
       finishChipLabel:'',

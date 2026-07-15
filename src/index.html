@@ -119,11 +119,6 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                 <span data-i18n="homeWbNavRuntime">运行状态</span>
               </button>
-              <div class="wb-sidebar-status">
-                <div class="wb-sidebar-status-label"><span class="wb-sidebar-status-dot" id="wbSidebarDot"></span><span data-i18n="homeWbSidebarRunning">运行中</span></div>
-                <div class="wb-sidebar-status-main" id="wbSidebarMain">OneTone 已启动</div>
-                <div class="wb-sidebar-status-sub" id="wbSidebarSub">—</div>
-              </div>
       </aside>
       <div class="app-content-column" id="appContentColumn">
       <div class="editor-zone">
@@ -1329,28 +1324,38 @@
           <div class="page-status-bar voice-page-status-bar" id="voiceWorkflowTabsBar">
             <div class="page-status-bar-main voice-scheme-status-main">
               <div class="keys-scheme-summary-title-row voice-scheme-summary-title-row">
-                <span class="keys-scheme-summary-name voice-scheme-summary-name" id="voiceSummaryName">默认 · 系统输入法</span>
-                <span class="keys-scheme-summary-pill voice-scheme-summary-pill" id="voiceSummaryStatus">—</span>
+                <span class="voice-status-brand-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                </span>
+                <span class="keys-scheme-summary-name voice-scheme-summary-name" id="voicePageBrandTitle">语音唤醒</span>
+                <span class="keys-scheme-summary-pill voice-scheme-summary-pill" id="voiceSummaryStatus">默认 已激活</span>
+                <span class="sr-only" id="voiceSummaryName">默认</span>
               </div>
-              <div class="keys-scheme-summary-meta voice-scheme-summary-meta">
-                <span class="keys-scheme-summary-item" hidden>
-                  <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">语音模式</span>
-                  <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
-                </span>
-                <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl" hidden>
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">备用</button>
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">标准</button>
-                  <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">轻量</button>
-                </div>
-                <span class="keys-scheme-summary-divider" aria-hidden="true" hidden></span>
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
-                  <span class="keys-scheme-summary-val" id="voiceSummaryScope">—</span>
-                </span>
+            </div>
+            <div class="voice-status-center-cluster" id="voiceStatusCenterCluster">
+              <span class="keys-scheme-summary-item" hidden>
+                <span class="keys-scheme-summary-lbl" id="voiceSummaryEngineLbl">语音模式</span>
+                <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
+              </span>
+              <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
+                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">备用</button>
+                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">标准</button>
+                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">轻量</button>
+              </div>
+              <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+              <span class="keys-scheme-summary-item voice-status-scope-item sr-only">
+                <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
+                <span class="keys-scheme-summary-val" id="voiceSummaryScope">不限应用</span>
+              </span>
+              <div class="voice-status-scope-bar voice-app-scope-strip" id="voiceAppScopeStrip">
+                <span class="keys-app-binding-lbl sr-only" id="voiceAppScopeLbl">在哪些程序中生效</span>
+                <h4 class="voice-app-scope-title sr-only" id="voiceAppScopeTitle">生效应用</h4>
+                <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
+                <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加</button>
               </div>
             </div>
             <div class="page-status-bar-actions voice-scheme-status-actions">
-              <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">保存到情景模式</button>
+              <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">更新方案</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
               <button type="button" class="page-status-btn" id="btnVoiceSchemeAdd">+ 新建</button>
             </div>
@@ -1412,37 +1417,72 @@
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody">
-                    <div id="habitScenarioVoiceBody" class="habit-scenario-voice-body" hidden></div>
-                    <section class="voice-wake-card voice-wake-card--hero" id="voiceWakeHeroCard" aria-labelledby="voiceWakeHeroTitle">
-                    <p class="voice-wake-card-kicker" id="voiceWakeHeroTitle">开始输入</p>
-                    <div class="voice-wake-phrase-display" id="voiceWakePhraseDisplay">
-                      <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
-                      <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
+                    <header class="voice-step-page-head sr-only" id="voiceWakePageHead">
+                      <h3 class="voice-step-page-title" id="voiceWakePageTitle">语音唤醒</h3>
+                      <p class="voice-step-page-sub" id="voiceWakePageSub"></p>
+                    </header>
+                    <div class="voice-wake-action-bar" id="voiceWakeActionBar" hidden aria-hidden="true">
+                      <strong class="voice-wake-action-bar-lbl" id="voiceWakeActionTitle">唤醒后</strong>
+                      <div class="voice-wake-action-steps" id="voiceWakeActionList">
+                        <span id="voiceWakeActionApp">切到目标应用</span>
+                        <span class="voice-wake-action-arrow" aria-hidden="true">→</span>
+                        <span id="voiceWakeActionDictate">进入听写</span>
+                        <span class="voice-wake-action-arrow" aria-hidden="true">→</span>
+                        <span id="voiceWakeActionNoSend">不自动发送</span>
+                      </div>
                     </div>
-                    <p class="voice-wake-display-hint" id="voiceWakeDisplayHint">说出以上文字，开始语音输入</p>
-                    <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
-                      <span id="voiceSettingsMicName">默认麦克风</span>
-                    </button>
-                    <span class="sr-only" id="voiceSettingsMicLbl">麦克风</span>
-                    <span class="mic-level-bars sr-only" id="voiceSettingsMicBars" aria-hidden="true"></span>
-                    </section>
-                    <div class="voice-phrase-panel voice-wake-phrase-panel" id="voiceWakePresetsPanel">
+                    <div id="habitScenarioVoiceBody" class="habit-scenario-voice-body" hidden></div>
+                    <div class="voice-step-page-stack voice-wake-page-stack" id="voiceWakePageGrid">
+                    <div class="voice-phrase-panel voice-wake-phrase-panel voice-wake-text-card" id="voiceWakePresetsPanel">
                     <div class="voice-phrase-panel-head">
-                      <p class="voice-phrase-panel-title" id="voiceEditSectionPresets">唤醒词</p>
-                      <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言">
+                      <p class="voice-phrase-panel-title" id="voiceEditSectionPresets">全局唤醒</p>
+                      <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
+                      <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="唤醒词类型">
+                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true">文字短语</button>
+                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false">声音样本</button>
+                      </div>
+                      <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
                         <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
                         <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
                       </div>
                     </div>
-                    <div class="voice-phrase-tags" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceEditSectionPresets"></div>
-                    <p class="voice-phrase-pool-label" id="voiceWakePresetPoolLbl" hidden>可选预设</p>
-                    <div class="voice-phrase-tags voice-phrase-pool" id="voiceWakePhraseSuggestions" hidden role="listbox" aria-label="可选预设"></div>
-                    <div class="voice-phrase-add-row" id="voiceWakeCustomBlock">
-                      <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：小窗小窗">
+                    <div class="voice-phrase-kind-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text">
+                    <section class="voice-wake-primary-card" id="voiceWakeHeroCard">
+                      <p class="voice-wake-primary-lbl" id="voiceWakeHeroTitle">当前主唤醒动作</p>
+                      <div class="voice-wake-primary-body">
+                        <p class="voice-wake-primary-phrase voice-wake-phrase-display" id="voiceWakePhraseDisplay">
+                          <span class="voice-phrase-compact-zh" id="voiceWakeCompactZh">—</span>
+                          <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
+                        </p>
+                        <p class="voice-wake-primary-hint" id="voiceWakeDisplayHint">说出此口令后开始听写</p>
+                      </div>
+                      <button type="button" class="sr-only" id="btnVoiceSettingsMic" tabindex="-1" aria-hidden="true">
+                        <span id="voiceSettingsMicName">默认麦克风</span>
+                      </button>
+                      <span class="sr-only" id="voiceSettingsMicLbl">麦克风</span>
+                      <span class="mic-level-bars sr-only" id="voiceSettingsMicBars" aria-hidden="true"></span>
+                    </section>
+                    <div class="voice-wake-phrase-editor">
+                    <p class="voice-phrase-pool-label" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
+                    <div class="voice-phrase-tags voice-wake-active-tags" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeActiveLbl"></div>
+                    <div class="voice-phrase-add-row voice-wake-add-row" id="voiceWakeCustomBlock">
+                      <div class="voice-wake-input-wrap">
+                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑">
+                        <span class="voice-wake-input-count" id="voiceWakeCustomCount" aria-hidden="true">0/20</span>
+                      </div>
                       <button type="button" class="voice-phrase-custom-listen" id="btnVoiceWakeCustomListen" title="说一句，用识别结果填入">🎤</button>
-                      <button type="button" class="voice-phrase-custom-add" id="btnVoiceWakeCustomAdd">添加</button>
+                      <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceWakeCustomAdd">+ 添加</button>
                     </div>
-                    <p class="voice-phrase-panel-hint" id="voiceWakeCustomHint">点击标签选中，× 可删除；可添加自定义短语</p>
+                    <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
+                    <section class="voice-wake-preset-section" id="voiceWakePresetSection" hidden>
+                      <p class="voice-phrase-pool-label" id="voiceWakePresetPoolLbl">从系统预设极速添加</p>
+                      <div class="voice-phrase-tags voice-phrase-pool" id="voiceWakePhraseSuggestions" role="listbox" aria-labelledby="voiceWakePresetPoolLbl"></div>
+                    </section>
+                    </div>
+                    </div>
+                    <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                      <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
+                    </div>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomSummary">自定义唤醒词</p>
                     <div class="voice-phrase-catalog" id="voiceSettingsWakeHost" data-wake-mode="off" data-wake-lang="zh" hidden aria-hidden="true">
@@ -1477,6 +1517,16 @@
                     <p class="sr-only" id="voiceWakeCompactLbl">当前唤醒词</p>
                     <div id="voiceWakeCompact" hidden aria-hidden="true"></div>
                     </div>
+                    <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
+                      <div class="voice-wake-card-titles">
+                        <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">应用唤醒语</p>
+                        <p class="voice-wake-card-sub sr-only" id="voiceOutputSummonHint"></p>
+                      </div>
+                      <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">尚未设置，请到按键页添加</p>
+                      <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
+                      <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
+                    </section>
+                    </div>
                   </div>
                   </div>
                   <div class="keys-workflow-arrow voice-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
@@ -1487,52 +1537,98 @@
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabRecognizeHint"></span>
                       </div>
                     </div>
-                    <div class="flow-step-body keys-step-body" id="voiceSettingsRecognizeBody">
-                    <div class="voice-recognize-layout">
-                    <details class="voice-recognize-end-details" id="voiceRecognizeEndDetails" open>
-                      <summary class="voice-recognize-end-summary">
-                        <span id="voiceEndRulesTitle">结束规则</span>
-                        <span class="voice-end-rules-inline" id="voiceEndRulesSummary">当前结束方式：结束词 + 静音判断</span>
-                      </summary>
-                    <div class="voice-end-rules-body" id="voiceEndRulesBody">
+                    <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody">
+                    <header class="voice-step-page-head" id="voiceRecognizePageHead">
+                      <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">语音识别</h3>
+                      <p class="voice-step-page-sub" id="voiceRecognizePageSub">配置听写中怎么停下、怎么取消</p>
+                    </header>
+                    <div class="voice-recognize-layout voice-recognize-control-grid" id="voiceRecognizeControlGrid">
+                    <div class="voice-recognize-intent-tabs" id="voiceRecognizeIntentTabs" role="tablist" aria-label="识别控制">
+                      <button type="button" class="voice-recognize-intent-tab is-on" data-recognize-intent="cancel" id="btnVoiceRecognizeIntentCancel" role="tab" aria-selected="true">取消语音</button>
+                      <button type="button" class="voice-recognize-intent-tab" data-recognize-intent="confirm" id="btnVoiceRecognizeIntentConfirm" role="tab" aria-selected="false">确认操作</button>
+                    </div>
                     <div class="voice-end-detect-lite" id="voiceEndDetectLite" hidden>
                       <p class="voice-end-detect-lite-body" id="voiceEndDetectLiteBody">系统快速识别会根据停顿自动判断说话结束。需要自定义结束词，请切换到本地离线识别。</p>
                       <button type="button" class="voice-mode-meta-link" id="btnVoiceEndDetectSwitchVosk">切换到本地离线识别</button>
                     </div>
-                    <div class="voice-end-detect-vosk" id="voiceEndPresetsWrap" hidden>
-                      <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel">
+                    <div class="voice-end-detect-vosk voice-recognize-phrase-card" id="voiceEndPresetsWrap" hidden>
+                      <div class="voice-phrase-panel voice-cancel-phrase-panel" id="voiceCancelPhrasePanel" data-recognize-intent-pane="cancel">
+                        <div class="voice-phrase-panel-head">
+                          <p class="voice-phrase-panel-title" id="voiceCancelPresetsZhLabel">取消词</p>
+                          <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消词类型">
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true">文字短语</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false">声音样本</button>
+                          </div>
+                          <div class="flow-lang-toggle" id="voiceCancelLangToggle" role="group" aria-label="取消词语言">
+                            <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceCancelLangZh">中</button>
+                            <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceCancelLangEn">EN</button>
+                          </div>
+                        </div>
+                        <div class="voice-phrase-kind-pane" id="voiceCancelKindTextPane" data-phrase-kind-pane="text">
+                        <div class="voice-phrase-tags" id="voiceCancelPhraseTags" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel"></div>
+                        <div class="voice-phrase-add-row" id="voiceCancelCustomBlock">
+                          <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了">
+                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceCancelCustomListen" title="说一句，用识别结果填入">🎤</button>
+                          <button type="button" class="voice-phrase-custom-add" id="btnVoiceCancelCustomAdd">添加</button>
+                        </div>
+                        <p class="voice-phrase-panel-hint" id="voiceCancelCustomHint">丢弃本轮输入</p>
+                        </div>
+                        <div class="voice-phrase-kind-pane" id="voiceCancelKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                          <div id="voiceCancelAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                        </div>
+                      </div>
+                      <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel" data-recognize-intent-pane="confirm" hidden>
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceEndPresetsZhLabel">结束词</p>
+                          <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="结束词类型">
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true">文字短语</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false">声音样本</button>
+                          </div>
                           <div class="flow-lang-toggle" id="voiceEndLangToggle" role="group" aria-label="结束词语言">
                             <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceEndLangZh">中</button>
                             <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceEndLangEn">EN</button>
                           </div>
                         </div>
+                        <div class="voice-phrase-kind-pane" id="voiceEndKindTextPane" data-phrase-kind-pane="text">
                         <div class="voice-phrase-tags" id="voiceEndPhraseTags" role="listbox" aria-labelledby="voiceEndPresetsZhLabel"></div>
                         <div class="voice-phrase-add-row" id="voiceEndCustomBlock">
-                          <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：发送完毕">
+                          <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样">
                           <button type="button" class="voice-phrase-custom-listen" id="btnVoiceEndCustomListen" title="说一句，用识别结果填入">🎤</button>
                           <button type="button" class="voice-phrase-custom-add" id="btnVoiceEndCustomAdd">添加</button>
                         </div>
-                        <p class="voice-phrase-panel-hint" id="voiceEndSilenceNote">说完后静音视为结束</p>
+                        <p class="voice-phrase-panel-hint" id="voiceEndSilenceNote">只停止录音，保留文本</p>
                         <p class="voice-phrase-panel-hint" id="voiceEndCustomHint">可添加预设以外的结束短语</p>
+                        </div>
+                        <div class="voice-phrase-kind-pane" id="voiceEndKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                          <div id="voiceEndAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                        </div>
                         <p class="voice-phrase-custom-lbl sr-only" id="voiceEndCustomLbl">自定义结束词</p>
                       </div>
                       <div class="voice-phrase-catalog" hidden aria-hidden="true">
                         <p class="sr-only" id="voiceEndPresetsEnLabel">英文结束词</p>
                         <div class="voice-sapi-preset-grid" id="voiceEndPresetsZh">
                           <button type="button" class="voice-sapi-preset" data-phrase="结束输入">结束输入</button>
-                          <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="就这样">就这样</button>
-                          <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="停止听写">停止听写</button>
                         </div>
                         <div class="voice-sapi-preset-grid" id="voiceEndPresetsEn">
                           <button type="button" class="voice-sapi-preset" data-phrase="end dictation">end dictation</button>
-                          <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
                           <button type="button" class="voice-sapi-preset" data-phrase="that's it">that's it</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="stop dictation">stop dictation</button>
+                        </div>
+                        <div class="voice-sapi-preset-grid" id="voiceCancelPresetsZh">
+                          <button type="button" class="voice-sapi-preset" data-phrase="取消输入">取消输入</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="不要了">不要了</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="撤掉">撤掉</button>
+                        </div>
+                        <div class="voice-sapi-preset-grid" id="voiceCancelPresetsEn">
+                          <button type="button" class="voice-sapi-preset" data-phrase="cancel input">cancel input</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="never mind">never mind</button>
+                          <button type="button" class="voice-sapi-preset" data-phrase="forget it">forget it</button>
                         </div>
                       </div>
                       <div class="voice-phrase-custom-chips sr-only" id="voiceEndCustomChips" hidden></div>
+                      <div class="voice-phrase-custom-chips sr-only" id="voiceCancelCustomChips" hidden></div>
                       <div class="voice-phrase-sub-block sr-only" id="voiceEndCompact" hidden aria-hidden="true">
                         <p class="voice-phrase-sub-lbl" id="voiceEndCompactLbl">结束词</p>
                         <div class="voice-phrase-compact-row">
@@ -1543,8 +1639,37 @@
                         </div>
                       </div>
                     </div>
+                    <div class="recording-audio-card voice-recognize-audio-card" id="recordingAudioCard">
+                      <div class="sound-slot-head">
+                        <div>
+                          <p class="sound-slot-title" id="recordingAudioTitle">录音期间静音系统扬声器</p>
+                          <p class="sound-slot-desc" id="recordingAudioDesc">录音期间自动降低系统扬声器音量，避免录入回放声音。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="btnRecordingAudioMute" role="switch" aria-checked="false"></button>
+                      </div>
+                      <div class="voice-recognize-audio-intensity" id="recordingAudioIntensityPanel">
+                        <div class="recording-audio-strength-row">
+                          <div class="setting-row-main">
+                            <span class="setting-row-text" id="recordingAudioStrengthLbl">强度</span>
+                          </div>
+                          <span class="recording-audio-strength-current" id="recordingAudioStrengthCurrent">中等</span>
+                        </div>
+                        <div class="pref-segmented is-wide recording-audio-strengths" id="recordingAudioStrengthGroup" role="group" aria-label="录音静音强度">
+                          <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="light" id="btnRecordingAudioStrengthLight">轻度</button>
+                          <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="balanced" id="btnRecordingAudioStrengthBalanced">中等</button>
+                          <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="strong" id="btnRecordingAudioStrengthStrong">强力</button>
+                          <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="mute" id="btnRecordingAudioStrengthMute">全静音</button>
+                        </div>
+                        <p class="help recording-audio-hint" id="recordingAudioHint">如果仍然录入系统声音，先把强度调高；必要时到运行状态里检查是否已生效。</p>
+                      </div>
                     </div>
-                    </details>
+                    <p class="voice-control-rule-bar" id="voiceRecognizeRuleBar">取消词优先于结束词；配置将在下一次语音对话时自动应用</p>
+                    <span class="sr-only" id="voiceEndRulesTitle">结束规则</span>
+                    <span class="sr-only" id="voiceEndRulesSummary"></span>
+                    <details class="voice-recognize-end-details" id="voiceRecognizeEndDetails" hidden aria-hidden="true"></details>
+                    <div id="voiceEndRulesBody" hidden aria-hidden="true"></div>
+                    </div>
+                    <div id="voiceRecognizeAdvancedHidden" hidden aria-hidden="true">
                     <details class="voice-recognize-resources-details" id="voiceRecognizeResourcesDetails">
                       <summary id="voiceRecognizeResourcesSummary">模型资源</summary>
                     <section class="voice-recognize-block voice-recognize-resources" id="voiceRecognizeResources">
@@ -1674,38 +1799,82 @@
                       </div>
                     </div>
                     <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody">
-                  <div class="voice-output-summon-block" id="voiceOutputSummonBlock" hidden>
-                    <p class="voice-output-summon-lbl" id="voiceOutputSummonLbl">应用召唤短语</p>
-                    <p class="voice-output-summon-hint" id="voiceOutputSummonHint">说出口令可打开应用并开始语音输入，与唤醒词不同。</p>
-                    <div class="voice-output-summon-chips" id="voiceOutputSummonChips"></div>
-                    <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理召唤短语</button>
-                  </div>
-                  <p class="voice-edit-section-title" id="voiceEditSectionSend">发送方式</p>
-                  <div class="keys-trigger-modes voice-output-modes" id="voiceOutputModeSegments" role="group" aria-label="输出方式">
-                    <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="auto" id="voiceOutputModeAuto">自动发送</button>
-                    <button type="button" class="keys-trigger-mode-seg is-active" data-voice-output-mode="confirm" id="voiceOutputModeConfirm">确认后发送</button>
-                    <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="manual" id="voiceOutputModeManual">手动处理</button>
-                  </div>
-                  <p class="voice-output-hint" id="voiceOutputHint">识别完成后先预览文本，再由你确认发送</p>
-                  <div class="voice-output-params" id="voiceOutputParams">
-                    <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
-                      <span class="voice-settings-commit-lbl" id="voiceSettingsCommitLbl">发送快捷键</span>
-                      <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
-                      <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                    <header class="voice-step-page-head" id="voiceSendPageHead">
+                      <h3 class="voice-step-page-title" id="voiceSendPageTitle">语音发送</h3>
+                      <p class="voice-step-page-sub" id="voiceSendPageSub">配置什么时候发出去</p>
+                    </header>
+                    <div class="voice-step-page-stack voice-send-page-stack" id="voiceSendPageGrid">
+                      <section class="voice-phrase-panel voice-send-mode-panel" id="voiceSendModePanel">
+                        <p class="voice-phrase-panel-title" id="voiceEditSectionSend">发送方式</p>
+                        <div class="keys-trigger-modes voice-output-modes" id="voiceOutputModeSegments" role="group" aria-label="发送方式">
+                          <button type="button" class="keys-trigger-mode-seg is-active" data-voice-output-mode="confirm" id="voiceOutputModeConfirm">先确认</button>
+                          <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="phrase" id="voiceOutputModePhrase">说发送才发</button>
+                          <button type="button" class="keys-trigger-mode-seg" data-voice-output-mode="auto" id="voiceOutputModeAuto">自动发送</button>
+                        </div>
+                        <p class="voice-output-hint" id="voiceOutputHint">结束后停在输入框，手动按发送键发出去</p>
+                        <p class="voice-output-auto-guard" id="voiceOutputAutoGuard" hidden>说「结束输入」只会停下；自然停顿才会自动发送。</p>
+                      </section>
+                      <p class="voice-send-more-cue" id="voiceSendMoreCue" hidden>↓ 下方可配置发送词、发送快捷键与等待时间</p>
+                      <p class="voice-send-confirm-hint" id="voiceSendConfirmHint" hidden>先确认模式下无需配置发送词；切换到「说发送才发」或「自动发送」可展开下方选项。</p>
+                      <section class="voice-phrase-panel voice-send-phrase-panel" id="voiceSendPhrasePanel">
+                        <div class="voice-phrase-panel-head">
+                          <p class="voice-phrase-panel-title" id="voiceSendPresetsZhLabel">发送词</p>
+                          <div class="flow-lang-toggle" id="voiceSendLangToggle" role="group" aria-label="发送词语言">
+                            <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceSendLangZh">中</button>
+                            <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceSendLangEn">EN</button>
+                          </div>
+                        </div>
+                        <div class="voice-phrase-kind-pane" id="voiceSendKindTextPane" data-phrase-kind-pane="text">
+                          <div class="voice-phrase-tags" id="voiceSendPhraseTags" role="listbox" aria-labelledby="voiceSendPresetsZhLabel"></div>
+                          <div class="voice-phrase-add-row" id="voiceSendCustomBlock">
+                            <input type="text" class="voice-phrase-custom-input" id="voiceSendCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：发出去">
+                            <button type="button" class="voice-phrase-custom-listen" id="btnVoiceSendCustomListen" title="说一句，用识别结果填入">🎤</button>
+                            <button type="button" class="voice-phrase-custom-add" id="btnVoiceSendCustomAdd">添加</button>
+                          </div>
+                          <p class="voice-phrase-panel-hint" id="voiceSendCustomHint">说出这些词会停止录音并发送</p>
+                        </div>
+                        <div class="voice-phrase-catalog" hidden aria-hidden="true">
+                          <div class="voice-sapi-preset-grid" id="voiceSendPresetsZh">
+                            <button type="button" class="voice-sapi-preset" data-phrase="发送">发送</button>
+                            <button type="button" class="voice-sapi-preset" data-phrase="发出去">发出去</button>
+                            <button type="button" class="voice-sapi-preset" data-phrase="提交">提交</button>
+                          </div>
+                          <div class="voice-sapi-preset-grid" id="voiceSendPresetsEn">
+                            <button type="button" class="voice-sapi-preset" data-phrase="send it">send it</button>
+                            <button type="button" class="voice-sapi-preset" data-phrase="send">send</button>
+                            <button type="button" class="voice-sapi-preset" data-phrase="submit">submit</button>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="voice-send-params-bar" id="voiceSendParamsAside" aria-labelledby="voiceSettingsCommitAsideTitle">
+                        <div class="voice-output-params" id="voiceOutputParams">
+                          <p class="voice-phrase-panel-title" id="voiceSettingsCommitAsideTitle">发送键与等待</p>
+                          <div class="voice-send-params-row">
+                            <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
+                              <span class="voice-settings-commit-lbl" id="voiceSettingsCommitLbl">发送快捷键</span>
+                              <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
+                              <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                            </div>
+                            <div class="voice-output-delay-row" id="voiceOutputDelayRow">
+                              <div class="flow-slider-row">
+                                <span class="flow-slider-lbl" id="voiceSettingsDelayLbl">上屏等待</span>
+                                <span class="flow-slider-val" id="voiceSettingsDelayVal">4.0 秒</span>
+                              </div>
+                              <div class="voice-end-inline-range voice-finish-delay-range">
+                                <span class="sr-only" id="voiceSettingsDelayLblSr">等待时间</span>
+                                <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000" aria-labelledby="voiceSettingsDelayLblSr">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc" hidden></p>
+                        <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
+                      </section>
+                      <p class="voice-send-lite-notice" id="voiceSendLiteNotice" hidden>
+                        <span id="voiceSendLiteNoticeText"></span>
+                        <button type="button" class="voice-mode-meta-link" id="btnVoiceSendSwitchVosk">切换到标准离线识别</button>
+                      </p>
                     </div>
-                    <div class="voice-output-delay-row" id="voiceOutputDelayRow">
-                      <div class="flow-slider-row">
-                        <span class="flow-slider-lbl" id="voiceSettingsDelayLbl">发送延迟</span>
-                        <span class="flow-slider-val" id="voiceSettingsDelayVal">4.0 秒</span>
-                      </div>
-                      <div class="voice-end-inline-range voice-finish-delay-range">
-                        <span class="sr-only" id="voiceSettingsDelayLblSr">等待时间</span>
-                        <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000" aria-labelledby="voiceSettingsDelayLblSr">
-                      </div>
-                    </div>
-                  </div>
-                  <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc" hidden></p>
-                  <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
                     </div>
                   </div>
               </section>
@@ -1804,14 +1973,6 @@
               </div>
             </aside>
           </div>
-          <div class="keys-app-binding-strip voice-app-scope-strip voice-app-scope-dock" id="voiceAppScopeStrip">
-            <span class="keys-app-binding-lbl sr-only" id="voiceAppScopeLbl">在哪些程序中生效</span>
-            <div class="voice-app-scope-toolbar">
-              <h4 class="voice-app-scope-title" id="voiceAppScopeTitle">生效应用</h4>
-              <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
-              <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加应用</button>
-            </div>
-          </div>
           <p class="settings-panel-desc voice-page-head-desc sr-only" id="settingsPanelVoiceWakeDesc">配置从声音采集到文本输出的本地语音输入流程</p>
           <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
           <h3 class="pref-page-title sr-only" id="settingsPanelVoiceWakeTitle">音频</h3>
@@ -1826,27 +1987,14 @@
             <button type="button" class="toggle-switch" id="btnSoundsMaster" role="switch" aria-checked="true"></button>
           </div>
           <p class="help" id="soundsMasterHelp" hidden aria-hidden="true" style="margin-top:8px">关闭后所有提示音静音；各习惯仍可单独配置。</p>
-          <div class="recording-audio-card" id="recordingAudioCard">
+          <div class="recording-audio-card recording-audio-card--relocated" id="recordingAudioCardSoundsLink">
             <div class="sound-slot-head">
               <div>
-                <p class="sound-slot-title" id="recordingAudioTitle">录音期间静音系统扬声器</p>
-                <p class="sound-slot-desc" id="recordingAudioDesc">录音期间自动降低系统扬声器音量，避免录入回放声音。</p>
+                <p class="sound-slot-title" id="recordingAudioSoundsLinkTitle">录音期间静音系统扬声器</p>
+                <p class="sound-slot-desc" id="recordingAudioSoundsLinkDesc">已移到「语音识别」页配置，与取消词 / 结束词一起管理。</p>
               </div>
-              <button type="button" class="toggle-switch" id="btnRecordingAudioMute" role="switch" aria-checked="false"></button>
+              <button type="button" class="voice-mode-meta-link" id="btnRecordingAudioOpenRecognize">去语音识别</button>
             </div>
-            <div class="recording-audio-strength-row">
-              <div class="setting-row-main">
-                <span class="setting-row-text" id="recordingAudioStrengthLbl">强度</span>
-              </div>
-              <span class="recording-audio-strength-current" id="recordingAudioStrengthCurrent">中等</span>
-            </div>
-            <div class="pref-segmented is-wide recording-audio-strengths" id="recordingAudioStrengthGroup" role="group" aria-label="录音静音强度">
-              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="light" id="btnRecordingAudioStrengthLight">轻度</button>
-              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="balanced" id="btnRecordingAudioStrengthBalanced">中等</button>
-              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="strong" id="btnRecordingAudioStrengthStrong">强力</button>
-              <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="mute" id="btnRecordingAudioStrengthMute">全静音</button>
-            </div>
-            <p class="help recording-audio-hint" id="recordingAudioHint">如果仍然录入系统声音，先把强度调高；必要时到运行状态里检查是否已生效。</p>
           </div>
           <div class="sound-settings-block" id="soundSettingsBlock">
             <div class="sound-slot" data-slot="record">
@@ -1994,7 +2142,7 @@
             <section class="voice-diag-pane" id="voiceDiagPaneEnd" data-diag-tab="end" hidden>
               <div class="voice-diag-metrics" id="voiceDiagMetricsEnd"></div>
               <div class="voice-diagnostics-actions">
-                <button type="button" class="control-btn" id="btnVoiceEndAudioSettings">去声音设置</button>
+                <button type="button" class="control-btn" id="btnVoiceEndAudioSettings">去语音识别</button>
               </div>
               <p class="voice-end-audio-hint" id="voiceEndAudioHint">如果还是录进回放声音，先检查这里的录音静音开关和强度。</p>
               <div class="voice-diagnostics-log" id="voiceEndLog">等待语音状态…</div>
@@ -2744,6 +2892,7 @@
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>
+  <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>
   <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
   <script src="js/features/mapping/habit-scenario-access-cards.js"></script>

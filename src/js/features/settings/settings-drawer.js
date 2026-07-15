@@ -173,13 +173,12 @@
     }
 
     if(focus==='recordingAudio'){
-
-      if(ui.settingsPanel!=='sounds') setSettingsPanel('sounds');
-
+      if(ui.settingsPanel!=='voiceWake') setSettingsPanel('voiceWake');
+      if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+        global.OneToneVoicePageState.setStep('recognize');
+      }
       scrollSettingsToTarget(['recordingAudioCard']);
-
       return;
-
     }
 
     if(focus==='engine'){

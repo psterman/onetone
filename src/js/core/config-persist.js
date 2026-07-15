@@ -194,6 +194,23 @@
     return out;
   }
 
+  /** Wake/end/cancel samples share one list — keep at most one valid command per scenarioId. */
+  function normalizeGlobalAcousticVoiceCommands(list){
+    if(!Array.isArray(list)) return [];
+    var byScenario={};
+    var order=[];
+    for(var i=0;i<list.length;i++){
+      var raw=list[i];
+      var sid=String((raw&&(raw.scenarioId||raw.scenario_id))||'').trim()||'__voice_wake__';
+      if(byScenario[sid]) continue;
+      var c=normalizeAcousticVoiceCommand(raw,sid);
+      if(!c) continue;
+      byScenario[sid]=c;
+      order.push(sid);
+    }
+    return order.map(function(sid){ return byScenario[sid]; });
+  }
+
   function serializeAcousticVoiceCommands(list,scenarioId){
     return normalizeAcousticVoiceCommands(list,scenarioId);
   }
@@ -358,6 +375,8 @@
     if(Array.isArray(cfg.trash)){
       cfg.trash=cfg.trash.map(normalizeInboundMapping);
     }
+    var wakeAcoustic=cfg.voiceWakeAcousticCommands||cfg.voice_wake_acoustic_commands;
+    cfg.voiceWakeAcousticCommands=normalizeGlobalAcousticVoiceCommands(wakeAcoustic);
     return cfg;
   }
 
@@ -405,7 +424,8 @@
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
       voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','发出去'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation','send it'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind'],commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'}
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'},
+      voiceWakeAcousticCommands:[]
     };
   }
 
@@ -529,14 +549,22 @@
           phrasesEn:hooks().cloneStringList(cfg.phrasesEn||cfg.phrases_en),
           cancelPhrasesZh:hooks().cloneStringList(cfg.cancelPhrasesZh||cfg.cancel_phrases_zh),
           cancelPhrasesEn:hooks().cloneStringList(cfg.cancelPhrasesEn||cfg.cancel_phrases_en),
+          sendPhrasesZh:hooks().cloneStringList(cfg.sendPhrasesZh||cfg.send_phrases_zh),
+          sendPhrasesEn:hooks().cloneStringList(cfg.sendPhrasesEn||cfg.send_phrases_en),
+          sendMode:String(cfg.sendMode||cfg.send_mode||(cfg.autoSendEnabled||cfg.auto_send_enabled?'auto':'confirm')).trim()||'confirm',
           commitDelayMs:Number(cfg.commitDelayMs||cfg.commit_delay_ms)||4000,
           commitKey:String(cfg.commitKey||cfg.commit_key||'Enter').trim()||'Enter',
           dictationTimeoutMs:Number(cfg.dictationTimeoutMs||cfg.dictation_timeout_ms)||60000,
-          autoSendEnabled:!!cfg.autoSendEnabled||!!cfg.auto_send_enabled,
+          autoSendEnabled:!!cfg.autoSendEnabled||!!cfg.auto_send_enabled||String(cfg.sendMode||'').toLowerCase()==='auto',
           targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt'
         };
       })(),
-      imePresetId:String(st.config.imePresetId||'')
+      imePresetId:String(st.config.imePresetId||''),
+      voiceWakeAcousticCommands:(function(){
+        const cfg=st.config||{};
+        const list=cfg.voiceWakeAcousticCommands||cfg.voice_wake_acoustic_commands||[];
+        return normalizeGlobalAcousticVoiceCommands(list);
+      })()
     };
     return JSON.stringify(payload);
   }
@@ -894,6 +922,7 @@
     rekeyVoiceCommandsForMapping:rekeyVoiceCommandsForMapping,
     newVoiceCommandId:newVoiceCommandId,
     normalizeAcousticVoiceCommands:normalizeAcousticVoiceCommands,
+    normalizeGlobalAcousticVoiceCommands:normalizeGlobalAcousticVoiceCommands,
     serializeAcousticVoiceCommands:serializeAcousticVoiceCommands,
     rekeyAcousticVoiceCommandsForMapping:rekeyAcousticVoiceCommandsForMapping,
     newAcousticVoiceCommandId:newAcousticVoiceCommandId,

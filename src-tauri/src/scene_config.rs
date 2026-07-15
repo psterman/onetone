@@ -30,6 +30,7 @@ pub struct EffectiveSceneConfig {
     pub wake_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
     pub cancel_phrases: PhraseBundle,
+    pub send_phrases: PhraseBundle,
     pub trigger_key: String,
     pub app_target_id: String,
 }
@@ -49,6 +50,7 @@ pub struct VoiceRuntimeFingerprint {
     pub summon_phrases: Vec<String>,
     pub end_phrases: PhraseBundle,
     pub cancel_phrases: PhraseBundle,
+    pub send_phrases: PhraseBundle,
     pub vosk_model_path: String,
     pub vosk_model_preset: String,
     pub min_confidence: f32,
@@ -70,6 +72,7 @@ pub fn resolve_effective_scene(
     let wake_phrases = merge_wake_phrases(cfg, mapping, ov);
     let end_phrases = merge_end_phrases(cfg, ov);
     let cancel_phrases = merge_cancel_phrases(cfg, ov);
+    let send_phrases = merge_send_phrases(cfg, ov);
     Some(EffectiveSceneConfig {
         scene_id: mapping.id.clone(),
         target_key,
@@ -78,6 +81,7 @@ pub fn resolve_effective_scene(
         wake_phrases,
         end_phrases,
         cancel_phrases,
+        send_phrases,
         trigger_key: mapping.trigger_key.clone(),
         app_target_id: mapping.app_target_id.clone(),
     })
@@ -111,6 +115,7 @@ pub fn voice_runtime_fingerprint(
         },
         end_phrases: normalize_end_phrases(&effective.end_phrases),
         cancel_phrases: normalize_end_phrases(&effective.cancel_phrases),
+        send_phrases: normalize_end_phrases(&effective.send_phrases),
         vosk_model_path: model_path,
         vosk_model_preset: model_preset,
         min_confidence: cfg.voice_sapi.min_confidence,
@@ -246,6 +251,12 @@ pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
         for p in &effective.cancel_phrases.en {
             push(p);
         }
+        for p in &effective.send_phrases.zh {
+            push(p);
+        }
+        for p in &effective.send_phrases.en {
+            push(p);
+        }
     }
     out
 }
@@ -286,6 +297,12 @@ pub fn vosk_grammar_from_effective(
         for p in &effective.cancel_phrases.en {
             push(p);
         }
+        for p in &effective.send_phrases.zh {
+            push(p);
+        }
+        for p in &effective.send_phrases.en {
+            push(p);
+        }
     }
     out
 }
@@ -311,7 +328,7 @@ fn push_unique_phrase(out: &mut Vec<String>, seen: &mut std::collections::HashSe
     }
 }
 
-/// Ordered tiers: wake, summon, end (zh+en), cancel (zh+en).
+/// Ordered tiers: wake, summon, cancel, send, end (zh+en each).
 pub fn kws_keyword_phrase_tiers(
     effective: &EffectiveSceneConfig,
     voice_end_enabled: bool,
@@ -321,12 +338,15 @@ pub fn kws_keyword_phrase_tiers(
         effective.summon_phrases.clone(),
     ];
     if voice_end_enabled {
-        let mut end = effective.end_phrases.zh.clone();
-        end.extend(effective.end_phrases.en.clone());
         let mut cancel = effective.cancel_phrases.zh.clone();
         cancel.extend(effective.cancel_phrases.en.clone());
-        tiers.push(end);
+        let mut send = effective.send_phrases.zh.clone();
+        send.extend(effective.send_phrases.en.clone());
+        let mut end = effective.end_phrases.zh.clone();
+        end.extend(effective.end_phrases.en.clone());
         tiers.push(cancel);
+        tiers.push(send);
+        tiers.push(end);
     }
     tiers
 }
@@ -381,6 +401,13 @@ fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
 }
 
 fn cfg_has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
+    if cfg
+        .voice_wake_acoustic_commands
+        .iter()
+        .any(|c| c.enabled && !c.samples.is_empty())
+    {
+        return true;
+    }
     cfg.mappings.iter().any(|m| {
         m.acoustic_voice_commands
             .iter()
@@ -507,9 +534,35 @@ fn global_cancel_phrases(cfg: &VoiceConfig) -> PhraseBundle {
     }
 }
 
+fn global_send_phrases(cfg: &VoiceConfig) -> PhraseBundle {
+    PhraseBundle {
+        zh: cfg.voice_end.send_phrases_zh.clone(),
+        en: cfg.voice_end.send_phrases_en.clone(),
+    }
+}
+
 fn merge_cancel_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> PhraseBundle {
     let global = global_cancel_phrases(cfg);
     let Some(bundle) = ov.and_then(|o| o.cancel_phrases.as_ref()) else {
+        return global;
+    };
+    PhraseBundle {
+        zh: if bundle.zh.is_empty() {
+            global.zh
+        } else {
+            bundle.zh.clone()
+        },
+        en: if bundle.en.is_empty() {
+            global.en
+        } else {
+            bundle.en.clone()
+        },
+    }
+}
+
+fn merge_send_phrases(cfg: &VoiceConfig, ov: Option<&VoiceOverride>) -> PhraseBundle {
+    let global = global_send_phrases(cfg);
+    let Some(bundle) = ov.and_then(|o| o.send_phrases.as_ref()) else {
         return global;
     };
     PhraseBundle {
@@ -715,7 +768,7 @@ mod tests {
                 wake_phrases: Some(vec!["小调小调".into()]),
                 end_phrases: Some(PhraseBundle {
                     zh: vec!["结束输入".into()],
-                    en: vec!["send it".into()],
+                    en: vec!["that's it".into()],
                 }),
                 ..Default::default()
             });
@@ -723,7 +776,7 @@ mod tests {
         let eff = resolve_effective_scene(&cfg, &ctx(&cfg)).unwrap();
         assert_eq!(eff.wake_phrases, vec!["小调小调".to_string()]);
         assert_eq!(eff.end_phrases.zh, vec!["结束输入".to_string()]);
-        assert_eq!(eff.end_phrases.en, vec!["send it".to_string()]);
+        assert_eq!(eff.end_phrases.en, vec!["that's it".to_string()]);
     }
 
     #[test]
@@ -1060,7 +1113,7 @@ mod tests {
             ..VoiceConfig::default()
         };
         cfg.migrate();
-        assert_eq!(cfg.version, 7);
+        assert_eq!(cfg.version, 8);
         assert!(!cfg.active_scene_id.is_empty());
         assert!(cfg
             .mappings

@@ -656,6 +656,9 @@ pub fn build_command_json(
 }
 
 pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
+    if cfg.voice_wake_acoustic_commands.iter().any(|c| c.enabled && !c.samples.is_empty()) {
+        return true;
+    }
     cfg.mappings.iter().any(|m| {
         m.enabled
             && m.acoustic_voice_commands
@@ -857,6 +860,66 @@ fn try_emit_acoustic_match(
         ),
     );
 
+    if hit.scenario_id == "__voice_wake__" {
+        if let Some(app) = app {
+            let phrase = commands
+                .iter()
+                .find(|c| c.id == hit.command_id)
+                .map(|c| {
+                    let display = c.display_text.trim();
+                    if !display.is_empty() {
+                        display.to_string()
+                    } else if !c.label.trim().is_empty() {
+                        c.label.clone()
+                    } else {
+                        "acoustic-wake".into()
+                    }
+                })
+                .unwrap_or_else(|| "acoustic-wake".into());
+            crate::voice_end_runtime::handle_voice_wake_detected(
+                state,
+                app,
+                &phrase,
+                280,
+                "acoustic-wake",
+            );
+        }
+        return;
+    }
+
+    if hit.scenario_id == "__voice_end__" || hit.scenario_id == "__voice_cancel__" {
+        if let Some(app) = app {
+            let phrase = commands
+                .iter()
+                .find(|c| c.id == hit.command_id)
+                .map(|c| {
+                    let display = c.display_text.trim();
+                    if !display.is_empty() {
+                        display.to_string()
+                    } else if !c.label.trim().is_empty() {
+                        c.label.clone()
+                    } else if hit.scenario_id == "__voice_cancel__" {
+                        "acoustic-cancel".into()
+                    } else {
+                        "acoustic-end".into()
+                    }
+                })
+                .unwrap_or_else(|| {
+                    if hit.scenario_id == "__voice_cancel__" {
+                        "acoustic-cancel".into()
+                    } else {
+                        "acoustic-end".into()
+                    }
+                });
+            if hit.scenario_id == "__voice_cancel__" {
+                crate::voice_end_runtime::handle_cancel_phrase(state, app, &phrase);
+            } else {
+                crate::voice_end_runtime::handle_end_phrase(state, app, &phrase);
+            }
+        }
+        return;
+    }
+
     if let Some(app) = app {
         crate::voice_end_runtime::handle_acoustic_scene_command(
             state,
@@ -916,6 +979,25 @@ fn collect_match_commands(
     foreground_app_id: Option<&str>,
 ) -> Vec<AcousticVoiceCommand> {
     let mut out = Vec::new();
+    for cmd in &cfg.voice_wake_acoustic_commands {
+        if !cmd.enabled || cmd.samples.is_empty() {
+            continue;
+        }
+        let mut cloned = cmd.clone();
+        let sid = cloned.scenario_id.trim();
+        if sid.is_empty() {
+            cloned.scenario_id = "__voice_wake__".into();
+        }
+        if cloned.kind.trim().is_empty() || cloned.kind == "scenario-acoustic-activate" {
+            cloned.kind = match cloned.scenario_id.as_str() {
+                "__voice_end__" => "voice-end-acoustic".into(),
+                "__voice_cancel__" => "voice-cancel-acoustic".into(),
+                _ => "voice-wake-acoustic".into(),
+            };
+        }
+        cloned.activation_scope = "global".into();
+        out.push(cloned);
+    }
     for mapping in &cfg.mappings {
         if !mapping.enabled {
             continue;

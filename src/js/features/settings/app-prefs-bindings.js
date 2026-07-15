@@ -34,8 +34,20 @@
     if(btnCoachHud) btnCoachHud.onclick=hooks.toggleCoachHud;
     bindClick('btnSoundsMaster',hooks.toggleSoundsMaster);
     var btnRecordingAudioMute=$('btnRecordingAudioMute');
-    if(btnRecordingAudioMute) btnRecordingAudioMute.onclick=function(){
-      hooks.setRecordingAudioMuteEnabled(!btnRecordingAudioMute.classList.contains('is-on'));
+    if(btnRecordingAudioMute) btnRecordingAudioMute.onclick=function(e){
+      if(e){ e.preventDefault(); e.stopPropagation(); }
+      try{
+        var next=!btnRecordingAudioMute.classList.contains('is-on');
+        var prefs=global.OneToneAppThemePrefs;
+        if(prefs&&typeof prefs.setRecordingAudioMuteEnabled==='function'){
+          prefs.setRecordingAudioMuteEnabled(next);
+          return;
+        }
+        var fn=h().setRecordingAudioMuteEnabled;
+        if(typeof fn==='function') fn(next);
+      }catch(err){
+        if(typeof console!=='undefined'&&console.error) console.error('btnRecordingAudioMute',err);
+      }
     };
     document.querySelectorAll('[data-recording-mute-strength]').forEach(function(btn){
       btn.addEventListener('mousedown',function(e){ if(e.button===0) e.preventDefault(); });

@@ -57,16 +57,30 @@
 
 #settingsPanelVoiceWake .voice-summary-engine-switch {
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 2px;
   max-width: 100%;
+  padding: 2px;
+  border-radius: 8px;
+  background: transparent;
 }
 
 #settingsPanelVoiceWake .voice-summary-engine-switch .voice-recognize-source-btn {
-  min-height: 26px;
-  padding: 2px 10px;
-  font-size: 11px;
+  min-height: 28px;
+  padding: 3px 14px;
+  font-size: 12px;
   font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-muted);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+#settingsPanelVoiceWake .voice-summary-engine-switch .voice-recognize-source-btn.is-active {
+  background: var(--primary, #2a9cc4);
+  color: #fff;
+  box-shadow: none;
 }
 
 #settingsPanelVoiceWake .voice-scheme-summary-item {
@@ -327,6 +341,23 @@
   box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.05);
   background: var(--surface-high);
   border: 1px solid var(--outline-variant);
+}
+
+#settingsPanelVoiceWake .voice-status-center-cluster .voice-app-scope-strip.voice-status-scope-bar,
+#settingsPanelVoiceWake .voice-status-scope-bar.voice-app-scope-strip {
+  position: static;
+  bottom: auto;
+  z-index: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  grid-column: auto;
 }
 
 #settingsPanelVoiceWake .voice-app-scope-head {

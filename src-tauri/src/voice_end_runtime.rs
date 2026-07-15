@@ -699,6 +699,14 @@ pub fn matches_cancel_phrase(
     matches_end_phrase(text, phrases_zh, phrases_en)
 }
 
+pub fn matches_send_phrase(
+    text: &str,
+    phrases_zh: &[String],
+    phrases_en: &[String],
+) -> Option<String> {
+    matches_end_phrase(text, phrases_zh, phrases_en)
+}
+
 pub fn text_matches_wake_phrase(cfg: &VoiceConfig, text: &str) -> bool {
     matches_final(text, &idle_wake_phrases(cfg)).is_some()
 }
@@ -707,14 +715,20 @@ pub fn text_matches_wake_phrases(phrases: &[String], text: &str) -> bool {
     matches_final(text, phrases).is_some()
 }
 
+fn send_mode_allows_phrase(mode: &str) -> bool {
+    matches!(mode.trim().to_ascii_lowercase().as_str(), "phrase" | "auto")
+}
+
 pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
     if !should_match_end_phrase(state) {
         return;
     }
-    if !state.cfg.lock().voice_end.enabled {
-        return;
-    }
-    let (cancel_zh, cancel_en, end_zh, end_en, wake_phrases) = {
+    let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode) = {
+        let cfg = state.cfg.lock();
+        if !cfg.voice_end.enabled {
+            return;
+        }
+        let send_mode = cfg.voice_end.send_mode.clone();
         let snapshot = state.voice_session_snapshot.lock();
         let Some(snap) = snapshot.as_ref() else {
             return;
@@ -722,9 +736,12 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
         (
             snap.effective.cancel_phrases.zh.clone(),
             snap.effective.cancel_phrases.en.clone(),
+            snap.effective.send_phrases.zh.clone(),
+            snap.effective.send_phrases.en.clone(),
             snap.effective.end_phrases.zh.clone(),
             snap.effective.end_phrases.en.clone(),
             snap.effective.wake_phrases.clone(),
+            send_mode,
         )
     };
     if text_matches_wake_phrases(&wake_phrases, text) {
@@ -733,6 +750,12 @@ pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle,
     if let Some(phrase) = matches_cancel_phrase(text, &cancel_zh, &cancel_en) {
         handle_cancel_phrase(state, app, &phrase);
         return;
+    }
+    if send_mode_allows_phrase(&send_mode) {
+        if let Some(phrase) = matches_send_phrase(text, &send_zh, &send_en) {
+            handle_send_phrase(state, app, &phrase);
+            return;
+        }
     }
     if let Some(phrase) = matches_end_phrase(text, &end_zh, &end_en) {
         handle_end_phrase(state, app, &phrase);
@@ -755,7 +778,7 @@ pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) 
     if session_state(state) != "dictating" {
         return;
     }
-    finish_dictation_session(state, Some(app), "trigger key", true);
+    finish_dictation_session(state, Some(app), "trigger key", CommitPolicy::AutoConfig, true);
 }
 
 pub fn cancel_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) {
@@ -888,13 +911,42 @@ pub fn handle_end_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
         phrase,
         None,
     );
-    finish_dictation_session(state, Some(app), phrase, false);
+    finish_dictation_session(state, Some(app), phrase, CommitPolicy::Never, false);
+}
+
+pub fn handle_send_phrase(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
+    if session_state(state) != "dictating" {
+        return;
+    }
+    {
+        let cfg = state.cfg.lock();
+        if !send_mode_allows_phrase(&cfg.voice_end.send_mode) {
+            return;
+        }
+    }
+    crate::runtime_event::publish_runtime_event(
+        Some(app),
+        state.as_ref(),
+        "session",
+        crate::runtime_event::kind::SEND_PHRASE_MATCHED,
+        phrase,
+        None,
+    );
+    finish_dictation_session(state, Some(app), phrase, CommitPolicy::Force, false);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommitPolicy {
+    Force,
+    Never,
+    AutoConfig,
 }
 
 fn finish_dictation_session(
     state: &Arc<AppState>,
     app: Option<&AppHandle>,
     phrase: &str,
+    policy: CommitPolicy,
     target_key_already_sent: bool,
 ) {
     if session_state(state) != "dictating" {
@@ -909,18 +961,26 @@ fn finish_dictation_session(
         return;
     }
 
-    let (target_key, duration_ms, commit_delay_ms, commit_key, auto_send, cooldown_ms) = {
+    let (target_key, duration_ms, commit_delay_ms, commit_key, should_commit, cooldown_ms) = {
         let Some(eff) = session_effective(state) else {
             *state.voice_session_last_action.lock() = "skipped: no session snapshot".into();
             return;
         };
         let cfg = state.cfg.lock();
+        let should_commit = match policy {
+            CommitPolicy::Force => true,
+            CommitPolicy::Never => false,
+            CommitPolicy::AutoConfig => {
+                cfg.voice_end.send_mode.trim().eq_ignore_ascii_case("auto")
+                    || cfg.voice_end.auto_send_enabled
+            }
+        };
         (
             eff.target_key,
             cfg.key_press_duration_ms,
             cfg.voice_end.commit_delay_ms,
             cfg.voice_end.commit_key.clone(),
-            cfg.voice_end.auto_send_enabled,
+            should_commit,
             cfg.voice_vosk.cooldown_ms,
         )
     };
@@ -987,7 +1047,7 @@ fn finish_dictation_session(
             return;
         }
 
-        if auto_send {
+        if should_commit {
             let duration = state2.cfg.lock().key_press_duration_ms;
             let ok = crate::keyboard::send_chord(&commit_key, duration);
             if ok {
@@ -1115,6 +1175,13 @@ pub fn voice_end_status(state: &AppState) -> serde_json::Value {
         "phrasesEn": cfg.voice_end.phrases_en,
         "cancelPhrasesZh": cfg.voice_end.cancel_phrases_zh,
         "cancelPhrasesEn": cfg.voice_end.cancel_phrases_en,
+        "cancelPhrases": {
+            "zh": cfg.voice_end.cancel_phrases_zh,
+            "en": cfg.voice_end.cancel_phrases_en,
+        },
+        "sendPhrasesZh": cfg.voice_end.send_phrases_zh,
+        "sendPhrasesEn": cfg.voice_end.send_phrases_en,
+        "sendMode": cfg.voice_end.send_mode,
         "commitDelayMs": cfg.voice_end.commit_delay_ms,
         "commitKey": cfg.voice_end.commit_key,
         "autoSendEnabled": cfg.voice_end.auto_send_enabled,
@@ -1147,7 +1214,7 @@ pub fn voice_end_set_enabled(
 pub fn voice_end_set_auto_send(state: &Arc<AppState>, enabled: bool) -> serde_json::Value {
     {
         let mut cfg = state.cfg.lock();
-        cfg.voice_end.auto_send_enabled = enabled;
+        crate::config::apply_auto_send_to_send_mode(&mut cfg.voice_end, enabled);
         cfg.normalize();
         crate::config::save_config(&cfg);
     }
@@ -1195,6 +1262,63 @@ pub fn voice_end_set_phrases(
         if cfg.voice_end.phrases_en.is_empty() {
             cfg.voice_end.phrases_en = crate::config::default_voice_end_phrases_en();
         }
+        cfg.normalize();
+        crate::config::save_config(&cfg);
+    }
+    voice_end_status(state)
+}
+
+pub fn voice_end_set_cancel_phrases(
+    state: &Arc<AppState>,
+    phrases_zh: Vec<String>,
+    phrases_en: Vec<String>,
+) -> serde_json::Value {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_end.cancel_phrases_zh = clean_phrases(phrases_zh);
+        cfg.voice_end.cancel_phrases_en = clean_phrases(phrases_en);
+        if cfg.voice_end.cancel_phrases_zh.is_empty() {
+            cfg.voice_end.cancel_phrases_zh = crate::config::default_voice_end_cancel_phrases_zh();
+        }
+        if cfg.voice_end.cancel_phrases_en.is_empty() {
+            cfg.voice_end.cancel_phrases_en = crate::config::default_voice_end_cancel_phrases_en();
+        }
+        cfg.normalize();
+        crate::config::save_config(&cfg);
+    }
+    voice_end_status(state)
+}
+
+pub fn voice_end_set_send_phrases(
+    state: &Arc<AppState>,
+    phrases_zh: Vec<String>,
+    phrases_en: Vec<String>,
+) -> serde_json::Value {
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.voice_end.send_phrases_zh = clean_phrases(phrases_zh);
+        cfg.voice_end.send_phrases_en = clean_phrases(phrases_en);
+        if cfg.voice_end.send_phrases_zh.is_empty() {
+            cfg.voice_end.send_phrases_zh = crate::config::default_voice_end_send_phrases_zh();
+        }
+        if cfg.voice_end.send_phrases_en.is_empty() {
+            cfg.voice_end.send_phrases_en = crate::config::default_voice_end_send_phrases_en();
+        }
+        cfg.normalize();
+        crate::config::save_config(&cfg);
+    }
+    voice_end_status(state)
+}
+
+pub fn voice_end_set_send_mode(state: &Arc<AppState>, send_mode: String) -> serde_json::Value {
+    {
+        let mut cfg = state.cfg.lock();
+        let mode = send_mode.trim().to_ascii_lowercase();
+        cfg.voice_end.send_mode = match mode.as_str() {
+            "auto" | "phrase" | "confirm" => mode,
+            _ => crate::config::default_voice_end_send_mode(),
+        };
+        crate::config::sync_send_mode_and_auto_send(&mut cfg.voice_end);
         cfg.normalize();
         crate::config::save_config(&cfg);
     }
@@ -1288,6 +1412,50 @@ mod tests {
         assert_eq!(
             matches_end_phrase("startdictating startsdictation", &[], &en),
             None
+        );
+    }
+
+    #[test]
+    fn commit_policy_variants() {
+        assert_ne!(CommitPolicy::Force, CommitPolicy::Never);
+        assert_ne!(CommitPolicy::Never, CommitPolicy::AutoConfig);
+        assert_ne!(CommitPolicy::Force, CommitPolicy::AutoConfig);
+    }
+
+    #[test]
+    fn send_mode_allows_phrase_gate() {
+        assert!(!send_mode_allows_phrase("confirm"));
+        assert!(send_mode_allows_phrase("phrase"));
+        assert!(send_mode_allows_phrase("auto"));
+        assert!(!send_mode_allows_phrase(""));
+    }
+
+    #[test]
+    fn send_phrase_match_separate_from_end_defaults() {
+        let cfg = crate::config::VoiceConfig::default();
+        assert_eq!(
+            matches_send_phrase(
+                "发出去",
+                &cfg.voice_end.send_phrases_zh,
+                &cfg.voice_end.send_phrases_en
+            ),
+            Some("发出去".into())
+        );
+        assert_eq!(
+            matches_end_phrase(
+                "发出去",
+                &cfg.voice_end.phrases_zh,
+                &cfg.voice_end.phrases_en
+            ),
+            None
+        );
+        assert_eq!(
+            matches_end_phrase(
+                "结束输入",
+                &cfg.voice_end.phrases_zh,
+                &cfg.voice_end.phrases_en
+            ),
+            Some("结束输入".into())
         );
     }
 

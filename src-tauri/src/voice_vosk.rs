@@ -68,11 +68,34 @@ impl Drop for VoiceVoskHandle {
     }
 }
 
-/// Block until the worker exits. Use only from background lifecycle threads.
+/// Block until the worker exits, with a hard timeout.
+///
+/// Native Vosk model load can ignore the stop flag for a long time; an unbounded
+/// `join` on the config-watcher / supervisor path freezes IPC and makes the UI look hung.
+/// After `JOIN_TIMEOUT` we detach the join onto a helper thread and return so life-cycle
+/// can continue (epoch bump still prevents a stale handle from being reused).
 pub fn shutdown_sync(mut handle: VoiceVoskHandle) {
+    const JOIN_TIMEOUT: Duration = Duration::from_secs(3);
     handle.stop.store(true, Ordering::SeqCst);
     if let Some(thread) = handle.thread.take() {
-        let _ = thread.join();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::Builder::new()
+            .name("voice-vosk-join".into())
+            .spawn(move || {
+                let _ = thread.join();
+                let _ = tx.send(());
+            })
+            .ok();
+        match rx.recv_timeout(JOIN_TIMEOUT) {
+            Ok(()) => {}
+            Err(_) => {
+                // Detached join continues in the helper thread; do not block supervisor.
+                eprintln!(
+                    "[voice] vosk shutdown_sync timed out after {}ms — detaching join",
+                    JOIN_TIMEOUT.as_millis()
+                );
+            }
+        }
     }
     thread::sleep(Duration::from_millis(150));
 }

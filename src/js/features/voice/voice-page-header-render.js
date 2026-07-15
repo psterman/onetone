@@ -48,7 +48,7 @@
       ['voiceWakeCompactHint','voiceWakeCompactHint'],
       ['voiceWakeHeroTitle','voiceWakeHeroTitle'],
       ['voiceWakeCustomSummary','voiceWakeCustomSummary'],
-      ['voiceEditSectionPresets','voiceEditSectionPresets'],
+      ['voiceEditSectionPresets','voiceWakeGlobalTitle'],
       ['voiceEditSectionEngine','voiceEditSectionEngine'],
       ['voiceEditSectionLangModel','voiceEditSectionLangModel'],
       ['voiceRecognizeResourcesSummary','voiceEditSectionModelRes'],
@@ -88,20 +88,62 @@
     if(outAuto) outAuto.textContent=t('voiceOutputModeAuto');
     const outConfirm=$('voiceOutputModeConfirm');
     if(outConfirm) outConfirm.textContent=t('voiceOutputModeConfirm');
+    const outPhrase=$('voiceOutputModePhrase');
+    if(outPhrase) outPhrase.textContent=t('voiceOutputModePhrase');
     const outManual=$('voiceOutputModeManual');
     if(outManual) outManual.textContent=t('voiceOutputModeManual');
+    const summonLbl=$('voiceOutputSummonLbl');
+    if(summonLbl) summonLbl.textContent=t('voiceOutputSummonLbl');
+    const summonHint=$('voiceOutputSummonHint');
+    if(summonHint) summonHint.textContent=t('voiceOutputSummonHint');
+    const globalSub=$('voiceWakeGlobalSub');
+    if(globalSub) globalSub.textContent=t('voiceWakeGlobalSub');
+    const activeLbl=$('voiceWakeActiveLbl');
+    if(activeLbl) activeLbl.textContent=t('voiceWakeActiveLbl');
+    const actionBarLbl=$('voiceWakeActionTitle');
+    if(actionBarLbl) actionBarLbl.textContent=t('voiceWakeActionBarLbl');
+    const brandTitle=$('voicePageBrandTitle');
+    if(brandTitle) brandTitle.textContent=t('voiceWakePageTitle');
+    const schemeAdd=$('btnVoiceSchemeAdd');
+    if(schemeAdd) schemeAdd.textContent=t('voiceSchemesAdd');
+    const cancelLbl=$('voiceCancelPresetsZhLabel');
+    if(cancelLbl) cancelLbl.textContent=t('voiceCancelPresetsZhLabel');
+    const sendLbl=$('voiceSendPresetsZhLabel');
+    if(sendLbl) sendLbl.textContent=t('voiceSendPresetsZhLabel');
+    const cancelAdd=$('btnVoiceCancelCustomAdd');
+    if(cancelAdd) cancelAdd.textContent=t('voicePhraseAdd');
+    const sendAdd=$('btnVoiceSendCustomAdd');
+    if(sendAdd) sendAdd.textContent=t('voicePhraseAdd');
+    const cancelHint=$('voiceCancelCustomHint');
+    if(cancelHint) cancelHint.textContent=t('voiceCancelCustomHint')||cancelHint.textContent;
+    const sendHint=$('voiceSendCustomHint');
+    if(sendHint) sendHint.textContent=t('voiceSendCustomHint')||sendHint.textContent;
+    const autoGuard=$('voiceOutputAutoGuard');
+    if(autoGuard) autoGuard.textContent=t('voiceOutputAutoGuard');
+    const cancelTab=$('btnVoiceRecognizeIntentCancel');
+    if(cancelTab) cancelTab.textContent=t('voiceRecognizeIntentCancel');
+    const confirmTab=$('btnVoiceRecognizeIntentConfirm');
+    if(confirmTab) confirmTab.textContent=t('voiceRecognizeIntentConfirm');
+    const ruleBar=$('voiceRecognizeRuleBar');
+    if(ruleBar) ruleBar.textContent=t('voiceRecognizeRuleBar');
     const scopeAdd=$('btnVoiceAppScopeAdd');
-    if(scopeAdd) scopeAdd.textContent=t('keysAppChipAdd');
+    if(scopeAdd) scopeAdd.textContent=t('keysAppChipAddShort')||t('keysAppChipAdd');
     const summonManage=$('btnVoiceOutputSummonManage');
     if(summonManage) summonManage.textContent=t('voiceOutputSummonManage');
     const habitLink=$('btnVoiceSendHabitLink');
     if(habitLink) habitLink.textContent=t('voiceSendHabitLink');
     const wakeCustomLbl=$('voiceWakeCustomLbl');
     if(wakeCustomLbl) wakeCustomLbl.textContent=t('voiceWakeCustomLbl');
+    const wakeActiveLbl=$('voiceWakeActiveLbl');
+    if(wakeActiveLbl) wakeActiveLbl.textContent=t('voiceWakeActiveLbl');
+    const wakeHeroTitle=$('voiceWakeHeroTitle');
+    if(wakeHeroTitle) wakeHeroTitle.textContent=t('voiceWakePrimaryLbl');
+    const wakeDisplayHint=$('voiceWakeDisplayHint');
+    if(wakeDisplayHint) wakeDisplayHint.textContent=t('voiceWakePrimaryHint');
     const wakeCustomHint=$('voiceWakeCustomHint');
     if(wakeCustomHint) wakeCustomHint.textContent=t('voiceWakeCustomHint');
     const wakePresetPoolLbl=$('voiceWakePresetPoolLbl');
-    if(wakePresetPoolLbl) wakePresetPoolLbl.textContent=t('voiceWakePresetPoolLbl');
+    if(wakePresetPoolLbl) wakePresetPoolLbl.textContent=t('voiceWakePresetQuickLbl')||t('voiceWakePresetPoolLbl');
     const wakeCustomInput=$('voiceWakeCustomInput');
     if(wakeCustomInput) wakeCustomInput.placeholder=t('voiceWakeCustomPlaceholder');
     const endCustomLbl=$('voiceEndCustomLbl');
@@ -109,7 +151,7 @@
     const endCustomHint=$('voiceEndCustomHint');
     if(endCustomHint) endCustomHint.textContent=t('voiceEndCustomHint');
     const wakeCustomAdd=$('btnVoiceWakeCustomAdd');
-    if(wakeCustomAdd) wakeCustomAdd.textContent=t('voicePhraseAdd');
+    if(wakeCustomAdd) wakeCustomAdd.textContent=t('voiceWakeAddBtn')||t('voicePhraseAdd');
     const endCustomAdd=$('btnVoiceEndCustomAdd');
     if(endCustomAdd) endCustomAdd.textContent=t('voicePhraseAdd');
     const wakeListen=$('btnVoiceWakeCustomListen');
@@ -122,8 +164,7 @@
       endListen.title=t('voicePhraseListenBtn');
       endListen.setAttribute('aria-label',t('voicePhraseListenBtn'));
     }
-    const delayLbl=$('voiceSettingsDelayLbl');
-    if(delayLbl) delayLbl.textContent=t('voiceEndDelaySend');
+    // voiceSettingsDelayLbl is owned by send-page matrix render (phrase/auto labels).
     var title=$('settingsPanelVoiceWakeTitle');
     if(title) title.textContent=t('settingsPanelVoiceWakeTitle');
     var desc=$('settingsPanelVoiceWakeDesc');
@@ -144,13 +185,19 @@
   function renderHeaderSummary(vm){
     var V=vmApi();
     var schemeName=$('voiceSummaryName');
+    var brandTitle=$('voicePageBrandTitle');
     var statusEl=$('voiceSummaryStatus');
     var engineLbl=$('voiceSummaryEngineLbl');
     var engineVal=$('voiceSummaryEngine');
+    var engineSwitch=$('voiceSummaryEngineSwitch');
     var scopeLbl=$('voiceSummaryScopeLbl');
     var scopeVal=$('voiceSummaryScope');
+    var centerCluster=$('voiceStatusCenterCluster');
+    if(brandTitle) brandTitle.textContent=t('voiceWakePageTitle');
     if(engineLbl) engineLbl.textContent=t('voiceSummaryEngineLbl');
     if(scopeLbl) scopeLbl.textContent=t('voiceSummaryScopeLbl');
+    if(engineSwitch) engineSwitch.hidden=!!vm.loading;
+    if(centerCluster) centerCluster.hidden=!!vm.loading;
     if(vm.loading){
       if(schemeName) schemeName.textContent=t('homeLiveLoading');
       if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill voice-scheme-summary-pill'; }
@@ -177,16 +224,16 @@
     if(schemeName) schemeName.textContent=displayName;
     if(statusEl){
       var pillCls='keys-scheme-summary-pill voice-scheme-summary-pill';
-      var pillText=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');
+      var statusBit=vm.voiceOn?t('voiceSummaryStatusOn'):t('voiceSummaryStatusOff');
       if(selectedId&&selectedId!=='__global__'&&runtimeActive&&selectedId===runtimeActive){
-        pillText=t('voiceSummaryStatusOn');
+        statusBit=t('voiceSummaryStatusOn');
         pillCls+=' is-on';
       }else if(vm.voiceOn){
         pillCls+=' is-on';
       }else{
         pillCls+=' is-off';
       }
-      statusEl.textContent=pillText;
+      statusEl.textContent=displayName+' '+statusBit;
       statusEl.className=pillCls;
     }
     if(engineVal) engineVal.textContent=vm.modeLabel||'—';

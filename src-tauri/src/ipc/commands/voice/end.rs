@@ -66,6 +66,50 @@ pub fn cmd_voice_end_set_phrases(
 }
 
 #[tauri::command]
+pub fn cmd_voice_end_set_cancel_phrases(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    #[allow(non_snake_case)] phrasesZh: Option<Vec<String>>,
+    phrases_zh: Option<Vec<String>>,
+    #[allow(non_snake_case)] phrasesEn: Option<Vec<String>>,
+    phrases_en: Option<Vec<String>>,
+) -> Result<serde_json::Value, String> {
+    let zh = phrases_zh.or(phrasesZh).unwrap_or_default();
+    let en = phrases_en.or(phrasesEn).unwrap_or_default();
+    let status = crate::voice_end_runtime::voice_end_set_cancel_phrases(&state, zh, en);
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(&app, state.inner());
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_send_phrases(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    #[allow(non_snake_case)] phrasesZh: Option<Vec<String>>,
+    phrases_zh: Option<Vec<String>>,
+    #[allow(non_snake_case)] phrasesEn: Option<Vec<String>>,
+    phrases_en: Option<Vec<String>>,
+) -> Result<serde_json::Value, String> {
+    let zh = phrases_zh.or(phrasesZh).unwrap_or_default();
+    let en = phrases_en.or(phrasesEn).unwrap_or_default();
+    let status = crate::voice_end_runtime::voice_end_set_send_phrases(&state, zh, en);
+    crate::voice_vosk_runtime::maybe_restart_vosk_for_grammar(&app, state.inner());
+    Ok(status)
+}
+
+#[tauri::command]
+pub fn cmd_voice_end_set_send_mode(
+    state: tauri::State<Arc<AppState>>,
+    #[allow(non_snake_case)] sendMode: Option<String>,
+    send_mode: Option<String>,
+) -> serde_json::Value {
+    let mode = send_mode
+        .or(sendMode)
+        .unwrap_or_else(|| "confirm".to_string());
+    crate::voice_end_runtime::voice_end_set_send_mode(&state, mode)
+}
+
+#[tauri::command]
 pub fn cmd_voice_end_test_stop(
     state: tauri::State<Arc<AppState>>,
     window: tauri::WebviewWindow,

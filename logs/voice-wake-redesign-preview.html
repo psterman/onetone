@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音唤醒页 · 重规划预览</title>
+  <style>
+    :root {
+      --bg: #f4f7fa;
+      --panel: #fff;
+      --line: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #0a95e8;
+      --blue-soft: #e8f6ff;
+      --teal: #0d9488;
+      --shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    }
+    .note {
+      max-width: 980px;
+      margin: 16px auto 0;
+      padding: 0 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .canvas {
+      width: 980px;
+      margin: 12px auto 28px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, #fafcff);
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .topbar p {
+      margin: 3px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .flow-mini {
+      display: flex;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .flow-mini span {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .flow-mini .on {
+      border-color: rgba(10, 149, 232, 0.45);
+      background: var(--blue-soft);
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 18px 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .action-bar strong { color: var(--text); font-weight: 700; }
+    .action-bar .steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .action-bar .arrow { color: #94a3b8; }
+    .action-bar .help {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .body { padding: 14px 18px 18px; display: grid; gap: 14px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fcfdff;
+    }
+    .card-head h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .card-head .sub {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .seg {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 8px;
+      background: #eef2f7;
+      border: 1px solid var(--line);
+    }
+    .seg button {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: default;
+    }
+    .seg button.on {
+      background: #fff;
+      color: #0369a1;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+    }
+    .card-body { padding: 12px 14px 14px; }
+    .section-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      margin: 0 0 8px;
+      letter-spacing: 0.02em;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px 0 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+    }
+    .chip.on {
+      border-color: rgba(10, 149, 232, 0.35);
+      background: var(--blue-soft);
+      color: #0369a1;
+    }
+    .chip .x {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      color: #64748b;
+      background: rgba(255,255,255,0.7);
+    }
+    .chip.suggest {
+      border-style: dashed;
+      background: #fafbfc;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .chip.suggest::before { content: "+"; color: var(--blue); font-weight: 800; }
+    .add-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .add-row input {
+      flex: 1;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .add-row button {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .add-row button.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .collapse {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .collapse summary {
+      cursor: default;
+      font-size: 12px;
+      color: var(--blue);
+      font-weight: 700;
+      list-style: none;
+    }
+    .collapse summary::-webkit-details-marker { display: none; }
+    .app-row {
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .app-row:first-child { border-top: none; padding-top: 0; }
+    .app-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .app-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .app-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .app-link {
+      font-size: 11px;
+      color: var(--blue);
+      font-weight: 700;
+      white-space: nowrap;
+      padding-top: 4px;
+    }
+  .empty {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px dashed var(--line);
+      background: #f8fafc;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .sound-box {
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .sound-box .title { font-size: 12px; font-weight: 800; }
+    .sound-box .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .sound-box button {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: none;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .compare {
+      max-width: 980px;
+      margin: 0 auto 24px;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      font-size: 12px;
+    }
+    .compare div {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .compare h3 { margin: 0 0 8px; font-size: 13px; }
+    .compare ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .compare .good h3 { color: var(--teal); }
+    .compare .bad h3 { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <p class="note">预览稿：唤醒页单列全宽布局 · 去掉 Hero 大字重复 · 预设折叠 · 应用按 App 分组 · 动作改为顶栏流程条</p>
+
+  <div class="canvas">
+    <div class="topbar">
+      <div>
+        <h1>语音唤醒</h1>
+        <p>配置怎么开始一轮输入</p>
+      </div>
+      <div class="flow-mini">
+        <span class="on">01 语音唤醒</span>
+        <span>02 语音识别</span>
+        <span>03 语音发送</span>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <strong>唤醒后</strong>
+      <div class="steps">
+        <span>切到目标应用</span>
+        <span class="arrow">→</span>
+        <span>进入听写</span>
+        <span class="arrow">→</span>
+        <span>不自动发送</span>
+      </div>
+      <div class="help" title="说明">?</div>
+    </div>
+
+    <div class="body">
+      <!-- 全局唤醒 -->
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2>全局唤醒</h2>
+            <p class="sub">任意时候可说，用于开始听写</p>
+          </div>
+          <div class="seg" role="tablist">
+            <button class="on" type="button">文字短语</button>
+            <button type="button">声音样本</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="section-lbl">已启用</p>
+          <div class="chips">
+            <span class="chip on">开始输入 <span class="x">×</span></span>
+            <span class="chip on">开始听写 <span class="x">×</span></span>
+            <span class="chip on">语音输入 <span class="x">×</span></span>
+          </div>
+          <div class="add-row">
+            <input type="text" placeholder="添加自定义短语，例如：小窗小窗" />
+            <button type="button">🎤</button>
+            <button class="primary" type="button">添加</button>
+          </div>
+          <details class="collapse" open>
+            <summary>从预设添加（3 个未启用）</summary>
+            <div class="chips" style="margin-top:10px">
+              <span class="chip suggest">打开听写</span>
+              <span class="chip suggest">开启输入</span>
+              <span class="chip suggest">start dictation</span>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 声音样本 tab 示意（切换后） -->
+      <section class="card" style="opacity:0.55">
+        <div class="card-head">
+          <div>
+            <h2>全局唤醒</h2>
+            <p class="sub">声音样本模式（切换后示意）</p>
+          </div>
+          <div class="seg">
+            <button type="button">文字短语</button>
+            <button class="on" type="button">声音样本</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="sound-box">
+            <div>
+              <div class="title">已保存 · 「小窗小窗」</div>
+              <div class="sub">可用于全局唤醒，不依赖文字识别</div>
+            </div>
+            <button type="button">重新录制</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 应用唤醒语 -->
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2>应用唤醒语</h2>
+            <p class="sub">仅在前台匹配到对应应用时生效，与全局唤醒词分开</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="app-row">
+            <div>
+              <div class="app-badge"><span class="app-icon">C</span> Cursor</div>
+              <div class="app-meta">前台应用匹配</div>
+            </div>
+            <div class="chips">
+              <span class="chip on">打开 Codex</span>
+              <span class="chip on">开始编程</span>
+            </div>
+            <a class="app-link" href="#">按键页管理</a>
+          </div>
+          <div class="app-row">
+            <div>
+              <div class="app-badge"><span class="app-icon">W</span> 微信</div>
+              <div class="app-meta">前台应用匹配</div>
+            </div>
+            <div class="chips">
+              <span class="chip on">发消息</span>
+            </div>
+            <a class="app-link" href="#">按键页管理</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- 空态示意 -->
+      <section class="card" style="opacity:0.45">
+        <div class="card-head">
+          <div>
+            <h2>应用唤醒语</h2>
+            <p class="sub">未绑定应用时的空态</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="empty">当前方案未绑定应用。先在底部「生效应用」选择目标，再到按键页配置召唤语。</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <h3>现状问题</h3>
+      <ul>
+        <li>Hero 大字 + chips 双层重复，字号不一</li>
+        <li>已选（描边）与预设（实心蓝）两套视觉</li>
+        <li>中/EN 切换占位置，多数用户不需要</li>
+        <li>应用唤醒语平铺，看不出归属哪个 App</li>
+        <li>右侧「唤醒后动作」占栏却信息量少</li>
+      </ul>
+    </div>
+    <div class="good">
+      <h3>重规划要点</h3>
+      <ul>
+        <li>单列全宽，去掉窄侧栏与 Hero 重复展示</li>
+        <li>统一 chip 样式：已启用 / 预设（虚线 +）</li>
+        <li>预设默认折叠，减少首屏噪音</li>
+        <li>文字 | 声音 分段控件，语义清晰</li>
+        <li>应用唤醒按 App 分行：图标 + 短语 + 管理入口</li>
+        <li>唤醒后动作用顶栏流程条一句话讲清</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

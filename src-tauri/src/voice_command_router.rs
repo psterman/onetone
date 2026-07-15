@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::voice_end_runtime::{
-    handle_cancel_phrase, handle_end_phrase, handle_voice_wake_detected, session_state,
+    handle_cancel_phrase, handle_end_phrase, handle_send_phrase, handle_voice_wake_detected,
+    session_state,
 };
 use crate::voice_keyword_dispatch::VoiceKeywordKind;
 use crate::AppState;
@@ -22,6 +23,7 @@ pub enum VoiceDetectionKind {
     Summon,
     End,
     Cancel,
+    Send,
     Keyword,
 }
 
@@ -32,6 +34,7 @@ impl VoiceDetectionKind {
             Self::Summon => "summon",
             Self::End => "end",
             Self::Cancel => "cancel",
+            Self::Send => "send",
             Self::Keyword => "keyword",
         }
     }
@@ -42,6 +45,7 @@ impl VoiceDetectionKind {
             VoiceKeywordKind::Summon => Self::Summon,
             VoiceKeywordKind::End => Self::End,
             VoiceKeywordKind::Cancel => Self::Cancel,
+            VoiceKeywordKind::Send => Self::Send,
             VoiceKeywordKind::Custom => Self::Keyword,
         }
     }
@@ -131,6 +135,24 @@ pub fn handle_detection(
             VoiceCommandRouterResult {
                 handled: true,
                 trigger_label: format!("结束（{}）", phrase),
+                ..Default::default()
+            }
+        }
+        VoiceDetectionKind::Send => {
+            if !active {
+                return skip(format!("idle 状态下忽略 send 词「{}」", phrase));
+            }
+            if !state.cfg.lock().voice_end.enabled {
+                return skip("结束词功能未启用".into());
+            }
+            let mode = state.cfg.lock().voice_end.send_mode.clone();
+            if !matches!(mode.trim().to_ascii_lowercase().as_str(), "phrase" | "auto") {
+                return skip(format!("sendMode={} 忽略发送词「{}」", mode, phrase));
+            }
+            handle_send_phrase(state, app, phrase);
+            VoiceCommandRouterResult {
+                handled: true,
+                trigger_label: format!("发送（{}）", phrase),
                 ..Default::default()
             }
         }

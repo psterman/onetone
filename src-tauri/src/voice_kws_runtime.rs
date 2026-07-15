@@ -356,7 +356,10 @@ fn process_kws_detected(
     *state.voice_kws_last_skip.lock() = String::new();
     *state.voice_kws_last_trigger.lock() = result.trigger_label;
     *state.voice_kws_state.lock() = if result.handled {
-        if kind == VoiceKeywordKind::End || kind == VoiceKeywordKind::Cancel {
+        if kind == VoiceKeywordKind::End
+            || kind == VoiceKeywordKind::Cancel
+            || kind == VoiceKeywordKind::Send
+        {
             "listening".into()
         } else {
             "triggered".into()

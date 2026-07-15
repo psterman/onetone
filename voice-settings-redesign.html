@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>语音设置页重构原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-tint: #eef6fb;
+      --line: #d9e1ea;
+      --line-strong: #b9c7d6;
+      --text: #16202a;
+      --muted: #627083;
+      --muted-2: #8290a2;
+      --primary: #0b7fb3;
+      --primary-strong: #075f90;
+      --primary-soft: #dff2fa;
+      --green: #237a57;
+      --green-soft: #e5f6ee;
+      --amber: #a56313;
+      --amber-soft: #fff3d8;
+      --danger: #b42318;
+      --danger-soft: #fff1ef;
+      --shadow: 0 18px 48px rgba(31, 45, 61, 0.10);
+      --radius: 8px;
+      --radius-lg: 10px;
+      --focus: 0 0 0 3px rgba(11, 127, 179, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1360px, calc(100% - 32px));
+      margin: 24px auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .product-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .title-icon,
+    .small-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .title-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    .topbar p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 750;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease;
+    }
+
+    .btn:hover {
+      border-color: rgba(11, 127, 179, .36);
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+
+    .btn:focus-visible,
+    .step-btn:focus-visible,
+    .seg-btn:focus-visible,
+    .mode-card:focus-visible,
+    .chip:focus-visible,
+    .icon-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus);
+    }
+
+    .btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn.primary:hover {
+      background: var(--primary-strong);
+      color: #fff;
+    }
+
+    .workflow {
+      padding: 16px 22px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .step-btn {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      text-align: left;
+    }
+
+    .step-btn.is-active {
+      border-color: rgba(11, 127, 179, .55);
+      background: linear-gradient(180deg, #f8fdff 0%, #eef8fd 100%);
+      box-shadow: 0 0 0 3px rgba(11, 127, 179, .09);
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .step-btn.is-active .step-number {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .step-meta {
+      min-width: 0;
+    }
+
+    .step-meta span {
+      display: block;
+      color: var(--muted-2);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .step-meta strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 20px;
+      padding: 20px 22px 22px;
+      background: var(--surface);
+    }
+
+    .main-stack,
+    .side-stack {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      min-width: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .panel.soft {
+      background: var(--surface-soft);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.3;
+      font-weight: 850;
+    }
+
+    .section-title .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--primary);
+      flex: 0 0 auto;
+    }
+
+    .section-sub {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      max-width: 680px;
+    }
+
+    .hero-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(230px, 310px);
+      gap: 12px;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
+
+    .hero-main,
+    .hero-actions {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--primary-strong);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .hero-word {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.2;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .hero-main .hint,
+    .hero-actions .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .action-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .action-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 0 0 14px;
+    }
+
+    .seg {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: #eaf0f6;
+    }
+
+    .seg-btn {
+      min-height: 28px;
+      border: 0;
+      border-radius: 7px;
+      padding: 0 12px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .seg-btn.is-active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 2px 7px rgba(31, 45, 61, .10);
+    }
+
+    .language-switch {
+      margin-left: auto;
+    }
+
+    .field-label {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 128px;
+      overflow: auto;
+      padding: 2px;
+    }
+
+    .chip {
+      min-height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      background: var(--surface);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .chip.active {
+      border-color: rgba(11, 127, 179, .42);
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+
+    .chip.app {
+      border-color: rgba(165, 99, 19, .28);
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .chip .x {
+      color: var(--muted-2);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .text-input {
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .text-input:focus {
+      outline: none;
+      border-color: rgba(11, 127, 179, .58);
+      box-shadow: var(--focus);
+    }
+
+    .preset-block {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .preset-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 850;
+    }
+
+    .callout {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px;
+      border: 1px solid rgba(11, 127, 179, .22);
+      border-left-width: 4px;
+      border-radius: var(--radius);
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .rule-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: var(--surface);
+      min-width: 0;
+    }
+
+    .rule-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .rule-head strong {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mode-card {
+      min-height: 116px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      background: var(--surface);
+      text-align: left;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .mode-card.is-active {
+      border-color: var(--primary);
+      background: #f1faff;
+    }
+
+    .mode-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mode-card strong {
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .radio {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--line-strong);
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background: var(--surface);
+      position: relative;
+    }
+
+    .mode-card.is-active .radio {
+      border-color: var(--primary);
+    }
+
+    .mode-card.is-active .radio::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .mode-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .send-detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(270px, .62fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .params-strip {
+      display: grid;
+      grid-template-columns: minmax(220px, .62fr) minmax(260px, 1fr);
+      gap: 14px;
+      align-items: end;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .key-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .key-pill {
+      min-height: 32px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .key-pill.is-active {
+      border-color: rgba(11, 127, 179, .44);
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+    }
+
+    .slider-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .slider-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .slider-meta strong {
+      font-weight: 850;
+    }
+
+    .slider-meta span {
+      color: var(--primary-strong);
+      font-weight: 900;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+    }
+
+    .sound-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: var(--surface);
+    }
+
+    .sound-status {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .sound-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      border-radius: 8px;
+      padding: 0 10px;
+      border: 1px solid rgba(35, 122, 87, .24);
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .recorder {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--surface-soft);
+    }
+
+    .rec-btn {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bars {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 28px;
+    }
+
+    .bars span {
+      width: 4px;
+      border-radius: 999px;
+      background: var(--primary);
+      opacity: .82;
+    }
+
+    .bars span:nth-child(1) { height: 8px; }
+    .bars span:nth-child(2) { height: 16px; }
+    .bars span:nth-child(3) { height: 24px; }
+    .bars span:nth-child(4) { height: 13px; }
+    .bars span:nth-child(5) { height: 19px; }
+
+    .side-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 14px;
+    }
+
+    .side-card h3 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .scheme-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .scheme-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: var(--surface-soft);
+    }
+
+    .scheme-item.active {
+      border-color: rgba(11, 127, 179, .36);
+      background: var(--surface-tint);
+    }
+
+    .scheme-item strong {
+      display: block;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 850;
+    }
+
+    .scheme-item span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      border-radius: 7px;
+      padding: 0 8px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .preview {
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #d7f9e5;
+    }
+
+    .preview h3 {
+      color: #f8fafc;
+    }
+
+    .preview-box {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #243244;
+      border-radius: 8px;
+      background: #0b1220;
+    }
+
+    .preview-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .preview-text {
+      min-height: 96px;
+      border: 1px solid #243244;
+      border-radius: 8px;
+      padding: 10px;
+      background: #070b13;
+      color: #b8f7c8;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .scope-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 22px;
+      border-top: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .scope-strip strong {
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 900;
+    }
+
+    .scope-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .scope-tag {
+      min-height: 26px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 9px;
+      display: inline-flex;
+      align-items: center;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .scope-tag.active {
+      border-color: rgba(11, 127, 179, .35);
+      color: var(--primary-strong);
+      background: var(--primary-soft);
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--primary-strong);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    @media (max-width: 1120px) {
+      .body {
+        grid-template-columns: 1fr;
+      }
+
+      .side-stack {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 780px) {
+      .page {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+
+      .topbar,
+      .body {
+        grid-template-columns: 1fr;
+      }
+
+      .steps,
+      .hero-summary,
+      .split-grid,
+      .mode-grid,
+      .send-detail-grid,
+      .params-strip,
+      .side-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+      }
+
+      .language-switch {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="product-title">
+        <span class="title-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path><path d="M8 21h8"></path></svg>
+        </span>
+        <div>
+          <h1>语音设置</h1>
+          <p>按“唤醒、识别、发送”三步配置语音输入流程，主选项与附属参数分区展示。</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" type="button">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+          新建草稿
+        </button>
+        <button class="btn primary" type="button">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>
+          保存方案
+        </button>
+      </div>
+    </header>
+
+    <nav class="workflow" aria-label="语音流程">
+      <div class="steps">
+        <button class="step-btn is-active" type="button" data-step="wake">
+          <span class="step-number">01</span>
+          <span class="step-meta"><span>开始输入</span><strong>语音唤醒</strong></span>
+        </button>
+        <button class="step-btn" type="button" data-step="recognize">
+          <span class="step-number">02</span>
+          <span class="step-meta"><span>听写控制</span><strong>语音识别</strong></span>
+        </button>
+        <button class="step-btn" type="button" data-step="send">
+          <span class="step-number">03</span>
+          <span class="step-meta"><span>提交文本</span><strong>语音发送</strong></span>
+        </button>
+      </div>
+    </nav>
+
+    <main class="body">
+      <div class="main-stack">
+        <section class="step-page" id="page-wake">
+          <article class="panel soft">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title"><span class="dot"></span>语音唤醒设置</h2>
+                <p class="section-sub">先确认当前唤醒入口，再选择文字短语或声音样本。应用唤醒语独立管理，不再混进全局唤醒词。</p>
+              </div>
+              <div class="seg" role="tablist" aria-label="唤醒方式">
+                <button class="seg-btn is-active" type="button" data-toggle="wake" data-target="wake-text">文字短语</button>
+                <button class="seg-btn" type="button" data-toggle="wake" data-target="wake-sound">声音样本</button>
+              </div>
+            </div>
+
+            <div class="hero-summary">
+              <div class="hero-main">
+                <p class="eyebrow">当前主唤醒动作</p>
+                <p class="hero-word">开始输入</p>
+                <p class="hint">说出当前唤醒词，或使用已保存的声音样本，即可开始一轮听写。</p>
+              </div>
+              <div class="hero-actions">
+                <p class="eyebrow">唤醒后动作</p>
+                <ul class="action-list">
+                  <li><span class="check">✓</span>拉起目标应用</li>
+                  <li><span class="check">✓</span>进入听写状态</li>
+                  <li><span class="check">✓</span>不主动发送内容</li>
+                </ul>
+              </div>
+            </div>
+
+            <div id="wake-text" data-pane="wake">
+              <div class="panel">
+                <div class="control-row">
+                  <span class="field-label" style="margin:0">已启用的唤醒短语</span>
+                  <div class="seg language-switch" aria-label="唤醒词语言">
+                    <button class="seg-btn is-active" type="button">中</button>
+                    <button class="seg-btn" type="button">EN</button>
+                  </div>
+                </div>
+                <div class="chips" aria-label="已启用唤醒词">
+                  <button class="chip active" type="button">开始输入 <span class="x">×</span></button>
+                  <button class="chip active" type="button">开始听写 <span class="x">×</span></button>
+                  <button class="chip active" type="button">语音输入 <span class="x">×</span></button>
+                  <button class="chip" type="button">打开听写</button>
+                  <button class="chip" type="button">开启输入</button>
+                </div>
+                <div class="input-row">
+                  <input class="text-input" type="text" placeholder="例如：小窗小窗" maxlength="48">
+                  <button class="icon-btn" type="button" title="说一句，用识别结果填入" aria-label="说一句，用识别结果填入">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path></svg>
+                  </button>
+                  <button class="btn primary" type="button">添加</button>
+                </div>
+                <div class="preset-block">
+                  <p class="preset-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2l2.4 6.8L22 9l-6 4.5 1.8 7.5L12 16.8 6.2 21 8 13.5 2 9l7.6-.2Z"></path></svg>
+                    可选预设
+                  </p>
+                  <div class="chips">
+                    <button class="chip" type="button">开始说话</button>
+                    <button class="chip" type="button">启动语音</button>
+                    <button class="chip" type="button">start input</button>
+                    <button class="chip" type="button">voice input</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel" style="margin-top:12px">
+                <div class="section-head" style="margin-bottom:10px">
+                  <div>
+                    <h3 class="section-title" style="font-size:14px"><span class="dot" style="background:var(--amber)"></span>应用唤醒语</h3>
+                    <p class="section-sub">这些口令只用于切到指定应用并开始输入，不属于全局唤醒词。</p>
+                  </div>
+                  <button class="btn" type="button">在按键页管理</button>
+                </div>
+                <div class="chips">
+                  <span class="chip app">Cursor 旺</span>
+                  <span class="chip app">打开 Codex</span>
+                  <span class="chip app">切到微信</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="wake-sound" data-pane="wake" class="hidden">
+              <div class="sound-card">
+                <div class="sound-status">
+                  <div>
+                    <p class="eyebrow">声音样本唤醒</p>
+                    <p class="section-sub" style="margin:0">录一句短短语，之后再说同一句即可全局唤醒听写。匹配的是短语声音样本，不是身份声纹。</p>
+                  </div>
+                  <span class="sound-chip">已保存 1 条</span>
+                </div>
+                <div class="recorder">
+                  <button class="rec-btn" type="button" aria-label="开始录制">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path></svg>
+                  </button>
+                  <div>
+                    <strong style="font-size:13px">录制新的唤醒声音样本</strong>
+                    <p class="section-sub" style="margin:4px 0 0">建议短语约 1 到 2 秒。录两遍后保存。</p>
+                    <div class="bars" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+                  </div>
+                  <button class="btn" type="button">重新录制</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="step-page hidden" id="page-recognize">
+          <article class="panel soft">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title"><span class="dot"></span>语音识别与停顿控制</h2>
+                <p class="section-sub">把“怎么停下”和“怎么取消”分开配置。声音样本入口暂不展示，避免和文字短语规则混淆。</p>
+              </div>
+            </div>
+
+            <div class="callout">
+              <svg viewBox="0 0 24 24" style="margin-top:2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+              <span>标准离线识别可使用结束词、取消词和自然停顿；系统兼容模式主要依赖自然停顿。</span>
+            </div>
+
+            <div class="split-grid" style="margin-top:12px">
+              <div class="rule-card">
+                <div class="rule-head">
+                  <strong><span class="check">✓</span>结束词</strong>
+                  <div class="seg" aria-label="结束词语言">
+                    <button class="seg-btn is-active" type="button">中</button>
+                    <button class="seg-btn" type="button">EN</button>
+                  </div>
+                </div>
+                <div class="chips">
+                  <button class="chip active" type="button">结束输入 <span class="x">×</span></button>
+                  <button class="chip active" type="button">就这样 <span class="x">×</span></button>
+                  <button class="chip active" type="button">停止听写 <span class="x">×</span></button>
+                </div>
+                <div class="input-row" style="grid-template-columns:minmax(0,1fr) auto auto">
+                  <input class="text-input" type="text" placeholder="例如：说完了">
+                  <button class="icon-btn" type="button" aria-label="听写填入">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path></svg>
+                  </button>
+                  <button class="btn primary" type="button">添加</button>
+                </div>
+                <p class="section-sub">只停止录音，保留文本。</p>
+              </div>
+
+              <div class="rule-card">
+                <div class="rule-head">
+                  <strong><span class="check" style="background:var(--danger-soft);color:var(--danger)">×</span>取消词</strong>
+                  <div class="seg" aria-label="取消词语言">
+                    <button class="seg-btn is-active" type="button">中</button>
+                    <button class="seg-btn" type="button">EN</button>
+                  </div>
+                </div>
+                <div class="chips">
+                  <button class="chip active" type="button">取消输入 <span class="x">×</span></button>
+                  <button class="chip active" type="button">不要了 <span class="x">×</span></button>
+                  <button class="chip active" type="button">撤掉 <span class="x">×</span></button>
+                </div>
+                <div class="input-row" style="grid-template-columns:minmax(0,1fr) auto auto">
+                  <input class="text-input" type="text" placeholder="例如：算了">
+                  <button class="icon-btn" type="button" aria-label="听写填入">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path></svg>
+                  </button>
+                  <button class="btn primary" type="button">添加</button>
+                </div>
+                <p class="section-sub">丢弃本轮输入，不触发发送。</p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="step-page hidden" id="page-send">
+          <article class="panel soft">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title"><span class="dot"></span>语音发送策略</h2>
+                <p class="section-sub">先选择发送策略。下面只展示该策略相关的发送词、发送键和等待时间，避免选项堆叠。</p>
+              </div>
+            </div>
+
+            <div class="mode-grid" aria-label="发送方式">
+              <button class="mode-card is-active" type="button" data-send-mode="confirm">
+                <span class="mode-card-head"><strong>先确认</strong><span class="radio"></span></span>
+                <p>听写结束后停在输入框。你手动检查，再按发送键。</p>
+              </button>
+              <button class="mode-card" type="button" data-send-mode="phrase">
+                <span class="mode-card-head"><strong>说发送才发</strong><span class="radio"></span></span>
+                <p>说出发送词后才按发送键；结束词只负责停下。</p>
+              </button>
+              <button class="mode-card" type="button" data-send-mode="auto">
+                <span class="mode-card-head"><strong>自动发送</strong><span class="radio"></span></span>
+                <p>自然停顿后等待上屏，再自动按发送键。</p>
+              </button>
+            </div>
+
+            <div id="send-confirm-note" class="callout" style="margin-top:12px">
+              <svg viewBox="0 0 24 24" style="margin-top:2px"><path d="M20 6 9 17l-5-5"></path></svg>
+              <span>先确认模式下无需配置发送词；发送键仍可作为手动发送时的默认提示。</span>
+            </div>
+
+            <div class="send-detail-grid" id="send-detail" style="margin-top:12px">
+              <div class="rule-card" id="send-phrase-card">
+                <div class="rule-head">
+                  <strong>
+                    <span class="small-icon">
+                      <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+                    </span>
+                    发送词
+                  </strong>
+                  <div class="seg" aria-label="发送词语言">
+                    <button class="seg-btn is-active" type="button">中</button>
+                    <button class="seg-btn" type="button">EN</button>
+                  </div>
+                </div>
+                <div class="chips">
+                  <button class="chip active" type="button">发送 <span class="x">×</span></button>
+                  <button class="chip active" type="button">发出去 <span class="x">×</span></button>
+                  <button class="chip active" type="button">提交 <span class="x">×</span></button>
+                </div>
+                <div class="input-row">
+                  <input class="text-input" type="text" placeholder="例如：寄出">
+                  <button class="icon-btn" type="button" aria-label="听写填入">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M8 7v5a4 4 0 0 0 8 0V7"></path><path d="M5 11a7 7 0 0 0 14 0"></path></svg>
+                  </button>
+                  <button class="btn primary" type="button">添加</button>
+                </div>
+              </div>
+
+              <div class="params-strip">
+                <div>
+                  <span class="field-label">发送快捷键</span>
+                  <div class="key-pills">
+                    <button class="key-pill is-active" type="button">Enter</button>
+                    <button class="key-pill" type="button">Ctrl + Enter</button>
+                  </div>
+                </div>
+                <div class="slider-row" id="send-delay-box">
+                  <div class="slider-meta">
+                    <strong id="delay-label">上屏等待</strong>
+                    <span id="delay-value">4.0 秒</span>
+                  </div>
+                  <input type="range" min="1" max="10" step="0.5" value="4" id="delay-range" aria-label="等待时间">
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <aside class="side-stack" aria-label="方案和实时预览">
+        <section class="side-card">
+          <h3>
+            <svg viewBox="0 0 24 24"><path d="M4 21V7"></path><path d="M4 7l8-4 8 4v14"></path><path d="M9 21v-8h6v8"></path></svg>
+            方案快照
+          </h3>
+          <div class="scheme-list">
+            <div class="scheme-item active">
+              <div><strong>默认语音方案</strong><span>标准识别 · 先确认</span></div>
+              <span class="status-badge">运行中</span>
+            </div>
+            <div class="scheme-item">
+              <div><strong>Cursor 工作流</strong><span>应用唤醒语 · 自动发送</span></div>
+              <span class="status-badge" style="background:var(--surface);color:var(--muted)">草稿</span>
+            </div>
+            <div class="scheme-item">
+              <div><strong>会议听写</strong><span>长停顿 · 不自动发送</span></div>
+              <span class="status-badge" style="background:var(--surface);color:var(--muted)">草稿</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="side-card preview">
+          <h3>
+            <svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg>
+            实时预览
+          </h3>
+          <div class="preview-box">
+            <div class="preview-line"><span>麦克风</span><strong>默认输入设备</strong></div>
+            <div class="preview-line"><span>当前流程</span><strong id="preview-step">语音唤醒</strong></div>
+            <div class="preview-text" id="preview-text">等待唤醒。说“开始输入”后进入听写，结束后按当前发送策略处理。</div>
+            <div class="preview-line"><span>发送键</span><strong>Enter</strong></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="scope-strip">
+      <strong>生效范围</strong>
+      <div class="scope-tags">
+        <span class="scope-tag active">全局监听</span>
+        <span class="scope-tag">Cursor</span>
+        <span class="scope-tag">Codex</span>
+        <span class="scope-tag">微信</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const stepButtons = Array.from(document.querySelectorAll("[data-step]"));
+    const pages = {
+      wake: document.getElementById("page-wake"),
+      recognize: document.getElementById("page-recognize"),
+      send: document.getElementById("page-send")
+    };
+    const previewStep = document.getElementById("preview-step");
+    const previewText = document.getElementById("preview-text");
+    const previewCopy = {
+      wake: ["语音唤醒", "等待唤醒。说“开始输入”后进入听写，结束后按当前发送策略处理。"],
+      recognize: ["语音识别", "正在听写。结束词会停止录音，取消词会丢弃本轮输入。"],
+      send: ["语音发送", "选择发送策略后，发送词、发送键和等待时间会按模式展开。"]
+    };
+
+    stepButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.step;
+        stepButtons.forEach((item) => item.classList.toggle("is-active", item === btn));
+        Object.entries(pages).forEach(([pageKey, page]) => page.classList.toggle("hidden", pageKey !== key));
+        previewStep.textContent = previewCopy[key][0];
+        previewText.textContent = previewCopy[key][1];
+      });
+    });
+
+    document.querySelectorAll("[data-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const group = btn.dataset.toggle;
+        const target = btn.dataset.target;
+        document.querySelectorAll(`[data-toggle="${group}"]`).forEach((item) => {
+          item.classList.toggle("is-active", item === btn);
+        });
+        document.querySelectorAll(`[data-pane="${group}"]`).forEach((pane) => {
+          pane.classList.toggle("hidden", pane.id !== target);
+        });
+      });
+    });
+
+    const sendPhraseCard = document.getElementById("send-phrase-card");
+    const sendConfirmNote = document.getElementById("send-confirm-note");
+    const sendDelayBox = document.getElementById("send-delay-box");
+    const delayLabel = document.getElementById("delay-label");
+
+    function applySendMode(mode) {
+      document.querySelectorAll("[data-send-mode]").forEach((card) => {
+        card.classList.toggle("is-active", card.dataset.sendMode === mode);
+      });
+      const confirm = mode === "confirm";
+      const phrase = mode === "phrase";
+      sendConfirmNote.classList.toggle("hidden", !confirm);
+      sendPhraseCard.classList.toggle("hidden", confirm);
+      sendDelayBox.classList.toggle("hidden", confirm);
+      delayLabel.textContent = phrase ? "发送后上屏等待" : "上屏等待";
+      previewStep.textContent = "语音发送";
+      previewText.textContent = confirm
+        ? "先确认：听写结束后停在输入框，由你手动发送。"
+        : phrase
+          ? "说发送才发：结束词只停下，发送词才会提交。"
+          : "自动发送：自然停顿后等待上屏，再按发送键。";
+    }
+
+    document.querySelectorAll("[data-send-mode]").forEach((card) => {
+      card.addEventListener("click", () => applySendMode(card.dataset.sendMode));
+    });
+
+    document.getElementById("delay-range").addEventListener("input", (event) => {
+      document.getElementById("delay-value").textContent = Number(event.target.value).toFixed(1) + " 秒";
+    });
+
+    applySendMode("confirm");
+  </script>
+</body>
+</html>

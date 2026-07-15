@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音唤醒页 · 布局预览（待实现）</title>
+  <style>
+    :root {
+      --bg: #f4f7fa;
+      --panel: #ffffff;
+      --line: #dce5ee;
+      --text: #102033;
+      --muted: #64748b;
+      --soft: #f1f7fc;
+      --blue: #2a9cc4;
+      --blue-strong: #0a95e8;
+      --blue-soft: #e8f6ff;
+      --green: #2e7d4f;
+      --green-soft: rgba(46, 125, 79, 0.1);
+      --orange: #f59e0b;
+      --shadow: 0 18px 45px rgba(15, 36, 59, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e8edf2;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    }
+    .note {
+      max-width: 1353px;
+      margin: 14px auto 0;
+      padding: 0 20px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .note strong { color: var(--text); }
+    .canvas {
+      width: 1353px;
+      height: 820px;
+      margin: 10px auto 28px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+    }
+
+    /* Top status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 16px;
+      background: linear-gradient(180deg, #fff, #fafcff);
+      border-bottom: 1px solid var(--line);
+    }
+    .status-main { min-width: 0; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .scheme-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(46, 125, 79, 0.28);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .engine-seg {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 8px;
+      background: #eef2f7;
+      border: 1px solid var(--line);
+      gap: 2px;
+    }
+    .engine-seg button {
+      border: none;
+      background: transparent;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: default;
+    }
+    .engine-seg button.on {
+      background: #fff;
+      color: #0369a1;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+    }
+    .meta-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--line);
+    }
+    .meta-item {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .meta-item strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+    .status-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .btn {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: default;
+    }
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .toggle {
+      width: 40px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--blue);
+      position: relative;
+    }
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    /* Flow nodes */
+    .flow {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: start;
+      padding: 10px 120px 6px;
+      background: transparent;
+    }
+    .flow::before {
+      content: "";
+      position: absolute;
+      left: 240px;
+      right: 240px;
+      top: 58px;
+      height: 3px;
+      background: linear-gradient(90deg, #4facfe, #2a9cc4 50%, #f59e0b);
+      border-radius: 999px;
+      opacity: 0.8;
+    }
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    .flow-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(42,156,196,0.28);
+      background: rgba(42,156,196,0.08);
+      color: #0369a1;
+    }
+    .flow-step:nth-child(3) .flow-tag {
+      border-color: rgba(245,158,11,0.28);
+      background: rgba(245,158,11,0.1);
+      color: #b45309;
+    }
+    .flow-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 2px solid rgba(42,156,196,0.5);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 0 4px rgba(42,156,196,0.12);
+      color: var(--blue);
+    }
+    .flow-step:not(.active) .flow-icon {
+      border-color: var(--line);
+      box-shadow: none;
+      color: var(--muted);
+    }
+    .flow-title { font-size: 12px; font-weight: 800; }
+    .flow-hint { font-size: 10px; color: var(--muted); margin-top: -2px; }
+
+    /* Body */
+    .body {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 12px;
+      padding: 0 14px 10px;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .desk-panel {
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .page-head { margin-bottom: 10px; }
+    .page-head h2 { margin: 0; font-size: 16px; font-weight: 800; }
+    .page-head p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .action-bar strong { color: var(--text); font-weight: 700; }
+    .action-steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .action-steps span { font-weight: 600; color: var(--text); }
+    .action-steps .arrow { color: #94a3b8; font-weight: 400; }
+    .action-help {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .stack { display: grid; gap: 12px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fcfdff;
+    }
+    .card-head h3 { margin: 0; font-size: 13px; font-weight: 800; }
+    .card-head .sub {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .kind-seg {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 8px;
+      background: #eef2f7;
+      border: 1px solid var(--line);
+    }
+    .kind-seg button {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .kind-seg button.on {
+      background: #fff;
+      color: #0369a1;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+    }
+    .card-body { padding: 12px 14px 14px; }
+    .section-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      margin: 0 0 8px;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px 0 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+    }
+    .chip.on {
+      border-color: rgba(42, 156, 196, 0.35);
+      background: var(--blue-soft);
+      color: #0369a1;
+    }
+    .chip .x {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      color: #64748b;
+      background: rgba(255,255,255,0.7);
+    }
+    .chip.suggest {
+      border-style: dashed;
+      background: #fafbfc;
+      color: var(--muted);
+      font-weight: 500;
+      padding-left: 10px;
+    }
+    .chip.suggest::before {
+      content: "+";
+      color: var(--blue-strong);
+      font-weight: 800;
+      margin-right: 2px;
+    }
+    .add-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .add-row input {
+      flex: 1;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .add-row .mic {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      display: grid;
+      place-items: center;
+    }
+    .add-row .add {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: none;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .collapse {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .collapse summary {
+      font-size: 12px;
+      color: var(--blue-strong);
+      font-weight: 700;
+      cursor: default;
+      list-style: none;
+    }
+    .collapse summary::-webkit-details-marker { display: none; }
+
+    .app-row {
+      display: grid;
+      grid-template-columns: 96px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .app-row:first-child { border-top: none; padding-top: 0; }
+    .app-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .app-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .app-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .app-link {
+      font-size: 11px;
+      color: var(--blue-strong);
+      font-weight: 700;
+      white-space: nowrap;
+      padding-top: 4px;
+    }
+
+    .aside {
+      display: grid;
+      gap: 10px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .aside-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .aside-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .aside-count {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .scheme-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .scheme-item:last-child { border-bottom: none; }
+    .scheme-item strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .scheme-item span {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+      display: block;
+    }
+    .scheme-item .run {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid rgba(46,125,79,0.28);
+    }
+    .preview-card {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-color: #1e293b;
+    }
+    .preview-card .aside-head {
+      border-color: #1e293b;
+      color: #f8fafc;
+    }
+    .preview-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #4ade80;
+    }
+    .preview-status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+    }
+    .preview-body {
+      padding: 12px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .preview-orb {
+      width: 64px;
+      height: 64px;
+      margin: 8px auto;
+      border-radius: 50%;
+      border: 2px solid rgba(74,222,128,0.4);
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+    }
+    .preview-text {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    .scope-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 -4px 18px rgba(15,23,42,0.04);
+    }
+    .scope-title {
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .scope-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex: 1;
+    }
+    .scope-chip {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .scope-chip.on {
+      border-color: rgba(42,156,196,0.35);
+      background: var(--blue-soft);
+      color: #0369a1;
+    }
+    .scope-add {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px dashed var(--line);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .legend {
+      max-width: 1353px;
+      margin: 0 auto 24px;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 12px;
+    }
+    .legend div {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .legend h4 { margin: 0 0 8px; font-size: 13px; }
+    .legend ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .legend .new h4 { color: var(--blue-strong); }
+    .legend .keep h4 { color: var(--green); }
+  </style>
+</head>
+<body>
+  <p class="note">
+    <strong>语音唤醒页 · 布局预览（实现前确认稿）</strong><br>
+    对照参考稿 + 现有 desk 布局：顶栏露出模式标签与生效范围；内核单列去 Hero；应用唤醒语按 App 分行；底栏保留应用范围 chips。确认后再改代码。
+  </p>
+
+  <div class="canvas" role="img" aria-label="语音唤醒页布局预览">
+    <header class="status-bar">
+      <div class="status-main">
+        <div class="title-row">
+          <span class="scheme-name">默认</span>
+          <span class="pill">已激活</span>
+        </div>
+        <div class="meta-row">
+          <div class="engine-seg" role="group" aria-label="语音模式">
+            <button type="button" class="on">备用</button>
+            <button type="button">标准</button>
+            <button type="button">轻量</button>
+          </div>
+          <span class="meta-divider" aria-hidden="true"></span>
+          <span class="meta-item"><span>生效范围</span> <strong>不限应用</strong></span>
+        </div>
+      </div>
+      <div class="status-actions">
+        <button type="button" class="btn primary">更新方案</button>
+        <div class="toggle" role="switch" aria-checked="true" title="语音开关"></div>
+        <button type="button" class="btn">+ 新建</button>
+      </div>
+    </header>
+
+    <section class="flow" aria-label="三页流程">
+      <div class="flow-step active">
+        <span class="flow-tag">01 / 声源采集</span>
+        <div class="flow-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </div>
+        <span class="flow-title">语音唤醒</span>
+        <span class="flow-hint">开始输入</span>
+      </div>
+      <div class="flow-step">
+        <span class="flow-tag">02 / 语音识别</span>
+        <div class="flow-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <span class="flow-title">语音识别</span>
+        <span class="flow-hint">备用模式</span>
+      </div>
+      <div class="flow-step">
+        <span class="flow-tag" style="border-color:rgba(245,158,11,0.28);background:rgba(245,158,11,0.1);color:#b45309">03 / 语音发送</span>
+        <div class="flow-icon" aria-hidden="true" style="border-color:#e2e8f0;box-shadow:none;color:#94a3b8">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <span class="flow-title">语音发送</span>
+        <span class="flow-hint">先确认</span>
+      </div>
+    </section>
+
+    <div class="body">
+      <main class="desk-panel">
+        <header class="page-head">
+          <h2>语音唤醒</h2>
+          <p>配置怎么开始一轮输入</p>
+        </header>
+
+        <div class="action-bar">
+          <strong>唤醒后</strong>
+          <div class="action-steps">
+            <span>切到目标应用</span>
+            <span class="arrow">→</span>
+            <span>进入听写</span>
+            <span class="arrow">→</span>
+            <span>不自动发送</span>
+          </div>
+          <div class="action-help" title="说明">?</div>
+        </div>
+
+        <div class="stack">
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>全局唤醒</h3>
+                <p class="sub">任意时候可说，用于开始听写</p>
+              </div>
+              <div class="kind-seg" role="tablist">
+                <button type="button" class="on">文字短语</button>
+                <button type="button">声音样本</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="section-lbl">已启用</p>
+              <div class="chips">
+                <span class="chip on">开始输入 <span class="x">×</span></span>
+                <span class="chip on">开始听写 <span class="x">×</span></span>
+                <span class="chip on">语音输入 <span class="x">×</span></span>
+                <span class="chip on">开启输入 <span class="x">×</span></span>
+              </div>
+              <div class="add-row">
+                <input type="text" placeholder="添加自定义短语，例如：小窗小窗" readonly />
+                <button type="button" class="mic" aria-label="听写填入">🎤</button>
+                <button type="button" class="add">添加</button>
+              </div>
+              <details class="collapse" open>
+                <summary>从预设添加（2 个未启用）</summary>
+                <div class="chips" style="margin-top:10px">
+                  <span class="chip suggest">打开听写</span>
+                  <span class="chip suggest">开启输入</span>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h3>应用唤醒语</h3>
+                <p class="sub">仅在前台匹配到对应应用时生效，与全局唤醒词分开</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="app-row">
+                <div>
+                  <div class="app-badge"><span class="app-icon">C</span> Cursor</div>
+                  <div class="app-meta">前台应用匹配</div>
+                </div>
+                <div class="chips">
+                  <span class="chip on">打开 Codex</span>
+                  <span class="chip on">开始编程</span>
+                </div>
+                <span class="app-link">按键页管理</span>
+              </div>
+              <div class="app-row">
+                <div>
+                  <div class="app-badge"><span class="app-icon" style="background:#07c160">微</span> 微信</div>
+                  <div class="app-meta">前台应用匹配</div>
+                </div>
+                <div class="chips">
+                  <span class="chip on">发消息</span>
+                </div>
+                <span class="app-link">按键页管理</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <aside class="aside">
+        <section class="aside-card">
+          <header class="aside-head">
+            <span>方案</span>
+            <span class="aside-count">4</span>
+          </header>
+          <div class="scheme-item">
+            <strong>默认（当前）</strong>
+            <span>备用 · 不限应用</span>
+            <span class="run">运行中</span>
+          </div>
+          <div class="scheme-item">
+            <strong>会议高保真</strong>
+            <span>标准 · 2 个应用</span>
+          </div>
+          <div class="scheme-item">
+            <strong>极客极速</strong>
+            <span>轻量 · 草稿</span>
+          </div>
+        </section>
+        <section class="aside-card preview-card">
+          <header class="aside-head">
+            <span>实时交互预览</span>
+            <span class="preview-status">LISTENING</span>
+          </header>
+          <div class="preview-body">
+            <div style="font-size:10px;color:#64748b">默认输入设备 ▾</div>
+            <div class="preview-orb">🎤</div>
+            <div class="preview-text">等待唤醒词或长按说话…</div>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="scope-strip">
+      <span class="scope-title">生效应用</span>
+      <div class="scope-chips" role="radiogroup">
+        <span class="scope-chip on">不限应用</span>
+        <span class="scope-chip">🖥 Cursor</span>
+        <span class="scope-chip">💬 微信</span>
+        <span class="scope-chip">📝 Notion</span>
+      </div>
+      <button type="button" class="scope-add">+ 添加应用</button>
+    </footer>
+  </div>
+
+  <div class="legend">
+    <div class="new">
+      <h4>本次调整</h4>
+      <ul>
+        <li>顶栏露出 备用/标准/轻量 + 生效范围摘要</li>
+        <li>去掉 Hero 大字，唤醒词收进「全局唤醒」卡片</li>
+        <li>预设建议折叠；隐藏中/EN 切换</li>
+        <li>「唤醒后动作」改为页内横向流程条</li>
+        <li>应用唤醒语按 App 分行展示</li>
+      </ul>
+    </div>
+    <div class="keep">
+      <h4>保留不变</h4>
+      <ul>
+        <li>三页流程节点、引擎切换逻辑、短语增删</li>
+        <li>声音样本 Tab + voiceWakeAcousticCommands</li>
+        <li>底栏应用范围 chips（与顶栏摘要同步）</li>
+        <li>右侧方案列表 + 实时预览 rail</li>
+        <li>主色调（蓝 #2a9cc4 / #0a95e8）</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
