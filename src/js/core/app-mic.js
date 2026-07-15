@@ -68,6 +68,8 @@
     if(testWave) pushTarget(testWave);
     var practiceMic=$('phrasePracticeMicRow');
     if(practiceMic) pushTarget(practiceMic);
+    var homeMic=$('wbHomeMicLevel');
+    if(homeMic) pushTarget(homeMic);
     return targets;
   }
 
@@ -81,11 +83,14 @@
     micWavePhase+=0.38;
     var norm=Math.max(0,Math.min(1,homeMicLastLevel/48));
     targets.forEach(function(card){
-      var wrap=card.querySelector('.mic-level-bars');
+      var wrap=card.classList&&card.classList.contains('mic-level-bars')
+        ?card
+        :card.querySelector('.mic-level-bars');
       if(!wrap) return;
+      var barCount=wrap.classList.contains('mic-level-bars--home')?28:12;
       var bars=wrap.querySelectorAll('span');
-      if(!bars.length){
-        wrap.innerHTML=buildMicLevelBars(12);
+      if(!bars.length||bars.length!==barCount){
+        wrap.innerHTML=buildMicLevelBars(barCount);
         bars=wrap.querySelectorAll('span');
       }
       var n=bars.length;
@@ -94,11 +99,12 @@
       bars.forEach(function(bar,i){
         bar.className='';
         var dist=Math.abs(i-center)/Math.max(center,1);
-        var envelope=1-dist*0.48;
-        var wobble=norm>0.04?Math.sin(micWavePhase+i*0.85)*0.1:0;
-        var scale=norm<=0?0.12:Math.max(0.12,Math.min(1,norm*envelope+wobble));
+        var envelope=1-dist*0.55;
+        var wobble=norm>0.04?Math.sin(micWavePhase+i*0.55)*0.08:0;
+        var fine=norm>0.04?Math.sin(micWavePhase*1.7+i*1.35)*0.04*norm:0;
+        var scale=norm<=0?0.1:Math.max(0.1,Math.min(1,norm*envelope+wobble+fine));
         bar.style.transform='scaleY('+scale.toFixed(3)+')';
-        if(scale>0.55) bar.classList.add('is-hot');
+        if(scale>0.62) bar.classList.add('is-hot');
       });
     });
     syncHomeMicPickState(false);

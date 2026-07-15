@@ -151,7 +151,7 @@
                               <span class="wb-trigger-hero-icon" id="wbTriggerHeroIcon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                               </span>
-                              <span class="wb-trigger-hero-hint" id="wbTriggerHeroHint" data-i18n="homeWbTriggerHeroHint">点一下试发送</span>
+                              <span class="wb-trigger-hero-hint" id="wbTriggerHeroHint" data-i18n="homeWbTriggerHeroHint">点一下打开按键设置</span>
                             </button>
                           </div>
                           <div class="wb-trigger-info">
@@ -169,27 +169,40 @@
                           <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
                           <span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span><span class="wb-wave-bar"></span>
                         </div>
-                        <div class="wb-live-text" id="wbLiveText" aria-live="polite">
-                          <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
-                        </div>
-                        <div class="wb-trigger-actions" id="wbTriggerActions">
-                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnTestSend" data-i18n="homeLiveTestEndSend">试发一次</button>
-                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd">说完了</button>
-                          <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
-                        </div>
                       </section>
                       <section class="wb-habit-section">
                         <div class="wb-habit-head">
                           <span class="wb-habit-label" data-i18n="homeWbHabitSection">我的常用方案</span>
-                          <button type="button" class="wb-habit-new" id="wbHabitNew" data-i18n="homeWbQuickNewHabit">新建习惯</button>
+                          <div class="wb-habit-head-actions">
+                            <button type="button" class="wb-habit-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
+                            <button type="button" class="wb-habit-new" id="wbHabitNew" data-i18n="homeWbQuickNewHabit">新建习惯</button>
+                          </div>
                         </div>
                         <div class="wb-habit-grid" id="wbHabitGrid"></div>
                       </section>
                       <div class="wb-finish-summary" id="wbFinishSummary" aria-live="polite"></div>
                     </div>
                     <aside class="wb-dashboard-side">
+                      <section class="wb-live-preview" id="wbLivePreview" aria-label="听写内容">
+                        <header class="wb-live-preview-head">
+                          <span class="wb-live-preview-title" id="wbLivePreviewTitle" data-i18n="homeWbLivePreviewTitle">听写内容</span>
+                          <div class="wb-live-preview-head-right">
+                            <span class="wb-live-preview-status is-standby" id="wbLivePreviewStatus" data-i18n="homeWbLivePreviewStandby">待命</span>
+                            <button type="button" class="wb-live-listen-toggle" id="wbBtnListenToggle" aria-pressed="false" title="暂停后可省 CPU/内存；恢复后语音约 2 秒就绪">
+                              <span id="wbBtnListenToggleLabel" data-i18n="homeWbListenPause">暂停监听</span>
+                            </button>
+                          </div>
+                        </header>
+                        <div class="wb-live-text is-placeholder" id="wbLiveText" role="log" aria-live="polite" aria-atomic="false">
+                          <div class="vp-empty" data-i18n="homeWbLiveIdleHint">你说的话会显示在这里</div>
+                        </div>
+                        <div class="wb-live-actions" id="wbTriggerActions">
+                          <button type="button" class="wb-trigger-btn wb-trigger-btn-filled" id="wbBtnEnd" data-i18n="homeV9BtnEnd" hidden>说完了</button>
+                          <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
+                        </div>
+                        <div class="wb-live-voice" id="wbVoicePanel"></div>
+                      </section>
                       <section class="wb-scenario-panel" id="wbScenarioPanel"></section>
-                      <section class="wb-voice-panel" id="wbVoicePanel"></section>
                     </aside>
                   </div>
                 </div>

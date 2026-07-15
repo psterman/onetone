@@ -4,9 +4,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
 
-  var waveAnimId=null;
-  var waveOffset=0;
-  var waveAmplitude=10;
+  var HOME_MIC_BAR_COUNT=28;
 
   function esc(s){
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -197,49 +195,10 @@
     host.innerHTML=html;
   }
 
-  function stopWave(){
-    if(waveAnimId){
-      cancelAnimationFrame(waveAnimId);
-      waveAnimId=null;
-    }
-  }
-
-  function drawWave(canvas,live){
-    if(!canvas||!canvas.isConnected){
-      waveAnimId=null;
-      return;
-    }
-    var ctx=canvas.getContext('2d');
-    if(!ctx) return;
-    var w=canvas.width;
-    var h=canvas.height;
-    if(w<=0||h<=0) return;
-    ctx.clearRect(0,0,w,h);
-    ctx.beginPath();
-    var amp=live?waveAmplitude:8;
-    var color=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()||'#2a9cc4';
-    ctx.strokeStyle=color;
-    ctx.lineWidth=2.2;
-    var mid=h/2;
-    ctx.moveTo(0,mid);
-    for(var x=0;x<w;x++){
-      var y=mid+Math.sin(x*0.02+waveOffset)*amp*Math.sin(x*0.004);
-      ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-    waveOffset+=live?0.12:0.05;
-    waveAnimId=requestAnimationFrame(function(){ drawWave(canvas,live); });
-  }
-
-  function resizeWaveCanvas(canvas){
-    if(!canvas||!canvas.parentElement) return;
-    var rect=canvas.parentElement.getBoundingClientRect();
-    var w=Math.max(1,Math.floor(rect.width));
-    var h=Math.max(1,Math.floor(rect.height));
-    if(canvas.width!==w||canvas.height!==h){
-      canvas.width=w;
-      canvas.height=h;
-    }
+  function buildHomeMicBars(count){
+    var html='';
+    for(var i=0;i<(count||HOME_MIC_BAR_COUNT);i++) html+='<span></span>';
+    return html;
   }
 
   function renderVoicePanel(vm){
@@ -255,11 +214,7 @@
       :'<span class="wb-voice-phrase is-muted">'+esc(t('homeWbVoicePhrasesEmpty'))+'</span>';
 
     host.innerHTML=
-      '<div class="wb-panel-head">'
-      +'<span class="wb-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>'
-      +'<span>'+esc(t('homeWbVoicePanelTitle'))+'</span></span>'
-      +(listening?'<span class="wb-panel-badge is-live">'+esc(t('homeWbVoiceListening'))+'</span>':'')
-      +'</div>'
+      '<div class="wb-live-voice-block">'
       +'<div class="wb-voice-phrases">'
       +'<span class="wb-voice-phrases-lbl">'+esc(t('homeWbVoicePhrases'))+'</span>'
       +'<div class="wb-voice-phrase-list">'+phraseHtml+'</div>'
@@ -269,25 +224,11 @@
       +'<span class="wb-voice-mic-lbl">'+esc(t('homeWbVoiceMicSource'))+'</span>'
       +'<button type="button" class="wb-voice-mic-change" id="wbVoiceChangeMic">'+esc(t('homeWbVoiceChangeMic'))+'</button>'
       +'</div>'
-      +'<div class="wb-voice-mic-box">'
+      +'<div class="wb-voice-mic-box'+(listening?' is-live':'')+'">'
       +'<div class="wb-voice-mic-name"><span>'+esc(vm.micLabel||t('homeLiveMicUnset'))+'</span>'
       +'<span class="wb-voice-mic-default">'+esc(t('homeWbVoiceMicDefault'))+'</span></div>'
-      +'<div class="wb-live-wave-wrap"><canvas class="wb-live-wave-canvas" id="wbLiveWaveCanvas" aria-hidden="true"></canvas></div>'
-      +'</div></div>';
-
-    stopWave();
-    waveAmplitude=listening?26:10;
-    var canvas=$('wbLiveWaveCanvas');
-    if(canvas){
-      resizeWaveCanvas(canvas);
-      drawWave(canvas,listening);
-    }
-  }
-
-  function onResize(){
-    var canvas=$('wbLiveWaveCanvas');
-    if(!canvas) return;
-    resizeWaveCanvas(canvas);
+      +'<div class="mic-level-bars mic-level-bars--home" id="wbHomeMicLevel" aria-hidden="true">'+buildHomeMicBars()+'</div>'
+      +'</div></div></div>';
   }
 
   function renderAll(vm){
@@ -300,7 +241,6 @@
   function bindOnce(){
     if(global.__wb_panels_bound__) return;
     global.__wb_panels_bound__=true;
-    window.addEventListener('resize',onResize);
   }
 
   global.OneToneHomeWorkbenchPanels={
@@ -310,6 +250,6 @@
     renderScenarioPanel:renderScenarioPanel,
     renderVoicePanel:renderVoicePanel,
     bindOnce:bindOnce,
-    stopWave:stopWave
+    stopWave:function(){}
   };
 })((typeof window!=='undefined')?window:globalThis);

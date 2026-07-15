@@ -241,9 +241,9 @@
     if(actions) actions.classList.toggle('is-dictating',dictating);
     var endBtn=$('wbBtnEnd');
     var cancelBtn=$('wbBtnCancel');
-    var testBtn=$('wbBtnTestSend');
     if(endBtn){
       endBtn.disabled=!dictating;
+      endBtn.hidden=!dictating;
       endBtn.textContent=dictating?t('homeWbBtnEndSend'):t('homeV9BtnEnd');
       endBtn.classList.toggle('wb-trigger-btn-filled',dictating);
       endBtn.classList.toggle('wb-trigger-btn-tonal',!dictating);
@@ -253,7 +253,6 @@
       cancelBtn.disabled=!dictating;
       if(dictating) cancelBtn.textContent=t('homeWbBtnCancel');
     }
-    if(testBtn) testBtn.hidden=dictating;
     renderTriggerHero(vm);
   }
 
@@ -268,15 +267,43 @@
   function renderLiveText(vm){
     var liveEl=$('wbLiveText');
     if(!liveEl) return;
+    var card=$('wbLivePreview');
+    var status=$('wbLivePreviewStatus');
+    var listenBtn=$('wbBtnListenToggle');
+    var listenLbl=$('wbBtnListenToggleLabel');
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var dictating=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var listening=!paused&&(dictating||(vm.summary&&vm.summary.statusMode==='listening')||vm.vpState==='LISTENING');
+    if(card){
+      card.classList.toggle('is-live',!!listening);
+      card.classList.toggle('is-paused',paused);
+    }
+    if(status){
+      status.classList.toggle('is-live',!!listening);
+      status.classList.toggle('is-standby',!listening&&!paused);
+      status.classList.toggle('is-paused',paused);
+      status.textContent=paused
+        ?t('homeWbLivePreviewPaused')
+        :(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby'));
+    }
+    if(listenBtn){
+      listenBtn.classList.toggle('is-paused',paused);
+      listenBtn.setAttribute('aria-pressed',paused?'true':'false');
+      listenBtn.title=paused?t('homeWbListenResumeTip'):t('homeWbListenPauseTip');
+    }
+    if(listenLbl) listenLbl.textContent=paused?t('homeWbListenResume'):t('homeWbListenPause');
     if(vm.loading){
+      liveEl.classList.add('is-placeholder');
       liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeLiveLoading'))+'</div>';
       return;
     }
     if(vm.live.placeholder){
       var hintKey=vm.live.hintKey||'homeWbLiveIdleHint';
+      liveEl.classList.add('is-placeholder');
       liveEl.innerHTML='<div class="vp-empty">'+esc(t(hintKey))+'</div>';
       return;
     }
+    liveEl.classList.remove('is-placeholder');
     if(global.vp9&&global.vp9.setText){
       global.vp9.setText('#wbLiveText',vm.live.finalized,vm.live.pending);
     }else{
@@ -537,6 +564,14 @@
         }
       };
     }
+    var listenToggle=$('wbBtnListenToggle');
+    if(listenToggle){
+      listenToggle.onclick=function(){
+        if(!global.OneToneIpc) return;
+        var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
+        global.OneToneIpc.invoke(paused?'cmd_resume':'cmd_pause',{}).catch(function(){});
+      };
+    }
     var testBtn=$('wbBtnTestSend');
     if(testBtn){
       testBtn.onclick=function(){
@@ -556,8 +591,9 @@
     var heroBtn=$('wbTriggerHero');
     if(heroBtn){
       heroBtn.onclick=function(){
-        var testBtn=$('wbBtnTestSend');
-        if(testBtn&&!testBtn.hidden) testBtn.click();
+        var vm=global.OneToneHomeV9.buildViewModel();
+        var id=vm.m&&vm.m.id?vm.m.id:null;
+        openSettings({panel:'keys',focus:id});
       };
     }
     var qNew=$('wbHabitNew');
@@ -592,7 +628,12 @@
     if(brandSub) brandSub.textContent=t('homeWbNavSubtitle');
     setText($('wbBtnEnd'),t('homeV9BtnEnd'));
     setText($('wbBtnCancel'),t('homeWbBtnCancel'));
-    setText($('wbBtnTestSend'),t('homeLiveTestEndSend'));
+    setText($('wbBtnTestSend'),t('homeWbQuickStart'));
+    setText($('wbLivePreviewTitle'),t('homeWbLivePreviewTitle'));
+    setText($('wbBtnListenToggleLabel'),
+      (global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused)
+        ?t('homeWbListenResume')
+        :t('homeWbListenPause'));
     var heroHint=$('wbTriggerHeroHint');
     if(heroHint) heroHint.textContent=t('homeWbTriggerHeroHint');
     var triggerEdit=$('wbTriggerEdit');
