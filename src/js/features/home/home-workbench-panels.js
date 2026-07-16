@@ -137,6 +137,44 @@
     return split>=0?engineRaw.slice(0,split):engineRaw;
   }
 
+  function phraseIconSvg(kind){
+    if(kind==='wake'){
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>';
+    }
+    if(kind==='end'){
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>';
+    }
+    if(kind==='cancel'){
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
+  }
+
+  function phraseGroupHtml(kind,label,phrases){
+    var shown=phrases.slice(0,2);
+    var more=Math.max(0,phrases.length-shown.length);
+    var chips=shown.length
+      ?shown.map(function(p){ return '<span class="wb-howto-phrase-chip">'+esc(p)+'</span>'; }).join('')
+      :'<span class="wb-howto-phrase-chip is-empty">—</span>';
+    if(more>0){
+      chips+='<span class="wb-howto-phrase-chip is-more" title="'+esc(phrases.slice(2).join(' · '))+'">+'+more+'</span>';
+    }
+    return '<div class="wb-howto-phrase-row" data-phrase-kind="'+esc(kind)+'">'
+      +'<span class="wb-howto-phrase-ico" title="'+esc(label)+'" aria-label="'+esc(label)+'">'+phraseIconSvg(kind)+'</span>'
+      +'<span class="wb-howto-phrase-lbl">'+esc(label)+'</span>'
+      +'<div class="wb-howto-phrase-list">'+chips+'</div>'
+      +'</div>';
+  }
+
+  function voicePhrasePanelHtml(vm){
+    return '<div class="wb-howto-phrase-panel">'
+      +phraseGroupHtml('wake',t('homeWbPhraseWake'),phraseList('wake',vm))
+      +phraseGroupHtml('end',t('homeWbPhraseEnd'),phraseList('end',vm))
+      +phraseGroupHtml('cancel',t('homeWbPhraseCancel'),phraseList('cancel',vm))
+      +phraseGroupHtml('send',t('homeWbPhraseSend'),phraseList('send',vm))
+      +'</div>';
+  }
+
   function renderHowTo(vm){
     var host=$('wbHowTo');
     if(!host) return;
@@ -149,8 +187,6 @@
     }
     var phrases=wakePhrases(vm);
     var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
-    var wakeAlt=phrases.length>1?phrases.slice(1,3).join(' · '):'—';
-    var endLine=dash(vm&&vm.endPhraseLine);
 
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
@@ -170,19 +206,17 @@
         icon:keyIcon,
         art:keycapArt(trig)
       })
-      +howToCardHtml({
-        kind:'voice',
-        active:mode==='voice',
-        title:t('homeWbHowToVoiceTitle'),
-        value:wakeMain,
-        meta1Lbl:t('homeWbHowToWakeAlt'),
-        meta1Val:wakeAlt,
-        meta2Lbl:t('homeWbHowToEnd'),
-        meta2Val:endLine,
-        tip:t('homeWbHowToVoiceTip'),
-        icon:voiceIcon,
-        art:'<span class="wb-howto-bubbles" aria-hidden="true"></span>'
-      })
+      +'<button type="button" class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
+      +'<div class="wb-howto-card-head">'
+      +'<span class="wb-howto-card-ico" aria-hidden="true">'+voiceIcon+'</span>'
+      +'<span class="wb-howto-card-title">'+esc(t('homeWbHowToVoiceTitle'))+'</span>'
+      +'</div>'
+      +'<div class="wb-howto-card-main wb-howto-card-main--voice">'
+      +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
+      +'</div>'
+      +voicePhrasePanelHtml(vm)
+      +'<p class="wb-howto-card-tip">'+esc(t('homeWbHowToVoiceTip'))+'</p>'
+      +'</button>'
       +'</div>';
   }
 
@@ -264,49 +298,56 @@
     return html;
   }
 
+  function phraseList(kind,vm){
+    var live=global.OneToneHomeLive;
+    var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+    var end=(cfg&&(cfg.voiceEnd||cfg.voice_end))||{};
+    var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+    var out=[];
+    var seen={};
+    function push(p){
+      var clean=String(p||'').trim();
+      if(!clean||seen[clean]) return;
+      seen[clean]=true;
+      out.push(clean);
+    }
+    if(kind==='wake'){
+      wakePhrases(vm).forEach(push);
+      if(live&&live.voiceWakePhrases) live.voiceWakePhrases().forEach(push);
+      return out.slice(0,3);
+    }
+    if(kind==='end'){
+      if(live&&live.voiceEndPhrases) live.voiceEndPhrases().forEach(push);
+      if(!out.length){
+        var endZh=end.phrasesZh||end.phrases_zh||[];
+        var endEn=end.phrasesEn||end.phrases_en||[];
+        (lang==='en'?(endEn.length?endEn:endZh):(endZh.length?endZh:endEn)).forEach(push);
+      }
+      return out.slice(0,2);
+    }
+    if(kind==='cancel'){
+      var cZh=end.cancelPhrasesZh||end.cancel_phrases_zh||[];
+      var cEn=end.cancelPhrasesEn||end.cancel_phrases_en||[];
+      (lang==='en'?(cEn.length?cEn:cZh):(cZh.length?cZh:cEn)).forEach(push);
+      return out.slice(0,2);
+    }
+    if(kind==='send'){
+      var sZh=end.sendPhrasesZh||end.send_phrases_zh||[];
+      var sEn=end.sendPhrasesEn||end.send_phrases_en||[];
+      (lang==='en'?(sEn.length?sEn:sZh):(sZh.length?sZh:sEn)).forEach(push);
+      return out.slice(0,2);
+    }
+    return out;
+  }
+
   function renderMicCard(vm){
     var host=$('wbVoicePanel');
-    if(!host) return;
-    var listening=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating)
-      ||(vm.summary&&vm.summary.statusMode==='listening');
-    var phrases=wakePhrases(vm);
-    var phraseHtml=phrases.length
-      ?phrases.map(function(p,i){
-        return '<span class="wb-voice-phrase'+(i>1?' is-muted':'')+'">'+esc(p)+'</span>';
-      }).join('')
-      :'<span class="wb-voice-phrase is-muted">'+esc(t('homeWbVoicePhrasesEmpty'))+'</span>';
-    var eng=engineName(vm);
-
-    host.innerHTML=
-      '<div class="wb-panel-head">'
-      +'<span class="wb-panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>'
-      +'<span>'+esc(t('homeWbMicCardTitle'))+'</span></span>'
-      +(listening?'<span class="wb-panel-badge is-live">'+esc(t('homeWbVoiceListening'))+'</span>':'')
-      +'</div>'
-      +'<div class="wb-mic-engine-row">'
-      +'<span class="wb-mic-engine-lbl">'+esc(t('homeWbHowToEngineTitle'))+'</span>'
-      +'<strong class="wb-mic-engine-name">'+esc(eng)+'</strong>'
-      +'</div>'
-      +'<div class="wb-voice-mic">'
-      +'<div class="wb-voice-mic-head">'
-      +'<span class="wb-voice-mic-lbl">'+esc(t('homeWbVoiceMicSource'))+'</span>'
-      +'<button type="button" class="wb-voice-mic-change" id="wbVoiceChangeMic">'+esc(t('homeWbVoiceChangeMic'))+'</button>'
-      +'</div>'
-      +'<div class="wb-voice-mic-box'+(listening?' is-live':'')+'">'
-      +'<div class="wb-voice-mic-name"><span>'+esc(vm.micLabel||t('homeLiveMicUnset'))+'</span>'
-      +'<span class="wb-voice-mic-default">'+esc(t('homeWbVoiceMicDefault'))+'</span></div>'
-      +'<div class="mic-level-bars mic-level-bars--home" id="wbHomeMicLevel" aria-hidden="true">'+buildHomeMicBars()+'</div>'
-      +'</div></div>'
-      +'<div class="wb-voice-phrases wb-voice-phrases--hover">'
-      +'<span class="wb-voice-phrases-lbl">'+esc(t('homeWbVoicePhrases'))+'</span>'
-      +'<div class="wb-voice-phrase-list">'+phraseHtml+'</div>'
-      +'</div>';
+    if(!host||host.hidden||host.closest('[hidden]')) return;
   }
 
   function renderAll(vm){
     renderHowTo(vm);
     renderScenarioPanel(vm);
-    renderMicCard(vm);
   }
 
   function bindOnce(){

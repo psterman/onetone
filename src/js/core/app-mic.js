@@ -89,7 +89,8 @@
         ?card
         :card.querySelector('.mic-level-bars');
       if(!wrap) return;
-      var barCount=wrap.classList.contains('mic-level-bars--home')?28:12;
+      var barCount=wrap.classList.contains('mic-level-bars--pill')?8
+        :(wrap.classList.contains('mic-level-bars--home')?28:12);
       var bars=wrap.querySelectorAll('span');
       if(!bars.length||bars.length!==barCount){
         wrap.innerHTML=buildMicLevelBars(barCount);

@@ -78,7 +78,8 @@
     var uptimeMs=startedAt?Math.max(0,Date.now()-startedAt):0;
     var uptime=formatUptime(uptimeMs);
     var agg=aggregateOps(runtime.events||[]);
-    var topMap=mappingById(agg.topMappingId);
+    var currentMap=vm&&vm.m?vm.m:null;
+    var topMap=mappingById(agg.topMappingId)||currentMap;
     var topTarget=mappingTargetLabel(topMap);
     var topShortcut=topMap&&String(topMap.triggerKey||'').trim()?String(topMap.triggerKey).trim():'';
     var latency='';
@@ -89,7 +90,7 @@
 
     return {
       uptime:uptime||'—',
-      opCount:agg.count>0?String(agg.count):'—',
+      opCount:String(Math.max(0,agg.count||0)),
       topTarget:topTarget||'—',
       topShortcut:topShortcut||'—',
       latency:latency||'—',
