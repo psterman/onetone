@@ -61,17 +61,77 @@
     return fs.resolveFinishMode?fs.resolveFinishMode(m):'manual';
   }
 
+  function startGesture(m){
+    var fs=global.OneToneSceneFlowSummary;
+    if(fs&&fs.resolveStartGesture) return fs.resolveStartGesture(m);
+    var raw=String(m&&m.triggerMode||'tap').toLowerCase();
+    if(raw==='hold'||raw==='longpress'||raw==='perpress') return 'hold';
+    if(raw==='double') return 'double';
+    return 'tap';
+  }
+
+  function finishModeOptionMeta(mode,gesture){
+    if(mode==='perpress'){
+      return {title:'habitFinishModeAuto',desc:'habitFinishModeAutoDesc',hint:'keysFinishModeHintHold'};
+    }
+    if(mode==='confirm'){
+      if(gesture==='double'){
+        return {title:'habitFinishModeConfirmDouble',desc:'habitFinishModeConfirmDoubleDesc',hint:'keysFinishModeHintDoubleSend',recommended:true};
+      }
+      return {title:'habitFinishModeConfirmSend',desc:'habitFinishModeConfirmSendDesc',hint:'keysFinishModeHintTapSend',recommended:true};
+    }
+    if(gesture==='double'){
+      return {title:'habitFinishModeManualDouble',desc:'habitFinishModeManualDoubleDesc',hint:'keysFinishModeHintDoubleManual'};
+    }
+    return {title:'habitFinishModeManual',desc:'habitFinishModeManualDesc',hint:'keysFinishModeHintTapManual'};
+  }
+
+  function allowedFinishModes(m){
+    var fs=global.OneToneSceneFlowSummary;
+    var gesture=startGesture(m);
+    if(fs&&fs.finishModesForGesture) return fs.finishModesForGesture(gesture);
+    return gesture==='hold'?['perpress']:['confirm','manual'];
+  }
+
+  function finishModeHintKey(mode,gesture){
+    return finishModeOptionMeta(mode,gesture||'tap').hint;
+  }
+
+  function syncKeysFinishModeChrome(m,finishMode){
+    var gesture=m?startGesture(m):'tap';
+    var hint=$('keysFinishModeHint');
+    if(hint){
+      if(m&&finishMode){
+        hint.textContent=t(finishModeHintKey(finishMode,gesture));
+        hint.hidden=false;
+      }else{
+        hint.textContent='';
+        hint.hidden=true;
+      }
+    }
+    var more=$('habitFlowFinishMore');
+    if(more){
+      var showCancel=!!(m&&finishMode==='confirm');
+      more.hidden=!showCancel;
+      if(!showCancel) more.open=false;
+    }
+  }
+
   function renderKeyFinishModeSegmented(m){
     var current=resolveDisplayedFinishMode(m);
-    var html='';
-    [
-      {mode:'perpress',title:'habitFinishModeAuto'},
-      {mode:'confirm',title:'habitFinishModeConfirmSend'},
-      {mode:'manual',title:'habitFinishModeManual'}
-    ].forEach(function(opt){
-      var active=current===opt.mode;
-      html+='<button type="button" class="keys-finish-segment'+(active?' is-active':'')+'" data-finish-mode="'+opt.mode+'" role="radio" aria-checked="'+(active?'true':'false')+'">'+t(opt.title)+'</button>';
+    var gesture=startGesture(m);
+    var allowed=allowedFinishModes(m);
+    if(allowed.indexOf(current)<0) current=allowed[0]||'manual';
+    var html='<div class="keys-finish-segments" role="radiogroup" aria-label="'+t('habitFlowStepFinishLbl')+'">';
+    allowed.forEach(function(mode){
+      var meta=finishModeOptionMeta(mode,gesture);
+      var active=current===mode;
+      html+='<button type="button" class="keys-finish-segment'+(active?' is-active':'')+'" data-finish-mode="'+mode+'" role="radio" aria-checked="'+(active?'true':'false')+'">';
+      html+='<span class="keys-finish-segment-label">'+t(meta.title)+'</span>';
+      if(meta.recommended) html+='<span class="keys-finish-segment-badge">'+t('habitFinishModeRecommended')+'</span>';
+      html+='</button>';
     });
+    html+='</div>';
     return html;
   }
 
@@ -118,6 +178,7 @@
       btn.classList.toggle('is-active',active);
       btn.setAttribute('aria-checked',active?'true':'false');
     });
+    syncKeysFinishModeChrome(m,current);
     renderKeysFinishStrategyPreview(m);
   }
 
@@ -131,19 +192,19 @@
 
   function renderKeyFinishModeBlock(m){
     var current=resolveDisplayedFinishMode(m);
+    var gesture=startGesture(m);
+    var allowed=allowedFinishModes(m);
+    if(allowed.indexOf(current)<0) current=allowed[0]||'manual';
     var html='<div class="map-trigger-mode habit-finish-modes">';
     html+='<div class="habit-finish-mode-list">';
-    [
-      {mode:'perpress',title:'habitFinishModeAuto',desc:'habitFinishModeAutoDesc'},
-      {mode:'confirm',title:'habitFinishModeConfirmSend',desc:'habitFinishModeConfirmSendDesc',recommended:true},
-      {mode:'manual',title:'habitFinishModeManual',desc:'habitFinishModeManualDesc'}
-    ].forEach(function(opt){
-      var active=current===opt.mode;
-      html+='<button type="button" class="habit-finish-mode-option'+(active?' is-active':'')+'" data-finish-mode="'+opt.mode+'">';
-      html+=finishModeIcon(opt.mode);
-      html+='<span class="habit-finish-mode-copy"><span class="habit-finish-mode-title">'+t(opt.title)+'</span>';
-      if(opt.recommended) html+='<span class="habit-finish-mode-badge">'+t('habitFinishModeRecommended')+'</span>';
-      html+='<span class="habit-finish-mode-desc">'+t(opt.desc)+'</span></span>';
+    allowed.forEach(function(mode){
+      var meta=finishModeOptionMeta(mode,gesture);
+      var active=current===mode;
+      html+='<button type="button" class="habit-finish-mode-option'+(active?' is-active':'')+'" data-finish-mode="'+mode+'">';
+      html+=finishModeIcon(mode);
+      html+='<span class="habit-finish-mode-copy"><span class="habit-finish-mode-title">'+t(meta.title)+'</span>';
+      if(meta.recommended) html+='<span class="habit-finish-mode-badge">'+t('habitFinishModeRecommended')+'</span>';
+      html+='<span class="habit-finish-mode-desc">'+t(meta.desc)+'</span></span>';
       if(active) html+='<svg class="habit-finish-mode-check" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
       html+='</button>';
     });
@@ -324,6 +385,7 @@
       confirmCard.innerHTML='<div class="setting-row"><div class="setting-row-main"><span class="setting-row-text">'+t('sendTimingTitle')+'</span></div></div>'+empty;
       if(delayHost){ delayHost.innerHTML=''; delayHost.hidden=true; }
       if(cancelHost){ cancelHost.innerHTML=''; cancelHost.hidden=true; }
+      syncKeysFinishModeChrome(null,'');
       renderKeysFinishStrategyPreview(null);
       syncKeyExecFinishTimingSection(null);
       renderKeySchemeCardHeader();
@@ -339,6 +401,7 @@
     modePanel.innerHTML=useKeysFinishSegmented()?renderKeyFinishModeSegmented(m):renderKeyFinishModeBlock(m);
     var keysPanel=useKeysFinishSegmented();
     var finishMode=resolveDisplayedFinishMode(m);
+    syncKeysFinishModeChrome(m,finishMode);
     if(keysPanel){
       cancelCard.innerHTML='';
       confirmCard.innerHTML='';
@@ -425,7 +488,17 @@
       var m=appState().config.mappings.find(function(x){return x.id===id;});
       if(!m||!mode) return false;
       e.stopPropagation();
+      var prevGesture=startGesture(m);
       m.triggerMode=mode;
+      var nextGesture=startGesture(m);
+      // Align finish with the new start gesture so hold vs tap/double stay consistent.
+      if(global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.applyFinishMode){
+        if(nextGesture==='hold'){
+          global.OneToneSceneFlowSummary.applyFinishMode(m,'perpress');
+        }else if(prevGesture==='hold'){
+          global.OneToneSceneFlowSummary.applyFinishMode(m,'confirm');
+        }
+      }
       hooks().save();
       renderKeyFinishFlowPanel();
       hooks().renderMappingList();
@@ -438,7 +511,11 @@
       var m=hooks().selectedMapping();
       if(!m||!field) return false;
       e.stopPropagation();
-      if(field==='cancelEnabled'||field==='autoEnterEnabled') m.triggerMode='tap';
+      if(field==='cancelEnabled'||field==='autoEnterEnabled'){
+        var g=startGesture(m);
+        if(g==='hold') m.triggerMode='tap';
+        // Preserve double-click start; do not force tap.
+      }
       m[field]=!m[field];
       scheduleTimingSave();
       renderKeyFinishFlowPanel();

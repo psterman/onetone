@@ -32,7 +32,9 @@
     }
     var cancelCard=$('voiceEndCancelCard');
     var cancelCell=$('habitKeyMapCellCancel');
-    if(cancelCard&&cancelCell&&!$('keysFinishCancelHost')) moveChild(cancelCell,cancelCard);
+    var cancelHost=$('keysFinishCancelHost');
+    // Prefer the in-slot host; only fall back to moving the legacy card when host is absent.
+    if(cancelCard&&cancelCell&&!cancelHost) moveChild(cancelCell,cancelCard);
     mounted=true;
   }
 

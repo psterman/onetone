@@ -2900,11 +2900,49 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   background: var(--primary-soft);
   color: var(--primary-strong);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .wb-scene-card-ico svg {
   width: 16px;
   height: 16px;
+}
+
+.wb-scene-card-ico--app {
+  background: var(--surface-high);
+  border: 1px solid var(--outline-variant);
+  padding: 0;
+}
+
+.wb-scene-card-ico--app img,
+.wb-scene-card .habit-app-badge img,
+.wb-scene-card .habit-app-badge-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wb-scene-card .habit-app-badge,
+.wb-scene-card .habit-app-badge-fallback {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface-high);
+  border: 1px solid var(--outline-variant);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+.wb-scene-card .habit-app-badge.has-icon {
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .wb-scene-card--new .wb-scene-card-ico {

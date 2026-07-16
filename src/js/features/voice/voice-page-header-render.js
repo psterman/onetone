@@ -128,6 +128,18 @@
     if(ruleBar) ruleBar.textContent=t('voiceRecognizeRuleBar');
     const scopeAdd=$('btnVoiceAppScopeAdd');
     if(scopeAdd) scopeAdd.textContent=t('keysAppChipAddShort')||t('keysAppChipAdd');
+    function applyPhraseKindTabLabels(tabsId,tabsLblKey){
+      var host=$(tabsId);
+      if(!host) return;
+      host.setAttribute('aria-label',t(tabsLblKey)||t('voicePhraseKindTabsLbl'));
+      var textBtn=host.querySelector('[data-phrase-kind="text"]');
+      var soundBtn=host.querySelector('[data-phrase-kind="sound"]');
+      if(textBtn) textBtn.textContent=t('voicePhraseKindText');
+      if(soundBtn) soundBtn.textContent=t('voicePhraseKindSound');
+    }
+    applyPhraseKindTabLabels('voiceWakeKindTabs','voicePhraseKindTabsWakeLbl');
+    applyPhraseKindTabLabels('voiceCancelKindTabs','voicePhraseKindTabsCancelLbl');
+    applyPhraseKindTabLabels('voiceEndKindTabs','voicePhraseKindTabsEndLbl');
     const summonManage=$('btnVoiceOutputSummonManage');
     if(summonManage) summonManage.textContent=t('voiceOutputSummonManage');
     const habitLink=$('btnVoiceSendHabitLink');

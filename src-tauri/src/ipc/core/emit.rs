@@ -9,20 +9,21 @@ const EMIT_SKIP_LOG_INTERVAL_MS: u64 = 5000;
 
 static EMIT_SKIP_LAST_LOG_MS: AtomicU64 = AtomicU64::new(0);
 
-/// Emit to the webview on the main thread (safe from hotkey/voice/watcher threads).
-/// Prefer [`emit_app_event`] from capture/audio threads that may be joined by IPC.
+/// Emit to the webview without blocking the caller.
+///
+/// Never use `run_on_main_thread` here: IPC handlers (e.g. `cmd_save`) often emit while
+/// JS is awaiting the same invoke. Waiting for the UI thread deadlocks the window
+/// (`Responding=false` / 假死), especially when the handler also stops Vosk.
 pub fn emit_to_js_main(window: &WebviewWindow, payload: serde_json::Value) {
-    let win = window.clone();
-    let _ = window.run_on_main_thread(move || {
-        let _ = win.emit("to_js", &payload);
-    });
+    if let Err(e) = window.emit("to_js", &payload) {
+        log_emit_skip_throttled(None, &format!("emit_to_js_main failed: {e}"));
+    }
 }
 
 pub fn emit_to_js_main_t<T: serde::Serialize + Send + 'static>(window: &WebviewWindow, payload: T) {
-    let win = window.clone();
-    let _ = window.run_on_main_thread(move || {
-        let _ = win.emit("to_js", &payload);
-    });
+    if let Err(e) = window.emit("to_js", &payload) {
+        log_emit_skip_throttled(None, &format!("emit_to_js_main_t failed: {e}"));
+    }
 }
 
 pub fn get_main_window(app: &AppHandle) -> Option<WebviewWindow> {

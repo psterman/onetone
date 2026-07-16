@@ -327,12 +327,18 @@
 }
 
 #settingsPanelKeys .keys-workflow-col .keys-finish-segments {
-  flex-direction: column;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
 }
 
 #settingsPanelKeys .keys-workflow-col .keys-finish-segment {
   min-width: 0;
-  width: 100%;
+  width: auto;
+  flex: 1 1 0;
 }
 
 #settingsPanelKeys .keys-workflow-col-subhead .habit-flow-step-status {
@@ -1496,6 +1502,8 @@
 
 #settingsPanelKeys .keys-workflow-col .keys-finish-segments {
   flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
 }
 
 /* Shared workflow primitives for Keys + Voice panels */

@@ -78,20 +78,37 @@
     if(appName) text=t('keysFinishPreviewApp').replace('{app}',appName).replace('{text}',text);
     return {text:text,saved:true};
   }
+  function resolveStartGesture(m){
+    var raw=String(m&&m.triggerMode||'tap').toLowerCase();
+    if(raw==='hold'||raw==='longpress'||raw==='perpress') return 'hold';
+    if(raw==='double') return 'double';
+    return 'tap';
+  }
   function resolveFinishMode(m){
     if(!m) return 'manual';
-    var raw=String(m.triggerMode||'tap').toLowerCase();
-    if(raw==='hold'||raw==='longpress'||raw==='perpress') return 'perpress';
-    if(raw==='toggle') return 'toggle';
+    var gesture=resolveStartGesture(m);
+    if(gesture==='hold') return 'perpress';
     if(m.cancelEnabled||m.autoEnterEnabled) return 'confirm';
     return 'manual';
   }
   function applyFinishMode(m,mode){
     if(!m) return;
     ensureMappingTiming(m);
-    if(mode==='perpress'){ m.triggerMode='hold'; return; }
-    if(mode==='confirm'){ m.triggerMode='tap'; m.cancelEnabled=true; m.autoEnterEnabled=true; return; }
-    if(mode==='manual'){ m.triggerMode='tap'; m.cancelEnabled=false; m.autoEnterEnabled=false; }
+    var gesture=resolveStartGesture(m);
+    if(mode==='perpress'){
+      m.triggerMode='longpress';
+      return;
+    }
+    // Keep double-click start gesture; only leave hold when picking tap-based finish.
+    if(gesture==='hold') m.triggerMode='tap';
+    else if(gesture==='double') m.triggerMode='double';
+    else m.triggerMode='tap';
+    if(mode==='confirm'){ m.cancelEnabled=true; m.autoEnterEnabled=true; return; }
+    if(mode==='manual'){ m.cancelEnabled=false; m.autoEnterEnabled=false; }
+  }
+  function finishModesForGesture(gesture){
+    if(gesture==='hold') return ['perpress'];
+    return ['confirm','manual'];
   }
   function setKeyCell(el,text,isSet){
     if(!el) return;
@@ -224,5 +241,5 @@
       focusStep:opts.focusStep||''
     });
   }
-  global.OneToneSceneFlowSummary={displayTriggerLabel:displayTriggerLabel,displayTargetKey:displayTargetKey,finishBehaviorTextHome:finishBehaviorTextHome,finishBehaviorTextSettings:finishBehaviorTextSettings,finishStrategyPreviewText:finishStrategyPreviewText,resolveEffectiveFinishMode:resolveEffectiveFinishMode,resolveFinishMode:resolveFinishMode,applyFinishMode:applyFinishMode,syncFlowSummary:syncFlowSummary,renderLabels:renderLabels,render:render,emptyKeyLabel:emptyKeyLabel,friendlyKeyName:friendlyKeyName};
+  global.OneToneSceneFlowSummary={displayTriggerLabel:displayTriggerLabel,displayTargetKey:displayTargetKey,finishBehaviorTextHome:finishBehaviorTextHome,finishBehaviorTextSettings:finishBehaviorTextSettings,finishStrategyPreviewText:finishStrategyPreviewText,resolveEffectiveFinishMode:resolveEffectiveFinishMode,resolveFinishMode:resolveFinishMode,resolveStartGesture:resolveStartGesture,finishModesForGesture:finishModesForGesture,applyFinishMode:applyFinishMode,syncFlowSummary:syncFlowSummary,renderLabels:renderLabels,render:render,emptyKeyLabel:emptyKeyLabel,friendlyKeyName:friendlyKeyName};
 })((typeof window!=='undefined')?window:globalThis);

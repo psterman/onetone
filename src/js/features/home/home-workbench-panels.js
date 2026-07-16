@@ -263,11 +263,45 @@
     return '—';
   }
 
+  function sceneIconHtml(m){
+    var isApp=global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
+    if(isApp){
+      var hub=global.OneToneHabitHub;
+      if(hub&&hub.renderMappingAppIcon){
+        var badge=hub.renderMappingAppIcon(m,'wb-scene-app-badge');
+        if(badge) return badge;
+      }
+      var appId=String(m&&m.appTargetId||'').trim();
+      if(appId&&appId!=='custom'&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.presetById){
+        var preset=global.OneToneAppTargetPresets.presetById(appId);
+        if(preset&&preset.icon){
+          return '<span class="wb-scene-card-ico wb-scene-card-ico--app" aria-hidden="true">'
+            +'<img src="'+esc(preset.icon)+'" alt="" decoding="async" />'
+            +'</span>';
+        }
+      }
+      var rules=global.OneToneAppBehaviorRules;
+      if(rules&&rules.customRulesForMapping){
+        var customs=rules.customRulesForMapping(m)||[];
+        var rule=customs[0];
+        var url=rule?String(rule.iconDataUrl||rule.icon_data_url||'').trim():'';
+        if(url){
+          return '<span class="wb-scene-card-ico wb-scene-card-ico--app" aria-hidden="true">'
+            +'<img src="'+esc(url)+'" alt="" decoding="async" />'
+            +'</span>';
+        }
+      }
+    }
+    return '<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg></span>';
+  }
+
   function sceneCardHtml(m,activeId){
     var active=m.id===activeId;
     var name=global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—';
     return '<button type="button" class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
-      +'<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg></span>'
+      +sceneIconHtml(m)
       +'<span class="wb-scene-card-body">'
       +'<span class="wb-scene-card-name">'+esc(name)+'</span>'
       +'<span class="wb-scene-card-desc">'+esc(sceneDesc(m))+'</span>'
@@ -290,6 +324,10 @@
       +'</span>'
       +'</button>';
     host.innerHTML=html;
+    var rules=global.OneToneAppBehaviorRules;
+    if(rules&&rules.prefetchMappingRuleIcons){
+      items.forEach(function(m){ rules.prefetchMappingRuleIcons(m); });
+    }
   }
 
   function buildHomeMicBars(count){

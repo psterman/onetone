@@ -47,20 +47,22 @@ pub fn file_description(path: &str) -> Option<String> {
 }
 
 #[cfg(windows)]
-unsafe fn query_file_description(data: &[u8], lang_code: &str) -> Option<String> {
+unsafe fn query_version_string(data: &[u8], lang_code: &str, field: &str) -> Option<String> {
     use winapi::shared::minwindef::DWORD;
     use winapi::um::winver::VerQueryValueW;
 
-    let key = wide_null(&format!("\\StringFileInfo\\{lang_code}\\FileDescription"));
+    let key = wide_null(&format!("\\StringFileInfo\\{lang_code}\\{field}"));
     let mut ptr: *mut winapi::ctypes::c_void = std::ptr::null_mut();
     let mut len: DWORD = 0;
     if VerQueryValueW(data.as_ptr() as _, key.as_ptr(), &mut ptr, &mut len) == 0
         || ptr.is_null()
-        || len < 2
+        || len == 0
     {
         return None;
     }
-    let slice = std::slice::from_raw_parts(ptr as *const u16, (len / 2) as usize);
+    // For StringFileInfo values, `len` is a WCHAR count (often including the trailing NUL),
+    // not a byte count — dividing by 2 truncated names like "Cursor" → "Cur".
+    let slice = std::slice::from_raw_parts(ptr as *const u16, len as usize);
     let text = String::from_utf16_lossy(slice);
     let text = text.trim_matches('\0').trim();
     if text.is_empty() {
@@ -68,6 +70,12 @@ unsafe fn query_file_description(data: &[u8], lang_code: &str) -> Option<String>
     } else {
         Some(text.to_string())
     }
+}
+
+#[cfg(windows)]
+unsafe fn query_file_description(data: &[u8], lang_code: &str) -> Option<String> {
+    query_version_string(data, lang_code, "FileDescription")
+        .or_else(|| query_version_string(data, lang_code, "ProductName"))
 }
 
 #[cfg(not(windows))]

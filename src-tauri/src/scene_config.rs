@@ -56,6 +56,21 @@ pub struct VoiceRuntimeFingerprint {
     pub min_confidence: f32,
 }
 
+impl VoiceRuntimeFingerprint {
+    /// True when Vosk/SAPI/KWS must stop/start. Summon-only diffs (new app scenarios)
+    /// must not restart — that path raced with `cmd_save` / `cmd_ready` and 假死 the UI.
+    pub fn requires_engine_restart(&self, other: &Self) -> bool {
+        self.engine != other.engine
+            || self.vosk_model_path != other.vosk_model_path
+            || self.vosk_model_preset != other.vosk_model_preset
+            || self.min_confidence != other.min_confidence
+            || self.wake_phrases != other.wake_phrases
+            || self.end_phrases != other.end_phrases
+            || self.cancel_phrases != other.cancel_phrases
+            || self.send_phrases != other.send_phrases
+    }
+}
+
 pub fn resolve_effective_scene(
     cfg: &VoiceConfig,
     ctx: &SceneResolveContext<'_>,
@@ -1116,6 +1131,8 @@ mod tests {
         assert!(fp_after
             .summon_phrases
             .contains(&"unique summon xyz".to_string()));
+        // Creating app scenarios must not force Vosk stop/start (UI 假死 on save).
+        assert!(!fp_before.requires_engine_restart(&fp_after));
     }
 
     #[test]

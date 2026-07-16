@@ -270,60 +270,25 @@ fn is_self_process(exe_name: &str, full_path: Option<&str>) -> bool {
     false
 }
 
-fn display_name_from(exe_name: &str, title: &str) -> String {
-    let title = title.trim();
-    if !title.is_empty() && !is_generic_window_title(title, exe_name) {
-        return title.to_string();
-    }
-    let stem = exe_name
+fn exe_stem(exe_name: &str) -> &str {
+    exe_name
         .strip_suffix(".exe")
         .or_else(|| exe_name.strip_suffix(".EXE"))
-        .unwrap_or(exe_name);
-    stem.to_string()
+        .unwrap_or(exe_name)
 }
 
-fn is_generic_window_title(title: &str, exe_name: &str) -> bool {
-    let stem = exe_name
-        .strip_suffix(".exe")
-        .or_else(|| exe_name.strip_suffix(".EXE"))
-        .unwrap_or(exe_name);
-    title.eq_ignore_ascii_case(stem) || title.eq_ignore_ascii_case(exe_name)
-}
-
-fn display_name_for(
-    exe_name: &str,
-    window_title: &str,
-    full_path: Option<&str>,
-) -> String {
-    let title = window_title.trim();
-    let file_desc = full_path
-        .and_then(crate::app_exe_icon::file_description)
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
-
-    if let Some(ref desc) = file_desc {
-        if title.is_empty() || is_generic_window_title(title, exe_name) {
-            return desc.clone();
-        }
-        let dl = desc.to_ascii_lowercase();
-        let tl = title.to_ascii_lowercase();
-        if tl.len() < dl.len() && dl.starts_with(&tl) {
-            return desc.clone();
-        }
-        if desc.len() > title.len() + 2 {
-            return desc.clone();
+/// Program label for pickers / rules — never the live window title.
+/// Prefer FileDescription (e.g. "Cursor"), else exe stem ("Cursor.exe" → "Cursor").
+fn display_name_for(exe_name: &str, _window_title: &str, full_path: Option<&str>) -> String {
+    if let Some(path) = full_path {
+        if let Some(desc) = crate::app_exe_icon::file_description(path) {
+            let desc = desc.trim();
+            if !desc.is_empty() {
+                return desc.to_string();
+            }
         }
     }
-
-    if !title.is_empty() && !is_generic_window_title(title, exe_name) {
-        return title.to_string();
-    }
-
-    if let Some(desc) = file_desc {
-        return desc;
-    }
-
-    display_name_from(exe_name, "")
+    exe_stem(exe_name).to_string()
 }
 
 pub fn identity_display_name(identity: &AppIdentity) -> String {
@@ -593,6 +558,16 @@ mod tests {
                 .as_deref(),
             Some(CURSOR_APP_TARGET_ID)
         );
+    }
+
+    #[test]
+    fn display_name_prefers_exe_stem_over_window_title() {
+        let name = display_name_for(
+            "Cursor.exe",
+            "voice-listening-strategy.plan.md - voice-pilot - Cursor [管理员]",
+            None,
+        );
+        assert_eq!(name, "Cursor");
     }
 
     #[test]

@@ -1268,15 +1268,19 @@
     // Keep global baseline selected so Keys/Voice "universal" context is not stolen.
     restoreBaselineSelection(prevSelected);
     var saveFn=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
-    var done=function(){
+    var done=function(ok){
       render();
+      if(ok===false){
+        if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitScenarioSaveFailed'),'scheme');
+        return;
+      }
       if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioCreated'),'scheme');
     };
-    if(saveFn) saveFn().then(done).catch(done);
+    if(saveFn) saveFn().then(done).catch(function(){ done(false); });
     else{
       if(hooks().save) hooks().save();
       else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
-      done();
+      done(true);
     }
     return m;
   }
@@ -1736,6 +1740,7 @@
     snapshotVoiceOverride:currentVoiceOverride,
     defaultVoiceHabitName:defaultVoiceHabitName,
     deleteHabit:deleteHabit,
-    applyShellVisibility:applyShellVisibility
+    applyShellVisibility:applyShellVisibility,
+    renderMappingAppIcon:renderMappingAppIcon
   };
 })((typeof window!=='undefined')?window:globalThis);

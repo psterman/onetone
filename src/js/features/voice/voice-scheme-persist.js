@@ -349,7 +349,10 @@
 
   function applyVoiceAppScope(opts){
     opts=opts||{};
-    var m=ensureVoiceScopeMapping({allowDraft:false});
+    var m=null;
+    var mappingId=String(opts.mappingId||'').trim();
+    if(mappingId&&core()&&core().byId) m=core().byId(mappingId);
+    if(!m) m=ensureVoiceScopeMapping({allowDraft:false});
     if(!m) return false;
     var rules=global.OneToneAppBehaviorRules;
     var presets=global.OneToneAppVoicePresets;

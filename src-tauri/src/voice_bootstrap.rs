@@ -282,17 +282,8 @@ fn start_self_vosk(
         );
         return;
     }
-    // After stop_sync, state should be "stopped". If a stale busy label remains without a
-    // handle, still start — otherwise force:activate never recovers recognition.
-    let current = state.voice_vosk_state.lock().clone();
-    if current == "stopping" {
-        crate::app_log::log_line(
-            state,
-            "voice",
-            &format!("skip start self vosk ({reason}): state={current}"),
-        );
-        return;
-    }
+    // After stop_sync (or a concurrent async stop that already took the handle), always
+    // start. Do not skip on stale "stopping" — that left engines dead after fingerprint races.
     crate::app_log::log_line(state, "voice", &format!("start self vosk ({reason})"));
     let resource_dir = app.path().resource_dir().ok();
     voice_vosk_runtime::spawn_voice_vosk_start(
@@ -567,31 +558,62 @@ pub fn restart_active_engine_if_fingerprint_changed(
     new_cfg: &VoiceConfig,
     reason: &str,
 ) {
+    // Same lock as activate: cmd_save + config watcher must not interleave stop/start.
+    let _guard = ACTIVATE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    restart_active_engine_if_fingerprint_changed_locked(app, state, old_cfg, new_cfg, reason);
+}
+
+fn restart_active_engine_if_fingerprint_changed_locked(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    old_cfg: &VoiceConfig,
+    new_cfg: &VoiceConfig,
+    reason: &str,
+) {
     let desired =
         resolve_supervisor_desired_engine(state, new_cfg, app.path().resource_dir().ok().as_deref());
     let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
     let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
     let fingerprint_changed = old_fp != new_fp;
+    let needs_restart = match (&old_fp, &new_fp) {
+        (Some(a), Some(b)) => a.requires_engine_restart(b),
+        _ => fingerprint_changed,
+    };
 
-    if !fingerprint_changed {
-        crate::app_log::log_line(
-            state,
-            "voice",
-            "voice_bootstrap no runtime change (fingerprint unchanged)",
-        );
+    if !needs_restart {
+        if fingerprint_changed {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                "voice_bootstrap skip engine restart (summon-only / non-engine fingerprint change)",
+            );
+        } else {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                "voice_bootstrap no runtime change (fingerprint unchanged)",
+            );
+        }
         crate::runtime_event::publish_runtime_event(
             Some(app),
             state.as_ref(),
             "voice",
             crate::runtime_event::kind::VOICE_NO_CHANGE,
-            "voice_bootstrap no runtime change (fingerprint unchanged)",
+            if fingerprint_changed {
+                "voice_bootstrap skip engine restart (summon-only fingerprint change)"
+            } else {
+                "voice_bootstrap no runtime change (fingerprint unchanged)"
+            },
             Some(serde_json::json!({
                 "source": "voice_bootstrap",
                 "desiredEngine": engine_label(desired),
                 "fromEngine": engine_label(desired),
                 "toEngine": engine_label(desired),
                 "reason": reason,
-                "fingerprintChanged": false,
+                "fingerprintChanged": fingerprint_changed,
+                "engineRestart": false,
             })),
         );
         *state.last_voice_fingerprint.lock() = new_fp;
@@ -629,8 +651,11 @@ pub fn restart_active_engine_if_fingerprint_changed(
                     ),
                 );
             } else {
+                // Never sync-join here: config watcher + save path hold ACTIVATE_LOCK;
+                // native Vosk join used to leave the window Responding=false (假死).
                 crate::app_log::log_line(state, "voice", "stop self vosk (supervisor)");
-                voice_vosk_runtime::voice_vosk_stop_sync(state);
+                voice_vosk_runtime::voice_vosk_stop_detach(state);
+                std::thread::sleep(std::time::Duration::from_millis(120));
                 start_self_vosk(
                     app,
                     state,

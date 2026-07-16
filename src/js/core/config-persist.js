@@ -8,6 +8,12 @@
   var lastMvpInitKey='';
   var lastMvpInitAt=0;
   var pendingMvpInitMsg=null;
+  /** Serialize cmd_save so a stale in-flight payload cannot wipe newer app scenarios. */
+  var saveInFlight=null;
+  var saveNeedsRerun=false;
+  var saveWaiters=[];
+  /** Survives partial FE state: re-inject app scenarios omitted from mappings[] unless trashed. */
+  var lastKnownAppScenarios={};
 
   function hookFn(name){
     const h=hooks();
@@ -471,7 +477,13 @@
     ensureConfig();
     hooks().flushAllEditorToMappings();
     const st=state();
+    rememberAppScenariosFromConfig(st.config);
+    reinjectRememberedAppScenarios(st.config);
     const slots=hooks().soundSlotDefaults();
+    const diffApi=global.OneToneHabitOverrideDiff;
+    const baseline=diffApi&&diffApi.getGlobalKeyBaseline
+      ?diffApi.getGlobalKeyBaseline(st.config,global.OneToneMappingCore)
+      :null;
     const payload={
       version:6,
       activeSceneId:String(st.config.activeSceneId||st.selectedMappingId||''),
@@ -480,8 +492,15 @@
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
-        const trig=hooks().editorTriggerForMapping(m);
-        const tgt=hooks().editorTargetForMapping(m);
+        var isApp=diffApi&&diffApi.isAppScenarioMapping&&diffApi.isAppScenarioMapping(m);
+        if(isApp&&diffApi.normalizeKeyFieldsForSave&&baseline){
+          diffApi.normalizeKeyFieldsForSave(m,baseline,true);
+        }
+        // App scenarios inherit keys from universal settings. Do not synthesize
+        // editor/voice fallbacks into the payload — that used to look "recorded"
+        // and later wipe/normalize paths could drop appTargetId.
+        var trig=isApp?String(m.triggerKey||'').trim():hooks().editorTriggerForMapping(m);
+        var tgt=isApp?String(m.targetKey||'').trim():hooks().editorTargetForMapping(m);
         var order=Number(m.order);
         if(!isFinite(order)) order=i;
         return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id)};
@@ -577,38 +596,151 @@
     return JSON.stringify(payload);
   }
 
-  function save(){
-    var payload=buildSavePayload();
+  function invokeSaveOnce(){
+    var payload;
     try{
-      if(global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage){
-        global.chrome.webview.postMessage({type:'mvp_save',json:payload});
-      }
-    }catch(_){ }
-    var invoke=global.__vp_invoke__;
-    if(invoke){
-      invoke('cmd_save',{json:payload}).catch(function(err){
-        console.error('cmd_save',err);
-      });
-    }
-  }
-
-  function saveAsync(){
-    const invoke=global.__vp_invoke__;
-    if(!invoke) return Promise.resolve(false);
-    try{
-      var payload=buildSavePayload();
-      return invoke('cmd_save',{json:payload}).then(function(){ return true; }).catch(function(err){
-        if(typeof console!=='undefined'&&console.error){
-          console.error('cmd_save',err);
-        }
-        return false;
-      });
+      payload=buildSavePayload();
     }catch(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save build failed',err);
       }
       return Promise.resolve(false);
     }
+    try{
+      if(global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage){
+        global.chrome.webview.postMessage({type:'mvp_save',json:payload});
+      }
+    }catch(_){ }
+    var invoke=global.__vp_invoke__;
+    if(!invoke) return Promise.resolve(false);
+    return invoke('cmd_save',{json:payload}).then(function(){ return true; }).catch(function(err){
+      if(typeof console!=='undefined'&&console.error){
+        console.error('cmd_save',err);
+      }
+      return false;
+    });
+  }
+
+  function flushSaveQueue(){
+    if(saveInFlight) return saveInFlight;
+    saveInFlight=invokeSaveOnce().then(function(ok){
+      if(saveNeedsRerun){
+        saveNeedsRerun=false;
+        saveInFlight=null;
+        return flushSaveQueue();
+      }
+      var waiters=saveWaiters.splice(0);
+      saveInFlight=null;
+      waiters.forEach(function(resolve){ resolve(ok); });
+      return ok;
+    });
+    return saveInFlight;
+  }
+
+  function save(){
+    if(saveInFlight){
+      saveNeedsRerun=true;
+      return;
+    }
+    flushSaveQueue();
+  }
+
+  function saveAsync(){
+    return new Promise(function(resolve){
+      saveWaiters.push(resolve);
+      if(saveInFlight){
+        saveNeedsRerun=true;
+        return;
+      }
+      flushSaveQueue();
+    });
+  }
+
+  function isAppScopedMapping(m){
+    if(!m||typeof m!=='object') return false;
+    if(String(m.appTargetId||m.app_target_id||'').trim()) return true;
+    var rules=m.appBehaviorRules||m.app_behavior_rules;
+    return Array.isArray(rules)&&rules.length>0;
+  }
+
+  function rememberAppScenariosFromConfig(cfg){
+    if(!cfg||typeof cfg!=='object') return;
+    var maps=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    maps.forEach(function(m){
+      if(!m||!m.id||!isAppScopedMapping(m)) return;
+      try{
+        lastKnownAppScenarios[String(m.id)]=JSON.parse(JSON.stringify(m));
+      }catch(_){
+        lastKnownAppScenarios[String(m.id)]=m;
+      }
+    });
+    (cfg.trash||[]).forEach(function(m){
+      if(m&&m.id) delete lastKnownAppScenarios[String(m.id)];
+    });
+  }
+
+  function reinjectRememberedAppScenarios(cfg){
+    if(!cfg||typeof cfg!=='object') return cfg;
+    cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var ids={};
+    cfg.mappings.forEach(function(m){ if(m&&m.id) ids[String(m.id)]=true; });
+    var trashIds={};
+    (cfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    Object.keys(lastKnownAppScenarios).forEach(function(id){
+      if(ids[id]||trashIds[id]) return;
+      var snap=lastKnownAppScenarios[id];
+      if(!snap||!isAppScopedMapping(snap)) return;
+      try{
+        cfg.mappings.push(JSON.parse(JSON.stringify(snap)));
+      }catch(_){
+        cfg.mappings.push(snap);
+      }
+      ids[id]=true;
+    });
+    return cfg;
+  }
+
+  /** Keep in-memory app scenarios when a stale mvp_init omits them (before next save). */
+  function mergeLocalAppScenarios(localCfg,inboundCfg){
+    if(!inboundCfg||typeof inboundCfg!=='object') return inboundCfg;
+    rememberAppScenariosFromConfig(localCfg);
+    rememberAppScenariosFromConfig(inboundCfg);
+    var localMaps=localCfg&&Array.isArray(localCfg.mappings)?localCfg.mappings:[];
+    if(!localMaps.length){
+      reinjectRememberedAppScenarios(inboundCfg);
+      return inboundCfg;
+    }
+    var inboundMaps=Array.isArray(inboundCfg.mappings)?inboundCfg.mappings.slice():[];
+    var inboundIds={};
+    inboundMaps.forEach(function(m){ if(m&&m.id) inboundIds[String(m.id)]=true; });
+    var trashIds={};
+    (inboundCfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    var added=false;
+    localMaps.forEach(function(m){
+      if(!m||!m.id||inboundIds[String(m.id)]||trashIds[String(m.id)]) return;
+      if(!isAppScopedMapping(m)) return;
+      inboundMaps.push(m);
+      inboundIds[String(m.id)]=true;
+      added=true;
+    });
+    // Same id present but appTargetId cleared by a partial FE state — restore.
+    inboundMaps.forEach(function(m){
+      if(!m||!m.id) return;
+      if(String(m.appTargetId||m.app_target_id||'').trim()) return;
+      var local=null;
+      for(var i=0;i<localMaps.length;i++){
+        if(localMaps[i]&&String(localMaps[i].id)===String(m.id)){ local=localMaps[i]; break; }
+      }
+      if(!local||!isAppScopedMapping(local)) return;
+      m.appTargetId=String(local.appTargetId||local.app_target_id||'');
+      if((!m.appBehaviorRules||!m.appBehaviorRules.length)&&local.appBehaviorRules&&local.appBehaviorRules.length){
+        m.appBehaviorRules=local.appBehaviorRules;
+      }
+      added=true;
+    });
+    if(added) inboundCfg.mappings=inboundMaps;
+    reinjectRememberedAppScenarios(inboundCfg);
+    return inboundCfg;
   }
 
   function applyMvpInit(msg){
@@ -616,7 +748,10 @@
     if(!hooksReady()){
       pendingMvpInitMsg=msg;
       if(msg.config){
-        state().config=normalizeInboundConfig(msg.config);
+        var earlyLocal=state().config;
+        var earlyInbound=normalizeInboundConfig(msg.config);
+        if(configLoadedFromBackend) mergeLocalAppScenarios(earlyLocal,earlyInbound);
+        state().config=earlyInbound;
         try{
           var earlyHold=global.OneToneVoiceWake&&global.OneToneVoiceWake.getStrategyHold&&global.OneToneVoiceWake.getStrategyHold();
           if(earlyHold&&state().config) state().config.voiceListeningStrategy=earlyHold;
@@ -642,7 +777,11 @@
           heldStrategy=String((st.config&&(st.config.voiceListeningStrategy||st.config.voice_listening_strategy))||'').trim()||null;
         }
       }catch(_){ heldStrategy=null; }
-      if(msg.config) st.config=normalizeInboundConfig(msg.config);
+      if(msg.config){
+        var inbound=normalizeInboundConfig(msg.config);
+        if(configLoadedFromBackend) mergeLocalAppScenarios(st.config,inbound);
+        st.config=inbound;
+      }
       if(heldStrategy&&st.config){
         st.config.voiceListeningStrategy=heldStrategy;
       }

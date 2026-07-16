@@ -3332,6 +3332,16 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 }
             }
         }
+        // Keep appTargetId when FE clears it but the row still has app rules.
+        // Clearing without removing rules used to hide Chrome from「应用场景」
+        // while home still showed the named card.
+        if m.app_target_id.trim().is_empty() {
+            if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
+                if !prev.app_target_id.trim().is_empty() && !m.app_behavior_rules.is_empty() {
+                    m.app_target_id = prev.app_target_id.clone();
+                }
+            }
+        }
     }
     for m in &mut cfg.trash {
         if m.app_behavior_rules.is_empty() {
@@ -3342,7 +3352,38 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             }
         }
     }
-        cfg.voice_vosk = existing.voice_vosk.clone();
+
+    // FE saves replace the whole mappings array. A frozen/partial UI state can omit
+    // app scenarios (Chrome/Chatbox/Cursor) and permanently wipe them. Keep disk
+    // app-scoped rows unless the FE explicitly moved them into trash.
+    let incoming_ids: HashSet<&str> = cfg.mappings.iter().map(|m| m.id.as_str()).collect();
+    let trash_ids: HashSet<&str> = cfg.trash.iter().map(|m| m.id.as_str()).collect();
+    let mut preserved = Vec::new();
+    for prev in &existing.mappings {
+        if incoming_ids.contains(prev.id.as_str()) || trash_ids.contains(prev.id.as_str()) {
+            continue;
+        }
+        let is_app_scene = !prev.app_target_id.trim().is_empty() || !prev.app_behavior_rules.is_empty();
+        if is_app_scene {
+            preserved.push(prev.clone());
+        }
+    }
+    if !preserved.is_empty() {
+        let msg = format!(
+            "merge_save_payload: FE omitted {} app mapping(s); preserving: {}",
+            preserved.len(),
+            preserved
+                .iter()
+                .map(|m| format!("{}[{}]", m.id, m.app_target_id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        eprintln!("{msg}");
+        crate::app_log::early_line("config", &msg);
+        cfg.mappings.extend(preserved);
+    }
+
+    cfg.voice_vosk = existing.voice_vosk.clone();
     cfg.voice_sapi = existing.voice_sapi.clone();
     cfg.voice_kws = existing.voice_kws.clone();
     cfg.voice_end = existing.voice_end.clone();
@@ -3414,6 +3455,16 @@ pub fn save_config(cfg: &VoiceConfig) {
     let path = config_path();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).ok();
+        // Keep two rolling backups so accidental mapping wipes can be recovered.
+        if path.exists() {
+            let bak = parent.join("settings.json.bak");
+            let bak2 = parent.join("settings.json.bak2");
+            let _ = fs::remove_file(&bak2);
+            if bak.exists() {
+                let _ = fs::rename(&bak, &bak2);
+            }
+            let _ = fs::copy(&path, &bak);
+        }
     }
     let json = serde_json::to_string_pretty(cfg).unwrap();
     fs::write(&path, json).ok();
@@ -3467,9 +3518,19 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                         *state.cfg.lock() = new_cfg.clone();
                     }
                     apply_config(&state, &new_cfg);
-                    crate::voice_bootstrap::apply_voice_config_change(
-                        &app, &state, &old_cfg, &new_cfg,
-                    );
+                    // Voice stop/start must not run on the notify watcher thread: fingerprint
+                    // restart used to sync-join Vosk and 假死 the window while FE awaits IPC.
+                    let app_voice = app.clone();
+                    let state_voice = Arc::clone(&state);
+                    let old_voice = old_cfg.clone();
+                    let new_voice = new_cfg.clone();
+                    let _ = std::thread::Builder::new()
+                        .name("voice-config-apply".into())
+                        .spawn(move || {
+                            crate::voice_bootstrap::apply_voice_config_change(
+                                &app_voice, &state_voice, &old_voice, &new_voice,
+                            );
+                        });
                     // Non-blocking emit only (see emit_to_main_if_available). Never block the
                     // watcher on the UI thread — strategy IPC + watcher used to 假死 together.
                     let payload = ipc::mvp_init_payload(&state, "unchanged");
@@ -4162,6 +4223,75 @@ mod tests {
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert!(merged.voice_vosk.enabled);
         assert!(merged.voice_end.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_restores_cleared_app_target_id() {
+        let mut existing = VoiceConfig::default();
+        let mut chrome = existing.mappings[0].clone();
+        chrome.id = "m-chrome".into();
+        chrome.app_target_id = "custom".into();
+        chrome.group = "Google Chrome 场景".into();
+        chrome.app_behavior_rules = vec![AppBehaviorRule {
+            rule_id: "rule-1".into(),
+            app_id: "custom".into(),
+            finish_mode: "confirm".into(),
+            note: None,
+            summon_phrase: None,
+            app_match: Some(AppMatchSpec {
+                exe_names: vec!["chrome.exe".into()],
+                path_contains: None,
+                title_contains: None,
+                full_path: Some(r"C:\Program Files\Google\Chrome\Application\chrome.exe".into()),
+            }),
+            display_name: Some("Google Chrome".into()),
+        }];
+        existing.mappings.push(chrome);
+        let json = r#"{"version":8,"mappings":[{"id":"m-chrome","label":"","group":"Google Chrome 场景","triggerKey":"","targetKey":"","enabled":true,"appTargetId":"","appBehaviorRules":[{"ruleId":"rule-1","appId":"custom","finishMode":"confirm","displayName":"Google Chrome","match":{"exeNames":["chrome.exe"],"fullPath":"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"}}]}],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        let row = merged
+            .mappings
+            .iter()
+            .find(|m| m.id == "m-chrome")
+            .expect("chrome row");
+        assert_eq!(row.app_target_id, "custom");
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_omitted_app_scenarios() {
+        let mut existing = VoiceConfig::default();
+        let mut chrome = existing.mappings[0].clone();
+        chrome.id = "m-chrome".into();
+        chrome.app_target_id = "chrome".into();
+        chrome.group = "谷歌浏览器".into();
+        existing.mappings.push(chrome);
+        let json = r#"{"version":8,"mappings":[{"id":"m-default","label":"默认","group":"默认","triggerKey":"AutoTrigger","targetKey":"RAlt","enabled":true,"appTargetId":"","appBehaviorRules":[]}],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(
+            merged
+                .mappings
+                .iter()
+                .any(|m| m.id == "m-chrome" && m.app_target_id == "chrome"),
+            "omitted app scenario must be preserved from disk"
+        );
+    }
+
+    #[test]
+    fn merge_save_payload_allows_app_scenario_move_to_trash() {
+        let mut existing = VoiceConfig::default();
+        let mut chrome = existing.mappings[0].clone();
+        chrome.id = "m-chrome".into();
+        chrome.app_target_id = "chrome".into();
+        existing.mappings.push(chrome.clone());
+        let json = format!(
+            r#"{{"version":8,"mappings":[{{"id":"m-default","label":"默认","group":"默认","triggerKey":"AutoTrigger","targetKey":"RAlt","enabled":true,"appTargetId":"","appBehaviorRules":[]}}],"trash":[{{"id":"m-chrome","label":"","group":"谷歌浏览器","triggerKey":"","targetKey":"","enabled":false,"appTargetId":"chrome","appBehaviorRules":[]}}]}}"#
+        );
+        let merged = merge_save_payload(&existing, &json).expect("merge");
+        assert!(
+            !merged.mappings.iter().any(|m| m.id == "m-chrome"),
+            "explicit trash must not resurrect app scenario into mappings"
+        );
+        assert!(merged.trash.iter().any(|m| m.id == "m-chrome"));
     }
 
     #[test]

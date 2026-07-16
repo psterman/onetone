@@ -136,7 +136,23 @@
 
   function isAppScenarioMapping(m){
     if(!m) return false;
-    return !!String(m.appTargetId||'').trim();
+    if(String(m.appTargetId||'').trim()) return true;
+    // Survive appTargetId wipe: a concrete process bind still means "app scenario".
+    // (Do not treat seeded preset chips without match as app scenarios.)
+    var rules=Array.isArray(m.appBehaviorRules)?m.appBehaviorRules:[];
+    for(var i=0;i<rules.length;i++){
+      var r=rules[i];
+      if(!r) continue;
+      var appId=String(r.appId||'').trim();
+      var match=r.match;
+      if(!match||typeof match!=='object') continue;
+      var hasExe=Array.isArray(match.exeNames)&&match.exeNames.some(function(x){ return String(x||'').trim(); });
+      var hasPath=!!String(match.fullPath||match.full_path||match.pathContains||'').trim();
+      var hasTitle=!!String(match.titleContains||'').trim();
+      if(hasExe||hasPath||hasTitle) return true;
+      if(appId==='custom') return true;
+    }
+    return false;
   }
 
   function isGlobalBaselineMapping(m,cfg,mappingCore){

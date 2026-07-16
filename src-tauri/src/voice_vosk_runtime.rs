@@ -71,15 +71,23 @@ pub fn spawn_voice_vosk_stop(state: Arc<AppState>) {
     }
 }
 
+/// Stop capture handle without bumping epoch (safe to call from an in-flight start worker).
+/// Never joins the worker — sync join belongs only in [`voice_vosk_stop_sync`].
+fn release_vosk_capture_handle(state: &AppState) {
+    crate::audio_win::stop_mic_monitor(&state.mic_monitor);
+    *state.voice_vosk_cooldown_until.lock() = None;
+    *state.voice_vosk_last_error.lock() = String::new();
+    if let Some(handle) = state.voice_vosk.lock().take() {
+        stop_voice_vosk(handle);
+    }
+    *state.voice_vosk_state.lock() = "stopped".into();
+}
+
 /// Block until the worker exits. Supervisor uses this for exclusive activate.
 /// Bumps the epoch so any in-flight start worker aborts.
 pub fn voice_vosk_stop_sync(state: &AppState) {
     let _epoch = next_vosk_epoch(state);
-    release_vosk_capture_handle(state);
-}
-
-/// Stop capture handle without bumping epoch (safe to call from an in-flight start worker).
-fn release_vosk_capture_handle(state: &AppState) {
+    crate::app_log::log_line(state, "voice", "vosk stop_sync begin");
     crate::audio_win::stop_mic_monitor(&state.mic_monitor);
     *state.voice_vosk_cooldown_until.lock() = None;
     *state.voice_vosk_last_error.lock() = String::new();
@@ -87,6 +95,15 @@ fn release_vosk_capture_handle(state: &AppState) {
         shutdown_sync(handle);
     }
     *state.voice_vosk_state.lock() = "stopped".into();
+    crate::app_log::log_line(state, "voice", "vosk stop_sync end");
+}
+
+/// Stop without joining the worker. Prefer this on config-watcher / fingerprint paths
+/// so a stuck native model load cannot 假死 the UI (Responding=false).
+pub fn voice_vosk_stop_detach(state: &AppState) {
+    let _epoch = next_vosk_epoch(state);
+    crate::app_log::log_line(state, "voice", "vosk stop_detach (non-blocking)");
+    release_vosk_capture_handle(state);
 }
 
 pub fn voice_vosk_start(

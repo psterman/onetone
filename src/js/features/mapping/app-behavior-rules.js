@@ -175,16 +175,10 @@
     var exe=String(identity.exeName||identity.exe_name||'').trim();
     var stem=exe.replace(/\.exe$/i,'');
     var listName=String(identity.displayName||identity.display_name||'').trim();
-    var title=String(identity.windowTitle||identity.window_title||'').trim();
-    if(listName){
-      if(!title||listName.length>=title.length) return listName;
-      if(title.length<listName.length&&listName.toLowerCase().indexOf(title.toLowerCase())===0) return listName;
-    }
-    if(title&&title.length>2&&title.toLowerCase()!==stem.toLowerCase()&&title.toLowerCase()!==exe.toLowerCase()){
-      if(!listName||title.length>=listName.length) return title;
-    }
-    if(listName) return listName;
-    return stem||exe;
+    var title=String(identity.windowTitle||identity.window_title||identity.windowTitleSample||identity.window_title_sample||'').trim();
+    // Prefer backend program name (FileDescription / exe stem). Never use the live window title.
+    if(listName&&(!title||listName!==title)) return listName;
+    return stem||exe||listName;
   }
 
   function identityAlreadyInRules(m,identity){
@@ -721,6 +715,12 @@
   function seedDefaultBehaviorRules(m){
     ensureRules(m);
     if(m.appBehaviorRules.length) return false;
+    // App scenarios are sparse overrides — never dump every preset chip onto them.
+    if(global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m)){
+      return false;
+    }
     BEHAVIOR_PRESETS.forEach(function(p){
       m.appBehaviorRules.push({
         ruleId:newRuleId(),
@@ -1302,6 +1302,25 @@
     return rule;
   }
 
+  function persistPickerBind(m){
+    var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
+    var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
+    var done=function(ok){
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
+      if(ok===false){
+        hooks().toast&&hooks().toast(t('habitScenarioSaveFailed'));
+        return;
+      }
+      hooks().toast&&hooks().toast(t('appPickerAdded'));
+    };
+    if(saveAsync){
+      return saveAsync().then(function(){ done(true); }).catch(function(){ done(false); });
+    }
+    if(save) save();
+    done(true);
+    return Promise.resolve();
+  }
+
   function pickPresetApp(m,appId){
     if(!m||!appId) return;
     appId=String(appId).trim();
@@ -1309,6 +1328,7 @@
     if(hub&&hub.findAppScenarioByAppId){
       var existing=hub.findAppScenarioByAppId(appId,m.id);
       if(existing){
+        clearPickerCreateTarget();
         hooks().toast&&hooks().toast(t('habitHubAppScenarioExists'));
         return;
       }
@@ -1317,29 +1337,29 @@
     var isAppScenario=global.OneToneHabitOverrideDiff
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
-    if(persist&&persist.applyVoiceAppScope){
-      ensurePresetRule(m,appId);
-      m.appTargetId=appId;
-      if(persist.applyVoiceAppScope({appId:appId})){
-        hooks().toast&&hooks().toast(t('appPickerAdded'));
-      }
-      clearPickerCreateTarget();
-      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
-      return;
-    }
     ensurePresetRule(m,appId);
     m.appTargetId=appId;
-    var presets=global.OneToneAppVoicePresets;
-    if(presets&&presets.syncAppVoicePresets) presets.syncAppVoicePresets(m,appId);
-    if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
-      presets.hydrateGlobalWakeEndFromMapping(m);
+    m.group=defaultScenarioNameForApp(appId);
+    var scoped=false;
+    if(persist&&persist.applyVoiceAppScope){
+      scoped=!!persist.applyVoiceAppScope({appId:appId,mappingId:m.id});
     }
-    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
-    setActiveRuleContext(appId);
-    saveAndRefresh();
+    if(!scoped){
+      var presets=global.OneToneAppVoicePresets;
+      if(presets&&presets.syncAppVoicePresets) presets.syncAppVoicePresets(m,appId);
+      if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
+        presets.hydrateGlobalWakeEndFromMapping(m);
+      }
+      setActiveRuleContext(appId);
+      saveAndRefresh();
+    }
     clearPickerCreateTarget();
-    if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
-    hooks().toast&&hooks().toast(t('appPickerAdded'));
+    persistPickerBind(m);
+  }
+
+  function defaultScenarioNameForApp(appId){
+    var name=appDisplayName(appId)||appId||'—';
+    return t('habitWizardDefaultName').replace('{app}',name);
   }
 
   function pickRunningIdentity(m,identity){
@@ -1348,6 +1368,7 @@
     if(hub&&hub.findAppScenarioForIdentity){
       var taken=hub.findAppScenarioForIdentity(identity,m.id);
       if(taken){
+        clearPickerCreateTarget();
         hooks().toast&&hooks().toast(t('habitHubAppScenarioExists'));
         return;
       }
@@ -1358,7 +1379,10 @@
       return;
     }
     var rule=addCustomRuleFromIdentity(m,identity);
-    if(!rule) return;
+    if(!rule){
+      clearPickerCreateTarget();
+      return;
+    }
     // Keep scenario bound to custom primary + concrete rule (exe/icon/displayName).
     m.appTargetId='custom';
     if(rule.displayName){
@@ -1368,26 +1392,21 @@
     var isAppScenario=global.OneToneHabitOverrideDiff
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
       &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
+    var scoped=false;
     if(persist&&persist.applyVoiceAppScope){
-      if(persist.applyVoiceAppScope({ruleId:rule.ruleId})){
-        hooks().toast&&hooks().toast(t('appPickerAdded'));
+      scoped=!!persist.applyVoiceAppScope({ruleId:rule.ruleId,mappingId:m.id});
+    }
+    if(!scoped){
+      var presets=global.OneToneAppVoicePresets;
+      if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
+      if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
+        presets.hydrateGlobalWakeEndFromMapping(m);
       }
-      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
-      if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
-      clearPickerCreateTarget();
-      return;
+      setActiveRuleContext(rule.ruleId);
+      saveAndRefresh();
     }
-    var presets=global.OneToneAppVoicePresets;
-    if(presets&&presets.syncRuleVoicePresets) presets.syncRuleVoicePresets(m,rule);
-    if(!isAppScenario&&presets&&presets.hydrateGlobalWakeEndFromMapping){
-      presets.hydrateGlobalWakeEndFromMapping(m);
-    }
-    if(global.OneToneConfigPersist) global.OneToneConfigPersist.save();
-    setActiveRuleContext(rule.ruleId);
-    saveAndRefresh();
-    if(global.OneToneHabitHub&&global.OneToneHabitHub.render) global.OneToneHabitHub.render();
     clearPickerCreateTarget();
-    hooks().toast&&hooks().toast(t('appPickerAdded'));
+    persistPickerBind(m);
   }
 
   function resolvePickerMapping(){
@@ -1491,6 +1510,16 @@
     if(!mappingId||!core()||!core().byId) return;
     var m=core().byId(mappingId);
     if(!m) return;
+    // Never delete a mapping that already qualifies as an app scenario (preset or
+    // process-bound custom). Closing the picker after a successful pick used to race
+    // and wipe Cursor/Chrome rows that had just been bound.
+    if(global.OneToneHabitOverrideDiff
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
+      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m)
+      &&String(m.appTargetId||'').trim()
+      &&String(m.appTargetId||'').trim()!=='custom'){
+      return;
+    }
     var customs=customRulesForMapping(m);
     var hasRealCustom=customs.some(function(rule){
       return !!(rule&&rule.match&&(

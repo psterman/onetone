@@ -36,17 +36,22 @@ pub fn cmd_save(
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);
-    crate::voice_bootstrap::apply_voice_config_change(
-        window.app_handle(),
-        state.inner(),
-        &existing,
-        &cfg,
-    );
-    crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state.inner()));
+    // Defer voice stop/start off the IPC thread. Sync Vosk join + main-thread emit used to
+    // 假死 while JS awaited this invoke (especially after keys/cancel timing saves).
+    let app = window.app_handle().clone();
+    let state_bg = Arc::clone(state.inner());
+    let old_bg = existing.clone();
+    let new_bg = cfg.clone();
+    let _ = std::thread::Builder::new()
+        .name("voice-save-activate".into())
+        .spawn(move || {
+            crate::voice_bootstrap::apply_voice_config_change(&app, &state_bg, &old_bg, &new_bg);
+            crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state_bg));
+            crate::coach_hud::push_state(&app, &state_bg);
+        });
     sync_config_ui(&state, &window, "unchanged");
     state.machine_pool.lock().reset_all();
     push_runtime(&state, &window, "saved", "");
-    crate::coach_hud::push_state(window.app_handle(), state.inner());
     let ack = serde_json::json!({"type":"mvp_saved","ok":true});
     window.emit("to_js", &ack).ok();
     Ok(())

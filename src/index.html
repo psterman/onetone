@@ -836,15 +836,17 @@
                     <div class="keys-finish-mode-host" id="keysFinishModeHost">
                       <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>
                     </div>
+                    <p class="keys-finish-mode-hint" id="keysFinishModeHint" hidden></p>
                     <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
-                    <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
                     <p class="keys-finish-strategy-preview is-empty" id="keysFinishStrategyPreview" aria-live="polite" hidden>—</p>
-                    <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore">
-                      <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">可选：自定义中止键</summary>
-                      <p class="keys-finish-more-hint" id="keysFinishMoreHint">中止键只在需要快速打断时使用</p>
+                    <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore" hidden>
+                      <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">可选：取消窗口</summary>
+                      <p class="keys-finish-more-hint" id="keysFinishMoreHint">仅「单击发送」可用：听写开始后短时间内再按启动键 → Esc 取消</p>
                       <div class="habit-flow-cancel-block" id="habitKeyMapRowCancel" data-edit-step="cancel">
-                        <span class="habit-flow-cancel-label" id="habitFlowFinishMoreCancelLbl">中止键（可选）</span>
-                        <div class="habit-flow-step-slot" id="habitKeyMapCellCancel"></div>
+                        <span class="habit-flow-cancel-label" id="habitFlowFinishMoreCancelLbl">取消窗口（可选）</span>
+                        <div class="habit-flow-step-slot" id="habitKeyMapCellCancel">
+                          <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
+                        </div>
                         <span class="habit-flow-step-status" id="habitKeyMapStCancel">—</span>
                       </div>
                     </details>
@@ -1451,9 +1453,9 @@
                     <div class="voice-phrase-panel-head">
                       <p class="voice-phrase-panel-title" id="voiceEditSectionPresets">全局唤醒</p>
                       <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
-                      <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="唤醒词类型">
-                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true">文字短语</button>
-                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false">声音样本</button>
+                      <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="唤醒怎么激活">
+                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true">输入文字</button>
+                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false">录制声音</button>
                       </div>
                       <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
                         <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
@@ -1569,9 +1571,9 @@
                       <div class="voice-phrase-panel voice-cancel-phrase-panel" id="voiceCancelPhrasePanel" data-recognize-intent-pane="cancel">
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceCancelPresetsZhLabel">取消词</p>
-                          <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消词类型">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true">文字短语</button>
-                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false">声音样本</button>
+                          <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消怎么激活">
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceCancelLangToggle" role="group" aria-label="取消词语言">
                             <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceCancelLangZh">中</button>
@@ -1594,9 +1596,9 @@
                       <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel" data-recognize-intent-pane="confirm" hidden>
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceEndPresetsZhLabel">结束词</p>
-                          <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="结束词类型">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true">文字短语</button>
-                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false">声音样本</button>
+                          <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="确认怎么激活">
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceEndLangToggle" role="group" aria-label="结束词语言">
                             <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceEndLangZh">中</button>

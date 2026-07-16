@@ -167,42 +167,45 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
     let payload = snapshot;
     let app_clone = app.clone();
 
-    let _ = app.run_on_main_thread(move || {
-        let Some(hud_win) = app_clone.get_webview_window(COACH_HUD_LABEL) else {
-            return;
-        };
-        if visible {
-            position_coach_hud(&hud_win);
-            let height = if payload.mode == "dictating" {
-                HUD_HEIGHT_DICTATING
-            } else {
-                HUD_HEIGHT
+    // Never block the caller on the UI thread. voice-save-activate / config-apply used to
+    // run_on_main_thread here while JS awaited cmd_save → window Responding=false (假死).
+    let _ = std::thread::Builder::new()
+        .name("coach-hud-push".into())
+        .spawn(move || {
+            let Some(hud_win) = app_clone.get_webview_window(COACH_HUD_LABEL) else {
+                return;
             };
-            let _ = hud_win.set_size(Size::Logical(LogicalSize::new(HUD_WIDTH, height)));
-            // Prefer no-activate show so the coach HUD never steals focus from the target app.
-            #[cfg(windows)]
-            {
-                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-                if let Ok(handle) = hud_win.window_handle() {
-                    if let RawWindowHandle::Win32(platform) = handle.as_raw() {
-                        let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
-                        let _ = crate::keyboard::show_window_no_activate(hwnd);
+            if visible {
+                position_coach_hud(&hud_win);
+                let height = if payload.mode == "dictating" {
+                    HUD_HEIGHT_DICTATING
+                } else {
+                    HUD_HEIGHT
+                };
+                let _ = hud_win.set_size(Size::Logical(LogicalSize::new(HUD_WIDTH, height)));
+                #[cfg(windows)]
+                {
+                    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                    if let Ok(handle) = hud_win.window_handle() {
+                        if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                            let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
+                            let _ = crate::keyboard::show_window_no_activate(hwnd);
+                        } else {
+                            let _ = hud_win.show();
+                        }
                     } else {
                         let _ = hud_win.show();
                     }
-                } else {
+                }
+                #[cfg(not(windows))]
+                {
                     let _ = hud_win.show();
                 }
+            } else {
+                let _ = hud_win.hide();
             }
-            #[cfg(not(windows))]
-            {
-                let _ = hud_win.show();
-            }
-        } else {
-            let _ = hud_win.hide();
-        }
-        let _ = hud_win.emit("coach_state", &payload);
-    });
+            let _ = hud_win.emit("coach_state", &payload);
+        });
 }
 
 fn position_coach_hud(win: &WebviewWindow) {
