@@ -74,14 +74,21 @@
   }
 
   function resolveModeLabel(mode){
+    var cfg=state.config||{};
+    var strategy=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'').trim();
+    if(strategy==='auto') return t('voiceListeningStrategyAuto');
+    if(strategy==='resourceSaver') return t('voiceListeningStrategyResourceSaver');
+    if(strategy==='enhanced') return t('voiceListeningStrategyEnhanced');
+    if(strategy==='off') return t('voiceListeningStrategyOff');
+    if(strategy==='advanced') return t('voiceListeningStrategyAdvanced');
     if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi()){
-      if(mode==='off') return t('voiceModeCurrentOff');
-      if(mode==='kws') return t('voiceModeKwsEngine');
-      return t('voiceModeProEngine');
+      if(mode==='off') return t('voiceListeningStrategyOff');
+      if(mode==='kws') return t('voiceRecognizeSourceKws');
+      return t('voiceListeningStrategyAuto');
     }
-    if(mode==='sapi') return t('voiceModeLiteEngine');
-    if(mode==='vosk') return t('voiceModeProEngine');
-    if(mode==='kws') return t('voiceModeKwsEngine');
+    if(mode==='sapi') return t('voiceRecognizeSourceSapi');
+    if(mode==='vosk') return t('voiceListeningStrategyAuto');
+    if(mode==='kws') return t('voiceRecognizeSourceKws');
     return t('voiceModeCurrentOff');
   }
 

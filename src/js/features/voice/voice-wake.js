@@ -111,9 +111,8 @@
   function syncVoiceEngineTabButtons(tabMode,loading){
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
-    ['voiceRecognizeSourceGrid','voiceSummaryEngineSwitch'].forEach(function(id){
-      const grid=document.getElementById(id);
-      if(!grid) return;
+    const grid=document.getElementById('voiceRecognizeSourceGrid');
+    if(grid){
       grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
         const tab=btn.getAttribute('data-voice-engine-tab')||'';
         const active=!loading&&tabMode===tab;
@@ -122,6 +121,20 @@
         if(tab==='sapi') btn.hidden=!!voskOnly;
         else btn.hidden=false;
       });
+    }
+    syncVoiceStrategyTabButtons(loading);
+  }
+
+  function syncVoiceStrategyTabButtons(loading){
+    const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
+    const strategy=currentListeningStrategy();
+    const grid=document.getElementById('voiceSummaryEngineSwitch');
+    if(!grid) return;
+    grid.querySelectorAll('[data-voice-strategy-tab]').forEach(function(btn){
+      const tab=btn.getAttribute('data-voice-strategy-tab')||'';
+      const active=!loading&&strategy===tab;
+      btn.classList.toggle('is-active',active);
+      btn.disabled=pending;
     });
   }
 
@@ -484,11 +497,22 @@
     return true;
   }
 
+  function applyListeningStrategyToConfig(strategy){
+    const root=state().config;
+    if(!root) return false;
+    strategy=String(strategy||'').trim();
+    if(!strategy) return false;
+    root.voiceListeningStrategy=strategy;
+    return true;
+  }
+
   function syncVoiceSapiConfigFromStatus(res){
     if(!state().config||!res) return;
     const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
     state().config.voiceSapi=cfg;
     const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    const strategy=String(res.listeningStrategy||'').trim();
+    if(strategy) applyListeningStrategyToConfig(strategy);
     if(desired){
       applySupervisorEngineToConfig(desired);
     }else{
@@ -512,6 +536,8 @@
     const cfg=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
     state().config.voiceVosk=cfg;
     const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    const strategy=String(res.listeningStrategy||'').trim();
+    if(strategy) applyListeningStrategyToConfig(strategy);
     if(desired){
       applySupervisorEngineToConfig(desired);
     }else{
@@ -537,6 +563,8 @@
     const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
     state().config.voiceKws=cfg;
     const desired=String(res.desiredEngine||'').trim().toLowerCase();
+    const strategy=String(res.listeningStrategy||'').trim();
+    if(strategy) applyListeningStrategyToConfig(strategy);
     if(desired){
       applySupervisorEngineToConfig(desired);
     }else{
@@ -561,7 +589,18 @@
     return resolveRuntimeEngine()===mode;
   }
 
+  function voiceBackendMatchesStrategy(strategy){
+    strategy=String(strategy||'').trim();
+    if(currentListeningStrategy()!==strategy) return false;
+    if(strategy==='off') return resolveRuntimeEngine()==='off';
+    return true;
+  }
+
   function currentVoiceMode(){
+    const strategy=currentListeningStrategy();
+    if(strategy==='resourceSaver') return 'kws';
+    if(strategy==='enhanced') return 'vosk';
+    if(strategy==='auto') return 'vosk';
     const runtime=resolveRuntimeEngine();
     if(runtime!=='off') return runtime;
     const cfg=state().config||{};
@@ -574,6 +613,11 @@
     if(sapiCfg.enabled&&!voskCfg.enabled&&!kwsCfg.enabled) return 'sapi';
     if(kwsCfg.enabled&&!voskCfg.enabled&&!sapiCfg.enabled) return 'kws';
     return voskOnlyUi()?'vosk':'off';
+  }
+
+  function currentListeningStrategy(){
+    const cfg=state().config||{};
+    return String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'auto').trim()||'auto';
   }
 
   function rollbackVoiceModeSwitch(){
@@ -626,6 +670,13 @@
     const grid=$('voiceRecognizeSourceGrid');
     if(grid){
       grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+        btn.disabled=!!busy;
+        btn.setAttribute('aria-busy',busy?'true':'false');
+      });
+    }
+    const strategyGrid=$('voiceSummaryEngineSwitch');
+    if(strategyGrid){
+      strategyGrid.querySelectorAll('[data-voice-strategy-tab]').forEach(function(btn){
         btn.disabled=!!busy;
         btn.setAttribute('aria-busy',busy?'true':'false');
       });
@@ -685,6 +736,7 @@
 
   function renderVoiceModeSwitch(){
     const mode=resolveRuntimeEngine();
+    const strategy=currentListeningStrategy();
     const endEnabled=global.OneToneVoiceEnd.enabledInConfig();
     const sapiCard=$('btnVoiceModeSapi');
     const voskCard=$('btnVoiceModeVosk');
@@ -699,19 +751,31 @@
     }
     syncVoiceWakeExpandedUi();
     if(currentEl){
-      if(mode==='kws') currentEl.textContent=t('voiceModeCurrentKws');
-      else if(voskOnlyUi()||mode==='vosk') currentEl.textContent=t('voiceModeCurrentPro');
+      if(strategy==='resourceSaver') currentEl.textContent=t('voiceModeCurrentKws');
+      else if(strategy==='enhanced') currentEl.textContent=t('voiceModeCurrentEnhanced');
+      else if(strategy==='off') currentEl.textContent=t('voiceModeCurrentOff');
+      else if(strategy==='advanced'&&mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
+      else if(strategy==='advanced'&&mode==='kws') currentEl.textContent=t('voiceModeCurrentKws');
+      else if(strategy==='auto'||mode==='vosk'||mode==='kws') currentEl.textContent=t('voiceModeCurrentPro');
       else if(mode==='sapi') currentEl.textContent=t('voiceModeCurrentLite');
       else currentEl.textContent=t('voiceModeCurrentOff');
     }
     if(hintEl){
-      if(mode==='kws') hintEl.textContent=t('voiceModeHintKws');
+      if(strategy==='resourceSaver') hintEl.textContent=t('voiceListeningStrategyResourceSaverDesc');
+      else if(strategy==='enhanced') hintEl.textContent=t('voiceListeningStrategyEnhancedDesc');
+      else if(strategy==='off') hintEl.textContent=t('voiceModeHintOff');
+      else if(strategy==='advanced'){
+        if(mode==='kws') hintEl.textContent=t('voiceModeHintKws');
+        else if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
+        else hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
+      }else if(mode==='kws') hintEl.textContent=t('voiceModeHintKws');
       else if(voskOnlyUi()||mode==='vosk') hintEl.textContent=endEnabled?t('voiceModeHintProWithEnd'):t('voiceModeHintPro');
       else if(mode==='sapi') hintEl.textContent=t('voiceModeHintLite');
-      else hintEl.textContent=t('voiceModeHintOff');
+      else hintEl.textContent=t('voiceListeningStrategyAutoDesc');
     }
     hooks().renderVoiceModeUsage();
     setVoiceModeCardBusy(voiceModeSwitchInFlight);
+    syncVoiceStrategyTabButtons(voiceModeSwitchInFlight);
     global.OneToneVoiceEnd.syncModeUi();
     renderVoiceEngineTabs();
     renderSettingsVoiceSubnav();
@@ -767,6 +831,8 @@
   }
 
   function applyDesiredEngineResult(bundle,mode,statusOpts,syncOpts){
+    const strategy=String((bundle&&bundle.strategy)||(bundle&&bundle.supervisor&&bundle.supervisor.listeningStrategy)||'').trim();
+    if(strategy) applyListeningStrategyToConfig(strategy);
     const voskRes=bundle&&bundle.voiceVosk?bundle.voiceVosk:null;
     const sapiRes=bundle&&bundle.voiceSapi?bundle.voiceSapi:null;
     const kwsRes=bundle&&bundle.voiceKws?bundle.voiceKws:null;
@@ -783,6 +849,119 @@
       snap.wake=mergeWakeSnapshot(sapiRes,voskRes,kwsRes);
     }
     return {voskRes:voskRes,sapiRes:sapiRes,kwsRes:kwsRes,engine:eng};
+  }
+
+  function setListeningStrategyRemote(strategy){
+    return ipcWithTimeout('cmd_voice_set_listening_strategy',{strategy:String(strategy||'').trim()});
+  }
+
+  function pumpListeningStrategySwitch(strategy,opts){
+    if(voiceModeSwitchInFlight) return;
+    strategy=String(strategy||'').trim();
+    if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced'&&strategy!=='off') return;
+    const seq=voiceModeSwitchSeq;
+    const toastKind=(opts&&opts.toastKind)||'default';
+    const toastLite=toastKind==='lite';
+    function strategyToast(){
+      if(toastLite) return;
+      if(strategy==='resourceSaver') hooks().toast(t('voiceListeningStrategySwitchedResourceSaver'));
+      else if(strategy==='enhanced') hooks().toast(t('voiceListeningStrategySwitchedEnhanced'));
+      else if(strategy==='auto') hooks().toast(t('voiceListeningStrategySwitchedAuto'));
+    }
+    const homeOnly=!ui().drawerOpen;
+    const statusOpts={liveOnly:homeOnly};
+    const syncOpts={lightOnly:true,homeOnly:homeOnly};
+    voiceModeSwitchInFlight=true;
+    setVoiceModeCardBusy(true);
+    const finish=function(){
+      voiceModeSwitchInFlight=false;
+      setVoiceModeCardBusy(false);
+      if(seq!==voiceModeSwitchSeq){
+        pumpListeningStrategySwitch(strategy,opts);
+        return;
+      }
+      applyHomeVoiceModeSwitchUi();
+      if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
+      else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
+    };
+    setListeningStrategyRemote(strategy).then(function(bundle){
+      if(seq!==voiceModeSwitchSeq) return;
+      if(!bundle||bundle.ok===false){
+        throw new Error((bundle&&bundle.error)||t('voiceVoskFail'));
+      }
+      const uiMode=strategy==='resourceSaver'?'kws':'vosk';
+      const applied=applyDesiredEngineResult(bundle,uiMode,statusOpts,syncOpts);
+      if(strategy==='off'){
+        hooks().syncHomeFromVoiceSettings(
+          applied.voskRes||{enabled:false,state:'stopped'},
+          applied.sapiRes||{enabled:false,state:'stopped'},
+          null,
+          syncOpts,
+          applied.kwsRes
+        );
+        scheduleVoiceToggleRefresh();
+        return;
+      }
+      if(strategy==='resourceSaver'){
+        voiceWakeExpandedMode='kws';
+        hooks().syncHomeFromVoiceSettings(
+          applied.voskRes||{enabled:false,state:'stopped'},
+          applied.sapiRes||{enabled:false,state:'stopped'},
+          null,
+          syncOpts,
+          applied.kwsRes
+        );
+        strategyToast();
+        scheduleVoiceToggleRefresh();
+        return;
+      }
+      voiceWakeExpandedMode='vosk';
+      return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
+        if(seq!==voiceModeSwitchSeq) return;
+        if(endRes){
+          global.OneToneVoiceEnd.syncConfigFromStatus(endRes);
+          const snap=hooks().voiceUiSnapshot;
+          if(snap) snap.end=Object.assign({},snap.end||{},endRes);
+        }
+        hooks().syncHomeFromVoiceSettings(
+          applied.voskRes||{enabled:false,state:'stopped'},
+          {enabled:false,state:'stopped'},
+          endRes,
+          syncOpts,
+          applied.kwsRes
+        );
+        strategyToast();
+        scheduleVoiceToggleRefresh();
+      });
+    }).catch(function(err){
+      if(seq!==voiceModeSwitchSeq) return;
+      rollbackVoiceModeSwitch();
+      const msg=err&&err.message?String(err.message).trim():'';
+      hooks().toast(msg||t('voiceVoskFail'));
+      console.error('voice_strategy_'+strategy,err);
+    }).finally(finish);
+  }
+
+  function switchListeningStrategy(strategy,opts){
+    opts=opts||{};
+    strategy=String(strategy||'').trim();
+    if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced'&&strategy!=='off') return;
+    voiceModeSwitchSeq++;
+    hooks().markVoiceEngineBootHandled();
+    if(strategy==='resourceSaver') setVoiceWakeExpandedMode('kws');
+    else if(strategy==='auto'||strategy==='enhanced') setVoiceWakeExpandedMode('vosk');
+    if(voiceBackendMatchesStrategy(strategy)&&!voiceModeSwitchInFlight){
+      applyHomeVoiceModeSwitchUi();
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+        global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+      }
+      return;
+    }
+    applyHomeVoiceModeSwitchUi();
+    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.mirrorGlobalToOverride){
+      global.OneToneVoiceSchemeContext.mirrorGlobalToOverride();
+    }
+    pumpListeningStrategySwitch(strategy,opts);
   }
 
   function pumpVoiceModeSwitch(opts){
@@ -816,7 +995,12 @@
       if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
       else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
     };
-    ipcWithTimeout('cmd_voice_set_desired_engine',{engine:mode}).then(function(bundle){
+    const req=(mode==='kws')
+      ?setListeningStrategyRemote('resourceSaver')
+      :(mode==='vosk')
+        ?setListeningStrategyRemote('auto')
+        :ipcWithTimeout('cmd_voice_set_desired_engine',{engine:mode});
+    req.then(function(bundle){
       if(seq!==voiceModeSwitchSeq) return;
       if(!bundle||bundle.ok===false){
         throw new Error((bundle&&bundle.error)||t('voiceVoskFail'));
@@ -837,14 +1021,8 @@
       }
       if(mode==='kws'){
         const kwsRes=applied.kwsRes;
-        if(!kwsRes||!kwsRes.enabled){
+        if(!kwsRes){
           throw new Error((kwsRes&&kwsRes.lastError)||t('voiceKwsFail'));
-        }
-        if(applied.voskRes&&applied.voskRes.enabled){
-          throw new Error(t('voiceKwsFail'));
-        }
-        if(applied.sapiRes&&applied.sapiRes.enabled){
-          throw new Error(t('voiceKwsFail'));
         }
         voiceWakeExpandedMode='kws';
         return ipcWithTimeout('cmd_voice_end_status',{},8000).catch(function(){return null;}).then(function(endRes){
@@ -1855,12 +2033,14 @@
     if(next){
       hooks().stopMicMonitor();
     }
-    const engine=next?'vosk':'none';
-    global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+    const req=next
+      ?setListeningStrategyRemote('auto')
+      :setListeningStrategyRemote('off');
+    req.then(function(bundle){
       if(!bundle||bundle.ok===false){
         throw new Error((bundle&&bundle.error)||t('voiceVoskFail'));
       }
-      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const applied=applyDesiredEngineResult(bundle,'vosk',{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
       const voskRes=applied.voskRes||{enabled:false,state:'stopped'};
       hooks().syncHomeFromVoiceSettings(
         voskRes,
@@ -2220,12 +2400,14 @@
   }
 
   function setVoiceKwsEnabled(enabled){
-    const engine=enabled?'kws':'none';
-    return global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+    const req=enabled
+      ?setListeningStrategyRemote('resourceSaver')
+      :setListeningStrategyRemote('off');
+    return req.then(function(bundle){
       if(!bundle||bundle.ok===false){
         throw new Error((bundle&&bundle.error)||t('voiceKwsFail'));
       }
-      const applied=applyDesiredEngineResult(bundle,engine,{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
+      const applied=applyDesiredEngineResult(bundle,'kws',{liveOnly:!ui().drawerOpen},{lightOnly:true,homeOnly:!ui().drawerOpen});
       hooks().syncHomeFromVoiceSettings(null,null,null,{lightOnly:true},applied.kwsRes);
       hooks().toast(enabled?t('voiceKwsEnabled'):t('voiceKwsDisabled'));
       return applied.kwsRes;
@@ -2363,6 +2545,8 @@
   }
 
   function voiceWakeEnabledInConfig(){
+    const strategy=currentListeningStrategy();
+    if(strategy==='off') return false;
     const cfg=state().config||{};
     const vosk=cfg.voiceVosk||cfg.voice_vosk;
     const sapi=cfg.voiceSapi||cfg.voice_sapi;
@@ -2388,12 +2572,15 @@
     syncKwsConfigFromStatus:syncVoiceKwsConfigFromStatus,
     syncDesiredEngineConfig:syncDesiredEngineConfig,
     currentMode:currentVoiceMode,
+    currentListeningStrategy:currentListeningStrategy,
     syncExpandedUi:syncVoiceWakeExpandedUi,
     setExpandedMode:setVoiceWakeExpandedMode,
     getExpandedMode:function(){ return voiceWakeExpandedMode; },
     renderModeSwitch:renderVoiceModeSwitch,
     switchMode:switchVoiceMode,
+    switchListeningStrategy:switchListeningStrategy,
     syncEngineTabButtons:syncVoiceEngineTabButtons,
+    syncStrategyTabButtons:syncVoiceStrategyTabButtons,
     enabledInConfig:voiceWakeEnabledInConfig,
     pollNeeded:voiceStatusPollNeeded,
     pollTick:voiceStatusPollTick,

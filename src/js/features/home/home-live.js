@@ -468,6 +468,8 @@
       if(pending==='kws'||pending==='vosk'||pending==='sapi') return pending;
     }
     const cfg=state().config||{};
+    const strategy=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'').trim();
+    if(strategy==='off') return 'off';
     const voskCfg=cfg.voiceVosk||cfg.voice_vosk||{};
     const sapiCfg=cfg.voiceSapi||cfg.voice_sapi||{};
     const kwsCfg=cfg.voiceKws||cfg.voice_kws||{};

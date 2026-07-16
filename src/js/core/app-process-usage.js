@@ -55,6 +55,15 @@
   }
 
   function processUsageModeLabel(mode){
+    var wake=global.OneToneVoiceWake;
+    if(wake&&wake.currentListeningStrategy){
+      var strategy=wake.currentListeningStrategy();
+      if(strategy==='auto') return hooks().t('voiceListeningStrategyAuto');
+      if(strategy==='resourceSaver') return hooks().t('voiceListeningStrategyResourceSaver');
+      if(strategy==='enhanced') return hooks().t('voiceListeningStrategyEnhanced');
+      if(strategy==='off') return hooks().t('voiceListeningStrategyOff');
+      if(strategy==='advanced') return hooks().t('voiceListeningStrategyAdvanced');
+    }
     if(mode==='sapi') return hooks().t('voiceModeCurrentLite');
     if(mode==='vosk') return hooks().t('voiceModeCurrentPro');
     if(mode==='kws') return hooks().t('voiceModeKwsEngine');

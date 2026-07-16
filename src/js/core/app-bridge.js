@@ -187,22 +187,18 @@
         hooks().markVoiceEngineBootHandled();
         hooks().setVoiceEngineBootDone(true);
         hooks().clearVoiceEngineBootTimer();
-        var useVosk=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
-        var engine=useVosk?'vosk':'sapi';
-        return hooks().vpInvoke('cmd_voice_set_desired_engine',{engine:engine}).then(function(bundle){
+        return hooks().vpInvoke('cmd_voice_set_listening_strategy',{strategy:'auto'}).then(function(bundle){
           if(!bundle||bundle.ok===false) return false;
           var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
           var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
           var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
           if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
           if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
-          if(engine==='sapi'&&hooks().handleVoiceSapiEnableResult&&!hooks().handleVoiceSapiEnableResult(sapiRes,true)){
-            return false;
-          }
+          if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
           hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{lightOnly:true},kwsRes);
           hooks().renderHomeLiveZone();
           hooks().renderHome();
-          return !!(bundle.engine===engine||(useVosk?voskRes.enabled:sapiRes.enabled));
+          return hooks().homeVoiceEngineOn()!=='off';
         });
       },
       enableVoicePractice:function(opts){

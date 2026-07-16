@@ -1220,6 +1220,11 @@ pub struct VoiceConfig {
     /// Source of truth for which engine should run; per-engine `enabled` flags are mirrors.
     #[serde(default = "default_desired_engine", rename = "desiredEngine")]
     pub desired_engine: String,
+    #[serde(
+        default = "default_voice_listening_strategy",
+        rename = "voiceListeningStrategy"
+    )]
+    pub voice_listening_strategy: String,
     #[serde(default, skip_serializing)]
     pub scenes: Option<Vec<SceneConfig>>,
     #[serde(rename = "schemeSwitchKey", default = "default_scheme_switch_key")]
@@ -1270,6 +1275,10 @@ fn default_version() -> u32 {
 
 fn default_desired_engine() -> String {
     "none".into()
+}
+
+fn default_voice_listening_strategy() -> String {
+    "auto".into()
 }
 
 fn default_window_width() -> f64 {
@@ -1907,11 +1916,50 @@ pub fn desired_engine_from_enabled_flags(
     }
 }
 
+pub fn parse_voice_listening_strategy_label(raw: &str) -> Option<&'static str> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "" | "auto" => Some("auto"),
+        "resourcesaver" | "resource_saver" | "resource-saver" => Some("resourceSaver"),
+        "enhanced" | "vosk" => Some("enhanced"),
+        "off" | "none" => Some("off"),
+        "advanced" => Some("advanced"),
+        _ => None,
+    }
+}
+
+pub fn normalize_voice_listening_strategy(raw: &str) -> &'static str {
+    parse_voice_listening_strategy_label(raw).unwrap_or("auto")
+}
+
+pub fn derive_voice_listening_strategy_from_legacy(cfg: &VoiceConfig) -> &'static str {
+    match parse_desired_engine_label(&cfg.desired_engine)
+        .unwrap_or_else(|| desired_engine_from_enabled_flags(cfg))
+    {
+        crate::scene_config::DesiredVoiceEngine::None => "off",
+        crate::scene_config::DesiredVoiceEngine::Vosk => "enhanced",
+        crate::scene_config::DesiredVoiceEngine::Kws
+        | crate::scene_config::DesiredVoiceEngine::Sapi => "advanced",
+    }
+}
+
+pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
+    cfg.voice_listening_strategy = normalize_voice_listening_strategy(strategy).to_string();
+    match cfg.voice_listening_strategy.as_str() {
+        "off" => {
+            cfg.desired_engine = "none".into();
+            sync_enabled_flags_from_desired(cfg);
+        }
+        "advanced" => {}
+        _ => sync_enabled_flags_from_desired(cfg),
+    }
+}
+
 /// Write `desired_engine` and mirror it onto the three `enabled` flags. Does not save.
 pub fn apply_desired_engine(cfg: &mut VoiceConfig, engine: &str) {
     let parsed = parse_desired_engine_label(engine)
         .unwrap_or(crate::scene_config::DesiredVoiceEngine::None);
     cfg.desired_engine = desired_engine_label(parsed).to_string();
+    cfg.voice_listening_strategy = "advanced".into();
     sync_enabled_flags_from_desired(cfg);
 }
 
@@ -2405,6 +2453,7 @@ impl Default for VoiceConfig {
             voice_kws: VoiceKwsConfig::default(),
             voice_end: VoiceEndConfig::default(),
             desired_engine: default_desired_engine(),
+            voice_listening_strategy: default_voice_listening_strategy(),
             scenes: None,
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
@@ -2799,6 +2848,11 @@ impl VoiceConfig {
                 self.voice_kws.model_path = default_voice_kws_model_path();
             }
         }
+        self.voice_listening_strategy = if self.voice_listening_strategy.trim().is_empty() {
+            derive_voice_listening_strategy_from_legacy(self).to_string()
+        } else {
+            normalize_voice_listening_strategy(&self.voice_listening_strategy).to_string()
+        };
         reconcile_voice_engine_flags(self);
         if self.voice_vosk.model_preset == "auto" {
             self.voice_vosk.model_preset = "cn-light".to_string();
@@ -3284,6 +3338,7 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.voice_kws = existing.voice_kws.clone();
     cfg.voice_end = existing.voice_end.clone();
     cfg.desired_engine = existing.desired_engine.clone();
+    cfg.voice_listening_strategy = existing.voice_listening_strategy.clone();
     if raw.get("voiceWakeAcousticCommands").is_none() {
         cfg.voice_wake_acoustic_commands = existing.voice_wake_acoustic_commands.clone();
     } else {
@@ -3524,12 +3579,39 @@ mod tests {
         let mut cfg = VoiceConfig::default();
         apply_desired_engine(&mut cfg, "kws");
         assert_eq!(cfg.desired_engine, "kws");
+        assert_eq!(cfg.voice_listening_strategy, "advanced");
         assert!(cfg.voice_kws.enabled);
         assert!(!cfg.voice_vosk.enabled);
         assert!(!cfg.voice_sapi.enabled);
         apply_desired_engine(&mut cfg, "none");
         assert_eq!(cfg.desired_engine, "none");
         assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn apply_voice_listening_strategy_off_clears_desired_engine() {
+        let mut cfg = VoiceConfig::default();
+        apply_desired_engine(&mut cfg, "vosk");
+        apply_voice_listening_strategy(&mut cfg, "off");
+        assert_eq!(cfg.voice_listening_strategy, "off");
+        assert_eq!(cfg.desired_engine, "none");
+        assert!(!cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_sapi.enabled);
+        assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn normalize_derives_listening_strategy_from_legacy_engine() {
+        let mut cfg = VoiceConfig::default();
+        cfg.voice_listening_strategy.clear();
+        cfg.desired_engine = "vosk".into();
+        cfg.normalize();
+        assert_eq!(cfg.voice_listening_strategy, "enhanced");
+
+        cfg.voice_listening_strategy.clear();
+        cfg.desired_engine = "kws".into();
+        cfg.normalize();
+        assert_eq!(cfg.voice_listening_strategy, "advanced");
     }
 
     #[test]
@@ -4060,6 +4142,15 @@ mod tests {
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert!(merged.voice_vosk.enabled);
         assert!(merged.voice_end.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_voice_listening_strategy() {
+        let mut existing = VoiceConfig::default();
+        existing.voice_listening_strategy = "resourceSaver".into();
+        let json = r#"{"version":5,"mappings":[],"trash":[],"voiceListeningStrategy":"auto"}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert_eq!(merged.voice_listening_strategy, "resourceSaver");
     }
 
     #[test]

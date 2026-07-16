@@ -617,6 +617,7 @@ pub fn run() {
             ipc::cmd_open_windows_speech_setup,
             ipc::cmd_process_usage,
             ipc::cmd_voice_set_desired_engine,
+            ipc::cmd_voice_set_listening_strategy,
             ipc::cmd_voice_vosk_status,
             ipc::cmd_voice_vosk_set_enabled,
             ipc::cmd_voice_vosk_set_phrases,

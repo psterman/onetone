@@ -68,12 +68,12 @@
     if(srcVosk) srcVosk.textContent=t('voiceRecognizeSourceVosk');
     const srcKws=$('voiceRecognizeSourceKws');
     if(srcKws) srcKws.textContent=t('voiceRecognizeSourceKws');
-    const sumSapi=$('voiceSummaryEngineSapi');
-    if(sumSapi) sumSapi.textContent=t('voiceSummaryEngineSapi');
-    const sumVosk=$('voiceSummaryEngineVosk');
-    if(sumVosk) sumVosk.textContent=t('voiceSummaryEngineVosk');
-    const sumKws=$('voiceSummaryEngineKws');
-    if(sumKws) sumKws.textContent=t('voiceSummaryEngineKws');
+    const sumAuto=$('voiceSummaryEngineAuto');
+    if(sumAuto) sumAuto.textContent=t('voiceSummaryEngineAuto');
+    const sumSaver=$('voiceSummaryEngineResourceSaver');
+    if(sumSaver) sumSaver.textContent=t('voiceSummaryEngineResourceSaver');
+    const sumEnhanced=$('voiceSummaryEngineEnhanced');
+    if(sumEnhanced) sumEnhanced.textContent=t('voiceSummaryEngineEnhanced');
     const kwsName=$('modelsKwsName');
     if(kwsName) kwsName.textContent=t('modelsKwsName');
     const kwsDesc=$('modelsKwsDesc');
@@ -239,6 +239,9 @@
     if(engineVal) engineVal.textContent=vm.modeLabel||'—';
     if(global.OneToneVoiceWake&&global.OneToneVoiceWake.syncEngineTabButtons){
       global.OneToneVoiceWake.syncEngineTabButtons(vm.mode,!!vm.loading);
+    }
+    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.syncStrategyTabButtons){
+      global.OneToneVoiceWake.syncStrategyTabButtons(!!vm.loading);
     }
     if(scopeVal&&V) scopeVal.textContent=V.resolveScopeSummary(Object.assign({},vm,{habitMapping:mapping}));
     var enabledToggle=$('btnVoiceEnabled');

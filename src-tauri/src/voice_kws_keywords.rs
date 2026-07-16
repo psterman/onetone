@@ -209,11 +209,12 @@ pub fn build_runtime_keywords_file(
         }
     }
 
+    let out_path = model_dir.join(RUNTIME_KEYWORDS_FILENAME);
     if lines.is_empty() {
+        let _ = std::fs::remove_file(&out_path);
         return Ok(KwsKeywordBuildResult { encoded, skipped });
     }
 
-    let out_path = model_dir.join(RUNTIME_KEYWORDS_FILENAME);
     let body = lines.join("\n") + "\n";
     std::fs::write(&out_path, body).map_err(|e| format!("write {}: {e}", out_path.display()))?;
     Ok(KwsKeywordBuildResult { encoded, skipped })
@@ -272,6 +273,16 @@ mod tests {
         let runtime = dir.join(RUNTIME_KEYWORDS_FILENAME);
         assert!(runtime.is_file());
         let _ = std::fs::remove_file(runtime);
+    }
+
+    #[test]
+    fn empty_build_removes_stale_runtime_keywords() {
+        let dir = model_dir();
+        let runtime = dir.join(RUNTIME_KEYWORDS_FILENAME);
+        std::fs::write(&runtime, "stale\n").expect("write stale");
+        let result = build_runtime_keywords_file(&dir, &["Open Cursor".into()]).expect("build");
+        assert!(result.encoded.is_empty());
+        assert!(!runtime.exists());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! Runtime integration for KWS keyword command engine.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -18,6 +18,16 @@ pub struct KwsKeywordStatusSnapshot {
     pub skipped: Vec<String>,
     pub truncated: Vec<String>,
     pub issue: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KwsReadiness {
+    pub ready: bool,
+    pub native: bool,
+    pub model_complete: bool,
+    pub encoded_non_empty: bool,
+    pub strategy_allows_kws: bool,
+    pub reason: &'static str,
 }
 
 fn compose_keyword_build_issue(
@@ -54,6 +64,39 @@ fn store_kws_keyword_build_snapshot(
         truncated: plan.truncated.clone(),
         issue: compose_keyword_build_issue(plan, build),
     };
+}
+
+pub fn kws_readiness(
+    state: &AppState,
+    cfg: &crate::config::VoiceConfig,
+    resource_dir: Option<&Path>,
+) -> KwsReadiness {
+    let probe = probe_kws_resources(&cfg.voice_kws, resource_dir);
+    let build = state.voice_kws_keyword_build.lock().clone();
+    let strategy = crate::scene_config::voice_listening_strategy(cfg);
+    let native = !probe.stub_mode;
+    let model_complete = probe.model_exists;
+    let encoded_non_empty = !build.encoded.is_empty();
+    let strategy_allows_kws = matches!(strategy, "auto" | "resourceSaver" | "advanced");
+    let (ready, reason) = if !strategy_allows_kws {
+        (false, "strategy_disallows_kws")
+    } else if !native {
+        (false, "stub")
+    } else if !model_complete {
+        (false, "model_missing")
+    } else if !encoded_non_empty {
+        (false, "keywords_empty")
+    } else {
+        (true, "ready")
+    };
+    KwsReadiness {
+        ready,
+        native,
+        model_complete,
+        encoded_non_empty,
+        strategy_allows_kws,
+        reason,
+    }
 }
 
 fn next_kws_epoch(state: &AppState) -> u64 {
@@ -401,6 +444,7 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_kws.target_key);
     let resource_issue = crate::voice_kws::kws_resource_issue(&probe);
+    let readiness = kws_readiness(state, &cfg, resource_dir.as_deref());
     let resources_dir = crate::voice_kws::kws_resources_dir(resource_dir.as_deref());
     let download_url = crate::config::kws_model_download_url(&probe.model_preset)
         .unwrap_or("https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models");
@@ -435,6 +479,11 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
         "resolvedModelPath": probe.resolved_model_path,
         "modelExists": probe.model_exists,
         "keywordsExists": probe.keywords_exists,
+        "ready": readiness.ready,
+        "readyReason": readiness.reason,
+        "nativeAvailable": readiness.native,
+        "encodedNonEmpty": readiness.encoded_non_empty,
+        "strategyAllowsKws": readiness.strategy_allows_kws,
         "resourceIssue": resource_issue,
         "resourcesDir": resources_dir.display().to_string(),
         "modelDownloadUrl": download_url,

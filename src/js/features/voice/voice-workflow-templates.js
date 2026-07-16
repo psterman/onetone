@@ -40,8 +40,9 @@
   }
 
   function engineLabel(engine){
-    if(engine==='vosk') return t('voiceModeProEngine');
-    if(engine==='sapi') return t('voiceModeLiteEngine');
+    if(engine==='vosk') return t('voiceListeningStrategyAuto');
+    if(engine==='sapi') return t('voiceRecognizeSourceSapi');
+    if(engine==='kws') return t('voiceRecognizeSourceKws');
     return t('voiceModeCurrentOff');
   }
 

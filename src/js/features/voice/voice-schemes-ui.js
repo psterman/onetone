@@ -189,7 +189,18 @@
       wake=merged&&merged.length?merged[0]:'';
     }
     var engine=ov.engine?String(ov.engine):'';
-    var engineLbl=engine==='vosk'?t('voiceModeProEngine'):(engine==='sapi'?t('voiceModeLiteEngine'):t('voiceModeCurrentOff'));
+    var engineLbl;
+    if(!engine||engine==='off'){
+      engineLbl=t('voiceListeningStrategyOff');
+    }else if(engine==='vosk'){
+      engineLbl=t('voiceRecognizeSourceVosk');
+    }else if(engine==='kws'){
+      engineLbl=t('voiceRecognizeSourceKws');
+    }else if(engine==='sapi'){
+      engineLbl=t('voiceRecognizeSourceSapi');
+    }else{
+      engineLbl=engine;
+    }
     if(wake) return wake+' · '+engineLbl;
     return engineLbl;
   }

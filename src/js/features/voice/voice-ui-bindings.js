@@ -214,6 +214,21 @@
         if(hooks.switchVoiceMode) hooks.switchVoiceMode(mode,{toastKind:'lite'});
       });
     }
+    function bindVoiceStrategySwitch(root){
+      if(!root||root.dataset.voiceStrategyBound) return;
+      root.dataset.voiceStrategyBound='1';
+      root.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-strategy-tab]');
+        if(!btn||btn.disabled||btn.hidden) return;
+        e.preventDefault();
+        var strategy=btn.getAttribute('data-voice-strategy-tab');
+        if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced') return;
+        if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()) return;
+        if(global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
+          global.OneToneVoiceWake.switchListeningStrategy(strategy,{toastKind:'lite'});
+        }
+      });
+    }
     function bindVoiceOutputSwitch(root){
       if(!root||root.dataset.voiceOutputBound) return;
       root.dataset.voiceOutputBound='1';
@@ -303,7 +318,7 @@
       };
     }
     bindVoiceEngineSwitch($('voiceRecognizeSourceGrid'));
-    bindVoiceEngineSwitch($('voiceSummaryEngineSwitch'));
+    bindVoiceStrategySwitch($('voiceSummaryEngineSwitch'));
     var btnVoiceOutputSummonManage=$('btnVoiceOutputSummonManage');
     if(btnVoiceOutputSummonManage){
       btnVoiceOutputSummonManage.onclick=function(){

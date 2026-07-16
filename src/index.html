@@ -1344,9 +1344,9 @@
                 <span class="keys-scheme-summary-val" id="voiceSummaryEngine">—</span>
               </span>
               <div class="voice-summary-engine-switch voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
-                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceSummaryEngineSapi">备用</button>
-                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceSummaryEngineVosk">标准</button>
-                <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceSummaryEngineKws">轻量</button>
+                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
+                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
+                <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
               </div>
               <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
               <span class="keys-scheme-summary-item voice-status-scope-item sr-only">
@@ -1738,11 +1738,11 @@
                       <span class="sr-only" id="voiceModeTitle">识别细项</span>
                       <span class="sr-only" id="voiceRecognitionAsideSummary">—</span>
                       <section class="voice-recognize-block">
-                        <p class="voice-edit-section-title" id="voiceEditSectionEngine">临时切换</p>
+                        <p class="voice-edit-section-title" id="voiceEditSectionEngine">高级引擎</p>
                         <div class="voice-recognize-source-grid" id="voiceRecognizeSourceGrid" role="group" aria-labelledby="voiceRecognizeSourceLbl">
                           <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="sapi" id="voiceRecognizeSourceSapi">系统兼容</button>
-                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">标准模式</button>
-                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceRecognizeSourceKws">轻量模式</button>
+                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="vosk" id="voiceRecognizeSourceVosk">本地识别</button>
+                          <button type="button" class="voice-recognize-source-btn" data-voice-engine-tab="kws" id="voiceRecognizeSourceKws">快速口令</button>
                         </div>
                         <span class="sr-only" id="voiceRecognizeSourceLbl">识别来源</span>
                         <p class="voice-engine-capability-note" id="voiceEngineCapabilityNote"></p>

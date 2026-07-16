@@ -363,11 +363,17 @@
     if(!cfg.voiceKws&&cfg.voice_kws) cfg.voiceKws=cfg.voice_kws;
     if(!cfg.voiceEnd&&cfg.voice_end) cfg.voiceEnd=cfg.voice_end;
     if(!cfg.desiredEngine&&cfg.desired_engine) cfg.desiredEngine=String(cfg.desired_engine);
+    if(!cfg.voiceListeningStrategy&&cfg.voice_listening_strategy){
+      cfg.voiceListeningStrategy=String(cfg.voice_listening_strategy);
+    }
     if(cfg.desiredEngine==null){
       var voskOn=!!((cfg.voiceVosk||{}).enabled);
       var sapiOn=!!((cfg.voiceSapi||{}).enabled);
       var kwsOn=!!((cfg.voiceKws||{}).enabled);
       cfg.desiredEngine=voskOn?'vosk':(sapiOn?'sapi':(kwsOn?'kws':'none'));
+    }
+    if(cfg.voiceListeningStrategy==null){
+      cfg.voiceListeningStrategy=cfg.desiredEngine==='none'?'off':(cfg.desiredEngine==='vosk'?'enhanced':'advanced');
     }
     if(Array.isArray(cfg.mappings)){
       cfg.mappings=cfg.mappings.map(normalizeInboundMapping);
@@ -416,6 +422,7 @@
       version:7,
       activeSceneId:id,
       desiredEngine:'none',
+      voiceListeningStrategy:'auto',
       mappings:[{id:id,label:'AutoTrigger → '+labelSuffix,group:'通用设置',triggerKey:'AutoTrigger',targetKey:targetKey,enabled:true,order:0,triggerMode:'tap',intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,switchKeys:[],nativeKeyRestore:false,appTargetId:'',imePresetId:'',voiceOverride:null}],
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
@@ -559,6 +566,7 @@
           targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt'
         };
       })(),
+      voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'auto'),
       imePresetId:String(st.config.imePresetId||''),
       voiceWakeAcousticCommands:(function(){
         const cfg=st.config||{};

@@ -669,11 +669,22 @@ pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
 
 fn pcm_source_listening(state: &AppState) -> bool {
     let vosk = state.voice_vosk_state.lock();
-    if vosk.as_str() == "listening" {
-        return true;
-    }
+    let vosk_listening = vosk.as_str() == "listening";
+    drop(vosk);
     let kws = state.voice_kws_state.lock();
-    kws.as_str() == "listening"
+    let kws_listening = kws.as_str() == "listening";
+    drop(kws);
+    let cfg = state.cfg.lock().clone();
+    let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, None).ready;
+    pcm_source_listening_from_states(vosk_listening, kws_listening, kws_ready)
+}
+
+fn pcm_source_listening_from_states(
+    vosk_listening: bool,
+    kws_listening: bool,
+    kws_ready: bool,
+) -> bool {
+    vosk_listening || (kws_listening && kws_ready)
 }
 
 pub fn sync_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppState>) {
@@ -1020,4 +1031,16 @@ fn collect_match_commands(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pcm_source_listening_from_states;
+
+    #[test]
+    fn acoustic_pcm_can_run_with_non_vosk_source() {
+        assert!(pcm_source_listening_from_states(false, true, true));
+        assert!(!pcm_source_listening_from_states(false, true, false));
+        assert!(pcm_source_listening_from_states(true, false, false));
+    }
 }

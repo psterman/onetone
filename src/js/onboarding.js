@@ -757,7 +757,7 @@
     }
     return global.OneToneIpc.invoke('cmd_voice_vosk_set_model_preset',{preset:'cn-light'})
       .then(function(){
-        return global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:'vosk'});
+        return global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:'auto'});
       })
       .then(function(bundle){
         var voskRes=(bundle&&bundle.voiceVosk)||bundle;

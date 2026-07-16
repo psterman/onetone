@@ -334,9 +334,9 @@
 
   function engineLabel(mode){
     mode=String(mode||'').trim().toLowerCase();
-    if(mode==='vosk') return 'Vosk';
-    if(mode==='sapi') return t('voiceSummaryEngineSapi');
-    if(mode==='kws') return t('voiceSummaryEngineKws');
+    if(mode==='vosk') return t('voiceListeningStrategyAuto');
+    if(mode==='sapi') return t('voiceRecognizeSourceSapi');
+    if(mode==='kws') return t('voiceRecognizeSourceKws');
     if(mode==='off'||!mode) return t('habitHubGlobalVoiceOff');
     return mode;
   }

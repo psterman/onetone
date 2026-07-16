@@ -19,44 +19,22 @@
     return 'vosk';
   }
 
+  function homeRestoreListeningStrategy(){
+    var cfg=global.OneToneState.state.config||{};
+    var strategy=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'auto').trim();
+    if(!strategy||strategy==='off'||strategy==='advanced') return 'auto';
+    return strategy;
+  }
+
   function homeToggleVoiceWake(){
     var eng=global.OneToneHomeLive.voiceEngineOn();
     var vw=global.OneToneVoiceWake;
-    if(!vw) return;
+    if(!vw||!vw.switchListeningStrategy) return;
     if(eng==='vosk'||eng==='sapi'||eng==='kws'){
-      global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:'none'}).then(function(bundle){
-        var engine=(bundle&&bundle.engine)||'none';
-        if(vw.syncDesiredEngineConfig) vw.syncDesiredEngineConfig(engine);
-        var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
-        var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
-        var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
-        if(vw.syncVoskConfigFromStatus) vw.syncVoskConfigFromStatus(voskRes);
-        if(vw.syncSapiConfigFromStatus) vw.syncSapiConfigFromStatus(sapiRes);
-        if(vw.syncKwsConfigFromStatus) vw.syncKwsConfigFromStatus(kwsRes);
-        if(vw.renderVoskStatus) vw.renderVoskStatus(voskRes,{liveOnly:true});
-        if(vw.renderSapiStatus) vw.renderSapiStatus(sapiRes,{liveOnly:true});
-        if(vw.renderKwsStatus) vw.renderKwsStatus(kwsRes,{liveOnly:true});
-        if(global.OneToneVoiceHomeSync&&global.OneToneVoiceHomeSync.sync){
-          global.OneToneVoiceHomeSync.sync(voskRes,sapiRes,null,{lightOnly:true,homeOnly:true},kwsRes);
-        }else if(global.OneToneHomeLive&&global.OneToneHomeLive.scheduleRenderZone){
-          global.OneToneHomeLive.scheduleRenderZone();
-        }else if(global.OneToneHomeLive&&global.OneToneHomeLive.renderZone){
-          global.OneToneHomeLive.renderZone();
-        }
-      }).catch(function(err){
-        console.error('home_voice_off',err);
-        toast(t('voiceVoskFail'));
-      });
+      vw.switchListeningStrategy('off');
       return;
     }
-    var pref=homePreferredVoiceEngine();
-    if(vw.switchMode){
-      vw.switchMode(pref==='sapi'&&!voskOnlyUi()?'sapi':'vosk');
-      return;
-    }
-    global.OneToneIpc.invoke('cmd_voice_set_desired_engine',{engine:pref==='sapi'&&!voskOnlyUi()?'sapi':'vosk'}).catch(function(err){
-      console.error('home_voice_on',err);
-    });
+    vw.switchListeningStrategy(homeRestoreListeningStrategy());
   }
 
   function toggleHomeKeyEnable(){

@@ -75,6 +75,39 @@ fn voice_engine_state_is_transition(state: &str) -> bool {
     matches!(state, "starting" | "stopping")
 }
 
+fn resolve_strategy_engine(strategy: &str, kws_ready: bool, advanced_engine: EffectiveVoiceEngine) -> EffectiveVoiceEngine {
+    match strategy {
+        "auto" => {
+            if kws_ready {
+                EffectiveVoiceEngine::Kws
+            } else {
+                EffectiveVoiceEngine::Vosk
+            }
+        }
+        "resourceSaver" => {
+            if kws_ready {
+                EffectiveVoiceEngine::Kws
+            } else {
+                EffectiveVoiceEngine::None
+            }
+        }
+        "enhanced" => EffectiveVoiceEngine::Vosk,
+        "off" => EffectiveVoiceEngine::None,
+        _ => advanced_engine,
+    }
+}
+
+fn resolve_supervisor_desired_engine(
+    state: &AppState,
+    cfg: &VoiceConfig,
+    resource_dir: Option<&std::path::Path>,
+) -> EffectiveVoiceEngine {
+    let strategy = crate::scene_config::voice_listening_strategy(cfg);
+    let advanced_engine = crate::scene_config::idle_desired_voice_engine(cfg);
+    let ready = crate::voice_kws_runtime::kws_readiness(state, cfg, resource_dir);
+    resolve_strategy_engine(strategy, ready.ready, advanced_engine)
+}
+
 pub fn desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     onetone_logic::voice_reload::desired_voice_engine(&voice_reload_snapshot(cfg))
 }
@@ -388,7 +421,7 @@ pub fn activate_desired_engine(app: &AppHandle, state: &Arc<AppState>, reason: &
         clear_degrade_status(state);
     }
     let cfg = state.cfg.lock().clone();
-    let desired = crate::scene_config::idle_desired_voice_engine(&cfg);
+    let desired = resolve_supervisor_desired_engine(state, &cfg, app.path().resource_dir().ok().as_deref());
     let from = observe_running_engine(state);
     let gate = resolve_activate_gate(
         desired,
@@ -483,7 +516,8 @@ pub fn restart_active_engine_if_fingerprint_changed(
     new_cfg: &VoiceConfig,
     reason: &str,
 ) {
-    let desired = crate::scene_config::idle_desired_voice_engine(new_cfg);
+    let desired =
+        resolve_supervisor_desired_engine(state, new_cfg, app.path().resource_dir().ok().as_deref());
     let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
     let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
     let fingerprint_changed = old_fp != new_fp;
@@ -671,13 +705,15 @@ pub fn set_degrade_status(state: &AppState, reason: &str) {
 
 pub fn supervisor_status_json(state: &AppState) -> serde_json::Value {
     let cfg = state.cfg.lock();
-    let desired = crate::scene_config::idle_desired_voice_engine(&cfg);
+    let desired = resolve_supervisor_desired_engine(state, &cfg, None);
+    let strategy = crate::scene_config::voice_listening_strategy(&cfg);
     drop(cfg);
     let active = observe_running_engine(state);
     let degraded = *state.voice_degraded.lock();
     let degraded_reason = state.voice_degraded_reason.lock().clone();
     serde_json::json!({
         "desiredEngine": engine_label(desired),
+        "listeningStrategy": strategy,
         "activeEngine": engine_label(active),
         "degraded": degraded,
         "degradedReason": degraded_reason,
@@ -998,7 +1034,7 @@ pub fn resume_voice_engines(app: &AppHandle, state: &Arc<AppState>) {
 
 #[cfg(test)]
 mod activate_gate_tests {
-    use super::{resolve_activate_gate, ActivateGate};
+    use super::{resolve_activate_gate, resolve_strategy_engine, ActivateGate};
     use crate::scene_config::DesiredVoiceEngine as EffectiveVoiceEngine;
 
     #[test]
@@ -1085,6 +1121,30 @@ mod activate_gate_tests {
                 "listen resume"
             ),
             ActivateGate::NoopAlreadyActive
+        );
+    }
+
+    #[test]
+    fn strategy_engine_prefers_function_or_saver_behavior() {
+        assert_eq!(
+            resolve_strategy_engine("auto", true, EffectiveVoiceEngine::Sapi),
+            EffectiveVoiceEngine::Kws
+        );
+        assert_eq!(
+            resolve_strategy_engine("auto", false, EffectiveVoiceEngine::Sapi),
+            EffectiveVoiceEngine::Vosk
+        );
+        assert_eq!(
+            resolve_strategy_engine("resourceSaver", true, EffectiveVoiceEngine::Vosk),
+            EffectiveVoiceEngine::Kws
+        );
+        assert_eq!(
+            resolve_strategy_engine("resourceSaver", false, EffectiveVoiceEngine::Vosk),
+            EffectiveVoiceEngine::None
+        );
+        assert_eq!(
+            resolve_strategy_engine("off", true, EffectiveVoiceEngine::Vosk),
+            EffectiveVoiceEngine::None
         );
     }
 }

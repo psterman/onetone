@@ -323,9 +323,20 @@ fn push_unique_phrase(out: &mut Vec<String>, seen: &mut std::collections::HashSe
     if t.is_empty() {
         return;
     }
+    if !kws_plan_candidate_phrase(t) {
+        return;
+    }
     if seen.insert(t.to_string()) {
         out.push(t.to_string());
     }
+}
+
+fn kws_plan_candidate_phrase(phrase: &str) -> bool {
+    let t = phrase.trim();
+    if t.is_empty() {
+        return false;
+    }
+    t.chars().any(|ch| matches!(ch as u32, 0x3400..=0x9FFF | 0xF900..=0xFAFF))
 }
 
 /// Ordered tiers: wake, summon, cancel, send, end (zh+en each).
@@ -400,6 +411,10 @@ fn global_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     }
 }
 
+pub fn voice_listening_strategy(cfg: &VoiceConfig) -> &'static str {
+    crate::config::normalize_voice_listening_strategy(&cfg.voice_listening_strategy)
+}
+
 fn cfg_has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
     if cfg
         .voice_wake_acoustic_commands
@@ -420,45 +435,36 @@ pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
     cfg_has_enabled_acoustic_commands(cfg)
 }
 
-/// SAPI/KWS: prefer Vosk when acoustic scenario commands exist (need PCM + usable STT).
-fn prefer_vosk_for_acoustic(cfg: &VoiceConfig, desired: DesiredVoiceEngine) -> DesiredVoiceEngine {
-    if !cfg_has_enabled_acoustic_commands(cfg) {
-        return desired;
-    }
-    match desired {
-        DesiredVoiceEngine::Sapi | DesiredVoiceEngine::Kws => DesiredVoiceEngine::Vosk,
-        other => other,
-    }
-}
-
 pub fn idle_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
+    match voice_listening_strategy(cfg) {
+        "auto" | "resourceSaver" => return DesiredVoiceEngine::Kws,
+        "enhanced" => return DesiredVoiceEngine::Vosk,
+        "off" => return DesiredVoiceEngine::None,
+        _ => {}
+    }
     let Some(mapping) = cfg.find_mapping_by_id(&cfg.active_scene_id) else {
-        return prefer_vosk_for_acoustic(cfg, global_desired_voice_engine(cfg));
+        return global_desired_voice_engine(cfg);
     };
-    prefer_vosk_for_acoustic(cfg, effective_desired_engine(cfg, mapping))
+    effective_desired_engine(cfg, mapping)
 }
 
 pub fn effective_desired_engine(cfg: &VoiceConfig, mapping: &MappingEntry) -> DesiredVoiceEngine {
-    if let Some(raw) = mapping
-        .voice_override
-        .as_ref()
-        .and_then(|o| o.engine.as_ref())
-    {
-        match raw.trim().to_ascii_lowercase().as_str() {
-            "vosk" | "pro" | "advanced" => {
-                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Vosk)
+    if voice_listening_strategy(cfg) == "advanced" {
+        if let Some(raw) = mapping
+            .voice_override
+            .as_ref()
+            .and_then(|o| o.engine.as_ref())
+        {
+            match raw.trim().to_ascii_lowercase().as_str() {
+                "vosk" | "pro" | "advanced" => return DesiredVoiceEngine::Vosk,
+                "sapi" | "lite" => return DesiredVoiceEngine::Sapi,
+                "kws" | "keyword" | "keywords" => return DesiredVoiceEngine::Kws,
+                "none" | "off" => return DesiredVoiceEngine::None,
+                _ => {}
             }
-            "sapi" | "lite" => {
-                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Sapi)
-            }
-            "kws" | "keyword" | "keywords" => {
-                return prefer_vosk_for_acoustic(cfg, DesiredVoiceEngine::Kws)
-            }
-            "none" | "off" => return DesiredVoiceEngine::None,
-            _ => {}
         }
     }
-    prefer_vosk_for_acoustic(cfg, global_desired_voice_engine(cfg))
+    global_desired_voice_engine(cfg)
 }
 
 pub fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) -> String {
@@ -956,6 +962,36 @@ mod tests {
         }
     }
 
+    #[test]
+    fn kws_plan_skips_pure_english_handwritten_phrase() {
+        let mut cfg = base_cfg();
+        let id = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == id) {
+            m.voice_commands.push(crate::config::VoiceCommand {
+                id: "vc1".into(),
+                version: 1,
+                kind: "scenario-activate".into(),
+                engine_hint: "asr-text".into(),
+                locale: "en-US".into(),
+                scenario_id: id.clone(),
+                canonical_phrase: "Open Cursor".into(),
+                aliases: vec![],
+                samples: vec![],
+                phonetic_key: String::new(),
+                threshold: 0.8,
+                margin: 0.06,
+                quality: "good".into(),
+                activation_scope: "global".into(),
+                app_boost: true,
+                enabled: true,
+                created_at: 1,
+                updated_at: 1,
+            });
+        }
+        let plan = kws_keyword_plan_for_cfg(&cfg, 20);
+        assert!(!plan.included.iter().any(|p| p == "Open Cursor"));
+    }
+
     fn cn_wake_defaults() -> Vec<String> {
         vosk_preset_default_phrases("cn-light").unwrap()
     }
@@ -1123,8 +1159,9 @@ mod tests {
     }
 
     #[test]
-    fn acoustic_commands_upgrade_sapi_idle_engine_to_vosk() {
+    fn acoustic_commands_do_not_force_vosk_anymore() {
         let mut cfg = VoiceConfig::default();
+        cfg.voice_listening_strategy = "advanced".into();
         cfg.voice_vosk.enabled = false;
         cfg.voice_sapi.enabled = true;
         cfg.voice_kws.enabled = false;
@@ -1167,6 +1204,38 @@ mod tests {
                 updated_at: 1,
             }];
         }
-        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Vosk);
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Sapi);
+    }
+
+    #[test]
+    fn non_advanced_strategy_ignores_scene_engine_override() {
+        let mut cfg = base_cfg();
+        cfg.voice_listening_strategy = "resourceSaver".into();
+        let active = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == active) {
+            m.voice_override = Some(VoiceOverride {
+                engine: Some("vosk".into()),
+                ..Default::default()
+            });
+        }
+        let mapping = cfg.find_mapping_by_id(&active).unwrap();
+        assert_eq!(effective_desired_engine(&cfg, mapping), DesiredVoiceEngine::Vosk);
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Kws);
+    }
+
+    #[test]
+    fn advanced_strategy_respects_scene_engine_override() {
+        let mut cfg = base_cfg();
+        cfg.voice_listening_strategy = "advanced".into();
+        let active = cfg.active_scene_id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == active) {
+            m.voice_override = Some(VoiceOverride {
+                engine: Some("sapi".into()),
+                ..Default::default()
+            });
+        }
+        let mapping = cfg.find_mapping_by_id(&active).unwrap();
+        assert_eq!(effective_desired_engine(&cfg, mapping), DesiredVoiceEngine::Sapi);
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Sapi);
     }
 }
