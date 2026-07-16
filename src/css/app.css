@@ -1733,6 +1733,12 @@
     .settings-panel-wrap{
       flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 24px 64px;min-height:0;min-width:0;
       overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-padding-bottom:96px;
+      display:flex;flex-direction:column;
+    }
+    .settings-panel-wrap:has(#settingsPanelKeys:not([hidden])),
+    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
+      padding-bottom:20px;
+      scroll-padding-bottom:32px;
     }
     .settings-panel{display:block}
     .settings-panel[hidden]{display:none!important}

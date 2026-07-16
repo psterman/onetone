@@ -332,7 +332,7 @@
 }
 
 #settingsPanelVoiceWake .voice-app-scope-strip.voice-app-scope-dock {
-  /* Dock chrome comes from flow-desk.css (.voice-app-scope-dock); keep strip id for JS. */
+  /* Shared dock chrome in flow-desk.css */
   margin-top: auto;
 }
 
@@ -342,14 +342,18 @@
   z-index: 5;
   margin-top: 8px;
   padding: 12px 14px;
-  border-radius: 14px;
-  box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.05);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card, 0 14px 34px rgba(26, 45, 74, 0.07));
   background: var(--surface-high);
   border: 1px solid var(--outline-variant);
 }
 
 #settingsPanelVoiceWake .voice-app-scope-head {
   margin-bottom: 10px;
+}
+
+#settingsPanelVoiceWake .voice-app-scope-dock .voice-app-scope-head {
+  margin-bottom: 0;
 }
 
 #settingsPanelVoiceWake .voice-app-scope-title {

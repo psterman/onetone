@@ -1689,12 +1689,17 @@
   background: rgba(46, 125, 79, 0.12);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip:not(.voice-app-scope-dock) {
   margin-top: 14px;
   padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-soft);
+}
+
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-strip.voice-app-scope-dock {
+  margin-top: auto;
+  background: var(--surface-high);
 }
 
 :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-app-binding-lbl {
@@ -2264,16 +2269,8 @@
   margin-bottom: 0;
 }
 
-#settingsPanelKeys.keys-page-desk .keys-app-binding-strip.voice-app-scope-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 6;
-  margin-top: auto;
-  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
-}
-
 #settingsPanelKeys.keys-page-desk .keys-app-binding-strip .voice-app-scope-head {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 #settingsPanelKeys.keys-page-desk .flow-scope-tile-wrap .keys-app-chip--add {

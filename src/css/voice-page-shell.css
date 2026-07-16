@@ -1162,9 +1162,15 @@ html[data-theme="dark"] #settingsPanelVoiceWake .voice-subtab-btn.is-active {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
 }
 
-html[data-theme="dark"] #settingsPanelVoiceWake .voice-app-scope-strip {
+html[data-theme="dark"] #settingsPanelVoiceWake .voice-app-scope-strip.voice-app-scope-dock,
+html[data-theme="dark"] #settingsPanelKeys .voice-app-scope-dock {
+  background: rgba(22, 30, 44, 0.96);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] #settingsPanelVoiceWake .voice-app-scope-strip:not(.voice-app-scope-dock) {
   background: rgba(22, 30, 44, 0.92);
-  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
 
 html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-v2 .voice-flow-step.keys-workflow-col {
@@ -1272,26 +1278,6 @@ html[data-theme="dark"] .voice-models-page .models-resource-row strong {
 
 #settingsPanelVoiceWake.voice-page-desk .voice-page-layout {
   gap: 10px;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-app-scope-strip.voice-app-scope-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 6;
-  margin-top: auto;
-  justify-content: flex-end;
-  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-app-scope-dock .voice-app-scope-head {
-  margin: 0;
-  margin-right: auto;
-}
-
-#settingsPanelVoiceWake.voice-page-desk .voice-app-scope-dock .flow-scope-bar-wrap {
-  flex: 0 1 auto;
-  max-width: min(640px, 100%);
-  justify-content: flex-end;
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-flow-step.keys-workflow-col.is-active-step > .keys-step-body {
