@@ -13,7 +13,7 @@
 //! Runtime modules may only start/stop **themselves**; they must not stop peers.
 //! Runtime-only paths never mutate config enabled flags or call save_config.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Manager};
 
@@ -25,6 +25,9 @@ use crate::voice_vosk_runtime;
 use crate::AppState;
 
 pub use onetone_logic::voice_reload::DesiredVoiceEngine;
+
+/// Serialize activate across strategy IPC spawn + config watcher to avoid interleaved stop/start.
+static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 
 fn voice_reload_snapshot(cfg: &VoiceConfig) -> onetone_logic::voice_reload::VoiceReloadConfig {
     onetone_logic::voice_reload::VoiceReloadConfig {
@@ -95,6 +98,14 @@ fn resolve_strategy_engine(strategy: &str, kws_ready: bool, advanced_engine: Eff
         "off" => EffectiveVoiceEngine::None,
         _ => advanced_engine,
     }
+}
+
+pub fn supervisor_desired_engine(
+    state: &AppState,
+    cfg: &VoiceConfig,
+    resource_dir: Option<&std::path::Path>,
+) -> EffectiveVoiceEngine {
+    resolve_supervisor_desired_engine(state, cfg, resource_dir)
 }
 
 fn resolve_supervisor_desired_engine(
@@ -233,14 +244,14 @@ fn start_self_engine(app: &AppHandle, state: &Arc<AppState>, engine: EffectiveVo
             start_self_vosk(
                 app,
                 state,
-                crate::scene_config::resolve_effective_vosk_config(&cfg),
+                crate::scene_config::vosk_config_for_runtime(&cfg, true),
                 reason,
             );
         }
         EffectiveVoiceEngine::Sapi => {
             let _ = voice_sapi_runtime::start_voice_sapi_runtime_only(
                 state,
-                crate::scene_config::resolve_effective_sapi_config(&cfg),
+                crate::scene_config::sapi_config_for_runtime(&cfg, true),
                 reason,
                 Some(app.clone()),
             );
@@ -249,7 +260,7 @@ fn start_self_engine(app: &AppHandle, state: &Arc<AppState>, engine: EffectiveVo
             start_self_kws(
                 app,
                 state,
-                crate::scene_config::resolve_effective_kws_config(&cfg),
+                crate::scene_config::kws_config_for_runtime(&cfg, true),
                 reason,
             );
         }
@@ -271,8 +282,10 @@ fn start_self_vosk(
         );
         return;
     }
+    // After stop_sync, state should be "stopped". If a stale busy label remains without a
+    // handle, still start — otherwise force:activate never recovers recognition.
     let current = state.voice_vosk_state.lock().clone();
-    if voice_engine_state_is_busy(&current) && current != "stopping" {
+    if current == "stopping" {
         crate::app_log::log_line(
             state,
             "voice",
@@ -378,16 +391,36 @@ pub(crate) fn resolve_activate_gate(
     transitioning: bool,
     reason: &str,
 ) -> ActivateGate {
+    resolve_activate_gate_with_health(
+        desired,
+        from,
+        handle_alive,
+        transitioning,
+        true, // callers without health info keep prior behavior
+        reason,
+    )
+}
+
+pub(crate) fn resolve_activate_gate_with_health(
+    desired: EffectiveVoiceEngine,
+    from: EffectiveVoiceEngine,
+    handle_alive: bool,
+    transitioning: bool,
+    running_healthy: bool,
+    reason: &str,
+) -> ActivateGate {
     let force_reload = reason.starts_with("force:");
     let allow_while_starting = force_reload
         || reason.starts_with("degrade:")
         || reason == "listen resume";
 
     // Already listening: skip kill/restart unless caller forces a reload.
+    // Stale handle + error/stopped must NOT noop — otherwise download/retry never recovers.
     if !force_reload
         && desired != EffectiveVoiceEngine::None
         && from == desired
         && handle_alive
+        && running_healthy
         && !transitioning
     {
         return ActivateGate::NoopAlreadyActive;
@@ -403,6 +436,16 @@ pub(crate) fn resolve_activate_gate(
     ActivateGate::Proceed
 }
 
+fn engine_running_healthy(state: &AppState, engine: EffectiveVoiceEngine) -> bool {
+    let s = match engine {
+        EffectiveVoiceEngine::Vosk => state.voice_vosk_state.lock().clone(),
+        EffectiveVoiceEngine::Sapi => state.voice_sapi_state.lock().clone(),
+        EffectiveVoiceEngine::Kws => state.voice_kws_state.lock().clone(),
+        EffectiveVoiceEngine::None => return false,
+    };
+    matches!(s.as_str(), "listening" | "cooldown" | "triggered")
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ActivateGate {
     NoopAlreadyActive,
@@ -416,6 +459,13 @@ pub(crate) enum ActivateGate {
 /// (epoch bump lives here) → start_self(desired) → sync_acoustic_match_runtime.
 /// Prefix reason with `force:` to reload an already-listening engine.
 pub fn activate_desired_engine(app: &AppHandle, state: &Arc<AppState>, reason: &str) {
+    let _guard = ACTIVATE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    activate_desired_engine_locked(app, state, reason);
+}
+
+fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason: &str) {
     // Fresh activate retries desired engine; clear previous fallover unless reason is degrade.
     if !reason.starts_with("degrade:") {
         clear_degrade_status(state);
@@ -423,11 +473,12 @@ pub fn activate_desired_engine(app: &AppHandle, state: &Arc<AppState>, reason: &
     let cfg = state.cfg.lock().clone();
     let desired = resolve_supervisor_desired_engine(state, &cfg, app.path().resource_dir().ok().as_deref());
     let from = observe_running_engine(state);
-    let gate = resolve_activate_gate(
+    let gate = resolve_activate_gate_with_health(
         desired,
         from,
         engine_handle_alive(state, desired),
         engine_transition_busy(state, desired),
+        engine_running_healthy(state, desired),
         reason,
     );
 
@@ -583,7 +634,7 @@ pub fn restart_active_engine_if_fingerprint_changed(
                 start_self_vosk(
                     app,
                     state,
-                    crate::scene_config::resolve_effective_vosk_config(new_cfg),
+                    crate::scene_config::vosk_config_for_runtime(new_cfg, true),
                     reason,
                 );
             }
@@ -593,7 +644,7 @@ pub fn restart_active_engine_if_fingerprint_changed(
             voice_sapi_runtime::voice_sapi_stop(state);
             let _ = voice_sapi_runtime::start_voice_sapi_runtime_only(
                 state,
-                crate::scene_config::resolve_effective_sapi_config(new_cfg),
+                crate::scene_config::sapi_config_for_runtime(new_cfg, true),
                 reason,
                 Some(app.clone()),
             );
@@ -616,7 +667,7 @@ pub fn restart_active_engine_if_fingerprint_changed(
                 start_self_kws(
                     app,
                     state,
-                    crate::scene_config::resolve_effective_kws_config(new_cfg),
+                    crate::scene_config::kws_config_for_runtime(new_cfg, true),
                     reason,
                 );
             }
@@ -821,14 +872,14 @@ pub fn on_engine_start_failed(
                     start_self_vosk(
                         app,
                         state,
-                        crate::scene_config::resolve_effective_vosk_config(&cfg_snap),
+                        crate::scene_config::vosk_config_for_runtime(&cfg_snap, true),
                         &format!("degrade:{reason}"),
                     );
                 }
                 EffectiveVoiceEngine::Sapi => {
                     let _ = voice_sapi_runtime::start_voice_sapi_runtime_only(
                         state,
-                        crate::scene_config::resolve_effective_sapi_config(&cfg_snap),
+                        crate::scene_config::sapi_config_for_runtime(&cfg_snap, true),
                         &format!("degrade:{reason}"),
                         Some(app.clone()),
                     );
@@ -837,7 +888,7 @@ pub fn on_engine_start_failed(
                     start_self_kws(
                         app,
                         state,
-                        crate::scene_config::resolve_effective_kws_config(&cfg_snap),
+                        crate::scene_config::kws_config_for_runtime(&cfg_snap, true),
                         &format!("degrade:{reason}"),
                     );
                 }
@@ -1001,8 +1052,12 @@ pub fn apply_voice_config_change(
     old_cfg: &VoiceConfig,
     new_cfg: &VoiceConfig,
 ) {
-    let old_desired = crate::scene_config::idle_desired_voice_engine(old_cfg);
-    let new_desired = crate::scene_config::idle_desired_voice_engine(new_cfg);
+    let resource_dir = app.path().resource_dir().ok();
+    let resource = resource_dir.as_deref();
+    // Use supervisor resolution (KWS readiness), not idle_desired — auto and resourceSaver
+    // both map to Kws in idle_desired, but auto may run Vosk while resourceSaver must stop it.
+    let old_desired = resolve_supervisor_desired_engine(state, old_cfg, resource);
+    let new_desired = resolve_supervisor_desired_engine(state, new_cfg, resource);
 
     if old_desired == new_desired {
         restart_active_engine_if_fingerprint_changed(
@@ -1086,6 +1141,32 @@ mod activate_gate_tests {
                 "force:vosk_model"
             ),
             ActivateGate::Proceed
+        );
+    }
+
+    #[test]
+    fn unhealthy_handle_does_not_noop() {
+        assert_eq!(
+            super::resolve_activate_gate_with_health(
+                EffectiveVoiceEngine::Vosk,
+                EffectiveVoiceEngine::Vosk,
+                true,
+                false,
+                false,
+                "vosk_model_already_present"
+            ),
+            ActivateGate::Proceed
+        );
+        assert_eq!(
+            super::resolve_activate_gate_with_health(
+                EffectiveVoiceEngine::Vosk,
+                EffectiveVoiceEngine::Vosk,
+                true,
+                false,
+                true,
+                "vosk_model_already_present"
+            ),
+            ActivateGate::NoopAlreadyActive
         );
     }
 

@@ -65,6 +65,7 @@ fn main() {
         "cmd_voice_sapi_test_send",
         "cmd_open_windows_speech_setup",
         "cmd_voice_set_desired_engine",
+        "cmd_voice_set_listening_strategy",
         "cmd_voice_vosk_status",
         "cmd_voice_vosk_set_enabled",
         "cmd_voice_vosk_set_phrases",
@@ -109,6 +110,13 @@ fn main() {
         "cmd_acoustic_voice_command_record_cancel",
         "cmd_acoustic_voice_command_build_from_samples",
     ];
+
+    // Frontend lives in ../src; force re-embed when voice strategy UI changes.
+    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-wake.js");
+    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-ui-bindings.js");
+    println!("cargo:rerun-if-changed=../src/js/core/config-persist.js");
+    println!("cargo:rerun-if-changed=../src/index.html");
+    println!("cargo:rerun-if-changed=tauri.conf.json");
 
     tauri_build::try_build(
         tauri_build::Attributes::new()

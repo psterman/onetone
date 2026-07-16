@@ -486,13 +486,7 @@ pub fn effective_vosk_model_preset(cfg: &VoiceConfig, mapping: &MappingEntry) ->
     }
 }
 
-pub fn resolve_effective_vosk_config(cfg: &VoiceConfig) -> VoiceVoskConfig {
-    let mut vosk = cfg.voice_vosk.clone();
-    if idle_desired_voice_engine(cfg) != DesiredVoiceEngine::Vosk {
-        vosk.enabled = false;
-        return vosk;
-    }
-    vosk.enabled = true;
+fn apply_vosk_preset_from_scene(cfg: &VoiceConfig, vosk: &mut VoiceVoskConfig) {
     if let Some(mapping) = cfg.find_mapping_by_id(&cfg.active_scene_id) {
         let preset = effective_vosk_model_preset(cfg, mapping);
         if preset != "custom" {
@@ -502,19 +496,42 @@ pub fn resolve_effective_vosk_config(cfg: &VoiceConfig) -> VoiceVoskConfig {
             }
         }
     }
+}
+
+/// Vosk config for supervisor/runtime activation (ignores idle Kws intent under auto fallback).
+pub fn vosk_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceVoskConfig {
+    let mut vosk = cfg.voice_vosk.clone();
+    if !active {
+        vosk.enabled = false;
+        return vosk;
+    }
+    vosk.enabled = true;
+    apply_vosk_preset_from_scene(cfg, &mut vosk);
     vosk
 }
 
+pub fn resolve_effective_vosk_config(cfg: &VoiceConfig) -> VoiceVoskConfig {
+    vosk_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Vosk)
+}
+
+pub fn kws_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceKwsConfig {
+    let mut kws = cfg.voice_kws.clone();
+    kws.enabled = active;
+    kws
+}
+
 pub fn resolve_effective_sapi_config(cfg: &VoiceConfig) -> VoiceSapiConfig {
+    sapi_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Sapi)
+}
+
+pub fn sapi_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceSapiConfig {
     let mut sapi = cfg.voice_sapi.clone();
-    sapi.enabled = idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Sapi;
+    sapi.enabled = active;
     sapi
 }
 
 pub fn resolve_effective_kws_config(cfg: &VoiceConfig) -> VoiceKwsConfig {
-    let mut kws = cfg.voice_kws.clone();
-    kws.enabled = idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Kws;
-    kws
+    kws_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Kws)
 }
 
 fn global_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
@@ -1237,5 +1254,16 @@ mod tests {
         let mapping = cfg.find_mapping_by_id(&active).unwrap();
         assert_eq!(effective_desired_engine(&cfg, mapping), DesiredVoiceEngine::Sapi);
         assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Sapi);
+    }
+
+    #[test]
+    fn vosk_runtime_config_active_when_supervisor_falls_back_to_vosk() {
+        let mut cfg = base_cfg();
+        cfg.voice_listening_strategy = "auto".into();
+        cfg.voice_vosk.enabled = false;
+        cfg.voice_kws.enabled = true;
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Kws);
+        assert!(!resolve_effective_vosk_config(&cfg).enabled);
+        assert!(vosk_config_for_runtime(&cfg, true).enabled);
     }
 }

@@ -617,6 +617,10 @@
       pendingMvpInitMsg=msg;
       if(msg.config){
         state().config=normalizeInboundConfig(msg.config);
+        try{
+          var earlyHold=global.OneToneVoiceWake&&global.OneToneVoiceWake.getStrategyHold&&global.OneToneVoiceWake.getStrategyHold();
+          if(earlyHold&&state().config) state().config.voiceListeningStrategy=earlyHold;
+        }catch(_){}
         if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.applyPendingEnable){
           global.OneToneMappingEditActions.applyPendingEnable(state().config);
         }
@@ -629,7 +633,19 @@
       if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<600&&configLoadedFromBackend&&configHasSceneData()) return;
       if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
       const st=state();
+      var heldStrategy=null;
+      try{
+        if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.getStrategyHold==='function'){
+          heldStrategy=global.OneToneVoiceWake.getStrategyHold();
+        }
+        if(!heldStrategy&&global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()){
+          heldStrategy=String((st.config&&(st.config.voiceListeningStrategy||st.config.voice_listening_strategy))||'').trim()||null;
+        }
+      }catch(_){ heldStrategy=null; }
       if(msg.config) st.config=normalizeInboundConfig(msg.config);
+      if(heldStrategy&&st.config){
+        st.config.voiceListeningStrategy=heldStrategy;
+      }
       if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.applyPendingEnable){
         global.OneToneMappingEditActions.applyPendingEnable(st.config);
       }

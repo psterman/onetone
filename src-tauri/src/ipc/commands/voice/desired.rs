@@ -46,16 +46,30 @@ pub fn voice_set_listening_strategy(
         cfg.normalize();
         crate::config::save_config(&cfg);
     }
-    crate::voice_bootstrap::activate_desired_engine(app, state, reason);
-    let resource_dir = app.path().resource_dir().ok();
+    crate::app_log::log_line(
+        state.as_ref(),
+        "voice",
+        &format!("set_listening_strategy label={label} reason={reason}"),
+    );
+    // Never block the IPC thread on stop_sync/join or heavy status probes — stopping Vosk
+    // while FE awaits this invoke previously wedged the UI (省电假死).
+    let app2 = app.clone();
+    let state2 = Arc::clone(state);
+    let reason2 = reason.to_string();
+    std::thread::Builder::new()
+        .name("voice-strategy-activate".into())
+        .spawn(move || {
+            crate::voice_bootstrap::activate_desired_engine(&app2, &state2, &reason2);
+        })
+        .map_err(|e| format!("spawn strategy activate failed: {e}"))?;
+
+    let supervisor = crate::voice_bootstrap::supervisor_status_json(state);
     Ok(serde_json::json!({
         "ok": true,
         "strategy": label,
-        "engine": crate::voice_bootstrap::supervisor_status_json(state).get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
-        "supervisor": crate::voice_bootstrap::supervisor_status_json(state),
-        "voiceVosk": crate::voice_vosk_runtime::voice_vosk_status(state, resource_dir.clone()),
-        "voiceSapi": crate::voice_sapi_runtime::voice_sapi_status(state),
-        "voiceKws": crate::voice_kws_runtime::voice_kws_status(state, resource_dir),
+        "engine": supervisor.get("desiredEngine").cloned().unwrap_or(serde_json::json!("none")),
+        "supervisor": supervisor,
+        "activateAsync": true,
     }))
 }
 

@@ -281,7 +281,13 @@ fn tick_cooldown_state(state: &AppState) {
     drop(cooldown);
 
     if state.voice_vosk.lock().is_some() {
-        if *current != "starting" {
+        // ModelLoaded sets model_load_time_ms before the worker reaches the audio loop.
+        // Promote stale "starting" once the model is loaded so FE stops the download loop.
+        if *current == "starting" {
+            if state.voice_vosk_model_load_time_ms.lock().is_some() {
+                *current = "listening".into();
+            }
+        } else if *current != "listening" && *current != "cooldown" && *current != "triggered" {
             *current = "listening".into();
         }
     }
@@ -460,8 +466,12 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
     let resource_issue = crate::voice_vosk::vosk_resource_issue(&probe);
     let download_url = crate::voice_vosk::vosk_model_download_url(&probe.model_preset)
         .unwrap_or("https://alphacephei.com/vosk/models");
+    let supervisor =
+        crate::voice_bootstrap::supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
+    let vosk_enabled = supervisor == crate::scene_config::DesiredVoiceEngine::Vosk
+        || state.voice_vosk.lock().is_some();
     let mut value = serde_json::json!({
-        "enabled": crate::scene_config::resolve_effective_vosk_config(&cfg).enabled,
+        "enabled": vosk_enabled,
         "state": state.voice_vosk_state.lock().clone(),
         "lastError": state.voice_vosk_last_error.lock().clone(),
         "lastPartial": state.voice_vosk_last_partial.lock().clone(),
@@ -726,9 +736,17 @@ pub fn voice_vosk_retry_start(
     resource_dir: Option<PathBuf>,
 ) -> serde_json::Value {
     refresh_vosk_probe_cache(state, resource_dir.as_deref());
-    let enabled = state.cfg.lock().voice_vosk.enabled;
-    if enabled {
-        crate::voice_bootstrap::activate_desired_engine(app, state, "vosk_retry_start");
-    }
+    let st = state.voice_vosk_state.lock().clone();
+    let healthy = matches!(
+        st.as_str(),
+        "listening" | "cooldown" | "triggered"
+    ) && state.voice_vosk.lock().is_some();
+    // Already listening: soft activate (noop). Otherwise force reload stuck/error handles.
+    let reason = if healthy {
+        "vosk_retry_start"
+    } else {
+        "force:vosk_retry_start"
+    };
+    crate::voice_bootstrap::activate_desired_engine(app, state, reason);
     voice_vosk_status(state, resource_dir)
 }

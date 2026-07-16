@@ -55,11 +55,10 @@ pub fn emit_to_main_if_available(
         log_emit_skip_throttled(state, "emit skipped because main unavailable");
         return false;
     };
-    let win = window.clone();
-    let emit_result = window.run_on_main_thread(move || {
-        let _ = win.emit("to_js", &payload);
-    });
-    match emit_result {
+    // Non-blocking: never run_on_main_thread here. Config watcher / voice activate often
+    // emit while JS is awaiting invoke; waiting for the UI thread deadlocks the window
+    // (Responding=false / 假死), especially on 省电 strategy switches that stop Vosk.
+    match window.emit("to_js", &payload) {
         Ok(()) => true,
         Err(e) => {
             log_emit_skip_throttled(state, &format!("emit failed: {e}"));

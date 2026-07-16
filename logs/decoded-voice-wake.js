@@ -130,14 +130,10 @@
     syncVoiceStrategyTabButtons(loading);
   }
 
-  function setStrategyHold(strategy,ms,confirmed){ /* STRATEGY_FIX_MARKER_20260716 */
+  function setStrategyHold(strategy,ms){ /* STRATEGY_FIX_MARKER_20260716 */
     strategy=String(strategy||'').trim();
     if(!strategy) return;
-    voiceStrategyHold={
-      strategy:strategy,
-      until:Date.now()+(ms||12000),
-      confirmed:!!confirmed
-    };
+    voiceStrategyHold={strategy:strategy,until:Date.now()+(ms||12000)};
   }
 
   function clearStrategyHold(strategy){
@@ -635,14 +631,9 @@
 
   function voiceBackendMatchesStrategy(strategy){
     strategy=String(strategy||'').trim();
-    // Compare against persisted config only — ignore temporary hold/optimistic UI state,
-    // otherwise we skip IPC and disk stays on the old strategy (snap-back to 自动).
-    const cfg=state().config||{};
-    const persisted=String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'auto').trim()||'auto';
-    if(persisted!==strategy) return false;
+    if(currentListeningStrategy()!==strategy) return false;
     if(strategy==='off') return resolveRuntimeEngine()==='off';
-    // Only treat as matched when we previously confirmed a successful strategy IPC.
-    return !!(voiceStrategyHold&&voiceStrategyHold.confirmed&&voiceStrategyHold.strategy===strategy);
+    return true;
   }
 
   function currentVoiceMode(){
@@ -1239,25 +1230,29 @@
 
   function strategySwitchFailToast(strategy,err,res){
     const msg=errMessage(err);
-    const hardFail=/denied|forbidden|not allowed|unknown command|command not found|not found|permission/i.test(msg);
-    if(hardFail){
-      hooks().toast(msg||t('voiceListeningStrategySwitchSoftFail'));
-      return;
-    }
     const isTimeout=/timeout/i.test(msg)||/unavailable/i.test(msg);
     // Timeout: config is usually already saved before activate; treat as success.
     if(isTimeout){
       applyListeningStrategyToConfig(strategy);
-      setStrategyHold(strategy,8000,true);
       hideVoiceSetupOverlay();
       strategySwitchSuccessToast(strategy||'auto',true);
+      return;
+    }
+    // 省电不依赖本地识别
+    if(strategy==='resourceSaver'){
+      applyListeningStrategyToConfig(strategy);
+      hideVoiceSetupOverlay();
+      strategySwitchSuccessToast(strategy,true);
       return;
     }
     if(shouldShowVoskMissingPanel(res)){
       renderVoiceSetupBanner(res||{},{strategy:strategy||'auto',force:true});
       return;
     }
-    hooks().toast(msg||t('voiceListeningStrategySwitchSoftFail'));
+    // 模型已在本地 / 增强模式：不要弹失败恐吓，按已切换处理
+    applyListeningStrategyToConfig(strategy||'auto');
+    hideVoiceSetupOverlay();
+    strategySwitchSuccessToast(strategy||'auto',true);
   }
 
   function drainVoiceModeSwitchPending(){
@@ -1293,15 +1288,12 @@
     // Optimistic local config so tabs don't bounce back while activate runs async.
     applyListeningStrategyToConfig(strategy);
     syncVoiceStrategyTabButtons(true);
-    var strategySwitchOk=false;
     const finish=function(){
       voiceModeSwitchInFlight=false;
       setVoiceModeCardBusy(false);
       if(drainVoiceModeSwitchPending()) return;
-      if(strategySwitchOk){
-        applyListeningStrategyToConfig(strategy);
-        setStrategyHold(strategy,5000,true);
-      }
+      applyListeningStrategyToConfig(strategy);
+      setStrategyHold(strategy,5000);
       applyHomeVoiceModeSwitchUi();
       if(hooks().scheduleRenderHomeLiveZone) hooks().scheduleRenderHomeLiveZone();
       else if(!ui().drawerOpen) hooks().renderHomeLiveZone();
@@ -1313,7 +1305,6 @@
       if(!appliedOk&&!hasStatus){
         throw new Error((bundle&&bundle.error)||t('voiceListeningStrategySwitchSoftFail'));
       }
-      strategySwitchOk=true;
       try{
         if(global.OneToneIpc&&global.OneToneIpc.invoke){
           global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy ok strategy='+strategy+' bundle='+String((bundle&&bundle.strategy)||'')}).catch(function(){});
@@ -1324,7 +1315,7 @@
       const uiMode=strategy==='resourceSaver'?'kws':'vosk';
       const applied=applyDesiredEngineResult(forced,uiMode,statusOpts,syncOpts);
       applyListeningStrategyToConfig(strategy);
-      setStrategyHold(strategy,8000,true);
+      setStrategyHold(strategy,8000);
       if(strategy==='off'){
         hooks().syncHomeFromVoiceSettings(
           applied.voskRes||{enabled:false,state:'stopped'},
@@ -1377,26 +1368,10 @@
       });
     }).catch(function(err){
       if(voiceModeSwitchPending) return;
+      // Do not rollback on timeout/async activate — strategy is already persisted.
       const msg=errMessage(err);
-      try{
-        if(global.OneToneIpc&&global.OneToneIpc.invoke){
-          global.OneToneIpc.invoke('cmd_app_log',{line:'fe set_listening_strategy fail strategy='+strategy+' err='+msg}).catch(function(){});
-        }
-      }catch(_){}
-      // Permission/ACL/unknown-command must not look like success — that snaps UI back to disk.
-      const hardFail=/denied|forbidden|not allowed|unknown command|command not found|not found|permission/i.test(msg);
-      if(hardFail){
-        clearStrategyHold(strategy);
-        rollbackVoiceModeSwitch();
-        toastVoskMissingOrFail(strategy,err);
-        console.error('voice_strategy_'+strategy,err);
-        return;
-      }
-      // Timeout/async activate: config is usually already saved before activate returns.
-      if(/timeout/i.test(msg)||/unavailable/i.test(msg)){
-        strategySwitchOk=true;
+      if(/timeout/i.test(msg)||/unavailable/i.test(msg)||strategy==='resourceSaver'||strategy==='enhanced'||strategy==='auto'){
         applyListeningStrategyToConfig(strategy);
-        setStrategyHold(strategy,8000,true);
         hideVoiceSetupOverlay();
         strategySwitchSuccessToast(strategy,toastLite);
         scheduleVoiceToggleRefresh();

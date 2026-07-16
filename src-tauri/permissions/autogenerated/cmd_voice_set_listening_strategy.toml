@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-voice-set-listening-strategy"
+description = "Enables the cmd_voice_set_listening_strategy command without any pre-configured scope."
+commands.allow = ["cmd_voice_set_listening_strategy"]
+
+[[permission]]
+identifier = "deny-cmd-voice-set-listening-strategy"
+description = "Denies the cmd_voice_set_listening_strategy command without any pre-configured scope."
+commands.deny = ["cmd_voice_set_listening_strategy"]

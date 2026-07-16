@@ -1949,6 +1949,15 @@ pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
             cfg.desired_engine = "none".into();
             sync_enabled_flags_from_desired(cfg);
         }
+        "enhanced" => {
+            cfg.desired_engine = "vosk".into();
+            sync_enabled_flags_from_desired(cfg);
+        }
+        "auto" | "resourceSaver" => {
+            // Supervisor may still fall back to Vosk when KWS is not ready (auto only).
+            cfg.desired_engine = "kws".into();
+            sync_enabled_flags_from_desired(cfg);
+        }
         "advanced" => {}
         _ => sync_enabled_flags_from_desired(cfg),
     }
@@ -3461,8 +3470,10 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                     crate::voice_bootstrap::apply_voice_config_change(
                         &app, &state, &old_cfg, &new_cfg,
                     );
+                    // Non-blocking emit only (see emit_to_main_if_available). Never block the
+                    // watcher on the UI thread — strategy IPC + watcher used to 假死 together.
                     let payload = ipc::mvp_init_payload(&state, "unchanged");
-                    ipc::emit_to_main_if_available(&app, Some(&state), payload);
+                    let _ = ipc::emit_app_event(&app, "to_js", &payload);
                     if normalized_voice_engine {
                         crate::app_log::log_line(
                             &state,
@@ -3598,6 +3609,26 @@ mod tests {
         assert!(!cfg.voice_vosk.enabled);
         assert!(!cfg.voice_sapi.enabled);
         assert!(!cfg.voice_kws.enabled);
+    }
+
+    #[test]
+    fn apply_voice_listening_strategy_sets_desired_engine() {
+        let mut cfg = VoiceConfig::default();
+        apply_voice_listening_strategy(&mut cfg, "enhanced");
+        assert_eq!(cfg.voice_listening_strategy, "enhanced");
+        assert_eq!(cfg.desired_engine, "vosk");
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_kws.enabled);
+
+        apply_voice_listening_strategy(&mut cfg, "resourceSaver");
+        assert_eq!(cfg.voice_listening_strategy, "resourceSaver");
+        assert_eq!(cfg.desired_engine, "kws");
+        assert!(cfg.voice_kws.enabled);
+        assert!(!cfg.voice_vosk.enabled);
+
+        apply_voice_listening_strategy(&mut cfg, "auto");
+        assert_eq!(cfg.voice_listening_strategy, "auto");
+        assert_eq!(cfg.desired_engine, "kws");
     }
 
     #[test]

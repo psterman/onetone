@@ -331,7 +331,12 @@
   color: var(--on-surface-muted);
 }
 
-#settingsPanelVoiceWake .voice-app-scope-strip {
+#settingsPanelVoiceWake .voice-app-scope-strip.voice-app-scope-dock {
+  /* Dock chrome comes from flow-desk.css (.voice-app-scope-dock); keep strip id for JS. */
+  margin-top: auto;
+}
+
+#settingsPanelVoiceWake .voice-app-scope-strip:not(.voice-app-scope-dock) {
   position: sticky;
   bottom: 8px;
   z-index: 5;
@@ -341,23 +346,6 @@
   box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.05);
   background: var(--surface-high);
   border: 1px solid var(--outline-variant);
-}
-
-#settingsPanelVoiceWake .voice-status-center-cluster .voice-app-scope-strip.voice-status-scope-bar,
-#settingsPanelVoiceWake .voice-status-scope-bar.voice-app-scope-strip {
-  position: static;
-  bottom: auto;
-  z-index: auto;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: none;
-  grid-column: auto;
 }
 
 #settingsPanelVoiceWake .voice-app-scope-head {
@@ -767,7 +755,7 @@
 
   
 
-  #settingsPanelVoiceWake .voice-app-scope-strip {
+  #settingsPanelVoiceWake .voice-app-scope-strip:not(.voice-app-scope-dock) {
     position: static;
     box-shadow: none;
     background: var(--surface);
@@ -841,9 +829,8 @@
 
 
 
-#settingsPanelVoiceWake .voice-app-scope-strip {
+#settingsPanelVoiceWake .voice-app-scope-strip.voice-app-scope-dock {
   grid-column: 1 / -1;
-  margin-top: 2px;
 }
 
 #settingsPanelVoiceWake .voice-schemes-head {

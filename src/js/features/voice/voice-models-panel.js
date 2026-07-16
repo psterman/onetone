@@ -36,18 +36,40 @@
 
   function bindEvents(){
     var wake=global.OneToneVoiceWake;
-    var dl=$('btnModelsVoskDownload');
-    if(dl) dl.onclick=function(){
-      if(wake&&wake.downloadVoskModelGuide) wake.downloadVoskModelGuide();
-    };
-    var retry=$('btnModelsVoskRetry');
-    if(retry) retry.onclick=function(e){
-      e.stopPropagation();
-      if(wake&&wake.retryVoskStart) wake.retryVoskStart();
-    };
-    var dir=$('btnModelsVoskOpenDir');
-    if(dir) dir.onclick=function(){
-      if(wake&&wake.openVoskResourcesDir) wake.openVoskResourcesDir();
+    function bindDl(id){
+      var el=$(id);
+      if(el) el.onclick=function(){
+        if(wake&&wake.downloadVoskModelGuide) wake.downloadVoskModelGuide();
+      };
+    }
+    function bindRetry(id){
+      var el=$(id);
+      if(el) el.onclick=function(e){
+        e.stopPropagation();
+        if(wake&&wake.retryVoskStart) wake.retryVoskStart();
+      };
+    }
+    function bindOpen(id){
+      var el=$(id);
+      if(el) el.onclick=function(){
+        if(wake&&wake.openVoskResourcesDir) wake.openVoskResourcesDir();
+      };
+    }
+    bindDl('btnModelsVoskDownload');
+    bindDl('btnVoiceSetupDownload');
+    bindDl('btnVoiceSetupOverlayDownload');
+    bindRetry('btnModelsVoskRetry');
+    bindRetry('btnVoiceSetupRetry');
+    bindRetry('btnVoiceSetupOverlayRetry');
+    bindOpen('btnModelsVoskOpenDir');
+    bindOpen('btnVoiceSetupOpenDir');
+    var dismiss=$('btnVoiceSetupOverlayDismiss');
+    if(dismiss) dismiss.onclick=function(){
+      if(wake&&wake.hideSetupOverlay) wake.hideSetupOverlay();
+      else{
+        var overlay=$('voiceSetupOverlay');
+        if(overlay) overlay.hidden=true;
+      }
     };
     var sapi=$('btnModelsSapiSetup');
     if(sapi) sapi.onclick=function(){

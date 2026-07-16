@@ -1348,17 +1348,10 @@
                 <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
                 <button type="button" class="voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
               </div>
-              <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
               <span class="keys-scheme-summary-item voice-status-scope-item sr-only">
                 <span class="keys-scheme-summary-lbl" id="voiceSummaryScopeLbl">生效范围</span>
                 <span class="keys-scheme-summary-val" id="voiceSummaryScope">不限应用</span>
               </span>
-              <div class="voice-status-scope-bar voice-app-scope-strip" id="voiceAppScopeStrip">
-                <span class="keys-app-binding-lbl sr-only" id="voiceAppScopeLbl">在哪些程序中生效</span>
-                <h4 class="voice-app-scope-title sr-only" id="voiceAppScopeTitle">生效应用</h4>
-                <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
-                <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加</button>
-              </div>
             </div>
             <div class="page-status-bar-actions voice-scheme-status-actions">
               <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">更新方案</button>
@@ -1367,6 +1360,21 @@
             </div>
             <span class="sr-only" id="voiceWorkflowTabsLbl">语音方案</span>
             <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden>            </div>
+          </div>
+          <div class="voice-setup-banner" id="voiceSetupBanner" hidden role="alert">
+            <div class="voice-setup-banner-content">
+              <p class="voice-setup-banner-title" id="voiceSetupBannerTitle">需要安装本地识别模型</p>
+              <p class="voice-setup-banner-msg" id="voiceSetupBannerMsg">自动模式会优先快速口令；快速口令未就绪时需要本地模型。</p>
+              <div class="voice-vosk-download-bar voice-setup-banner-progress" id="voiceSetupBannerProgress" hidden>
+                <div id="voiceSetupBannerProgressFill"></div>
+              </div>
+              <p class="voice-setup-banner-status" id="voiceSetupBannerStatus" hidden></p>
+            </div>
+            <div class="voice-setup-banner-actions">
+              <button type="button" class="keys-summary-btn is-primary" id="btnVoiceSetupDownload">一键下载</button>
+              <button type="button" class="keys-summary-btn" id="btnVoiceSetupRetry">重试启动</button>
+              <button type="button" class="keys-summary-btn" id="btnVoiceSetupOpenDir" hidden>打开资源目录</button>
+            </div>
           </div>
           <div class="voice-page-body">
             <div class="voice-page-main">
@@ -1983,6 +1991,18 @@
           <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
           <h3 class="pref-page-title sr-only" id="settingsPanelVoiceWakeTitle">音频</h3>
           <div class="keys-scheme-summary voice-scheme-summary sr-only" id="voiceSchemeSummary" aria-live="polite" hidden></div>
+          <div class="voice-app-scope-strip voice-app-scope-dock" id="voiceAppScopeStrip">
+            <div class="voice-app-scope-head">
+              <div class="voice-app-scope-head-text">
+                <h4 class="voice-app-scope-title" id="voiceAppScopeTitle">生效应用</h4>
+              </div>
+            </div>
+            <span class="keys-app-binding-lbl sr-only" id="voiceAppScopeLbl">在哪些程序中生效</span>
+            <div class="keys-app-chips-wrap flow-scope-bar-wrap" id="voiceAppScopeChipsWrap">
+              <div class="keys-app-chips voice-app-scope-chips flow-scope-bar" id="voiceAppScopeChips" role="radiogroup" aria-labelledby="voiceAppScopeLbl"></div>
+              <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnVoiceAppScopeAdd">+ 添加</button>
+            </div>
+          </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelSounds" hidden>
           <p class="settings-panel-desc" id="settingsPanelSoundsDesc">为录制、唤醒、发送和录音静音配置声音与音频选项</p>
@@ -2775,6 +2795,21 @@
     </div>
   </div>
   <div class="toast" id="toast" role="status"></div>
+  <div class="voice-setup-overlay" id="voiceSetupOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="voiceSetupOverlayTitle">
+    <div class="voice-setup-overlay-card">
+      <p class="voice-setup-overlay-title" id="voiceSetupOverlayTitle">需要安装本地识别模型</p>
+      <p class="voice-setup-overlay-msg" id="voiceSetupOverlayMsg">自动模式需要本地识别模型。点击下方按钮下载安装即可。</p>
+      <div class="voice-vosk-download-bar voice-setup-overlay-progress" id="voiceSetupOverlayProgress" hidden>
+        <div id="voiceSetupOverlayProgressFill"></div>
+      </div>
+      <p class="voice-setup-overlay-status" id="voiceSetupOverlayStatus" hidden></p>
+      <div class="voice-setup-overlay-actions">
+        <button type="button" class="btn primary" id="btnVoiceSetupOverlayDownload">一键下载</button>
+        <button type="button" class="btn secondary" id="btnVoiceSetupOverlayRetry">重试启动</button>
+        <button type="button" class="btn secondary" id="btnVoiceSetupOverlayDismiss">稍后再说</button>
+      </div>
+    </div>
+  </div>
 
   <div class="home-guide-layer" id="homeGuideLayer" hidden>
     <div class="home-guide-veil" id="homeGuideVeil"></div>

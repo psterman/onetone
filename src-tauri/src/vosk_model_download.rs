@@ -45,23 +45,26 @@ pub fn start_vosk_model_download(
 
     let base = vosk_resources_dir(resource_dir.as_deref());
     let dest = base.join(dir_name);
-    if model_dir_valid(&dest) {
+    // Match status probe paths (exe-relative / resource_dir / manifest), not only download dest.
+    let cfg = state.cfg.lock().voice_vosk.clone();
+    let probe = crate::voice_vosk::probe_vosk_resources(&cfg, resource_dir.as_deref());
+    let present = model_dir_valid(&dest) || probe.model_exists;
+    if present {
         crate::voice_vosk_runtime::refresh_vosk_probe_cache(
             state.as_ref(),
             resource_dir.as_deref(),
         );
-        if state.cfg.lock().voice_vosk.enabled {
-            let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
-                &app,
-                &state,
-                resource_dir.clone(),
-            );
-        }
+        // Do not activate here — frontend finishAfter issues a single force:retry.
+        // Activating in both places thrash-restarts Vosk before model load finishes.
         return Ok(serde_json::json!({
             "ok": true,
             "alreadyPresent": true,
             "preset": preset,
-            "path": dest.display().to_string(),
+            "path": if model_dir_valid(&dest) {
+                dest.display().to_string()
+            } else {
+                probe.resolved_model_path
+            },
         }));
     }
 
@@ -104,13 +107,7 @@ pub fn start_vosk_model_download(
                         state.as_ref(),
                         resource_dir.as_deref(),
                     );
-                    if state.cfg.lock().voice_vosk.enabled {
-                        let _ = crate::voice_vosk_runtime::voice_vosk_retry_start(
-                            &app2,
-                            &state,
-                            resource_dir.clone(),
-                        );
-                    }
+                    // Frontend finishAfterVoskModelReady performs the single force restart.
                 }
                 Err(err) => {
                     emit_download(

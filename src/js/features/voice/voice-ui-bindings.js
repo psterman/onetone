@@ -219,11 +219,12 @@
       root.dataset.voiceStrategyBound='1';
       root.addEventListener('click',function(e){
         var btn=e.target.closest&&e.target.closest('[data-voice-strategy-tab]');
-        if(!btn||btn.disabled||btn.hidden) return;
+        if(!btn||btn.hidden) return;
         e.preventDefault();
+        e.stopPropagation();
         var strategy=btn.getAttribute('data-voice-strategy-tab');
         if(strategy!=='auto'&&strategy!=='resourceSaver'&&strategy!=='enhanced') return;
-        if(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending()) return;
+        // Allow re-click while a previous switch drains (queued in voice-wake).
         if(global.OneToneVoiceWake&&global.OneToneVoiceWake.switchListeningStrategy){
           global.OneToneVoiceWake.switchListeningStrategy(strategy,{toastKind:'lite'});
         }
