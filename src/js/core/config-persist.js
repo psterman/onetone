@@ -14,6 +14,7 @@
   var saveWaiters=[];
   /** Survives partial FE state: re-inject app scenarios omitted from mappings[] unless trashed. */
   var lastKnownAppScenarios={};
+  var APP_SCENARIO_BACKUP_KEY='onetone.appScenarios.v1';
 
   function hookFn(name){
     const h=hooks();
@@ -27,6 +28,13 @@
 
   function newRuleId(){
     return 'rule-'+Date.now()+'-'+Math.floor(Math.random()*100000);
+  }
+
+  function earlyPersistLog(line){
+    try{
+      if(global.OneToneEarlyLog) global.OneToneEarlyLog(String(line||''));
+      else if(global.console&&console.log) console.log('[config-persist]',line);
+    }catch(_){}
   }
 
   function normalizeMatchSpec(raw){
@@ -684,8 +692,53 @@
   function isAppScopedMapping(m){
     if(!m||typeof m!=='object') return false;
     if(String(m.appTargetId||m.app_target_id||'').trim()) return true;
+    // Align with habit-override-diff: preset chips on universal ≠ app scenario.
+    // Only concrete process binds (or custom) count as recoverable app rows.
     var rules=m.appBehaviorRules||m.app_behavior_rules;
-    return Array.isArray(rules)&&rules.length>0;
+    if(!Array.isArray(rules)) return false;
+    for(var i=0;i<rules.length;i++){
+      var r=rules[i];
+      if(!r) continue;
+      var appId=String(r.appId||'').trim();
+      var match=r.match;
+      if(match&&typeof match==='object'){
+        var hasExe=Array.isArray(match.exeNames)&&match.exeNames.some(function(x){ return String(x||'').trim(); });
+        var hasPath=!!String(match.fullPath||match.full_path||match.pathContains||'').trim();
+        var hasTitle=!!String(match.titleContains||'').trim();
+        if(hasExe||hasPath||hasTitle) return true;
+      }
+      if(appId==='custom') return true;
+    }
+    return false;
+  }
+
+  function persistAppScenarioBackup(){
+    try{
+      if(!global.localStorage) return;
+      var list=[];
+      Object.keys(lastKnownAppScenarios).forEach(function(id){
+        var m=lastKnownAppScenarios[id];
+        if(m&&isAppScopedMapping(m)) list.push(m);
+      });
+      global.localStorage.setItem(APP_SCENARIO_BACKUP_KEY,JSON.stringify(list));
+    }catch(_){}
+  }
+
+  function loadAppScenarioBackup(){
+    try{
+      if(!global.localStorage) return;
+      var raw=global.localStorage.getItem(APP_SCENARIO_BACKUP_KEY);
+      if(!raw) return;
+      var list=JSON.parse(raw);
+      if(!Array.isArray(list)) return;
+      var n=0;
+      list.forEach(function(m){
+        if(!m||!m.id||!isAppScopedMapping(m)) return;
+        lastKnownAppScenarios[String(m.id)]=m;
+        n++;
+      });
+      if(n) earlyPersistLog('app-scenario backup loaded n='+n);
+    }catch(_){}
   }
 
   function rememberAppScenariosFromConfig(cfg){
@@ -702,6 +755,7 @@
     (cfg.trash||[]).forEach(function(m){
       if(m&&m.id) delete lastKnownAppScenarios[String(m.id)];
     });
+    persistAppScenarioBackup();
   }
 
   function reinjectRememberedAppScenarios(cfg){
@@ -805,6 +859,8 @@
       if(msg.config){
         var inbound=normalizeInboundConfig(msg.config);
         if(configLoadedFromBackend) mergeLocalAppScenarios(st.config,inbound);
+        // Always reinject localStorage / in-memory app scenarios omitted by a partial payload.
+        reinjectRememberedAppScenarios(inbound);
         st.config=inbound;
       }
       if(heldStrategy&&st.config){
@@ -853,6 +909,10 @@
       configLoadedFromBackend=true;
       pendingMvpInitMsg=null;
       clearTimeout(configBootstrapWatchdog);
+      rememberAppScenariosFromConfig(st.config);
+      reinjectRememberedAppScenarios(st.config);
+      earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
+        ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
       if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
       const scheduleBootMic=hookFn('scheduleBootMicReady');
       const scheduleVoiceBoot=hookFn('scheduleDeferredVoiceEngineBoot');
@@ -1112,6 +1172,7 @@
     requestBackendConfig:requestBackendConfig,
     fallbackConfigLoaded:fallbackConfigLoaded,
     isLoaded:function(){ return configLoadedFromBackend; },
+    rememberAppScenariosNow:rememberAppScenariosFromConfig,
     installToJsReady:installToJsReady,
     normalizeVoiceCommands:normalizeVoiceCommands,
     serializeVoiceCommands:serializeVoiceCommands,
@@ -1127,4 +1188,5 @@
     ACOUSTIC_MAX_FEATURE_FRAMES:ACOUSTIC_MAX_FEATURE_FRAMES
   };
   installToJsReady();
+  loadAppScenarioBackup();
 })((typeof window!=='undefined')?window:globalThis);

@@ -107,9 +107,40 @@
   var GAZE_SMOOTH_ALPHA=0.28;
   var GAZE_SMOOTH_ALPHA_LIVE=0.55;
   var GAZE_SMOOTH_SNAP=0.78;
-  var GAZE_SMOOTH_ALPHA_CALIBRATED=0.22;
-  var GAZE_CALIB_JITTER_DEADBAND_PX=3.5;
+  var GAZE_SMOOTH_ALPHA_CALIBRATED=0.38;
+  var GAZE_CALIB_JITTER_DEADBAND_PX=2.0;
   var GAZE_LOW_CONF=0.35;
+  var GAZE_COACH_ROTATE_MS=4800;
+  var karaokeApi=function(){ return global.OneToneGazeKaraoke||null; };
+  var GAZE_COACH_LINES=(karaokeApi()&&karaokeApi().LINES)||[
+    '看哪里 · 说哪里',
+    '方位对了就算赢，像素别较真',
+    '转头到左上角，打个招呼',
+    '正中休息一下也行',
+    '最后一句：看字，不看球'
+  ];
+  // Placement zones only — karaoke lines drive the test sequence (not a fixed 9-cell tour).
+  var GAZE_COACH_ZONES=(karaokeApi()&&karaokeApi().ZONES)||[
+    'tl','tc','tr','ml','center','mr','bl','bc','br'
+  ];
+  var gazeCoach={
+    idx:0,
+    shuffled:null,
+    zoneBag:null,
+    zoneBagIdx:0,
+    line:'',
+    lineStartedAt:0,
+    active:false,
+    zone:'center',
+    holdZone:null,
+    holdSince:0,
+    placed:false,
+    cardW:0,
+    cardH:0,
+    pausedP:0,
+    picker:null,
+    wanted:false
+  };
   var gaze={
     enabled:true,
     mode:'live',
@@ -124,6 +155,246 @@
     smoothClient:{x:0,y:0},
     pointer:{x:0.5,y:0.5,inside:false}
   };
+
+  function shuffleInPlace(arr){
+    var api=karaokeApi();
+    if(api&&api.shuffleInPlace) return api.shuffleInPlace(arr);
+    for(var j=arr.length-1;j>0;j--){
+      var k=Math.floor(Math.random()*(j+1));
+      var tmp=arr[j];arr[j]=arr[k];arr[k]=tmp;
+    }
+    return arr;
+  }
+
+  function getCoachPicker(){
+    if(!gazeCoach.picker){
+      var api=karaokeApi();
+      gazeCoach.picker=api&&api.createPicker?api.createPicker():null;
+    }
+    return gazeCoach.picker;
+  }
+
+  function nextCoachLine(){
+    var picker=getCoachPicker();
+    if(picker&&picker.next) return picker.next();
+    if(!gazeCoach.shuffled||gazeCoach.idx>=gazeCoach.shuffled.length){
+      var arr=[];
+      for(var i=0;i<GAZE_COACH_LINES.length;i++) arr.push(i);
+      gazeCoach.shuffled=shuffleInPlace(arr);
+      gazeCoach.idx=0;
+    }
+    var line=GAZE_COACH_LINES[gazeCoach.shuffled[gazeCoach.idx++]];
+    return line||GAZE_COACH_LINES[0];
+  }
+
+  function nextShuffledZone(){
+    if(!gazeCoach.zoneBag||gazeCoach.zoneBagIdx>=gazeCoach.zoneBag.length){
+      gazeCoach.zoneBag=shuffleInPlace(GAZE_COACH_ZONES.slice());
+      gazeCoach.zoneBagIdx=0;
+    }
+    return gazeCoach.zoneBag[gazeCoach.zoneBagIdx++]||'center';
+  }
+
+  // Karaoke copy chooses where to stand; no fixed 九宫格 tour order.
+  function zoneFromCoachLine(line){
+    var api=karaokeApi();
+    if(api&&api.zoneHint){
+      var hinted=api.zoneHint(line);
+      if(hinted) return hinted;
+    }
+    var s=String(line||'');
+    if(/左上/.test(s)) return 'tl';
+    if(/右上/.test(s)) return 'tr';
+    if(/左下/.test(s)) return 'bl';
+    if(/右下/.test(s)) return 'br';
+    if(/上中|顶部|顶边|上方|抬头看顶|看顶/.test(s)) return 'tc';
+    if(/下中|底部|下方点头|下边/.test(s)) return 'bc';
+    if(/左中|左侧|去左边|左转/.test(s)) return 'ml';
+    if(/右中|右侧|去右边|右转看右/.test(s)) return 'mr';
+    if(/正中|屏幕正中|中间休息|驿站|回正中/.test(s)) return 'center';
+    return nextShuffledZone();
+  }
+
+  function coachRegionCenter(zoneId){
+    var cal=calibrationApi();
+    if(cal&&cal.regionCenterNorm){
+      return cal.regionCenterNorm(zoneId);
+    }
+    var map={
+      tl:{nx:0.14,ny:0.14},tc:{nx:0.5,ny:0.12},tr:{nx:0.86,ny:0.14},
+      ml:{nx:0.12,ny:0.5},center:{nx:0.5,ny:0.5},mr:{nx:0.88,ny:0.5},
+      bl:{nx:0.14,ny:0.86},bc:{nx:0.5,ny:0.88},br:{nx:0.86,ny:0.86}
+    };
+    return map[zoneId]||map.center;
+  }
+
+  function setKaraokeProgress(p){
+    p=Math.max(0,Math.min(1,p));
+    var charsEl=$('cameraGazeKaraokeChars');
+    var meter=$('cameraGazeKaraokeMeter');
+    if(meter) meter.style.width=(p*100).toFixed(1)+'%';
+    if(!charsEl) return;
+    var nodes=charsEl.querySelectorAll('.camera-gaze-karaoke-ch');
+    var n=nodes.length;
+    if(!n) return;
+    var lit=p*n;
+    for(var i=0;i<n;i++){
+      var on=i<lit;
+      var head=on&&i>=lit-1;
+      nodes[i].classList.toggle('is-lit',on);
+      nodes[i].classList.toggle('is-head',head);
+    }
+  }
+
+  function paintCoachLine(text){
+    var charsEl=$('cameraGazeKaraokeChars');
+    var base=$('cameraGazeKaraokeBase');
+    var fill=$('cameraGazeKaraokeFill');
+    var line=String(text||'');
+    if(base) base.textContent=line;
+    if(fill) fill.textContent=line;
+    if(charsEl){
+      var html='';
+      for(var i=0;i<line.length;i++){
+        var ch=line.charAt(i);
+        if(ch===' '){
+          html+='<span class="camera-gaze-karaoke-ch is-space">&nbsp;</span>';
+        }else{
+          html+='<span class="camera-gaze-karaoke-ch">'+ch.replace(/</g,'&lt;')+'</span>';
+        }
+      }
+      charsEl.innerHTML=html;
+    }
+    gazeCoach.line=line;
+    gazeCoach.lineStartedAt=Date.now();
+    gazeCoach.pausedP=0;
+    setKaraokeProgress(0);
+  }
+
+  function placeCoachAtZone(zoneId,force){
+    var el=$('cameraGazeCoach');
+    if(!el) return;
+    var zone=String(zoneId||'center');
+    if(!force&&gazeCoach.zone===zone&&gazeCoach.placed) return;
+    var vw=global.innerWidth||1;
+    var vh=global.innerHeight||1;
+    var c=coachRegionCenter(zone);
+    var cx=c.nx*vw;
+    var cy=c.ny*vh;
+    var w=gazeCoach.cardW||el.offsetWidth||Math.min(440,vw*0.78);
+    var h=gazeCoach.cardH||el.offsetHeight||88;
+    if(el.offsetWidth>0) gazeCoach.cardW=el.offsetWidth;
+    if(el.offsetHeight>0) gazeCoach.cardH=el.offsetHeight;
+    w=gazeCoach.cardW||w;
+    h=gazeCoach.cardH||h;
+    var margin=18;
+    var left=Math.max(margin+w/2,Math.min(vw-margin-w/2,cx));
+    var top=Math.max(margin+h/2,Math.min(vh-margin-h/2,cy));
+    el.style.left=Math.round(left)+'px';
+    el.style.top=Math.round(top)+'px';
+    el.style.transform='translate(-50%,-50%)';
+    el.setAttribute('data-zone',zone);
+    gazeCoach.zone=zone;
+    gazeCoach.placed=true;
+  }
+
+  function setCoachVisible(show){
+    var el=$('cameraGazeCoach');
+    if(!el) return;
+    // Live karaoke is opt-in (gazeCoach.wanted). Idle / settings / stopped preview: never show.
+    var allow=!!show&&!!gazeCoach.wanted&&!!previewLive&&!!gaze.enabled;
+    gazeCoach.active=allow;
+    if(!allow){
+      el.hidden=true;
+      el.setAttribute('hidden','');
+      el.classList.remove('is-visible','is-hit');
+      gazeCoach.placed=false;
+      setKaraokeProgress(0);
+      return;
+    }
+    el.hidden=false;
+    el.removeAttribute('hidden');
+    if(global.requestAnimationFrame){
+      global.requestAnimationFrame(function(){ el.classList.add('is-visible'); });
+    }else{
+      el.classList.add('is-visible');
+    }
+  }
+
+  function stopKaraokeTest(){
+    gazeCoach.wanted=false;
+    gazeCoach.active=false;
+    gazeCoach.line='';
+    gazeCoach.pausedP=0;
+    setCoachVisible(false);
+  }
+
+  function startKaraokeTest(){
+    if(!previewLive||!gaze.enabled) return;
+    var cal=calibrationApi();
+    if(!(cal&&cal.hasModel&&cal.hasModel())) return;
+    gazeCoach.wanted=true;
+    startNextKaraokeLine(true);
+  }
+
+  function startNextKaraokeLine(forceNewLine){
+    if(!gazeCoach.wanted) return;
+    if(forceNewLine||!gazeCoach.line){
+      var line=nextCoachLine();
+      paintCoachLine(line);
+      placeCoachAtZone(zoneFromCoachLine(line),true);
+    }else if(!gazeCoach.placed){
+      placeCoachAtZone(gazeCoach.zone||'center',true);
+    }
+    setCoachVisible(true);
+  }
+
+  function advanceKaraokeLine(){
+    startNextKaraokeLine(true);
+  }
+
+  function tickCoachKaraoke(gazeZone){
+    if(!gazeCoach.active||!previewLive||!gaze.enabled) return;
+    var cal=calibrationApi();
+    var calRunning=!!(cal&&cal.getState&&cal.getState().running);
+    if(calRunning){
+      setCoachVisible(false);
+      return;
+    }
+    var targetZone=gazeCoach.zone||'center';
+    placeCoachAtZone(targetZone,false);
+    var onTarget=!!gazeZone&&String(gazeZone)===String(targetZone);
+    var coachEl=$('cameraGazeCoach');
+    var orbEl=$('cameraGazeWindowOrb');
+    if(coachEl) coachEl.classList.toggle('is-hit',onTarget);
+    if(orbEl) orbEl.classList.toggle('is-on-target',onTarget);
+    var now=Date.now();
+    var started=gazeCoach.lineStartedAt||now;
+    // Fill only while looking at the karaoke line's region — karaoke sequence is the test.
+    if(!onTarget){
+      gazeCoach.lineStartedAt=now-(GAZE_COACH_ROTATE_MS*Math.min(0.98,gazeCoach.pausedP||0));
+      setKaraokeProgress(gazeCoach.pausedP||0);
+      return;
+    }
+    var p=(now-started)/GAZE_COACH_ROTATE_MS;
+    gazeCoach.pausedP=p;
+    if(p>=1){
+      gazeCoach.pausedP=0;
+      advanceKaraokeLine();
+      return;
+    }
+    setKaraokeProgress(p);
+  }
+
+  function updateCoachLine(force){
+    if(force||!gazeCoach.line){
+      startNextKaraokeLine(true);
+    }
+  }
+
+  function placeCoachNearGaze(){
+    // legacy no-op — karaoke line placement owns the target
+  }
 
   function landmarkerApi(){
     return global.OneToneCameraGazeLandmarker||null;
@@ -507,6 +778,8 @@
       if(src.screenY!=null) out.screenY=Number(src.screenY);
       out.stale=!!src.stale;
       out.lowQuality=!!src.lowQuality;
+      if(src.regionZone) out.regionZone=String(src.regionZone);
+      if(src.regionLabel) out.regionLabel=String(src.regionLabel);
     }
     return out;
   }
@@ -553,6 +826,7 @@
       winLayer.classList.toggle('is-active',!!useCalibrated);
       winLayer.hidden=!useCalibrated;
       winLayer.setAttribute('aria-hidden',useCalibrated?'false':'true');
+      if(!useCalibrated||!active) stopKaraokeTest();
     }
   }
 
@@ -563,10 +837,14 @@
     var screenEl=$('cameraGazeScreenPointText');
     var hint=$('cameraGazeHint');
     var calibHint=$('cameraGazeCalibrationHint');
+    var privacyHint=$('cameraGazePrivacyHint');
+    var panel=document.querySelector('.camera-gaze-panel');
     var cal=calibrationApi();
     var hasCal=!!(cal&&cal.hasModel&&cal.hasModel());
     var calSt=cal&&cal.getState?cal.getState():null;
     var calibrated=!!(point&&point.calibrated)||(hasCal&&!previewLive);
+    var testing=!!(previewLive&&gaze.enabled&&calibrated);
+    if(panel) panel.classList.toggle('is-testing',testing);
     if(!previewLive&&hasCal&&calSt){
       point=point||{};
       point={x:0.5,y:0.5,confidence:0,state:'idle',calibrated:true};
@@ -583,16 +861,56 @@
         : '—';
     }
     if(screenEl){
-      if(previewLive&&gaze.enabled&&calibrated&&point.screenX!=null&&point.screenY!=null){
-        screenEl.textContent=t('cameraGazeScreenPoint','估算屏幕坐标：{x}, {y}')
-          .replace('{x}',String(Math.round(point.screenX)))
-          .replace('{y}',String(Math.round(point.screenY)));
+      if(previewLive&&gaze.enabled&&calibrated){
+        var regionText=point.regionLabel||'';
+        if(!regionText&&point.regionZone){
+          var calApi=calibrationApi();
+          if(calApi&&calApi.regionZoneLabel){
+            regionText=calApi.regionZoneLabel(point.regionZone);
+          }
+        }
+        if(regionText){
+          // Testing: emphasize region, not raw pixel chatter.
+          screenEl.textContent=t('cameraGazeRegionOnly','当前区域：{region}')
+            .replace('{region}',regionText);
+        }else if(point.screenX!=null&&point.screenY!=null){
+          screenEl.textContent=t('cameraGazeScreenPoint','估算屏幕坐标：{x}, {y}')
+            .replace('{x}',String(Math.round(point.screenX)))
+            .replace('{y}',String(Math.round(point.screenY)));
+        }else{
+          screenEl.textContent=t('cameraGazeScreenPointUnknown','估算屏幕坐标：未知');
+        }
       }else{
         screenEl.textContent=t('cameraGazeScreenPointUnknown','估算屏幕坐标：未知');
       }
     }
-    if(hint) hint.hidden=!!calibrated;
-    if(calibHint) calibHint.hidden=!calibrated;
+    if(testing){
+      // Karaoke stays off during normal preview — only shows when startKaraokeTest() is called.
+      if(hint){ hint.hidden=true; hint.textContent=''; }
+      if(calibHint){ calibHint.hidden=true; calibHint.textContent=''; }
+      if(privacyHint){ privacyHint.hidden=true; }
+      var sparse=$('cameraGazeSparseWarn');
+      if(sparse) sparse.hidden=true;
+      if(gazeCoach.wanted){
+        if(!gazeCoach.active||!gazeCoach.line) startNextKaraokeLine(true);
+        else setCoachVisible(true);
+      }else{
+        setCoachVisible(false);
+      }
+    }else{
+      stopKaraokeTest();
+      if(hint){
+        hint.hidden=false;
+        hint.textContent=t('cameraGazeHint','本地 MediaPipe 估计，未校准为屏幕坐标');
+      }
+      if(calibHint){
+        calibHint.hidden=!calibrated;
+        if(calibrated){
+          calibHint.textContent=t('cameraGazeTestKaraokeHint','开始预览后可用视线球测区域；卡拉OK仅在校准时出现');
+        }
+      }
+      if(privacyHint) privacyHint.hidden=false;
+    }
     var faceEl=$('cameraGlanceFace');
     if(faceEl){
       faceEl.textContent=previewLive&&gaze.enabled
@@ -602,6 +920,12 @@
     var calibEl=$('cameraGlanceCalib');
     if(calibEl){
       var statusEl=$('cameraGazeCalibrationStatus');
+      if(hasCal&&cal&&cal.syncUiFromModel&&statusEl){
+        var idleText=t('cameraGazeCalibrationIdle','未校准');
+        if(!statusEl.textContent||statusEl.textContent===idleText){
+          cal.syncUiFromModel();
+        }
+      }
       if(statusEl&&statusEl.textContent){
         calibEl.textContent=statusEl.textContent;
       }else if(calSt&&calSt.statusKind&&calSt.statusKind!=='idle'){
@@ -642,7 +966,8 @@
   function renderGazeOrb(sx,sy,point){
     var calibrated=!!(point&&point.calibrated);
     paintOrbEl($('cameraGazeOrb'),sx,sy,point,false,false);
-    if(calibrated){
+    // Window orb + karaoke only while live preview is on.
+    if(calibrated&&previewLive&&gaze.enabled){
       var vw=global.innerWidth||1;
       var vh=global.innerHeight||1;
       var cx=gaze.smoothClient.x;
@@ -652,6 +977,11 @@
         cy=(point.clientY!=null?point.clientY:clamp01(sy)*vh);
       }
       paintOrbEl($('cameraGazeWindowOrb'),cx,cy,point,true,true);
+      if(gazeCoach.wanted&&gazeCoach.active){
+        tickCoachKaraoke(point&&point.regionZone);
+      }
+    }else{
+      stopKaraokeTest();
     }
   }
 
@@ -729,7 +1059,7 @@
       if(jump>0.1) alpha=GAZE_SMOOTH_SNAP;
       if(target.calibrated){
         alpha=GAZE_SMOOTH_ALPHA_CALIBRATED;
-        if(target.lowQuality) alpha=Math.min(alpha,0.16);
+        if(target.lowQuality) alpha=Math.max(alpha,0.42);
       }
     }
     gaze.smooth.x+= (target.x-gaze.smooth.x)*alpha;
@@ -740,7 +1070,7 @@
         var tcx=target.clientX!=null?target.clientX:target.x*vw;
         var tcy=target.clientY!=null?target.clientY:target.y*vh;
         var clientAlpha=GAZE_SMOOTH_ALPHA_CALIBRATED;
-        if(target.lowQuality) clientAlpha=Math.min(clientAlpha,0.16);
+        if(target.lowQuality) clientAlpha=Math.max(clientAlpha,0.42);
         if(!isFinite(gaze.smoothClient.x)||!isFinite(gaze.smoothClient.y)){
           gaze.smoothClient.x=tcx;
           gaze.smoothClient.y=tcy;
@@ -751,6 +1081,9 @@
         }else if(jumpPx<GAZE_CALIB_JITTER_DEADBAND_PX){
           clientAlpha=0;
         }
+        var edgeDist=Math.min(tcx/vw,1-tcx/vw,tcy/vh,1-tcy/vh);
+        if(edgeDist<0.14) clientAlpha=Math.max(clientAlpha,0.58);
+        if(edgeDist<0.06) clientAlpha=Math.max(clientAlpha,0.82);
         if(clientAlpha>0){
           gaze.smoothClient.x+=(tcx-gaze.smoothClient.x)*clientAlpha;
           gaze.smoothClient.y+=(tcy-gaze.smoothClient.y)*clientAlpha;
@@ -780,6 +1113,9 @@
     syncGazeToggleUi();
     syncLiveLandmarker();
     var cal=calibrationApi();
+    if(cal&&cal.hasModel&&cal.hasModel()&&cal.syncUiFromModel){
+      cal.syncUiFromModel();
+    }
     if(cal&&cal.updateCalibWarnings) cal.updateCalibWarnings();
     else if(cal&&cal.updateLowResWarn) cal.updateLowResWarn();
     if(gaze.enabled&&previewLive) ensureGazeLoop();
@@ -788,7 +1124,6 @@
       setGazeOverlayActive(false);
       if(cal&&cal.hasModel&&cal.hasModel()){
         renderGazeHud({x:gaze.smooth.x,y:gaze.smooth.y,confidence:0,state:'idle',calibrated:true});
-        if(cal.syncUiFromModel) cal.syncUiFromModel();
       }else{
         renderGazeHud({x:gaze.smooth.x,y:gaze.smooth.y,confidence:0,state:'idle'});
       }
@@ -865,6 +1200,7 @@
       }
     }else{
       setGazeOverlayActive(false);
+      stopKaraokeTest();
       renderGazeHud({x:gaze.smooth.x,y:gaze.smooth.y,confidence:0,state:'idle'});
     }
   }
@@ -896,6 +1232,8 @@
       gaze.point.screenY=display.screenY;
       gaze.point.stale=!!display.stale;
       gaze.point.lowQuality=!!display.lowQuality;
+      if(display.regionZone) gaze.point.regionZone=display.regionZone;
+      if(display.regionLabel) gaze.point.regionLabel=display.regionLabel;
     }
     if(raw.feats&&raw.feats.length){
       gaze.point.feats=Array.prototype.slice.call(raw.feats);
@@ -973,6 +1311,7 @@
     gaze.modelLoading=false;
     stopGazeLoop();
     setGazeOverlayActive(false);
+    stopKaraokeTest();
     releaseStreamOnly();
     setPlaceholderVisible(true);
     setButtons();
@@ -1359,6 +1698,7 @@
     setStatus(t('cameraStatusIdle','待命 · 不会自动开启摄像头'));
     syncGazeToggleUi();
     setGazeOverlayActive(false);
+    stopKaraokeTest();
     var calibHint=$('cameraGazeCalibrationHint');
     if(calibHint) calibHint.hidden=true;
     renderGazeHud({x:0.5,y:0.5,confidence:0,state:'idle'});

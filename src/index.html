@@ -3011,7 +3011,9 @@
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
   <script src="js/features/camera/camera-gaze-landmarker.js"></script>
+  <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
+  <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
@@ -3084,6 +3086,18 @@
   <script src="js/main-legacy.js"></script>
 
   <div id="cameraGazeWindowLayer" class="camera-gaze-window-layer" aria-hidden="true" hidden>
+    <div id="cameraGazeCoach" class="camera-gaze-coach" aria-live="polite" hidden>
+      <div class="camera-gaze-coach-card">
+        <div class="camera-gaze-karaoke" id="cameraGazeKaraoke">
+          <span class="camera-gaze-karaoke-base" id="cameraGazeKaraokeBase" hidden></span>
+          <span class="camera-gaze-karaoke-fill" id="cameraGazeKaraokeFill" hidden aria-hidden="true"></span>
+          <span class="camera-gaze-karaoke-chars" id="cameraGazeKaraokeChars"></span>
+        </div>
+        <div class="camera-gaze-karaoke-meter" aria-hidden="true">
+          <i id="cameraGazeKaraokeMeter"></i>
+        </div>
+      </div>
+    </div>
     <div id="cameraGazeWindowOrb" class="camera-gaze-orb is-calibrated" aria-hidden="true">
       <span class="camera-gaze-orb-core"></span>
       <span class="camera-gaze-orb-ring"></span>
@@ -3093,10 +3107,16 @@
   <div id="cameraGazeCalibrationOverlay" class="camera-gaze-calibration-overlay" aria-hidden="true" hidden>
     <div class="camera-gaze-calibration-dim" id="cameraGazeCalibrationDim" aria-hidden="true"></div>
     <div class="camera-gaze-calibration-target" id="cameraGazeCalibrationTarget"></div>
-    <div class="camera-gaze-calibration-panel">
-      <div id="cameraGazeCalibrationTitle" data-i18n="cameraGazeCalibrationRunning">请看向目标点</div>
+    <div class="camera-gaze-calibration-panel" data-anchor="mid-mid">
+      <div id="cameraGazeCalibrationRead" class="camera-gaze-calibration-read" aria-live="polite">
+        <div class="camera-gaze-karaoke camera-gaze-karaoke--calib">
+          <span class="camera-gaze-karaoke-chars" id="cameraGazeCalibKaraokeChars"></span>
+        </div>
+        <div class="camera-gaze-karaoke-meter camera-gaze-karaoke-meter--calib"><i id="cameraGazeCalibKaraokeMeter"></i></div>
+      </div>
       <div id="cameraGazeCalibrationCountdown" class="camera-gaze-calibration-countdown" aria-live="assertive" hidden></div>
-      <div id="cameraGazeCalibrationProgress"></div>
+      <div id="cameraGazeCalibrationTitle" class="camera-gaze-calibration-title" hidden></div>
+      <div id="cameraGazeCalibrationProgress" class="camera-gaze-calibration-progress"></div>
       <button type="button" class="camera-gaze-calibration-cancel" id="cameraGazeCalibrationCancel" data-i18n="cameraGazeCalibrationCancel">取消校准</button>
     </div>
   </div>

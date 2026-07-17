@@ -3387,7 +3387,33 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
         if incoming_ids.contains(prev.id.as_str()) || trash_ids.contains(prev.id.as_str()) {
             continue;
         }
-        let is_app_scene = !prev.app_target_id.trim().is_empty() || !prev.app_behavior_rules.is_empty();
+        let mut is_app_scene = !prev.app_target_id.trim().is_empty();
+        // Survive wiped appTargetId when a concrete process bind remains.
+        // Do NOT treat universal rows that only carry preset finish-mode chips as app scenarios.
+        if !is_app_scene {
+            is_app_scene = prev.app_behavior_rules.iter().any(|r| {
+                if r.app_id.trim() == "custom" {
+                    return true;
+                }
+                let Some(spec) = r.app_match.as_ref() else {
+                    return false;
+                };
+                let has_exe = spec.exe_names.iter().any(|n| !n.trim().is_empty());
+                let has_path = spec
+                    .full_path
+                    .as_deref()
+                    .is_some_and(|s| !s.trim().is_empty())
+                    || spec
+                        .path_contains
+                        .as_deref()
+                        .is_some_and(|s| !s.trim().is_empty());
+                let has_title = spec
+                    .title_contains
+                    .as_deref()
+                    .is_some_and(|s| !s.trim().is_empty());
+                has_exe || has_path || has_title
+            });
+        }
         if is_app_scene {
             preserved.push(prev.clone());
         }

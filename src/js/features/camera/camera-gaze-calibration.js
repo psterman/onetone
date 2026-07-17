@@ -19,31 +19,56 @@
     return fallback!=null?fallback:key;
   };
 
-  // 9-point grid for better spatial coverage with multi-feature model.
+  // Edges near window rim; bottom slightly inset so glasses rim is less likely to hide eyes.
+  var EDGE=0.04;
+  var EDGE_BOT=0.07;
   var TARGETS=[
     {id:'center',x:0.5,y:0.5},
-    {id:'tl',x:0.12,y:0.12},
-    {id:'tc',x:0.5,y:0.12},
-    {id:'tr',x:0.88,y:0.12},
-    {id:'ml',x:0.12,y:0.5},
-    {id:'mr',x:0.88,y:0.5},
-    {id:'bl',x:0.12,y:0.88},
-    {id:'bc',x:0.5,y:0.88},
-    {id:'br',x:0.88,y:0.88}
+    {id:'tl',x:EDGE,y:EDGE},
+    {id:'tc',x:0.5,y:EDGE},
+    {id:'tr',x:1-EDGE,y:EDGE},
+    {id:'ml',x:EDGE,y:0.5},
+    {id:'mr',x:1-EDGE,y:0.5},
+    {id:'bl',x:EDGE,y:1-EDGE_BOT},
+    {id:'bc',x:0.5,y:1-EDGE_BOT},
+    {id:'br',x:1-EDGE,y:1-EDGE_BOT}
   ];
   var TARGET_HINTS={
-    center:['cameraGazeCalibCenter','请看向屏幕中央亮点'],
-    tl:['cameraGazeCalibTL','请看向左上角亮点'],
-    tc:['cameraGazeCalibTC','请看向上方中央亮点'],
-    tr:['cameraGazeCalibTR','请看向右上角亮点'],
-    ml:['cameraGazeCalibML','请看向左侧中央亮点'],
-    mr:['cameraGazeCalibMR','请看向右侧中央亮点'],
-    bl:['cameraGazeCalibBL','请看向左下角亮点'],
-    bc:['cameraGazeCalibBC','请看向下方中央亮点'],
-    br:['cameraGazeCalibBR','请看向右下角亮点']
+    center:['cameraGazeCalibCenter','请读大字：屏幕正中'],
+    tl:['cameraGazeCalibTL','请转头看左上 · 读头+左转'],
+    tc:['cameraGazeCalibTC','请抬头看上方中央'],
+    tr:['cameraGazeCalibTR','请转头看右上 · 抬头+右转'],
+    ml:['cameraGazeCalibML','请左转头看左侧'],
+    mr:['cameraGazeCalibMR','请右转头看右侧'],
+    bl:['cameraGazeCalibBL','请点头看左下 · 低头+左转（镜框挡眼时靠点头）'],
+    bc:['cameraGazeCalibBC','请点头看下方（镜框挡眼时靠点头）'],
+    br:['cameraGazeCalibBR','请点头看右下 · 低头+右转（镜框挡眼时靠点头）']
   };
+  var karaokePicker=null;
+  function karaokeApi(){
+    return global.OneToneGazeKaraoke||null;
+  }
+  function getKaraokePicker(){
+    if(!karaokePicker){
+      var api=karaokeApi();
+      karaokePicker=api&&api.createPicker?api.createPicker():null;
+    }
+    return karaokePicker;
+  }
+  function pickKaraokeForTarget(target){
+    var zone=target&&target.id?String(target.id):'center';
+    var picker=getKaraokePicker();
+    if(picker&&picker.forZone) return picker.forZone(zone);
+    return t('cameraGazeCalibReadCenter','屏幕正中 · 读这行字');
+  }
+  var SAMPLE_SEC=2.5;
+  var SAMPLE_SEC_CORNER=4.5;
+  var SAMPLE_SEC_EDGE=5.5;
+  var SAMPLE_SEC_TOP=6.5;
   var PREPARE_SEC=3;
-  var SAMPLE_SEC=2;
+  var PREPARE_SEC_CORNER=4.5;
+  var PREPARE_SEC_EDGE=5.5;
+  var PREPARE_SEC_TOP=6;
   var MIN_CALIB_POINTS=5;
   var MAX_POINT_ATTEMPTS=4;
   var MIN_SAMPLES=6;
@@ -51,13 +76,14 @@
   var STABLE_STD=0.095;
   var RIDGE=1e-4;
   var FEAT_DIM=8; // matches landmarker feats length
-  var EXT_DIM=14; // extended vector for IDW / ridge
+  // Pose + eye features only (no raw rx/ry — they stay near center at corner gaze).
+  var SPATIAL_DIM=12;
   var IDW_POWER=2.8;
-  var IDW_TEMP=0.14; // softmax temperature (lower = sharper corner pick)
-  var IDW_POWER_APPLY=1.45;
-  var IDW_TEMP_APPLY=0.28;
-  var GRID_COLS=[0.12,0.5,0.88];
-  var GRID_ROWS=[0.12,0.5,0.88];
+  var IDW_TEMP=0.12; // softmax temperature (lower = sharper corner pick)
+  var IDW_POWER_APPLY=2.1;
+  var IDW_TEMP_APPLY=0.16;
+  var GRID_COLS=[EDGE,0.5,1-EDGE];
+  var GRID_ROWS=[EDGE,0.5,1-EDGE_BOT];
   var GRID_CELL_IDS=[
     ['tl','tc','tr'],
     ['ml','center','mr'],
@@ -72,12 +98,22 @@
   var FEAT_SMOOTH_ALPHA_EYE=0.42;
   var FEAT_SMOOTH_ALPHA_BLEND=0.34;
   var FEAT_SMOOTH_ALPHA_POSE=0.16;
-  var APPLY_OUT_ALPHA=0.32;
-  var APPLY_OUT_ALPHA_FAST=0.48;
+  var APPLY_OUT_ALPHA=0.48;
+  var APPLY_OUT_ALPHA_FAST=0.72;
   var CRITICAL_CORNER_IDS=['tl','tr','bl','br'];
   var REMEDIAL_TARGET_ORDER=['tl','tr','bl','br','tc','ml','mr','bc','center'];
-  var MAX_CORNER_ATTEMPTS=5;
+  var MAX_CORNER_ATTEMPTS=6;
   var MAX_REMEDIAL_ROUNDS=2;
+  var MAX_QUALITY_REMEDIAL_POINTS=3;
+  var WEAK_MAX_SAMPLES=40;
+  var WEAK_MAX_AGE_MS=7*24*60*60*1000;
+  var WEAK_REFIT_DEBOUNCE_MS=2000;
+  var WEAK_MIN_INTERVAL_CLICK_MS=800;
+  var WEAK_MIN_INTERVAL_LOCK_MS=800;
+  var WEAK_MIN_CONF=0.45;
+  var WEAK_WEIGHT_CLICK=0.22;
+  var WEAK_WEIGHT_LOCK=0.30;
+  var WEAK_HOVER_ENABLED=false;
 
   var model=null; // {betaX,betaY,rmse,vw,vh,lowQuality,stale,kind:'ridge'}
   var running=false;
@@ -90,17 +126,29 @@
   var timers=[];
   var samplePump=0;
   var skippedPoints=0;
+  var calibAcceptedSamples=0;
   var calibGen=0;
   var calibWaitRaf=0;
+  var currentFixation={nx:0.5,ny:0.5,cx:0,cy:0};
   var calibWaitResolve=null;
   var calibWaitState=null;
   var featSmooth=null;
   var applyOutSmooth={cx:null,cy:null};
+  var weakRefitTimer=0;
+  var weakLastSampleAt=0;
+  var weakClickBound=false;
+  var calibPoseRef=null; // {yaw,pitch} from center sample
+  var lastSampleFailReason='';
 
   function resetRuntimeSmoothers(){
     featSmooth=null;
     applyOutSmooth.cx=null;
     applyOutSmooth.cy=null;
+  }
+
+  function resetCalibPoseRef(){
+    calibPoseRef=null;
+    lastSampleFailReason='';
   }
 
   function calibLog(msg){
@@ -183,12 +231,117 @@
   }
 
   function targetHint(target){
-    var pair=TARGET_HINTS[target&&target.id?target.id:'center']||TARGET_HINTS.center;
+    var id=target&&target.id;
+    var pair=TARGET_HINTS[id?id:'center']||TARGET_HINTS.center;
     var hint=t(pair[0],pair[1]);
-    if(target&&target.id&&target.id!=='center'&&target.id!=='tc'&&target.id!=='bc'&&target.id!=='ml'&&target.id!=='mr'){
+    if(isTopTarget(id)){
+      hint+=' · '+t('cameraGazeCalibrationHeadHintUp','上方请抬头+转头');
+    }else if(isBottomTarget(id)){
+      hint+=' · '+t('cameraGazeCalibrationHeadHintNod','下方请点头，镜框挡眼时靠头姿');
+    }else if(isCriticalCorner(id)){
       hint+=' · '+t('cameraGazeCalibrationHeadHint','边角处请微微转头');
     }
     return hint;
+  }
+
+  function regionZoneFromNorm(nx,ny){
+    nx=clamp01(nx);
+    ny=clamp01(ny);
+    // Slightly wider edge bands so corners/sides are easier to "hit".
+    var col=nx<0.36?'l':(nx>0.64?'r':'c');
+    var row=ny<0.36?'t':(ny>0.64?'b':'m');
+    var map={
+      lt:'tl',ct:'tc',rt:'tr',
+      lm:'ml',cm:'center',rm:'mr',
+      lb:'bl',cb:'bc',rb:'br'
+    };
+    return map[col+row]||'center';
+  }
+
+  function regionCenterNorm(zoneId){
+    var id=String(zoneId||'center');
+    var map={
+      tl:{nx:0.14,ny:0.14},tc:{nx:0.5,ny:0.12},tr:{nx:0.86,ny:0.14},
+      ml:{nx:0.12,ny:0.5},center:{nx:0.5,ny:0.5},mr:{nx:0.88,ny:0.5},
+      bl:{nx:0.14,ny:0.86},bc:{nx:0.5,ny:0.88},br:{nx:0.86,ny:0.86}
+    };
+    return map[id]||map.center;
+  }
+
+  function softSnapToRegion(nx,ny,blend){
+    var zone=regionZoneFromNorm(nx,ny);
+    var c=regionCenterNorm(zone);
+    var b=blend!=null?blend:0.58;
+    // Poor formal LOO (esp. 右上) — snap harder so region product stays usable.
+    if(model&&model.lowQuality) b=Math.max(b,0.72);
+    if(model&&model.calibrationValidation&&model.calibrationValidation.worstErrorPx>450){
+      b=Math.max(b,0.78);
+    }
+    return {
+      nx:clamp01(nx*(1-b)+c.nx*b),
+      ny:clamp01(ny*(1-b)+c.ny*b),
+      zone:zone
+    };
+  }
+
+  function regionZoneLabel(zoneId){
+    var id=String(zoneId||'center');
+    var key='cameraGazeRegion'+id.charAt(0).toUpperCase()+id.slice(1);
+    if(id==='center') key='cameraGazeRegionCenter';
+    var fallbacks={
+      tl:'左上',tc:'上中',tr:'右上',
+      ml:'左中',center:'正中',mr:'右中',
+      bl:'左下',bc:'下中',br:'右下'
+    };
+    return t(key,fallbacks[id]||id);
+  }
+
+  function targetReadText(target){
+    return pickKaraokeForTarget(target);
+  }
+
+  function setCalibKaraokeProgress(p){
+    p=Math.max(0,Math.min(1,Number(p)||0));
+    var charsEl=$('cameraGazeCalibKaraokeChars');
+    var meter=$('cameraGazeCalibKaraokeMeter');
+    if(meter) meter.style.width=(p*100).toFixed(1)+'%';
+    if(!charsEl) return;
+    var nodes=charsEl.querySelectorAll('.camera-gaze-karaoke-ch');
+    var n=nodes.length;
+    if(!n) return;
+    var lit=p*n;
+    for(var i=0;i<n;i++){
+      var on=i<lit;
+      var head=on&&i>=lit-1;
+      nodes[i].classList.toggle('is-lit',on);
+      nodes[i].classList.toggle('is-head',head);
+    }
+  }
+
+  function paintCalibKaraoke(text){
+    var charsEl=$('cameraGazeCalibKaraokeChars');
+    var line=String(text||'');
+    if(!charsEl){
+      var readEl=$('cameraGazeCalibrationRead');
+      if(readEl) readEl.textContent=line;
+      return;
+    }
+    // Skip rebuild when the same line is already painted.
+    if(charsEl.getAttribute('data-line')===line&&charsEl.childNodes.length){
+      return;
+    }
+    var html='';
+    for(var i=0;i<line.length;i++){
+      var ch=line.charAt(i);
+      if(ch===' '){
+        html+='<span class="camera-gaze-karaoke-ch is-space">&nbsp;</span>';
+      }else{
+        html+='<span class="camera-gaze-karaoke-ch">'+ch.replace(/</g,'&lt;')+'</span>';
+      }
+    }
+    charsEl.innerHTML=html;
+    charsEl.setAttribute('data-line',line);
+    setCalibKaraokeProgress(0);
   }
 
   function setCalibrationUi(opts){
@@ -196,18 +349,27 @@
     var titleEl=$('cameraGazeCalibrationTitle');
     var progressEl=$('cameraGazeCalibrationProgress');
     var countdownEl=$('cameraGazeCalibrationCountdown');
-    if(titleEl&&o.title!=null) titleEl.textContent=String(o.title);
-    if(progressEl&&o.subtitle!=null) progressEl.textContent=String(o.subtitle);
-    if(countdownEl){
-      if(o.countdown!=null&&o.countdown!==''){
-        countdownEl.textContent=String(o.countdown);
-        countdownEl.hidden=false;
-        countdownEl.removeAttribute('hidden');
-      }else{
-        countdownEl.textContent='';
-        countdownEl.hidden=true;
-        countdownEl.setAttribute('hidden','');
+    if(titleEl){
+      if(o.title!=null){
+        var title=String(o.title||'');
+        titleEl.textContent=title;
+        if(title){
+          titleEl.hidden=false;
+          titleEl.removeAttribute('hidden');
+        }else{
+          titleEl.hidden=true;
+          titleEl.setAttribute('hidden','');
+        }
       }
+    }
+    if(progressEl&&o.subtitle!=null) progressEl.textContent=String(o.subtitle);
+    if(o.read!=null) paintCalibKaraoke(o.read);
+    if(o.karaokeP!=null) setCalibKaraokeProgress(o.karaokeP);
+    if(countdownEl){
+      // Karaoke fill replaces the big countdown number.
+      countdownEl.textContent='';
+      countdownEl.hidden=true;
+      countdownEl.setAttribute('hidden','');
     }
     var overlay=$('cameraGazeCalibrationOverlay');
     if(overlay&&o.phase){
@@ -264,6 +426,25 @@
     }
   }
 
+  function measureReadFixation(){
+    var readEl=$('cameraGazeCalibrationRead');
+    var vw=global.innerWidth||1;
+    var vh=global.innerHeight||1;
+    if(!readEl||!readEl.getBoundingClientRect){
+      return null;
+    }
+    var r=readEl.getBoundingClientRect();
+    if(!r.width||!r.height) return null;
+    var cx=r.left+r.width/2;
+    var cy=r.top+r.height/2;
+    return {
+      nx:clamp01(cx/vw),
+      ny:clamp01(cy/vh),
+      cx:cx,
+      cy:cy
+    };
+  }
+
   function placeTarget(nx,ny){
     var overlay=$('cameraGazeCalibrationOverlay');
     var px=(clamp01(nx)*100).toFixed(2)+'%';
@@ -277,20 +458,35 @@
         var vh=global.innerHeight||1;
         var sx=clamp01(nx)*vw;
         var sy=clamp01(ny)*vh;
-        var panelW=panel.offsetWidth||Math.min(400,vw*0.9);
-        var panelH=panel.offsetHeight||120;
-        var gap=72;
-        var left=sx-panelW/2;
-        var top=sy+gap;
-        if(top+panelH>vh-16) top=sy-gap-panelH;
-        if(top<16) top=16;
-        left=clamp(left,16,Math.max(16,vw-panelW-16));
+        var panelW=panel.offsetWidth||Math.min(420,vw*0.72);
+        var panelH=panel.offsetHeight||140;
+        // Anchor panel to screen corner/edge; user reads text here (not a separate dot).
+        var margin=14;
+        var col=nx<0.33?'left':(nx>0.67?'right':'mid');
+        var row=ny<0.33?'top':(ny>0.67?'bot':'mid');
+        var left,top;
+        if(col==='left') left=margin;
+        else if(col==='right') left=vw-panelW-margin;
+        else left=sx-panelW/2;
+        if(row==='top') top=margin;
+        else if(row==='bot') top=vh-panelH-margin;
+        else top=sy-panelH/2;
+        left=clamp(left,10,Math.max(10,vw-panelW-10));
+        top=clamp(top,10,Math.max(10,vh-panelH-10));
+        panel.setAttribute('data-anchor',col+'-'+row);
         panel.style.left=Math.round(left)+'px';
         panel.style.top=Math.round(top)+'px';
         panel.style.bottom='auto';
         panel.style.transform='none';
       }
+      var fix=measureReadFixation();
+      if(fix){
+        currentFixation=fix;
+        overlay.style.setProperty('--spot-x',(fix.nx*100).toFixed(2)+'%');
+        overlay.style.setProperty('--spot-y',(fix.ny*100).toFixed(2)+'%');
+      }
     }
+    return currentFixation;
   }
 
   function isSampleAcceptable(point){
@@ -306,6 +502,7 @@
 
   function pushSampleFromPoint(point){
     if(!collecting||!isSampleAcceptable(point)) return;
+    calibAcceptedSamples++;
     var feats=normalizeFeats(point.feats);
     sampleBuf.push({
       x:clamp01(point.x),
@@ -324,25 +521,29 @@
     return out;
   }
 
-  function extendedFeats(feats,rx,ry){
+  function spatialFeats(feats){
     var f=normalizeFeats(feats);
-    rx=clamp01(rx!=null?rx:0.5);
-    ry=clamp01(ry!=null?ry:0.5);
+    // f[4]=yaw, f[5]=pitch — amplify for head-led corner mapping (glasses-friendly).
+    var yaw=f[4],pitch=f[5];
     return [
-      f[0],f[1],f[2],f[3],f[4],f[5],f[6],f[7],
-      rx,ry,
-      f[4]*f[5],
+      f[0],f[1],f[2],f[3],
+      yaw,pitch,f[6],f[7],
+      yaw*pitch,
       f[0]*f[2],
       f[1]*f[3],
-      rx*rx,
-      ry*ry
+      yaw*yaw,
+      pitch*pitch
     ];
+  }
+
+  function spatialFeatureRow(feats){
+    return [1].concat(spatialFeats(feats));
   }
 
   function buildFeatScaler(anchors){
     var means=[];
     var stds=[];
-    for(var d=0;d<EXT_DIM;d++){
+    for(var d=0;d<SPATIAL_DIM;d++){
       var vals=[];
       for(var i=0;i<anchors.length;i++){
         vals.push(anchors[i].ext[d]);
@@ -362,15 +563,15 @@
 
   function scaledFeatDist(ext,anchorExt,scaler){
     var d=0;
-    for(var i=0;i<EXT_DIM;i++){
+    for(var i=0;i<SPATIAL_DIM;i++){
       var diff=(ext[i]-anchorExt[i])/scaler.stds[i];
       d+=diff*diff;
     }
-    return Math.sqrt(d/EXT_DIM);
+    return Math.sqrt(d/SPATIAL_DIM);
   }
 
-  function featureRow(feats,rx,ry){
-    return [1].concat(extendedFeats(feats,rx,ry));
+  function featureRow(feats){
+    return spatialFeatureRow(feats);
   }
 
   function startSamplePump(onTick){
@@ -493,10 +694,12 @@
     return x;
   }
 
-  function predictClient(beta,feats,rx,ry){
-    var row=featureRow(feats,rx,ry);
+  function predictClient(beta,feats){
+    if(!beta||!beta.length) return NaN;
+    var row=spatialFeatureRow(feats);
+    var n=Math.min(beta.length,row.length);
     var s=0;
-    for(var i=0;i<row.length;i++) s+=beta[i]*row[i];
+    for(var i=0;i<n;i++) s+=beta[i]*row[i];
     return s;
   }
 
@@ -557,8 +760,8 @@
       }
       var ridge=fitRidge(train);
       if(!ridge) continue;
-      var px=predictClient(ridge.betaX,held.feats,held.rx,held.ry);
-      var py=predictClient(ridge.betaY,held.feats,held.rx,held.ry);
+      var px=predictClient(ridge.betaX,held.feats);
+      var py=predictClient(ridge.betaY,held.feats);
       var dx=px-held.cx,dy=py-held.cy;
       sse+=dx*dx+dy*dy;
       n++;
@@ -599,12 +802,6 @@
     }));
   }
 
-  function runtimePredictKind(m){
-    if(!m) return 'idw';
-    if(m.betaU&&m.betaV&&gridTopologyEligibleAnchors(m.anchors)) return 'grid';
-    return m.kind||'idw';
-  }
-
   function featSmoothAlphaForDim(dim){
     if(dim===4||dim===5) return FEAT_SMOOTH_ALPHA_POSE;
     if(dim===2||dim===3) return FEAT_SMOOTH_ALPHA_BLEND;
@@ -633,6 +830,10 @@
     var jump=Math.abs(cx-applyOutSmooth.cx)+Math.abs(cy-applyOutSmooth.cy);
     var span=Math.min(vw||1,vh||1);
     var alpha=jump>span*0.14?APPLY_OUT_ALPHA_FAST:APPLY_OUT_ALPHA;
+    var nx=cx/(vw||1),ny=cy/(vh||1);
+    var edgeDist=Math.min(nx,1-nx,ny,1-ny);
+    if(edgeDist<0.14) alpha=Math.max(alpha,0.78);
+    if(edgeDist<0.06) alpha=0.92;
     applyOutSmooth.cx+=(cx-applyOutSmooth.cx)*alpha;
     applyOutSmooth.cy+=(cy-applyOutSmooth.cy)*alpha;
     return {cx:applyOutSmooth.cx,cy:applyOutSmooth.cy};
@@ -817,7 +1018,7 @@
       if(rowPts.length<2) continue;
       rowPts.sort(function(u,v){ return u.nx-v.nx; });
       var proj=rowPts.map(function(a){
-        return predictClient(m.betaU,a.feats,a.rx,a.ry);
+        return predictClient(m.betaU,a.feats);
       });
       for(var j=1;j<proj.length;j++){
         if(proj[j]+1e-4<proj[j-1]) worst=Math.max(worst,proj[j-1]-proj[j]);
@@ -832,7 +1033,7 @@
       if(colPts.length<2) continue;
       colPts.sort(function(u,v){ return u.ny-v.ny; });
       var projY=colPts.map(function(a){
-        return predictClient(m.betaV,a.feats,a.rx,a.ry);
+        return predictClient(m.betaV,a.feats);
       });
       for(var j2=1;j2<projY.length;j2++){
         if(projY[j2]+1e-4<projY[j2-1]) worst=Math.max(worst,projY[j2-1]-projY[j2]);
@@ -844,8 +1045,8 @@
 
   function projectToUv(feats,rx,ry,m){
     if(!m||!m.betaU||!m.betaV) return null;
-    var rawU=predictClient(m.betaU,feats,rx,ry);
-    var rawV=predictClient(m.betaV,feats,rx,ry);
+    var rawU=predictClient(m.betaU,feats);
+    var rawV=predictClient(m.betaV,feats);
     if(!isFinite(rawU)||!isFinite(rawV)) return null;
     var fold=gridFoldPenalty(m);
     var u=softClamp01(rawU);
@@ -945,7 +1146,7 @@
       var trainAnchors=train.map(function(p){
         return {
           feats:normalizeFeats(p.feats),
-          ext:extendedFeats(p.feats,p.rx,p.ry),
+          ext:spatialFeats(p.feats),
           rx:clamp01(p.rx),ry:clamp01(p.ry),
           nx:clamp01(p.nx),ny:clamp01(p.ny),
           targetId:p.targetId||'',
@@ -956,7 +1157,7 @@
       if(!sub) continue;
       var vw=global.innerWidth||1;
       var vh=global.innerHeight||1;
-      var pred=predictGrid(held.feats,held.rx,held.ry,extendedFeats(held.feats,held.rx,held.ry),sub,vw,vh);
+      var pred=predictGrid(held.feats,held.rx,held.ry,spatialFeats(held.feats),sub,vw,vh);
       if(!pred) continue;
       var dx=pred.cx-held.cx,dy=pred.cy-held.cy;
       sse+=dx*dx+dy*dy;
@@ -971,8 +1172,176 @@
     return evalAnchorRmse(anchors,scaler);
   }
 
+  function qualityFromRmse(rmsePx,thr){
+    if(!isFinite(rmsePx)||rmsePx>=1e8) return 'poor';
+    if(rmsePx<=thr*0.7) return 'good';
+    if(rmsePx<=thr) return 'ok';
+    return 'poor';
+  }
+
+  function expectedSamplesForPoints(successfulPointCount){
+    var n=Math.max(0,Number(successfulPointCount)||0);
+    var ticksPerPoint=Math.floor(SAMPLE_SEC*1000/33);
+    return n*ticksPerPoint;
+  }
+
+  function evalKindLooPointErrors(kind,pairs,anchors,scaler){
+    var errors=[];
+    var vw=global.innerWidth||1;
+    var vh=global.innerHeight||1;
+    var i,j;
+    if(kind==='ridge'){
+      if(!pairs||pairs.length<2) return errors;
+      for(i=0;i<pairs.length;i++){
+        var heldR=pairs[i];
+        var trainR=[];
+        for(j=0;j<pairs.length;j++){
+          if(j!==i) trainR.push(pairs[j]);
+        }
+        if(trainR.length<2) continue;
+        var ridge=fitRidge(trainR);
+        if(!ridge) continue;
+        var px=predictClient(ridge.betaX,heldR.feats);
+        var py=predictClient(ridge.betaY,heldR.feats);
+        var dxR=px-heldR.cx,dyR=py-heldR.cy;
+        errors.push({
+          targetId:heldR.targetId||('p'+i),
+          errorPx:Math.sqrt(dxR*dxR+dyR*dyR),
+          cx:heldR.cx,cy:heldR.cy
+        });
+      }
+      return errors;
+    }
+    if(kind==='grid'){
+      if(!gridTopologyEligible(pairs)||pairs.length<5) return errors;
+      for(i=0;i<pairs.length;i++){
+        var heldG=pairs[i];
+        var trainG=[];
+        for(j=0;j<pairs.length;j++){
+          if(j!==i) trainG.push(pairs[j]);
+        }
+        if(trainG.length<5) continue;
+        var trainAnchorsG=trainG.map(function(p){
+          return {
+            feats:normalizeFeats(p.feats),
+            ext:spatialFeats(p.feats),
+            rx:clamp01(p.rx),ry:clamp01(p.ry),
+            nx:clamp01(p.nx),ny:clamp01(p.ny),
+            targetId:p.targetId||'',
+            cx:p.cx,cy:p.cy
+          };
+        });
+        var subG=buildGridSubModel(trainG,trainAnchorsG);
+        if(!subG) continue;
+        var predG=predictGrid(heldG.feats,heldG.rx,heldG.ry,spatialFeats(heldG.feats),subG,vw,vh);
+        if(!predG) continue;
+        var dxG=predG.cx-heldG.cx,dyG=predG.cy-heldG.cy;
+        errors.push({
+          targetId:heldG.targetId||('p'+i),
+          errorPx:Math.sqrt(dxG*dxG+dyG*dyG),
+          cx:heldG.cx,cy:heldG.cy
+        });
+      }
+      return errors;
+    }
+    if(!anchors||anchors.length<2) return errors;
+    for(i=0;i<anchors.length;i++){
+      var predI=predictFromAnchors(anchors[i].ext,anchors,scaler,{exclude:i,temp:IDW_TEMP*1.15});
+      if(!predI) continue;
+      var dxI=predI.cx-anchors[i].cx,dyI=predI.cy-anchors[i].cy;
+      errors.push({
+        targetId:anchors[i].targetId||('a'+i),
+        errorPx:Math.sqrt(dxI*dxI+dyI*dyI),
+        cx:anchors[i].cx,cy:anchors[i].cy
+      });
+    }
+    return errors;
+  }
+
+  function normalizeCalibrationValidation(raw){
+    if(!raw||typeof raw!=='object') return null;
+    var method=String(raw.method||'').trim();
+    if(method!=='leave-one-out') method='leave-one-out';
+    var rmsePx=Number(raw.rmsePx!=null?raw.rmsePx:raw.rmse);
+    if(!isFinite(rmsePx)) rmsePx=0;
+    var avgErrorPx=Number(raw.avgErrorPx);
+    if(!isFinite(avgErrorPx)) avgErrorPx=rmsePx;
+    var maxErrorPx=Number(raw.maxErrorPx);
+    if(!isFinite(maxErrorPx)) maxErrorPx=rmsePx;
+    var validPointCount=Math.max(0,Number(raw.validPointCount)||0)|0;
+    var acceptedSamples=Math.max(0,Number(raw.acceptedSamples)||0)|0;
+    var sampleRate=Number(raw.sampleRate);
+    if(!isFinite(sampleRate)) sampleRate=0;
+    sampleRate=clamp01(sampleRate);
+    var quality=String(raw.quality||'').trim();
+    if(quality!=='good'&&quality!=='ok'&&quality!=='poor'){
+      quality=qualityFromRmse(rmsePx,rmseThreshold());
+    }
+    return {
+      method:method,
+      avgErrorPx:avgErrorPx,
+      rmsePx:rmsePx,
+      maxErrorPx:maxErrorPx,
+      worstTargetId:raw.worstTargetId?String(raw.worstTargetId):null,
+      worstErrorPx:isFinite(Number(raw.worstErrorPx))?Number(raw.worstErrorPx):null,
+      validPointCount:validPointCount,
+      acceptedSamples:acceptedSamples,
+      sampleRate:sampleRate,
+      quality:quality
+    };
+  }
+
+  function buildCalibrationValidation(kind,pairs,anchors,scaler,acceptedSamples){
+    var errors=evalKindLooPointErrors(kind,pairs,anchors,scaler);
+    var thr=rmseThreshold();
+    var validPointCount=errors.length;
+    var sse=0,sum=0,maxErr=0,worstId='',worstErr=0;
+    for(var i=0;i<errors.length;i++){
+      var e=errors[i].errorPx;
+      if(!isFinite(e)) continue;
+      sum+=e;
+      sse+=e*e;
+      if(e>maxErr) maxErr=e;
+      if(e>worstErr){
+        worstErr=e;
+        worstId=String(errors[i].targetId||'');
+      }
+    }
+    var avgErrorPx=validPointCount?sum/validPointCount:0;
+    var rmsePx=validPointCount?Math.sqrt(sse/validPointCount):0;
+    var expected=expectedSamplesForPoints(pairs?pairs.length:0);
+    var sampleRate=clamp01((Number(acceptedSamples)||0)/Math.max(1,expected));
+    var quality=qualityFromRmse(rmsePx,thr);
+    calibLog('calibrationValidation method=leave-one-out kind='+kind+
+      ' rmse='+Math.round(rmsePx)+' avg='+Math.round(avgErrorPx)+
+      ' max='+Math.round(maxErr)+' quality='+quality+
+      ' worst='+(worstId||'?')+'@'+Math.round(worstErr)+
+      ' sampleRate='+sampleRate.toFixed(2)+' accepted='+acceptedSamples+' expected='+expected);
+    return {
+      method:'leave-one-out',
+      avgErrorPx:avgErrorPx,
+      rmsePx:rmsePx,
+      maxErrorPx:maxErr,
+      worstTargetId:worstId||null,
+      worstErrorPx:worstErr||null,
+      validPointCount:validPointCount,
+      acceptedSamples:Math.max(0,Number(acceptedSamples)||0)|0,
+      sampleRate:sampleRate,
+      quality:quality
+    };
+  }
+
+  function ridgeLambda(Sw,nSamples){
+    var dim=SPATIAL_DIM+1;
+    var base=RIDGE*Math.max(1,Sw);
+    // LOO folds have fewer points than features — need stronger regularization.
+    if(nSamples<dim*2) base=Math.max(base,0.02*Math.max(1,Sw));
+    if(nSamples<=dim) base=Math.max(base,0.15*Math.max(1,Sw));
+    return base;
+  }
+
   function fitRidgeScalar(pairs,key){
-    var dim=EXT_DIM+1;
+    var dim=SPATIAL_DIM+1;
     var AtA=[];
     var Atb=[];
     var i,j,k;
@@ -985,7 +1354,7 @@
     for(k=0;k<pairs.length;k++){
       var p=pairs[k];
       var w=p.weight!=null?Math.max(0.2,Number(p.weight)):1;
-      var row=featureRow(p.feats,p.rx,p.ry);
+      var row=spatialFeatureRow(p.feats);
       var target=clamp01(p[key]!=null?p[key]:0.5);
       Sw+=w;
       for(i=0;i<dim;i++){
@@ -993,14 +1362,15 @@
         for(j=0;j<dim;j++) AtA[i][j]+=w*row[i]*row[j];
       }
     }
-    var lam=RIDGE*Math.max(1,Sw);
+    var lam=ridgeLambda(Sw,pairs.length);
     for(i=0;i<dim;i++) AtA[i][i]+=lam;
-    return solveN(AtA,Atb);
+    var beta=solveN(AtA,Atb);
+    return betasFinite(beta)?beta:null;
   }
 
   function fitRidge(pairs){
-    // Weighted ridge on extended features (rx/ry included).
-    var dim=EXT_DIM+1;
+    // Weighted ridge on spatial eye/pose features (no raw rx/ry).
+    var dim=SPATIAL_DIM+1;
     var AtA=[];
     var Atx=[];
     var Aty=[];
@@ -1015,7 +1385,7 @@
     for(k=0;k<pairs.length;k++){
       var p=pairs[k];
       var w=p.weight!=null?Math.max(0.2,Number(p.weight)):1;
-      var row=featureRow(p.feats,p.rx,p.ry);
+      var row=spatialFeatureRow(p.feats);
       Sw+=w;
       for(i=0;i<dim;i++){
         Atx[i]+=w*row[i]*p.cx;
@@ -1023,17 +1393,17 @@
         for(j=0;j<dim;j++) AtA[i][j]+=w*row[i]*row[j];
       }
     }
-    var lam=RIDGE*Math.max(1,Sw);
+    var lam=ridgeLambda(Sw,pairs.length);
     for(i=0;i<dim;i++) AtA[i][i]+=lam;
     var betaX=solveN(AtA,Atx);
     var betaY=solveN(AtA,Aty);
-    if(!betaX||!betaY) return null;
+    if(!betaX||!betaY||!betasFinite(betaX)||!betasFinite(betaY)) return null;
     var sse=0,wSum=0;
     for(k=0;k<pairs.length;k++){
       var q=pairs[k];
       var ww=q.weight!=null?Math.max(0.2,Number(q.weight)):1;
-      var px=predictClient(betaX,q.feats,q.rx,q.ry);
-      var py=predictClient(betaY,q.feats,q.rx,q.ry);
+      var px=predictClient(betaX,q.feats);
+      var py=predictClient(betaY,q.feats);
       var dx=px-q.cx,dy=py-q.cy;
       sse+=ww*(dx*dx+dy*dy);
       wSum+=ww;
@@ -1060,7 +1430,7 @@
     var anchors=pairs.map(function(p){
       return {
         feats:normalizeFeats(p.feats),
-        ext:extendedFeats(p.feats,p.rx,p.ry),
+        ext:spatialFeats(p.feats),
         rx:clamp01(p.rx),
         ry:clamp01(p.ry),
         nx:clamp01(p.nx!=null?p.nx:0.5),
@@ -1073,18 +1443,129 @@
     return {pairs:pairs,anchors:anchors,scaler:buildFeatScaler(anchors)};
   }
 
-  function finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo){
-    var kind='idw';
-    var rmse=idwLoo;
-    if(ridgeLoo<rmse){
-      kind='ridge';
-      rmse=ridgeLoo;
+  function looWeightForTarget(targetId){
+    // Top row + corners dominate real-world miss rate with glasses.
+    if(targetId==='tr'||targetId==='tl') return 3.8;
+    if(targetId==='br'||targetId==='bl') return 3.2;
+    if(targetId==='tc') return 2.6;
+    if(targetId==='bc'||targetId==='ml'||targetId==='mr') return 1.5;
+    return 1.0;
+  }
+
+  function evalKindWeightedLooRmse(kind,pairs,anchors,scaler){
+    var errors=evalKindLooPointErrors(kind,pairs,anchors,scaler);
+    if(!errors.length) return {rmse:1e9,cornerRmse:1e9,errors:errors};
+    var sse=0,wsum=0,cornerSse=0,cornerN=0;
+    for(var i=0;i<errors.length;i++){
+      var e=errors[i].errorPx;
+      if(!isFinite(e)) continue;
+      var w=looWeightForTarget(errors[i].targetId||'');
+      sse+=w*e*e;
+      wsum+=w;
+      if(CRITICAL_CORNER_IDS.indexOf(errors[i].targetId||'')>=0){
+        cornerSse+=e*e;
+        cornerN++;
+      }
     }
-    if(gridLoo<rmse){
+    return {
+      rmse:wsum?Math.sqrt(sse/wsum):1e9,
+      cornerRmse:cornerN?Math.sqrt(cornerSse/cornerN):1e9,
+      errors:errors
+    };
+  }
+
+  function logKindLooErrors(kind,prep){
+    var scored=evalKindWeightedLooRmse(kind,prep.pairs,prep.anchors,prep.scaler);
+    var errors=scored.errors||[];
+    for(var i=0;i<errors.length;i++){
+      calibLog('LOO '+kind+' point '+errors[i].targetId+' err='+Math.round(errors[i].errorPx)+'px');
+    }
+    calibLog('LOO summary '+kind+' weighted='+Math.round(scored.rmse)+
+      ' cornerAvg='+Math.round(scored.cornerRmse)+'px');
+    return scored;
+  }
+
+  function pickModelKind(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo){
+    var idwW=logKindLooErrors('idw',prep);
+    var ridgeW=ridge?logKindLooErrors('ridge',prep):{rmse:ridgeLoo,cornerRmse:1e9};
+    var gridW=gridBetas&&gridTopologyEligible(prep.pairs)
+      ?logKindLooErrors('grid',prep)
+      :{rmse:gridLoo,cornerRmse:1e9};
+    // Prefer extrapolating models when LOO is close — IDW blends toward center at corners.
+    var kind='idw';
+    var pick=idwW;
+    var best=idwW.rmse;
+    if(ridge&&isFinite(ridgeW.rmse)&&ridgeW.rmse<=best*1.08){
+      kind='ridge';
+      pick=ridgeW;
+      best=ridgeW.rmse;
+      if(ridgeW.rmse>idwW.rmse){
+        calibLog('model pick ridge near-tie (extrapolation) vs idw='+Math.round(idwW.rmse));
+      }
+    }
+    if(gridBetas&&isFinite(gridW.rmse)&&gridW.rmse<best){
       kind='grid';
-      rmse=gridLoo;
+      pick=gridW;
+      best=gridW.rmse;
+    }
+    if(gridBetas&&prep.pairs.length>=9&&gridTopologyEligible(prep.pairs)){
+      if(ridge&&isFinite(ridgeW.cornerRmse)&&ridgeW.cornerRmse<gridW.cornerRmse*0.98&&
+         ridgeW.cornerRmse<=idwW.cornerRmse*1.05){
+        kind='ridge';
+        pick=ridgeW;
+        calibLog('model pick ridge corner-boost cornerRmse='+Math.round(ridgeW.cornerRmse)+
+          ' vs grid='+Math.round(gridW.cornerRmse));
+      }else if(gridW.cornerRmse<idwW.cornerRmse*0.95||
+         (gridW.rmse<=idwW.rmse*1.18&&gridW.cornerRmse<=idwW.cornerRmse*1.08)){
+        kind='grid';
+        pick=gridW;
+        calibLog('model pick grid corner-boost cornerRmse='+Math.round(gridW.cornerRmse)+
+          ' vs idw='+Math.round(idwW.cornerRmse));
+      }
+    }
+    calibLog('model weighted idw='+Math.round(idwW.rmse)+'/'+Math.round(idwW.cornerRmse)+
+      ' ridge='+Math.round(ridgeW.rmse)+'/'+Math.round(ridgeW.cornerRmse)+
+      ' grid='+Math.round(gridW.rmse)+'/'+Math.round(gridW.cornerRmse));
+    return {kind:kind,pick:pick};
+  }
+
+  function sanitizeLooRmse(v){
+    v=Number(v);
+    if(!isFinite(v)||v<0) return 1e9;
+    return v;
+  }
+
+  function betasFinite(beta){
+    if(!beta||!beta.length) return false;
+    for(var i=0;i<beta.length;i++){
+      if(!isFinite(beta[i])) return false;
+    }
+    return true;
+  }
+
+  function finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo,acceptedSamples){
+    idwLoo=sanitizeLooRmse(idwLoo);
+    ridgeLoo=sanitizeLooRmse(ridgeLoo);
+    gridLoo=sanitizeLooRmse(gridLoo);
+    if(ridge&&(!betasFinite(ridge.betaX)||!betasFinite(ridge.betaY))){
+      ridge=null;
+      ridgeLoo=1e9;
+    }
+    if(gridBetas&&(!betasFinite(gridBetas.betaU)||!betasFinite(gridBetas.betaV))){
+      gridBetas=null;
+      gridLoo=1e9;
+    }
+    var picked=pickModelKind(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo);
+    var kind=picked.kind;
+    var rmse=picked.pick&&isFinite(picked.pick.rmse)?picked.pick.rmse:idwLoo;
+    var calibrationValidation=buildCalibrationValidation(
+      kind,prep.pairs,prep.anchors,prep.scaler,acceptedSamples||0
+    );
+    if(calibrationValidation&&isFinite(calibrationValidation.rmsePx)){
+      rmse=calibrationValidation.rmsePx;
     }
     calibLog('model pick kind='+kind+' idwLoo='+Math.round(idwLoo)+' ridgeLoo='+Math.round(ridgeLoo)+' gridLoo='+Math.round(gridLoo));
+    var thr=rmseThreshold();
     return {
       anchors:prep.anchors,
       scaler:prep.scaler,
@@ -1093,13 +1574,17 @@
       betaU:gridBetas?gridBetas.betaU:null,
       betaV:gridBetas?gridBetas.betaV:null,
       rmse:rmse,
-      idwRmse:idwLoo,
+      idwRmse:idwLoo<1e8?idwLoo:null,
       ridgeRmse:ridgeLoo<1e8?ridgeLoo:null,
       gridRmse:gridLoo<1e8?gridLoo:null,
       kind:kind,
+      calibrationValidation:calibrationValidation,
+      weakSamples:[],
+      weakSampleCount:0,
+      continuousUpdatedAt:null,
       vw:global.innerWidth||0,
       vh:global.innerHeight||0,
-      lowQuality:false,
+      lowQuality:calibrationValidation?calibrationValidation.quality==='poor':rmse>thr,
       stale:false,
       skippedPoints:0,
       synthNodeCount:0,
@@ -1112,10 +1597,11 @@
     var idwLoo=evalLooRmse('idw',prep.pairs,prep.anchors,prep.scaler);
     var ridge=fitRidge(prep.pairs);
     var ridgeLoo=ridge?evalLooRmse('ridge',prep.pairs,prep.anchors,prep.scaler):1e9;
+    calibLog('ridge fit full='+(ridge?'ok':'fail')+' looRmse='+Math.round(ridgeLoo));
     var gridEligible=gridTopologyEligible(prep.pairs);
     var gridBetas=gridEligible?buildGridBetas(prep.pairs):null;
     var gridLoo=gridEligible&&gridBetas?evalGridLooRmse(prep.pairs):1e9;
-    return finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo);
+    return finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo,calibAcceptedSamples);
   }
 
   function buildModelFromPairsAsync(pairs,cb){
@@ -1138,6 +1624,7 @@
       try{
         ridge=fitRidge(prep.pairs);
         ridgeLoo=ridge?evalLooRmse('ridge',prep.pairs,prep.anchors,prep.scaler):1e9;
+        calibLog('ridge fit full='+(ridge?'ok':'fail')+' looRmse='+Math.round(ridgeLoo));
       }catch(err){
         cb(null,err);
         return;
@@ -1147,7 +1634,7 @@
           var gridEligible=gridTopologyEligible(prep.pairs);
           var gridBetas=gridEligible?buildGridBetas(prep.pairs):null;
           var gridLoo=gridEligible&&gridBetas?evalGridLooRmse(prep.pairs):1e9;
-          cb(finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo));
+          cb(finalizeBuiltModel(prep,ridge,gridBetas,idwLoo,ridgeLoo,gridLoo,calibAcceptedSamples));
         }catch(err){
           cb(null,err);
         }
@@ -1162,8 +1649,8 @@
     }
     if(kind==='ridge'&&m.betaX&&m.betaY){
       return {
-        cx:predictClient(m.betaX,feats,rx,ry),
-        cy:predictClient(m.betaY,feats,rx,ry)
+        cx:predictClient(m.betaX,feats),
+        cy:predictClient(m.betaY,feats)
       };
     }
     if(kind==='idw'&&m.anchors&&m.scaler){
@@ -1183,6 +1670,208 @@
     return {cx:anchors[bestI].cx,cy:anchors[bestI].cy};
   }
 
+  function weakWeightForSource(source){
+    if(source==='lock') return WEAK_WEIGHT_LOCK;
+    if(source==='hover') return 0.12;
+    return WEAK_WEIGHT_CLICK;
+  }
+
+  function isPreviewLiveForWeak(){
+    var preview=global.OneToneCameraPreview;
+    if(!preview||!preview.getGazeDebugState) return false;
+    try{
+      var st=preview.getGazeDebugState();
+      return !!(st&&st.previewLive);
+    }catch(_){
+      return false;
+    }
+  }
+
+  function hasFormalCalibrationModel(){
+    return !!(model&&model.anchors&&model.anchors.length>=MIN_CALIB_POINTS&&model.calibrationValidation);
+  }
+
+  function formalPairsFromModel(m){
+    return (m.anchors||[]).map(function(a){
+      return {
+        feats:normalizeFeats(a.feats),
+        rx:clamp01(a.rx),
+        ry:clamp01(a.ry),
+        nx:clamp01(a.nx!=null?a.nx:0.5),
+        ny:clamp01(a.ny!=null?a.ny:0.5),
+        cx:Number(a.cx)||0,
+        cy:Number(a.cy)||0,
+        targetId:a.targetId||'',
+        weight:1
+      };
+    });
+  }
+
+  function normalizeWeakSample(raw){
+    if(!raw||typeof raw!=='object') return null;
+    var feats=normalizeFeats(raw.feats);
+    var rx=clamp01(raw.rx);
+    var ry=clamp01(raw.ry);
+    var cx=Number(raw.cx);
+    var cy=Number(raw.cy);
+    if(!isFinite(cx)||!isFinite(cy)) return null;
+    var vw=global.innerWidth||1;
+    var vh=global.innerHeight||1;
+    var nx=raw.nx!=null?clamp01(raw.nx):clamp01(cx/vw);
+    var ny=raw.ny!=null?clamp01(raw.ny):clamp01(cy/vh);
+    var source=String(raw.source||'click');
+    if(source!=='click'&&source!=='lock'&&source!=='hover') source='click';
+    var weight=raw.weight!=null?Number(raw.weight):weakWeightForSource(source);
+    if(!isFinite(weight)||weight<=0) weight=weakWeightForSource(source);
+    weight=clamp(weight,0.05,0.5);
+    var createdAt=Number(raw.createdAt);
+    if(!isFinite(createdAt)) createdAt=Date.now();
+    return {
+      feats:feats,rx:rx,ry:ry,cx:cx,cy:cy,nx:nx,ny:ny,
+      weight:weight,source:source,createdAt:createdAt
+    };
+  }
+
+  function pruneWeakSamples(list){
+    if(!list||!list.length) return [];
+    var now=Date.now();
+    var out=[];
+    for(var i=0;i<list.length;i++){
+      var s=normalizeWeakSample(list[i]);
+      if(!s) continue;
+      if(now-s.createdAt>WEAK_MAX_AGE_MS) continue;
+      out.push(s);
+    }
+    while(out.length>WEAK_MAX_SAMPLES) out.shift();
+    return out;
+  }
+
+  function weakPairsFromSamples(samples){
+    return (samples||[]).map(function(s){
+      return {
+        feats:s.feats,rx:s.rx,ry:s.ry,nx:s.nx,ny:s.ny,cx:s.cx,cy:s.cy,
+        weight:s.weight,targetId:''
+      };
+    });
+  }
+
+  function refitRuntimeBetasFromWeak(){
+    if(!hasFormalCalibrationModel()) return false;
+    var weakSamples=pruneWeakSamples(model.weakSamples||[]);
+    model.weakSamples=weakSamples;
+    var formalPairs=formalPairsFromModel(model);
+    var weakPairs=weakPairsFromSamples(weakSamples);
+    var allPairs=formalPairs.concat(weakPairs);
+    if(!allPairs.length) return false;
+    var ridge=fitRidge(allPairs);
+    if(ridge){
+      model.betaX=ridge.betaX;
+      model.betaY=ridge.betaY;
+    }
+    if(gridTopologyEligible(formalPairs)){
+      var gridBetas=buildGridBetas(allPairs);
+      if(gridBetas){
+        model.betaU=gridBetas.betaU;
+        model.betaV=gridBetas.betaV;
+      }
+    }
+    model.weakSampleCount=weakSamples.length;
+    model.continuousUpdatedAt=Date.now();
+    model.savedAt=Date.now();
+    persistGazeCalibrationSnapshot(serializeModel(model));
+    resetRuntimeSmoothers();
+    calibLog('weak refit samples='+weakSamples.length+' (formal anchors unchanged)');
+    return true;
+  }
+
+  function scheduleWeakRefit(){
+    if(weakRefitTimer){
+      clearTimeout(weakRefitTimer);
+      weakRefitTimer=0;
+    }
+    weakRefitTimer=setTimeout(function(){
+      weakRefitTimer=0;
+      if(!model) return;
+      if(refitRuntimeBetasFromWeak()) notifyPreviewCalibrated();
+    },WEAK_REFIT_DEBOUNCE_MS);
+  }
+
+  function tryAddWeakSample(cx,cy,source,weightOverride){
+    if(running||!hasFormalCalibrationModel()) return false;
+    if(!isPreviewLiveForWeak()) return false;
+    if(source==='hover'&&!WEAK_HOVER_ENABLED) return false;
+    var now=Date.now();
+    var minGap=source==='hover'?2500:(source==='lock'?WEAK_MIN_INTERVAL_LOCK_MS:WEAK_MIN_INTERVAL_CLICK_MS);
+    if(now-weakLastSampleAt<minGap) return false;
+    var point=lastRaw;
+    var lm=global.OneToneCameraGazeLandmarker;
+    if((!point||!isSampleAcceptable(point))&&lm&&lm.getLastPoint){
+      point=lm.getLastPoint();
+    }
+    if(!point||!isSampleAcceptable(point)) return false;
+    if(clamp01(point.confidence)<WEAK_MIN_CONF) return false;
+    var pst=String(point.state||'');
+    if(pst==='lost'||pst==='idle') return false;
+    cx=Number(cx);
+    cy=Number(cy);
+    if(!isFinite(cx)||!isFinite(cy)) return false;
+    var vw=global.innerWidth||model.vw||1;
+    var vh=global.innerHeight||model.vh||1;
+    var weight=weightOverride!=null?Number(weightOverride):weakWeightForSource(source);
+    if(!isFinite(weight)||weight<=0) weight=weakWeightForSource(source);
+    var sample={
+      feats:normalizeFeats(point.feats),
+      rx:clamp01(point.x),
+      ry:clamp01(point.y),
+      cx:cx,cy:cy,
+      nx:clamp01(cx/vw),
+      ny:clamp01(cy/vh),
+      weight:clamp(weight,0.05,0.5),
+      source:source,
+      createdAt:now
+    };
+    if(!model.weakSamples) model.weakSamples=[];
+    model.weakSamples.push(sample);
+    model.weakSamples=pruneWeakSamples(model.weakSamples);
+    model.weakSampleCount=model.weakSamples.length;
+    weakLastSampleAt=now;
+    calibLog('weak sample '+source+' w='+sample.weight.toFixed(2)+
+      ' at '+Math.round(cx)+','+Math.round(cy)+' nx='+sample.nx.toFixed(2));
+    scheduleWeakRefit();
+    return true;
+  }
+
+  function lockTarget(cx,cy){
+    return tryAddWeakSample(cx,cy,'lock',WEAK_WEIGHT_LOCK);
+  }
+
+  function isWeakClickIgnoredTarget(el){
+    if(!el||!el.closest) return false;
+    if(running) return true;
+    if(el.closest('#cameraGazeCalibrationOverlay')) return true;
+    if(el.closest('#cameraGazeWindowLayer')) return true;
+    if(el.closest('.camera-gaze-calibration-panel')) return true;
+    if(el.closest('#cameraActionBar')) return true;
+    if(el.closest('#cameraGazeCalibrateBtn,#cameraGazeClearCalibrationBtn,#cameraGazeStaleRecalibBtn,#btnCameraToggle,#cameraGazeCalibrationCancel')) return true;
+    return false;
+  }
+
+  function onDocumentClickForWeak(e){
+    if(running||!hasFormalCalibrationModel()) return;
+    if(!isPreviewLiveForWeak()) return;
+    var target=e&&e.target;
+    if(isWeakClickIgnoredTarget(target)) return;
+    if(e&&typeof e.clientX==='number'&&typeof e.clientY==='number'){
+      tryAddWeakSample(e.clientX,e.clientY,'click');
+    }
+  }
+
+  function bindWeakCalibrationUi(){
+    if(weakClickBound) return;
+    weakClickBound=true;
+    global.addEventListener('click',onDocumentClickForWeak,true);
+  }
+
   function getCameraPrefsRef(){
     var st=global.OneToneState&&global.OneToneState.state;
     if(!st) return null;
@@ -1198,16 +1887,20 @@
     return st.config.cameraPrefs;
   }
 
+  var persistGazeTimer=0;
   function persistGazeCalibrationSnapshot(snapshot){
     var prefs=getCameraPrefsRef();
     if(!prefs) return;
     prefs.gazeCalibration=snapshot;
-    setTimeout(function(){
+    // Debounce — full cmd_save during live preview must not flood / freeze UI.
+    if(persistGazeTimer) clearTimeout(persistGazeTimer);
+    persistGazeTimer=setTimeout(function(){
+      persistGazeTimer=0;
       if(global.OneToneConfigPersist){
         if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
         else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
       }
-    },0);
+    },450);
   }
 
   function serializeModel(m){
@@ -1218,6 +1911,9 @@
       idwRmse:m.idwRmse,
       ridgeRmse:m.ridgeRmse,
       gridRmse:m.gridRmse,
+      calibrationValidation:m.calibrationValidation||null,
+      weakSampleCount:m.weakSampleCount||0,
+      continuousUpdatedAt:m.continuousUpdatedAt||null,
       skippedPoints:m.skippedPoints||0,
       synthNodeCount:m.synthNodeCount||0,
       vw:m.vw,vh:m.vh,
@@ -1232,6 +1928,12 @@
         return {
           feats:a.feats,rx:a.rx,ry:a.ry,nx:a.nx,ny:a.ny,
           targetId:a.targetId||'',cx:a.cx,cy:a.cy
+        };
+      }),
+      weakSamples:pruneWeakSamples(m.weakSamples||[]).map(function(s){
+        return {
+          feats:s.feats,rx:s.rx,ry:s.ry,cx:s.cx,cy:s.cy,nx:s.nx,ny:s.ny,
+          weight:s.weight,source:s.source,createdAt:s.createdAt
         };
       }),
       scaler:m.scaler
@@ -1249,7 +1951,7 @@
       }
       return {
         feats:normalizeFeats(a.feats),
-        ext:Array.isArray(a.ext)?a.ext.slice():extendedFeats(a.feats,a.rx,a.ry),
+        ext:spatialFeats(a.feats),
         rx:clamp01(a.rx),
         ry:clamp01(a.ry),
         nx:nx,
@@ -1259,10 +1961,19 @@
         cy:Number(a.cy)||0
       };
     });
+    var ridgeDim=SPATIAL_DIM+1;
     var scaler=snapshot.scaler;
-    if(!scaler||!scaler.means||!scaler.stds) scaler=buildFeatScaler(anchors);
+    if(!scaler||!scaler.means||!scaler.stds||scaler.means.length!==SPATIAL_DIM){
+      scaler=buildFeatScaler(anchors);
+    }
+    var betaX=snapshot.betaX||null;
+    var betaY=snapshot.betaY||null;
+    if(betaX&&betaX.length!==ridgeDim) betaX=null;
+    if(betaY&&betaY.length!==ridgeDim) betaY=null;
     var betaU=snapshot.betaU||null;
     var betaV=snapshot.betaV||null;
+    if(betaU&&betaU.length!==ridgeDim) betaU=null;
+    if(betaV&&betaV.length!==ridgeDim) betaV=null;
     if((!betaU||!betaV)&&anchors.length>=5){
       var pseudoPairs=anchors.map(function(a){
         return {
@@ -1275,23 +1986,45 @@
         betaV=betaV||betas.betaV;
       }
     }
+    var calibrationValidation=normalizeCalibrationValidation(snapshot.calibrationValidation);
+    if(!calibrationValidation&&isFinite(Number(snapshot.rmse))){
+      calibrationValidation=normalizeCalibrationValidation({
+        method:'leave-one-out',
+        rmsePx:Number(snapshot.rmse),
+        quality:snapshot.lowQuality?'poor':'ok'
+      });
+    }
+    var weakSamples=pruneWeakSamples(Array.isArray(snapshot.weakSamples)?snapshot.weakSamples:[]);
+    var kind=snapshot.kind||'idw';
+    if(kind==='ridge'&&(!betaX||!betaY)) kind='idw';
+    if(kind==='grid'&&(!betaU||!betaV)) kind='idw';
+    var legacyBetaMismatch=!!(
+      (snapshot.betaX&&snapshot.betaX.length!==ridgeDim)||
+      (snapshot.scaler&&snapshot.scaler.means&&snapshot.scaler.means.length!==SPATIAL_DIM)
+    );
     return {
       anchors:anchors,
       scaler:scaler,
-      betaX:snapshot.betaX||null,
-      betaY:snapshot.betaY||null,
+      betaX:betaX,
+      betaY:betaY,
       betaU:betaU,
       betaV:betaV,
-      rmse:Number(snapshot.rmse)||0,
+      rmse:calibrationValidation?calibrationValidation.rmsePx:(Number(snapshot.rmse)||0),
       idwRmse:snapshot.idwRmse,
       ridgeRmse:snapshot.ridgeRmse,
       gridRmse:snapshot.gridRmse,
+      calibrationValidation:calibrationValidation,
+      weakSamples:weakSamples,
+      weakSampleCount:weakSamples.length||Math.max(0,Number(snapshot.weakSampleCount)||0)|0,
+      continuousUpdatedAt:snapshot.continuousUpdatedAt!=null?Number(snapshot.continuousUpdatedAt)||null:null,
       skippedPoints:Number(snapshot.skippedPoints)||0,
       synthNodeCount:Number(snapshot.synthNodeCount)||0,
-      kind:snapshot.kind||'idw',
+      kind:kind,
       vw:Number(snapshot.vw)||global.innerWidth||0,
       vh:Number(snapshot.vh)||global.innerHeight||0,
-      lowQuality:!!snapshot.lowQuality,
+      lowQuality:legacyBetaMismatch||(
+        calibrationValidation?calibrationValidation.quality==='poor':!!snapshot.lowQuality
+      ),
       stale:!!snapshot.stale,
       savedAt:Number(snapshot.savedAt)||0
     };
@@ -1329,8 +2062,8 @@
   function rmseThreshold(){
     var w=global.innerWidth||800;
     var h=global.innerHeight||600;
-    // Multi-feature model should land well below face-xy affine RMSE.
-    return Math.max(40,Math.min(w,h)*0.07);
+    // Region-level product (not eye-mouse): allow larger formal threshold.
+    return Math.max(80,Math.min(w,h)*0.14);
   }
 
   function formatCalibStatusText(m,skipped){
@@ -1346,15 +2079,16 @@
     else sk='ready';
     var pair=map[sk]||map.ready;
     var text=t(pair[0],pair[1]);
-    if(isFinite(m.rmse)){
-      text+=' · RMSE '+Math.round(m.rmse)+'px';
-      if(m.kind) text+=' · '+m.kind;
-      if(m.idwRmse!=null&&isFinite(m.idwRmse)){
-        text+=' (LOO i'+Math.round(m.idwRmse);
-        if(m.ridgeRmse!=null&&isFinite(m.ridgeRmse)) text+='/r'+Math.round(m.ridgeRmse);
-        if(m.gridRmse!=null&&isFinite(m.gridRmse)) text+='/g'+Math.round(m.gridRmse);
-        text+=')';
+    var cv=m.calibrationValidation;
+    if(cv&&isFinite(cv.rmsePx)){
+      text+=' · RMSE '+Math.round(cv.rmsePx)+'px · '+String(cv.quality||'ok');
+      if(cv.worstTargetId&&isFinite(cv.worstErrorPx)&&cv.quality==='poor'){
+        text+=' · '+t('cameraGazeCalibWorstPoint','最弱 {id} {n}px')
+          .replace('{id}',regionZoneLabel(cv.worstTargetId))
+          .replace('{n}',String(Math.round(cv.worstErrorPx)));
       }
+    }else if(isFinite(m.rmse)){
+      text+=' · RMSE '+Math.round(m.rmse)+'px';
     }
     if(skipped>0){
       text+=' · '+t('cameraGazeCalibSkipped','跳过 {n} 点').replace('{n}',String(skipped));
@@ -1392,6 +2126,8 @@
       idwRmse:model?model.idwRmse:null,
       ridgeRmse:model?model.ridgeRmse:null,
       gridRmse:model?model.gridRmse:null,
+      calibrationValidation:model?model.calibrationValidation:null,
+      weakSampleCount:model?model.weakSampleCount:null,
       anchorCount:model&&model.anchors?model.anchors.length:0,
       statusKind:statusKind,
       lastRaw:lastRaw
@@ -1531,6 +2267,63 @@
     return low;
   }
 
+  var applyLogLastFallback=null;
+  var applyLogLastKind=null;
+  var applyLogLastAt=0;
+
+  function logApplyFallback(kind,fallback){
+    // Hot path: never IPC/file-log successful frames. Only log fallback *transitions*
+    // via console to avoid flooding cmd_app_log (was freezing the UI at ~30fps).
+    if(!fallback){
+      applyLogLastFallback=null;
+      applyLogLastKind=kind;
+      return;
+    }
+    var now=Date.now();
+    if(fallback===applyLogLastFallback&&kind===applyLogLastKind&&(now-applyLogLastAt)<3000){
+      return;
+    }
+    applyLogLastFallback=fallback;
+    applyLogLastKind=kind;
+    applyLogLastAt=now;
+    try{
+      if(global.console&&console.log){
+        console.log('[camera-calib] apply kind='+kind+' fallback='+fallback);
+      }
+    }catch(_){}
+  }
+
+  function poseEdgeAssist(cx,cy,feats,vw,vh){
+    if(!feats||!model||!model.anchors||!model.anchors.length) return {cx:cx,cy:cy};
+    var yaw=Number(feats[4])||0;
+    var pitch=Number(feats[5])||0;
+    var minYaw=1e9,maxYaw=-1e9,minPitch=1e9,maxPitch=-1e9;
+    for(var i=0;i<model.anchors.length;i++){
+      var af=model.anchors[i].feats;
+      if(!af||af.length<6) continue;
+      var ay=Number(af[4])||0,ap=Number(af[5])||0;
+      if(ay<minYaw) minYaw=ay;
+      if(ay>maxYaw) maxYaw=ay;
+      if(ap<minPitch) minPitch=ap;
+      if(ap>maxPitch) maxPitch=ap;
+    }
+    if(!(maxYaw>minYaw)||!(maxPitch>minPitch)) return {cx:cx,cy:cy};
+    var yawSpan=Math.max(0.25,maxYaw-minYaw);
+    var pitchSpan=Math.max(0.25,maxPitch-minPitch);
+    var yawT=0,pitchT=0;
+    if(yaw>maxYaw) yawT=clamp((yaw-maxYaw)/yawSpan,0,1.65);
+    else if(yaw<minYaw) yawT=-clamp((minYaw-yaw)/yawSpan,0,1.65);
+    if(pitch>maxPitch) pitchT=clamp((pitch-maxPitch)/pitchSpan,0,1.65);
+    else if(pitch<minPitch) pitchT=-clamp((minPitch-pitch)/pitchSpan,0,1.65);
+    // Head-led extrapolation: push toward window edges when pose exceeds calib range.
+    var push=0.58;
+    if(yawT>0) cx=cx+(vw-cx)*yawT*push;
+    else if(yawT<0) cx=cx+cx*yawT*push;
+    if(pitchT>0) cy=cy+(vh-cy)*pitchT*push;
+    else if(pitchT<0) cy=cy+cy*pitchT*push;
+    return {cx:cx,cy:cy};
+  }
+
   function apply(rawPoint){
     var raw=rawPoint&&typeof rawPoint==='object'?rawPoint:{};
     var rx=clamp01(raw.x!=null?raw.x:0.5);
@@ -1547,23 +2340,29 @@
     var vw=global.innerWidth||1;
     var vh=global.innerHeight||1;
     var feats=raw.feats!=null?smoothRuntimeFeats(raw.feats):null;
-    var ext=extendedFeats(feats,rx,ry);
-    var kind=runtimePredictKind(model);
+    var ext=spatialFeats(feats);
+    // Strict: use stored model.kind only — never upgrade to grid at runtime.
+    var kind=model.kind||'idw';
+    var fallback=null;
     var pred=predictWithKind(kind,feats,rx,ry,ext,model,vw,vh);
     if(!pred&&kind!=='ridge'){
       pred=predictWithKind('ridge',feats,rx,ry,ext,model,vw,vh);
-    }
-    if(!pred&&kind!=='grid'&&model.betaU&&model.betaV){
-      pred=predictWithKind('grid',feats,rx,ry,ext,model,vw,vh);
+      if(pred) fallback='ridge';
     }
     if(!pred){
       pred=nearestAnchorPred(ext,model.anchors,model.scaler);
+      if(pred) fallback='nearest';
     }
+    // Raw preview coords — never snap to screen center on predict failure.
     var clientX=rx*vw;
     var clientY=ry*vh;
     if(pred){
       clientX=pred.cx;
       clientY=pred.cy;
+      var assisted=poseEdgeAssist(clientX,clientY,feats,vw,vh);
+      clientX=assisted.cx;
+      clientY=assisted.cy;
+      logApplyFallback(kind,fallback);
       if(model.stale){
         var scaled=scaleStalePixel(clientX,clientY,model,vw,vh);
         clientX=scaled.cx;
@@ -1572,6 +2371,9 @@
       var smoothed=smoothApplyOutput(clientX,clientY,vw,vh);
       clientX=smoothed.cx;
       clientY=smoothed.cy;
+    }else{
+      fallback='raw';
+      logApplyFallback(kind,fallback);
     }
     var clampedX=clamp(clientX,0,vw);
     var clampedY=clamp(clientY,0,vh);
@@ -1579,11 +2381,22 @@
     if(pred&&pred.confidence!=null&&isFinite(pred.confidence)){
       outConf=clamp01(conf*0.5+pred.confidence*0.5);
     }
+    if(fallback==='nearest') outConf=clamp01(outConf*0.85);
+    if(fallback==='raw') outConf=clamp01(outConf*0.7);
     if(clampedX!==clientX||clampedY!==clientY) outConf=clamp01(outConf*0.85);
     if(model.stale) outConf=clamp01(outConf*0.9);
+    var outNx=clamp01(clampedX/vw);
+    var outNy=clamp01(clampedY/vh);
+    // Product target is region/direction, not pixel mouse — soft-snap toward zone centers.
+    var snapped=softSnapToRegion(outNx,outNy,0.58);
+    outNx=snapped.nx;
+    outNy=snapped.ny;
+    clampedX=outNx*vw;
+    clampedY=outNy*vh;
+    var regionZone=snapped.zone;
     return {
-      x:clamp01(clampedX/vw),
-      y:clamp01(clampedY/vh),
+      x:outNx,
+      y:outNy,
       confidence:outConf,
       state:st,
       clientX:clampedX,
@@ -1593,6 +2406,10 @@
       calibrated:true,
       stale:!!model.stale,
       lowQuality:!!model.lowQuality,
+      regionZone:regionZone,
+      regionLabel:regionZoneLabel(regionZone),
+      applyKind:kind,
+      applyFallback:fallback,
       feats:normalizeFeats(feats)
     };
   }
@@ -1610,14 +2427,87 @@
     }
   }
 
-  function evaluateSampleBuf(target,relaxed){
+  function isBottomTarget(id){
+    return id==='bl'||id==='bc'||id==='br';
+  }
+
+  function isTopTarget(id){
+    return id==='tl'||id==='tc'||id==='tr';
+  }
+
+  function isRightTarget(id){
+    return id==='tr'||id==='mr'||id==='br';
+  }
+
+  function isLeftTarget(id){
+    return id==='tl'||id==='ml'||id==='bl';
+  }
+
+  // Reject corner/edge samples when head barely moved — main cause of 右上 700px+ LOO.
+  function poseExtentOk(targetId,feats,relaxed){
+    var id=String(targetId||'');
+    if(!feats||feats.length<6) return {ok:true};
+    var yaw=Number(feats[4])||0;
+    var pitch=Number(feats[5])||0;
+    var refYaw=calibPoseRef&&isFinite(calibPoseRef.yaw)?calibPoseRef.yaw:0.75;
+    var refPitch=calibPoseRef&&isFinite(calibPoseRef.pitch)?calibPoseRef.pitch:3.2;
+    var dyaw=yaw-refYaw;
+    var dpitch=pitch-refPitch;
+    var yawNeed=relaxed?0.42:0.72;
+    var pitchNeed=relaxed?0.28:0.48;
+    if(id==='center') return {ok:true,dyaw:dyaw,dpitch:dpitch};
+    if(isRightTarget(id)&&dyaw>-yawNeed){
+      return {ok:false,reason:'yaw-right',dyaw:dyaw,dpitch:dpitch,need:-yawNeed};
+    }
+    if(isLeftTarget(id)&&dyaw<yawNeed){
+      return {ok:false,reason:'yaw-left',dyaw:dyaw,dpitch:dpitch,need:yawNeed};
+    }
+    if(isTopTarget(id)&&dpitch>-pitchNeed){
+      return {ok:false,reason:'pitch-up',dyaw:dyaw,dpitch:dpitch,need:-pitchNeed};
+    }
+    if(isBottomTarget(id)&&dpitch<pitchNeed){
+      return {ok:false,reason:'pitch-down',dyaw:dyaw,dpitch:dpitch,need:pitchNeed};
+    }
+    return {ok:true,dyaw:dyaw,dpitch:dpitch};
+  }
+
+  function poseFailHint(reason){
+    if(reason==='yaw-right') return t('cameraGazeCalibPoseYawRight','右转头不够，请再向右转并看大字');
+    if(reason==='yaw-left') return t('cameraGazeCalibPoseYawLeft','左转头不够，请再向左转并看大字');
+    if(reason==='pitch-up') return t('cameraGazeCalibPosePitchUp','抬头不够，请再抬头看大字');
+    if(reason==='pitch-down') return t('cameraGazeCalibPosePitchDown','点头不够，请再点头看大字');
+    return t('cameraGazeCalibPoseRetry','头姿幅度不够，请加大转头/点头');
+  }
+
+  function looErrorForTargetId(pairs,targetId){
+    if(!pairs||pairs.length<3||!targetId) return 1e9;
+    var prep;
+    try{ prep=prepareModelPairs(pairs); }catch(_){ return 1e9; }
+    var ridge=fitRidge(prep.pairs);
+    var kind=ridge?'ridge':(gridTopologyEligible(prep.pairs)?'grid':'idw');
+    var errors=evalKindLooPointErrors(kind,prep.pairs,prep.anchors,prep.scaler);
+    for(var i=0;i<errors.length;i++){
+      if(String(errors[i].targetId)===String(targetId)){
+        return isFinite(errors[i].errorPx)?errors[i].errorPx:1e9;
+      }
+    }
+    return 1e9;
+  }
+
+  function evaluateSampleBuf(target,relaxed,fixation){
     var minNeed=relaxed?4:MIN_SAMPLES;
     if(sampleBuf.length<minNeed){
+      lastSampleFailReason='samples';
       return {ok:false,reason:'samples',count:sampleBuf.length};
     }
     var featJitter=featStdMax(sampleBuf);
+    var corner=isCriticalCorner(target&&target.id);
+    var bottom=isBottomTarget(target&&target.id);
     var jitterThr=relaxed?STABLE_STD*1.4:STABLE_STD;
+    if(corner) jitterThr*=1.18;
+    if(bottom) jitterThr*=1.25;
     if(featJitter>jitterThr){
+      lastSampleFailReason='unstable';
       return {ok:false,reason:'unstable',featJitter:featJitter,count:sampleBuf.length};
     }
     var confSum=0;
@@ -1625,22 +2515,74 @@
     var avgConf=confSum/sampleBuf.length;
     var vw=global.innerWidth||1;
     var vh=global.innerHeight||1;
-    return {
+    var fix=fixation||currentFixation;
+    if(!fix||!isFinite(fix.cx)){
+      fix=measureReadFixation()||{nx:target.x,ny:target.y,cx:target.x*vw,cy:target.y*vh};
+    }
+    var nx=clamp01(fix.nx);
+    var ny=clamp01(fix.ny);
+    var feats=featMean(sampleBuf);
+    var poseCheck=poseExtentOk(target&&target.id,feats,relaxed);
+    if(!poseCheck.ok){
+      lastSampleFailReason=poseCheck.reason||'pose';
+      calibLog('pose reject '+String(target&&target.id||'')+
+        ' reason='+lastSampleFailReason+
+        ' dyaw='+(isFinite(poseCheck.dyaw)?poseCheck.dyaw.toFixed(2):'?')+
+        ' dpitch='+(isFinite(poseCheck.dpitch)?poseCheck.dpitch.toFixed(2):'?')+
+        ' need='+(poseCheck.need!=null?Number(poseCheck.need).toFixed(2):'?'));
+      return {ok:false,reason:lastSampleFailReason,count:sampleBuf.length,pose:poseCheck};
+    }
+    calibLog('fixation '+String(target&&target.id||'')+' nx='+nx.toFixed(3)+' ny='+ny.toFixed(3)+
+      ' dyaw='+(isFinite(poseCheck.dyaw)?poseCheck.dyaw.toFixed(2):'?')+
+      ' dpitch='+(isFinite(poseCheck.dpitch)?poseCheck.dpitch.toFixed(2):'?'));
+    var weight=0.55+0.45*clamp01(avgConf);
+    if(isTopTarget(target&&target.id)) weight*=1.35;
+    else if(corner) weight*=1.25;
+    else if(bottom) weight*=1.15;
+    // Reward clearer head pose.
+    if(isFinite(poseCheck.dyaw)) weight*=1+Math.min(0.35,Math.abs(poseCheck.dyaw)*0.12);
+    if(isFinite(poseCheck.dpitch)) weight*=1+Math.min(0.25,Math.abs(poseCheck.dpitch)*0.1);
+    lastSampleFailReason='';
+    var sample={
       ok:true,
-      feats:featMean(sampleBuf),
+      feats:feats,
       rx:weightedRobustMean(sampleBuf,'x'),
       ry:weightedRobustMean(sampleBuf,'y'),
-      nx:clamp01(target.x),
-      ny:clamp01(target.y),
+      nx:nx,
+      ny:ny,
       targetId:target.id||'',
-      cx:target.x*vw,
-      cy:target.y*vh,
-      weight:0.5+0.5*clamp01(avgConf)
+      cx:fix.cx,
+      cy:fix.cy,
+      weight:clamp(weight,0.4,1.8)
     };
+    if(sample.targetId==='center'){
+      calibPoseRef={yaw:Number(feats[4])||0,pitch:Number(feats[5])||0};
+      calibLog('pose ref yaw='+calibPoseRef.yaw.toFixed(2)+' pitch='+calibPoseRef.pitch.toFixed(2));
+    }
+    return sample;
+  }
+
+  function sampleDurationForTarget(target){
+    var id=target&&target.id;
+    if(isTopTarget(id)) return SAMPLE_SEC_TOP;
+    if(isBottomTarget(id)) return SAMPLE_SEC_EDGE;
+    if(isCriticalCorner(id)) return SAMPLE_SEC_CORNER;
+    return SAMPLE_SEC;
+  }
+
+  function prepareDurationForTarget(target){
+    var id=target&&target.id;
+    if(isTopTarget(id)) return PREPARE_SEC_TOP;
+    if(isBottomTarget(id)) return PREPARE_SEC_EDGE;
+    if(isCriticalCorner(id)) return PREPARE_SEC_CORNER;
+    return PREPARE_SEC;
   }
 
   function waitAndSampleOnce(target,pointIndex,attempt,gen,collectedCount){
-    var hint=targetHint(target);
+    var readText=pickKaraokeForTarget(target);
+    var prepareSec=prepareDurationForTarget(target);
+    var sampleSec=sampleDurationForTarget(target);
+    var totalSec=prepareSec+sampleSec;
     var pointLabel=t('cameraGazeCalibStep','校准点 {n} / {total}')
       .replace('{n}',String(pointIndex+1))
       .replace('{total}',String(TARGETS.length));
@@ -1649,25 +2591,65 @@
     }
     if(attempt>0){
       pointLabel+=' · '+t('cameraGazeCalibrationRetry','重试')+' '+attempt;
+      if(lastSampleFailReason&&lastSampleFailReason!=='samples'&&lastSampleFailReason!=='unstable'){
+        pointLabel+=' · '+poseFailHint(lastSampleFailReason);
+      }else if(lastSampleFailReason==='unstable'){
+        pointLabel+=' · '+t('cameraGazeCalibUnstable','请停稳再读');
+      }
     }
-    calibLog('point '+(pointIndex+1)+' attempt '+attempt);
+    function karaokePFromRemaining(phase,sec){
+      var elapsed=0;
+      if(phase==='prepare'){
+        elapsed=prepareSec-Math.max(0,Number(sec)||0);
+      }else{
+        elapsed=prepareSec+(sampleSec-Math.max(0,Number(sec)||0));
+      }
+      return totalSec>0?Math.max(0,Math.min(1,elapsed/totalSec)):0;
+    }
+    function paintUi(extra){
+      var o={
+        title:'',
+        subtitle:pointLabel,
+        phase:'prepare',
+        karaokeP:0
+      };
+      if(extra){
+        for(var k in extra){
+          if(Object.prototype.hasOwnProperty.call(extra,k)) o[k]=extra[k];
+        }
+      }
+      // Paint karaoke line once per point; ticks only update fill progress.
+      if(o.read==null&&!paintUi._linePainted){
+        o.read=readText;
+        paintUi._linePainted=true;
+      }
+      setCalibrationUi(o);
+      placeTarget(target.x,target.y);
+      if(global.requestAnimationFrame){
+        global.requestAnimationFrame(function(){
+          if(cancelled||!running||gen!==calibGen) return;
+          placeTarget(target.x,target.y);
+        });
+      }
+    }
+    paintUi._linePainted=false;
+    calibLog('point '+(pointIndex+1)+' attempt '+attempt+' id='+(target.id||'')+
+      ' xy='+Number(target.x).toFixed(3)+','+Number(target.y).toFixed(3)+
+      ' karaoke='+String(readText).slice(0,24));
     sampleBuf=[];
     collecting=false;
-    placeTarget(target.x,target.y);
-    setCalibrationUi({
-      title:hint,
+    paintUi({
+      read:readText,
       subtitle:pointLabel,
-      countdown:PREPARE_SEC,
+      karaokeP:0,
       phase:'prepare'
     });
-    return waitCountdownSec(PREPARE_SEC,function(sec){
+    return waitCountdownSec(prepareSec,function(sec){
       if(cancelled||!running||gen!==calibGen) return;
-      setCalibrationUi({
-        title:hint,
-        subtitle:sec>0
-          ? t('cameraGazeCalibPrepare','准备中，请看向亮点')
-          : t('cameraGazeCalibHold','保持注视，正在采样…'),
-        countdown:sec>0?String(sec):'',
+      paintUi({
+        title:'',
+        subtitle:pointLabel,
+        karaokeP:karaokePFromRemaining('prepare',sec),
         phase:sec>0?'prepare':'sample'
       });
     },gen).then(function(){
@@ -1676,23 +2658,24 @@
       sampleBuf=[];
       startSamplePump(function(count){
         if(!collecting) return;
-        setCalibrationUi({
+        paintUi({
+          title:'',
           subtitle:pointLabel+' · '+t('cameraGazeCalibSampling','采样')+' '+count+'/'+MIN_SAMPLES,
           phase:'sample'
         });
       });
-      setCalibrationUi({
-        title:t('cameraGazeCalibHold','保持注视，正在采样…'),
+      paintUi({
+        title:'',
         subtitle:pointLabel,
-        countdown:SAMPLE_SEC,
+        karaokeP:karaokePFromRemaining('sample',sampleSec),
         phase:'sample'
       });
-      return waitCountdownSec(SAMPLE_SEC,function(sec){
+      return waitCountdownSec(sampleSec,function(sec){
         if(cancelled||!running||gen!==calibGen) return;
-        setCalibrationUi({
-          title:t('cameraGazeCalibHold','保持注视，正在采样…'),
+        paintUi({
+          title:'',
           subtitle:pointLabel+(sampleBuf.length?(' · '+sampleBuf.length+'/'+MIN_SAMPLES):''),
-          countdown:sec>0?String(sec):'',
+          karaokeP:karaokePFromRemaining('sample',sec),
           phase:'sample'
         });
       },gen);
@@ -1701,7 +2684,8 @@
       stopSamplePump();
       if(cancelled||!running||gen!==calibGen) return null;
       var relaxed=attempt>=MAX_POINT_ATTEMPTS-1;
-      var result=evaluateSampleBuf(target,relaxed);
+      var fixation=measureReadFixation()||currentFixation;
+      var result=evaluateSampleBuf(target,relaxed,fixation);
       calibLog('point '+(pointIndex+1)+' result '+(result&&result.ok?'ok':'fail')+
         (result&&result.count!=null?' count='+result.count:''));
       return result;
@@ -1775,6 +2759,36 @@
     return out;
   }
 
+  // After full 9-point pass: re-sample the worst LOO points (usually top-right with glasses).
+  function highErrorTargetsFromPairs(pairs){
+    if(!pairs||pairs.length<MIN_CALIB_POINTS) return [];
+    var prep;
+    try{ prep=prepareModelPairs(pairs); }catch(_){ return []; }
+    var ridge=fitRidge(prep.pairs);
+    var kind=ridge?'ridge':'idw';
+    var scored=evalKindWeightedLooRmse(kind,prep.pairs,prep.anchors,prep.scaler);
+    var errors=scored.errors||[];
+    if(!errors.length) return [];
+    var thr=rmseThreshold();
+    var cut=Math.max(thr*1.25,220);
+    var bad=[];
+    for(var i=0;i<errors.length;i++){
+      var e=errors[i];
+      if(!e||!isFinite(e.errorPx)||e.errorPx<cut) continue;
+      bad.push({id:e.targetId,errorPx:e.errorPx});
+    }
+    bad.sort(function(a,b){ return b.errorPx-a.errorPx; });
+    var out=[];
+    for(var j=0;j<bad.length&&out.length<MAX_QUALITY_REMEDIAL_POINTS;j++){
+      var tg=targetById(bad[j].id);
+      if(tg){
+        calibLog('quality-remedial queue '+bad[j].id+' err='+Math.round(bad[j].errorPx)+'px cut='+Math.round(cut));
+        out.push(tg);
+      }
+    }
+    return out;
+  }
+
   function maxAttemptsForTarget(targetId){
     if(CRITICAL_CORNER_IDS.indexOf(targetId)>=0) return MAX_CORNER_ATTEMPTS;
     return MAX_POINT_ATTEMPTS;
@@ -1841,8 +2855,9 @@
           return;
         }
         var thr=rmseThreshold();
-        var low=built.rmse>thr;
-        built.lowQuality=low;
+        built.lowQuality=built.calibrationValidation
+          ?built.calibrationValidation.quality==='poor'
+          :built.rmse>thr;
         built.savedAt=Date.now();
         built.skippedPoints=skippedPoints;
         built.synthNodeCount=countSynthGridNodes(built.anchors);
@@ -1851,7 +2866,7 @@
         persistGazeCalibrationSnapshot(serializeModel(model));
         setOverlayVisible(false);
         setCalibrationUi({countdown:'',phase:'idle'});
-        setStatusKind(low?'low':'ready');
+        setStatusKind(built.lowQuality?'low':'ready');
         var statusEl=$('cameraGazeCalibrationStatus');
         if(statusEl){
           var rmseText=formatCalibStatusText(model,skippedPoints);
@@ -1859,7 +2874,9 @@
           var glance=$('cameraGlanceCalib');
           if(glance) glance.textContent=rmseText;
         }
-        calibLog('saved kind='+model.kind+' rmse='+Math.round(model.rmse)+' synthNodes='+model.synthNodeCount);
+        calibLog('saved kind='+model.kind+' rmse='+Math.round(model.rmse)+
+          ' quality='+(model.calibrationValidation?model.calibrationValidation.quality:'?')+
+          ' synthNodes='+model.synthNodeCount);
         updateCalibWarnings();
         notifyPreviewCalibrated();
       });
@@ -1900,19 +2917,17 @@
         waitCountdownSec(0,null,gen).then(nextRemedial);
         return;
       }
-      var isCorner=isCriticalCorner(target.id);
-      placeTarget(target.x,target.y);
       setCalibrationUi({
-        title:isCorner
-          ? t('cameraGazeCalibRemedialCorner','缺角补采：请看向角落亮点')
-          : t('cameraGazeCalibRemedial','补采缺失点，请看向亮点'),
+        title:'',
+        read:pickKaraokeForTarget(target),
         subtitle:calibrationProgressLabel(pairs,'remedial')+' · '+
           t('cameraGazeCalibRemedialStep','补采 {id} · 第 {round} 轮')
             .replace('{id}',target.id)
             .replace('{round}',String(round+1)),
-        countdown:PREPARE_SEC,
+        karaokeP:0,
         phase:'remedial'
       });
+      placeTarget(target.x,target.y);
       waitAndSample(target,0,gen,MAX_CORNER_ATTEMPTS).then(function(res){
         if(cancelled||gen!==calibGen) return;
         if(!running){
@@ -1923,9 +2938,9 @@
           upsertCalibrationPair(pairs,res);
           calibLog('remedial ok '+target.id);
           setCalibrationUi({
-            title:t('cameraGazeCalibRemedialOk','补采成功'),
-            subtitle:calibrationProgressLabel(pairs,'remedial'),
-            countdown:'',
+            title:'',
+            subtitle:t('cameraGazeCalibRemedialOk','补采成功')+' · '+calibrationProgressLabel(pairs,'remedial'),
+            karaokeP:1,
             phase:'remedial'
           });
         }else{
@@ -1938,16 +2953,91 @@
     nextRemedial();
   }
 
-  function attemptFinishCalibration(pairs,gen,remedialStarted){
+  function attemptFinishCalibration(pairs,gen,remedialStarted,qualityStarted){
     var missing=missingTargetsInOrder(pairs);
     if(!remedialStarted&&missing.length>0&&!cancelled&&running){
       runRemedialPass(pairs,gen,0,function(updated){
         if(cancelled||!running) return;
-        attemptFinishCalibration(updated,gen,true);
+        attemptFinishCalibration(updated,gen,true,false);
       });
       return;
     }
+    if(!qualityStarted&&!cancelled&&running){
+      var weak=highErrorTargetsFromPairs(pairs);
+      if(weak.length){
+        calibLog('quality remedial targets='+weak.map(function(t){ return t.id; }).join(','));
+        runQualityRemedialPass(pairs,gen,weak,function(updated){
+          if(cancelled||!running) return;
+          attemptFinishCalibration(updated,gen,true,true);
+        });
+        return;
+      }
+    }
     finishCalibrationFromPairs(pairs,gen);
+  }
+
+  function runQualityRemedialPass(pairs,gen,targets,onDone){
+    if(cancelled||gen!==calibGen||!targets||!targets.length){
+      onDone(pairs);
+      return;
+    }
+    running=true;
+    setLandmarkerThrottle(true);
+    setOverlayVisible(true);
+    setStatusKind('running');
+    var overlay=$('cameraGazeCalibrationOverlay');
+    if(overlay) overlay.setAttribute('data-calib-phase','remedial');
+    var roundTargets=targets.slice();
+    var rIdx=0;
+
+    function nextQuality(){
+      if(cancelled||gen!==calibGen) return;
+      if(!running){
+        onDone(pairs);
+        return;
+      }
+      if(rIdx>=roundTargets.length){
+        onDone(pairs);
+        return;
+      }
+      var target=roundTargets[rIdx];
+      rIdx++;
+      setCalibrationUi({
+        title:'',
+        read:pickKaraokeForTarget(target),
+        subtitle:calibrationProgressLabel(pairs,'remedial')+' · '+
+          t('cameraGazeCalibQualityRetry','高误差补采 {id}')
+            .replace('{id}',regionZoneLabel(target.id)),
+        karaokeP:0,
+        phase:'remedial'
+      });
+      placeTarget(target.x,target.y);
+      waitAndSample(target,0,gen,MAX_CORNER_ATTEMPTS).then(function(res){
+        if(cancelled||gen!==calibGen) return;
+        if(!running){
+          onDone(pairs);
+          return;
+        }
+        if(res&&res.ok){
+          var beforeErr=looErrorForTargetId(pairs,target.id);
+          var trial=pairs.slice();
+          upsertCalibrationPair(trial,res);
+          var afterErr=looErrorForTargetId(trial,target.id);
+          if(!isFinite(beforeErr)||beforeErr>=1e8||afterErr<=beforeErr*0.95||afterErr+35<beforeErr){
+            upsertCalibrationPair(pairs,res);
+            calibLog('quality remedial keep '+target.id+
+              ' before='+Math.round(beforeErr)+' after='+Math.round(afterErr));
+          }else{
+            calibLog('quality remedial discard '+target.id+
+              ' before='+Math.round(beforeErr)+' after='+Math.round(afterErr)+' (worse)');
+          }
+        }else{
+          calibLog('quality remedial fail '+target.id+' keep previous');
+        }
+        waitCountdownSec(0.45,null,gen).then(nextQuality);
+      });
+    }
+    nextQuality();
   }
 
   function runSequence(gen){
@@ -1989,12 +3079,11 @@
             ? t('cameraGazeCalibCornerSkipped','角落采样失败，稍后将补采')
             : t('cameraGazeCalibPointSkipped','本点采样失败，继续下一点');
           setCalibrationUi({
-            title:skipTitle,
-            subtitle:calibrationProgressLabel(pairs.length)+' · '+
+            title:'',
+            subtitle:skipTitle+' · '+calibrationProgressLabel(pairs.length)+' · '+
               t('cameraGazeCalibStep','校准点 {n} / {total}')
                 .replace('{n}',String(idx+1))
                 .replace('{total}',String(TARGETS.length)),
-            countdown:'',
             phase:'prepare'
           });
           idx++;
@@ -2019,6 +3108,10 @@
     calibGen++;
     var gen=calibGen;
     skippedPoints=0;
+    calibAcceptedSamples=0;
+    resetCalibPoseRef();
+    karaokePicker=null;
+    getKaraokePicker();
     clearTimers();
     sampleBuf=[];
     collecting=false;
@@ -2028,9 +3121,10 @@
     setOverlayVisible(true);
     calibLog('start gen='+gen);
     setCalibrationUi({
-      title:t('cameraGazeCalibrationRunning','请看向目标点'),
+      title:'',
+      read:pickKaraokeForTarget(TARGETS[0]),
       subtitle:t('cameraGazeCalibStep','校准点 {n} / {total}').replace('{n}','1').replace('{total}',String(TARGETS.length)),
-      countdown:PREPARE_SEC,
+      karaokeP:0,
       phase:'prepare'
     });
     runSequence(gen);
@@ -2054,6 +3148,7 @@
     cancelled=true;
     running=false;
     collecting=false;
+    resetCalibPoseRef();
     calibGen++;
     clearTimers();
     setOverlayVisible(false);
@@ -2063,6 +3158,11 @@
 
   function clear(){
     stop({reason:'cancel'});
+    if(weakRefitTimer){
+      clearTimeout(weakRefitTimer);
+      weakRefitTimer=0;
+    }
+    weakLastSampleAt=0;
     model=null;
     resetRuntimeSmoothers();
     persistGazeCalibrationSnapshot(null);
@@ -2133,6 +3233,7 @@
     }
     setOverlayVisible(false);
     loadFromPrefs();
+    bindWeakCalibrationUi();
     if(!model) setStatusKind('idle');
     updateCalibWarnings();
   }
@@ -2150,7 +3251,12 @@
     loadFromPrefs:loadFromPrefs,
     updateLowResWarn:updateLowResWarn,
     updateCalibWarnings:updateCalibWarnings,
-    resetRuntimeSmoothers:resetRuntimeSmoothers
+    resetRuntimeSmoothers:resetRuntimeSmoothers,
+    lockTarget:lockTarget,
+    tryAddWeakSample:tryAddWeakSample,
+    regionZoneFromNorm:regionZoneFromNorm,
+    regionZoneLabel:regionZoneLabel,
+    regionCenterNorm:regionCenterNorm
   };
 
   if(document.readyState==='loading'){

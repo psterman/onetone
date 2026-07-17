@@ -1260,6 +1260,12 @@
     cfg.mappings.push(m);
     ui().habitHubCreating=false;
     touchUpdated(m);
+    // Remember immediately so a later partial save cannot drop this row.
+    try{
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rememberAppScenariosNow){
+        global.OneToneConfigPersist.rememberAppScenariosNow(cfg);
+      }
+    }catch(_){}
     if(opts.deferPersist){
       // Keep selection on the draft so the app picker can bind identity/icon.
       state().selectedMappingId=m.id;

@@ -7020,9 +7020,132 @@
     }
     .camera-gaze-window-layer .camera-gaze-orb{
       position:fixed;
+      /* Large region cursor — visual tolerance, not pixel crosshair. */
+      width:128px;height:128px;
+      opacity:.9;
+      z-index:1200;
+    }
+    .camera-gaze-window-layer .camera-gaze-orb-core{
+      width:16px;height:16px;
+      box-shadow:0 0 20px rgba(94,200,232,.75);
+    }
+    .camera-gaze-window-layer .camera-gaze-orb-ring{
+      border-width:2.5px;
+      border-color:rgba(94,200,232,.65);
+      box-shadow:
+        0 0 0 18px rgba(94,200,232,.12),
+        0 0 0 36px rgba(94,200,232,.06),
+        0 0 48px rgba(94,200,232,.32);
+      background:radial-gradient(circle,rgba(94,200,232,.2) 0%,rgba(94,200,232,.08) 45%,transparent 72%);
+    }
+    .camera-gaze-window-layer .camera-gaze-orb-crosshair{
+      width:26px;height:26px;
+      opacity:.45;
+    }
+    .camera-gaze-window-layer .camera-gaze-orb.is-calibrated .camera-gaze-orb-ring{
+      border-color:rgba(94,200,232,.82);
+      box-shadow:
+        0 0 0 20px rgba(94,200,232,.14),
+        0 0 0 40px rgba(94,200,232,.07),
+        0 0 56px rgba(94,200,232,.38);
+    }
+    .camera-gaze-window-layer .camera-gaze-orb.is-on-target .camera-gaze-orb-ring{
+      border-color:rgba(120,230,180,.9);
+      box-shadow:
+        0 0 0 22px rgba(120,230,180,.16),
+        0 0 0 44px rgba(120,230,180,.07),
+        0 0 60px rgba(120,230,180,.4);
+    }
+    .camera-gaze-coach{
+      position:fixed;
+      left:50%;top:50%;
+      transform:translate(-50%,-50%);
+      max-width:min(78vw,440px);
+      pointer-events:none;
+      z-index:1202;
+      opacity:0;
+      transition:opacity .28s ease,left .34s cubic-bezier(.22,.8,.28,1),top .34s cubic-bezier(.22,.8,.28,1);
+    }
+    .camera-gaze-coach.is-visible{opacity:1}
+    .camera-gaze-coach.is-hit .camera-gaze-coach-card{
+      border-color:rgba(120,230,180,.45);
+      box-shadow:
+        0 0 0 1px rgba(120,230,180,.2),
+        0 14px 40px rgba(0,0,0,.36),
+        0 0 48px rgba(120,230,180,.18);
+    }
+    .camera-gaze-coach[hidden]{display:none!important}
+    .camera-gaze-coach-card{
+      padding:16px 20px 14px;
+      border-radius:16px;
+      background:linear-gradient(160deg,rgba(10,16,24,.9),rgba(8,12,18,.82));
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:
+        0 0 0 1px rgba(94,200,232,.08),
+        0 14px 40px rgba(0,0,0,.36),
+        0 0 48px rgba(94,200,232,.12);
+      backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      text-align:center;
+    }
+    .camera-gaze-karaoke{
+      position:relative;
+      display:inline-block;
+      max-width:100%;
+      font-size:clamp(18px,2.4vw,24px);
+      font-weight:800;
+      letter-spacing:.06em;
+      line-height:1.5;
+      white-space:normal;
+    }
+    .camera-gaze-karaoke-base,
+    .camera-gaze-karaoke-fill{display:none!important}
+    .camera-gaze-karaoke-chars{
+      display:inline;
+    }
+    .camera-gaze-karaoke-ch{
+      color:rgba(255,255,255,.28);
+      transition:color .08s linear,text-shadow .08s linear;
+    }
+    .camera-gaze-karaoke-ch.is-lit{
+      color:#eafcff;
+      text-shadow:0 0 14px rgba(94,200,232,.55),0 1px 6px rgba(0,0,0,.35);
+    }
+    .camera-gaze-karaoke-ch.is-head{
+      color:#fff;
+      text-shadow:0 0 18px rgba(168,236,255,.85),0 0 6px rgba(94,200,232,.65);
+    }
+    .camera-gaze-karaoke-meter{
+      margin-top:12px;
+      height:3px;
+      border-radius:999px;
+      background:rgba(255,255,255,.1);
+      overflow:hidden;
+    }
+    .camera-gaze-karaoke-meter>i{
+      display:block;height:100%;width:0%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,rgba(94,200,232,.55),rgba(168,236,255,.95));
+      box-shadow:0 0 12px rgba(94,200,232,.55);
     }
     .camera-gaze-window-layer.is-active{
       opacity:1;visibility:visible;
+    }
+    .camera-gaze-panel.is-testing .camera-gaze-privacy-hint,
+    .camera-gaze-panel.is-testing #cameraGazeCalibrationHint,
+    .camera-gaze-panel.is-testing #cameraGazeHint,
+    .camera-gaze-panel.is-testing #cameraGazeSparseWarn,
+    .camera-gaze-panel.is-testing #cameraGazeLowResWarn{
+      display:none!important;
+    }
+    .camera-gaze-panel.is-testing .camera-gaze-calib-meta{
+      font-size:13px;font-weight:600;color:var(--on-surface);
+    }
+    .camera-gaze-panel.is-testing .camera-gaze-calib-meta #cameraGazeCalibrationStatus{
+      /* Keep status short; karaoke overlay owns the focus copy. */
+      max-width:42vw;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
     .camera-gaze-calibration-overlay{
       position:fixed;inset:0;z-index:1300;pointer-events:none;
@@ -7033,37 +7156,64 @@
     }
     .camera-gaze-calibration-dim{
       position:absolute;inset:0;
-      background:rgba(4,8,14,.78);
+      background:rgba(4,8,14,.8);
       -webkit-backdrop-filter:blur(7px);
       backdrop-filter:blur(7px);
-      -webkit-mask:radial-gradient(circle 96px at var(--spot-x,50%) var(--spot-y,50%),transparent 0,transparent 76px,#000 100%);
-      mask:radial-gradient(circle 96px at var(--spot-x,50%) var(--spot-y,50%),transparent 0,transparent 76px,#000 100%);
+      -webkit-mask:radial-gradient(circle 168px at var(--spot-x,50%) var(--spot-y,50%),transparent 0,transparent 118px,#000 100%);
+      mask:radial-gradient(circle 168px at var(--spot-x,50%) var(--spot-y,50%),transparent 0,transparent 118px,#000 100%);
       transition:-webkit-mask .22s ease,mask .22s ease;
     }
     .camera-gaze-calibration-target{
-      position:absolute;left:var(--spot-x,50%);top:var(--spot-y,50%);
-      width:28px;height:28px;
-      transform:translate(-50%,-50%);border-radius:50%;
-      border:3px solid rgba(255,255,255,.95);
-      box-shadow:0 0 0 4px rgba(42,156,196,.65),0 0 28px rgba(94,200,232,.55),0 0 80px rgba(94,200,232,.25);
-      background:rgba(94,200,232,.45);
-      z-index:2;
-      transition:left .22s ease,top .22s ease;
+      display:none;
     }
-    .camera-gaze-calibration-target::after{
-      content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;
-      transform:translate(-50%,-50%);background:#fff;
+    .camera-gaze-calibration-read{
+      margin:0 0 10px;
+      border-left:4px solid rgba(94,200,232,.85);
+      padding-left:10px;
+    }
+    .camera-gaze-karaoke--calib{
+      font-size:clamp(18px,2.6vw,26px);
+      font-weight:800;letter-spacing:.02em;line-height:1.4;
+      color:rgba(255,255,255,.42);
+      text-shadow:0 1px 10px rgba(0,0,0,.45);
+    }
+    .camera-gaze-karaoke--calib .camera-gaze-karaoke-ch.is-lit{
+      color:#e8fbff;
+    }
+    .camera-gaze-karaoke--calib .camera-gaze-karaoke-ch.is-head{
+      color:#fff;
+      text-shadow:0 0 12px rgba(94,200,232,.65);
+    }
+    .camera-gaze-karaoke-meter--calib{
+      margin-top:8px;height:3px;border-radius:999px;
+      background:rgba(255,255,255,.12);overflow:hidden;
+    }
+    .camera-gaze-karaoke-meter--calib>i{
+      display:block;height:100%;width:0;
+      background:linear-gradient(90deg,#5ec8e8,#9be7ff);
+      border-radius:inherit;
     }
     .camera-gaze-calibration-panel{
       position:absolute;
-      padding:12px 18px;border-radius:12px;
-      background:rgba(8,12,18,.78);border:1px solid rgba(255,255,255,.14);
-      color:rgba(255,255,255,.92);font-size:13px;line-height:1.45;text-align:center;
-      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-      max-width:min(90vw,400px);
+      padding:14px 16px 12px;border-radius:14px;
+      background:rgba(8,12,18,.88);border:1px solid rgba(255,255,255,.16);
+      color:rgba(255,255,255,.94);font-size:13px;line-height:1.4;text-align:left;
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      width:min(72vw,420px);
+      max-width:min(92vw,440px);
       pointer-events:auto;
       z-index:3;
+      box-shadow:0 10px 36px rgba(0,0,0,.35);
     }
+    .camera-gaze-calibration-title{
+      font-size:13px;font-weight:600;color:rgba(255,255,255,.88);margin:0 0 4px;
+    }
+    .camera-gaze-calibration-title:empty,
+    .camera-gaze-calibration-title[hidden]{display:none!important}
+    .camera-gaze-calibration-progress{
+      font-size:12px;color:rgba(255,255,255,.62);margin:0;
+    }
+    .camera-gaze-calibration-progress:empty{display:none!important}
     .camera-gaze-lowres-warn{color:#c62828;font-weight:600}
     html[data-theme="dark"] .camera-gaze-lowres-warn{color:#fca5a5}
     .camera-gaze-sparse-warn{color:#e65100;font-weight:600}
@@ -7080,10 +7230,10 @@
     html[data-theme="dark"] .camera-gaze-stale-text{color:#fca5a5}
     .camera-gaze-stale-btn{min-height:36px;padding:6px 14px;font-size:13px;font-weight:700}
     .camera-gaze-calibration-countdown{
-      font-size:42px;font-weight:800;line-height:1.1;
+      font-size:48px;font-weight:800;line-height:1;
       font-variant-numeric:tabular-nums;
       color:#5ec8e8;text-shadow:0 0 24px rgba(94,200,232,.45);
-      margin:6px 0 2px;
+      margin:2px 0 8px;
     }
     .camera-gaze-calibration-countdown[hidden]{display:none!important}
     .camera-gaze-calibration-cancel{

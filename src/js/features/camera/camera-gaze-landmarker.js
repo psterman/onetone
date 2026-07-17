@@ -197,18 +197,33 @@
     if(blink!=null&&blink>0.55) conf*=0.35;
 
     var pose=headPoseFromMatrix(transformMat);
+    // Glasses + overhead cam: looking down often occludes iris behind rims.
+    // Shift vertical trust from iris/socket to head pitch when looking down.
+    var lookDownAmt=Math.max(0,blendY,pose.pitch);
+    var eyeVertTrust=1;
+    if(lookDownAmt>0.18) eyeVertTrust=clampRange(1-lookDownAmt*0.85,0.28,1);
+    if(blink!=null&&blink>0.35) eyeVertTrust*=0.7;
+    sockY*=eyeVertTrust;
+    irisY=0.5+(irisY-0.5)*eyeVertTrust;
+    vy=clamp01(vy*eyeVertTrust+(0.5+pose.pitch*0.55)*(1-eyeVertTrust));
+    // Head-led features: pose dominates for corners / glasses; eyes are assist.
+    var yawW=3.4,pitchW=3.8;
+    if(Math.abs(pose.yaw)>0.35||Math.abs(pose.pitch)>0.28){
+      yawW=3.9;pitchW=4.4;
+    }
     var state='tracking';
     if(conf<LOW_CONF) state='low-confidence';
+    if(eyeVertTrust<0.55) conf=clamp01(conf*0.82);
     return {
       x:vx,
       y:vy,
       confidence:clamp01(conf),
       state:state,
       feats:[
-        sockX*2.85,sockY*2.85,
-        blendX*2.35,blendY*2.35,
-        pose.yaw*1.15,pose.pitch*1.15,
-        (irisX-0.5)*2.85,(irisY-0.5)*2.85
+        sockX*2.4,sockY*2.1,
+        blendX*2.1,blendY*1.85,
+        pose.yaw*yawW,pose.pitch*pitchW,
+        (irisX-0.5)*2.4,(irisY-0.5)*2.0
       ]
     };
   }
