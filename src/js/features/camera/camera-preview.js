@@ -421,8 +421,47 @@
     }
   }
 
+  function presenceApi(){
+    return global.OneToneCameraPresenceActions||null;
+  }
+
+  function presenceEnabled(){
+    var api=presenceApi();
+    return !!(api&&api.isEnabled&&api.isEnabled());
+  }
+
+  function syncPresenceDetectInterval(){
+    var api=presenceApi();
+    if(api&&api.syncDetectInterval){
+      try{ api.syncDetectInterval(); }catch(_){}
+      return;
+    }
+    var lm=landmarkerApi();
+    if(!lm||!lm.setDetectIntervalMs) return;
+    var cal=calibrationApi();
+    var calRunning=!!(cal&&cal.getState&&cal.getState().running);
+    if(gaze.enabled||calRunning){
+      lm.setDetectIntervalMs(33);
+      return;
+    }
+    if(!presenceEnabled()){
+      lm.setDetectIntervalMs(33);
+      return;
+    }
+    var st=api&&api.getState?api.getState():null;
+    lm.setDetectIntervalMs(st&&st.presence==='away'?333:100);
+  }
+
   function onLandmarkerPoint(point){
-    if(gaze.mode!=='live'||!previewLive) return;
+    if(!previewLive) return;
+    // Feed presence first — even when gaze overlay is off (decoupling).
+    if(presenceEnabled()){
+      var pa=presenceApi();
+      if(pa&&pa.onFrame){
+        try{ pa.onFrame(point); }catch(_){}
+      }
+    }
+    if(gaze.mode!=='live') return;
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
     if(!gaze.enabled&&!calRunning) return;
@@ -432,7 +471,7 @@
   function syncLiveLandmarker(){
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
-    var want=(!!gaze.enabled||calRunning)&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
+    var want=(!!gaze.enabled||calRunning||presenceEnabled())&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
     var api=landmarkerApi();
     if(!want){
       stopLandmarker();
@@ -449,6 +488,7 @@
     if(gaze.modelLoading){
       return Promise.resolve();
     }
+    syncPresenceDetectInterval();
     if(api.isRunning&&api.isRunning()){
       return Promise.resolve();
     }
@@ -459,6 +499,7 @@
     return api.start(video,onLandmarkerPoint).then(function(){
       gaze.modelLoading=false;
       gaze.modelFailed=false;
+      syncPresenceDetectInterval();
       if(previewLive){
         setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));
       }
@@ -481,9 +522,12 @@
   function cameraPrefs(){
     var cfg=state().config||{};
     if(!cfg.cameraPrefs||typeof cfg.cameraPrefs!=='object'){
-      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null};
+      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
+    if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
+      cfg.cameraPrefs.presenceActions={enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+    }
     return cfg.cameraPrefs;
   }
 
@@ -495,6 +539,7 @@
       if(partial.selectedHeight!=null) prefs.selectedHeight=Math.max(0,Number(partial.selectedHeight)||0)|0;
       if(partial.selectedFrameRate!=null) prefs.selectedFrameRate=Math.max(0,Number(partial.selectedFrameRate)||0)|0;
       if(partial.gazeCalibration!==undefined) prefs.gazeCalibration=partial.gazeCalibration;
+      if(partial.presenceActions!==undefined) prefs.presenceActions=partial.presenceActions;
     }
     // Schema only — never auto-start from previewEnabled.
     prefs.previewEnabled=false;
@@ -802,6 +847,14 @@
 
   function syncGazeToggleUi(){
     syncGazeModeButtons();
+    var btn=$('btnCameraGazeToggle');
+    if(btn){
+      btn.classList.toggle('is-active',!!gaze.enabled);
+      btn.setAttribute('aria-pressed',gaze.enabled?'true':'false');
+      btn.textContent=gaze.enabled
+        ? t('cameraGazeToggleOn','注视球 · 开')
+        : t('cameraGazeToggle','显示注视悬浮球');
+    }
   }
 
   function stopGazeLoop(){
@@ -913,9 +966,19 @@
     }
     var faceEl=$('cameraGlanceFace');
     if(faceEl){
-      faceEl.textContent=previewLive&&gaze.enabled
-        ? gazeStateLabel(point.state)
-        : t('cameraGlanceFaceUndetected','未检测');
+      var pa=presenceApi();
+      var pst=pa&&pa.isEnabled&&pa.isEnabled()&&pa.getState?pa.getState():null;
+      if(pst&&previewLive){
+        if(pst.presence==='present') faceEl.textContent=t('cameraPresenceStatePresent','在席');
+        else if(pst.presence==='away') faceEl.textContent=t('cameraPresenceStateAway','离席');
+        else faceEl.textContent=pst.faceDetected
+          ? t('cameraGazeStateTracking','估计中')
+          : t('cameraGlanceFaceUndetected','未检测');
+      }else{
+        faceEl.textContent=previewLive&&gaze.enabled
+          ? gazeStateLabel(point.state)
+          : t('cameraGlanceFaceUndetected','未检测');
+      }
     }
     var calibEl=$('cameraGlanceCalib');
     if(calibEl){
@@ -1139,9 +1202,12 @@
       gaze.modelFailed=false;
       gaze.modelLoading=false;
       cancelCalibration();
-      stopLandmarker();
+      // Do not stop landmarker if presence sensor still needs it.
+      if(!presenceEnabled()) stopLandmarker();
     }
+    syncPresenceDetectInterval();
     refreshGazeUi();
+    syncLiveLandmarker();
   }
 
   function setGazeDebugMode(mode){
@@ -1318,6 +1384,10 @@
     updateInfoCards(null);
     resetCapabilitySelects();
     renderGazeHud({x:gaze.smooth.x,y:gaze.smooth.y,confidence:0,state:'idle'});
+    var pa=presenceApi();
+    if(pa&&pa.reset){
+      try{ pa.reset({closePrivacy:false}); }catch(_){}
+    }
   }
 
   function stop(){
@@ -1615,6 +1685,10 @@
       if(cal.updateCalibWarnings) cal.updateCalibWarnings();
       else if(cal.updateLowResWarn) cal.updateLowResWarn();
     }
+    var pa=presenceApi();
+    if(pa&&pa.syncUiFromPrefs){
+      try{ pa.syncUiFromPrefs(); }catch(_){}
+    }
     if(!previewLive){
       setPlaceholderVisible(true);
       setStatus(t('cameraStatusIdle','待命 · 不会自动开启摄像头'));
@@ -1671,6 +1745,7 @@
     var togglePreview=$('btnCameraToggle');
     var sel=$('cameraDeviceSelect');
     var recenter=$('btnCameraGazeRecenter');
+    var gazeToggle=$('btnCameraGazeToggle');
     if(togglePreview){
       togglePreview.addEventListener('click',function(e){
         e.preventDefault();
@@ -1684,6 +1759,12 @@
       recenter.addEventListener('click',function(e){
         e.preventDefault();
         recenterGaze();
+      });
+    }
+    if(gazeToggle){
+      gazeToggle.addEventListener('click',function(e){
+        e.preventDefault();
+        setGazeDebugEnabled(!gaze.enabled);
       });
     }
     global.addEventListener('beforeunload',function(){ stopTracks(); });
@@ -1714,7 +1795,8 @@
     getGazeDebugState:getGazeDebugState,
     updateGazePoint:updateGazePoint,
     onCalibrationUpdated:onCalibrationUpdated,
-    getActualVideoSize:getActualVideoSize
+    getActualVideoSize:getActualVideoSize,
+    syncLiveLandmarker:syncLiveLandmarker
   };
 
   if(document.readyState==='loading'){

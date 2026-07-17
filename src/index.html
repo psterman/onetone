@@ -2264,6 +2264,54 @@
               <strong class="camera-status-value" id="cameraGlanceCalib" data-i18n="cameraGlanceCalibIdle">未开始</strong>
             </div>
           </section>
+          <section class="camera-presence-hero" id="cameraPresenceHero" aria-label="存在传感器">
+            <div class="camera-presence-hero-main">
+              <div class="camera-presence-orb is-off is-idle" id="cameraPresenceOrb" aria-hidden="true">
+                <span class="camera-presence-orb-ring"></span>
+                <span class="camera-presence-orb-core">
+                  <svg class="camera-presence-orb-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </span>
+              </div>
+              <div class="camera-presence-hero-meta">
+                <div class="camera-presence-hero-top">
+                  <strong class="camera-presence-status-pill" id="cameraPresenceStatusPill" data-i18n="cameraPresenceStateIdle">待命</strong>
+                  <button type="button" class="toggle-switch" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="存在/动作传感器"></button>
+                </div>
+                <p class="camera-presence-hero-title" data-i18n="cameraPresenceTitle">存在/动作传感器</p>
+                <dl class="camera-presence-stats">
+                  <div class="camera-presence-stat">
+                    <dt data-i18n="cameraPresenceHeadLabel">头部</dt>
+                    <dd id="cameraPresenceHeadText">—</dd>
+                  </div>
+                  <div class="camera-presence-stat">
+                    <dt data-i18n="cameraPresenceGestureLabel">最近动作</dt>
+                    <dd id="cameraPresenceGestureText" data-i18n="cameraPresenceGestureNone">无</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            <div class="camera-presence-config" id="cameraPresenceConfig">
+              <label class="camera-presence-field">
+                <span data-i18n="cameraPresenceOnAway">离席时</span>
+                <select id="cameraPresenceOnAway" class="camera-device-select"></select>
+              </label>
+              <label class="camera-presence-field">
+                <span data-i18n="cameraPresenceOnReturn">回席时</span>
+                <select id="cameraPresenceOnReturn" class="camera-device-select"></select>
+              </label>
+              <label class="camera-presence-field">
+                <span data-i18n="cameraPresenceShakeHead">摇头 <em data-i18n="cameraPresenceExperimental">实验</em></span>
+                <select id="cameraPresenceShakeHead" class="camera-device-select"></select>
+              </label>
+              <label class="camera-presence-field">
+                <span data-i18n="cameraPresenceBlink">长眨 <em data-i18n="cameraPresenceExperimental">实验</em></span>
+                <select id="cameraPresenceBlink" class="camera-device-select"></select>
+              </label>
+            </div>
+          </section>
           <section class="camera-block" aria-labelledby="cameraPreviewSectionTitle">
             <label class="camera-device-label" for="cameraDeviceSelect">
               <span class="camera-device-label-text" data-i18n="cameraDeviceLabel">摄像头设备</span>
@@ -2288,6 +2336,7 @@
               </div>
               <div class="camera-action-bar" id="cameraActionBar">
                 <button type="button" class="control-btn is-primary" id="btnCameraToggle" data-i18n="cameraStartPreview">开始预览</button>
+                <button type="button" class="control-btn" id="btnCameraGazeToggle" data-i18n="cameraGazeToggle">显示注视悬浮球</button>
                 <button type="button" class="control-btn" id="cameraGazeCalibrateBtn" data-i18n="cameraGazeCalibrate">校准屏幕坐标</button>
                 <button type="button" class="control-btn" id="cameraGazeClearCalibrationBtn" data-i18n="cameraGazeClearCalibration">清除校准</button>
                 <button type="button" class="control-btn" id="btnCameraGazeRecenter" data-i18n="cameraGazeRecenter">重新居中</button>
@@ -3014,6 +3063,7 @@
   <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
+  <script src="js/features/camera/camera-presence-actions.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
@@ -3085,6 +3135,26 @@
   <script src="js/core/app-bootstrap.js"></script>
   <script src="js/main-legacy.js"></script>
 
+  <div id="cameraPrivacyOverlay" class="camera-privacy-overlay" aria-hidden="true" hidden>
+    <button type="button" class="camera-privacy-close-icon" id="cameraPrivacyCloseIcon" aria-label="关闭隐私屏">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="camera-privacy-card">
+      <div class="camera-privacy-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+          <path d="M1 1l22 22"/>
+        </svg>
+      </div>
+      <h2 class="camera-privacy-title" data-i18n="cameraPrivacyTitle">隐私屏已开启</h2>
+      <p class="camera-privacy-sub" data-i18n="cameraPrivacySub">摄像头存在传感器仍在低频检测</p>
+      <button type="button" class="control-btn is-primary" id="cameraPrivacyCloseBtn" data-i18n="cameraPrivacyClose">关闭隐私屏</button>
+    </div>
+  </div>
   <div id="cameraGazeWindowLayer" class="camera-gaze-window-layer" aria-hidden="true" hidden>
     <div id="cameraGazeCoach" class="camera-gaze-coach" aria-live="polite" hidden>
       <div class="camera-gaze-coach-card">

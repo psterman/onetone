@@ -6769,6 +6769,112 @@
       font-size:12px;font-weight:800;color:var(--on-surface);line-height:1.35;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     }
+    .camera-presence-hero{
+      display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:stretch;
+      padding:14px 16px;border-radius:16px;border:1px solid var(--outline-variant);
+      background:var(--surface-high);
+    }
+    .camera-presence-hero-main{display:flex;align-items:center;gap:14px;min-width:0}
+    .camera-presence-orb{
+      position:relative;flex:0 0 auto;width:76px;height:76px;border-radius:50%;
+      display:grid;place-items:center;color:var(--on-surface-muted);
+      background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.08),transparent 55%),var(--surface);
+      border:1px solid var(--outline-variant);
+      transition:color .25s ease,border-color .25s ease,box-shadow .25s ease,opacity .25s ease;
+    }
+    .camera-presence-orb-ring{
+      position:absolute;inset:6px;border-radius:50%;border:1px solid rgba(42,156,196,.18);
+      pointer-events:none;
+    }
+    .camera-presence-orb-core{
+      position:relative;z-index:1;width:44px;height:44px;border-radius:50%;
+      display:grid;place-items:center;
+      background:rgba(42,156,196,.08);
+    }
+    .camera-presence-orb.is-off{opacity:.55}
+    .camera-presence-orb.is-idle{color:var(--on-surface-muted)}
+    .camera-presence-orb.is-present{
+      color:var(--primary);border-color:rgba(42,156,196,.35);
+      box-shadow:0 0 0 1px rgba(42,156,196,.12),0 0 24px rgba(42,156,196,.16);
+    }
+    .camera-presence-orb.is-present .camera-presence-orb-core{
+      animation:cameraPresenceBreathe 2.4s ease-in-out infinite;
+    }
+    .camera-presence-orb.is-away{
+      color:#94a3b8;border-color:rgba(148,163,184,.28);box-shadow:none;opacity:.72;
+    }
+    .camera-presence-orb.is-privacy{
+      color:#cbd5e1;border-color:rgba(15,23,42,.45);
+      background:radial-gradient(circle at 40% 35%,rgba(30,41,59,.55),transparent 60%),#0f172a;
+    }
+    .camera-presence-orb.is-gesture .camera-presence-orb-ring{
+      animation:cameraPresenceGesturePulse .7s ease-out 1;
+      border-color:rgba(42,156,196,.55);
+    }
+    @keyframes cameraPresenceGesturePulse{
+      0%{transform:scale(.92);opacity:.35;box-shadow:0 0 0 0 rgba(42,156,196,.0)}
+      40%{transform:scale(1.08);opacity:1;box-shadow:0 0 0 8px rgba(42,156,196,.18)}
+      100%{transform:scale(1.2);opacity:0;box-shadow:0 0 0 14px rgba(42,156,196,0)}
+    }
+    @keyframes cameraPresenceBreathe{
+      0%,100%{transform:scale(1);opacity:1}
+      50%{transform:scale(1.06);opacity:.88}
+    }
+    .camera-presence-hero-meta{min-width:0;flex:1}
+    .camera-presence-hero-top{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;
+    }
+    .camera-presence-status-pill{
+      display:inline-flex;align-items:center;min-height:24px;padding:2px 10px;border-radius:999px;
+      font-size:12px;font-weight:800;letter-spacing:.02em;
+      background:var(--primary-soft);color:var(--primary);border:1px solid rgba(42,156,196,.22);
+    }
+    .camera-presence-hero-title{
+      margin:0 0 8px;font-size:13px;font-weight:800;color:var(--on-surface);
+    }
+    .camera-presence-stats{
+      display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:0;
+    }
+    .camera-presence-stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .camera-presence-stat dt{margin:0;font-size:11px;font-weight:600;color:var(--on-surface-muted)}
+    .camera-presence-stat dd{margin:0;font-size:13px;font-weight:800;color:var(--on-surface)}
+    .camera-presence-config{
+      display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start;
+    }
+    .camera-presence-field{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px;font-weight:700;color:var(--on-surface)}
+    .camera-presence-field em{
+      font-style:normal;font-size:10px;font-weight:700;margin-left:4px;
+      color:var(--on-surface-muted);opacity:.85;
+    }
+    .camera-privacy-overlay{
+      position:fixed;inset:0;z-index:1250;display:none;place-items:center;
+      background:rgba(4,8,14,.92);color:#e2e8f0;
+      -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    }
+    .camera-privacy-overlay.is-active{display:grid}
+    .camera-privacy-close-icon{
+      position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:12px;
+      border:1px solid rgba(148,163,184,.28);background:rgba(15,23,42,.55);color:#e2e8f0;
+      display:grid;place-items:center;cursor:pointer;
+    }
+    .camera-privacy-close-icon:hover{background:rgba(30,41,59,.8)}
+    .camera-privacy-card{
+      display:flex;flex-direction:column;align-items:center;gap:12px;
+      max-width:360px;padding:28px 24px;text-align:center;
+    }
+    .camera-privacy-icon{
+      width:72px;height:72px;border-radius:50%;display:grid;place-items:center;
+      border:1px solid rgba(148,163,184,.28);background:rgba(15,23,42,.65);color:#94a3b8;
+    }
+    .camera-privacy-title{margin:0;font-size:20px;font-weight:800;letter-spacing:.01em}
+    .camera-privacy-sub{margin:0;font-size:13px;line-height:1.5;color:#94a3b8}
+    @media (max-width:860px){
+      .camera-presence-hero{grid-template-columns:1fr}
+      .camera-presence-config{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width:520px){
+      .camera-presence-config{grid-template-columns:1fr}
+    }
     .camera-tab-bar{margin-bottom:0}
     .camera-tab-panel{display:none;flex-direction:column;gap:12px}
     .camera-tab-panel.is-active{display:flex}
@@ -6796,7 +6902,7 @@
       filter:brightness(1.06);background:var(--primary);color:var(--on-primary);
     }
     .camera-action-bar .control-btn.is-active{
-      background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.28);
+      background:var(--primary-soft);color:var(--primary);border-color:rgba(42,156,196,.32);
     }
     .camera-action-bar .control-btn.is-stop{
       background:rgba(198,40,40,.08);color:#c62828;border-color:rgba(198,40,40,.28);

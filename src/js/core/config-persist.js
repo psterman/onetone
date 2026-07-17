@@ -441,7 +441,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -474,7 +474,7 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null};
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }else{
       if(st.config.cameraPrefs.enabled===undefined) st.config.cameraPrefs.enabled=false;
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
@@ -483,6 +483,16 @@
       if(st.config.cameraPrefs.selectedHeight==null) st.config.cameraPrefs.selectedHeight=0;
       if(st.config.cameraPrefs.selectedFrameRate==null) st.config.cameraPrefs.selectedFrameRate=0;
       if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
+      if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
+        st.config.cameraPrefs.presenceActions={enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+      }else{
+        var pa=st.config.cameraPrefs.presenceActions;
+        if(pa.enabled===undefined) pa.enabled=false;
+        if(!pa.onAway) pa.onAway='none';
+        if(!pa.onReturn) pa.onReturn='none';
+        if(!pa.shakeHead) pa.shakeHead='none';
+        if(!pa.deliberateBlink) pa.deliberateBlink='none';
+      }
     }
     const ensureSounds=hookFn('ensureSoundsConfig');
     if(ensureSounds) ensureSounds();
@@ -544,6 +554,7 @@
       startMinimizedToTray:!!st.config.startMinimizedToTray,
       cameraPrefs:(function(){
         var p=st.config.cameraPrefs||{};
+        var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
         return {
           enabled:!!p.enabled,
           selectedDeviceId:String(p.selectedDeviceId||'').trim(),
@@ -552,7 +563,14 @@
           selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
           selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
           selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
-          gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null
+          gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
+          presenceActions:{
+            enabled:!!pa.enabled,
+            onAway:String(pa.onAway||'none').trim()||'none',
+            onReturn:String(pa.onReturn||'none').trim()||'none',
+            shakeHead:String(pa.shakeHead||'none').trim()||'none',
+            deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none'
+          }
         };
       })(),
       sounds:(function(){

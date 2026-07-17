@@ -304,6 +304,9 @@
         y:lastGood.y,
         confidence:0.05,
         state:'lost',
+        faceDetected:false,
+        yaw:null,
+        blink:null,
         error:err&&err.message
       });
       return;
@@ -314,7 +317,10 @@
         x:lastGood.x,
         y:lastGood.y,
         confidence:0.08,
-        state:'lost'
+        state:'lost',
+        faceDetected:false,
+        yaw:null,
+        blink:null
       });
       return;
     }
@@ -322,6 +328,8 @@
     var mats=result.facialTransformationMatrixes;
     var mat=mats&&mats[0]?mats[0]:null;
     if(mat&&mat.data) mat=mat.data;
+    var pose=headPoseFromMatrix(mat);
+    var blinkScore=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
     var proxy=estimateGazeProxy(faces[0],blendMap,mat);
     var overlay=global.document&&global.document.getElementById('cameraGazeOverlay');
     var mapped=mapVideoNormToOverlay(proxy.x,proxy.y,videoEl,overlay);
@@ -330,7 +338,10 @@
       y:mapped.y,
       confidence:proxy.confidence,
       state:proxy.state,
-      feats:proxy.feats||null
+      feats:proxy.feats||null,
+      faceDetected:true,
+      yaw:pose.yaw,
+      blink:blinkScore
     };
     if(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15)){
       lastGood={x:out.x,y:out.y,confidence:out.confidence,state:out.state,feats:out.feats};

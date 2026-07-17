@@ -1164,6 +1164,38 @@ pub struct ActionConfig {
     pub send: String,
 }
 
+fn default_presence_action_none() -> String {
+    "none".into()
+}
+
+/// Low-precision camera presence / gesture action mappings. Defaults are conservative.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PresenceActionsPrefs {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_presence_action_none")]
+    pub on_away: String,
+    #[serde(default = "default_presence_action_none")]
+    pub on_return: String,
+    #[serde(default = "default_presence_action_none")]
+    pub shake_head: String,
+    #[serde(default = "default_presence_action_none")]
+    pub deliberate_blink: String,
+}
+
+impl Default for PresenceActionsPrefs {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            on_away: default_presence_action_none(),
+            on_return: default_presence_action_none(),
+            shake_head: default_presence_action_none(),
+            deliberate_blink: default_presence_action_none(),
+        }
+    }
+}
+
 /// Local camera preview prefs (Glance MVP). Never auto-starts the camera.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -1183,6 +1215,8 @@ pub struct CameraPrefs {
     pub selected_frame_rate: u32,
     #[serde(default)]
     pub gaze_calibration: Option<serde_json::Value>,
+    #[serde(default)]
+    pub presence_actions: PresenceActionsPrefs,
 }
 
 /// Legacy / reserved; not used at runtime.
@@ -3873,6 +3907,7 @@ mod tests {
             enabled: false,
             selected_device_id: "cam-abc".into(),
             preview_enabled: false,
+            ..Default::default()
         };
         let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
         let merged = merge_save_payload(&existing, json).expect("merge");
