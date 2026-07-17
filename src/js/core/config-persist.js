@@ -433,6 +433,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -464,6 +465,17 @@
     if(st.config.keyWakeSoundEnabled===undefined) st.config.keyWakeSoundEnabled=false;
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
+    if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null};
+    }else{
+      if(st.config.cameraPrefs.enabled===undefined) st.config.cameraPrefs.enabled=false;
+      if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
+      if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
+      if(st.config.cameraPrefs.selectedWidth==null) st.config.cameraPrefs.selectedWidth=0;
+      if(st.config.cameraPrefs.selectedHeight==null) st.config.cameraPrefs.selectedHeight=0;
+      if(st.config.cameraPrefs.selectedFrameRate==null) st.config.cameraPrefs.selectedFrameRate=0;
+      if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
+    }
     const ensureSounds=hookFn('ensureSoundsConfig');
     if(ensureSounds) ensureSounds();
     const ensureExtras=hookFn('ensureMappingExtras');
@@ -522,6 +534,19 @@
       keyWakeSoundEnabled:!!(st.config.sounds&&st.config.sounds.keyWake&&st.config.sounds.keyWake.enabled),
       coachHudEnabled:!!st.config.coachHudEnabled,
       startMinimizedToTray:!!st.config.startMinimizedToTray,
+      cameraPrefs:(function(){
+        var p=st.config.cameraPrefs||{};
+        return {
+          enabled:!!p.enabled,
+          selectedDeviceId:String(p.selectedDeviceId||'').trim(),
+          // Schema only — FE never auto-starts from this flag.
+          previewEnabled:false,
+          selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
+          selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
+          selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
+          gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null
+        };
+      })(),
       sounds:(function(){
         const s=hooks().ensureSoundsConfig();
         return {
@@ -940,12 +965,19 @@
   }
 
   var pullBackendConfigTimer=0;
+  var pullBackendConfigInFlight=false;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
     clearTimeout(pullBackendConfigTimer);
     return new Promise(function(resolve){
       pullBackendConfigTimer=setTimeout(function(){
+        if(pullBackendConfigInFlight){
+          resolve(false);
+          return;
+        }
+        pullBackendConfigInFlight=true;
         global.OneToneIpc.invokeTimeout('cmd_ready',{},4000).then(function(raw){
+          pullBackendConfigInFlight=false;
           const msg=unwrapMvpInitMsg(raw);
           if(msg){
             applyMvpInit(msg);
@@ -954,6 +986,7 @@
           }
           resolve(false);
         }).catch(function(err){
+          pullBackendConfigInFlight=false;
           console.error('pullBackendConfig',err);
           resolve(false);
         });

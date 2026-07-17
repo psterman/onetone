@@ -9,6 +9,7 @@
     var settingsNavScenes=$('settingsNavScenesLabel'); if(settingsNavScenes) settingsNavScenes.textContent=d.settingsNavScenes;
     var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
+    var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
     var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'识别资源';
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
     var settingsNavGeneral=$('settingsNavGeneralLabel'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;

@@ -16,7 +16,9 @@
 
     basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
-    habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral'
+    habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral',
+
+    camera:'settingsPanelCamera'
 
   };
 
@@ -648,6 +650,12 @@
         });
       }
 
+    }else if(panel==='camera'){
+
+      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
+        global.OneToneCameraPreview.onPanelVisible();
+      }
+
     }
 
     lastPanel=panel;
@@ -810,6 +818,10 @@
   function closeDrawer(){
 
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
+
+    if(global.OneToneCameraPreview&&typeof global.OneToneCameraPreview.stop==='function'){
+      global.OneToneCameraPreview.stop();
+    }
 
     ui.drawerOpen=false;
 

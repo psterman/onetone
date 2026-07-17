@@ -1164,6 +1164,27 @@ pub struct ActionConfig {
     pub send: String,
 }
 
+/// Local camera preview prefs (Glance MVP). Never auto-starts the camera.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraPrefs {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub selected_device_id: String,
+    /// Schema only — frontend must not auto getUserMedia from this flag.
+    #[serde(default)]
+    pub preview_enabled: bool,
+    #[serde(default)]
+    pub selected_width: u32,
+    #[serde(default)]
+    pub selected_height: u32,
+    #[serde(default)]
+    pub selected_frame_rate: u32,
+    #[serde(default)]
+    pub gaze_calibration: Option<serde_json::Value>,
+}
+
 /// Legacy / reserved; not used at runtime.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SceneConfig {
@@ -1233,6 +1254,8 @@ pub struct VoiceConfig {
     pub key_wake_sound_enabled: bool,
     #[serde(default, rename = "coachHudEnabled")]
     pub coach_hud_enabled: bool,
+    #[serde(default, rename = "cameraPrefs")]
+    pub camera_prefs: CameraPrefs,
     #[serde(default, rename = "sounds")]
     pub sounds: SoundsConfig,
     #[serde(default = "default_false", rename = "startMinimizedToTray")]
@@ -2467,6 +2490,7 @@ impl Default for VoiceConfig {
             scheme_switch_key: String::new(),
             key_wake_sound_enabled: false,
             coach_hud_enabled: false,
+            camera_prefs: CameraPrefs::default(),
             sounds: SoundsConfig::default(),
             start_minimized_to_tray: false,
             window_layout_seen: false,
@@ -3410,6 +3434,9 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
         }
     }
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
+    if raw.get("cameraPrefs").is_none() {
+        cfg.camera_prefs = existing.camera_prefs.clone();
+    }
     cfg.window_layout_seen = existing.window_layout_seen;
     cfg.window_maximized = existing.window_maximized;
     cfg.window_width = existing.window_width;
@@ -3811,6 +3838,19 @@ mod tests {
         cfg.normalize();
         assert_eq!(cfg.desired_engine, "sapi");
         assert!(cfg.voice_sapi.enabled);
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_camera_prefs_when_omitted() {
+        let mut existing = VoiceConfig::default();
+        existing.camera_prefs = CameraPrefs {
+            enabled: false,
+            selected_device_id: "cam-abc".into(),
+            preview_enabled: false,
+        };
+        let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert_eq!(merged.camera_prefs.selected_device_id, "cam-abc");
     }
 
     #[test]

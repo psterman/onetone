@@ -3303,6 +3303,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "vosk",
+ "webview2-com",
  "winapi",
  "windows 0.58.0",
  "zip 2.4.2",

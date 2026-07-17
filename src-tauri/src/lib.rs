@@ -47,6 +47,7 @@ mod voice_vosk_runtime;
 mod kws_model_download;
 mod vosk_model_download;
 mod window_layout;
+mod webview_camera_permission;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -290,6 +291,8 @@ pub fn run() {
                 return Ok(());
             };
             app_log::log_line(&app_state, "startup", "main window acquired");
+            webview_camera_permission::install_camera_permission_allow(&window);
+            app_log::log_line(&app_state, "startup", "webview camera permission hook installed");
 
             if let Err(err) = app_icon::apply_window_icon(&window) {
                 app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));

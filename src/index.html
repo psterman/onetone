@@ -108,6 +108,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                 <span data-i18n="homeWbNavVoice">语音设置</span>
               </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="camera" id="wbNavCamera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span data-i18n="homeWbNavCamera">摄像头</span>
+              </button>
               <div class="wb-nav-section" data-i18n="homeWbNavSectionSystem">系统</div>
               <button type="button" class="wb-nav-item" data-wb-nav="general" id="wbNavGeneral">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -439,6 +443,12 @@
                   <button type="button" class="settings-nav-item" data-panel="voiceWake" id="settingsNavVoiceWake">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                     <span id="settingsNavVoiceWakeLabel">语音</span>
+                  </button>
+                </div>
+                <div class="settings-nav-group" id="settingsNavCameraGroup">
+                  <button type="button" class="settings-nav-item" data-panel="camera" id="settingsNavCamera">
+                    <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span id="settingsNavCameraLabel" data-i18n="settingsNavCamera">摄像头</span>
                   </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavScenesGroup">
@@ -2223,6 +2233,100 @@
             </div>
           </section>
         </section>
+        <section class="settings-panel drawer-section camera-page" id="settingsPanelCamera" hidden>
+          <header class="pref-page-head">
+            <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
+            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">用于后续普通摄像头注意力/多屏聚焦实验，画面仅本地预览</p>
+          </header>
+          <section class="camera-status-strip" id="cameraStatusStrip" aria-label="摄像头状态">
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraStatusLabel">运行状态</span>
+              <strong class="camera-status-value" id="cameraStatusText" data-i18n="cameraStatusIdle">待命 · 不会自动开启摄像头</strong>
+            </div>
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraInfoCurrentDevice">当前设备</span>
+              <strong class="camera-status-value" id="cameraInfoCurrentDevice">—</strong>
+            </div>
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraInfoResolution">分辨率</span>
+              <strong class="camera-status-value" id="cameraInfoResolution">—</strong>
+            </div>
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraInfoFps">帧率</span>
+              <strong class="camera-status-value" id="cameraInfoFps">—</strong>
+            </div>
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraGlanceFaceLabel">人脸状态</span>
+              <strong class="camera-status-value" id="cameraGlanceFace" data-i18n="cameraGlanceFaceUndetected">未检测</strong>
+            </div>
+            <div class="camera-status-chip">
+              <span class="camera-status-label" data-i18n="cameraGlanceCalibLabel">校准状态</span>
+              <strong class="camera-status-value" id="cameraGlanceCalib" data-i18n="cameraGlanceCalibIdle">未开始</strong>
+            </div>
+          </section>
+          <section class="camera-block" aria-labelledby="cameraPreviewSectionTitle">
+            <label class="camera-device-label" for="cameraDeviceSelect">
+              <span class="camera-device-label-text" data-i18n="cameraDeviceLabel">摄像头设备</span>
+              <select id="cameraDeviceSelect" class="camera-device-select"></select>
+            </label>
+            <div class="camera-preview-wrap">
+              <div class="camera-preview-shell camera-preview-shell--compact" id="cameraPreviewShell">
+                <video id="cameraPreviewVideo" class="camera-preview-video" autoplay playsinline muted></video>
+                <p class="camera-preview-placeholder" id="cameraPreviewPlaceholder" data-i18n="cameraPreviewIdle">点击「开始预览」后在此显示画面</p>
+                <div id="cameraGazeOverlay" class="camera-gaze-overlay" aria-hidden="true" hidden>
+                  <div id="cameraGazeOrb" class="camera-gaze-orb" aria-hidden="true">
+                    <span class="camera-gaze-orb-core"></span>
+                    <span class="camera-gaze-orb-ring"></span>
+                    <span class="camera-gaze-orb-crosshair"></span>
+                  </div>
+                  <div id="cameraGazeHud" class="camera-gaze-hud" aria-live="polite">
+                    <span class="camera-gaze-hud-chip"><span id="cameraGazeStateText" data-i18n="cameraGazeStateIdle">待命</span></span>
+                    <span class="camera-gaze-hud-chip"><span data-i18n="cameraGazeConfidence">置信度</span> <strong id="cameraGazeConfidenceText">—</strong></span>
+                    <span class="camera-gaze-hud-chip camera-gaze-hud-point"><span data-i18n="cameraGazePoint">位置</span> <strong id="cameraGazePointText">—</strong></span>
+                  </div>
+                </div>
+              </div>
+              <div class="camera-action-bar" id="cameraActionBar">
+                <button type="button" class="control-btn is-primary" id="btnCameraToggle" data-i18n="cameraStartPreview">开始预览</button>
+                <button type="button" class="control-btn" id="cameraGazeCalibrateBtn" data-i18n="cameraGazeCalibrate">校准屏幕坐标</button>
+                <button type="button" class="control-btn" id="cameraGazeClearCalibrationBtn" data-i18n="cameraGazeClearCalibration">清除校准</button>
+                <button type="button" class="control-btn" id="btnCameraGazeRecenter" data-i18n="cameraGazeRecenter">重新居中</button>
+              </div>
+            </div>
+            <section class="camera-media-settings" id="cameraMediaSettings" aria-label="摄像头能力">
+              <div class="camera-media-block">
+                <div class="camera-media-label" data-i18n="cameraInfoResolution">分辨率</div>
+                <div class="scene-tab-bar camera-res-group-bar" id="cameraResGroupBar" role="tablist" aria-label="resolution aspect">
+                  <button type="button" class="scene-tab is-active" data-res-group="landscape" role="tab" aria-selected="true" data-i18n="cameraResGroupLandscape">横屏</button>
+                  <button type="button" class="scene-tab" data-res-group="portrait" role="tab" aria-selected="false" data-i18n="cameraResGroupPortrait">竖屏</button>
+                  <button type="button" class="scene-tab" data-res-group="square" role="tab" aria-selected="false" data-i18n="cameraResGroupSquare">方形</button>
+                </div>
+                <div class="camera-fps-pills camera-res-pills" id="cameraResPills" role="group" aria-label="resolution"></div>
+              </div>
+              <div class="camera-media-block camera-fps-block">
+                <div class="camera-media-label" data-i18n="cameraCapFrameRate">FPS</div>
+                <div class="camera-fps-pills" id="cameraFpsPills" role="group" aria-label="FPS"></div>
+              </div>
+              <p class="camera-cap-hint" id="cameraCapabilityHint" data-i18n="cameraCapHintIdle">开始预览后可切换分辨率与帧率</p>
+            </section>
+            <section class="camera-gaze-panel">
+              <p class="camera-gaze-hint" id="cameraGazeHint" data-i18n="cameraGazeHint">本地 MediaPipe 估计，未校准为屏幕坐标</p>
+              <p class="camera-gaze-hint" id="cameraGazeCalibrationHint" data-i18n="cameraGazeCalibrationHint">当前为窗口内校准坐标，未做多屏映射或系统级悬浮层</p>
+              <p class="camera-gaze-hint camera-gaze-privacy-hint" id="cameraGazePrivacyHint" data-i18n="cameraGazePrivacyHint">校准数据（眼动/头姿特征）仅保存在本机 settings.json，不上传；可点「清除校准」一键删除</p>
+              <p class="camera-gaze-hint camera-gaze-lowres-warn" id="cameraGazeLowResWarn" hidden data-i18n="cameraGazeLowResWarn">当前分辨率低于 720p，精度可能下降</p>
+              <div class="camera-gaze-stale-banner" id="cameraGazeStaleBanner" hidden role="status">
+                <p class="camera-gaze-stale-text" id="cameraGazeStaleText" data-i18n="cameraGazeStaleBanner">窗口尺寸已变化，校准坐标可能不准，请重新校准</p>
+                <button type="button" class="control-btn is-primary camera-gaze-stale-btn" id="cameraGazeStaleRecalibBtn" data-i18n="cameraGazeStaleRecalib">重新校准</button>
+              </div>
+              <p class="camera-gaze-hint camera-gaze-sparse-warn" id="cameraGazeSparseWarn" hidden data-i18n="cameraGazeSparseWarn">部分校准点缺失，边角精度可能下降</p>
+              <p class="camera-gaze-calib-meta">
+                <span id="cameraGazeCalibrationStatus" data-i18n="cameraGazeCalibrationIdle">未校准</span>
+                <span class="camera-gaze-calib-sep" aria-hidden="true">·</span>
+                <span id="cameraGazeScreenPointText" data-i18n="cameraGazeScreenPointUnknown">估算屏幕坐标：未知</span>
+              </p>
+            </section>
+          </section>
+        </section>
         <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
           <div class="drawer-section" id="settingsBackupSection">
             <div class="mini-title" id="settingsBackupTitle">配置备份</div>
@@ -2906,6 +3010,9 @@
   <script src="js/features/settings/app-prefs-bindings.js"></script>
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
+  <script src="js/features/camera/camera-gaze-landmarker.js"></script>
+  <script src="js/features/camera/camera-gaze-calibration.js"></script>
+  <script src="js/features/camera/camera-preview.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
   <script src="js/features/scene/habit-layer-nav.js"></script>
@@ -2975,5 +3082,23 @@
   <script src="js/core/app-boot.js"></script>
   <script src="js/core/app-bootstrap.js"></script>
   <script src="js/main-legacy.js"></script>
+
+  <div id="cameraGazeWindowLayer" class="camera-gaze-window-layer" aria-hidden="true" hidden>
+    <div id="cameraGazeWindowOrb" class="camera-gaze-orb is-calibrated" aria-hidden="true">
+      <span class="camera-gaze-orb-core"></span>
+      <span class="camera-gaze-orb-ring"></span>
+      <span class="camera-gaze-orb-crosshair"></span>
+    </div>
+  </div>
+  <div id="cameraGazeCalibrationOverlay" class="camera-gaze-calibration-overlay" aria-hidden="true" hidden>
+    <div class="camera-gaze-calibration-dim" id="cameraGazeCalibrationDim" aria-hidden="true"></div>
+    <div class="camera-gaze-calibration-target" id="cameraGazeCalibrationTarget"></div>
+    <div class="camera-gaze-calibration-panel">
+      <div id="cameraGazeCalibrationTitle" data-i18n="cameraGazeCalibrationRunning">请看向目标点</div>
+      <div id="cameraGazeCalibrationCountdown" class="camera-gaze-calibration-countdown" aria-live="assertive" hidden></div>
+      <div id="cameraGazeCalibrationProgress"></div>
+      <button type="button" class="camera-gaze-calibration-cancel" id="cameraGazeCalibrationCancel" data-i18n="cameraGazeCalibrationCancel">取消校准</button>
+    </div>
+  </div>
 </body>
 </html>

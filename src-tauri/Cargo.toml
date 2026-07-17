@@ -48,6 +48,7 @@ sherpa-onnx = { version = "1.13.4", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 vosk = { version = "0.3.1", optional = true }
+webview2-com = "0.38"
 winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi", "xinput", "shellapi", "winver", "wingdi", "tlhelp32"] }
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",

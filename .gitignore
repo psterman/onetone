@@ -35,3 +35,10 @@ src-tauri/resources/kws/sherpa-kws-zh-small/
 src-tauri/resources/kws/downloads/
 src-tauri/resources/vosk/vosk-win64-*/
 src-tauri/resources/vosk/downloads/
+
+# MediaPipe Face Landmarker（prepare-mediapipe 下载；勿提交大文件）
+src/vendor/mediapipe/wasm/
+src/vendor/mediapipe/*.task
+src/vendor/mediapipe/vision_bundle.mjs
+src/vendor/mediapipe/vision_bundle.mjs.map
+

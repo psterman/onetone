@@ -529,6 +529,7 @@
     keys:'triggers',
     voiceWake:'voice',
     models:'voice',
+    camera:'camera',
     sounds:'sounds',
     basic:'general',
     scenes:'schemes'
@@ -691,6 +692,7 @@
       if(action==='schemes'){ openSettings({panel:'habits'}); return; }
       if(action==='triggers'){ openSettings({panel:'keys'}); return; }
       if(action==='voice'){ openSettings({panel:'voiceWake'}); return; }
+      if(action==='camera'){ openSettings({panel:'camera'}); return; }
       if(action==='sounds'){ openSettings({panel:'sounds'}); return; }
       if(action==='general'){ openSettings({panel:'basic'}); return; }
       if(action==='maintenance'){ openSettings({panel:'general'}); return; }
