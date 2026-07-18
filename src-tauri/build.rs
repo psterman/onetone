@@ -18,6 +18,7 @@ fn main() {
     const COMMANDS: &[&str] = &[
         "cmd_ready",
         "cmd_save",
+        "cmd_save_camera_prefs",
         "cmd_scheme_select",
         "cmd_start_recording",
         "cmd_stop_recording",

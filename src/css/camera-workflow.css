@@ -761,6 +761,13 @@
   padding:12px 14px;
 }
 
+.camera-pro-banner-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
 .camera-pro-banner-label{
   font-size:11px;
   font-weight:800;
@@ -775,6 +782,190 @@
   font-weight:700;
   line-height:1.45;
   color:var(--on-surface);
+}
+
+.camera-pro-status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  flex:0 0 auto;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid var(--outline-variant);
+  background:var(--surface);
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+  white-space:nowrap;
+}
+
+.camera-pro-status-pill.is-on{
+  color:#0f766e;
+  border-color:rgba(43,156,144,.35);
+  background:rgba(43,156,144,.1);
+}
+
+.camera-pro-status-pill.is-ready{
+  color:#0f766e;
+  border-color:rgba(43,156,144,.35);
+  background:rgba(43,156,144,.1);
+}
+
+.camera-pro-status-pill.is-low{
+  color:#b45309;
+  border-color:rgba(245,158,11,.35);
+  background:rgba(245,158,11,.1);
+}
+
+.camera-pro-status-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+}
+
+.camera-pro-zone-cards{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.camera-pro-zone-card{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  padding:12px;
+  background:var(--surface);
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+
+.camera-pro-zone-card.is-cancel{
+  border-color:rgba(198,40,40,.28);
+  background:rgba(198,40,40,.06);
+}
+
+.camera-pro-zone-card.is-idle{
+  border-color:rgba(245,158,11,.35);
+  background:rgba(245,158,11,.08);
+}
+
+.camera-pro-zone-card.is-send{
+  border-color:rgba(43,156,144,.35);
+  background:rgba(43,156,144,.08);
+}
+
+.camera-pro-zone-label{
+  font-size:11px;
+  font-weight:800;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-zone-title{
+  font-size:14px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-pro-zone-desc{
+  margin:0;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-safety-note{
+  margin:0;
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-calib-actions{
+  flex-wrap:wrap;
+}
+
+.camera-pro-device-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.camera-pro-device-item{
+  border:1px solid var(--outline-variant);
+  border-radius:10px;
+  padding:10px 12px;
+  background:var(--surface);
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+
+.camera-pro-device-item.is-wide{
+  grid-column:1 / -1;
+}
+
+.camera-pro-device-label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-device-item strong{
+  font-size:14px;
+  font-weight:800;
+  color:var(--on-surface);
+  overflow-wrap:anywhere;
+}
+
+.camera-pro-check-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:8px;
+}
+
+.camera-pro-check{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--on-surface-muted);
+  cursor:default;
+}
+
+.camera-pro-check input{
+  margin-top:2px;
+}
+
+.camera-pro-filter-rows{
+  display:grid;
+  gap:10px;
+}
+
+.camera-pro-slider-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+  padding-top:4px;
+  border-top:1px solid var(--outline-variant);
+}
+
+.camera-pro-slider-val{
+  color:var(--on-surface);
+}
+
+@media (max-width:900px){
+  .camera-pro-zone-cards{
+    grid-template-columns:1fr;
+  }
 }
 
 .camera-pro-section{

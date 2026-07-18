@@ -32,6 +32,9 @@
         }
       }
       if(msg.type==='mvp_saved'&&msg.ok){
+        // Quiet camera/layout saves already have FE state; pulling cmd_ready → applyMvpInit
+        // while MediaPipe runs used to 假死 the UI (weak refit storm).
+        if(msg.quiet) return;
         if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
           global.OneToneConfigPersist.pullBackendConfig();
         }

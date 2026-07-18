@@ -5,6 +5,7 @@ description = "Allow all application IPC commands"
 permissions = [
   "allow-cmd-ready",
   "allow-cmd-save",
+  "allow-cmd-save-camera-prefs",
   "allow-cmd-scheme-select",
   "allow-cmd-start-recording",
   "allow-cmd-stop-recording",

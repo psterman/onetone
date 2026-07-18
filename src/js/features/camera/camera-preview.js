@@ -28,6 +28,8 @@
       labelKey:'cameraResGroupLandscape',
       labelFallback:'横屏',
       items:[
+        {w:3840,h:2160,labelKey:'cameraRes4k',labelFallback:'4K'},
+        {w:2560,h:1440,labelKey:'cameraResQhd',labelFallback:'2K'},
         {w:1920,h:1080,labelKey:'cameraResFullHd',labelFallback:'全高清'},
         {w:1280,h:720,labelKey:'cameraRes720p',labelFallback:'720p'},
         {w:640,h:360,labelKey:'cameraRes360p',labelFallback:'360p'}
@@ -550,7 +552,8 @@
     // Schema only — never auto-start from previewEnabled.
     prefs.previewEnabled=false;
     if(global.OneToneConfigPersist){
-      if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+      if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
+      else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
       else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
     }
   }
@@ -565,21 +568,29 @@
   }
 
   function setButtons(){
-    var toggle=$('btnCameraToggle');
-    if(!toggle||String(toggle.tagName||'').toUpperCase()!=='BUTTON') return;
-    toggle.disabled=!!starting;
-    toggle.classList.toggle('is-primary',!previewLive);
-    toggle.classList.toggle('is-stop',!!previewLive);
-    toggle.textContent=previewLive
-      ? t('cameraStopPreview','停止预览')
-      : t('cameraStartPreview','开始预览');
+    var startBtn=$('cameraPreviewStartBtn');
+    if(startBtn){
+      startBtn.disabled=!!starting;
+      startBtn.setAttribute('aria-label',t('cameraPreviewStart','启动'));
+      startBtn.title=t('cameraPreviewStart','启动');
+    }
   }
 
   function setPlaceholderVisible(show){
     var shell=$('cameraPreviewShell');
-    var ph=$('cameraPreviewPlaceholder');
+    var ph=$('cameraPreviewStartBtn')||$('cameraPreviewPlaceholder');
     if(shell) shell.classList.toggle('is-live',!show);
     if(ph) ph.hidden=!show;
+  }
+
+  function startFromPlaceholder(){
+    if(starting||previewLive) return;
+    var pa=global.OneToneCameraPresenceActions;
+    if(pa&&pa.persist&&!(pa.isEnabled&&pa.isEnabled())){
+      pa.persist({enabled:true});
+      return;
+    }
+    startPreview();
   }
 
   function selectedDeviceLabel(){
@@ -726,6 +737,40 @@
     syncPreviewAspect(0,0);
   }
 
+  function defaultPreferConstraints(){
+    // Highest listed landscape mode first; cascade steps down if unsupported.
+    return {width:3840,height:2160,frameRate:30};
+  }
+
+  function preferSizeCascade(prefer){
+    prefer=prefer||{};
+    var fps=prefer.frameRate>0?prefer.frameRate:30;
+    var seen={};
+    var out=[];
+    function push(w,h){
+      w=Math.round(Number(w)||0)|0;
+      h=Math.round(Number(h)||0)|0;
+      if(w<=0||h<=0) return;
+      var k=w+'x'+h;
+      if(seen[k]) return;
+      seen[k]=1;
+      out.push({width:w,height:h,frameRate:fps});
+    }
+    var highs=[[3840,2160],[2560,1440],[1920,1080],[1280,720],[640,360]];
+    var prefW=Math.round(Number(prefer.width)||0)|0;
+    var prefH=Math.round(Number(prefer.height)||0)|0;
+    var prefPx=prefW*prefH;
+    if(prefW>0&&prefH>0) push(prefW,prefH);
+    for(var i=0;i<highs.length;i++){
+      var w=highs[i][0];
+      var h=highs[i][1];
+      // After the preferred size, only try lower modes (never upgrade past a user pick).
+      if(prefPx>0&&(w*h)>=prefPx) continue;
+      push(w,h);
+    }
+    return out;
+  }
+
   function readSelectedConstraints(){
     var prefs=cameraPrefs();
     var out={width:0,height:0,frameRate:0};
@@ -734,11 +779,26 @@
       out.width=parseInt(parts[0],10)||0;
       out.height=parseInt(parts[1],10)||0;
     }else if(prefs.selectedWidth>0&&prefs.selectedHeight>0){
-      out.width=prefs.selectedWidth|0;
-      out.height=prefs.selectedHeight|0;
+      // Legacy auto-saves of browser defaults (~640×480) were not intentional picks.
+      if((prefs.selectedWidth|0)*(prefs.selectedHeight|0)<(1280*720)){
+        out.width=0;
+        out.height=0;
+      }else{
+        out.width=prefs.selectedWidth|0;
+        out.height=prefs.selectedHeight|0;
+      }
     }
     if(uiFps>0) out.frameRate=uiFps|0;
     else if(prefs.selectedFrameRate>0) out.frameRate=prefs.selectedFrameRate|0;
+    // No saved choice → request highest listed mode (not browser's low default ~640×480).
+    if(!out.width||!out.height){
+      var d=defaultPreferConstraints();
+      out.width=d.width;
+      out.height=d.height;
+      if(!out.frameRate) out.frameRate=d.frameRate;
+    }else if(!out.frameRate){
+      out.frameRate=30;
+    }
     return out;
   }
 
@@ -820,6 +880,8 @@
     if(src.feats&&src.feats.length){
       out.feats=Array.prototype.slice.call(src.feats);
     }
+    if(src.blink!=null&&isFinite(Number(src.blink))) out.blink=Number(src.blink);
+    if(src.blinking) out.blinking=true;
     if(src.calibrated){
       out.calibrated=true;
       if(src.clientX!=null) out.clientX=Number(src.clientX);
@@ -1077,6 +1139,10 @@
         cx=(point.clientX!=null?point.clientX:clamp01(sx)*vw);
         cy=(point.clientY!=null?point.clientY:clamp01(sy)*vh);
       }
+      // Keep the large orb on-screen — blink/hold glitches used to park it off-canvas.
+      if(!isFinite(cx)||!isFinite(cy)){ cx=vw*0.5; cy=vh*0.5; }
+      cx=Math.min(vw-8,Math.max(8,cx));
+      cy=Math.min(vh-8,Math.max(8,cy));
       paintOrbEl($('cameraGazeWindowOrb'),cx,cy,point,true,true);
       if(gazeCoach.wanted&&gazeCoach.active){
         tickCoachKaraoke(point&&point.regionZone);
@@ -1514,27 +1580,63 @@
     return t('cameraErrGeneric','摄像头出错：{msg}').replace('{msg}',msg||name||'unknown');
   }
 
+  function stopMediaStream(mediaStream){
+    if(!mediaStream||!mediaStream.getTracks) return;
+    try{
+      mediaStream.getTracks().forEach(function(tr){
+        try{ tr.stop(); }catch(_){}
+      });
+    }catch(_){}
+  }
+
+  function idealSizeAcceptable(mediaStream,size){
+    if(!size||!(size.width>0)||!(size.height>0)) return true;
+    var tr=mediaStream&&mediaStream.getVideoTracks&&mediaStream.getVideoTracks()[0];
+    var settings=tr&&typeof tr.getSettings==='function'?tr.getSettings():null;
+    if(!settings||!(settings.width>0)||!(settings.height>0)) return true;
+    var got=(settings.width|0)*(settings.height|0);
+    var want=(size.width|0)*(size.height|0);
+    // ideal may undershoot slightly; reject browser low defaults when a high mode was requested.
+    return got>=Math.max(640*360,Math.floor(want*0.55));
+  }
+
   function requestUserMedia(deviceId,prefer){
     prefer=prefer||readSelectedConstraints();
     var attempts=[];
-    var hasSize=prefer.width>0&&prefer.height>0;
-    if(hasSize&&deviceId){
-      attempts.push({audio:false,video:buildVideoConstraints(deviceId,prefer,'exact')});
-    }
-    if(hasSize||prefer.frameRate>0||deviceId){
-      attempts.push({audio:false,video:buildVideoConstraints(deviceId,prefer,'ideal')});
+    var cascade=preferSizeCascade(prefer);
+    for(var c=0;c<cascade.length;c++){
+      var size=cascade[c];
+      if(deviceId){
+        attempts.push({
+          constraints:{audio:false,video:buildVideoConstraints(deviceId,size,'exact')},
+          size:size,
+          mode:'exact'
+        });
+      }
+      attempts.push({
+        constraints:{audio:false,video:buildVideoConstraints(deviceId,size,'ideal')},
+        size:size,
+        mode:'ideal'
+      });
     }
     if(deviceId){
-      attempts.push({audio:false,video:{deviceId:{exact:deviceId}}});
-      attempts.push({audio:false,video:{deviceId:{ideal:deviceId}}});
+      attempts.push({constraints:{audio:false,video:{deviceId:{exact:deviceId}}},mode:'loose'});
+      attempts.push({constraints:{audio:false,video:{deviceId:{ideal:deviceId}}},mode:'loose'});
     }
-    attempts.push({audio:false,video:true});
+    attempts.push({constraints:{audio:false,video:true},mode:'loose'});
 
     function tryNext(i){
       if(i>=attempts.length){
         return Promise.reject(new Error('getUserMedia failed for all constraint sets'));
       }
-      return navigator.mediaDevices.getUserMedia(attempts[i]).catch(function(err){
+      var attempt=attempts[i];
+      return navigator.mediaDevices.getUserMedia(attempt.constraints).then(function(mediaStream){
+        if(attempt.mode==='ideal'&&!idealSizeAcceptable(mediaStream,attempt.size)){
+          stopMediaStream(mediaStream);
+          return tryNext(i+1);
+        }
+        return mediaStream;
+      }).catch(function(err){
         var name=err&&err.name||'';
         if(name==='NotAllowedError'||name==='PermissionDeniedError'||name==='SecurityError'){
           return Promise.reject(err);
@@ -1684,8 +1786,21 @@
     starting=true;
     setButtons();
     setStatus(t('cameraStatusStarting','正在开启预览…'));
-    return requestUserMedia(deviceId).then(function(mediaStream){
+    var prefer=readSelectedConstraints();
+    uiResKey=resKey(prefer.width,prefer.height);
+    uiResGroup=inferResGroup(uiResKey);
+    uiFps=prefer.frameRate|0;
+    return requestUserMedia(deviceId,prefer).then(function(mediaStream){
       return attachStream(mediaStream,deviceId);
+    }).then(function(){
+      var sz=getActualVideoSize();
+      if(sz.width>0&&sz.height>0){
+        persistCameraPrefs({
+          selectedWidth:sz.width,
+          selectedHeight:sz.height,
+          selectedFrameRate:uiFps||30
+        });
+      }
     }).catch(function(err){
       starting=false;
       previewLive=false;
@@ -1788,13 +1903,12 @@
   function bindUi(){
     if(bound) return;
     bound=true;
-    var togglePreview=$('btnCameraToggle');
+    var startBtn=$('cameraPreviewStartBtn');
     var sel=$('cameraDeviceSelect');
-    if(togglePreview&&String(togglePreview.tagName||'').toUpperCase()==='BUTTON'){
-      togglePreview.addEventListener('click',function(e){
+    if(startBtn){
+      startBtn.addEventListener('click',function(e){
         e.preventDefault();
-        if(previewLive) stop();
-        else startPreview();
+        startFromPlaceholder();
       });
     }
     if(sel) sel.addEventListener('change',onDeviceChange);
@@ -1827,6 +1941,7 @@
     setGazeDebugMode:setGazeDebugMode,
     getGazeDebugState:getGazeDebugState,
     updateGazePoint:updateGazePoint,
+    recenterGaze:recenterGaze,
     onCalibrationUpdated:onCalibrationUpdated,
     getActualVideoSize:getActualVideoSize,
     syncLiveLandmarker:syncLiveLandmarker

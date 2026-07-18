@@ -707,6 +707,50 @@
     });
   }
 
+  function buildCameraPrefsPayload(){
+    ensureConfig();
+    var st=state();
+    var p=st.config.cameraPrefs||{};
+    var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
+    return {
+      enabled:!!p.enabled,
+      selectedDeviceId:String(p.selectedDeviceId||'').trim(),
+      previewEnabled:false,
+      selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
+      selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
+      selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
+      gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
+      presenceActions:{
+        enabled:!!pa.enabled,
+        onAway:String(pa.onAway||'none').trim()||'none',
+        onReturn:String(pa.onReturn||'none').trim()||'none',
+        shakeHead:String(pa.shakeHead||'none').trim()||'none',
+        deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none'
+      }
+    };
+  }
+
+  /** Camera prefs only — no mapping merge / voice restart / mvp_init pull. */
+  function saveCameraPrefsQuiet(){
+    var invoke=global.__vp_invoke__;
+    if(!invoke) return Promise.resolve(false);
+    var payload;
+    try{
+      payload=JSON.stringify(buildCameraPrefsPayload());
+    }catch(err){
+      if(typeof console!=='undefined'&&console.error){
+        console.error('cmd_save_camera_prefs build failed',err);
+      }
+      return Promise.resolve(false);
+    }
+    return invoke('cmd_save_camera_prefs',{json:payload}).then(function(){ return true; }).catch(function(err){
+      if(typeof console!=='undefined'&&console.error){
+        console.error('cmd_save_camera_prefs',err);
+      }
+      return false;
+    });
+  }
+
   function isAppScopedMapping(m){
     if(!m||typeof m!=='object') return false;
     if(String(m.appTargetId||m.app_target_id||'').trim()) return true;
@@ -1182,6 +1226,7 @@
     buildSavePayload:buildSavePayload,
     save:save,
     saveAsync:saveAsync,
+    saveCameraPrefsQuiet:saveCameraPrefsQuiet,
     applyMvpInit:applyMvpInit,
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,

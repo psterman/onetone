@@ -20,6 +20,17 @@
   var onPoint=null;
   var lastTs=-1;
   var lastGood={x:0.5,y:0.5,confidence:0,state:'idle',feats:null};
+  // Video-norm proxy held across blinks — eyelid motion corrupts iris/socket XY.
+  var lastProxyVideo={
+    x:0.5,y:0.5,
+    sockX:0,sockY:0,
+    irisX:0.5,irisY:0.5,
+    blendX:0,blendY:0,
+    feats:null
+  };
+  var BLINK_HOLD=0.32;
+  var BLINK_RELEASE_MS=140;
+  var blinkHoldUntil=0;
 
   function clamp01(v){
     v=Number(v);
@@ -201,6 +212,26 @@
     if(lookDown!=null||lookUp!=null){
       blendY=clampRange((lookDown||0)-(lookUp||0),-1.2,1.2);
     }
+
+    var blink=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
+    var nowBlink=performance.now();
+    var blinking=blink!=null&&blink>=BLINK_HOLD;
+    if(blinking) blinkHoldUntil=nowBlink+BLINK_RELEASE_MS;
+    var holdGaze=blinking||nowBlink<blinkHoldUntil;
+    // During blink (+short release), freeze full gaze proxy — eyelid motion
+    // corrupts iris/socket XY and look blends (orb used to drift right / lower-right).
+    if(holdGaze&&lastProxyVideo.feats){
+      // Keep confidence high enough that the window orb does not fade to "lost".
+      var holdConf=Math.max(0.42,conf*0.85);
+      return {
+        x:lastProxyVideo.x,
+        y:lastProxyVideo.y,
+        confidence:clamp01(holdConf),
+        state:'tracking',
+        blinking:true,
+        feats:lastProxyVideo.feats.slice()
+      };
+    }
     if(lookOut!=null||lookIn!=null||lookDown!=null||lookUp!=null){
       var w=0.38;
       vx=clamp01(vx*(1-w)+(0.5+blendX*0.72)*w);
@@ -208,16 +239,12 @@
       conf=Math.min(0.9,conf+0.06);
     }
 
-    var blink=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
-    if(blink!=null&&blink>0.55) conf*=0.35;
-
     var pose=headPoseFromMatrix(transformMat);
     // Glasses + overhead cam: looking down often occludes iris behind rims.
     // Shift vertical trust from iris/socket to head pitch when looking down.
     var lookDownAmt=Math.max(0,blendY,pose.pitch);
     var eyeVertTrust=1;
     if(lookDownAmt>0.18) eyeVertTrust=clampRange(1-lookDownAmt*0.85,0.28,1);
-    if(blink!=null&&blink>0.35) eyeVertTrust*=0.7;
     sockY*=eyeVertTrust;
     irisY=0.5+(irisY-0.5)*eyeVertTrust;
     vy=clamp01(vy*eyeVertTrust+(0.5+pose.pitch*0.55)*(1-eyeVertTrust));
@@ -229,17 +256,26 @@
     var state='tracking';
     if(conf<LOW_CONF) state='low-confidence';
     if(eyeVertTrust<0.55) conf=clamp01(conf*0.82);
+    var feats=[
+      sockX*2.4,sockY*2.1,
+      blendX*2.1,blendY*1.85,
+      pose.yaw*yawW,pose.pitch*pitchW,
+      (irisX-0.5)*2.4,(irisY-0.5)*2.0
+    ];
+    lastProxyVideo={
+      x:vx,y:vy,
+      sockX:sockX,sockY:sockY,
+      irisX:irisX,irisY:irisY,
+      blendX:blendX,blendY:blendY,
+      feats:feats.slice()
+    };
     return {
       x:vx,
       y:vy,
       confidence:clamp01(conf),
       state:state,
-      feats:[
-        sockX*2.4,sockY*2.1,
-        blendX*2.1,blendY*1.85,
-        pose.yaw*yawW,pose.pitch*pitchW,
-        (irisX-0.5)*2.4,(irisY-0.5)*2.0
-      ]
+      blinking:false,
+      feats:feats
     };
   }
 
@@ -364,9 +400,11 @@
       yaw:yawOut,
       matrixYaw:pose.yaw,
       landmarkYaw:lmYaw,
-      blink:blinkScore
+      blink:blinkScore,
+      blinking:!!proxy.blinking
     };
-    if(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15)){
+    // Skip lastGood updates while blinking — corrupted Y would stick after reopen.
+    if(!proxy.blinking&&(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15))){
       lastGood={x:out.x,y:out.y,confidence:out.confidence,state:out.state,feats:out.feats};
     }
     emitPoint(out);

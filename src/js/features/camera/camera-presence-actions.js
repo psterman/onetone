@@ -37,13 +37,15 @@
   var SHAKE_EXIT=0.10;
   var SHAKE_LOG_MIN_MS=2500;
 
-  // Deliberate blink: sustained close → open. No double-blink (too easy to false-fire).
-  var BLINK_ON=0.78;
-  var BLINK_OFF=0.40;
-  var BLINK_OPEN_SETTLE_MS=180;
-  var BLINK_LONG_MIN_MS=380;
-  var BLINK_LONG_MAX_MS=900;
-  var BLINK_COOLDOWN_MS=3500;
+  // Deliberate blink: close eyes ~0.3–1.5s then open. Short natural blinks ignored.
+  // Thresholds are softer than MediaPipe's "fully shut" so a gentle half-second close counts.
+  var BLINK_ON=0.58;
+  var BLINK_OFF=0.32;
+  var BLINK_OPEN_SETTLE_MS=100;
+  var BLINK_LONG_MIN_MS=280;
+  var BLINK_LONG_MAX_MS=1500;
+  var BLINK_COOLDOWN_MS=2800;
+  var BLINK_HINT_COOLDOWN_MS=2500;
   var GESTURE_PULSE_MS=700;
 
   var ACTIONS={
@@ -91,6 +93,7 @@
     blinkCloseSince:0,
     blinkOpenSince:0,
     lastBlinkAt:0,
+    lastBlinkHintAt:0,
     pulseUntil:0,
     pulseTimer:0
   };
@@ -199,7 +202,8 @@
     cp.presenceActions=cur;
     st.enabled=!!cur.enabled;
     if(global.OneToneConfigPersist){
-      if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+      if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
+      else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
       else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
     }
     syncUiFromPrefs();
@@ -621,7 +625,7 @@
     if(action==='none') return;
     logPresence(kind+' fire action='+action);
     if(kind==='shake') toast(t('cameraPresenceShakeDetected','已识别摇头'));
-    else if(kind==='blink') toast(t('cameraPresenceBlinkDetected','已识别长眨'));
+    else if(kind==='blink') toast(t('cameraPresenceBlinkDetected','已识别：闭眼半秒'));
     pulseGesture(kind);
     dispatchAction(action,kind);
   }
@@ -707,7 +711,12 @@
       return;
     }
     if(st.presence!=='present') return;
-    if(blinkScore==null||!isFinite(blinkScore)) return;
+    // Eyes-closed frames often drop faceDetected / blink briefly — keep counting
+    // as closed instead of aborting the gesture (was the main "闭眼半秒无反应" bug).
+    if(blinkScore==null||!isFinite(blinkScore)){
+      if(st.blinkClosed) return;
+      return;
+    }
 
     if(!st.blinkClosed){
       if(blinkScore<=BLINK_OFF){
@@ -720,19 +729,35 @@
           st.blinkClosed=true;
           st.blinkCloseSince=now;
           st.blinkOpenSince=0;
+        }else if(!st.blinkOpenSince){
+          // First frames after enable: allow close without long open settle.
+          st.blinkClosed=true;
+          st.blinkCloseSince=now;
         }
       }
       return;
     }
 
-    // Currently closed
+    // Currently closed — wait for reopen.
     if(blinkScore<=BLINK_OFF){
       var dur=now-st.blinkCloseSince;
       st.blinkClosed=false;
       st.blinkCloseSince=0;
       st.blinkOpenSince=now;
       if(dur<BLINK_LONG_MIN_MS||dur>BLINK_LONG_MAX_MS){
-        // Natural short blink or too long — ignore.
+        if(dur>0&&dur<BLINK_LONG_MIN_MS){
+          logPresence('blink too short dur='+Math.round(dur));
+          if((now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
+            st.lastBlinkHintAt=now;
+            toast(t('cameraPresenceBlinkTooShort','再闭久一点（约半秒）再睁开'));
+          }
+        }else if(dur>BLINK_LONG_MAX_MS){
+          logPresence('blink too long dur='+Math.round(dur));
+          if((now-st.lastBlinkHintAt)>BLINK_HINT_COOLDOWN_MS){
+            st.lastBlinkHintAt=now;
+            toast(t('cameraPresenceBlinkTooLong','闭太久了，请闭约半秒就睁开'));
+          }
+        }
         return;
       }
       if((now-st.lastBlinkAt)<BLINK_COOLDOWN_MS){
@@ -750,6 +775,10 @@
     var face=!!(point&&(point.faceDetected===true||(point.state&&point.state!=='lost'&&point.state!=='idle'&&point.confidence>0.12)));
     if(point&&point.faceDetected===false) face=false;
     if(point&&point.state==='lost') face=false;
+    // Soften face-lost during deliberate blink — eyelids down often drops tracking.
+    if(!face&&st.blinkClosed&&st.presence==='present'){
+      face=true;
+    }
 
     st.faceDetected=face;
     st.headDirection=headDirFromYaw(point&&point.yaw);
@@ -774,9 +803,10 @@
       }
     }
 
-    if(st.presence==='present'&&face&&!isCalibrating()){
-      updateShake(now,yaw);
+    if(st.presence==='present'&&!isCalibrating()){
+      // Blink may continue while face flickers; shake still needs a live face+yaw.
       updateBlink(now,point&&point.blink);
+      if(face) updateShake(now,yaw);
     }
 
     renderHeroUi();
@@ -820,8 +850,8 @@
     if(st.lastGesture==='shake'&&st.pulseUntil&&performance.now()<st.pulseUntil){
       return t('cameraPresenceGestureShake','摇头');
     }
-    if(st.lastGesture==='blink'&&st.pulseUntil&&performance.now()<st.pulseUntil){
-      return t('cameraPresenceGestureBlink','长眨');
+      if(st.lastGesture==='blink'&&st.pulseUntil&&performance.now()<st.pulseUntil){
+      return t('cameraPresenceGestureBlink','闭眼半秒');
     }
     var p=prefs();
     if(isEnabled()&&normalizeAction(p.shakeHead)!=='none'){
@@ -838,7 +868,7 @@
       }
     }
     if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
-    if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','长眨');
+    if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','闭眼半秒');
     return t('cameraPresenceGestureNone','无');
   }
 
@@ -1021,6 +1051,13 @@
       clearBtn.disabled=!on;
       clearBtn.setAttribute('aria-disabled',on?'false':'true');
     }
+    ['cameraProCalibrateBtn','cameraProCalibrateFineBtn','cameraProClearCalibBtn','cameraProRecenterBtn'].forEach(function(id){
+      var el=$(id);
+      if(el){
+        el.disabled=!on;
+        el.setAttribute('aria-disabled',on?'false':'true');
+      }
+    });
   }
 
   function syncUiFromPrefs(){

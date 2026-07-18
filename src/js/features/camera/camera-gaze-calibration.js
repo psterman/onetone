@@ -98,7 +98,14 @@
   var PREPARE_SEC_CORNER=1.6;
   var PREPARE_SEC_EDGE=1.8;
   var PREPARE_SEC_TOP=2.0;
-  var MIN_CALIB_POINTS=5;
+  var MIN_CALIB_POINTS_FAST=4;
+  var MIN_CALIB_POINTS_FINE=6;
+  function minCalibPointsForMode(mode){
+    return normalizeCalibMode(mode)==='fine'?MIN_CALIB_POINTS_FINE:MIN_CALIB_POINTS_FAST;
+  }
+  function minCalibPoints(){
+    return minCalibPointsForMode(currentCalibMode);
+  }
   var MAX_POINT_ATTEMPTS=2;
   var MIN_SAMPLES=6;
   var MIN_CONF=0.35;
@@ -141,7 +148,7 @@
   var activeTargets=[];
   var WEAK_MAX_SAMPLES=40;
   var WEAK_MAX_AGE_MS=7*24*60*60*1000;
-  var WEAK_REFIT_DEBOUNCE_MS=2000;
+  var WEAK_REFIT_DEBOUNCE_MS=3500;
   var WEAK_MIN_INTERVAL_CLICK_MS=800;
   var WEAK_MIN_INTERVAL_LOCK_MS=800;
   var WEAK_MIN_CONF=0.45;
@@ -445,31 +452,63 @@
       if(glance) glance.textContent=el.textContent;
     }
     syncCalibrateBtnLabel();
+    syncProCalibStatusUi();
   }
 
   function syncCalibrateBtnLabel(){
     var btn=$('cameraGazeCalibrateBtn');
     var fineBtn=$('cameraGazeCalibrateFineBtn');
+    var proBtn=$('cameraProCalibrateBtn');
+    var proFine=$('cameraProCalibrateFineBtn');
+    var labels=running
+      ? t('cameraGazeCalibrating','校准中…')
+      :(model?t('cameraGazeRecalibrate','重新校准'):t('cameraGazeCalibrate','开始校准'));
+    var fineLabel=running
+      ? t('cameraGazeCalibrating','校准中…')
+      : t('cameraGazeCalibrateFine','精细校准');
+    function paint(el,text){
+      if(!el) return;
+      el.textContent=text;
+      el.disabled=!!running;
+    }
+    paint(btn,labels);
+    paint(fineBtn,fineLabel);
+    paint(proBtn,labels);
+    paint(proFine,fineLabel);
+    var proClear=$('cameraProClearCalibBtn');
+    var proRecenter=$('cameraProRecenterBtn');
+    if(proClear) proClear.disabled=!!running;
+    if(proRecenter) proRecenter.disabled=!!running;
+  }
+
+  function syncProCalibStatusUi(){
+    var pill=$('cameraProCalibStatusPill');
+    var textEl=$('cameraProCalibStatusText');
+    if(!textEl&&!pill) return;
+    var label=t('cameraGazeCalibrationIdle','未校准');
+    var cls='';
     if(running){
-      if(btn){
-        btn.textContent=t('cameraGazeCalibrating','校准中…');
-        btn.disabled=true;
+      label=t('cameraGazeCalibrating','校准中…');
+    }else if(model){
+      if(model.stale){
+        label=t('cameraGazeCalibrationStale','窗口尺寸变化，请重新校准');
+        cls='is-low';
+      }else if(model.lowQuality){
+        label=t('cameraGazeCalibrationLowQuality','校准完成，但精度较低');
+        cls='is-low';
+      }else if(isFineGridModel()){
+        label=t('cameraGazeMapModeFineReady','精细校准完成 · 更细区域');
+        cls='is-ready';
+      }else{
+        label=t('cameraGazeMapModeFastReady','快校完成 · 粗区域');
+        cls='is-ready';
       }
-      if(fineBtn){
-        fineBtn.textContent=t('cameraGazeCalibrating','校准中…');
-        fineBtn.disabled=true;
-      }
-      return;
     }
-    if(btn){
-      btn.disabled=false;
-      btn.textContent=model
-        ? t('cameraGazeRecalibrate','重新校准')
-        : t('cameraGazeCalibrate','开始校准');
-    }
-    if(fineBtn){
-      fineBtn.disabled=false;
-      fineBtn.textContent=t('cameraGazeCalibrateFine','精细校准');
+    if(textEl) textEl.textContent=label;
+    if(pill){
+      pill.classList.toggle('is-ready',cls==='is-ready');
+      pill.classList.toggle('is-low',cls==='is-low');
+      pill.classList.toggle('is-on',false);
     }
   }
 
@@ -884,11 +923,15 @@
     return featSmooth.slice();
   }
 
-  function smoothApplyOutput(cx,cy,vw,vh){
+  function smoothApplyOutput(cx,cy,vw,vh,holdPos){
     if(applyOutSmooth.cx==null||applyOutSmooth.cy==null){
       applyOutSmooth.cx=cx;
       applyOutSmooth.cy=cy;
       return {cx:cx,cy:cy};
+    }
+    // Blink hold: freeze both axes (X-only freeze still let the orb drift right).
+    if(holdPos){
+      return {cx:applyOutSmooth.cx,cy:applyOutSmooth.cy};
     }
     var jump=Math.abs(cx-applyOutSmooth.cx)+Math.abs(cy-applyOutSmooth.cy);
     var span=Math.min(vw||1,vh||1);
@@ -1752,7 +1795,7 @@
   }
 
   function hasFormalCalibrationModel(){
-    return !!(model&&model.anchors&&model.anchors.length>=MIN_CALIB_POINTS&&model.calibrationValidation);
+    return !!(model&&model.anchors&&model.anchors.length>=minCalibPointsForMode(model.calibMode||'fast')&&model.calibrationValidation);
   }
 
   function formalPairsFromModel(m){
@@ -1916,7 +1959,7 @@
     if(el.closest('#cameraGazeWindowLayer')) return true;
     if(el.closest('.camera-gaze-calibration-panel')) return true;
     if(el.closest('#cameraActionBar')) return true;
-    if(el.closest('#cameraGazeCalibrateBtn,#cameraGazeCalibrateFineBtn,#cameraGazeClearCalibrationBtn,#cameraGazeStaleRecalibBtn,#btnCameraToggle,#cameraGazeCalibrationCancel')) return true;
+    if(el.closest('#cameraGazeCalibrateBtn,#cameraGazeCalibrateFineBtn,#cameraProCalibrateBtn,#cameraProCalibrateFineBtn,#cameraProClearCalibBtn,#cameraProRecenterBtn,#cameraGazeClearCalibrationBtn,#cameraGazeStaleRecalibBtn,#cameraPreviewStartBtn,#btnCameraToggle,#cameraGazeCalibrationCancel')) return true;
     return false;
   }
 
@@ -1956,15 +1999,16 @@
     var prefs=getCameraPrefsRef();
     if(!prefs) return;
     prefs.gazeCalibration=snapshot;
-    // Debounce — full cmd_save during live preview must not flood / freeze UI.
+    // Debounce — quiet camera prefs save (no mvp_init / voice restart).
     if(persistGazeTimer) clearTimeout(persistGazeTimer);
     persistGazeTimer=setTimeout(function(){
       persistGazeTimer=0;
       if(global.OneToneConfigPersist){
-        if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+        if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
+        else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
         else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
       }
-    },450);
+    },2500);
   }
 
   function serializeModel(m){
@@ -2169,7 +2213,10 @@
   function syncUiFromModel(){
     if(!model){
       if(statusKind!=='failed'&&statusKind!=='canceled'&&statusKind!=='running') setStatusKind('idle');
-      else syncCalibrateBtnLabel();
+      else{
+        syncCalibrateBtnLabel();
+        syncProCalibStatusUi();
+      }
       return;
     }
     if(model.stale) setStatusKind('stale');
@@ -2183,6 +2230,7 @@
     }
     updateCalibWarnings();
     syncCalibrateBtnLabel();
+    syncProCalibStatusUi();
   }
 
   function hasModel(){ return !!model; }
@@ -2456,7 +2504,8 @@
         clientX=scaled.cx;
         clientY=scaled.cy;
       }
-      var smoothed=smoothApplyOutput(clientX,clientY,vw,vh);
+      var smoothed=smoothApplyOutput(clientX,clientY,vw,vh,
+        !!(raw.blinking||(raw.blink!=null&&Number(raw.blink)>=0.32)));
       clientX=smoothed.cx;
       clientY=smoothed.cy;
     }else{
@@ -2475,8 +2524,11 @@
     if(model.stale) outConf=clamp01(outConf*0.9);
     var outNx=clamp01(clampedX/vw);
     var outNy=clamp01(clampedY/vh);
-    // Product target is region/direction — light soft-snap (mode-aware in softSnapToRegion).
-    var snapped=softSnapToRegion(outNx,outNy);
+    var blinkHold=!!(raw.blinking||(raw.blink!=null&&Number(raw.blink)>=0.32));
+    // Soft-snap can still tug toward a neighbor zone on blink noise — skip while held.
+    var snapped=blinkHold
+      ?{nx:outNx,ny:outNy,zone:regionZoneFromNorm(outNx,outNy)}
+      :softSnapToRegion(outNx,outNy);
     outNx=snapped.nx;
     outNy=snapped.ny;
     clampedX=outNx*vw;
@@ -2853,7 +2905,7 @@
   // Re-sample worst LOO points within the active mode set only.
   function highErrorTargetsFromPairs(pairs){
     var limit=qualityRemedialLimit();
-    if(limit<=0||!pairs||pairs.length<MIN_CALIB_POINTS) return [];
+    if(limit<=0||!pairs||pairs.length<minCalibPoints()) return [];
     var prep;
     try{ prep=prepareModelPairs(pairs); }catch(_){ return []; }
     var ridge=fitRidge(prep.pairs);
@@ -2917,11 +2969,16 @@
     setLandmarkerThrottle(false);
     clearTimers();
     calibLog('complete points='+pairs.length+' skipped='+skippedPoints);
-    if(pairs.length<MIN_CALIB_POINTS){
+    var minPts=minCalibPoints();
+    if(pairs.length<minPts){
       setOverlayVisible(false);
       setCalibrationUi({countdown:'',phase:'idle'});
-      finishFail(t('cameraGazeCalibrationFailedFew','有效校准点不足（至少 '+MIN_CALIB_POINTS+' 个），请重试'));
+      finishFail(t('cameraGazeCalibrationFailedFew','有效校准点不足（至少 '+minPts+' 个），请重试'));
       return;
+    }
+    // Fast mode with a skipped corner still builds — mark lowQuality so HUD stays honest.
+    if(currentCalibMode==='fast'&&pairs.length<TARGET_SETS.fast.length){
+      calibLog('fast accept with gaps points='+pairs.length+'/'+TARGET_SETS.fast.length);
     }
     var buildGen=gen;
     setOverlayVisible(true);
@@ -2954,6 +3011,7 @@
         built.lowQuality=built.calibrationValidation
           ?built.calibrationValidation.quality==='poor'
           :built.rmse>thr;
+        if(currentCalibMode==='fast'&&skippedPoints>0) built.lowQuality=true;
         built.savedAt=Date.now();
         built.skippedPoints=skippedPoints;
         built.synthNodeCount=countSynthGridNodes(built.anchors);
@@ -3308,6 +3366,10 @@
     var startBtn=$('cameraGazeCalibrateBtn');
     var fineBtn=$('cameraGazeCalibrateFineBtn');
     var clearBtn=$('cameraGazeClearCalibrationBtn');
+    var proStart=$('cameraProCalibrateBtn');
+    var proFine=$('cameraProCalibrateFineBtn');
+    var proClear=$('cameraProClearCalibBtn');
+    var proRecenter=$('cameraProRecenterBtn');
     if(startBtn){
       startBtn.addEventListener('click',function(e){
         e.preventDefault();
@@ -3320,10 +3382,37 @@
         tryStartCalibrationFromUi('fine');
       });
     }
+    if(proStart){
+      proStart.addEventListener('click',function(e){
+        e.preventDefault();
+        tryStartCalibrationFromUi('fast');
+      });
+    }
+    if(proFine){
+      proFine.addEventListener('click',function(e){
+        e.preventDefault();
+        tryStartCalibrationFromUi('fine');
+      });
+    }
     if(clearBtn){
       clearBtn.addEventListener('click',function(e){
         e.preventDefault();
         clear();
+      });
+    }
+    if(proClear){
+      proClear.addEventListener('click',function(e){
+        e.preventDefault();
+        clear();
+      });
+    }
+    if(proRecenter){
+      proRecenter.addEventListener('click',function(e){
+        e.preventDefault();
+        var preview=global.OneToneCameraPreview;
+        if(preview&&preview.recenterGaze){
+          try{ preview.recenterGaze(); }catch(_){}
+        }
       });
     }
     var staleRecalibBtn=$('cameraGazeStaleRecalibBtn');

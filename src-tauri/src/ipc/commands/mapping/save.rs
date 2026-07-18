@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 
+use crate::config::{self, CameraPrefs};
 use crate::ipc::core::{push_runtime, sync_config_ui};
 use crate::AppState;
 
@@ -33,6 +34,22 @@ pub fn cmd_save(
     }
     cfg.migrate();
     cfg.normalize();
+
+    // Camera / window-layout-only saves must not restart voice or push mvp_init —
+    // that path raced MediaPipe + drawer re-render and 假死'd the UI (weak refit).
+    if config::is_watcher_noise_only_change(&existing, &cfg) {
+        crate::config::save_config(&cfg);
+        *state.cfg.lock() = cfg;
+        crate::app_log::log_line(
+            &state,
+            "config",
+            "cmd_save layout/camera only, skip mvp_init/voice",
+        );
+        let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
+        window.emit("to_js", &ack).ok();
+        return Ok(());
+    }
+
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);
@@ -53,6 +70,32 @@ pub fn cmd_save(
     state.machine_pool.lock().reset_all();
     push_runtime(&state, &window, "saved", "");
     let ack = serde_json::json!({"type":"mvp_saved","ok":true});
+    window.emit("to_js", &ack).ok();
+    Ok(())
+}
+
+/// Patch `cameraPrefs` only — no mapping merge, no voice restart, no `mvp_init`.
+#[tauri::command]
+pub fn cmd_save_camera_prefs(
+    state: tauri::State<Arc<AppState>>,
+    window: tauri::WebviewWindow,
+    json: String,
+) -> Result<(), String> {
+    let prefs: CameraPrefs = serde_json::from_str(&json).map_err(|e| {
+        eprintln!("cmd_save_camera_prefs: parse failed: {e}");
+        "camera_prefs_invalid".to_string()
+    })?;
+    {
+        let mut cfg = state.cfg.lock();
+        cfg.camera_prefs = prefs;
+        crate::config::save_config(&cfg);
+    }
+    crate::app_log::log_line(
+        &state,
+        "config",
+        "cmd_save_camera_prefs quiet (skip mvp_init/voice)",
+    );
+    let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
     window.emit("to_js", &ack).ok();
     Ok(())
 }

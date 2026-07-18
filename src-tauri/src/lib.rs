@@ -575,6 +575,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ipc::cmd_ready,
             ipc::cmd_save,
+            ipc::cmd_save_camera_prefs,
             ipc::cmd_scheme_select,
             ipc::cmd_start_recording,
             ipc::cmd_stop_recording,

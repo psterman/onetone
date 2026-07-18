@@ -7008,9 +7008,27 @@
     }
     .camera-preview-placeholder{
       position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:16px;
-      color:rgba(255,255,255,.72);font-size:13px;text-align:center;pointer-events:none;
+      border:0;background:transparent;cursor:pointer;pointer-events:auto;
+      color:rgba(255,255,255,.92);appearance:none;-webkit-appearance:none;
     }
+    .camera-preview-placeholder[hidden]{display:none!important}
     .camera-preview-shell.is-live .camera-preview-placeholder{display:none}
+    .camera-preview-start-icon{
+      display:grid;place-items:center;width:56px;height:56px;border-radius:50%;
+      font-size:22px;line-height:1;padding-left:3px;
+      color:#fff;background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.28);
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      transition:transform .15s ease,background .15s ease,border-color .15s ease;
+    }
+    .camera-preview-start:hover .camera-preview-start-icon,
+    .camera-preview-start:focus-visible .camera-preview-start-icon{
+      background:rgba(94,200,232,.28);border-color:rgba(94,200,232,.55);
+      transform:scale(1.04);
+    }
+    .camera-preview-start:focus-visible{outline:none}
+    .camera-preview-start:disabled{cursor:default;opacity:.55}
+    .camera-preview-start:disabled .camera-preview-start-icon{transform:none}
     .camera-gaze-overlay{
       position:absolute;inset:0;pointer-events:none;z-index:2;
       opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease;

@@ -3538,6 +3538,41 @@ pub fn load_config() -> VoiceConfig {
     cfg
 }
 
+/// Watcher-safe load: never substitute `Default` on mid-write / parse failure
+/// (that used to look like a full config wipe → vosk restart + mvp_init 假死).
+fn try_load_config_for_watcher() -> Option<VoiceConfig> {
+    let path = config_path();
+    let raw = fs::read_to_string(&path).ok()?;
+    if raw.trim().is_empty() {
+        return None;
+    }
+    let mut cfg: VoiceConfig = serde_json::from_str(&raw).ok()?;
+    cfg.migrate();
+    Some(cfg)
+}
+
+/// Epoch-ms until which the config watcher must ignore our own disk writes.
+static WATCHER_SUPPRESS_UNTIL_MS: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+fn wall_now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Call after any in-process `settings.json` write so the watcher does not echo
+/// mvp_init / voice restart (camera quiet save + layout save were 假死 sources).
+pub fn note_config_self_write() {
+    let until = wall_now_ms().saturating_add(2500);
+    WATCHER_SUPPRESS_UNTIL_MS.store(until, std::sync::atomic::Ordering::SeqCst);
+}
+
+fn is_config_watcher_suppressed() -> bool {
+    wall_now_ms() < WATCHER_SUPPRESS_UNTIL_MS.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 pub fn save_config(cfg: &VoiceConfig) {
     let path = config_path();
     if let Some(parent) = path.parent() {
@@ -3554,7 +3589,21 @@ pub fn save_config(cfg: &VoiceConfig) {
         }
     }
     let json = serde_json::to_string_pretty(cfg).unwrap();
-    fs::write(&path, json).ok();
+    // Atomic-ish replace: write temp then swap. Avoids watcher reading a truncated
+    // settings.json mid-write (parse fail → Default → voice restart storm).
+    let tmp = path.with_extension("json.tmp");
+    if fs::write(&tmp, &json).is_ok() {
+        if path.exists() {
+            let _ = fs::remove_file(&path);
+        }
+        if fs::rename(&tmp, &path).is_err() {
+            let _ = fs::copy(&tmp, &path);
+            let _ = fs::remove_file(&tmp);
+        }
+    } else {
+        let _ = fs::write(&path, &json);
+    }
+    note_config_self_write();
 }
 
 pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
@@ -3592,7 +3641,7 @@ fn config_json_without_watcher_noise(cfg: &VoiceConfig) -> serde_json::Value {
     value
 }
 
-fn is_watcher_noise_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
+pub(crate) fn is_watcher_noise_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
     config_json_without_watcher_noise(old) == config_json_without_watcher_noise(new)
 }
 
@@ -3619,13 +3668,40 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                     if last_emit.elapsed() < Duration::from_millis(1500) {
                         continue;
                     }
-                    let mut new_cfg = load_config();
-                    new_cfg.migrate();
+                    // Our own quiet/layout/cmd_save writes must not echo mvp_init + vosk restart.
+                    if is_config_watcher_suppressed() {
+                        crate::app_log::log_line(
+                            &state,
+                            "config",
+                            "config file changed (self-write, skip mvp_init)",
+                        );
+                        last_emit = std::time::Instant::now();
+                        continue;
+                    }
+                    let Some(mut new_cfg) = try_load_config_for_watcher() else {
+                        crate::app_log::log_line(
+                            &state,
+                            "config",
+                            "config file changed (unreadable/partial, skip)",
+                        );
+                        last_emit = std::time::Instant::now();
+                        continue;
+                    };
                     new_cfg.normalize();
-                    let normalized_voice_engine =
-                        prefer_vosk_when_both_voice_engines_enabled(&mut new_cfg);
 
                     let old_cfg = state.cfg.lock().clone();
+                    // Ignore apparent wipes from a bad read — never replace live config with empty.
+                    if new_cfg.mappings.is_empty() && !old_cfg.mappings.is_empty() {
+                        crate::app_log::log_line(
+                            &state,
+                            "config",
+                            "config file changed (empty mappings vs live, skip)",
+                        );
+                        last_emit = std::time::Instant::now();
+                        continue;
+                    }
+                    // Compare before prefer_vosk mutation — that helper can rewrite engine
+                    // flags and falsely look like a full config change after a camera save.
                     if is_watcher_noise_only_change(&old_cfg, &new_cfg) {
                         {
                             *state.cfg.lock() = new_cfg;
@@ -3638,6 +3714,8 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                         last_emit = std::time::Instant::now();
                         continue;
                     }
+                    let normalized_voice_engine =
+                        prefer_vosk_when_both_voice_engines_enabled(&mut new_cfg);
                     {
                         *state.cfg.lock() = new_cfg.clone();
                     }

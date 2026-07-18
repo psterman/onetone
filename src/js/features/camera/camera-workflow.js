@@ -111,7 +111,7 @@
   function openTriggerTools(target){
     var id=target==null||target===true?'cameraCalibBlock':String(target||'cameraCalibBlock');
     if(id==='cameraTriggerTools'||id==='true') id='cameraCalibBlock';
-    if(id==='cameraCalibBlock'||id==='cameraFineMapFold'||id==='cameraProStack'||id==='cameraCoarseZones'){
+    if(id==='cameraCalibBlock'||id==='cameraFineMapFold'||id==='cameraProStack'){
       openProPanel(id);
       return;
     }
@@ -209,13 +209,46 @@
   }
 
   function syncProStatus(){
-    var sendEl=$('cameraProStatusSend');
-    if(sendEl){
-      sendEl.textContent=t('cameraProSendGuardRule','发送不会因单个视觉动作直接发出。不允许单视觉直送。');
-    }
     var helloEl=$('cameraProStatusHello');
     if(helloEl){
       helloEl.textContent=t('cameraProHelloStatusFuture','未来支持 · 需要兼容 IR / 安全摄像头');
+    }
+    syncProDeviceDiag();
+  }
+
+  function syncProDeviceDiag(){
+    var resEl=$('cameraProDeviceRes');
+    var fpsEl=$('cameraProDeviceFps');
+    var lightEl=$('cameraProDeviceLight');
+    var sourceEl=$('cameraProDeviceSource');
+    var pv=previewApi();
+    var st=pv&&pv.getGazeDebugState?pv.getGazeDebugState():null;
+    var live=!!(st&&st.previewLive);
+    var sz=pv&&pv.getActualVideoSize?pv.getActualVideoSize():null;
+    if(resEl){
+      if(sz&&sz.width>0&&sz.height>0){
+        resEl.textContent=String(Math.round(sz.width))+' × '+String(Math.round(sz.height));
+      }else{
+        resEl.textContent='—';
+      }
+    }
+    if(fpsEl){
+      var hint=$('cameraCapabilityHint');
+      var fpsTxt='—';
+      var fpsHost=$('cameraFpsPills');
+      if(fpsHost){
+        var active=fpsHost.querySelector('.is-active,[aria-pressed="true"],.is-selected');
+        if(active) fpsTxt=String(active.textContent||'').trim()||'—';
+      }
+      fpsEl.textContent=live?fpsTxt:'—';
+    }
+    if(lightEl){
+      lightEl.textContent=live
+        ? t('cameraProDeviceLightLive','请保持正对与均匀光线')
+        : t('cameraProDeviceLightIdle','开启识别后显示');
+    }
+    if(sourceEl){
+      sourceEl.textContent=t('cameraProDeviceSourceRaw','识别画面使用原始视频');
     }
   }
 
@@ -267,10 +300,10 @@
     if(api&&api.getState){
       var st=api.getState();
       if(st.lastGesture==='shake'&&st.pulseActive) return t('cameraPresenceGestureShake','摇头');
-      if(st.lastGesture==='blink'&&st.pulseActive) return t('cameraPresenceGestureBlink','长眨');
+      if(st.lastGesture==='blink'&&st.pulseActive) return t('cameraPresenceGestureBlink','闭眼半秒');
       if(st.shakeListeningLabel) return st.shakeListeningLabel;
       if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
-      if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','长眨');
+      if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','闭眼半秒');
     }
     var el=$('cameraPresenceGestureText');
     if(el&&el.textContent) return el.textContent.trim();
@@ -331,6 +364,16 @@
       gotoPro.addEventListener('click',function(e){
         e.preventDefault();
         openProPanel('cameraCalibBlock');
+      });
+    }
+    var helloCheck=$('cameraProHelloCheckBtn');
+    if(helloCheck){
+      helloCheck.addEventListener('click',function(e){
+        e.preventDefault();
+        var el=$('cameraProStatusHello');
+        var msg=t('cameraProHelloCheckResult','当前环境未接入系统确认；仍显示为未来能力。');
+        if(el) el.textContent=msg;
+        toast(msg);
       });
     }
   }
