@@ -13,9 +13,11 @@
     var hint=$('habitScenarioDirectHint');
     var keysBtn=$('btnHabitScenarioGoKeys');
     var voiceBtn=$('btnHabitScenarioGoVoice');
+    var cameraBtn=$('btnHabitScenarioGoCamera');
     if(hint) hint.textContent=t('habitScenarioDirectHint');
     if(keysBtn) keysBtn.textContent=t('habitScenarioGoKeysSettings');
     if(voiceBtn) voiceBtn.textContent=t('habitScenarioGoVoiceSettings');
+    if(cameraBtn) cameraBtn.textContent=t('habitScenarioGoCameraSettings');
   }
 
   function notifyChange(){
@@ -36,6 +38,7 @@
       var nav=global.OneToneHabitScenarioContextBanner;
       if(!nav) return;
       if(adj==='voice') nav.openScenarioVoiceEdit(id,{returnToHub:true});
+      else if(adj==='camera') nav.openScenarioCameraEdit(id,{returnToHub:true});
       else nav.openScenarioKeysEdit(id,{returnToHub:true});
     });
   }

@@ -9,10 +9,6 @@
   function core(){ return global.OneToneMappingCore; }
   function diff(){ return global.OneToneHabitOverrideDiff; }
 
-  function esc(s){
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  }
-
   function scenarioName(m){
     if(!m) return '—';
     var hub=global.OneToneHabitHub;
@@ -75,7 +71,15 @@
     render();
   }
 
-  /** App-scenario key/voice always reuses the full Keys / Voice pages. */
+  function openGlobalCamera(opts){
+    opts=opts||{};
+    clearScenarioContext();
+    if(opts.fromHub) ui().habitHubEditReturn=true;
+    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
+    render();
+  }
+
+  /** App-scenario key/voice/camera always reuses the full settings pages. */
   function openScenarioKeysEdit(id,opts){
     opts=opts||{};
     id=String(id||'').trim();
@@ -103,6 +107,23 @@
     syncEditor(id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
     render();
+  }
+
+  function openScenarioCameraEdit(id,opts){
+    opts=opts||{};
+    id=String(id||'').trim();
+    if(!id) return;
+    ui().habitHubEditReturn=false;
+    ui().habitScenarioReturnHub=opts.returnToHub!==false;
+    state().selectedMappingId=id;
+    ui().habitScenarioReturnId=id;
+    ui().habitScenarioReturnPanel='camera';
+    syncEditor(id);
+    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
+    render();
+    if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
+      try{ global.OneToneCameraPresenceActions.syncUiFromPrefs(); }catch(_){}
+    }
   }
 
   function returnToHabitHub(){
@@ -145,6 +166,8 @@
       chipVoiceInherit:t('habitScenarioChipVoiceInherit'),
       chipVoiceOverride:t('habitScenarioChipVoiceOverride'),
       chipVoiceAcoustic:t('habitScenarioChipVoiceAcoustic'),
+      chipCameraInherit:t('habitScenarioChipCameraInherit'),
+      chipCameraOverride:t('habitScenarioChipCameraOverride'),
       chipSaveReady:t('habitScenarioChipSaveReady'),
       chipSaveEmpty:t('habitScenarioChipSaveEmpty'),
       chipSaveBlocked:t('habitScenarioChipSaveBlocked'),
@@ -157,7 +180,11 @@
       enableScenario:t('habitScenarioEnableScenario'),
       enableKeys:t('habitScenarioEnableKeys'),
       enableVoice:t('habitScenarioEnableVoice'),
-      enableOff:t('habitScenarioEnableOff')
+      enableOff:t('habitScenarioEnableOff'),
+      onAway:t('cameraCardAwayTitle'),
+      onReturn:t('cameraCardAwayTitle'),
+      shakeHead:t('cameraCardShakeTitle'),
+      deliberateBlink:t('cameraCardBlinkTitle')
     };
   }
 
@@ -187,22 +214,34 @@
     }else{
       voiceLbl=t('habitScenarioStatusVoiceInherit');
     }
+    var cameraLbl=(preview&&preview.cameraOverrideCount>0)
+      ?t('habitScenarioStatusCameraOverride').replace('{n}',String(preview.cameraOverrideCount))
+      :t('habitScenarioStatusCameraInherit');
     return t('habitScenarioStatusSummary')
       .replace('{app}',appDisplayName(m.appTargetId)||m.appTargetId||'—')
       .replace('{keys}',keysLbl)
-      .replace('{voice}',voiceLbl);
+      .replace('{voice}',voiceLbl)
+      .replace('{camera}',cameraLbl);
   }
 
-  function setScenarioActionVisible(saveId,switchId,show){
-    var saveBtn=$(saveId);
-    var switchBtn=$(switchId);
-    if(saveBtn) saveBtn.hidden=!show;
-    if(switchBtn) switchBtn.hidden=!show;
+  function setHidden(id,hidden){
+    var el=$(id);
+    if(el) el.hidden=!!hidden;
   }
 
-  function renderBannerIn(panelId,bannerId,textId,subId,previewId,backId,saveId,switchId,isKeysPanel){
-    var panel=$(panelId);
-    var banner=$(bannerId);
+  function setScenarioActionsVisible(ids,show){
+    (ids||[]).forEach(function(id){ setHidden(id,!show); });
+  }
+
+  function panelTitleKey(panel){
+    if(panel==='voice') return 'habitScenarioVoicePageTitle';
+    if(panel==='camera') return 'habitScenarioCameraPageTitle';
+    return 'habitScenarioKeysPageTitle';
+  }
+
+  function renderBannerIn(opts){
+    var panel=$(opts.panelId);
+    var banner=$(opts.bannerId);
     if(!banner) return;
     var scenarioM=returnMapping();
     var hubReturn=!!ui().habitHubEditReturn&&!scenarioM;
@@ -212,61 +251,95 @@
       panel.classList.toggle('has-scenario-context-banner',show);
       panel.classList.toggle('is-scenario-config',!!scenarioM);
     }
-    var previewEl=$(previewId);
+    var previewEl=$(opts.previewId);
     if(!show){
-      setScenarioActionVisible(saveId,switchId,false);
+      setScenarioActionsVisible(opts.actionIds,false);
       if(previewEl) previewEl.hidden=true;
       return;
     }
-    var textEl=$(textId);
-    var subEl=$(subId);
-    var backEl=$(backId);
+    var textEl=$(opts.textId);
+    var subEl=$(opts.subId);
+    var backEl=$(opts.backId);
     if(scenarioM){
       var name=scenarioName(scenarioM);
       var preview=buildPreview(scenarioM);
-      if(textEl){
-        textEl.textContent=isKeysPanel
-          ?t('habitScenarioKeysPageTitle').replace('{name}',name)
-          :t('habitScenarioVoicePageTitle').replace('{name}',name);
+      if(textEl) textEl.textContent=t(panelTitleKey(opts.panel)).replace('{name}',name);
+      if(subEl){
+        subEl.textContent=opts.panel==='camera'
+          ?t('habitScenarioContextCameraNote')
+          :t('habitScenarioContextNotGlobal');
       }
-      if(subEl) subEl.textContent=t('habitScenarioContextNotGlobal');
       if(previewEl){
         previewEl.hidden=false;
         previewEl.textContent=previewLine(scenarioM,preview);
       }
-      setScenarioActionVisible(saveId,switchId,true);
-      var saveBtn=$(saveId);
+      setScenarioActionsVisible(opts.actionIds,true);
+      var saveBtn=$(opts.saveId);
       if(saveBtn){
         saveBtn.disabled=!(preview&&preview.canSave);
         saveBtn.textContent=t('habitScenarioSaveBtn');
       }
-      var switchBtn=$(switchId);
-      if(switchBtn){
-        switchBtn.textContent=isKeysPanel?t('habitHubGlobalOpenVoice'):t('habitHubGlobalOpenKeys');
+      if(opts.toKeysId){
+        var toKeys=$(opts.toKeysId);
+        if(toKeys) toKeys.textContent=t('habitHubGlobalOpenKeys');
+      }
+      if(opts.toVoiceId){
+        var toVoice=$(opts.toVoiceId);
+        if(toVoice) toVoice.textContent=t('habitHubGlobalOpenVoice');
+      }
+      if(opts.toCameraId){
+        var toCamera=$(opts.toCameraId);
+        if(toCamera) toCamera.textContent=t('habitHubGlobalOpenCamera');
       }
       if(backEl) backEl.textContent=t('habitHubContextBack');
     }else if(hubReturn){
       if(textEl) textEl.textContent=t('habitHubContextEditingGlobal');
       if(subEl) subEl.textContent=t('habitHubContextGlobalHint');
       if(previewEl) previewEl.hidden=true;
-      setScenarioActionVisible(saveId,switchId,false);
+      setScenarioActionsVisible(opts.actionIds,false);
       if(backEl) backEl.textContent=t('habitHubContextBack');
     }
   }
 
   function render(){
-    renderBannerIn(
-      'settingsPanelKeys','habitScenarioContextBannerKeys',
-      'habitScenarioContextBannerKeysText','habitScenarioContextBannerKeysSub','habitScenarioContextBannerKeysPreview',
-      'btnHabitScenarioContextBackKeys','btnHabitScenarioContextSaveKeys','btnHabitScenarioContextToVoiceKeys',
-      true
-    );
-    renderBannerIn(
-      'settingsPanelVoiceWake','habitScenarioContextBannerVoice',
-      'habitScenarioContextBannerVoiceText','habitScenarioContextBannerVoiceSub','habitScenarioContextBannerVoicePreview',
-      'btnHabitScenarioContextBackVoice','btnHabitScenarioContextSaveVoice','btnHabitScenarioContextToKeysVoice',
-      false
-    );
+    renderBannerIn({
+      panel:'keys',
+      panelId:'settingsPanelKeys',
+      bannerId:'habitScenarioContextBannerKeys',
+      textId:'habitScenarioContextBannerKeysText',
+      subId:'habitScenarioContextBannerKeysSub',
+      previewId:'habitScenarioContextBannerKeysPreview',
+      backId:'btnHabitScenarioContextBackKeys',
+      saveId:'btnHabitScenarioContextSaveKeys',
+      toVoiceId:'btnHabitScenarioContextToVoiceKeys',
+      toCameraId:'btnHabitScenarioContextToCameraKeys',
+      actionIds:['btnHabitScenarioContextSaveKeys','btnHabitScenarioContextToVoiceKeys','btnHabitScenarioContextToCameraKeys']
+    });
+    renderBannerIn({
+      panel:'voice',
+      panelId:'settingsPanelVoiceWake',
+      bannerId:'habitScenarioContextBannerVoice',
+      textId:'habitScenarioContextBannerVoiceText',
+      subId:'habitScenarioContextBannerVoiceSub',
+      previewId:'habitScenarioContextBannerVoicePreview',
+      backId:'btnHabitScenarioContextBackVoice',
+      saveId:'btnHabitScenarioContextSaveVoice',
+      toKeysId:'btnHabitScenarioContextToKeysVoice',
+      toCameraId:'btnHabitScenarioContextToCameraVoice',
+      actionIds:['btnHabitScenarioContextSaveVoice','btnHabitScenarioContextToKeysVoice','btnHabitScenarioContextToCameraVoice']
+    });
+    renderBannerIn({
+      panel:'camera',
+      panelId:'settingsPanelCamera',
+      bannerId:'habitScenarioContextBannerCamera',
+      textId:'habitScenarioContextBannerCameraText',
+      subId:'habitScenarioContextBannerCameraSub',
+      previewId:'habitScenarioContextBannerCameraPreview',
+      backId:'btnHabitScenarioContextBackCamera',
+      saveId:'btnHabitScenarioContextSaveCamera',
+      toKeysId:'btnHabitScenarioContextToKeysCamera',
+      actionIds:['btnHabitScenarioContextSaveCamera','btnHabitScenarioContextToKeysCamera']
+    });
     if(global.OneToneHabitScenarioVoiceCommand){
       if(global.OneToneHabitScenarioVoiceCommand.bindEvents) global.OneToneHabitScenarioVoiceCommand.bindEvents({});
       if(global.OneToneHabitScenarioVoiceCommand.render) global.OneToneHabitScenarioVoiceCommand.render();
@@ -282,8 +355,18 @@
     return Promise.resolve(null);
   }
 
+  function bindJump(id,fn){
+    var btn=$(id);
+    if(!btn) return;
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
+      var sid=String(ui().habitScenarioReturnId||'').trim();
+      if(sid) fn(sid,{returnToHub:ui().habitScenarioReturnHub!==false});
+    });
+  }
+
   function bindEvents(){
-    ['btnHabitScenarioContextBackKeys','btnHabitScenarioContextBackVoice'].forEach(function(id){
+    ['btnHabitScenarioContextBackKeys','btnHabitScenarioContextBackVoice','btnHabitScenarioContextBackCamera'].forEach(function(id){
       var btn=$(id);
       if(!btn) return;
       btn.addEventListener('click',function(e){
@@ -291,28 +374,18 @@
         returnFromBanner();
       });
     });
-    var saveKeys=$('btnHabitScenarioContextSaveKeys');
-    if(saveKeys) saveKeys.addEventListener('click',function(e){
-      e.preventDefault();
-      saveCurrentScenario();
+    ['btnHabitScenarioContextSaveKeys','btnHabitScenarioContextSaveVoice','btnHabitScenarioContextSaveCamera'].forEach(function(id){
+      var saveBtn=$(id);
+      if(saveBtn) saveBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        saveCurrentScenario();
+      });
     });
-    var saveVoice=$('btnHabitScenarioContextSaveVoice');
-    if(saveVoice) saveVoice.addEventListener('click',function(e){
-      e.preventDefault();
-      saveCurrentScenario();
-    });
-    var toVoice=$('btnHabitScenarioContextToVoiceKeys');
-    if(toVoice) toVoice.addEventListener('click',function(e){
-      e.preventDefault();
-      var id=String(ui().habitScenarioReturnId||'').trim();
-      if(id) openScenarioVoiceEdit(id,{returnToHub:ui().habitScenarioReturnHub!==false});
-    });
-    var toKeys=$('btnHabitScenarioContextToKeysVoice');
-    if(toKeys) toKeys.addEventListener('click',function(e){
-      e.preventDefault();
-      var id=String(ui().habitScenarioReturnId||'').trim();
-      if(id) openScenarioKeysEdit(id,{returnToHub:ui().habitScenarioReturnHub!==false});
-    });
+    bindJump('btnHabitScenarioContextToVoiceKeys',openScenarioVoiceEdit);
+    bindJump('btnHabitScenarioContextToCameraKeys',openScenarioCameraEdit);
+    bindJump('btnHabitScenarioContextToKeysVoice',openScenarioKeysEdit);
+    bindJump('btnHabitScenarioContextToCameraVoice',openScenarioCameraEdit);
+    bindJump('btnHabitScenarioContextToKeysCamera',openScenarioKeysEdit);
   }
 
   global.OneToneHabitScenarioContextBanner={
@@ -321,8 +394,10 @@
     clearScenarioContext:clearScenarioContext,
     openGlobalKeys:openGlobalKeys,
     openGlobalVoice:openGlobalVoice,
+    openGlobalCamera:openGlobalCamera,
     openScenarioKeysEdit:openScenarioKeysEdit,
     openScenarioVoiceEdit:openScenarioVoiceEdit,
+    openScenarioCameraEdit:openScenarioCameraEdit,
     returnToScenarioConsole:returnToScenarioConsole,
     returnToHabitHub:returnToHabitHub,
     buildPreview:buildPreview

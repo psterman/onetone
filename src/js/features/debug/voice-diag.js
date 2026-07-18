@@ -31,7 +31,7 @@
     const show=ui().drawerOpen&&ui().settingsPanel==='debug';
     const map={
       overview:'debugFocusOverviewSection',
-      diagnostics:'debugFocusDiagnosticsSection',
+      repair:'debugFocusRepairSection',
       developer:'debugFocusDeveloperSection'
     };
     Object.keys(map).forEach(function(key){
@@ -48,13 +48,14 @@
     }
   }
   function setDebugFocusMode(mode){
-    const allowed={overview:true,diagnostics:true,developer:true};
+    if(mode==='diagnostics') mode='repair';
+    const allowed={overview:true,repair:true,developer:true};
     if(!allowed[mode]) mode='overview';
     const sameMode=debugFocusMode===mode;
     debugFocusMode=mode;
     syncDebugFocusSections();
     renderSettingsDebugSubnav();
-    if(mode==='diagnostics'){
+    if(mode==='repair'){
       const eng=currentVoiceMode();
       if(eng==='vosk') voiceDiagTab='vosk';
       else if(eng==='sapi') voiceDiagTab='sapi';
@@ -62,6 +63,7 @@
       else if(voiceDiagTab!=='end'&&voiceDiagTab!=='usage'&&voiceDiagTab!=='kws') voiceDiagTab='end';
       if(!sameMode) hookCall('voiceStatusPollTick');
       try{ refreshDiagnosticsPanel(); }catch(err){ console.error('voice diagnostics render',err); }
+      hookCall('renderTrashList');
     }else if(mode==='developer'){
       hookCall('renderDebugDeveloperPanel');
     }else if(mode==='overview'){
@@ -87,7 +89,7 @@
     if(!show||!listEl) return;
     const items=[
       {mode:'overview',title:t('debugFocusOverview'),sub:debugFocusDynamicSub('overview')||t('debugFocusOverviewStatus')},
-      {mode:'diagnostics',title:t('debugFocusDiagnostics'),sub:debugFocusDynamicSub('diagnostics')||t('debugFocusDiagnosticsStatus')},
+      {mode:'repair',title:t('debugFocusRepair'),sub:debugFocusDynamicSub('repair')||t('debugFocusRepairStatus')},
       {mode:'developer',title:t('debugFocusDeveloper'),sub:debugFocusDynamicSub('developer')||t('debugFocusDeveloperStatus')}
     ];
     let html='';
@@ -166,8 +168,9 @@
     if(!ui().drawerOpen||ui().settingsPanel!=='debug') return;
     hookCall('renderDebugOverview');
     renderSettingsDebugSubnav();
-    if(debugFocusMode==='diagnostics'){
+    if(debugFocusMode==='repair'){
       try{ refreshDiagnosticsPanel(); }catch(err){ console.error('voice diagnostics refresh',err); }
+      hookCall('renderTrashList');
     }else if(debugFocusMode==='developer'){
       hookCall('renderDebugDeveloperPanel');
     }
@@ -308,7 +311,7 @@
         if(stateRaw==='error') return t('homeCtaError');
         return t('listenOn');
       }
-      if(mode==='diagnostics'){
+      if(mode==='repair'){
         const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):(w.engine==='kws')?t('wakeEngineKws'):t('wakeEngineOff');
         const status=(w.state?hooks().voiceWakeStateLabel(w.state):'');
         var snap=hooks().processUsageSnapshot||{};
@@ -429,7 +432,7 @@
     bucket[name]=next;
     if(!next) return;
     pushVoiceDiagLog(kind,label,next,kind+'|'+name+'|'+next);
-    if(ui().drawerOpen&&ui().settingsPanel==='debug'&&debugFocusMode==='diagnostics'){
+    if(ui().drawerOpen&&ui().settingsPanel==='debug'&&debugFocusMode==='repair'){
       renderVoiceDiagMetrics(kind);
       renderVoiceDiagTabs();
     }

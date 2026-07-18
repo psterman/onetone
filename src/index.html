@@ -122,13 +122,9 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                 <span data-i18n="homeWbNavSounds">声音与反馈</span>
               </button>
-              <button type="button" class="wb-nav-item" data-wb-nav="maintenance" id="wbNavMaintenance">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                <span data-i18n="homeWbNavMaintenance">恢复与维护</span>
-              </button>
               <button type="button" class="wb-nav-item" data-wb-nav="runtime" id="wbNavRuntime">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                <span data-i18n="homeWbNavRuntime">运行状态</span>
+                <span data-i18n="homeWbNavRuntime">状态与维护</span>
               </button>
               <button type="button" class="wb-home-quickstart" id="wbBtnTestSend" data-i18n="homeWbQuickStart">快速入门</button>
       </aside>
@@ -465,17 +461,11 @@
                 <div class="settings-nav-group" id="settingsNavDebugGroup">
                   <button type="button" class="settings-nav-item" data-panel="debug" id="settingsNavDebug">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                    <span id="settingsNavDebugLabel">运行状态</span>
+                    <span id="settingsNavDebugLabel">状态与维护</span>
+                    <span class="settings-nav-badge" id="settingsNavStatusBadge" hidden aria-hidden="true"></span>
                   </button>
                 </div>
               </nav>
-            </div>
-            <div class="settings-nav-foot">
-              <button type="button" class="settings-nav-item" data-panel="general" id="settingsNavGeneral">
-                <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                <span id="settingsNavGeneralLabel">恢复与维护</span>
-                <span class="settings-nav-badge" id="settingsNavGeneralBadge" hidden aria-hidden="true"></span>
-              </button>
             </div>
           </aside>
           <aside class="settings-subnav-rail" id="settingsSubnavRail" hidden aria-label="设置子导航">
@@ -487,7 +477,7 @@
               <div class="settings-scheme-subnav-list" id="settingsSceneVoiceSubnavList" role="tablist" aria-label="语音动作"></div>
             </div>
             <div class="settings-scheme-subnav settings-debug-subnav" id="settingsDebugSubnav" hidden>
-              <div class="settings-scheme-subnav-list" id="settingsDebugSubnavList" role="tablist" aria-label="运行状态分组"></div>
+              <div class="settings-scheme-subnav-list" id="settingsDebugSubnavList" role="tablist" aria-label="状态与维护分组"></div>
             </div>
           </aside>
           <div class="settings-panel-wrap" id="settingsPanelWrap">
@@ -661,6 +651,7 @@
             </div>
             <div class="habit-scenario-context-banner-actions">
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToVoiceKeys" hidden>配语音</button>
+              <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToCameraKeys" hidden>配摄像头</button>
               <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveKeys" hidden>保存场景</button>
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
             </div>
@@ -1125,10 +1116,11 @@
                   <input type="text" class="habit-wizard-name-input" id="habitScenarioNameInput" autocomplete="off" />
                 </label>
                 <div class="habit-scenario-access-cards" id="habitScenarioAccessCards">
-                  <p class="habit-scenario-direct-hint" id="habitScenarioDirectHint">按键与语音请直接在设置页中调整；此处只改名称与应用。</p>
+                  <p class="habit-scenario-direct-hint" id="habitScenarioDirectHint">按键、语音与摄像头请直接在设置页中调整；此处只改名称与应用。</p>
                   <div class="habit-scenario-direct-actions" id="habitScenarioDirectActions">
                     <button type="button" class="habit-hub-new-btn is-primary" data-scenario-adjust="keys" id="btnHabitScenarioGoKeys">在按键设置中调整</button>
                     <button type="button" class="habit-hub-new-btn" data-scenario-adjust="voice" id="btnHabitScenarioGoVoice">在语音设置中调整</button>
+                    <button type="button" class="habit-hub-new-btn" data-scenario-adjust="camera" id="btnHabitScenarioGoCamera">在摄像头设置中调整</button>
                   </div>
                 </div>
                 <p class="habit-scenario-main-placeholder" id="habitScenarioMainPlaceholder">请先选择应用</p>
@@ -1336,6 +1328,7 @@
             </div>
             <div class="habit-scenario-context-banner-actions">
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToKeysVoice" hidden>改按键</button>
+              <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToCameraVoice" hidden>配摄像头</button>
               <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveVoice" hidden>保存场景</button>
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
             </div>
@@ -1687,7 +1680,7 @@
                           <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="strong" id="btnRecordingAudioStrengthStrong">强力</button>
                           <button type="button" class="pref-segmented-btn recording-audio-strength-btn" data-recording-mute-strength="mute" id="btnRecordingAudioStrengthMute">全静音</button>
                         </div>
-                        <p class="help recording-audio-hint" id="recordingAudioHint">如果仍然录入系统声音，先把强度调高；必要时到运行状态里检查是否已生效。</p>
+                        <p class="help recording-audio-hint" id="recordingAudioHint">如果仍然录入系统声音，先把强度调高；必要时到状态与维护里检查是否已生效。</p>
                       </div>
                     </div>
                     <p class="voice-control-rule-bar" id="voiceRecognizeRuleBar">取消词优先于结束词；配置将在下一次语音对话时自动应用</p>
@@ -2104,7 +2097,7 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
-          <p class="settings-panel-desc" id="settingsPanelDebugDesc">查看当前运行状态、语音诊断与开发者调试信息</p>
+          <p class="settings-panel-desc" id="settingsPanelDebugDesc">总览当前状态，修复常见故障，高级里查看运行时与事件流。</p>
           <section class="debug-focus-section" id="debugFocusOverviewSection">
           <div class="debug-status-hero" id="debugStatusHero">
             <p class="debug-hero-title" id="debugHeroTitle">—</p>
@@ -2113,11 +2106,23 @@
           <div class="debug-overview-cards" id="debugOverviewCards"></div>
           <div class="debug-overview-actions" id="debugOverviewActions"></div>
           </section>
-          <section class="voice-diagnostics-card debug-focus-section" id="debugFocusDiagnosticsSection">
+          <section class="debug-focus-section status-repair-section" id="debugFocusRepairSection">
+            <div class="dev-panel-block status-recovery-card">
+              <div class="dev-panel-head">
+                <div class="mini-title" id="listenTitle">监听状态</div>
+                <span class="chip" id="listenState">监听中</span>
+              </div>
+              <p class="pref-row-desc" id="listenDesc">总开关在基础中切换；此处可刷新运行时或重启应用。</p>
+              <div class="pref-runtime-actions">
+                <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
+                <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
+              </div>
+            </div>
+            <section class="voice-diagnostics-card">
             <div class="voice-diagnostics-head">
               <div>
-                <div class="mini-title" id="voiceDiagnosticsTitle">语音诊断</div>
-                <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc">集中查看识别状态、测试操作与即时记录。</p>
+                <div class="mini-title" id="voiceDiagnosticsTitle">识别链路</div>
+                <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc">查看识别状态、测试操作与即时记录。</p>
               </div>
             </div>
             <div class="debug-trigger-diag-stack" id="debugTriggerDiagStack">
@@ -2191,22 +2196,49 @@
               <div class="voice-diagnostics-log" id="voiceUsageLog">等待资源采样…</div>
             </section>
             <p class="voice-diag-compat-note" id="voiceDiagCompatNote" hidden>外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。</p>
+            </section>
+            <section class="drawer-section status-maintenance-card" id="settingsBackupSection">
+              <div class="mini-title" id="settingsBackupTitle">配置备份</div>
+              <p class="mini" id="settingsBackupDesc">升级前可复制 settings.json 备份。Windows 默认路径：%APPDATA%\com.onetone\app\settings.json（旧版可能位于 oneTone 目录）。</p>
+            </section>
+            <section class="drawer-section status-maintenance-card" id="cycleSwitchSection" hidden aria-hidden="true">
+              <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
+              <p class="map-switch-desc" id="cycleSwitchDesc">在同一唤起键的多个习惯间按顺序轮换；也可在下方每个习惯里单独设置直达快捷键。</p>
+              <div class="scheme-switch-ctrl">
+                <button type="button" class="scheme-switch-key" id="btnSchemeSwitchKey" title="">Ctrl+Alt+`</button>
+                <button type="button" class="scheme-switch-cancel" id="btnSchemeSwitchCancel" hidden>取消录制</button>
+                <button type="button" class="scheme-switch-clear" id="btnSchemeSwitchClear" hidden>清除</button>
+              </div>
+            </section>
+            <section class="drawer-section status-maintenance-card">
+              <div class="mini-title" id="trashTitle">回收站</div>
+              <p class="trash-empty" id="trashEmpty">暂无已删除的映射</p>
+              <div id="trashList"></div>
+            </section>
+            <section class="drawer-section status-maintenance-card" id="aboutSection">
+              <div class="mini-title" id="aboutTitle">关于</div>
+              <p class="mini" id="aboutDesc">版本信息与项目链接</p>
+              <div class="about-version-row">
+                <span id="aboutVersionLabel">版本</span>
+                <strong id="aboutVersionValue">—</strong>
+              </div>
+              <div class="settings-page-actions about-actions">
+                <button type="button" class="control-btn" id="btnAboutGitHub">GitHub</button>
+                <button type="button" class="control-btn" id="btnAboutCheckUpdate">检查更新</button>
+              </div>
+            </section>
+            <section class="drawer-section status-maintenance-card maintenance-danger">
+              <div class="mini-title" id="maintenanceDangerTitle">危险操作</div>
+              <p class="mini" id="maintenanceDangerDesc">清除全部映射会移除当前配置，请只在需要重置时使用。</p>
+              <div class="clear-panel">
+                <button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button>
+              </div>
+            </section>
           </section>
           <section class="developer-debug-panel debug-focus-section" id="debugFocusDeveloperSection">
-            <div class="mini-title" id="debugTitle">开发者调试</div>
+            <div class="mini-title" id="debugTitle">日志与高级</div>
             <p class="developer-debug-desc" id="debugDeveloperDesc">实时运行时快照、映射源组与按键事件流。</p>
             <div class="debug-developer-summary" id="debugDeveloperSummary"></div>
-            <div class="dev-panel-block">
-              <div class="dev-panel-head">
-                <div class="mini-title" id="listenTitle">监听状态</div>
-                <span class="chip" id="listenState">监听中</span>
-              </div>
-              <p class="pref-row-desc" id="listenDesc">总开关在通用设置中切换；此处可刷新运行时或重启应用。</p>
-              <div class="pref-runtime-actions">
-                <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
-                <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
-              </div>
-            </div>
             <div class="dev-runtime-grid" id="devRuntimeGrid"></div>
             <div class="dev-panel-block">
               <div class="dev-panel-head">
@@ -2235,6 +2267,21 @@
           </section>
         </section>
         <section class="settings-panel drawer-section camera-page" id="settingsPanelCamera" hidden>
+          <div class="habit-scenario-context-banner" id="habitScenarioContextBannerCamera" hidden role="status" aria-live="polite">
+            <div class="habit-scenario-context-banner-main">
+              <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
+              <div class="habit-scenario-context-banner-text-wrap">
+                <p class="habit-scenario-context-banner-text" id="habitScenarioContextBannerCameraText"></p>
+                <p class="habit-scenario-context-banner-sub" id="habitScenarioContextBannerCameraSub"></p>
+                <p class="habit-scenario-context-banner-preview" id="habitScenarioContextBannerCameraPreview" hidden></p>
+              </div>
+            </div>
+            <div class="habit-scenario-context-banner-actions">
+              <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToKeysCamera" hidden>改按键</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveCamera" hidden>保存场景</button>
+              <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackCamera"></button>
+            </div>
+          </div>
           <header class="pref-page-head">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
             <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先让摄像头识别动作，再决定识别后做什么。高级确认可选，用来减少误触。</p>
@@ -2560,45 +2607,6 @@
                   </div>
                 </article>
               </section>
-            </div>
-          </div>
-        </section>
-        <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
-          <div class="drawer-section" id="settingsBackupSection">
-            <div class="mini-title" id="settingsBackupTitle">配置备份</div>
-            <p class="mini" id="settingsBackupDesc">升级前可复制 settings.json 备份。Windows 默认路径：%APPDATA%\com.onetone\app\settings.json（旧版可能位于 oneTone 目录）。</p>
-          </div>
-          <div class="drawer-section" id="cycleSwitchSection" hidden aria-hidden="true">
-            <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
-            <p class="map-switch-desc" id="cycleSwitchDesc">在同一唤起键的多个习惯间按顺序轮换；也可在下方每个习惯里单独设置直达快捷键。</p>
-            <div class="scheme-switch-ctrl">
-              <button type="button" class="scheme-switch-key" id="btnSchemeSwitchKey" title="">Ctrl+Alt+`</button>
-              <button type="button" class="scheme-switch-cancel" id="btnSchemeSwitchCancel" hidden>取消录制</button>
-              <button type="button" class="scheme-switch-clear" id="btnSchemeSwitchClear" hidden>清除</button>
-            </div>
-          </div>
-          <div class="drawer-section">
-            <div class="mini-title" id="trashTitle">回收站</div>
-            <p class="trash-empty" id="trashEmpty">暂无已删除的映射</p>
-            <div id="trashList"></div>
-          </div>
-          <div class="drawer-section" id="aboutSection">
-            <div class="mini-title" id="aboutTitle">关于</div>
-            <p class="mini" id="aboutDesc">版本信息与项目链接</p>
-            <div class="about-version-row">
-              <span id="aboutVersionLabel">版本</span>
-              <strong id="aboutVersionValue">—</strong>
-            </div>
-            <div class="settings-page-actions about-actions">
-              <button type="button" class="control-btn" id="btnAboutGitHub">GitHub</button>
-              <button type="button" class="control-btn" id="btnAboutCheckUpdate">检查更新</button>
-            </div>
-          </div>
-          <div class="drawer-section maintenance-danger">
-            <div class="mini-title" id="maintenanceDangerTitle">危险操作</div>
-            <p class="mini" id="maintenanceDangerDesc">清除全部映射会移除当前配置，请只在需要重置时使用。</p>
-            <div class="clear-panel">
-              <button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button>
             </div>
           </div>
         </section>

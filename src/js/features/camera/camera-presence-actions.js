@@ -159,8 +159,110 @@
     return cfg.cameraPrefs;
   }
 
-  function prefs(){
+  function basePresencePrefs(){
     return normalizePrefs(cameraPrefs().presenceActions);
+  }
+
+  function uiState(){
+    return global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
+  }
+
+  function coreApi(){
+    return global.OneToneMappingCore||null;
+  }
+
+  function diffApi(){
+    return global.OneToneHabitOverrideDiff||null;
+  }
+
+  function scenarioCameraEditMapping(){
+    var u=uiState();
+    if(String(u.habitScenarioReturnPanel||'')!=='camera') return null;
+    var id=String(u.habitScenarioReturnId||'').trim();
+    if(!id||!coreApi()||!coreApi().byId) return null;
+    var m=coreApi().byId(id);
+    if(!m) return null;
+    if(diffApi()&&diffApi().isAppScenarioMapping&&!diffApi().isAppScenarioMapping(m)) return null;
+    return m;
+  }
+
+  function resolveCameraOverrideMapping(){
+    var edit=scenarioCameraEditMapping();
+    if(edit) return edit;
+    var id=String(uiState().habitScenarioReturnId||'').trim();
+    if(id&&coreApi()&&coreApi().byId){
+      var ctx=coreApi().byId(id);
+      if(ctx&&diffApi()&&diffApi().isAppScenarioMapping&&diffApi().isAppScenarioMapping(ctx)) return ctx;
+    }
+    var cfg=stateRoot().config||{};
+    var activeId=String(cfg.activeSceneId||'').trim();
+    if(activeId&&coreApi()&&coreApi().byId){
+      var active=coreApi().byId(activeId);
+      if(active&&active.enabled&&diffApi()&&diffApi().isAppScenarioMapping&&diffApi().isAppScenarioMapping(active)){
+        return active;
+      }
+    }
+    return null;
+  }
+
+  function mergeCameraOverride(base,ov){
+    base=normalizePrefs(base);
+    if(!ov||typeof ov!=='object') return base;
+    return {
+      enabled:!!base.enabled,
+      onAway:ov.onAway!=null?normalizeAction(ov.onAway):base.onAway,
+      onReturn:ov.onReturn!=null?normalizeAction(ov.onReturn):base.onReturn,
+      shakeHead:ov.shakeHead!=null?normalizeAction(ov.shakeHead):base.shakeHead,
+      deliberateBlink:ov.deliberateBlink!=null?normalizeAction(ov.deliberateBlink):base.deliberateBlink
+    };
+  }
+
+  function prefs(){
+    var base=basePresencePrefs();
+    var m=resolveCameraOverrideMapping();
+    return mergeCameraOverride(base,m&&m.cameraOverride);
+  }
+
+  function isEmptyCameraOverride(ov){
+    if(!ov||typeof ov!=='object') return true;
+    return ['onAway','onReturn','shakeHead','deliberateBlink'].every(function(k){
+      return ov[k]==null||String(ov[k]).trim()==='';
+    });
+  }
+
+  var scenarioCameraSaveTimer=0;
+
+  function scheduleScenarioCameraSave(){
+    if(scenarioCameraSaveTimer){
+      try{ clearTimeout(scenarioCameraSaveTimer); }catch(_){}
+      scenarioCameraSaveTimer=0;
+    }
+    scenarioCameraSaveTimer=setTimeout(function(){
+      scenarioCameraSaveTimer=0;
+      if(global.OneToneConfigPersist){
+        if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+        else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+      }
+      if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
+        try{ global.OneToneHabitScenarioContextBanner.render(); }catch(_){}
+      }
+    },500);
+  }
+
+  function persistScenarioCameraOverride(partial){
+    var m=scenarioCameraEditMapping();
+    if(!m) return false;
+    var base=basePresencePrefs();
+    var ov=m.cameraOverride&&typeof m.cameraOverride==='object'?Object.assign({},m.cameraOverride):{};
+    ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+      if(partial[k]===undefined) return;
+      var v=normalizeAction(partial[k]);
+      if(v===base[k]) delete ov[k];
+      else ov[k]=v;
+    });
+    m.cameraOverride=isEmptyCameraOverride(ov)?null:ov;
+    scheduleScenarioCameraSave();
+    return true;
   }
 
   function isCameraPreviewLive(){
@@ -189,16 +291,44 @@
   }
 
   function persistPresencePrefs(partial){
+    partial=partial&&typeof partial==='object'?partial:{};
     var cp=cameraPrefs();
-    var cur=normalizePrefs(cp.presenceActions);
+    var cur=basePresencePrefs();
     var wasEnabled=!!cur.enabled;
-    if(partial&&typeof partial==='object'){
-      if(partial.enabled!==undefined) cur.enabled=!!partial.enabled;
-      if(partial.onAway!=null) cur.onAway=normalizeAction(partial.onAway);
-      if(partial.onReturn!=null) cur.onReturn=normalizeAction(partial.onReturn);
-      if(partial.shakeHead!=null) cur.shakeHead=normalizeAction(partial.shakeHead);
-      if(partial.deliberateBlink!=null) cur.deliberateBlink=normalizeAction(partial.deliberateBlink);
+    var touchedEnabled=partial.enabled!==undefined;
+    var hasAction=partial.onAway!=null||partial.onReturn!=null||partial.shakeHead!=null||partial.deliberateBlink!=null;
+
+    if(touchedEnabled){
+      cur.enabled=!!partial.enabled;
+      cp.presenceActions=cur;
     }
+
+    if(hasAction&&scenarioCameraEditMapping()){
+      if(touchedEnabled){
+        if(global.OneToneConfigPersist){
+          if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
+          else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+          else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
+        }
+      }
+      persistScenarioCameraOverride(partial);
+      st.enabled=!!basePresencePrefs().enabled;
+      syncUiFromPrefs();
+      syncDetectInterval();
+      emitState();
+      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
+        try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
+      }
+      if(touchedEnabled&&cur.enabled!==wasEnabled){
+        syncPreviewWithMaster(!!cur.enabled);
+      }
+      return;
+    }
+
+    if(partial.onAway!=null) cur.onAway=normalizeAction(partial.onAway);
+    if(partial.onReturn!=null) cur.onReturn=normalizeAction(partial.onReturn);
+    if(partial.shakeHead!=null) cur.shakeHead=normalizeAction(partial.shakeHead);
+    if(partial.deliberateBlink!=null) cur.deliberateBlink=normalizeAction(partial.deliberateBlink);
     cp.presenceActions=cur;
     st.enabled=!!cur.enabled;
     if(global.OneToneConfigPersist){
@@ -218,7 +348,7 @@
   }
 
   function isEnabled(){
-    return !!prefs().enabled;
+    return !!basePresencePrefs().enabled;
   }
 
   function isCalibrating(){
@@ -1198,7 +1328,7 @@
   }
 
   function init(){
-    st.enabled=!!prefs().enabled;
+    st.enabled=!!basePresencePrefs().enabled;
     bindUi();
     syncDetectInterval();
     emitState();

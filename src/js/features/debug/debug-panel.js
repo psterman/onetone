@@ -38,7 +38,7 @@
       actions.push({label:t('settingsNavScenes'),panel:'scenes'});
     }
     if(hs.statusMode==='error'){
-      actions.push({label:t('debugFocusDiagnostics'),panel:'debug',debugMode:'diagnostics'});
+      actions.push({label:t('debugFocusRepair'),panel:'debug',debugMode:'repair'});
     }
     if(!actions.length){ host.innerHTML=''; return; }
     host.innerHTML=actions.map(function(a){

@@ -10,7 +10,7 @@
       const ui=global.OneToneState.ui;
       const h=hooks();
       if(h.mappingListUiActive()) h.renderMappingChrome();
-      else if(ui.drawerOpen&&ui.settingsPanel==='general') h.renderTrashList();
+      else if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair') h.renderTrashList();
       h.renderEditor();
       h.renderRecordCancelBar();
       if(ui.drawerOpen&&ui.settingsPanel==='sounds') h.renderSoundSettingsPanel();

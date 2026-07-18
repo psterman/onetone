@@ -74,7 +74,7 @@
       return {
         kind:'recognition_error',
         textKey:'homeWbAlertRecogError',
-        action:{ type:'openSettings', panel:'debug', debugMode:'diagnostics' }
+        action:{ type:'openSettings', panel:'debug', debugMode:'repair' }
       };
     }
 
@@ -98,7 +98,7 @@
       return {
         kind:'send_failed',
         textKey:'homeWbAlertSendFailed',
-        action:{ type:'openSettings', panel:'debug', debugMode:'diagnostics' }
+        action:{ type:'openSettings', panel:'debug', debugMode:'repair' }
       };
     }
 

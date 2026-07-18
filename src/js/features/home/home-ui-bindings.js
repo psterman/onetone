@@ -16,7 +16,7 @@
     if(!action) return;
     var hooks=h();
     if(action.panel==='debug'){
-      hooks.openSettings({ panel:'debug', debugMode:action.debugMode||'diagnostics' });
+      hooks.openSettings({ panel:'debug', debugMode:action.debugMode||'repair' });
       return;
     }
     hooks.openSettings({ panel:action.panel, focus:action.focus });

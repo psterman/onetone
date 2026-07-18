@@ -95,6 +95,38 @@ impl VoiceOverride {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraOverride {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_away: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_return: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shake_head: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deliberate_blink: Option<String>,
+}
+
+impl CameraOverride {
+    pub fn is_empty(&self) -> bool {
+        fn blank(v: &Option<String>) -> bool {
+            match v {
+                Some(s) if !s.trim().is_empty() => false,
+                _ => true,
+            }
+        }
+        blank(&self.on_away)
+            && blank(&self.on_return)
+            && blank(&self.shake_head)
+            && blank(&self.deliberate_blink)
+    }
+}
+
+pub fn normalize_camera_override(ov: Option<CameraOverride>) -> Option<CameraOverride> {
+    ov.and_then(|o| if o.is_empty() { None } else { Some(o) })
+}
+
 pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverride> {
     match ov {
         Some(v) if v.is_empty() => None,
@@ -1098,6 +1130,12 @@ pub struct MappingEntry {
         skip_serializing_if = "Option::is_none"
     )]
     pub voice_override: Option<VoiceOverride>,
+    #[serde(
+        rename = "cameraOverride",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub camera_override: Option<CameraOverride>,
     #[serde(rename = "voiceCommands", default)]
     pub voice_commands: Vec<VoiceCommand>,
     #[serde(rename = "acousticVoiceCommands", default)]
@@ -2504,6 +2542,7 @@ impl Default for VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
+            camera_override: None,
                 voice_commands: vec![],
                 acoustic_voice_commands: vec![],
             }],
@@ -2764,6 +2803,7 @@ impl VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
+            camera_override: None,
                 voice_commands: vec![],
                 acoustic_voice_commands: vec![],
             });
@@ -3565,7 +3605,8 @@ fn wall_now_ms() -> u64 {
 /// Call after any in-process `settings.json` write so the watcher does not echo
 /// mvp_init / voice restart (camera quiet save + layout save were 假死 sources).
 pub fn note_config_self_write() {
-    let until = wall_now_ms().saturating_add(2500);
+    // Cover bak/tmp/rename bursts + notify debounce. Must be set *before* disk writes.
+    let until = wall_now_ms().saturating_add(4500);
     WATCHER_SUPPRESS_UNTIL_MS.store(until, std::sync::atomic::Ordering::SeqCst);
 }
 
@@ -3574,6 +3615,9 @@ fn is_config_watcher_suppressed() -> bool {
 }
 
 pub fn save_config(cfg: &VoiceConfig) {
+    // Suppress watcher *before* any bak/tmp/rename so early Modify events cannot
+    // echo mvp_init + Vosk restart (that race 假死'd the UI on layout close).
+    note_config_self_write();
     let path = config_path();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).ok();
@@ -3603,6 +3647,7 @@ pub fn save_config(cfg: &VoiceConfig) {
     } else {
         let _ = fs::write(&path, &json);
     }
+    // Refresh suppress after write completes (covers slow disks / delayed notify).
     note_config_self_write();
 }
 
@@ -3620,9 +3665,10 @@ pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
     state.machine_pool.lock().prune(&cfg.mapping_ids());
 }
 
-/// Drop fields that the FE already owns locally (window geometry / camera prefs).
-/// Watcher reloads that only touch these must not push `mvp_init` — that path races
-/// camera MediaPipe + drawer re-render and has 假死'd the UI (layout-save echo).
+/// Drop fields that the FE already owns locally (window geometry / camera prefs /
+/// per-scenario cameraOverride). Watcher reloads that only touch these must not
+/// push `mvp_init` — that path races camera MediaPipe + drawer re-render and has
+/// 假死'd the UI (layout-save echo / scenario camera tile saves).
 fn config_json_without_watcher_noise(cfg: &VoiceConfig) -> serde_json::Value {
     let mut value = serde_json::to_value(cfg).unwrap_or(serde_json::Value::Null);
     if let Some(obj) = value.as_object_mut() {
@@ -3636,6 +3682,15 @@ fn config_json_without_watcher_noise(cfg: &VoiceConfig) -> serde_json::Value {
             "cameraPrefs",
         ] {
             obj.remove(key);
+        }
+        for list_key in ["mappings", "trash"] {
+            if let Some(arr) = obj.get_mut(list_key).and_then(|v| v.as_array_mut()) {
+                for item in arr {
+                    if let Some(m) = item.as_object_mut() {
+                        m.remove("cameraOverride");
+                    }
+                }
+            }
         }
     }
     value
@@ -4082,6 +4137,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4119,6 +4175,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4156,8 +4213,10 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 wake_phrases: Some(vec!["????".into()]),
+            camera_override: None,
                 ..VoiceOverride::default()
             }),
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4213,6 +4272,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4250,6 +4310,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             trigger_source: Some(TriggerSource {
                 id: "source_captured".into(),
                 label: "      ".into(),
@@ -4300,6 +4361,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         };
@@ -4340,6 +4402,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4379,6 +4442,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4414,6 +4478,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         };
@@ -4576,6 +4641,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         };
@@ -4614,6 +4680,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         });
@@ -4672,6 +4739,15 @@ mod tests {
         };
         assert!(is_watcher_noise_only_change(&old, &camera_only));
 
+        let mut cam_ov_only = old.clone();
+        if let Some(m) = cam_ov_only.mappings.first_mut() {
+            m.camera_override = Some(CameraOverride {
+                on_away: Some("privacyScreen".into()),
+                ..CameraOverride::default()
+            });
+        }
+        assert!(is_watcher_noise_only_change(&old, &cam_ov_only));
+
         old.desired_engine = "vosk".into();
         assert!(!is_watcher_noise_only_change(&old, &layout_only));
     }
@@ -4713,6 +4789,7 @@ mod tests {
                     full_path: None,
                 }),
             },
+            camera_override: None,
         ];
         let identity = AppIdentity {
             pid: 2,
@@ -5184,6 +5261,7 @@ mod tests {
             app_target_id: "wechat".into(),
             app_behavior_rules: vec![],
             voice_override: None,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![cmd],
         };

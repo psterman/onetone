@@ -295,6 +295,7 @@ mod tests {
             app_target_id: String::new(),
             app_behavior_rules: vec![],
             voice_override: ov,
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         }

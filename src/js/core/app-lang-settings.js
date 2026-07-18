@@ -12,7 +12,6 @@
     var settingsNavCamera=$('settingsNavCameraLabel'); if(settingsNavCamera) settingsNavCamera.textContent=d.settingsNavCamera||d.homeWbNavCamera||'摄像头';
     var settingsNavModels=$('settingsNavModelsLabel'); if(settingsNavModels) settingsNavModels.textContent=d.settingsNavModels||'识别资源';
     var settingsNavDebug=$('settingsNavDebugLabel'); if(settingsNavDebug) settingsNavDebug.textContent=d.settingsNavDebug;
-    var settingsNavGeneral=$('settingsNavGeneralLabel'); if(settingsNavGeneral) settingsNavGeneral.textContent=d.settingsNavGeneral;
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
     var spKeysTitle=$('settingsPanelKeysTitle'); if(spKeysTitle) spKeysTitle.textContent=d.settingsNavKeys;
@@ -40,7 +39,6 @@
     var keySchemeStepFinishTitle=$('keySchemeStepFinishTitle'); if(keySchemeStepFinishTitle) keySchemeStepFinishTitle.textContent=d.keyExecFinishTitle;
     var spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
     var spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
-    var spGen=$('settingsPanelGeneralDesc'); if(spGen) spGen.textContent=d.settingsPanelGeneralDesc;
     var settingsBackupTitle=$('settingsBackupTitle'); if(settingsBackupTitle) settingsBackupTitle.textContent=d.settingsBackupTitle;
     var settingsBackupDesc=$('settingsBackupDesc'); if(settingsBackupDesc) settingsBackupDesc.textContent=d.settingsBackupDesc;
     var debugDeveloperDesc=$('debugDeveloperDesc'); if(debugDeveloperDesc) debugDeveloperDesc.textContent=d.debugDeveloperDesc;

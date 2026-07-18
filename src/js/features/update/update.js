@@ -87,7 +87,7 @@
     var st=state();
     var update=st.update||defaultState();
     var maintenanceBtn=$('btnAboutCheckUpdate');
-    var navBadge=$('settingsNavGeneralBadge');
+    var navBadge=$('settingsNavStatusBadge');
     var banner=$('updateBanner');
     var bannerTitle=$('updateBannerTitle');
     var bannerBody=$('updateBannerBody');

@@ -16,7 +16,7 @@
 
     basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
-    habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',general:'settingsPanelGeneral',
+    habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
     camera:'settingsPanelCamera'
 
@@ -25,6 +25,12 @@
   function resolveSettingsPanelRequest(panel,opts){
     opts=opts||{};
     if(panel==='voiceEnd') panel='voiceWake';
+    if(panel==='general'){
+      return {
+        panel:'debug',
+        opts:Object.assign({},opts,{debugMode:opts.debugMode||'repair'})
+      };
+    }
     if(panel==='models'){
       return {
         panel:'voiceWake',
@@ -454,9 +460,12 @@
       :!!(m&&String(m.appTargetId||'').trim());
     if(isApp&&global.OneToneHabitScenarioContextBanner){
       var sid=id||state().selectedMappingId;
-      var openVoice=opts.layer==='advanced'||opts.voiceTab||opts.openVoice;
-      if(openVoice) global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(sid,{returnToHub:true});
-      else global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(sid,{returnToHub:true});
+      if(opts.openCamera) global.OneToneHabitScenarioContextBanner.openScenarioCameraEdit(sid,{returnToHub:true});
+      else if(opts.layer==='advanced'||opts.voiceTab||opts.openVoice){
+        global.OneToneHabitScenarioContextBanner.openScenarioVoiceEdit(sid,{returnToHub:true});
+      }else{
+        global.OneToneHabitScenarioContextBanner.openScenarioKeysEdit(sid,{returnToHub:true});
+      }
       return;
     }
     if(m){
@@ -464,9 +473,12 @@
       var isBaseline=api&&api.isGlobalBaselineMapping
         &&api.isGlobalBaselineMapping(m,state().config,global.OneToneMappingCore);
       if(isBaseline&&global.OneToneHabitScenarioContextBanner){
-        var voice=opts.layer==='advanced'||opts.voiceTab;
-        if(voice) global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
-        else global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+        if(opts.openCamera) global.OneToneHabitScenarioContextBanner.openGlobalCamera({fromHub:true});
+        else if(opts.layer==='advanced'||opts.voiceTab){
+          global.OneToneHabitScenarioContextBanner.openGlobalVoice({fromHub:true});
+        }else{
+          global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
+        }
         return;
       }
       setSettingsPanel('habits');
@@ -587,7 +599,11 @@
 
       else hooks().scheduleDebugChromeRefresh();
 
-      hooks().syncDebugFocusSections();
+      if(opts.debugMode&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
+        global.OneToneVoiceDiag.setFocusMode(opts.debugMode);
+      }else{
+        hooks().syncDebugFocusSections();
+      }
 
     }
 
@@ -609,10 +625,6 @@
     }else if(panel==='scenes'){
 
       if(global.OneToneSceneModeHub) global.OneToneSceneModeHub.render();
-
-    }else if(panel==='general'){
-
-      hooks().renderTrashList();
 
     }else if(panel==='sounds'){
 
@@ -657,6 +669,9 @@
       }
       if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
         global.OneToneCameraWorkflow.onPanelVisible();
+      }
+      if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
+        global.OneToneHabitScenarioContextBanner.render();
       }
 
     }

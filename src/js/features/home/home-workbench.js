@@ -546,7 +546,7 @@
       if(panel==='debug'){
         activeNav='runtime';
       }else if(panel==='general'){
-        activeNav='maintenance';
+        activeNav='runtime';
       }else{
         activeNav=NAV_PANEL_MAP[panel||'']||'general';
       }
@@ -659,7 +659,7 @@
     }
     if(global.OneToneState&&global.OneToneState.ui){
       var ui=global.OneToneState.ui;
-      if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='diagnostics'){
+      if(ui.drawerOpen&&ui.settingsPanel==='debug'&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.getFocusMode()==='repair'){
         renderTriggerDiagBlocks(vm);
       }
     }
@@ -695,7 +695,7 @@
       if(action==='camera'){ openSettings({panel:'camera'}); return; }
       if(action==='sounds'){ openSettings({panel:'sounds'}); return; }
       if(action==='general'){ openSettings({panel:'basic'}); return; }
-      if(action==='maintenance'){ openSettings({panel:'general'}); return; }
+      if(action==='maintenance'){ openSettings({panel:'debug', debugMode:'repair'}); return; }
       if(action==='runtime'){ openSettings({panel:'debug', debugMode:'overview'}); return; }
     });
   }

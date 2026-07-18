@@ -120,6 +120,7 @@
       habitScenarioDirectHint:'habitScenarioDirectHint',
       btnHabitScenarioGoKeys:'habitScenarioGoKeysSettings',
       btnHabitScenarioGoVoice:'habitScenarioGoVoiceSettings',
+      btnHabitScenarioGoCamera:'habitScenarioGoCameraSettings',
       habitScenarioPreviewTitle:'habitScenarioPreviewTitle',
       habitScenarioFlowHint:'habitScenarioFlowHint',
       habitScenarioDiffTitle:'habitScenarioDiffTitle',
@@ -197,6 +198,7 @@
       appTargetId:String(appId||'').trim(),
       appBehaviorRules:[],
       voiceOverride:null,
+      cameraOverride:null,
       updatedAt:Date.now(),
       lastUsedAt:0,
       useCount:0
@@ -282,6 +284,8 @@
     });
     if(source.voiceOverride) target.voiceOverride=JSON.parse(JSON.stringify(source.voiceOverride));
     else target.voiceOverride=null;
+    if(source.cameraOverride) target.cameraOverride=JSON.parse(JSON.stringify(source.cameraOverride));
+    else target.cameraOverride=null;
     if(String(source.group||'').trim()&&!String(target.group||'').trim()) target.group=source.group;
   }
 
@@ -300,11 +304,15 @@
     var voiceLbl=preview.voiceOverrideCount>0
       ?t('habitScenarioStatusVoiceOverride').replace('{n}',String(preview.voiceOverrideCount))
       :t('habitScenarioStatusVoiceInherit');
+    var cameraLbl=preview.cameraOverrideCount>0
+      ?t('habitScenarioStatusCameraOverride').replace('{n}',String(preview.cameraOverrideCount))
+      :t('habitScenarioStatusCameraInherit');
     bar.innerHTML='<span class="habit-scenario-status-text">'
       +esc(t('habitScenarioStatusSummary')
         .replace('{app}',preview.appName||preview.appId)
         .replace('{keys}',keysLbl)
-        .replace('{voice}',voiceLbl))
+        .replace('{voice}',voiceLbl)
+        .replace('{camera}',cameraLbl))
       +'</span>';
   }
 
@@ -336,7 +344,7 @@
         +row(t('habitScenarioEnableKeys'),preview.keysModeEnabled)
         +row(t('habitScenarioEnableVoice'),preview.voiceModeEnabled);
     }
-    var items=(preview.stateOverrides||[]).concat(preview.keysOverrides||[],preview.voiceOverrides||[]);
+    var items=(preview.stateOverrides||[]).concat(preview.keysOverrides||[],preview.voiceOverrides||[],preview.cameraOverrides||[]);
     if(list){
       list.innerHTML=items.map(function(it){
         return '<li>'+esc(it.label)+'：'+esc(it.value)+'</li>';
@@ -545,12 +553,15 @@
       redirectNonAppScenario(m,opts);
       return;
     }
-    // Existing scenarios never land on the middle console — reuse Keys/Voice pages.
+    // Existing scenarios never land on the middle console — reuse Keys/Voice/Camera pages.
     var nav=global.OneToneHabitScenarioContextBanner;
     if(nav){
-      var openVoice=!!(opts.layer==='advanced'||opts.voiceTab||opts.openVoice);
-      if(openVoice) nav.openScenarioVoiceEdit(id,{returnToHub:true});
-      else nav.openScenarioKeysEdit(id,{returnToHub:true});
+      if(opts.openCamera) nav.openScenarioCameraEdit(id,{returnToHub:true});
+      else if(opts.layer==='advanced'||opts.voiceTab||opts.openVoice){
+        nav.openScenarioVoiceEdit(id,{returnToHub:true});
+      }else{
+        nav.openScenarioKeysEdit(id,{returnToHub:true});
+      }
       return;
     }
     wizardMode='edit';

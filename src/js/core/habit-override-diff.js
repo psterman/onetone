@@ -287,6 +287,29 @@
     return n;
   }
 
+  function countCameraOverrides(m){
+    var ov=m&&m.cameraOverride&&typeof m.cameraOverride==='object'?m.cameraOverride:null;
+    if(!ov) return 0;
+    var n=0;
+    ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+      if(ov[k]!=null&&String(ov[k]).trim()!=='') n++;
+    });
+    return n;
+  }
+
+  function buildCameraOverrideItems(m,labels){
+    labels=labels||{};
+    var ov=m&&m.cameraOverride&&typeof m.cameraOverride==='object'?m.cameraOverride:null;
+    if(!ov) return [];
+    var items=[];
+    [['onAway','onAway'],['onReturn','onReturn'],['shakeHead','shakeHead'],['deliberateBlink','deliberateBlink']].forEach(function(pair){
+      var k=pair[0];
+      if(ov[k]==null||String(ov[k]).trim()==='') return;
+      items.push({field:k,label:labels[pair[1]]||k,value:String(ov[k])});
+    });
+    return items;
+  }
+
   function buildKeyOverrideItems(m,baseline,labels){
     labels=labels||{};
     m=m||{};
@@ -371,11 +394,13 @@
     var ov=m&&m.voiceOverride&&typeof m.voiceOverride==='object'?m.voiceOverride:{};
     var keysOverrideCount=m?countKeyOverrides(m,keyBaseline):0;
     var voiceOverrideCount=m?countVoiceOverrides(ov,voiceBaseline):0;
+    var cameraOverrideCount=m?countCameraOverrides(m):0;
     var acousticCommandCount=m?countAcousticCommands(m):0;
     var keysOverrides=m?buildKeyOverrideItems(m,keyBaseline,labels):[];
     var voiceOverrides=m?buildVoiceOverrideItems(ov,voiceBaseline,labels):[];
+    var cameraOverrides=m?buildCameraOverrideItems(m,labels):[];
     var stateOverrides=m?buildStateOverrideItems(m,labels):[];
-    var savedChangeCount=keysOverrideCount+voiceOverrideCount+stateOverrides.length+acousticCommandCount;
+    var savedChangeCount=keysOverrideCount+voiceOverrideCount+cameraOverrideCount+stateOverrides.length+acousticCommandCount;
     var saveKind='blocked';
     var canSave=false;
     var saveBlockReason='no_app';
@@ -422,6 +447,14 @@
       ok:true,
       tone:(acousticCommandCount>0||voiceOverrideCount>0)?'accent':'muted'
     });
+    statusChips.push({
+      id:'camera',
+      label:cameraOverrideCount>0
+        ?(labels.chipCameraOverride||'camera_override').replace('{n}',String(cameraOverrideCount))
+        :(labels.chipCameraInherit||'camera_inherit'),
+      ok:true,
+      tone:cameraOverrideCount>0?'accent':'muted'
+    });
     var saveLabel;
     if(!canSave) saveLabel=labels.chipSaveBlocked||'save_blocked';
     else if(saveKind==='empty') saveLabel=labels.chipSaveEmpty||'save_empty';
@@ -437,9 +470,11 @@
       voiceModeEnabled:voiceModeEnabled,
       keysOverrides:keysOverrides,
       voiceOverrides:voiceOverrides,
+      cameraOverrides:cameraOverrides,
       stateOverrides:stateOverrides,
       keysOverrideCount:keysOverrideCount,
       voiceOverrideCount:voiceOverrideCount,
+      cameraOverrideCount:cameraOverrideCount,
       acousticCommandCount:acousticCommandCount,
       saveKind:saveKind,
       canSave:canSave,

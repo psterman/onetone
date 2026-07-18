@@ -6,7 +6,7 @@
     mic:{ panel:'voiceWake', focus:'mic' },
     endPhrases:{ panel:'voiceWake', focus:'endPhrases' },
     engine:{ panel:'voiceWake', focus:'engine' },
-    helpDebug:{ panel:'debug', debugMode:'diagnostics' }
+    helpDebug:{ panel:'debug', debugMode:'repair' }
   };
 
   global.HOME_VOICE_LINK_LABEL_KEYS={

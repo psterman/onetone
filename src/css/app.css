@@ -6651,31 +6651,31 @@
       outline-offset:3px;
       border-radius:6px;
     }
-    #settingsPanelGeneral{
+    .status-repair-section{
       display:grid;
-      gap:12px;
+      gap:14px;
     }
-    #settingsPanelGeneral .settings-panel-desc{
+    .status-repair-section .settings-panel-desc,
+    .status-repair-section .helper-note{
       margin:0;
     }
-    #settingsPanelGeneral .helper-note{
-      margin:0;
-    }
-    #settingsPanelGeneral .drawer-section{
+    .status-repair-section .status-recovery-card,
+    .status-repair-section .status-maintenance-card{
       margin:0;
       border:1px solid var(--outline-variant);
       border-radius:14px;
       padding:14px;
       background:var(--surface-high);
     }
-    #settingsPanelGeneral .drawer-section.maintenance-danger{
+    .status-repair-section .status-maintenance-card.maintenance-danger{
       border-color:rgba(220,38,38,.20);
     }
     .about-version-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 0;font-size:13px}
     .about-version-row strong{font-variant-numeric:tabular-nums;color:var(--on-surface)}
     .about-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .dev-panel-head-actions{display:flex;gap:8px;flex-wrap:wrap}
-    html[data-theme="dark"] #settingsPanelGeneral .drawer-section{
+    html[data-theme="dark"] .status-repair-section .status-recovery-card,
+    html[data-theme="dark"] .status-repair-section .status-maintenance-card{
       background:rgba(28,38,54,.78);
       border-color:rgba(148,163,184,.2);
     }

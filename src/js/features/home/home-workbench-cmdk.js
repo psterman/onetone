@@ -17,7 +17,6 @@
       {id:'schemes', labelKey:'homeWbNavSchemes', hintKey:'homeWbCmdkHintSettings', panel:'habits'},
       {id:'sounds', labelKey:'homeWbNavSounds', hintKey:'homeWbCmdkHintSettings', panel:'sounds'},
       {id:'general', labelKey:'homeWbNavGeneral', hintKey:'homeWbCmdkHintSettings', panel:'basic'},
-      {id:'maintenance', labelKey:'homeWbNavMaintenance', hintKey:'homeWbCmdkHintSettings', panel:'general'},
       {id:'runtime', labelKey:'homeWbNavRuntime', hintKey:'homeWbCmdkHintSettings', panel:'debug', debugMode:'overview'}
     ];
   }

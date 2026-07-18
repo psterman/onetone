@@ -88,7 +88,8 @@
       logLines:deps.logLines,
       voiceStatusPollTick:deps.voiceStatusPollTick,
       renderDebugOverview:deps.renderDebugOverview,
-      renderDebugDeveloperPanel:deps.renderDebugDeveloperPanel
+      renderDebugDeveloperPanel:deps.renderDebugDeveloperPanel,
+      renderTrashList:deps.renderTrashList
     };
     global.__vp_render_hooks__={
       mappingListUiActive:deps.mappingListUiActive,

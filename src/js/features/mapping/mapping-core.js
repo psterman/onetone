@@ -346,6 +346,7 @@
     if(m.appTargetId===undefined) m.appTargetId='';
     if(!Array.isArray(m.appBehaviorRules)) m.appBehaviorRules=[];
     if(m.voiceOverride===undefined) m.voiceOverride=null;
+    if(m.cameraOverride===undefined) m.cameraOverride=null;
     if(!Array.isArray(m.voiceCommands)) m.voiceCommands=[];
     if(!Array.isArray(m.acousticVoiceCommands)) m.acousticVoiceCommands=[];
   }
