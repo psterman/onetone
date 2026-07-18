@@ -841,6 +841,36 @@
     return t('cameraGazeStateIdle','待命');
   }
 
+  function syncGazeAccuracyUi(point){
+    var el=$('cameraGazeAccuracyText');
+    if(!el) return;
+    var cal=calibrationApi();
+    var hasCal=!!(cal&&cal.hasModel&&cal.hasModel());
+    if(!hasCal){
+      el.textContent=t('cameraGazeAccuracyIdle','视线精度：未校准');
+      return;
+    }
+    var st=cal.getState?cal.getState():null;
+    var mode=st&&st.calibMode==='fine'
+      ? t('cameraGazeAccuracyModeFine','精细')
+      : t('cameraGazeAccuracyModeFast','快校');
+    var parts=[t('cameraGazeAccuracyLabel','视线精度')+' · '+mode];
+    var cv=st&&st.calibrationValidation;
+    if(cv&&isFinite(cv.rmsePx)){
+      parts.push('RMSE '+Math.round(cv.rmsePx)+'px');
+      if(cv.quality) parts.push(String(cv.quality));
+    }else if(st&&isFinite(st.rmse)){
+      parts.push('RMSE '+Math.round(st.rmse)+'px');
+    }
+    if(previewLive&&gaze.enabled&&point&&isFinite(point.confidence)){
+      parts.push(t('cameraGazeConfidence','置信度')+' '+Math.round(point.confidence*100)+'%');
+    }
+    if(st&&st.lowQuality){
+      parts.push(t('cameraGazeAccuracyLow','偏低'));
+    }
+    el.textContent=parts.join(' · ');
+  }
+
   function syncGazeModeButtons(){
     var btns=document.querySelectorAll('[data-camera-gaze-mode]');
     for(var i=0;i<btns.length;i++){
@@ -875,10 +905,12 @@
     var winLayer=$('cameraGazeWindowLayer');
     var useCalibrated=!!(active&&calibrationApi()&&calibrationApi().hasModel&&calibrationApi().hasModel()&&gaze.mode==='live');
     if(overlay){
-      var showVideo=!!active&&!useCalibrated;
-      overlay.classList.toggle('is-active',showVideo);
-      overlay.hidden=!showVideo;
-      overlay.setAttribute('aria-hidden',showVideo?'false':'true');
+      // Keep HUD (confidence / point) on the preview even after calibration;
+      // only the in-video orb is suppressed via CSS when window orb is live.
+      overlay.classList.toggle('is-active',!!active);
+      overlay.classList.toggle('is-calibrated-mode',!!useCalibrated);
+      overlay.hidden=!active;
+      overlay.setAttribute('aria-hidden',active?'false':'true');
     }
     if(winLayer){
       winLayer.classList.toggle('is-active',!!useCalibrated);
@@ -918,6 +950,7 @@
         ? point.x.toFixed(2)+', '+point.y.toFixed(2)
         : '—';
     }
+    syncGazeAccuracyUi(point);
     if(screenEl){
       if(previewLive&&gaze.enabled&&calibrated){
         var regionText=point.regionLabel||'';

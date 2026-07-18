@@ -186,15 +186,25 @@
   function syncGazeMap(){
     var map=$('cameraGazeMap');
     var chip=$('cameraGazeMapModeChip');
-    var fine=hasCalibModel();
+    var cal=calibrationApi();
+    var has=hasCalibModel();
+    var fine=!!(cal&&cal.isFineGridModel&&cal.isFineGridModel());
+    if(!fine&&cal&&cal.getState){
+      var st=cal.getState();
+      fine=!!(st&&st.fineGrid);
+    }
     if(map){
       map.classList.toggle('is-coarse',!fine);
       map.classList.toggle('is-fine',!!fine);
     }
     if(chip){
-      chip.textContent=fine
-        ? t('cameraGazeMapModeFine','已校准 · 更细区域')
-        : t('cameraGazeMapModeCoarse','未校准 · 粗区域');
+      if(!has){
+        chip.textContent=t('cameraGazeMapModeCoarse','未校准 · 粗区域');
+      }else if(fine){
+        chip.textContent=t('cameraGazeMapModeFineReady','精细校准完成 · 更细区域');
+      }else{
+        chip.textContent=t('cameraGazeMapModeFastReady','快校完成 · 粗区域');
+      }
     }
   }
 
@@ -353,6 +363,7 @@
     activateTab:activateTab,
     syncMetrics:syncMetrics,
     syncInactiveHint:syncInactiveHint,
+    syncGazeMap:syncGazeMap,
     openProPanel:openProPanel,
     openTriggerTools:openTriggerTools,
     openAdvancedConfirmFold:openAdvancedConfirmFold,

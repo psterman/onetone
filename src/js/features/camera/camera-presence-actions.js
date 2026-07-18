@@ -1011,6 +1011,11 @@
       calibBtn.disabled=!on;
       calibBtn.setAttribute('aria-disabled',on?'false':'true');
     }
+    var fineBtn=$('cameraGazeCalibrateFineBtn');
+    if(fineBtn){
+      fineBtn.disabled=!on;
+      fineBtn.setAttribute('aria-disabled',on?'false':'true');
+    }
     var clearBtn=$('cameraGazeClearCalibrationBtn');
     if(clearBtn){
       clearBtn.disabled=!on;

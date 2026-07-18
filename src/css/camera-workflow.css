@@ -288,6 +288,22 @@
   margin-top:2px;
 }
 
+.camera-gaze-accuracy{
+  margin:0;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.45;
+  color:var(--on-surface);
+}
+
+.camera-calib-view-hint{
+  margin:0;
+  font-size:12px;
+  line-height:1.55;
+  color:var(--on-surface-muted);
+  max-width:42rem;
+}
+
 .camera-card-kicker{
   font-size:11px;
   font-weight:800;

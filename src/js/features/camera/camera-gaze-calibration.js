@@ -61,16 +61,45 @@
     if(picker&&picker.forZone) return picker.forZone(zone);
     return t('cameraGazeCalibReadCenter','屏幕正中 · 读这行字');
   }
-  var SAMPLE_SEC=2.5;
-  var SAMPLE_SEC_CORNER=4.5;
-  var SAMPLE_SEC_EDGE=5.5;
-  var SAMPLE_SEC_TOP=6.5;
-  var PREPARE_SEC=3;
-  var PREPARE_SEC_CORNER=4.5;
-  var PREPARE_SEC_EDGE=5.5;
-  var PREPARE_SEC_TOP=6;
+  function normalizeCalibMode(mode){
+    return mode==='fine'?'fine':'fast';
+  }
+  function getTargetsForMode(mode){
+    var ids=TARGET_SETS[normalizeCalibMode(mode)]||TARGET_SETS.fast;
+    var out=[];
+    for(var i=0;i<ids.length;i++){
+      for(var j=0;j<TARGETS.length;j++){
+        if(TARGETS[j].id===ids[i]){
+          out.push(TARGETS[j]);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+  function qualityRemedialLimit(){
+    return currentCalibMode==='fine'?1:0;
+  }
+  function activeTargetCount(){
+    return activeTargets&&activeTargets.length?activeTargets.length:TARGET_SETS.fast.length;
+  }
+  function toastLite(msg){
+    try{
+      if(global.OneToneAppToast&&global.OneToneAppToast.show){
+        global.OneToneAppToast.show(msg,'lite');
+      }
+    }catch(_){}
+  }
+  var SAMPLE_SEC=1.4;
+  var SAMPLE_SEC_CORNER=2.0;
+  var SAMPLE_SEC_EDGE=2.2;
+  var SAMPLE_SEC_TOP=2.4;
+  var PREPARE_SEC=1.2;
+  var PREPARE_SEC_CORNER=1.6;
+  var PREPARE_SEC_EDGE=1.8;
+  var PREPARE_SEC_TOP=2.0;
   var MIN_CALIB_POINTS=5;
-  var MAX_POINT_ATTEMPTS=4;
+  var MAX_POINT_ATTEMPTS=2;
   var MIN_SAMPLES=6;
   var MIN_CONF=0.35;
   var STABLE_STD=0.095;
@@ -102,9 +131,14 @@
   var APPLY_OUT_ALPHA_FAST=0.72;
   var CRITICAL_CORNER_IDS=['tl','tr','bl','br'];
   var REMEDIAL_TARGET_ORDER=['tl','tr','bl','br','tc','ml','mr','bc','center'];
-  var MAX_CORNER_ATTEMPTS=6;
-  var MAX_REMEDIAL_ROUNDS=2;
-  var MAX_QUALITY_REMEDIAL_POINTS=3;
+  var MAX_CORNER_ATTEMPTS=3;
+  var MAX_REMEDIAL_ROUNDS=1;
+  var TARGET_SETS={
+    fast:['center','tl','tr','bl','br'],
+    fine:['center','tl','tc','tr','ml','mr','bl','bc','br']
+  };
+  var currentCalibMode='fast';
+  var activeTargets=[];
   var WEAK_MAX_SAMPLES=40;
   var WEAK_MAX_AGE_MS=7*24*60*60*1000;
   var WEAK_REFIT_DEBOUNCE_MS=2000;
@@ -271,11 +305,12 @@
   function softSnapToRegion(nx,ny,blend){
     var zone=regionZoneFromNorm(nx,ny);
     var c=regionCenterNorm(zone);
-    var b=blend!=null?blend:0.58;
-    // Poor formal LOO (esp. 右上) — snap harder so region product stays usable.
-    if(model&&model.lowQuality) b=Math.max(b,0.72);
+    var fine=isFineGridModel();
+    var b=blend!=null?blend:(fine?0.14:0.28);
+    // Poor formal LOO — snap a bit harder, but keep chase usable.
+    if(model&&model.lowQuality) b=Math.max(b,fine?0.24:0.40);
     if(model&&model.calibrationValidation&&model.calibrationValidation.worstErrorPx>450){
-      b=Math.max(b,0.78);
+      b=Math.max(b,fine?0.30:0.48);
     }
     return {
       nx:clamp01(nx*(1-b)+c.nx*b),
@@ -414,16 +449,28 @@
 
   function syncCalibrateBtnLabel(){
     var btn=$('cameraGazeCalibrateBtn');
-    if(!btn) return;
+    var fineBtn=$('cameraGazeCalibrateFineBtn');
     if(running){
-      btn.textContent=t('cameraGazeCalibrating','校准中…');
-      btn.disabled=true;
+      if(btn){
+        btn.textContent=t('cameraGazeCalibrating','校准中…');
+        btn.disabled=true;
+      }
+      if(fineBtn){
+        fineBtn.textContent=t('cameraGazeCalibrating','校准中…');
+        fineBtn.disabled=true;
+      }
       return;
     }
-    btn.disabled=false;
-    btn.textContent=model
-      ? t('cameraGazeRecalibrate','重新校准')
-      : t('cameraGazeCalibrate','开始校准');
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=model
+        ? t('cameraGazeRecalibrate','重新校准')
+        : t('cameraGazeCalibrate','开始校准');
+    }
+    if(fineBtn){
+      fineBtn.disabled=false;
+      fineBtn.textContent=t('cameraGazeCalibrateFine','精细校准');
+    }
   }
 
   function setOverlayVisible(show){
@@ -845,7 +892,8 @@
     }
     var jump=Math.abs(cx-applyOutSmooth.cx)+Math.abs(cy-applyOutSmooth.cy);
     var span=Math.min(vw||1,vh||1);
-    var alpha=jump>span*0.14?APPLY_OUT_ALPHA_FAST:APPLY_OUT_ALPHA;
+    var base=isFineGridModel()?0.62:0.52;
+    var alpha=jump>span*0.14?Math.max(base,APPLY_OUT_ALPHA_FAST):base;
     var nx=cx/(vw||1),ny=cy/(vh||1);
     var edgeDist=Math.min(nx,1-nx,ny,1-ny);
     if(edgeDist<0.14) alpha=Math.max(alpha,0.78);
@@ -1868,7 +1916,7 @@
     if(el.closest('#cameraGazeWindowLayer')) return true;
     if(el.closest('.camera-gaze-calibration-panel')) return true;
     if(el.closest('#cameraActionBar')) return true;
-    if(el.closest('#cameraGazeCalibrateBtn,#cameraGazeClearCalibrationBtn,#cameraGazeStaleRecalibBtn,#btnCameraToggle,#cameraGazeCalibrationCancel')) return true;
+    if(el.closest('#cameraGazeCalibrateBtn,#cameraGazeCalibrateFineBtn,#cameraGazeClearCalibrationBtn,#cameraGazeStaleRecalibBtn,#btnCameraToggle,#cameraGazeCalibrationCancel')) return true;
     return false;
   }
 
@@ -1923,6 +1971,7 @@
     if(!m||!m.anchors||!m.anchors.length) return null;
     return {
       kind:m.kind||'idw',
+      calibMode:m.calibMode==='fine'?'fine':'fast',
       rmse:m.rmse,
       idwRmse:m.idwRmse,
       ridgeRmse:m.ridgeRmse,
@@ -2025,6 +2074,11 @@
       betaY:betaY,
       betaU:betaU,
       betaV:betaV,
+      calibMode:snapshot.calibMode==='fine'?'fine':(
+        snapshot.calibMode==='fast'?'fast':(
+          anchors.length>=GRID_MIN_POINTS?'fine':'fast'
+        )
+      ),
       rmse:calibrationValidation?calibrationValidation.rmsePx:(Number(snapshot.rmse)||0),
       idwRmse:snapshot.idwRmse,
       ridgeRmse:snapshot.ridgeRmse,
@@ -2133,10 +2187,26 @@
 
   function hasModel(){ return !!model; }
 
+  function isFineGridModel(){
+    if(!model) return false;
+    if(model.calibMode==='fine') return true;
+    if(model.calibMode==='fast') return false;
+    var n=model.anchors?model.anchors.length:0;
+    return n>=GRID_MIN_POINTS;
+  }
+
+  function getCalibMode(){
+    if(!model) return null;
+    if(model.calibMode==='fine'||model.calibMode==='fast') return model.calibMode;
+    return isFineGridModel()?'fine':'fast';
+  }
+
   function getState(){
     return {
       running:!!running,
       hasModel:!!model,
+      calibMode:getCalibMode(),
+      fineGrid:isFineGridModel(),
       stale:!!(model&&model.stale),
       lowQuality:!!(model&&model.lowQuality),
       rmse:model?model.rmse:null,
@@ -2238,12 +2308,12 @@
     };
   }
 
-  function tryStartCalibrationFromUi(){
+  function tryStartCalibrationFromUi(mode){
     var st=ensurePreviewReadyForCalib();
     if(!st||!st.previewLive){
       setStatusKind('failed');
       var status=$('cameraStatusText');
-      if(status) status.textContent=t('cameraGazeCalibrationNeedLive','请先开始预览');
+      if(status) status.textContent=t('cameraGazeCalibrationNeedLive','请先开启摄像头识别');
       return false;
     }
     if(st.modelLoading){
@@ -2259,7 +2329,7 @@
       return false;
     }
     updateLowResWarn();
-    start();
+    start(mode);
     return true;
   }
 
@@ -2405,8 +2475,8 @@
     if(model.stale) outConf=clamp01(outConf*0.9);
     var outNx=clamp01(clampedX/vw);
     var outNy=clamp01(clampedY/vh);
-    // Product target is region/direction, not pixel mouse — soft-snap toward zone centers.
-    var snapped=softSnapToRegion(outNx,outNy,0.58);
+    // Product target is region/direction — light soft-snap (mode-aware in softSnapToRegion).
+    var snapped=softSnapToRegion(outNx,outNy);
     outNx=snapped.nx;
     outNy=snapped.ny;
     clampedX=outNx*vw;
@@ -2603,7 +2673,7 @@
     var totalSec=prepareSec+sampleSec;
     var pointLabel=t('cameraGazeCalibStep','校准点 {n} / {total}')
       .replace('{n}',String(pointIndex+1))
-      .replace('{total}',String(TARGETS.length));
+      .replace('{total}',String(activeTargetCount()));
     if(collectedCount!=null){
       pointLabel=calibrationProgressLabel(collectedCount)+' · '+pointLabel;
     }
@@ -2754,7 +2824,7 @@
 
   function calibrationProgressLabel(pairsOrCount,phase){
     var n=typeof pairsOrCount==='number'?pairsOrCount:(pairsOrCount?pairsOrCount.length:0);
-    var total=TARGETS.length;
+    var total=activeTargetCount();
     var base=t('cameraGazeCalibCollected','已采集 {n}/{total}')
       .replace('{n}',String(n))
       .replace('{total}',String(total));
@@ -2766,20 +2836,24 @@
 
   function missingTargetsInOrder(pairs){
     var have=collectedTargetIds(pairs);
+    var want={};
+    for(var w=0;w<activeTargets.length;w++){
+      want[activeTargets[w].id]=true;
+    }
     var out=[];
     for(var i=0;i<REMEDIAL_TARGET_ORDER.length;i++){
       var id=REMEDIAL_TARGET_ORDER[i];
-      if(!have[id]){
-        var t=targetById(id);
-        if(t) out.push(t);
-      }
+      if(!want[id]||have[id]) continue;
+      var tg=targetById(id);
+      if(tg) out.push(tg);
     }
     return out;
   }
 
-  // After full 9-point pass: re-sample the worst LOO points (usually top-right with glasses).
+  // Re-sample worst LOO points within the active mode set only.
   function highErrorTargetsFromPairs(pairs){
-    if(!pairs||pairs.length<MIN_CALIB_POINTS) return [];
+    var limit=qualityRemedialLimit();
+    if(limit<=0||!pairs||pairs.length<MIN_CALIB_POINTS) return [];
     var prep;
     try{ prep=prepareModelPairs(pairs); }catch(_){ return []; }
     var ridge=fitRidge(prep.pairs);
@@ -2789,15 +2863,19 @@
     if(!errors.length) return [];
     var thr=rmseThreshold();
     var cut=Math.max(thr*1.25,220);
+    var want={};
+    for(var w=0;w<activeTargets.length;w++){
+      want[activeTargets[w].id]=true;
+    }
     var bad=[];
     for(var i=0;i<errors.length;i++){
       var e=errors[i];
-      if(!e||!isFinite(e.errorPx)||e.errorPx<cut) continue;
+      if(!e||!want[e.targetId]||!isFinite(e.errorPx)||e.errorPx<cut) continue;
       bad.push({id:e.targetId,errorPx:e.errorPx});
     }
     bad.sort(function(a,b){ return b.errorPx-a.errorPx; });
     var out=[];
-    for(var j=0;j<bad.length&&out.length<MAX_QUALITY_REMEDIAL_POINTS;j++){
+    for(var j=0;j<bad.length&&out.length<limit;j++){
       var tg=targetById(bad[j].id);
       if(tg){
         calibLog('quality-remedial queue '+bad[j].id+' err='+Math.round(bad[j].errorPx)+'px cut='+Math.round(cut));
@@ -2879,6 +2957,7 @@
         built.savedAt=Date.now();
         built.skippedPoints=skippedPoints;
         built.synthNodeCount=countSynthGridNodes(built.anchors);
+        built.calibMode=currentCalibMode==='fine'?'fine':'fast';
         resetRuntimeSmoothers();
         model=built;
         persistGazeCalibrationSnapshot(serializeModel(model));
@@ -2892,11 +2971,17 @@
           var glance=$('cameraGlanceCalib');
           if(glance) glance.textContent=rmseText;
         }
-        calibLog('saved kind='+model.kind+' rmse='+Math.round(model.rmse)+
+        calibLog('saved kind='+model.kind+' mode='+model.calibMode+' rmse='+Math.round(model.rmse)+
           ' quality='+(model.calibrationValidation?model.calibrationValidation.quality:'?')+
           ' synthNodes='+model.synthNodeCount);
+        if(model.calibMode==='fast'&&model.lowQuality){
+          toastLite(t('cameraGazeCalibSuggestFine','快校精度一般，可尝试「精细校准」'));
+        }
         updateCalibWarnings();
         notifyPreviewCalibrated();
+        if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncGazeMap){
+          try{ global.OneToneCameraWorkflow.syncGazeMap(); }catch(_){}
+        }
       });
     },0);
   }
@@ -3074,11 +3159,11 @@
         if(cancelled) setStatusKind('canceled');
         return;
       }
-      if(idx>=TARGETS.length){
+      if(idx>=activeTargets.length){
         attemptFinishCalibration(pairs,gen,false);
         return;
       }
-      waitAndSample(TARGETS[idx],idx,gen,null,pairs.length).then(function(res){
+      waitAndSample(activeTargets[idx],idx,gen,null,pairs.length).then(function(res){
         if(cancelled||!running||gen!==calibGen){
           running=false;
           collecting=false;
@@ -3092,8 +3177,8 @@
         }
         if(!res||!res.ok){
           skippedPoints++;
-          calibLog('skip point '+(idx+1)+' id='+TARGETS[idx].id);
-          var skipTitle=isCriticalCorner(TARGETS[idx].id)
+          calibLog('skip point '+(idx+1)+' id='+activeTargets[idx].id);
+          var skipTitle=isCriticalCorner(activeTargets[idx].id)
             ? t('cameraGazeCalibCornerSkipped','角落采样失败，稍后将补采')
             : t('cameraGazeCalibPointSkipped','本点采样失败，继续下一点');
           setCalibrationUi({
@@ -3101,7 +3186,7 @@
             subtitle:skipTitle+' · '+calibrationProgressLabel(pairs.length)+' · '+
               t('cameraGazeCalibStep','校准点 {n} / {total}')
                 .replace('{n}',String(idx+1))
-                .replace('{total}',String(TARGETS.length)),
+                .replace('{total}',String(activeTargetCount())),
             phase:'prepare'
           });
           idx++;
@@ -3116,8 +3201,10 @@
     next();
   }
 
-  function start(){
+  function start(mode){
     if(running) stop({reason:'restart'});
+    currentCalibMode=normalizeCalibMode(mode);
+    activeTargets=getTargetsForMode(currentCalibMode);
     var preview=global.OneToneCameraPreview;
     if(preview&&preview.setGazeDebugEnabled){
       try{ preview.setGazeDebugEnabled(true); }catch(_){}
@@ -3137,14 +3224,16 @@
     setLandmarkerThrottle(true);
     setStatusKind('running');
     setOverlayVisible(true);
-    calibLog('start gen='+gen);
+    calibLog('start gen='+gen+' mode='+currentCalibMode+' points='+activeTargets.length);
+    var first=activeTargets[0]||TARGETS[0];
     setCalibrationUi({
       title:'',
-      read:pickKaraokeForTarget(TARGETS[0]),
-      subtitle:t('cameraGazeCalibStep','校准点 {n} / {total}').replace('{n}','1').replace('{total}',String(TARGETS.length)),
+      read:pickKaraokeForTarget(first),
+      subtitle:t('cameraGazeCalibStep','校准点 {n} / {total}').replace('{n}','1').replace('{total}',String(activeTargetCount())),
       karaokeP:0,
       phase:'prepare'
     });
+    syncCalibrateBtnLabel();
     runSequence(gen);
     return true;
   }
@@ -3187,6 +3276,9 @@
     setStatusKind('idle');
     updateCalibWarnings();
     notifyPreviewCalibrated();
+    if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncGazeMap){
+      try{ global.OneToneCameraWorkflow.syncGazeMap(); }catch(_){}
+    }
   }
 
   function ensurePreviewReadyForCalib(){
@@ -3214,11 +3306,18 @@
     if(bound) return;
     bound=true;
     var startBtn=$('cameraGazeCalibrateBtn');
+    var fineBtn=$('cameraGazeCalibrateFineBtn');
     var clearBtn=$('cameraGazeClearCalibrationBtn');
     if(startBtn){
       startBtn.addEventListener('click',function(e){
         e.preventDefault();
-        tryStartCalibrationFromUi();
+        tryStartCalibrationFromUi('fast');
+      });
+    }
+    if(fineBtn){
+      fineBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        tryStartCalibrationFromUi('fine');
       });
     }
     if(clearBtn){
@@ -3231,7 +3330,7 @@
     if(staleRecalibBtn){
       staleRecalibBtn.addEventListener('click',function(e){
         e.preventDefault();
-        tryStartCalibrationFromUi();
+        tryStartCalibrationFromUi(getCalibMode()==='fine'?'fine':'fast');
       });
     }
     global.addEventListener('resize',onResize);
@@ -3267,6 +3366,8 @@
     apply:apply,
     getState:getState,
     hasModel:hasModel,
+    isFineGridModel:isFineGridModel,
+    getCalibMode:getCalibMode,
     syncUiFromModel:syncUiFromModel,
     loadFromPrefs:loadFromPrefs,
     updateLowResWarn:updateLowResWarn,

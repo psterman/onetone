@@ -7023,6 +7023,9 @@
     .camera-gaze-overlay.is-active{
       opacity:1;visibility:visible;
     }
+    .camera-gaze-overlay.is-calibrated-mode .camera-gaze-orb{
+      opacity:0;visibility:hidden;
+    }
     .camera-gaze-orb{
       position:absolute;left:0;top:0;width:40px;height:40px;
       transform:translate(-50%,-50%);

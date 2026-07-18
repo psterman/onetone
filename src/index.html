@@ -2317,8 +2317,11 @@
                     </div>
                   </div>
                   <select id="cameraDeviceSelect" class="camera-device-select" aria-label="摄像头设备"></select>
+                  <p class="camera-gaze-accuracy" id="cameraGazeAccuracyText">视线精度：未校准</p>
+                  <p class="camera-calib-view-hint" id="cameraCalibViewHint" data-i18n="cameraCalibViewHint">校准前请让摄像头大致正对脸，尽量避免背光或强反光；保持屏幕、脸部和眼镜区域清晰。校准时出现的大字只是帮助你边看边读、节奏更稳定，不必追求读完。</p>
                   <div class="camera-action-bar" id="cameraActionBar">
                     <button type="button" class="control-btn" id="cameraGazeCalibrateBtn" data-i18n="cameraGazeCalibrate">开始校准</button>
+                    <button type="button" class="control-btn" id="cameraGazeCalibrateFineBtn" data-i18n="cameraGazeCalibrateFine">精细校准</button>
                     <button type="button" class="control-btn" id="cameraGazeClearCalibrationBtn" data-i18n="cameraGazeClearCalibration">清除校准</button>
                   </div>
                 </div>
@@ -2441,7 +2444,7 @@
                     <section class="camera-calib-block" id="cameraCalibBlock">
                       <div class="camera-card-kicker" data-i18n="cameraCalibBlockKicker">可选</div>
                       <div class="camera-card-title" data-i18n="cameraCalibBlockTitle">本机校准</div>
-                      <p class="camera-card-desc" data-i18n="cameraCalibBlockDesc">校准后区域估计更稳；数据仅保存在本机，不上传。</p>
+                      <p class="camera-card-desc" data-i18n="cameraCalibBlockDesc">按画面旁提示完成快校；需要更细区域时再用精细校准。</p>
                       <span class="sr-only" id="cameraGazeCalibrationStatus" data-i18n="cameraGazeCalibrationIdle">未校准</span>
                       <span class="sr-only" id="cameraGazeScreenPointText" data-i18n="cameraGazeScreenPointUnknown">估算屏幕坐标：未知</span>
                       <p class="camera-calib-lock-hint" id="cameraCalibLockHint" hidden data-i18n="cameraCalibLockHint">校准进行中：请完成或取消校准后再切换其他流程节点。</p>
