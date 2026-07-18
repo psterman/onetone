@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" role="img" aria-labelledby="title desc">
+  <title id="title">摄像头页面规划图 02：执行动作</title>
+  <desc id="desc">展示视觉触发如何映射到语音意图，再映射到底层动作，并通过风险分级保护高风险动作。</desc>
+  <defs>
+    <style>
+      .bg{fill:#f7f9fb}
+      .panel{fill:#ffffff;stroke:#d7dee8;stroke-width:1.4}
+      .soft{fill:#eef6f5;stroke:#c9dfdc}
+      .active{fill:#e7f5f3;stroke:#41a69a;stroke-width:2}
+      .line{stroke:#9aaaba;stroke-width:2.4;fill:none}
+      .text{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;fill:#17202a}
+      .muted{fill:#64748b}
+      .title{font-size:28px;font-weight:700}
+      .h2{font-size:21px;font-weight:700}
+      .h3{font-size:17px;font-weight:700}
+      .body{font-size:15px}
+      .small{font-size:13px}
+      .chip{fill:#f8fafc;stroke:#cbd5e1}
+      .primary{fill:#2b9c90}
+      .primaryText{fill:#ffffff}
+      .warn{fill:#fff7e6;stroke:#f1c36d}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1280" height="860"/>
+  <text class="text title" x="48" y="58">图 2：执行动作 Hero 布局</text>
+  <text class="text body muted" x="48" y="86">目标：不要让用户配置快捷键细节，而是把视觉信号绑定到可理解的语音意图。</text>
+
+  <rect class="panel" x="72" y="126" rx="16" ry="16" width="302" height="112"/>
+  <text class="text h2" x="100" y="168">视觉触发</text>
+  <text class="text body muted" x="100" y="198">摇头、OK、长眨、离席、多人人脸</text>
+  <path class="line" d="M390 182 C430 182 450 182 492 182"/>
+  <polygon points="492,182 477,174 477,190" fill="#9aaaba"/>
+
+  <rect class="active" x="510" y="126" rx="16" ry="16" width="302" height="112"/>
+  <text class="text h2" x="538" y="168">语音意图</text>
+  <text class="text body muted" x="538" y="198">激活、确认、发送、取消、暂停、恢复</text>
+  <path class="line" d="M828 182 C868 182 888 182 930 182"/>
+  <polygon points="930,182 915,174 915,190" fill="#9aaaba"/>
+
+  <rect class="panel" x="948" y="126" rx="16" ry="16" width="302" height="112"/>
+  <text class="text h2" x="976" y="168">系统执行</text>
+  <text class="text body muted" x="976" y="198">输入法快捷键、Esc、Enter、IPC、隐私屏</text>
+
+  <rect class="panel" x="40" y="286" rx="16" ry="16" width="300" height="366"/>
+  <text class="text h2" x="68" y="324">左侧：选中触发</text>
+  <rect class="active" x="68" y="352" rx="12" ry="12" width="244" height="72"/>
+  <circle cx="96" cy="388" r="18" fill="#dff4f1" stroke="#41a69a"/>
+  <text class="text small" x="87" y="393">OK</text>
+  <text class="text h3" x="126" y="383">OK 保持</text>
+  <text class="text small muted" x="126" y="406">推荐绑定确认</text>
+
+  <rect class="panel" x="68" y="440" rx="12" ry="12" width="244" height="72"/>
+  <circle cx="96" cy="476" r="18" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text class="text small" x="90" y="481">摇</text>
+  <text class="text h3" x="126" y="471">摇头</text>
+  <text class="text small muted" x="126" y="494">推荐绑定取消</text>
+
+  <rect class="panel" x="68" y="528" rx="12" ry="12" width="244" height="72"/>
+  <circle cx="96" cy="564" r="18" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text class="text small" x="90" y="569">离</text>
+  <text class="text h3" x="126" y="559">离席</text>
+  <text class="text small muted" x="126" y="582">推荐绑定暂停 / 隐私</text>
+
+  <path class="line" d="M352 470 C385 470 395 470 428 470"/>
+  <polygon points="428,470 413,462 413,478" fill="#9aaaba"/>
+
+  <rect class="panel" x="438" y="286" rx="16" ry="16" width="496" height="366"/>
+  <text class="text h2" x="466" y="324">中间：执行动作</text>
+  <rect class="chip" x="722" y="302" rx="18" ry="18" width="176" height="34"/>
+  <text class="text small" x="744" y="324">展示语义，不展示快捷键</text>
+
+  <rect class="panel" x="466" y="358" rx="12" ry="12" width="205" height="82"/>
+  <text class="text h3" x="490" y="390">语音输入法激活</text>
+  <text class="text small muted" x="490" y="416">进入听写或唤起输入法</text>
+
+  <rect class="active" x="696" y="358" rx="12" ry="12" width="205" height="82"/>
+  <text class="text h3" x="720" y="390">语音确认</text>
+  <text class="text small muted" x="720" y="416">确认候选或进入发送确认</text>
+
+  <rect class="warn" x="466" y="460" rx="12" ry="12" width="205" height="82"/>
+  <text class="text h3" x="490" y="492">语音发送</text>
+  <text class="text small muted" x="490" y="518">高风险，默认二次确认</text>
+
+  <rect class="panel" x="696" y="460" rx="12" ry="12" width="205" height="82"/>
+  <text class="text h3" x="720" y="492">语音取消</text>
+  <text class="text small muted" x="720" y="518">适合摇头或握拳</text>
+
+  <rect class="panel" x="466" y="562" rx="12" ry="12" width="205" height="62"/>
+  <text class="text h3" x="490" y="592">暂停 / 恢复</text>
+  <text class="text small muted" x="490" y="616">适合离席与回席</text>
+
+  <rect class="panel" x="696" y="562" rx="12" ry="12" width="205" height="62"/>
+  <text class="text h3" x="720" y="592">隐私屏</text>
+  <text class="text small muted" x="720" y="616">适合多人出现</text>
+
+  <path class="line" d="M946 470 C980 470 990 470 1024 470"/>
+  <polygon points="1024,470 1009,462 1009,478" fill="#9aaaba"/>
+
+  <rect class="panel" x="1034" y="286" rx="16" ry="16" width="206" height="366"/>
+  <text class="text h2" x="1062" y="324">动作护栏</text>
+  <rect class="soft" x="1062" y="360" rx="12" ry="12" width="150" height="72"/>
+  <text class="text h3" x="1084" y="390">低风险</text>
+  <text class="text small muted" x="1084" y="414">取消 / 暂停 / 隐私</text>
+
+  <rect class="soft" x="1062" y="454" rx="12" ry="12" width="150" height="72"/>
+  <text class="text h3" x="1084" y="484">中风险</text>
+  <text class="text small muted" x="1084" y="508">激活 / 确认</text>
+
+  <rect class="warn" x="1062" y="548" rx="12" ry="12" width="150" height="72"/>
+  <text class="text h3" x="1084" y="578">高风险</text>
+  <text class="text small muted" x="1084" y="602">发送必须二次确认</text>
+
+  <rect class="soft" x="40" y="704" rx="18" ry="18" width="1200" height="118"/>
+  <text class="text h2" x="66" y="742">下方场景：执行动作模板同步到习惯</text>
+  <rect class="panel" x="66" y="762" rx="12" ry="12" width="310" height="42"/>
+  <text class="text body" x="86" y="789">编码收尾：OK 确认 · 摇头取消 · 长眨激活</text>
+  <rect class="panel" x="426" y="762" rx="12" ry="12" width="355" height="42"/>
+  <text class="text body" x="446" y="789">同事靠近：多人出现暂停监听并打开隐私屏</text>
+  <rect class="panel" x="831" y="762" rx="12" ry="12" width="320" height="42"/>
+  <text class="text body" x="851" y="789">离席恢复：离席暂停 · 回席恢复当前状态</text>
+</svg>

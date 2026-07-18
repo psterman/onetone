@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>摄像头 Hero 规划</title>
+  <style>
+    body{
+      margin:0;
+      padding:28px;
+      font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;
+      background:#f7f9fb;
+      color:#17202a;
+    }
+    main{max-width:1280px;margin:0 auto;display:grid;gap:28px}
+    h1{font-size:28px;margin:0}
+    p{margin:6px 0 0;color:#64748b}
+    .primary-link{
+      display:inline-flex;
+      align-items:center;
+      min-height:42px;
+      padding:0 16px;
+      border-radius:12px;
+      background:#2b9c90;
+      color:#fff;
+      text-decoration:none;
+      font-weight:700;
+      margin-top:16px;
+    }
+    .note{
+      padding:18px;
+      border:1px solid #d7dee8;
+      border-radius:16px;
+      background:#fff;
+    }
+    figure{margin:0;display:grid;gap:10px}
+    figcaption{font-weight:700;font-size:18px}
+    img{
+      display:block;
+      width:100%;
+      height:auto;
+      border:1px solid #d7dee8;
+      border-radius:16px;
+      background:#fff;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>摄像头 Hero 规划</h1>
+      <p>新版是参考按键设置页的单页三标签 Hero：点击流程节点即可查看对应功能。</p>
+      <a class="primary-link" href="camera-hero-tabs.html">打开新版交互式 Hero 规划</a>
+    </header>
+    <section class="note">
+      <strong>新版优先看这里：</strong>
+      <p>它把「视觉触发 / 执行动作 / 视线管理」放在同一个 hero 区域里，行为更接近现有按键设置页。</p>
+    </section>
+    <figure>
+      <figcaption>图 1：视觉触发</figcaption>
+      <img src="01-visual-trigger.svg" alt="视觉触发页面规划图">
+    </figure>
+    <figure>
+      <figcaption>图 2：执行动作</figcaption>
+      <img src="02-execution-action.svg" alt="执行动作页面规划图">
+    </figure>
+    <figure>
+      <figcaption>图 3：视线管理</figcaption>
+      <img src="03-gaze-management.svg" alt="视线管理页面规划图">
+    </figure>
+  </main>
+</body>
+</html>

@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>摄像头 Hero 三标签规划</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --surface: #ffffff;
+      --surface-soft: #f1f6f7;
+      --surface-strong: #e7f5f3;
+      --text: #17202a;
+      --muted: #66768a;
+      --line: #d7dee8;
+      --line-strong: #b9c6d4;
+      --primary: #2b9c90;
+      --primary-strong: #16776d;
+      --primary-soft: #dff4f1;
+      --send: #b56b08;
+      --send-soft: #fff4dc;
+      --danger: #b54545;
+      --danger-soft: #fff0f0;
+      --shadow: 0 22px 60px rgba(31, 45, 61, .09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .title-block {
+      min-width: min(100%, 360px);
+    }
+
+    .eyebrow {
+      color: var(--primary-strong);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.25;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      min-height: 32px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .shell {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .shell-head {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .mode-tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+    }
+
+    .mode-tabs button {
+      border: 0;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mode-tabs button.is-active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .hero {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .flow-nav {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      padding: 10px 0 2px;
+    }
+
+    .flow-nav::before {
+      content: "";
+      position: absolute;
+      left: 13%;
+      right: 13%;
+      top: 55px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(43, 156, 144, .25), rgba(43, 156, 144, .85), rgba(181, 107, 8, .5));
+    }
+
+    .flow-node {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .flow-node-tag {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .flow-node button {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      box-shadow: 0 6px 20px rgba(31, 45, 61, .08);
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
+    }
+
+    .flow-node button:hover {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+      color: var(--primary-strong);
+    }
+
+    .flow-node button[aria-selected="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .flow-icon {
+      width: 28px;
+      height: 28px;
+      position: relative;
+    }
+
+    .flow-icon-eye::before {
+      content: "";
+      position: absolute;
+      inset: 6px 1px;
+      border: 2px solid currentColor;
+      border-radius: 50% / 45%;
+    }
+
+    .flow-icon-eye::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      left: 10px;
+      top: 10px;
+    }
+
+    .flow-icon-bolt::before {
+      content: "";
+      position: absolute;
+      left: 9px;
+      top: 2px;
+      width: 10px;
+      height: 24px;
+      background: currentColor;
+      clip-path: polygon(56% 0, 12% 52%, 48% 52%, 34% 100%, 88% 38%, 52% 38%);
+    }
+
+    .flow-icon-gaze::before {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border: 2px solid currentColor;
+      border-radius: 6px;
+    }
+
+    .flow-icon-gaze::after {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: currentColor;
+      right: 4px;
+      bottom: 4px;
+    }
+
+    .flow-node-title {
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .flow-node-hint {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .hero-board {
+      display: grid;
+      grid-template-columns: minmax(300px, .92fr) minmax(0, 1.58fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .hero-preview,
+    .hero-detail {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-soft);
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .hero-preview {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .preview-stage {
+      position: relative;
+      min-height: 286px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(43, 156, 144, .16), transparent 28%),
+        linear-gradient(145deg, #fafdff, #edf4f6);
+      overflow: hidden;
+    }
+
+    .preview-stage::before {
+      content: "";
+      position: absolute;
+      inset: 24px;
+      border: 1px dashed rgba(102, 118, 138, .34);
+      border-radius: 14px;
+    }
+
+    .camera-face {
+      position: absolute;
+      width: 86px;
+      height: 108px;
+      left: 50%;
+      top: 62px;
+      transform: translateX(-50%);
+      border-radius: 48% 48% 42% 42%;
+      background: rgba(43, 156, 144, .09);
+      border: 2px solid rgba(43, 156, 144, .68);
+    }
+
+    .camera-face::before,
+    .camera-face::after {
+      content: "";
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text);
+      top: 42px;
+    }
+
+    .camera-face::before {
+      left: 27px;
+    }
+
+    .camera-face::after {
+      right: 27px;
+    }
+
+    .camera-shoulder {
+      position: absolute;
+      width: 172px;
+      height: 86px;
+      left: 50%;
+      top: 174px;
+      transform: translateX(-50%);
+      border-radius: 86px 86px 24px 24px;
+      border: 2px solid rgba(43, 156, 144, .42);
+      background: rgba(43, 156, 144, .08);
+    }
+
+    .gesture-badge,
+    .gaze-badge {
+      position: absolute;
+      min-height: 30px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .88);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .gesture-badge {
+      left: 18px;
+      top: 18px;
+    }
+
+    .gaze-badge {
+      right: 18px;
+      bottom: 18px;
+    }
+
+    .gaze-dot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      right: 92px;
+      bottom: 80px;
+      background: var(--primary);
+      box-shadow: 0 0 0 12px rgba(43, 156, 144, .18);
+    }
+
+    .preview-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--surface);
+      min-width: 0;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      margin-top: 5px;
+      font-size: 15px;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .hero-detail {
+      background: var(--surface);
+      display: grid;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 18px;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .tab-panel.is-active {
+      display: grid;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-copy {
+      max-width: 620px;
+    }
+
+    .panel-copy h2 {
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .panel-copy p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .panel-grid.two {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .config-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .config-card.is-active {
+      border-color: rgba(43, 156, 144, .48);
+      background: var(--primary-soft);
+    }
+
+    .config-card.is-warn {
+      border-color: #e5bd65;
+      background: var(--send-soft);
+    }
+
+    .config-card.is-danger {
+      border-color: #e2a1a1;
+      background: var(--danger-soft);
+    }
+
+    .card-kicker {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .card-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .toggle-row,
+    .select-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .switch {
+      width: 42px;
+      height: 24px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      padding: 3px;
+      display: inline-flex;
+      justify-content: flex-start;
+      flex: 0 0 auto;
+    }
+
+    .switch.on {
+      justify-content: flex-end;
+      background: var(--primary);
+    }
+
+    .switch i {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      display: block;
+    }
+
+    .mini-select {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 9px;
+      background: var(--surface);
+      color: var(--text);
+      max-width: 170px;
+    }
+
+    .risk-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .risk-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .gaze-map {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 260px;
+      background: var(--surface-soft);
+    }
+
+    .gaze-cell {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      position: relative;
+      min-height: 86px;
+    }
+
+    .gaze-cell:nth-child(3n) {
+      border-right: 0;
+    }
+
+    .gaze-cell:nth-last-child(-n + 3) {
+      border-bottom: 0;
+    }
+
+    .gaze-cell.is-send {
+      background: var(--send-soft);
+      color: var(--send);
+    }
+
+    .gaze-cell.is-cancel {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .gaze-cell.is-current::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      right: 23px;
+      bottom: 21px;
+      background: var(--primary);
+      box-shadow: 0 0 0 10px rgba(43, 156, 144, .16);
+    }
+
+    .scene-section {
+      border-top: 1px solid var(--line);
+      padding: 18px 22px 22px;
+      background: linear-gradient(180deg, #fff, #f8fbfc);
+      display: grid;
+      gap: 12px;
+    }
+
+    .scene-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .scene-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .scene-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .scene-card button {
+      justify-self: start;
+      min-height: 32px;
+      padding: 0 12px;
+      border: 1px solid rgba(43, 156, 144, .28);
+      border-radius: 8px;
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 1080px) {
+      .hero-board,
+      .panel-grid.two,
+      .scene-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hero-preview {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        padding: 18px;
+      }
+
+      .flow-nav,
+      .panel-grid,
+      .panel-grid.two,
+      .scene-grid,
+      .preview-meta,
+      .hero-board {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-nav::before {
+        display: none;
+      }
+
+      .flow-node {
+        grid-template-columns: auto auto minmax(0, 1fr);
+        justify-items: start;
+        align-items: center;
+      }
+
+      .flow-node button {
+        width: 52px;
+        height: 52px;
+      }
+
+      .flow-node-hint {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="title-block">
+        <div class="eyebrow">摄像头设置 · 参考按键设置页三段流程</div>
+        <h1>摄像头 Hero 区域规划</h1>
+        <p class="subtitle">用户点击上方流程标签，在同一个 hero 内查看“视觉触发、执行动作、视线管理”的对应配置。</p>
+      </div>
+      <div class="status-strip" aria-label="摄像头状态">
+        <span class="chip"><span class="dot"></span>摄像头待命</span>
+        <span class="chip">当前习惯：Vibe Coding</span>
+        <span class="chip">画面仅本地处理</span>
+      </div>
+    </header>
+
+    <section class="shell" aria-label="摄像头 hero 规划">
+      <div class="shell-head">
+        <div>
+          <h2 class="section-title">摄像头工作流</h2>
+          <p class="subtitle">结构继承按键页：先选流程节点，再在下方编辑对应功能。</p>
+        </div>
+        <div class="mode-tabs" aria-label="设置大类">
+          <button type="button">按键</button>
+          <button type="button">语音</button>
+          <button type="button" class="is-active">摄像头</button>
+        </div>
+      </div>
+
+      <div class="hero">
+        <nav class="flow-nav" aria-label="摄像头流程标签" role="tablist">
+          <div class="flow-node">
+            <span class="flow-node-tag">01 / 触发</span>
+            <button type="button" id="tab-trigger" data-tab="trigger" role="tab" aria-selected="true" aria-controls="panel-trigger">
+              <span class="flow-icon flow-icon-eye" aria-hidden="true"></span>
+            </button>
+            <div>
+              <div class="flow-node-title">视觉触发</div>
+              <div class="flow-node-hint" data-hint="trigger">离席、眨眼、摇头、手势</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <span class="flow-node-tag">02 / 动作</span>
+            <button type="button" id="tab-action" data-tab="action" role="tab" aria-selected="false" aria-controls="panel-action">
+              <span class="flow-icon flow-icon-bolt" aria-hidden="true"></span>
+            </button>
+            <div>
+              <div class="flow-node-title">执行动作</div>
+              <div class="flow-node-hint" data-hint="action">激活、发送、取消、确认</div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <span class="flow-node-tag">03 / 收尾</span>
+            <button type="button" id="tab-gaze" data-tab="gaze" role="tab" aria-selected="false" aria-controls="panel-gaze">
+              <span class="flow-icon flow-icon-gaze" aria-hidden="true"></span>
+            </button>
+            <div>
+              <div class="flow-node-title">视线管理</div>
+              <div class="flow-node-hint" data-hint="gaze">区域停留、Glance 动作</div>
+            </div>
+          </div>
+        </nav>
+
+        <div class="hero-board">
+          <aside class="hero-preview" aria-label="摄像头状态预览">
+            <div class="panel-head">
+              <div>
+                <div class="card-kicker" id="previewKicker">当前预览</div>
+                <h2 class="section-title" id="previewTitle">等待视觉触发</h2>
+              </div>
+              <span class="chip" id="previewState"><span class="dot"></span><span id="previewStateText">在席</span></span>
+            </div>
+            <div class="preview-stage" id="previewStage">
+              <span class="gesture-badge" id="gestureBadge">最近动作：无</span>
+              <span class="camera-face" aria-hidden="true"></span>
+              <span class="camera-shoulder" aria-hidden="true"></span>
+              <span class="gaze-dot" id="gazeDot" aria-hidden="true"></span>
+              <span class="gaze-badge" id="gazeBadge">视线：中心</span>
+            </div>
+            <div class="preview-meta">
+              <div class="metric">
+                <div class="metric-label">人脸状态</div>
+                <div class="metric-value" id="metricFace">在席</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">触发策略</div>
+                <div class="metric-value" id="metricStrategy">保持后触发</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">风险级别</div>
+                <div class="metric-value" id="metricRisk">低 / 中</div>
+              </div>
+            </div>
+          </aside>
+
+          <section class="hero-detail">
+            <article class="tab-panel is-active" id="panel-trigger" role="tabpanel" aria-labelledby="tab-trigger" data-panel="trigger">
+              <div class="panel-head">
+                <div class="panel-copy">
+                  <h2>视觉触发：先定义摄像头看什么</h2>
+                  <p>这一页对应按键设置里的“触发”。用户选择离席、眨眼、摇头、手势等条件，并设置保持时长、冷却和开关。</p>
+                </div>
+                <span class="chip">默认只开启稳定触发</span>
+              </div>
+              <div class="panel-grid">
+                <div class="config-card is-active">
+                  <div class="card-kicker">推荐开启</div>
+                  <div class="card-title">离席 / 回席</div>
+                  <div class="card-desc">人脸消失 3 秒视为离席，回到画面 1 秒视为回席。</div>
+                  <div class="toggle-row"><span>启用</span><span class="switch on"><i></i></span></div>
+                </div>
+                <div class="config-card is-active">
+                  <div class="card-kicker">推荐开启</div>
+                  <div class="card-title">摇头</div>
+                  <div class="card-desc">连续左右摆头，默认只绑定取消，降低误触成本。</div>
+                  <div class="toggle-row"><span>冷却 1.2 秒</span><span class="switch on"><i></i></span></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">刻意动作</div>
+                  <div class="card-title">长眨 / 双眨</div>
+                  <div class="card-desc">用于激活或确认，需要稳定识别和倒计时反馈。</div>
+                  <div class="toggle-row"><span>实验</span><span class="switch"><i></i></span></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">手势实验</div>
+                  <div class="card-title">五指 / OK / 握拳</div>
+                  <div class="card-desc">参考音箱手势，但 PC 场景必须保持 0.8 秒以上。</div>
+                  <div class="toggle-row"><span>默认关闭</span><span class="switch"><i></i></span></div>
+                </div>
+                <div class="config-card is-active">
+                  <div class="card-kicker">隐私保护</div>
+                  <div class="card-title">第二个人出现</div>
+                  <div class="card-desc">多人人脸出现时暂停监听或打开隐私屏。</div>
+                  <div class="toggle-row"><span>启用</span><span class="switch on"><i></i></span></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">不建议默认</div>
+                  <div class="card-title">物品 / 手机</div>
+                  <div class="card-desc">摄像头角度不稳定，先不放进 hero 主流程。</div>
+                  <div class="toggle-row"><span>暂缓</span><span class="switch"><i></i></span></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="tab-panel" id="panel-action" role="tabpanel" aria-labelledby="tab-action" data-panel="action">
+              <div class="panel-head">
+                <div class="panel-copy">
+                  <h2>执行动作：把视觉信号翻译成语音意图</h2>
+                  <p>这一页对应按键设置里的“打开语音 / 收尾动作”。选中视觉触发后，用户绑定语音输入法激活、发送、取消、确认等语义动作。</p>
+                </div>
+                <span class="chip">语义优先，快捷键后置</span>
+              </div>
+              <div class="panel-grid">
+                <div class="config-card is-active">
+                  <div class="card-kicker">当前选中：长眨</div>
+                  <div class="card-title">语音输入法激活</div>
+                  <div class="card-desc">唤起当前习惯对应输入法语音快捷键。</div>
+                  <div class="select-row"><span>动作</span><select class="mini-select"><option>voiceActivate</option></select></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">当前选中：OK</div>
+                  <div class="card-title">语音确认</div>
+                  <div class="card-desc">确认候选，或进入发送前的确认状态。</div>
+                  <div class="select-row"><span>保持</span><select class="mini-select"><option>1.0 秒</option></select></div>
+                </div>
+                <div class="config-card is-warn">
+                  <div class="card-kicker">高风险</div>
+                  <div class="card-title">语音发送</div>
+                  <div class="card-desc">不能单一手势直接发送，需要视线或 OK 二次确认。</div>
+                  <div class="select-row"><span>护栏</span><select class="mini-select"><option>二次确认</option></select></div>
+                </div>
+                <div class="config-card is-danger">
+                  <div class="card-kicker">低风险默认</div>
+                  <div class="card-title">语音取消</div>
+                  <div class="card-desc">摇头或握拳触发，执行 Esc / 取消当前听写。</div>
+                  <div class="select-row"><span>绑定</span><select class="mini-select"><option>摇头</option></select></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">离席动作</div>
+                  <div class="card-title">暂停 / 恢复</div>
+                  <div class="card-desc">离席暂停语音，回席恢复到待命。</div>
+                  <div class="select-row"><span>策略</span><select class="mini-select"><option>自动恢复</option></select></div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">保护动作</div>
+                  <div class="card-title">隐私屏</div>
+                  <div class="card-desc">第二个人出现或离席时隐藏语音内容。</div>
+                  <div class="select-row"><span>触发</span><select class="mini-select"><option>多人出现</option></select></div>
+                </div>
+              </div>
+              <div class="config-card">
+                <div class="card-title">风险分级</div>
+                <div class="risk-list">
+                  <div class="risk-item"><span class="risk-mark">低</span><div><strong>取消、暂停、隐私屏</strong><div class="card-desc">可以直接执行，误触成本低。</div></div></div>
+                  <div class="risk-item"><span class="risk-mark">中</span><div><strong>激活、确认</strong><div class="card-desc">需要保持或倒计时反馈。</div></div></div>
+                  <div class="risk-item"><span class="risk-mark">高</span><div><strong>发送、提交、覆盖</strong><div class="card-desc">必须二次确认。</div></div></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="tab-panel" id="panel-gaze" role="tabpanel" aria-labelledby="tab-gaze" data-panel="gaze">
+              <div class="panel-head">
+                <div class="panel-copy">
+                  <h2>视线管理：区域级收尾与 Glance 动作</h2>
+                  <p>这一页对应按键设置里的“收尾”。用户不需要精确控制鼠标，只要看向区域、保持视线，再配合 OK / 长眨 / 摇头完成动作。</p>
+                </div>
+                <span class="chip">不做精确鼠标</span>
+              </div>
+              <div class="panel-grid two">
+                <div class="config-card">
+                  <div class="card-kicker">视线区域</div>
+                  <div class="card-title">3×3 区域地图</div>
+                  <div class="gaze-map" aria-label="视线九宫格">
+                    <div class="gaze-cell">命令</div>
+                    <div class="gaze-cell">上方</div>
+                    <div class="gaze-cell">候选</div>
+                    <div class="gaze-cell is-cancel">取消</div>
+                    <div class="gaze-cell">中心</div>
+                    <div class="gaze-cell">继续</div>
+                    <div class="gaze-cell">左下</div>
+                    <div class="gaze-cell">下方</div>
+                    <div class="gaze-cell is-send is-current">发送区</div>
+                  </div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">区域动作</div>
+                  <div class="card-title">看向区域后做什么</div>
+                  <div class="risk-list">
+                    <div class="risk-item"><span class="risk-mark">↘</span><div><strong>右下停留</strong><div class="card-desc">进入发送确认，不直接发送。</div></div></div>
+                    <div class="risk-item"><span class="risk-mark">←</span><div><strong>左侧停留</strong><div class="card-desc">取消当前语音或关闭浮层。</div></div></div>
+                    <div class="risk-item"><span class="risk-mark">↑</span><div><strong>上方停留</strong><div class="card-desc">打开命令区或候选区。</div></div></div>
+                    <div class="risk-item"><span class="risk-mark">◎</span><div><strong>中心回看</strong><div class="card-desc">回到听写待命。</div></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-grid">
+                <div class="config-card is-active">
+                  <div class="card-kicker">推荐流程</div>
+                  <div class="card-title">看发送区 → OK</div>
+                  <div class="card-desc">看右下进入确认，OK 或长眨后发送。</div>
+                </div>
+                <div class="config-card is-danger">
+                  <div class="card-kicker">兜底</div>
+                  <div class="card-title">摇头取消</div>
+                  <div class="card-desc">不管在哪个视线区域，摇头都取消。</div>
+                </div>
+                <div class="config-card">
+                  <div class="card-kicker">校准</div>
+                  <div class="card-title">高级可选</div>
+                  <div class="card-desc">未校准时做粗区域，校准后再做 3×3。</div>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </div>
+
+      <section class="scene-section" aria-label="摄像头场景模板">
+        <div class="scene-head">
+          <div>
+            <h2 class="section-title">下方：摄像头应用场景</h2>
+            <p class="subtitle">这些模板同时出现在“习惯界面”和“摄像头页面下方”，一键写入当前习惯。</p>
+          </div>
+          <span class="chip">场景模板</span>
+        </div>
+        <div class="scene-grid">
+          <div class="scene-card">
+            <div class="card-title">离席隐私</div>
+            <div class="card-desc">离席暂停，回席恢复，多人出现隐私屏。</div>
+            <button type="button">套用到习惯</button>
+          </div>
+          <div class="scene-card">
+            <div class="card-title">Vibe Coding 手势</div>
+            <div class="card-desc">长眨激活，OK 确认，摇头取消。</div>
+            <button type="button">套用到习惯</button>
+          </div>
+          <div class="scene-card">
+            <div class="card-title">视线确认发送</div>
+            <div class="card-desc">看右下进入确认，OK 或长眨后发送。</div>
+            <button type="button">套用到习惯</button>
+          </div>
+          <div class="scene-card">
+            <div class="card-title">多屏聚焦</div>
+            <div class="card-desc">看左 / 右屏切换提示位置或语音目标。</div>
+            <button type="button">套用到习惯</button>
+          </div>
+        </div>
+        <p class="footer-note">交互原则：像按键设置一样，流程节点是主要导航；每个节点打开一个对应功能页，而不是把所有摄像头功能堆在一个调试页里。</p>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const root = document;
+    const data = {
+      trigger: {
+        previewKicker: "当前预览",
+        previewTitle: "等待视觉触发",
+        previewState: "在席",
+        gestureBadge: "最近动作：无",
+        gazeBadge: "视线：中心",
+        metricFace: "在席",
+        metricStrategy: "保持后触发",
+        metricRisk: "低 / 中"
+      },
+      action: {
+        previewKicker: "动作绑定",
+        previewTitle: "长眨 → 语音激活",
+        previewState: "动作待确认",
+        gestureBadge: "当前触发：长眨",
+        gazeBadge: "动作：voiceActivate",
+        metricFace: "稳定",
+        metricStrategy: "语义动作",
+        metricRisk: "中"
+      },
+      gaze: {
+        previewKicker: "视线管理",
+        previewTitle: "右下停留 → 发送确认",
+        previewState: "视线估计中",
+        gestureBadge: "配合动作：OK / 长眨",
+        gazeBadge: "视线：右下发送区",
+        metricFace: "已校准",
+        metricStrategy: "区域停留",
+        metricRisk: "高需确认"
+      }
+    };
+
+    function setText(id, value) {
+      const el = root.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function activateTab(name) {
+      root.querySelectorAll("[data-tab]").forEach((button) => {
+        const active = button.dataset.tab === name;
+        button.setAttribute("aria-selected", active ? "true" : "false");
+      });
+
+      root.querySelectorAll("[data-panel]").forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.panel === name);
+      });
+
+      const next = data[name];
+      setText("previewKicker", next.previewKicker);
+      setText("previewTitle", next.previewTitle);
+      setText("previewStateText", next.previewState);
+      setText("gestureBadge", next.gestureBadge);
+      setText("gazeBadge", next.gazeBadge);
+      setText("metricFace", next.metricFace);
+      setText("metricStrategy", next.metricStrategy);
+      setText("metricRisk", next.metricRisk);
+    }
+
+    root.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+  </script>
+</body>
+</html>

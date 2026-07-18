@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" role="img" aria-labelledby="title desc">
+  <title id="title">摄像头页面规划图 01：视觉触发</title>
+  <desc id="desc">展示习惯界面摄像头入口、摄像头 Hero 的视觉触发区、防误触规则和下方应用场景模板。</desc>
+  <defs>
+    <style>
+      .bg{fill:#f7f9fb}
+      .panel{fill:#ffffff;stroke:#d7dee8;stroke-width:1.4}
+      .soft{fill:#eef6f5;stroke:#c9dfdc}
+      .active{fill:#e7f5f3;stroke:#41a69a;stroke-width:2}
+      .line{stroke:#c7d2df;stroke-width:2;fill:none}
+      .text{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;fill:#17202a}
+      .muted{fill:#64748b}
+      .title{font-size:28px;font-weight:700}
+      .h2{font-size:21px;font-weight:700}
+      .h3{font-size:17px;font-weight:700}
+      .body{font-size:15px}
+      .small{font-size:13px}
+      .chip{fill:#f8fafc;stroke:#cbd5e1}
+      .primary{fill:#2b9c90}
+      .primaryText{fill:#ffffff}
+      .warn{fill:#fff7e6;stroke:#f1c36d}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="860"/>
+  <text class="text title" x="48" y="58">图 1：视觉触发 Hero 布局</text>
+  <text class="text body muted" x="48" y="86">目标：把摄像头从“设备调试”升级为当前习惯的视觉输入通道。</text>
+
+  <rect class="panel" x="40" y="118" rx="16" ry="16" width="285" height="545"/>
+  <text class="text h2" x="66" y="154">习惯界面入口</text>
+  <rect class="chip" x="66" y="176" rx="18" ry="18" width="74" height="36"/>
+  <text class="text small" x="90" y="199">按键</text>
+  <rect class="chip" x="150" y="176" rx="18" ry="18" width="74" height="36"/>
+  <text class="text small" x="174" y="199">语音</text>
+  <rect class="primary" x="234" y="176" rx="18" ry="18" width="74" height="36"/>
+  <text class="text primaryText small" x="252" y="199">摄像头</text>
+
+  <rect class="soft" x="66" y="240" rx="12" ry="12" width="233" height="104"/>
+  <text class="text h3" x="86" y="272">视觉触发摘要</text>
+  <text class="text body muted" x="86" y="303">离席暂停 · 摇头取消</text>
+  <text class="text body muted" x="86" y="326">OK 确认 · 视线收尾</text>
+
+  <rect class="panel" x="66" y="370" rx="12" ry="12" width="233" height="105"/>
+  <text class="text h3" x="86" y="402">应用到当前习惯</text>
+  <text class="text body muted" x="86" y="433">视觉触发不是单独工具，</text>
+  <text class="text body muted" x="86" y="456">而是按键/语音的补充通道。</text>
+
+  <rect class="warn" x="66" y="510" rx="12" ry="12" width="233" height="114"/>
+  <text class="text h3" x="86" y="543">显示原则</text>
+  <text class="text body muted" x="86" y="574">只展示启用状态和最近识别，</text>
+  <text class="text body muted" x="86" y="597">避免像“监控面板”。</text>
+
+  <path class="line" d="M340 390 C375 390 385 390 420 390"/>
+  <polygon points="420,390 408,383 408,397" fill="#94a3b8"/>
+
+  <rect class="panel" x="430" y="118" rx="18" ry="18" width="495" height="545"/>
+  <text class="text h2" x="462" y="154">摄像头 Hero：视觉触发</text>
+  <rect class="chip" x="754" y="130" rx="18" ry="18" width="138" height="36"/>
+  <circle cx="777" cy="148" r="5" fill="#2b9c90"/>
+  <text class="text small" x="792" y="153">在席 · 本地识别</text>
+
+  <circle cx="532" cy="238" r="58" fill="#dff4f1" stroke="#41a69a" stroke-width="2"/>
+  <circle cx="532" cy="238" r="34" fill="#ffffff" stroke="#8dc9c2" stroke-width="2"/>
+  <ellipse cx="532" cy="236" rx="21" ry="26" fill="#eef6f5" stroke="#2b9c90" stroke-width="2"/>
+  <circle cx="524" cy="232" r="2.7" fill="#17202a"/>
+  <circle cx="540" cy="232" r="2.7" fill="#17202a"/>
+  <path d="M523 249 Q532 256 542 249" stroke="#17202a" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <text class="text h2" x="615" y="224">等待刻意视觉动作</text>
+  <text class="text body muted" x="615" y="254">先选择“什么画面算触发”，再绑定语音动作。</text>
+  <text class="text body muted" x="615" y="282">默认只开启稳定、低误触的触发条件。</text>
+
+  <rect class="active" x="462" y="336" rx="14" ry="14" width="210" height="112"/>
+  <text class="text h3" x="486" y="372">离席 / 回席</text>
+  <text class="text body muted" x="486" y="402">人脸存在 + 持续时间</text>
+  <text class="text body muted" x="486" y="426">适合暂停、隐私、恢复</text>
+
+  <rect class="active" x="690" y="336" rx="14" ry="14" width="202" height="112"/>
+  <text class="text h3" x="714" y="372">长眨 / 双眨</text>
+  <text class="text body muted" x="714" y="402">刻意动作</text>
+  <text class="text body muted" x="714" y="426">适合激活或确认</text>
+
+  <rect class="active" x="462" y="470" rx="14" ry="14" width="210" height="112"/>
+  <text class="text h3" x="486" y="506">摇头</text>
+  <text class="text body muted" x="486" y="536">左右头姿变化</text>
+  <text class="text body muted" x="486" y="560">默认绑定取消</text>
+
+  <rect class="panel" x="690" y="470" rx="14" ry="14" width="202" height="112"/>
+  <text class="text h3" x="714" y="506">五指 / OK / V</text>
+  <text class="text body muted" x="714" y="536">手势模型识别</text>
+  <text class="text body muted" x="714" y="560">实验项，需要停留</text>
+
+  <rect class="panel" x="948" y="118" rx="16" ry="16" width="292" height="545"/>
+  <text class="text h2" x="976" y="154">防误触规则</text>
+  <rect class="chip" x="976" y="178" rx="18" ry="18" width="100" height="34"/>
+  <text class="text small" x="1001" y="200">默认开启</text>
+
+  <circle cx="994" cy="258" r="17" fill="#e7f5f3" stroke="#41a69a"/>
+  <text class="text small" x="990" y="263">1</text>
+  <text class="text h3" x="1024" y="254">保持时长</text>
+  <text class="text body muted" x="1024" y="280">手势 / 眨眼保持 0.8-1.5 秒。</text>
+
+  <circle cx="994" cy="338" r="17" fill="#e7f5f3" stroke="#41a69a"/>
+  <text class="text small" x="990" y="343">2</text>
+  <text class="text h3" x="1024" y="334">状态限定</text>
+  <text class="text body muted" x="1024" y="360">只在待命、听写、确认中响应。</text>
+
+  <circle cx="994" cy="418" r="17" fill="#e7f5f3" stroke="#41a69a"/>
+  <text class="text small" x="990" y="423">3</text>
+  <text class="text h3" x="1024" y="414">冷却时间</text>
+  <text class="text body muted" x="1024" y="440">执行后短暂锁定，避免连发。</text>
+
+  <circle cx="994" cy="498" r="17" fill="#e7f5f3" stroke="#41a69a"/>
+  <text class="text small" x="990" y="503">4</text>
+  <text class="text h3" x="1024" y="494">可见反馈</text>
+  <text class="text body muted" x="1024" y="520">先显示倒计时，再执行动作。</text>
+
+  <rect class="soft" x="40" y="704" rx="18" ry="18" width="1200" height="118"/>
+  <text class="text h2" x="66" y="742">摄像头页下方：应用场景模板</text>
+  <rect class="panel" x="66" y="762" rx="12" ry="12" width="350" height="42"/>
+  <text class="text body" x="86" y="789">离席隐私：离席暂停 · 回席恢复 · 多人隐私屏</text>
+  <rect class="panel" x="466" y="762" rx="12" ry="12" width="315" height="42"/>
+  <text class="text body" x="486" y="789">手势待命：五指暂停 · OK 确认 · 握拳取消</text>
+  <rect class="panel" x="831" y="762" rx="12" ry="12" width="360" height="42"/>
+  <text class="text body" x="851" y="789">Vibe Coding：长眨激活 · 摇头取消 · OK 收尾</text>
+</svg>

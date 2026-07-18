@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" role="img" aria-labelledby="title desc">
+  <title id="title">摄像头页面规划图 03：视线管理</title>
+  <desc id="desc">展示视线区域识别、区域动作绑定、Glance 式预定动作和下方视线应用场景模板。</desc>
+  <defs>
+    <style>
+      .bg{fill:#f7f9fb}
+      .panel{fill:#ffffff;stroke:#d7dee8;stroke-width:1.4}
+      .soft{fill:#eef6f5;stroke:#c9dfdc}
+      .active{fill:#e7f5f3;stroke:#41a69a;stroke-width:2}
+      .grid{stroke:#cbd5e1;stroke-width:1.5}
+      .text{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;fill:#17202a}
+      .muted{fill:#64748b}
+      .title{font-size:28px;font-weight:700}
+      .h2{font-size:21px;font-weight:700}
+      .h3{font-size:17px;font-weight:700}
+      .body{font-size:15px}
+      .small{font-size:13px}
+      .chip{fill:#f8fafc;stroke:#cbd5e1}
+      .primary{fill:#2b9c90}
+      .primaryText{fill:#ffffff}
+      .warn{fill:#fff7e6;stroke:#f1c36d}
+      .barBg{fill:#dbe7e5}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1280" height="860"/>
+  <text class="text title" x="48" y="58">图 3：视线管理 Hero 布局</text>
+  <text class="text body muted" x="48" y="86">目标：通过视线区域 + 特定动作完成收尾操作，不把视线当精确鼠标。</text>
+
+  <rect class="panel" x="40" y="120" rx="16" ry="16" width="462" height="540"/>
+  <text class="text h2" x="68" y="156">左侧：预览 + 视线区域</text>
+  <rect class="chip" x="322" y="132" rx="18" ry="18" width="130" height="34"/>
+  <text class="text small" x="352" y="154">3×3 粗区域</text>
+
+  <rect x="68" y="186" width="406" height="304" rx="14" ry="14" fill="#edf4f7" stroke="#cbd5e1"/>
+  <line class="grid" x1="203" y1="186" x2="203" y2="490"/>
+  <line class="grid" x1="339" y1="186" x2="339" y2="490"/>
+  <line class="grid" x1="68" y1="287" x2="474" y2="287"/>
+  <line class="grid" x1="68" y1="389" x2="474" y2="389"/>
+  <rect class="chip" x="232" y="202" rx="16" ry="16" width="78" height="30"/>
+  <text class="text small" x="258" y="222">命令</text>
+  <rect class="chip" x="88" y="324" rx="16" ry="16" width="78" height="30"/>
+  <text class="text small" x="114" y="344">取消</text>
+  <rect class="active" x="372" y="430" rx="16" ry="16" width="82" height="32"/>
+  <text class="text small" x="393" y="451">发送区</text>
+
+  <ellipse cx="257" cy="316" rx="38" ry="48" fill="#ffffff" stroke="#41a69a" stroke-width="2"/>
+  <circle cx="245" cy="306" r="3" fill="#17202a"/>
+  <circle cx="269" cy="306" r="3" fill="#17202a"/>
+  <path d="M243 332 Q257 341 272 332" stroke="#17202a" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="392" cy="404" r="11" fill="#2b9c90"/>
+  <circle cx="392" cy="404" r="24" fill="none" stroke="#41a69a" stroke-width="3" opacity=".35"/>
+  <rect class="chip" x="324" y="500" rx="18" ry="18" width="150" height="34"/>
+  <text class="text small" x="346" y="522">停留 0.9s / 1.2s</text>
+
+  <text class="text body muted" x="68" y="560">未校准：左 / 中 / 右粗区也可用。</text>
+  <text class="text body muted" x="68" y="588">校准后：显示 3×3 区域和停留进度。</text>
+  <text class="text body muted" x="68" y="616">发送、提交、覆盖类动作必须叠加确认。</text>
+
+  <rect class="panel" x="526" y="120" rx="16" ry="16" width="360" height="540"/>
+  <text class="text h2" x="554" y="156">中间：区域动作绑定</text>
+  <rect class="active" x="554" y="190" rx="12" ry="12" width="304" height="78"/>
+  <rect class="chip" x="576" y="214" rx="8" ry="8" width="38" height="32"/>
+  <text class="text h3" x="586" y="236">↘</text>
+  <text class="text h3" x="632" y="220">右下停留</text>
+  <text class="text small muted" x="632" y="244">进入发送确认，不直接发。</text>
+
+  <rect class="panel" x="554" y="286" rx="12" ry="12" width="304" height="78"/>
+  <rect class="chip" x="576" y="310" rx="8" ry="8" width="38" height="32"/>
+  <text class="text h3" x="588" y="332">←</text>
+  <text class="text h3" x="632" y="316">左侧停留</text>
+  <text class="text small muted" x="632" y="340">取消当前语音或关闭浮层。</text>
+
+  <rect class="panel" x="554" y="382" rx="12" ry="12" width="304" height="78"/>
+  <rect class="chip" x="576" y="406" rx="8" ry="8" width="38" height="32"/>
+  <text class="text h3" x="588" y="428">↑</text>
+  <text class="text h3" x="632" y="412">上方停留</text>
+  <text class="text small muted" x="632" y="436">打开命令区或候选区。</text>
+
+  <rect class="panel" x="554" y="478" rx="12" ry="12" width="304" height="78"/>
+  <rect class="chip" x="576" y="502" rx="8" ry="8" width="38" height="32"/>
+  <text class="text h3" x="587" y="524">◎</text>
+  <text class="text h3" x="632" y="508">中心回看</text>
+  <text class="text small muted" x="632" y="532">回到听写待命或收起提示。</text>
+
+  <rect class="panel" x="910" y="120" rx="16" ry="16" width="330" height="540"/>
+  <text class="text h2" x="938" y="156">右侧：Glance 式预定动作</text>
+  <rect class="chip" x="938" y="178" rx="18" ry="18" width="126" height="34"/>
+  <text class="text small" x="970" y="200">收尾补充</text>
+
+  <text class="text h3" x="938" y="256">看向区域</text>
+  <rect class="barBg" x="1034" y="242" rx="5" ry="5" width="160" height="10"/>
+  <rect class="primary" x="1034" y="242" rx="5" ry="5" width="70" height="10"/>
+
+  <text class="text h3" x="938" y="318">保持视线</text>
+  <rect class="barBg" x="1034" y="304" rx="5" ry="5" width="160" height="10"/>
+  <rect class="primary" x="1034" y="304" rx="5" ry="5" width="118" height="10"/>
+
+  <text class="text h3" x="938" y="380">动作确认</text>
+  <rect class="barBg" x="1034" y="366" rx="5" ry="5" width="160" height="10"/>
+  <rect class="primary" x="1034" y="366" rx="5" ry="5" width="92" height="10"/>
+
+  <text class="text h3" x="938" y="442">执行反馈</text>
+  <rect class="barBg" x="1034" y="428" rx="5" ry="5" width="160" height="10"/>
+  <rect class="primary" x="1034" y="428" rx="5" ry="5" width="147" height="10"/>
+
+  <rect class="soft" x="938" y="486" rx="12" ry="12" width="270" height="126"/>
+  <text class="text h3" x="962" y="520">推荐组合</text>
+  <text class="text body muted" x="962" y="550">看发送区 → 进入确认</text>
+  <text class="text body muted" x="962" y="578">OK / 长眨 → 发送</text>
+  <text class="text body muted" x="962" y="606">摇头 → 随时取消</text>
+
+  <rect class="soft" x="40" y="704" rx="18" ry="18" width="1200" height="118"/>
+  <text class="text h2" x="66" y="742">下方场景：视线管理作为收尾能力</text>
+  <rect class="panel" x="66" y="762" rx="12" ry="12" width="320" height="42"/>
+  <text class="text body" x="86" y="789">视线确认发送：看右下进入确认，OK / 长眨发送</text>
+  <rect class="panel" x="436" y="762" rx="12" ry="12" width="330" height="42"/>
+  <text class="text body" x="456" y="789">多屏聚焦：看左 / 右屏切换提示位置或输入目标</text>
+  <rect class="panel" x="816" y="762" rx="12" ry="12" width="318" height="42"/>
+  <text class="text body" x="836" y="789">收尾兜底：左侧取消 · 中心待命 · 摇头打断</text>
+</svg>
