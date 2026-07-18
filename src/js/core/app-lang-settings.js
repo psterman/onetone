@@ -38,10 +38,20 @@
     var keySchemeStepTargetTitle=$('keySchemeStepTargetTitle'); if(keySchemeStepTargetTitle) keySchemeStepTargetTitle.textContent=d.keySchemeStepTargetTitle;
     var keySchemeStepFinishTitle=$('keySchemeStepFinishTitle'); if(keySchemeStepFinishTitle) keySchemeStepFinishTitle.textContent=d.keyExecFinishTitle;
     var spSounds=$('settingsPanelSoundsDesc'); if(spSounds) spSounds.textContent=d.settingsPanelSoundsDesc;
-    var spDbg=$('settingsPanelDebugDesc'); if(spDbg) spDbg.textContent=d.settingsPanelDebugDesc;
+    var spDbg=$('settingsPanelDebugDesc');
+    if(spDbg){
+      spDbg.textContent=d.settingsPanelDebugDesc||'';
+      spDbg.hidden=!d.settingsPanelDebugDesc;
+    }
     var settingsBackupTitle=$('settingsBackupTitle'); if(settingsBackupTitle) settingsBackupTitle.textContent=d.settingsBackupTitle;
-    var settingsBackupDesc=$('settingsBackupDesc'); if(settingsBackupDesc) settingsBackupDesc.textContent=d.settingsBackupDesc;
-    var debugDeveloperDesc=$('debugDeveloperDesc'); if(debugDeveloperDesc) debugDeveloperDesc.textContent=d.debugDeveloperDesc;
+    var settingsBackupDesc=$('settingsBackupDesc');
+    if(settingsBackupDesc){
+      settingsBackupDesc.textContent=d.settingsBackupDesc;
+      if(d.settingsBackupPathTip) settingsBackupDesc.setAttribute('title',d.settingsBackupPathTip);
+    }
+    var debugDeveloperDesc=$('debugDeveloperDesc'); if(debugDeveloperDesc) debugDeveloperDesc.textContent=d.debugDeveloperDesc||'';
+    var debugAdvancedRuntimeSummary=$('debugAdvancedRuntimeSummary');
+    if(debugAdvancedRuntimeSummary) debugAdvancedRuntimeSummary.textContent=d.debugAdvancedRuntimeSummary||d.debugTitle;
     var btnDevClearLog=$('btnDevClearLog'); if(btnDevClearLog) btnDevClearLog.textContent=d.btnDevClearLog;
     var btnDevExportLog=$('btnDevExportLog'); if(btnDevExportLog) btnDevExportLog.textContent=d.btnDevExportLog;
     var aboutTitle=$('aboutTitle'); if(aboutTitle) aboutTitle.textContent=d.aboutTitle;
@@ -53,7 +63,11 @@
     var keyWakeSettingsTitle=$('keyWakeSettingsTitle'); if(keyWakeSettingsTitle) keyWakeSettingsTitle.textContent=d.keyWakeSettingsTitle;
     var settingsNavSounds=$('settingsNavSoundsLabel'); if(settingsNavSounds) settingsNavSounds.textContent=d.settingsNavSounds;
     var voiceDiagnosticsTitle=$('voiceDiagnosticsTitle'); if(voiceDiagnosticsTitle) voiceDiagnosticsTitle.textContent=d.voiceDiagnosticsTitle;
-    var voiceDiagnosticsDesc=$('voiceDiagnosticsDesc'); if(voiceDiagnosticsDesc) voiceDiagnosticsDesc.textContent=d.voiceDiagnosticsDesc;
+    var voiceDiagnosticsDesc=$('voiceDiagnosticsDesc');
+    if(voiceDiagnosticsDesc){
+      voiceDiagnosticsDesc.textContent=d.voiceDiagnosticsDesc||'';
+      voiceDiagnosticsDesc.hidden=!d.voiceDiagnosticsDesc;
+    }
     hooks().renderVoiceDiagTabs();
     hooks().renderVoiceDiagLog('sapi');
     hooks().renderVoiceDiagLog('vosk');

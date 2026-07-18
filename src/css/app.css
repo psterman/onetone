@@ -1692,7 +1692,10 @@
     .scheme-nav-tag.is-draft{color:var(--on-surface-muted);border-style:dashed;background:transparent}
     .scheme-nav-tag.is-incomplete{color:#b45309;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.08)}
     .scheme-nav-tag.is-conflict{color:#c2410c;border-color:rgba(249,115,22,.28);background:rgba(249,115,22,.1)}
-    .settings-scheme-subnav-status{font-size:10px;line-height:1.35;color:var(--on-surface-muted);word-break:break-word}
+    .settings-scheme-subnav-status{
+      font-size:10px;line-height:1.35;color:var(--on-surface-muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+    }
     .settings-scheme-subnav-item.is-selected .settings-scheme-subnav-status{color:var(--on-surface-muted)}
     .settings-scheme-subnav-empty{margin:0;padding:4px 2px;font-size:10px;line-height:1.4;color:var(--on-surface-muted)}
     .settings-scheme-subnav-add{
@@ -6664,22 +6667,58 @@
       margin:0;
     }
     .status-repair-section .status-recovery-card,
-    .status-repair-section .status-maintenance-card{
+    .status-repair-section .status-maintenance-card,
+    .status-maintenance-section .status-maintenance-card,
+    #debugFocusOverviewSection .status-recovery-card{
       margin:0;
       border:1px solid var(--outline-variant);
       border-radius:14px;
       padding:14px;
       background:var(--surface-high);
     }
-    .status-repair-section .status-maintenance-card.maintenance-danger{
+    .status-maintenance-section{
+      display:grid;
+      gap:14px;
+    }
+    .status-maintenance-section > .mini-title{
+      margin:0;
+    }
+    .status-repair-section .status-maintenance-card.maintenance-danger,
+    .status-maintenance-section .status-maintenance-card.maintenance-danger{
       border-color:rgba(220,38,38,.20);
     }
     .about-version-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 0;font-size:13px}
     .about-version-row strong{font-variant-numeric:tabular-nums;color:var(--on-surface)}
     .about-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
     .dev-panel-head-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .debug-advanced-runtime{
+      margin:0;
+      border:1px solid var(--outline-variant);
+      border-radius:14px;
+      padding:0;
+      background:var(--surface-high);
+      overflow:hidden;
+    }
+    .debug-advanced-runtime-summary{
+      cursor:pointer;
+      list-style:none;
+      padding:12px 14px;
+      font-size:13px;
+      font-weight:700;
+      color:var(--on-surface);
+      user-select:none;
+    }
+    .debug-advanced-runtime-summary::-webkit-details-marker{display:none}
+    .debug-advanced-runtime-body{
+      display:grid;
+      gap:12px;
+      padding:0 14px 14px;
+    }
     html[data-theme="dark"] .status-repair-section .status-recovery-card,
-    html[data-theme="dark"] .status-repair-section .status-maintenance-card{
+    html[data-theme="dark"] .status-repair-section .status-maintenance-card,
+    html[data-theme="dark"] .status-maintenance-section .status-maintenance-card,
+    html[data-theme="dark"] #debugFocusOverviewSection .status-recovery-card,
+    html[data-theme="dark"] .debug-advanced-runtime{
       background:rgba(28,38,54,.78);
       border-color:rgba(148,163,184,.2);
     }

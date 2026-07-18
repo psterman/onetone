@@ -35,7 +35,11 @@
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.applyLang) global.OneToneTargetKeyPicker.applyLang();
     var listenTitle=$('listenTitle');
     if(listenTitle) listenTitle.textContent=d.listenTitle;
-    var listenDesc=$('listenDesc'); if(listenDesc) listenDesc.textContent=d.debugListenDesc||d.listenDesc;
+    var listenDesc=$('listenDesc');
+    if(listenDesc){
+      listenDesc.textContent=d.debugListenDesc||d.listenDesc||'';
+      listenDesc.hidden=true;
+    }
     var prefBasicTitle=$('prefBasicTitle'); if(prefBasicTitle) prefBasicTitle.textContent=d.prefBasicTitle;
     var basicGlobalListenLabel=$('basicGlobalListenLabel'); if(basicGlobalListenLabel) basicGlobalListenLabel.textContent=d.basicGlobalListenLabel;
     var basicGlobalListenDesc=$('basicGlobalListenDesc'); if(basicGlobalListenDesc) basicGlobalListenDesc.textContent=d.basicGlobalListenDesc;

@@ -88,9 +88,9 @@
     if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.syncSubnavRail) global.OneToneSettingsDrawer.syncSubnavRail();
     if(!show||!listEl) return;
     const items=[
-      {mode:'overview',title:t('debugFocusOverview'),sub:debugFocusDynamicSub('overview')||t('debugFocusOverviewStatus')},
-      {mode:'repair',title:t('debugFocusRepair'),sub:debugFocusDynamicSub('repair')||t('debugFocusRepairStatus')},
-      {mode:'developer',title:t('debugFocusDeveloper'),sub:debugFocusDynamicSub('developer')||t('debugFocusDeveloperStatus')}
+      {mode:'overview',title:t('debugFocusOverview'),sub:t('debugFocusOverviewStatus')},
+      {mode:'repair',title:t('debugFocusRepair'),sub:t('debugFocusRepairStatus')},
+      {mode:'developer',title:t('debugFocusDeveloper'),sub:t('debugFocusDeveloperStatus')}
     ];
     let html='';
     items.forEach(function(item){
@@ -170,9 +170,11 @@
     renderSettingsDebugSubnav();
     if(debugFocusMode==='repair'){
       try{ refreshDiagnosticsPanel(); }catch(err){ console.error('voice diagnostics refresh',err); }
-      hookCall('renderTrashList');
     }else if(debugFocusMode==='developer'){
       hookCall('renderDebugDeveloperPanel');
+      hookCall('renderTrashList');
+    }else if(debugFocusMode==='overview'){
+      hookCall('renderDebugOverview');
     }
   }
 
@@ -299,40 +301,6 @@
     return '';
   }
 
-  function debugFocusDynamicSub(mode){
-    try{
-      const paused=!!(global.OneToneState.runtime.paused);
-      const endSnap=hooks().voiceUiSnapshot.end||{};
-      const w=hooks().voiceUiSnapshot.wake||{};
-      if(mode==='overview'){
-        if(paused) return t('listenPaused');
-        const stateRaw=endSnap.state||'idle';
-        if(hooks().sessionActiveState(stateRaw)) return t('chipDictating');
-        if(stateRaw==='error') return t('homeCtaError');
-        return t('listenOn');
-      }
-      if(mode==='repair'){
-        const eng=(w.engine==='vosk')?t('wakeEngineVosk'):(w.engine==='sapi')?t('wakeEngineSapi'):(w.engine==='kws')?t('wakeEngineKws'):t('wakeEngineOff');
-        const status=(w.state?hooks().voiceWakeStateLabel(w.state):'');
-        var snap=hooks().processUsageSnapshot||{};
-        let usage='';
-        if(snap.loaded&&(snap.memoryBytes>0||snap.supported)){
-          usage=hooks().formatProcessMemory(snap.memoryMb)+' · '+hooks().formatProcessCpu(snap.cpuPercent);
-        }else if(snap.loaded){
-          usage=hooks().processUsageUnavailableLine();
-        }else{
-          usage=t('voiceModeMetricLoading');
-        }
-        return (eng+(status?' · '+status:''))+' · '+usage;
-      }
-      if(mode==='developer'){
-        const lines=(Array.isArray(hooks().logLines)?hooks().logLines.length:0);
-        const last=lines?String(hooks().logLines[lines.length-1]||'').slice(0,14):'—';
-        return (lines?('日志 '+lines+' 条'):'无日志')+' · '+last;
-      }
-    }catch(_){}
-    return '';
-  }
   const VOICE_DIAG_METRIC_FIELDS={
     sapi:[
       {key:'state',labelKey:'voiceDiagLogState'},

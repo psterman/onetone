@@ -2098,32 +2098,32 @@
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
-          <p class="settings-panel-desc" id="settingsPanelDebugDesc">总览当前状态，修复常见故障，高级里查看运行时与事件流。</p>
+          <p class="settings-panel-desc" id="settingsPanelDebugDesc" hidden></p>
           <section class="debug-focus-section" id="debugFocusOverviewSection">
-          <div class="debug-status-hero" id="debugStatusHero">
-            <p class="debug-hero-title" id="debugHeroTitle">—</p>
-            <p class="debug-hero-sub" id="debugHeroSub">—</p>
-          </div>
-          <div class="debug-overview-cards" id="debugOverviewCards"></div>
-          <div class="debug-overview-actions" id="debugOverviewActions"></div>
-          </section>
-          <section class="debug-focus-section status-repair-section" id="debugFocusRepairSection">
+            <div class="debug-status-hero" id="debugStatusHero">
+              <p class="debug-hero-title" id="debugHeroTitle">—</p>
+              <p class="debug-hero-sub" id="debugHeroSub">—</p>
+            </div>
+            <div class="debug-overview-cards" id="debugOverviewCards"></div>
+            <div class="debug-overview-actions" id="debugOverviewActions"></div>
             <div class="dev-panel-block status-recovery-card">
               <div class="dev-panel-head">
                 <div class="mini-title" id="listenTitle">监听状态</div>
                 <span class="chip" id="listenState">监听中</span>
               </div>
-              <p class="pref-row-desc" id="listenDesc">总开关在基础中切换；此处可刷新运行时或重启应用。</p>
+              <p class="pref-row-desc" id="listenDesc" hidden></p>
               <div class="pref-runtime-actions">
                 <button type="button" class="control-btn" id="btnRefreshRuntime">刷新</button>
                 <button type="button" class="control-btn warning" id="btnRestartApp">重启</button>
               </div>
             </div>
+          </section>
+          <section class="debug-focus-section status-repair-section" id="debugFocusRepairSection">
             <section class="voice-diagnostics-card">
             <div class="voice-diagnostics-head">
               <div>
                 <div class="mini-title" id="voiceDiagnosticsTitle">识别链路</div>
-                <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc">查看识别状态、测试操作与即时记录。</p>
+                <p class="voice-diagnostics-intro" id="voiceDiagnosticsDesc" hidden></p>
               </div>
             </div>
             <div class="debug-trigger-diag-stack" id="debugTriggerDiagStack">
@@ -2198,9 +2198,13 @@
             </section>
             <p class="voice-diag-compat-note" id="voiceDiagCompatNote" hidden>外部输入法可能独占麦克风，结束词可能不可用（兼容模式）。</p>
             </section>
+          </section>
+          <section class="developer-debug-panel debug-focus-section status-maintenance-section" id="debugFocusDeveloperSection">
+            <div class="mini-title" id="debugTitle">维护</div>
+            <p class="developer-debug-desc" id="debugDeveloperDesc" hidden></p>
             <section class="drawer-section status-maintenance-card" id="settingsBackupSection">
               <div class="mini-title" id="settingsBackupTitle">配置备份</div>
-              <p class="mini" id="settingsBackupDesc">升级前可复制 settings.json 备份。Windows 默认路径：%APPDATA%\com.onetone\app\settings.json（旧版可能位于 oneTone 目录）。</p>
+              <p class="mini" id="settingsBackupDesc" title="%APPDATA%\com.onetone\app\settings.json">升级前可备份 settings.json</p>
             </section>
             <section class="drawer-section status-maintenance-card" id="cycleSwitchSection" hidden aria-hidden="true">
               <div class="mini-title" id="cycleSwitchTitle">轮换快捷键（可选）</div>
@@ -2228,25 +2232,27 @@
                 <button type="button" class="control-btn" id="btnAboutCheckUpdate">检查更新</button>
               </div>
             </section>
-            <section class="drawer-section status-maintenance-card maintenance-danger">
-              <div class="mini-title" id="maintenanceDangerTitle">危险操作</div>
-              <p class="mini" id="maintenanceDangerDesc">清除全部映射会移除当前配置，请只在需要重置时使用。</p>
-              <div class="clear-panel">
-                <button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button>
+            <details class="debug-advanced-runtime">
+              <summary class="debug-advanced-runtime-summary" id="debugAdvancedRuntimeSummary">高级运行时</summary>
+              <div class="debug-advanced-runtime-body">
+                <div class="debug-developer-summary" id="debugDeveloperSummary"></div>
+                <div class="dev-runtime-grid" id="devRuntimeGrid"></div>
+                <div class="dev-panel-block">
+                  <div class="dev-panel-head">
+                    <div class="mini-title" id="sourceTitle">当前源组</div>
+                  </div>
+                  <pre class="dev-log" id="sourceExplain">等待录制后显示</pre>
+                </div>
+                <div class="dev-panel-block">
+                  <div class="mini-title" id="debugInputExtTitle">扩展输入</div>
+                  <div class="dev-runtime-grid" id="devInputExtGrid"></div>
+                </div>
+                <div class="dev-panel-block">
+                  <div class="mini-title" id="runtimeTitle">最近按键</div>
+                  <div class="dev-runtime-grid" id="devLastKeyGrid"></div>
+                </div>
               </div>
-            </section>
-          </section>
-          <section class="developer-debug-panel debug-focus-section" id="debugFocusDeveloperSection">
-            <div class="mini-title" id="debugTitle">日志与高级</div>
-            <p class="developer-debug-desc" id="debugDeveloperDesc">实时运行时快照、映射源组与按键事件流。</p>
-            <div class="debug-developer-summary" id="debugDeveloperSummary"></div>
-            <div class="dev-runtime-grid" id="devRuntimeGrid"></div>
-            <div class="dev-panel-block">
-              <div class="dev-panel-head">
-                <div class="mini-title" id="sourceTitle">当前源组</div>
-              </div>
-              <pre class="dev-log" id="sourceExplain">等待录制后显示</pre>
-            </div>
+            </details>
             <div class="dev-panel-block">
               <div class="dev-panel-head">
                 <div class="mini-title" id="logTitle">事件日志</div>
@@ -2257,17 +2263,16 @@
               </div>
               <pre class="dev-log dev-log-events" id="rawEventLog">等待录制…</pre>
             </div>
-            <div class="dev-panel-block">
-              <div class="mini-title" id="debugInputExtTitle">扩展输入</div>
-              <div class="dev-runtime-grid" id="devInputExtGrid"></div>
-            </div>
-            <div class="dev-panel-block">
-              <div class="mini-title" id="runtimeTitle">最近按键</div>
-              <div class="dev-runtime-grid" id="devLastKeyGrid"></div>
-            </div>
+            <section class="drawer-section status-maintenance-card maintenance-danger">
+              <div class="mini-title" id="maintenanceDangerTitle">危险操作</div>
+              <p class="mini" id="maintenanceDangerDesc">清除全部映射会移除当前配置，请只在需要重置时使用。</p>
+              <div class="clear-panel">
+                <button type="button" class="clear-btn" id="btnClearAll">清除全部映射</button>
+              </div>
+            </section>
           </section>
         </section>
-        <section class="settings-panel drawer-section camera-page" id="settingsPanelCamera" hidden>
+<section class="settings-panel drawer-section camera-page" id="settingsPanelCamera" hidden>
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerCamera" hidden role="status" aria-live="polite">
             <div class="habit-scenario-context-banner-main">
               <span class="habit-scenario-context-banner-icon" aria-hidden="true">◎</span>
