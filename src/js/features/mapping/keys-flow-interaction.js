@@ -178,7 +178,7 @@
       }
     }
 
-    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode]')){
+    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch]')){
       dispatchFinishClick(e);
     }
   }

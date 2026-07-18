@@ -4,6 +4,7 @@
   function emptyCompat(){
     return {
       status:'unknown',
+      verdict:'',
       deviceLabel:'',
       deviceId:'',
       sawKeydown:false,
@@ -22,23 +23,39 @@
     return Array.isArray(modes)&&modes.indexOf(mode)>=0;
   }
 
+  function normalizeVerdict(raw){
+    var v=String(raw||'').trim().toLowerCase();
+    if(v==='hold_ok') return 'hold_capable';
+    if(v==='pulse_ok') return 'pulse_only';
+    if(v==='hold_capable'||v==='pulse_only'||v==='unrecognized') return v;
+    return v;
+  }
+
+  function isHoldMode(mode){
+    var raw=String(mode||'').toLowerCase();
+    return raw==='hold'||raw==='longpress'||raw==='perpress';
+  }
+
   function normalizeCompatMsg(msg){
     var base=emptyCompat();
     if(!msg||typeof msg!=='object') return base;
     var modes=(msg.viableModes||[]).map(function(x){ return String(x||'').trim(); });
-    var verdict=String(msg.verdict||'').trim();
+    var verdict=normalizeVerdict(msg.verdict);
     var recommended=String(msg.recommendedMode||'tap').trim();
     if(recommended!=='hold'&&recommended!=='double') recommended='tap';
     var status='unknown';
     if(msg.testing) status='testing';
-    else if(verdict==='hold_ok'||verdict==='pulse_ok') status='ready';
+    else if(verdict==='hold_capable'||verdict==='pulse_only') status='ready';
+    else if(verdict==='unrecognized') status='unsupported';
     else if(verdict==='partial') status='partial';
     else if(verdict==='unsupported'||verdict==='no_match') status='unsupported';
     else if(msg.sawKeydown||msg.sawKeyup||msg.deviceLabel) status='partial';
 
-    var supportsHold=viableHas(modes,'hold')||(!!msg.sawKeydown&&!!msg.sawKeyup);
-    var supportsTap=viableHas(modes,'tap')||!!msg.sawKeydown;
-    var supportsDouble=viableHas(modes,'double');
+    var supportsHold=viableHas(modes,'hold')||verdict==='hold_capable'||(!!msg.sawKeydown&&!!msg.sawKeyup&&verdict!=='pulse_only');
+    if(verdict==='pulse_only') supportsHold=false;
+    if(verdict==='hold_capable') supportsHold=true;
+    var supportsTap=viableHas(modes,'tap')||!!msg.sawKeydown||verdict==='hold_capable'||verdict==='pulse_only';
+    var supportsDouble=viableHas(modes,'double')||verdict==='hold_capable'||verdict==='pulse_only';
 
     var warnings=[];
     var risk=String(msg.risk||'').trim();
@@ -48,6 +65,7 @@
 
     return {
       status:status,
+      verdict:verdict,
       deviceLabel:String(msg.deviceLabel||msg.device||'').trim(),
       deviceId:String(msg.device||'').trim(),
       sawKeydown:!!msg.sawKeydown,
@@ -90,11 +108,57 @@
     runtime.compatByMapping[String(mappingId||'').trim()]=snap;
   }
 
+  /**
+   * Gate for selecting/saving hold (longpress).
+   * @param {string} mappingId
+   * @param {{currentMode?:string}|null} opts
+   * @returns {{ok:boolean, reason:string, messageKey:string, legacy:boolean}}
+   */
+  function canUseHoldMode(mappingId, opts){
+    opts=opts||{};
+    var legacy=isHoldMode(opts.currentMode);
+    var snap=getCompatSnapshot(mappingId);
+    var verdict=normalizeVerdict(snap.verdict);
+    if(verdict==='hold_capable'||(snap.supportsHold&&snap.status==='ready'&&verdict!=='pulse_only')){
+      return {
+        ok:true,
+        reason:'hold_capable',
+        messageKey:'keysHoldGateSupported',
+        legacy:legacy
+      };
+    }
+    if(verdict==='pulse_only'||(snap.status==='ready'&&!snap.supportsHold&&(snap.supportsTap||snap.sawKeydown))){
+      return {
+        ok:false,
+        reason:'pulse_only',
+        messageKey:'keysHoldGatePulseOnly',
+        legacy:legacy
+      };
+    }
+    if(verdict==='unrecognized'||snap.status==='unsupported'){
+      return {
+        ok:false,
+        reason:'unrecognized',
+        messageKey:'keysHoldGateUntested',
+        legacy:legacy
+      };
+    }
+    return {
+      ok:false,
+      reason:'untested',
+      messageKey:'keysHoldGateUntested',
+      legacy:legacy
+    };
+  }
+
   global.OneToneHomeWorkbenchCompat={
     empty:emptyCompat,
     normalize:normalizeCompatMsg,
+    normalizeVerdict:normalizeVerdict,
     store:storeCompatResult,
     get:getCompatSnapshot,
-    markTesting:markCompatTesting
+    markTesting:markCompatTesting,
+    canUseHoldMode:canUseHoldMode,
+    isHoldMode:isHoldMode
   };
 })((typeof window!=='undefined')?window:globalThis);

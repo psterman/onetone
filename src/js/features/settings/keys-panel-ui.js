@@ -271,6 +271,14 @@
     return 'tap';
   }
 
+  function holdGateFor(m){
+    var api=global.OneToneHomeWorkbenchCompat;
+    if(!api||!api.canUseHoldMode||!m){
+      return {ok:false,reason:'untested',messageKey:'keysHoldGateUntested',legacy:false};
+    }
+    return api.canUseHoldMode(m.id,{currentMode:m.triggerMode});
+  }
+
   function renderTriggerModeSegments(m){
     var host=$('keysTriggerModeHost');
     if(!host) return;
@@ -279,17 +287,38 @@
       return;
     }
     var current=normalizeTriggerModeUi(m.triggerMode);
+    var gate=holdGateFor(m);
     var modes=[
-      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'},
       {id:'tap',label:'keysTriggerModeTap',mode:'tap'},
-      {id:'double',label:'keysTriggerModeDouble',mode:'double'}
+      {id:'double',label:'keysTriggerModeDouble',mode:'double'},
+      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'}
     ];
     var html='<div class="keys-trigger-modes" role="radiogroup" aria-label="'+esc(t('triggerModeTitle'))+'">';
     modes.forEach(function(opt){
       var active=current===opt.id;
-      html+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+'" data-trigger-mode="'+esc(m.id)+'" data-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'">'+esc(t(opt.label))+'</button>';
+      var gated=opt.id==='hold'&&!gate.ok;
+      var supported=opt.id==='hold'&&gate.ok;
+      var cls='keys-trigger-mode-seg'+(active?' is-active':'')+(gated?' is-gated':'')+(supported?' is-hold-supported':'');
+      var title='';
+      if(opt.id==='hold'){
+        if(gate.ok) title=t('keysHoldGateSupported');
+        else if(gate.reason==='pulse_only') title=t('keysHoldGatePulseOnly');
+        else title=t('keysHoldGateUntested');
+      }
+      html+='<button type="button" class="'+cls+'" data-trigger-mode="'+esc(m.id)+'" data-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'"'
+        +(gated?' aria-disabled="true"':'')
+        +(title?' title="'+esc(title)+'"':'')
+        +'>'+esc(t(opt.label))+'</button>';
     });
     html+='</div>';
+    if(current==='hold'&&!gate.ok){
+      html+='<div class="keys-hold-risk-hint" role="status">'
+        +'<p class="keys-hold-risk-text">'+esc(t('keysHoldLegacyRisk'))+'</p>'
+        +'<div class="keys-hold-risk-actions">'
+        +'<button type="button" class="keys-trigger-conflict-btn" data-keys-hold-switch="tap" data-mapping-id="'+esc(m.id)+'">'+esc(t('keysHoldSwitchTap'))+'</button>'
+        +'<button type="button" class="keys-trigger-conflict-btn" data-keys-hold-switch="double" data-mapping-id="'+esc(m.id)+'">'+esc(t('keysHoldSwitchDouble'))+'</button>'
+        +'</div></div>';
+    }
     host.innerHTML=html;
   }
 

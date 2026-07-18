@@ -485,9 +485,20 @@ html[data-theme="dark"] .wb-dot-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.wb-howto-grid--trio {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .wb-howto-grid--trio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 960px) {
   .wb-howto-grid,
-  .wb-howto-grid--duo {
+  .wb-howto-grid--duo,
+  .wb-howto-grid--trio {
     grid-template-columns: 1fr;
   }
 }
@@ -681,6 +692,27 @@ html[data-theme="dark"] .wb-dot-grid {
 
 .wb-howto-card.is-voice .wb-howto-card-value {
   font-size: 16px;
+}
+
+.wb-howto-card.is-camera .wb-howto-card-ico {
+  background: color-mix(in srgb, var(--wb-cyan) 16%, transparent);
+  color: var(--wb-cyan);
+}
+
+.wb-howto-cam-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 6px;
+  background: var(--on-surface-muted);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--on-surface-muted) 18%, transparent);
+}
+
+.wb-howto-cam-dot.is-on {
+  background: var(--wb-cyan);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wb-cyan) 22%, transparent);
+  animation: wb-pulse 1.6s ease-in-out infinite;
 }
 
 .wb-howto-phrase-panel {
@@ -1086,7 +1118,9 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 .wb-hero.is-mode-voice .wb-hero-wave,
 .wb-hero:has(.wb-hero-mode[data-wb-hero-mode="voice"]:hover) .wb-hero-wave,
 .wb-hero.is-mode-keys .wb-hero-wave,
-.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="keys"]:hover) .wb-hero-wave {
+.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="keys"]:hover) .wb-hero-wave,
+.wb-hero.is-mode-camera .wb-hero-wave,
+.wb-hero:has(.wb-hero-mode[data-wb-hero-mode="camera"]:hover) .wb-hero-wave {
   display: flex;
 }
 
@@ -1102,7 +1136,9 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 .wb-hero.is-mode-voice.is-live .wb-hero-wave,
 .wb-hero.is-mode-voice:has(.wb-hero-orb:hover) .wb-hero-wave,
 .wb-hero.is-mode-keys.is-live .wb-hero-wave,
-.wb-hero.is-mode-keys:has(.wb-hero-orb:hover) .wb-hero-wave {
+.wb-hero.is-mode-keys:has(.wb-hero-orb:hover) .wb-hero-wave,
+.wb-hero.is-mode-camera.is-live .wb-hero-wave,
+.wb-hero.is-mode-camera:has(.wb-hero-orb:hover) .wb-hero-wave {
   opacity: 0.9;
 }
 
@@ -1151,6 +1187,23 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 .wb-hero.is-mode-keys.is-live .wb-hero-wave span,
 .wb-hero.is-mode-keys:has(.wb-hero-orb:hover) .wb-hero-wave span {
   animation: wb-keyboard-dot-pulse 2s ease-in-out infinite;
+}
+
+/* 摄像头模式：柔和青系波纹 */
+.wb-hero.is-mode-camera .wb-hero-wave {
+  opacity: 0.24;
+  gap: 3px;
+}
+
+.wb-hero.is-mode-camera .wb-hero-wave span {
+  background: color-mix(in srgb, var(--wb-cyan) 80%, #22d3ee);
+  transform: scaleY(calc(0.85 + var(--wb-mic-level, 0) * 0.4));
+}
+
+.wb-hero.is-mode-camera.is-live .wb-hero-wave span,
+.wb-hero.is-mode-camera:has(.wb-hero-orb:hover) .wb-hero-wave span {
+  animation: wb-slow-harmonic 2.4s ease-in-out infinite;
+  background: color-mix(in srgb, var(--wb-cyan) 70%, #14b8a6);
 }
 
 .wb-hero-wave span:nth-child(1)  { animation-delay: 0.10s; }
@@ -1276,6 +1329,20 @@ html[data-theme="dark"] .wb-trigger-card.is-live .wb-trigger-status {
 
 .wb-hero.is-mode-keys .wb-hero-orb {
   background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+}
+
+.wb-hero.is-mode-camera .wb-hero-orb {
+  background: linear-gradient(135deg, #22d3ee 0%, #0891b2 100%);
+  box-shadow: 0 10px 25px rgba(8, 145, 178, 0.28);
+}
+
+.wb-hero.is-mode-camera .wb-hero-orb:hover {
+  box-shadow: 0 12px 28px rgba(8, 145, 178, 0.36);
+}
+
+.wb-hero.is-mode-camera .wb-hero-orb.is-live {
+  background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+  box-shadow: 0 10px 25px rgba(13, 148, 136, 0.32);
 }
 
 .wb-hero-orb.is-live {
@@ -1649,7 +1716,10 @@ button.wb-hero-pill:hover,
 
 .wb-hero-modes {
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 2px;
+  max-width: 100%;
   padding: 3px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-soft) 90%, #cbd5e1);
@@ -1659,7 +1729,7 @@ button.wb-hero-pill:hover,
 
 .wb-hero-mode {
   min-height: 34px;
-  padding: 0 18px;
+  padding: 0 14px;
   border: none;
   border-radius: 9px;
   background: transparent;
@@ -1670,6 +1740,13 @@ button.wb-hero-pill:hover,
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+@media (max-width: 640px) {
+  .wb-hero-mode {
+    padding: 0 10px;
+    font-size: 11px;
+  }
 }
 
 .wb-hero-mode:hover {

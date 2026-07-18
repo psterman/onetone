@@ -4789,7 +4789,6 @@ mod tests {
                     full_path: None,
                 }),
             },
-            camera_override: None,
         ];
         let identity = AppIdentity {
             pid: 2,

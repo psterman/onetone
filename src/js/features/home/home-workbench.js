@@ -6,20 +6,53 @@
   var bound=false;
   var HERO_MODE_KEY='onetone.wbHeroMode';
   var heroMode='voice';
+  var presenceHooked=false;
   var MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>';
   var KEY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.2" class="wb-key-frame"/><circle cx="6" cy="10" r="1.1" class="wb-key-el wb-key-1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1.1" class="wb-key-el wb-key-2" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1.1" class="wb-key-el wb-key-3" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r="1.1" class="wb-key-el wb-key-4" fill="currentColor" stroke="none"/><rect x="7" y="13.5" width="10" height="1.8" rx="0.9" class="wb-key-el wb-key-space" fill="currentColor" stroke="none"/></svg>';
+  var CAM_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+  function normalizeHeroMode(mode){
+    var raw=String(mode||'').toLowerCase();
+    if(raw==='keys'||raw==='camera') return raw;
+    return 'voice';
+  }
 
   function readHeroMode(){
     try{
       var raw=String(sessionStorage.getItem(HERO_MODE_KEY)||'').toLowerCase();
-      if(raw==='keys'||raw==='voice') return raw;
+      return normalizeHeroMode(raw);
     }catch(_){}
     return 'voice';
   }
 
   function writeHeroMode(mode){
-    heroMode=mode==='keys'?'keys':'voice';
+    heroMode=normalizeHeroMode(mode);
     try{ sessionStorage.setItem(HERO_MODE_KEY,heroMode); }catch(_){}
+  }
+
+  function cameraPresenceApi(){
+    return global.OneToneCameraPresenceActions||null;
+  }
+
+  function cameraPresenceSnapshot(){
+    var api=cameraPresenceApi();
+    var prefs=api&&api.prefs?api.prefs():null;
+    var st=api&&api.getState?api.getState():null;
+    var enabled=!!(api&&api.isEnabled?api.isEnabled():(prefs&&prefs.enabled));
+    var presence=st&&st.presence?String(st.presence):'unknown';
+    var bound=0;
+    if(prefs){
+      ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+        if(prefs[k]&&prefs[k]!=='none') bound++;
+      });
+    }
+    return {enabled:enabled,presence:presence,bound:bound,prefs:prefs,state:st};
+  }
+
+  function cameraPresenceLabel(presence){
+    if(presence==='present') return t('homeWbCameraPresencePresent');
+    if(presence==='away') return t('homeWbCameraPresenceAway');
+    return t('homeWbCameraPresenceIdle');
   }
 
   function openSettings(opts){
@@ -257,6 +290,21 @@
     var paused=!!(vm.runtime&&vm.runtime.paused);
     var html='';
 
+    if(heroMode==='camera'){
+      var cam=cameraPresenceSnapshot();
+      html+=pillHtml(
+        cam.enabled?t('homeWbCameraOn'):t('homeWbCameraOff'),
+        cam.enabled?'is-ok':'is-muted',
+        cam.enabled?'is-ok':'is-standby'
+      );
+      html+=pillHtml(cameraPresenceLabel(cam.presence),'is-presence','');
+      html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnCameraOpen" title="'+esc(t('homeWbCameraOpenSettings'))+'">'
+        +'<span>'+esc(t('homeWbCameraOpenSettings'))+'</span>'
+        +'</button>';
+      host.innerHTML=html;
+      return;
+    }
+
     var engineOn=vm.summary&&vm.summary.engine&&vm.summary.engine!=='off';
     if(engineOn){
       var engOk=vm.summary.statusMode!=='error'&&vm.engineStatus!==t('homeV9EngineOffline');
@@ -313,28 +361,33 @@
   }
 
   function renderHero(vm){
-    var mode=heroMode==='keys'?'keys':'voice';
+    var mode=normalizeHeroMode(heroMode);
     var hero=$('wbHero');
     var orb=$('wbHeroOrb');
     var icon=$('wbHeroOrbIcon');
     var modeVoice=$('wbHeroModeVoice');
     var modeKeys=$('wbHeroModeKeys');
+    var modeCamera=$('wbHeroModeCamera');
     var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
     var paused=!!(vm.runtime&&vm.runtime.paused);
+    var cam=mode==='camera'?cameraPresenceSnapshot():null;
     if(hero){
       hero.classList.toggle('is-mode-voice',mode==='voice');
       hero.classList.toggle('is-mode-keys',mode==='keys');
-      hero.classList.toggle('is-live',live);
+      hero.classList.toggle('is-mode-camera',mode==='camera');
+      hero.classList.toggle('is-live',mode==='camera'?!!(cam&&cam.enabled):live);
       hero.classList.toggle('is-paused',paused);
     }
     if(orb){
       orb.setAttribute('data-mode',mode);
-      orb.classList.toggle('is-live',live);
+      orb.classList.toggle('is-live',mode==='camera'?!!(cam&&cam.enabled):live);
       orb.classList.toggle('is-paused',paused);
-      orb.setAttribute('aria-label',mode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice'));
+      var hint=mode==='keys'?t('homeWbHeroHintKeys')
+        :(mode==='camera'?t('homeWbHeroHintCamera'):t('homeWbHeroHintVoice'));
+      orb.setAttribute('aria-label',hint);
     }
     if(icon){
-      var next=mode==='keys'?KEY_SVG:MIC_SVG;
+      var next=mode==='keys'?KEY_SVG:(mode==='camera'?CAM_SVG:MIC_SVG);
       if(icon.getAttribute('data-icon')!==mode){
         icon.classList.add('is-switching');
         icon.setAttribute('data-icon',mode);
@@ -352,6 +405,10 @@
       modeKeys.classList.toggle('is-active',mode==='keys');
       modeKeys.setAttribute('aria-selected',mode==='keys'?'true':'false');
     }
+    if(modeCamera){
+      modeCamera.classList.toggle('is-active',mode==='camera');
+      modeCamera.setAttribute('aria-selected',mode==='camera'?'true':'false');
+    }
     var stats=global.OneToneHomeWorkbenchStats
       ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
       :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
@@ -361,7 +418,7 @@
 
   function setHeroMode(mode,opts){
     opts=opts||{};
-    var next=mode==='keys'?'keys':'voice';
+    var next=normalizeHeroMode(mode);
     if(next===heroMode&&!opts.force) return;
     writeHeroMode(next);
     if(opts.render!==false) render();
@@ -370,7 +427,9 @@
   function dictatingHint(vm){
     var live=vm.vpState==='DICTATING'||!!vm.summary.dictating;
     if(live) return t('homeWbTriggerHeroLive');
-    return heroMode==='keys'?t('homeWbHeroHintKeys'):t('homeWbHeroHintVoice');
+    if(heroMode==='keys') return t('homeWbHeroHintKeys');
+    if(heroMode==='camera') return t('homeWbHeroHintCamera');
+    return t('homeWbHeroHintVoice');
   }
 
   function renderCommandCard(vm){
@@ -382,6 +441,7 @@
       card.classList.toggle('is-error',!!(vm.hs&&vm.hs.statusMode==='error'));
       card.classList.toggle('is-mode-keys',heroMode==='keys');
       card.classList.toggle('is-mode-voice',heroMode==='voice');
+      card.classList.toggle('is-mode-camera',heroMode==='camera');
     }
     renderHero(vm);
     renderLiveText(vm);
@@ -433,9 +493,16 @@
       status.classList.toggle('is-paused',paused);
     }
     if(statusLbl){
-      statusLbl.textContent=paused
-        ?t('homeWbLivePreviewPaused')
-        :(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby'));
+      if(heroMode==='camera'){
+        var camSt=cameraPresenceSnapshot();
+        statusLbl.textContent=camSt.enabled
+          ?cameraPresenceLabel(camSt.presence)
+          :t('homeWbCameraOff');
+      }else{
+        statusLbl.textContent=paused
+          ?t('homeWbLivePreviewPaused')
+          :(listening?t('homeWbLivePreviewListening'):t('homeWbLivePreviewStandby'));
+      }
     }
     if(listenBtn){
       listenBtn.classList.toggle('is-paused',paused);
@@ -446,6 +513,11 @@
     if(vm.loading){
       liveEl.classList.add('is-placeholder');
       liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeLiveLoading'))+'</div>';
+      return;
+    }
+    if(heroMode==='camera'){
+      liveEl.classList.add('is-placeholder');
+      liveEl.innerHTML='<div class="vp-empty">'+esc(t('homeWbLiveCameraHint'))+'</div>';
       return;
     }
     if(vm.live.placeholder){
@@ -500,9 +572,18 @@
       }
       var listenBtn=e.target.closest&&e.target.closest('#wbBtnListenToggle,.wb-hero-pill-listen');
       if(listenBtn){
+        if(listenBtn.id==='wbBtnCameraOpen'||listenBtn.closest('#wbBtnCameraOpen')){
+          openSettings({panel:'camera'});
+          return;
+        }
         if(!global.OneToneIpc) return;
         var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
         global.OneToneIpc.invoke(paused?'cmd_resume':'cmd_pause',{}).catch(function(){});
+        return;
+      }
+      var camOpen=e.target.closest&&e.target.closest('#wbBtnCameraOpen');
+      if(camOpen){
+        openSettings({panel:'camera'});
         return;
       }
       var habitNew=e.target.closest&&e.target.closest('#wbHabitNew');
@@ -516,9 +597,14 @@
         if(kind==='keys'){
           var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel
             ?global.OneToneHomeV9.buildViewModel():null;
+          setHeroMode('keys');
           openSettings({panel:'keys',focus:vm&&vm.m&&vm.m.id?vm.m.id:null});
         }else if(kind==='voice'){
+          setHeroMode('voice');
           openSettings({panel:'voiceWake'});
+        }else if(kind==='camera'){
+          setHeroMode('camera');
+          openSettings({panel:'camera'});
         }
       }
     });
@@ -706,6 +792,7 @@
     heroMode=readHeroMode();
     bindNav();
     bindPanelActions();
+    hookCameraPresence();
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
     var searchInput=$('wbCommandSearchInput');
@@ -788,7 +875,18 @@
     var vm=global.OneToneHomeV9.buildViewModel();
     var id=vm.m&&vm.m.id?vm.m.id:null;
     if(heroMode==='keys') openSettings({panel:'keys',focus:id});
+    else if(heroMode==='camera') openSettings({panel:'camera'});
     else openSettings({panel:'voiceWake'});
+  }
+
+  function hookCameraPresence(){
+    if(presenceHooked) return;
+    var api=cameraPresenceApi();
+    if(!api||typeof api.setOnStateChange!=='function') return;
+    presenceHooked=true;
+    api.setOnStateChange(function(){
+      try{ render(); }catch(_){}
+    });
   }
 
   function applyLang(){
@@ -810,6 +908,7 @@
         :t('homeWbListenPause'));
     setText($('wbHeroModeVoice'),t('homeWbHeroModeVoice'));
     setText($('wbHeroModeKeys'),t('homeWbHeroModeKeys'));
+    setText($('wbHeroModeCamera'),t('homeWbHeroModeCamera'));
     var sceneTitle=document.querySelector('#wbSceneRail .wb-scene-rail-title');
     if(sceneTitle) sceneTitle.textContent=t('homeWbSceneRailTitle');
     var searchInput=$('wbCommandSearchInput');
@@ -827,7 +926,7 @@
     enrichViewModel:enrichViewModel,
     renderTriggerDiagBlocks:renderTriggerDiagBlocks,
     startCompatProbe:startCompatProbe,
-    getHeroMode:function(){ return heroMode==='keys'?'keys':'voice'; },
+    getHeroMode:function(){ return normalizeHeroMode(heroMode); },
     setHeroMode:setHeroMode,
     onCompatResult:function(msg){
       if(global.OneToneHomeWorkbenchCompat&&msg){

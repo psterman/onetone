@@ -277,11 +277,24 @@
     if(String(msg&&msg.mappingId||'')!==String(setupState.mappingId||'')) return;
     setupState.modeCompatListening=false;
     setupState.modeCompatTested=true;
-    setupState.modeCompatResult=msg||null;
+    var result=msg?Object.assign({},msg):null;
+    if(result){
+      var nv=global.OneToneHomeWorkbenchCompat&&global.OneToneHomeWorkbenchCompat.normalizeVerdict
+        ?global.OneToneHomeWorkbenchCompat.normalizeVerdict(result.verdict)
+        :String(result.verdict||'');
+      result.verdict=nv;
+      if(setupState.mappingId&&global.OneToneHomeWorkbenchCompat&&global.OneToneHomeWorkbenchCompat.store){
+        global.OneToneHomeWorkbenchCompat.store(setupState.mappingId,result);
+      }
+    }
+    setupState.modeCompatResult=result;
     setupState.modeCompatHeard='';
     setupState.modeCompatPickHint=false;
-    var recommended=String(msg&&msg.recommendedMode||'').trim();
-    if(recommended==='hold'||recommended==='tap'||recommended==='double'){
+    var recommended=String(result&&result.recommendedMode||'').trim();
+    // Soft-deprecate hold: never auto-select hold even when recommended; prefer tap.
+    if(recommended==='hold'){
+      setupState.triggerMode='tap';
+    }else if(recommended==='tap'||recommended==='double'){
       setupState.triggerMode=recommended;
     }
     renderModeCompatPanel();
@@ -1381,15 +1394,18 @@
     var viable=modeCompatViableModes();
     var recommended=setupState.modeCompatResult?String(setupState.modeCompatResult.recommendedMode||'').trim():'';
     var styles=[
-      { id:'hold', anim:'hold', title:t('homeTestPickHoldTitle'), desc:t('homeTestPickHoldDesc') },
       { id:'tap', anim:'tap', title:t('homeTestPickTapTitle'), desc:t('homeTestPickTapDesc') },
-      { id:'double', anim:'double', title:t('homeTestPickDoubleTitle'), desc:t('homeTestPickDoubleDesc') }
+      { id:'double', anim:'double', title:t('homeTestPickDoubleTitle'), desc:t('homeTestPickDoubleDesc') },
+      { id:'hold', anim:'hold', title:t('homeTestPickHoldTitle'), desc:t('homeTestPickHoldDesc') }
     ];
     grid.innerHTML=styles.map(function(s){
       var sel=s.id===selected;
       var discouraged=!!(setupState.modeCompatTested&&viable&&viable.length&&viable.indexOf(s.id)<0);
-      var rec=setupState.modeCompatTested&&recommended===s.id;
-      var cls='template-pick-card'+(sel?' is-selected':'')+(rec?' is-recommended':'')+(discouraged?' is-discouraged':'');
+      var holdSupported=s.id==='hold'&&setupState.modeCompatTested
+        &&String(setupState.modeCompatResult&&setupState.modeCompatResult.verdict||'')==='hold_capable';
+      // Soft-deprecate: do not mark hold as "recommended" even if backend says so.
+      var rec=setupState.modeCompatTested&&recommended===s.id&&s.id!=='hold';
+      var cls='template-pick-card'+(sel?' is-selected':'')+(rec?' is-recommended':'')+(discouraged?' is-discouraged':'')+(holdSupported?' is-hold-supported':'');
       var animHtml='';
       if(s.anim==='hold'){
         animHtml='<div class="tp-demo"><div class="tp-hold-label">按住中</div><div class="tp-key">'+esc(trigLabel)+'</div>'
@@ -1402,7 +1418,9 @@
       }else{
         animHtml='<div class="tp-demo"><div class="tp-double-hint">连按 '+esc(trigLabel)+' 两次</div><div class="tp-key">'+esc(trigLabel)+'</div><div class="tp-double-count">×2</div></div>';
       }
-      var badge=rec?'<span class="habit-setup-mode-rec-badge">'+esc(t('habitSetupModeCompatRecommended'))+'</span>':'';
+      var badge='';
+      if(rec) badge='<span class="habit-setup-mode-rec-badge">'+esc(t('habitSetupModeCompatRecommended'))+'</span>';
+      else if(holdSupported) badge='<span class="habit-setup-mode-rec-badge is-supported">'+esc(t('keysHoldGateSupportedShort'))+'</span>';
       return '<button type="button" class="'+cls+'" data-habit-setup-mode="'+esc(s.id)+'" aria-pressed="'+(sel?'true':'false')+'">'
         +badge
         +'<div class="template-pick-card-anim template-pick-card-anim--'+esc(s.anim)+'" aria-hidden="true">'+animHtml+'</div>'
@@ -1713,6 +1731,20 @@
     if(!setupState.modeCompatTested||!setupState.modeCompatResult) return;
     if(String(setupState.modeCompatResult.verdict||'')==='unrecognized') return;
     var styleId=setupState.triggerMode||'tap';
+    if(styleId==='hold'){
+      var viableSave=modeCompatViableModes();
+      var verdictSave=String(setupState.modeCompatResult.verdict||'');
+      var holdSaveOk=verdictSave==='hold_capable'||(viableSave&&viableSave.indexOf('hold')>=0);
+      if(!holdSaveOk){
+        if(global.OneToneApp&&global.OneToneApp.toast){
+          global.OneToneApp.toast(
+            t(verdictSave==='pulse_only'?'keysHoldGatePulseOnly':'keysHoldGateUntested'),
+            'warn'
+          );
+        }
+        return;
+      }
+    }
     var patchTriggerMode=styleId==='hold'?'longpress':(styleId==='double'?'double':'tap');
     var patchCancelEnabled=styleId==='hold'?false:true;
     var patchAutoEnterEnabled=styleId==='hold'?false:true;
@@ -1916,10 +1948,26 @@
         }
         var modeBtn=e.target&&e.target.closest?e.target.closest('[data-habit-setup-mode]'):null;
         if(modeBtn&&setupState&&setupState.page===3){
+          var pickMode=String(modeBtn.getAttribute('data-habit-setup-mode')||'tap');
+          if(pickMode==='hold'&&setupState.modeCompatTested){
+            var viablePick=modeCompatViableModes();
+            var verdictPick=String(setupState.modeCompatResult&&setupState.modeCompatResult.verdict||'');
+            var holdOk=verdictPick==='hold_capable'||(viablePick&&viablePick.indexOf('hold')>=0);
+            if(!holdOk){
+              if(global.OneToneApp&&global.OneToneApp.toast){
+                global.OneToneApp.toast(
+                  t(verdictPick==='pulse_only'?'keysHoldGatePulseOnly':'keysHoldGateUntested'),
+                  'warn'
+                );
+              }
+              renderModeSection();
+              return;
+            }
+          }
           if(!setupState.modeCompatTested){
             setupState.modeCompatPickHint=true;
           }
-          setupState.triggerMode=String(modeBtn.getAttribute('data-habit-setup-mode')||'tap');
+          setupState.triggerMode=pickMode;
           renderModeSection();
         }
         var lessonBtn=e.target&&e.target.closest?e.target.closest('[data-voice-lesson]'):null;

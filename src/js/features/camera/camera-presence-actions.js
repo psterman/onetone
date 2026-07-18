@@ -1351,6 +1351,7 @@
     syncDetectInterval:syncDetectInterval,
     syncUiFromPrefs:syncUiFromPrefs,
     syncTriggerSummaries:function(){ syncTriggerSummaries(prefs()); },
+    setOnStateChange:function(fn){ st.onStateChange=typeof fn==='function'?fn:null; },
     AWAY_MS:AWAY_MS,
     PRESENT_MS:PRESENT_MS,
     DETECT_PRESENT_MS:DETECT_PRESENT_MS,

@@ -17,7 +17,7 @@
   }
 
   function isFinishControlTarget(el){
-    return !!(el&&el.closest&&el.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode]'));
+    return !!(el&&el.closest&&el.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch]'));
   }
 
   function bindPanelFallback(panel){

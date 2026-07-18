@@ -140,22 +140,50 @@
       +'</div>';
   }
 
+  function holdGateForMapping(m){
+    var api=global.OneToneHomeWorkbenchCompat;
+    var id=m&&m.id?String(m.id).trim():'';
+    if(!api||!api.canUseHoldMode||!id){
+      return {ok:false,reason:'untested',messageKey:'keysHoldGateUntested',legacy:false};
+    }
+    return api.canUseHoldMode(id,{currentMode:m.triggerMode});
+  }
+
   function renderAdvanced(m,baseline,disabled){
     var modeUi=normalizeTriggerModeUi(m.triggerMode!=null?m.triggerMode:baseline.triggerMode);
+    var gate=holdGateForMapping(m);
     var modes=[
-      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'},
       {id:'tap',label:'keysTriggerModeTap',mode:'tap'},
-      {id:'double',label:'keysTriggerModeDouble',mode:'double'}
+      {id:'double',label:'keysTriggerModeDouble',mode:'double'},
+      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'}
     ];
     var modeHtml='<div class="keys-trigger-modes habit-scenario-keys-modes" role="radiogroup">';
     modes.forEach(function(opt){
       var active=modeUi===opt.id;
-      modeHtml+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+'"'
+      var gated=opt.id==='hold'&&!gate.ok;
+      var supported=opt.id==='hold'&&gate.ok;
+      var title='';
+      if(opt.id==='hold'){
+        if(gate.ok) title=t('keysHoldGateSupported');
+        else if(gate.reason==='pulse_only') title=t('keysHoldGatePulseOnly');
+        else title=t('keysHoldGateUntested');
+      }
+      modeHtml+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+(gated?' is-gated':'')+(supported?' is-hold-supported':'')+'"'
         +' data-scenario-trigger-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'"'
+        +(gated?' aria-disabled="true"':'')
+        +(title?' title="'+esc(title)+'"':'')
         +(disabled?' disabled':'')+'>'
         +esc(t(opt.label))+'</button>';
     });
     modeHtml+='</div>';
+    if(modeUi==='hold'&&!gate.ok){
+      modeHtml+='<div class="keys-hold-risk-hint" role="status">'
+        +'<p class="keys-hold-risk-text">'+esc(t('keysHoldLegacyRisk'))+'</p>'
+        +'<div class="keys-hold-risk-actions">'
+        +'<button type="button" class="keys-trigger-conflict-btn" data-scenario-hold-switch="tap"'+(disabled?' disabled':'')+'>'+esc(t('keysHoldSwitchTap'))+'</button>'
+        +'<button type="button" class="keys-trigger-conflict-btn" data-scenario-hold-switch="double"'+(disabled?' disabled':'')+'>'+esc(t('keysHoldSwitchDouble'))+'</button>'
+        +'</div></div>';
+    }
     var autoOn=m.autoEnterEnabled!=null?!!m.autoEnterEnabled:!!baseline.autoEnterEnabled;
     var cancelOn=m.cancelEnabled!=null?!!m.cancelEnabled:!!baseline.cancelEnabled;
     return ''
@@ -248,7 +276,26 @@
       e.preventDefault();
       if(!keyModeEnabled(m)) return true;
       var ui=normalizeTriggerModeUi(modeBtn.getAttribute('data-scenario-trigger-mode'));
+      if(ui==='hold'){
+        var gate=holdGateForMapping(m);
+        if(!gate.ok){
+          if(global.OneToneApp&&global.OneToneApp.toast){
+            global.OneToneApp.toast(t(gate.messageKey||'keysHoldGateUntested'),'warn');
+          }
+          return true;
+        }
+      }
       m.triggerMode=triggerModeStorage(ui);
+      render(m);
+      notifyChange();
+      return true;
+    }
+    var holdSwitch=e.target.closest&&e.target.closest('[data-scenario-hold-switch]');
+    if(holdSwitch){
+      e.preventDefault();
+      if(!keyModeEnabled(m)) return true;
+      var switchTo=String(holdSwitch.getAttribute('data-scenario-hold-switch')||'tap').toLowerCase();
+      m.triggerMode=switchTo==='double'?'double':'tap';
       render(m);
       notifyChange();
       return true;

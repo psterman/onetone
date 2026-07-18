@@ -175,6 +175,29 @@
       +'</div>';
   }
 
+  function cameraHowToSnapshot(){
+    var api=global.OneToneCameraPresenceActions||null;
+    var prefs=api&&api.prefs?api.prefs():null;
+    var st=api&&api.getState?api.getState():null;
+    var enabled=!!(api&&api.isEnabled?api.isEnabled():(prefs&&prefs.enabled));
+    var presence=st&&st.presence?String(st.presence):'unknown';
+    var bound=0;
+    if(prefs){
+      ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+        if(prefs[k]&&prefs[k]!=='none') bound++;
+      });
+    }
+    var presenceLbl=t('homeWbCameraPresenceIdle');
+    if(presence==='present') presenceLbl=t('homeWbCameraPresencePresent');
+    else if(presence==='away') presenceLbl=t('homeWbCameraPresenceAway');
+    return {
+      enabled:enabled,
+      presenceLbl:presenceLbl,
+      boundLbl:t('homeWbCameraBoundCount').replace('{n}',String(bound)),
+      value:enabled?t('homeWbCameraOn'):t('homeWbCameraOff')
+    };
+  }
+
   function renderHowTo(vm){
     var host=$('wbHowTo');
     if(!host) return;
@@ -187,12 +210,15 @@
     }
     var phrases=wakePhrases(vm);
     var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
+    var cam=cameraHowToSnapshot();
 
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
+    var camIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var camArt='<span class="wb-howto-cam-dot'+(cam.enabled?' is-on':'')+'" aria-hidden="true"></span>';
 
     host.innerHTML=
-      '<div class="wb-howto-grid wb-howto-grid--duo">'
+      '<div class="wb-howto-grid wb-howto-grid--trio">'
       +howToCardHtml({
         kind:'keys',
         active:mode==='keys',
@@ -217,6 +243,19 @@
       +voicePhrasePanelHtml(vm)
       +'<p class="wb-howto-card-tip">'+esc(t('homeWbHowToVoiceTip'))+'</p>'
       +'</button>'
+      +howToCardHtml({
+        kind:'camera',
+        active:mode==='camera',
+        title:t('homeWbHowToCameraTitle'),
+        value:cam.value,
+        meta1Lbl:t('homeWbHowToCameraPresence'),
+        meta1Val:cam.presenceLbl,
+        meta2Lbl:t('homeWbHowToCameraBound'),
+        meta2Val:cam.boundLbl,
+        tip:t('homeWbHowToCameraTip'),
+        icon:camIcon,
+        art:camArt
+      })
       +'</div>';
   }
 

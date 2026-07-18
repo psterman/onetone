@@ -488,6 +488,20 @@
       var m=appState().config.mappings.find(function(x){return x.id===id;});
       if(!m||!mode) return false;
       e.stopPropagation();
+      var modeLc=String(mode||'').toLowerCase();
+      if(modeLc==='longpress'||modeLc==='hold'||modeLc==='perpress'){
+        var gateApi=global.OneToneHomeWorkbenchCompat;
+        var gate=gateApi&&gateApi.canUseHoldMode
+          ?gateApi.canUseHoldMode(m.id,{currentMode:m.triggerMode})
+          :{ok:false,messageKey:'keysHoldGateUntested'};
+        if(!gate.ok){
+          if(global.OneToneApp&&global.OneToneApp.toast){
+            global.OneToneApp.toast(t(gate.messageKey||'keysHoldGateUntested'),'warn');
+          }
+          return true;
+        }
+        mode='longpress';
+      }
       var prevGesture=startGesture(m);
       m.triggerMode=mode;
       var nextGesture=startGesture(m);
@@ -498,6 +512,25 @@
         }else if(prevGesture==='hold'){
           global.OneToneSceneFlowSummary.applyFinishMode(m,'confirm');
         }
+      }
+      hooks().save();
+      renderKeyFinishFlowPanel();
+      hooks().renderMappingList();
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+      return true;
+    }
+    var holdSwitch=el.closest&&el.closest('[data-keys-hold-switch]');
+    if(holdSwitch){
+      var switchTo=String(holdSwitch.getAttribute('data-keys-hold-switch')||'tap').toLowerCase();
+      var mid=String(holdSwitch.getAttribute('data-mapping-id')||'').trim();
+      var row=mid?appState().config.mappings.find(function(x){return x.id===mid;}):hooks().selectedMapping();
+      if(!row) return false;
+      e.stopPropagation();
+      if(switchTo!=='double') switchTo='tap';
+      var prevG=startGesture(row);
+      row.triggerMode=switchTo;
+      if(global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.applyFinishMode&&prevG==='hold'){
+        global.OneToneSceneFlowSummary.applyFinishMode(row,'confirm');
       }
       hooks().save();
       renderKeyFinishFlowPanel();
