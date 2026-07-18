@@ -448,6 +448,12 @@
       lm.setDetectIntervalMs(33);
       return;
     }
+    var prefs=api&&api.prefs?api.prefs():null;
+    var gestureOn=!!(prefs&&(prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none'));
+    if(gestureOn){
+      lm.setDetectIntervalMs(33);
+      return;
+    }
     var st=api&&api.getState?api.getState():null;
     lm.setDetectIntervalMs(st&&st.presence==='away'?333:100);
   }

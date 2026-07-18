@@ -655,7 +655,16 @@
       if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
         global.OneToneCameraPreview.onPanelVisible();
       }
+      if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
+        global.OneToneCameraWorkflow.onPanelVisible();
+      }
 
+    }
+
+    if(panel!=='camera'){
+      if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelHidden){
+        global.OneToneCameraWorkflow.onPanelHidden();
+      }
     }
 
     lastPanel=panel;

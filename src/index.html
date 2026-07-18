@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/keys-workflow.css" />
   <link rel="stylesheet" href="css/flow-desk.css" />
+  <link rel="stylesheet" href="css/camera-workflow.css" />
   <link rel="stylesheet" href="css/voice-workflow.css" />
   <link rel="stylesheet" href="css/voice-page-shell.css" />
   <link rel="stylesheet" href="css/voice-feedback-rail.css" />
@@ -2236,7 +2237,7 @@
         <section class="settings-panel drawer-section camera-page" id="settingsPanelCamera" hidden>
           <header class="pref-page-head">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
-            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">用于后续普通摄像头注意力/多屏聚焦实验，画面仅本地预览</p>
+            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先让摄像头识别动作，再决定识别后做什么；发送类操作可多一步「看屏幕哪里确认」。</p>
           </header>
           <section class="camera-status-strip" id="cameraStatusStrip" aria-label="摄像头状态">
             <div class="camera-status-chip">
@@ -2264,117 +2265,336 @@
               <strong class="camera-status-value" id="cameraGlanceCalib" data-i18n="cameraGlanceCalibIdle">未开始</strong>
             </div>
           </section>
-          <section class="camera-presence-hero" id="cameraPresenceHero" aria-label="存在传感器">
-            <div class="camera-presence-hero-main">
-              <div class="camera-presence-orb is-off is-idle" id="cameraPresenceOrb" aria-hidden="true">
-                <span class="camera-presence-orb-ring"></span>
-                <span class="camera-presence-orb-core">
-                  <svg class="camera-presence-orb-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </span>
+
+          <div class="camera-workflow-shell" id="cameraWorkflowShell">
+            <section class="flow-nodes" id="cameraFlowNodes" aria-label="摄像头流程导航">
+              <div class="flow-nodes-track" aria-hidden="true">
+                <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="cameraFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="rgba(79, 172, 254, 0.85)" />
+                      <stop offset="50%" stop-color="rgba(42, 156, 196, 0.95)" />
+                      <stop offset="100%" stop-color="rgba(245, 158, 11, 0.85)" />
+                    </linearGradient>
+                  </defs>
+                  <path class="flow-nodes-path-base" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                  <path class="flow-nodes-path" d="M 0,4 Q 250,-5 500,4 T 1000,4" stroke="url(#cameraFlowGrad)" stroke-width="3" stroke-linecap="round"/>
+                </svg>
               </div>
-              <div class="camera-presence-hero-meta">
-                <div class="camera-presence-hero-top">
-                  <strong class="camera-presence-status-pill" id="cameraPresenceStatusPill" data-i18n="cameraPresenceStateIdle">待命</strong>
-                  <button type="button" class="toggle-switch" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="存在/动作传感器"></button>
+              <div class="flow-nodes-grid camera-flow-nodes-grid--two">
+                <div class="flow-node" data-camera-node="trigger">
+                  <span class="flow-node-tag" id="cameraFlowNodeTriggerTag" data-i18n="cameraFlowNodeTriggerTag">01 / 摄像头看到什么</span>
+                  <button type="button" class="flow-node-btn is-active" id="cameraFlowNodeTrigger" aria-controls="cameraPanelTrigger" aria-selected="true">
+                    <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <h3 class="flow-node-title" id="cameraFlowNodeTriggerTitle" data-i18n="cameraFlowNodeTriggerTitle">摄像头看到什么</h3>
+                  <p class="flow-node-hint" id="cameraFlowNodeTriggerHint" data-i18n="cameraFlowNodeTriggerHint">离席、摇头、长眨</p>
                 </div>
-                <p class="camera-presence-hero-title" data-i18n="cameraPresenceTitle">存在/动作传感器</p>
-                <dl class="camera-presence-stats">
-                  <div class="camera-presence-stat">
-                    <dt data-i18n="cameraPresenceHeadLabel">头部</dt>
-                    <dd id="cameraPresenceHeadText">—</dd>
-                  </div>
-                  <div class="camera-presence-stat">
-                    <dt data-i18n="cameraPresenceGestureLabel">最近动作</dt>
-                    <dd id="cameraPresenceGestureText" data-i18n="cameraPresenceGestureNone">无</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-            <div class="camera-presence-config" id="cameraPresenceConfig">
-              <label class="camera-presence-field">
-                <span data-i18n="cameraPresenceOnAway">离席时</span>
-                <select id="cameraPresenceOnAway" class="camera-device-select"></select>
-              </label>
-              <label class="camera-presence-field">
-                <span data-i18n="cameraPresenceOnReturn">回席时</span>
-                <select id="cameraPresenceOnReturn" class="camera-device-select"></select>
-              </label>
-              <label class="camera-presence-field">
-                <span data-i18n="cameraPresenceShakeHead">摇头 <em data-i18n="cameraPresenceExperimental">实验</em></span>
-                <select id="cameraPresenceShakeHead" class="camera-device-select"></select>
-              </label>
-              <label class="camera-presence-field">
-                <span data-i18n="cameraPresenceBlink">长眨 <em data-i18n="cameraPresenceExperimental">实验</em></span>
-                <select id="cameraPresenceBlink" class="camera-device-select"></select>
-              </label>
-            </div>
-          </section>
-          <section class="camera-block" aria-labelledby="cameraPreviewSectionTitle">
-            <label class="camera-device-label" for="cameraDeviceSelect">
-              <span class="camera-device-label-text" data-i18n="cameraDeviceLabel">摄像头设备</span>
-              <select id="cameraDeviceSelect" class="camera-device-select"></select>
-            </label>
-            <div class="camera-preview-wrap">
-              <div class="camera-preview-shell camera-preview-shell--compact" id="cameraPreviewShell">
-                <video id="cameraPreviewVideo" class="camera-preview-video" autoplay playsinline muted></video>
-                <p class="camera-preview-placeholder" id="cameraPreviewPlaceholder" data-i18n="cameraPreviewIdle">点击「开始预览」后在此显示画面</p>
-                <div id="cameraGazeOverlay" class="camera-gaze-overlay" aria-hidden="true" hidden>
-                  <div id="cameraGazeOrb" class="camera-gaze-orb" aria-hidden="true">
-                    <span class="camera-gaze-orb-core"></span>
-                    <span class="camera-gaze-orb-ring"></span>
-                    <span class="camera-gaze-orb-crosshair"></span>
-                  </div>
-                  <div id="cameraGazeHud" class="camera-gaze-hud" aria-live="polite">
-                    <span class="camera-gaze-hud-chip"><span id="cameraGazeStateText" data-i18n="cameraGazeStateIdle">待命</span></span>
-                    <span class="camera-gaze-hud-chip"><span data-i18n="cameraGazeConfidence">置信度</span> <strong id="cameraGazeConfidenceText">—</strong></span>
-                    <span class="camera-gaze-hud-chip camera-gaze-hud-point"><span data-i18n="cameraGazePoint">位置</span> <strong id="cameraGazePointText">—</strong></span>
-                  </div>
+                <div class="flow-node" data-camera-node="action">
+                  <span class="flow-node-tag" id="cameraFlowNodeActionTag" data-i18n="cameraFlowNodeActionTag">02 / 识别后做什么</span>
+                  <button type="button" class="flow-node-btn" id="cameraFlowNodeAction" aria-controls="cameraPanelAction" aria-selected="false">
+                    <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  </button>
+                  <h3 class="flow-node-title" id="cameraFlowNodeActionTitle" data-i18n="cameraFlowNodeActionTitle">识别后做什么</h3>
+                  <p class="flow-node-hint" id="cameraFlowNodeActionHint" data-i18n="cameraFlowNodeActionHint">激活、取消、暂停</p>
                 </div>
               </div>
-              <div class="camera-action-bar" id="cameraActionBar">
-                <button type="button" class="control-btn is-primary" id="btnCameraToggle" data-i18n="cameraStartPreview">开始预览</button>
-                <button type="button" class="control-btn" id="btnCameraGazeToggle" data-i18n="cameraGazeToggle">显示注视悬浮球</button>
-                <button type="button" class="control-btn" id="cameraGazeCalibrateBtn" data-i18n="cameraGazeCalibrate">校准屏幕坐标</button>
-                <button type="button" class="control-btn" id="cameraGazeClearCalibrationBtn" data-i18n="cameraGazeClearCalibration">清除校准</button>
-                <button type="button" class="control-btn" id="btnCameraGazeRecenter" data-i18n="cameraGazeRecenter">重新居中</button>
-              </div>
-            </div>
-            <section class="camera-media-settings" id="cameraMediaSettings" aria-label="摄像头能力">
-              <div class="camera-media-block">
-                <div class="camera-media-label" data-i18n="cameraInfoResolution">分辨率</div>
-                <div class="scene-tab-bar camera-res-group-bar" id="cameraResGroupBar" role="tablist" aria-label="resolution aspect">
-                  <button type="button" class="scene-tab is-active" data-res-group="landscape" role="tab" aria-selected="true" data-i18n="cameraResGroupLandscape">横屏</button>
-                  <button type="button" class="scene-tab" data-res-group="portrait" role="tab" aria-selected="false" data-i18n="cameraResGroupPortrait">竖屏</button>
-                  <button type="button" class="scene-tab" data-res-group="square" role="tab" aria-selected="false" data-i18n="cameraResGroupSquare">方形</button>
-                </div>
-                <div class="camera-fps-pills camera-res-pills" id="cameraResPills" role="group" aria-label="resolution"></div>
-              </div>
-              <div class="camera-media-block camera-fps-block">
-                <div class="camera-media-label" data-i18n="cameraCapFrameRate">FPS</div>
-                <div class="camera-fps-pills" id="cameraFpsPills" role="group" aria-label="FPS"></div>
-              </div>
-              <p class="camera-cap-hint" id="cameraCapabilityHint" data-i18n="cameraCapHintIdle">开始预览后可切换分辨率与帧率</p>
             </section>
-            <section class="camera-gaze-panel">
-              <p class="camera-gaze-hint" id="cameraGazeHint" data-i18n="cameraGazeHint">本地 MediaPipe 估计，未校准为屏幕坐标</p>
-              <p class="camera-gaze-hint" id="cameraGazeCalibrationHint" data-i18n="cameraGazeCalibrationHint">当前为窗口内校准坐标，未做多屏映射或系统级悬浮层</p>
-              <p class="camera-gaze-hint camera-gaze-privacy-hint" id="cameraGazePrivacyHint" data-i18n="cameraGazePrivacyHint">校准数据（眼动/头姿特征）仅保存在本机 settings.json，不上传；可点「清除校准」一键删除</p>
-              <p class="camera-gaze-hint camera-gaze-lowres-warn" id="cameraGazeLowResWarn" hidden data-i18n="cameraGazeLowResWarn">当前分辨率低于 720p，精度可能下降</p>
-              <div class="camera-gaze-stale-banner" id="cameraGazeStaleBanner" hidden role="status">
-                <p class="camera-gaze-stale-text" id="cameraGazeStaleText" data-i18n="cameraGazeStaleBanner">窗口尺寸已变化，校准坐标可能不准，请重新校准</p>
-                <button type="button" class="control-btn is-primary camera-gaze-stale-btn" id="cameraGazeStaleRecalibBtn" data-i18n="cameraGazeStaleRecalib">重新校准</button>
+
+            <div class="camera-hero-board" id="cameraHeroBoard">
+              <aside class="camera-hero-preview" id="cameraHeroPreview" aria-label="摄像头状态预览">
+                <div class="camera-hero-preview-head">
+                  <div>
+                    <div class="camera-workflow-kicker" id="cameraWorkflowPreviewKicker" data-i18n="cameraWorkflowPreviewKicker">当前预览</div>
+                    <h2 class="camera-workflow-preview-title" id="cameraWorkflowPreviewTitle" data-i18n="cameraWorkflowPreviewTitleTrigger">等待视觉触发</h2>
+                  </div>
+                  <div class="camera-presence-orb is-off is-idle" id="cameraPresenceOrb" aria-hidden="true">
+                    <span class="camera-presence-orb-ring"></span>
+                    <span class="camera-presence-orb-core">
+                      <svg class="camera-presence-orb-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+                <label class="camera-device-label" for="cameraDeviceSelect">
+                  <span class="camera-device-label-text" data-i18n="cameraDeviceLabel">摄像头设备</span>
+                  <select id="cameraDeviceSelect" class="camera-device-select"></select>
+                </label>
+                <div class="camera-preview-wrap">
+                  <div class="camera-preview-shell camera-preview-shell--compact" id="cameraPreviewShell">
+                    <video id="cameraPreviewVideo" class="camera-preview-video" autoplay playsinline muted></video>
+                    <p class="camera-preview-placeholder" id="cameraPreviewPlaceholder" data-i18n="cameraPreviewIdle">点击「开始预览」后在此显示画面</p>
+                    <div id="cameraGazeOverlay" class="camera-gaze-overlay" aria-hidden="true" hidden>
+                      <div id="cameraGazeOrb" class="camera-gaze-orb" aria-hidden="true">
+                        <span class="camera-gaze-orb-core"></span>
+                        <span class="camera-gaze-orb-ring"></span>
+                        <span class="camera-gaze-orb-crosshair"></span>
+                      </div>
+                      <div id="cameraGazeHud" class="camera-gaze-hud" aria-live="polite">
+                        <span class="camera-gaze-hud-chip"><span id="cameraGazeStateText" data-i18n="cameraGazeStateIdle">待命</span></span>
+                        <span class="camera-gaze-hud-chip"><span data-i18n="cameraGazeConfidence">置信度</span> <strong id="cameraGazeConfidenceText">—</strong></span>
+                        <span class="camera-gaze-hud-chip camera-gaze-hud-point"><span data-i18n="cameraGazePoint">位置</span> <strong id="cameraGazePointText">—</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="camera-action-bar" id="cameraActionBar">
+                    <button type="button" class="control-btn is-primary" id="btnCameraToggle" data-i18n="cameraStartPreview">开始预览</button>
+                    <button type="button" class="control-btn" id="btnCameraGazeToggle" data-i18n="cameraGazeToggle">显示注视悬浮球</button>
+                  </div>
+                </div>
+                <div class="camera-workflow-metrics" id="cameraWorkflowMetrics">
+                  <div class="camera-workflow-metric">
+                    <div class="camera-workflow-metric-label" data-i18n="cameraGlanceFaceLabel">人脸状态</div>
+                    <div class="camera-workflow-metric-value" id="cameraWorkflowFaceText">—</div>
+                  </div>
+                  <div class="camera-workflow-metric">
+                    <div class="camera-workflow-metric-label" data-i18n="cameraPresenceGestureLabel">最近动作</div>
+                    <div class="camera-workflow-metric-value" id="cameraWorkflowGestureText">—</div>
+                  </div>
+                  <div class="camera-workflow-metric">
+                    <div class="camera-workflow-metric-label" data-i18n="cameraWorkflowGazeLabel">注视状态</div>
+                    <div class="camera-workflow-metric-value" id="cameraWorkflowGazeText">—</div>
+                  </div>
+                  <div class="camera-workflow-metric">
+                    <div class="camera-workflow-metric-label" data-i18n="cameraGlanceCalibLabel">校准状态</div>
+                    <div class="camera-workflow-metric-value" id="cameraWorkflowCalibText">—</div>
+                  </div>
+                </div>
+                <span class="sr-only" id="cameraPresenceStatusPill" data-i18n="cameraPresenceStateIdle">待命</span>
+                <span class="sr-only" id="cameraPresenceHeadText">—</span>
+                <span class="sr-only" id="cameraPresenceGestureText" data-i18n="cameraPresenceGestureNone">无</span>
+              </aside>
+
+              <section class="camera-hero-detail" id="cameraHeroDetail">
+                                <article class="camera-tab-panel is-active" id="cameraPanelTrigger" role="tabpanel" data-camera-panel="trigger" aria-labelledby="cameraFlowNodeTrigger">
+                  <div class="camera-panel-head">
+                    <div>
+                      <h2 class="camera-panel-title" data-i18n="cameraPanelTriggerTitle">摄像头看到什么</h2>
+                      <p class="camera-panel-desc" data-i18n="cameraPanelTriggerDesc">先打开总传感器，再勾选要识别的起始动作。具体做什么请到「识别后做什么」里绑定。</p>
+                    </div>
+                    <div class="camera-master-switch-row">
+                      <span data-i18n="cameraPresenceTitle">存在/动作传感器</span>
+                      <button type="button" class="toggle-switch" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="存在/动作传感器"></button>
+                    </div>
+                  </div>
+                  <p class="camera-inactive-hint" id="cameraWorkflowInactiveHint" hidden data-i18n="cameraWorkflowConfiguredInactive">已配置，但不会生效（点此开启）</p>
+                  <div class="camera-config-grid" id="cameraPresenceConfig">
+                    <div class="camera-config-card is-recommend" data-camera-card="away" data-camera-trigger="away">
+                      <div class="camera-card-kicker" data-i18n="cameraCardRecommend">推荐开启</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardAwayTitle">离席 / 回席</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardAwayDesc">人脸消失约 3 秒视为离席，回到画面约 1 秒视为回席。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryAway">尚未绑定结果</p>
+                      <button type="button" class="control-btn camera-goto-bind" data-camera-goto-bind="away">去绑定结果</button>
+                    </div>
+                    <div class="camera-config-card is-recommend" data-camera-card="shake" data-camera-trigger="shake">
+                      <div class="camera-card-kicker" data-i18n="cameraCardRecommend">推荐开启</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardShakeTitle">摇头</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleShake" data-camera-trigger-toggle="shake" role="switch" aria-checked="false" aria-label="摇头"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardShakeDesc">连续左右摆头。开启后请到「识别后做什么」绑定取消等结果。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryShake">尚未绑定结果</p>
+                      <button type="button" class="control-btn camera-goto-bind" data-camera-goto-bind="shake">去绑定结果</button>
+                    </div>
+                    <div class="camera-config-card" data-camera-card="blink" data-camera-trigger="blink">
+                      <div class="camera-card-kicker" data-i18n="cameraCardDeliberate">刻意动作</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">长眨 / 双眨</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="长眨"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc">用于激活或确认；自然短眨不会触发。开启后请到「识别后做什么」绑定。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryBlink">尚未绑定结果</p>
+                      <button type="button" class="control-btn camera-goto-bind" data-camera-goto-bind="blink">去绑定结果</button>
+                    </div>
+                    <div class="camera-config-card is-placeholder" data-camera-card="multi" aria-disabled="true">
+                      <div class="camera-card-kicker" data-i18n="cameraCardComingSoon">即将推出</div>
+                      <div class="camera-card-title" data-i18n="cameraCardMultiTitle">多人出现</div>
+                      <div class="camera-card-desc" data-i18n="cameraCardMultiDesc">多人人脸出现时暂停或打开隐私屏。当前为占位，尚不能识别。</div>
+                      <div class="toggle-row"><span data-i18n="cameraCardPlaceholder">占位</span><button type="button" class="toggle-switch" disabled aria-disabled="true" aria-checked="false"></button></div>
+                    </div>
+                    <div class="camera-config-card is-placeholder" data-camera-card="hand" aria-disabled="true">
+                      <div class="camera-card-kicker" data-i18n="cameraCardPlaceholderExp">实验，占位</div>
+                      <div class="camera-card-title" data-i18n="cameraCardHandTitle">五指 / OK / 握拳</div>
+                      <div class="camera-card-desc" data-i18n="cameraCardHandDesc">手势模型尚未接入，打开开关不会生效。</div>
+                      <div class="toggle-row"><span data-i18n="cameraCardPlaceholder">占位</span><button type="button" class="toggle-switch" disabled aria-disabled="true" aria-checked="false"></button></div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="camera-tab-panel" id="cameraPanelAction" role="tabpanel" data-camera-panel="action" aria-labelledby="cameraFlowNodeAction" hidden>
+                  <div class="camera-panel-head">
+                    <div>
+                      <h2 class="camera-panel-title" data-i18n="cameraPanelActionTitle">识别后做什么</h2>
+                      <p class="camera-panel-desc" data-i18n="cameraPanelActionDesc">点选动作磁贴绑定结果。界面是语义名，底层只写入合法动作值。发送类仅说明，不能单动作直送。</p>
+                    </div>
+                  </div>
+                  <div class="camera-bind-list" id="cameraPresenceBindList">
+                    <div class="camera-bind-row" data-camera-bind="onAway" id="cameraBindRowAway">
+                      <div class="camera-bind-head">
+                        <div class="camera-bind-title" data-i18n="cameraPresenceOnAway">离席时</div>
+                        <p class="camera-bind-desc" data-i18n="cameraBindAwayDesc">人脸离开画面约 3 秒后执行。</p>
+                      </div>
+                      <div class="camera-action-tiles" role="radiogroup" aria-label="离席动作" data-camera-bind-key="onAway"></div>
+                    </div>
+                    <div class="camera-bind-row" data-camera-bind="onReturn" id="cameraBindRowReturn">
+                      <div class="camera-bind-head">
+                        <div class="camera-bind-title" data-i18n="cameraPresenceOnReturn">回席时</div>
+                        <p class="camera-bind-desc" data-i18n="cameraBindReturnDesc">人脸回到画面约 1 秒后执行。</p>
+                      </div>
+                      <div class="camera-action-tiles" role="radiogroup" aria-label="回席动作" data-camera-bind-key="onReturn"></div>
+                    </div>
+                    <div class="camera-bind-row" data-camera-bind="shakeHead" id="cameraBindRowShake">
+                      <div class="camera-bind-head">
+                        <div class="camera-bind-title" data-i18n="cameraCardShakeTitle">摇头</div>
+                        <p class="camera-bind-desc" data-i18n="cameraBindShakeDesc">连续左右摆头后执行，适合绑定取消。</p>
+                      </div>
+                      <div class="camera-action-tiles" role="radiogroup" aria-label="摇头动作" data-camera-bind-key="shakeHead"></div>
+                    </div>
+                    <div class="camera-bind-row" data-camera-bind="deliberateBlink" id="cameraBindRowBlink">
+                      <div class="camera-bind-head">
+                        <div class="camera-bind-title" data-i18n="cameraCardBlinkTitle">长眨 / 双眨</div>
+                        <p class="camera-bind-desc" data-i18n="cameraBindBlinkDesc">刻意长眨后执行，适合激活输入。</p>
+                      </div>
+                      <div class="camera-action-tiles" role="radiogroup" aria-label="长眨动作" data-camera-bind-key="deliberateBlink"></div>
+                    </div>
+                  </div>
+                  <div class="camera-config-grid camera-action-explain-grid">
+                    <div class="camera-config-card is-placeholder" aria-disabled="true">
+                      <div class="camera-card-kicker" data-i18n="cameraRiskMid">中风险</div>
+                      <div class="camera-card-title" data-i18n="cameraActionConfirmTitle">语音确认</div>
+                      <div class="camera-card-desc" data-i18n="cameraActionConfirmDesc">本轮仅说明/占位，未接运行时确认状态机。</div>
+                    </div>
+                    <div class="camera-config-card is-warn is-placeholder" aria-disabled="true">
+                      <div class="camera-card-kicker" data-i18n="cameraRiskHigh">高风险</div>
+                      <div class="camera-card-title" data-i18n="cameraActionSendTitle">语音发送</div>
+                      <div class="camera-card-desc" data-i18n="cameraActionSendDesc">发送需要二次确认。本轮不会把单个视觉动作直接绑定为发送。</div>
+                    </div>
+                  </div>
+                </article>
+              </section>
+            </div>
+
+            <div class="camera-beginner-guides" id="cameraBeginnerGuides" role="group" aria-label="快速引导">
+              <button type="button" class="camera-guide-chip" id="cameraGuideAwayPrivacy" data-camera-guide="awayPrivacy" data-i18n="cameraGuideAwayPrivacy">离席隐私</button>
+              <button type="button" class="camera-guide-chip" id="cameraGuideShakeCancel" data-camera-guide="shakeCancel" data-i18n="cameraGuideShakeCancel">摇头取消</button>
+              <button type="button" class="camera-guide-chip is-info" id="cameraGuideZoneExplain" data-camera-guide="zoneExplain" data-i18n="cameraGuideZoneExplain">了解看区确认</button>
+            </div>
+
+            <details class="camera-advanced-confirm-fold" id="cameraAdvancedConfirmFold">
+              <summary class="camera-advanced-confirm-summary" data-i18n="cameraAdvancedConfirmSummary">看屏幕哪里确认（可选） · 默认关闭</summary>
+              <div class="camera-advanced-confirm-body" id="cameraAdvancedConfirmBody">
+                <div class="camera-panel-head">
+                  <div>
+                    <h2 class="camera-panel-title" data-i18n="cameraPanelGazeTitle">看屏幕哪里确认</h2>
+                    <p class="camera-panel-desc" data-i18n="cameraPanelGazeDesc">想少误发时，看向某个区域再确认；不用盯得很准。本轮仅说明，未接区域停留运行时引擎。</p>
+                  </div>
+                  <span class="camera-chip" id="cameraGazeMapModeChip" data-i18n="cameraGazeMapModeCoarse">未校准 · 粗区域</span>
+                </div>
+
+                <div class="camera-coarse-zones" id="cameraCoarseZones" aria-label="粗三区说明">
+                  <div class="camera-coarse-zone is-cancel">
+                    <div class="camera-coarse-zone-label" data-i18n="cameraCoarseZoneLeftLabel">左侧</div>
+                    <div class="camera-coarse-zone-title" data-i18n="cameraCoarseZoneLeftTitle">取消</div>
+                    <p class="camera-card-desc" data-i18n="cameraCoarseZoneLeftDesc">取消当前语音或关闭浮层。</p>
+                  </div>
+                  <div class="camera-coarse-zone is-center">
+                    <div class="camera-coarse-zone-label" data-i18n="cameraCoarseZoneCenterLabel">中心</div>
+                    <div class="camera-coarse-zone-title" data-i18n="cameraCoarseZoneCenterTitle">继续 / 待命</div>
+                    <p class="camera-card-desc" data-i18n="cameraCoarseZoneCenterDesc">回到听写待命，继续输入。</p>
+                  </div>
+                  <div class="camera-coarse-zone is-send">
+                    <div class="camera-coarse-zone-label" data-i18n="cameraCoarseZoneSendLabel">右下</div>
+                    <div class="camera-coarse-zone-title" data-i18n="cameraCoarseZoneSendTitle">发送前确认</div>
+                    <p class="camera-card-desc" data-i18n="cameraCoarseZoneSendDesc">进入发送确认，不会直接发出去。</p>
+                  </div>
+                </div>
+
+                <details class="camera-fine-map-fold" id="cameraFineMapFold">
+                  <summary class="camera-fine-map-summary" data-i18n="cameraFineMapSummary">更细的 9 宫格说明</summary>
+                  <div class="camera-config-card">
+                    <div class="camera-card-kicker" data-i18n="cameraGazeMapKicker">屏幕区域（说明）</div>
+                    <div class="camera-card-title" data-i18n="cameraGazeMapTitle">9 宫格示意</div>
+                    <p class="camera-card-desc" data-i18n="cameraGazeMapNote">看向区域即可，不要求像素级瞄准。发送建议：看发送区 → 进入确认 → OK/长眨 → 发送（本轮未接执行）。</p>
+                    <div class="camera-gaze-map is-coarse" id="cameraGazeMap" aria-label="视线九宫格示意">
+                      <div class="camera-gaze-cell" data-zone="tl" data-i18n="cameraGazeZoneCmd">命令</div>
+                      <div class="camera-gaze-cell" data-zone="tc" data-i18n="cameraGazeZoneTop">上方</div>
+                      <div class="camera-gaze-cell" data-zone="tr" data-i18n="cameraGazeZoneCand">候选</div>
+                      <div class="camera-gaze-cell is-cancel" data-zone="ml" data-i18n="cameraGazeZoneCancel">取消</div>
+                      <div class="camera-gaze-cell is-center" data-zone="center" data-i18n="cameraGazeZoneCenter">中心</div>
+                      <div class="camera-gaze-cell" data-zone="mr" data-i18n="cameraGazeZoneContinue">继续</div>
+                      <div class="camera-gaze-cell" data-zone="bl" data-i18n="cameraGazeZoneBl">左下</div>
+                      <div class="camera-gaze-cell" data-zone="bc" data-i18n="cameraGazeZoneBottom">下方</div>
+                      <div class="camera-gaze-cell is-send" data-zone="br" data-i18n="cameraGazeZoneSend">发送区</div>
+                    </div>
+                  </div>
+                </details>
+
+                <section class="camera-calib-block" id="cameraCalibBlock">
+                  <div class="camera-card-kicker" data-i18n="cameraCalibBlockKicker">可选</div>
+                  <div class="camera-card-title" data-i18n="cameraCalibBlockTitle">让摄像头更容易看懂你的视线</div>
+                  <p class="camera-card-desc" data-i18n="cameraCalibBlockDesc">校准后区域估计更稳；数据仅保存在本机，不上传。</p>
+                  <div class="camera-action-bar camera-gaze-actions">
+                    <button type="button" class="control-btn is-primary" id="cameraGazeCalibrateBtn" data-i18n="cameraGazeCalibrate">开始校准</button>
+                    <button type="button" class="control-btn" id="cameraGazeClearCalibrationBtn" data-i18n="cameraGazeClearCalibration">清除校准</button>
+                    <button type="button" class="control-btn" id="btnCameraGazeRecenter" data-i18n="cameraGazeRecenter">重新居中</button>
+                  </div>
+                  <section class="camera-gaze-panel">
+                    <p class="camera-gaze-hint" id="cameraGazeHint" data-i18n="cameraGazeHint">本地 MediaPipe 估计，未校准为屏幕坐标</p>
+                    <p class="camera-gaze-hint" id="cameraGazeCalibrationHint" data-i18n="cameraGazeCalibrationHint">当前为窗口内校准坐标，未做多屏映射或系统级悬浮层</p>
+                    <p class="camera-gaze-hint camera-gaze-privacy-hint" id="cameraGazePrivacyHint" data-i18n="cameraGazePrivacyHint">校准数据（眼动/头姿特征）仅保存在本机 settings.json，不上传；可点「清除校准」一键删除</p>
+                    <p class="camera-gaze-hint camera-gaze-lowres-warn" id="cameraGazeLowResWarn" hidden data-i18n="cameraGazeLowResWarn">当前分辨率低于 720p，精度可能下降</p>
+                    <div class="camera-gaze-stale-banner" id="cameraGazeStaleBanner" hidden role="status">
+                      <p class="camera-gaze-stale-text" id="cameraGazeStaleText" data-i18n="cameraGazeStaleBanner">窗口尺寸已变化，校准坐标可能不准，请重新校准</p>
+                      <button type="button" class="control-btn is-primary camera-gaze-stale-btn" id="cameraGazeStaleRecalibBtn" data-i18n="cameraGazeStaleRecalib">重新校准</button>
+                    </div>
+                    <p class="camera-gaze-hint camera-gaze-sparse-warn" id="cameraGazeSparseWarn" hidden data-i18n="cameraGazeSparseWarn">部分校准点缺失，边角精度可能下降</p>
+                    <p class="camera-gaze-calib-meta">
+                      <span id="cameraGazeCalibrationStatus" data-i18n="cameraGazeCalibrationIdle">未校准</span>
+                      <span class="camera-gaze-calib-sep" aria-hidden="true">·</span>
+                      <span id="cameraGazeScreenPointText" data-i18n="cameraGazeScreenPointUnknown">估算屏幕坐标：未知</span>
+                    </p>
+                    <p class="camera-calib-lock-hint" id="cameraCalibLockHint" hidden data-i18n="cameraCalibLockHint">校准进行中：请完成或取消校准后再切换其他流程节点。</p>
+                  </section>
+                </section>
+
+                <details class="camera-device-fold" id="cameraDeviceFold">
+                  <summary class="camera-device-fold-summary" data-i18n="cameraDeviceFoldSummary">高级设备 · 分辨率与帧率</summary>
+                  <section class="camera-media-settings" id="cameraMediaSettings" aria-label="摄像头能力">
+                    <div class="camera-media-block">
+                      <div class="camera-media-label" data-i18n="cameraInfoResolution">分辨率</div>
+                      <div class="scene-tab-bar camera-res-group-bar" id="cameraResGroupBar" role="tablist" aria-label="resolution aspect">
+                        <button type="button" class="scene-tab is-active" data-res-group="landscape" role="tab" aria-selected="true" data-i18n="cameraResGroupLandscape">横屏</button>
+                        <button type="button" class="scene-tab" data-res-group="portrait" role="tab" aria-selected="false" data-i18n="cameraResGroupPortrait">竖屏</button>
+                        <button type="button" class="scene-tab" data-res-group="square" role="tab" aria-selected="false" data-i18n="cameraResGroupSquare">方形</button>
+                      </div>
+                      <div class="camera-fps-pills camera-res-pills" id="cameraResPills" role="group" aria-label="resolution"></div>
+                    </div>
+                    <div class="camera-media-block camera-fps-block">
+                      <div class="camera-media-label" data-i18n="cameraCapFrameRate">FPS</div>
+                      <div class="camera-fps-pills" id="cameraFpsPills" role="group" aria-label="FPS"></div>
+                    </div>
+                    <p class="camera-cap-hint" id="cameraCapabilityHint" data-i18n="cameraCapHintIdle">开始预览后可切换分辨率与帧率</p>
+                  </section>
+                </details>
               </div>
-              <p class="camera-gaze-hint camera-gaze-sparse-warn" id="cameraGazeSparseWarn" hidden data-i18n="cameraGazeSparseWarn">部分校准点缺失，边角精度可能下降</p>
-              <p class="camera-gaze-calib-meta">
-                <span id="cameraGazeCalibrationStatus" data-i18n="cameraGazeCalibrationIdle">未校准</span>
-                <span class="camera-gaze-calib-sep" aria-hidden="true">·</span>
-                <span id="cameraGazeScreenPointText" data-i18n="cameraGazeScreenPointUnknown">估算屏幕坐标：未知</span>
-              </p>
-            </section>
-          </section>
+            </details>
+
+            <div class="camera-app-scope-dock voice-app-scope-dock" id="cameraAppScopeDock">
+              <div class="voice-app-scope-head">
+                <div class="voice-app-scope-head-text">
+                  <h4 class="voice-app-scope-title" id="cameraAppScopeTitle" data-i18n="cameraAppScopeTitle">生效应用</h4>
+                  <p class="camera-app-scope-summary" id="cameraAppScopeSummary">—</p>
+                </div>
+                <button type="button" class="control-btn" id="btnCameraOpenKeysScope" data-i18n="cameraAppScopeOpenKeys">去按键设置</button>
+              </div>
+              <p class="camera-app-scope-hint" id="cameraAppScopeHint" data-i18n="cameraAppScopeHint">摄像头动作跟随当前习惯的应用范围；在按键页管理生效应用。</p>
+            </div>
+          </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelGeneral" hidden>
           <div class="drawer-section" id="settingsBackupSection">
@@ -3065,6 +3285,7 @@
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-presence-actions.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
+  <script src="js/features/camera/camera-workflow.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
   <script src="js/features/scene/habit-layer-nav.js"></script>

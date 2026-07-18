@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title desc">
+  <title id="title">摄像头视线管理标签页整理规划</title>
+  <desc id="desc">把页面底部杂糅的视线管理、校准、设备参数内容收进视线管理标签页，并按新手友好的顺序重新排列。</desc>
+  <defs>
+    <style>
+      .bg{fill:#f6f8fb}.panel{fill:#fff;stroke:#d7dee8;stroke-width:1.4}.soft{fill:#eef6f5;stroke:#c9dfdc;stroke-width:1.4}.active{fill:#e7f5f3;stroke:#2b9c90;stroke-width:2}.warn{fill:#fff7e6;stroke:#f0c36d;stroke-width:1.4}.danger{fill:#fff0f0;stroke:#e4a1a1;stroke-width:1.4}.mutedBox{fill:#f8fafc;stroke:#d7dee8;stroke-width:1.4;stroke-dasharray:6 5}.text{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;fill:#17202a}.muted{fill:#64748b}.title{font-size:28px;font-weight:700}.h2{font-size:21px;font-weight:700}.h3{font-size:17px;font-weight:700}.body{font-size:15px}.small{font-size:13px}.chip{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.2}.primary{fill:#2b9c90}.primaryText{fill:#fff}.line{stroke:#9aaaba;stroke-width:2.3;fill:none}.grid{stroke:#cbd5e1;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect class="bg" width="1280" height="900"/>
+  <text class="text title" x="48" y="58">视线管理标签页整理规划</text>
+  <text class="text body muted" x="48" y="88">目标：把页面最下方杂糅的旧视线内容，收束到一个“看屏幕哪里确认”的标签/折叠页里。</text>
+
+  <rect class="panel" x="42" y="124" rx="18" ry="18" width="350" height="650"/>
+  <text class="text h2" x="70" y="162">现在的问题</text>
+  <text class="text body muted" x="70" y="194">旧内容堆在摄像头页底部，像调试台。</text>
+  <rect class="danger" x="70" y="232" rx="13" ry="13" width="294" height="92"/>
+  <text class="text h3" x="94" y="264">视线地图裸露</text>
+  <text class="text body muted" x="94" y="292">3×3、区域动作直接出现在页面尾部。</text>
+  <rect class="warn" x="70" y="344" rx="13" ry="13" width="294" height="92"/>
+  <text class="text h3" x="94" y="376">校准信息太重</text>
+  <text class="text body muted" x="94" y="404">按钮、提示、stale/sparse/lowres 混在一起。</text>
+  <rect class="mutedBox" x="70" y="456" rx="13" ry="13" width="294" height="92"/>
+  <text class="text h3" x="94" y="488">设备参数抢位置</text>
+  <text class="text body muted" x="94" y="516">分辨率 / FPS 像主任务，其实是高级设备。</text>
+  <rect class="mutedBox" x="70" y="568" rx="13" ry="13" width="294" height="92"/>
+  <text class="text h3" x="94" y="600">发送能力易误解</text>
+  <text class="text body muted" x="94" y="628">用户可能以为看右下已经能自动发送。</text>
+
+  <path class="line" d="M410 450 C455 450 480 450 528 450"/>
+  <polygon points="528,450 512,441 512,459" fill="#9aaaba"/>
+
+  <rect class="panel" x="546" y="124" rx="18" ry="18" width="692" height="650"/>
+  <text class="text h2" x="574" y="162">整理后：进入“看屏幕哪里确认”页</text>
+  <rect class="chip" x="1000" y="136" rx="18" ry="18" width="198" height="34"/>
+  <text class="text small" x="1022" y="158">默认折叠 / 标签内展示</text>
+  <rect class="active" x="574" y="198" rx="14" ry="14" width="636" height="76"/>
+  <text class="text h3" x="598" y="230">入口摘要</text>
+  <text class="text body muted" x="598" y="258">看屏幕哪里确认（可选） · 发送前少误触 · 本轮不自动执行区域停留</text>
+
+  <rect class="soft" x="574" y="300" rx="14" ry="14" width="305" height="190"/>
+  <text class="text h3" x="598" y="332">第一层：粗三区</text>
+  <text class="text body muted" x="598" y="360">先给小白看懂，不直接上 9 宫格。</text>
+  <rect class="danger" x="598" y="386" rx="10" ry="10" width="74" height="64"/>
+  <text class="text small" x="621" y="423">取消</text>
+  <rect class="panel" x="688" y="386" rx="10" ry="10" width="74" height="64"/>
+  <text class="text small" x="711" y="423">继续</text>
+  <rect class="warn" x="778" y="386" rx="10" ry="10" width="74" height="64"/>
+  <text class="text small" x="791" y="413">发送前</text>
+  <text class="text small" x="804" y="434">确认</text>
+
+  <rect class="panel" x="904" y="300" rx="14" ry="14" width="306" height="190"/>
+  <text class="text h3" x="928" y="332">第二层：更细区域</text>
+  <text class="text body muted" x="928" y="360">放进 details：更细的 9 宫格说明。</text>
+  <g transform="translate(928,386)">
+    <rect class="panel" x="0" y="0" width="168" height="78" rx="10"/>
+    <line class="grid" x1="56" y1="0" x2="56" y2="78"/>
+    <line class="grid" x1="112" y1="0" x2="112" y2="78"/>
+    <line class="grid" x1="0" y1="26" x2="168" y2="26"/>
+    <line class="grid" x1="0" y1="52" x2="168" y2="52"/>
+    <rect class="warn" x="112" y="52" width="56" height="26"/>
+  </g>
+  <text class="text small muted" x="1112" y="423">未校准：粗区</text>
+  <text class="text small muted" x="1112" y="447">已校准：9 宫格</text>
+
+  <rect class="panel" x="574" y="520" rx="14" ry="14" width="305" height="168"/>
+  <text class="text h3" x="598" y="552">第三层：校准</text>
+  <text class="text body muted" x="598" y="580">让摄像头更容易看懂你的视线。</text>
+  <rect class="primary" x="598" y="608" rx="9" ry="9" width="112" height="34"/>
+  <text class="text primaryText small" x="620" y="630">开始校准</text>
+  <rect class="chip" x="724" y="608" rx="9" ry="9" width="92" height="34"/>
+  <text class="text small" x="746" y="630">清除校准</text>
+  <text class="text small muted" x="598" y="668">保留原按钮 ID 与校准逻辑。</text>
+
+  <rect class="mutedBox" x="904" y="520" rx="14" ry="14" width="306" height="168"/>
+  <text class="text h3" x="928" y="552">第四层：高级设备</text>
+  <text class="text body muted" x="928" y="580">分辨率 / FPS 收进同一个标签页底部。</text>
+  <rect class="chip" x="928" y="608" rx="9" ry="9" width="94" height="34"/>
+  <text class="text small" x="951" y="630">720p</text>
+  <rect class="chip" x="1036" y="608" rx="9" ry="9" width="94" height="34"/>
+  <text class="text small" x="1061" y="630">30fps</text>
+  <text class="text small muted" x="928" y="668">不再堆在摄像头页面最下方。</text>
+
+  <rect class="soft" x="42" y="808" rx="18" ry="18" width="1196" height="54"/>
+  <text class="text h3" x="70" y="842">落地规则：</text>
+  <text class="text body muted" x="162" y="842">只迁移和收纳现有 DOM；不做区域停留引擎；不做发送执行绑定；不改原校准/预览 ID。</text>
+</svg>

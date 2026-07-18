@@ -19,17 +19,20 @@
 
   var AWAY_MS=3000;
   var PRESENT_MS=1000;
-  var YAW_LEFT=-0.25;
-  var YAW_RIGHT=0.25;
+  // Yaw bins for coarse L/C/R display (landmark yaw ~±1).
+  var YAW_LEFT=-0.12;
+  var YAW_RIGHT=0.12;
   var KEY_THROTTLE_MS=800;
   var DETECT_PRESENT_MS=100;
   var DETECT_AWAY_MS=333;
   var DETECT_GAZE_MS=33;
+  var DETECT_SHAKE_MS=33;
 
-  // Shake: need three alternating side extremes within window.
-  var SHAKE_WINDOW_MS=1400;
-  var SHAKE_COOLDOWN_MS=1200;
-  var SHAKE_SIDE_HOLD_MS=70;
+  // Shake: yaw hysteresis + L-R-L / R-L-R within window (no multi-frame hold required).
+  var SHAKE_WINDOW_MS=2800;
+  var SHAKE_COOLDOWN_MS=1000;
+  var SHAKE_ENTER=0.10;
+  var SHAKE_EXIT=0.04;
 
   // Deliberate blink: long close, not natural short blinks.
   var BLINK_ON=0.62;
@@ -73,11 +76,11 @@
     uiBound:false,
     onDetectInterval:null,
     onStateChange:null,
-    // Shake tracking
+    // Shake tracking (yaw hysteresis)
     shakeSeq:[],
-    shakeSide:null,
-    shakeSideSince:0,
+    shakeHyst:'center',
     lastShakeAt:0,
+    lastYaw:null,
     // Blink tracking
     blinkClosed:false,
     blinkCloseSince:0,
@@ -153,15 +156,42 @@
     return normalizePrefs(cameraPrefs().presenceActions);
   }
 
+  function hasBoundTriggers(p){
+    p=p||prefs();
+    return p.onAway!=='none'||p.onReturn!=='none'||p.shakeHead!=='none'||p.deliberateBlink!=='none';
+  }
+
+  function isCameraPreviewLive(){
+    try{
+      var gp=global.OneToneCameraPreview;
+      if(gp&&gp.getGazeDebugState){
+        var s=gp.getGazeDebugState();
+        return !!(s&&s.previewLive);
+      }
+    }catch(_){}
+    return false;
+  }
+
+  function remindCameraIfNeeded(){
+    if(isCameraPreviewLive()) return;
+    toast(t('cameraPresenceNeedPreview','请先开启摄像头预览，摇头等动作才会识别'));
+  }
+
   function persistPresencePrefs(partial){
     var cp=cameraPrefs();
     var cur=normalizePrefs(cp.presenceActions);
+    var wasEnabled=!!cur.enabled;
+    var bindTouched=false;
     if(partial&&typeof partial==='object'){
       if(partial.enabled!==undefined) cur.enabled=!!partial.enabled;
-      if(partial.onAway!=null) cur.onAway=normalizeAction(partial.onAway);
-      if(partial.onReturn!=null) cur.onReturn=normalizeAction(partial.onReturn);
-      if(partial.shakeHead!=null) cur.shakeHead=normalizeAction(partial.shakeHead);
-      if(partial.deliberateBlink!=null) cur.deliberateBlink=normalizeAction(partial.deliberateBlink);
+      if(partial.onAway!=null){ cur.onAway=normalizeAction(partial.onAway); bindTouched=true; }
+      if(partial.onReturn!=null){ cur.onReturn=normalizeAction(partial.onReturn); bindTouched=true; }
+      if(partial.shakeHead!=null){ cur.shakeHead=normalizeAction(partial.shakeHead); bindTouched=true; }
+      if(partial.deliberateBlink!=null){ cur.deliberateBlink=normalizeAction(partial.deliberateBlink); bindTouched=true; }
+    }
+    // Bound triggers with master off never fire — turn sensing on when user binds.
+    if(bindTouched&&hasBoundTriggers(cur)&&!cur.enabled){
+      cur.enabled=true;
     }
     cp.presenceActions=cur;
     st.enabled=!!cur.enabled;
@@ -174,6 +204,9 @@
     emitState();
     if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
       try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
+    }
+    if(cur.enabled&&!wasEnabled){
+      remindCameraIfNeeded();
     }
   }
 
@@ -194,6 +227,10 @@
   }
 
   function snapshot(){
+    var listening='';
+    try{
+      if(typeof gestureLabel==='function') listening=gestureLabel();
+    }catch(_){}
     return {
       enabled:isEnabled(),
       presence:st.presence,
@@ -204,6 +241,8 @@
       absentDurationMs:st.absentDurationMs||0,
       presentDurationMs:st.presentDurationMs||0,
       lastGesture:st.lastGesture||'none',
+      pulseActive:!!(st.pulseUntil&&performance.now()<st.pulseUntil),
+      shakeListeningLabel:listening,
       privacyOpen:!!st.privacyOpen,
       lowPowerActive:!!st.lowPowerActive,
       lastAction:st.lastAction||'none',
@@ -237,6 +276,15 @@
       api.setDetectIntervalMs(DETECT_GAZE_MS);
       return;
     }
+    var p=prefs();
+    var gestureOn=p.shakeHead!=='none'||p.deliberateBlink!=='none';
+    if(gestureOn&&st.presence!=='away'){
+      api.setDetectIntervalMs(DETECT_SHAKE_MS);
+      if(typeof st.onDetectInterval==='function'){
+        try{ st.onDetectInterval(DETECT_SHAKE_MS); }catch(_){}
+      }
+      return;
+    }
     if(st.presence==='away') api.setDetectIntervalMs(DETECT_AWAY_MS);
     else api.setDetectIntervalMs(DETECT_PRESENT_MS);
     if(typeof st.onDetectInterval==='function'){
@@ -260,6 +308,107 @@
     return true;
   }
 
+  function logPresence(line){
+    try{
+      if(global.OneToneDom&&global.OneToneDom.log) global.OneToneDom.log('presence '+line);
+      else console.log('[onetone] presence '+line);
+    }catch(_){}
+  }
+
+  function activeHabitMapping(){
+    var cfg=stateRoot().config||{};
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.projectActive){
+      var p=global.OneToneHabitProfile.projectActive(cfg);
+      if(p&&p.mapping) return p.mapping;
+    }
+    if(global.OneToneMappingCore&&global.OneToneMappingCore.activeScene){
+      return global.OneToneMappingCore.activeScene();
+    }
+    var id=String(cfg.activeSceneId||cfg.active_scene_id||'').trim();
+    if(id&&Array.isArray(cfg.mappings)){
+      for(var i=0;i<cfg.mappings.length;i++){
+        if(String(cfg.mappings[i].id||'')===id) return cfg.mappings[i];
+      }
+    }
+    return null;
+  }
+
+  function isWorkflowAppTarget(id){
+    if(global.OneToneSceneConfig&&global.OneToneSceneConfig.isWorkflowAppTarget){
+      return !!global.OneToneSceneConfig.isWorkflowAppTarget(id);
+    }
+    var t0=String(id||'').trim();
+    return t0==='cursor-chat'||t0==='codex-chat'||t0==='claude-code'||t0==='minimax-chat';
+  }
+
+  function presetActivateKey(presetId){
+    presetId=String(presetId||'').trim();
+    if(!presetId||!global.OneToneImePresets||!global.OneToneImePresets.presetById) return '';
+    var p=global.OneToneImePresets.presetById(presetId);
+    return p&&p.targetKey?String(p.targetKey).trim():'';
+  }
+
+  function resolveConfiguredVoiceEngineKey(cfg){
+    cfg=cfg||{};
+    var vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+    var sapi=cfg.voiceSapi||cfg.voice_sapi||{};
+    var kws=cfg.voiceKws||cfg.voice_kws||{};
+    var end=cfg.voiceEnd||cfg.voice_end||{};
+    var voskKey=String(vosk.targetKey||vosk.target_key||'').trim();
+    var sapiKey=String(sapi.targetKey||sapi.target_key||'').trim();
+    var kwsKey=String(kws.targetKey||kws.target_key||'').trim();
+    var endKey=String(end.targetKey||end.target_key||'').trim();
+    if(vosk.enabled&&voskKey) return voskKey;
+    if(sapi.enabled&&sapiKey) return sapiKey;
+    if(kws.enabled&&kwsKey) return kwsKey;
+    if(voskKey) return voskKey;
+    if(sapiKey) return sapiKey;
+    if(kwsKey) return kwsKey;
+    if(endKey) return endKey;
+    return '';
+  }
+
+  /**
+   * User's IME activate shortcut from their custom scheme — never invent RAlt / Ctrl+I / Win+H.
+   * Prefer current habit IME binding, then voice-settings keys, then global imePresetId.
+   */
+  function resolveVoiceActivateKey(){
+    var cfg=stateRoot().config||{};
+    var m=activeHabitMapping();
+
+    if(m){
+      var ov=m.voiceOverride||m.voice_override||null;
+      if(ov&&ov.targetKey&&String(ov.targetKey).trim()){
+        return String(ov.targetKey).trim();
+      }
+      // Habit IME / custom activate key (not Cursor/workflow app shortcuts).
+      if(!isWorkflowAppTarget(m.appTargetId||m.app_target_id)){
+        var mapKey=String(m.targetKey||m.target_key||'').trim();
+        if(mapKey) return mapKey;
+        var fromPreset=presetActivateKey(m.imePresetId||m.ime_preset_id);
+        if(fromPreset) return fromPreset;
+      }
+    }
+
+    var fromVoice=resolveConfiguredVoiceEngineKey(cfg);
+    if(fromVoice) return fromVoice;
+
+    return presetActivateKey(cfg.imePresetId||cfg.ime_preset_id);
+  }
+
+  function voiceActivateActionLabel(){
+    var base=t('cameraPresenceActionCtrlI','语音输入法激活');
+    var key=resolveVoiceActivateKey();
+    if(!key) return base+'（'+t('cameraPresenceVoiceKeyUnset','未配置')+'）';
+    var friendly=key;
+    try{
+      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+        friendly=global.OneToneKeyLabels.friendlyKeyName(key,global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh')||key;
+      }
+    }catch(_){}
+    return base+'（'+friendly+'）';
+  }
+
   function pressKey(targetKey){
     var now=performance.now();
     if(now-st.lastKeyAt<KEY_THROTTLE_MS){
@@ -268,17 +417,23 @@
     }
     if(!canPressKey()){
       toast(t('cameraPresenceKeyBlocked','当前不可发送按键（需在席且未暂停）'));
+      logPresence('key blocked presence='+st.presence+' paused='+(runtime().paused?'1':'0'));
       return Promise.resolve({ok:false,reason:'blocked'});
     }
     st.lastKeyAt=now;
+    logPresence('key send '+targetKey);
     return invokeIpc('cmd_test_send',{mappingId:null,targetKey:targetKey}).then(function(res){
       if(!res||!res.ok){
         var reason=res&&res.reason?String(res.reason):'failed';
+        logPresence('key fail '+targetKey+' reason='+reason);
         if(reason==='paused'){
           toast(t('cameraPresenceKeyPaused','监听已暂停，无法注入按键'));
         }else{
-          toast(t('cameraPresenceKeyFailed','按键发送失败'));
+          toast(t('cameraPresenceKeyFailed','按键发送失败')+'（'+targetKey+'）');
         }
+      }else{
+        logPresence('key ok '+targetKey);
+        toast(t('cameraPresenceKeySent','已发送激活键')+' '+targetKey);
       }
       return res||{ok:false};
     });
@@ -318,7 +473,16 @@
     st.lastActionAt=performance.now();
 
     if(action==='pressEsc') return pressKey('Esc');
-    if(action==='pressCtrlI') return pressKey('Ctrl+I');
+    if(action==='pressCtrlI'){
+      // Legacy action id → user's custom IME activate scheme (habit / voice / imePreset).
+      var voiceKey=resolveVoiceActivateKey();
+      logPresence('voice-activate resolve='+(voiceKey||'(unset)'));
+      if(!voiceKey){
+        toast(t('cameraPresenceVoiceKeyUnsetToast','请先在按键/语音设置中选择输入法激活方案'));
+        return Promise.resolve({ok:false,reason:'unset'});
+      }
+      return pressKey(voiceKey);
+    }
 
     if(action==='privacyScreen'){
       openPrivacyScreen();
@@ -403,8 +567,8 @@
 
   function resetGestureTrackers(){
     st.shakeSeq=[];
-    st.shakeSide=null;
-    st.shakeSideSince=0;
+    st.shakeHyst='center';
+    st.lastYaw=null;
     st.blinkClosed=false;
     st.blinkCloseSince=0;
     st.blinkLastLongAt=0;
@@ -432,11 +596,23 @@
   }
 
   function fireGesture(kind,action){
-    if(isCalibrating()) return;
-    if(st.privacyOpen) return;
-    if(st.presence!=='present') return;
+    if(isCalibrating()){
+      logPresence(kind+' skipped calibrating');
+      return;
+    }
+    if(st.privacyOpen){
+      logPresence(kind+' skipped privacy');
+      return;
+    }
+    if(st.presence!=='present'){
+      logPresence(kind+' skipped not-present');
+      return;
+    }
     action=normalizeAction(action);
     if(action==='none') return;
+    logPresence(kind+' fire action='+action);
+    if(kind==='shake') toast(t('cameraPresenceShakeDetected','已识别摇头'));
+    else if(kind==='blink') toast(t('cameraPresenceBlinkDetected','已识别长眨'));
     pulseGesture(kind);
     dispatchAction(action,kind);
   }
@@ -447,26 +623,19 @@
     }
   }
 
-  function noteShakeSide(side,now){
-    if(side!=='left'&&side!=='right') return;
-    if(st.shakeSide===side){
-      if(!st.shakeSideSince) st.shakeSideSince=now;
-      return;
+  function shakeHystSide(yaw){
+    var cur=st.shakeHyst||'center';
+    if(cur==='left'){
+      if(yaw>-SHAKE_EXIT) return 'center';
+      return 'left';
     }
-    // Require a brief hold on the new side before counting (filter jitter).
-    st.shakeSide=side;
-    st.shakeSideSince=now;
-  }
-
-  function commitShakeSide(now){
-    if(!st.shakeSide||!st.shakeSideSince) return;
-    if((now-st.shakeSideSince)<SHAKE_SIDE_HOLD_MS) return;
-    var side=st.shakeSide;
-    var last=st.shakeSeq.length?st.shakeSeq[st.shakeSeq.length-1]:null;
-    if(last&&last.side===side) return;
-    st.shakeSeq.push({side:side,t:now});
-    pruneShakeSeq(now);
-    if(st.shakeSeq.length>4) st.shakeSeq=st.shakeSeq.slice(-4);
+    if(cur==='right'){
+      if(yaw<SHAKE_EXIT) return 'center';
+      return 'right';
+    }
+    if(yaw<=-SHAKE_ENTER) return 'left';
+    if(yaw>=SHAKE_ENTER) return 'right';
+    return 'center';
   }
 
   function matchShakePattern(){
@@ -476,33 +645,44 @@
     var b=st.shakeSeq[st.shakeSeq.length-2].side;
     var c=st.shakeSeq[st.shakeSeq.length-1].side;
     if(a===b||b===c||a===c) return false;
-    // L-R-L or R-L-R
     return (a==='left'&&b==='right'&&c==='left')||(a==='right'&&b==='left'&&c==='right');
   }
 
-  function updateShake(now,dir){
+  function updateShake(now,yaw){
     var p=prefs();
     if(normalizeAction(p.shakeHead)==='none'){
       st.shakeSeq=[];
+      st.shakeHyst='center';
       return;
     }
     if(st.presence!=='present') return;
-    if(dir==='left'||dir==='right'){
-      noteShakeSide(dir,now);
-      commitShakeSide(now);
-    }else if(dir==='center'){
-      // Flush pending side hold when returning to center.
-      commitShakeSide(now);
-      st.shakeSide=null;
-      st.shakeSideSince=0;
+    if(yaw==null||!isFinite(yaw)) return;
+    st.lastYaw=yaw;
+
+    var next=shakeHystSide(yaw);
+    if(next!==st.shakeHyst){
+      var prev=st.shakeHyst;
+      st.shakeHyst=next;
+      if((next==='left'||next==='right')&&next!==prev){
+        var last=st.shakeSeq.length?st.shakeSeq[st.shakeSeq.length-1]:null;
+        if(!last||last.side!==next){
+          st.shakeSeq.push({side:next,t:now});
+          pruneShakeSeq(now);
+          if(st.shakeSeq.length>5) st.shakeSeq=st.shakeSeq.slice(-5);
+          logPresence('shake seq='+st.shakeSeq.map(function(x){ return x.side[0]; }).join('')+' yaw='+yaw.toFixed(2));
+        }
+      }
     }
+
     if(matchShakePattern()){
       if((now-st.lastShakeAt)<SHAKE_COOLDOWN_MS){
+        logPresence('shake cooldown');
         st.shakeSeq=[];
         return;
       }
       st.lastShakeAt=now;
       st.shakeSeq=[];
+      st.shakeHyst='center';
       fireGesture('shake',p.shakeHead);
     }
   }
@@ -569,6 +749,8 @@
 
     st.faceDetected=face;
     st.headDirection=headDirFromYaw(point&&point.yaw);
+    var yaw=point&&point.yaw;
+    if(yaw==null||!isFinite(yaw)) yaw=null;
 
     if(face){
       if(!st.faceTrueSince) st.faceTrueSince=now;
@@ -589,7 +771,7 @@
     }
 
     if(st.presence==='present'&&face&&!isCalibrating()){
-      updateShake(now,st.headDirection);
+      updateShake(now,yaw);
       updateBlink(now,point&&point.blink);
     }
 
@@ -631,6 +813,26 @@
   }
 
   function gestureLabel(){
+    if(st.lastGesture==='shake'&&st.pulseUntil&&performance.now()<st.pulseUntil){
+      return t('cameraPresenceGestureShake','摇头');
+    }
+    if(st.lastGesture==='blink'&&st.pulseUntil&&performance.now()<st.pulseUntil){
+      return t('cameraPresenceGestureBlink','长眨');
+    }
+    var p=prefs();
+    if(isEnabled()&&normalizeAction(p.shakeHead)!=='none'){
+      if(!isCameraPreviewLive()){
+        return t('cameraPresenceNeedPreviewShort','请先开始预览');
+      }
+      if(st.presence==='present'){
+        var seq=st.shakeSeq.map(function(x){
+          return x.side==='left'?'左':(x.side==='right'?'右':'');
+        }).filter(Boolean).join('→');
+        var dir=headLabel();
+        if(seq) return dir+' · '+seq;
+        return t('cameraPresenceShakeListening','侦测朝向')+' · '+dir;
+      }
+    }
     if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
     if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','长眨');
     return t('cameraPresenceGestureNone','无');
@@ -669,46 +871,147 @@
     }
   }
 
-  function fillActionSelect(sel,value){
-    if(!sel) return;
-    var opts=[
-      ['none','cameraPresenceActionNone','无动作'],
-      ['pressEsc','cameraPresenceActionEsc','按 Esc'],
-      ['pressCtrlI','cameraPresenceActionCtrlI','切换输入 Ctrl+I'],
-      ['lowPowerMode','cameraPresenceActionLowPower','软件低消耗运行'],
-      ['privacyScreen','cameraPresenceActionPrivacy','隐私屏'],
-      ['pauseVoice','cameraPresenceActionPause','暂停语音'],
-      ['resumeVoice','cameraPresenceActionResume','恢复语音']
-    ];
+  var ACTION_OPTS=[
+    ['none','cameraPresenceActionNone','无动作'],
+    ['pressEsc','cameraPresenceActionEsc','语音取消'],
+    ['pressCtrlI','cameraPresenceActionCtrlI','语音输入法激活'],
+    ['lowPowerMode','cameraPresenceActionLowPower','软件低消耗运行'],
+    ['privacyScreen','cameraPresenceActionPrivacy','隐私屏'],
+    ['pauseVoice','cameraPresenceActionPause','暂停语音'],
+    ['resumeVoice','cameraPresenceActionResume','恢复语音']
+  ];
+
+  var BIND_KEYS=['onAway','onReturn','shakeHead','deliberateBlink'];
+
+  function actionLabel(value){
     var cur=normalizeAction(value);
-    if(!sel.options.length){
-      for(var i=0;i<opts.length;i++){
-        var o=document.createElement('option');
-        o.value=opts[i][0];
-        o.textContent=t(opts[i][1],opts[i][2]);
-        sel.appendChild(o);
+    if(cur==='pressCtrlI') return voiceActivateActionLabel();
+    for(var i=0;i<ACTION_OPTS.length;i++){
+      if(ACTION_OPTS[i][0]===cur) return t(ACTION_OPTS[i][1],ACTION_OPTS[i][2]);
+    }
+    return t('cameraPresenceActionNone','无动作');
+  }
+
+  function ensureActionTiles(host,key,value){
+    if(!host) return;
+    var cur=normalizeAction(value);
+    if(!host.getAttribute('data-tiles-ready')){
+      host.setAttribute('data-tiles-ready','1');
+      host.setAttribute('data-camera-bind-key',key);
+      host.innerHTML='';
+      for(var i=0;i<ACTION_OPTS.length;i++){
+        var opt=ACTION_OPTS[i];
+        var btn=document.createElement('button');
+        btn.type='button';
+        btn.className='camera-action-tile';
+        btn.setAttribute('data-action',opt[0]);
+        btn.setAttribute('role','radio');
+        btn.title=opt[0]==='pressCtrlI'?t('cameraPresenceActionCtrlIHint','发送当前习惯/语音设置中的输入法激活键'):'';
+        btn.textContent=opt[0]==='pressCtrlI'?voiceActivateActionLabel():t(opt[1],opt[2]);
+        host.appendChild(btn);
       }
     }else{
-      for(var j=0;j<sel.options.length;j++){
-        var op=sel.options[j];
-        var found=null;
-        for(var k=0;k<opts.length;k++){
-          if(opts[k][0]===op.value){ found=opts[k]; break; }
+      var kids=host.querySelectorAll('.camera-action-tile');
+      for(var j=0;j<kids.length;j++){
+        var act=kids[j].getAttribute('data-action');
+        for(var k=0;k<ACTION_OPTS.length;k++){
+          if(ACTION_OPTS[k][0]===act){
+            kids[j].textContent=act==='pressCtrlI'?voiceActivateActionLabel():t(ACTION_OPTS[k][1],ACTION_OPTS[k][2]);
+            if(act==='pressCtrlI'){
+              kids[j].title=t('cameraPresenceActionCtrlIHint','发送当前习惯/语音设置中的输入法激活键');
+            }
+            break;
+          }
         }
-        if(found) op.textContent=t(found[1],found[2]);
       }
     }
-    sel.value=cur;
+    var tiles=host.querySelectorAll('.camera-action-tile');
+    for(var n=0;n<tiles.length;n++){
+      var on=tiles[n].getAttribute('data-action')===cur;
+      tiles[n].classList.toggle('is-selected',on);
+      tiles[n].setAttribute('aria-checked',on?'true':'false');
+    }
   }
+
+  function setSwitchState(el,on){
+    if(!el) return;
+    el.classList.toggle('is-on',!!on);
+    el.setAttribute('aria-checked',on?'true':'false');
+  }
+
+  function syncTriggerSummaries(p){
+    var awayOn=p.onAway!=='none'||p.onReturn!=='none';
+    var shakeOn=p.shakeHead!=='none';
+    var blinkOn=p.deliberateBlink!=='none';
+
+    function syncCard(kind,bound,summaryText){
+      var card=document.querySelector('#cameraPresenceConfig [data-camera-trigger="'+kind+'"]');
+      if(!card) return;
+      var sw=card.querySelector('[data-camera-trigger-toggle]');
+      var sum=card.querySelector('.camera-bind-summary');
+      var go=card.querySelector('.camera-goto-bind');
+      setSwitchState(sw,bound);
+      if(sum){
+        // Do not put data-i18n on these nodes — applyLang on appWorkbenchShell would overwrite them.
+        sum.textContent=summaryText;
+        sum.classList.toggle('is-bound',!!bound);
+      }
+      if(go){
+        go.textContent=bound
+          ? t('cameraGotoBindEdit','修改绑定')
+          : t('cameraGotoBind','去绑定结果');
+      }
+      card.classList.toggle('is-trigger-on',!!bound);
+    }
+
+    syncCard(
+      'away',
+      awayOn,
+      awayOn
+        ? t('cameraTriggerSummaryAway','离席：{away} · 回席：{ret}')
+            .replace('{away}',actionLabel(p.onAway))
+            .replace('{ret}',actionLabel(p.onReturn))
+        : t('cameraTriggerSummaryEmpty','尚未绑定结果')
+    );
+    syncCard(
+      'shake',
+      shakeOn,
+      shakeOn
+        ? t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p.shakeHead))
+        : t('cameraTriggerSummaryEmpty','尚未绑定结果')
+    );
+    syncCard(
+      'blink',
+      blinkOn,
+      blinkOn
+        ? t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p.deliberateBlink))
+        : t('cameraTriggerSummaryEmpty','尚未绑定结果')
+    );
+  }
+
+  var healedInactiveConfig=false;
 
   function syncUiFromPrefs(){
     var p=prefs();
+    // One-shot: older configs bound shake/etc. but left master off → sensing never ran.
+    if(!healedInactiveConfig){
+      healedInactiveConfig=true;
+      if(hasBoundTriggers(p)&&!p.enabled){
+        persistPresencePrefs({enabled:true});
+        toast(t('cameraPresenceAutoEnabled','已自动开启在席感知（此前已绑定动作但总开关关闭）'));
+        return;
+      }
+    }
     st.enabled=!!p.enabled;
-    fillActionSelect($('cameraPresenceOnAway'),p.onAway);
-    fillActionSelect($('cameraPresenceOnReturn'),p.onReturn);
-    fillActionSelect($('cameraPresenceShakeHead'),p.shakeHead);
-    fillActionSelect($('cameraPresenceBlink'),p.deliberateBlink);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="onAway"]'),'onAway',p.onAway);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="onReturn"]'),'onReturn',p.onReturn);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
+    syncTriggerSummaries(p);
     renderHeroUi();
+    if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncInactiveHint){
+      try{ global.OneToneCameraWorkflow.syncInactiveHint(); }catch(_){}
+    }
   }
 
   function onPrivacyEsc(e){
@@ -718,6 +1021,28 @@
     e.stopPropagation();
     if(e.stopImmediatePropagation) e.stopImmediatePropagation();
     closePrivacyScreen(true);
+  }
+
+  function toggleTrigger(kind,wantOn){
+    var p=prefs();
+    if(kind==='away'){
+      if(wantOn){
+        persistPresencePrefs({
+          onAway:p.onAway==='none'?'privacyScreen':p.onAway,
+          onReturn:p.onReturn==='none'?'none':p.onReturn
+        });
+      }else{
+        persistPresencePrefs({onAway:'none',onReturn:'none'});
+      }
+      return;
+    }
+    if(kind==='shake'){
+      persistPresencePrefs({shakeHead:wantOn?(p.shakeHead==='none'?'pressEsc':p.shakeHead):'none'});
+      return;
+    }
+    if(kind==='blink'){
+      persistPresencePrefs({deliberateBlink:wantOn?(p.deliberateBlink==='none'?'pressCtrlI':p.deliberateBlink):'none'});
+    }
   }
 
   function bindUi(){
@@ -732,19 +1057,52 @@
       });
     }
 
-    function bindSelect(id,key){
-      var sel=$(id);
-      if(!sel) return;
-      sel.addEventListener('change',function(){
+    var config=$('cameraPresenceConfig');
+    if(config){
+      config.addEventListener('click',function(e){
+        var sw=e.target&&e.target.closest?e.target.closest('[data-camera-trigger-toggle]'):null;
+        if(sw){
+          e.preventDefault();
+          var kind=String(sw.getAttribute('data-camera-trigger-toggle')||'');
+          var on=sw.getAttribute('aria-checked')==='true';
+          toggleTrigger(kind,!on);
+          return;
+        }
+        var go=e.target&&e.target.closest?e.target.closest('[data-camera-goto-bind]'):null;
+        if(go){
+          e.preventDefault();
+          var target=String(go.getAttribute('data-camera-goto-bind')||'');
+          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
+            global.OneToneCameraWorkflow.activateTab('action');
+          }
+          var rowId=target==='away'?'cameraBindRowAway':(target==='shake'?'cameraBindRowShake':'cameraBindRowBlink');
+          var row=$(rowId);
+          if(row&&row.scrollIntoView){
+            try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ try{ row.scrollIntoView(true); }catch(__){} }
+          }
+          if(row){
+            row.classList.add('is-flash');
+            setTimeout(function(){ row.classList.remove('is-flash'); },1200);
+          }
+        }
+      });
+    }
+
+    var bindList=$('cameraPresenceBindList');
+    if(bindList){
+      bindList.addEventListener('click',function(e){
+        var tile=e.target&&e.target.closest?e.target.closest('.camera-action-tile'):null;
+        if(!tile||tile.disabled) return;
+        e.preventDefault();
+        var host=tile.closest('[data-camera-bind-key]');
+        var key=host?String(host.getAttribute('data-camera-bind-key')||''):'';
+        var action=String(tile.getAttribute('data-action')||'none');
+        if(!key||BIND_KEYS.indexOf(key)<0) return;
         var patch={};
-        patch[key]=sel.value;
+        patch[key]=normalizeAction(action);
         persistPresencePrefs(patch);
       });
     }
-    bindSelect('cameraPresenceOnAway','onAway');
-    bindSelect('cameraPresenceOnReturn','onReturn');
-    bindSelect('cameraPresenceShakeHead','shakeHead');
-    bindSelect('cameraPresenceBlink','deliberateBlink');
 
     var closeBtn=$('cameraPrivacyCloseBtn');
     if(closeBtn){
@@ -788,10 +1146,12 @@
     defaultPrefs:defaultPresencePrefs,
     persist:persistPresencePrefs,
     dispatchAction:dispatchAction,
+    resolveVoiceActivateKey:resolveVoiceActivateKey,
     setPrivacyOpen:setPrivacyOpen,
     closePrivacyScreen:closePrivacyScreen,
     syncDetectInterval:syncDetectInterval,
     syncUiFromPrefs:syncUiFromPrefs,
+    syncTriggerSummaries:function(){ syncTriggerSummaries(prefs()); },
     AWAY_MS:AWAY_MS,
     PRESENT_MS:PRESENT_MS,
     DETECT_PRESENT_MS:DETECT_PRESENT_MS,

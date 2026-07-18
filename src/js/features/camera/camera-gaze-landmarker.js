@@ -100,6 +100,21 @@
     return v;
   }
 
+  /**
+   * Landmark yaw proxy (nose vs cheeks). Works even when facial matrix is weak/zero.
+   * Positive ≈ face turns toward image-right (camera view).
+   */
+  function yawFromLandmarks(landmarks){
+    var nose=lm(landmarks,1);
+    var leftCheek=lm(landmarks,234);
+    var rightCheek=lm(landmarks,454);
+    if(!nose||!leftCheek||!rightCheek) return null;
+    var mid=(leftCheek.x+rightCheek.x)*0.5;
+    var half=Math.abs(rightCheek.x-leftCheek.x)*0.5;
+    if(half<1e-4) return null;
+    return clampRange((nose.x-mid)/half,-1.2,1.2);
+  }
+
   function headPoseFromMatrix(mat){
     if(!mat||mat.length<16) return {yaw:0,pitch:0};
     var r00=mat[0],r10=mat[1],r20=mat[2];
@@ -329,6 +344,12 @@
     var mat=mats&&mats[0]?mats[0]:null;
     if(mat&&mat.data) mat=mat.data;
     var pose=headPoseFromMatrix(mat);
+    var lmYaw=yawFromLandmarks(faces[0]);
+    // Prefer landmark yaw for gestures when matrix is flat/missing.
+    var yawOut=pose.yaw;
+    if(lmYaw!=null&&(mat==null||Math.abs(pose.yaw)<0.08||Math.abs(lmYaw)>Math.abs(pose.yaw))){
+      yawOut=lmYaw;
+    }
     var blinkScore=avgBlend(blendMap,['eyeBlinkLeft','eyeBlinkRight']);
     var proxy=estimateGazeProxy(faces[0],blendMap,mat);
     var overlay=global.document&&global.document.getElementById('cameraGazeOverlay');
@@ -340,7 +361,9 @@
       state:proxy.state,
       feats:proxy.feats||null,
       faceDetected:true,
-      yaw:pose.yaw,
+      yaw:yawOut,
+      matrixYaw:pose.yaw,
+      landmarkYaw:lmYaw,
       blink:blinkScore
     };
     if(out.state==='tracking'||(out.state==='low-confidence'&&out.confidence>0.15)){

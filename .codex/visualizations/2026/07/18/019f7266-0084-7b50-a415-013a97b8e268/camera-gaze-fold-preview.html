@@ -1,0 +1,273 @@
+<div id="camera-gaze-fold-preview" role="img" aria-label="摄像头页视线区折叠方案预览：首屏只显示两步主流程，展开后按粗三区、安全说明、校准、九宫格、高级设备排序。">
+  <style>
+    #camera-gaze-fold-preview{
+      --gap:14px;
+      color:var(--foreground);
+      display:grid;
+      gap:var(--gap);
+      width:100%;
+    }
+    #camera-gaze-fold-preview *{box-sizing:border-box}
+    #camera-gaze-fold-preview .preview-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:var(--gap);
+      align-items:start;
+    }
+    #camera-gaze-fold-preview .mock{
+      display:grid;
+      gap:12px;
+      min-width:0;
+    }
+    #camera-gaze-fold-preview .mock-label{
+      font-weight:500;
+      color:var(--foreground);
+    }
+    #camera-gaze-fold-preview .screen{
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:color-mix(in srgb,var(--card) 86%,transparent);
+      padding:14px;
+      display:grid;
+      gap:12px;
+      min-width:0;
+    }
+    #camera-gaze-fold-preview .title{
+      display:grid;
+      gap:4px;
+    }
+    #camera-gaze-fold-preview .line{
+      height:10px;
+      border-radius:999px;
+      background:var(--muted);
+    }
+    #camera-gaze-fold-preview .line.is-title{width:42%;height:14px;background:var(--foreground)}
+    #camera-gaze-fold-preview .line.is-sub{width:68%}
+    #camera-gaze-fold-preview .nodes{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+    }
+    #camera-gaze-fold-preview .node{
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      display:grid;
+      gap:6px;
+      background:var(--background);
+    }
+    #camera-gaze-fold-preview .node strong{font-weight:500}
+    #camera-gaze-fold-preview .node span,
+    #camera-gaze-fold-preview .muted{
+      color:var(--muted-foreground);
+    }
+    #camera-gaze-fold-preview .hero{
+      display:grid;
+      grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+      gap:10px;
+      min-width:0;
+    }
+    #camera-gaze-fold-preview .preview{
+      min-height:142px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:linear-gradient(135deg,color-mix(in srgb,var(--muted) 72%,transparent),color-mix(in srgb,var(--primary) 12%,transparent));
+      display:grid;
+      align-content:end;
+      gap:8px;
+      padding:10px;
+    }
+    #camera-gaze-fold-preview .metrics{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:6px;
+    }
+    #camera-gaze-fold-preview .metric{
+      min-height:26px;
+      border-radius:6px;
+      background:color-mix(in srgb,var(--card) 82%,transparent);
+      border:1px solid color-mix(in srgb,var(--border) 72%,transparent);
+    }
+    #camera-gaze-fold-preview .panel{
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      display:grid;
+      gap:8px;
+      background:var(--background);
+    }
+    #camera-gaze-fold-preview .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    #camera-gaze-fold-preview .chip{
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:5px 9px;
+      background:var(--background);
+      color:var(--foreground);
+      white-space:nowrap;
+    }
+    #camera-gaze-fold-preview .fold{
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:var(--background);
+      overflow:hidden;
+    }
+    #camera-gaze-fold-preview .fold-summary{
+      padding:11px 12px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:8px;
+      align-items:center;
+    }
+    #camera-gaze-fold-preview .fold-title{
+      display:grid;
+      gap:3px;
+    }
+    #camera-gaze-fold-preview .fold-title strong{font-weight:500}
+    #camera-gaze-fold-preview .fold-title span{color:var(--muted-foreground)}
+    #camera-gaze-fold-preview .caret{
+      color:var(--muted-foreground);
+    }
+    #camera-gaze-fold-preview .fold-body{
+      border-top:1px solid var(--border);
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+    #camera-gaze-fold-preview .zones{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+    #camera-gaze-fold-preview .zone{
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      min-height:72px;
+      display:grid;
+      gap:4px;
+      background:color-mix(in srgb,var(--muted) 22%,transparent);
+    }
+    #camera-gaze-fold-preview .zone strong{font-weight:500}
+    #camera-gaze-fold-preview .zone.is-send{
+      background:color-mix(in srgb,var(--primary) 12%,transparent);
+      border-color:color-mix(in srgb,var(--primary) 44%,var(--border));
+    }
+    #camera-gaze-fold-preview .safe-note{
+      border-left:3px solid var(--primary);
+      padding:8px 10px;
+      background:color-mix(in srgb,var(--primary) 9%,transparent);
+      border-radius:6px;
+      color:var(--foreground);
+    }
+    #camera-gaze-fold-preview .step{
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:9px;
+      background:var(--background);
+    }
+    #camera-gaze-fold-preview .num{
+      width:24px;
+      height:24px;
+      border-radius:999px;
+      background:var(--primary);
+      color:var(--primary-foreground);
+      display:grid;
+      place-items:center;
+      font-weight:500;
+    }
+    #camera-gaze-fold-preview .step strong{font-weight:500}
+    #camera-gaze-fold-preview .collapsed-row{
+      border:1px dashed var(--border);
+      border-radius:8px;
+      padding:10px;
+      color:var(--muted-foreground);
+      background:color-mix(in srgb,var(--muted) 14%,transparent);
+    }
+    @media (max-width:760px){
+      #camera-gaze-fold-preview .preview-grid,
+      #camera-gaze-fold-preview .hero,
+      #camera-gaze-fold-preview .zones{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+  <div class="preview-grid">
+    <section class="mock" aria-label="默认折叠状态">
+      <div class="mock-label">默认首屏</div>
+      <div class="screen">
+        <div class="title">
+          <div class="line is-title"></div>
+          <div class="line is-sub"></div>
+        </div>
+        <div class="nodes">
+          <div class="node"><strong>01 摄像头看到什么</strong><span>视觉触发</span></div>
+          <div class="node"><strong>02 识别后做什么</strong><span>执行动作</span></div>
+        </div>
+        <div class="hero">
+          <div class="preview">
+            <div class="metrics">
+              <div class="metric"></div>
+              <div class="metric"></div>
+              <div class="metric"></div>
+              <div class="metric"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="line is-title"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="chips">
+              <span class="chip">离席隐私</span>
+              <span class="chip">摇头取消</span>
+              <span class="chip">了解看区确认</span>
+            </div>
+          </div>
+        </div>
+        <div class="fold">
+          <div class="fold-summary">
+            <div class="fold-title">
+              <strong>看屏幕哪里确认（可选）</strong>
+              <span>发送前少误触 · 默认关闭</span>
+            </div>
+            <span class="caret">展开</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="mock" aria-label="展开折叠状态">
+      <div class="mock-label">展开后</div>
+      <div class="screen">
+        <div class="fold">
+          <div class="fold-summary">
+            <div class="fold-title">
+              <strong>看屏幕哪里确认（可选）</strong>
+              <span>发送前少误触 · 默认关闭</span>
+            </div>
+            <span class="caret">收起</span>
+          </div>
+          <div class="fold-body">
+            <div class="zones">
+              <div class="zone"><span class="muted">左侧</span><strong>取消或退回</strong></div>
+              <div class="zone"><span class="muted">中心</span><strong>继续待命</strong></div>
+              <div class="zone is-send"><span class="muted">右下</span><strong>发送前确认</strong></div>
+            </div>
+            <div class="safe-note">只是区域说明，不会因为看向某个区域就自动执行。</div>
+            <div class="step">
+              <div class="num">1</div>
+              <div><strong>让摄像头更容易看懂你的视线</strong><div class="muted">校准按钮、提示、取消校准入口保留原 ID</div></div>
+            </div>
+            <div class="collapsed-row">查看更细的 9 宫格说明（默认折叠）</div>
+            <div class="collapsed-row">高级设备 · 分辨率与帧率（默认折叠）</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

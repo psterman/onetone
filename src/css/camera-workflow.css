@@ -1,0 +1,681 @@
+/* Camera Hero Workflow (P1) — uses shared .flow-nodes from flow-desk.css */
+
+.camera-workflow-shell{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+#settingsPanelCamera .flow-nodes{
+  margin:0;
+  padding:8px 4px 4px;
+}
+
+#settingsPanelCamera .camera-flow-nodes-grid--two{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:520px;
+  margin:0 auto;
+}
+
+.camera-hero-board{
+  display:grid;
+  grid-template-columns:minmax(280px,.92fr) minmax(0,1.58fr);
+  gap:14px;
+  align-items:stretch;
+}
+
+.camera-hero-preview,
+.camera-hero-detail{
+  min-width:0;
+  border:1px solid var(--outline-variant);
+  border-radius:16px;
+  background:var(--surface-high);
+}
+
+.camera-hero-preview{
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.camera-hero-preview-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.camera-workflow-kicker{
+  font-size:11px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-workflow-preview-title{
+  margin:4px 0 0;
+  font-size:16px;
+  font-weight:800;
+  color:var(--on-surface);
+  line-height:1.3;
+}
+
+.camera-hero-preview .camera-presence-orb{
+  width:56px;
+  height:56px;
+  flex:0 0 auto;
+}
+
+.camera-hero-preview .camera-presence-orb-core{
+  width:34px;
+  height:34px;
+}
+
+.camera-hero-preview .camera-preview-wrap{
+  align-items:stretch;
+}
+
+.camera-hero-preview .camera-preview-shell--compact{
+  max-width:none;
+}
+
+.camera-hero-preview .camera-action-bar{
+  flex-wrap:wrap;
+}
+
+.camera-workflow-metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.camera-workflow-metric{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  padding:10px;
+  background:var(--surface);
+  min-width:0;
+}
+
+.camera-workflow-metric-label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-workflow-metric-value{
+  margin-top:4px;
+  font-size:14px;
+  font-weight:800;
+  color:var(--on-surface);
+  overflow-wrap:anywhere;
+}
+
+.camera-hero-detail{
+  background:var(--surface);
+  display:grid;
+  overflow:hidden;
+}
+
+.camera-tab-panel{
+  display:none;
+  padding:16px;
+  gap:14px;
+  align-content:start;
+}
+
+.camera-tab-panel.is-active{
+  display:grid;
+}
+
+.camera-gaze-actions{
+  margin-bottom:12px;
+}
+
+.camera-panel-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.camera-panel-title{
+  margin:0;
+  font-size:18px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-panel-desc{
+  margin:6px 0 0;
+  font-size:13px;
+  line-height:1.55;
+  color:var(--on-surface-muted);
+  max-width:42rem;
+}
+
+.camera-master-switch-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:13px;
+  font-weight:700;
+  color:var(--on-surface);
+}
+
+.camera-inactive-hint{
+  margin:0;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid rgba(245,158,11,.35);
+  background:rgba(245,158,11,.1);
+  color:#b45309;
+  font-size:12px;
+  font-weight:700;
+}
+
+.camera-config-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.camera-config-card{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+  padding:14px;
+  display:grid;
+  gap:8px;
+  min-width:0;
+}
+
+.camera-config-card.is-recommend{
+  border-color:rgba(42,156,196,.4);
+  background:var(--primary-soft);
+}
+
+.camera-config-card.is-warn{
+  border-color:rgba(245,158,11,.45);
+  background:rgba(245,158,11,.08);
+}
+
+.camera-config-card.is-danger{
+  border-color:rgba(198,40,40,.28);
+  background:rgba(198,40,40,.06);
+}
+
+.camera-config-card.is-placeholder{
+  opacity:.72;
+}
+
+.camera-config-card.is-inactive-config{
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.25);
+}
+
+.camera-card-kicker{
+  font-size:11px;
+  font-weight:800;
+  color:var(--on-surface-muted);
+}
+
+.camera-card-title{
+  font-size:15px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-card-desc{
+  margin:0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--on-surface-muted);
+}
+
+.camera-config-card select.is-dimmed{
+  opacity:.72;
+}
+
+.camera-config-card .toggle-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding-top:8px;
+  border-top:1px solid var(--outline-variant);
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-risk-list{
+  display:grid;
+  gap:10px;
+}
+
+.camera-risk-item{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:10px;
+  align-items:start;
+}
+
+.camera-risk-mark{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:var(--primary-soft);
+  color:var(--primary);
+  font-size:12px;
+  font-weight:900;
+}
+
+.camera-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid var(--outline-variant);
+  background:var(--surface-high);
+  font-size:12px;
+  font-weight:800;
+  color:var(--on-surface);
+  white-space:nowrap;
+}
+
+.camera-gaze-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
+  gap:12px;
+}
+
+.camera-gaze-map{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  overflow:hidden;
+  min-height:220px;
+  background:var(--surface-soft, var(--surface));
+}
+
+.camera-gaze-cell{
+  border-right:1px solid var(--outline-variant);
+  border-bottom:1px solid var(--outline-variant);
+  display:grid;
+  place-items:center;
+  text-align:center;
+  padding:8px;
+  min-height:72px;
+  font-size:12px;
+  font-weight:800;
+  color:var(--on-surface-muted);
+}
+
+.camera-gaze-cell:nth-child(3n){border-right:0}
+.camera-gaze-cell:nth-last-child(-n+3){border-bottom:0}
+
+.camera-gaze-cell.is-send{
+  background:rgba(245,158,11,.12);
+  color:#b45309;
+}
+
+.camera-gaze-cell.is-cancel{
+  background:rgba(198,40,40,.08);
+  color:#c62828;
+}
+
+.camera-gaze-cell.is-center{
+  color:var(--primary);
+}
+
+.camera-gaze-map.is-coarse .camera-gaze-cell[data-zone="tl"],
+.camera-gaze-map.is-coarse .camera-gaze-cell[data-zone="tr"],
+.camera-gaze-map.is-coarse .camera-gaze-cell[data-zone="bl"],
+.camera-gaze-map.is-coarse .camera-gaze-cell[data-zone="bc"]{
+  opacity:.45;
+}
+
+.camera-gaze-map.is-fine .camera-gaze-cell{
+  opacity:1;
+}
+
+.camera-calib-lock-hint{
+  margin:8px 0 0;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid rgba(42,156,196,.3);
+  background:var(--primary-soft);
+  color:var(--primary);
+  font-size:12px;
+  font-weight:700;
+}
+
+.camera-device-fold{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+  padding:0 12px 12px;
+}
+
+.camera-device-fold-summary{
+  cursor:pointer;
+  list-style:none;
+  padding:12px 4px;
+  font-size:13px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-device-fold-summary::-webkit-details-marker{display:none}
+
+.camera-device-fold[open] .camera-device-fold-summary{
+  border-bottom:1px solid var(--outline-variant);
+  margin-bottom:10px;
+}
+
+.camera-device-fold .camera-media-settings{
+  border:0;
+  padding:0;
+  background:transparent;
+}
+
+#cameraFlowNodes .flow-node-btn.is-locked,
+#cameraFlowNodes .flow-node-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.camera-card-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.camera-bind-summary{
+  margin:10px 0 0;
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-bind-summary.is-bound{
+  color:var(--primary);
+}
+
+.camera-goto-bind{
+  margin-top:10px;
+  justify-self:start;
+}
+
+.camera-bind-list{
+  display:grid;
+  gap:12px;
+}
+
+.camera-bind-list.is-dimmed{
+  opacity:.72;
+}
+
+.camera-bind-row{
+  border:1px solid var(--outline-variant);
+  border-radius:14px;
+  padding:14px;
+  background:var(--surface-high);
+  display:grid;
+  gap:12px;
+}
+
+.camera-bind-row.is-flash{
+  border-color:var(--primary);
+  box-shadow:0 0 0 2px var(--primary-soft);
+}
+
+.camera-bind-title{
+  font-size:15px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-bind-desc{
+  margin:4px 0 0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--on-surface-muted);
+}
+
+.camera-action-tiles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.camera-action-tile{
+  appearance:none;
+  border:1px solid var(--outline-variant);
+  background:var(--surface);
+  color:var(--on-surface);
+  border-radius:999px;
+  min-height:34px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.camera-action-tile:hover{
+  border-color:var(--primary);
+  color:var(--primary);
+}
+
+.camera-action-tile.is-selected{
+  border-color:var(--primary);
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+
+.camera-action-explain-grid{
+  margin-top:4px;
+}
+
+.camera-config-card.is-trigger-on{
+  border-color:rgba(42,156,196,.35);
+}
+
+.camera-beginner-guides{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+.camera-guide-chip{
+  appearance:none;
+  border:1px solid var(--outline-variant);
+  background:var(--surface-high);
+  color:var(--on-surface);
+  border-radius:999px;
+  min-height:34px;
+  padding:0 14px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.camera-guide-chip:hover{
+  border-color:var(--primary);
+  color:var(--primary);
+}
+
+.camera-guide-chip.is-info{
+  border-style:dashed;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-advanced-confirm-fold{
+  border:1px solid var(--outline-variant);
+  border-radius:14px;
+  background:var(--surface-high);
+  padding:0 14px 14px;
+}
+
+.camera-advanced-confirm-summary{
+  cursor:pointer;
+  list-style:none;
+  padding:14px 4px;
+  font-size:14px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-advanced-confirm-summary::-webkit-details-marker{display:none}
+
+.camera-advanced-confirm-fold[open] .camera-advanced-confirm-summary{
+  border-bottom:1px solid var(--outline-variant);
+  margin-bottom:14px;
+}
+
+.camera-advanced-confirm-body{
+  display:grid;
+  gap:14px;
+}
+
+.camera-coarse-zones{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.camera-coarse-zone{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  padding:12px;
+  background:var(--surface);
+  min-width:0;
+}
+
+.camera-coarse-zone-label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+}
+
+.camera-coarse-zone-title{
+  margin-top:4px;
+  font-size:15px;
+  font-weight:800;
+  color:var(--on-surface);
+}
+
+.camera-coarse-zone.is-cancel{
+  border-color:rgba(198,40,40,.28);
+  background:rgba(198,40,40,.06);
+}
+
+.camera-coarse-zone.is-cancel .camera-coarse-zone-title{color:#c62828}
+
+.camera-coarse-zone.is-center .camera-coarse-zone-title{color:var(--primary)}
+
+.camera-coarse-zone.is-send{
+  border-color:rgba(245,158,11,.35);
+  background:rgba(245,158,11,.1);
+}
+
+.camera-coarse-zone.is-send .camera-coarse-zone-title{color:#b45309}
+
+.camera-fine-map-fold,
+.camera-calib-block{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface);
+  padding:12px;
+}
+
+.camera-fine-map-summary{
+  cursor:pointer;
+  list-style:none;
+  font-size:13px;
+  font-weight:800;
+  color:var(--on-surface);
+  padding:2px 0;
+}
+
+.camera-fine-map-summary::-webkit-details-marker{display:none}
+
+.camera-fine-map-fold[open] .camera-fine-map-summary{
+  margin-bottom:10px;
+}
+
+.camera-fine-map-fold .camera-config-card{
+  border:0;
+  padding:0;
+  background:transparent;
+}
+
+.camera-calib-block .camera-card-title{
+  margin-top:2px;
+}
+
+@media (max-width:1080px){
+  .camera-gaze-layout{
+    grid-template-columns:1fr;
+  }
+  .camera-coarse-zones{
+    grid-template-columns:1fr;
+  }
+  #settingsPanelCamera .camera-flow-nodes-grid--two{
+    max-width:none;
+  }
+}
+
+.camera-app-scope-dock{
+  border:1px solid var(--outline-variant);
+  border-radius:14px;
+  padding:14px 16px;
+  background:var(--surface-high);
+}
+
+.camera-app-scope-dock .voice-app-scope-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.camera-app-scope-summary{
+  margin:4px 0 0;
+  font-size:13px;
+  font-weight:700;
+  color:var(--on-surface);
+}
+
+.camera-app-scope-hint{
+  margin:10px 0 0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--on-surface-muted);
+}
+
+@media (max-width:1080px){
+  .camera-hero-board{
+    grid-template-columns:1fr;
+  }
+  .camera-config-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media (max-width:760px){
+  .camera-config-grid,
+  .camera-workflow-metrics{
+    grid-template-columns:1fr;
+  }
+}

@@ -766,7 +766,7 @@
       <div class="title-block">
         <div class="eyebrow">摄像头设置 · 参考按键设置页三段流程</div>
         <h1>摄像头 Hero 区域规划</h1>
-        <p class="subtitle">用户点击上方流程标签，在同一个 hero 内查看“视觉触发、执行动作、视线管理”的对应配置。</p>
+        <p class="subtitle">默认两主流程节点；「看屏幕哪里确认」为可选高级折叠，避免小白误以为要学三套。</p>
       </div>
       <div class="status-strip" aria-label="摄像头状态">
         <span class="chip"><span class="dot"></span>摄像头待命</span>
@@ -796,7 +796,7 @@
               <span class="flow-icon flow-icon-eye" aria-hidden="true"></span>
             </button>
             <div>
-              <div class="flow-node-title">视觉触发</div>
+              <div class="flow-node-title">摄像头看到什么</div>
               <div class="flow-node-hint" data-hint="trigger">离席、眨眼、摇头、手势</div>
             </div>
           </div>
@@ -806,7 +806,7 @@
               <span class="flow-icon flow-icon-bolt" aria-hidden="true"></span>
             </button>
             <div>
-              <div class="flow-node-title">执行动作</div>
+              <div class="flow-node-title">识别后做什么</div>
               <div class="flow-node-hint" data-hint="action">激活、发送、取消、确认</div>
             </div>
           </div>
@@ -816,8 +816,8 @@
               <span class="flow-icon flow-icon-gaze" aria-hidden="true"></span>
             </button>
             <div>
-              <div class="flow-node-title">视线管理</div>
-              <div class="flow-node-hint" data-hint="gaze">区域停留、Glance 动作</div>
+              <div class="flow-node-title">看屏幕哪里确认</div>
+              <div class="flow-node-hint" data-hint="gaze">可选 · 发送前确认</div>
             </div>
           </div>
         </nav>
@@ -858,7 +858,7 @@
             <article class="tab-panel is-active" id="panel-trigger" role="tabpanel" aria-labelledby="tab-trigger" data-panel="trigger">
               <div class="panel-head">
                 <div class="panel-copy">
-                  <h2>视觉触发：先定义摄像头看什么</h2>
+                  <h2>摄像头看到什么：先定义识别哪些动作</h2>
                   <p>这一页对应按键设置里的“触发”。用户选择离席、眨眼、摇头、手势等条件，并设置保持时长、冷却和开关。</p>
                 </div>
                 <span class="chip">默认只开启稳定触发</span>
@@ -906,7 +906,7 @@
             <article class="tab-panel" id="panel-action" role="tabpanel" aria-labelledby="tab-action" data-panel="action">
               <div class="panel-head">
                 <div class="panel-copy">
-                  <h2>执行动作：把视觉信号翻译成语音意图</h2>
+                  <h2>识别后做什么：把视觉信号翻译成语音意图</h2>
                   <p>这一页对应按键设置里的“打开语音 / 收尾动作”。选中视觉触发后，用户绑定语音输入法激活、发送、取消、确认等语义动作。</p>
                 </div>
                 <span class="chip">语义优先，快捷键后置</span>
@@ -962,8 +962,8 @@
             <article class="tab-panel" id="panel-gaze" role="tabpanel" aria-labelledby="tab-gaze" data-panel="gaze">
               <div class="panel-head">
                 <div class="panel-copy">
-                  <h2>视线管理：区域级收尾与 Glance 动作</h2>
-                  <p>这一页对应按键设置里的“收尾”。用户不需要精确控制鼠标，只要看向区域、保持视线，再配合 OK / 长眨 / 摇头完成动作。</p>
+                  <h2>看屏幕哪里确认：可选高级确认（默认折叠）</h2>
+                  <p>这一块对应「发送前少误触」。默认不要做成同级标签；打开后先看粗三区，再展开 9 宫格与校准。本轮不接 dwell / 发送执行。</p>
                 </div>
                 <span class="chip">不做精确鼠标</span>
               </div>
@@ -1075,7 +1075,7 @@
         metricRisk: "中"
       },
       gaze: {
-        previewKicker: "视线管理",
+        previewKicker: "看屏幕哪里确认",
         previewTitle: "右下停留 → 发送确认",
         previewState: "视线估计中",
         gestureBadge: "配合动作：OK / 长眨",
