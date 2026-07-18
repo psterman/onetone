@@ -3,11 +3,12 @@
 
   /**
    * Camera settings hero workflow:
-   * - two primary flow-node tabs (trigger / action)
-   * - advanced confirm fold for gaze (optional)
+   * - three flow-node tabs (trigger / action / pro)
+   * - Trigger: recognition only (what camera can see)
+   * - Pro (optional): send rule → coarse zones → calib → 9-grid / device → Hello future
    * - left-rail metrics via lightweight polling
    * - beginner guide chips (prefs for away/shake; explain-only for zones)
-   * Does not clone presence selects; those keep original IDs.
+   * Does not clone presence/calib IDs.
    */
 
   var $=function(id){
@@ -21,7 +22,7 @@
     return fallback!=null?fallback:key;
   };
 
-  var TABS=['trigger','action'];
+  var TABS=['trigger','action','pro'];
   var POLL_MS=750;
   var currentTab='trigger';
   var pollTimer=0;
@@ -36,6 +37,10 @@
     action:{
       kicker:['cameraWorkflowPreviewKickerAction','识别后做什么'],
       title:['cameraWorkflowPreviewTitleAction','语义动作 → 底层映射']
+    },
+    pro:{
+      kicker:['cameraWorkflowPreviewKickerPro','高级确认（可选）'],
+      title:['cameraWorkflowPreviewTitlePro','防误触 · 校准 · 设备']
     }
   };
 
@@ -81,30 +86,47 @@
     return false;
   }
 
-  function openAdvancedConfirmFold(scrollToCalib){
-    var fold=$('cameraAdvancedConfirmFold');
-    if(fold) fold.open=true;
-    if(scrollToCalib){
-      var block=$('cameraCalibBlock')||$('cameraCalibLockHint');
-      if(block&&block.scrollIntoView){
-        try{ block.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){
-          try{ block.scrollIntoView(true); }catch(__){}
-        }
-      }
+  function scrollToEl(el){
+    if(!el||!el.scrollIntoView) return;
+    try{ el.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){
+      try{ el.scrollIntoView(true); }catch(__){}
     }
   }
 
-  function activateTab(name){
-    if(TABS.indexOf(name)<0) name='trigger';
-    if(isCalibrating()){
-      openAdvancedConfirmFold(true);
-      toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
-      // Still allow switching between the two primary tabs is blocked below via disabled buttons;
-      // keep currentTab if lock is on.
-      if(currentTab&&TABS.indexOf(currentTab)>=0) name=currentTab;
-    }
-    currentTab=name;
+  /** Open Pro tab; optional scroll target (default cameraCalibBlock when truthy legacy). */
+  function openProPanel(target){
+    var id=target==null?'cameraPanelPro'
+      :(target===true?'cameraCalibBlock'
+      :(target===false?'cameraPanelPro'
+      :String(target||'cameraPanelPro')));
+    if(id==='true') id='cameraCalibBlock';
+    if(id==='false') id='cameraPanelPro';
+    if(id==='cameraTriggerTools'||id==='cameraProAdvanced') id='cameraCalibBlock';
+    activateTab('pro');
+    var el=$(id)||$('cameraPanelPro');
+    scrollToEl(el);
+  }
 
+  /** Compat: openTriggerTools now routes calib targets to Pro. */
+  function openTriggerTools(target){
+    var id=target==null||target===true?'cameraCalibBlock':String(target||'cameraCalibBlock');
+    if(id==='cameraTriggerTools'||id==='true') id='cameraCalibBlock';
+    if(id==='cameraCalibBlock'||id==='cameraFineMapFold'||id==='cameraProStack'||id==='cameraCoarseZones'){
+      openProPanel(id);
+      return;
+    }
+    activateTab('trigger');
+    scrollToEl($(id)||$('cameraPanelTrigger'));
+  }
+
+  /** Compat alias — scrollToCalib opens Pro calib; else Pro panel. */
+  function openAdvancedConfirmFold(scrollToCalib){
+    if(scrollToCalib) openProPanel('cameraCalibBlock');
+    else openProPanel('cameraPanelPro');
+  }
+
+  function showTabUi(name){
+    currentTab=name;
     TABS.forEach(function(tab){
       var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
       var panel=$('cameraPanel'+tab.charAt(0).toUpperCase()+tab.slice(1));
@@ -118,36 +140,45 @@
         panel.hidden=!on;
       }
     });
-
     var copy=TAB_COPY[name]||TAB_COPY.trigger;
     setText('cameraWorkflowPreviewKicker',t(copy.kicker[0],copy.kicker[1]));
     setText('cameraWorkflowPreviewTitle',t(copy.title[0],copy.title[1]));
+  }
+
+  function activateTab(name){
+    if(TABS.indexOf(name)<0) name='trigger';
+    if(isCalibrating()){
+      toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
+      if(currentTab&&TABS.indexOf(currentTab)>=0) name=currentTab;
+      else name='pro';
+    }
+    showTabUi(name);
     syncInactiveHint();
     syncCalibTabLock();
     syncGazeMap();
+    syncProStatus();
   }
 
   function syncCalibTabLock(){
     var running=isCalibrating();
-    var triggerBtn=$('cameraFlowNodeTrigger');
-    var actionBtn=$('cameraFlowNodeAction');
+    TABS.forEach(function(tab){
+      var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
+      if(!btn) return;
+      btn.disabled=!!running;
+      btn.setAttribute('aria-disabled',running?'true':'false');
+      btn.classList.toggle('is-locked',!!running);
+    });
     var hint=$('cameraCalibLockHint');
-    if(triggerBtn){
-      triggerBtn.disabled=!!running;
-      triggerBtn.setAttribute('aria-disabled',running?'true':'false');
-      triggerBtn.classList.toggle('is-locked',!!running);
-    }
-    if(actionBtn){
-      actionBtn.disabled=!!running;
-      actionBtn.setAttribute('aria-disabled',running?'true':'false');
-      actionBtn.classList.toggle('is-locked',!!running);
-    }
     if(hint) hint.hidden=!running;
     var cancel=$('cameraGazeCalibrationCancel');
     if(cancel) cancel.disabled=false;
 
     if(running&&!wasCalibrating){
-      openAdvancedConfirmFold(true);
+      wasCalibrating=true;
+      // Calib UI lives on Pro — stay there without re-entering activateTab lock path.
+      showTabUi('pro');
+      scrollToEl($('cameraCalibBlock')||$('cameraPanelPro'));
+      return;
     }
     wasCalibrating=!!running;
   }
@@ -167,33 +198,20 @@
     }
   }
 
+  function syncProStatus(){
+    var sendEl=$('cameraProStatusSend');
+    if(sendEl){
+      sendEl.textContent=t('cameraProSendGuardRule','发送不会因单个视觉动作直接发出。不允许单视觉直送。');
+    }
+    var helloEl=$('cameraProStatusHello');
+    if(helloEl){
+      helloEl.textContent=t('cameraProHelloStatusFuture','未来支持 · 需要兼容 IR / 安全摄像头');
+    }
+  }
+
   function syncInactiveHint(){
     var hint=$('cameraWorkflowInactiveHint');
-    var api=presenceApi();
-    var enabled=!!(api&&api.isEnabled&&api.isEnabled());
-    var prefs=api&&api.prefs?api.prefs():null;
-    var configured=false;
-    if(prefs){
-      configured=prefs.onAway!=='none'||prefs.onReturn!=='none'||prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none';
-    }
-    if(hint){
-      hint.hidden=!(!enabled&&configured);
-      if(!hint.getAttribute('data-click-bound')){
-        hint.setAttribute('data-click-bound','1');
-        hint.style.cursor='pointer';
-        hint.addEventListener('click',function(){
-          var pa=presenceApi();
-          if(pa&&pa.persist) pa.persist({enabled:true});
-          syncInactiveHint();
-        });
-      }
-    }
-    var cards=document.querySelectorAll('#cameraPanelTrigger .camera-config-card:not(.is-placeholder)');
-    for(var i=0;i<cards.length;i++){
-      cards[i].classList.toggle('is-inactive-config',!enabled&&configured);
-    }
-    var bindList=$('cameraPresenceBindList');
-    if(bindList) bindList.classList.toggle('is-dimmed',!enabled);
+    if(hint) hint.hidden=true;
   }
 
   function readGazeLabel(){
@@ -256,65 +274,13 @@
     setText('cameraWorkflowGazeText',readGazeLabel());
     setText('cameraWorkflowCalibText',readCalibLabel());
     syncInactiveHint();
-    syncAppScope();
     syncCalibTabLock();
     syncGazeMap();
-    // Keep trigger-card summaries in sync; applyLang on appWorkbenchShell can wipe static placeholders.
+    syncProStatus();
     var pa=presenceApi();
     if(pa&&pa.syncTriggerSummaries){
       try{ pa.syncTriggerSummaries(); }catch(_){}
     }
-  }
-
-  function syncAppScope(){
-    var summary=$('cameraAppScopeSummary');
-    if(!summary) return;
-    var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:{};
-    var cfg=st.config||{};
-    var id=String(cfg.activeSceneId||st.selectedMappingId||'').trim();
-    var maps=cfg.mappings||[];
-    var m=null;
-    for(var i=0;i<maps.length;i++){
-      if(maps[i]&&maps[i].id===id){ m=maps[i]; break; }
-    }
-    if(!m&&maps.length) m=maps[0];
-    if(!m){
-      summary.textContent=t('cameraAppScopeNone','尚未选择习惯');
-      return;
-    }
-    var label=String(m.label||'').trim()||t('cameraAppScopeUnnamed','未命名习惯');
-    var appId=String(m.appTargetId||'').trim();
-    if(appId){
-      summary.textContent=label+' · '+appId;
-    }else{
-      summary.textContent=label+' · '+t('cameraAppScopeGlobal','全部应用 / 通用');
-    }
-  }
-
-  function applyAwayPrivacyGuide(){
-    var api=presenceApi();
-    if(!(api&&api.persist)) return;
-    api.persist({
-      onAway:'privacyScreen',
-      onReturn:'none'
-    });
-    activateTab('action');
-    toast(t('cameraGuideAwayPrivacyToast','已设置：离席打开隐私屏'));
-  }
-
-  function applyShakeCancelGuide(){
-    var api=presenceApi();
-    if(!(api&&api.persist)) return;
-    api.persist({
-      shakeHead:'pressEsc'
-    });
-    activateTab('action');
-    toast(t('cameraGuideShakeCancelToast','已设置：摇头取消（Esc）'));
-  }
-
-  function explainZoneConfirmGuide(){
-    openAdvancedConfirmFold(false);
-    toast(t('cameraGuideZoneExplainToast','本轮仅说明：看右下进入发送确认，不会直接发送'));
   }
 
   function startPoll(){
@@ -330,17 +296,6 @@
     }
   }
 
-  function openKeysPanel(){
-    try{
-      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
-        global.OneToneSettingsDrawer.setPanel('keys',{});
-        return;
-      }
-    }catch(_){}
-    var nav=document.querySelector('.settings-nav-item[data-panel="keys"]');
-    if(nav) nav.click();
-  }
-
   function bindUi(){
     if(bound) return;
     bound=true;
@@ -354,37 +309,25 @@
         var name=node?String(node.getAttribute('data-camera-node')||''):'';
         if(!name) return;
         if(isCalibrating()){
-          openAdvancedConfirmFold(true);
           toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
+          openProPanel('cameraCalibBlock');
           return;
         }
         activateTab(name);
       });
     }
-    var guides=$('cameraBeginnerGuides');
-    if(guides){
-      guides.addEventListener('click',function(e){
-        var chip=e.target&&e.target.closest?e.target.closest('[data-camera-guide]'):null;
-        if(!chip) return;
+    var gotoPro=$('cameraGotoProFromTrigger');
+    if(gotoPro){
+      gotoPro.addEventListener('click',function(e){
         e.preventDefault();
-        var kind=String(chip.getAttribute('data-camera-guide')||'');
-        if(kind==='awayPrivacy') applyAwayPrivacyGuide();
-        else if(kind==='shakeCancel') applyShakeCancelGuide();
-        else if(kind==='zoneExplain') explainZoneConfirmGuide();
-      });
-    }
-    var openKeys=$('btnCameraOpenKeysScope');
-    if(openKeys){
-      openKeys.addEventListener('click',function(e){
-        e.preventDefault();
-        openKeysPanel();
+        openProPanel('cameraCalibBlock');
       });
     }
   }
 
   function onPanelVisible(){
     bindUi();
-    if(currentTab!=='trigger'&&currentTab!=='action') currentTab='trigger';
+    if(TABS.indexOf(currentTab)<0) currentTab='trigger';
     activateTab(currentTab||'trigger');
     startPoll();
     var pa=presenceApi();
@@ -410,6 +353,8 @@
     activateTab:activateTab,
     syncMetrics:syncMetrics,
     syncInactiveHint:syncInactiveHint,
+    openProPanel:openProPanel,
+    openTriggerTools:openTriggerTools,
     openAdvancedConfirmFold:openAdvancedConfirmFold,
     getTab:function(){ return currentTab; }
   };

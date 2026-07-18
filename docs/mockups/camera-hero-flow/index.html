@@ -33,6 +33,7 @@
       border-radius:16px;
       background:#fff;
     }
+    .note ul{margin:8px 0 0;padding-left:1.2em;color:#334155;line-height:1.55}
     figure{margin:0;display:grid;gap:10px}
     figcaption{font-weight:700;font-size:18px}
     img{
@@ -49,12 +50,17 @@
   <main>
     <header>
       <h1>摄像头 Hero 规划</h1>
-      <p>产品能力仍是三段，默认 UI 为两主流程节点 +「看屏幕哪里确认」高级折叠。</p>
+      <p>主路径两步；第三步「高级确认（可选）」Pro 仅用 badge，不进主标题。</p>
       <a class="primary-link" href="camera-hero-tabs.html">打开交互式 Hero 规划</a>
     </header>
     <section class="note">
-      <strong>现行方向：</strong>
-      <p>主流程：摄像头看到什么 → 识别后做什么。第三段「看屏幕哪里确认（可选）」默认折叠，避免小白以为要学三套。</p>
+      <strong>定稿（2026-07）：</strong>
+      <ul>
+        <li><b>01 摄像头看到什么</b>：总开关 + 离席/摇头/长眨 + 即将推出折叠 + 去高级确认。不含校准 / 九宫格。</li>
+        <li><b>02 识别后做什么</b>：只绑结果。</li>
+        <li><b>03 高级确认（可选）</b>：单列阅读线——安全规则横幅 → 粗三区 → 本机校准 → 9 宫格折叠 → 设备折叠 → Windows Hello 未来。</li>
+        <li>校准 / 九宫格 DOM 与打开逻辑均在 Pro；不回跳 Trigger。</li>
+      </ul>
     </section>
     <figure>
       <figcaption>图 1：摄像头看到什么（视觉触发）</figcaption>
@@ -65,11 +71,11 @@
       <img src="02-execution-action.svg" alt="执行动作页面规划图">
     </figure>
     <figure>
-      <figcaption>图 3：看屏幕哪里确认（高级折叠，非默认同级标签）</figcaption>
-      <img src="03-gaze-management.svg" alt="视线确认高级区规划图">
+      <figcaption>图 3：高级确认（可选）单列阅读线</figcaption>
+      <img src="03-gaze-management.svg" alt="高级确认规划图">
     </figure>
     <figure>
-      <figcaption>图 4：视线管理标签页整理</figcaption>
+      <figcaption>图 4：历史视线标签整理（参考）</figcaption>
       <img src="04-gaze-tab-cleanup.svg" alt="视线管理标签页整理规划图">
     </figure>
   </main>

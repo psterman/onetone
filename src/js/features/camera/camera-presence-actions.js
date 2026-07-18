@@ -23,24 +23,27 @@
   var YAW_LEFT=-0.12;
   var YAW_RIGHT=0.12;
   var KEY_THROTTLE_MS=800;
+  var KEY_THROTTLE_VOICE_MS=2200;
   var DETECT_PRESENT_MS=100;
   var DETECT_AWAY_MS=333;
   var DETECT_GAZE_MS=33;
   var DETECT_SHAKE_MS=33;
 
-  // Shake: yaw hysteresis + L-R-L / R-L-R within window (no multi-frame hold required).
+  // Shake: yaw hysteresis + L-R-L / R-L-R within window.
+  // Enter high enough to avoid center jitter → key/toast flood / UI freeze.
   var SHAKE_WINDOW_MS=2800;
-  var SHAKE_COOLDOWN_MS=1000;
-  var SHAKE_ENTER=0.10;
-  var SHAKE_EXIT=0.04;
+  var SHAKE_COOLDOWN_MS=2800;
+  var SHAKE_ENTER=0.22;
+  var SHAKE_EXIT=0.10;
+  var SHAKE_LOG_MIN_MS=2500;
 
-  // Deliberate blink: long close, not natural short blinks.
-  var BLINK_ON=0.62;
-  var BLINK_OFF=0.32;
-  var BLINK_LONG_MIN_MS=220;
-  var BLINK_LONG_MAX_MS=650;
-  var BLINK_DOUBLE_GAP_MS=520;
-  var BLINK_COOLDOWN_MS=1500;
+  // Deliberate blink: sustained close → open. No double-blink (too easy to false-fire).
+  var BLINK_ON=0.78;
+  var BLINK_OFF=0.40;
+  var BLINK_OPEN_SETTLE_MS=180;
+  var BLINK_LONG_MIN_MS=380;
+  var BLINK_LONG_MAX_MS=900;
+  var BLINK_COOLDOWN_MS=3500;
   var GESTURE_PULSE_MS=700;
 
   var ACTIONS={
@@ -72,6 +75,7 @@
     lastKeyAt:0,
     lastActionAt:0,
     lastAction:'none',
+    lastThrottleToastAt:0,
     escBound:false,
     uiBound:false,
     onDetectInterval:null,
@@ -80,12 +84,12 @@
     shakeSeq:[],
     shakeHyst:'center',
     lastShakeAt:0,
+    lastShakeLogAt:0,
     lastYaw:null,
     // Blink tracking
     blinkClosed:false,
     blinkCloseSince:0,
-    blinkLastLongAt:0,
-    blinkPendingSingle:false,
+    blinkOpenSince:0,
     lastBlinkAt:0,
     pulseUntil:0,
     pulseTimer:0
@@ -156,11 +160,6 @@
     return normalizePrefs(cameraPrefs().presenceActions);
   }
 
-  function hasBoundTriggers(p){
-    p=p||prefs();
-    return p.onAway!=='none'||p.onReturn!=='none'||p.shakeHead!=='none'||p.deliberateBlink!=='none';
-  }
-
   function isCameraPreviewLive(){
     try{
       var gp=global.OneToneCameraPreview;
@@ -172,26 +171,30 @@
     return false;
   }
 
-  function remindCameraIfNeeded(){
-    if(isCameraPreviewLive()) return;
-    toast(t('cameraPresenceNeedPreview','请先开启摄像头预览，摇头等动作才会识别'));
+  function syncPreviewWithMaster(wantOn){
+    var pv=global.OneToneCameraPreview;
+    if(!pv) return;
+    if(wantOn){
+      if(pv.startPreview){
+        try{ pv.startPreview(); }catch(_){}
+      }
+      return;
+    }
+    if(pv.stop){
+      try{ pv.stop(); }catch(_){}
+    }
   }
 
   function persistPresencePrefs(partial){
     var cp=cameraPrefs();
     var cur=normalizePrefs(cp.presenceActions);
     var wasEnabled=!!cur.enabled;
-    var bindTouched=false;
     if(partial&&typeof partial==='object'){
       if(partial.enabled!==undefined) cur.enabled=!!partial.enabled;
-      if(partial.onAway!=null){ cur.onAway=normalizeAction(partial.onAway); bindTouched=true; }
-      if(partial.onReturn!=null){ cur.onReturn=normalizeAction(partial.onReturn); bindTouched=true; }
-      if(partial.shakeHead!=null){ cur.shakeHead=normalizeAction(partial.shakeHead); bindTouched=true; }
-      if(partial.deliberateBlink!=null){ cur.deliberateBlink=normalizeAction(partial.deliberateBlink); bindTouched=true; }
-    }
-    // Bound triggers with master off never fire — turn sensing on when user binds.
-    if(bindTouched&&hasBoundTriggers(cur)&&!cur.enabled){
-      cur.enabled=true;
+      if(partial.onAway!=null) cur.onAway=normalizeAction(partial.onAway);
+      if(partial.onReturn!=null) cur.onReturn=normalizeAction(partial.onReturn);
+      if(partial.shakeHead!=null) cur.shakeHead=normalizeAction(partial.shakeHead);
+      if(partial.deliberateBlink!=null) cur.deliberateBlink=normalizeAction(partial.deliberateBlink);
     }
     cp.presenceActions=cur;
     st.enabled=!!cur.enabled;
@@ -205,8 +208,8 @@
     if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
       try{ global.OneToneCameraPreview.syncLiveLandmarker(); }catch(_){}
     }
-    if(cur.enabled&&!wasEnabled){
-      remindCameraIfNeeded();
+    if(cur.enabled!==wasEnabled){
+      syncPreviewWithMaster(!!cur.enabled);
     }
   }
 
@@ -409,10 +412,17 @@
     return base+'（'+friendly+'）';
   }
 
-  function pressKey(targetKey){
+  function pressKey(targetKey,opts){
+    opts=opts||{};
     var now=performance.now();
-    if(now-st.lastKeyAt<KEY_THROTTLE_MS){
-      toast(t('cameraPresenceKeyThrottled','按键动作冷却中'));
+    var throttleMs=opts.voiceActivate?KEY_THROTTLE_VOICE_MS:KEY_THROTTLE_MS;
+    if(now-st.lastKeyAt<throttleMs){
+      // Silent throttle — toast spam was freezing the UI during blink mis-fires.
+      if(now-st.lastThrottleToastAt>2200){
+        st.lastThrottleToastAt=now;
+        toast(t('cameraPresenceKeyThrottled','按键动作冷却中'));
+      }
+      logPresence('key throttled '+targetKey);
       return Promise.resolve({ok:false,reason:'throttled'});
     }
     if(!canPressKey()){
@@ -481,7 +491,7 @@
         toast(t('cameraPresenceVoiceKeyUnsetToast','请先在按键/语音设置中选择输入法激活方案'));
         return Promise.resolve({ok:false,reason:'unset'});
       }
-      return pressKey(voiceKey);
+      return pressKey(voiceKey,{voiceActivate:true});
     }
 
     if(action==='privacyScreen'){
@@ -571,8 +581,7 @@
     st.lastYaw=null;
     st.blinkClosed=false;
     st.blinkCloseSince=0;
-    st.blinkLastLongAt=0;
-    st.blinkPendingSingle=false;
+    st.blinkOpenSince=0;
   }
 
   function pulseGesture(kind){
@@ -669,14 +678,16 @@
           st.shakeSeq.push({side:next,t:now});
           pruneShakeSeq(now);
           if(st.shakeSeq.length>5) st.shakeSeq=st.shakeSeq.slice(-5);
-          logPresence('shake seq='+st.shakeSeq.map(function(x){ return x.side[0]; }).join('')+' yaw='+yaw.toFixed(2));
+          if((now-st.lastShakeLogAt)>=SHAKE_LOG_MIN_MS){
+            st.lastShakeLogAt=now;
+            logPresence('shake seq='+st.shakeSeq.map(function(x){ return x.side[0]; }).join('')+' yaw='+yaw.toFixed(2));
+          }
         }
       }
     }
 
     if(matchShakePattern()){
       if((now-st.lastShakeAt)<SHAKE_COOLDOWN_MS){
-        logPresence('shake cooldown');
         st.shakeSeq=[];
         return;
       }
@@ -692,23 +703,23 @@
     if(normalizeAction(p.deliberateBlink)==='none'){
       st.blinkClosed=false;
       st.blinkCloseSince=0;
-      st.blinkPendingSingle=false;
+      st.blinkOpenSince=0;
       return;
     }
     if(st.presence!=='present') return;
     if(blinkScore==null||!isFinite(blinkScore)) return;
 
     if(!st.blinkClosed){
-      if(blinkScore>=BLINK_ON){
-        st.blinkClosed=true;
-        st.blinkCloseSince=now;
-      }
-      // Pending single long-blink waiting for double window expiry.
-      if(st.blinkPendingSingle&&st.blinkLastLongAt&&(now-st.blinkLastLongAt)>BLINK_DOUBLE_GAP_MS){
-        st.blinkPendingSingle=false;
-        if((now-st.lastBlinkAt)>=BLINK_COOLDOWN_MS){
-          st.lastBlinkAt=now;
-          fireGesture('blink',p.deliberateBlink);
+      if(blinkScore<=BLINK_OFF){
+        if(!st.blinkOpenSince) st.blinkOpenSince=now;
+      }else if(blinkScore<BLINK_ON){
+        // Mid zone — do not start a close, keep open settle if already open.
+      }else{
+        // Closed enough to start — only if eyes were open long enough (anti-noise).
+        if(st.blinkOpenSince&&(now-st.blinkOpenSince)>=BLINK_OPEN_SETTLE_MS){
+          st.blinkClosed=true;
+          st.blinkCloseSince=now;
+          st.blinkOpenSince=0;
         }
       }
       return;
@@ -719,24 +730,17 @@
       var dur=now-st.blinkCloseSince;
       st.blinkClosed=false;
       st.blinkCloseSince=0;
+      st.blinkOpenSince=now;
       if(dur<BLINK_LONG_MIN_MS||dur>BLINK_LONG_MAX_MS){
         // Natural short blink or too long — ignore.
         return;
       }
-      // Long blink completed.
-      if(st.blinkPendingSingle&&st.blinkLastLongAt&&(now-st.blinkLastLongAt)<=BLINK_DOUBLE_GAP_MS){
-        // Double long blink — fire immediately.
-        st.blinkPendingSingle=false;
-        st.blinkLastLongAt=0;
-        if((now-st.lastBlinkAt)<BLINK_COOLDOWN_MS) return;
-        st.lastBlinkAt=now;
-        fireGesture('blink',p.deliberateBlink);
+      if((now-st.lastBlinkAt)<BLINK_COOLDOWN_MS){
+        logPresence('blink cooldown dur='+Math.round(dur));
         return;
       }
-      // Start double-blink wait; single will fire after gap if no second long blink.
-      st.blinkPendingSingle=true;
-      st.blinkLastLongAt=now;
-      return;
+      st.lastBlinkAt=now;
+      fireGesture('blink',p.deliberateBlink);
     }
   }
 
@@ -989,25 +993,40 @@
     );
   }
 
-  var healedInactiveConfig=false;
+  function syncMasterLockUi(){
+    var on=isEnabled();
+    var config=$('cameraPresenceConfig');
+    if(config){
+      config.classList.toggle('is-master-off',!on);
+      config.setAttribute('aria-disabled',on?'false':'true');
+    }
+    var bindList=$('cameraPresenceBindList');
+    if(bindList){
+      bindList.classList.toggle('is-master-off',!on);
+      bindList.classList.toggle('is-dimmed',!on);
+      bindList.setAttribute('aria-disabled',on?'false':'true');
+    }
+    var calibBtn=$('cameraGazeCalibrateBtn');
+    if(calibBtn){
+      calibBtn.disabled=!on;
+      calibBtn.setAttribute('aria-disabled',on?'false':'true');
+    }
+    var clearBtn=$('cameraGazeClearCalibrationBtn');
+    if(clearBtn){
+      clearBtn.disabled=!on;
+      clearBtn.setAttribute('aria-disabled',on?'false':'true');
+    }
+  }
 
   function syncUiFromPrefs(){
     var p=prefs();
-    // One-shot: older configs bound shake/etc. but left master off → sensing never ran.
-    if(!healedInactiveConfig){
-      healedInactiveConfig=true;
-      if(hasBoundTriggers(p)&&!p.enabled){
-        persistPresencePrefs({enabled:true});
-        toast(t('cameraPresenceAutoEnabled','已自动开启在席感知（此前已绑定动作但总开关关闭）'));
-        return;
-      }
-    }
     st.enabled=!!p.enabled;
     ensureActionTiles(document.querySelector('[data-camera-bind-key="onAway"]'),'onAway',p.onAway);
     ensureActionTiles(document.querySelector('[data-camera-bind-key="onReturn"]'),'onReturn',p.onReturn);
     ensureActionTiles(document.querySelector('[data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
     ensureActionTiles(document.querySelector('[data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
     syncTriggerSummaries(p);
+    syncMasterLockUi();
     renderHeroUi();
     if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncInactiveHint){
       try{ global.OneToneCameraWorkflow.syncInactiveHint(); }catch(_){}
@@ -1060,6 +1079,10 @@
     var config=$('cameraPresenceConfig');
     if(config){
       config.addEventListener('click',function(e){
+        if(!isEnabled()){
+          e.preventDefault();
+          return;
+        }
         var sw=e.target&&e.target.closest?e.target.closest('[data-camera-trigger-toggle]'):null;
         if(sw){
           e.preventDefault();
@@ -1091,6 +1114,10 @@
     var bindList=$('cameraPresenceBindList');
     if(bindList){
       bindList.addEventListener('click',function(e){
+        if(!isEnabled()){
+          e.preventDefault();
+          return;
+        }
         var tile=e.target&&e.target.closest?e.target.closest('.camera-action-tile'):null;
         if(!tile||tile.disabled) return;
         e.preventDefault();

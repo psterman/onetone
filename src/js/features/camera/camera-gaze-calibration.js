@@ -394,20 +394,36 @@
   function setStatusKind(kind){
     statusKind=kind;
     var el=$('cameraGazeCalibrationStatus');
-    if(!el) return;
-    var map={
-      idle:['cameraGazeCalibrationIdle','未校准'],
-      running:['cameraGazeCalibrationRunning','请看向目标点'],
-      ready:['cameraGazeCalibrationReady','校准完成'],
-      low:['cameraGazeCalibrationLowQuality','校准完成，但精度较低'],
-      failed:['cameraGazeCalibrationFailed','有效样本不足，请重试'],
-      canceled:['cameraGazeCalibrationCanceled','校准已取消'],
-      stale:['cameraGazeCalibrationStale','窗口尺寸变化，请重新校准']
-    };
-    var pair=map[kind]||map.idle;
-    el.textContent=t(pair[0],pair[1]);
-    var glance=$('cameraGlanceCalib');
-    if(glance) glance.textContent=el.textContent;
+    if(el){
+      var map={
+        idle:['cameraGazeCalibrationIdle','未校准'],
+        running:['cameraGazeCalibrationRunning','请看向目标点'],
+        ready:['cameraGazeCalibrationReady','校准完成'],
+        low:['cameraGazeCalibrationLowQuality','校准完成，但精度较低'],
+        failed:['cameraGazeCalibrationFailed','有效样本不足，请重试'],
+        canceled:['cameraGazeCalibrationCanceled','校准已取消'],
+        stale:['cameraGazeCalibrationStale','窗口尺寸变化，请重新校准']
+      };
+      var pair=map[kind]||map.idle;
+      el.textContent=t(pair[0],pair[1]);
+      var glance=$('cameraGlanceCalib');
+      if(glance) glance.textContent=el.textContent;
+    }
+    syncCalibrateBtnLabel();
+  }
+
+  function syncCalibrateBtnLabel(){
+    var btn=$('cameraGazeCalibrateBtn');
+    if(!btn) return;
+    if(running){
+      btn.textContent=t('cameraGazeCalibrating','校准中…');
+      btn.disabled=true;
+      return;
+    }
+    btn.disabled=false;
+    btn.textContent=model
+      ? t('cameraGazeRecalibrate','重新校准')
+      : t('cameraGazeCalibrate','开始校准');
   }
 
   function setOverlayVisible(show){
@@ -2099,6 +2115,7 @@
   function syncUiFromModel(){
     if(!model){
       if(statusKind!=='failed'&&statusKind!=='canceled'&&statusKind!=='running') setStatusKind('idle');
+      else syncCalibrateBtnLabel();
       return;
     }
     if(model.stale) setStatusKind('stale');
@@ -2111,6 +2128,7 @@
       if(glance) glance.textContent=statusEl.textContent;
     }
     updateCalibWarnings();
+    syncCalibrateBtnLabel();
   }
 
   function hasModel(){ return !!model; }
@@ -3235,7 +3253,9 @@
     loadFromPrefs();
     bindWeakCalibrationUi();
     if(!model) setStatusKind('idle');
+    else syncUiFromModel();
     updateCalibWarnings();
+    syncCalibrateBtnLabel();
   }
 
   global.OneToneCameraGazeCalibration={

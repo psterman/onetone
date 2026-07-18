@@ -1,0 +1,275 @@
+<div id="camera-pro-layout-plan" role="img" aria-label="摄像头高级确认 Pro 当前结构与建议结构对比图">
+  <style>
+    #camera-pro-layout-plan{
+      color:var(--foreground);
+      display:grid;
+      gap:14px;
+      width:100%;
+    }
+    #camera-pro-layout-plan *{box-sizing:border-box}
+    #camera-pro-layout-plan .vp-top{
+      display:grid;
+      grid-template-columns:minmax(0,.92fr) minmax(0,1.25fr);
+      gap:12px;
+      align-items:stretch;
+    }
+    #camera-pro-layout-plan .vp-tabs{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+    #camera-pro-layout-plan .vp-tab{
+      min-height:58px;
+      display:grid;
+      align-content:center;
+      gap:2px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:color-mix(in srgb,var(--card) 72%,transparent);
+    }
+    #camera-pro-layout-plan .vp-tab.is-active{
+      border-color:var(--primary);
+      background:color-mix(in srgb,var(--primary) 10%,transparent);
+    }
+    #camera-pro-layout-plan .vp-tab strong,
+    #camera-pro-layout-plan .vp-step strong,
+    #camera-pro-layout-plan .vp-mini strong{font-weight:500}
+    #camera-pro-layout-plan .vp-muted{
+      color:var(--muted-foreground);
+    }
+    #camera-pro-layout-plan .vp-board{
+      display:grid;
+      grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);
+      gap:10px;
+    }
+    #camera-pro-layout-plan .vp-preview{
+      min-height:126px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:color-mix(in srgb,var(--muted) 30%,transparent);
+      display:grid;
+      align-content:end;
+      padding:10px;
+      gap:8px;
+    }
+    #camera-pro-layout-plan .vp-metrics{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:6px;
+    }
+    #camera-pro-layout-plan .vp-metric{
+      min-height:24px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      background:var(--card);
+    }
+    #camera-pro-layout-plan .vp-panel{
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px;
+      display:grid;
+      gap:8px;
+      background:color-mix(in srgb,var(--card) 70%,transparent);
+    }
+    #camera-pro-layout-plan .vp-panel-line{
+      height:10px;
+      border-radius:999px;
+      background:var(--muted);
+    }
+    #camera-pro-layout-plan .vp-panel-line.is-title{
+      width:46%;
+      height:14px;
+      background:var(--foreground);
+    }
+    #camera-pro-layout-plan .vp-compare{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:14px;
+      align-items:start;
+    }
+    #camera-pro-layout-plan .vp-lane{
+      display:grid;
+      gap:10px;
+      min-width:0;
+    }
+    #camera-pro-layout-plan .vp-lane-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-width:0;
+    }
+    #camera-pro-layout-plan .vp-badge{
+      display:inline-flex;
+      align-items:center;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:4px 8px;
+      background:color-mix(in srgb,var(--primary) 10%,transparent);
+      white-space:nowrap;
+    }
+    #camera-pro-layout-plan .vp-stack{
+      display:grid;
+      gap:8px;
+    }
+    #camera-pro-layout-plan .vp-step{
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:color-mix(in srgb,var(--card) 76%,transparent);
+      padding:10px;
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:9px;
+      align-items:start;
+    }
+    #camera-pro-layout-plan .vp-num{
+      width:26px;
+      height:26px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      border:1px solid var(--border);
+      background:var(--background);
+      color:var(--foreground);
+      font-weight:500;
+    }
+    #camera-pro-layout-plan .vp-step.is-primary .vp-num{
+      background:var(--primary);
+      color:var(--primary-foreground);
+      border-color:var(--primary);
+    }
+    #camera-pro-layout-plan .vp-note{
+      border-left:3px solid var(--primary);
+      padding:8px 10px;
+      background:color-mix(in srgb,var(--primary) 10%,transparent);
+      border-radius:6px;
+    }
+    #camera-pro-layout-plan .vp-zone-row{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:6px;
+      margin-top:7px;
+    }
+    #camera-pro-layout-plan .vp-zone{
+      min-height:45px;
+      border:1px solid var(--border);
+      border-radius:7px;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      padding:6px;
+      background:var(--background);
+    }
+    #camera-pro-layout-plan .vp-folds{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+    }
+    #camera-pro-layout-plan .vp-mini{
+      border:1px dashed var(--border);
+      border-radius:8px;
+      padding:9px;
+      background:color-mix(in srgb,var(--muted) 18%,transparent);
+      min-height:58px;
+      display:grid;
+      gap:2px;
+    }
+    @media (max-width:760px){
+      #camera-pro-layout-plan .vp-top,
+      #camera-pro-layout-plan .vp-board,
+      #camera-pro-layout-plan .vp-compare,
+      #camera-pro-layout-plan .vp-zone-row,
+      #camera-pro-layout-plan .vp-folds{
+        grid-template-columns:1fr;
+      }
+      #camera-pro-layout-plan .vp-tabs{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+  <div class="vp-top" aria-label="当前三标签框架">
+    <div class="vp-tabs">
+      <div class="vp-tab"><strong>01 摄像头看到什么</strong><span class="vp-muted">只认动作</span></div>
+      <div class="vp-tab"><strong>02 识别后做什么</strong><span class="vp-muted">绑定结果</span></div>
+      <div class="vp-tab is-active"><strong>03 高级确认</strong><span class="vp-muted">可选 Pro</span></div>
+    </div>
+    <div class="vp-board">
+      <div class="vp-preview">
+        <div class="vp-metrics">
+          <div class="vp-metric"></div>
+          <div class="vp-metric"></div>
+          <div class="vp-metric"></div>
+          <div class="vp-metric"></div>
+        </div>
+      </div>
+      <div class="vp-panel">
+        <div class="vp-panel-line is-title"></div>
+        <div class="vp-panel-line"></div>
+        <div class="vp-panel-line"></div>
+        <div class="vp-panel-line"></div>
+      </div>
+    </div>
+  </div>
+  <div class="vp-compare" aria-label="当前与建议对比">
+    <section class="vp-lane" aria-label="当前问题">
+      <div class="vp-lane-head">
+        <strong>现在的 Pro</strong>
+        <span class="vp-badge">工具先行</span>
+      </div>
+      <div class="vp-stack">
+        <div class="vp-step">
+          <div class="vp-num">1</div>
+          <div><strong>一进来就是本机校准</strong><div class="vp-muted">用户还没理解为什么要校准</div></div>
+        </div>
+        <div class="vp-step">
+          <div class="vp-num">2</div>
+          <div><strong>9 宫格紧跟其后</strong><div class="vp-muted">比粗三区更早出现，认知偏重</div></div>
+        </div>
+        <div class="vp-step">
+          <div class="vp-num">3</div>
+          <div><strong>Hello 与手势占位靠后堆叠</strong><div class="vp-muted">付费价值没有形成主线</div></div>
+        </div>
+        <div class="vp-note">粗三区现在是隐藏辅助节点；设备设置在左侧预览区，不像 Pro 管理项。</div>
+      </div>
+    </section>
+    <section class="vp-lane" aria-label="建议布局">
+      <div class="vp-lane-head">
+        <strong>建议的 Pro</strong>
+        <span class="vp-badge">安全主线</span>
+      </div>
+      <div class="vp-stack">
+        <div class="vp-step is-primary">
+          <div class="vp-num">1</div>
+          <div><strong>安全规则横幅</strong><div class="vp-muted">发送不会因单个视觉动作直接发出</div></div>
+        </div>
+        <div class="vp-step is-primary">
+          <div class="vp-num">2</div>
+          <div><strong>Windows Hello / PIN 确认</strong><div class="vp-muted">高风险设置、回席恢复、敏感发送前确认</div></div>
+        </div>
+        <div class="vp-step">
+          <div class="vp-num">3</div>
+          <div>
+            <strong>看区确认</strong>
+            <div class="vp-muted">先看粗三区，不直接发送</div>
+            <div class="vp-zone-row">
+              <div class="vp-zone">左<br>取消</div>
+              <div class="vp-zone">中<br>继续</div>
+              <div class="vp-zone">右下<br>确认</div>
+            </div>
+          </div>
+        </div>
+        <div class="vp-step">
+          <div class="vp-num">4</div>
+          <div><strong>本机校准</strong><div class="vp-muted">开始 / 清除 / 居中；技术说明收起</div></div>
+        </div>
+        <div class="vp-folds">
+          <div class="vp-mini"><strong>9 宫格说明</strong><span class="vp-muted">默认折叠</span></div>
+          <div class="vp-mini"><strong>设备诊断</strong><span class="vp-muted">分辨率 / FPS</span></div>
+          <div class="vp-mini"><strong>隐私保护</strong><span class="vp-muted">离席 / 有人靠近</span></div>
+          <div class="vp-mini"><strong>画面增强</strong><span class="vp-muted">未来 Pro</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

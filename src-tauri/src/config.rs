@@ -3571,6 +3571,31 @@ pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
     state.machine_pool.lock().prune(&cfg.mapping_ids());
 }
 
+/// Drop fields that the FE already owns locally (window geometry / camera prefs).
+/// Watcher reloads that only touch these must not push `mvp_init` — that path races
+/// camera MediaPipe + drawer re-render and has 假死'd the UI (layout-save echo).
+fn config_json_without_watcher_noise(cfg: &VoiceConfig) -> serde_json::Value {
+    let mut value = serde_json::to_value(cfg).unwrap_or(serde_json::Value::Null);
+    if let Some(obj) = value.as_object_mut() {
+        for key in [
+            "windowLayoutSeen",
+            "windowMaximized",
+            "windowWidth",
+            "windowHeight",
+            "windowX",
+            "windowY",
+            "cameraPrefs",
+        ] {
+            obj.remove(key);
+        }
+    }
+    value
+}
+
+fn is_watcher_noise_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
+    config_json_without_watcher_noise(old) == config_json_without_watcher_noise(new)
+}
+
 pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
     let path = config_path();
     std::thread::spawn(move || {
@@ -3601,6 +3626,18 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                         prefer_vosk_when_both_voice_engines_enabled(&mut new_cfg);
 
                     let old_cfg = state.cfg.lock().clone();
+                    if is_watcher_noise_only_change(&old_cfg, &new_cfg) {
+                        {
+                            *state.cfg.lock() = new_cfg;
+                        }
+                        crate::app_log::log_line(
+                            &state,
+                            "config",
+                            "config file changed (layout/camera only, skip mvp_init)",
+                        );
+                        last_emit = std::time::Instant::now();
+                        continue;
+                    }
                     {
                         *state.cfg.lock() = new_cfg.clone();
                     }
@@ -4536,6 +4573,29 @@ mod tests {
         assert!(loaded.window_layout_seen);
         assert!((loaded.window_width - 1024.0).abs() < f64::EPSILON);
         assert_eq!(loaded.window_x, Some(40.0));
+    }
+
+    #[test]
+    fn watcher_skips_mvp_init_for_layout_or_camera_only() {
+        let mut old = VoiceConfig::default();
+        let mut layout_only = old.clone();
+        layout_only.window_layout_seen = true;
+        layout_only.window_maximized = true;
+        layout_only.window_width = 900.0;
+        layout_only.window_height = 700.0;
+        layout_only.window_x = Some(12.0);
+        layout_only.window_y = Some(34.0);
+        assert!(is_watcher_noise_only_change(&old, &layout_only));
+
+        let mut camera_only = old.clone();
+        camera_only.camera_prefs = CameraPrefs {
+            selected_device_id: "cam-1".into(),
+            ..CameraPrefs::default()
+        };
+        assert!(is_watcher_noise_only_change(&old, &camera_only));
+
+        old.desired_engine = "vosk".into();
+        assert!(!is_watcher_noise_only_change(&old, &layout_only));
     }
 
     #[test]

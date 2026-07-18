@@ -566,14 +566,13 @@
 
   function setButtons(){
     var toggle=$('btnCameraToggle');
-    if(toggle){
-      toggle.disabled=!!starting;
-      toggle.classList.toggle('is-primary',!previewLive);
-      toggle.classList.toggle('is-stop',!!previewLive);
-      toggle.textContent=previewLive
-        ? t('cameraStopPreview','停止预览')
-        : t('cameraStartPreview','开始预览');
-    }
+    if(!toggle||String(toggle.tagName||'').toUpperCase()!=='BUTTON') return;
+    toggle.disabled=!!starting;
+    toggle.classList.toggle('is-primary',!previewLive);
+    toggle.classList.toggle('is-stop',!!previewLive);
+    toggle.textContent=previewLive
+      ? t('cameraStopPreview','停止预览')
+      : t('cameraStartPreview','开始预览');
   }
 
   function setPlaceholderVisible(show){
@@ -633,7 +632,7 @@
     if(!el) return;
     if(kind==='live') el.textContent=t('cameraCapHintLive','点选分辨率或 FPS 即可切换；不支持的档位会自动回退');
     else if(kind==='unsupported') el.textContent=t('cameraCapHintUnsupported','当前设备能力有限，仍可尝试切换常见档位');
-    else el.textContent=t('cameraCapHintIdle','开始预览后可切换分辨率与帧率');
+    else el.textContent=t('cameraCapHintIdle','开启识别后可切换分辨率与帧率');
   }
 
   function syncPreviewAspect(w,h){
@@ -667,7 +666,7 @@
       btn.className='camera-fps-pill'+(uiResKey===key?' is-active':'');
       btn.setAttribute('data-res',key);
       btn.textContent=resLabel(it);
-      btn.disabled=!live;
+        btn.disabled=false;
       if(live&&caps&&!modeAllowed(caps,it.w,it.h,0)) btn.style.opacity='0.45';
       resPills.appendChild(btn);
     }
@@ -706,7 +705,7 @@
         pill.className='camera-fps-pill'+(uiFps===fps?' is-active':'');
         pill.setAttribute('data-fps',String(fps));
         pill.textContent=String(fps);
-        pill.disabled=!live;
+        pill.disabled=false;
         if(live&&caps&&!modeAllowed(caps,0,0,fps)) pill.style.opacity='0.45';
         fpsPills.appendChild(pill);
       }
@@ -1541,13 +1540,17 @@
   }
 
   function applyCapabilityChange(){
-    if(!previewLive||applyingCaps) return Promise.resolve();
     var prefer=readSelectedConstraints();
     persistCameraPrefs({
       selectedWidth:prefer.width,
       selectedHeight:prefer.height,
       selectedFrameRate:prefer.frameRate
     });
+    if(!previewLive||applyingCaps){
+      fillCapabilitySelects(lastCapabilities,null);
+      setCapHint(previewLive?'live':'idle');
+      return Promise.resolve();
+    }
     applyingCaps=true;
     setStatus(t('cameraCapApplying','正在切换摄像头能力…'));
 
@@ -1680,7 +1683,7 @@
   }
 
   function onPanelVisible(){
-    // Enumerate only — never auto getUserMedia / never auto-enable gaze.
+    // Enumerate devices; start camera only when master recognition switch is on.
     refreshDevices();
     setButtons();
     syncGazeToggleUi();
@@ -1695,7 +1698,10 @@
     if(pa&&pa.syncUiFromPrefs){
       try{ pa.syncUiFromPrefs(); }catch(_){}
     }
-    if(!previewLive){
+    var masterOn=!!(pa&&pa.isEnabled&&pa.isEnabled());
+    if(masterOn&&!previewLive){
+      startPreview();
+    }else if(!previewLive){
       setPlaceholderVisible(true);
       setStatus(t('cameraStatusIdle','待命 · 不会自动开启摄像头'));
     }
@@ -1719,6 +1725,7 @@
           uiResKey=resKey(group.items[0].w,group.items[0].h);
         }
         fillResPills(lastCapabilities,!!previewLive&&!!stream);
+        applyCapabilityChange();
       });
     }
     if(resPills){
@@ -1750,9 +1757,7 @@
     bound=true;
     var togglePreview=$('btnCameraToggle');
     var sel=$('cameraDeviceSelect');
-    var recenter=$('btnCameraGazeRecenter');
-    var gazeToggle=$('btnCameraGazeToggle');
-    if(togglePreview){
+    if(togglePreview&&String(togglePreview.tagName||'').toUpperCase()==='BUTTON'){
       togglePreview.addEventListener('click',function(e){
         e.preventDefault();
         if(previewLive) stop();
@@ -1761,18 +1766,6 @@
     }
     if(sel) sel.addEventListener('change',onDeviceChange);
     bindMediaCapabilityUi();
-    if(recenter){
-      recenter.addEventListener('click',function(e){
-        e.preventDefault();
-        recenterGaze();
-      });
-    }
-    if(gazeToggle){
-      gazeToggle.addEventListener('click',function(e){
-        e.preventDefault();
-        setGazeDebugEnabled(!gaze.enabled);
-      });
-    }
     global.addEventListener('beforeunload',function(){ stopTracks(); });
     global.addEventListener('pagehide',function(){ stopTracks(); });
   }
@@ -1794,6 +1787,7 @@
   global.OneToneCameraPreview={
     init:init,
     onPanelVisible:onPanelVisible,
+    startPreview:startPreview,
     stop:stop,
     refreshDevices:refreshDevices,
     setGazeDebugEnabled:setGazeDebugEnabled,
