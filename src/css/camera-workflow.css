@@ -576,6 +576,24 @@
   color:var(--primary);
 }
 
+.camera-blink-baseline-hint{
+  margin:6px 0 0;
+  font-size:11px;
+  color:var(--on-surface-muted);
+}
+
+.camera-config-card .camera-action-bar{
+  margin-top:10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+.camera-config-card .camera-goto-bind{
+  margin-top:0;
+}
+
 .camera-goto-bind{
   margin-top:10px;
   justify-self:start;

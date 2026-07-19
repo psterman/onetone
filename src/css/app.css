@@ -6339,7 +6339,8 @@
       }
       .sound-embed-slot-lbl{grid-area:lbl}
       .sound-embed-slot .sound-slot-toggle{grid-area:toggle;justify-self:end}
-      .sound-embed-slot .sound-slot-select{grid-area:select}
+      .sound-embed-slot .sound-slot-select,
+      .sound-embed-slot .sound-slot-picker{grid-area:select}
       .sound-embed-slot .sound-slot-preview{grid-area:preview;justify-self:start}
     }
     .sound-slot{
@@ -6349,6 +6350,126 @@
     .sound-slot-title{margin:0;font-size:13px;font-weight:700;color:var(--on-surface);line-height:1.35}
     .sound-slot-desc{margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
     .sound-slot-pick{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+    .sound-slot-picker{position:relative;min-width:0;width:100%}
+    .sound-slot-select.is-native-hidden{
+      position:absolute!important;
+      width:1px!important;
+      height:1px!important;
+      padding:0!important;
+      margin:-1px!important;
+      overflow:hidden!important;
+      clip:rect(0,0,0,0)!important;
+      white-space:nowrap!important;
+      border:0!important;
+      appearance:none;
+      -webkit-appearance:none;
+      pointer-events:none;
+    }
+    .sound-slot-picker-btn{
+      min-width:0;
+      width:100%;
+      height:36px;
+      border:1px solid var(--outline-variant);
+      border-radius:10px;
+      padding:0 34px 0 12px;
+      font:inherit;
+      font-size:12px;
+      font-weight:600;
+      line-height:1.2;
+      background:var(--surface);
+      color:var(--on-surface);
+      cursor:pointer;
+      text-align:left;
+      position:relative;
+      transition:border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard),background-color var(--dur-fast) var(--ease-standard);
+    }
+    .sound-slot-picker-btn:hover:not(:disabled){
+      border-color:var(--outline);
+      background:var(--surface-high);
+    }
+    .sound-slot-picker-btn:focus{
+      outline:none;
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px var(--primary-soft);
+      background:var(--surface-high);
+    }
+    .sound-slot-picker.is-open .sound-slot-picker-btn{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px var(--primary-soft);
+      background:var(--surface-high);
+    }
+    .sound-slot-picker-btn:disabled,
+    .sound-slot-picker.is-disabled .sound-slot-picker-btn{
+      opacity:.65;
+      cursor:not-allowed;
+    }
+    .sound-slot-picker-label{
+      display:block;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .sound-slot-picker-chevron{
+      position:absolute;
+      right:12px;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:10px;
+      color:var(--on-surface-muted);
+      opacity:.7;
+      pointer-events:none;
+    }
+    .sound-slot-picker-menu{
+      position:absolute;
+      left:0;
+      right:0;
+      top:calc(100% + 6px);
+      z-index:80;
+      border:1px solid var(--outline-variant);
+      border-radius:12px;
+      background:var(--surface-high);
+      box-shadow:var(--shadow-card);
+      padding:6px;
+      max-height:min(260px,42vh);
+      overflow:auto;
+      color-scheme:light dark;
+    }
+    .sound-slot-picker-menu[hidden]{display:none!important}
+    .sound-slot-picker-option{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:8px 10px;
+      background:transparent;
+      color:var(--on-surface);
+      font:inherit;
+      font-size:12px;
+      font-weight:600;
+      text-align:left;
+      cursor:pointer;
+    }
+    .sound-slot-picker-option:hover{
+      background:var(--surface-soft);
+    }
+    .sound-slot-picker-option.is-selected{
+      background:var(--primary-soft);
+      color:var(--primary);
+    }
+    .sound-slot-picker-option-dot{
+      width:14px;
+      flex-shrink:0;
+      text-align:center;
+      font-size:10px;
+      color:var(--primary);
+    }
+    .sound-slot-picker-option:not(.is-selected) .sound-slot-picker-option-dot{
+      color:var(--on-surface-muted);
+      opacity:.55;
+    }
+    .sound-slot-picker-option-name{min-width:0}
     .sound-slot-select{
       min-width:0;
       width:100%;

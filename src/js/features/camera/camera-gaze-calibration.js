@@ -302,10 +302,11 @@
 
   function regionCenterNorm(zoneId){
     var id=String(zoneId||'center');
+    // Keep centers near the rim so soft-snap does not pull the orb away from corners.
     var map={
-      tl:{nx:0.14,ny:0.14},tc:{nx:0.5,ny:0.12},tr:{nx:0.86,ny:0.14},
-      ml:{nx:0.12,ny:0.5},center:{nx:0.5,ny:0.5},mr:{nx:0.88,ny:0.5},
-      bl:{nx:0.14,ny:0.86},bc:{nx:0.5,ny:0.88},br:{nx:0.86,ny:0.86}
+      tl:{nx:0.05,ny:0.05},tc:{nx:0.5,ny:0.04},tr:{nx:0.95,ny:0.05},
+      ml:{nx:0.04,ny:0.5},center:{nx:0.5,ny:0.5},mr:{nx:0.96,ny:0.5},
+      bl:{nx:0.05,ny:0.94},bc:{nx:0.5,ny:0.95},br:{nx:0.95,ny:0.94}
     };
     return map[id]||map.center;
   }
@@ -320,9 +321,20 @@
     if(model&&model.calibrationValidation&&model.calibrationValidation.worstErrorPx>450){
       b=Math.max(b,fine?0.30:0.48);
     }
+    // Near the true rim, do not pull back toward zone centers (blocks 右上/四角).
+    var edgeDist=Math.min(nx,1-nx,ny,1-ny);
+    if(edgeDist<0.10) b*=edgeDist/0.10;
+    if(edgeDist<0.03) b=0;
+    var outNx=nx*(1-b)+c.nx*b;
+    var outNy=ny*(1-b)+c.ny*b;
+    // Never snap away from the rim once past the zone center.
+    if(c.nx<=0.5&&nx<=c.nx) outNx=nx;
+    if(c.nx>=0.5&&nx>=c.nx) outNx=nx;
+    if(c.ny<=0.5&&ny<=c.ny) outNy=ny;
+    if(c.ny>=0.5&&ny>=c.ny) outNy=ny;
     return {
-      nx:clamp01(nx*(1-b)+c.nx*b),
-      ny:clamp01(ny*(1-b)+c.ny*b),
+      nx:clamp01(outNx),
+      ny:clamp01(outNy),
       zone:zone
     };
   }
@@ -1103,7 +1115,7 @@
   }
 
   function softClamp01(x,margin){
-    margin=margin!=null?margin:0.08;
+    margin=margin!=null?margin:0.03;
     x=Number(x);
     if(!isFinite(x)) return 0.5;
     if(x<0) return margin*(1-Math.exp(x/margin));
@@ -1989,10 +2001,22 @@
       st.config.cameraPrefs={
         enabled:false,selectedDeviceId:'',previewEnabled:false,
         selectedWidth:0,selectedHeight:0,selectedFrameRate:0,
-        gazeCalibration:null
+        gazeCalibration:null,blinkBaseline:null,
+        presenceActions:{
+          enabled:false,triggers:{away:false,shake:false,blink:false},
+          onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'
+        }
       };
     }
     if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
+    if(st.config.cameraPrefs.blinkBaseline===undefined) st.config.cameraPrefs.blinkBaseline=null;
+    if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
+      st.config.cameraPrefs.presenceActions={
+        enabled:!!st.config.cameraPrefs.enabled,
+        triggers:{away:false,shake:false,blink:false},
+        onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'
+      };
+    }
     return st.config.cameraPrefs;
   }
 
@@ -2002,12 +2026,15 @@
     if(!prefs) return;
     prefs.gazeCalibration=snapshot;
     // Debounce — quiet camera prefs save (no mvp_init / voice restart).
+    // Explicit clear must set clearGazeCalibration so Rust/FE merge does not reinject.
+    var clearCalib=snapshot==null;
     if(persistGazeTimer) clearTimeout(persistGazeTimer);
     persistGazeTimer=setTimeout(function(){
       persistGazeTimer=0;
       if(global.OneToneConfigPersist){
-        if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
-        else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
+        if(global.OneToneConfigPersist.saveCameraPrefsQuiet){
+          global.OneToneConfigPersist.saveCameraPrefsQuiet(clearCalib?{clearGazeCalibration:true}:undefined);
+        }else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
         else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
       }
     },2500);
@@ -2509,7 +2536,7 @@
     if(pitch>maxPitch) pitchT=clamp((pitch-maxPitch)/pitchSpan,0,1.65);
     else if(pitch<minPitch) pitchT=-clamp((minPitch-pitch)/pitchSpan,0,1.65);
     // Head-led extrapolation: push toward window edges when pose exceeds calib range.
-    var push=0.58;
+    var push=0.72;
     if(yawT>0) cx=cx+(vw-cx)*yawT*push;
     else if(yawT<0) cx=cx+cx*yawT*push;
     if(pitchT>0) cy=cy+(vh-cy)*pitchT*push;

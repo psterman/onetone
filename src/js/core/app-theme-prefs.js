@@ -189,6 +189,184 @@
     });
   }
 
+  var soundPickerDocBound=false;
+  function positionSoundPickerMenu(picker){
+    var btn=picker.querySelector('.sound-slot-picker-btn');
+    var menu=picker.querySelector('.sound-slot-picker-menu');
+    if(!btn||!menu) return;
+    var rect=btn.getBoundingClientRect();
+    var width=Math.max(rect.width,140);
+    var left=rect.left;
+    var top=rect.bottom+6;
+    var maxH=Math.min(260,Math.max(120,window.innerHeight-top-12));
+    if(left+width>window.innerWidth-8) left=Math.max(8,window.innerWidth-width-8);
+    if(top+120>window.innerHeight-8){
+      top=Math.max(8,rect.top-6-Math.min(maxH,220));
+    }
+    menu.style.position='fixed';
+    menu.style.left=Math.round(left)+'px';
+    menu.style.top=Math.round(top)+'px';
+    menu.style.width=Math.round(width)+'px';
+    menu.style.right='auto';
+    menu.style.maxHeight=Math.round(maxH)+'px';
+    menu.style.zIndex='80';
+  }
+
+  function clearSoundPickerMenuPosition(menu){
+    if(!menu) return;
+    menu.style.position='';
+    menu.style.left='';
+    menu.style.top='';
+    menu.style.width='';
+    menu.style.right='';
+    menu.style.maxHeight='';
+    menu.style.zIndex='';
+  }
+
+  function closeSoundPickers(except){
+    document.querySelectorAll('.sound-slot-picker.is-open').forEach(function(picker){
+      if(except&&picker===except) return;
+      picker.classList.remove('is-open');
+      var btn=picker.querySelector('.sound-slot-picker-btn');
+      var menu=picker.querySelector('.sound-slot-picker-menu');
+      if(btn) btn.setAttribute('aria-expanded','false');
+      if(menu){
+        menu.hidden=true;
+        clearSoundPickerMenuPosition(menu);
+      }
+    });
+  }
+
+  function bindSoundPickerDoc(){
+    if(soundPickerDocBound) return;
+    soundPickerDocBound=true;
+    document.addEventListener('click',function(){ closeSoundPickers(); });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape') closeSoundPickers();
+    });
+  }
+
+  function rebuildSoundPickerMenu(picker,select){
+    var menu=picker.querySelector('.sound-slot-picker-menu');
+    if(!menu) return;
+    menu.textContent='';
+    SOUND_CATALOG.forEach(function(item){
+      var selected=select.value===item.id;
+      var opt=document.createElement('button');
+      opt.type='button';
+      opt.className='sound-slot-picker-option'+(selected?' is-selected':'');
+      opt.setAttribute('role','option');
+      opt.setAttribute('aria-selected',selected?'true':'false');
+      opt.setAttribute('data-sound-id',item.id);
+      var dot=document.createElement('span');
+      dot.className='sound-slot-picker-option-dot';
+      dot.setAttribute('aria-hidden','true');
+      dot.textContent=selected?'●':'○';
+      var name=document.createElement('span');
+      name.className='sound-slot-picker-option-name';
+      name.textContent=soundLabel(item.id);
+      opt.appendChild(dot);
+      opt.appendChild(name);
+      menu.appendChild(opt);
+    });
+  }
+
+  function syncSoundPickerLabel(picker,select){
+    var label=picker.querySelector('.sound-slot-picker-label');
+    var btn=picker.querySelector('.sound-slot-picker-btn');
+    if(label) label.textContent=soundLabel(select.value)||select.value||'—';
+    if(btn){
+      btn.disabled=!!select.disabled;
+      var labelledBy=select.getAttribute('aria-labelledby');
+      if(labelledBy) btn.setAttribute('aria-labelledby',labelledBy);
+      var ariaLabel=select.getAttribute('aria-label');
+      if(ariaLabel) btn.setAttribute('aria-label',ariaLabel);
+    }
+    picker.classList.toggle('is-disabled',!!select.disabled);
+  }
+
+  function ensureSoundPicker(select){
+    if(!select) return null;
+    bindSoundPickerDoc();
+    var existing=select.closest('.sound-slot-picker');
+    if(existing){
+      syncSoundPickerLabel(existing,select);
+      if(existing.classList.contains('is-open')) rebuildSoundPickerMenu(existing,select);
+      return existing;
+    }
+    var wrap=document.createElement('div');
+    wrap.className='sound-slot-picker';
+    select.parentNode.insertBefore(wrap,select);
+    wrap.appendChild(select);
+    select.classList.add('is-native-hidden');
+    select.setAttribute('tabindex','-1');
+    select.setAttribute('aria-hidden','true');
+
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='sound-slot-picker-btn';
+    btn.setAttribute('aria-haspopup','listbox');
+    btn.setAttribute('aria-expanded','false');
+    var label=document.createElement('span');
+    label.className='sound-slot-picker-label';
+    var chev=document.createElement('span');
+    chev.className='sound-slot-picker-chevron';
+    chev.setAttribute('aria-hidden','true');
+    chev.textContent='▼';
+    btn.appendChild(label);
+    btn.appendChild(chev);
+
+    var menu=document.createElement('div');
+    menu.className='sound-slot-picker-menu';
+    menu.setAttribute('role','listbox');
+    menu.hidden=true;
+
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    syncSoundPickerLabel(wrap,select);
+
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(select.disabled) return;
+      var open=wrap.classList.contains('is-open');
+      closeSoundPickers();
+      if(open) return;
+      rebuildSoundPickerMenu(wrap,select);
+      wrap.classList.add('is-open');
+      btn.setAttribute('aria-expanded','true');
+      menu.hidden=false;
+      positionSoundPickerMenu(wrap);
+    });
+
+    menu.addEventListener('click',function(e){
+      var item=e.target&&e.target.closest?e.target.closest('[data-sound-id]'):null;
+      if(!item) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var id=item.getAttribute('data-sound-id');
+      if(!id||select.value===id){
+        closeSoundPickers();
+        return;
+      }
+      select.value=id;
+      try{
+        select.dispatchEvent(new Event('change',{bubbles:true}));
+      }catch(_){
+        var ev=document.createEvent('HTMLEvents');
+        ev.initEvent('change',true,false);
+        select.dispatchEvent(ev);
+      }
+      closeSoundPickers();
+    });
+
+    return wrap;
+  }
+
+  function syncSoundPicker(select){
+    ensureSoundPicker(select);
+  }
+
   function syncRecordingAudioUi(){
     var sounds=ensureSoundsConfig();
     var toggle=$('btnRecordingAudioMute');
@@ -224,6 +402,7 @@
         fillSoundSelectOptions(select);
         select.value=id;
         select.disabled=false;
+        syncSoundPicker(select);
       });
       // Legacy id-based selects on sounds page (keep in sync if present).
       var legacy=$('soundSelect'+key.charAt(0).toUpperCase()+key.slice(1));
@@ -232,6 +411,7 @@
         if(!legacy.getAttribute('data-slot')) legacy.setAttribute('data-slot',key);
         legacy.value=id;
         legacy.disabled=false;
+        syncSoundPicker(legacy);
       }
       document.querySelectorAll('.sound-slot-preview[data-slot="'+key+'"]').forEach(function(preview){
         preview.disabled=false;
@@ -275,6 +455,9 @@
       document.querySelectorAll('.sound-slot-select option[value="'+item.id+'"]').forEach(function(opt){
         opt.textContent=soundLabel(item.id);
       });
+    });
+    document.querySelectorAll('.sound-slot-select').forEach(function(select){
+      syncSoundPicker(select);
     });
   }
 

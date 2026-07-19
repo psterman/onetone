@@ -721,6 +721,32 @@ fn send_mode_allows_phrase(mode: &str) -> bool {
 
 pub fn try_match_session_phrase_on_final(state: &Arc<AppState>, app: &AppHandle, text: &str) {
     if !should_match_end_phrase(state) {
+        // Help diagnose “heard 结束输入 but IME did not stop”: transcript UI can show
+        // lastFinal while session is still idle (e.g. camera test_send without enter).
+        let cfg = state.cfg.lock();
+        if cfg.voice_end.enabled {
+            let end_hit = matches_end_phrase(
+                text,
+                &cfg.voice_end.phrases_zh,
+                &cfg.voice_end.phrases_en,
+            );
+            let cancel_hit = matches_cancel_phrase(
+                text,
+                &cfg.voice_end.cancel_phrases_zh,
+                &cfg.voice_end.cancel_phrases_en,
+            );
+            if end_hit.is_some() || cancel_hit.is_some() {
+                let phrase = end_hit.or(cancel_hit).unwrap_or_default();
+                crate::app_log::log_line(
+                    state,
+                    "voice",
+                    &format!(
+                        "session phrase ignored (session={}, not dictating): {phrase} text={text}",
+                        session_state(state)
+                    ),
+                );
+            }
+        }
         return;
     }
     let (cancel_zh, cancel_en, send_zh, send_en, end_zh, end_en, wake_phrases, send_mode) = {

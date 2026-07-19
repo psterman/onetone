@@ -1293,6 +1293,9 @@ pub struct CameraPrefs {
     pub selected_frame_rate: u32,
     #[serde(default)]
     pub gaze_calibration: Option<serde_json::Value>,
+    /// Personal open-eye blink blendshape baseline (FE-owned JSON).
+    #[serde(default)]
+    pub blink_baseline: Option<serde_json::Value>,
     #[serde(default)]
     pub presence_actions: PresenceActionsPrefs,
 }
@@ -3590,9 +3593,9 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
         }
     }
     cfg.start_minimized_to_tray = existing.start_minimized_to_tray;
-    if raw.get("cameraPrefs").is_none() {
-        cfg.camera_prefs = existing.camera_prefs.clone();
-    }
+    // Camera prefs only change via cmd_save_camera_prefs — never let a full mapping
+    // save overwrite them with a stale FE snapshot (looked like "restart cleared camera").
+    cfg.camera_prefs = existing.camera_prefs.clone();
     cfg.window_layout_seen = existing.window_layout_seen;
     cfg.window_maximized = existing.window_maximized;
     cfg.window_width = existing.window_width;
@@ -3600,6 +3603,37 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     cfg.window_x = existing.window_x;
     cfg.window_y = existing.window_y;
     Some(cfg)
+}
+
+/// Quiet camera save: FE may send `gazeCalibration: null` when the in-memory
+/// snapshot was never hydrated. Preserve disk calibration unless the FE explicitly
+/// asks to clear it. Also keep a non-empty device id if the payload omits it.
+pub fn merge_camera_prefs_quiet(
+    existing: &CameraPrefs,
+    mut incoming: CameraPrefs,
+    clear_gaze_calibration: bool,
+) -> CameraPrefs {
+    if incoming.gaze_calibration.is_none() && !clear_gaze_calibration {
+        incoming.gaze_calibration = existing.gaze_calibration.clone();
+    }
+    if incoming.blink_baseline.is_none() && existing.blink_baseline.is_some() {
+        incoming.blink_baseline = existing.blink_baseline.clone();
+    }
+    if incoming.selected_device_id.trim().is_empty()
+        && !existing.selected_device_id.trim().is_empty()
+    {
+        incoming.selected_device_id = existing.selected_device_id.clone();
+    }
+    if incoming.selected_width == 0 && existing.selected_width > 0 {
+        incoming.selected_width = existing.selected_width;
+    }
+    if incoming.selected_height == 0 && existing.selected_height > 0 {
+        incoming.selected_height = existing.selected_height;
+    }
+    if incoming.selected_frame_rate == 0 && existing.selected_frame_rate > 0 {
+        incoming.selected_frame_rate = existing.selected_frame_rate;
+    }
+    incoming
 }
 
 pub fn should_show_main_on_startup(cfg: &VoiceConfig) -> bool {
@@ -4130,14 +4164,49 @@ mod tests {
     fn merge_save_payload_preserves_camera_prefs_when_omitted() {
         let mut existing = VoiceConfig::default();
         existing.camera_prefs = CameraPrefs {
-            enabled: false,
+            enabled: true,
             selected_device_id: "cam-abc".into(),
             preview_enabled: false,
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                triggers: PresenceTriggersPrefs {
+                    away: true,
+                    shake: true,
+                    blink: true,
+                },
+                on_away: "privacyScreen".into(),
+                on_return: "resumeVoice".into(),
+                shake_head: "pressEsc".into(),
+                deliberate_blink: "pressCtrlI".into(),
+            },
             ..Default::default()
         };
         let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert_eq!(merged.camera_prefs.selected_device_id, "cam-abc");
+        assert!(merged.camera_prefs.presence_actions.enabled);
+        assert_eq!(merged.camera_prefs.presence_actions.deliberate_blink, "pressCtrlI");
+    }
+
+    #[test]
+    fn merge_save_payload_ignores_stale_fe_camera_prefs() {
+        let mut existing = VoiceConfig::default();
+        existing.camera_prefs = CameraPrefs {
+            enabled: true,
+            selected_device_id: "cam-keep".into(),
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                deliberate_blink: "pressCtrlI".into(),
+                ..PresenceActionsPrefs::default()
+            },
+            ..Default::default()
+        };
+        // FE full save with default/empty cameraPrefs must not wipe quiet camera saves.
+        let json = r#"{"version":8,"mappings":[],"trash":[],"cameraPrefs":{"enabled":false,"selectedDeviceId":"","previewEnabled":false,"selectedWidth":0,"selectedHeight":0,"selectedFrameRate":0,"gazeCalibration":null,"presenceActions":{"enabled":false,"triggers":{"away":false,"shake":false,"blink":false},"onAway":"none","onReturn":"none","shakeHead":"none","deliberateBlink":"none"}}}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert_eq!(merged.camera_prefs.selected_device_id, "cam-keep");
+        assert!(merged.camera_prefs.presence_actions.enabled);
+        assert_eq!(merged.camera_prefs.presence_actions.deliberate_blink, "pressCtrlI");
     }
 
     #[test]
@@ -4167,6 +4236,58 @@ mod tests {
         assert!(!parsed.presence_actions.triggers.shake);
         assert!(parsed.presence_actions.triggers.blink);
         assert_eq!(parsed.presence_actions.on_away, "none");
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_keeps_gaze_when_incoming_null() {
+        let existing = CameraPrefs {
+            enabled: true,
+            selected_device_id: "cam-1".into(),
+            selected_width: 1280,
+            selected_height: 720,
+            selected_frame_rate: 30,
+            gaze_calibration: Some(serde_json::json!({"v":1,"ok":true})),
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                deliberate_blink: "pressCtrlI".into(),
+                ..PresenceActionsPrefs::default()
+            },
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            enabled: true,
+            selected_device_id: "".into(),
+            gaze_calibration: None,
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                deliberate_blink: "pressCtrlI".into(),
+                ..PresenceActionsPrefs::default()
+            },
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false);
+        assert_eq!(
+            merged.gaze_calibration,
+            Some(serde_json::json!({"v":1,"ok":true}))
+        );
+        assert_eq!(merged.selected_device_id, "cam-1");
+        assert_eq!(merged.selected_width, 1280);
+        assert_eq!(merged.selected_height, 720);
+        assert_eq!(merged.selected_frame_rate, 30);
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_clears_gaze_when_flagged() {
+        let existing = CameraPrefs {
+            gaze_calibration: Some(serde_json::json!({"v":1})),
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            gaze_calibration: None,
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, true);
+        assert!(merged.gaze_calibration.is_none());
     }
 
     #[test]

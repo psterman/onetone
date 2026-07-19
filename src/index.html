@@ -2482,12 +2482,16 @@
                     <div class="camera-config-card" data-camera-card="blink" data-camera-trigger="blink">
                       <div class="camera-card-kicker" data-i18n="cameraCardDeliberate">刻意动作</div>
                       <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">闭眼半秒</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="闭眼半秒"></button>
+                        <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">故意眨眼确认</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="故意眨眼确认"></button>
                       </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc">做法：看镜头 → 双眼轻轻闭上约半秒 → 再睁开。普通眨眼太短不会触发；一直闭着眼也不算。触发后约 3 秒冷却。</div>
+                      <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc">做法：看镜头 → 故意闭眼约半秒再睁开 → 马上再短眨一下确认。普通眨眼忽略；过程无提示音。首次开启会自动适配你的开眼基线。</div>
                       <p class="camera-bind-summary" id="cameraTriggerSummaryBlink">尚未绑定结果</p>
-                      <button type="button" class="control-btn camera-goto-bind" data-camera-goto-bind="blink">去绑定结果</button>
+                      <p class="camera-blink-baseline-hint" id="cameraBlinkBaselineHint">尚未适配 · 开启识别后自动采集</p>
+                      <div class="camera-action-bar">
+                        <button type="button" class="control-btn camera-goto-bind" data-camera-goto-bind="blink">去绑定结果</button>
+                        <button type="button" class="control-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">重新适配眨眼</button>
+                      </div>
                     </div>
                   </div>
 
@@ -2541,10 +2545,10 @@
                     </div>
                     <div class="camera-bind-row" data-camera-bind="deliberateBlink" id="cameraBindRowBlink">
                       <div class="camera-bind-head">
-                        <div class="camera-bind-title" data-i18n="cameraCardBlinkTitle">闭眼半秒</div>
-                        <p class="camera-bind-desc" data-i18n="cameraBindBlinkDesc">闭眼约半秒再睁开后执行；普通眨眼忽略。</p>
+                        <div class="camera-bind-title" data-i18n="cameraCardBlinkTitle">故意眨眼确认</div>
+                        <p class="camera-bind-desc" data-i18n="cameraBindBlinkDesc">故意闭眼约半秒再睁开，马上再短眨确认后执行；普通眨眼忽略。</p>
                       </div>
-                      <div class="camera-action-tiles" role="radiogroup" aria-label="闭眼半秒动作" data-camera-bind-key="deliberateBlink"></div>
+                      <div class="camera-action-tiles" role="radiogroup" aria-label="故意眨眼动作" data-camera-bind-key="deliberateBlink"></div>
                     </div>
                   </div>
                   <div class="camera-config-grid camera-action-explain-grid">
@@ -2553,7 +2557,7 @@
                       <div class="camera-card-title" data-i18n="cameraGuardRulesTitle">防误触规则</div>
                       <p class="camera-card-desc" data-i18n="cameraGuardRulesDesc">与当前实现一致，不会夸大未接入的能力。</p>
                       <ul class="camera-guard-rules-list">
-                        <li data-i18n="cameraGuardRuleHold">保持动作：闭眼约半秒；摇头需连续左右摆头</li>
+                        <li data-i18n="cameraGuardRuleHold">保持动作：故意闭眼约半秒后再短眨确认；摇头需连续左右摆头</li>
                         <li data-i18n="cameraGuardRuleState">状态合适才执行：摄像头运行、在席稳定、动作适合当前状态</li>
                         <li data-i18n="cameraGuardRuleCooldown">自动冷却：执行后短暂锁定</li>
                         <li data-i18n="cameraGuardRuleVisible">看得见原因：识别 / 执行 / 跳过显示在预览旁</li>

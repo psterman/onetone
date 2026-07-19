@@ -531,11 +531,21 @@
   }
 
   function cameraPrefs(){
-    var cfg=state().config||{};
+    var st=state();
+    if(!st.config||typeof st.config!=='object'){
+      if(global.OneToneState&&global.OneToneState.state){
+        if(!global.OneToneState.state.config) global.OneToneState.state.config={};
+        st=global.OneToneState.state;
+      }else{
+        return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      }
+    }
+    var cfg=st.config;
     if(!cfg.cameraPrefs||typeof cfg.cameraPrefs!=='object'){
-      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
+    if(cfg.cameraPrefs.blinkBaseline===undefined) cfg.cameraPrefs.blinkBaseline=null;
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
       cfg.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
     }

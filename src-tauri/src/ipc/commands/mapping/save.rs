@@ -81,13 +81,22 @@ pub fn cmd_save_camera_prefs(
     window: tauri::WebviewWindow,
     json: String,
 ) -> Result<(), String> {
-    let prefs: CameraPrefs = serde_json::from_str(&json).map_err(|e| {
+    let value: serde_json::Value = serde_json::from_str(&json).map_err(|e| {
         eprintln!("cmd_save_camera_prefs: parse failed: {e}");
+        "camera_prefs_invalid".to_string()
+    })?;
+    let clear_gaze = value
+        .get("clearGazeCalibration")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let incoming: CameraPrefs = serde_json::from_value(value).map_err(|e| {
+        eprintln!("cmd_save_camera_prefs: prefs parse failed: {e}");
         "camera_prefs_invalid".to_string()
     })?;
     {
         let mut cfg = state.cfg.lock();
-        cfg.camera_prefs = prefs;
+        cfg.camera_prefs =
+            config::merge_camera_prefs_quiet(&cfg.camera_prefs, incoming, clear_gaze);
         crate::config::save_config(&cfg);
     }
     crate::app_log::log_line(

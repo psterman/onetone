@@ -14,6 +14,8 @@
   var saveWaiters=[];
   /** Survives partial FE state: re-inject app scenarios omitted from mappings[] unless trashed. */
   var lastKnownAppScenarios={};
+  /** Survives incomplete FE cameraPrefs during quiet save (prevents wiping calib / bindings). */
+  var lastKnownCameraPrefs=null;
   var APP_SCENARIO_BACKUP_KEY='onetone.appScenarios.v1';
 
   function hookFn(name){
@@ -397,6 +399,30 @@
     }
     var wakeAcoustic=cfg.voiceWakeAcousticCommands||cfg.voice_wake_acoustic_commands;
     cfg.voiceWakeAcousticCommands=normalizeGlobalAcousticVoiceCommands(wakeAcoustic);
+    if(!cfg.cameraPrefs&&cfg.camera_prefs) cfg.cameraPrefs=cfg.camera_prefs;
+    if(cfg.cameraPrefs&&typeof cfg.cameraPrefs==='object'){
+      var cp=Object.assign({},cfg.cameraPrefs);
+      if(!cp.presenceActions&&cp.presence_actions) cp.presenceActions=cp.presence_actions;
+      if(cp.presenceActions&&typeof cp.presenceActions==='object'){
+        var pa=cp.presenceActions;
+        cp.presenceActions={
+          enabled:pa.enabled!==undefined?!!pa.enabled:false,
+          triggers:pa.triggers&&typeof pa.triggers==='object'?{
+            away:!!pa.triggers.away,
+            shake:!!pa.triggers.shake,
+            blink:!!pa.triggers.blink
+          }:(pa.triggers||undefined),
+          onAway:pa.onAway!=null?pa.onAway:(pa.on_away!=null?pa.on_away:'none'),
+          onReturn:pa.onReturn!=null?pa.onReturn:(pa.on_return!=null?pa.on_return:'none'),
+          shakeHead:pa.shakeHead!=null?pa.shakeHead:(pa.shake_head!=null?pa.shake_head:'none'),
+          deliberateBlink:pa.deliberateBlink!=null?pa.deliberateBlink:(pa.deliberate_blink!=null?pa.deliberate_blink:'none')
+        };
+      }
+      if(cp.selectedDeviceId==null&&cp.selected_device_id!=null) cp.selectedDeviceId=cp.selected_device_id;
+      if(cp.gazeCalibration===undefined&&cp.gaze_calibration!==undefined) cp.gazeCalibration=cp.gaze_calibration;
+      if(cp.blinkBaseline===undefined&&cp.blink_baseline!==undefined) cp.blinkBaseline=cp.blink_baseline;
+      cfg.cameraPrefs=cp;
+    }
     return cfg;
   }
 
@@ -441,7 +467,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -474,7 +500,7 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }else{
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
       if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
@@ -482,6 +508,7 @@
       if(st.config.cameraPrefs.selectedHeight==null) st.config.cameraPrefs.selectedHeight=0;
       if(st.config.cameraPrefs.selectedFrameRate==null) st.config.cameraPrefs.selectedFrameRate=0;
       if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
+      if(st.config.cameraPrefs.blinkBaseline===undefined) st.config.cameraPrefs.blinkBaseline=null;
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
         st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
       }else{
@@ -585,6 +612,7 @@
           selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
           selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
           gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
+          blinkBaseline:p.blinkBaseline!=null?p.blinkBaseline:null,
           presenceActions:{
             enabled:presenceEnabled,
             triggers:{
@@ -734,22 +762,83 @@
     });
   }
 
-  function buildCameraPrefsPayload(){
+  function presenceActionsHaveBinding(pa){
+    if(!pa||typeof pa!=='object') return false;
+    return ['onAway','onReturn','shakeHead','deliberateBlink'].some(function(k){
+      return String(pa[k]||'none').trim()!=='none';
+    });
+  }
+
+  /** True when FE lost the presenceActions shape (not when user set all to none). */
+  function presenceActionsLookStripped(pa){
+    if(!pa||typeof pa!=='object') return true;
+    return ['onAway','onReturn','shakeHead','deliberateBlink'].some(function(k){
+      return pa[k]===undefined;
+    });
+  }
+
+  function rememberCameraPrefsFromConfig(cfg){
+    var p=cfg&&cfg.cameraPrefs;
+    if(!p||typeof p!=='object') return;
+    try{
+      lastKnownCameraPrefs=JSON.parse(JSON.stringify({
+        enabled:!!(p.presenceActions&&p.presenceActions.enabled),
+        selectedDeviceId:String(p.selectedDeviceId||'').trim(),
+        previewEnabled:false,
+        selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
+        selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
+        selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
+        gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
+        blinkBaseline:p.blinkBaseline!=null?p.blinkBaseline:null,
+        presenceActions:p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{
+          enabled:false,triggers:{away:false,shake:false,blink:false},
+          onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'
+        }
+      }));
+    }catch(_){
+      lastKnownCameraPrefs=null;
+    }
+  }
+
+  function buildCameraPrefsPayload(opts){
+    opts=opts&&typeof opts==='object'?opts:{};
     ensureConfig();
     var st=state();
     var p=st.config.cameraPrefs||{};
+    var known=lastKnownCameraPrefs||{};
+    // If FE lost calibration / bindings, prefer last known good snapshot.
+    var gaze=p.gazeCalibration!=null?p.gazeCalibration:(known.gazeCalibration!=null?known.gazeCalibration:null);
+    if(opts.clearGazeCalibration) gaze=null;
+    var blinkBase=p.blinkBaseline!=null?p.blinkBaseline:(known.blinkBaseline!=null?known.blinkBaseline:null);
     var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
+    var knownPa=known.presenceActions&&typeof known.presenceActions==='object'?known.presenceActions:{};
+    if(presenceActionsLookStripped(pa)&&presenceActionsHaveBinding(knownPa)){
+      pa=Object.assign({},knownPa,{
+        enabled:pa.enabled!==undefined?!!pa.enabled:!!knownPa.enabled,
+        triggers:pa.triggers&&typeof pa.triggers==='object'?pa.triggers:knownPa.triggers
+      });
+      // Keep FE in sync so UI / next save stay consistent.
+      if(st.config.cameraPrefs) st.config.cameraPrefs.presenceActions=pa;
+    }
+    if(p.gazeCalibration==null&&gaze!=null&&st.config.cameraPrefs){
+      st.config.cameraPrefs.gazeCalibration=gaze;
+    }
+    if(p.blinkBaseline==null&&blinkBase!=null&&st.config.cameraPrefs){
+      st.config.cameraPrefs.blinkBaseline=blinkBase;
+    }
     var tr=pa.triggers&&typeof pa.triggers==='object'?pa.triggers:{};
     var presenceEnabled=!!pa.enabled;
+    var deviceId=String(p.selectedDeviceId||known.selectedDeviceId||'').trim();
     return {
-      // Deprecated mirror of presenceActions.enabled — do not read as intent.
       enabled:presenceEnabled,
-      selectedDeviceId:String(p.selectedDeviceId||'').trim(),
+      selectedDeviceId:deviceId,
       previewEnabled:false,
-      selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
-      selectedHeight:Math.max(0,Number(p.selectedHeight)||0)|0,
-      selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
-      gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
+      selectedWidth:Math.max(0,Number(p.selectedWidth!=null?p.selectedWidth:known.selectedWidth)||0)|0,
+      selectedHeight:Math.max(0,Number(p.selectedHeight!=null?p.selectedHeight:known.selectedHeight)||0)|0,
+      selectedFrameRate:Math.max(0,Number(p.selectedFrameRate!=null?p.selectedFrameRate:known.selectedFrameRate)||0)|0,
+      gazeCalibration:gaze,
+      clearGazeCalibration:!!opts.clearGazeCalibration,
+      blinkBaseline:blinkBase,
       presenceActions:{
         enabled:presenceEnabled,
         triggers:{
@@ -766,19 +855,30 @@
   }
 
   /** Camera prefs only — no mapping merge / voice restart / mvp_init pull. */
-  function saveCameraPrefsQuiet(){
+  function saveCameraPrefsQuiet(opts){
+    if(!configLoadedFromBackend){
+      earlyPersistLog('saveCameraPrefsQuiet skipped (config not loaded)');
+      return Promise.resolve(false);
+    }
     var invoke=global.__vp_invoke__;
     if(!invoke) return Promise.resolve(false);
     var payload;
     try{
-      payload=JSON.stringify(buildCameraPrefsPayload());
+      payload=JSON.stringify(buildCameraPrefsPayload(opts));
     }catch(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save_camera_prefs build failed',err);
       }
       return Promise.resolve(false);
     }
-    return invoke('cmd_save_camera_prefs',{json:payload}).then(function(){ return true; }).catch(function(err){
+    return invoke('cmd_save_camera_prefs',{json:payload}).then(function(){
+      try{
+        var parsed=JSON.parse(payload);
+        delete parsed.clearGazeCalibration;
+        lastKnownCameraPrefs=parsed;
+      }catch(_){}
+      return true;
+    }).catch(function(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save_camera_prefs',err);
       }
@@ -1008,11 +1108,20 @@
       clearTimeout(configBootstrapWatchdog);
       rememberAppScenariosFromConfig(st.config);
       reinjectRememberedAppScenarios(st.config);
+      rememberCameraPrefsFromConfig(st.config);
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
       try{
-        if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
-          global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+        if(global.OneToneCameraPresenceActions){
+          if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
+            global.OneToneCameraPresenceActions.syncUiFromPrefs();
+          }
+          if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
+            global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+          }
+        }
+        if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
+          global.OneToneCameraGazeCalibration.loadFromPrefs();
         }
       }catch(_){}
       if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();

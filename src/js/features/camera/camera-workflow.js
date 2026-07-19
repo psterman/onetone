@@ -153,6 +153,11 @@
       else name='pro';
     }
     showTabUi(name);
+    try{
+      if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
+        global.OneToneCameraPresenceActions.syncUiFromPrefs();
+      }
+    }catch(_){}
     syncInactiveHint();
     syncCalibTabLock();
     syncGazeMap();
@@ -298,10 +303,10 @@
     if(api&&api.getState){
       var st=api.getState();
       if(st.lastGesture==='shake'&&st.pulseActive) return t('cameraPresenceGestureShake','摇头');
-      if(st.lastGesture==='blink'&&st.pulseActive) return t('cameraPresenceGestureBlink','闭眼半秒');
+      if(st.lastGesture==='blink'&&st.pulseActive) return t('cameraPresenceGestureBlink','闭眼两次确认');
       if(st.shakeListeningLabel) return st.shakeListeningLabel;
       if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
-      if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','闭眼半秒');
+      if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','闭眼两次确认');
     }
     var el=$('cameraPresenceGestureText');
     if(el&&el.textContent) return el.textContent.trim();
