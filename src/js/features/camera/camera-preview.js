@@ -68,7 +68,7 @@
   function defaultVideoEnhancement(){
     var api=enhancerApi();
     if(api&&api.defaultPrefs) return api.defaultPrefs();
-    return {enabled:false,look:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0};
+    return {enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0};
   }
 
   function ensureVideoEnhancement(prefs){

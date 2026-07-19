@@ -26,6 +26,7 @@
   var DEFAULT_PREFS={
     enabled:false,
     look:'off',
+    faceMask:'off',
     preset:'natural',
     beautyEnabled:false,
     whiten:0,
@@ -46,6 +47,9 @@
   var videoEl=null;
   var shellEl=null;
   var canvasEl=null;
+  var maskCanvasEl=null;
+  var maskCtx=null;
+  var faceMaskEng=null;
   var beautify=null;
   var ctx2d=null;
   var mode='off';
@@ -80,6 +84,28 @@
     return 'off';
   }
 
+  function normalizeFaceMask(v){
+    var api=global.OneToneFaceMask;
+    if(api&&api.normalizeStyle) return api.normalizeStyle(v);
+    v=String(v||'off').toLowerCase();
+    if(v==='off'||v==='solid'||v==='emoji'||v==='animal') return v;
+    return 'off';
+  }
+
+  function wantsBeauty(p){
+    p=p||prefs;
+    return !!(p&&p.look&&p.look!=='off');
+  }
+
+  function wantsMask(p){
+    p=p||prefs;
+    return !!(p&&p.faceMask&&p.faceMask!=='off');
+  }
+
+  function wantsPipeline(p){
+    return wantsBeauty(p)||wantsMask(p);
+  }
+
   function mapLegacyPresetToLook(preset){
     preset=String(preset||'');
     if(preset==='natural') return 'natural';
@@ -110,9 +136,10 @@
   }
 
   function syncActiveFlags(p){
-    var active=!!p.enabled&&p.look!=='off';
-    p.enabled=active;
-    p.beautyEnabled=active;
+    var beauty=wantsBeauty(p);
+    var mask=wantsMask(p);
+    p.beautyEnabled=beauty;
+    p.enabled=beauty||mask;
     return p;
   }
 
@@ -124,9 +151,11 @@
       if(src.enabled&&look==='off'&&src.preset) look=mapLegacyPresetToLook(src.preset);
       if(!src.enabled&&src.look==null&&!src.whiten&&!src.smooth) look='off';
     }
+    var faceMask=normalizeFaceMask(src.faceMask!=null?src.faceMask:'off');
     var p={
       enabled:!!src.enabled,
       look:look,
+      faceMask:faceMask,
       preset:String(src.preset||lookToLegacyPreset(look)||'natural'),
       beautyEnabled:!!src.beautyEnabled,
       whiten:clampLevel(src.whiten!=null?src.whiten:0),
@@ -143,13 +172,10 @@
       antiFlicker:normalizeAntiFlicker(src.antiFlicker),
       displayFrameRate:normalizeDisplayFps(src.displayFrameRate)
     };
-    if(p.look==='off'){
-      p.enabled=false;
-      p.beautyEnabled=false;
-    }else if(p.enabled||p.beautyEnabled||src.look){
-      p.enabled=true;
+    if(p.look!=='off'&&(p.enabled||p.beautyEnabled||src.look)){
       p.beautyEnabled=true;
     }
+    if(p.look==='off') p.beautyEnabled=false;
     syncActiveFlags(p);
     p.preset=lookToLegacyPreset(p.look);
     return p;
@@ -164,13 +190,9 @@
     p.rosy=d.rosy;
     p.slim=d.slim;
     p.preset=lookToLegacyPreset(look);
-    if(look==='off'){
-      p.enabled=false;
-      p.beautyEnabled=false;
-    }else{
-      p.enabled=true;
-      p.beautyEnabled=true;
-    }
+    if(look==='off') p.beautyEnabled=false;
+    else p.beautyEnabled=true;
+    syncActiveFlags(p);
     return p;
   }
 
@@ -197,17 +219,43 @@
     var existing=$('cameraEnhancedCanvas');
     if(existing&&existing.parentNode===shellEl){
       canvasEl=existing;
-      return canvasEl;
+    }else{
+      if(existing&&existing.parentNode){
+        try{ existing.parentNode.removeChild(existing); }catch(_){}
+      }
+      canvasEl=document.createElement('canvas');
+      canvasEl.id='cameraEnhancedCanvas';
+      canvasEl.className='camera-enhanced-canvas';
+      canvasEl.setAttribute('aria-hidden','true');
+      shellEl.appendChild(canvasEl);
     }
-    if(existing&&existing.parentNode){
-      try{ existing.parentNode.removeChild(existing); }catch(_){}
-    }
-    canvasEl=document.createElement('canvas');
-    canvasEl.id='cameraEnhancedCanvas';
-    canvasEl.className='camera-enhanced-canvas';
-    canvasEl.setAttribute('aria-hidden','true');
-    shellEl.appendChild(canvasEl);
+    ensureMaskCanvas();
     return canvasEl;
+  }
+
+  function ensureMaskCanvas(){
+    if(!shellEl) return null;
+    var existing=$('cameraFaceMaskCanvas');
+    if(existing&&existing.parentNode===shellEl){
+      maskCanvasEl=existing;
+    }else{
+      if(existing&&existing.parentNode){
+        try{ existing.parentNode.removeChild(existing); }catch(_){}
+      }
+      maskCanvasEl=document.createElement('canvas');
+      maskCanvasEl.id='cameraFaceMaskCanvas';
+      maskCanvasEl.className='camera-face-mask-canvas';
+      maskCanvasEl.setAttribute('aria-hidden','true');
+      shellEl.appendChild(maskCanvasEl);
+    }
+    if(!maskCtx){
+      try{ maskCtx=maskCanvasEl.getContext('2d',{alpha:true}); }catch(_){ maskCtx=null; }
+    }
+    if(!faceMaskEng){
+      var api=global.OneToneFaceMask;
+      if(api&&api.create) faceMaskEng=api.create();
+    }
+    return maskCanvasEl;
   }
 
   function destroyPipeline(){
@@ -216,6 +264,8 @@
       beautify=null;
     }
     ctx2d=null;
+    maskCtx=null;
+    faceMaskEng=null;
   }
 
   function initGpuBeautify(canvas){
@@ -295,17 +345,20 @@
   }
 
   function isActive(){
-    return !!(prefs.enabled&&prefs.look!=='off'&&running&&!bypassCompare);
+    return !!(wantsPipeline()&&running&&!bypassCompare);
   }
 
   function syncDisplayLayers(){
     var video=videoEl||$('cameraPreviewVideo');
     var canvas=canvasEl||$('cameraEnhancedCanvas');
-    var on=isActive()&&video&&video.srcObject;
+    var mask=maskCanvasEl||$('cameraFaceMaskCanvas');
+    var live=!!(video&&video.srcObject);
+    var beautyOn=isActive()&&wantsBeauty()&&live;
+    var maskOn=isActive()&&wantsMask()&&live;
     if(video){
-      if(on&&mode!=='css') video.classList.add('is-enhanced-hidden');
+      if(beautyOn&&mode!=='css') video.classList.add('is-enhanced-hidden');
       else video.classList.remove('is-enhanced-hidden');
-      if(on&&mode==='css'){
+      if(beautyOn&&mode==='css'){
         var w=1+levelAmt(prefs.whiten)*0.18+(prefs.brightness/100);
         var s=1+rosyAmt(prefs.rosy)*0.12+(prefs.saturation/100);
         var c=1+(prefs.contrast/100);
@@ -315,8 +368,47 @@
       }
     }
     if(canvas){
-      canvas.hidden=!on||mode==='css';
+      canvas.hidden=!beautyOn||mode==='css';
       canvas.style.pointerEvents='none';
+    }
+    if(mask){
+      mask.hidden=!maskOn;
+      mask.style.pointerEvents='none';
+      if(!maskOn&&maskCtx){
+        try{ maskCtx.clearRect(0,0,mask.width||0,mask.height||0); }catch(_){}
+      }
+    }
+  }
+
+  function resizeMaskCanvas(){
+    if(!maskCanvasEl||!videoEl) return;
+    var vw=videoEl.videoWidth|0;
+    var vh=videoEl.videoHeight|0;
+    if(vw<=0||vh<=0){ vw=640; vh=360; }
+    if(maskCanvasEl.width!==vw||maskCanvasEl.height!==vh){
+      maskCanvasEl.width=vw;
+      maskCanvasEl.height=vh;
+      try{ maskCtx=maskCanvasEl.getContext('2d',{alpha:true}); }catch(_){ maskCtx=null; }
+    }
+  }
+
+  function drawFaceMask(){
+    if(!wantsMask()||!maskCanvasEl||!maskCtx) return;
+    resizeMaskCanvas();
+    var api=global.OneToneCameraGazeLandmarker;
+    var lms=api&&api.getLastLandmarks?api.getLastLandmarks():null;
+    if(!faceMaskEng){
+      var fm=global.OneToneFaceMask;
+      if(fm&&fm.create) faceMaskEng=fm.create();
+    }
+    if(!faceMaskEng||!lms||!lms.length){
+      try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(_){}
+      return;
+    }
+    try{
+      faceMaskEng.draw(maskCtx,maskCanvasEl.width,maskCanvasEl.height,lms,prefs.faceMask);
+    }catch(_){
+      try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(__){}
     }
   }
 
@@ -386,8 +478,11 @@
     var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     if(shouldThrottle(now)) return;
     lastDrawAt=now;
-    if(mode==='webgl') drawWebGl();
-    else if(mode==='canvas2d') drawCanvas2d();
+    if(wantsBeauty()){
+      if(mode==='webgl') drawWebGl();
+      else if(mode==='canvas2d') drawCanvas2d();
+    }
+    if(wantsMask()) drawFaceMask();
   }
 
   function cancelLoops(){
@@ -400,21 +495,21 @@
   }
 
   function loopRvfc(){
-    if(!running||!prefs.enabled||prefs.look==='off'||!videoEl) return;
+    if(!running||!wantsPipeline()||!videoEl) return;
     if(typeof videoEl.requestVideoFrameCallback!=='function'){ loopRaf(); return; }
     rvfcHandle=videoEl.requestVideoFrameCallback(function(){
       rvfcHandle=0;
-      if(!running||!prefs.enabled||prefs.look==='off') return;
+      if(!running||!wantsPipeline()) return;
       if(!bypassCompare) renderOnce();
       loopRvfc();
     });
   }
 
   function loopRaf(){
-    if(!running||!prefs.enabled||prefs.look==='off') return;
+    if(!running||!wantsPipeline()) return;
     rafHandle=requestAnimationFrame(function(){
       rafHandle=0;
-      if(!running||!prefs.enabled||prefs.look==='off') return;
+      if(!running||!wantsPipeline()) return;
       if(!bypassCompare) renderOnce();
       loopRaf();
     });
@@ -422,7 +517,7 @@
 
   function startLoop(){
     cancelLoops();
-    if(!prefs.enabled||prefs.look==='off'||!running||!videoEl) return;
+    if(!wantsPipeline()||!running||!videoEl) return;
     if(typeof videoEl.requestVideoFrameCallback==='function') loopRvfc();
     else loopRaf();
   }
@@ -430,10 +525,13 @@
   function activatePipeline(){
     if(!shellEl||!videoEl) return;
     ensureCanvas();
-    if(!canvasEl) return;
-    if(mode==='off'||(mode==='webgl'&&!beautify)||(mode==='canvas2d'&&!ctx2d)){
-      mode=pickMode(canvasEl);
+    if(wantsBeauty()){
+      if(!canvasEl) return;
+      if(mode==='off'||(mode==='webgl'&&!beautify)||(mode==='canvas2d'&&!ctx2d)){
+        mode=pickMode(canvasEl);
+      }
     }
+    ensureMaskCanvas();
     running=true;
     syncDisplayLayers();
     startLoop();
@@ -452,7 +550,7 @@
     if(!videoEl||!shellEl) return false;
     ensureCanvas();
     syncFromCameraPrefs();
-    if(prefs.enabled&&prefs.look!=='off') activatePipeline();
+    if(wantsPipeline()) activatePipeline();
     else deactivatePipeline();
     return true;
   }
@@ -465,6 +563,10 @@
       videoEl.style.filter='';
     }
     if(canvasEl){ canvasEl.hidden=true; }
+    if(maskCanvasEl){
+      maskCanvasEl.hidden=true;
+      if(maskCtx) try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(_){}
+    }
     destroyPipeline();
     mode='off';
     videoEl=null;
@@ -477,10 +579,18 @@
     if(partial.look!=null){
       applyLookDefaults(next,partial.look);
     }
-    if(partial.enabled!==undefined&&partial.look==null){
+    if(partial.faceMask!=null){
+      next.faceMask=normalizeFaceMask(partial.faceMask);
+    }
+    if(partial.enabled!==undefined&&partial.look==null&&partial.faceMask==null){
       next.enabled=!!partial.enabled;
-      if(!next.enabled){ next.look='off'; next.beautyEnabled=false; }
-      else if(next.look==='off') next.look='natural';
+      if(!next.enabled){
+        next.look='off';
+        next.faceMask='off';
+        next.beautyEnabled=false;
+      }else if(next.look==='off'&&next.faceMask==='off'){
+        next.look='natural';
+      }
     }
     if(partial.beautyEnabled!==undefined&&partial.look==null) next.beautyEnabled=!!partial.beautyEnabled;
     if(partial.whiten!=null) next.whiten=clampLevel(partial.whiten);
@@ -501,7 +611,7 @@
     prefs=next;
     var root=cameraPrefsRoot();
     if(root) root.videoEnhancement=clonePrefs(prefs);
-    if(prefs.enabled&&prefs.look!=='off'&&videoEl&&shellEl) activatePipeline();
+    if(wantsPipeline()&&videoEl&&shellEl) activatePipeline();
     else deactivatePipeline();
     syncDisplayLayers();
     return getPrefs();
@@ -509,6 +619,10 @@
 
   function applyLook(look){
     return setPrefs({look:normalizeLook(look)});
+  }
+
+  function applyFaceMask(style){
+    return setPrefs({faceMask:normalizeFaceMask(style)});
   }
 
   function getPrefs(){ return clonePrefs(prefs); }
@@ -520,8 +634,8 @@
     }else{
       prefs=clonePrefs(DEFAULT_PREFS);
     }
-    if(prefs.enabled&&prefs.look!=='off'&&videoEl&&shellEl) activatePipeline();
-    else if(videoEl||canvasEl) deactivatePipeline();
+    if(wantsPipeline()&&videoEl&&shellEl) activatePipeline();
+    else if(videoEl||canvasEl||maskCanvasEl) deactivatePipeline();
     return getPrefs();
   }
 
@@ -533,7 +647,7 @@
 
   function getRuntimeStatus(){
     var slimMode='off';
-    if(prefs.slim>0&&prefs.enabled&&prefs.look!=='off'){
+    if(prefs.slim>0&&wantsBeauty()){
       slimMode=updateSmoothFace();
       if(qualityTier!=='full') slimMode=mode==='css'?'off':'simple';
     }
@@ -541,7 +655,8 @@
       enabled:!!prefs.enabled,
       active:isActive(),
       look:prefs.look,
-      mode:prefs.enabled&&prefs.look!=='off'?(mode==='off'?'css':mode):'off',
+      faceMask:prefs.faceMask||'off',
+      mode:wantsBeauty()?(mode==='off'?'css':mode):'off',
       engine:mode==='webgl'?'gpuimage-beautify':mode,
       slimMode:slimMode,
       qualityTier:qualityTier,
@@ -565,6 +680,7 @@
     setPrefs:setPrefs,
     getPrefs:getPrefs,
     applyLook:applyLook,
+    applyFaceMask:applyFaceMask,
     isActive:isActive,
     syncFromCameraPrefs:syncFromCameraPrefs,
     renderOnce:renderOnce,
@@ -573,7 +689,8 @@
     defaultPrefs:function(){ return clonePrefs(DEFAULT_PREFS); },
     normalizePrefs:clonePrefs,
     lookDefaults:function(look){ return LOOK_DEFAULTS[normalizeLook(look)]||LOOK_DEFAULTS.off; },
-    mapLegacyPresetToLook:mapLegacyPresetToLook
+    mapLegacyPresetToLook:mapLegacyPresetToLook,
+    normalizeFaceMask:normalizeFaceMask
   };
 
   if(document.readyState==='loading'){

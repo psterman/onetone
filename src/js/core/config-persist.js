@@ -467,7 +467,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:{enabled:false,look:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -782,6 +782,7 @@
     return {
       enabled:false,
       look:'off',
+      faceMask:'off',
       preset:'natural',
       beautyEnabled:false,
       whiten:0,
@@ -824,6 +825,8 @@
       look=mapPreset(src.preset);
     }
     if(!look) look='off';
+    var faceMask=String(src.faceMask||'off').toLowerCase();
+    if(faceMask!=='off'&&faceMask!=='solid'&&faceMask!=='emoji'&&faceMask!=='animal') faceMask='off';
     var anti=String(src.antiFlicker||d.antiFlicker).toLowerCase();
     if(anti!=='auto'&&anti!=='50hz'&&anti!=='60hz') anti=d.antiFlicker;
     var dfs=Math.round(Number(src.displayFrameRate)||0)|0;
@@ -833,13 +836,15 @@
       if(!isFinite(n)) n=fallback;
       return Math.max(lo,Math.min(hi,n));
     }
-    var enabled=look!=='off'&&!!(src.enabled||src.beautyEnabled||(src.look&&src.look!=='off'));
-    if(look==='off') enabled=false;
+    var beauty=look!=='off'&&!!(src.enabled||src.beautyEnabled||(src.look&&src.look!=='off'));
+    if(look==='off') beauty=false;
+    var enabled=beauty||faceMask!=='off';
     return {
       enabled:enabled,
       look:look,
+      faceMask:faceMask,
       preset:String(src.preset||d.preset),
-      beautyEnabled:enabled,
+      beautyEnabled:beauty,
       whiten:clampLevel(src.whiten!=null?src.whiten:0),
       smooth:clampLevel(src.smooth!=null?src.smooth:0),
       rosy:clampLevel(src.rosy!=null?src.rosy:0),

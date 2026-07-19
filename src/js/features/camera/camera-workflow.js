@@ -297,6 +297,13 @@
     fresh:['cameraProMoodFresh','气色提起来了']
   };
 
+  var MASK_MOOD={
+    off:['cameraProMoodMaskOff','已显示真脸'],
+    solid:['cameraProMoodMaskSolid','素面遮盖已开启'],
+    emoji:['cameraProMoodMaskEmoji','表情面具已开启'],
+    animal:['cameraProMoodMaskAnimal','萌宠面具已开启']
+  };
+
   function flashEl(el){
     if(!el) return;
     el.classList.remove('is-flash');
@@ -324,7 +331,7 @@
       next=api.applyLook(partial.look);
       // allow same-call level overrides after look defaults
       var extra={};
-      ['whiten','smooth','rosy','slim','antiFlicker','displayFrameRate','brightness','contrast','saturation'].forEach(function(k){
+      ['whiten','smooth','rosy','slim','antiFlicker','displayFrameRate','brightness','contrast','saturation','faceMask'].forEach(function(k){
         if(partial[k]!=null) extra[k]=partial[k];
       });
       if(Object.keys(extra).length) next=api.setPrefs(extra);
@@ -369,6 +376,15 @@
     return persistEnhancement({look:look},{moodLook:look});
   }
 
+  function applyFaceMask(style){
+    style=String(style||'off');
+    var grid=$('cameraProMaskGrid');
+    var card=grid?grid.querySelector('[data-enh-mask="'+style+'"]'):null;
+    flashEl(card);
+    var m=MASK_MOOD[style]||MASK_MOOD.off;
+    return persistEnhancement({faceMask:style},{moodText:t(m[0],m[1])});
+  }
+
   function syncEnhancementUi(){
     var api=enhancerApi();
     var p=api&&api.getPrefs?api.getPrefs():null;
@@ -384,6 +400,13 @@
     if(grid){
       grid.querySelectorAll('[data-enh-look]').forEach(function(btn){
         btn.classList.toggle('is-active',btn.getAttribute('data-enh-look')===look);
+      });
+    }
+    var mask=p.faceMask||'off';
+    var maskGrid=$('cameraProMaskGrid');
+    if(maskGrid){
+      maskGrid.querySelectorAll('[data-enh-mask]').forEach(function(btn){
+        btn.classList.toggle('is-active',btn.getAttribute('data-enh-mask')===mask);
       });
     }
     var rows=$('cameraProLevelRows');
@@ -504,6 +527,15 @@
         if(!btn) return;
         e.preventDefault();
         applyLook(btn.getAttribute('data-enh-look')||'off');
+      });
+    }
+    var maskGrid=$('cameraProMaskGrid');
+    if(maskGrid){
+      maskGrid.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-enh-mask]'):null;
+        if(!btn) return;
+        e.preventDefault();
+        applyFaceMask(btn.getAttribute('data-enh-mask')||'off');
       });
     }
     var rows=$('cameraProLevelRows');

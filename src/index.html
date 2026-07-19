@@ -2647,6 +2647,25 @@
                             <span class="camera-pro-look-desc" data-i18n="cameraProLookFreshDesc">气色更好</span>
                           </button>
                         </div>
+                        <div class="camera-media-label" data-i18n="cameraProMaskHeading">隐私面具</div>
+                        <div class="camera-pro-look-grid camera-pro-mask-grid" id="cameraProMaskGrid" role="group" aria-label="face mask">
+                          <button type="button" class="camera-pro-look-card is-active" data-enh-mask="off">
+                            <span class="camera-pro-look-name" data-i18n="cameraProMaskOff">关闭</span>
+                            <span class="camera-pro-look-desc" data-i18n="cameraProMaskOffDesc">显示真脸</span>
+                          </button>
+                          <button type="button" class="camera-pro-look-card" data-enh-mask="solid">
+                            <span class="camera-pro-look-name" data-i18n="cameraProMaskSolid">柔雾</span>
+                            <span class="camera-pro-look-desc" data-i18n="cameraProMaskSolidDesc">粉紫遮盖</span>
+                          </button>
+                          <button type="button" class="camera-pro-look-card" data-enh-mask="emoji">
+                            <span class="camera-pro-look-name" data-i18n="cameraProMaskEmoji">元气</span>
+                            <span class="camera-pro-look-desc" data-i18n="cameraProMaskEmojiDesc">软萌笑脸</span>
+                          </button>
+                          <button type="button" class="camera-pro-look-card" data-enh-mask="animal">
+                            <span class="camera-pro-look-name" data-i18n="cameraProMaskAnimal">粉喵</span>
+                            <span class="camera-pro-look-desc" data-i18n="cameraProMaskAnimalDesc">圆耳猫脸</span>
+                          </button>
+                        </div>
                         <div class="camera-media-label" data-i18n="cameraProTuneHeading">再微调一点</div>
                         <div class="camera-pro-level-rows" id="cameraProLevelRows">
                           <div class="camera-pro-level-row" data-enh-level="whiten">
@@ -3436,6 +3455,7 @@
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-presence-actions.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
+  <script src="vendor/face-mask/face-mask.js"></script>
   <script src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>
   <script src="js/features/camera/camera-video-enhancer.js"></script>
   <script src="js/features/camera/camera-workflow.js"></script>

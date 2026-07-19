@@ -1283,6 +1283,9 @@ pub struct VideoEnhancementPrefs {
     /// Look id: off | natural | cream | glow | fresh
     #[serde(default = "default_video_enhancement_look")]
     pub look: String,
+    /// Privacy face mask: off | solid | emoji | animal (preview-only)
+    #[serde(default = "default_video_enhancement_face_mask")]
+    pub face_mask: String,
     #[serde(default = "default_video_enhancement_preset")]
     pub preset: String,
     #[serde(default)]
@@ -1319,6 +1322,9 @@ pub struct VideoEnhancementPrefs {
 fn default_video_enhancement_look() -> String {
     "off".into()
 }
+fn default_video_enhancement_face_mask() -> String {
+    "off".into()
+}
 fn default_video_enhancement_preset() -> String {
     "natural".into()
 }
@@ -1346,6 +1352,7 @@ impl Default for VideoEnhancementPrefs {
         Self {
             enabled: false,
             look: default_video_enhancement_look(),
+            face_mask: default_video_enhancement_face_mask(),
             preset: default_video_enhancement_preset(),
             beauty_enabled: false,
             whiten: 0,
