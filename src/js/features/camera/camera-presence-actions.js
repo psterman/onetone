@@ -2041,7 +2041,8 @@
     var awayTrig=!!tr.away;
     var shakeTrig=!!tr.shake;
     var blinkTrig=!!tr.blink;
-    var awayBound=p.onAway!=='none'||p.onReturn!=='none';
+    var awayBound=p.onAway!=='none';
+    var returnBound=p.onReturn!=='none';
     var shakeBound=p.shakeHead!=='none';
     var blinkBound=p.deliberateBlink!=='none';
 
@@ -2057,16 +2058,10 @@
       if(!card) return;
       var sw=card.querySelector('[data-camera-trigger-toggle]');
       var sum=card.querySelector('.camera-bind-summary');
-      var go=card.querySelector('.camera-goto-bind');
-      setSwitchState(sw,trigOn);
+      if(sw) setSwitchState(sw,trigOn);
       if(sum){
         sum.textContent=summaryText;
-        sum.classList.toggle('is-bound',!!trigOn);
-      }
-      if(go){
-        go.textContent=trigOn&&(kind==='away'?awayBound:(kind==='shake'?shakeBound:blinkBound))
-          ? t('cameraGotoBindEdit','修改绑定')
-          : t('cameraGotoBind','去绑定结果');
+        sum.classList.toggle('is-bound',!!trigOn&&!!summaryText);
       }
       card.classList.toggle('is-trigger-on',!!trigOn);
     }
@@ -2077,9 +2072,16 @@
       summaryFor(
         awayTrig,
         awayBound,
-        t('cameraTriggerSummaryAway','离席：{away} · 回席：{ret}')
-          .replace('{away}',actionLabel(p.onAway))
-          .replace('{ret}',actionLabel(p.onReturn))
+        t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p.onAway))
+      )
+    );
+    syncCard(
+      'return',
+      awayTrig,
+      summaryFor(
+        awayTrig,
+        returnBound,
+        t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p.onReturn))
       )
     );
     syncCard(
@@ -2278,28 +2280,37 @@
           toggleTrigger(kind,!on);
           return;
         }
-        var go=e.target&&e.target.closest?e.target.closest('[data-camera-goto-bind]'):null;
-        if(go){
+        var tile=e.target&&e.target.closest?e.target.closest('.camera-action-tile'):null;
+        if(tile&&!tile.disabled){
           e.preventDefault();
-          var target=String(go.getAttribute('data-camera-goto-bind')||'');
-          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
-            global.OneToneCameraWorkflow.activateTab('action');
+          var host=tile.closest('[data-camera-bind-key]');
+          var key=host?String(host.getAttribute('data-camera-bind-key')||''):'';
+          var action=String(tile.getAttribute('data-action')||'none');
+          if(!key||BIND_KEYS.indexOf(key)<0) return;
+          if(!isActionAllowedForKey(key,action)){
+            toast(actionBlockedReason(key,action)||t('cameraPresenceSkipInvalidCombo','此动作与当前事件不兼容'));
+            return;
           }
-          var rowId=target==='away'?'cameraBindRowAway':(target==='shake'?'cameraBindRowShake':'cameraBindRowBlink');
-          var row=$(rowId);
-          if(row&&row.scrollIntoView){
-            try{ row.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ try{ row.scrollIntoView(true); }catch(__){} }
-          }
-          if(row){
-            row.classList.add('is-flash');
-            setTimeout(function(){ row.classList.remove('is-flash'); },1200);
-          }
+          var patch={};
+          patch[key]=normalizeAction(action);
+          persistPresencePrefs(patch);
           return;
         }
         var recalib=e.target&&e.target.closest?e.target.closest('#cameraBlinkRecalibrateBtn'):null;
         if(recalib){
           e.preventDefault();
+          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
+            global.OneToneCameraWorkflow.activateTab('action');
+          }
+          var blinkHint=$('cameraBlinkBaselineHint');
+          var preview=$('cameraHeroPreview')||$('cameraCalibBlock');
+          if(preview&&preview.scrollIntoView){
+            try{ preview.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ try{ preview.scrollIntoView(true); }catch(__){} }
+          }
           startBlinkBaselineSample(true);
+          if(blinkHint&&blinkHint.scrollIntoView){
+            try{ blinkHint.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){}
+          }
         }
       });
     }
