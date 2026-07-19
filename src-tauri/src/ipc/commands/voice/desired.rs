@@ -40,12 +40,13 @@ pub fn voice_set_listening_strategy(
 ) -> Result<serde_json::Value, String> {
     let label = crate::config::parse_voice_listening_strategy_label(strategy)
         .ok_or_else(|| format!("unknown listening strategy: {strategy}"))?;
-    {
+    let cfg_snapshot = {
         let mut cfg = state.cfg.lock();
         crate::config::apply_voice_listening_strategy(&mut cfg, label);
         cfg.normalize();
-        crate::config::save_config(&cfg);
-    }
+        cfg.clone()
+    };
+    crate::config::save_config(&cfg_snapshot);
     crate::app_log::log_line(
         state.as_ref(),
         "voice",

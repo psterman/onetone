@@ -1411,7 +1411,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 0;
   border-radius: 12px;
   border: 1px solid var(--outline-variant);
-  background: var(--surface-high, #fff);
+  background: var(--surface-high);
   overflow: hidden;
 }
 
@@ -1422,7 +1422,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   gap: 12px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--outline-variant);
-  background: #fcfdff;
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-text-card > .voice-phrase-kind-pane {
@@ -1435,7 +1435,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 14px 16px;
   border-radius: 10px;
   border: 1px solid var(--outline-variant);
-  background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+  background: linear-gradient(180deg, var(--primary-soft) 0%, var(--surface-high) 100%);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-primary-lbl {
@@ -1676,7 +1676,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 0;
   border-radius: 12px;
   border: 1px solid var(--outline-variant);
-  background: var(--surface-high, #fff);
+  background: var(--surface-high);
   overflow: hidden;
 }
 
@@ -1687,7 +1687,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   gap: 12px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--outline-variant);
-  background: #fcfdff;
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-wake-global-card > .voice-phrase-kind-pane,
@@ -1976,7 +1976,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   gap: 2px;
   padding: 4px;
   border-radius: 12px;
-  background: #eef2f7;
+  background: var(--surface-soft);
   border: 1px solid var(--outline-variant);
 }
 
@@ -1991,7 +1991,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #64748b;
+  color: var(--on-surface-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -2003,7 +2003,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-recognize-intent-tab.is-on {
-  background: #fff;
+  background: var(--surface-high);
   color: var(--on-surface);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   font-weight: 700;
@@ -2015,7 +2015,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 14px;
   border-radius: 14px;
   border: 1px solid var(--outline-variant);
-  background: rgba(248, 250, 252, 0.72);
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-recognize-phrase-card[hidden] {
@@ -2046,7 +2046,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 14px;
   border-radius: 14px;
   border: 1px solid var(--outline-variant);
-  background: rgba(248, 250, 252, 0.72);
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-recognize-audio-card .sound-slot-head {
@@ -2074,7 +2074,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 14px;
   border-radius: 14px;
   border: 1px solid var(--outline-variant);
-  background: rgba(248, 250, 252, 0.72);
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-control-rule-bar {
@@ -2094,7 +2094,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   padding: 2px;
   border-radius: 8px;
   border: 1px solid var(--outline-variant);
-  background: #eef2f7;
+  background: var(--surface-soft);
 }
 
 #settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tabs[hidden] {
@@ -2123,8 +2123,8 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 
 #settingsPanelVoiceWake.voice-page-desk .voice-phrase-kind-tab.is-on {
   border: none;
-  background: #fff;
-  color: #0369a1;
+  background: var(--surface-high);
+  color: var(--primary);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
@@ -2220,10 +2220,10 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   }
 }
 
-/* Force light real-time preview on voice aside */
+/* Real-time preview on voice aside follows theme tokens */
 #settingsPanelVoiceWake .voice-page-aside .voice-aside-preview #voiceFeedbackRail.voice-feedback-rail,
 #settingsPanelVoiceWake .voice-live-strip #voiceFeedbackRail.voice-feedback-rail {
-  background: var(--surface-high, #fff) !important;
+  background: var(--surface-high) !important;
   color: var(--on-surface) !important;
   border: 1px solid var(--outline-variant) !important;
   box-shadow: none !important;

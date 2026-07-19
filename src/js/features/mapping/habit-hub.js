@@ -407,6 +407,148 @@
     down:'<path d="m6 9 6 6 6-6"/>'
   };
 
+  function channelGlyph(kind,title){
+    var paths=ACT_ICON[kind]||ACT_ICON.keys;
+    var tip=title?(' title="'+esc(title)+'"'):'';
+    return '<span class="habit-hub-keycap is-glyph is-'+esc(kind)+'"'+tip+'>'
+      +'<span class="habit-hub-keycap-face habit-hub-keycap-glyph" aria-hidden="true">'+actIcon(paths,20)+'</span>'
+      +(title?'<span class="sr-only">'+esc(title)+'</span>':'')
+      +'</span>';
+  }
+
+  var camWaveRaf=0;
+  var camWaveStates=null;
+
+  function cameraSpectrumRail(){
+    return '<div class="habit-hub-channel-rail is-camera" aria-hidden="true">'
+      +'<canvas class="habit-hub-cam-canvas" width="220" height="36"></canvas>'
+      +'</div>';
+  }
+
+  function camWaveTheme(){
+    var dark=document.documentElement.getAttribute('data-theme')==='dark';
+    if(dark){
+      return {
+        idle:'rgba(148,163,184,.35)',
+        a:'#00F2FE',b:'#4FACFE',c:'#F59E0B'
+      };
+    }
+    return {
+      idle:'rgba(26,45,74,.22)',
+      a:'#2a9cc4',b:'#5ec8e8',c:'#d97706'
+    };
+  }
+
+  function drawCamSine(ctx,w,h,freq,color,opacity,amp,offset){
+    ctx.beginPath();
+    ctx.strokeStyle=color;
+    ctx.globalAlpha=opacity;
+    ctx.lineWidth=2;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    var midY=h/2;
+    for(var x=0;x<w;x++){
+      var envelope=Math.sin((x/w)*Math.PI);
+      var y=midY+Math.sin((x*0.03*freq)+offset)*amp*envelope;
+      if(x===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  function paintCamWave(state){
+    var canvas=state.canvas;
+    if(!canvas||!canvas.isConnected) return;
+    var ctx=canvas.getContext('2d');
+    if(!ctx) return;
+    // Fixed backing store — avoid getBoundingClientRect/resize thrash on every frame.
+    var w=220,h=36;
+    if(canvas.width!==w||canvas.height!==h){
+      canvas.width=w;
+      canvas.height=h;
+    }
+    ctx.clearRect(0,0,w,h);
+    var theme=camWaveTheme();
+    if(state.amp<=0.02){
+      ctx.beginPath();
+      ctx.moveTo(0,h/2);
+      ctx.lineTo(w,h/2);
+      ctx.strokeStyle=theme.idle;
+      ctx.lineWidth=1.5;
+      ctx.lineCap='round';
+      ctx.stroke();
+      return;
+    }
+    // Same layered recipe as Desktop/音频.html voice-canvas
+    drawCamSine(ctx,w,h,1.1,theme.a,0.85,state.amp*14,state.offset);
+    drawCamSine(ctx,w,h,1.6,theme.b,0.5,state.amp*10,state.offset*1.4);
+    drawCamSine(ctx,w,h,0.7,theme.c,0.35,state.amp*6,state.offset*0.7);
+  }
+
+  function stopCameraWaveRails(){
+    if(camWaveRaf){
+      cancelAnimationFrame(camWaveRaf);
+      camWaveRaf=0;
+    }
+    camWaveStates=null;
+  }
+
+  function tickCameraWaveRails(){
+    camWaveRaf=0;
+    if(!camWaveStates||!camWaveStates.length) return;
+    var reduced=false;
+    try{
+      reduced=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }catch(_){}
+    var anyAlive=false;
+    for(var i=0;i<camWaveStates.length;i++){
+      var s=camWaveStates[i];
+      if(!s.canvas||!s.canvas.isConnected) continue;
+      var channel=s.channel;
+      var active=!!(channel&&(channel.matches(':hover')||channel.classList.contains('is-hover')||channel.classList.contains('is-pressed')));
+      if(reduced){
+        s.amp=active?0.55:0;
+      }else if(active){
+        s.amp=Math.min(1,s.amp+0.1);
+      }else if(s.amp>0.02){
+        s.amp=Math.max(0,s.amp-0.06);
+      }else{
+        s.amp=0;
+      }
+      if(s.amp>0&&!reduced){
+        s.offset+=0.15;
+        anyAlive=true;
+      }
+      paintCamWave(s);
+      if(active&&!reduced) anyAlive=true;
+    }
+    if(anyAlive) camWaveRaf=requestAnimationFrame(tickCameraWaveRails);
+  }
+
+  function syncCameraWaveRails(root){
+    stopCameraWaveRails();
+    if(!root||!root.querySelectorAll) return;
+    var nodes=root.querySelectorAll('.habit-hub-cam-canvas');
+    if(!nodes.length) return;
+    camWaveStates=[];
+    for(var i=0;i<nodes.length;i++){
+      var canvas=nodes[i];
+      camWaveStates.push({
+        canvas:canvas,
+        channel:canvas.closest('[data-habit-channel="camera"]')||canvas.closest('[data-habit-channel]'),
+        offset:0,
+        amp:0
+      });
+      paintCamWave(camWaveStates[i]);
+    }
+  }
+
+  function kickCameraWaveRails(){
+    if(!camWaveStates||!camWaveStates.length) return;
+    if(!camWaveRaf) camWaveRaf=requestAnimationFrame(tickCameraWaveRails);
+  }
+
   function ctaActBtn(attr,label,iconPath,opts){
     opts=opts||{};
     var tip=opts.tip||label;
@@ -482,7 +624,7 @@
     html+='<div class="habit-hub-channels">';
     html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="keys" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalKeysLbl')+'。'+keysTip)+'">';
     html+='<div class="habit-hub-channel-end is-input">'
-      +channelKeycap(keyChannel.trigger,'')
+      +channelGlyph('keys',keyChannel.trigger)
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysInput'))+'</span><strong>'+esc(keyChannel.trigger)+'</strong></span></div>';
     html+='<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 220 28" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M8 14H212"/><path class="habit-hub-data-flow" d="M8 14H212"/></svg></div>';
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysOutput'))+'</span><strong>'+esc(keyChannel.target)+'</strong></span>'
@@ -492,7 +634,7 @@
     html+='</div>';
     html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="voice" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalVoiceLbl')+'。'+voiceTip)+'">';
     html+='<div class="habit-hub-channel-end is-input">'
-      +channelKeycap('MIC','is-mic')
+      +channelGlyph('voice',t('habitHubChannelVoiceInput'))
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceInput'))+'</span><strong>'+esc(voiceChannel.engine)+'</strong><em>'+esc(voiceChannel.wake)+'</em></span></div>';
     html+='<div class="habit-hub-channel-rail is-voice" aria-hidden="true"><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span><span class="habit-hub-voice-bar"></span></div>';
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelVoiceOutput'))+'</span><strong>'+esc(voiceChannel.status)+'</strong></span></div>';
@@ -501,9 +643,9 @@
     html+='</div>';
     html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="camera" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalCameraLbl')+'。'+t('habitHubChannelCameraHoverTip'))+'">';
     html+='<div class="habit-hub-channel-end is-input">'
-      +channelKeycap('CAM','is-mic')
+      +channelGlyph('camera',t('habitHubChannelCameraInput'))
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelCameraInput'))+'</span><strong>'+esc(t('habitHubChannelCameraInputVal'))+'</strong></span></div>';
-    html+='<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 220 28" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M8 14H212"/><path class="habit-hub-data-flow" d="M8 14H212"/></svg></div>';
+    html+=cameraSpectrumRail();
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelCameraOutput'))+'</span><strong>'+esc(t('habitHubChannelCameraOutputVal'))+'</strong></span></div>';
     html+=ctaActBtn('data-habit-global-camera',t('habitHubGlobalOpenCamera'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
     html+='<span class="habit-hub-channel-hover-tip">'+esc(t('habitHubChannelCameraHoverTip'))+'</span>';
@@ -832,8 +974,11 @@
     list.hidden=!hasContent;
     list.innerHTML=hasContent?html:'';
     applyViewMode();
-    hydrateHubAppIcons();
-    focusRenameInput();
+    // Icon IPC after paint — keep open-habits path off the critical UI thread.
+    setTimeout(function(){
+      hydrateHubAppIcons();
+      focusRenameInput();
+    },0);
   }
 
   function focusRenameInput(){
@@ -860,10 +1005,18 @@
   }
 
   function render(){
+    var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     renderLabels();
     renderList();
     renderFilters();
     applyShellVisibility();
+    syncCameraWaveRails($('habitHubList'));
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
+        global.OneToneIpc.invoke('cmd_app_log',{line:'fe habitHub.render '+ms+'ms'}).catch(function(){});
+      }
+    }catch(_){}
   }
 
   function applyShellVisibility(){
@@ -1746,11 +1899,17 @@
     if(hub){
       hub.addEventListener('mouseover',function(e){
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
-        if(channel) channel.classList.add('is-hover');
+        if(channel){
+          channel.classList.add('is-hover');
+          if(channel.getAttribute('data-habit-channel')==='camera') kickCameraWaveRails();
+        }
       });
       hub.addEventListener('mouseout',function(e){
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');
-        if(channel&&(!e.relatedTarget||!channel.contains(e.relatedTarget))) channel.classList.remove('is-hover');
+        if(channel&&(!e.relatedTarget||!channel.contains(e.relatedTarget))){
+          channel.classList.remove('is-hover');
+          if(channel.getAttribute('data-habit-channel')==='camera') kickCameraWaveRails();
+        }
       });
       hub.addEventListener('keydown',function(e){
         var channel=e.target.closest&&e.target.closest('[data-habit-channel]');

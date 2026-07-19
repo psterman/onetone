@@ -1265,7 +1265,7 @@
 
 #settingsPanelVoiceWake .voice-edit-close {
   flex: 0 0 auto;
-  background: #fff;
+  background: var(--surface-high);
 }
 
 

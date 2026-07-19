@@ -568,7 +568,18 @@ pub fn run() {
                 }
             });
 
-            voice_bootstrap::bootstrap_voice_engines(app.handle(), &app_state, safe_mode);
+            // Never block Tauri setup / UI thread on engine start — activate can wait on
+            // acoustic sync / device policy and used to 假死 the whole window on launch.
+            {
+                let boot_app = app.handle().clone();
+                let boot_state = Arc::clone(&app_state);
+                let boot_safe = safe_mode;
+                let _ = std::thread::Builder::new()
+                    .name("voice-bootstrap".into())
+                    .spawn(move || {
+                        voice_bootstrap::bootstrap_voice_engines(&boot_app, &boot_state, boot_safe);
+                    });
+            }
 
             Ok(())
         })

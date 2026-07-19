@@ -2207,6 +2207,46 @@
     html[data-theme="dark"] .habit-head,
     html[data-theme="dark"] #settingsPanelHabits .habit-panel{background:var(--surface-high)}
     html[data-theme="dark"] .habit-flow-bar{background:rgba(94,200,232,.06)}
+    html[data-theme="dark"] .habit-hub-channel:hover,
+    html[data-theme="dark"] .habit-hub-channel.is-hover{
+      box-shadow:0 12px 28px rgba(0,0,0,.28);
+    }
+    html[data-theme="dark"] .habit-hub-keycap{
+      background:var(--surface-soft);border-color:var(--outline-variant);color:var(--on-surface);
+    }
+    html[data-theme="dark"] .habit-hub-keycap.is-output{
+      background:var(--primary-soft);border-color:rgba(94,200,232,.35);color:var(--primary);
+    }
+    html[data-theme="dark"] .habit-hub-keycap.is-glyph.is-keys{
+      color:#93b4ff;background:rgba(59,111,217,.18);border-color:rgba(59,111,217,.32);
+    }
+    html[data-theme="dark"] .habit-hub-keycap.is-glyph.is-voice{
+      color:#86efac;background:rgba(46,139,87,.18);border-color:rgba(46,139,87,.32);
+    }
+    html[data-theme="dark"] .habit-hub-keycap.is-glyph.is-camera{
+      color:var(--primary-glow);background:var(--primary-soft);border-color:rgba(94,200,232,.35);
+    }
+    html[data-theme="dark"] .habit-hub-cam-canvas{
+      background:rgba(4,8,18,.55);border-color:rgba(94,200,232,.22);
+    }
+    html[data-theme="dark"] .habit-hub-channel:hover .habit-hub-cam-canvas,
+    html[data-theme="dark"] .habit-hub-channel.is-hover .habit-hub-cam-canvas{
+      background:rgba(4,8,18,.72);border-color:rgba(94,200,232,.38);
+      box-shadow:inset 0 0 16px rgba(0,242,254,.08);
+    }
+    html[data-theme="dark"] .habit-hub-card-status.is-pending,
+    html[data-theme="dark"] .habit-scenario-access-badge.is-disabled{color:#fdba74}
+    html[data-theme="dark"] .habit-hub-card-icon--keys{background:rgba(59,111,217,.18);color:#93b4ff}
+    html[data-theme="dark"] .habit-hub-card-icon--voice{background:rgba(46,139,87,.18);color:#86efac}
+    html[data-theme="dark"] .habit-hub-card-icon--app{background:rgba(201,122,26,.18);color:#fdba74}
+    html[data-theme="dark"] .habit-hub-card-icon--combo{background:rgba(124,79,191,.18);color:#d8b4fe}
+    html[data-theme="dark"] .habit-hub-card--keys .habit-hub-card-type{color:#93b4ff;border-color:rgba(59,111,217,.28);background:rgba(59,111,217,.14)}
+    html[data-theme="dark"] .habit-hub-card--voice .habit-hub-card-type{color:#86efac;border-color:rgba(46,139,87,.28);background:rgba(46,139,87,.14)}
+    html[data-theme="dark"] .habit-hub-card--app .habit-hub-card-type{color:#fdba74;border-color:rgba(201,122,26,.28);background:rgba(201,122,26,.14)}
+    html[data-theme="dark"] .habit-hub-card--combo .habit-hub-card-type{color:#d8b4fe;border-color:rgba(124,79,191,.28);background:rgba(124,79,191,.14)}
+    html[data-theme="dark"] .habit-hub-card-wake{background:rgba(201,122,26,.14);color:#fdba74;border-color:rgba(201,122,26,.28)}
+    html[data-theme="dark"] .habit-hub-guide-close{background:rgba(28,38,54,.85)}
+    html[data-theme="dark"] .scene-mode-badge.is-wake{background:rgba(201,122,26,.14);color:#fdba74;border-color:rgba(201,122,26,.28)}
 
     /* Habit layer shell (??? IA) */
     .habit-page-shell{display:grid;grid-template-columns:168px minmax(0,1fr);gap:10px;align-items:start}
@@ -3061,7 +3101,7 @@
     .habit-hub-section-list{display:grid;grid-template-columns:1fr;gap:12px}
     .habit-hub-hero{
       display:grid;gap:12px;padding:14px;border-radius:14px;border:1px solid rgba(42,156,196,.28);
-      background:linear-gradient(180deg,#f8fcff 0%,#ffffff 100%);box-shadow:inset 3px 0 0 var(--primary);
+      background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-high) 100%);box-shadow:inset 3px 0 0 var(--primary);
     }
     .habit-hub-hero.is-pending{border-color:rgba(245,158,11,.35);box-shadow:inset 3px 0 0 #f59e0b}
     .habit-hub-hero-head{display:flex;align-items:flex-start;gap:10px}
@@ -3082,7 +3122,7 @@
     .habit-hub-hero-row-lbl{font-size:10px;font-weight:700;color:var(--on-surface-muted)}
     .habit-hub-hero-row-val{font-size:12px;font-weight:700;color:var(--on-surface);word-break:break-word}
     .habit-hub-card--global-default{
-      border-style:solid;background:linear-gradient(180deg,#f8fcff 0%,#ffffff 100%);
+      border-style:solid;background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-high) 100%);
       border-color:rgba(42,156,196,.28);box-shadow:inset 3px 0 0 var(--primary);
     }
     .habit-hub-card--global-default.is-pending{border-color:rgba(245,158,11,.35);box-shadow:inset 3px 0 0 #f59e0b}
@@ -3091,7 +3131,7 @@
       white-space:nowrap;
     }
     .habit-hub-card-status.is-ready{color:var(--primary);border-color:rgba(42,156,196,.28);background:rgba(42,156,196,.08)}
-    .habit-hub-card-status.is-pending{color:#b45309;border-color:rgba(245,158,11,.28);background:#fff7ed}
+    .habit-hub-card-status.is-pending{color:#b45309;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.12)}
     .habit-hub-app-empty{
       display:grid;gap:8px;justify-items:start;padding:14px;border-radius:12px;border:1px dashed rgba(42,156,196,.28);
       background:var(--surface-soft);
@@ -3103,8 +3143,8 @@
       display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;
       border:1px solid var(--outline-variant);background:var(--surface);font-size:11px;line-height:1.4;color:var(--on-surface-muted);
     }
-    .habit-hub-guide-step.is-done{border-color:rgba(42,156,196,.22);background:#f8fcff;color:var(--on-surface)}
-    .habit-hub-guide-step.is-current{border-color:rgba(42,156,196,.35);background:#eaf7fc;color:var(--primary);font-weight:700}
+    .habit-hub-guide-step.is-done{border-color:rgba(42,156,196,.22);background:var(--primary-soft);color:var(--on-surface)}
+    .habit-hub-guide-step.is-current{border-color:rgba(42,156,196,.35);background:var(--primary-soft);color:var(--primary);font-weight:700}
     .habit-hub-guide-num{
       width:18px;height:18px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
       font-size:10px;font-weight:800;background:var(--surface-soft);border:1px solid var(--outline-variant);color:var(--on-surface-muted);
@@ -3135,8 +3175,8 @@
       min-height:58px;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--outline-variant);
       background:var(--surface);cursor:pointer;font:inherit;color:var(--on-surface);text-align:left;
     }
-    .habit-wizard-app-card:hover{border-color:rgba(42,156,196,.25);background:#f8fcff}
-    .habit-wizard-app-card.is-selected{border-color:rgba(42,156,196,.35);background:#eaf7fc;color:var(--primary);box-shadow:inset 3px 0 0 var(--primary)}
+    .habit-wizard-app-card:hover{border-color:rgba(42,156,196,.25);background:var(--primary-soft)}
+    .habit-wizard-app-card.is-selected{border-color:rgba(42,156,196,.35);background:var(--primary-soft);color:var(--primary);box-shadow:inset 3px 0 0 var(--primary)}
     .habit-wizard-app-card--custom{border-style:dashed}
     .habit-wizard-app-icon{width:32px;height:32px;object-fit:contain;flex:0 0 auto;border-radius:8px}
     .habit-wizard-app-icon--custom{display:grid;place-items:center;background:var(--surface-soft);border-radius:8px;font-weight:800;color:var(--primary)}
@@ -3221,7 +3261,7 @@
     .habit-scenario-tab-panel{display:grid;gap:8px}
     .habit-scenario-tab-body{
       min-height:120px;padding:12px;border-radius:10px;border:1px solid rgba(42,156,196,.16);
-      background:linear-gradient(180deg,#f7fcff 0%,#eef7fb 100%);font-size:12px;color:var(--on-surface);line-height:1.5;
+      background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-soft) 100%);font-size:12px;color:var(--on-surface);line-height:1.5;
     }
     .habit-scenario-tab-summary{
       display:block;width:100%;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--outline-variant);
@@ -3335,11 +3375,11 @@
     .habit-voice-cmd-step-line.is-done{background:rgba(46,125,79,.45)}
     .habit-voice-cmd-rec-card{
       display:grid;gap:8px;padding:12px;border-radius:12px;border:1px solid rgba(42,156,196,.18);
-      background:linear-gradient(180deg,rgba(42,156,196,.06) 0%,rgba(255,255,255,.92) 100%);
+      background:linear-gradient(180deg,rgba(42,156,196,.06) 0%,var(--surface-high) 100%);
     }
     .habit-voice-cmd-rec-panel{min-height:148px;grid-template-rows:auto minmax(56px,auto) auto}
-    .habit-voice-cmd-rec-card.is-error{border-color:rgba(196,122,26,.28);background:linear-gradient(180deg,rgba(196,122,26,.06) 0%,#fff 100%)}
-    .habit-voice-cmd-rec-card.is-confirm{border-color:rgba(46,125,79,.22);background:linear-gradient(180deg,rgba(46,125,79,.06) 0%,#fff 100%)}
+    .habit-voice-cmd-rec-card.is-error{border-color:rgba(196,122,26,.28);background:linear-gradient(180deg,rgba(196,122,26,.06) 0%,var(--surface-high) 100%)}
+    .habit-voice-cmd-rec-card.is-confirm{border-color:rgba(46,125,79,.22);background:linear-gradient(180deg,rgba(46,125,79,.06) 0%,var(--surface-high) 100%)}
     .habit-voice-cmd-rec-top{display:flex;align-items:center;gap:8px;min-height:28px}
     .habit-voice-cmd-phase{
       flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--on-surface);
@@ -3389,7 +3429,7 @@
     }
     .habit-voice-cmd-label-input{
       width:100%;max-width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;
-      border:1px solid rgba(0,0,0,.12);border-radius:10px;font-size:14px;background:#fff;color:var(--on-surface)
+      border:1px solid var(--outline-variant);border-radius:10px;font-size:14px;background:var(--surface-high);color:var(--on-surface)
     }
     .habit-voice-cmd-label-input:focus{outline:2px solid rgba(46,125,79,.35);outline-offset:1px}
     .habit-voice-cmd-build-spinner{
@@ -3438,8 +3478,8 @@
       height:100%;
       gap:10px;
       padding:14px 14px 34px;
-      background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);
-      box-shadow:0 8px 22px rgba(15,23,42,.05);
+      background:var(--surface-high);
+      box-shadow:var(--shadow-card);
     }
     .habit-hub-list.is-grid .habit-hub-channel-end,
     .habit-hub-list.is-grid .habit-hub-channel-end.is-output{
@@ -3537,7 +3577,7 @@
       background:var(--primary-soft);border-color:rgba(42,156,196,.32);color:var(--primary);
     }
     .habit-hub-act.is-cta:hover{
-      transform:translateY(-1px);background:#e7f6fc;border-color:rgba(42,156,196,.45);
+      transform:translateY(-1px);background:var(--primary-soft);border-color:rgba(42,156,196,.45);
       box-shadow:0 6px 14px rgba(42,156,196,.16);color:var(--primary);
     }
     .habit-hub-act.is-cta:active{transform:translateY(0);box-shadow:0 1px 2px rgba(15,23,42,.06)}
@@ -3567,7 +3607,7 @@
     .habit-scenario-access-cards{display:grid;gap:10px}
     .habit-scenario-access-card{
       display:grid;gap:8px;padding:12px;border-radius:12px;border:1px solid rgba(42,156,196,.18);
-      background:linear-gradient(180deg,#f8fcff 0%,#ffffff 100%);
+      background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-high) 100%);
     }
     .habit-scenario-access-card.is-disabled{opacity:.55;pointer-events:none}
     .habit-scenario-access-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -3580,7 +3620,7 @@
     }
     .habit-scenario-access-badge.is-inherit{color:var(--on-surface-muted);background:var(--surface-soft)}
     .habit-scenario-access-badge.is-override{color:var(--primary);border-color:rgba(42,156,196,.28);background:rgba(42,156,196,.08)}
-    .habit-scenario-access-badge.is-disabled{color:#b45309;border-color:rgba(245,158,11,.28);background:#fff7ed}
+    .habit-scenario-access-badge.is-disabled{color:#b45309;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.12)}
     .habit-scenario-context-banner{
       display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
       margin:0 0 10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(42,156,196,.35);
@@ -3596,7 +3636,7 @@
     .habit-hub-card-actions .habit-hub-enable-toggle{align-self:center}
     .habit-hub-inline-create{
       display:grid;gap:10px;padding:14px;margin-bottom:10px;border-radius:14px;
-      border:1px solid rgba(42,156,196,.28);background:linear-gradient(180deg,#f7fcff,#fff);
+      border:1px solid rgba(42,156,196,.28);background:linear-gradient(180deg,var(--primary-soft),var(--surface-high));
     }
     .habit-hub-inline-create-title{margin:0;font-size:13px;font-weight:800;color:var(--on-surface)}
     .habit-hub-inline-create-hint{margin:0;font-size:11px;line-height:1.45;color:var(--on-surface-muted)}
@@ -3675,7 +3715,7 @@
     .habit-hub-guide-close{width:22px;height:22px;border:0;border-radius:999px;background:rgba(255,255,255,.72);color:inherit;font:inherit;font-size:15px;line-height:1;cursor:pointer}
     .habit-hub-channels{display:grid;gap:10px}
     .habit-hub-channel{display:grid;grid-template-columns:minmax(145px,1.1fr) minmax(96px,.8fr) minmax(128px,1fr) auto;align-items:center;gap:12px;min-height:72px;padding:12px 12px 30px;border-radius:13px;border:1px solid var(--outline-variant);background:var(--surface);cursor:pointer;user-select:none;position:relative}
-    .habit-hub-channel:hover,.habit-hub-channel.is-hover{border-color:rgba(42,156,196,.34);background:linear-gradient(180deg,#fbfdff 0%,#fff 100%);box-shadow:0 12px 28px rgba(15,23,42,.06)}
+    .habit-hub-channel:hover,.habit-hub-channel.is-hover{border-color:rgba(42,156,196,.34);background:var(--surface-high);box-shadow:0 12px 28px rgba(15,23,42,.06)}
     .habit-hub-channel.is-pressed{transform:translateY(1px)}
     .habit-hub-channel-hover-tip{
       position:absolute;left:12px;right:12px;bottom:8px;margin:0;text-align:center;
@@ -3693,11 +3733,28 @@
     .habit-hub-channel-copy span{font-size:9px;font-weight:800;color:var(--on-surface-muted);text-transform:uppercase}
     .habit-hub-channel-copy strong{font-size:12px;font-weight:800;color:var(--on-surface);line-height:1.25;word-break:break-word}
     .habit-hub-channel-copy em{font-style:normal;font-size:10px;color:var(--on-surface-muted);line-height:1.2}
-    .habit-hub-keycap{min-width:54px;max-width:86px;height:42px;padding:0 9px;border-radius:9px;border:1px solid rgba(15,23,42,.12);background:linear-gradient(180deg,#fff,#f4f7f8);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 0 rgba(15,23,42,.09),0 5px 12px rgba(15,23,42,.06),inset 0 1px 0 rgba(255,255,255,.9);transition:transform .12s cubic-bezier(.25,1,.2,1),box-shadow .12s cubic-bezier(.25,1,.2,1);flex-shrink:0}
-    .habit-hub-keycap-face{font-size:10px;font-weight:900;color:var(--on-surface);line-height:1.1;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .habit-hub-keycap{
+      min-width:42px;max-width:86px;height:42px;padding:0 8px;border-radius:10px;
+      border:1px solid var(--outline-variant);background:var(--surface-high);
+      display:inline-flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0;
+      color:var(--on-surface);box-shadow:0 1px 2px rgba(15,23,42,.04);
+      transition:transform .12s cubic-bezier(.25,1,.2,1),box-shadow .12s cubic-bezier(.25,1,.2,1),border-color .12s ease,background .12s ease;
+    }
+    .habit-hub-keycap.is-glyph{
+      width:42px;min-width:42px;max-width:42px;padding:0;background:var(--primary-soft);
+      border-color:rgba(42,156,196,.28);color:var(--primary);
+    }
+    .habit-hub-keycap.is-glyph.is-keys{color:#3b6fd9;background:rgba(59,111,217,.12);border-color:rgba(59,111,217,.28)}
+    .habit-hub-keycap.is-glyph.is-voice{color:#2e8b57;background:rgba(46,139,87,.12);border-color:rgba(46,139,87,.28)}
+    .habit-hub-keycap.is-glyph.is-camera{color:var(--primary);background:var(--primary-soft);border-color:rgba(42,156,196,.28)}
+    .habit-hub-keycap.is-output{
+      border-color:rgba(42,156,196,.32);background:var(--primary-soft);color:var(--primary);
+    }
+    .habit-hub-keycap-face{font-size:10px;font-weight:900;color:inherit;line-height:1.1;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .habit-hub-keycap-glyph{display:inline-flex;align-items:center;justify-content:center;max-width:none}
+    .habit-hub-keycap-glyph svg{display:block}
     .habit-hub-keycap.is-output .habit-hub-keycap-face{color:var(--primary)}
-    .habit-hub-keycap.is-mic .habit-hub-keycap-face{letter-spacing:.04em}
-    .habit-hub-channel.is-pressed .habit-hub-keycap{transform:translateY(2px) scale(.97);box-shadow:0 1px 0 rgba(15,23,42,.03),inset 0 2px 5px rgba(15,23,42,.14)}
+    .habit-hub-channel.is-pressed .habit-hub-keycap{transform:translateY(2px) scale(.97);box-shadow:inset 0 1px 3px rgba(15,23,42,.12)}
     .habit-hub-channel-rail{height:30px;display:flex;align-items:center;justify-content:center;min-width:0}
     .habit-hub-channel-rail svg{width:100%;height:100%}
     .habit-hub-rail-base{stroke:var(--outline-variant);stroke-width:2;stroke-linecap:round}
@@ -3707,8 +3764,17 @@
     .habit-hub-voice-bar{width:4px;height:6px;border-radius:999px;background:var(--primary);opacity:.38}
     .habit-hub-channel:hover .habit-hub-voice-bar,.habit-hub-channel.is-hover .habit-hub-voice-bar{animation:habit-hub-voice-bar .72s ease-in-out infinite}
     .habit-hub-voice-bar:nth-child(2){animation-delay:.12s}.habit-hub-voice-bar:nth-child(3){animation-delay:.24s}.habit-hub-voice-bar:nth-child(4){animation-delay:.08s}.habit-hub-voice-bar:nth-child(5){animation-delay:.18s}
+    .habit-hub-channel-rail.is-camera{height:36px}
+    .habit-hub-cam-canvas{
+      width:100%;height:100%;display:block;border-radius:10px;
+      background:rgba(15,23,42,.04);border:1px solid rgba(42,156,196,.14);
+    }
+    .habit-hub-channel:hover .habit-hub-cam-canvas,
+    .habit-hub-channel.is-hover .habit-hub-cam-canvas{
+      background:rgba(42,156,196,.08);border-color:rgba(42,156,196,.28);
+    }
     .habit-hub-card{min-height:74px;border-radius:0;padding:12px 14px;box-shadow:none;transition:border-color .28s cubic-bezier(.25,1,.2,1),background .28s cubic-bezier(.25,1,.2,1),box-shadow .28s cubic-bezier(.25,1,.2,1)}
-    .habit-hub-card:hover{background:#fbfdff;box-shadow:none}
+    .habit-hub-card:hover{background:var(--surface-high);box-shadow:none}
     .habit-hub-card.is-active-scene{box-shadow:inset 3px 0 0 var(--primary)}
     .habit-hub-card-icon{width:38px;height:38px;border-radius:10px}
     .habit-hub-card-app-main{background:var(--surface-soft);border:1px solid var(--outline-variant);overflow:hidden}
@@ -3731,8 +3797,8 @@
       width:28px;height:28px;margin-right:2px;flex-shrink:0;cursor:pointer;
     }
     .habit-hub-card-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
-    .habit-hub-card.is-selected{background:linear-gradient(180deg,#f3faff 0%,#fff 100%);box-shadow:inset 3px 0 0 var(--primary)}
-    .habit-hub-card.is-confirm-del{background:#fff8f7}
+    .habit-hub-card.is-selected{background:linear-gradient(180deg,var(--primary-soft) 0%,var(--surface-high) 100%);box-shadow:inset 3px 0 0 var(--primary)}
+    .habit-hub-card.is-confirm-del{background:rgba(198,40,40,.08)}
     .habit-hub-selection-bar{
       display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;
       border-bottom:1px solid var(--outline-variant);background:var(--primary-soft);
@@ -3742,7 +3808,7 @@
     .habit-hub-rename-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;flex:1}
     .habit-hub-rename-input{
       min-width:140px;flex:1;height:34px;padding:0 10px;border-radius:8px;
-      border:1px solid rgba(42,156,196,.35);background:#fff;font:inherit;font-size:13px;font-weight:700;
+      border:1px solid rgba(42,156,196,.35);background:var(--surface-high);color:var(--on-surface);font:inherit;font-size:13px;font-weight:700;
     }
     .habit-hub-inline-confirm{
       display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;
@@ -3774,7 +3840,9 @@
       .habit-hub-card-actions{justify-content:flex-start;padding-left:0;padding-top:8px;border-left:0;border-top:1px dashed var(--outline-variant);margin-left:0;width:100%}
     }
     @media(prefers-reduced-motion:reduce){
-      .habit-hub-hero-pulse span,.habit-hub-channel:hover .habit-hub-data-flow,.habit-hub-channel.is-hover .habit-hub-data-flow,.habit-hub-channel:hover .habit-hub-voice-bar,.habit-hub-channel.is-hover .habit-hub-voice-bar{animation:none!important}
+      .habit-hub-hero-pulse span,
+      .habit-hub-channel:hover .habit-hub-data-flow,.habit-hub-channel.is-hover .habit-hub-data-flow,
+      .habit-hub-channel:hover .habit-hub-voice-bar,.habit-hub-channel.is-hover .habit-hub-voice-bar{animation:none!important}
       .habit-hub-spring,.habit-hub-card,.habit-hub-keycap{transition:none!important}
     }
     .habit-detail-shell{display:grid;gap:10px}

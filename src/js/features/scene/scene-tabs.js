@@ -44,8 +44,10 @@
     var hubView=(ui().habitView||'hub')!=='detail';
     var statusBar=$('sceneStatusBar');
     if(statusBar) statusBar.hidden=!panelActive()||hubView;
-    if(global.OneToneHabitLayerNav&&panelActive()){
-      global.OneToneHabitLayerNav.onPanelVisibility();
+    // Visibility only — do NOT call onPanelVisibility here (that starts foreground polls
+    // and layer activate cascades). HabitHub.render used to re-enter via this path and 假死.
+    if(global.OneToneHabitLayerNav&&global.OneToneHabitLayerNav.applyVisibility){
+      global.OneToneHabitLayerNav.applyVisibility();
     }
   }
 
@@ -55,7 +57,7 @@
     if(keysPanelActive()) renderKeysPanelChrome();
     renderSceneGlobalFooter();
     if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
-    if(global.OneToneHabitHub&&panelActive()&&ui().habitView==='hub') global.OneToneHabitHub.render();
+    // Habit hub owns its own refresh via settings-drawer; never re-enter from SceneTabs.
   }
 
   function findMapping(id){

@@ -341,31 +341,52 @@
 
 
 
-  function refreshHabitsPanel(){
+  function feLog(line){
+    try{
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_app_log',{line:String(line||'')}).catch(function(){});
+      }
+    }catch(_){}
+  }
 
+  function refreshHabitsPanel(){
     var view=ui.habitView||'hub';
-    if(view==='wizard'&&global.OneToneHabitScenarioWizard){
-      global.OneToneHabitScenarioWizard.render();
-    }else if(view==='hub'&&global.OneToneHabitHub){
-      global.OneToneHabitHub.render();
+    feLog('fe habit panel refresh begin view='+view);
+    var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+
+    function finishHeavy(){
+      try{
+        if(view==='wizard'&&global.OneToneHabitScenarioWizard){
+          global.OneToneHabitScenarioWizard.render();
+        }else if(view==='hub'&&global.OneToneHabitHub){
+          global.OneToneHabitHub.render();
+        }
+        if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+        if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.render();
+        if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.onPanelVisibility();
+        if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+        var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
+        feLog('fe habit panel refresh done '+ms+'ms view='+view);
+      }catch(err){
+        feLog('fe habit panel refresh fail '+String(err&&err.message?err.message:err));
+        console.error('habit panel refresh',err);
+      }
     }
 
-    if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
-
-    if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.render();
-
-    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.onPanelVisibility();
-
-    if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+    // Paint drawer chrome first — sync hub HTML used to 假死 the UI thread on open.
+    if(view==='hub'&&global.OneToneHabitHub&&global.OneToneHabitHub.applyShellVisibility){
+      try{ global.OneToneHabitHub.applyShellVisibility(); }catch(_){}
+    }
+    if(typeof requestAnimationFrame==='function'){
+      requestAnimationFrame(function(){ setTimeout(finishHeavy,0); });
+    }else{
+      setTimeout(finishHeavy,0);
+    }
 
     requestAnimationFrame(function(){
-
       if(!ui.drawerOpen||!isHabitsPanel()) return;
-
       hooks().renderMappingChrome();
-
     });
-
   }
 
 

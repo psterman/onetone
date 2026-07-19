@@ -139,10 +139,13 @@ pub fn voice_vosk_start(
     let probe = probe_vosk_resources(cfg, resource_dir.as_deref());
     *state.voice_vosk_probe.lock() = Some(probe.clone());
 
+    // Clone grammar while holding cfg briefly — never keep cfg locked across model open
+    // (start_voice_vosk can take seconds; holding the lock 假死'd IPC / UI on launch).
+    let grammar = crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock());
     match start_voice_vosk(
         cfg.clone(),
         resource_dir,
-        crate::scene_config::vosk_grammar_phrases_for_cfg(&state.cfg.lock()),
+        grammar,
         Some(state.audio_frame_bus.publisher()),
     ) {
         Ok(handle) => {

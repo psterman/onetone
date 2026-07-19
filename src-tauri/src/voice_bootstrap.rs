@@ -462,8 +462,23 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         clear_degrade_status(state);
     }
     let cfg = state.cfg.lock().clone();
-    let desired = resolve_supervisor_desired_engine(state, &cfg, app.path().resource_dir().ok().as_deref());
+    let resource_dir = app.path().resource_dir().ok();
+    let kws_ready = crate::voice_kws_runtime::kws_readiness(state, &cfg, resource_dir.as_deref());
+    let desired = resolve_supervisor_desired_engine(state, &cfg, resource_dir.as_deref());
     let from = observe_running_engine(state);
+    if crate::scene_config::voice_listening_strategy(&cfg) == "resourceSaver"
+        && desired == EffectiveVoiceEngine::None
+        && !kws_ready.ready
+    {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "resourceSaver desired=none (kws not ready: {})",
+                kws_ready.reason
+            ),
+        );
+    }
     let gate = resolve_activate_gate_with_health(
         desired,
         from,
@@ -486,7 +501,7 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         );
         *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
         crate::tray::refresh_tray_tooltip(app, state.as_ref());
-        crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+        schedule_acoustic_match_sync(Some(app), state);
         return;
     }
 
@@ -502,7 +517,7 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         );
         *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
         crate::tray::refresh_tray_tooltip(app, state.as_ref());
-        crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+        schedule_acoustic_match_sync(Some(app), state);
         return;
     }
 
@@ -541,13 +556,57 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
     voice_sapi_runtime::voice_sapi_stop(state);
     crate::app_log::log_line(state, "voice", "stop self kws (supervisor)");
     voice_kws_runtime::voice_kws_stop_sync(state);
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap peers stopped; starting desired={}",
+            engine_label(desired)
+        ),
+    );
 
     start_self_engine(app, state, desired, reason);
 
     *state.last_voice_fingerprint.lock() = crate::scene_config::idle_voice_fingerprint(&cfg);
-    crate::tray::refresh_tray_tooltip(app, state.as_ref());
+    // Tray tooltip can touch Win UI; never block activate completion on it.
+    {
+        let app_tip = app.clone();
+        let state_tip = Arc::clone(state);
+        let _ = std::thread::Builder::new()
+            .name("tray-tooltip-refresh".into())
+            .spawn(move || {
+                crate::tray::refresh_tray_tooltip(&app_tip, state_tip.as_ref());
+            });
+    }
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
-    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+    crate::app_log::log_line(state, "voice", "voice_bootstrap sync acoustic after activate");
+    // Defer acoustic sync: never hold ACTIVATE_LOCK across match start/stop (mutex ordering
+    // with vosk/kws state caused launch 假死 when bootstrap ran on the UI thread).
+    schedule_acoustic_match_sync(Some(app), state);
+    crate::app_log::log_line(
+        state,
+        "voice",
+        &format!(
+            "voice_bootstrap activate complete reason={} desired={}",
+            reason,
+            engine_label(desired)
+        ),
+    );
+}
+
+fn schedule_acoustic_match_sync(app: Option<&AppHandle>, state: &Arc<AppState>) {
+    let app2 = app.cloned();
+    let state2 = Arc::clone(state);
+    let _ = std::thread::Builder::new()
+        .name("acoustic-sync".into())
+        .spawn(move || {
+            crate::voice_acoustic_runtime::sync_acoustic_match_runtime(app2.as_ref(), &state2);
+            crate::app_log::log_line(
+                state2.as_ref(),
+                "voice",
+                "voice_bootstrap acoustic sync done",
+            );
+        });
 }
 
 /// Restart the active engine when fingerprint changes; no-op when unchanged.
@@ -701,7 +760,7 @@ fn restart_active_engine_if_fingerprint_changed_locked(
 
     *state.last_voice_fingerprint.lock() = new_fp;
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
-    crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+    schedule_acoustic_match_sync(Some(app), state);
 }
 
 /// M5 degrade policy decision (pure; unit-tested).

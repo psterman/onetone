@@ -302,6 +302,13 @@
   gap:8px;
 }
 
+/* display:flex above beats the UA [hidden]{display:none}; keep segment panels exclusive */
+.camera-rule-list[hidden],
+#cameraRulesBasic[hidden],
+#cameraRulesPro[hidden]{
+  display:none!important;
+}
+
 .camera-rules-pro-hint{
   margin:0 0 8px;
   font-size:12px;

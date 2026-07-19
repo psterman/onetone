@@ -731,13 +731,38 @@ pub fn start_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppStat
 
 pub fn stop_acoustic_match_runtime(state: &Arc<AppState>) {
     state.acoustic_voice.match_stop.store(true, Ordering::SeqCst);
-    if let Some(handle) = state.acoustic_voice.match_thread.lock().take() {
-        let _ = handle.join();
-    }
+    let handle = state.acoustic_voice.match_thread.lock().take();
     state
         .acoustic_voice
         .match_running
         .store(false, Ordering::SeqCst);
+    let Some(handle) = handle else {
+        return;
+    };
+    // Never unbounded-join here: activate holds ACTIVATE_LOCK and strategy IPC used to
+    // 假死 when match was stuck inside MFCC / command scoring (省电切策略停 Vosk 后常见).
+    const JOIN_TIMEOUT: Duration = Duration::from_millis(800);
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .name("acoustic-match-join".into())
+        .spawn(move || {
+            let _ = handle.join();
+            let _ = tx.send(());
+        })
+        .ok();
+    match rx.recv_timeout(JOIN_TIMEOUT) {
+        Ok(()) => {}
+        Err(_) => {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "acoustic",
+                &format!(
+                    "match stop join timed out after {}ms — detaching",
+                    JOIN_TIMEOUT.as_millis()
+                ),
+            );
+        }
+    }
 }
 
 fn run_acoustic_match_loop(
@@ -802,6 +827,9 @@ fn try_emit_acoustic_match(
     pcm: &[f32],
     last_emit_at: &mut Option<Instant>,
 ) {
+    if state.acoustic_voice.match_stop.load(Ordering::Relaxed) {
+        return;
+    }
     if pcm.len() < (TARGET_SAMPLE_RATE as usize * 300 / 1000) {
         return;
     }
