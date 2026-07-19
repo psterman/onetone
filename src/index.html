@@ -2387,112 +2387,111 @@
                     </div>
                     <button type="button" class="toggle-switch page-status-toggle" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="开启摄像头识别" title="开启摄像头识别"></button>
                   </div>
-                  <div class="camera-config-grid camera-rule-grid" id="cameraPresenceConfig">
-                    <div class="camera-config-card camera-rule-card" data-camera-card="away" data-camera-trigger="away" id="cameraBindRowAway">
-                      <div class="camera-card-kicker" data-i18n="cameraCardRecommend">推荐开启</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardAwayTitle">离席</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
+                  <div class="camera-rules-segment" id="cameraRulesSegment" role="tablist" aria-label="规则分段">
+                    <button type="button" class="camera-rules-seg-btn is-active" id="cameraRulesSegBasic" data-camera-rules-seg="basic" role="tab" aria-selected="true" data-i18n="cameraRulesSegBasic">基础识别</button>
+                    <button type="button" class="camera-rules-seg-btn" id="cameraRulesSegPro" data-camera-rules-seg="pro" role="tab" aria-selected="false">
+                      <span data-i18n="cameraRulesSegPro">Pro 手势</span>
+                      <span class="camera-chip camera-rules-pro-badge" data-i18n="cameraProBadge">Pro</span>
+                    </button>
+                  </div>
+
+                  <div id="cameraPresenceConfig" class="camera-presence-config">
+                    <div class="camera-rule-list" id="cameraRulesBasic" data-camera-rules-panel="basic">
+                      <div class="camera-rule-row" data-camera-card="away" data-camera-trigger="away" data-camera-bind-key="onAway" id="cameraBindRowAway">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardAwayTitle">离席</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardAwayDesc" title="人脸消失约 3 秒视为离席。">人脸消失约 3 秒视为离席。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryAway" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="onAway" aria-label="离席动作"></select>
                       </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardAwayDesc">人脸消失约 3 秒视为离席。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryAway">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="离席动作" data-camera-bind-key="onAway"></div>
+                      <div class="camera-rule-row" data-camera-card="return" data-camera-trigger="return" data-camera-bind-key="onReturn" id="cameraBindRowReturn">
+                        <div class="camera-rule-row-main">
+                          <span class="camera-rule-row-spacer" aria-hidden="true"></span>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardReturnTitle">回席 · 跟随离席/回席识别</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardReturnDesc" title="与离席共用识别开关；人脸回到画面约 1 秒视为回席。">与离席共用识别开关；人脸回到画面约 1 秒视为回席。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryReturn" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="onReturn" aria-label="回席动作"></select>
                       </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="return" data-camera-trigger="return" id="cameraBindRowReturn">
-                      <div class="camera-card-kicker" data-i18n="cameraCardFollowAway">跟随离席识别</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardReturnTitle">回席 · 跟随离席/回席识别</div>
+                      <div class="camera-rule-row" data-camera-card="shake" data-camera-trigger="shake" data-camera-bind-key="shakeHead" id="cameraBindRowShake">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleShake" data-camera-trigger-toggle="shake" role="switch" aria-checked="false" aria-label="摇头"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardShakeTitle">摇头</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardShakeDesc" title="连续左右摆头后执行所选结果。">连续左右摆头后执行所选结果。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryShake" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="shakeHead" aria-label="摇头动作"></select>
                       </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardReturnDesc">与离席共用识别开关；人脸回到画面约 1 秒视为回席。无独立启停。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryReturn">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="回席动作" data-camera-bind-key="onReturn"></div>
-                      </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="shake" data-camera-trigger="shake" id="cameraBindRowShake">
-                      <div class="camera-card-kicker" data-i18n="cameraCardRecommend">推荐开启</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardShakeTitle">摇头</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleShake" data-camera-trigger-toggle="shake" role="switch" aria-checked="false" aria-label="摇头"></button>
-                      </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardShakeDesc">连续左右摆头后执行下方所选结果。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryShake">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="摇头动作" data-camera-bind-key="shakeHead"></div>
-                      </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="blink" data-camera-trigger="blink" id="cameraBindRowBlink">
-                      <div class="camera-card-kicker" data-i18n="cameraCardDeliberate">刻意动作</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">故意眨眼确认</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="故意眨眼确认"></button>
-                      </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc">做法：看镜头 → 故意闭眼约半秒再睁开 → 马上再短眨一下确认。普通眨眼忽略；过程无提示音。首次开启会自动适配你的开眼基线。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryBlink">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="故意眨眼动作" data-camera-bind-key="deliberateBlink"></div>
-                      </div>
-                      <p class="camera-blink-baseline-hint" id="cameraBlinkBaselineHint">尚未适配 · 开启识别后自动采集</p>
-                      <div class="camera-action-bar">
-                        <button type="button" class="control-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">去摄像头设置适配</button>
-                      </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="openPalm" data-camera-trigger="openPalm" id="cameraBindRowOpenPalm">
-                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardOpenPalmTitle">五指张开</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleOpenPalm" data-camera-trigger-toggle="openPalm" role="switch" aria-checked="false" aria-label="五指张开"></button>
-                      </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardOpenPalmDesc">正对摄像头张开五指后执行下方所选结果。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="五指张开动作" data-camera-bind-key="openPalm"></div>
+                      <div class="camera-rule-row" data-camera-card="blink" data-camera-trigger="blink" data-camera-bind-key="deliberateBlink" id="cameraBindRowBlink">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleBlink" data-camera-trigger-toggle="blink" role="switch" aria-checked="false" aria-label="故意眨眼确认"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardBlinkTitle">故意眨眼确认</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardBlinkDesc" title="故意闭眼约 0.6 秒再睁开，再短眨确认。">故意闭眼约 0.6 秒再睁开，再短眨确认。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryBlink" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="deliberateBlink" aria-label="故意眨眼动作"></select>
+                        <div class="camera-rule-row-extra">
+                          <p class="camera-blink-baseline-hint" id="cameraBlinkBaselineHint">尚未适配 · 开启识别后自动采集</p>
+                          <button type="button" class="control-btn camera-rule-extra-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">去摄像头设置适配</button>
+                        </div>
                       </div>
                     </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="okHand" data-camera-trigger="okHand" id="cameraBindRowOkHand">
-                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardOkHandTitle">OK</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleOkHand" data-camera-trigger-toggle="okHand" role="switch" aria-checked="false" aria-label="OK"></button>
+
+                    <div class="camera-rule-list" id="cameraRulesPro" data-camera-rules-panel="pro" hidden>
+                      <p class="camera-rules-pro-hint" id="cameraRulesProHint" data-i18n="cameraRulesProHint">已可配置 · 开启预览后识别</p>
+                      <div class="camera-rule-row" data-camera-card="openPalm" data-camera-trigger="openPalm" data-camera-bind-key="openPalm" id="cameraBindRowOpenPalm">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleOpenPalm" data-camera-trigger-toggle="openPalm" role="switch" aria-checked="false" aria-label="五指张开"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardOpenPalmTitle">五指张开</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardOpenPalmDesc" title="正对摄像头张开五指。">正对摄像头张开五指。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="openPalm" aria-label="五指张开动作"></select>
                       </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardOkHandDesc">拇指与食指成圈、其余手指伸直后执行。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="OK 动作" data-camera-bind-key="okHand"></div>
+                      <div class="camera-rule-row" data-camera-card="okHand" data-camera-trigger="okHand" data-camera-bind-key="okHand" id="cameraBindRowOkHand">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleOkHand" data-camera-trigger-toggle="okHand" role="switch" aria-checked="false" aria-label="OK"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardOkHandTitle">OK</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardOkHandDesc" title="拇指与食指成圈、其余手指伸直。">拇指与食指成圈、其余手指伸直。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="okHand" aria-label="OK 动作"></select>
                       </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="fist" data-camera-trigger="fist" id="cameraBindRowFist">
-                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardFistTitle">握拳</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleFist" data-camera-trigger-toggle="fist" role="switch" aria-checked="false" aria-label="握拳"></button>
+                      <div class="camera-rule-row" data-camera-card="fist" data-camera-trigger="fist" data-camera-bind-key="fist" id="cameraBindRowFist">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleFist" data-camera-trigger-toggle="fist" role="switch" aria-checked="false" aria-label="握拳"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardFistTitle">握拳</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardFistDesc" title="握紧拳头。">握紧拳头。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryFist" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="fist" aria-label="握拳动作"></select>
                       </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardFistDesc">握紧拳头后执行下方所选结果。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryFist">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="握拳动作" data-camera-bind-key="fist"></div>
-                      </div>
-                    </div>
-                    <div class="camera-config-card camera-rule-card" data-camera-card="wave" data-camera-trigger="wave" id="cameraBindRowWave">
-                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
-                      <div class="camera-card-title-row">
-                        <div class="camera-card-title" data-i18n="cameraCardWaveTitle">挥手</div>
-                        <button type="button" class="toggle-switch" id="cameraTriggerToggleWave" data-camera-trigger-toggle="wave" role="switch" aria-checked="false" aria-label="挥手"></button>
-                      </div>
-                      <div class="camera-card-desc" data-i18n="cameraCardWaveDesc">张开手掌左右摆动数次后执行。</div>
-                      <p class="camera-bind-summary" id="cameraTriggerSummaryWave">尚未绑定结果</p>
-                      <div class="camera-rule-then">
-                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
-                        <div class="camera-action-tiles" role="radiogroup" aria-label="挥手动作" data-camera-bind-key="wave"></div>
+                      <div class="camera-rule-row" data-camera-card="wave" data-camera-trigger="wave" data-camera-bind-key="wave" id="cameraBindRowWave">
+                        <div class="camera-rule-row-main">
+                          <button type="button" class="toggle-switch" id="cameraTriggerToggleWave" data-camera-trigger-toggle="wave" role="switch" aria-checked="false" aria-label="挥手"></button>
+                          <div class="camera-rule-row-text">
+                            <div class="camera-card-title" data-i18n="cameraCardWaveTitle">挥手</div>
+                            <div class="camera-card-desc" data-i18n="cameraCardWaveDesc" title="张开手掌左右摆动数次。">张开手掌左右摆动数次。</div>
+                          </div>
+                        </div>
+                        <p class="camera-bind-summary" id="cameraTriggerSummaryWave" hidden>尚未绑定结果</p>
+                        <select class="camera-action-select" data-camera-action-for="wave" aria-label="挥手动作"></select>
                       </div>
                     </div>
                   </div>
@@ -2804,8 +2803,11 @@
                       <div class="camera-config-card" data-camera-card="hand" id="cameraProHandCard">
                         <div class="camera-card-kicker" id="cameraProHandKicker" data-i18n="cameraProCapGestureKicker">已接入</div>
                         <div class="camera-card-title" data-i18n="cameraCardHandTitle">手势识别</div>
-                        <div class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraCardHandDesc">本地五指 / OK / 握拳 / 挥手；预览开启后识别原始画面，可在规则页绑定动作。</div>
+                        <div class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraProHandBindHint">规则在「视觉识别 · Pro 手势」中绑定；本页只看运行状态。</div>
                         <p class="camera-bind-summary" id="cameraProHandStatus">尚未开启预览</p>
+                        <div class="camera-action-bar">
+                          <button type="button" class="control-btn is-primary" id="cameraProHandGotoBind" data-i18n="cameraProHandGotoBind">去绑定手势</button>
+                        </div>
                       </div>
                       <div class="camera-config-card is-placeholder" data-camera-card="identity" aria-disabled="true">
                         <div class="camera-card-kicker" data-i18n="cameraProCapIdentityKicker">边界说明</div>

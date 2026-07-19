@@ -255,6 +255,144 @@
   grid-template-columns:repeat(2,minmax(0,1fr));
 }
 
+.camera-rules-segment{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 12px;
+}
+
+.camera-rules-seg-btn{
+  appearance:none;
+  border:1px solid var(--outline-variant);
+  background:var(--surface);
+  color:var(--on-surface-muted);
+  border-radius:999px;
+  min-height:34px;
+  padding:0 14px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+
+.camera-rules-seg-btn.is-active{
+  border-color:var(--primary);
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+
+.camera-rules-pro-badge{
+  font-size:10px;
+  padding:1px 6px;
+  min-height:0;
+}
+
+.camera-presence-config{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+.camera-rule-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.camera-rules-pro-hint{
+  margin:0 0 8px;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--on-surface-muted);
+}
+
+.camera-rule-row{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(140px,0.8fr);
+  gap:8px 12px;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+}
+
+.camera-rule-row.is-trigger-on{
+  border-color:rgba(42,156,196,.35);
+}
+
+.camera-rule-row-main{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  min-width:0;
+}
+
+.camera-rule-row-spacer{
+  width:40px;
+  flex:0 0 40px;
+}
+
+.camera-rule-row-text{
+  min-width:0;
+  flex:1;
+}
+
+.camera-rule-row .camera-card-title{
+  font-size:13px;
+  line-height:1.3;
+}
+
+.camera-rule-row .camera-card-desc{
+  margin:2px 0 0;
+  font-size:11px;
+  line-height:1.35;
+  color:var(--on-surface-muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.camera-rule-row .camera-bind-summary{
+  display:none;
+}
+
+.camera-action-select{
+  width:100%;
+  min-height:34px;
+  border:1px solid var(--outline-variant);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--on-surface);
+  font-size:12px;
+  font-weight:700;
+  padding:0 10px;
+}
+
+.camera-rule-row-extra{
+  grid-column:1 / -1;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:2px;
+}
+
+.camera-rule-extra-btn{
+  min-height:30px;
+  padding:0 10px;
+  font-size:11px;
+}
+
+@media (max-width:720px){
+  .camera-rule-row{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
 .camera-rule-card .camera-rule-then{
   margin-top:10px;
   padding-top:10px;

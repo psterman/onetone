@@ -12,9 +12,13 @@
   var DETECT_INTERVAL_MS=50;
   var SCORE_MIN=0.55;
   var HOLD_MS=280;
-  var WAVE_WINDOW_MS=700;
-  var WAVE_MIN_SWINGS=3;
-  var WAVE_AMP=0.045;
+  var OK_HOLD_MS=420;
+  var WAVE_HOLD_MS=100;
+  var WAVE_WINDOW_MS=1200;
+  var WAVE_MIN_SWINGS=2;
+  var WAVE_AMP=0.022;
+  var WAVE_GRACE_MS=320;
+  var WAVE_LATCH_MS=800;
 
   var recognizer=null;
   var readyPromise=null;
@@ -34,6 +38,9 @@
 
   var wristHist=[];
   var lastHandLandmarks=null;
+  var lastPalmishAt=0;
+  var waveLostSince=0;
+  var waveLatchUntil=0;
 
   function clamp01(v){
     v=Number(v);
@@ -84,17 +91,22 @@
     }
     var handScale=Math.max(0.04,dist(wrist,midMcp));
     var tipGap=dist(thumb,index)/handScale;
-    // Ring: tips close
-    if(tipGap>0.55) return {ok:false,score:0};
-    // Other fingers extended (tip farther from wrist than MCP)
+    // Ring must be tight — loose gap matches open palm / camera foreshortening.
+    if(tipGap>0.28) return {ok:false,score:0};
     function extended(tip,mcp){
-      return dist(wrist,tip)>dist(wrist,mcp)*1.15;
+      return dist(wrist,tip)>dist(wrist,mcp)*1.28;
     }
+    function curled(tip,mcp){
+      return dist(wrist,tip)<dist(wrist,mcp)*0.98;
+    }
+    // Real OK: index curled into the ring; middle/ring/pinky clearly up.
+    if(!curled(index,indexMcp)) return {ok:false,score:0};
+    if(extended(index,indexMcp)) return {ok:false,score:0};
     if(!extended(mid,midMcp)) return {ok:false,score:0};
     if(!extended(ring,lm(hand,13))) return {ok:false,score:0};
     if(!extended(pinky,lm(hand,17))) return {ok:false,score:0};
-    var score=clamp01(1.15-tipGap);
-    return {ok:score>=0.45,score:score};
+    var score=clamp01(1.35-tipGap*2.2);
+    return {ok:score>=0.72,score:score};
   }
 
   function mapOfficialGesture(name,score){
@@ -106,22 +118,27 @@
     return null;
   }
 
-  function updateWave(wristX,now,openPalm){
-    if(!openPalm||wristX==null||!isFinite(wristX)){
-      wristHist=[];
+  function updateWave(wristX,now,allowWave){
+    if(!allowWave||wristX==null||!isFinite(wristX)){
+      if(!waveLostSince) waveLostSince=now;
+      if((now-waveLostSince)>WAVE_GRACE_MS){
+        wristHist=[];
+        waveLostSince=0;
+      }
       return false;
     }
+    waveLostSince=0;
     wristHist.push({t:now,x:wristX});
     while(wristHist.length&&(now-wristHist[0].t)>WAVE_WINDOW_MS){
       wristHist.shift();
     }
-    if(wristHist.length<5) return false;
+    if(wristHist.length<4) return false;
     var swings=0;
     var dir=0;
     var i;
     for(i=1;i<wristHist.length;i++){
       var dx=wristHist[i].x-wristHist[i-1].x;
-      if(Math.abs(dx)<WAVE_AMP*0.35) continue;
+      if(Math.abs(dx)<WAVE_AMP*0.28) continue;
       var d=dx>0?1:-1;
       if(dir&&d!==dir) swings++;
       dir=d;
@@ -136,23 +153,37 @@
     lastHandLandmarks=hand;
 
     var best=null;
+    var topName='';
+    var topScore=0;
     if(gestures&&gestures.length){
       var cats=gestures[0];
       if(cats&&cats.length){
         var c=cats[0];
-        best=mapOfficialGesture(c.categoryName,c.score);
+        topName=String(c.categoryName||'');
+        topScore=Number(c.score)||0;
+        best=mapOfficialGesture(topName,topScore);
       }
     }
 
+    // OK is landmark-only; never override official palm/fist, and skip when model
+    // already names another gesture (Thumb_Up / Victory / …).
     var ok=detectOkFromLandmarks(hand);
-    if(ok.ok&&(!best||ok.score>=(best.score||0)*0.9)){
+    var modelBusy=!!topName&&topName!=='None'&&topScore>=0.40;
+    if(ok.ok&&!best&&!modelBusy){
       best={kind:'ok',score:ok.score,label:'OK'};
     }
 
     var wrist=hand?lm(hand,0):null;
-    var waving=updateWave(wrist?wrist.x:null,now,best&&best.kind==='openPalm');
-    if(waving&&best&&best.kind==='openPalm'){
-      best={kind:'wave',score:Math.max(best.score,0.7),label:'Wave'};
+    var palmish=!!(best&&best.kind==='openPalm')||(topName==='Open_Palm'&&topScore>=0.35);
+    if(palmish) lastPalmishAt=now;
+    else if((now-lastPalmishAt)<WAVE_GRACE_MS) palmish=true;
+    var waving=updateWave(wrist?wrist.x:null,now,palmish);
+    if(waving){
+      waveLatchUntil=now+WAVE_LATCH_MS;
+      best={kind:'wave',score:Math.max(best&&best.score?best.score:0,0.75),label:'Wave'};
+    }else if(now<waveLatchUntil){
+      // Keep wave briefly so openPalm flicker does not steal the gesture.
+      best={kind:'wave',score:0.72,label:'Wave'};
     }
 
     return best;
@@ -162,21 +193,38 @@
     var kind=candidate?candidate.kind:'none';
     var score=candidate?candidate.score:0;
     if(kind!==stableKind){
+      // openPalm → wave is an upgrade: keep hold progress so wave can emit.
+      var upgrade=(stableKind==='openPalm'&&kind==='wave');
+      var demoteKeep=(stableKind==='wave'&&kind==='openPalm'&&now<waveLatchUntil);
+      if(demoteKeep){
+        kind='wave';
+        score=Math.max(score,0.72);
+      }else if(!upgrade){
+        stableSince=now;
+      }
       stableKind=kind;
-      stableSince=now;
     }
     if(kind==='none'){
       lastGesture={kind:'none',score:0,at:now,label:''};
+      emittedKind='none';
       return lastGesture;
     }
-    if((now-stableSince)<HOLD_MS){
-      return lastGesture.kind==='none'?lastGesture:lastGesture;
+    var needHold=kind==='ok'?OK_HOLD_MS:(kind==='wave'?WAVE_HOLD_MS:HOLD_MS);
+    if((now-stableSince)<needHold){
+      return lastGesture;
     }
-    // Emit only on new stable kind or after cooldown for same kind re-fire handled by presence.
-    lastGesture={kind:kind,score:score,at:now,label:candidate.label||kind};
-    if(kind!==emittedKind||(now-emittedAt)>900){
+    // Edge emit: refresh `at` only when kind changes (presence is edge-triggered).
+    if(kind!==emittedKind){
       emittedKind=kind;
       emittedAt=now;
+      lastGesture={kind:kind,score:score,at:now,label:candidate.label||kind};
+      return lastGesture;
+    }
+    // Same kind held: keep lastGesture but do not refresh `at` (avoids continuous re-fire).
+    if(lastGesture.kind!==kind){
+      lastGesture={kind:kind,score:score,at:emittedAt||now,label:candidate.label||kind};
+    }else{
+      lastGesture.score=score;
     }
     return lastGesture;
   }
@@ -291,7 +339,11 @@
     running=false;
     stopLoop();
     wristHist=[];
+    waveLostSince=0;
+    lastPalmishAt=0;
+    waveLatchUntil=0;
     stableKind='none';
+    emittedKind='none';
     lastGesture={kind:'none',score:0,at:0,label:''};
   }
 

@@ -682,14 +682,18 @@
     var rs=api&&api.getRuntimeStatus?api.getRuntimeStatus():null;
     var pv=previewApi();
     var live=!!(pv&&pv.isRunning&&pv.isRunning());
-    if(kicker) kicker.textContent=t('cameraProCapGestureKicker','已接入');
-    if(!statusEl) return;
-    if(!live){
-      statusEl.textContent=t('cameraProHandStatusIdle','尚未开启预览');
-      return;
+    if(rs&&rs.modelFailed){
+      if(kicker) kicker.textContent=t('cameraProCapGestureNeedModel','模型未就绪');
+    }else if(kicker){
+      kicker.textContent=t('cameraProCapGestureKicker','已接入');
     }
+    if(!statusEl) return;
     if(rs&&rs.modelFailed){
       statusEl.textContent=t('cameraProHandStatusFailed','模型未就绪 · 请运行 prepare-mediapipe');
+      return;
+    }
+    if(!live){
+      statusEl.textContent=t('cameraProHandStatusIdle','尚未开启预览');
       return;
     }
     if(rs&&!rs.ready&&rs.running){
@@ -708,6 +712,14 @@
       return;
     }
     statusEl.textContent=t('cameraProHandStatusIdle','尚未开启预览');
+  }
+
+  function openHandRulesBind(){
+    activateTab('trigger');
+    var pa=presenceApi();
+    if(pa&&pa.showRulesSegment){
+      try{ pa.showRulesSegment('pro',{scroll:true}); }catch(_){}
+    }
   }
 
   function syncMetrics(){
@@ -731,6 +743,9 @@
     syncProLiveHint();
     syncProHandCard();
     var pa=presenceApi();
+    if(pa&&pa.syncProHandRulesHint){
+      try{ pa.syncProHandRulesHint(); }catch(_){}
+    }
     if(pa&&pa.syncTriggerSummaries){
       try{ pa.syncTriggerSummaries(); }catch(_){}
     }
@@ -775,6 +790,13 @@
       gotoPro.addEventListener('click',function(e){
         e.preventDefault();
         openProPanel('cameraCalibBlock');
+      });
+    }
+    var handGoto=$('cameraProHandGotoBind');
+    if(handGoto){
+      handGoto.addEventListener('click',function(e){
+        e.preventDefault();
+        openHandRulesBind();
       });
     }
     var backRules=$('cameraBackToRulesFromAction');
