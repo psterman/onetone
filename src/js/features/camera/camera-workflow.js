@@ -6,7 +6,7 @@
    * - three flow-node tabs (trigger / action / pro) — user labels: 规则设计 / 执行方案 / Pro
    * - Trigger: if-then rules + master toggle (no preview)
    * - Action: preview · device · calib · guardrails
-   * - Pro: capability docs only (9-grid explain / future)
+   * - Pro: live preview + local enhancement (preview DOM parked here while active)
    * - metrics via lightweight polling (sr-only ids stay unique)
    */
 
@@ -39,7 +39,7 @@
     },
     pro:{
       kicker:['cameraWorkflowPreviewKickerPro','Pro 视觉能力'],
-      title:['cameraWorkflowPreviewTitlePro','美颜 · 手势 · 身份识别']
+      title:['cameraWorkflowPreviewTitlePro','预览 · 美颜 · 画面增强']
     }
   };
 
@@ -178,6 +178,7 @@
       else name='action';
     }
     showTabUi(name);
+    parkPreviewForTab(name);
     try{
       if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
         global.OneToneCameraPresenceActions.syncUiFromPrefs();
@@ -187,6 +188,18 @@
     syncCalibTabLock();
     syncGazeMap();
     syncProStatus();
+    syncProLiveHint();
+    if(name==='pro'){
+      // Never auto-start camera — only re-attach enhancer if already live.
+      var enh=enhancerApi();
+      if(isPreviewLive()&&enh&&enh.attach){
+        try{ enh.attach($('cameraPreviewVideo'),$('cameraPreviewShell')); }catch(_){}
+      }
+      if(enh&&enh.syncFromCameraPrefs){
+        try{ enh.syncFromCameraPrefs(); }catch(_){}
+      }
+      syncEnhancementUi();
+    }
   }
 
   function syncCalibTabLock(){
@@ -238,10 +251,207 @@
     }
   }
 
+  function enhancerApi(){
+    return global.OneToneCameraVideoEnhancer||null;
+  }
+
+  /** Park the shared preview aside into Action or Pro host (single video element). */
+  function parkPreviewForTab(tab){
+    var preview=$('cameraHeroPreview');
+    if(!preview) return;
+    var actionHost=$('cameraExecutionWorkbench');
+    var proHost=$('cameraProPreviewHost');
+    if(tab==='pro'&&proHost){
+      if(preview.parentNode!==proHost) proHost.appendChild(preview);
+      return;
+    }
+    // Default home: Action workbench (first column).
+    if(actionHost&&preview.parentNode!==actionHost){
+      var side=$('cameraExecutionSide');
+      if(side&&side.parentNode===actionHost) actionHost.insertBefore(preview,side);
+      else actionHost.insertBefore(preview,actionHost.firstChild);
+    }
+  }
+
+  function isPreviewLive(){
+    var pv=previewApi();
+    return !!(pv&&pv.isRunning&&pv.isRunning());
+  }
+
+  function syncProLiveHint(){
+    var hint=$('cameraProLiveHint');
+    if(!hint) return;
+    var onPro=currentTab==='pro';
+    var live=isPreviewLive();
+    hint.hidden=!onPro||live;
+  }
+
+  var moodTimer=0;
+  var MOOD_MS=1500;
+
+  var LOOK_MOOD={
+    off:['cameraProMoodOff','已回到原始画面'],
+    natural:['cameraProMoodNatural','自然状态已就位'],
+    cream:['cameraProMoodCream','画面柔和了一点'],
+    glow:['cameraProMoodGlow','肤色更通透'],
+    fresh:['cameraProMoodFresh','气色提起来了']
+  };
+
+  function flashEl(el){
+    if(!el) return;
+    el.classList.remove('is-flash');
+    void el.offsetWidth;
+    el.classList.add('is-flash');
+  }
+
+  function showMoodStatus(msg){
+    var el=$('cameraProMoodStatus');
+    if(!el) return;
+    el.textContent=msg||'';
+    el.hidden=!msg;
+    if(moodTimer) clearTimeout(moodTimer);
+    moodTimer=setTimeout(function(){
+      moodTimer=0;
+      if(el){ el.textContent=''; el.hidden=true; }
+    },MOOD_MS);
+  }
+
+  function persistEnhancement(partial,opts){
+    opts=opts||{};
+    var api=enhancerApi();
+    var next;
+    if(partial&&partial.look!=null&&api&&api.applyLook){
+      next=api.applyLook(partial.look);
+      // allow same-call level overrides after look defaults
+      var extra={};
+      ['whiten','smooth','rosy','slim','antiFlicker','displayFrameRate','brightness','contrast','saturation'].forEach(function(k){
+        if(partial[k]!=null) extra[k]=partial[k];
+      });
+      if(Object.keys(extra).length) next=api.setPrefs(extra);
+    }else{
+      next=api&&api.setPrefs?api.setPrefs(partial||{}):(partial||{});
+    }
+    var pv=previewApi();
+    if(pv&&typeof pv.persistCameraPrefs==='function'){
+      try{ pv.persistCameraPrefs({videoEnhancement:next}); }catch(_){}
+    }else{
+      try{
+        var st=global.OneToneState&&global.OneToneState.state;
+        if(st&&st.config&&st.config.cameraPrefs){
+          st.config.cameraPrefs.videoEnhancement=next;
+        }
+        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveCameraPrefsQuiet){
+          global.OneToneConfigPersist.saveCameraPrefsQuiet();
+        }
+      }catch(_){}
+    }
+    // Do NOT auto-start camera when picking a Look — only refresh if already live.
+    if(currentTab==='pro'&&isPreviewLive()){
+      if(api&&api.renderOnce){ try{ api.renderOnce(); }catch(_){} }
+    }
+    syncEnhancementUi();
+    syncProDeviceDiag();
+    syncProLiveHint();
+    if(opts.moodLook){
+      var m=LOOK_MOOD[opts.moodLook]||LOOK_MOOD.off;
+      showMoodStatus(t(m[0],m[1]));
+    }else if(opts.moodText){
+      showMoodStatus(opts.moodText);
+    }
+    return next;
+  }
+
+  function applyLook(look){
+    look=String(look||'off');
+    var grid=$('cameraProLookGrid');
+    var card=grid?grid.querySelector('[data-enh-look="'+look+'"]'):null;
+    flashEl(card);
+    return persistEnhancement({look:look},{moodLook:look});
+  }
+
+  function syncEnhancementUi(){
+    var api=enhancerApi();
+    var p=api&&api.getPrefs?api.getPrefs():null;
+    if(!p){
+      try{
+        var st=global.OneToneState&&global.OneToneState.state;
+        p=st&&st.config&&st.config.cameraPrefs&&st.config.cameraPrefs.videoEnhancement;
+      }catch(_){ p=null; }
+    }
+    if(!p) return;
+    var look=p.look||'off';
+    var grid=$('cameraProLookGrid');
+    if(grid){
+      grid.querySelectorAll('[data-enh-look]').forEach(function(btn){
+        btn.classList.toggle('is-active',btn.getAttribute('data-enh-look')===look);
+      });
+    }
+    var rows=$('cameraProLevelRows');
+    if(rows){
+      ['whiten','smooth','rosy','slim'].forEach(function(key){
+        var row=rows.querySelector('[data-enh-level="'+key+'"]');
+        if(!row) return;
+        var lv=p[key]|0;
+        row.querySelectorAll('[data-level]').forEach(function(btn){
+          btn.classList.toggle('is-active',(parseInt(btn.getAttribute('data-level'),10)||0)===lv);
+        });
+      });
+    }
+    function setSlider(id,valId,v){
+      var el=$(id);
+      var lab=$(valId);
+      if(el) el.value=String(v);
+      if(lab) lab.textContent=String(v);
+    }
+    setSlider('cameraProSliderBrightness','cameraProValBrightness',p.brightness);
+    setSlider('cameraProSliderContrast','cameraProValContrast',p.contrast);
+    setSlider('cameraProSliderSaturation','cameraProValSaturation',p.saturation);
+    var af=$('cameraProAntiFlickerPills');
+    if(af){
+      af.querySelectorAll('[data-anti-flicker]').forEach(function(btn){
+        btn.classList.toggle('is-active',btn.getAttribute('data-anti-flicker')===p.antiFlicker);
+      });
+    }
+    var df=$('cameraProDisplayFpsPills');
+    if(df){
+      df.querySelectorAll('[data-display-fps]').forEach(function(btn){
+        var v=parseInt(btn.getAttribute('data-display-fps'),10)||0;
+        btn.classList.toggle('is-active',v===(p.displayFrameRate|0));
+      });
+    }
+    var modeEl=$('cameraProEnhModeText');
+    var stApi=api&&api.getRuntimeStatus?api.getRuntimeStatus():null;
+    if(modeEl){
+      var mode=stApi&&stApi.mode?stApi.mode:'off';
+      var label=mode==='webgl'?t('cameraProEnhModeWebgl','WebGL')
+        :(mode==='css'?t('cameraProEnhModeCss','柔和显示')
+        :(mode==='canvas2d'?t('cameraProEnhModeCanvas','基础显示')
+        :t('cameraProEnhModeOff','原片')));
+      modeEl.textContent=label;
+    }
+    var slimRow=$('cameraProSlimStatusRow');
+    if(slimRow){
+      var sm=stApi&&stApi.slimMode?stApi.slimMode:'off';
+      slimRow.hidden=!(p.slim>0&&sm==='simple');
+    }
+    var antiEl=$('cameraProEnhAntiText');
+    if(antiEl) antiEl.textContent=String(p.antiFlicker||'auto');
+  }
+
+  // Compat alias
+  function syncProEnhUi(){ syncEnhancementUi(); }
+
   function syncProStatus(){
     var helloEl=$('cameraProStatusHello');
     if(helloEl){
       helloEl.textContent=t('cameraProHelloStatusFuture','未来支持 · 需要兼容 IR / 安全摄像头');
+    }
+    if(currentTab==='pro'){
+      var api=enhancerApi();
+      if(api&&api.syncFromCameraPrefs){
+        try{ api.syncFromCameraPrefs(); }catch(_){}
+      }
+      syncEnhancementUi();
     }
     syncProDeviceDiag();
   }
@@ -263,14 +473,16 @@
       }
     }
     if(fpsEl){
-      var hint=$('cameraCapabilityHint');
-      var fpsTxt='—';
-      var fpsHost=$('cameraFpsPills');
-      if(fpsHost){
-        var active=fpsHost.querySelector('.is-active,[aria-pressed="true"],.is-selected');
-        if(active) fpsTxt=String(active.textContent||'').trim()||'—';
-      }
-      fpsEl.textContent=live?fpsTxt:'—';
+      var actual='—';
+      try{
+        var video=$('cameraPreviewVideo');
+        var track=video&&video.srcObject&&video.srcObject.getVideoTracks&&video.srcObject.getVideoTracks()[0];
+        if(track&&track.getSettings){
+          var settings=track.getSettings();
+          if(settings&&settings.frameRate>0) actual=String(Math.round(settings.frameRate));
+        }
+      }catch(_){}
+      fpsEl.textContent=live?actual:'—';
     }
     if(lightEl){
       lightEl.textContent=t('cameraProDeviceLightIdle','未检测');
@@ -278,7 +490,92 @@
     if(sourceEl){
       sourceEl.textContent=t('cameraProDeviceSourceRaw','识别画面使用原始视频');
     }
+    var antiEl=$('cameraProEnhAntiText');
+    var enh=enhancerApi();
+    var ep=enh&&enh.getPrefs?enh.getPrefs():null;
+    if(antiEl&&ep) antiEl.textContent=String(ep.antiFlicker||'auto');
   }
+
+  function bindEnhancementUi(){
+    var grid=$('cameraProLookGrid');
+    if(grid){
+      grid.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-enh-look]'):null;
+        if(!btn) return;
+        e.preventDefault();
+        applyLook(btn.getAttribute('data-enh-look')||'off');
+      });
+    }
+    var rows=$('cameraProLevelRows');
+    if(rows){
+      rows.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-level]'):null;
+        if(!btn) return;
+        var row=btn.closest('[data-enh-level]');
+        if(!row) return;
+        e.preventDefault();
+        var key=row.getAttribute('data-enh-level');
+        var lv=parseInt(btn.getAttribute('data-level'),10)||0;
+        var patch={};
+        patch[key]=lv;
+        flashEl(row);
+        persistEnhancement(patch,{
+          moodText:t('cameraProMoodLevel','已更新 · ')+ (row.querySelector('.camera-pro-level-label')||{}).textContent
+        });
+      });
+    }
+    var compare=$('cameraProCompareBtn');
+    if(compare){
+      var setBypass=function(on){
+        var api=enhancerApi();
+        if(api&&api.setCompareBypass) api.setCompareBypass(!!on);
+        compare.classList.toggle('is-pressed',!!on);
+      };
+      compare.addEventListener('pointerdown',function(e){ e.preventDefault(); setBypass(true); });
+      compare.addEventListener('pointerup',function(){ setBypass(false); });
+      compare.addEventListener('pointerleave',function(){ setBypass(false); });
+      compare.addEventListener('pointercancel',function(){ setBypass(false); });
+    }
+    var af=$('cameraProAntiFlickerPills');
+    if(af){
+      af.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-anti-flicker]'):null;
+        if(!btn) return;
+        e.preventDefault();
+        persistEnhancement({antiFlicker:btn.getAttribute('data-anti-flicker')||'auto'});
+      });
+    }
+    var df=$('cameraProDisplayFpsPills');
+    if(df){
+      df.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-display-fps]'):null;
+        if(!btn) return;
+        e.preventDefault();
+        var v=parseInt(btn.getAttribute('data-display-fps'),10);
+        if(isNaN(v)) v=0;
+        persistEnhancement({displayFrameRate:v});
+      });
+    }
+    function bindSlider(id,key){
+      var el=$(id);
+      if(!el) return;
+      var onInput=function(){
+        var v=Number(el.value)||0;
+        var lab=$(id.replace('Slider','Val'));
+        if(lab) lab.textContent=String(v);
+        var patch={};
+        patch[key]=v;
+        persistEnhancement(patch);
+      };
+      el.addEventListener('input',onInput);
+      el.addEventListener('change',onInput);
+    }
+    bindSlider('cameraProSliderBrightness','brightness');
+    bindSlider('cameraProSliderContrast','contrast');
+    bindSlider('cameraProSliderSaturation','saturation');
+  }
+
+  function bindProEnhUi(){ bindEnhancementUi(); }
 
   function syncInactiveHint(){
     var hint=$('cameraWorkflowInactiveHint');
@@ -356,6 +653,7 @@
     syncCalibTabLock();
     syncGazeMap();
     syncProStatus();
+    syncProLiveHint();
     var pa=presenceApi();
     if(pa&&pa.syncTriggerSummaries){
       try{ pa.syncTriggerSummaries(); }catch(_){}
@@ -378,6 +676,7 @@
   function bindUi(){
     if(bound) return;
     bound=true;
+    bindProEnhUi();
     var nodes=$('cameraFlowNodes');
     if(nodes){
       nodes.addEventListener('click',function(e){

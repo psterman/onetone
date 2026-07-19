@@ -467,7 +467,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:{enabled:false,look:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -500,7 +500,7 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
     }else{
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
       if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
@@ -509,6 +509,7 @@
       if(st.config.cameraPrefs.selectedFrameRate==null) st.config.cameraPrefs.selectedFrameRate=0;
       if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
       if(st.config.cameraPrefs.blinkBaseline===undefined) st.config.cameraPrefs.blinkBaseline=null;
+      st.config.cameraPrefs.videoEnhancement=normalizeVideoEnhancementPrefs(st.config.cameraPrefs.videoEnhancement);
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
         st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
       }else{
@@ -777,6 +778,84 @@
     });
   }
 
+  function defaultVideoEnhancementPrefs(){
+    return {
+      enabled:false,
+      look:'off',
+      preset:'natural',
+      beautyEnabled:false,
+      whiten:0,
+      smooth:0,
+      rosy:0,
+      slim:0,
+      beauty:18,
+      brightness:0,
+      contrast:8,
+      saturation:6,
+      sharpen:8,
+      denoise:8,
+      lowLight:0,
+      antiFlicker:'auto',
+      displayFrameRate:0
+    };
+  }
+
+  function normalizeVideoEnhancementPrefs(src){
+    var d=defaultVideoEnhancementPrefs();
+    src=src&&typeof src==='object'?src:{};
+    var enh=global.OneToneCameraVideoEnhancer;
+    if(enh&&enh.normalizePrefs) return enh.normalizePrefs(src);
+    function clampLevel(v){
+      v=Math.round(Number(v)||0)|0;
+      if(v<0) v=0;
+      if(v>3) v=3;
+      return v;
+    }
+    function mapPreset(preset){
+      preset=String(preset||'');
+      if(preset==='natural') return 'natural';
+      if(preset==='soft') return 'cream';
+      if(preset==='clear') return 'glow';
+      if(preset==='lowLight') return 'fresh';
+      return 'off';
+    }
+    var look=src.look!=null?String(src.look):'';
+    if(look!=='off'&&look!=='natural'&&look!=='cream'&&look!=='glow'&&look!=='fresh'){
+      look=mapPreset(src.preset);
+    }
+    if(!look) look='off';
+    var anti=String(src.antiFlicker||d.antiFlicker).toLowerCase();
+    if(anti!=='auto'&&anti!=='50hz'&&anti!=='60hz') anti=d.antiFlicker;
+    var dfs=Math.round(Number(src.displayFrameRate)||0)|0;
+    if(dfs!==0&&dfs!==25&&dfs!==30&&dfs!==50&&dfs!==60) dfs=0;
+    function clamp(n,lo,hi,fallback){
+      n=Number(n);
+      if(!isFinite(n)) n=fallback;
+      return Math.max(lo,Math.min(hi,n));
+    }
+    var enabled=look!=='off'&&!!(src.enabled||src.beautyEnabled||(src.look&&src.look!=='off'));
+    if(look==='off') enabled=false;
+    return {
+      enabled:enabled,
+      look:look,
+      preset:String(src.preset||d.preset),
+      beautyEnabled:enabled,
+      whiten:clampLevel(src.whiten!=null?src.whiten:0),
+      smooth:clampLevel(src.smooth!=null?src.smooth:0),
+      rosy:clampLevel(src.rosy!=null?src.rosy:0),
+      slim:clampLevel(src.slim!=null?src.slim:0),
+      beauty:clamp(src.beauty!=null?src.beauty:d.beauty,0,100,d.beauty)|0,
+      brightness:clamp(src.brightness!=null?src.brightness:d.brightness,-50,50,d.brightness)|0,
+      contrast:clamp(src.contrast!=null?src.contrast:d.contrast,-50,50,d.contrast)|0,
+      saturation:clamp(src.saturation!=null?src.saturation:d.saturation,-50,50,d.saturation)|0,
+      sharpen:clamp(src.sharpen!=null?src.sharpen:d.sharpen,0,100,d.sharpen)|0,
+      denoise:clamp(src.denoise!=null?src.denoise:d.denoise,0,100,d.denoise)|0,
+      lowLight:clamp(src.lowLight!=null?src.lowLight:d.lowLight,0,100,d.lowLight)|0,
+      antiFlicker:anti,
+      displayFrameRate:dfs
+    };
+  }
+
   function rememberCameraPrefsFromConfig(cfg){
     var p=cfg&&cfg.cameraPrefs;
     if(!p||typeof p!=='object') return;
@@ -793,7 +872,8 @@
         presenceActions:p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{
           enabled:false,triggers:{away:false,shake:false,blink:false},
           onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'
-        }
+        },
+        videoEnhancement:normalizeVideoEnhancementPrefs(p.videoEnhancement)
       }));
     }catch(_){
       lastKnownCameraPrefs=null;
@@ -829,6 +909,12 @@
     var tr=pa.triggers&&typeof pa.triggers==='object'?pa.triggers:{};
     var presenceEnabled=!!pa.enabled;
     var deviceId=String(p.selectedDeviceId||known.selectedDeviceId||'').trim();
+    var ve=p.videoEnhancement&&typeof p.videoEnhancement==='object'
+      ?p.videoEnhancement
+      :(known.videoEnhancement&&typeof known.videoEnhancement==='object'?known.videoEnhancement:null);
+    if((!p.videoEnhancement||typeof p.videoEnhancement!=='object')&&ve&&st.config.cameraPrefs){
+      st.config.cameraPrefs.videoEnhancement=normalizeVideoEnhancementPrefs(ve);
+    }
     return {
       enabled:presenceEnabled,
       selectedDeviceId:deviceId,
@@ -850,7 +936,8 @@
         onReturn:String(pa.onReturn||'none').trim()||'none',
         shakeHead:String(pa.shakeHead||'none').trim()||'none',
         deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none'
-      }
+      },
+      videoEnhancement:normalizeVideoEnhancementPrefs(ve)
     };
   }
 

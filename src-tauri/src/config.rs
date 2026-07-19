@@ -1274,6 +1274,97 @@ impl Default for PresenceActionsPrefs {
     }
 }
 
+/// Local preview-only video enhancement (never fed to recognition).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoEnhancementPrefs {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Look id: off | natural | cream | glow | fresh
+    #[serde(default = "default_video_enhancement_look")]
+    pub look: String,
+    #[serde(default = "default_video_enhancement_preset")]
+    pub preset: String,
+    #[serde(default)]
+    pub beauty_enabled: bool,
+    /// Beauty level chips: 0=off 1=light 2=mid 3=strong
+    #[serde(default)]
+    pub whiten: u8,
+    #[serde(default)]
+    pub smooth: u8,
+    #[serde(default)]
+    pub rosy: u8,
+    #[serde(default)]
+    pub slim: u8,
+    #[serde(default = "default_video_enhancement_beauty")]
+    pub beauty: u32,
+    #[serde(default)]
+    pub brightness: i32,
+    #[serde(default = "default_video_enhancement_contrast")]
+    pub contrast: i32,
+    #[serde(default = "default_video_enhancement_saturation")]
+    pub saturation: i32,
+    #[serde(default = "default_video_enhancement_sharpen")]
+    pub sharpen: u32,
+    #[serde(default = "default_video_enhancement_denoise")]
+    pub denoise: u32,
+    #[serde(default)]
+    pub low_light: u32,
+    #[serde(default = "default_video_enhancement_anti_flicker")]
+    pub anti_flicker: String,
+    #[serde(default)]
+    pub display_frame_rate: u32,
+}
+
+fn default_video_enhancement_look() -> String {
+    "off".into()
+}
+fn default_video_enhancement_preset() -> String {
+    "natural".into()
+}
+fn default_video_enhancement_beauty() -> u32 {
+    18
+}
+fn default_video_enhancement_contrast() -> i32 {
+    8
+}
+fn default_video_enhancement_saturation() -> i32 {
+    6
+}
+fn default_video_enhancement_sharpen() -> u32 {
+    8
+}
+fn default_video_enhancement_denoise() -> u32 {
+    8
+}
+fn default_video_enhancement_anti_flicker() -> String {
+    "auto".into()
+}
+
+impl Default for VideoEnhancementPrefs {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            look: default_video_enhancement_look(),
+            preset: default_video_enhancement_preset(),
+            beauty_enabled: false,
+            whiten: 0,
+            smooth: 0,
+            rosy: 0,
+            slim: 0,
+            beauty: default_video_enhancement_beauty(),
+            brightness: 0,
+            contrast: default_video_enhancement_contrast(),
+            saturation: default_video_enhancement_saturation(),
+            sharpen: default_video_enhancement_sharpen(),
+            denoise: default_video_enhancement_denoise(),
+            low_light: 0,
+            anti_flicker: default_video_enhancement_anti_flicker(),
+            display_frame_rate: 0,
+        }
+    }
+}
+
 /// Local camera preview prefs (Glance MVP). Never auto-starts the camera.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -1298,6 +1389,9 @@ pub struct CameraPrefs {
     pub blink_baseline: Option<serde_json::Value>,
     #[serde(default)]
     pub presence_actions: PresenceActionsPrefs,
+    /// Preview-only enhancement; omitted in quiet saves must not wipe disk prefs.
+    #[serde(default)]
+    pub video_enhancement: VideoEnhancementPrefs,
 }
 
 /// Legacy / reserved; not used at runtime.
@@ -3608,10 +3702,19 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
 /// Quiet camera save: FE may send `gazeCalibration: null` when the in-memory
 /// snapshot was never hydrated. Preserve disk calibration unless the FE explicitly
 /// asks to clear it. Also keep a non-empty device id if the payload omits it.
+///
+/// `has_video_enhancement`: true when the raw JSON included `videoEnhancement`.
+/// Field missing → keep existing (old clients / partial payloads). Field present
+/// (even all-defaults / enabled:false) → take incoming so intentional resets stick.
+///
+/// `has_selected_frame_rate`: true when JSON included `selectedFrameRate`.
+/// Needed so Auto FPS (`0`) can persist; missing field still restores existing.
 pub fn merge_camera_prefs_quiet(
     existing: &CameraPrefs,
     mut incoming: CameraPrefs,
     clear_gaze_calibration: bool,
+    has_video_enhancement: bool,
+    has_selected_frame_rate: bool,
 ) -> CameraPrefs {
     if incoming.gaze_calibration.is_none() && !clear_gaze_calibration {
         incoming.gaze_calibration = existing.gaze_calibration.clone();
@@ -3630,8 +3733,14 @@ pub fn merge_camera_prefs_quiet(
     if incoming.selected_height == 0 && existing.selected_height > 0 {
         incoming.selected_height = existing.selected_height;
     }
-    if incoming.selected_frame_rate == 0 && existing.selected_frame_rate > 0 {
+    if !has_selected_frame_rate
+        && incoming.selected_frame_rate == 0
+        && existing.selected_frame_rate > 0
+    {
         incoming.selected_frame_rate = existing.selected_frame_rate;
+    }
+    if !has_video_enhancement {
+        incoming.video_enhancement = existing.video_enhancement.clone();
     }
     incoming
 }
@@ -4265,7 +4374,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, false);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false);
         assert_eq!(
             merged.gaze_calibration,
             Some(serde_json::json!({"v":1,"ok":true}))
@@ -4286,8 +4395,73 @@ mod tests {
             gaze_calibration: None,
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, true);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, true, false, false);
         assert!(merged.gaze_calibration.is_none());
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_keeps_video_enhancement_when_field_missing() {
+        let existing = CameraPrefs {
+            video_enhancement: VideoEnhancementPrefs {
+                enabled: true,
+                preset: "clear".into(),
+                beauty_enabled: true,
+                beauty: 40,
+                ..VideoEnhancementPrefs::default()
+            },
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            selected_device_id: "cam-2".into(),
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false);
+        assert!(merged.video_enhancement.enabled);
+        assert_eq!(merged.video_enhancement.preset, "clear");
+        assert_eq!(merged.video_enhancement.beauty, 40);
+        assert_eq!(merged.selected_device_id, "cam-2");
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_applies_video_enhancement_when_field_present() {
+        let existing = CameraPrefs {
+            video_enhancement: VideoEnhancementPrefs {
+                enabled: true,
+                preset: "clear".into(),
+                ..VideoEnhancementPrefs::default()
+            },
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            video_enhancement: VideoEnhancementPrefs::default(),
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, true, true);
+        assert!(!merged.video_enhancement.enabled);
+        assert_eq!(merged.video_enhancement.preset, "natural");
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_allows_auto_frame_rate_zero() {
+        let existing = CameraPrefs {
+            selected_frame_rate: 30,
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            selected_frame_rate: 0,
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, true);
+        assert_eq!(merged.selected_frame_rate, 0);
+    }
+
+    #[test]
+    fn video_enhancement_serde_defaults_when_omitted() {
+        let prefs: CameraPrefs = serde_json::from_str(
+            r#"{"enabled":false,"selectedDeviceId":"","previewEnabled":false}"#,
+        )
+        .expect("parse");
+        assert_eq!(prefs.video_enhancement, VideoEnhancementPrefs::default());
     }
 
     #[test]

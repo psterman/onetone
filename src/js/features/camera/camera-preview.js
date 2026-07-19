@@ -59,7 +59,28 @@
       ]
     }
   ];
-  var FPS_PILLS=[24,25,30];
+  var FPS_PILLS=[25,30,50,60];
+
+  function enhancerApi(){
+    return global.OneToneCameraVideoEnhancer||null;
+  }
+
+  function defaultVideoEnhancement(){
+    var api=enhancerApi();
+    if(api&&api.defaultPrefs) return api.defaultPrefs();
+    return {enabled:false,look:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0};
+  }
+
+  function ensureVideoEnhancement(prefs){
+    if(!prefs||typeof prefs!=='object') return defaultVideoEnhancement();
+    var api=enhancerApi();
+    if(api&&api.normalizePrefs){
+      prefs.videoEnhancement=api.normalizePrefs(prefs.videoEnhancement);
+    }else if(!prefs.videoEnhancement||typeof prefs.videoEnhancement!=='object'){
+      prefs.videoEnhancement=defaultVideoEnhancement();
+    }
+    return prefs.videoEnhancement;
+  }
 
   function allResItems(){
     var out=[];
@@ -445,22 +466,61 @@
     if(!lm||!lm.setDetectIntervalMs) return;
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
+    var gazeMs=33;
+    if(api&&api.preferredDetectIntervalMs){
+      try{ gazeMs=api.preferredDetectIntervalMs(getCaptureFpsHint())||33; }catch(_){ gazeMs=33; }
+    }
     if(gaze.enabled||calRunning){
-      lm.setDetectIntervalMs(33);
+      lm.setDetectIntervalMs(gazeMs);
       return;
     }
     if(!presenceEnabled()){
-      lm.setDetectIntervalMs(33);
+      lm.setDetectIntervalMs(gazeMs);
       return;
     }
     var prefs=api&&api.prefs?api.prefs():null;
     var gestureOn=!!(prefs&&(prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none'));
     if(gestureOn){
-      lm.setDetectIntervalMs(33);
+      lm.setDetectIntervalMs(gazeMs);
       return;
     }
     var st=api&&api.getState?api.getState():null;
     lm.setDetectIntervalMs(st&&st.presence==='away'?333:100);
+  }
+
+  function getCaptureFpsHint(){
+    var tr=activeVideoTrack();
+    if(tr&&tr.getSettings){
+      try{
+        var s=tr.getSettings();
+        if(s&&s.frameRate>0) return Math.round(s.frameRate);
+      }catch(_){}
+    }
+    if(uiFps>0) return uiFps|0;
+    var prefs=cameraPrefs();
+    if(prefs&&prefs.selectedFrameRate>0) return prefs.selectedFrameRate|0;
+    return 0;
+  }
+
+  function attachEnhancer(){
+    var api=enhancerApi();
+    if(!api||!api.attach) return;
+    try{ api.attach($('cameraPreviewVideo'),$('cameraPreviewShell')); }catch(_){}
+  }
+
+  function detachEnhancer(){
+    var api=enhancerApi();
+    if(!api||!api.detach) return;
+    try{ api.detach(); }catch(_){}
+  }
+
+  function notifyEnhancerResize(){
+    var api=enhancerApi();
+    if(!api) return;
+    try{
+      if(api.syncFromCameraPrefs) api.syncFromCameraPrefs();
+      if(api.renderOnce) api.renderOnce();
+    }catch(_){}
   }
 
   function onLandmarkerPoint(point){
@@ -537,18 +597,19 @@
         if(!global.OneToneState.state.config) global.OneToneState.state.config={};
         st=global.OneToneState.state;
       }else{
-        return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+        return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
       }
     }
     var cfg=st.config;
     if(!cfg.cameraPrefs||typeof cfg.cameraPrefs!=='object'){
-      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
     }
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
     if(cfg.cameraPrefs.blinkBaseline===undefined) cfg.cameraPrefs.blinkBaseline=null;
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
       cfg.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
     }
+    ensureVideoEnhancement(cfg.cameraPrefs);
     // Deprecated mirror — presenceActions.enabled is the sole intent source.
     if(cfg.cameraPrefs.presenceActions){
       cfg.cameraPrefs.enabled=!!cfg.cameraPrefs.presenceActions.enabled;
@@ -565,6 +626,11 @@
       if(partial.selectedFrameRate!=null) prefs.selectedFrameRate=Math.max(0,Number(partial.selectedFrameRate)||0)|0;
       if(partial.gazeCalibration!==undefined) prefs.gazeCalibration=partial.gazeCalibration;
       if(partial.presenceActions!==undefined) prefs.presenceActions=partial.presenceActions;
+      if(partial.videoEnhancement!==undefined){
+        var api=enhancerApi();
+        var merged=Object.assign({},ensureVideoEnhancement(prefs),partial.videoEnhancement||{});
+        prefs.videoEnhancement=api&&api.normalizePrefs?api.normalizePrefs(merged):merged;
+      }
     }
     // Schema only — never auto-start from previewEnabled.
     prefs.previewEnabled=false;
@@ -750,7 +816,15 @@
     }else if(!live){
       uiResKey='';
     }
-    if(settings&&settings.frameRate){
+    // Keep Auto (0) when user preference is Auto — do not overwrite with actual track FPS.
+    if(prefs.selectedFrameRate===0&&uiFps===0){
+      uiFps=0;
+    }else if(prefs.selectedFrameRate===0){
+      uiFps=0;
+    }else if(settings&&settings.frameRate&&prefs.selectedFrameRate>0){
+      // Prefer saved preference for pill highlight when set.
+      uiFps=prefs.selectedFrameRate|0;
+    }else if(settings&&settings.frameRate){
       uiFps=Math.round(Number(settings.frameRate)||0);
     }else if(prefs.selectedFrameRate>0){
       uiFps=prefs.selectedFrameRate|0;
@@ -762,6 +836,12 @@
 
     if(fpsPills){
       fpsPills.innerHTML='';
+      var autoPill=document.createElement('button');
+      autoPill.type='button';
+      autoPill.className='camera-fps-pill'+(uiFps===0?' is-active':'');
+      autoPill.setAttribute('data-fps','0');
+      autoPill.textContent=t('cameraFpsAuto','Auto');
+      fpsPills.appendChild(autoPill);
       for(var p=0;p<FPS_PILLS.length;p++){
         var fps=FPS_PILLS[p];
         var pill=document.createElement('button');
@@ -841,18 +921,26 @@
         out.height=prefs.selectedHeight|0;
       }
     }
+    // uiFps===0 means Auto (do not force a capture FPS).
     if(uiFps>0) out.frameRate=uiFps|0;
+    else if(uiFps===0&&prefs.selectedFrameRate===0) out.frameRate=0;
     else if(prefs.selectedFrameRate>0) out.frameRate=prefs.selectedFrameRate|0;
     // No saved choice → request highest listed mode (not browser's low default ~640×480).
     if(!out.width||!out.height){
       var d=defaultPreferConstraints();
       out.width=d.width;
       out.height=d.height;
-      if(!out.frameRate) out.frameRate=d.frameRate;
-    }else if(!out.frameRate){
-      out.frameRate=30;
+      if(!out.frameRate&&uiFps!==0) out.frameRate=d.frameRate;
     }
     return out;
+  }
+
+  function antiFlickerHintFps(){
+    var ve=ensureVideoEnhancement(cameraPrefs());
+    var af=ve&&ve.antiFlicker?String(ve.antiFlicker):'auto';
+    if(af==='50hz') return 50;
+    if(af==='60hz') return 60;
+    return 0;
   }
 
   function buildVideoConstraints(deviceId,prefer,mode){
@@ -869,9 +957,15 @@
     if(prefer.height>0){
       video.height=mode==='exact'?{exact:prefer.height}:{ideal:prefer.height};
     }
-    if(prefer.frameRate>0){
+    var fps=prefer.frameRate>0?prefer.frameRate:0;
+    // antiFlicker suggests FPS only when user left capture FPS on Auto.
+    if(!fps){
+      var hint=antiFlickerHintFps();
+      if(hint>0) fps=hint;
+    }
+    if(fps>0){
       // Exact frameRate often fails on Windows drivers — keep ideal.
-      video.frameRate={ideal:prefer.frameRate};
+      video.frameRate={ideal:fps};
     }
     return video;
   }
@@ -1469,6 +1563,9 @@
   function getGazeDebugState(){
     var cal=calibrationApi();
     var calSt=cal&&cal.getState?cal.getState():null;
+    var enh=enhancerApi();
+    var enhSt=null;
+    try{ enhSt=enh&&enh.getRuntimeStatus?enh.getRuntimeStatus():null; }catch(_){ enhSt=null; }
     return {
       enabled:!!gaze.enabled,
       mode:gaze.mode,
@@ -1486,7 +1583,8 @@
         clientY:gaze.point.clientY
       },
       smooth:{x:gaze.smooth.x,y:gaze.smooth.y},
-      smoothClient:{x:gaze.smoothClient.x,y:gaze.smoothClient.y}
+      smoothClient:{x:gaze.smoothClient.x,y:gaze.smoothClient.y},
+      videoEnhancement:enhSt
     };
   }
 
@@ -1510,6 +1608,7 @@
 
   function releaseStreamOnly(){
     clearMetaTimer();
+    detachEnhancer();
     if(stream){
       try{
         stream.getTracks().forEach(function(tr){
@@ -1521,6 +1620,8 @@
     var video=$('cameraPreviewVideo');
     if(video){
       try{ video.srcObject=null; }catch(_){}
+      video.classList.remove('is-enhanced-hidden');
+      video.style.filter='';
     }
     previewLive=false;
     starting=false;
@@ -1595,7 +1696,7 @@
         persistCameraPrefs({
           selectedWidth:sz.width,
           selectedHeight:sz.height,
-          selectedFrameRate:uiFps||30
+          selectedFrameRate:uiFps>0?uiFps:0
         });
       }
       starting=false;
@@ -1792,10 +1893,11 @@
 
   function applyCapabilityChange(){
     var prefer=readSelectedConstraints();
+    // Preserve Auto (0) in prefs — do not coerce to actual driver FPS here.
     persistCameraPrefs({
       selectedWidth:prefer.width,
       selectedHeight:prefer.height,
-      selectedFrameRate:prefer.frameRate
+      selectedFrameRate:uiFps>0?prefer.frameRate:(uiFps===0?0:prefer.frameRate)
     });
     if(!previewLive||applyingCaps){
       fillCapabilitySelects(lastCapabilities,null);
@@ -1822,12 +1924,13 @@
       var tr=activeVideoTrack();
       var settings=tr&&tr.getSettings?tr.getSettings():null;
       if(settingsMismatch(settings,prefer)){
-        // Driver rejected exact mode — reflect actual output in UI/prefs.
+        // Driver rejected exact mode — reflect actual output in UI; keep Auto preference if set.
         if(settings){
+          var keepAuto=uiFps===0;
           persistCameraPrefs({
             selectedWidth:Math.round(settings.width||0),
             selectedHeight:Math.round(settings.height||0),
-            selectedFrameRate:Math.round(settings.frameRate||0)
+            selectedFrameRate:keepAuto?0:Math.round(settings.frameRate||0)
           });
           refreshCapabilitiesFromTrack(tr);
         }
@@ -1835,6 +1938,8 @@
           ' · '+(settings&&settings.width?Math.round(settings.width):'?')+'×'+
           (settings&&settings.height?Math.round(settings.height):'?')+' @ '+
           (settings&&settings.frameRate?Math.round(settings.frameRate):'?')+'fps');
+        notifyEnhancerResize();
+        syncPresenceDetectInterval();
         return;
       }
       var w=settings&&settings.width?Math.round(settings.width):prefer.width||0;
@@ -1846,6 +1951,8 @@
           .replace('{h}',String(h||'—'))
           .replace('{fps}',String(fps||'—'))
       );
+      notifyEnhancerResize();
+      syncPresenceDetectInterval();
     }).catch(function(err){
       applyingCaps=false;
       starting=false;
@@ -1888,6 +1995,9 @@
     startMetaPoll();
     syncLiveLandmarker();
     ensureGazeLoop();
+    attachEnhancer();
+    notifyEnhancerResize();
+    syncPresenceDetectInterval();
     return refreshDevices();
   }
 
@@ -1981,8 +2091,9 @@
         var btn=e.target&&e.target.closest?e.target.closest('[data-fps]'):null;
         if(!btn||btn.disabled) return;
         e.preventDefault();
-        var fps=parseInt(btn.getAttribute('data-fps'),10)||0;
-        if(!fps||fps===uiFps) return;
+        var raw=btn.getAttribute('data-fps');
+        var fps=raw==null||raw===''?0:(parseInt(raw,10)||0);
+        if(fps===uiFps) return;
         uiFps=fps;
         applyCapabilityChange();
       });
@@ -2038,7 +2149,9 @@
     recenterGaze:recenterGaze,
     onCalibrationUpdated:onCalibrationUpdated,
     getActualVideoSize:getActualVideoSize,
-    syncLiveLandmarker:syncLiveLandmarker
+    syncLiveLandmarker:syncLiveLandmarker,
+    persistCameraPrefs:persistCameraPrefs,
+    getCaptureFpsHint:getCaptureFpsHint
   };
 
   if(document.readyState==='loading'){

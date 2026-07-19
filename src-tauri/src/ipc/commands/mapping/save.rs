@@ -89,14 +89,21 @@ pub fn cmd_save_camera_prefs(
         .get("clearGazeCalibration")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let has_video_enhancement = value.get("videoEnhancement").is_some();
+    let has_selected_frame_rate = value.get("selectedFrameRate").is_some();
     let incoming: CameraPrefs = serde_json::from_value(value).map_err(|e| {
         eprintln!("cmd_save_camera_prefs: prefs parse failed: {e}");
         "camera_prefs_invalid".to_string()
     })?;
     {
         let mut cfg = state.cfg.lock();
-        cfg.camera_prefs =
-            config::merge_camera_prefs_quiet(&cfg.camera_prefs, incoming, clear_gaze);
+        cfg.camera_prefs = config::merge_camera_prefs_quiet(
+            &cfg.camera_prefs,
+            incoming,
+            clear_gaze,
+            has_video_enhancement,
+            has_selected_frame_rate,
+        );
         crate::config::save_config(&cfg);
     }
     crate::app_log::log_line(

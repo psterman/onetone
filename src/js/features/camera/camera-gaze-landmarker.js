@@ -31,6 +31,8 @@
   var BLINK_HOLD=0.32;
   var BLINK_RELEASE_MS=140;
   var blinkHoldUntil=0;
+  var lastLandmarks=null;
+  var lastLandmarksAt=0;
 
   function clamp01(v){
     v=Number(v);
@@ -364,6 +366,7 @@
     }
     var faces=result&&result.faceLandmarks;
     if(!faces||!faces.length){
+      lastLandmarks=null;
       emitPoint({
         x:lastGood.x,
         y:lastGood.y,
@@ -375,6 +378,8 @@
       });
       return;
     }
+    lastLandmarks=faces[0];
+    lastLandmarksAt=now;
     var blendMap=buildBlendMap(result.faceBlendshapes);
     var mats=result.facialTransformationMatrixes;
     var mat=mats&&mats[0]?mats[0]:null;
@@ -479,6 +484,13 @@
     setDetectIntervalMs:setDetectIntervalMs,
     mapVideoNormToOverlay:mapVideoNormToOverlay,
     getContainRect:getContainRect,
-    estimateGazeProxy:estimateGazeProxy
+    estimateGazeProxy:estimateGazeProxy,
+    /** Read-only Face Landmarker points for preview beauty (does not alter onPoint). */
+    getLastLandmarks:function(){
+      return lastLandmarks||null;
+    },
+    getLastLandmarksAt:function(){
+      return lastLandmarksAt||0;
+    }
   };
 })((typeof window!=='undefined')?window:globalThis);

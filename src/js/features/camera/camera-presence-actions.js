@@ -33,6 +33,40 @@
   var DETECT_GAZE_MS=33;
   var DETECT_SHAKE_MS=33;
 
+  /** Capture-FPS-aware interval for gaze/shake only — never for away/present power tiers. */
+  function preferredDetectIntervalMs(captureFps){
+    var fps=Math.round(Number(captureFps)||0)|0;
+    if(fps<=0){
+      try{
+        var gp=global.OneToneCameraPreview;
+        if(gp&&gp.getGazeDebugState){
+          // fall through — preview may expose actual FPS later
+        }
+        var tr=null;
+        var video=document.getElementById('cameraPreviewVideo');
+        if(video&&video.srcObject&&video.srcObject.getVideoTracks){
+          tr=video.srcObject.getVideoTracks()[0];
+        }
+        if(tr&&tr.getSettings){
+          var s=tr.getSettings();
+          if(s&&s.frameRate>0) fps=Math.round(s.frameRate)|0;
+        }
+      }catch(_){}
+    }
+    if(fps<=0){
+      try{
+        var st=global.OneToneState&&global.OneToneState.state;
+        var p=st&&st.config&&st.config.cameraPrefs;
+        if(p&&p.selectedFrameRate>0) fps=p.selectedFrameRate|0;
+      }catch(_){}
+    }
+    if(fps===25) return 40;
+    if(fps===50) return 20;
+    if(fps>=55) return 33; // 60fps capture → detect ~30fps
+    if(fps===30) return 33;
+    return DETECT_GAZE_MS;
+  }
+
   // Shake: yaw hysteresis + L-R-L / R-L-R within window.
   // Enter high enough to avoid center jitter → key/toast flood / UI freeze.
   var SHAKE_WINDOW_MS=2800;
@@ -731,24 +765,26 @@
         gazeOn=!!(gs&&gs.enabled);
       }
     }catch(_){}
+    var gazeMs=preferredDetectIntervalMs(0);
     if(gazeOn||isCalibrating()){
-      api.setDetectIntervalMs(DETECT_GAZE_MS);
+      api.setDetectIntervalMs(gazeMs);
       return;
     }
     if(!isEnabled()){
-      api.setDetectIntervalMs(DETECT_GAZE_MS);
+      api.setDetectIntervalMs(gazeMs);
       return;
     }
     var p=prefs();
     var gestureOn=triggerEnabled('shake',p)||triggerEnabled('blink',p)
       ||normalizeAction(p.shakeHead)!=='none'||normalizeAction(p.deliberateBlink)!=='none';
     if(gestureOn&&st.presence!=='away'){
-      api.setDetectIntervalMs(DETECT_SHAKE_MS);
+      api.setDetectIntervalMs(gazeMs);
       if(typeof st.onDetectInterval==='function'){
-        try{ st.onDetectInterval(DETECT_SHAKE_MS); }catch(_){}
+        try{ st.onDetectInterval(gazeMs); }catch(_){}
       }
       return;
     }
+    // away / present power tiers unchanged — not tied to Pro display FPS.
     if(st.presence==='away') api.setDetectIntervalMs(DETECT_AWAY_MS);
     else api.setDetectIntervalMs(DETECT_PRESENT_MS);
     if(typeof st.onDetectInterval==='function'){
@@ -2417,6 +2453,7 @@
     setPrivacyOpen:setPrivacyOpen,
     closePrivacyScreen:closePrivacyScreen,
     syncDetectInterval:syncDetectInterval,
+    preferredDetectIntervalMs:preferredDetectIntervalMs,
     syncUiFromPrefs:syncUiFromPrefs,
     syncTriggerSummaries:function(){ syncTriggerSummaries(prefs()); },
     startBlinkBaselineSample:function(){ startBlinkBaselineSample(true); },
