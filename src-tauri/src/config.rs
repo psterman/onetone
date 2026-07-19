@@ -1716,6 +1716,9 @@ fn default_sound_id_send_success() -> String {
 fn default_sound_id_send_fail() -> String {
     "error-subtle".into()
 }
+fn default_sound_id_camera_action() -> String {
+    "input-ready-soft".into()
+}
 
 impl Default for SoundSlot {
     fn default() -> Self {
@@ -1741,6 +1744,8 @@ pub struct SoundsConfig {
     pub send_success: SoundSlot,
     #[serde(default = "default_sound_slot_send_fail", rename = "sendFail")]
     pub send_fail: SoundSlot,
+    #[serde(default = "default_sound_slot_camera_action", rename = "cameraAction")]
+    pub camera_action: SoundSlot,
     #[serde(default = "default_false", rename = "recordingMuteEnabled")]
     pub recording_mute_enabled: bool,
     #[serde(
@@ -1780,6 +1785,12 @@ fn default_sound_slot_send_fail() -> SoundSlot {
         id: default_sound_id_send_fail(),
     }
 }
+fn default_sound_slot_camera_action() -> SoundSlot {
+    SoundSlot {
+        enabled: false,
+        id: default_sound_id_camera_action(),
+    }
+}
 
 fn default_recording_mute_strength() -> String {
     "balanced".into()
@@ -1794,6 +1805,7 @@ impl Default for SoundsConfig {
             key_wake: default_sound_slot_key_wake(),
             send_success: default_sound_slot_send_success(),
             send_fail: default_sound_slot_send_fail(),
+            camera_action: default_sound_slot_camera_action(),
             recording_mute_enabled: false,
             recording_mute_strength: default_recording_mute_strength(),
         }
@@ -1817,6 +1829,9 @@ impl SoundsConfig {
         if self.send_fail.id.trim().is_empty() {
             self.send_fail.id = default_sound_id_send_fail();
         }
+        if self.camera_action.id.trim().is_empty() {
+            self.camera_action.id = default_sound_id_camera_action();
+        }
         if !matches!(
             self.recording_mute_strength.trim(),
             "light" | "balanced" | "strong" | "mute"
@@ -1835,6 +1850,7 @@ impl SoundsConfig {
             "key_wake" => self.key_wake.enabled,
             "send_success" => self.send_success.enabled,
             "send_fail" => self.send_fail.enabled,
+            "camera_action" => self.camera_action.enabled,
             _ => false,
         }
     }

@@ -78,6 +78,15 @@
         hooks.previewSoundSlot(slot);
       };
     });
+    function openSoundsMore(){
+      if(global.OneToneSettingsDrawer&&typeof global.OneToneSettingsDrawer.setPanel==='function'){
+        global.OneToneSettingsDrawer.setPanel('sounds');
+        return;
+      }
+      if(hooks.openSettings) hooks.openSettings({panel:'sounds'});
+    }
+    bindClick('btnKeysOpenSoundsMore',openSoundsMore);
+    bindClick('btnCameraOpenSoundsMore',openSoundsMore);
   }
   global.OneToneAppPrefsBindings={bindEvents:bindEvents};
 })((typeof window!=='undefined')?window:globalThis);

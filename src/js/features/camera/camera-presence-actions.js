@@ -1047,6 +1047,16 @@
     toast(t('cameraPresenceLowPowerOff','已退出低消耗运行'));
   }
 
+  function playCameraActionCue(res){
+    if(!res||res.ok===false||res.skipped||res.pending) return;
+    if(res.action==='none') return;
+    try{
+      if(global.OneToneAppThemePrefs&&typeof global.OneToneAppThemePrefs.playSoundCue==='function'){
+        global.OneToneAppThemePrefs.playSoundCue('camera_action');
+      }
+    }catch(_){}
+  }
+
   function executeActionNow(action,source){
     action=normalizeAction(action);
     st.lastAction=action;
@@ -1168,13 +1178,17 @@
         }
         executeActionNow(pending.action,pending.source).then(function(res){
           if(!res||res.ok===false||res.skipped) return;
+          playCameraActionCue(res);
           if(pending.source==='return') toast(t('cameraPresenceReturnFired','已回席'));
         });
       },MID_RISK_DELAY_MS);
       return Promise.resolve({ok:true,action:action,pending:true});
     }
 
-    return executeActionNow(action,source);
+    return executeActionNow(action,source).then(function(res){
+      playCameraActionCue(res);
+      return res;
+    });
   }
 
   function triggerEnabled(kind,p){

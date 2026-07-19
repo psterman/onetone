@@ -858,6 +858,26 @@
                 </div>
                 </div>
                 </div>
+                <div class="sound-embed-strip" id="keysSoundEmbed">
+                  <div class="sound-embed-strip-head">
+                    <p class="sound-embed-strip-title" id="keysSoundEmbedTitle">提示音</p>
+                    <button type="button" class="sound-embed-more-link" id="btnKeysOpenSoundsMore">更多音效</button>
+                  </div>
+                  <div class="sound-embed-slots">
+                    <div class="sound-embed-slot" data-slot="record">
+                      <span class="sound-embed-slot-lbl" id="keysSoundRecordLbl">录制按键</span>
+                      <button type="button" class="toggle-switch sound-slot-toggle" data-slot="record" role="switch" aria-checked="true" aria-labelledby="keysSoundRecordLbl"></button>
+                      <select class="sound-slot-select" data-slot="record" aria-labelledby="keysSoundRecordLbl"></select>
+                      <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="record">试听</button>
+                    </div>
+                    <div class="sound-embed-slot" data-slot="keyWake">
+                      <span class="sound-embed-slot-lbl" id="keysSoundKeyWakeLbl">按键激活提示音</span>
+                      <button type="button" class="toggle-switch sound-slot-toggle" data-slot="keyWake" role="switch" aria-checked="false" aria-labelledby="keysSoundKeyWakeLbl"></button>
+                      <select class="sound-slot-select" data-slot="keyWake" aria-labelledby="keysSoundKeyWakeLbl"></select>
+                      <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="keyWake">试听</button>
+                    </div>
+                  </div>
+                </div>
                 <footer class="habit-key-mapping-foot keys-page-tip-bar">
                   <p class="habit-key-mapping-tip" id="habitKeyMappingTip">提示：先设置 1 → 2 → 3，再按需配置 4 / 5 和高级选项</p>
                   <button type="button" class="habit-key-mapping-tutorial" id="btnHabitFlowTutorial">查看使用教程</button>
@@ -2095,6 +2115,19 @@
                 <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="sendFail" id="soundPreviewSendFail">试听</button>
               </div>
             </div>
+            <div class="sound-slot" data-slot="cameraAction">
+              <div class="sound-slot-head">
+                <div>
+                  <p class="sound-slot-title" id="soundSlotCameraActionTitle">摄像头动作提示音</p>
+                  <p class="sound-slot-desc" id="soundSlotCameraActionDesc">离席、摇头、闭眼等动作成功执行时播放。</p>
+                </div>
+                <button type="button" class="toggle-switch sound-slot-toggle" data-slot="cameraAction" role="switch" aria-checked="false"></button>
+              </div>
+              <div class="sound-slot-pick">
+                <select class="sound-slot-select" data-slot="cameraAction" id="soundSelectCameraAction" aria-labelledby="soundSlotCameraActionTitle"></select>
+                <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="cameraAction" id="soundPreviewCameraAction">试听</button>
+              </div>
+            </div>
           </div>
         </section>
         <section class="settings-panel drawer-section" id="settingsPanelDebug" hidden>
@@ -2461,6 +2494,20 @@
                   <p class="camera-goto-pro-hint">
                     <button type="button" class="camera-goto-pro-link" id="cameraGotoProFromTrigger" data-i18n="cameraGotoProFromTrigger">想让「看屏幕哪里」更稳？去高级确认（可选）</button>
                   </p>
+                  <div class="sound-embed-strip" id="cameraSoundEmbed">
+                    <div class="sound-embed-strip-head">
+                      <p class="sound-embed-strip-title" id="cameraSoundEmbedTitle">提示音</p>
+                      <button type="button" class="sound-embed-more-link" id="btnCameraOpenSoundsMore">更多音效</button>
+                    </div>
+                    <div class="sound-embed-slots">
+                      <div class="sound-embed-slot" data-slot="cameraAction">
+                        <span class="sound-embed-slot-lbl" id="cameraSoundActionLbl">摄像头动作提示音</span>
+                        <button type="button" class="toggle-switch sound-slot-toggle" data-slot="cameraAction" role="switch" aria-checked="false" aria-labelledby="cameraSoundActionLbl"></button>
+                        <select class="sound-slot-select" data-slot="cameraAction" aria-labelledby="cameraSoundActionLbl"></select>
+                        <button type="button" class="sound-preview-btn sound-slot-preview" data-slot="cameraAction">试听</button>
+                      </div>
+                    </div>
+                  </div>
                 </article>
 
                 <article class="camera-tab-panel" id="cameraPanelAction" role="tabpanel" data-camera-panel="action" aria-labelledby="cameraFlowNodeAction" hidden>

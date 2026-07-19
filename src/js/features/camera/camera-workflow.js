@@ -385,6 +385,11 @@
     if(pa&&pa.syncUiFromPrefs){
       try{ pa.syncUiFromPrefs(); }catch(_){}
     }
+    try{
+      if(global.OneToneAppThemePrefs&&global.OneToneAppThemePrefs.renderSoundSettingsPanel){
+        global.OneToneAppThemePrefs.renderSoundSettingsPanel();
+      }
+    }catch(_){}
   }
 
   function onPanelHidden(){

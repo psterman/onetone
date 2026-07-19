@@ -325,6 +325,8 @@
 
     }
 
+    if(hooks().renderSoundSettingsPanel) hooks().renderSoundSettingsPanel();
+
     requestAnimationFrame(function(){
 
       if(!ui.drawerOpen||!isKeysPanel()) return;
