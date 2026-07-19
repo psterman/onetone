@@ -855,11 +855,15 @@
   }
 
   /** Camera prefs only — no mapping merge / voice restart / mvp_init pull. */
+  var pendingCameraPrefsQuiet=null;
+
   function saveCameraPrefsQuiet(opts){
     if(!configLoadedFromBackend){
-      earlyPersistLog('saveCameraPrefsQuiet skipped (config not loaded)');
+      pendingCameraPrefsQuiet=opts&&typeof opts==='object'?opts:{};
+      earlyPersistLog('saveCameraPrefsQuiet deferred (config not loaded)');
       return Promise.resolve(false);
     }
+    pendingCameraPrefsQuiet=null;
     var invoke=global.__vp_invoke__;
     if(!invoke) return Promise.resolve(false);
     var payload;
@@ -884,6 +888,13 @@
       }
       return false;
     });
+  }
+
+  function flushPendingCameraPrefsQuiet(){
+    if(pendingCameraPrefsQuiet==null) return;
+    var opts=pendingCameraPrefsQuiet;
+    pendingCameraPrefsQuiet=null;
+    saveCameraPrefsQuiet(opts);
   }
 
   function isAppScopedMapping(m){
@@ -1109,6 +1120,7 @@
       rememberAppScenariosFromConfig(st.config);
       reinjectRememberedAppScenarios(st.config);
       rememberCameraPrefsFromConfig(st.config);
+      flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
       try{
@@ -1376,6 +1388,7 @@
     save:save,
     saveAsync:saveAsync,
     saveCameraPrefsQuiet:saveCameraPrefsQuiet,
+    rememberCameraPrefs:function(){ rememberCameraPrefsFromConfig(state().config); },
     applyMvpInit:applyMvpInit,
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,

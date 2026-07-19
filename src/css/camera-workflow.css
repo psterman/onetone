@@ -100,6 +100,159 @@
   margin-top:14px;
 }
 
+.camera-rules-footer-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:12px;
+  margin-top:14px;
+  align-items:stretch;
+}
+
+.camera-recommend-card--compact{
+  margin-top:0;
+  padding:12px;
+  gap:10px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+.camera-recommend-card--compact .camera-card-title{
+  font-size:14px;
+}
+
+.camera-recommend-hint-compact{
+  margin:4px 0 0;
+  font-size:11px;
+  line-height:1.4;
+  color:var(--on-surface-muted);
+}
+
+.camera-sound-embed--compact{
+  margin:0;
+  padding:12px;
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+  display:grid;
+  gap:8px;
+  min-width:0;
+}
+
+.camera-rule-card{
+  border-color:var(--outline-variant);
+  background:var(--surface-high);
+}
+
+.camera-rule-card .camera-card-kicker{
+  color:var(--on-surface-muted);
+}
+
+.camera-media-settings--panel{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+  padding:14px;
+  display:grid;
+  gap:8px;
+  min-width:0;
+  padding-top:14px;
+  border-top:none;
+}
+
+.camera-media-settings--panel .camera-media-settings-body{
+  padding-top:4px;
+  border-top:none;
+}
+
+.camera-runtime-status--card{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  background:var(--surface-high);
+  padding:14px;
+  gap:8px;
+}
+
+.camera-runtime-status--card .camera-quality-summary-list{
+  margin-top:4px;
+  padding:8px 0 0 18px;
+  border-top:1px solid var(--outline-variant);
+}
+
+.camera-calib-block .camera-gaze-accuracy{
+  margin:0;
+  font-size:13px;
+  font-weight:700;
+  color:var(--on-surface);
+}
+
+.camera-calib-desc-short{
+  margin:0;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.camera-calib-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:4px;
+}
+
+.camera-calib-actions .control-btn{
+  width:100%;
+  min-height:36px;
+}
+
+.camera-weak-calib-toggle--row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:4px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(15,23,42,.04);
+  border:1px solid var(--outline-variant);
+}
+
+.camera-calib-hint-fold{
+  margin-top:4px;
+  border-radius:10px;
+  border:1px solid var(--outline-variant);
+  padding:8px 10px;
+  background:var(--surface-high);
+}
+
+.camera-calib-hint-fold > summary{
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700;
+  color:var(--on-surface-muted);
+  list-style:none;
+}
+
+.camera-calib-hint-fold > summary::-webkit-details-marker{display:none}
+
+.camera-calib-hint-fold .camera-calib-view-hint{
+  margin:8px 0 0;
+  font-size:11px;
+  line-height:1.5;
+  color:var(--on-surface-muted);
+}
+
+.camera-hero-preview .camera-runtime-status--card{
+  margin-top:10px;
+}
+
+@media (max-width:900px){
+  .camera-rules-footer-row{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .camera-calib-actions{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
 .camera-quality-summary-list{
   margin:8px 0 0;
   padding-left:18px;

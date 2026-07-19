@@ -30,11 +30,11 @@
 
   var TAB_COPY={
     trigger:{
-      kicker:['cameraWorkflowPreviewKicker','规则设计'],
+      kicker:['cameraWorkflowPreviewKicker','视觉识别'],
       title:['cameraWorkflowPreviewTitleTrigger','看到动作 → 执行结果']
     },
     action:{
-      kicker:['cameraWorkflowPreviewKickerAction','摄像头执行方案'],
+      kicker:['cameraWorkflowPreviewKickerAction','摄像头设置'],
       title:['cameraWorkflowPreviewTitleAction','预览 · 设备 · 校准']
     },
     pro:{

@@ -599,6 +599,9 @@
     if((hasAction||hasTriggers)&&scenarioCameraEditMapping()){
       if(touchedEnabled){
         if(global.OneToneConfigPersist){
+          if(global.OneToneConfigPersist.rememberCameraPrefs){
+            try{ global.OneToneConfigPersist.rememberCameraPrefs(); }catch(_){}
+          }
           if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
           else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
           else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
@@ -643,6 +646,9 @@
     mirrorTopLevelEnabled(cp,!!cur.enabled);
     st.enabled=!!cur.enabled;
     if(global.OneToneConfigPersist){
+      if(global.OneToneConfigPersist.rememberCameraPrefs){
+        try{ global.OneToneConfigPersist.rememberCameraPrefs(); }catch(_){}
+      }
       if(global.OneToneConfigPersist.saveCameraPrefsQuiet) global.OneToneConfigPersist.saveCameraPrefsQuiet();
       else if(global.OneToneConfigPersist.saveAsync) global.OneToneConfigPersist.saveAsync();
       else if(global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();
@@ -1284,7 +1290,7 @@
       btn.disabled=sampling;
       btn.textContent=sampling
         ?t('cameraPresenceBlinkBaselineBusy','适配中…')
-        :t('cameraPresenceBlinkRecalibrate','重新适配眨眼');
+        :t('cameraPresenceBlinkRecalibrate','去摄像头设置适配');
     }
     if(hint){
       if(sampling) hint.textContent=t('cameraPresenceBlinkBaselineSampling','正在采开眼基线…');
@@ -2216,18 +2222,27 @@
       t('cameraPresenceOnReturn','回席时')+' → '+actionLabel(rec.onReturn),
       t('cameraCardShakeTitle','摇头')+' → '+actionLabel(rec.shakeHead),
       t('cameraCardBlinkTitle','故意眨眼确认')+' → '+actionLabel(rec.deliberateBlink),
+      '',
       t('cameraRecommendConfirmTriggers','并打开离席 / 摇头 / 闭眼识别')
     ];
-    var ok=false;
-    try{
-      ok=!!global.confirm(lines.join('\n'));
-    }catch(_){
-      ok=false;
+    var body=lines.join('\n');
+    var title=t('cameraRecommendConfirmTitle','套用推荐规则');
+    function commit(){
+      persistPresencePrefs(rec);
+      toast(t('cameraRecommendApplied','已套用小白默认推荐'));
+      return true;
     }
+    var modal=global.OneToneMappingConfirmModal;
+    if(modal&&typeof modal.open==='function'){
+      return Promise.resolve(modal.open(body,{title:title})).then(function(ok){
+        if(!ok) return false;
+        return commit();
+      }).catch(function(){ return false; });
+    }
+    var ok=false;
+    try{ ok=!!global.confirm(body); }catch(_){ ok=false; }
     if(!ok) return false;
-    persistPresencePrefs(rec);
-    toast(t('cameraRecommendApplied','已套用小白默认推荐'));
-    return true;
+    return commit();
   }
 
   function toggleTrigger(kind,wantOn){
