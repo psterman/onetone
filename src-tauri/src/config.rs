@@ -105,11 +105,25 @@ pub struct CameraOverrideTriggers {
     pub shake: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub blink: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_palm: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ok_hand: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fist: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wave: Option<bool>,
 }
 
 impl CameraOverrideTriggers {
     pub fn is_empty(&self) -> bool {
-        self.away.is_none() && self.shake.is_none() && self.blink.is_none()
+        self.away.is_none()
+            && self.shake.is_none()
+            && self.blink.is_none()
+            && self.open_palm.is_none()
+            && self.ok_hand.is_none()
+            && self.fist.is_none()
+            && self.wave.is_none()
     }
 }
 
@@ -124,6 +138,14 @@ pub struct CameraOverride {
     pub shake_head: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deliberate_blink: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_palm: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ok_hand: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fist: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wave: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub triggers: Option<CameraOverrideTriggers>,
 }
@@ -140,6 +162,10 @@ impl CameraOverride {
             && blank(&self.on_return)
             && blank(&self.shake_head)
             && blank(&self.deliberate_blink)
+            && blank(&self.open_palm)
+            && blank(&self.ok_hand)
+            && blank(&self.fist)
+            && blank(&self.wave)
             && self
                 .triggers
                 .as_ref()
@@ -1241,6 +1267,14 @@ pub struct PresenceTriggersPrefs {
     pub shake: bool,
     #[serde(default)]
     pub blink: bool,
+    #[serde(default)]
+    pub open_palm: bool,
+    #[serde(default)]
+    pub ok_hand: bool,
+    #[serde(default)]
+    pub fist: bool,
+    #[serde(default)]
+    pub wave: bool,
 }
 
 /// Low-precision camera presence / gesture action mappings. Defaults are conservative.
@@ -1259,6 +1293,14 @@ pub struct PresenceActionsPrefs {
     pub shake_head: String,
     #[serde(default = "default_presence_action_none")]
     pub deliberate_blink: String,
+    #[serde(default = "default_presence_action_none")]
+    pub open_palm: String,
+    #[serde(default = "default_presence_action_none")]
+    pub ok_hand: String,
+    #[serde(default = "default_presence_action_none")]
+    pub fist: String,
+    #[serde(default = "default_presence_action_none")]
+    pub wave: String,
 }
 
 impl Default for PresenceActionsPrefs {
@@ -1270,6 +1312,10 @@ impl Default for PresenceActionsPrefs {
             on_return: default_presence_action_none(),
             shake_head: default_presence_action_none(),
             deliberate_blink: default_presence_action_none(),
+            open_palm: default_presence_action_none(),
+            ok_hand: default_presence_action_none(),
+            fist: default_presence_action_none(),
+            wave: default_presence_action_none(),
         }
     }
 }
@@ -4289,11 +4335,13 @@ mod tests {
                     away: true,
                     shake: true,
                     blink: true,
+                    ..Default::default()
                 },
                 on_away: "privacyScreen".into(),
                 on_return: "resumeVoice".into(),
                 shake_head: "pressEsc".into(),
                 deliberate_blink: "pressCtrlI".into(),
+                ..Default::default()
             },
             ..Default::default()
         };
@@ -4336,11 +4384,13 @@ mod tests {
                     away: true,
                     shake: false,
                     blink: true,
+                    ..Default::default()
                 },
                 on_away: "none".into(),
                 on_return: "none".into(),
                 shake_head: "none".into(),
                 deliberate_blink: "none".into(),
+                ..Default::default()
             },
             ..Default::default()
         };
@@ -4352,6 +4402,40 @@ mod tests {
         assert!(!parsed.presence_actions.triggers.shake);
         assert!(parsed.presence_actions.triggers.blink);
         assert_eq!(parsed.presence_actions.on_away, "none");
+    }
+
+    #[test]
+    fn camera_prefs_serde_preserves_hand_gesture_bindings() {
+        let prefs = CameraPrefs {
+            enabled: true,
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                triggers: PresenceTriggersPrefs {
+                    open_palm: true,
+                    ok_hand: true,
+                    fist: false,
+                    wave: true,
+                    ..Default::default()
+                },
+                open_palm: "pressEsc".into(),
+                ok_hand: "pressCtrlI".into(),
+                fist: "none".into(),
+                wave: "privacyScreen".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&prefs).expect("serialize");
+        assert!(json.contains("\"openPalm\""));
+        assert!(json.contains("\"okHand\""));
+        let parsed: CameraPrefs = serde_json::from_str(&json).expect("parse");
+        assert!(parsed.presence_actions.triggers.open_palm);
+        assert!(parsed.presence_actions.triggers.ok_hand);
+        assert!(!parsed.presence_actions.triggers.fist);
+        assert!(parsed.presence_actions.triggers.wave);
+        assert_eq!(parsed.presence_actions.open_palm, "pressEsc");
+        assert_eq!(parsed.presence_actions.ok_hand, "pressCtrlI");
+        assert_eq!(parsed.presence_actions.wave, "privacyScreen");
     }
 
     #[test]

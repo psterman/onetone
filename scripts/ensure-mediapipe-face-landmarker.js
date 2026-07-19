@@ -2,8 +2,8 @@
 'use strict';
 
 /**
- * Ensures local MediaPipe Face Landmarker assets under src/vendor/mediapipe/.
- * Downloads at prepare time only — runtime must never hit CDN.
+ * Ensures local MediaPipe Face Landmarker + Gesture Recognizer assets
+ * under src/vendor/mediapipe/. Downloads at prepare time only — runtime must never hit CDN.
  */
 
 const fs = require('fs');
@@ -14,8 +14,10 @@ const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'src', 'vendor', 'mediapipe');
 const VERSION = '0.10.21';
 const CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@' + VERSION;
-const MODEL_URL =
+const FACE_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const GESTURE_MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
 
 const FILES = [
   { url: CDN + '/vision_bundle.mjs', dest: path.join(OUT, 'vision_bundle.mjs') },
@@ -23,18 +25,31 @@ const FILES = [
   { url: CDN + '/wasm/vision_wasm_internal.wasm', dest: path.join(OUT, 'wasm', 'vision_wasm_internal.wasm') },
   { url: CDN + '/wasm/vision_wasm_nosimd_internal.js', dest: path.join(OUT, 'wasm', 'vision_wasm_nosimd_internal.js') },
   { url: CDN + '/wasm/vision_wasm_nosimd_internal.wasm', dest: path.join(OUT, 'wasm', 'vision_wasm_nosimd_internal.wasm') },
-  { url: MODEL_URL, dest: path.join(OUT, 'face_landmarker.task') }
+  { url: FACE_MODEL_URL, dest: path.join(OUT, 'face_landmarker.task') },
+  { url: GESTURE_MODEL_URL, dest: path.join(OUT, 'gesture_recognizer.task') }
 ];
 
-const MARKER = path.join(OUT, 'face_landmarker.task');
+const FACE_MARKER = path.join(OUT, 'face_landmarker.task');
+const GESTURE_MARKER = path.join(OUT, 'gesture_recognizer.task');
 const BUNDLE = path.join(OUT, 'vision_bundle.mjs');
 const WASM_JS = path.join(OUT, 'wasm', 'vision_wasm_internal.js');
 
 function log(msg){ console.log('[prepare-mediapipe] ' + msg); }
 
+function fileOk(p, minSize){
+  return fs.existsSync(p) && fs.statSync(p).size > (minSize || 1000);
+}
+
+function faceReady(){
+  return fileOk(FACE_MARKER, 100000) && fileOk(BUNDLE) && fileOk(WASM_JS);
+}
+
+function gestureReady(){
+  return fileOk(GESTURE_MARKER, 100000) && fileOk(BUNDLE) && fileOk(WASM_JS);
+}
+
 function ready(){
-  return fs.existsSync(MARKER) && fs.existsSync(BUNDLE) && fs.existsSync(WASM_JS)
-    && fs.statSync(MARKER).size > 100000;
+  return faceReady() && gestureReady();
 }
 
 function downloadFile(url, dest){
@@ -84,7 +99,7 @@ async function main(){
     log('assets already present at ' + OUT);
     return;
   }
-  log('Downloading MediaPipe Face Landmarker assets (tasks-vision@' + VERSION + ')…');
+  log('Downloading MediaPipe Face + Gesture assets (tasks-vision@' + VERSION + ')…');
   for(var i = 0; i < FILES.length; i++){
     var item = FILES[i];
     if(fs.existsSync(item.dest) && fs.statSync(item.dest).size > 1000){
@@ -94,13 +109,23 @@ async function main(){
     await downloadFile(item.url, item.dest);
   }
   if(!ready()) throw new Error('asset install verification failed');
-  // Tiny readme so the directory is discoverable when gitignored files are missing.
   fs.writeFileSync(
     path.join(OUT, 'README.md'),
-    '# MediaPipe Face Landmarker (local)\n\nRun `npm run prepare-mediapipe` to download wasm + face_landmarker.task.\nRuntime must load only these local files — no CDN.\n',
+    [
+      '# MediaPipe (local)',
+      '',
+      'Run `npm run prepare-mediapipe` to download wasm + models:',
+      '',
+      '- `face_landmarker.task` — gaze / presence',
+      '- `gesture_recognizer.task` — hand gestures (open palm / fist / …)',
+      '',
+      'Runtime must load only these local files — no CDN.',
+      ''
+    ].join('\n'),
     'utf8'
   );
   log('Ready: ' + OUT);
+  log('face=' + (faceReady() ? 'ok' : 'missing') + ' gesture=' + (gestureReady() ? 'ok' : 'missing'));
 }
 
 main().catch(function(err){

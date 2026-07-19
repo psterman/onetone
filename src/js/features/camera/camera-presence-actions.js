@@ -71,6 +71,7 @@
   // Enter high enough to avoid center jitter → key/toast flood / UI freeze.
   var SHAKE_WINDOW_MS=2800;
   var SHAKE_COOLDOWN_MS=2800;
+  var HAND_COOLDOWN_MS=1400;
   var SHAKE_ENTER=0.22;
   var SHAKE_EXIT=0.10;
   var SHAKE_LOG_MIN_MS=2500;
@@ -115,6 +116,8 @@
     absentDurationMs:0,
     presentDurationMs:0,
     lastGesture:'none',
+    lastHandKind:'none',
+    lastHandFireAt:0,
     privacyOpen:false,
     lowPowerActive:false,
     faceTrueSince:0,
@@ -191,11 +194,18 @@
   function defaultPresencePrefs(){
     return {
       enabled:false,
-      triggers:{away:false,shake:false,blink:false},
+      triggers:{
+        away:false,shake:false,blink:false,
+        openPalm:false,okHand:false,fist:false,wave:false
+      },
       onAway:'none',
       onReturn:'none',
       shakeHead:'none',
-      deliberateBlink:'none'
+      deliberateBlink:'none',
+      openPalm:'none',
+      okHand:'none',
+      fist:'none',
+      wave:'none'
     };
   }
 
@@ -210,35 +220,51 @@
       return {
         away:raw.away!==undefined?!!raw.away:(normalizeAction(fa.onAway)!=='none'||normalizeAction(fa.onReturn)!=='none'),
         shake:raw.shake!==undefined?!!raw.shake:normalizeAction(fa.shakeHead)!=='none',
-        blink:raw.blink!==undefined?!!raw.blink:normalizeAction(fa.deliberateBlink)!=='none'
+        blink:raw.blink!==undefined?!!raw.blink:normalizeAction(fa.deliberateBlink)!=='none',
+        openPalm:raw.openPalm!==undefined?!!raw.openPalm:(raw.open_palm!==undefined?!!raw.open_palm:normalizeAction(fa.openPalm)!=='none'),
+        okHand:raw.okHand!==undefined?!!raw.okHand:(raw.ok_hand!==undefined?!!raw.ok_hand:normalizeAction(fa.okHand)!=='none'),
+        fist:raw.fist!==undefined?!!raw.fist:normalizeAction(fa.fist)!=='none',
+        wave:raw.wave!==undefined?!!raw.wave:normalizeAction(fa.wave)!=='none'
       };
     }
     return {
       away:normalizeAction(fa.onAway)!=='none'||normalizeAction(fa.onReturn)!=='none',
       shake:normalizeAction(fa.shakeHead)!=='none',
-      blink:normalizeAction(fa.deliberateBlink)!=='none'
+      blink:normalizeAction(fa.deliberateBlink)!=='none',
+      openPalm:normalizeAction(fa.openPalm)!=='none',
+      okHand:normalizeAction(fa.okHand)!=='none',
+      fist:normalizeAction(fa.fist)!=='none',
+      wave:normalizeAction(fa.wave)!=='none'
     };
   }
 
   function normalizePrefs(raw){
     var d=defaultPresencePrefs();
     if(!raw||typeof raw!=='object') return d;
-    // Accept snake_case from mixed inbound payloads.
     var onAway=normalizeAction(raw.onAway!=null?raw.onAway:raw.on_away);
     var onReturn=normalizeAction(raw.onReturn!=null?raw.onReturn:raw.on_return);
     var shakeHead=normalizeAction(raw.shakeHead!=null?raw.shakeHead:raw.shake_head);
     var deliberateBlink=normalizeAction(raw.deliberateBlink!=null?raw.deliberateBlink:raw.deliberate_blink);
+    var openPalm=normalizeAction(raw.openPalm!=null?raw.openPalm:raw.open_palm);
+    var okHand=normalizeAction(raw.okHand!=null?raw.okHand:raw.ok_hand);
+    var fist=normalizeAction(raw.fist);
+    var wave=normalizeAction(raw.wave);
     var enabled=raw.enabled;
     if(enabled===undefined&&raw.Enabled!==undefined) enabled=raw.Enabled;
     return {
       enabled:!!enabled,
       triggers:normalizeTriggers(raw.triggers,{
-        onAway:onAway,onReturn:onReturn,shakeHead:shakeHead,deliberateBlink:deliberateBlink
+        onAway:onAway,onReturn:onReturn,shakeHead:shakeHead,deliberateBlink:deliberateBlink,
+        openPalm:openPalm,okHand:okHand,fist:fist,wave:wave
       }),
       onAway:onAway,
       onReturn:onReturn,
       shakeHead:shakeHead,
-      deliberateBlink:deliberateBlink
+      deliberateBlink:deliberateBlink,
+      openPalm:openPalm,
+      okHand:okHand,
+      fist:fist,
+      wave:wave
     };
   }
 
@@ -328,12 +354,20 @@
       triggers:{
         away:ov.triggers&&ov.triggers.away!==undefined?!!ov.triggers.away:base.triggers.away,
         shake:ov.triggers&&ov.triggers.shake!==undefined?!!ov.triggers.shake:base.triggers.shake,
-        blink:ov.triggers&&ov.triggers.blink!==undefined?!!ov.triggers.blink:base.triggers.blink
+        blink:ov.triggers&&ov.triggers.blink!==undefined?!!ov.triggers.blink:base.triggers.blink,
+        openPalm:ov.triggers&&ov.triggers.openPalm!==undefined?!!ov.triggers.openPalm:base.triggers.openPalm,
+        okHand:ov.triggers&&ov.triggers.okHand!==undefined?!!ov.triggers.okHand:base.triggers.okHand,
+        fist:ov.triggers&&ov.triggers.fist!==undefined?!!ov.triggers.fist:base.triggers.fist,
+        wave:ov.triggers&&ov.triggers.wave!==undefined?!!ov.triggers.wave:base.triggers.wave
       },
       onAway:ov.onAway!=null?normalizeAction(ov.onAway):base.onAway,
       onReturn:ov.onReturn!=null?normalizeAction(ov.onReturn):base.onReturn,
       shakeHead:ov.shakeHead!=null?normalizeAction(ov.shakeHead):base.shakeHead,
-      deliberateBlink:ov.deliberateBlink!=null?normalizeAction(ov.deliberateBlink):base.deliberateBlink
+      deliberateBlink:ov.deliberateBlink!=null?normalizeAction(ov.deliberateBlink):base.deliberateBlink,
+      openPalm:ov.openPalm!=null?normalizeAction(ov.openPalm):base.openPalm,
+      okHand:ov.okHand!=null?normalizeAction(ov.okHand):base.okHand,
+      fist:ov.fist!=null?normalizeAction(ov.fist):base.fist,
+      wave:ov.wave!=null?normalizeAction(ov.wave):base.wave
     };
     return merged;
   }
@@ -346,12 +380,13 @@
 
   function isEmptyCameraOverride(ov){
     if(!ov||typeof ov!=='object') return true;
-    var actionEmpty=['onAway','onReturn','shakeHead','deliberateBlink'].every(function(k){
+    var actionEmpty=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].every(function(k){
       return ov[k]==null||String(ov[k]).trim()==='';
     });
     var tr=ov.triggers;
     var triggerEmpty=!tr||typeof tr!=='object'||(
       tr.away===undefined&&tr.shake===undefined&&tr.blink===undefined
+      &&tr.openPalm===undefined&&tr.okHand===undefined&&tr.fist===undefined&&tr.wave===undefined
     );
     return actionEmpty&&triggerEmpty;
   }
@@ -380,7 +415,7 @@
     if(!m) return false;
     var base=basePresencePrefs();
     var ov=m.cameraOverride&&typeof m.cameraOverride==='object'?Object.assign({},m.cameraOverride):{};
-    ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+    ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].forEach(function(k){
       if(partial[k]===undefined) return;
       var v=normalizeAction(partial[k]);
       if(v===base[k]) delete ov[k];
@@ -389,7 +424,7 @@
     if(partial.triggers&&typeof partial.triggers==='object'){
       var baseTr=base.triggers||{};
       var ovTr=ov.triggers&&typeof ov.triggers==='object'?Object.assign({},ov.triggers):{};
-      ['away','shake','blink'].forEach(function(k){
+      ['away','shake','blink','openPalm','okHand','fist','wave'].forEach(function(k){
         if(partial.triggers[k]===undefined) return;
         var v=!!partial.triggers[k];
         if(v===!!baseTr[k]) delete ovTr[k];
@@ -621,7 +656,8 @@
     var cur=basePresencePrefs();
     var wasEnabled=!!cur.enabled;
     var touchedEnabled=partial.enabled!==undefined;
-    var hasAction=partial.onAway!=null||partial.onReturn!=null||partial.shakeHead!=null||partial.deliberateBlink!=null;
+    var hasAction=partial.onAway!=null||partial.onReturn!=null||partial.shakeHead!=null||partial.deliberateBlink!=null
+      ||partial.openPalm!=null||partial.okHand!=null||partial.fist!=null||partial.wave!=null;
     var hasTriggers=partial.triggers!=null&&typeof partial.triggers==='object';
 
     if(touchedEnabled){
@@ -664,16 +700,23 @@
     if(partial.onReturn!=null) cur.onReturn=normalizeAction(partial.onReturn);
     if(partial.shakeHead!=null) cur.shakeHead=normalizeAction(partial.shakeHead);
     if(partial.deliberateBlink!=null) cur.deliberateBlink=normalizeAction(partial.deliberateBlink);
+    if(partial.openPalm!=null) cur.openPalm=normalizeAction(partial.openPalm);
+    if(partial.okHand!=null) cur.okHand=normalizeAction(partial.okHand);
+    if(partial.fist!=null) cur.fist=normalizeAction(partial.fist);
+    if(partial.wave!=null) cur.wave=normalizeAction(partial.wave);
     if(hasTriggers){
       cur.triggers=normalizeTriggers(Object.assign({},cur.triggers,partial.triggers),cur);
     }else if(hasAction){
-      // Binding an action should keep its recognizer on — otherwise restart looks "cleared".
       var tr=Object.assign({},cur.triggers);
       if(partial.onAway!=null||partial.onReturn!=null){
         if(cur.onAway!=='none'||cur.onReturn!=='none') tr.away=true;
       }
       if(partial.shakeHead!=null&&cur.shakeHead!=='none') tr.shake=true;
       if(partial.deliberateBlink!=null&&cur.deliberateBlink!=='none') tr.blink=true;
+      if(partial.openPalm!=null&&cur.openPalm!=='none') tr.openPalm=true;
+      if(partial.okHand!=null&&cur.okHand!=='none') tr.okHand=true;
+      if(partial.fist!=null&&cur.fist!=='none') tr.fist=true;
+      if(partial.wave!=null&&cur.wave!=='none') tr.wave=true;
       cur.triggers=normalizeTriggers(tr,cur);
     }
     cp.presenceActions=cur;
@@ -776,7 +819,10 @@
     }
     var p=prefs();
     var gestureOn=triggerEnabled('shake',p)||triggerEnabled('blink',p)
-      ||normalizeAction(p.shakeHead)!=='none'||normalizeAction(p.deliberateBlink)!=='none';
+      ||triggerEnabled('openPalm',p)||triggerEnabled('okHand',p)||triggerEnabled('fist',p)||triggerEnabled('wave',p)
+      ||normalizeAction(p.shakeHead)!=='none'||normalizeAction(p.deliberateBlink)!=='none'
+      ||normalizeAction(p.openPalm)!=='none'||normalizeAction(p.okHand)!=='none'
+      ||normalizeAction(p.fist)!=='none'||normalizeAction(p.wave)!=='none';
     if(gestureOn&&st.presence!=='away'){
       api.setDetectIntervalMs(gazeMs);
       if(typeof st.onDetectInterval==='function'){
@@ -813,6 +859,10 @@
     if(source==='return') return 'onReturn';
     if(source==='shake') return 'shakeHead';
     if(source==='blink') return 'deliberateBlink';
+    if(source==='openPalm') return 'openPalm';
+    if(source==='ok'||source==='okHand') return 'okHand';
+    if(source==='fist') return 'fist';
+    if(source==='wave') return 'wave';
     return '';
   }
 
@@ -906,8 +956,9 @@
       return gateOk();
     }
 
-    // Gestures: shake / blink
-    if(source==='shake'||source==='blink'){
+    // Gestures: shake / blink / hand
+    if(source==='shake'||source==='blink'
+      ||source==='openPalm'||source==='ok'||source==='okHand'||source==='fist'||source==='wave'){
       if(st.presence!=='present') return gateFail('need_present');
       if(isKeyAction(action)){
         if(st.privacyOpen) return gateFail('privacy_blocks_key');
@@ -1475,6 +1526,10 @@
     if(kind==='away') return !!tr.away;
     if(kind==='shake') return !!tr.shake;
     if(kind==='blink') return !!tr.blink;
+    if(kind==='openPalm') return !!tr.openPalm;
+    if(kind==='okHand') return !!tr.okHand;
+    if(kind==='fist') return !!tr.fist;
+    if(kind==='wave') return !!tr.wave;
     return false;
   }
 
@@ -1558,8 +1613,47 @@
     logPresence(kind+' fire action='+action);
     if(kind==='shake') toast(t('cameraPresenceShakeDetected','已识别摇头'));
     else if(kind==='blink') toast(t('cameraPresenceBlinkDetected','已识别：故意眨眼确认'));
+    else if(kind==='openPalm') toast(t('cameraPresenceOpenPalmDetected','已识别：五指张开'));
+    else if(kind==='ok'||kind==='okHand') toast(t('cameraPresenceOkDetected','已识别：OK'));
+    else if(kind==='fist') toast(t('cameraPresenceFistDetected','已识别：握拳'));
+    else if(kind==='wave') toast(t('cameraPresenceWaveDetected','已识别：挥手'));
     pulseGesture(kind);
     dispatchAction(action,kind);
+  }
+
+  var HAND_KIND_TO_TRIGGER={
+    openPalm:'openPalm',
+    fist:'fist',
+    ok:'okHand',
+    wave:'wave'
+  };
+
+  function updateHandGestures(now){
+    var api=global.OneToneCameraHandGesture;
+    if(!api||!api.getLastGesture) return;
+    var g=api.getLastGesture();
+    var kind=g&&g.kind?g.kind:'none';
+    if(kind==='none') return;
+    if((now-(g.at||0))>900) return;
+    var trig=HAND_KIND_TO_TRIGGER[kind];
+    if(!trig) return;
+    var p=prefs();
+    if(!triggerEnabled(trig,p)) return;
+    if(st.lastHandKind===kind&&(now-st.lastHandFireAt)<HAND_COOLDOWN_MS) return;
+    st.lastHandKind=kind;
+    st.lastHandFireAt=now;
+    var action=normalizeAction(p[trig]);
+    if(action==='none'){
+      noteEvent(kind);
+      pulseGesture(kind);
+      setSkipReason(t('cameraTriggerRecognizedUnbound','识别中 · 未绑定动作'),kind);
+      if(kind==='openPalm') toast(t('cameraPresenceOpenPalmDetected','已识别：五指张开'));
+      else if(kind==='ok'||kind==='okHand') toast(t('cameraPresenceOkDetected','已识别：OK'));
+      else if(kind==='fist') toast(t('cameraPresenceFistDetected','已识别：握拳'));
+      else if(kind==='wave') toast(t('cameraPresenceWaveDetected','已识别：挥手'));
+      return;
+    }
+    fireGesture(kind,action);
   }
 
   function pruneShakeSeq(now){
@@ -1878,9 +1972,9 @@
     }
 
     if(st.presence==='present'&&!isCalibrating()){
-      // Blink may continue while face flickers; shake still needs a live face+yaw.
       updateBlink(now,point&&point.blink,yaw);
       if(face) updateShake(now,yaw);
+      updateHandGestures(now);
     }
 
     renderHeroUi();
@@ -1898,6 +1992,8 @@
     st.faceTrueSince=0;
     st.faceFalseSince=0;
     st.lastGesture='none';
+    st.lastHandKind='none';
+    st.lastHandFireAt=0;
     resetGestureTrackers();
     // Keep privacy overlay if open unless forced
     if(opts.closePrivacy) setPrivacyOpen(false);
@@ -1920,12 +2016,25 @@
     return t('cameraPresenceHeadUnknown','—');
   }
 
+  function handGesturePulseLabel(kind){
+    if(kind==='openPalm') return t('cameraPresenceGestureOpenPalm','五指');
+    if(kind==='ok'||kind==='okHand') return t('cameraPresenceGestureOk','OK');
+    if(kind==='fist') return t('cameraPresenceGestureFist','握拳');
+    if(kind==='wave') return t('cameraPresenceGestureWave','挥手');
+    return '';
+  }
+
   function gestureLabel(){
-    if(st.lastGesture==='shake'&&st.pulseUntil&&performance.now()<st.pulseUntil){
+    var pulsing=!!(st.pulseUntil&&performance.now()<st.pulseUntil);
+    if(pulsing&&st.lastGesture==='shake'){
       return t('cameraPresenceGestureShake','摇头');
     }
-    if(st.lastGesture==='blink'&&st.pulseUntil&&performance.now()<st.pulseUntil){
+    if(pulsing&&st.lastGesture==='blink'){
       return t('cameraPresenceGestureBlink','故意眨眼');
+    }
+    if(pulsing){
+      var handPulse=handGesturePulseLabel(st.lastGesture);
+      if(handPulse) return handPulse;
     }
     if(st.blinkBaselineStatus==='sampling'){
       return t('cameraPresenceBlinkBaselineSampling','正在采开眼基线…');
@@ -1954,6 +2063,8 @@
     }
     if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
     if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','故意眨眼');
+    var handLast=handGesturePulseLabel(st.lastGesture);
+    if(handLast) return handLast;
     return t('cameraPresenceGestureNone','无');
   }
 
@@ -2000,7 +2111,7 @@
     ['resumeVoice','cameraPresenceActionResume','恢复语音']
   ];
 
-  var BIND_KEYS=['onAway','onReturn','shakeHead','deliberateBlink'];
+  var BIND_KEYS=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'];
 
   function actionLabel(value){
     var cur=normalizeAction(value);
@@ -2144,6 +2255,24 @@
         t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p.deliberateBlink))
       )
     );
+
+    function syncHandCard(kind,bindKey){
+      var trigOn=!!tr[kind];
+      var bound=normalizeAction(p[bindKey])!=='none';
+      syncCard(
+        kind,
+        trigOn,
+        summaryFor(
+          trigOn,
+          bound,
+          t('cameraTriggerSummaryBound','已绑定：{action}').replace('{action}',actionLabel(p[bindKey]))
+        )
+      );
+    }
+    syncHandCard('openPalm','openPalm');
+    syncHandCard('okHand','okHand');
+    syncHandCard('fist','fist');
+    syncHandCard('wave','wave');
   }
 
   function syncRuntimeChrome(){
@@ -2222,6 +2351,10 @@
     ensureActionTiles(document.querySelector('[data-camera-bind-key="onReturn"]'),'onReturn',p.onReturn);
     ensureActionTiles(document.querySelector('[data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
     ensureActionTiles(document.querySelector('[data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="openPalm"]'),'openPalm',p.openPalm);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="okHand"]'),'okHand',p.okHand);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="fist"]'),'fist',p.fist);
+    ensureActionTiles(document.querySelector('[data-camera-bind-key="wave"]'),'wave',p.wave);
     syncTriggerSummaries(p);
     syncBlinkBaselineUi();
     syncMasterLockUi();
@@ -2286,6 +2419,10 @@
     if(kind==='away') patch.triggers.away=!!wantOn;
     else if(kind==='shake') patch.triggers.shake=!!wantOn;
     else if(kind==='blink') patch.triggers.blink=!!wantOn;
+    else if(kind==='openPalm') patch.triggers.openPalm=!!wantOn;
+    else if(kind==='okHand') patch.triggers.okHand=!!wantOn;
+    else if(kind==='fist') patch.triggers.fist=!!wantOn;
+    else if(kind==='wave') patch.triggers.wave=!!wantOn;
     else return;
     persistPresencePrefs(patch);
     if(kind==='blink'&&wantOn&&!readBlinkBaseline()){

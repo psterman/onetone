@@ -2443,6 +2443,58 @@
                         <button type="button" class="control-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">去摄像头设置适配</button>
                       </div>
                     </div>
+                    <div class="camera-config-card camera-rule-card" data-camera-card="openPalm" data-camera-trigger="openPalm" id="cameraBindRowOpenPalm">
+                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardOpenPalmTitle">五指张开</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleOpenPalm" data-camera-trigger-toggle="openPalm" role="switch" aria-checked="false" aria-label="五指张开"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardOpenPalmDesc">正对摄像头张开五指后执行下方所选结果。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm">尚未绑定结果</p>
+                      <div class="camera-rule-then">
+                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
+                        <div class="camera-action-tiles" role="radiogroup" aria-label="五指张开动作" data-camera-bind-key="openPalm"></div>
+                      </div>
+                    </div>
+                    <div class="camera-config-card camera-rule-card" data-camera-card="okHand" data-camera-trigger="okHand" id="cameraBindRowOkHand">
+                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardOkHandTitle">OK</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleOkHand" data-camera-trigger-toggle="okHand" role="switch" aria-checked="false" aria-label="OK"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardOkHandDesc">拇指与食指成圈、其余手指伸直后执行。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand">尚未绑定结果</p>
+                      <div class="camera-rule-then">
+                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
+                        <div class="camera-action-tiles" role="radiogroup" aria-label="OK 动作" data-camera-bind-key="okHand"></div>
+                      </div>
+                    </div>
+                    <div class="camera-config-card camera-rule-card" data-camera-card="fist" data-camera-trigger="fist" id="cameraBindRowFist">
+                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardFistTitle">握拳</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleFist" data-camera-trigger-toggle="fist" role="switch" aria-checked="false" aria-label="握拳"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardFistDesc">握紧拳头后执行下方所选结果。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryFist">尚未绑定结果</p>
+                      <div class="camera-rule-then">
+                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
+                        <div class="camera-action-tiles" role="radiogroup" aria-label="握拳动作" data-camera-bind-key="fist"></div>
+                      </div>
+                    </div>
+                    <div class="camera-config-card camera-rule-card" data-camera-card="wave" data-camera-trigger="wave" id="cameraBindRowWave">
+                      <div class="camera-card-kicker" data-i18n="cameraCardHandGesture">手势</div>
+                      <div class="camera-card-title-row">
+                        <div class="camera-card-title" data-i18n="cameraCardWaveTitle">挥手</div>
+                        <button type="button" class="toggle-switch" id="cameraTriggerToggleWave" data-camera-trigger-toggle="wave" role="switch" aria-checked="false" aria-label="挥手"></button>
+                      </div>
+                      <div class="camera-card-desc" data-i18n="cameraCardWaveDesc">张开手掌左右摆动数次后执行。</div>
+                      <p class="camera-bind-summary" id="cameraTriggerSummaryWave">尚未绑定结果</p>
+                      <div class="camera-rule-then">
+                        <div class="camera-rule-then-label" data-i18n="cameraRuleThenLabel">则执行</div>
+                        <div class="camera-action-tiles" role="radiogroup" aria-label="挥手动作" data-camera-bind-key="wave"></div>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="camera-rules-footer-row" id="cameraRulesFooterRow">
@@ -2749,10 +2801,11 @@
                         <div class="camera-card-title" data-i18n="cameraProCapBeautyTitle">美颜 / 画面增强</div>
                         <div class="camera-card-desc" data-i18n="cameraProCapBeautyDesc">上方可调节本地预览增强；默认关闭，不影响识别链路。</div>
                       </div>
-                      <div class="camera-config-card is-placeholder" data-camera-card="hand" aria-disabled="true">
-                        <div class="camera-card-kicker" data-i18n="cameraProCapGestureKicker">未接入</div>
+                      <div class="camera-config-card" data-camera-card="hand" id="cameraProHandCard">
+                        <div class="camera-card-kicker" id="cameraProHandKicker" data-i18n="cameraProCapGestureKicker">已接入</div>
                         <div class="camera-card-title" data-i18n="cameraCardHandTitle">手势识别</div>
-                        <div class="camera-card-desc" data-i18n="cameraCardHandDesc">五指 / OK / 握拳 / 挥手模型尚未接入，打开开关不会生效。</div>
+                        <div class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraCardHandDesc">本地五指 / OK / 握拳 / 挥手；预览开启后识别原始画面，可在规则页绑定动作。</div>
+                        <p class="camera-bind-summary" id="cameraProHandStatus">尚未开启预览</p>
                       </div>
                       <div class="camera-config-card is-placeholder" data-camera-card="identity" aria-disabled="true">
                         <div class="camera-card-kicker" data-i18n="cameraProCapIdentityKicker">边界说明</div>
@@ -3450,6 +3503,7 @@
   <script src="js/features/settings/app-shell-bindings.js"></script>
   <script src="js/features/settings/settings-nav-bindings.js"></script>
   <script src="js/features/camera/camera-gaze-landmarker.js"></script>
+  <script src="js/features/camera/camera-hand-gesture.js"></script>
   <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>

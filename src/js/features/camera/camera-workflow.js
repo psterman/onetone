@@ -658,13 +658,56 @@
       var st=api.getState();
       if(st.lastGesture==='shake'&&st.pulseActive) return t('cameraPresenceGestureShake','摇头');
       if(st.lastGesture==='blink'&&st.pulseActive) return t('cameraPresenceGestureBlink','闭眼两次确认');
+      if(st.lastGesture==='openPalm'&&st.pulseActive) return t('cameraPresenceGestureOpenPalm','五指');
+      if((st.lastGesture==='ok'||st.lastGesture==='okHand')&&st.pulseActive) return t('cameraPresenceGestureOk','OK');
+      if(st.lastGesture==='fist'&&st.pulseActive) return t('cameraPresenceGestureFist','握拳');
+      if(st.lastGesture==='wave'&&st.pulseActive) return t('cameraPresenceGestureWave','挥手');
       if(st.shakeListeningLabel) return st.shakeListeningLabel;
       if(st.lastGesture==='shake') return t('cameraPresenceGestureShake','摇头');
       if(st.lastGesture==='blink') return t('cameraPresenceGestureBlink','闭眼两次确认');
+      if(st.lastGesture==='openPalm') return t('cameraPresenceGestureOpenPalm','五指');
+      if(st.lastGesture==='ok'||st.lastGesture==='okHand') return t('cameraPresenceGestureOk','OK');
+      if(st.lastGesture==='fist') return t('cameraPresenceGestureFist','握拳');
+      if(st.lastGesture==='wave') return t('cameraPresenceGestureWave','挥手');
     }
     var el=$('cameraPresenceGestureText');
     if(el&&el.textContent) return el.textContent.trim();
     return t('cameraPresenceGestureNone','无');
+  }
+
+  function syncProHandCard(){
+    var statusEl=$('cameraProHandStatus');
+    var kicker=$('cameraProHandKicker');
+    var api=global.OneToneCameraHandGesture;
+    var rs=api&&api.getRuntimeStatus?api.getRuntimeStatus():null;
+    var pv=previewApi();
+    var live=!!(pv&&pv.isRunning&&pv.isRunning());
+    if(kicker) kicker.textContent=t('cameraProCapGestureKicker','已接入');
+    if(!statusEl) return;
+    if(!live){
+      statusEl.textContent=t('cameraProHandStatusIdle','尚未开启预览');
+      return;
+    }
+    if(rs&&rs.modelFailed){
+      statusEl.textContent=t('cameraProHandStatusFailed','模型未就绪 · 请运行 prepare-mediapipe');
+      return;
+    }
+    if(rs&&!rs.ready&&rs.running){
+      statusEl.textContent=t('cameraProHandStatusLoading','手势模型加载中…');
+      return;
+    }
+    if(rs&&rs.running&&rs.ready){
+      var g=rs.gesture||{};
+      var kind=g.kind||'none';
+      var label=t('cameraProHandStatusNone','未检测到手势');
+      if(kind==='openPalm') label=t('cameraPresenceGestureOpenPalm','五指');
+      else if(kind==='ok') label=t('cameraPresenceGestureOk','OK');
+      else if(kind==='fist') label=t('cameraPresenceGestureFist','握拳');
+      else if(kind==='wave') label=t('cameraPresenceGestureWave','挥手');
+      statusEl.textContent=t('cameraProHandStatusRunning','识别运行中 · {gesture}').replace('{gesture}',label);
+      return;
+    }
+    statusEl.textContent=t('cameraProHandStatusIdle','尚未开启预览');
   }
 
   function syncMetrics(){
@@ -686,6 +729,7 @@
     syncGazeMap();
     syncProStatus();
     syncProLiveHint();
+    syncProHandCard();
     var pa=presenceApi();
     if(pa&&pa.syncTriggerSummaries){
       try{ pa.syncTriggerSummaries(); }catch(_){}

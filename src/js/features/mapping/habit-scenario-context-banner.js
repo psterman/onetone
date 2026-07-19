@@ -184,7 +184,11 @@
       onAway:t('cameraCardAwayTitle'),
       onReturn:t('cameraCardAwayTitle'),
       shakeHead:t('cameraCardShakeTitle'),
-      deliberateBlink:t('cameraCardBlinkTitle')
+      deliberateBlink:t('cameraCardBlinkTitle'),
+      openPalm:t('cameraCardOpenPalmTitle'),
+      okHand:t('cameraCardOkHandTitle'),
+      fist:t('cameraCardFistTitle'),
+      wave:t('cameraCardWaveTitle')
     };
   }
 

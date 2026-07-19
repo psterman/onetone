@@ -410,12 +410,20 @@
           triggers:pa.triggers&&typeof pa.triggers==='object'?{
             away:!!pa.triggers.away,
             shake:!!pa.triggers.shake,
-            blink:!!pa.triggers.blink
+            blink:!!pa.triggers.blink,
+            openPalm:!!(pa.triggers.openPalm||pa.triggers.open_palm),
+            okHand:!!(pa.triggers.okHand||pa.triggers.ok_hand),
+            fist:!!pa.triggers.fist,
+            wave:!!pa.triggers.wave
           }:(pa.triggers||undefined),
           onAway:pa.onAway!=null?pa.onAway:(pa.on_away!=null?pa.on_away:'none'),
           onReturn:pa.onReturn!=null?pa.onReturn:(pa.on_return!=null?pa.on_return:'none'),
           shakeHead:pa.shakeHead!=null?pa.shakeHead:(pa.shake_head!=null?pa.shake_head:'none'),
-          deliberateBlink:pa.deliberateBlink!=null?pa.deliberateBlink:(pa.deliberate_blink!=null?pa.deliberate_blink:'none')
+          deliberateBlink:pa.deliberateBlink!=null?pa.deliberateBlink:(pa.deliberate_blink!=null?pa.deliberate_blink:'none'),
+          openPalm:pa.openPalm!=null?pa.openPalm:(pa.open_palm!=null?pa.open_palm:'none'),
+          okHand:pa.okHand!=null?pa.okHand:(pa.ok_hand!=null?pa.ok_hand:'none'),
+          fist:pa.fist!=null?pa.fist:'none',
+          wave:pa.wave!=null?pa.wave:'none'
         };
       }
       if(cp.selectedDeviceId==null&&cp.selected_device_id!=null) cp.selectedDeviceId=cp.selected_device_id;
@@ -467,7 +475,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -500,7 +508,7 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
     }else{
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
       if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
@@ -511,7 +519,7 @@
       if(st.config.cameraPrefs.blinkBaseline===undefined) st.config.cameraPrefs.blinkBaseline=null;
       st.config.cameraPrefs.videoEnhancement=normalizeVideoEnhancementPrefs(st.config.cameraPrefs.videoEnhancement);
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
-        st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+        st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'};
       }else{
         var pa=st.config.cameraPrefs.presenceActions;
         if(pa.enabled===undefined) pa.enabled=false;
@@ -521,20 +529,36 @@
         if(!pa.onReturn) pa.onReturn='none';
         if(!pa.shakeHead) pa.shakeHead='none';
         if(!pa.deliberateBlink) pa.deliberateBlink='none';
+        if(!pa.openPalm) pa.openPalm='none';
+        if(!pa.okHand) pa.okHand='none';
+        if(!pa.fist) pa.fist='none';
+        if(!pa.wave) pa.wave='none';
         if(!pa.triggers||typeof pa.triggers!=='object'){
           // Derive trigger flags from existing action bindings so upgrades keep behavior.
           pa.triggers={
             away:pa.onAway!=='none'||pa.onReturn!=='none',
             shake:pa.shakeHead!=='none',
-            blink:pa.deliberateBlink!=='none'
+            blink:pa.deliberateBlink!=='none',
+            openPalm:pa.openPalm!=='none',
+            okHand:pa.okHand!=='none',
+            fist:pa.fist!=='none',
+            wave:pa.wave!=='none'
           };
         }else{
           if(pa.triggers.away===undefined) pa.triggers.away=pa.onAway!=='none'||pa.onReturn!=='none';
           if(pa.triggers.shake===undefined) pa.triggers.shake=pa.shakeHead!=='none';
           if(pa.triggers.blink===undefined) pa.triggers.blink=pa.deliberateBlink!=='none';
+          if(pa.triggers.openPalm===undefined) pa.triggers.openPalm=pa.openPalm!=='none';
+          if(pa.triggers.okHand===undefined) pa.triggers.okHand=pa.okHand!=='none';
+          if(pa.triggers.fist===undefined) pa.triggers.fist=pa.fist!=='none';
+          if(pa.triggers.wave===undefined) pa.triggers.wave=pa.wave!=='none';
           pa.triggers.away=!!pa.triggers.away;
           pa.triggers.shake=!!pa.triggers.shake;
           pa.triggers.blink=!!pa.triggers.blink;
+          pa.triggers.openPalm=!!pa.triggers.openPalm;
+          pa.triggers.okHand=!!pa.triggers.okHand;
+          pa.triggers.fist=!!pa.triggers.fist;
+          pa.triggers.wave=!!pa.triggers.wave;
         }
       }
       // Deprecated mirror: top-level enabled always equals presenceActions.enabled.
@@ -619,12 +643,20 @@
             triggers:{
               away:tr.away!==undefined?!!tr.away:(String(pa.onAway||'none')!=='none'||String(pa.onReturn||'none')!=='none'),
               shake:tr.shake!==undefined?!!tr.shake:String(pa.shakeHead||'none')!=='none',
-              blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none'
+              blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none',
+              openPalm:tr.openPalm!==undefined?!!tr.openPalm:String(pa.openPalm||'none')!=='none',
+              okHand:tr.okHand!==undefined?!!tr.okHand:String(pa.okHand||'none')!=='none',
+              fist:tr.fist!==undefined?!!tr.fist:String(pa.fist||'none')!=='none',
+              wave:tr.wave!==undefined?!!tr.wave:String(pa.wave||'none')!=='none'
             },
             onAway:String(pa.onAway||'none').trim()||'none',
             onReturn:String(pa.onReturn||'none').trim()||'none',
             shakeHead:String(pa.shakeHead||'none').trim()||'none',
-            deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none'
+            deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none',
+            openPalm:String(pa.openPalm||'none').trim()||'none',
+            okHand:String(pa.okHand||'none').trim()||'none',
+            fist:String(pa.fist||'none').trim()||'none',
+            wave:String(pa.wave||'none').trim()||'none'
           }
         };
       })(),
@@ -765,7 +797,7 @@
 
   function presenceActionsHaveBinding(pa){
     if(!pa||typeof pa!=='object') return false;
-    return ['onAway','onReturn','shakeHead','deliberateBlink'].some(function(k){
+    return ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].some(function(k){
       return String(pa[k]||'none').trim()!=='none';
     });
   }
@@ -773,7 +805,7 @@
   /** True when FE lost the presenceActions shape (not when user set all to none). */
   function presenceActionsLookStripped(pa){
     if(!pa||typeof pa!=='object') return true;
-    return ['onAway','onReturn','shakeHead','deliberateBlink'].some(function(k){
+    return ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].some(function(k){
       return pa[k]===undefined;
     });
   }
@@ -875,8 +907,9 @@
         gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
         blinkBaseline:p.blinkBaseline!=null?p.blinkBaseline:null,
         presenceActions:p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{
-          enabled:false,triggers:{away:false,shake:false,blink:false},
-          onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'
+          enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},
+          onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',
+          openPalm:'none',okHand:'none',fist:'none',wave:'none'
         },
         videoEnhancement:normalizeVideoEnhancementPrefs(p.videoEnhancement)
       }));
@@ -935,12 +968,20 @@
         triggers:{
           away:tr.away!==undefined?!!tr.away:(String(pa.onAway||'none')!=='none'||String(pa.onReturn||'none')!=='none'),
           shake:tr.shake!==undefined?!!tr.shake:String(pa.shakeHead||'none')!=='none',
-          blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none'
+          blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none',
+          openPalm:tr.openPalm!==undefined?!!tr.openPalm:String(pa.openPalm||'none')!=='none',
+          okHand:tr.okHand!==undefined?!!tr.okHand:String(pa.okHand||'none')!=='none',
+          fist:tr.fist!==undefined?!!tr.fist:String(pa.fist||'none')!=='none',
+          wave:tr.wave!==undefined?!!tr.wave:String(pa.wave||'none')!=='none'
         },
         onAway:String(pa.onAway||'none').trim()||'none',
         onReturn:String(pa.onReturn||'none').trim()||'none',
         shakeHead:String(pa.shakeHead||'none').trim()||'none',
-        deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none'
+        deliberateBlink:String(pa.deliberateBlink||'none').trim()||'none',
+        openPalm:String(pa.openPalm||'none').trim()||'none',
+        okHand:String(pa.okHand||'none').trim()||'none',
+        fist:String(pa.fist||'none').trim()||'none',
+        wave:String(pa.wave||'none').trim()||'none'
       },
       videoEnhancement:normalizeVideoEnhancementPrefs(ve)
     };

@@ -46,11 +46,11 @@
     var bound=0;
     if(prefs){
       var tr=prefs.triggers||{};
-      ['away','shake','blink'].forEach(function(k){
+      ['away','shake','blink','openPalm','okHand','fist','wave'].forEach(function(k){
         if(tr[k]) bound++;
       });
       if(!bound){
-        ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+        ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].forEach(function(k){
           if(prefs[k]&&prefs[k]!=='none') bound++;
         });
       }

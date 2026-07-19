@@ -178,6 +178,45 @@ assert.strictEqual(rec.triggers.away,true);
 assert.strictEqual(rec.triggers.shake,true);
 assert.strictEqual(rec.triggers.blink,true);
 
+// Hand gesture prefs normalize + derive triggers from actions.
+var handNorm=Api.normalizePrefs({
+  enabled:true,
+  openPalm:'pressEsc',
+  okHand:'none',
+  fist:'privacyScreen',
+  wave:'none'
+});
+assert.strictEqual(handNorm.triggers.openPalm,true);
+assert.strictEqual(handNorm.triggers.okHand,false);
+assert.strictEqual(handNorm.triggers.fist,true);
+assert.strictEqual(handNorm.triggers.wave,false);
+assert.strictEqual(handNorm.openPalm,'pressEsc');
+assert.strictEqual(handNorm.fist,'privacyScreen');
+
+var handKeep=Api.normalizePrefs({
+  enabled:true,
+  triggers:{openPalm:true,okHand:true,fist:false,wave:true},
+  openPalm:'none',
+  okHand:'none',
+  fist:'none',
+  wave:'none'
+});
+assert.strictEqual(handKeep.triggers.openPalm,true);
+assert.strictEqual(handKeep.triggers.okHand,true);
+assert.strictEqual(handKeep.triggers.wave,true);
+assert.strictEqual(handKeep.openPalm,'none');
+
+var handActions=Api.allowedActionsForBindKey('openPalm');
+assert.ok(handActions.indexOf('pressEsc')>=0,'hand allows pressEsc');
+assert.ok(handActions.indexOf('pressCtrlI')>=0,'hand allows pressCtrlI');
+
+Api._testSetPresence('present');
+setRunning(true);
+setCalibrating(false);
+assert.strictEqual(Api.canExecuteCameraAction('pressEsc','openPalm').ok,true);
+assert.strictEqual(Api.canExecuteCameraAction('pressEsc','wave').ok,true);
+assert.strictEqual(Api.canExecuteCameraAction('pressEsc','ok').ok,true);
+
 // DOMContentLoaded must not have been required for these pure helpers.
 assert.ok(!listeners.DOMContentLoaded||listeners.DOMContentLoaded.length===1,
   'module may register init listener but tests do not fire it');

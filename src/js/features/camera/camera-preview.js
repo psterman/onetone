@@ -426,6 +426,10 @@
     return global.OneToneCameraGazeLandmarker||null;
   }
 
+  function handGestureApi(){
+    return global.OneToneCameraHandGesture||null;
+  }
+
   function calibrationApi(){
     return global.OneToneCameraGazeCalibration||null;
   }
@@ -445,6 +449,38 @@
     if(gaze.mode==='live'){
       gaze.external=false;
     }
+  }
+
+  function stopHandGesture(){
+    var api=handGestureApi();
+    if(api&&api.stop){
+      try{ api.stop(); }catch(_){}
+    }
+  }
+
+  /** Preview-live hand recognizer on raw video; soft-fail if model missing. */
+  function syncHandGesture(){
+    if(!previewLive){
+      stopHandGesture();
+      return Promise.resolve(false);
+    }
+    var api=handGestureApi();
+    if(!api||!api.start) return Promise.resolve(false);
+    var video=$('cameraPreviewVideo');
+    if(!video) return Promise.resolve(false);
+    try{
+      if(api.attach) api.attach(video);
+    }catch(_){}
+    var started;
+    try{
+      started=api.start(video);
+    }catch(err){
+      return Promise.resolve(false);
+    }
+    if(started&&typeof started.then==='function'){
+      return started.then(function(ok){ return !!ok; }).catch(function(){ return false; });
+    }
+    return Promise.resolve(!!started);
   }
 
   function presenceApi(){
@@ -479,7 +515,11 @@
       return;
     }
     var prefs=api&&api.prefs?api.prefs():null;
-    var gestureOn=!!(prefs&&(prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none'));
+    var gestureOn=!!(prefs&&(
+      prefs.shakeHead!=='none'||prefs.deliberateBlink!=='none'
+      ||prefs.openPalm!=='none'||prefs.okHand!=='none'||prefs.fist!=='none'||prefs.wave!=='none'
+      ||(prefs.triggers&&(prefs.triggers.openPalm||prefs.triggers.okHand||prefs.triggers.fist||prefs.triggers.wave))
+    ));
     if(gestureOn){
       lm.setDetectIntervalMs(gazeMs);
       return;
@@ -1631,6 +1671,7 @@
     clearMetaTimer();
     cancelCalibration();
     stopLandmarker();
+    stopHandGesture();
     gaze.external=false;
     gaze.modelLoading=false;
     stopGazeLoop();
@@ -1994,6 +2035,7 @@
     refreshCapabilitiesFromTrack(track||null);
     startMetaPoll();
     syncLiveLandmarker();
+    syncHandGesture();
     ensureGazeLoop();
     attachEnhancer();
     notifyEnhancerResize();
@@ -2150,6 +2192,7 @@
     onCalibrationUpdated:onCalibrationUpdated,
     getActualVideoSize:getActualVideoSize,
     syncLiveLandmarker:syncLiveLandmarker,
+    syncHandGesture:syncHandGesture,
     persistCameraPrefs:persistCameraPrefs,
     getCaptureFpsHint:getCaptureFpsHint
   };
