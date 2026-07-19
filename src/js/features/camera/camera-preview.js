@@ -21,6 +21,9 @@
   var uiResKey='';
   var uiResGroup='landscape';
   var uiFps=0;
+  var lastError=null;
+  var previewStatus='idle';
+  var statusListeners=[];
 
   var RES_GROUPS=[
     {
@@ -530,11 +533,15 @@
   function cameraPrefs(){
     var cfg=state().config||{};
     if(!cfg.cameraPrefs||typeof cfg.cameraPrefs!=='object'){
-      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      cfg.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
-      cfg.cameraPrefs.presenceActions={enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+      cfg.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+    }
+    // Deprecated mirror — presenceActions.enabled is the sole intent source.
+    if(cfg.cameraPrefs.presenceActions){
+      cfg.cameraPrefs.enabled=!!cfg.cameraPrefs.presenceActions.enabled;
     }
     return cfg.cameraPrefs;
   }
@@ -565,6 +572,38 @@
   function setStatus(msg){
     var el=$('cameraStatusText');
     if(el) el.textContent=msg;
+    var vis=$('cameraRuntimeStatusText');
+    if(vis&&msg&&!global.OneToneCameraPresenceActions){
+      vis.textContent=msg;
+    }
+  }
+
+  function emitPreviewStatus(){
+    var snap={
+      previewLive:!!previewLive,
+      starting:!!starting,
+      status:previewStatus,
+      lastError:lastError?{code:lastError.code,message:lastError.message}:null
+    };
+    for(var i=0;i<statusListeners.length;i++){
+      try{ statusListeners[i](snap); }catch(_){}
+    }
+  }
+
+  function setPreviewError(err){
+    var message=mapError(err);
+    lastError={
+      code:String(err&&(err.name||err.code)||'start_failed'),
+      message:message
+    };
+    previewStatus='error';
+    setStatus(message);
+    emitPreviewStatus();
+    return lastError;
+  }
+
+  function clearPreviewError(){
+    lastError=null;
   }
 
   function setButtons(){
@@ -587,10 +626,14 @@
     if(starting||previewLive) return;
     var pa=global.OneToneCameraPresenceActions;
     if(pa&&pa.persist&&!(pa.isEnabled&&pa.isEnabled())){
-      pa.persist({enabled:true});
+      try{ pa.persist({enabled:true}); }catch(_){}
       return;
     }
-    startPreview();
+    if(pa&&pa.requestRestart){
+      pa.requestRestart({reason:'user_restart'});
+      return;
+    }
+    startPreview({reason:'user_restart'});
   }
 
   function selectedDeviceLabel(){
@@ -1494,9 +1537,72 @@
     }
   }
 
-  function stop(){
+  function stop(opts){
     stopTracks();
+    previewStatus='stopped';
+    clearPreviewError();
     setStatus(t('cameraStatusStopped','已停止 · 摄像头已释放'));
+    emitPreviewStatus();
+    var pa=global.OneToneCameraPresenceActions;
+    if(pa&&pa.getRuntimeStatus&&!(opts&&opts.silent)){
+      // Coordinator owns runtime listeners; nudge UI if stop called directly.
+      try{
+        if(pa.syncUiFromPrefs) pa.syncUiFromPrefs();
+      }catch(_){}
+    }
+  }
+
+  function startPreview(opts){
+    opts=opts&&typeof opts==='object'?opts:{};
+    if(starting||previewLive){
+      return Promise.resolve({ok:true,reason:'already_running'});
+    }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      var unsupported=setPreviewError({name:'NotSupportedError',message:t('cameraErrUnsupported','当前环境不支持摄像头 API')});
+      return Promise.resolve({ok:false,reason:'unsupported',error:unsupported});
+    }
+    var sel=$('cameraDeviceSelect');
+    var deviceId=sel?String(sel.value||'').trim():'';
+    if(!deviceId&&devices.length){
+      deviceId=String(devices[0].deviceId||'').trim();
+      if(sel&&deviceId) sel.value=deviceId;
+    }
+    starting=true;
+    previewStatus='starting';
+    clearPreviewError();
+    setButtons();
+    setStatus(t('cameraStatusStarting','正在开启预览…'));
+    emitPreviewStatus();
+    var prefer=readSelectedConstraints();
+    uiResKey=resKey(prefer.width,prefer.height);
+    uiResGroup=inferResGroup(uiResKey);
+    uiFps=prefer.frameRate|0;
+    return requestUserMedia(deviceId,prefer).then(function(mediaStream){
+      return attachStream(mediaStream,deviceId);
+    }).then(function(){
+      var sz=getActualVideoSize();
+      if(sz.width>0&&sz.height>0){
+        persistCameraPrefs({
+          selectedWidth:sz.width,
+          selectedHeight:sz.height,
+          selectedFrameRate:uiFps||30
+        });
+      }
+      starting=false;
+      previewStatus='live';
+      clearPreviewError();
+      emitPreviewStatus();
+      return {ok:true,reason:opts.reason||'started'};
+    }).catch(function(err){
+      starting=false;
+      previewLive=false;
+      setButtons();
+      setPlaceholderVisible(true);
+      var structured=setPreviewError(err);
+      updateInfoCards(null);
+      refreshGazeUi();
+      return {ok:false,reason:structured.code,error:structured};
+    });
   }
 
   function deviceLabel(device,index){
@@ -1688,6 +1794,10 @@
     }
     applyingCaps=true;
     setStatus(t('cameraCapApplying','正在切换摄像头能力…'));
+    var cal=calibrationApi();
+    if(cal&&cal.markModelStale){
+      try{ cal.markModelStale('resolution_change'); }catch(_){}
+    }
 
     var sel=$('cameraDeviceSelect');
     var deviceId=sel?String(sel.value||'').trim():'';
@@ -1771,47 +1881,6 @@
     return refreshDevices();
   }
 
-  function startPreview(){
-    if(starting||previewLive) return Promise.resolve();
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-      setStatus(t('cameraErrUnsupported','当前环境不支持摄像头 API'));
-      return Promise.resolve();
-    }
-    var sel=$('cameraDeviceSelect');
-    var deviceId=sel?String(sel.value||'').trim():'';
-    if(!deviceId&&devices.length){
-      deviceId=String(devices[0].deviceId||'').trim();
-      if(sel&&deviceId) sel.value=deviceId;
-    }
-    starting=true;
-    setButtons();
-    setStatus(t('cameraStatusStarting','正在开启预览…'));
-    var prefer=readSelectedConstraints();
-    uiResKey=resKey(prefer.width,prefer.height);
-    uiResGroup=inferResGroup(uiResKey);
-    uiFps=prefer.frameRate|0;
-    return requestUserMedia(deviceId,prefer).then(function(mediaStream){
-      return attachStream(mediaStream,deviceId);
-    }).then(function(){
-      var sz=getActualVideoSize();
-      if(sz.width>0&&sz.height>0){
-        persistCameraPrefs({
-          selectedWidth:sz.width,
-          selectedHeight:sz.height,
-          selectedFrameRate:uiFps||30
-        });
-      }
-    }).catch(function(err){
-      starting=false;
-      previewLive=false;
-      setButtons();
-      setPlaceholderVisible(true);
-      setStatus(mapError(err));
-      updateInfoCards(null);
-      refreshGazeUi();
-    });
-  }
-
   function onDeviceChange(){
     var sel=$('cameraDeviceSelect');
     var deviceId=sel?String(sel.value||'').trim():'';
@@ -1820,9 +1889,18 @@
     uiResKey='';
     uiFps=0;
     updateInfoCards(null);
-    if(previewLive){
+    var cal=calibrationApi();
+    if(cal&&cal.markModelStale){
+      try{ cal.markModelStale('device_change'); }catch(_){}
+    }
+    var pa=presenceApi();
+    if(previewLive||(pa&&pa.isEnabled&&pa.isEnabled()&&!(pa.getRuntimeStatus&&pa.getRuntimeStatus().manualStopped))){
       stopTracks();
-      startPreview();
+      if(pa&&pa.reconcileRuntime){
+        pa.reconcileRuntime({reason:'device_change'});
+      }else{
+        startPreview({reason:'device_change'});
+      }
     }else{
       resetCapabilitySelects();
       setStatus(t('cameraStatusIdle','待命 · 不会自动开启摄像头'));
@@ -1831,7 +1909,7 @@
   }
 
   function onPanelVisible(){
-    // Enumerate devices; start camera only when master recognition switch is on.
+    // Enumerate devices; reconcile runtime via presence coordinator (not blind start).
     refreshDevices();
     setButtons();
     syncGazeToggleUi();
@@ -1846,9 +1924,10 @@
     if(pa&&pa.syncUiFromPrefs){
       try{ pa.syncUiFromPrefs(); }catch(_){}
     }
-    var masterOn=!!(pa&&pa.isEnabled&&pa.isEnabled());
-    if(masterOn&&!previewLive){
-      startPreview();
+    if(pa&&pa.reconcileRuntime){
+      pa.reconcileRuntime({reason:'panel_visible'});
+    }else if(pa&&pa.isEnabled&&pa.isEnabled()&&!previewLive){
+      startPreview({reason:'panel_visible'});
     }else if(!previewLive){
       setPlaceholderVisible(true);
       setStatus(t('cameraStatusIdle','待命 · 不会自动开启摄像头'));
@@ -1936,6 +2015,11 @@
     onPanelVisible:onPanelVisible,
     startPreview:startPreview,
     stop:stop,
+    isRunning:function(){ return !!previewLive; },
+    getLastError:function(){ return lastError?{code:lastError.code,message:lastError.message}:null; },
+    getPreviewStatus:function(){ return previewStatus; },
+    mapError:mapError,
+    getSelectedDeviceLabel:selectedDeviceLabel,
     refreshDevices:refreshDevices,
     setGazeDebugEnabled:setGazeDebugEnabled,
     setGazeDebugMode:setGazeDebugMode,

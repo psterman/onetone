@@ -1,1 +1,0 @@
-{"function":"() => { const el = document.getElementById('wbNavVoice'); if (el) el.click(); return el ? 'clicked' : 'not found'; }"}

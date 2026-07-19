@@ -1441,3 +1441,34 @@
     flex-direction: column;
   }
 }
+
+/* Motion polish: voice scheme / subtabs */
+#settingsPanelVoiceWake .voice-subtab-btn,
+#settingsPanelVoiceWake .voice-scheme-summary-pill,
+#settingsPanelVoiceWake .keys-summary-btn,
+#settingsPanelVoiceWake .control-btn {
+  transition: transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    background var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+#settingsPanelVoiceWake .voice-subtab-btn:active,
+#settingsPanelVoiceWake .keys-summary-btn:active:not(:disabled),
+#settingsPanelVoiceWake .control-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+#settingsPanelVoiceWake .voice-subtab-btn.is-active {
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelVoiceWake .voice-subtab-btn,
+  #settingsPanelVoiceWake .control-btn,
+  #settingsPanelVoiceWake .keys-summary-btn {
+    transition: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+

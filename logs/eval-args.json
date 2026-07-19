@@ -1,1 +1,0 @@
-{"function":"() => { document.querySelectorAll('dialog, .modal, [role=\"dialog\"]').forEach(d => d.remove()); const masks = document.querySelectorAll('.modal-mask, .dialog-mask, .overlay'); masks.forEach(m => m.remove()); return 'cleared'; }"}

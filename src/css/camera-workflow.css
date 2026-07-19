@@ -83,6 +83,82 @@
   border-top:1px solid var(--outline-variant);
 }
 
+.camera-media-settings > summary.camera-media-settings-summary{
+  cursor:pointer;
+  font-size:13px;
+  font-weight:800;
+  color:var(--on-surface);
+  list-style:none;
+}
+
+.camera-media-settings > summary::-webkit-details-marker{display:none}
+
+.camera-media-settings-body{
+  display:grid;
+  gap:10px;
+  padding-top:8px;
+}
+
+.camera-runtime-status{
+  display:grid;
+  gap:4px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(15,23,42,.04);
+  border:1px solid var(--outline-variant);
+}
+
+.camera-runtime-status-text,
+.camera-runtime-event-text{
+  margin:0;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--on-surface);
+}
+
+.camera-runtime-event-text{
+  color:var(--on-surface-muted);
+  font-weight:600;
+}
+
+.camera-runtime-actions{
+  margin-top:4px;
+}
+
+.camera-master-inactive-hint{
+  margin:6px 0 0;
+  font-size:12px;
+  font-weight:700;
+  color:#b45309;
+}
+
+.camera-weak-calib-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--on-surface-muted);
+}
+
+.camera-gaze-map.is-docs-only{
+  opacity:.85;
+  pointer-events:none;
+}
+
+.camera-pro-future-fold{
+  margin-top:8px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px dashed var(--outline-variant);
+}
+
+.camera-pro-future-fold > summary{
+  cursor:pointer;
+  font-weight:800;
+  font-size:13px;
+}
+
 .camera-media-settings-title{
   margin:0;
   font-size:13px;
@@ -279,9 +355,10 @@
 
 .camera-config-grid.is-master-off,
 .camera-bind-list.is-master-off{
-  opacity:.45;
-  pointer-events:none;
-  filter:grayscale(.12);
+  /* Kept for legacy class toggles — config stays editable when master is off. */
+  opacity:1;
+  pointer-events:auto;
+  filter:none;
 }
 
 .camera-hero-preview .camera-device-select{
@@ -572,6 +649,22 @@
 
 .camera-action-explain-grid{
   margin-top:4px;
+}
+
+.camera-guard-rules-card{
+  grid-column:1 / -1;
+}
+
+.camera-guard-rules-list{
+  margin:8px 0 12px;
+  padding-left:1.15em;
+  font-size:12px;
+  line-height:1.55;
+  color:var(--on-surface-muted);
+}
+
+.camera-guard-rules-list li{
+  margin:4px 0;
 }
 
 .camera-config-card.is-trigger-on{
@@ -1169,3 +1262,39 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Motion polish: tiles / chips / presence — skip pulse while calibrating */
+.camera-action-tile,
+.camera-guide-chip,
+.camera-config-card,
+.camera-goto-bind,
+#settingsPanelCamera .control-btn{
+  transition: transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    background var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+.camera-action-tile:active,
+.camera-guide-chip:active,
+.camera-goto-bind:active,
+#settingsPanelCamera .control-btn:active:not(:disabled){
+  transform: scale(0.98);
+}
+.camera-action-tile.is-selected{
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.16);
+}
+#settingsPanelCamera.is-calibrating .camera-presence-orb,
+#settingsPanelCamera.is-calibrating .camera-gaze-orb{
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .camera-action-tile,
+  .camera-guide-chip,
+  .camera-goto-bind,
+  #settingsPanelCamera .control-btn{
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

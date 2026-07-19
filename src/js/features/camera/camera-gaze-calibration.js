@@ -155,8 +155,9 @@
   var WEAK_WEIGHT_CLICK=0.22;
   var WEAK_WEIGHT_LOCK=0.30;
   var WEAK_HOVER_ENABLED=false;
+  var weakClickEnabled=false; // default off — opt-in via UI
 
-  var model=null; // {betaX,betaY,rmse,vw,vh,lowQuality,stale,kind:'ridge'}
+  var model=null; // {betaX,betaY,rmse,vw,vh,lowQuality,stale,kind:'ridge',deviceId,resKey}
   var running=false;
   var cancelled=false;
   var sampleBuf=[];
@@ -1673,7 +1674,7 @@
     }
     calibLog('model pick kind='+kind+' idwLoo='+Math.round(idwLoo)+' ridgeLoo='+Math.round(ridgeLoo)+' gridLoo='+Math.round(gridLoo));
     var thr=rmseThreshold();
-    return {
+    return stampModelFingerprint({
       anchors:prep.anchors,
       scaler:prep.scaler,
       betaX:ridge?ridge.betaX:null,
@@ -1696,7 +1697,7 @@
       skippedPoints:0,
       synthNodeCount:0,
       savedAt:Date.now()
-    };
+    });
   }
 
   function buildModelFromPairs(pairs){
@@ -1904,6 +1905,7 @@
   }
 
   function tryAddWeakSample(cx,cy,source,weightOverride){
+    if(!weakClickEnabled&&source!=='lock') return false;
     if(running||!hasFormalCalibrationModel()) return false;
     if(!isPreviewLiveForWeak()) return false;
     if(source==='hover'&&!WEAK_HOVER_ENABLED) return false;
@@ -2011,6 +2013,27 @@
     },2500);
   }
 
+  function currentCalibFingerprint(){
+    var deviceId='';
+    var resKey='';
+    try{
+      var sel=document.getElementById('cameraDeviceSelect');
+      if(sel) deviceId=String(sel.value||'').trim();
+      var pv=global.OneToneCameraPreview;
+      var sz=pv&&pv.getActualVideoSize?pv.getActualVideoSize():null;
+      if(sz&&sz.width&&sz.height) resKey=String(Math.round(sz.width))+'x'+String(Math.round(sz.height));
+    }catch(_){}
+    return {deviceId:deviceId,resKey:resKey};
+  }
+
+  function stampModelFingerprint(m){
+    if(!m) return m;
+    var fp=currentCalibFingerprint();
+    if(fp.deviceId) m.deviceId=fp.deviceId;
+    if(fp.resKey) m.resKey=fp.resKey;
+    return m;
+  }
+
   function serializeModel(m){
     if(!m||!m.anchors||!m.anchors.length) return null;
     return {
@@ -2026,6 +2049,9 @@
       skippedPoints:m.skippedPoints||0,
       synthNodeCount:m.synthNodeCount||0,
       vw:m.vw,vh:m.vh,
+      deviceId:m.deviceId||'',
+      resKey:m.resKey||'',
+      staleReason:m.staleReason||'',
       lowQuality:!!m.lowQuality,
       stale:!!m.stale,
       savedAt:m.savedAt||Date.now(),
@@ -2140,6 +2166,9 @@
         calibrationValidation?calibrationValidation.quality==='poor':!!snapshot.lowQuality
       ),
       stale:!!snapshot.stale,
+      deviceId:String(snapshot.deviceId||''),
+      resKey:String(snapshot.resKey||''),
+      staleReason:String(snapshot.staleReason||''),
       savedAt:Number(snapshot.savedAt)||0
     };
   }
@@ -2168,6 +2197,7 @@
     model=restored;
     resetRuntimeSmoothers();
     onResize();
+    syncCalibrationFingerprint();
     syncUiFromModel();
     updateCalibWarnings();
     return true;
@@ -2336,9 +2366,13 @@
     updateSparseWarn();
   }
 
-  function markModelStale(){
-    if(!model||model.stale) return;
+  function markModelStale(reason){
+    if(!model||model.stale){
+      updateCalibWarnings();
+      return;
+    }
     model.stale=true;
+    if(reason) model.staleReason=String(reason);
     persistGazeCalibrationSnapshot(serializeModel(model));
     if(!running){
       setStatusKind('stale');
@@ -2346,6 +2380,29 @@
     }
     updateCalibWarnings();
     notifyPreviewCalibrated();
+  }
+
+  function syncCalibrationFingerprint(){
+    if(!model||model.stale) return;
+    var deviceId='';
+    var resKey='';
+    try{
+      var pv=global.OneToneCameraPreview;
+      var sel=document.getElementById('cameraDeviceSelect');
+      if(sel) deviceId=String(sel.value||'').trim();
+      var sz=pv&&pv.getActualVideoSize?pv.getActualVideoSize():null;
+      if(sz&&sz.width&&sz.height) resKey=String(sz.width)+'x'+String(sz.height);
+    }catch(_){}
+    if(model.deviceId&&deviceId&&model.deviceId!==deviceId){
+      markModelStale('device_change');
+      return;
+    }
+    if(model.resKey&&resKey&&model.resKey!==resKey){
+      markModelStale('resolution_change');
+      return;
+    }
+    if(deviceId&&!model.deviceId) model.deviceId=deviceId;
+    if(resKey&&!model.resKey) model.resKey=resKey;
   }
 
   function scaleStalePixel(cx,cy,m,vw,vh){
@@ -3397,13 +3454,22 @@
     if(clearBtn){
       clearBtn.addEventListener('click',function(e){
         e.preventDefault();
+        if(!global.confirm(t('cameraGazeClearConfirm','确定清除本机校准数据？此操作不可撤销。'))) return;
         clear();
       });
     }
     if(proClear){
       proClear.addEventListener('click',function(e){
         e.preventDefault();
+        if(!global.confirm(t('cameraGazeClearConfirm','确定清除本机校准数据？此操作不可撤销。'))) return;
         clear();
+      });
+    }
+    var weakToggle=$('cameraWeakCalibEnabled');
+    if(weakToggle){
+      weakToggle.checked=!!weakClickEnabled;
+      weakToggle.addEventListener('change',function(){
+        weakClickEnabled=!!weakToggle.checked;
       });
     }
     if(proRecenter){
@@ -3461,6 +3527,8 @@
     loadFromPrefs:loadFromPrefs,
     updateLowResWarn:updateLowResWarn,
     updateCalibWarnings:updateCalibWarnings,
+    markModelStale:markModelStale,
+    syncCalibrationFingerprint:syncCalibrationFingerprint,
     resetRuntimeSmoothers:resetRuntimeSmoothers,
     lockTarget:lockTarget,
     tryAddWeakSample:tryAddWeakSample,

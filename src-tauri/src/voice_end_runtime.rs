@@ -1527,11 +1527,11 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 target_key: Some("Win+H".into()),
-            camera_override: None,
                 wake_phrases: None,
                 end_phrases: None,
                 ..Default::default()
             }),
+            camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
         }];

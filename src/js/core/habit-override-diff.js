@@ -294,6 +294,11 @@
     ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
       if(ov[k]!=null&&String(ov[k]).trim()!=='') n++;
     });
+    if(ov.triggers&&typeof ov.triggers==='object'){
+      ['away','shake','blink'].forEach(function(k){
+        if(ov.triggers[k]!==undefined) n++;
+      });
+    }
     return n;
   }
 
@@ -307,6 +312,12 @@
       if(ov[k]==null||String(ov[k]).trim()==='') return;
       items.push({field:k,label:labels[pair[1]]||k,value:String(ov[k])});
     });
+    if(ov.triggers&&typeof ov.triggers==='object'){
+      ['away','shake','blink'].forEach(function(k){
+        if(ov.triggers[k]===undefined) return;
+        items.push({field:'trigger.'+k,label:(labels.triggers||'trigger')+'.'+k,value:String(!!ov.triggers[k])});
+      });
+    }
     return items;
   }
 

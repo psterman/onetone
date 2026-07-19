@@ -243,9 +243,7 @@
       fpsEl.textContent=live?fpsTxt:'—';
     }
     if(lightEl){
-      lightEl.textContent=live
-        ? t('cameraProDeviceLightLive','请保持正对与均匀光线')
-        : t('cameraProDeviceLightIdle','开启识别后显示');
+      lightEl.textContent=t('cameraProDeviceLightIdle','未检测');
     }
     if(sourceEl){
       sourceEl.textContent=t('cameraProDeviceSourceRaw','识别画面使用原始视频');

@@ -584,3 +584,39 @@ html:not([data-theme="dark"]) .voice-fb-action-btn:hover {
   border-color: rgba(42, 156, 196, 0.35);
   color: var(--primary-strong);
 }
+
+/* Motion polish: live status + actions */
+.voice-fb-status-pill.is-live::before {
+  animation: voice-fb-pulse var(--motion-pulse, 2.4s) ease-in-out infinite;
+}
+.voice-fb-action-btn,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn,
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-trigger {
+  transition: transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    background var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+.voice-fb-action-btn:active,
+#settingsPanelVoiceWake .voice-live-strip .voice-fb-action-btn:active,
+#settingsPanelVoiceWake .voice-live-strip .voice-live-mic-trigger:active {
+  transform: scale(0.98);
+}
+#settingsPanelVoiceWake .voice-live-strip #voiceFbTranscript,
+.voice-fb-preview-card {
+  transition: border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-fb-status-pill.is-live::before {
+    animation: none !important;
+  }
+  .voice-fb-action-btn,
+  #settingsPanelVoiceWake .voice-live-strip .voice-live-mic-trigger {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

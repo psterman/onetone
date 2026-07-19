@@ -2365,3 +2365,45 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   background: rgba(22, 30, 44, 0.92);
 }
 
+/* Motion polish: scheme actions + active step ring */
+#settingsPanelKeys .keys-summary-btn {
+  transition: border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    background var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+#settingsPanelKeys .keys-summary-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+#settingsPanelKeys .keys-summary-btn.is-primary:focus-visible,
+#settingsPanelKeys .keys-summary-btn.is-primary:active:not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.22);
+}
+#settingsPanelKeys.keys-page-desk .habit-flow-step.keys-workflow-col.is-active-step .keys-step-body {
+  transition: box-shadow var(--dur-med, 260ms) var(--motion-enter, var(--ease-standard)),
+    border-color var(--dur-med, 260ms) var(--motion-enter, var(--ease-standard));
+}
+#settingsPanelKeys .btn.record-btn,
+#settingsPanelKeys .control-btn,
+#settingsPanelKeys .keys-capture-primary {
+  transition: transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    background var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+#settingsPanelKeys .btn.record-btn:active:not(:disabled),
+#settingsPanelKeys .control-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-summary-btn,
+  #settingsPanelKeys .btn.record-btn,
+  #settingsPanelKeys .control-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+

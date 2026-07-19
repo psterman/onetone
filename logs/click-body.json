@@ -1,1 +1,0 @@
-{"function":"() => { document.body.click(); return document.body.tagName; }"}

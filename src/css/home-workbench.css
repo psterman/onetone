@@ -160,12 +160,18 @@ html[data-theme="dark"] .home-workbench {
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur-fast), color var(--dur-fast);
+  transition: background var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard));
 }
 
 .wb-nav-item:hover {
   background: var(--surface-soft);
   color: var(--on-surface);
+}
+
+.wb-nav-item:active {
+  transform: scale(0.98);
 }
 
 .wb-nav-item.is-active {
@@ -205,7 +211,7 @@ html[data-theme="dark"] .wb-sidebar-status {
   height: 6px;
   border-radius: 50%;
   background: var(--wb-success);
-  animation: wb-pulse 2s ease-in-out infinite;
+  animation: wb-pulse var(--motion-pulse, 2.4s) ease-in-out infinite;
 }
 
 @keyframes wb-pulse {
@@ -3312,7 +3318,38 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   background: rgba(42, 156, 196, 0.5);
 }
 
-.mic-level-bars.mic-level-bars--home.is-active span.is-hot,
-.wb-live-preview .mic-level-bars--home.is-active span.is-hot {
-  background: var(--primary);
+.wb-trigger-btn-filled:hover { transform: translateY(-1px); }
+.wb-trigger-btn:active { transform: scale(0.98); }
+
+.wb-home-quickstart {
+  transition: transform var(--dur-press, 120ms) var(--motion-press, var(--ease-standard)),
+    filter var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard));
 }
+.wb-home-quickstart:active {
+  transform: scale(0.98);
+}
+
+.wb-howto-card,
+.wb-hero-stat,
+.wb-mic-card {
+  transition: transform var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard));
+}
+.wb-howto-card:active,
+.wb-hero-stat:active {
+  transform: scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-sidebar-status-dot,
+  .wb-nav-item,
+  .wb-home-quickstart,
+  .wb-trigger-btn {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

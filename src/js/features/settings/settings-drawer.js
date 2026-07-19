@@ -843,9 +843,13 @@
 
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
 
-    if(global.OneToneCameraPreview&&typeof global.OneToneCameraPreview.stop==='function'){
-      global.OneToneCameraPreview.stop();
-    }
+    // Keep camera running when enabled — do not stop on drawer close.
+    // Coordinator decides via reconcile (manual stop / master off still honored).
+    try{
+      if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
+        global.OneToneCameraPresenceActions.reconcileRuntime({reason:'drawer_close'});
+      }
+    }catch(_){}
 
     ui.drawerOpen=false;
 

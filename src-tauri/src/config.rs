@@ -95,6 +95,24 @@ impl VoiceOverride {
     }
 }
 
+/// Partial trigger overrides for a scenario (`cameraOverride.triggers`).
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraOverrideTriggers {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub away: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shake: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blink: Option<bool>,
+}
+
+impl CameraOverrideTriggers {
+    pub fn is_empty(&self) -> bool {
+        self.away.is_none() && self.shake.is_none() && self.blink.is_none()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CameraOverride {
@@ -106,6 +124,8 @@ pub struct CameraOverride {
     pub shake_head: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deliberate_blink: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub triggers: Option<CameraOverrideTriggers>,
 }
 
 impl CameraOverride {
@@ -120,6 +140,11 @@ impl CameraOverride {
             && blank(&self.on_return)
             && blank(&self.shake_head)
             && blank(&self.deliberate_blink)
+            && self
+                .triggers
+                .as_ref()
+                .map(|t| t.is_empty())
+                .unwrap_or(true)
     }
 }
 
@@ -1206,12 +1231,26 @@ fn default_presence_action_none() -> String {
     "none".into()
 }
 
+/// Independent recognition toggles — must persist separately from action bindings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PresenceTriggersPrefs {
+    #[serde(default)]
+    pub away: bool,
+    #[serde(default)]
+    pub shake: bool,
+    #[serde(default)]
+    pub blink: bool,
+}
+
 /// Low-precision camera presence / gesture action mappings. Defaults are conservative.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PresenceActionsPrefs {
     #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
+    pub triggers: PresenceTriggersPrefs,
     #[serde(default = "default_presence_action_none")]
     pub on_away: String,
     #[serde(default = "default_presence_action_none")]
@@ -1226,6 +1265,7 @@ impl Default for PresenceActionsPrefs {
     fn default() -> Self {
         Self {
             enabled: false,
+            triggers: PresenceTriggersPrefs::default(),
             on_away: default_presence_action_none(),
             on_return: default_presence_action_none(),
             shake_head: default_presence_action_none(),
@@ -4085,6 +4125,51 @@ mod tests {
     }
 
     #[test]
+    fn camera_prefs_serde_preserves_triggers_decoupled_from_actions() {
+        // Trigger on + action none must survive quiet camera prefs save (cmd_save_camera_prefs).
+        let prefs = CameraPrefs {
+            enabled: true,
+            presence_actions: PresenceActionsPrefs {
+                enabled: true,
+                triggers: PresenceTriggersPrefs {
+                    away: true,
+                    shake: false,
+                    blink: true,
+                },
+                on_away: "none".into(),
+                on_return: "none".into(),
+                shake_head: "none".into(),
+                deliberate_blink: "none".into(),
+            },
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&prefs).expect("serialize");
+        assert!(json.contains("\"triggers\""));
+        let parsed: CameraPrefs = serde_json::from_str(&json).expect("parse");
+        assert!(parsed.presence_actions.enabled);
+        assert!(parsed.presence_actions.triggers.away);
+        assert!(!parsed.presence_actions.triggers.shake);
+        assert!(parsed.presence_actions.triggers.blink);
+        assert_eq!(parsed.presence_actions.on_away, "none");
+    }
+
+    #[test]
+    fn camera_override_serde_preserves_trigger_only_partial() {
+        let ov = CameraOverride {
+            triggers: Some(CameraOverrideTriggers {
+                shake: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        assert!(!ov.is_empty());
+        let json = serde_json::to_string(&ov).expect("serialize");
+        let parsed: CameraOverride = serde_json::from_str(&json).expect("parse");
+        assert_eq!(parsed.triggers.as_ref().and_then(|t| t.shake), Some(true));
+        assert!(normalize_camera_override(Some(ov)).is_some());
+    }
+
+    #[test]
     fn merge_save_payload_preserves_voice_kws() {
         let mut existing = VoiceConfig::default();
         existing.voice_kws.enabled = true;
@@ -4213,7 +4298,6 @@ mod tests {
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 wake_phrases: Some(vec!["????".into()]),
-            camera_override: None,
                 ..VoiceOverride::default()
             }),
             camera_override: None,

@@ -441,7 +441,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -474,9 +474,8 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
+      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'}};
     }else{
-      if(st.config.cameraPrefs.enabled===undefined) st.config.cameraPrefs.enabled=false;
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
       if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
       if(st.config.cameraPrefs.selectedWidth==null) st.config.cameraPrefs.selectedWidth=0;
@@ -484,15 +483,34 @@
       if(st.config.cameraPrefs.selectedFrameRate==null) st.config.cameraPrefs.selectedFrameRate=0;
       if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
-        st.config.cameraPrefs.presenceActions={enabled:false,onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
+        st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
       }else{
         var pa=st.config.cameraPrefs.presenceActions;
         if(pa.enabled===undefined) pa.enabled=false;
+        // Legacy: top-level cameraPrefs.enabled was a second source of truth — migrate once.
+        if(st.config.cameraPrefs.enabled&&!pa.enabled) pa.enabled=true;
         if(!pa.onAway) pa.onAway='none';
         if(!pa.onReturn) pa.onReturn='none';
         if(!pa.shakeHead) pa.shakeHead='none';
         if(!pa.deliberateBlink) pa.deliberateBlink='none';
+        if(!pa.triggers||typeof pa.triggers!=='object'){
+          // Derive trigger flags from existing action bindings so upgrades keep behavior.
+          pa.triggers={
+            away:pa.onAway!=='none'||pa.onReturn!=='none',
+            shake:pa.shakeHead!=='none',
+            blink:pa.deliberateBlink!=='none'
+          };
+        }else{
+          if(pa.triggers.away===undefined) pa.triggers.away=pa.onAway!=='none'||pa.onReturn!=='none';
+          if(pa.triggers.shake===undefined) pa.triggers.shake=pa.shakeHead!=='none';
+          if(pa.triggers.blink===undefined) pa.triggers.blink=pa.deliberateBlink!=='none';
+          pa.triggers.away=!!pa.triggers.away;
+          pa.triggers.shake=!!pa.triggers.shake;
+          pa.triggers.blink=!!pa.triggers.blink;
+        }
       }
+      // Deprecated mirror: top-level enabled always equals presenceActions.enabled.
+      st.config.cameraPrefs.enabled=!!(st.config.cameraPrefs.presenceActions&&st.config.cameraPrefs.presenceActions.enabled);
     }
     const ensureSounds=hookFn('ensureSoundsConfig');
     if(ensureSounds) ensureSounds();
@@ -555,8 +573,11 @@
       cameraPrefs:(function(){
         var p=st.config.cameraPrefs||{};
         var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
+        var tr=pa.triggers&&typeof pa.triggers==='object'?pa.triggers:{};
+        var presenceEnabled=!!pa.enabled;
         return {
-          enabled:!!p.enabled,
+          // Deprecated mirror of presenceActions.enabled — do not read as intent.
+          enabled:presenceEnabled,
           selectedDeviceId:String(p.selectedDeviceId||'').trim(),
           // Schema only — FE never auto-starts from this flag.
           previewEnabled:false,
@@ -565,7 +586,12 @@
           selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
           gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
           presenceActions:{
-            enabled:!!pa.enabled,
+            enabled:presenceEnabled,
+            triggers:{
+              away:tr.away!==undefined?!!tr.away:(String(pa.onAway||'none')!=='none'||String(pa.onReturn||'none')!=='none'),
+              shake:tr.shake!==undefined?!!tr.shake:String(pa.shakeHead||'none')!=='none',
+              blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none'
+            },
             onAway:String(pa.onAway||'none').trim()||'none',
             onReturn:String(pa.onReturn||'none').trim()||'none',
             shakeHead:String(pa.shakeHead||'none').trim()||'none',
@@ -712,8 +738,11 @@
     var st=state();
     var p=st.config.cameraPrefs||{};
     var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
+    var tr=pa.triggers&&typeof pa.triggers==='object'?pa.triggers:{};
+    var presenceEnabled=!!pa.enabled;
     return {
-      enabled:!!p.enabled,
+      // Deprecated mirror of presenceActions.enabled — do not read as intent.
+      enabled:presenceEnabled,
       selectedDeviceId:String(p.selectedDeviceId||'').trim(),
       previewEnabled:false,
       selectedWidth:Math.max(0,Number(p.selectedWidth)||0)|0,
@@ -721,7 +750,12 @@
       selectedFrameRate:Math.max(0,Number(p.selectedFrameRate)||0)|0,
       gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
       presenceActions:{
-        enabled:!!pa.enabled,
+        enabled:presenceEnabled,
+        triggers:{
+          away:tr.away!==undefined?!!tr.away:(String(pa.onAway||'none')!=='none'||String(pa.onReturn||'none')!=='none'),
+          shake:tr.shake!==undefined?!!tr.shake:String(pa.shakeHead||'none')!=='none',
+          blink:tr.blink!==undefined?!!tr.blink:String(pa.deliberateBlink||'none')!=='none'
+        },
         onAway:String(pa.onAway||'none').trim()||'none',
         onReturn:String(pa.onReturn||'none').trim()||'none',
         shakeHead:String(pa.shakeHead||'none').trim()||'none',
@@ -975,6 +1009,11 @@
       reinjectRememberedAppScenarios(st.config);
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
+      try{
+        if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.reconcileRuntime){
+          global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+        }
+      }catch(_){}
       if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
       const scheduleBootMic=hookFn('scheduleBootMicReady');
       const scheduleVoiceBoot=hookFn('scheduleDeferredVoiceEngineBoot');

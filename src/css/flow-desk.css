@@ -36,7 +36,7 @@ html[data-theme="dark"] .flow-nodes-path-base {
 
 .flow-nodes-path {
   stroke-dasharray: 8 4;
-  animation: flow-desk-dash 1.5s linear infinite;
+  animation: flow-desk-dash var(--motion-flow-dash, 1.5s) linear infinite;
 }
 
 @keyframes flow-desk-dash {
@@ -84,13 +84,20 @@ html[data-theme="dark"] .flow-nodes-path-base {
   background: var(--surface-high);
   color: var(--on-surface-muted);
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition: transform var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    border-color var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    box-shadow var(--dur-fast) var(--motion-hover, var(--ease-standard)),
+    color var(--dur-fast) var(--motion-hover, var(--ease-standard));
 }
 
 .flow-node-btn:hover {
   transform: scale(1.04);
   color: var(--flow-node-active-color, var(--primary-strong));
   border-color: rgba(42, 156, 196, 0.35);
+}
+
+.flow-node-btn:active {
+  transform: scale(0.98);
 }
 
 .flow-node-btn.is-active {
@@ -497,3 +504,14 @@ html[data-theme="dark"] .flow-nodes-path-base {
   border-color: rgba(42, 156, 196, 0.35) !important;
   color: var(--primary-strong) !important;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-nodes-path {
+    animation: none !important;
+  }
+  .flow-node-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

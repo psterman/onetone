@@ -38,21 +38,56 @@
     var api=cameraPresenceApi();
     var prefs=api&&api.prefs?api.prefs():null;
     var st=api&&api.getState?api.getState():null;
-    var enabled=!!(api&&api.isEnabled?api.isEnabled():(prefs&&prefs.enabled));
-    var presence=st&&st.presence?String(st.presence):'unknown';
+    var rs=api&&api.getRuntimeStatus?api.getRuntimeStatus():null;
+    var enabled=!!(rs?rs.enabled:(api&&api.isEnabled?api.isEnabled():(prefs&&prefs.enabled)));
+    var running=!!(rs?rs.running:(api&&api.isRunning?api.isRunning():false));
+    var status=rs&&rs.status?String(rs.status):(enabled?(running?'running':'off'):'off');
+    var presence=st&&st.presence?String(st.presence):(rs&&rs.presence?String(rs.presence):'unknown');
     var bound=0;
     if(prefs){
-      ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
-        if(prefs[k]&&prefs[k]!=='none') bound++;
+      var tr=prefs.triggers||{};
+      ['away','shake','blink'].forEach(function(k){
+        if(tr[k]) bound++;
       });
+      if(!bound){
+        ['onAway','onReturn','shakeHead','deliberateBlink'].forEach(function(k){
+          if(prefs[k]&&prefs[k]!=='none') bound++;
+        });
+      }
     }
-    return {enabled:enabled,presence:presence,bound:bound,prefs:prefs,state:st};
+    return {
+      enabled:enabled,
+      running:running,
+      status:status,
+      manualStopped:!!(rs&&rs.manualStopped),
+      lastError:rs&&rs.lastError?rs.lastError:null,
+      presence:presence,
+      bound:bound,
+      prefs:prefs,
+      state:st,
+      runtime:rs
+    };
   }
 
   function cameraPresenceLabel(presence){
     if(presence==='present') return t('homeWbCameraPresencePresent');
     if(presence==='away') return t('homeWbCameraPresenceAway');
     return t('homeWbCameraPresenceIdle');
+  }
+
+  function cameraChannelLabel(cam){
+    if(!cam||!cam.enabled) return t('homeWbCameraOff');
+    if(cam.running||cam.status==='running') return t('homeWbCameraOn');
+    var base=t('homeWbCameraConfiguredIdle','已配置 · 未运行');
+    if(cam.lastError&&cam.lastError.message) return base+' · '+cam.lastError.message;
+    if(cam.manualStopped||cam.status==='manual_stopped') return t('homeWbCameraManualStopped','已配置 · 未运行（已手动停止）');
+    return base;
+  }
+
+  function cameraChannelTone(cam){
+    if(!cam||!cam.enabled) return {pill:'is-muted',hero:'is-standby',live:false};
+    if(cam.running||cam.status==='running') return {pill:'is-ok',hero:'is-ok',live:true};
+    return {pill:'is-warn',hero:'is-standby',live:false};
   }
 
   function openSettings(opts){
@@ -292,11 +327,8 @@
 
     if(heroMode==='camera'){
       var cam=cameraPresenceSnapshot();
-      html+=pillHtml(
-        cam.enabled?t('homeWbCameraOn'):t('homeWbCameraOff'),
-        cam.enabled?'is-ok':'is-muted',
-        cam.enabled?'is-ok':'is-standby'
-      );
+      var tone=cameraChannelTone(cam);
+      html+=pillHtml(cameraChannelLabel(cam),tone.pill,tone.hero);
       html+=pillHtml(cameraPresenceLabel(cam.presence),'is-presence','');
       html+='<button type="button" class="wb-hero-pill wb-hero-pill-listen is-solo" id="wbBtnCameraOpen" title="'+esc(t('homeWbCameraOpenSettings'))+'">'
         +'<span>'+esc(t('homeWbCameraOpenSettings'))+'</span>'
@@ -375,12 +407,12 @@
       hero.classList.toggle('is-mode-voice',mode==='voice');
       hero.classList.toggle('is-mode-keys',mode==='keys');
       hero.classList.toggle('is-mode-camera',mode==='camera');
-      hero.classList.toggle('is-live',mode==='camera'?!!(cam&&cam.enabled):live);
+      hero.classList.toggle('is-live',mode==='camera'?!!(cam&&(cam.running||cam.status==='running')):live);
       hero.classList.toggle('is-paused',paused);
     }
     if(orb){
       orb.setAttribute('data-mode',mode);
-      orb.classList.toggle('is-live',mode==='camera'?!!(cam&&cam.enabled):live);
+      orb.classList.toggle('is-live',mode==='camera'?!!(cam&&(cam.running||cam.status==='running')):live);
       orb.classList.toggle('is-paused',paused);
       var hint=mode==='keys'?t('homeWbHeroHintKeys')
         :(mode==='camera'?t('homeWbHeroHintCamera'):t('homeWbHeroHintVoice'));
@@ -495,9 +527,7 @@
     if(statusLbl){
       if(heroMode==='camera'){
         var camSt=cameraPresenceSnapshot();
-        statusLbl.textContent=camSt.enabled
-          ?cameraPresenceLabel(camSt.presence)
-          :t('homeWbCameraOff');
+        statusLbl.textContent=cameraChannelLabel(camSt);
       }else{
         statusLbl.textContent=paused
           ?t('homeWbLivePreviewPaused')
@@ -882,11 +912,18 @@
   function hookCameraPresence(){
     if(presenceHooked) return;
     var api=cameraPresenceApi();
-    if(!api||typeof api.setOnStateChange!=='function') return;
+    if(!api) return;
     presenceHooked=true;
-    api.setOnStateChange(function(){
-      try{ render(); }catch(_){}
-    });
+    if(typeof api.setOnStateChange==='function'){
+      api.setOnStateChange(function(){
+        try{ render(); }catch(_){}
+      });
+    }
+    if(typeof api.setRuntimeStateListener==='function'){
+      api.setRuntimeStateListener(function(){
+        try{ render(); }catch(_){}
+      });
+    }
   }
 
   function applyLang(){
