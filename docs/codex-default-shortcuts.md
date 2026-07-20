@@ -156,6 +156,30 @@
 
 ---
 
+## OneTone Micro 小键盘层
+
+OneTone Codex 应用场景可在 **触发页** 预览、**识别页** 配置 **Micro 小键盘层**：
+
+- **物理键**（`sourceScan` + `sourceExtended`）或 vendor `microKeyId` → **Codex 能力 slot** → **`agentBindings.triggerBinding` 输出和弦**
+- **仅 Codex 前台** 吞物理小键盘；其他 App 不受影响
+- **13 个可见键**：`AG00–AG05`、`ACT06–ACT10`、`ACT12`、旋钮按压 `ENC`、摇杆 `JOY`
+- 默认：矩阵 12 键 + `ENC` 已预填能力与小键盘源；`JOY` 默认可点可绑，无 scan / 无 slot
+- 旋钮协议 ID 统一为 **`ENC`**（不再使用 `DIAL`）；已删除幽灵键 `NPAD0` / `NPAD_ENTER`
+- **触发页**：点键帽只在 hero 预览「小键盘键 · 能力」，不改配置
+- **识别页**：编辑 / 运行 两模式（默认编辑）；编辑打开键帽弹层；运行用鼠标点虚拟盘试触发（说话键按住听写；需 Codex 前台）
+- **右侧方案**：显示全部虚拟键盘映射（键位 · 小键盘源 · 能力 · 快捷键）；点击行可编辑键帽
+- **置顶小窗**：固定运行模式，点击键帽触发；配置请回识别页
+- Codex 桌面端前台进程为 **`ChatGPT.exe`**（Windows 包 `OpenAI.Codex_*`）；仍兼容 `Codex.exe` 辅助进程
+- **fttawa 硬件**：[fttawa/codex-micro](https://github.com/fttawa/codex-micro) 经 vendor HID（`v.oai.hid`）上报；旋转 `ENC_CW`/`ENC_CC` 与导航 `NAV_*` 暂不绑定
+
+布局数据：[`src/data/codex-micro-pad-layout.json`](../src/data/codex-micro-pad-layout.json)  
+UI：[`src/css/codex-micro-pad.css`](../src/css/codex-micro-pad.css) · [`codex-micro-pad-ui.js`](../src/js/features/agent/codex-micro-pad-ui.js) · [`codex-micro-overlay.html`](../src/codex-micro-overlay.html)  
+运行时：[`src-tauri/src/codex_numpad_layer.rs`](../src-tauri/src/codex_numpad_layer.rs) · [`codex_micro_vendor.rs`](../src-tauri/src/codex_micro_vendor.rs) · [`codex_micro_overlay.rs`](../src-tauri/src/codex_micro_overlay.rs)
+
+与官方 ACT06 硬件（ChatGPT 内配置）独立；OneTone 不推送 Agent RGB 状态。
+
+---
+
 ## 与 Page Down 映射的注意点
 
 Codex 将 `Ctrl+PageDown` 用于**下一标签页 / 下一项任务**。若 OneTone 用外设 **Page Down** 作触发键，在 Codex 前台可能与内置快捷键冲突；建议优先使用侧键或专用外设键，或在 Codex 设置中调整相关导航快捷键。

@@ -1215,6 +1215,48 @@ pub struct MappingEntry {
     /// Key / voice / camera bindings onto AgentAction slots.
     #[serde(rename = "agentBindings", default)]
     pub agent_bindings: Vec<AgentBinding>,
+    /// Codex Micro numpad physical-key routing (source scan -> slot -> output chord).
+    #[serde(
+        rename = "codexMicroPad",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub codex_micro_pad: Option<CodexMicroPadConfig>,
+}
+
+/// Codex scenario numpad layer — routes physical numpad keys to agent slots.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexMicroPadConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub require_foreground: bool,
+    #[serde(default)]
+    pub require_num_lock_off: bool,
+    #[serde(default)]
+    pub overlay_enabled: bool,
+    #[serde(default)]
+    pub keys: Vec<CodexMicroPadKeyRoute>,
+}
+
+/// Physical numpad key -> Micro cell -> agent slot (output chord lives on slot binding).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexMicroPadKeyRoute {
+    #[serde(default)]
+    pub micro_key_id: String,
+    #[serde(default)]
+    pub source_scan: u16,
+    #[serde(default)]
+    pub source_extended: bool,
+    #[serde(default)]
+    pub slot_id: String,
+    /// UI-only keycap icon id (fast / reject / mic …). Does not affect dispatch.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub ui_icon_id: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.
@@ -2937,6 +2979,7 @@ impl Default for VoiceConfig {
                 agent_template_id: String::new(),
                 agent_provider_id: String::new(),
                 agent_bindings: vec![],
+                codex_micro_pad: None,
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -3321,6 +3364,7 @@ impl VoiceConfig {
                 agent_template_id: String::new(),
                 agent_provider_id: String::new(),
                 agent_bindings: vec![],
+                codex_micro_pad: None,
             });
         }
 
@@ -4025,6 +4069,14 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 }
             }
         }
+        // Older FE payloads omitted codexMicroPad and wiped overlay/keymap on every save.
+        if m.codex_micro_pad.is_none() {
+            if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
+                if prev.codex_micro_pad.is_some() {
+                    m.codex_micro_pad = prev.codex_micro_pad.clone();
+                }
+            }
+        }
         // Preserve agent scenario template fields when FE omits them on partial save.
         if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
             if m.agent_template_id.trim().is_empty() && !prev.agent_template_id.trim().is_empty() {
@@ -4306,6 +4358,7 @@ pub fn save_config(cfg: &VoiceConfig) {
 }
 
 pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
+    crate::codex_numpad_layer::sync_hook_cache(cfg);
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.bind_all(&cfg.bindings());
         mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
@@ -4353,6 +4406,34 @@ fn config_json_without_watcher_noise(cfg: &VoiceConfig) -> serde_json::Value {
 
 pub(crate) fn is_watcher_noise_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
     config_json_without_watcher_noise(old) == config_json_without_watcher_noise(new)
+}
+
+/// Strip per-mapping `codexMicroPad` so we can detect pad-only edits.
+fn config_json_without_codex_micro_pad(cfg: &VoiceConfig) -> serde_json::Value {
+    let mut value = serde_json::to_value(cfg).unwrap_or(serde_json::Value::Null);
+    if let Some(obj) = value.as_object_mut() {
+        for list_key in ["mappings", "trash"] {
+            if let Some(arr) = obj.get_mut(list_key).and_then(|v| v.as_array_mut()) {
+                for item in arr {
+                    if let Some(m) = item.as_object_mut() {
+                        m.remove("codexMicroPad");
+                    }
+                }
+            }
+        }
+    }
+    value
+}
+
+/// True when the only mapping diffs are inside `codexMicroPad` (enable / overlay / keys).
+/// Those saves must not push `mvp_init` or remount camera — that path 假死'd the UI.
+pub(crate) fn is_codex_micro_pad_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
+    let full_old = serde_json::to_value(old).unwrap_or(serde_json::Value::Null);
+    let full_new = serde_json::to_value(new).unwrap_or(serde_json::Value::Null);
+    if full_old == full_new {
+        return false;
+    }
+    config_json_without_codex_micro_pad(old) == config_json_without_codex_micro_pad(new)
 }
 
 pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
@@ -5043,6 +5124,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -5084,6 +5166,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -5127,6 +5210,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         cfg.normalize();
         let m = cfg
@@ -5216,6 +5300,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -5273,6 +5358,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -5311,6 +5397,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -5355,6 +5442,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -5398,6 +5486,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -5437,6 +5526,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -5629,6 +5719,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -5671,6 +5762,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -5738,6 +5830,29 @@ mod tests {
 
         old.desired_engine = "vosk".into();
         assert!(!is_watcher_noise_only_change(&old, &layout_only));
+    }
+
+    #[test]
+    fn quiet_save_for_codex_micro_pad_only() {
+        let mut old = VoiceConfig::default();
+        if let Some(m) = old.mappings.first_mut() {
+            m.codex_micro_pad = Some(crate::codex_numpad_layer::default_codex_micro_pad());
+        }
+        let mut pad_only = old.clone();
+        if let Some(m) = pad_only.mappings.first_mut() {
+            if let Some(pad) = m.codex_micro_pad.as_mut() {
+                pad.enabled = !pad.enabled;
+                pad.overlay_enabled = !pad.overlay_enabled;
+            }
+        }
+        assert!(is_codex_micro_pad_only_change(&old, &pad_only));
+
+        let mut with_label = pad_only.clone();
+        if let Some(m) = with_label.mappings.first_mut() {
+            m.label = "changed".into();
+        }
+        assert!(!is_codex_micro_pad_only_change(&old, &with_label));
+        assert!(!is_codex_micro_pad_only_change(&old, &old));
     }
 
     #[test]
@@ -5813,6 +5928,7 @@ mod tests {
             agent_template_id: "codex-micro-13".into(),
             agent_provider_id: "codex".into(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         assert!(mapping_shadowed_by_foreground_app_scenario(
@@ -5877,6 +5993,7 @@ mod tests {
                 execution_mode: None,
                 activation_scope: "foregroundApp".into(),
             }],
+            codex_micro_pad: None,
         });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         let hit = find_app_scenario_for_foreground(&cfg, &fg).expect("codex scenario");
@@ -6392,6 +6509,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         };
         let json = serde_json::to_string(&mapping).expect("serialize");
         let back: MappingEntry = serde_json::from_str(&json).expect("deserialize");

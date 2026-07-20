@@ -89,6 +89,8 @@ permissions = [
   "allow-cmd-coach-hud-get-state",
   "allow-cmd-coach-hud-dismiss",
   "allow-cmd-coach-hud-set-enabled",
+  "allow-cmd-codex-micro-overlay-get-state",
+  "allow-cmd-codex-micro-pad-fire",
   "allow-cmd-acoustic-voice-command-status",
   "allow-cmd-acoustic-voice-command-preflight",
   "allow-cmd-acoustic-voice-command-set-suspend",

@@ -570,6 +570,16 @@
     renderSchemeSummary(m);
   }
 
+  function shouldHideAppBindingStrip(m){
+    if(!keysPanelActive()) return true;
+    if(isInAppScenarioContext()) return true;
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()) return true;
+    var T=global.OneToneAgentScenarioTemplate;
+    if(m&&T&&T.isCodexScenario&&T.isCodexScenario(m)) return true;
+    return false;
+  }
+
   function renderAppContextStrip(){
     var strip=$('keysAppContextStrip');
     var wrap=$('keysAppContextStripWrap');
@@ -579,12 +589,13 @@
     if(bindingLbl) bindingLbl.textContent=t('keysAppBindingLbl');
     if(addBtn) addBtn.textContent=t('keysAppChipAdd');
     if(!strip||!wrap) return;
-    if(!keysPanelActive()){
+    var m=core()&&core().selected?core().selected():null;
+    // 应用场景 / Codex 已绑定目标应用；display:flex 需配合 [hidden] CSS。
+    if(shouldHideAppBindingStrip(m)){
       wrap.hidden=true;
       if(bindingStrip) bindingStrip.hidden=true;
       return;
     }
-    var m=core()&&core().selected?core().selected():null;
     if(!m||!core().isSaved||!core().isSaved(m)){
       wrap.hidden=true;
       if(bindingStrip) bindingStrip.hidden=true;
@@ -702,6 +713,52 @@
       +'</div></div>';
   }
 
+  function renderCodexPadMapList(selectedId){
+    var host=$('keysHubCodexPadMap');
+    if(!host) return;
+    var Pad=global.OneToneCodexMicroPadUi;
+    var T=global.OneToneAgentScenarioTemplate;
+    var m=null;
+    if(selectedId&&core()&&core().sorted){
+      var schemes=core().sorted();
+      for(var i=0;i<schemes.length;i++){
+        if(schemes[i]&&schemes[i].id===selectedId){ m=schemes[i]; break; }
+      }
+    }
+    if(!m&&core()&&core().selected) m=core().selected();
+    if(!m||!T||!T.isCodexScenario||!T.isCodexScenario(m)||!Pad||!Pad.listPadMappings){
+      host.hidden=true;
+      host.innerHTML='';
+      return;
+    }
+    var rows=Pad.listPadMappings(m);
+    var bound=0;
+    for(var r=0;r<rows.length;r++){ if(rows[r]&&rows[r].bound) bound++; }
+    var html='<div class="keys-hub-pad-map">'
+      +'<div class="keys-hub-pad-map__head">'
+      +'<span class="keys-hub-pad-map__title">'+esc(t('codexMicroPadMapTitle','虚拟键盘映射'))+'</span>'
+      +'<span class="keys-hub-pad-map__count">'+esc(String(bound)+'/'+String(rows.length))+'</span>'
+      +'</div>'
+      +'<p class="keys-hub-pad-map__hint">'+esc(t('codexMicroPadMapHint','点击行编辑键帽'))+'</p>'
+      +'<div class="keys-hub-pad-map__table" role="list">';
+    rows.forEach(function(row){
+      var cap=row.bound?(row.slotLabel||row.slotId):t('codexMicroPadUnbound','未配置');
+      var chord=row.bound?(row.chord||'—'):'—';
+      var num=row.numpadLabel||'—';
+      html+='<button type="button" class="keys-hub-pad-map__row'+(row.bound?' is-bound':' is-unbound')+'" role="listitem"'
+        +' data-pad-map-key="'+esc(row.microKeyId)+'"'
+        +' title="'+esc(row.keyLabel+' · '+cap)+'">'
+        +'<span class="keys-hub-pad-map__key">'+esc(row.keyLabel)+'</span>'
+        +'<span class="keys-hub-pad-map__num">'+esc(num)+'</span>'
+        +'<span class="keys-hub-pad-map__cap">'+esc(cap)+'</span>'
+        +'<span class="keys-hub-pad-map__chord">'+esc(chord)+'</span>'
+        +'</button>';
+    });
+    html+='</div></div>';
+    host.innerHTML=html;
+    host.hidden=false;
+  }
+
   function renderKeysHub(){
     var schemeList=$('keysHubSchemeList');
     var tplList=$('keysHubTemplateList');
@@ -728,6 +785,7 @@
       schemeList.innerHTML='';
       if(tplList) tplList.innerHTML='';
       if(card) card.hidden=true;
+      renderCodexPadMapList('');
       return;
     }
     var schemes=contextFilteredSchemes();
@@ -749,6 +807,7 @@
         +sorted.map(function(m){ return renderKeysHubSchemeRow(m,selected); }).join('')
         +'</div>';
     }
+    renderCodexPadMapList(selected);
     if(!tplList||!tplApi||!tplApi.list) return;
     var templates=tplApi.list();
     var m=core()&&core().selected?core().selected():null;
@@ -1244,6 +1303,17 @@
           e.preventDefault();
           e.stopPropagation();
           renameScheme(renameBtn.getAttribute('data-scheme-rename')||'');
+          return;
+        }
+        var padMapBtn=e.target.closest&&e.target.closest('[data-pad-map-key]');
+        if(padMapBtn){
+          e.__vpKeysPanelHandled=true;
+          e.preventDefault();
+          e.stopPropagation();
+          var microId=padMapBtn.getAttribute('data-pad-map-key')||'';
+          var Pad=global.OneToneCodexMicroPadUi;
+          var mapM=core()&&core().selected?core().selected():null;
+          if(microId&&mapM&&Pad&&Pad.openEditKeycap) Pad.openEditKeycap(mapM,microId);
           return;
         }
         var schemeSelect=e.target.closest&&e.target.closest('[data-scheme-select]');

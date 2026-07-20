@@ -1,10 +1,14 @@
 mod coach_hud_cmd;
+mod codex_micro_overlay_cmd;
+mod codex_micro_pad_fire_cmd;
 mod prefs;
 mod tray;
 mod update;
 mod window;
 
 pub use coach_hud_cmd::*;
+pub use codex_micro_overlay_cmd::*;
+pub use codex_micro_pad_fire_cmd::*;
 pub use prefs::*;
 pub use tray::*;
 pub use update::*;

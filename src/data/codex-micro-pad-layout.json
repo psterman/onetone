@@ -1,0 +1,36 @@
+{
+  "version": "2",
+  "labelZh": "Codex Micro 小键盘布局",
+  "labelEn": "Codex Micro numpad layout",
+  "cells": [
+    { "microKeyId": "ENC", "uiLabelZh": "旋钮", "uiLabelEn": "Dial", "kind": "control", "gridRow": 1, "gridCol": 1, "defaultSlotId": "summonCodex", "icon": "codex" },
+    { "microKeyId": "AG00", "uiLabelZh": "任务 1", "uiLabelEn": "Agent 1", "kind": "agent", "gridRow": 1, "gridCol": 2, "defaultSlotId": "status", "icon": "status" },
+    { "microKeyId": "AG01", "uiLabelZh": "任务 2", "uiLabelEn": "Agent 2", "kind": "agent", "gridRow": 1, "gridCol": 3, "defaultSlotId": "plan", "icon": "plan" },
+    { "microKeyId": "AG02", "uiLabelZh": "任务 3", "uiLabelEn": "Agent 3", "kind": "agent", "gridRow": 1, "gridCol": 4, "defaultSlotId": "review", "icon": "review" },
+    { "microKeyId": "JOY", "uiLabelZh": "摇杆", "uiLabelEn": "Stick", "kind": "control", "gridRow": 1, "gridCol": 5, "defaultSlotId": null, "icon": "empty" },
+    { "microKeyId": "AG03", "uiLabelZh": "任务 4", "uiLabelEn": "Agent 4", "kind": "agent", "gridRow": 2, "gridCol": 2, "defaultSlotId": "permissions", "icon": "folder" },
+    { "microKeyId": "AG04", "uiLabelZh": "任务 5", "uiLabelEn": "Agent 5", "kind": "agent", "gridRow": 2, "gridCol": 3, "defaultSlotId": "switchAgent", "icon": "agent" },
+    { "microKeyId": "AG05", "uiLabelZh": "任务 6", "uiLabelEn": "Agent 6", "kind": "agent", "gridRow": 2, "gridCol": 4, "defaultSlotId": "appsOrPlugins", "icon": "cloud" },
+    { "microKeyId": "ACT06", "uiLabelZh": "快速", "uiLabelEn": "Fast", "kind": "command", "gridRow": 3, "gridCol": 2, "defaultSlotId": "quickChat", "icon": "fast" },
+    { "microKeyId": "ACT07", "uiLabelZh": "批准", "uiLabelEn": "Approve", "kind": "command", "gridRow": 3, "gridCol": 3, "defaultSlotId": "commandPalette", "icon": "palette" },
+    { "microKeyId": "ACT08", "uiLabelZh": "拒绝", "uiLabelEn": "Reject", "kind": "command", "gridRow": 3, "gridCol": 4, "defaultSlotId": "cancel", "icon": "reject" },
+    { "microKeyId": "ACT09", "uiLabelZh": "分支", "uiLabelEn": "Fork", "kind": "command", "gridRow": 3, "gridCol": 5, "defaultSlotId": "newThread", "icon": "fork" },
+    { "microKeyId": "ACT10", "uiLabelZh": "开始说话", "uiLabelEn": "Mic", "kind": "command", "gridRow": 4, "gridCol": 2, "gridColSpan": 2, "defaultSlotId": "pushToTalk", "icon": "mic" },
+    { "microKeyId": "ACT12", "uiLabelZh": "发送", "uiLabelEn": "Send", "kind": "command", "gridRow": 4, "gridCol": 4, "defaultSlotId": "stopOrSend", "icon": "send" }
+  ],
+  "defaultRoutes": [
+    { "microKeyId": "AG00", "sourceScan": 71, "sourceExtended": false, "slotId": "status", "uiIconId": "status" },
+    { "microKeyId": "AG01", "sourceScan": 72, "sourceExtended": false, "slotId": "plan", "uiIconId": "plan" },
+    { "microKeyId": "AG02", "sourceScan": 73, "sourceExtended": false, "slotId": "review", "uiIconId": "review" },
+    { "microKeyId": "AG03", "sourceScan": 75, "sourceExtended": false, "slotId": "permissions", "uiIconId": "folder" },
+    { "microKeyId": "AG04", "sourceScan": 76, "sourceExtended": false, "slotId": "switchAgent", "uiIconId": "agent" },
+    { "microKeyId": "AG05", "sourceScan": 77, "sourceExtended": false, "slotId": "appsOrPlugins", "uiIconId": "cloud" },
+    { "microKeyId": "ACT06", "sourceScan": 55, "sourceExtended": false, "slotId": "quickChat", "uiIconId": "fast" },
+    { "microKeyId": "ACT07", "sourceScan": 53, "sourceExtended": true, "slotId": "commandPalette", "uiIconId": "palette" },
+    { "microKeyId": "ACT08", "sourceScan": 74, "sourceExtended": false, "slotId": "cancel", "uiIconId": "reject" },
+    { "microKeyId": "ACT09", "sourceScan": 79, "sourceExtended": false, "slotId": "newThread", "uiIconId": "fork" },
+    { "microKeyId": "ACT10", "sourceScan": 80, "sourceExtended": false, "slotId": "pushToTalk", "uiIconId": "mic" },
+    { "microKeyId": "ACT12", "sourceScan": 81, "sourceExtended": false, "slotId": "stopOrSend", "uiIconId": "send" },
+    { "microKeyId": "ENC", "sourceScan": 82, "sourceExtended": false, "slotId": "summonCodex", "uiIconId": "codex" }
+  ]
+}

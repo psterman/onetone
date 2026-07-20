@@ -116,14 +116,27 @@
     if (imeBlock) imeBlock.hidden = step === 'target' || step === 'finish';
     if (voiceSummary) voiceSummary.classList.add('sr-only');
     if (trigLbl) trigLbl.textContent = t('keysFlowNodeTriggerTitle', '触发');
-    if (tgtLbl) tgtLbl.textContent = t('codexCapTargetTitle', '能力快捷键');
+    if (tgtLbl) tgtLbl.textContent = t('codexMicroPadTitle', 'Micro 小键盘层');
     if (step === 'trigger') {
-      if (keycapHint) keycapHint.textContent = t('codexStepTriggerKeycapHint', '点击录制物理触发键');
+      if (keycapHint) {
+        keycapHint.textContent = t(
+          'codexStepTriggerPreviewHint',
+          '预览键位命令 · 不修改映射 · 到「识别」页点击键帽可编辑'
+        );
+      }
       if (targetKeycapHint) targetKeycapHint.textContent = t('keysTargetKeycapHint', '点击录制语音快捷键');
+      if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.applyTriggerHeroPreview) {
+        global.OneToneCodexMicroPadUi.applyTriggerHeroPreview(m);
+      }
     } else if (step === 'target') {
       ensureDefaultSelection(m);
       if (keycapHint) keycapHint.textContent = t('keysKeycapHint', '点击修改快捷键');
-      if (targetKeycapHint) targetKeycapHint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
+      if (targetKeycapHint) {
+        targetKeycapHint.textContent = t(
+          'codexStepRecognitionKeycapHint',
+          '点击下方小键盘键帽编辑能力 · 长按物理说话键听写'
+        );
+      }
     }
   }
 
@@ -301,26 +314,32 @@
       if (host) host.classList.remove('is-codex-cap-edit');
       return false;
     }
-    var chord = stepTargetDisplayKey(m);
-    var name = selectedSlotId ? slotLabel(selectedSlotId) : '';
     syncStepTargetDisplays(m);
     if (targetDisp) targetDisp.classList.add('is-codex-cap-edit');
     if (host) host.classList.add('is-codex-cap-edit');
     if (hint) {
-      if (name) {
-        hint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
-      } else {
-        hint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
-      }
+      hint.textContent = t(
+        'codexStepRecognitionKeycapHint',
+        '点击下方小键盘键帽编辑能力 · 长按物理说话键听写'
+      );
     }
     return true;
   }
 
-  /** Summary line for Codex scheme list: show configured capability shortcuts. */
+  /** Summary line for Codex scheme list: Micro bound count + sample chords. */
   function schemePairLine(m) {
     if (!m) return '';
     var T = global.OneToneAgentScenarioTemplate;
     if (!T || !T.isCodexScenario || !T.isCodexScenario(m)) return '';
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (Pad && Pad.listPadMappings) {
+      var rows = Pad.listPadMappings(m);
+      var bound = 0;
+      for (var r = 0; r < rows.length; r++) {
+        if (rows[r] && rows[r].bound) bound++;
+      }
+      return t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(bound));
+    }
     var list = (m.agentBindings || []).filter(function (b) {
       return b && b.enabled !== false && b.triggerType === 'key' && String(b.triggerBinding || '').trim();
     });
@@ -342,6 +361,7 @@
     var host = document.getElementById('habitKeyMapCellTarget');
     if (targetDisp) targetDisp.classList.remove('is-codex-cap-edit');
     if (host) host.classList.remove('is-codex-cap-edit');
+    notifyMicroPad(codexScenarioMapping(), '');
   }
 
   function hasSelectedSlot() {
@@ -428,6 +448,17 @@
     });
   }
 
+  function microPadBadge(m, slotId) {
+    var Micro = global.OneToneCodexMicroPadUi;
+    if (!Micro || !Micro.badgeForSlot) return '';
+    return Micro.badgeForSlot(m, slotId);
+  }
+
+  function notifyMicroPad(m, slotId) {
+    var Micro = global.OneToneCodexMicroPadUi;
+    if (Micro && Micro.onCapabilitySelected) Micro.onCapabilitySelected(m, slotId || '');
+  }
+
   function renderCapCards(m, slots, mode) {
     var A = global.OneToneAgentActions;
     var triggerType = mode === 'voice' ? 'voice' : 'key';
@@ -444,15 +475,19 @@
       var sub = mode === 'voice'
         ? (value || t('codexCapTapPhrase', '点按改口令'))
         : friendlyChord(value) || t('codexCapTapLoad', '点击加载推荐键');
+      var microBadge = mode === 'keys' ? microPadBadge(m, s.slotId) : '';
       var attr = mode === 'voice' ? 'data-codex-chip-voice' : 'data-codex-chip-key';
       html += '<button type="button" class="codex-cap-item'
         + (bound ? ' is-bound' : '')
         + (bound && enabled ? ' is-active' : '')
         + (triggerType === 'key' && selectedSlotId === s.slotId ? ' is-selected' : '')
+        + (microBadge ? ' has-micro-pad' : '')
         + '" role="listitem" '
-        + attr + '="' + esc(s.slotId) + '" title="' + esc(name + (value ? ' · ' + value : '')) + '">'
+        + attr + '="' + esc(s.slotId) + '" title="' + esc(name + (value ? ' · ' + value : '') + (microBadge ? ' · ' + microBadge : '')) + '">'
         + '<span class="codex-cap-icon">' + icon + '</span>'
-        + '<span class="codex-cap-name">' + esc(name) + '</span>'
+        + '<span class="codex-cap-name">' + esc(name)
+        + (microBadge ? '<span class="codex-cap-micro-badge">' + esc(microBadge) + '</span>' : '')
+        + '</span>'
         + '<span class="codex-cap-sub">' + esc(sub) + '</span>'
         + '</button>';
     }
@@ -610,6 +645,7 @@
     b.enabled = true;
     selectedSlotId = slotId;
     persist();
+    notifyMicroPad(m, slotId);
     remountKeysHosts(m);
     applyRecognitionOverlay();
     if (global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
@@ -636,6 +672,7 @@
     var sub = btn && btn.querySelector && btn.querySelector('.codex-cap-sub');
     function setSub(text) { if (sub) sub.textContent = text; }
     selectedSlotId = slotId;
+    notifyMicroPad(m, slotId);
     applyRecognitionOverlay();
     if (!rec || !rec.startAgentBinding) {
       customizeKeyPrompt(m, slotId);
@@ -664,6 +701,9 @@
         persist();
         toast(t('codexCapCustomSaved', '已更新快捷键')
           + (b2.triggerBinding ? ' · ' + friendlyChord(b2.triggerBinding) : ''));
+        if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.notifyLinkedUi) {
+          global.OneToneCodexMicroPadUi.notifyLinkedUi(m);
+        }
         remountKeysHosts(m);
         applyRecognitionOverlay();
       },
@@ -703,6 +743,9 @@
     persist();
     toast(t('codexCapCustomSaved', '已更新快捷键')
       + (b.triggerBinding ? ' · ' + friendlyChord(b.triggerBinding) : ''));
+    if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.notifyLinkedUi) {
+      global.OneToneCodexMicroPadUi.notifyLinkedUi(m);
+    }
     remountKeysHosts(m);
     applyRecognitionOverlay();
   }
@@ -744,23 +787,26 @@
       clearSelection();
       hideHost(targetHost);
       hideHost(finishHost);
+      if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.mount) {
+        global.OneToneCodexMicroPadUi.mount(step, null);
+      }
       return;
     }
     var T = global.OneToneAgentScenarioTemplate;
     if (T && T.fillEmptyKeyDefaults) T.fillEmptyKeyDefaults(m);
+    // Micro 硬件盘替代能力快捷键卡片；始终隐藏卡片宿主。
+    hideHost(targetHost);
+    hideHost(finishHost);
+    if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.ensureHosts) {
+      global.OneToneCodexMicroPadUi.ensureHosts(step, m);
+    }
     if (step === 'target') {
       ensureDefaultSelection(m);
-      renderKeysPanel(targetHost, m, 'target');
-      hideHost(finishHost);
       applyRecognitionOverlay();
     } else if (step === 'finish') {
-      hideHost(targetHost);
-      renderKeysPanel(finishHost, m, 'finish');
       applyRecognitionOverlay();
     } else {
       clearSelection();
-      hideHost(targetHost);
-      hideHost(finishHost);
     }
     applyCodexStepChrome(step, m);
   }

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use tauri::AppHandle;
+use tauri::Emitter;
 use tauri::Manager;
 
-use crate::app_chat_workflow;
+use crate::app_chat_workflow::{self, CODEX_APP_TARGET_ID};
 use crate::app_identity;
 use crate::config::{effective_mapping_for_trigger, is_app_scenario_mapping};
 use crate::key_chord::{build_pressed_chord, chord_parts, is_modifier_name, is_modifier_only_chord};
@@ -111,6 +112,184 @@ fn execute_agent_binding(
     );
 }
 
+fn try_end_codex_numpad_hold(state: &Arc<AppState>, app: &AppHandle, source_id: &str) -> bool {
+    let held = state.codex_numpad_hold_source.lock().clone();
+    let Some(held_id) = held else {
+        return false;
+    };
+    if held_id != source_id {
+        return false;
+    }
+    *state.codex_numpad_hold_source.lock() = None;
+    crate::voice_end_runtime::stop_dictation_after_trigger_key(state, app);
+    true
+}
+
+fn try_dispatch_codex_numpad(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    raw: &str,
+) -> bool {
+    let Some((source, key_down)) = crate::codex_numpad_layer::parse_event(raw) else {
+        return false;
+    };
+    let source_id = source.id();
+    let _ = window.emit(
+        "to_js",
+        &serde_json::json!({
+            "type": "codex_micro_pad_key",
+            "sourceId": source_id,
+            "microKeyId": crate::codex_numpad_layer::lookup_route(&source)
+                .map(|r| r.micro_key_id)
+                .unwrap_or_default(),
+            "phase": if key_down { "down" } else { "up" },
+        }),
+    );
+    if let Some(route) = crate::codex_numpad_layer::lookup_route(&source) {
+        crate::codex_micro_overlay::note_micro_key(&route.micro_key_id, key_down);
+        crate::codex_micro_overlay::push_state(&window.app_handle(), state.as_ref());
+    }
+
+    let Some(route) = crate::codex_numpad_layer::lookup_route(&source) else {
+        return true;
+    };
+
+    if route.is_hold {
+        let app = window.app_handle();
+        if !key_down {
+            try_end_codex_numpad_hold(state, &app, &source_id);
+            return true;
+        }
+        if state.codex_numpad_hold_source.lock().is_some() {
+            return true;
+        }
+        let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+            return true;
+        };
+        *state.codex_numpad_hold_source.lock() = Some(source_id);
+        let _ = app_chat_workflow::run_hold_voice_foreground(
+            state,
+            window,
+            &route.mapping_id,
+            &route.trigger_binding,
+            profile,
+        );
+        return true;
+    }
+
+    if !key_down {
+        return true;
+    }
+    execute_agent_binding(
+        state,
+        window,
+        &route.mapping_id,
+        &route.provider_id,
+        &route.action_id,
+        &route.slot_id,
+        None,
+        Some("foregroundApp".into()),
+    );
+    true
+}
+
+fn try_dispatch_codex_micro_key(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    raw: &str,
+) -> bool {
+    let Some((micro_key_id, key_down)) = crate::codex_numpad_layer::parse_micro_key_event(raw) else {
+        return false;
+    };
+    let _ = fire_codex_micro_pad_key(state, window, &micro_key_id, key_down, true);
+    true
+}
+
+/// Screen / overlay fire path for Micro keycaps (M2 run mode).
+/// `emit_pad_event`: when true, notify main UI + overlay highlight (hardware path).
+pub fn fire_codex_micro_pad_key(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    micro_key_id: &str,
+    key_down: bool,
+    emit_pad_event: bool,
+) -> serde_json::Value {
+    let micro_key_id = micro_key_id.trim();
+    if micro_key_id.is_empty() {
+        return serde_json::json!({ "ok": false, "reason": "invalid_key" });
+    }
+    if !crate::codex_numpad_layer::codex_foreground_for_micro() {
+        return serde_json::json!({ "ok": false, "reason": "not_foreground" });
+    }
+
+    let app = window.app_handle();
+    // Overlay invokes this command on its own webview; execute/hold need the main window.
+    let exec_window = app
+        .get_webview_window("main")
+        .unwrap_or_else(|| window.clone());
+
+    crate::codex_micro_overlay::note_micro_key(micro_key_id, key_down);
+    crate::codex_micro_overlay::push_state(&app, state.as_ref());
+    if emit_pad_event {
+        let payload = serde_json::json!({
+            "type": "codex_micro_pad_key",
+            "microKeyId": micro_key_id,
+            "phase": if key_down { "down" } else { "up" },
+        });
+        let _ = exec_window.emit("to_js", &payload);
+    }
+
+    let Some(route) = crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id) else {
+        return serde_json::json!({ "ok": false, "reason": "unbound" });
+    };
+
+    if route.is_hold {
+        if !key_down {
+            let held = state.codex_numpad_hold_source.lock().clone();
+            if held.as_deref() == Some(micro_key_id) {
+                *state.codex_numpad_hold_source.lock() = None;
+                crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
+            }
+            return serde_json::json!({ "ok": true, "reason": "hold_up", "slotId": route.slot_id });
+        }
+        if state.codex_numpad_hold_source.lock().is_some() {
+            return serde_json::json!({ "ok": true, "reason": "hold_busy", "slotId": route.slot_id });
+        }
+        let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+            return serde_json::json!({ "ok": false, "reason": "no_profile" });
+        };
+        *state.codex_numpad_hold_source.lock() = Some(micro_key_id.to_string());
+        let _ = app_chat_workflow::run_hold_voice_foreground(
+            state,
+            &exec_window,
+            &route.mapping_id,
+            &route.trigger_binding,
+            profile,
+        );
+        return serde_json::json!({ "ok": true, "reason": "hold_down", "slotId": route.slot_id });
+    }
+
+    if !key_down {
+        return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
+    }
+    execute_agent_binding(
+        state,
+        &exec_window,
+        &route.mapping_id,
+        &route.provider_id,
+        &route.action_id,
+        &route.slot_id,
+        None,
+        Some("foregroundApp".into()),
+    );
+    serde_json::json!({
+        "ok": true,
+        "reason": "fired",
+        "slotId": route.slot_id,
+        "actionId": route.action_id,
+    })
+}
+
 fn try_end_hold_voice_on_keyup(
     state: &Arc<AppState>,
     app: &AppHandle,
@@ -182,6 +361,14 @@ fn try_dispatch_agent_modifier_keyup(
 
 /// 解析物理按键事件，处理长按/双击手势后触发语音。
 pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWindow, raw: &str) {
+    if raw.starts_with("codexNumpad:") {
+        try_dispatch_codex_numpad(state, window, raw);
+        return;
+    }
+    if raw.starts_with("codexMicroKey:") {
+        try_dispatch_codex_micro_key(state, window, raw);
+        return;
+    }
     if *state.paused.lock() || *state.recording.lock() {
         return;
     }

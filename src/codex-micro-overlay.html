@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codex Micro</title>
+  <style>
+    :root{
+      --hw-ink:#3a4454;
+      --hw-muted:#8a95a5;
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+    }
+    @media (prefers-color-scheme:dark){
+      :root{--hw-ink:#e8f0f8;--hw-muted:#9aa8b8}
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;user-select:none}
+    .root{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:6px}
+    .wrap{width:100%;max-width:288px;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+    .wrap.is-visible{opacity:1;transform:none;pointer-events:auto}
+    .micro-hw{
+      position:relative;width:100%;aspect-ratio:1;border-radius:24px;padding:10px;
+      background:linear-gradient(145deg,#fafbfc 0%,#eef0f3 55%,#e6e9ee 100%);
+      box-shadow:0 14px 32px rgba(26,45,74,.18),0 2px 6px rgba(26,45,74,.06);
+    }
+    @media (prefers-color-scheme:dark){
+      .micro-hw{background:linear-gradient(145deg,#3a4556,#2a3342);box-shadow:0 14px 32px rgba(0,0,0,.45)}
+    }
+    .micro-hw__face{
+      position:relative;width:100%;height:100%;border-radius:18px;padding:8px;
+      background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.18)),rgba(232,236,242,.55);
+      border:1px solid rgba(255,255,255,.65);backdrop-filter:blur(10px);
+    }
+    @media (prefers-color-scheme:dark){
+      .micro-hw__face{background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02)),rgba(40,50,64,.65);border-color:rgba(255,255,255,.1)}
+    }
+    .micro-hw__screw{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6a7382,#2c3440 70%);z-index:2}
+    .micro-hw__screw--tl{top:6px;left:6px}.micro-hw__screw--tr{top:6px;right:6px}
+    .micro-hw__screw--bl{bottom:6px;left:6px}.micro-hw__screw--br{bottom:6px;right:6px}
+    .micro-hw__grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;width:100%;height:100%}
+    .micro-hw__key{
+      border:none;padding:0;border-radius:8px;display:flex;align-items:center;justify-content:center;
+      min-width:0;min-height:0;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease,background .12s ease;
+    }
+    .micro-hw__key--span2{grid-column:span 2}
+    .micro-hw__key--agent{
+      background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.18));
+      border:1px solid rgba(255,255,255,.45);
+      box-shadow:inset 0 0 10px var(--ag-glow,rgba(80,200,255,.35)),0 0 8px var(--ag-glow,rgba(80,200,255,.22));
+    }
+    .micro-hw__key--agent[data-ag="0"]{--ag-glow:rgba(64,220,180,.55)}
+    .micro-hw__key--agent[data-ag="1"]{--ag-glow:rgba(255,170,60,.55)}
+    .micro-hw__key--agent[data-ag="2"]{--ag-glow:rgba(80,140,255,.55)}
+    .micro-hw__key--agent[data-ag="3"]{--ag-glow:rgba(240,245,255,.5)}
+    .micro-hw__key--agent[data-ag="4"]{--ag-glow:rgba(255,90,140,.5)}
+    .micro-hw__key--agent[data-ag="5"]{--ag-glow:rgba(120,230,255,.5)}
+    .micro-hw__key--command{
+      background:linear-gradient(180deg,#f8f9fb,#eef0f4);border:1px solid rgba(26,45,74,.08);
+      box-shadow:0 1px 0 rgba(255,255,255,.9),0 2px 4px rgba(26,45,74,.08);color:var(--hw-ink);
+    }
+    .micro-hw__key--control{
+      background:linear-gradient(180deg,#f3f5f8,#e8ecf2);border:1px solid rgba(26,45,74,.1);
+      box-shadow:0 1px 0 rgba(255,255,255,.85),0 2px 4px rgba(26,45,74,.08);color:var(--hw-ink);cursor:pointer;
+    }
+    @media (prefers-color-scheme:dark){
+      .micro-hw__key--command,.micro-hw__key--control{background:linear-gradient(180deg,#3a4658,#2e3848);border-color:rgba(255,255,255,.08);color:#e8f0f8}
+    }
+    .micro-hw__key--command,.micro-hw__key--agent{cursor:pointer}
+    .micro-hw__key--placeholder{background:transparent;box-shadow:none;pointer-events:none}
+    .micro-hw__key.is-bound.micro-hw__key--command,.micro-hw__key.is-bound.micro-hw__key--control{border-color:rgba(42,156,196,.35)}
+    .micro-hw__key.is-pressed,.micro-hw__key.is-active{
+      transform:translateY(2px) scale(.97);filter:brightness(1.08);
+      box-shadow:inset 0 2px 6px rgba(26,45,74,.18),0 0 12px var(--ag-glow,rgba(42,156,196,.35));
+    }
+    .foot{margin-top:6px;text-align:center;font-size:10px;color:var(--hw-muted);line-height:1.3}
+    .micro-hw__dial{
+      width:78%;aspect-ratio:1;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,#fafbfc,#d8dde5 70%,#c5cbd4);
+      box-shadow:inset 0 2px 4px rgba(255,255,255,.7),0 2px 6px rgba(26,45,74,.12);position:relative;
+    }
+    .micro-hw__dial::after{content:'';position:absolute;left:50%;top:18%;width:3px;height:28%;margin-left:-1.5px;border-radius:2px;background:#3a4454;opacity:.85}
+    .micro-hw__joy{
+      width:52%;aspect-ratio:1;border-radius:50%;
+      background:radial-gradient(circle at 40% 35%,#3a4250,#1a1f28 75%);box-shadow:0 2px 6px rgba(0,0,0,.25);position:relative;
+    }
+    .micro-hw__joy::before,.micro-hw__joy::after{content:'';position:absolute;background:rgba(180,190,205,.45);border-radius:1px}
+    .micro-hw__joy::before{left:20%;right:20%;top:48%;height:2px}
+    .micro-hw__joy::after{top:20%;bottom:20%;left:48%;width:2px}
+    .micro-hw__icon{width:42%;height:42%;max-width:20px;max-height:20px;color:var(--hw-ink);display:block}
+    .micro-hw__icon svg{width:100%;height:100%;display:block;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .micro-hw__key--agent .micro-hw__icon{opacity:.15;width:28%;height:28%}
+    .micro-hw__leds{position:absolute;left:14px;bottom:10px;display:flex;gap:3px;z-index:2}
+    .micro-hw__led{width:3px;height:3px;border-radius:50%;background:#f0b429;box-shadow:0 0 4px rgba(240,180,41,.8)}
+  </style>
+</head>
+<body>
+  <div class="root">
+    <div class="wrap" id="wrap">
+      <div class="micro-hw micro-hw--sm">
+        <div class="micro-hw__face">
+          <span class="micro-hw__screw micro-hw__screw--tl"></span>
+          <span class="micro-hw__screw micro-hw__screw--tr"></span>
+          <span class="micro-hw__screw micro-hw__screw--bl"></span>
+          <span class="micro-hw__screw micro-hw__screw--br"></span>
+          <div class="micro-hw__grid" id="grid"></div>
+          <div class="micro-hw__leds" aria-hidden="true">
+            <span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>
+          </div>
+        </div>
+      </div>
+      <p class="foot" id="foot">点击触发 · 配置请回识别页</p>
+    </div>
+  </div>
+  <script>
+    var invoke=window.__TAURI_INTERNALS__?function(cmd,args){return window.__TAURI_INTERNALS__.invoke(cmd,args);}:function(){return Promise.resolve();};
+    var listen=window.__TAURI__&&window.__TAURI__.event&&window.__TAURI__.event.listen
+      ?window.__TAURI__.event.listen.bind(window.__TAURI__.event)
+      :(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__):null);
+
+    var LAYOUT=[
+      {id:'ENC',kind:'control',row:1,col:1,icon:'codex'},
+      {id:'AG00',kind:'agent',row:1,col:2,ag:0,icon:'status'},
+      {id:'AG01',kind:'agent',row:1,col:3,ag:1,icon:'plan'},
+      {id:'AG02',kind:'agent',row:1,col:4,ag:2,icon:'review'},
+      {id:'JOY',kind:'control',row:1,col:5,icon:'empty'},
+      {id:'AG03',kind:'agent',row:2,col:2,ag:3,icon:'folder'},
+      {id:'AG04',kind:'agent',row:2,col:3,ag:4,icon:'agent'},
+      {id:'AG05',kind:'agent',row:2,col:4,ag:5,icon:'cloud'},
+      {id:'ACT06',kind:'command',row:3,col:2,icon:'fast'},
+      {id:'ACT07',kind:'command',row:3,col:3,icon:'palette'},
+      {id:'ACT08',kind:'command',row:3,col:4,icon:'reject'},
+      {id:'ACT09',kind:'command',row:3,col:5,icon:'fork'},
+      {id:'ACT10',kind:'command',row:4,col:2,span:2,icon:'mic'},
+      {id:'ACT12',kind:'command',row:4,col:4,icon:'send'}
+    ];
+
+    var ICON={
+      fast:'<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 10-14h-7l0-6z"/></svg>',
+      approve:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+      reject:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+      fork:'<svg viewBox="0 0 24 24"><path d="M7 4v8a4 4 0 004 4h2a4 4 0 004-4V4"/><path d="M17 4l3 3-3 3M7 4L4 7l3 3"/></svg>',
+      mic:'<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+      send:'<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 7v10"/></svg>',
+      new:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+      codex:'<svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z"/></svg>',
+      palette:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>',
+      status:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+      plan:'<svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>',
+      review:'<svg viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+      folder:'<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
+      cloud:'<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 00.5-8 5.5 5.5 0 00-10.7 1.5A3.5 3.5 0 007 18z"/></svg>',
+      agent:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>',
+      empty:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>'
+    };
+
+    var wrap=document.getElementById('wrap');
+    var grid=document.getElementById('grid');
+    var activePtr='';
+
+    function cellMap(cells){
+      var map={};
+      (cells||[]).forEach(function(c){ if(c&&c.microKeyId) map[c.microKeyId]=c; });
+      return map;
+    }
+
+    function fire(id,phase){
+      return invoke('cmd_codex_micro_pad_fire',{microKeyId:id,phase:phase}).catch(function(){ return null; });
+    }
+
+    function bindFire(){
+      grid.querySelectorAll('[data-micro-key]').forEach(function(el){
+        if(el.classList.contains('micro-hw__key--placeholder')) return;
+        var id=el.getAttribute('data-micro-key');
+        el.addEventListener('pointerdown',function(e){
+          if(e.button!=null&&e.button!==0) return;
+          e.preventDefault();
+          activePtr=id;
+          el.classList.add('is-pressed','is-active');
+          try{ el.setPointerCapture(e.pointerId); }catch(_){}
+          fire(id,'down');
+        });
+        el.addEventListener('pointerup',function(){
+          if(activePtr!==id) return;
+          activePtr='';
+          el.classList.remove('is-pressed','is-active');
+          fire(id,'up');
+        });
+        el.addEventListener('pointercancel',function(){
+          if(activePtr!==id) return;
+          activePtr='';
+          el.classList.remove('is-pressed','is-active');
+          fire(id,'up');
+        });
+      });
+    }
+
+    function render(s){
+      s=s||{};
+      wrap.classList.toggle('is-visible',!!s.visible);
+      if(!s.visible) return;
+      var map=cellMap(s.cells);
+      var active=String(s.activeMicroKeyId||'');
+      grid.innerHTML=LAYOUT.map(function(cell){
+        var info=map[cell.id]||{};
+        var bound=!!info.bound;
+        var iconId=info.uiIconId||cell.icon||'empty';
+        var cls='micro-hw__key micro-hw__key--'+cell.kind;
+        if(cell.span===2) cls+=' micro-hw__key--span2';
+        if(bound) cls+=' is-bound';
+        if(active&&active===cell.id) cls+=' is-pressed is-active';
+        var style='grid-row:'+cell.row+';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
+        var ag=cell.ag!=null?' data-ag="'+cell.ag+'"':'';
+        var tag=cell.kind==='placeholder'?'div':'button';
+        var type=tag==='button'?' type="button"':'';
+        var inner='<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>';
+        return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+ag+' style="'+style+'">'+inner+'</'+tag+'>';
+      }).join('');
+      bindFire();
+    }
+
+    if(listen){ listen('codex_micro_overlay_state',function(ev){ render(ev.payload); }).catch(function(){}); }
+    invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
+  </script>
+</body>
+</html>

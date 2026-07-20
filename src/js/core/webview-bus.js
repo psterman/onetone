@@ -83,6 +83,12 @@
           global.OneToneHabitTriggerSetup.onModeCompatSeen(msg);
         }
       }
+      if(msg.type==='codex_micro_pad_key'){
+        if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.onPadKeyEvent){
+          global.OneToneCodexMicroPadUi.onPadKeyEvent(msg);
+        }
+        return;
+      }
       if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; hooks.render(); }
       if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; hooks.render(); }
       function applyRuntimeFields(msg){

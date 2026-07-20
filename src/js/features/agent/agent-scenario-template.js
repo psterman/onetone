@@ -177,6 +177,11 @@
     }
     fillEmptyKeyDefaults(m);
 
+    var MicroPad = global.OneToneCodexMicroPadUi;
+    if (MicroPad && MicroPad.ensurePad) {
+      MicroPad.ensurePad(m, { persist: false });
+    }
+
     // Strip legacy agent-action voiceCommands if present (unused at runtime).
     if (Array.isArray(m.voiceCommands)) {
       m.voiceCommands = m.voiceCommands.filter(function (c) {

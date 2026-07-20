@@ -50,6 +50,29 @@ pub fn cmd_save(
         return Ok(());
     }
 
+    // Micro pad toggle / key remap only — sync hook cache + overlay; skip mvp_init/voice.
+    // Full AgentCapabilityUi.refresh + camera remount used to 假死 on「启用 Micro 小键盘层」.
+    if config::is_codex_micro_pad_only_change(&existing, &cfg) {
+        crate::config::save_config(&cfg);
+        *state.cfg.lock() = cfg.clone();
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        let app = window.app_handle().clone();
+        let state_bg = Arc::clone(state.inner());
+        let _ = std::thread::Builder::new()
+            .name("codex-micro-pad-quiet".into())
+            .spawn(move || {
+                crate::codex_micro_overlay::push_state(&app, &state_bg);
+            });
+        crate::app_log::log_line(
+            &state,
+            "config",
+            "cmd_save codex_micro_pad only, skip mvp_init/voice",
+        );
+        let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
+        window.emit("to_js", &ack).ok();
+        return Ok(());
+    }
+
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);
@@ -65,6 +88,7 @@ pub fn cmd_save(
             crate::voice_bootstrap::apply_voice_config_change(&app, &state_bg, &old_bg, &new_bg);
             crate::audio_win::request_recording_audio_policy_sync(Arc::clone(&state_bg));
             crate::coach_hud::push_state(&app, &state_bg);
+            crate::codex_micro_overlay::push_state(&app, &state_bg);
         });
     sync_config_ui(&state, &window, "unchanged");
     state.machine_pool.lock().reset_all();

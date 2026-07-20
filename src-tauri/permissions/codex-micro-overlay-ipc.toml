@@ -1,0 +1,7 @@
+[[set]]
+identifier = "codex-micro-overlay-ipc"
+description = "Minimal IPC for the Codex Micro overlay window"
+permissions = [
+  "allow-cmd-codex-micro-overlay-get-state",
+  "allow-cmd-codex-micro-pad-fire",
+]

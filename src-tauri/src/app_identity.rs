@@ -47,7 +47,8 @@ const PRESET_MATCHERS: &[PresetMatcher] = &[
     },
     PresetMatcher {
         id: CODEX_APP_TARGET_ID,
-        process_names: &["Codex.exe"],
+        // Store Codex UI is ChatGPT.exe under OpenAI.Codex_*; CLI helper remains Codex.exe.
+        process_names: &["ChatGPT.exe", "Codex.exe"],
         path_marker: Some("OpenAI.Codex"),
     },
     PresetMatcher {
@@ -555,6 +556,31 @@ mod tests {
             preset_app_id_for_path(r"C:\Users\me\AppData\Local\Programs\cursor\Cursor.exe")
                 .as_deref(),
             Some(CURSOR_APP_TARGET_ID)
+        );
+    }
+
+    #[test]
+    fn preset_path_matches_codex_store_chatgpt_ui() {
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe"
+            )
+            .as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0\app\resources\codex.exe"
+            )
+            .as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        // Consumer ChatGPT package must not match as Codex.
+        assert_eq!(
+            preset_app_id_for_path(
+                r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe"
+            ),
+            None
         );
     }
 

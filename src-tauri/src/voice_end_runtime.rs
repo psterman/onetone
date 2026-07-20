@@ -1693,6 +1693,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -1735,6 +1736,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

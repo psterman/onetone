@@ -1,0 +1,9 @@
+{
+  "identifier": "codex-micro-overlay",
+  "description": "Codex Micro always-on-top overlay window",
+  "windows": ["codex_micro_overlay"],
+  "permissions": [
+    "core:default",
+    "codex-micro-overlay-ipc"
+  ]
+}

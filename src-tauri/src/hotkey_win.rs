@@ -886,6 +886,21 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
         if kb.flags & LLKHF_INJECTED != 0 {
             return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
         }
+        let extended = kb.flags & 0x01 != 0;
+        if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
+            kb.scanCode as u16,
+            extended,
+        )
+        {
+            if crate::codex_numpad_layer::hook_should_swallow(&source) {
+                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                    let payload =
+                        crate::codex_numpad_layer::format_event(&source, is_key_down);
+                    sender.send(payload).ok();
+                }
+                return 1;
+            }
+        }
         if let Some(name) = vk_to_name(kb.vkCode as u32) {
             if send_guard::blocks_key(&name) {
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
@@ -1190,6 +1205,18 @@ unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
         return false;
     }
     let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
+    for ev in crate::codex_micro_vendor::ingest_hid_report(data) {
+        if crate::codex_numpad_layer::vendor_micro_should_dispatch(&ev.micro_key_id) {
+            if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                let payload = crate::codex_numpad_layer::format_micro_key_event(
+                    &ev.micro_key_id,
+                    ev.key_down,
+                );
+                sender.send(payload).ok();
+            }
+            return true;
+        }
+    }
     if let Some(name) = scan_consumer_bytes(data) {
         return dispatch_key_event(&name, false, device, "raw_input");
     }

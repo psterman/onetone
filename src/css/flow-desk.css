@@ -371,6 +371,11 @@ html[data-theme="dark"] .flow-nodes-path-base {
   box-shadow: var(--shadow-card, 0 14px 34px rgba(26, 45, 74, 0.07));
 }
 
+/* display:flex above would otherwise override UA [hidden]{display:none} */
+:is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock[hidden] {
+  display: none !important;
+}
+
 :is(#settingsPanelVoiceWake, #settingsPanelKeys) .voice-app-scope-dock .voice-app-scope-head {
   margin: 0;
   flex: 0 0 auto;

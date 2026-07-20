@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-micro-pad-fire"
+description = "Enables the cmd_codex_micro_pad_fire command without any pre-configured scope."
+commands.allow = ["cmd_codex_micro_pad_fire"]
+
+[[permission]]
+identifier = "deny-cmd-codex-micro-pad-fire"
+description = "Denies the cmd_codex_micro_pad_fire command without any pre-configured scope."
+commands.deny = ["cmd_codex_micro_pad_fire"]

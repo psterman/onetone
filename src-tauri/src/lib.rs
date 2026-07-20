@@ -8,6 +8,9 @@ mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
 mod coach_hud;
+mod codex_micro_overlay;
+mod codex_micro_vendor;
+mod codex_numpad_layer;
 mod config;
 mod cursor_workflow;
 mod device_identity;
@@ -124,6 +127,8 @@ pub struct AppState {
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
     /// Chord held down for hold-to-talk (e.g. Codex Ctrl+Shift+D).
     pub held_voice_chord: Mutex<Option<String>>,
+    /// Numpad source id held for Codex Micro PTT (sc50:ext0).
+    pub codex_numpad_hold_source: Mutex<Option<String>>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
     pub voice_kws: Mutex<Option<crate::voice_kws::VoiceKwsHandle>>,
@@ -236,6 +241,7 @@ pub fn run() {
         voice_session_commit_token: Mutex::new(0),
         voice_wake_last_key_at: Mutex::new(None),
         held_voice_chord: Mutex::new(None),
+        codex_numpad_hold_source: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
         voice_kws: Mutex::new(None),
@@ -384,12 +390,29 @@ pub fn run() {
                 });
             }
 
+            if let Err(err) = codex_micro_overlay::setup(app.handle()) {
+                app_log::log_line(
+                    &app_state,
+                    "startup",
+                    &format!("codex micro overlay setup: {err}"),
+                );
+            } else {
+                app_log::log_line(&app_state, "startup", "codex micro overlay initialized");
+                let app_overlay_init = app.handle().clone();
+                let state_overlay_init = app_state.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(950)).await;
+                    codex_micro_overlay::push_state(&app_overlay_init, &state_overlay_init);
+                });
+            }
+
             let app_hud = app.handle().clone();
             let state_hud = app_state.clone();
             tauri::async_runtime::spawn(async move {
                 loop {
                     tokio::time::sleep(Duration::from_millis(250)).await;
                     coach_hud::maybe_tick(&app_hud, &state_hud);
+                    codex_micro_overlay::maybe_tick(&app_hud, &state_hud);
                 }
             });
 
@@ -693,6 +716,8 @@ pub fn run() {
             ipc::cmd_coach_hud_get_state,
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
+            ipc::cmd_codex_micro_overlay_get_state,
+            ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_acoustic_voice_command_status,
             ipc::cmd_acoustic_voice_command_preflight,
             ipc::cmd_acoustic_voice_command_set_suspend,

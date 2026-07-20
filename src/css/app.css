@@ -7909,7 +7909,12 @@
       background:rgba(42,156,196,.12);color:var(--primary-strong,#1b6e8a);
     }
     .codex-cap-icon svg{display:block}
-    .codex-cap-name{font-size:11px;font-weight:700;line-height:1.2;max-width:100%;word-break:break-word}
+    .codex-cap-name{font-size:11px;font-weight:700;line-height:1.2;max-width:100%;word-break:break-word;display:flex;flex-wrap:wrap;align-items:center;gap:4px;justify-content:center}
+    .codex-cap-micro-badge{
+      font-size:9px;font-weight:600;line-height:1;padding:1px 5px;border-radius:999px;
+      background:rgba(42,156,196,.14);color:var(--primary);white-space:nowrap;
+    }
+    .codex-cap-item.has-micro-pad{border-color:rgba(42,156,196,.28)}
     .codex-cap-sub{font-size:10px;opacity:.7;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .codex-cap-all summary{cursor:pointer;font-size:12px;font-weight:600;margin:2px 0}
     .habit-hub-more-menu{position:relative;display:inline-flex;align-items:center}

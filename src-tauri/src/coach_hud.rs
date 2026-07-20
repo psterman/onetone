@@ -301,6 +301,7 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![],
+            codex_micro_pad: None,
         }
     }
 

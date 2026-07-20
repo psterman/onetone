@@ -191,6 +191,9 @@
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
+    if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.applyTriggerHeroPreview){
+      global.OneToneCodexMicroPadUi.applyTriggerHeroPreview(m);
+    }
     const trace=OneToneMappingCore.formatTriggerTrace(m);
     if(traceEl){
       if(trace){

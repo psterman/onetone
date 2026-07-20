@@ -67,7 +67,8 @@ const CURSOR_PROFILE: AppChatProfile = AppChatProfile {
 const CODEX_PROFILE: AppChatProfile = AppChatProfile {
     id: CODEX_APP_TARGET_ID,
     error_prefix: "codex",
-    process_names: &["Codex.exe"],
+    // Desktop UI process is ChatGPT.exe (package OpenAI.Codex_*); keep Codex.exe for helpers.
+    process_names: &["ChatGPT.exe", "Codex.exe"],
     path_marker: Some("OpenAI.Codex"),
     open_key: None,
     composer_anchor: (0.50, 0.92),

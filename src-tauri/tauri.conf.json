@@ -48,6 +48,20 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": false
+      },
+      {
+        "label": "codex_micro_overlay",
+        "title": "",
+        "url": "codex-micro-overlay.html",
+        "width": 300,
+        "height": 300,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "withGlobalTauri": true,

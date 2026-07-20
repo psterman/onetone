@@ -1,4 +1,5 @@
-//! Codex provider adapter — reuses app_chat_workflow matching (Codex.exe + OpenAI.Codex).
+//! Codex provider adapter — reuses app_chat_workflow matching
+//! (ChatGPT.exe / Codex.exe under OpenAI.Codex).
 
 use std::sync::Arc;
 use std::time::Duration;
