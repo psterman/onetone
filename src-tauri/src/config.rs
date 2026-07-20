@@ -166,11 +166,7 @@ impl CameraOverride {
             && blank(&self.ok_hand)
             && blank(&self.fist)
             && blank(&self.wave)
-            && self
-                .triggers
-                .as_ref()
-                .map(|t| t.is_empty())
-                .unwrap_or(true)
+            && self.triggers.as_ref().map(|t| t.is_empty()).unwrap_or(true)
     }
 }
 
@@ -187,20 +183,24 @@ pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverri
 
 /// Voice-only / voice-override shells keep empty trigger/target through normalize.
 pub fn mapping_should_keep_empty_target_key(m: &MappingEntry) -> bool {
-    m.trigger_key.trim().is_empty()
-        && m
-            .voice_override
-            .as_ref()
-            .is_some_and(|ov| !ov.is_empty())
+    m.trigger_key.trim().is_empty() && m.voice_override.as_ref().is_some_and(|ov| !ov.is_empty())
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppMatchSpec {
     #[serde(rename = "exeNames", default)]
     pub exe_names: Vec<String>,
-    #[serde(rename = "pathContains", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "pathContains",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub path_contains: Option<String>,
-    #[serde(rename = "titleContains", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "titleContains",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub title_contains: Option<String>,
     #[serde(rename = "fullPath", default, skip_serializing_if = "Option::is_none")]
     pub full_path: Option<String>,
@@ -224,7 +224,11 @@ pub struct AppBehaviorRule {
     pub summon_phrase: Option<String>,
     #[serde(rename = "match", default, skip_serializing_if = "Option::is_none")]
     pub app_match: Option<AppMatchSpec>,
-    #[serde(rename = "displayName", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "displayName",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub display_name: Option<String>,
 }
 
@@ -244,11 +248,7 @@ pub fn is_preset_app_id(app_id: &str) -> bool {
 }
 
 pub fn app_match_has_constraints(spec: &AppMatchSpec) -> bool {
-    if spec
-        .exe_names
-        .iter()
-        .any(|name| !name.trim().is_empty())
-    {
+    if spec.exe_names.iter().any(|name| !name.trim().is_empty()) {
         return true;
     }
     spec.path_contains
@@ -296,7 +296,10 @@ pub fn rule_matches_identity(
             let Some(path) = identity.full_path.as_deref() else {
                 return false;
             };
-            if !path.to_ascii_lowercase().contains(&path_needle.to_ascii_lowercase()) {
+            if !path
+                .to_ascii_lowercase()
+                .contains(&path_needle.to_ascii_lowercase())
+            {
                 return false;
             }
         }
@@ -345,7 +348,10 @@ pub fn is_wechat_family_rule(rule: &AppBehaviorRule) -> bool {
             .path_contains
             .as_deref()
             .is_some_and(is_wechat_family_token)
-        || spec.full_path.as_deref().is_some_and(is_wechat_family_token)
+        || spec
+            .full_path
+            .as_deref()
+            .is_some_and(is_wechat_family_token)
 }
 
 pub fn is_wechat_family_identity(identity: &crate::app_identity::AppIdentity) -> bool {
@@ -380,11 +386,7 @@ pub fn rule_specificity(rule: &AppBehaviorRule) -> u32 {
     {
         score += 300;
     }
-    if spec
-        .exe_names
-        .iter()
-        .any(|n| !n.trim().is_empty())
-    {
+    if spec.exe_names.iter().any(|n| !n.trim().is_empty()) {
         score += 200;
     }
     if spec
@@ -414,15 +416,17 @@ pub fn match_behavior_rule<'a>(
         }
         let explicit = rule_is_explicit_match(rule);
         let specificity = rule_specificity(rule);
-        let replace = best.as_ref().is_none_or(|(_, best_spec, best_explicit, best_idx)| {
-            if explicit != *best_explicit {
-                return explicit && !*best_explicit;
-            }
-            if specificity != *best_spec {
-                return specificity > *best_spec;
-            }
-            idx < *best_idx
-        });
+        let replace = best
+            .as_ref()
+            .is_none_or(|(_, best_spec, best_explicit, best_idx)| {
+                if explicit != *best_explicit {
+                    return explicit && !*best_explicit;
+                }
+                if specificity != *best_spec {
+                    return specificity > *best_spec;
+                }
+                idx < *best_idx
+            });
         if replace {
             best = Some((rule, specificity, explicit, idx));
         }
@@ -687,7 +691,11 @@ pub struct VoiceCommandSample {
     pub confidence: Option<f64>,
     #[serde(default)]
     pub source: String,
-    #[serde(rename = "qualitySignals", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "qualitySignals",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub quality_signals: Option<VoiceCommandQualitySignals>,
     #[serde(rename = "createdAt", default)]
     pub created_at: u64,
@@ -766,7 +774,10 @@ pub fn voice_command_summon_phrases(mapping: &MappingEntry) -> Vec<String> {
         if text.is_empty() || text == "我的语音命令" {
             return;
         }
-        if text.chars().all(|c| matches!(c, '?' | '？' | '.' | '-' | '_')) {
+        if text
+            .chars()
+            .all(|c| matches!(c, '?' | '？' | '.' | '-' | '_'))
+        {
             return;
         }
         if seen.insert(text.to_string()) {
@@ -845,7 +856,11 @@ pub struct AcousticVoiceCommandSample {
     pub feature_dims: u32,
     #[serde(rename = "sampleRate", default = "default_acoustic_sample_rate")]
     pub sample_rate: u32,
-    #[serde(rename = "qualitySignals", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "qualitySignals",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub quality_signals: Option<AcousticVoiceCommandQualitySignals>,
     #[serde(rename = "createdAt", default)]
     pub created_at: u64,
@@ -1191,6 +1206,52 @@ pub struct MappingEntry {
     pub voice_commands: Vec<VoiceCommand>,
     #[serde(rename = "acousticVoiceCommands", default)]
     pub acoustic_voice_commands: Vec<AcousticVoiceCommand>,
+    /// Application-scenario agent template id (e.g. "codex-micro-13").
+    #[serde(rename = "agentTemplateId", default)]
+    pub agent_template_id: String,
+    /// Provider id for agent actions (e.g. "codex").
+    #[serde(rename = "agentProviderId", default)]
+    pub agent_provider_id: String,
+    /// Key / voice / camera bindings onto AgentAction slots.
+    #[serde(rename = "agentBindings", default)]
+    pub agent_bindings: Vec<AgentBinding>,
+}
+
+/// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentBinding {
+    #[serde(default)]
+    pub slot_id: String,
+    #[serde(default)]
+    pub action_id: String,
+    /// "key" | "voice" | "camera"
+    #[serde(default)]
+    pub trigger_type: String,
+    /// Chord, phrase, or camera bind key (e.g. deliberateBlink).
+    #[serde(default)]
+    pub trigger_binding: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_mode: Option<String>,
+    /// "global" | "foregroundApp"
+    #[serde(default)]
+    pub activation_scope: String,
+}
+
+impl Default for AgentBinding {
+    fn default() -> Self {
+        Self {
+            slot_id: String::new(),
+            action_id: String::new(),
+            trigger_type: String::new(),
+            trigger_binding: String::new(),
+            enabled: true,
+            execution_mode: None,
+            activation_scope: "foregroundApp".into(),
+        }
+    }
 }
 
 fn default_long_press_ms() -> u32 {
@@ -1766,7 +1827,10 @@ fn merge_phrase_vec(dest: &mut Vec<String>, extra: &[String]) {
         if t.is_empty() {
             continue;
         }
-        if !dest.iter().any(|x| normalize_phrase_key(x) == normalize_phrase_key(t)) {
+        if !dest
+            .iter()
+            .any(|x| normalize_phrase_key(x) == normalize_phrase_key(t))
+        {
             dest.push(t.to_string());
         }
     }
@@ -2166,10 +2230,14 @@ pub fn reconcile_voice_engine_flags(cfg: &mut VoiceConfig) -> bool {
         cfg.voice_sapi.enabled,
         cfg.voice_kws.enabled,
     );
-    let multi = [cfg.voice_vosk.enabled, cfg.voice_sapi.enabled, cfg.voice_kws.enabled]
-        .iter()
-        .filter(|&&x| x)
-        .count()
+    let multi = [
+        cfg.voice_vosk.enabled,
+        cfg.voice_sapi.enabled,
+        cfg.voice_kws.enabled,
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count()
         > 1;
     heal_desired_engine_from_flags_if_needed(cfg);
     sync_enabled_flags_from_desired(cfg);
@@ -2266,8 +2334,8 @@ pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
 
 /// Write `desired_engine` and mirror it onto the three `enabled` flags. Does not save.
 pub fn apply_desired_engine(cfg: &mut VoiceConfig, engine: &str) {
-    let parsed = parse_desired_engine_label(engine)
-        .unwrap_or(crate::scene_config::DesiredVoiceEngine::None);
+    let parsed =
+        parse_desired_engine_label(engine).unwrap_or(crate::scene_config::DesiredVoiceEngine::None);
     cfg.desired_engine = desired_engine_label(parsed).to_string();
     cfg.voice_listening_strategy = "advanced".into();
     sync_enabled_flags_from_desired(cfg);
@@ -2609,14 +2677,120 @@ pub fn effective_physical_bindings(m: &MappingEntry) -> Vec<String> {
 pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
     let physical = effective_physical_bindings(m);
     let device = m.trigger_device.trim();
-    if device.is_empty() {
-        return physical;
-    }
     let mut out = physical.clone();
-    for pb in physical {
-        let prefixed = crate::press_gesture::format_device_key(device, &pb);
-        if !out.contains(&prefixed) {
-            out.push(prefixed);
+    if device.is_empty() {
+        // fall through to agent keys below
+    } else {
+        for pb in &physical {
+            let prefixed = crate::press_gesture::format_device_key(device, pb);
+            if !out.contains(&prefixed) {
+                out.push(prefixed);
+            }
+        }
+    }
+    for chord in agent_key_chords(m) {
+        if !chord.is_empty() && !out.contains(&chord) {
+            out.push(chord);
+        }
+    }
+    out
+}
+
+/// Enabled agent key chords bound on this mapping (Codex Micro capability pack).
+/// Modifier-only chords (LAlt, LShift, …) are excluded — they use tap-on-keyup dispatch.
+pub fn agent_key_chords(m: &MappingEntry) -> Vec<String> {
+    let mut out = Vec::new();
+    for b in &m.agent_bindings {
+        if !b.enabled {
+            continue;
+        }
+        if !b.trigger_type.eq_ignore_ascii_case("key") {
+            continue;
+        }
+        let chord = canonical_trigger(b.trigger_binding.trim());
+        if chord.is_empty() || crate::key_chord::is_modifier_only_chord(&chord) {
+            continue;
+        }
+        if !out.contains(&chord) {
+            out.push(chord);
+        }
+    }
+    out
+}
+
+/// Modifier-only agent chords watched for tap-on-keyup (not registered as global hotkeys).
+pub fn agent_modifier_watch_chords(m: &MappingEntry) -> Vec<String> {
+    let mut out = Vec::new();
+    for b in &m.agent_bindings {
+        if !b.enabled || !b.trigger_type.eq_ignore_ascii_case("key") {
+            continue;
+        }
+        let chord = canonical_trigger(b.trigger_binding.trim());
+        if chord.is_empty() || !crate::key_chord::is_modifier_only_chord(&chord) {
+            continue;
+        }
+        if !out.contains(&chord) {
+            out.push(chord);
+        }
+    }
+    out
+}
+
+/// Find an enabled agent key binding matching the live pressed chord.
+pub fn find_agent_key_binding_for_chord<'a>(
+    m: &'a MappingEntry,
+    pressed_chord: &str,
+) -> Option<&'a AgentBinding> {
+    let pressed = pressed_chord.trim();
+    if pressed.is_empty() {
+        return None;
+    }
+    m.agent_bindings.iter().find(|b| {
+        b.enabled
+            && b.trigger_type.eq_ignore_ascii_case("key")
+            && crate::key_chord::chords_equivalent(b.trigger_binding.trim(), pressed)
+    })
+}
+
+/// Find an enabled agent key binding matching this physical key event.
+pub fn find_agent_key_binding<'a>(
+    m: &'a MappingEntry,
+    physical_key: &str,
+) -> Option<&'a AgentBinding> {
+    let chord = crate::key_chord::build_pressed_chord(physical_key);
+    find_agent_key_binding_for_chord(m, &chord)
+}
+
+/// Find an enabled agent voice binding whose phrase fuzzy-matches `text`.
+pub fn find_agent_voice_binding<'a>(m: &'a MappingEntry, text: &str) -> Option<&'a AgentBinding> {
+    let text = text.trim();
+    if text.is_empty() {
+        return None;
+    }
+    m.agent_bindings.iter().find(|b| {
+        b.enabled
+            && b.trigger_type.eq_ignore_ascii_case("voice")
+            && !b.trigger_binding.trim().is_empty()
+            && phrases_fuzzy_match(text, &b.trigger_binding)
+    })
+}
+
+/// All enabled agent voice phrases across mappings (for grammar injection).
+pub fn agent_voice_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for m in cfg.mappings.iter().filter(|m| m.enabled) {
+        for b in &m.agent_bindings {
+            if !b.enabled || !b.trigger_type.eq_ignore_ascii_case("voice") {
+                continue;
+            }
+            let p = b.trigger_binding.trim();
+            if p.is_empty() {
+                continue;
+            }
+            if seen.insert(p.to_string()) {
+                out.push(p.to_string());
+            }
         }
     }
     out
@@ -2748,9 +2922,12 @@ impl Default for VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
-            camera_override: None,
+                camera_override: None,
                 voice_commands: vec![],
                 acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: String::new(),
+                agent_bindings: vec![],
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -3009,9 +3186,12 @@ impl VoiceConfig {
                 app_target_id: String::new(),
                 app_behavior_rules: vec![],
                 voice_override: None,
-            camera_override: None,
+                camera_override: None,
                 voice_commands: vec![],
                 acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: String::new(),
+                agent_bindings: vec![],
             });
         }
 
@@ -3414,6 +3594,50 @@ impl VoiceConfig {
         None
     }
 
+    /// All modifier-only agent watch chords across enabled mappings.
+    pub fn agent_modifier_watch_bindings(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        for m in self.active_mappings() {
+            for chord in agent_modifier_watch_chords(m) {
+                if !out.contains(&chord) {
+                    out.push(chord);
+                }
+            }
+        }
+        out
+    }
+
+    /// Find mapping + agent binding for a pressed chord (combo keys on keydown).
+    pub fn find_agent_key_dispatch<'a>(
+        &'a self,
+        pressed_chord: &str,
+    ) -> Option<(&'a MappingEntry, &'a AgentBinding)> {
+        for m in self.active_mappings() {
+            if let Some(b) = find_agent_key_binding_for_chord(m, pressed_chord) {
+                if !crate::key_chord::is_modifier_only_chord(pressed_chord) {
+                    return Some((m, b));
+                }
+            }
+        }
+        None
+    }
+
+    /// Find mapping + agent binding for a modifier-only tap on keyup.
+    pub fn find_agent_modifier_tap_dispatch<'a>(
+        &'a self,
+        pressed_chord: &str,
+    ) -> Option<(&'a MappingEntry, &'a AgentBinding)> {
+        if !crate::key_chord::is_modifier_only_chord(pressed_chord) {
+            return None;
+        }
+        for m in self.active_mappings() {
+            if let Some(b) = find_agent_key_binding_for_chord(m, pressed_chord) {
+                return Some((m, b));
+            }
+        }
+        None
+    }
+
     pub fn bindings(&self) -> Vec<String> {
         let mut out = Vec::new();
         for m in self.active_mappings() {
@@ -3646,6 +3870,18 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 }
             }
         }
+        // Preserve agent scenario template fields when FE omits them on partial save.
+        if let Some(prev) = existing.mappings.iter().find(|x| x.id == m.id) {
+            if m.agent_template_id.trim().is_empty() && !prev.agent_template_id.trim().is_empty() {
+                m.agent_template_id = prev.agent_template_id.clone();
+            }
+            if m.agent_provider_id.trim().is_empty() && !prev.agent_provider_id.trim().is_empty() {
+                m.agent_provider_id = prev.agent_provider_id.clone();
+            }
+            if m.agent_bindings.is_empty() && !prev.agent_bindings.is_empty() {
+                m.agent_bindings = prev.agent_bindings.clone();
+            }
+        }
     }
     for m in &mut cfg.trash {
         if m.app_behavior_rules.is_empty() {
@@ -3653,6 +3889,17 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 if !prev.app_behavior_rules.is_empty() {
                     m.app_behavior_rules = prev.app_behavior_rules.clone();
                 }
+            }
+        }
+        if let Some(prev) = existing.trash.iter().find(|x| x.id == m.id) {
+            if m.agent_template_id.trim().is_empty() && !prev.agent_template_id.trim().is_empty() {
+                m.agent_template_id = prev.agent_template_id.clone();
+            }
+            if m.agent_provider_id.trim().is_empty() && !prev.agent_provider_id.trim().is_empty() {
+                m.agent_provider_id = prev.agent_provider_id.clone();
+            }
+            if m.agent_bindings.is_empty() && !prev.agent_bindings.is_empty() {
+                m.agent_bindings = prev.agent_bindings.clone();
             }
         }
     }
@@ -3906,6 +4153,7 @@ pub fn save_config(cfg: &VoiceConfig) {
 pub fn apply_config(state: &AppState, cfg: &VoiceConfig) {
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.bind_all(&cfg.bindings());
+        mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
         mgr.bind_scheme_select(cfg.switch_bindings());
         let switch_key = cfg.scheme_switch_key.trim();
         if switch_key.is_empty() {
@@ -4037,7 +4285,10 @@ pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
                         .name("voice-config-apply".into())
                         .spawn(move || {
                             crate::voice_bootstrap::apply_voice_config_change(
-                                &app_voice, &state_voice, &old_voice, &new_voice,
+                                &app_voice,
+                                &state_voice,
+                                &old_voice,
+                                &new_voice,
                             );
                         });
                     // Non-blocking emit only (see emit_to_main_if_available). Never block the
@@ -4225,11 +4476,7 @@ mod tests {
             "发送".into(),
             "就这样".into(),
         ];
-        cfg.voice_end.phrases_en = vec![
-            "end dictation".into(),
-            "send it".into(),
-            "submit".into(),
-        ];
+        cfg.voice_end.phrases_en = vec!["end dictation".into(), "send it".into(), "submit".into()];
         cfg.voice_end.send_phrases_zh.clear();
         cfg.voice_end.send_phrases_en.clear();
         cfg.voice_end.auto_send_enabled = true;
@@ -4246,8 +4493,16 @@ mod tests {
         }
         cfg.migrate();
         assert_eq!(cfg.version, 8);
-        assert!(!cfg.voice_end.phrases_zh.iter().any(|p| is_send_like_phrase(p)));
-        assert!(!cfg.voice_end.phrases_en.iter().any(|p| is_send_like_phrase(p)));
+        assert!(!cfg
+            .voice_end
+            .phrases_zh
+            .iter()
+            .any(|p| is_send_like_phrase(p)));
+        assert!(!cfg
+            .voice_end
+            .phrases_en
+            .iter()
+            .any(|p| is_send_like_phrase(p)));
         assert!(cfg
             .voice_end
             .send_phrases_zh
@@ -4279,10 +4534,7 @@ mod tests {
             .zh
             .iter()
             .any(|p| normalize_phrase_key(p) == normalize_phrase_key("提交")));
-        assert!(send
-            .en
-            .iter()
-            .any(|p| normalize_phrase_key(p) == "send"));
+        assert!(send.en.iter().any(|p| normalize_phrase_key(p) == "send"));
     }
 
     #[test]
@@ -4349,7 +4601,10 @@ mod tests {
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert_eq!(merged.camera_prefs.selected_device_id, "cam-abc");
         assert!(merged.camera_prefs.presence_actions.enabled);
-        assert_eq!(merged.camera_prefs.presence_actions.deliberate_blink, "pressCtrlI");
+        assert_eq!(
+            merged.camera_prefs.presence_actions.deliberate_blink,
+            "pressCtrlI"
+        );
     }
 
     #[test]
@@ -4370,7 +4625,10 @@ mod tests {
         let merged = merge_save_payload(&existing, json).expect("merge");
         assert_eq!(merged.camera_prefs.selected_device_id, "cam-keep");
         assert!(merged.camera_prefs.presence_actions.enabled);
-        assert_eq!(merged.camera_prefs.presence_actions.deliberate_blink, "pressCtrlI");
+        assert_eq!(
+            merged.camera_prefs.presence_actions.deliberate_blink,
+            "pressCtrlI"
+        );
     }
 
     #[test]
@@ -4627,6 +4885,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -4665,6 +4926,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -4705,6 +4969,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         cfg.normalize();
         let m = cfg
@@ -4761,6 +5028,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -4815,6 +5085,9 @@ mod tests {
             }),
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -4850,6 +5123,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -4891,6 +5167,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -4931,6 +5210,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -4967,6 +5249,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -4981,6 +5266,32 @@ mod tests {
         assert_eq!(bindings.len(), 2);
         assert!(bindings.iter().all(|(_, id)| id == &cfg.mappings[0].id));
     }
+    #[test]
+    fn merge_save_payload_preserves_agent_bindings_when_omitted() {
+        let mut existing = VoiceConfig::default();
+        existing.mappings[0].agent_template_id = "codex-micro-13".into();
+        existing.mappings[0].agent_provider_id = "codex".into();
+        existing.mappings[0].agent_bindings = vec![AgentBinding {
+            slot_id: "cancel".into(),
+            action_id: "cancel".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Esc".into(),
+            enabled: true,
+            execution_mode: Some("execute".into()),
+            activation_scope: "global".into(),
+        }];
+        let id = existing.mappings[0].id.clone();
+        let json = format!(
+            r#"{{"version":8,"mappings":[{{"id":"{id}","label":"x","group":"g","triggerKey":"AutoTrigger","targetKey":"RAlt","enabled":true}}],"trash":[]}}"#
+        );
+        let merged = merge_save_payload(&existing, &json).expect("merge");
+        let row = merged.mappings.iter().find(|m| m.id == id).expect("row");
+        assert_eq!(row.agent_template_id, "codex-micro-13");
+        assert_eq!(row.agent_provider_id, "codex");
+        assert_eq!(row.agent_bindings.len(), 1);
+        assert_eq!(row.agent_bindings[0].slot_id, "cancel");
+    }
+
     #[test]
     fn merge_save_payload_preserves_voice_when_omitted() {
         let mut existing = VoiceConfig::default();
@@ -5130,6 +5441,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -5169,6 +5483,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -5245,11 +5562,15 @@ mod tests {
         mapping.cancel_enabled = true;
         mapping.auto_enter_enabled = true;
         mapping.app_behavior_rules = vec![test_rule("cursor-chat", "perpress")];
-        let effective =
-            effective_mapping_for_trigger(&mapping, Some(&test_identity(Some("cursor-chat"), "Cursor.exe")));
+        let effective = effective_mapping_for_trigger(
+            &mapping,
+            Some(&test_identity(Some("cursor-chat"), "Cursor.exe")),
+        );
         assert_eq!(effective.trigger_mode, TriggerMode::PerPress);
-        let fallback =
-            effective_mapping_for_trigger(&mapping, Some(&test_identity(Some("codex-chat"), "Codex.exe")));
+        let fallback = effective_mapping_for_trigger(
+            &mapping,
+            Some(&test_identity(Some("codex-chat"), "Codex.exe")),
+        );
         assert_eq!(fallback.trigger_mode, TriggerMode::Tap);
         assert!(fallback.cancel_enabled);
         assert!(fallback.auto_enter_enabled);
@@ -5594,7 +5915,11 @@ mod tests {
             locale: "zh-CN".into(),
             scenario_id: mapping.id.clone(),
             canonical_phrase: "微信输入".into(),
-            aliases: vec!["微信语音输入".into(), "微信开始输入".into(), "第三alias".into()],
+            aliases: vec![
+                "微信语音输入".into(),
+                "微信开始输入".into(),
+                "第三alias".into(),
+            ],
             samples: vec![VoiceCommandSample {
                 transcript: "采样不应注入".into(),
                 confidence: None,
@@ -5619,7 +5944,9 @@ mod tests {
         assert!(!phrases.iter().any(|p| p == "第三alias"));
         assert!(!phrases.iter().any(|p| p.contains("采样")));
         let entries = summon_entries_for_mapping(&mapping, "cn-light");
-        assert!(entries.iter().any(|(p, t)| p == "微信输入" && t == "cursor-chat"));
+        assert!(entries
+            .iter()
+            .any(|(p, t)| p == "微信输入" && t == "cursor-chat"));
     }
 
     #[test]
@@ -5674,7 +6001,9 @@ mod tests {
         let phrases = voice_command_summon_phrases(&mapping);
         assert!(phrases.contains(&"开始编程".to_string()));
         let entries = summon_entries_for_mapping(&mapping, "cn-light");
-        assert!(entries.iter().any(|(p, t)| p == "开始编程" && t == "cursor-chat"));
+        assert!(entries
+            .iter()
+            .any(|(p, t)| p == "开始编程" && t == "cursor-chat"));
     }
 
     fn sample_acoustic_feature(frames: u32) -> Vec<f32> {
@@ -5749,11 +6078,17 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![cmd],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         };
         let json = serde_json::to_string(&mapping).expect("serialize");
         let back: MappingEntry = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.acoustic_voice_commands.len(), 1);
-        assert_eq!(back.acoustic_voice_commands[0].samples[0].feature_frames, 40);
+        assert_eq!(
+            back.acoustic_voice_commands[0].samples[0].feature_frames,
+            40
+        );
         assert_eq!(
             back.acoustic_voice_commands[0].samples[0].feature.len(),
             40 * ACOUSTIC_FEATURE_DIMS as usize
@@ -5811,8 +6146,7 @@ mod tests {
             "trash": [],
             "voiceWakeAcousticCommands": [cmd]
         });
-        let merged =
-            merge_save_payload(&existing, &payload.to_string()).expect("merge");
+        let merged = merge_save_payload(&existing, &payload.to_string()).expect("merge");
         assert_eq!(merged.voice_wake_acoustic_commands.len(), 1);
         assert_eq!(
             merged.voice_wake_acoustic_commands[0].scenario_id,
@@ -5838,8 +6172,7 @@ mod tests {
             "trash": [],
             "voiceWakeAcousticCommands": [wake, end, cancel]
         });
-        let merged =
-            merge_save_payload(&existing, &payload.to_string()).expect("merge");
+        let merged = merge_save_payload(&existing, &payload.to_string()).expect("merge");
         assert_eq!(merged.voice_wake_acoustic_commands.len(), 3);
         let ids: Vec<_> = merged
             .voice_wake_acoustic_commands

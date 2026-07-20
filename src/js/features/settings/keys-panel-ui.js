@@ -205,12 +205,20 @@
       return;
     }
     var trig=core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim());
+    var trigLabel='';
+    if(m){
+      var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel){
+        trigLabel=global.OneToneKeyLabels.triggerDisplayLabel(m,lang)||'';
+      }
+      if(!trigLabel&&trig) trigLabel=friendlyKey(trig);
+    }
     var dirty=isEditorDirty();
     var rec=global.OneToneMappingRecording;
     var recMode=rec&&rec.mode?rec.mode():'none';
     var recPending=rec&&rec.isPending?rec.isPending():false;
     var recording=recMode==='trigger'||recMode==='target';
-    if(nameEl) nameEl.textContent=habitName(m)+(trig?' · '+friendlyKey(trig):'');
+    if(nameEl) nameEl.textContent=habitName(m)+(trigLabel?' · '+trigLabel:(trig?' · '+friendlyKey(trig):''));
     if(statusEl){
       var pillCls='keys-scheme-summary-pill';
       var pillText='';
@@ -231,7 +239,7 @@
       statusEl.textContent=pillText;
       statusEl.className=pillCls;
     }
-    if(trigVal) trigVal.textContent=trig?friendlyKey(trig):t('keysStatusUnset');
+    if(trigVal) trigVal.textContent=trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'));
     if(scopeVal) scopeVal.textContent=scopeSummaryText(m);
     if(saveBtn) saveBtn.disabled=!dirty;
     if(testBtn){
@@ -253,6 +261,9 @@
     if(targetKeycapHint&&recording&&recMode==='target') targetKeycapHint.textContent=t('keysKeycapRecording');
     else if(targetKeycapHint&&recPending) targetKeycapHint.textContent=t('targetKeyPickerPending');
     else if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
+    if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
+      global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
+    }
   }
 
   function syncKeyDisplayIcons(m){
@@ -549,6 +560,11 @@
   }
 
   function schemePairLine(m){
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.schemePairLine){
+      var codexLine=capUi.schemePairLine(m);
+      if(codexLine) return codexLine;
+    }
     if(hooks().homeMappingPairLine) return hooks().homeMappingPairLine(m);
     var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
     var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();

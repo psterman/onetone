@@ -7828,3 +7828,104 @@
       .toast-item-progress{display:none}
       .flow-nodes-path{animation:none!important}
     }
+
+    /* Codex Micro recommended capability pack (habit hub + scenario editors) */
+    .habit-hub-codex-banner{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      padding:12px 14px;margin:0 0 10px;border-radius:12px;
+      background:linear-gradient(135deg,rgba(46,125,110,.12),rgba(30,90,80,.06));
+      border:1px solid rgba(46,125,110,.22);
+    }
+    .habit-hub-codex-banner-text{min-width:0;flex:1;display:grid;gap:4px}
+    .habit-hub-codex-banner-title{margin:0;font-weight:650;font-size:14px;color:var(--on-surface)}
+    .habit-hub-codex-banner-hint{margin:0;font-size:12px;color:var(--on-surface-variant);line-height:1.4}
+    .habit-hub-codex-recommend{
+      display:grid;gap:4px;width:100%;text-align:left;cursor:pointer;
+      padding:14px 16px;margin:0 0 10px;border-radius:12px;
+      border:1px dashed rgba(46,125,110,.35);background:rgba(46,125,110,.06);
+      color:var(--on-surface);
+    }
+    .habit-hub-codex-recommend:hover{background:rgba(46,125,110,.1)}
+    .habit-hub-codex-recommend-badge{
+      display:inline-block;width:max-content;font-size:11px;font-weight:650;
+      padding:2px 8px;border-radius:999px;background:rgba(46,125,110,.18);color:#1b5e52;
+    }
+    .habit-hub-codex-recommend-title{font-size:15px;font-weight:700}
+    .habit-hub-codex-recommend-sub{font-size:13px;color:var(--on-surface-variant)}
+    .habit-hub-codex-recommend-note{font-size:11px;opacity:.75}
+    /* Codex capability cards — Codex scenario, step-gated (识别/收尾) */
+    .codex-pack-host{margin:10px 0 0}
+    .codex-cap-host--target{margin-top:10px}
+    .codex-cap-host--finish{margin-top:10px}
+    .codex-cap-block{
+      display:grid;gap:8px;padding:10px 12px;border-radius:12px;
+      border:1px solid var(--outline-variant);background:rgba(46,125,110,.05);
+    }
+    .codex-cap-head{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .codex-cap-label{font-size:12px;font-weight:700;color:var(--on-surface)}
+    .codex-cap-hint{font-size:11px;color:var(--on-surface-variant);line-height:1.35}
+    .codex-cap-strip{
+      display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px;width:100%;
+      overflow-x:auto;overflow-y:hidden;padding:2px 0;
+      scrollbar-width:none;-ms-overflow-style:none;
+    }
+    .codex-cap-strip::-webkit-scrollbar{display:none;height:0}
+    .codex-cap-item{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+      flex:0 0 auto;min-width:64px;max-width:88px;padding:8px 6px;border-radius:12px;
+      border:1px solid var(--outline-variant);background:rgba(255,255,255,.72);
+      cursor:pointer;text-align:center;color:var(--on-surface);transition:.15s ease;
+    }
+    .codex-cap-item:hover{border-color:rgba(42,156,196,.35)}
+    .codex-cap-item.is-bound{
+      border-color:rgba(42,156,196,.55);background:var(--primary-soft,rgba(42,156,196,.1));
+      box-shadow:0 0 0 2px rgba(86,190,235,.12);
+    }
+    .codex-cap-item.is-active{
+      border-color:rgba(42,156,196,.7);
+    }
+    .codex-cap-item.is-selected{
+      border-color:rgba(42,156,196,.9);
+      background:rgba(42,156,196,.2);
+      box-shadow:0 0 0 2px rgba(86,190,235,.35);
+    }
+    .codex-cap-edit-hint{
+      margin:6px 0 0;font-size:11px;opacity:.65;line-height:1.35;
+    }
+    #habitKeyMapCellTarget.is-codex-cap-edit,
+    #targetDisplay.is-codex-cap-edit{
+      outline:2px solid rgba(42,156,196,.45);
+      outline-offset:2px;
+      border-radius:16px;
+    }
+    .codex-cap-item.is-recording{
+      border-color:rgba(42,156,196,.75);background:rgba(42,156,196,.16);
+      box-shadow:0 0 0 2px rgba(86,190,235,.28);
+      animation:codex-cap-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes codex-cap-pulse{0%,100%{opacity:1}50%{opacity:.72}}
+    .codex-cap-icon{
+      width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+      background:rgba(42,156,196,.12);color:var(--primary-strong,#1b6e8a);
+    }
+    .codex-cap-icon svg{display:block}
+    .codex-cap-name{font-size:11px;font-weight:700;line-height:1.2;max-width:100%;word-break:break-word}
+    .codex-cap-sub{font-size:10px;opacity:.7;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .codex-cap-all summary{cursor:pointer;font-size:12px;font-weight:600;margin:2px 0}
+    .habit-hub-more-menu{position:relative;display:inline-flex;align-items:center}
+    .habit-hub-more-menu>summary{list-style:none;cursor:pointer}
+    .habit-hub-more-menu>summary::-webkit-details-marker{display:none}
+    .habit-hub-more-menu-panel{
+      position:absolute;right:0;top:calc(100% + 4px);z-index:5;min-width:140px;
+      padding:6px;border-radius:10px;border:1px solid var(--outline-variant);
+      background:var(--surface,#fff);box-shadow:0 8px 24px rgba(0,0,0,.12);
+    }
+    .habit-hub-more-item{
+      display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:8px;
+      background:transparent;cursor:pointer;font-size:12px;color:var(--on-surface);
+    }
+    .habit-hub-more-item:hover{background:rgba(0,0,0,.05)}
+    .habit-hub-codex-entries{
+      display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;
+    }
+    .habit-hub-codex-entries .habit-hub-act{flex:0 0 auto}

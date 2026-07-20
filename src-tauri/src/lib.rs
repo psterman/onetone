@@ -1,8 +1,10 @@
+mod agent;
 mod app_chat_workflow;
 mod app_exe_icon;
-mod app_identity;
 mod app_icon;
+mod app_identity;
 mod app_log;
+mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
 mod coach_hud;
@@ -16,6 +18,7 @@ mod input_obs;
 mod ipc;
 mod key_chord;
 mod keyboard;
+mod kws_model_download;
 mod native_dll;
 mod policy_config;
 mod press_gesture;
@@ -28,9 +31,8 @@ mod tray;
 mod update;
 mod vendor_hid;
 pub mod voice_acoustic_command;
-pub mod voice_acoustic_runtime;
-mod audio_frame_bus;
 pub mod voice_acoustic_record;
+pub mod voice_acoustic_runtime;
 mod voice_bootstrap;
 mod voice_command_router;
 mod voice_end_runtime;
@@ -44,10 +46,9 @@ mod voice_sapi;
 mod voice_sapi_runtime;
 mod voice_vosk;
 mod voice_vosk_runtime;
-mod kws_model_download;
 mod vosk_model_download;
-mod window_layout;
 mod webview_camera_permission;
+mod window_layout;
 
 #[cfg(target_os = "windows")]
 mod hotkey_win;
@@ -65,6 +66,12 @@ use crate::audio_win::{AudioBackoffState, MicLevelState, MicMonitorHandle};
 use crate::config::{load_config, VoiceConfig};
 use crate::ipc::RecordingTarget;
 use crate::state::StateMachinePool;
+
+#[derive(Debug, Clone)]
+pub struct AgentModifierTapState {
+    pub key: String,
+    pub combo_broken: bool,
+}
 
 pub struct AppState {
     pub cfg: Mutex<VoiceConfig>,
@@ -132,6 +139,7 @@ pub struct AppState {
     pub update_checking: Mutex<bool>,
     pub update_installing: Mutex<bool>,
     pub gesture: Mutex<press_gesture::GestureTracker>,
+    pub agent_modifier_tap: Mutex<Option<AgentModifierTapState>>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
     pub process_usage_sampler: Mutex<resource_monitor::ProcessUsageSampler>,
@@ -236,12 +244,15 @@ pub fn run() {
         voice_kws_last_detected_phrase: Mutex::new(String::new()),
         voice_kws_last_detected_kind: Mutex::new(String::new()),
         voice_kws_last_partial: Mutex::new(String::new()),
-        voice_kws_keyword_build: Mutex::new(crate::voice_kws_runtime::KwsKeywordStatusSnapshot::default()),
+        voice_kws_keyword_build: Mutex::new(
+            crate::voice_kws_runtime::KwsKeywordStatusSnapshot::default(),
+        ),
         voice_kws_epoch: AtomicU64::new(0),
         update: Mutex::new(crate::update::UpdateUiState::new()),
         update_checking: Mutex::new(false),
         update_installing: Mutex::new(false),
         gesture: Mutex::new(press_gesture::GestureTracker::new()),
+        agent_modifier_tap: Mutex::new(None),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         trigger_compat_probe: Mutex::new(None),
         process_usage_sampler: Mutex::new(resource_monitor::ProcessUsageSampler::default()),
@@ -292,7 +303,11 @@ pub fn run() {
             };
             app_log::log_line(&app_state, "startup", "main window acquired");
             webview_camera_permission::install_camera_permission_allow(&window);
-            app_log::log_line(&app_state, "startup", "webview camera permission hook installed");
+            app_log::log_line(
+                &app_state,
+                "startup",
+                "webview camera permission hook installed",
+            );
 
             if let Err(err) = app_icon::apply_window_icon(&window) {
                 app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));
@@ -315,6 +330,7 @@ pub fn run() {
             {
                 let cfg = app_state.cfg.lock();
                 mgr.bind_all(&cfg.bindings());
+                mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
                 mgr.bind_scheme_select(cfg.switch_bindings());
                 let switch_key = cfg.scheme_switch_key.trim();
                 if switch_key.is_empty() {
@@ -570,6 +586,8 @@ pub fn run() {
 
             // Never block Tauri setup / UI thread on engine start — activate can wait on
             // acoustic sync / device policy and used to 假死 the whole window on launch.
+            // Delay bootstrap so WebView2 message pump settles first; immediate Vosk
+            // DLL load + model open contends with the UI thread and freezes the window.
             {
                 let boot_app = app.handle().clone();
                 let boot_state = Arc::clone(&app_state);
@@ -577,6 +595,7 @@ pub fn run() {
                 let _ = std::thread::Builder::new()
                     .name("voice-bootstrap".into())
                     .spawn(move || {
+                        std::thread::sleep(Duration::from_secs(3));
                         voice_bootstrap::bootstrap_voice_engines(&boot_app, &boot_state, boot_safe);
                     });
             }
@@ -603,6 +622,7 @@ pub fn run() {
             ipc::cmd_frontend_keydown,
             ipc::cmd_physical_trigger,
             ipc::cmd_test_send,
+            ipc::cmd_agent_action_execute,
             ipc::cmd_mapping_toggle,
             ipc::cmd_mapping_delete,
             ipc::cmd_mapping_duplicate,

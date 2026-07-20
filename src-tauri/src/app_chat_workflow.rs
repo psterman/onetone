@@ -18,8 +18,7 @@ fn custom_rule_launched_recently(rule_id: &str, within: Duration) -> bool {
     let Ok(map) = recent_custom_launches().lock() else {
         return false;
     };
-    map.get(rule_id)
-        .is_some_and(|t| t.elapsed() < within)
+    map.get(rule_id).is_some_and(|t| t.elapsed() < within)
 }
 
 fn mark_custom_rule_launched(rule_id: &str) {
@@ -207,6 +206,40 @@ pub fn run_for_target_id(
     run_app_chat_workflow(state, window, mapping_id, profile, duration_ms)
 }
 
+/// Focus the app composer without starting voice input (AgentAction openAgent / focusComposer).
+#[cfg(windows)]
+pub fn focus_composer_only(
+    app: &AppHandle,
+    app_target_id: &str,
+    duration_ms: u32,
+) -> Result<(), AppChatWorkflowError> {
+    let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
+    let _hide_guard = MainWindowHideGuard::maybe_hide(app);
+    let (hwnd, freshly_launched) =
+        ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(2200));
+    }
+    if !crate::keyboard::focus_window(hwnd) {
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+    std::thread::sleep(Duration::from_millis(120));
+    if !focus_chat_input(hwnd, profile, duration_ms) {
+        return Err(AppChatWorkflowError::InputNotFound);
+    }
+    std::thread::sleep(Duration::from_millis(80));
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn focus_composer_only(
+    _app: &AppHandle,
+    _app_target_id: &str,
+    _duration_ms: u32,
+) -> Result<(), AppChatWorkflowError> {
+    Err(AppChatWorkflowError::NotFound)
+}
+
 #[cfg(windows)]
 fn run_app_chat_workflow(
     state: &Arc<AppState>,
@@ -249,7 +282,7 @@ fn run_app_chat_workflow(
 fn activate_voice_input(
     state: &Arc<AppState>,
     app: &AppHandle,
-    hwnd: winapi::shared::windef::HWND,
+    _hwnd: winapi::shared::windef::HWND,
     mapping_id: &str,
     profile: &AppChatProfile,
     duration_ms: u32,
@@ -977,8 +1010,8 @@ fn find_window_for_rule(
             return TRUE;
         }
         let title = identity.window_title.trim();
-        let has_real_title = !title.is_empty()
-            && !(title.starts_with("Wx") && title.contains("Window"));
+        let has_real_title =
+            !title.is_empty() && !(title.starts_with("Wx") && title.contains("Window"));
         // Prefer Chromium chat UI process over Weixin.exe launcher shells.
         let prefers_chat_ui = identity.exe_name.eq_ignore_ascii_case("WeChatAppEx.exe");
         let fg = GetForegroundWindow();

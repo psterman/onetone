@@ -11,6 +11,7 @@ pub use hardware::{finish_trigger_gesture_capture, handle_hardware_record_key};
 pub enum RecordMode {
     Trigger,
     Target,
+    AgentBinding,
 }
 
 #[derive(Debug, Clone)]

@@ -111,6 +111,9 @@
   }
 
   function refreshProcessUsage(){
+    if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
+      return Promise.resolve(null);
+    }
     return hooks().vpInvokeTimeout('cmd_process_usage',{},3000).then(function(res){
       res=res||{};
       processUsageSnapshot.supported=!!res.supported||Number(res.memoryBytes)>0;

@@ -21,12 +21,7 @@ pub fn cmd_voice_kws_set_enabled(
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
     let resource_dir = app.path().resource_dir().ok();
-    crate::voice_kws_runtime::voice_kws_set_enabled(
-        state.inner(),
-        &window,
-        enabled,
-        resource_dir,
-    )
+    crate::voice_kws_runtime::voice_kws_set_enabled(state.inner(), &window, enabled, resource_dir)
 }
 
 #[tauri::command]

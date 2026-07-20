@@ -5,8 +5,10 @@ use tauri::Manager;
 
 use crate::app_identity;
 use crate::config::effective_mapping_for_trigger;
+use crate::key_chord::{build_pressed_chord, chord_parts, is_modifier_name, is_modifier_only_chord};
 use crate::press_gesture::parse_physical_event;
 use crate::runtime_event;
+use crate::AgentModifierTapState;
 use crate::AppState;
 
 use super::trigger_dispatch::dispatch_trigger_action;
@@ -47,6 +49,116 @@ pub fn handle_input_obs_event(
     );
 }
 
+fn track_agent_modifier_keydown(state: &Arc<AppState>, event: &crate::press_gesture::PhysicalKeyEvent) {
+    if event.is_keyup {
+        return;
+    }
+    let chord = build_pressed_chord(&event.key);
+    if is_modifier_name(&event.key) {
+        let should_track = {
+            let cfg = state.cfg.lock();
+            cfg.find_agent_modifier_tap_dispatch(&chord).is_some()
+        };
+        if should_track {
+            *state.agent_modifier_tap.lock() = Some(AgentModifierTapState {
+                key: event.key.clone(),
+                combo_broken: false,
+            });
+        }
+        return;
+    }
+    if let Some(pending) = state.agent_modifier_tap.lock().as_mut() {
+        pending.combo_broken = true;
+    }
+}
+
+fn clear_agent_modifier_tap(state: &Arc<AppState>, key: &str) {
+    let mut pending = state.agent_modifier_tap.lock();
+    if pending
+        .as_ref()
+        .is_some_and(|p| p.key == key)
+    {
+        *pending = None;
+    }
+}
+
+fn execute_agent_binding(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    mapping_id: &str,
+    provider_id: &str,
+    action_id: &str,
+    slot_id: &str,
+    execution_mode: Option<String>,
+    activation_scope: Option<String>,
+) {
+    let _ = crate::agent::execute_agent_action(
+        state,
+        window,
+        crate::agent::AgentExecuteRequest {
+            provider_id: provider_id.to_string(),
+            action_id: action_id.to_string(),
+            mapping_id: Some(mapping_id.to_string()),
+            slot_id: if slot_id.is_empty() {
+                None
+            } else {
+                Some(slot_id.to_string())
+            },
+            execution_mode,
+            activation_scope,
+        },
+    );
+}
+
+fn try_dispatch_agent_modifier_keyup(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    let pending = state.agent_modifier_tap.lock().take();
+    let Some(pending) = pending else {
+        return false;
+    };
+    if pending.combo_broken || pending.key != event.key {
+        return false;
+    }
+    let chord = build_pressed_chord(&event.key);
+    let (mapping_id, action_id, slot_id, provider_id, execution_mode, activation_scope) = {
+        let cfg = state.cfg.lock();
+        let Some((mapping, b)) = cfg.find_agent_modifier_tap_dispatch(&chord) else {
+            return false;
+        };
+        let provider = if mapping.agent_provider_id.trim().is_empty() {
+            "codex".to_string()
+        } else {
+            mapping.agent_provider_id.clone()
+        };
+        (
+            mapping.id.clone(),
+            b.action_id.clone(),
+            b.slot_id.clone(),
+            provider,
+            b.execution_mode.clone(),
+            if b.activation_scope.trim().is_empty() {
+                None
+            } else {
+                Some(b.activation_scope.clone())
+            },
+        )
+    };
+    execute_agent_binding(
+        state,
+        window,
+        &mapping_id,
+        &provider_id,
+        &action_id,
+        &slot_id,
+        execution_mode,
+        activation_scope,
+    );
+    true
+}
+
 /// 解析物理按键事件，处理长按/双击手势后触发语音。
 pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWindow, raw: &str) {
     if *state.paused.lock() || *state.recording.lock() {
@@ -58,6 +170,10 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
     if event.is_keyup {
+        if try_dispatch_agent_modifier_keyup(state, window, &event) {
+            return;
+        }
+        clear_agent_modifier_tap(state, &event.key);
         let maybe_dispatch = state.gesture.lock().on_keyup(&event);
         if let Some(dispatch_key) = maybe_dispatch {
             // For hold-to-talk (LongPress mode): key release should end the current dictation
@@ -68,6 +184,15 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         }
         return;
     }
+
+    track_agent_modifier_keydown(state, &event);
+
+    // Modifier-only agent bindings fire on keyup after a clean tap — never on keydown.
+    let chord = build_pressed_chord(&event.key);
+    if is_modifier_only_chord(&chord) {
+        return;
+    }
+
     let now = std::time::Instant::now();
     let fire_key = {
         let cfg = state.cfg.lock();
@@ -91,6 +216,10 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         crate::send_guard::note_blocked();
         return;
     }
+    // Agent capability keys (Codex Micro pack) take priority over classic SendKey.
+    if try_dispatch_agent_key(state, window, &event.key) {
+        return;
+    }
     let now = std::time::Instant::now();
     let (mapping_id, duration_ms, actions) = {
         let cfg = state.cfg.lock();
@@ -112,4 +241,59 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
     for action in actions {
         dispatch_trigger_action(state, window, &mapping_id, duration_ms, &source_key, action);
     }
+}
+
+fn try_dispatch_agent_key(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    physical_key: &str,
+) -> bool {
+    let chord = build_pressed_chord(physical_key);
+    if is_modifier_only_chord(&chord) {
+        return false;
+    }
+    // Combo bindings only fire when the terminal (non-modifier) key is pressed.
+    let parts = chord_parts(&chord);
+    if parts.len() > 1 {
+        let terminal = parts.last().map(String::as_str).unwrap_or("");
+        if !physical_key.trim().eq_ignore_ascii_case(terminal)
+            && !crate::key_chord::chord_token_matches(terminal, physical_key)
+        {
+            return false;
+        }
+    }
+    let (mapping_id, action_id, slot_id, provider_id, execution_mode, activation_scope) = {
+        let cfg = state.cfg.lock();
+        let Some((mapping, b)) = cfg.find_agent_key_dispatch(&chord) else {
+            return false;
+        };
+        let provider = if mapping.agent_provider_id.trim().is_empty() {
+            "codex".to_string()
+        } else {
+            mapping.agent_provider_id.clone()
+        };
+        (
+            mapping.id.clone(),
+            b.action_id.clone(),
+            b.slot_id.clone(),
+            provider,
+            b.execution_mode.clone(),
+            if b.activation_scope.trim().is_empty() {
+                None
+            } else {
+                Some(b.activation_scope.clone())
+            },
+        )
+    };
+    execute_agent_binding(
+        state,
+        window,
+        &mapping_id,
+        &provider_id,
+        &action_id,
+        &slot_id,
+        execution_mode,
+        activation_scope,
+    );
+    true
 }

@@ -82,12 +82,8 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         {
             return VoiceKeywordKind::Cancel;
         }
-        if matches_send_phrase(
-            text,
-            &effective.send_phrases.zh,
-            &effective.send_phrases.en,
-        )
-        .is_some()
+        if matches_send_phrase(text, &effective.send_phrases.zh, &effective.send_phrases.en)
+            .is_some()
         {
             return VoiceKeywordKind::Send;
         }

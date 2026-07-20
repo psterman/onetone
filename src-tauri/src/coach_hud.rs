@@ -298,6 +298,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         }
     }
 

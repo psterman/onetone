@@ -2,7 +2,7 @@
   'use strict';
 
   var DIRECT_ZH = {
-    AutoTrigger:'音量键',
+    AutoTrigger:'外设触发键',
     Ctrl:'Ctrl', Shift:'Shift', Alt:'Alt', Win:'Win',
     LCtrl:'左 Ctrl', RCtrl:'右 Ctrl', LShift:'左 Shift', RShift:'右 Shift',
     LAlt:'左 Alt', RAlt:'右 Alt', LWin:'左 Win', RWin:'右 Win',
@@ -25,7 +25,7 @@
   };
 
   var DIRECT_EN = {
-    AutoTrigger:'Volume keys',
+    AutoTrigger:'Peripheral trigger',
     Ctrl:'Ctrl', Shift:'Shift', Alt:'Alt', Win:'Win',
     LCtrl:'Left Ctrl', RCtrl:'Right Ctrl', LShift:'Left Shift', RShift:'Right Shift',
     LAlt:'Left Alt', RAlt:'Right Alt', LWin:'Left Win', RWin:'Right Win',

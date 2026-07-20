@@ -108,6 +108,10 @@
     resumeVoice:1
   };
 
+  function isAgentActionToken(action){
+    return String(action||'').indexOf('agent:')===0;
+  }
+
   var st={
     enabled:false,
     presence:'unknown',
@@ -217,6 +221,12 @@
 
   function normalizeAction(v){
     var s=String(v||'none').trim();
+    if(isAgentActionToken(s)){
+      var id=s.slice(6).trim();
+      var A=global.OneToneAgentActions;
+      if(A&&A.actionById&&A.actionById(id)) return 'agent:'+id;
+      return 'none';
+    }
     return ACTIONS[s]?s:'none';
   }
 
@@ -279,6 +289,18 @@
     cp.enabled=!!presenceEnabled;
   }
 
+  function ephemeralCameraPrefs(){
+    return {
+      enabled:false,selectedDeviceId:'',previewEnabled:false,
+      selectedWidth:0,selectedHeight:0,selectedFrameRate:0,
+      gazeCalibration:null,blinkBaseline:null,presenceActions:defaultPresencePrefs()
+    };
+  }
+
+  function configPersistLoaded(){
+    return !!(global.OneToneConfigPersist&&global.OneToneConfigPersist.isLoaded&&global.OneToneConfigPersist.isLoaded());
+  }
+
   function cameraPrefs(){
     var root=stateRoot();
     if(!root.config||typeof root.config!=='object'){
@@ -286,16 +308,15 @@
         if(!global.OneToneState.state.config) global.OneToneState.state.config={};
         root=global.OneToneState.state;
       }else{
-        return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:defaultPresencePrefs()};
+        return ephemeralCameraPrefs();
       }
     }
     var cfg=root.config;
     if(!cfg.cameraPrefs||typeof cfg.cameraPrefs!=='object'){
-      cfg.cameraPrefs={
-        enabled:false,selectedDeviceId:'',previewEnabled:false,
-        selectedWidth:0,selectedHeight:0,selectedFrameRate:0,
-        gazeCalibration:null,blinkBaseline:null,presenceActions:defaultPresencePrefs()
-      };
+      // Do not invent defaults onto config before backend hydrate — quiet save
+      // would otherwise persist a blank wipe over real disk prefs.
+      if(!configPersistLoaded()) return ephemeralCameraPrefs();
+      cfg.cameraPrefs=ephemeralCameraPrefs();
     }
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
       cfg.cameraPrefs.presenceActions=defaultPresencePrefs();
@@ -873,7 +894,7 @@
   }
 
   function isKeyAction(action){
-    return action==='pressEsc'||action==='pressCtrlI';
+    return action==='pressEsc'||action==='pressCtrlI'||isAgentActionToken(action);
   }
 
   function isVoiceDictating(){
@@ -900,6 +921,14 @@
     if(action==='pressCtrlI'&&isVoiceDictating()) return 'low';
     if(action==='privacyScreen'||action==='pauseVoice'||action==='lowPowerMode') return 'low';
     if(action==='pressEsc'||action==='pressCtrlI'||action==='resumeVoice') return 'mid';
+    if(isAgentActionToken(action)){
+      var A=global.OneToneAgentActions;
+      var def=A&&A.actionById&&A.actionById(action.slice(6));
+      if(!def) return 'high';
+      if(def.risk==='safe') return 'low';
+      if(def.risk==='confirm') return 'mid';
+      return 'high';
+    }
     if(action==='none') return 'none';
     return 'high';
   }
@@ -1185,7 +1214,15 @@
     if(key==='onReturn'){
       return ['none','resumeVoice','privacyScreen'];
     }
-    return ['none','pressEsc','pressCtrlI','privacyScreen','pauseVoice','resumeVoice','lowPowerMode'];
+    var base=['none','pressEsc','pressCtrlI','privacyScreen','pauseVoice','resumeVoice','lowPowerMode'];
+    var A=global.OneToneAgentActions;
+    if(A&&A.cameraRecommendedActionIds){
+      var ids=A.cameraRecommendedActionIds();
+      for(var i=0;i<ids.length;i++){
+        base.push(A.agentActionToken(ids[i]));
+      }
+    }
+    return base;
   }
 
   function isActionAllowedForKey(key,action){
@@ -1413,6 +1450,22 @@
     noteEvent(source||action);
     st.lastSkipReason='';
     st.pendingPreviewLine='';
+
+    if(isAgentActionToken(action)){
+      var A=global.OneToneAgentActions;
+      if(!A||!A.execute) return Promise.resolve({ok:false,reason:'unsupported_action'});
+      var mappingId='';
+      try{
+        var ui=global.OneToneState&&global.OneToneState.ui;
+        mappingId=String((ui&&ui.habitScenarioReturnId)||'');
+      }catch(_){}
+      return A.execute({
+        actionId:action.slice(6),
+        mappingId:mappingId||null
+      }).then(function(res){
+        return res&&typeof res==='object'?res:{ok:false,reason:'input_failed'};
+      });
+    }
 
     if(action==='pressEsc') return pressKey('Esc');
     if(action==='pressCtrlI'){
@@ -2206,13 +2259,33 @@
     ['resumeVoice','cameraPresenceActionResume','恢复语音']
   ];
 
+  function buildActionOpts(){
+    var opts=ACTION_OPTS.slice();
+    var A=global.OneToneAgentActions;
+    if(A&&A.cameraRecommendedActionIds){
+      var ids=A.cameraRecommendedActionIds();
+      for(var i=0;i<ids.length;i++){
+        var def=A.actionById(ids[i]);
+        if(!def) continue;
+        var token=A.agentActionToken(ids[i]);
+        var label=A.labelForSlot?A.labelForSlot({labelZh:def.labelZh,labelEn:def.labelEn}):def.labelZh;
+        opts.push([token,'',label]);
+      }
+    }
+    return opts;
+  }
+
   var BIND_KEYS=['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'];
 
   function actionLabel(value){
     var cur=normalizeAction(value);
     if(cur==='pressCtrlI') return voiceActivateActionLabel();
-    for(var i=0;i<ACTION_OPTS.length;i++){
-      if(ACTION_OPTS[i][0]===cur) return t(ACTION_OPTS[i][1],ACTION_OPTS[i][2]);
+    var allOpts=buildActionOpts();
+    for(var i=0;i<allOpts.length;i++){
+      if(allOpts[i][0]===cur){
+        if(allOpts[i][1]) return t(allOpts[i][1],allOpts[i][2]);
+        return allOpts[i][2]||cur;
+      }
     }
     return t('cameraPresenceActionNone','无动作');
   }
@@ -2230,12 +2303,13 @@
       sel.setAttribute('data-select-ready',readyKey);
       sel.setAttribute('data-camera-action-for',key);
       sel.innerHTML='';
-      for(var i=0;i<ACTION_OPTS.length;i++){
-        var opt=ACTION_OPTS[i];
+      var allOpts=buildActionOpts();
+      for(var i=0;i<allOpts.length;i++){
+        var opt=allOpts[i];
         if(allowed.indexOf(opt[0])<0) continue;
         var option=document.createElement('option');
         option.value=opt[0];
-        var label=opt[0]==='pressCtrlI'?voiceActivateActionLabel():t(opt[1],opt[2]);
+        var label=opt[0]==='pressCtrlI'?voiceActivateActionLabel():(opt[1]?t(opt[1],opt[2]):opt[2]);
         if(opt[0]==='none') label=t('cameraPresenceActionNoneAlt','不执行动作');
         option.textContent=label;
         var tileHint=actionTileHint(key,opt[0]);

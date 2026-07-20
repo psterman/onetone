@@ -3,9 +3,7 @@ mod init;
 mod persist;
 mod runtime;
 
-pub use emit::{
-    emit_app_event, emit_to_js_main, emit_to_main_if_available, get_main_window,
-};
+pub use emit::{emit_app_event, emit_to_js_main, emit_to_main_if_available, get_main_window};
 pub use init::{mvp_init_payload, push_mvp_init_via_app};
 pub use runtime::{
     build_runtime_snapshot, push_runtime, push_runtime_via_app, push_runtime_with_cue,

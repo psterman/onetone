@@ -1645,6 +1645,7 @@
   }
 
   function voiceStatusPollTick(){
+    if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()) return;
     if(!voiceStatusPollNeeded()) return;
     if(voiceStatusPollInFlight) return;
     voiceStatusPollInFlight=true;
@@ -1716,6 +1717,10 @@
 
   function startVoiceStatusPoll(){
     if(voiceStatusPollTimer||voiceStatusPollStarted) return;
+    if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
+      global.OneToneAppSession.whenBootSettled(startVoiceStatusPoll);
+      return;
+    }
     voiceStatusPollStarted=true;
     setTimeout(function(){
       voiceStatusPollTick();

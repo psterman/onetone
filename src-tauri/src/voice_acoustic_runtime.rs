@@ -13,8 +13,8 @@ use crate::app_identity::foreground_app_target_id;
 use crate::config::{AcousticVoiceCommand, AcousticVoiceCommandSample, VoiceConfig};
 use crate::voice_acoustic_command::{
     build_from_samples, extract_mfcc_from_pcm_f32, extract_sample_from_pcm_manual,
-    extract_sample_from_pcm_with_segmenter, match_acoustic_commands, EnergyGateSegmenter,
-    BuildFromSamplesOptions, BuildFromSamplesResult, RecordReason, SpeechSegmenter, MANUAL_MAX_MS,
+    extract_sample_from_pcm_with_segmenter, match_acoustic_commands, BuildFromSamplesOptions,
+    BuildFromSamplesResult, EnergyGateSegmenter, RecordReason, SpeechSegmenter, MANUAL_MAX_MS,
     MAX_SPEECH_MS, MIN_SPEECH_MS, PREFER_SPEECH_MS, RECORD_TIMEOUT_MS,
 };
 use crate::voice_acoustic_record::{
@@ -82,7 +82,11 @@ fn acoustic_threshold_fields() -> serde_json::Value {
     })
 }
 
-fn emit_acoustic_level(app: &AppHandle, session_id: &str, tick: crate::voice_acoustic_record::CaptureLevelTick) {
+fn emit_acoustic_level(
+    app: &AppHandle,
+    session_id: &str,
+    tick: crate::voice_acoustic_record::CaptureLevelTick,
+) {
     if session_id.is_empty() {
         return;
     }
@@ -261,10 +265,7 @@ pub fn record_session_start(
 }
 
 /// Stop matching session, process PCM; keep mic lease parked for subsequent takes.
-pub fn record_session_stop(
-    state: &Arc<AppState>,
-    session_id: Option<&str>,
-) -> serde_json::Value {
+pub fn record_session_stop(state: &Arc<AppState>, session_id: Option<&str>) -> serde_json::Value {
     let session = session_id.map(str::trim).unwrap_or("").to_string();
     if session.is_empty() {
         return serde_json::json!({
@@ -296,10 +297,7 @@ pub fn record_session_stop(
 }
 
 /// Idempotent cancel. Releases parked calibration lease and any active capture.
-pub fn record_session_cancel(
-    state: &Arc<AppState>,
-    session_id: Option<&str>,
-) -> serde_json::Value {
+pub fn record_session_cancel(state: &Arc<AppState>, session_id: Option<&str>) -> serde_json::Value {
     let session = session_id.map(str::trim).unwrap_or("").to_string();
     let active = if session.is_empty() {
         state.acoustic_voice.manual_session.lock().take()
@@ -572,8 +570,7 @@ fn process_pcm_with_extractor(pcm: &[f32], manual: bool) -> serde_json::Value {
             out
         }
         Err(reason) => {
-            let duration_ms =
-                ((pcm.len() as u64) * 1000 / TARGET_SAMPLE_RATE as u64) as u32;
+            let duration_ms = ((pcm.len() as u64) * 1000 / TARGET_SAMPLE_RATE as u64) as u32;
             let seg = segmenter.segment(pcm, TARGET_SAMPLE_RATE);
             let speech = seg.slice(pcm);
             let rms = if speech.is_empty() {
@@ -656,7 +653,11 @@ pub fn build_command_json(
 }
 
 pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
-    if cfg.voice_wake_acoustic_commands.iter().any(|c| c.enabled && !c.samples.is_empty()) {
+    if cfg
+        .voice_wake_acoustic_commands
+        .iter()
+        .any(|c| c.enabled && !c.samples.is_empty())
+    {
         return true;
     }
     cfg.mappings.iter().any(|m| {
@@ -708,7 +709,10 @@ pub fn start_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppStat
     stop_acoustic_match_runtime(state);
 
     let frame_rx = state.audio_frame_bus.subscriber();
-    state.acoustic_voice.match_stop.store(false, Ordering::SeqCst);
+    state
+        .acoustic_voice
+        .match_stop
+        .store(false, Ordering::SeqCst);
     state
         .acoustic_voice
         .match_running
@@ -724,13 +728,22 @@ pub fn start_acoustic_match_runtime(app: Option<&AppHandle>, state: &Arc<AppStat
     if let Ok(h) = handle {
         *state.acoustic_voice.match_thread.lock() = Some(h);
     } else {
-        state.acoustic_voice.match_running.store(false, Ordering::SeqCst);
-        state.acoustic_voice.match_stop.store(true, Ordering::SeqCst);
+        state
+            .acoustic_voice
+            .match_running
+            .store(false, Ordering::SeqCst);
+        state
+            .acoustic_voice
+            .match_stop
+            .store(true, Ordering::SeqCst);
     }
 }
 
 pub fn stop_acoustic_match_runtime(state: &Arc<AppState>) {
-    state.acoustic_voice.match_stop.store(true, Ordering::SeqCst);
+    state
+        .acoustic_voice
+        .match_stop
+        .store(true, Ordering::SeqCst);
     let handle = state.acoustic_voice.match_thread.lock().take();
     state
         .acoustic_voice
@@ -799,7 +812,8 @@ fn run_acoustic_match_loop(
                 } else if in_speech {
                     if silence_started.is_none() {
                         silence_started = Some(Instant::now());
-                    } else if silence_started.unwrap().elapsed() >= Duration::from_millis(MATCH_SILENCE_MS)
+                    } else if silence_started.unwrap().elapsed()
+                        >= Duration::from_millis(MATCH_SILENCE_MS)
                     {
                         try_emit_acoustic_match(&state, app.as_ref(), &pcm_buf, &mut last_emit_at);
                         pcm_buf.clear();
@@ -858,17 +872,9 @@ fn try_emit_acoustic_match(
         );
         return;
     }
-    let matched = match_acoustic_commands(
-        &sample.feature,
-        sample.feature_frames,
-        &commands,
-    );
+    let matched = match_acoustic_commands(&sample.feature, sample.feature_frames, &commands);
     let Some(hit) = matched else {
-        let best = best_match_score_hint(
-            &sample.feature,
-            sample.feature_frames,
-            &commands,
-        );
+        let best = best_match_score_hint(&sample.feature, sample.feature_frames, &commands);
         crate::app_log::log_line(
             state.as_ref(),
             "acoustic",

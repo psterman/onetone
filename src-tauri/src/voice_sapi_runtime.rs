@@ -188,11 +188,8 @@ fn process_detected(
 
     let state2 = Arc::clone(state);
     let app2 = app.clone();
-    let detection = crate::voice_command_router::VoiceDetection::wake(
-        "sapi",
-        phrase,
-        Some(confidence),
-    );
+    let detection =
+        crate::voice_command_router::VoiceDetection::wake("sapi", phrase, Some(confidence));
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
             *state2.voice_sapi_last_skip.lock() = "等待上一轮快捷键发送完成。".into();

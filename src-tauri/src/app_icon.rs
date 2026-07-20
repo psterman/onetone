@@ -5,8 +5,8 @@ pub fn apply_window_icon(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     use winapi::shared::windef::HWND;
     use winapi::um::libloaderapi::GetModuleHandleW;
     use winapi::um::winuser::{
-        LoadImageW, SendMessageW, SetClassLongPtrW, GCLP_HICON, GCLP_HICONSM, ICON_BIG,
-        ICON_SMALL, IMAGE_ICON, LR_DEFAULTSIZE, WM_SETICON,
+        LoadImageW, SendMessageW, SetClassLongPtrW, GCLP_HICON, GCLP_HICONSM, ICON_BIG, ICON_SMALL,
+        IMAGE_ICON, LR_DEFAULTSIZE, WM_SETICON,
     };
 
     // Tauri embeds icons/icon.ico into the exe as resource id 32512 during tauri-build.

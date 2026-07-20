@@ -464,9 +464,7 @@ pub fn list_running_apps() -> Vec<RunningAppEntry> {
                     if !is_self_process(&exe_name, full_path.as_deref()) {
                         let win = win_ctx.by_pid.get(&pid);
                         let has_window = win.is_some();
-                        let window_title = win
-                            .map(|w| w.window_title.clone())
-                            .unwrap_or_default();
+                        let window_title = win.map(|w| w.window_title.clone()).unwrap_or_default();
                         if should_include_process(has_window, full_path.as_deref(), &exe_name) {
                             let matched_preset_app_id = full_path
                                 .as_deref()

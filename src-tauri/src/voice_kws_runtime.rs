@@ -38,10 +38,7 @@ fn compose_keyword_build_issue(
         if plan.included.is_empty() {
             return "未配置有效关键词".into();
         }
-        return format!(
-            "无法编码任何关键词（已跳过 {} 条）",
-            build.skipped.len()
-        );
+        return format!("无法编码任何关键词（已跳过 {} 条）", build.skipped.len());
     }
     let mut parts = Vec::new();
     if !build.skipped.is_empty() {
@@ -199,7 +196,8 @@ pub fn voice_kws_start(
         )
     };
     let model_dir = crate::voice_kws::resolve_kws_model_dir(cfg, resource_dir.as_deref());
-    let build_result = crate::voice_kws::prepare_runtime_keywords(&model_dir, &keyword_plan.included);
+    let build_result =
+        crate::voice_kws::prepare_runtime_keywords(&model_dir, &keyword_plan.included);
     store_kws_keyword_build_snapshot(state, &keyword_plan, &build_result);
     if build_result.encoded.is_empty() {
         eprintln!(
@@ -238,8 +236,8 @@ pub fn spawn_voice_kws_start(
     *state.voice_kws_state.lock() = "starting".into();
     std::thread::Builder::new()
         .name("voice-kws-start".into())
-        .spawn(move || {
-            match voice_kws_start(state.as_ref(), &cfg, resource_dir, epoch) {
+        .spawn(
+            move || match voice_kws_start(state.as_ref(), &cfg, resource_dir, epoch) {
                 Ok(()) => {
                     crate::voice_bootstrap::on_engine_start_ok(
                         state.as_ref(),
@@ -256,8 +254,8 @@ pub fn spawn_voice_kws_start(
                         "start_failed",
                     );
                 }
-            }
-        })
+            },
+        )
         .ok();
 }
 
@@ -359,8 +357,7 @@ fn process_kws_detected(
         if let Some(remain_ms) =
             crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
         {
-            *state.voice_kws_last_skip.lock() =
-                format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+            *state.voice_kws_last_skip.lock() = format!("防连按冷却中，请 {remain_ms} ms 后再说。");
             *state.voice_kws_last_trigger.lock() = String::new();
             *state.voice_kws_state.lock() = "cooldown".into();
             return;
@@ -449,10 +446,13 @@ pub fn voice_kws_status(state: &AppState, resource_dir: Option<PathBuf>) -> serd
     let download_url = crate::config::kws_model_download_url(&probe.model_preset)
         .unwrap_or("https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models");
     let keyword_build_issue = if build.issue.is_empty() {
-        compose_keyword_build_issue(&plan, &crate::voice_kws_keywords::KwsKeywordBuildResult {
-            encoded: build.encoded.clone(),
-            skipped: build.skipped.clone(),
-        })
+        compose_keyword_build_issue(
+            &plan,
+            &crate::voice_kws_keywords::KwsKeywordBuildResult {
+                encoded: build.encoded.clone(),
+                skipped: build.skipped.clone(),
+            },
+        )
     } else {
         build.issue.clone()
     };

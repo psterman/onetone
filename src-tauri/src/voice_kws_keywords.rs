@@ -21,8 +21,7 @@ pub struct KwsKeywordBuildResult {
 
 /// Load token symbols from model `tokens.txt` (first column, skip specials we don't need).
 pub fn load_kws_token_vocab(tokens_path: &Path) -> Result<HashSet<String>, String> {
-    let raw = std::fs::read_to_string(tokens_path)
-        .map_err(|e| format!("read tokens.txt: {e}"))?;
+    let raw = std::fs::read_to_string(tokens_path).map_err(|e| format!("read tokens.txt: {e}"))?;
     let mut vocab = HashSet::new();
     for line in raw.lines() {
         let token = line.split_whitespace().next().unwrap_or("").trim();
@@ -39,8 +38,7 @@ pub fn load_kws_token_vocab(tokens_path: &Path) -> Result<HashSet<String>, Strin
 
 /// Parse bundled `onetone-keywords.txt` lines into label → token sequence.
 pub fn load_golden_keyword_map(path: &Path) -> Result<HashMap<String, Vec<String>>, String> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|e| format!("read golden keywords: {e}"))?;
+    let raw = std::fs::read_to_string(path).map_err(|e| format!("read golden keywords: {e}"))?;
     let mut map = HashMap::new();
     for line in raw.lines() {
         let line = line.trim();
@@ -114,7 +112,11 @@ fn syllable_to_tokens(syllable: &str, vocab: &HashSet<String>) -> Option<Vec<Str
         }
         out.push(fin);
     }
-    if out.is_empty() { None } else { Some(out) }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
 }
 
 fn char_to_tokens(ch: char, vocab: &HashSet<String>) -> Option<Vec<String>> {
@@ -160,7 +162,11 @@ pub fn phrase_to_kws_tokens(
         let part = char_to_tokens(ch, vocab)?;
         out.extend(part);
     }
-    if out.is_empty() { None } else { Some(out) }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
 }
 
 pub fn format_kws_keyword_line(tokens: &[String], display_label: &str) -> String {
@@ -266,7 +272,11 @@ mod tests {
     #[test]
     fn build_runtime_file_writes_keywords() {
         let dir = model_dir();
-        let phrases = vec!["开始输入".into(), "打开 Cursor".into(), "Open Cursor".into()];
+        let phrases = vec![
+            "开始输入".into(),
+            "打开 Cursor".into(),
+            "Open Cursor".into(),
+        ];
         let result = build_runtime_keywords_file(&dir, &phrases).expect("build");
         assert!(result.encoded.contains(&"开始输入".to_string()));
         assert!(result.skipped.contains(&"Open Cursor".to_string()));

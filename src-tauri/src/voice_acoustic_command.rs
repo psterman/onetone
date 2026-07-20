@@ -102,8 +102,8 @@ impl SpeechSegmenter for EnergyGateSegmenter {
         }
         let frame_len = ((sample_rate as usize * FRAME_VAD_MS as usize) / 1000).max(1);
         let hangover_frames =
-            ((sample_rate as u64 * TRAILING_SILENCE_MS as u64) / 1000 / frame_len as u64)
-                .max(1) as usize;
+            ((sample_rate as u64 * TRAILING_SILENCE_MS as u64) / 1000 / frame_len as u64).max(1)
+                as usize;
         let threshold = adaptive_rms_threshold(self.rms_threshold, pcm, frame_len);
 
         let mut best = (0usize, 0usize, 0usize);
@@ -215,7 +215,10 @@ pub struct MatchCandidate {
 }
 
 /// Extract MFCC-v1 features from mono PCM (i16).
-pub fn extract_mfcc_from_pcm(pcm_i16: &[i16], sample_rate: u32) -> Option<AcousticVoiceCommandSample> {
+pub fn extract_mfcc_from_pcm(
+    pcm_i16: &[i16],
+    sample_rate: u32,
+) -> Option<AcousticVoiceCommandSample> {
     if sample_rate != SAMPLE_RATE || pcm_i16.is_empty() {
         return None;
     }
@@ -226,7 +229,10 @@ pub fn extract_mfcc_from_pcm(pcm_i16: &[i16], sample_rate: u32) -> Option<Acoust
     extract_mfcc_from_pcm_f32(&pcm, sample_rate)
 }
 
-pub fn extract_mfcc_from_pcm_f32(pcm: &[f32], sample_rate: u32) -> Option<AcousticVoiceCommandSample> {
+pub fn extract_mfcc_from_pcm_f32(
+    pcm: &[f32],
+    sample_rate: u32,
+) -> Option<AcousticVoiceCommandSample> {
     let segmenter = EnergyGateSegmenter::default();
     let mut seg = segmenter.segment(pcm, sample_rate);
     if seg.duration_ms < MIN_SPEECH_MS {
@@ -234,7 +240,9 @@ pub fn extract_mfcc_from_pcm_f32(pcm: &[f32], sample_rate: u32) -> Option<Acoust
     }
     if seg.duration_ms > MAX_SPEECH_MS {
         let max_samples = (MAX_SPEECH_MS as u64 * sample_rate as u64 / 1000) as usize;
-        seg.end_sample = (seg.start_sample + max_samples).min(seg.end_sample).min(pcm.len());
+        seg.end_sample = (seg.start_sample + max_samples)
+            .min(seg.end_sample)
+            .min(pcm.len());
         seg.duration_ms = ((seg.end_sample.saturating_sub(seg.start_sample)) as u64 * 1000
             / sample_rate as u64) as u32;
     }
@@ -315,7 +323,9 @@ fn extract_sample_from_pcm_with_policy(
     let truncated = raw_speech_ms > MAX_SPEECH_MS;
     if truncated {
         let max_samples = (MAX_SPEECH_MS as u64 * sample_rate as u64 / 1000) as usize;
-        seg.end_sample = (seg.start_sample + max_samples).min(seg.end_sample).min(pcm.len());
+        seg.end_sample = (seg.start_sample + max_samples)
+            .min(seg.end_sample)
+            .min(pcm.len());
         seg.duration_ms = ((seg.end_sample.saturating_sub(seg.start_sample)) as u64 * 1000
             / sample_rate as u64) as u32;
     }
@@ -377,8 +387,7 @@ pub fn utterance_capture_complete(pcm: &[f32], sample_rate: u32) -> bool {
         return false;
     }
     let frame_len = ((sample_rate as usize * FRAME_VAD_MS as usize) / 1000).max(1);
-    let hangover_samples =
-        (sample_rate as usize * TRAILING_SILENCE_MS as usize) / 1000;
+    let hangover_samples = (sample_rate as usize * TRAILING_SILENCE_MS as usize) / 1000;
     let threshold = adaptive_rms_threshold(segmenter.rms_threshold, pcm, frame_len);
     let tail_start = pcm.len().saturating_sub(hangover_samples);
     if tail_start <= seg.end_sample {
@@ -491,11 +500,7 @@ fn apply_mel(power: &[f32], filters: &[Vec<f32>]) -> Vec<f32> {
     filters
         .iter()
         .map(|f| {
-            let e: f32 = f
-                .iter()
-                .zip(power.iter())
-                .map(|(&w, &p)| w * p)
-                .sum();
+            let e: f32 = f.iter().zip(power.iter()).map(|(&w, &p)| w * p).sum();
             (e.max(1e-10)).ln()
         })
         .collect()

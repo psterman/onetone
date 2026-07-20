@@ -513,7 +513,10 @@ fn truncate_label(s: &str, max_chars: usize) -> String {
     if t.chars().count() <= max_chars {
         return t.to_string();
     }
-    t.chars().take(max_chars.saturating_sub(1)).collect::<String>() + "…"
+    t.chars()
+        .take(max_chars.saturating_sub(1))
+        .collect::<String>()
+        + "…"
 }
 
 fn tray_status_card(

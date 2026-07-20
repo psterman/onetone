@@ -171,11 +171,8 @@ pub(super) fn dispatch_send_key(
 
     if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
         let app = window.app_handle();
-        let action = crate::voice_end_runtime::handle_trigger_press_while_dictating(
-            state,
-            &app,
-            mapping_id,
-        );
+        let action =
+            crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
         let (ok, reason, label) = match action {
             crate::voice_end_runtime::TriggerWhileDictatingAction::Cancelled => {
                 (true, "cancelled", "esc")

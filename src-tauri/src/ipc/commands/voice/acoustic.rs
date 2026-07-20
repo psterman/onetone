@@ -8,9 +8,7 @@ use crate::voice_acoustic_runtime::{
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_acoustic_voice_command_status(
-    state: tauri::State<Arc<AppState>>,
-) -> serde_json::Value {
+pub fn cmd_acoustic_voice_command_status(state: tauri::State<Arc<AppState>>) -> serde_json::Value {
     acoustic_status(state.inner())
 }
 

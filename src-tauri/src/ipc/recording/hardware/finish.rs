@@ -28,24 +28,28 @@ pub(crate) fn finish_hardware_capture(
         return;
     };
 
-    let key = if matches!(target.mode, RecordMode::Trigger) {
+    let is_trigger = matches!(target.mode, RecordMode::Trigger);
+    let is_target = matches!(target.mode, RecordMode::Target);
+    let is_agent_binding = matches!(target.mode, RecordMode::AgentBinding);
+
+    let key = if is_trigger || is_agent_binding {
         sanitize_trigger_capture(key)
     } else {
         key.to_string()
     };
 
-    if matches!(target.mode, RecordMode::Trigger) && is_spurious_trigger_capture(&key) {
+    if (is_trigger || is_agent_binding) && is_spurious_trigger_capture(&key) {
         return;
     }
 
     let physical_key = key.clone();
-    let captured = if matches!(target.mode, RecordMode::Trigger) {
+    let captured = if is_trigger || is_agent_binding {
         normalize_record_key(&key)
     } else {
         key.to_string()
     };
 
-    if matches!(target.mode, RecordMode::Trigger) {
+    if is_trigger || is_agent_binding {
         if !is_allowed_trigger(&captured) {
             let ack = serde_json::json!({
                 "type": "mvp_record_rejected",
@@ -55,6 +59,9 @@ pub(crate) fn finish_hardware_capture(
             window.emit("to_js", &ack).ok();
             return;
         }
+    }
+
+    if is_trigger {
         {
             let mut cfg = state.cfg.lock();
             apply_trigger_capture(
@@ -66,7 +73,7 @@ pub(crate) fn finish_hardware_capture(
                 gesture.unwrap_or(RecordedGesture::Tap),
             );
         }
-    } else {
+    } else if is_target {
         if !is_allowed_target_shortcut(&captured) {
             let ack = serde_json::json!({
                 "type": "mvp_record_rejected",
@@ -93,17 +100,36 @@ pub(crate) fn finish_hardware_capture(
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.stop_recording();
     }
-    persist_and_rebind(state, window, "recorded");
+    if is_agent_binding {
+        if let Some(ref mgr) = *state.hotkey_mgr.lock() {
+            let cfg = state.cfg.lock();
+            mgr.bind_all(&cfg.bindings());
+            mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
+        }
+    } else {
+        persist_and_rebind(state, window, "recorded");
+    }
 
-    let mode = if matches!(target.mode, RecordMode::Target) {
+    let mode = if is_target {
         "target"
+    } else if is_agent_binding {
+        "agentBinding"
     } else {
         "trigger"
     };
     let (display_key, target_key, trigger_source, source_key, source_time, trigger_mode) = {
         let cfg = state.cfg.lock();
         let mapping = cfg.find_mapping_by_id(&target.mapping_id);
-        if matches!(target.mode, RecordMode::Target) {
+        if is_agent_binding {
+            (
+                captured.clone(),
+                mapping.map(|m| m.target_key.clone()).unwrap_or_default(),
+                None,
+                physical_key.clone(),
+                String::new(),
+                gesture_mode_label(gesture.unwrap_or(RecordedGesture::Tap)).to_string(),
+            )
+        } else if is_target {
             (
                 captured.clone(),
                 mapping

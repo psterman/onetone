@@ -217,7 +217,9 @@
       getEditorTargetKey:ed().getEditorTargetKey,
       setEditorTargetKey:ed().setEditorTargetKey,
       syncEditorFromSelection:deps.syncEditorFromSelection,
-      flushAllEditorToMappings:deps.flushAllEditorToMappings
+      flushAllEditorToMappings:deps.flushAllEditorToMappings,
+      selectedDisplayTriggerKey:deps.selectedDisplayTriggerKey,
+      selectedDisplayTargetKey:deps.selectedDisplayTargetKey
     };
     global.__vp_key_finish_flow_render_hooks__={
       ensureConfig:deps.ensureConfig,

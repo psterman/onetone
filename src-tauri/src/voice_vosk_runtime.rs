@@ -327,7 +327,15 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
         let guard = state.voice_vosk.lock();
         let Some(handle) = guard.as_ref() else {
             tick_cooldown_state(state);
-            crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+            // Only sync acoustic runtime when vosk was previously active and stopped;
+            // skip during early boot when handle was never created (avoids lock
+            // contention on cfg/state that contributed to launch freezes).
+            let st = state.voice_vosk_state.lock();
+            let was_active = *st == "stopped" || *st == "error";
+            drop(st);
+            if was_active {
+                crate::voice_acoustic_runtime::sync_acoustic_match_runtime(Some(app), state);
+            }
             return;
         };
         let mut out = Vec::new();
@@ -381,7 +389,8 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
                 crate::voice_end_runtime::try_match_end_phrase_on_final(state, app, &text);
                 if crate::voice_end_runtime::session_state(state) == "idle" {
                     let phrases = crate::voice_end_runtime::idle_wake_phrases(&state.cfg.lock());
-                    if let Some(reason) = crate::voice_vosk::wake_text_rejection_reason(&text, &phrases)
+                    if let Some(reason) =
+                        crate::voice_vosk::wake_text_rejection_reason(&text, &phrases)
                     {
                         *state.voice_vosk_last_skip.lock() = reason;
                     }
@@ -478,8 +487,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
 
 pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> serde_json::Value {
     let cfg = state.cfg.lock();
-    let probe = probe_vosk_resources(&cfg.voice_vosk, resource_dir.as_deref());
-    *state.voice_vosk_probe.lock() = Some(probe.clone());
+    let probe = cached_vosk_probe(state, &cfg.voice_vosk, resource_dir.as_deref());
     let target_key =
         crate::voice_end_runtime::resolve_wake_target_key(&cfg, &cfg.voice_vosk.target_key);
     let resources_dir = crate::voice_vosk::vosk_resources_dir(resource_dir.as_deref());
@@ -757,10 +765,8 @@ pub fn voice_vosk_retry_start(
 ) -> serde_json::Value {
     refresh_vosk_probe_cache(state, resource_dir.as_deref());
     let st = state.voice_vosk_state.lock().clone();
-    let healthy = matches!(
-        st.as_str(),
-        "listening" | "cooldown" | "triggered"
-    ) && state.voice_vosk.lock().is_some();
+    let healthy = matches!(st.as_str(), "listening" | "cooldown" | "triggered")
+        && state.voice_vosk.lock().is_some();
     // Already listening: soft activate (noop). Otherwise force reload stuck/error handles.
     let reason = if healthy {
         "vosk_retry_start"

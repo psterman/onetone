@@ -339,7 +339,13 @@
     }
     
     function selectedDisplayTargetKey(){
-      return editorTargetForMapping(selectedMapping());
+      var m=selectedMapping();
+      var cap=global.OneToneAgentCapabilityUi;
+      if(cap&&cap.flowTargetDisplayKey){
+        var codexKey=cap.flowTargetDisplayKey(m);
+        if(codexKey) return codexKey;
+      }
+      return editorTargetForMapping(m);
     }
     
     

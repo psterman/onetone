@@ -126,6 +126,7 @@ const RAW_INPUT_DEVICES: &[(u16, u16)] = &[
 
 enum Cmd {
     BindAll(Vec<String>),
+    BindModifierWatches(Vec<String>),
     BindSchemeSwitch(Option<String>),
     BindSchemeSelect(Vec<(String, String)>),
     StartRecording,
@@ -152,6 +153,22 @@ fn is_recording() -> bool {
 
 fn active_bindings() -> &'static Mutex<Vec<String>> {
     ACTIVE_BINDINGS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn modifier_watches() -> &'static Mutex<Vec<String>> {
+    static MODIFIER_WATCHES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+    MODIFIER_WATCHES.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn is_modifier_watch_key(name: &str) -> bool {
+    let watches = modifier_watches().lock().unwrap();
+    if watches.is_empty() {
+        return false;
+    }
+    let chord = crate::key_chord::build_pressed_chord(name);
+    watches
+        .iter()
+        .any(|w| crate::key_chord::chords_equivalent(w, &chord) || crate::key_chord::chords_equivalent(w, name))
 }
 
 fn active_sender() -> &'static Mutex<Option<mpsc::Sender<String>>> {
@@ -290,6 +307,12 @@ impl HotkeyManager {
 
     pub fn bind_all(&self, bindings: &[String]) {
         self.cmd_tx.send(Cmd::BindAll(bindings.to_vec())).ok();
+    }
+
+    pub fn bind_modifier_watches(&self, watches: &[String]) {
+        self.cmd_tx
+            .send(Cmd::BindModifierWatches(watches.to_vec()))
+            .ok();
     }
 
     pub fn bind_scheme_switch(&self, combo: Option<String>) {
@@ -493,6 +516,15 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
                     }
                     unsafe {
                         sync_runtime_mouse_hook(&bindings, recording_mode);
+                    }
+                }
+                Cmd::BindModifierWatches(watches) => {
+                    *modifier_watches().lock().unwrap() = watches.clone();
+                    if !watches.is_empty() {
+                        unsafe {
+                            install_raw_input(hwnd);
+                            install_keyboard_hook();
+                        }
                     }
                 }
                 Cmd::BindSchemeSwitch(combo) => unsafe {
@@ -859,6 +891,19 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
                         sender.send(format!("keyup:{name}")).ok();
                     }
+                }
+                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
+            if is_modifier_watch_key(&name) {
+                if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                    let payload = if is_key_down {
+                        name.clone()
+                    } else if is_key_up {
+                        format!("keyup:{name}")
+                    } else {
+                        return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+                    };
+                    sender.send(payload).ok();
                 }
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }

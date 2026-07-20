@@ -27,6 +27,27 @@
     return key;
   }
 
+  function codexTargetHintKey(m) {
+    var cap = global.OneToneAgentCapabilityUi;
+    if (cap && cap.flowTargetDisplayKey) {
+      var ck = cap.flowTargetDisplayKey(m);
+      if (ck) return ck;
+    }
+    var hooks = global.__vp_mapping_core_hooks__ || {};
+    if (hooks.selectedDisplayTargetKey) return hooks.selectedDisplayTargetKey();
+    if (m && core()) return core().editorTarget ? core().editorTarget(m) : m.targetKey;
+    return '';
+  }
+
+  function triggerHintLabel(m){
+    if(!m) return '';
+    var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel){
+      return global.OneToneKeyLabels.triggerDisplayLabel(m,lang)||'';
+    }
+    return friendlyKey(core().editorTrigger?core().editorTrigger(m):m.triggerKey);
+  }
+
   function resolveStepHints(m){
     var mode=recordingMode();
     var recHint=mode==='trigger'?t('keysFlowNodeRecordingTrigger'):mode==='target'?t('keysFlowNodeRecordingTarget'):'';
@@ -34,8 +55,8 @@
     var tgt='';
     var fin='';
     if(m&&core()){
-      trig=friendlyKey(core().editorTrigger?core().editorTrigger(m):m.triggerKey);
-      tgt=friendlyKey(core().editorTarget?core().editorTarget(m):m.targetKey);
+      trig=triggerHintLabel(m);
+      tgt=friendlyKey(codexTargetHintKey(m));
     }
     if(m&&global.OneToneSceneFlowSummary){
       var preview=global.OneToneAppBehaviorRules?global.OneToneAppBehaviorRules.getActiveAppContextId():'';

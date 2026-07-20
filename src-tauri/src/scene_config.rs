@@ -253,6 +253,9 @@ pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
     for p in &global_summon {
         push(p);
     }
+    for p in crate::config::agent_voice_phrases_for_cfg(cfg) {
+        push(&p);
+    }
     if cfg.voice_end.enabled {
         for p in &effective.end_phrases.zh {
             push(p);
@@ -333,7 +336,11 @@ pub struct KwsKeywordPlan {
     pub truncated: Vec<String>,
 }
 
-fn push_unique_phrase(out: &mut Vec<String>, seen: &mut std::collections::HashSet<String>, phrase: &str) {
+fn push_unique_phrase(
+    out: &mut Vec<String>,
+    seen: &mut std::collections::HashSet<String>,
+    phrase: &str,
+) {
     let t = phrase.trim();
     if t.is_empty() {
         return;
@@ -351,7 +358,8 @@ fn kws_plan_candidate_phrase(phrase: &str) -> bool {
     if t.is_empty() {
         return false;
     }
-    t.chars().any(|ch| matches!(ch as u32, 0x3400..=0x9FFF | 0xF900..=0xFAFF))
+    t.chars()
+        .any(|ch| matches!(ch as u32, 0x3400..=0x9FFF | 0xF900..=0xFAFF))
 }
 
 /// Ordered tiers: wake, summon, cancel, send, end (zh+en each).
@@ -526,7 +534,10 @@ pub fn vosk_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceVoskConf
 }
 
 pub fn resolve_effective_vosk_config(cfg: &VoiceConfig) -> VoiceVoskConfig {
-    vosk_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Vosk)
+    vosk_config_for_runtime(
+        cfg,
+        idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Vosk,
+    )
 }
 
 pub fn kws_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceKwsConfig {
@@ -536,7 +547,10 @@ pub fn kws_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceKwsConfig
 }
 
 pub fn resolve_effective_sapi_config(cfg: &VoiceConfig) -> VoiceSapiConfig {
-    sapi_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Sapi)
+    sapi_config_for_runtime(
+        cfg,
+        idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Sapi,
+    )
 }
 
 pub fn sapi_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceSapiConfig {
@@ -546,7 +560,10 @@ pub fn sapi_config_for_runtime(cfg: &VoiceConfig, active: bool) -> VoiceSapiConf
 }
 
 pub fn resolve_effective_kws_config(cfg: &VoiceConfig) -> VoiceKwsConfig {
-    kws_config_for_runtime(cfg, idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Kws)
+    kws_config_for_runtime(
+        cfg,
+        idle_desired_voice_engine(cfg) == DesiredVoiceEngine::Kws,
+    )
 }
 
 fn global_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
@@ -767,6 +784,9 @@ mod tests {
             camera_override: None,
             voice_commands: vec![],
             acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
         });
         id.to_string()
     }
@@ -978,11 +998,10 @@ mod tests {
         }
         let plan = kws_keyword_plan_for_cfg(&cfg, 20);
         assert!(plan.included.contains(&"打开 Cursor".to_string()));
-        assert!(
-            plan.included
-                .iter()
-                .any(|p| p.contains("开始") || p.contains("输入"))
-        );
+        assert!(plan
+            .included
+            .iter()
+            .any(|p| p.contains("开始") || p.contains("输入")));
     }
 
     #[test]
@@ -1254,7 +1273,10 @@ mod tests {
             });
         }
         let mapping = cfg.find_mapping_by_id(&active).unwrap();
-        assert_eq!(effective_desired_engine(&cfg, mapping), DesiredVoiceEngine::Vosk);
+        assert_eq!(
+            effective_desired_engine(&cfg, mapping),
+            DesiredVoiceEngine::Vosk
+        );
         assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Kws);
     }
 
@@ -1270,7 +1292,10 @@ mod tests {
             });
         }
         let mapping = cfg.find_mapping_by_id(&active).unwrap();
-        assert_eq!(effective_desired_engine(&cfg, mapping), DesiredVoiceEngine::Sapi);
+        assert_eq!(
+            effective_desired_engine(&cfg, mapping),
+            DesiredVoiceEngine::Sapi
+        );
         assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Sapi);
     }
 

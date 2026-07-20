@@ -234,6 +234,9 @@
   }
 
   function applyMappingTarget(combo, presetId){
+    if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.clearSelection){
+      global.OneToneAgentCapabilityUi.clearSelection();
+    }
     if(global.OneToneTargetKeyApply&&global.OneToneTargetKeyApply.applyCustomMappingTarget){
       global.OneToneTargetKeyApply.applyCustomMappingTarget(combo,{source:'ime',presetId:presetId||''});
       setSelectedId('mapping', presetId || '');

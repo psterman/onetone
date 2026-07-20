@@ -58,6 +58,10 @@
     if(baseline) syncEditor(baseline.id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
     render();
+    // Global keys: never show Codex UI — clear any leftover hosts.
+    setTimeout(function(){
+      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
+    },60);
   }
 
   function openGlobalVoice(opts){
@@ -69,6 +73,9 @@
     if(baseline) syncEditor(baseline.id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
     render();
+    setTimeout(function(){
+      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
+    },60);
   }
 
   function openGlobalCamera(opts){
@@ -77,6 +84,11 @@
     if(opts.fromHub) ui().habitHubEditReturn=true;
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
     render();
+    setTimeout(function(){
+      if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountCamera){
+        global.OneToneAgentCapabilityUi.mountCamera();
+      }
+    },60);
   }
 
   /** App-scenario key/voice/camera always reuses the full settings pages. */
@@ -89,9 +101,18 @@
     state().selectedMappingId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='keys';
+    // Seed capability slots on this mapping only (never jump to another Codex scenario).
+    try{
+      var T=global.OneToneAgentScenarioTemplate;
+      var m=core()&&core().byId?core().byId(id):null;
+      if(T&&T.ensurePackForMapping&&m) T.ensurePackForMapping(m,{persist:true});
+    }catch(_){}
     syncEditor(id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
     render();
+    setTimeout(function(){
+      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
+    },60);
   }
 
   function openScenarioVoiceEdit(id,opts){
@@ -104,9 +125,17 @@
     ui().voiceEditSchemeId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='voice';
+    try{
+      var Tv=global.OneToneAgentScenarioTemplate;
+      var mv=core()&&core().byId?core().byId(id):null;
+      if(Tv&&Tv.ensurePackForMapping&&mv) Tv.ensurePackForMapping(mv,{persist:true});
+    }catch(_){}
     syncEditor(id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
     render();
+    setTimeout(function(){
+      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountVoice();
+    },60);
   }
 
   function openScenarioCameraEdit(id,opts){
@@ -118,12 +147,18 @@
     state().selectedMappingId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='camera';
+    try{
+      var Tc=global.OneToneAgentScenarioTemplate;
+      var mc=core()&&core().byId?core().byId(id):null;
+      if(Tc&&Tc.ensurePackForMapping&&mc) Tc.ensurePackForMapping(mc,{persist:true});
+    }catch(_){}
     syncEditor(id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
     render();
     if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
       try{ global.OneToneCameraPresenceActions.syncUiFromPrefs(); }catch(_){}
     }
+    // No Codex camera PackCard — apply lives on Habit Hub Codex card.
   }
 
   function returnToHabitHub(){

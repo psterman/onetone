@@ -399,6 +399,13 @@
     if(type==='mvp_key_captured'){
     const key=msg.key||'AutoTrigger';
     const captureMode=msg.mode||'trigger';
+    if(captureMode==='agentBinding'){
+    if(Rec().mode()==='trigger'){
+    if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
+    Rec().finishAgentBinding(key, msg.sourceKey||'', msg.source||null);
+    }
+    return true;
+    }
     if(captureMode==='trigger'){
     if(Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;

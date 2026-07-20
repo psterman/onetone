@@ -922,10 +922,7 @@ pub fn wake_text_rejection_reason(text: &str, phrases: &[String]) -> Option<Stri
             continue;
         }
         if norm_text.contains(&norm_phrase) && !wake_fuzzy_match_allowed(text, phrase) {
-            return Some(format!(
-                "句子太长，不像唤醒词（听到「{}」）",
-                trimmed
-            ));
+            return Some(format!("句子太长，不像唤醒词（听到「{}」）", trimmed));
         }
     }
     None
@@ -960,19 +957,18 @@ impl SpeechActivityGate {
             if self.candidate_since.is_none() {
                 self.candidate_since = Some(now);
             } else if !self.active
-                && self
-                    .candidate_since
-                    .is_some_and(|t| now.duration_since(t) >= Duration::from_millis(VAD_SPEECH_HOLD_MS))
+                && self.candidate_since.is_some_and(|t| {
+                    now.duration_since(t) >= Duration::from_millis(VAD_SPEECH_HOLD_MS)
+                })
             {
                 self.active = true;
             }
         } else if self.active {
             if self.silence_since.is_none() {
                 self.silence_since = Some(now);
-            } else if self
-                .silence_since
-                .is_some_and(|t| now.duration_since(t) >= Duration::from_millis(VAD_SILENCE_HOLD_MS))
-            {
+            } else if self.silence_since.is_some_and(|t| {
+                now.duration_since(t) >= Duration::from_millis(VAD_SILENCE_HOLD_MS)
+            }) {
                 self.active = false;
                 self.candidate_since = None;
                 self.silence_since = None;

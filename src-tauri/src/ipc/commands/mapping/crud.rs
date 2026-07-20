@@ -101,6 +101,9 @@ pub fn cmd_mapping_duplicate(
                     &src.acoustic_voice_commands,
                     &new_id,
                 ),
+                agent_template_id: src.agent_template_id.clone(),
+                agent_provider_id: src.agent_provider_id.clone(),
+                agent_bindings: src.agent_bindings.clone(),
             });
             cfg.normalize();
         }

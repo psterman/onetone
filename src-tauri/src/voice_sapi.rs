@@ -354,10 +354,7 @@ mod imp {
                         if let Some(reason) =
                             crate::voice_vosk::wake_text_rejection_reason(&text, phrases)
                         {
-                            send_event(
-                                event_tx,
-                                VoiceSapiEvent::Trace(reason),
-                            );
+                            send_event(event_tx, VoiceSapiEvent::Trace(reason));
                         } else {
                             let targets = phrases.join("、");
                             send_event(

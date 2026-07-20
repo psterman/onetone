@@ -235,11 +235,16 @@ pub fn resolve_binding_in_list(
         return None;
     }
     let chord = crate::key_chord::build_pressed_chord(name);
-    if bindings.iter().any(|b| b == &chord) {
+    if bindings
+        .iter()
+        .any(|b| crate::key_chord::chords_equivalent(b, &chord))
+    {
         return Some(chord);
     }
     if bindings.iter().any(|b| b == name) {
-        return Some(name.to_string());
+        if crate::key_chord::chords_equivalent(name, &chord) {
+            return Some(name.to_string());
+        }
     }
     None
 }
@@ -584,7 +589,8 @@ impl TriggerCompatClassifier {
         }
         if self.saw_keydown {
             let started = self.keydown_at.unwrap_or(self.started_at);
-            if !self.saw_keyup && now.duration_since(started) >= Duration::from_millis(TRIGGER_COMPAT_PULSE_MS)
+            if !self.saw_keyup
+                && now.duration_since(started) >= Duration::from_millis(TRIGGER_COMPAT_PULSE_MS)
             {
                 return Some(self.complete(TriggerCompatVerdict::PulseOnly));
             }

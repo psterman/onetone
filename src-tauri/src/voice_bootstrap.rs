@@ -78,7 +78,11 @@ fn voice_engine_state_is_transition(state: &str) -> bool {
     matches!(state, "starting" | "stopping")
 }
 
-fn resolve_strategy_engine(strategy: &str, kws_ready: bool, advanced_engine: EffectiveVoiceEngine) -> EffectiveVoiceEngine {
+fn resolve_strategy_engine(
+    strategy: &str,
+    kws_ready: bool,
+    advanced_engine: EffectiveVoiceEngine,
+) -> EffectiveVoiceEngine {
     match strategy {
         "auto" => {
             if kws_ready {
@@ -237,7 +241,12 @@ fn log_supervisor_switch(
     );
 }
 
-fn start_self_engine(app: &AppHandle, state: &Arc<AppState>, engine: EffectiveVoiceEngine, reason: &str) {
+fn start_self_engine(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    engine: EffectiveVoiceEngine,
+    reason: &str,
+) {
     let cfg = state.cfg.lock().clone();
     match engine {
         EffectiveVoiceEngine::Vosk => {
@@ -295,12 +304,7 @@ fn start_self_vosk(
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
 }
 
-fn start_self_kws(
-    app: &AppHandle,
-    state: &Arc<AppState>,
-    kws_cfg: VoiceKwsConfig,
-    reason: &str,
-) {
+fn start_self_kws(app: &AppHandle, state: &Arc<AppState>, kws_cfg: VoiceKwsConfig, reason: &str) {
     if !kws_cfg.enabled {
         crate::app_log::log_line(
             state,
@@ -401,9 +405,8 @@ pub(crate) fn resolve_activate_gate_with_health(
     reason: &str,
 ) -> ActivateGate {
     let force_reload = reason.starts_with("force:");
-    let allow_while_starting = force_reload
-        || reason.starts_with("degrade:")
-        || reason == "listen resume";
+    let allow_while_starting =
+        force_reload || reason.starts_with("degrade:") || reason == "listen resume";
 
     // Already listening: skip kill/restart unless caller forces a reload.
     // Stale handle + error/stopped must NOT noop — otherwise download/retry never recovers.
@@ -579,7 +582,11 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             });
     }
     crate::audio_win::request_recording_audio_policy_sync(Arc::clone(state));
-    crate::app_log::log_line(state, "voice", "voice_bootstrap sync acoustic after activate");
+    crate::app_log::log_line(
+        state,
+        "voice",
+        "voice_bootstrap sync acoustic after activate",
+    );
     // Defer acoustic sync: never hold ACTIVATE_LOCK across match start/stop (mutex ordering
     // with vosk/kws state caused launch 假死 when bootstrap ran on the UI thread).
     schedule_acoustic_match_sync(Some(app), state);
@@ -631,8 +638,11 @@ fn restart_active_engine_if_fingerprint_changed_locked(
     new_cfg: &VoiceConfig,
     reason: &str,
 ) {
-    let desired =
-        resolve_supervisor_desired_engine(state, new_cfg, app.path().resource_dir().ok().as_deref());
+    let desired = resolve_supervisor_desired_engine(
+        state,
+        new_cfg,
+        app.path().resource_dir().ok().as_deref(),
+    );
     let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
     let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
     let fingerprint_changed = old_fp != new_fp;
@@ -883,8 +893,7 @@ pub fn on_engine_start_failed(
     failed: DegradeFailedEngine,
     fail_code: &str,
 ) {
-    let has_acoustic =
-        crate::scene_config::has_enabled_acoustic_commands(&state.cfg.lock());
+    let has_acoustic = crate::scene_config::has_enabled_acoustic_commands(&state.cfg.lock());
     let decision = resolve_degrade_decision(failed, fail_code, has_acoustic);
     match decision {
         DegradeDecision::NoFallback { reason } => {
@@ -1009,11 +1018,7 @@ pub struct MicLease {
 }
 
 /// Acquire mic: pause active engine, wait briefly for device release.
-pub fn acquire_mic_lease(
-    app: Option<&AppHandle>,
-    state: &Arc<AppState>,
-    reason: &str,
-) -> MicLease {
+pub fn acquire_mic_lease(app: Option<&AppHandle>, state: &Arc<AppState>, reason: &str) -> MicLease {
     let did_pause = pause_active_engine_for_external_capture(state, reason);
     if did_pause {
         // Pause is non-blocking (async engine teardown). Give WASAPI longer to free
@@ -1023,9 +1028,7 @@ pub fn acquire_mic_lease(
     crate::app_log::log_line(
         state,
         "voice",
-        &format!(
-            "voice_bootstrap mic_lease acquired reason={reason} didPause={did_pause}"
-        ),
+        &format!("voice_bootstrap mic_lease acquired reason={reason} didPause={did_pause}"),
     );
     MicLease {
         state: Arc::clone(state),

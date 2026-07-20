@@ -6,7 +6,7 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
-var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null };
+var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null };
   function clearRecTimer(){ clearTimeout(rec.timer); rec.timer=0; }
   function beginRecordSnapshot(){
     const m=OneToneMappingCore.selected();
@@ -89,6 +89,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
 
   function cancelRecording(){
     if(rec.mode==='none') return;
+    var agentCap=rec.agentBindingCapture;
+    if(agentCap) rec.agentBindingCapture=null;
     rec.suppressAutoEnableOnce=false;
     const draftId=state.selectedMappingId;
     clearRecTimer();
@@ -144,6 +146,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     try{window.chrome?.webview?.postMessage({type:'mvp_stop_recording'});}catch(_){}
     restoreMappingEnabledAfterRecordCancel(OneToneMappingCore.recording()||OneToneMappingCore.selected());
     setRecording('none');
+    if(agentCap&&agentCap.onCancel) agentCap.onCancel();
     if(hooks().abandonDraftIfPristine(draftId)) return;
     hooks().render();
   }
@@ -457,6 +460,86 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     });
   }
 
+  function agentBindingCaptureChord(chord, sourceKey, source){
+    var raw = String(chord || '').trim();
+    var src = String(sourceKey || '').trim();
+    if ((!raw || raw === 'AutoTrigger') && src) return src;
+    if (raw) return raw;
+    var evt = source && Array.isArray(source.rawEvents) && source.rawEvents[0];
+    return String((evt && (evt.hotkey || evt.key || evt.code)) || '').trim();
+  }
+
+  function commitAgentBindingCapture(chord, sourceKey, source){
+    var cap=rec.agentBindingCapture;
+    var k=agentBindingCaptureChord(chord, sourceKey, source);
+    if(!cap||!k) return false;
+    rec.agentBindingCapture=null;
+    var m=OneToneMappingCore.recording()||OneToneMappingCore.byId(cap.mappingId)||OneToneMappingCore.selected();
+    armLocalCaptureGuard();
+    clearRecTimer();
+    rec.snapshot=null;
+    rec.mappingId='';
+    clearRecordMappingGuard();
+    setRecording('none');
+    restoreMappingEnabledAfterRecordCancel(m);
+    renderRecordCancelBar();
+    hooks().pushLog(t('logTriggerDone')+hooks().friendlyKeyName(k));
+    if(cap.onDone) cap.onDone(k);
+    void invokeStopRecording();
+    return true;
+  }
+
+  function startAgentBindingRecord(mappingId,opts){
+    opts=opts||{};
+    if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
+    if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
+    hooks().ensureConfig();
+    var pin=String(mappingId||'').trim();
+    hooks().resetTargetCapture();
+    rec.mappingId=pin||state.selectedMappingId||'';
+    rec.agentBindingCapture={
+      mappingId:rec.mappingId,
+      onDone:typeof opts.onDone==='function'?opts.onDone:null,
+      onCancel:typeof opts.onCancel==='function'?opts.onCancel:null
+    };
+    hooks().armTriggerLeftClickIgnore(900);
+    rec.captureGen++;
+    var captureGen=rec.captureGen;
+    var m=OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
+    rec.startPending=true;
+    hooks().pushLog('[record] start agent binding mapping='+String(rec.mappingId||''));
+    hooks().pushLog(t('logStartTrigger'));
+    return disableMappingForRecordingAsync(m).then(function(){
+      return invokeStartRecording(rec.mappingId,'agentBinding');
+    }).then(function(ok){
+      rec.startPending=false;
+      if(!ok){
+        var onCancel=rec.agentBindingCapture&&rec.agentBindingCapture.onCancel;
+        rec.agentBindingCapture=null;
+        restoreMappingEnabledAfterRecordCancel(m);
+        rec.mappingId='';
+        renderRecordCancelBar();
+        if(onCancel) onCancel();
+        return false;
+      }
+      if(captureGen!==rec.captureGen){
+        restoreMappingEnabledAfterRecordCancel(m);
+        rec.agentBindingCapture=null;
+        rec.mappingId='';
+        renderRecordCancelBar();
+        return false;
+      }
+      setRecording('trigger');
+      updateRecordingPreview('trigger','');
+      var triggerState=$('triggerState');
+      if(triggerState) triggerState.textContent=t('triggerRecordHint');
+      rec.timer=setTimeout(function(){
+        if(rec.mode==='trigger'&&rec.agentBindingCapture){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
+      },30000);
+      return ok;
+    });
+  }
+
   function startTargetRecord(pinnedMappingId){
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
@@ -527,6 +610,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       if(rawSourceKey&&!hooks().isAllowedTriggerKey(rawSourceKey)) return false;
       if(!hooks().isAllowedTriggerKey(trig)) return false;
       if(hooks().shouldIgnoreTriggerLeftClickCapture(key||trig,rawSourceKey||trig,msg.source||null)) return false;
+      if(rec.agentBindingCapture) return commitAgentBindingCapture(trig, rawSourceKey, msg.source||null);
       m.triggerKey=trig;
       if(msg.source) m.triggerSource=msg.source;
       else if(trig!=='AutoTrigger') m.triggerSource=null;
@@ -576,6 +660,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(!hooks().isAllowedTriggerKey(k)){ shortcutRejectedToast(k); return false; }
     const m=OneToneMappingCore.recording();
     if(!m) return false;
+    if(rec.agentBindingCapture) return commitAgentBindingCapture(k, rawSourceKey, source);
     m.triggerKey=k;
     if(source){
       m.triggerSource=source;
@@ -754,6 +839,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     cancel:cancelRecording, cancelDraftOrRecording:cancelDraftOrRecording,
     disableForRecordingAsync:disableMappingForRecordingAsync, setRecording:setRecording,
     startTrigger:startTriggerRecord, startTarget:startTargetRecord,
+    startAgentBinding:startAgentBindingRecord,
     startNativeRestore:startNativeRestoreRecord, finishNativeRestore:finishNativeRestoreCapture,
     startSchemeSwitch:startSchemeSwitchRecord, finishSchemeSwitch:finishSchemeSwitchCapture,
     startMappingSwitch:startMappingSwitchRecord, finishMappingSwitch:finishMappingSwitchCapture,
@@ -769,6 +855,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     isHardwareDelegatedTriggerKey:isHardwareDelegatedTriggerKey,
     isHardwareCaptureToken:isHardwareCaptureToken,
     finishTrigger:finishTriggerCapture,
+    finishAgentBinding:commitAgentBindingCapture,
     finishFrontendTrigger:finishFrontendTriggerCapture,
     finishDetectedHardwareTrigger:finishDetectedHardwareTriggerCapture,
     finishTarget:finishTargetCapture,

@@ -11,6 +11,9 @@
   var bootMicReady=false;
   var bootMicTimer=0;
   var uiBootstrapping=true;
+  var bootSettleUntil=0;
+  var bootSettleTimer=0;
+  var bootSettledCallbacks=[];
 
   var BUSY_VOICE_STATES={
     starting:1,
@@ -216,6 +219,43 @@
     hooks().clearProcessUsagePollTimer();
   }
 
+  function isBootSettling(){
+    return uiBootstrapping||(bootSettleUntil>0&&Date.now()<bootSettleUntil);
+  }
+
+  function markBootStarted(ms){
+    uiBootstrapping=true;
+    var delay=ms||8000;
+    bootSettleUntil=Date.now()+delay;
+    clearTimeout(bootSettleTimer);
+    bootSettleTimer=setTimeout(markBootSettled,delay);
+  }
+
+  function runBootSettledCallbacks(){
+    var list=bootSettledCallbacks.slice();
+    bootSettledCallbacks=[];
+    list.forEach(function(fn){
+      try{ fn(); }catch(err){ console.error('bootSettled',err); }
+    });
+  }
+
+  function markBootSettled(){
+    clearTimeout(bootSettleTimer);
+    bootSettleTimer=0;
+    bootSettleUntil=0;
+    uiBootstrapping=false;
+    runBootSettledCallbacks();
+  }
+
+  function whenBootSettled(fn){
+    if(typeof fn!=='function') return;
+    if(!isBootSettling()){
+      try{ fn(); }catch(err){ console.error('whenBootSettled',err); }
+      return;
+    }
+    bootSettledCallbacks.push(fn);
+  }
+
   global.OneToneAppSession={
     ensureFullLangApplied:ensureFullLangApplied,
     markVoiceEngineBootHandled:markVoiceEngineBootHandled,
@@ -230,6 +270,10 @@
     bootMicReady:function(){ return bootMicReady; },
     uiBootstrapping:function(){ return uiBootstrapping; },
     setUiBootstrapping:function(v){ uiBootstrapping=!!v; },
+    isBootSettling:isBootSettling,
+    markBootStarted:markBootStarted,
+    markBootSettled:markBootSettled,
+    whenBootSettled:whenBootSettled,
     setLangBootstrapPending:function(v){ langBootstrapPending=!!v; },
     langBootstrapPending:function(){ return langBootstrapPending; }
   };

@@ -22,20 +22,21 @@ pub fn install_camera_permission_allow(window: &tauri::WebviewWindow) {
                 return;
             };
             let mut token = 0i64;
-            let handler = PermissionRequestedEventHandler::create(Box::new(move |_sender, args| {
-                let Some(args) = args else {
-                    return Ok(());
-                };
-                let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
-                args.PermissionKind(&mut kind)?;
-                if kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA
-                    || kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE
-                {
-                    // Local Glance preview only — grant capture so getUserMedia can proceed.
-                    args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
-                }
-                Ok(())
-            }));
+            let handler =
+                PermissionRequestedEventHandler::create(Box::new(move |_sender, args| {
+                    let Some(args) = args else {
+                        return Ok(());
+                    };
+                    let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                    args.PermissionKind(&mut kind)?;
+                    if kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA
+                        || kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE
+                    {
+                        // Local Glance preview only — grant capture so getUserMedia can proceed.
+                        args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                    }
+                    Ok(())
+                }));
             let _ = core.add_PermissionRequested(&handler, &mut token);
         }
     });

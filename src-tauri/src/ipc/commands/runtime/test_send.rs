@@ -126,7 +126,13 @@ pub fn perform_test_send(
                     &mid,
                     "test_send voice activate",
                 );
-                crate::ipc::push_runtime_via_app(app, state.as_ref(), "test_send_enter", &mid, None);
+                crate::ipc::push_runtime_via_app(
+                    app,
+                    state.as_ref(),
+                    "test_send_enter",
+                    &mid,
+                    None,
+                );
             }
         }
     }
@@ -147,10 +153,5 @@ pub fn cmd_test_send(
     mapping_id: Option<String>,
     target_key: Option<String>,
 ) -> serde_json::Value {
-    perform_test_send(
-        state.inner(),
-        &window.app_handle(),
-        mapping_id,
-        target_key,
-    )
+    perform_test_send(state.inner(), &window.app_handle(), mapping_id, target_key)
 }

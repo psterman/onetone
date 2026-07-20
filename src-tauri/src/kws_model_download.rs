@@ -45,11 +45,8 @@ pub fn start_kws_model_download(
 
     if discover_kws_assets(&dest).is_ok() {
         if state.cfg.lock().voice_kws.enabled {
-            let _ = crate::voice_kws_runtime::voice_kws_retry_start(
-                &app,
-                &state,
-                resource_dir.clone(),
-            );
+            let _ =
+                crate::voice_kws_runtime::voice_kws_retry_start(&app, &state, resource_dir.clone());
         }
         return Ok(serde_json::json!({
             "ok": true,
@@ -71,12 +68,8 @@ pub fn start_kws_model_download(
     std::thread::Builder::new()
         .name("kws-model-download".into())
         .spawn(move || {
-            let result = download_and_install(
-                &app2,
-                &preset_for_thread,
-                url,
-                resource_dir.as_deref(),
-            );
+            let result =
+                download_and_install(&app2, &preset_for_thread, url, resource_dir.as_deref());
             DOWNLOAD_RUNNING.store(false, Ordering::SeqCst);
             match result {
                 Ok(path) => {

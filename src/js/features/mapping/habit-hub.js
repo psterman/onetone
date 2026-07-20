@@ -2,7 +2,13 @@
   'use strict';
 
   var $=function(id){ return global.OneToneDom.$(id); };
-  var t=function(key){ return global.OneToneI18n.t(key); };
+  var t=function(key, fb){
+    try{
+      var v=global.OneToneI18n&&global.OneToneI18n.t?global.OneToneI18n.t(key):key;
+      if(v&&v!==key) return v;
+    }catch(_){}
+    return fb!=null?fb:key;
+  };
   function state(){ return global.OneToneState.state; }
   function ui(){ return global.OneToneState.ui; }
   function core(){ return global.OneToneMappingCore; }
@@ -830,9 +836,9 @@
       if(appScenario){
         var enOn=!!m.enabled;
         html+='<button type="button" class="toggle-switch habit-hub-enable-toggle'+(enOn?' is-on':'')+'" data-habit-enable="'+esc(m.id)+'" role="switch" aria-checked="'+(enOn?'true':'false')+'" title="'+esc(t('habitScenarioEnableLbl'))+'" data-tip="'+esc(t('habitScenarioEnableLbl'))+'" aria-label="'+esc(t('habitScenarioEnableLbl'))+'"></button>';
-        html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
-        html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
-        html+=ctaActBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice','配语音'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
+        html+=ctaActBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera','配摄像头'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
         html+='<span class="habit-hub-act-sep" aria-hidden="true"></span>';
         html+=iconActBtn('data-habit-move="up" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveUp'),ACT_ICON.up,{disabled:!opts.canMoveUp});
         html+=iconActBtn('data-habit-move="down" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveDown'),ACT_ICON.down,{disabled:!opts.canMoveDown});
@@ -842,6 +848,17 @@
       }
       html+=iconActBtn('data-habit-dup="'+esc(m.id)+'"',t('habitHubActCopy'),ACT_ICON.copy);
       html+=iconActBtn('data-habit-rename="'+esc(m.id)+'"',t('habitHubActRename'),ACT_ICON.rename);
+      // Codex: reset pack lives in more menu, not main CTA row.
+      if(appScenario&&global.OneToneAgentScenarioTemplate&&global.OneToneAgentScenarioTemplate.isCodexScenario
+        &&global.OneToneAgentScenarioTemplate.isCodexScenario(m)){
+        html+='<details class="habit-hub-more-menu">'
+          +'<summary class="habit-hub-act is-icon" title="'+esc(t('habitHubActMore','更多'))+'" aria-label="'+esc(t('habitHubActMore','更多'))+'">'
+          +'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>'
+          +'</summary>'
+          +'<div class="habit-hub-more-menu-panel">'
+          +'<button type="button" class="habit-hub-more-item" data-habit-codex-reset="'+esc(m.id)+'">'+esc(t('codexPackReset','重置推荐'))+'</button>'
+          +'</div></details>';
+      }
       html+=iconActBtn('data-habit-del="'+esc(m.id)+'"',t('habitHubActDelete'),ACT_ICON.del,{danger:true});
     }
     html+='</div></article>';
@@ -954,6 +971,8 @@
       }else{
         appInner=renderSelectionBar(filtered.length)+appInner;
       }
+      var codexBanner=renderCodexDetectBanner();
+      html+=codexBanner;
       html+=renderSection(t('habitHubSectionApp'),appInner,{
         desc:t('habitHubSectionAppDesc'),
         actionsHtml:'<button type="button" class="habit-hub-filter-like is-primary habit-hub-section-new" data-habit-hub-new>'+esc(t('habitHubNew'))+'</button>',
@@ -1005,6 +1024,16 @@
   }
 
   function render(){
+    if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()){
+      if(!render._bootDefer){
+        render._bootDefer=true;
+        global.OneToneAppSession.whenBootSettled(function(){
+          render._bootDefer=false;
+          render();
+        });
+      }
+      return;
+    }
     var t0=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     renderLabels();
     renderList();
@@ -1373,14 +1402,25 @@
     if(!appId||!core()) return null;
     core().ensureConfig&&core().ensureConfig();
     var cfg=state().config;
-    // Preset apps: one scenario per app. Custom: unlimited (each pick binds its own process).
-    if(appId!=='custom'){
+    // Preset apps: one scenario per app — except Codex, which allows multiple workflows.
+    // Custom: unlimited. opts.reuseExisting=true keeps recommend-entry singleton behavior.
+    if(appId!=='custom'&&appId!=='codex-chat'){
       var existing=findAppScenarioByAppId(appId);
       if(existing&&!opts.migrateFrom){
         ui().habitHubCreating=false;
         if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubAppScenarioExists'),'scheme');
         render();
         return existing;
+      }
+    }
+    if(appId==='codex-chat'&&opts.reuseExisting){
+      var existingCodex=findAppScenarioByAppId(appId);
+      if(existingCodex&&!opts.migrateFrom){
+        var Texist=global.OneToneAgentScenarioTemplate;
+        if(Texist&&Texist.ensurePackForMapping) Texist.ensurePackForMapping(existingCodex,{persist:true});
+        ui().habitHubCreating=false;
+        render();
+        return existingCodex;
       }
     }
     var prevSelected=String(state().selectedMappingId||'');
@@ -1414,6 +1454,21 @@
     // Do not create a blank "custom" primary rule before the user picks a real process.
     if(appId&&appId!=='custom'&&rules&&rules.ensurePrimaryAppRule){
       rules.ensurePrimaryAppRule(m,appId);
+    }
+    // Selecting Codex app activates builtin Micro pack (keys + voice + camera).
+    if(appId==='codex-chat'){
+      var Tseed=global.OneToneAgentScenarioTemplate;
+      if(Tseed&&Tseed.applyCodexPackToMapping){
+        Tseed.applyCodexPackToMapping(m,{
+          channels:['keys','voice','camera'],
+          essentialsOnly:true,
+          reset:true,
+          cameraTarget:'override',
+          enableProfile:'scenarioEssentials',
+          setAppTarget:true,
+          persist:false
+        });
+      }
     }
     if(opts.migrateFrom&&core().byId){
       var src=core().byId(String(opts.migrateFrom||'').trim());
@@ -1460,6 +1515,48 @@
     return m;
   }
 
+  function renderCodexDetectBanner(){
+    var A=global.OneToneAgentActions;
+    var T=global.OneToneAgentScenarioTemplate;
+    if(!A||!T) return '';
+    // Soft detect-only hint; no duplicate 配按键/配语音/配摄像头 CTAs (card already has them).
+    if(!isCodexDetected()) return '';
+    var existing=findAppScenarioByAppId(A.APP_TARGET_ID);
+    var title=t('habitCodexDetectTitle','检测到 Codex，可创建 Codex 工作场景');
+    var hint=existing
+      ?t('habitCodexDetectHintReady','常用能力已准备好 · 在下方场景卡中改按键 / 配语音 / 配摄像头')
+      :t('habitCodexDetectHint','点「+ 新建应用场景」选择 Codex，即可准备常用能力');
+    var html='<div class="habit-hub-codex-banner" role="region" aria-label="Codex">'
+      +'<div class="habit-hub-codex-banner-text">'
+      +'<p class="habit-hub-codex-banner-title">'+esc(title)+'</p>'
+      +'<p class="habit-hub-codex-banner-hint">'+esc(hint)+'</p>'
+      +'</div>';
+    if(!existing){
+      html+='<button type="button" class="habit-hub-act is-primary" data-habit-codex-apply>'
+        +esc(t('habitCodexApply','创建 Codex 场景'))+'</button>';
+    }
+    html+='</div>';
+    return html;
+  }
+
+  function isCodexDetected(){
+    try{
+      var nav=global.OneToneHabitLayerNav;
+      if(nav&&typeof nav.foregroundAppId==='function'){
+        if(String(nav.foregroundAppId()||'')==='codex-chat') return true;
+      }
+    }catch(_){}
+    try{
+      var st=state();
+      var fg=st&&st.runtime&&(st.runtime.foregroundApp||st.runtime.foreground);
+      var preset=fg&&(fg.matchedPresetAppId||fg.matched_preset_app_id||fg.appId);
+      if(String(preset||'')==='codex-chat') return true;
+      var exe=String((fg&&(fg.exeName||fg.exe_name))||'');
+      if(/^Codex\.exe$/i.test(exe)) return true;
+    }catch(_){}
+    return false;
+  }
+
   function renderInlineCreatePicker(){
     var presets=[];
     if(global.OneToneAppTargetPresets&&Array.isArray(global.OneToneAppTargetPresets.presets)){
@@ -1470,13 +1567,22 @@
     html+='<p class="habit-hub-inline-create-title">'+esc(t('habitHubInlineCreateTitle'))+'</p>';
     html+='<p class="habit-hub-inline-create-hint">'+esc(t('habitHubInlineCreateHint'))+'</p>';
     html+='</div>';
+    var A=global.OneToneAgentActions;
+    if(A){
+      html+='<button type="button" class="habit-hub-codex-recommend" data-habit-codex-apply role="listitem">'
+        +'<span class="habit-hub-codex-recommend-badge">'+esc(t('habitCodexBadge','OneTone 推荐'))+'</span>'
+        +'<span class="habit-hub-codex-recommend-title">'+esc(t('habitCodexCardTitle','Codex 工作场景'))+'</span>'
+        +'<span class="habit-hub-codex-recommend-sub">'+esc(t('habitCodexCardSub','一键准备常用能力与推荐快捷键'))+'</span>'
+        +'<span class="habit-hub-codex-recommend-note">'+esc(A.DISCLAIMER_ZH)+'</span>'
+        +'</button>';
+    }
     html+='<div class="habit-hub-inline-create-grid" role="list">';
     presets.forEach(function(p){
       var id=String(p&&p.id||'').trim();
       if(!id) return;
       var name=appDisplayName(id);
       var icon=p.icon?'<img class="habit-wizard-app-icon" src="'+esc(p.icon)+'" alt="" decoding="async" />':'';
-      var exists=!!findAppScenarioByAppId(id);
+      var exists=id!=='codex-chat'&&!!findAppScenarioByAppId(id);
       html+='<button type="button" class="habit-wizard-app-card'+(exists?' is-exists':'')+'" data-habit-create-app="'+esc(id)+'" role="listitem"'
         +(exists?' title="'+esc(t('habitHubAppScenarioExists'))+'"':'')+'>'
         +icon+'<span class="habit-wizard-app-name">'+esc(name)+'</span></button>';
@@ -1679,6 +1785,55 @@
         if(hubNew){
           e.preventDefault();
           startInlineCreate();
+          return;
+        }
+        var codexOpen=e.target.closest&&e.target.closest('[data-habit-codex-open]');
+        if(codexOpen){
+          e.preventDefault();
+          var Aopen=global.OneToneAgentActions;
+          var existingOpen=Aopen&&findAppScenarioByAppId(Aopen.APP_TARGET_ID);
+          var panel=String(codexOpen.getAttribute('data-habit-codex-open')||'keys');
+          var banner=global.OneToneHabitScenarioContextBanner;
+          if(existingOpen&&banner){
+            if(panel==='voice'&&banner.openScenarioVoiceEdit) banner.openScenarioVoiceEdit(existingOpen.id,{returnToHub:true});
+            else if(panel==='camera'&&banner.openScenarioCameraEdit) banner.openScenarioCameraEdit(existingOpen.id,{returnToHub:true});
+            else if(banner.openScenarioKeysEdit) banner.openScenarioKeysEdit(existingOpen.id,{returnToHub:true});
+          }
+          return;
+        }
+        var codexCardReset=e.target.closest&&e.target.closest('[data-habit-codex-reset]');
+        if(codexCardReset){
+          e.preventDefault();
+          var resetId=String(codexCardReset.getAttribute('data-habit-codex-reset')||'').trim();
+          var Treset=global.OneToneAgentScenarioTemplate;
+          var mreset=core()&&core().byId?core().byId(resetId):null;
+          if(Treset&&Treset.applyCodexPackToMapping&&mreset){
+            Treset.applyCodexPackToMapping(mreset,{
+              channels:['keys','voice','camera'],
+              essentialsOnly:true,
+              reset:true,
+              cameraTarget:'override',
+              enableProfile:'scenarioEssentials',
+              setAppTarget:true,
+              persist:true
+            });
+            if(global.OneToneUiFeedback&&global.OneToneUiFeedback.toast){
+              global.OneToneUiFeedback.toast(t('habitCodexReset','已重置能力槽位 · 请重新录制快捷键'));
+            }
+            render();
+          }
+          return;
+        }
+        var codexApply=e.target.closest&&e.target.closest('[data-habit-codex-apply]');
+        if(codexApply){
+          e.preventDefault();
+          var T=global.OneToneAgentScenarioTemplate;
+          // Recommend entry: open existing if any, else create one new scenario.
+          if(T&&T.applyCodexMicro13){
+            T.applyCodexMicro13({mode:'openExisting',openPanel:'chooser',openKeys:false});
+            cancelInlineCreate();
+            render();
+          }
           return;
         }
         var createCancel=e.target.closest&&e.target.closest('[data-habit-create-cancel]');

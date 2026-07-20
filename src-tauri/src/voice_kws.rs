@@ -38,7 +38,9 @@ pub struct KwsResourceProbe {
 pub enum VoiceKwsEvent {
     StateChanged(String),
     Error(String),
-    Level { level: u32 },
+    Level {
+        level: u32,
+    },
     Partial(String),
     Detected {
         phrase: String,
@@ -332,7 +334,11 @@ impl KwsKeywordsBuilder for RuntimeKwsKeywordsBuilder {
 pub struct StubKwsKeywordsBuilder;
 
 impl KwsKeywordsBuilder for StubKwsKeywordsBuilder {
-    fn build_keywords_file(&self, _phrases: &[String], _model_dir: &Path) -> Result<PathBuf, String> {
+    fn build_keywords_file(
+        &self,
+        _phrases: &[String],
+        _model_dir: &Path,
+    ) -> Result<PathBuf, String> {
         Err("KWS keywords builder not available without kws-engine".into())
     }
 }
@@ -374,11 +380,7 @@ pub fn start_voice_kws(
 #[cfg(not(feature = "kws-engine"))]
 fn start_voice_kws_stub(_cfg: &VoiceKwsConfig) -> Result<VoiceKwsHandle, String> {
     let (event_tx, event_rx) = crossbeam_channel::bounded(EVENT_CHANNEL_CAP);
-    let handle = VoiceKwsHandle::new(
-        Arc::new(AtomicBool::new(false)),
-        event_rx,
-        event_tx,
-    );
+    let handle = VoiceKwsHandle::new(Arc::new(AtomicBool::new(false)), event_rx, event_tx);
     let _ = handle
         .event_tx
         .try_send(VoiceKwsEvent::StateChanged("listening".into()));

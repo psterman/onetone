@@ -173,16 +173,23 @@
     const targetDisp=$('targetDisplay');
     const traceEl=$('triggerTrace');
     const m=OneToneMappingCore.selected();
-    const trig=hooks().selectedDisplayTriggerKey();
+    const lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
+    const trigRaw=hooks().selectedDisplayTriggerKey();
     const tgt=hooks().selectedDisplayTargetKey();
-    triggerEl.textContent=trig?hooks().friendlyKeyName(trig):d.triggerPlaceholder;
+    const trigLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel
+      ?global.OneToneKeyLabels.triggerDisplayLabel(m,lang)
+      :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
+    triggerEl.textContent=trigLabel||d.triggerPlaceholder;
     targetEl.textContent=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
-    if(triggerDisp) triggerDisp.classList.toggle('empty',!trig);
+    if(triggerDisp) triggerDisp.classList.toggle('empty',!trigRaw);
     if(targetDisp) targetDisp.classList.toggle('empty',!tgt);
     if(global.OneToneKeyIcons){
       if(global.OneToneKeyIcons.syncDisplayIcon){
-        if(triggerDisp) global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,trig);
+        if(triggerDisp) global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,trigRaw);
       }
+    }
+    if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
+      global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
     const trace=OneToneMappingCore.formatTriggerTrace(m);
     if(traceEl){
@@ -199,10 +206,10 @@
     var inKeysPanel=global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.keysPanelActive&&global.OneToneKeysPanelUi.keysPanelActive();
     var tgtLbl=tgt?t('btnRerecordTarget'):t('btnRecordTarget');
     if(global.OneToneMappingEditorChrome&&global.OneToneMappingEditorChrome.setRecordBtnLabel){
-      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trig?t('btnRerecordTrigger'):t('btnRecordTrigger'));
+      global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTrigger'),trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger'));
       global.OneToneMappingEditorChrome.setRecordBtnLabel($('btnRecordTarget'),inKeysPanel?'':tgtLbl);
     }else{
-      $('btnRecordTrigger').textContent=trig?t('btnRerecordTrigger'):t('btnRecordTrigger');
+      $('btnRecordTrigger').textContent=trigRaw?t('btnRerecordTrigger'):t('btnRecordTrigger');
       if(!inKeysPanel) $('btnRecordTarget').textContent=tgtLbl;
     }
     hooks().updatePrimaryCTA();

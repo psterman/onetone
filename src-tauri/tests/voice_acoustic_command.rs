@@ -106,7 +106,9 @@ fn process_pcm_buffer_returns_valid_sample() {
         .get("feature")
         .and_then(|v| v.as_array())
         .expect("feature");
-    assert!(feature.iter().any(|v| v.as_f64().unwrap_or(0.0).abs() > 1e-6));
+    assert!(feature
+        .iter()
+        .any(|v| v.as_f64().unwrap_or(0.0).abs() > 1e-6));
 }
 
 #[test]
@@ -122,7 +124,10 @@ fn process_pcm_buffer_empty_and_short_fail() {
         .and_then(|v| v.as_str())
         .unwrap_or("");
     assert!(
-        key.contains("Short") || key.contains("Timeout") || key.contains("Audio") || !key.is_empty(),
+        key.contains("Short")
+            || key.contains("Timeout")
+            || key.contains("Audio")
+            || !key.is_empty(),
         "unexpected messageKey={key}"
     );
 }
@@ -141,7 +146,9 @@ fn process_pcm_manual_accepts_long_with_trim_warning() {
         .cloned()
         .unwrap_or_default();
     assert!(
-        warnings.iter().any(|w| w.as_str() == Some("habitAcousticCmdWarnTrimmed")),
+        warnings
+            .iter()
+            .any(|w| w.as_str() == Some("habitAcousticCmdWarnTrimmed")),
         "expected trim warning, got {warnings:?}"
     );
 }

@@ -137,6 +137,78 @@ fn is_side_modifier_name(name: &str) -> bool {
     )
 }
 
+pub fn is_modifier_name(name: &str) -> bool {
+    is_side_modifier_name(name) || matches!(name.trim(), "Ctrl" | "Shift" | "Alt" | "Win")
+}
+
+pub fn chord_parts(chord: &str) -> Vec<String> {
+    chord
+        .split('+')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+pub fn is_modifier_only_chord(chord: &str) -> bool {
+    let parts = chord_parts(chord);
+    !parts.is_empty() && parts.iter().all(|p| is_modifier_name(p))
+}
+
+fn canonical_chord_token(token: &str) -> String {
+    match token.trim() {
+        "AltRight" | "RMenu" => "RAlt".into(),
+        "ControlRight" | "RControl" => "RCtrl".into(),
+        "ShiftRight" => "RShift".into(),
+        "ControlLeft" | "LControl" => "LCtrl".into(),
+        "ShiftLeft" => "LShift".into(),
+        "AltLeft" | "LMenu" => "LAlt".into(),
+        other => other.to_string(),
+    }
+}
+
+pub fn chord_token_matches(stored: &str, pressed: &str) -> bool {
+    let s = canonical_chord_token(stored);
+    let p = canonical_chord_token(pressed);
+    if s == p {
+        return true;
+    }
+    match s.as_str() {
+        "Ctrl" => matches!(p.as_str(), "LCtrl" | "RCtrl"),
+        "Shift" => matches!(p.as_str(), "LShift" | "RShift"),
+        "Alt" => matches!(p.as_str(), "LAlt" | "RAlt"),
+        "Win" => matches!(p.as_str(), "LWin" | "RWin"),
+        _ => false,
+    }
+}
+
+/// Compare stored binding chord with live pressed chord (Ctrl+Alt+C ≈ LCtrl+LAlt+C).
+pub fn chords_equivalent(stored: &str, pressed: &str) -> bool {
+    let stored_parts = chord_parts(stored);
+    let pressed_parts = chord_parts(pressed);
+    if stored_parts.len() != pressed_parts.len() {
+        return false;
+    }
+    let mut used = vec![false; pressed_parts.len()];
+    for sp in &stored_parts {
+        let mut found = false;
+        for (i, pp) in pressed_parts.iter().enumerate() {
+            if used[i] {
+                continue;
+            }
+            if chord_token_matches(sp, pp) {
+                used[i] = true;
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return false;
+        }
+    }
+    true
+}
+
 fn dedupe_chord_parts(parts: &mut Vec<String>) {
     let mut out: Vec<String> = Vec::new();
     for p in parts.drain(..) {
@@ -622,5 +694,13 @@ mod tests {
     #[test]
     fn parse_ralt_only() {
         assert!(is_right_alt_only("RAlt"));
+    }
+
+    #[test]
+    fn chords_equivalent_side_and_generic_modifiers() {
+        assert!(chords_equivalent("Ctrl+Alt+C", "LCtrl+LAlt+C"));
+        assert!(!chords_equivalent("LAlt", "LAlt+Tab"));
+        assert!(is_modifier_only_chord("LAlt"));
+        assert!(!is_modifier_only_chord("Ctrl+Alt+C"));
     }
 }

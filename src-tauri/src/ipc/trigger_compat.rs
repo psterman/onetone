@@ -18,12 +18,7 @@ pub struct TriggerCompatProbeSession {
     classifier: TriggerCompatClassifier,
 }
 
-fn emit_trigger_compat_seen(
-    window: &WebviewWindow,
-    mapping_id: &str,
-    key: &str,
-    is_keyup: bool,
-) {
+fn emit_trigger_compat_seen(window: &WebviewWindow, mapping_id: &str, key: &str, is_keyup: bool) {
     let phase = if is_keyup { "keyup" } else { "keydown" };
     let payload = serde_json::json!({
         "type": "mvp_trigger_compat_seen",
@@ -88,6 +83,7 @@ pub fn start_trigger_compat_probe(state: &AppState, mapping_id: &str) -> bool {
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         let cfg = state.cfg.lock();
         mgr.bind_all(&cfg.bindings());
+        mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
     }
     state.gesture.lock().reset();
     let now = Instant::now();
@@ -136,11 +132,7 @@ pub fn poll_trigger_compat_probe(state: &AppState, window: &WebviewWindow) {
 }
 
 /// Returns true when probe is active and the physical event should not reach normal dispatch.
-pub fn handle_trigger_compat_probe(
-    state: &AppState,
-    window: &WebviewWindow,
-    raw: &str,
-) -> bool {
+pub fn handle_trigger_compat_probe(state: &AppState, window: &WebviewWindow, raw: &str) -> bool {
     let event = parse_physical_event(raw);
     let (maybe_result, mapping_id, bindings, matched) = {
         let mut probe = state.trigger_compat_probe.lock();

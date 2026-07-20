@@ -86,10 +86,7 @@ pub fn file_description(_path: &str) -> Option<String> {
 #[cfg(windows)]
 pub fn icon_png_data_url(path: &str, size: i32) -> Option<String> {
     let png = icon_png_bytes(path, size)?;
-    Some(format!(
-        "data:image/png;base64,{}",
-        base64_encode(&png)
-    ))
+    Some(format!("data:image/png;base64,{}", base64_encode(&png)))
 }
 
 #[cfg(windows)]

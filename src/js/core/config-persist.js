@@ -17,6 +17,117 @@
   /** Survives incomplete FE cameraPrefs during quiet save (prevents wiping calib / bindings). */
   var lastKnownCameraPrefs=null;
   var APP_SCENARIO_BACKUP_KEY='onetone.appScenarios.v1';
+  var deferredMvpInitSideEffects=false;
+
+  function bootSettling(){
+    var s=global.OneToneAppSession;
+    return !!(s&&s.isBootSettling&&s.isBootSettling());
+  }
+
+  function scheduleDeferredMvpInitSideEffects(){
+    deferredMvpInitSideEffects=true;
+  }
+
+  function runMvpInitHeavySideEffects(){
+    const st=state();
+    const toggleBusy=voiceToggleBusy();
+    const syncEditor=hookFn('syncEditorFromSelection');
+    if(syncEditor) syncEditor();
+    try{
+      if(global.OneToneCameraPresenceActions){
+        if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
+          global.OneToneCameraPresenceActions.syncUiFromPrefs();
+        }
+        if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
+          global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
+        }
+      }
+      if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
+        global.OneToneCameraGazeCalibration.loadFromPrefs();
+      }
+    }catch(_){}
+    if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
+    const scheduleBootMic=hookFn('scheduleBootMicReady');
+    const scheduleVoiceBoot=hookFn('scheduleDeferredVoiceEngineBoot');
+    if(scheduleBootMic) scheduleBootMic();
+    if(scheduleVoiceBoot) scheduleVoiceBoot();
+    const vw=voiceWakeApi();
+    if(vw&&typeof vw.initSapiPresetsFromConfig==='function') vw.initSapiPresetsFromConfig();
+    const syncVoice=hookFn('syncVoiceSettingsFromConfig');
+    if(!toggleBusy&&syncVoice){
+      setTimeout(function(){
+        if(voiceToggleBusy()) return;
+        syncVoice();
+      },800);
+    }
+    const syncKeyWake=hookFn('syncKeyWakeSettingsFromConfig');
+    if(syncKeyWake) setTimeout(syncKeyWake,1200);
+    const ensureNotify=hookFn('ensureNotificationPermission');
+    if(ensureNotify) setTimeout(ensureNotify,3000);
+    mvpInitRenderSerial++;
+    const serial=mvpInitRenderSerial;
+    const ui=global.OneToneState.ui;
+    const renderHome=hookFn('renderHome');
+    const renderHomeLive=hookFn('renderHomeLiveZone');
+    const renderUpdate=hookFn('renderUpdateUi');
+    const welcomeOpen=hookFn('welcomeOpen');
+    const habitSetupOpen=global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen
+      &&global.OneToneHabitTriggerSetup.isOpen();
+    requestAnimationFrame(function(){
+      if(serial!==mvpInitRenderSerial) return;
+      if(renderHome&&!habitSetupOpen) renderHome();
+      if(renderHomeLive&&!habitSetupOpen) renderHomeLive();
+      if(renderUpdate&&!habitSetupOpen) renderUpdate();
+      if(welcomeOpen&&welcomeOpen()) return;
+      if(habitSetupOpen) return;
+      if(ui.drawerOpen){
+        const renderEditor=hookFn('renderEditor');
+        const renderListen=hookFn('renderListenRuntime');
+        const mappingListUiActive=hookFn('mappingListUiActive');
+        const renderMappingChrome=hookFn('renderMappingChrome');
+        const renderTrash=hookFn('renderTrashList');
+        const renderSapi=hookFn('renderVoiceSapiStatus');
+        const renderVosk=hookFn('renderVoiceVoskStatus');
+        if(renderEditor) renderEditor();
+        if(renderListen) renderListen();
+        if(mappingListUiActive&&mappingListUiActive()&&renderMappingChrome) renderMappingChrome();
+        if(ui.settingsPanel==='general'&&renderTrash) renderTrash();
+        if(ui.settingsPanel==='voiceWake'&&!toggleBusy){
+          const sapiCfg=st.config.voiceSapi||st.config.voice_sapi||{};
+          const voskCfg=st.config.voiceVosk||st.config.voice_vosk||{};
+          if(renderSapi) renderSapi({
+            enabled:!!sapiCfg.enabled,
+            state:'stopped',
+            phrases:Array.isArray(sapiCfg.phrases)?sapiCfg.phrases:[]
+          });
+          if(renderVosk) renderVosk({
+            enabled:!!voskCfg.enabled,
+            state:'stopped',
+            phrases:Array.isArray(voskCfg.phrases)?voskCfg.phrases:[]
+          });
+        }
+      }
+    });
+    const startPoll=hookFn('startVoiceStatusPoll');
+    if(vw&&typeof vw.isPollStarted==='function'&&!vw.isPollStarted()&&startPoll){
+      var runPoll=function(){
+        if(vw.isPollStarted()) return;
+        if(welcomeOpen&&welcomeOpen()) return;
+        startPoll();
+      };
+      if(bootSettling()&&global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
+        global.OneToneAppSession.whenBootSettled(runPoll);
+      }else{
+        setTimeout(runPoll,welcomeOpen&&welcomeOpen()?4000:1500);
+      }
+    }
+  }
+
+  function flushDeferredMvpInitSideEffects(){
+    if(!deferredMvpInitSideEffects) return;
+    deferredMvpInitSideEffects=false;
+    runMvpInitHeavySideEffects();
+  }
 
   function hookFn(name){
     const h=hooks();
@@ -367,7 +478,35 @@
       out.acousticVoiceCommands=out.acoustic_voice_commands;
     }
     out.acousticVoiceCommands=normalizeAcousticVoiceCommands(out.acousticVoiceCommands,out.id);
+    if(out.agentTemplateId==null&&out.agent_template_id!=null) out.agentTemplateId=out.agent_template_id;
+    if(out.agentProviderId==null&&out.agent_provider_id!=null) out.agentProviderId=out.agent_provider_id;
+    if(!Array.isArray(out.agentBindings)&&Array.isArray(out.agent_bindings)){
+      out.agentBindings=out.agent_bindings;
+    }
+    out.agentTemplateId=String(out.agentTemplateId||'');
+    out.agentProviderId=String(out.agentProviderId||'');
+    out.agentBindings=normalizeAgentBindings(out.agentBindings);
     return out;
+  }
+
+  function normalizeAgentBindings(list){
+    if(!Array.isArray(list)) return [];
+    return list.map(function(b){
+      if(!b||typeof b!=='object') return null;
+      return {
+        slotId:String(b.slotId!=null?b.slotId:(b.slot_id||'')),
+        actionId:String(b.actionId!=null?b.actionId:(b.action_id||'')),
+        triggerType:String(b.triggerType!=null?b.triggerType:(b.trigger_type||'')),
+        triggerBinding:String(b.triggerBinding!=null?b.triggerBinding:(b.trigger_binding||'')),
+        enabled:b.enabled!==false,
+        executionMode:b.executionMode!=null?String(b.executionMode):(b.execution_mode!=null?String(b.execution_mode):null),
+        activationScope:String(b.activationScope!=null?b.activationScope:(b.activation_scope||'foregroundApp'))
+      };
+    }).filter(Boolean);
+  }
+
+  function serializeAgentBindings(list){
+    return normalizeAgentBindings(list);
   }
 
   function normalizeInboundConfig(raw){
@@ -508,7 +647,11 @@
     if(st.config.coachHudEnabled===undefined) st.config.coachHudEnabled=false;
     if(st.config.startMinimizedToTray===undefined) st.config.startMinimizedToTray=false;
     if(!st.config.cameraPrefs||typeof st.config.cameraPrefs!=='object'){
-      st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
+      // Before backend hydrate, do not invent defaults onto config — a later
+      // quiet save would wipe real disk prefs. After hydrate, fill schema gaps.
+      if(configLoadedFromBackend){
+        st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
+      }
     }else{
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
       if(st.config.cameraPrefs.previewEnabled===undefined) st.config.cameraPrefs.previewEnabled=false;
@@ -603,14 +746,14 @@
         var tgt=isApp?String(m.targetKey||'').trim():hooks().editorTargetForMapping(m);
         var order=Number(m.order);
         if(!isFinite(order)) order=i;
-        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id)};
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings)};
       }),
       trash:(st.config.trash||[]).map(function(m){
         hooks().ensureMappingExtras(m);
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
-        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id)};
+        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings)};
       }),
       intervalMs:st.config.intervalMs||1200,
       enterDelayMs:st.config.enterDelayMs||5000,
@@ -802,12 +945,41 @@
     });
   }
 
+  function presenceActionsHaveTrigger(pa){
+    if(!pa||typeof pa!=='object') return false;
+    var tr=pa.triggers;
+    if(!tr||typeof tr!=='object') return false;
+    return !!(tr.away||tr.shake||tr.blink||tr.openPalm||tr.okHand||tr.fist||tr.wave);
+  }
+
+  /** Master off + no bindings + no triggers — typical bootstrap / wipe payload. */
+  function presenceActionsAreBlank(pa){
+    if(!pa||typeof pa!=='object') return true;
+    if(pa.enabled) return false;
+    if(presenceActionsHaveBinding(pa)) return false;
+    if(presenceActionsHaveTrigger(pa)) return false;
+    return true;
+  }
+
   /** True when FE lost the presenceActions shape (not when user set all to none). */
   function presenceActionsLookStripped(pa){
     if(!pa||typeof pa!=='object') return true;
     return ['onAway','onReturn','shakeHead','deliberateBlink','openPalm','okHand','fist','wave'].some(function(k){
       return pa[k]===undefined;
     });
+  }
+
+  function cameraPrefsLookBlank(p){
+    if(!p||typeof p!=='object') return true;
+    if(String(p.selectedDeviceId||'').trim()) return false;
+    if(p.gazeCalibration!=null) return false;
+    if(p.blinkBaseline!=null) return false;
+    if(!presenceActionsAreBlank(p.presenceActions)) return false;
+    var ve=p.videoEnhancement;
+    if(ve&&typeof ve==='object'&&(ve.enabled||ve.beautyEnabled||(ve.look&&ve.look!=='off')||(ve.faceMask&&ve.faceMask!=='off'))){
+      return false;
+    }
+    return true;
   }
 
   function defaultVideoEnhancementPrefs(){
@@ -897,7 +1069,7 @@
     var p=cfg&&cfg.cameraPrefs;
     if(!p||typeof p!=='object') return;
     try{
-      lastKnownCameraPrefs=JSON.parse(JSON.stringify({
+      var candidate={
         enabled:!!(p.presenceActions&&p.presenceActions.enabled),
         selectedDeviceId:String(p.selectedDeviceId||'').trim(),
         previewEnabled:false,
@@ -912,7 +1084,24 @@
           openPalm:'none',okHand:'none',fist:'none',wave:'none'
         },
         videoEnhancement:normalizeVideoEnhancementPrefs(p.videoEnhancement)
-      }));
+      };
+      // Never let a blank snapshot erase richer in-memory lastKnown (bootstrap wipe).
+      if(lastKnownCameraPrefs&&cameraPrefsLookBlank(candidate)&&!cameraPrefsLookBlank(lastKnownCameraPrefs)){
+        if(presenceActionsAreBlank(candidate.presenceActions)&&!presenceActionsAreBlank(lastKnownCameraPrefs.presenceActions)){
+          candidate.presenceActions=lastKnownCameraPrefs.presenceActions;
+          candidate.enabled=!!lastKnownCameraPrefs.enabled;
+        }
+        if(!candidate.selectedDeviceId&&lastKnownCameraPrefs.selectedDeviceId){
+          candidate.selectedDeviceId=lastKnownCameraPrefs.selectedDeviceId;
+        }
+        if(candidate.gazeCalibration==null&&lastKnownCameraPrefs.gazeCalibration!=null){
+          candidate.gazeCalibration=lastKnownCameraPrefs.gazeCalibration;
+        }
+        if(candidate.blinkBaseline==null&&lastKnownCameraPrefs.blinkBaseline!=null){
+          candidate.blinkBaseline=lastKnownCameraPrefs.blinkBaseline;
+        }
+      }
+      lastKnownCameraPrefs=JSON.parse(JSON.stringify(candidate));
     }catch(_){
       lastKnownCameraPrefs=null;
     }
@@ -930,11 +1119,11 @@
     var blinkBase=p.blinkBaseline!=null?p.blinkBaseline:(known.blinkBaseline!=null?known.blinkBaseline:null);
     var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
     var knownPa=known.presenceActions&&typeof known.presenceActions==='object'?known.presenceActions:{};
-    if(presenceActionsLookStripped(pa)&&presenceActionsHaveBinding(knownPa)){
-      pa=Object.assign({},knownPa,{
-        enabled:pa.enabled!==undefined?!!pa.enabled:!!knownPa.enabled,
-        triggers:pa.triggers&&typeof pa.triggers==='object'?pa.triggers:knownPa.triggers
-      });
+    var shouldRestorePresence=(presenceActionsLookStripped(pa)||presenceActionsAreBlank(pa))
+      &&!presenceActionsAreBlank(knownPa)
+      &&!opts.forceBlankPresence;
+    if(shouldRestorePresence){
+      pa=Object.assign({},knownPa);
       // Keep FE in sync so UI / next save stay consistent.
       if(st.config.cameraPrefs) st.config.cameraPrefs.presenceActions=pa;
     }
@@ -1001,7 +1190,15 @@
     if(!invoke) return Promise.resolve(false);
     var payload;
     try{
-      payload=JSON.stringify(buildCameraPrefsPayload(opts));
+      // Skip no-op blank writes that would only risk wiping richer disk state.
+      // (Rust also guards; this avoids needless quiet saves during bootstrap.)
+      var built=buildCameraPrefsPayload(opts);
+      if(cameraPrefsLookBlank(built)&&lastKnownCameraPrefs&&!cameraPrefsLookBlank(lastKnownCameraPrefs)
+        &&!(opts&&opts.forceBlankPresence)){
+        earlyPersistLog('saveCameraPrefsQuiet skipped blank payload vs lastKnown');
+        return Promise.resolve(false);
+      }
+      payload=JSON.stringify(built);
     }catch(err){
       if(typeof console!=='undefined'&&console.error){
         console.error('cmd_save_camera_prefs build failed',err);
@@ -1027,6 +1224,18 @@
     if(pendingCameraPrefsQuiet==null) return;
     var opts=pendingCameraPrefsQuiet;
     pendingCameraPrefsQuiet=null;
+    var st=state();
+    var cur=st&&st.config&&st.config.cameraPrefs;
+    // Deferred pre-hydrate quiet saves often carried invented defaults. After
+    // mvp_init, only flush when current FE prefs look intentional (or force).
+    if(!(opts&&opts.forceBlankPresence)&&cameraPrefsLookBlank(cur)&&lastKnownCameraPrefs&&!cameraPrefsLookBlank(lastKnownCameraPrefs)){
+      earlyPersistLog('flushPendingCameraPrefsQuiet skipped blank vs lastKnown');
+      return;
+    }
+    if(!(opts&&opts.forceBlankPresence)&&cameraPrefsLookBlank(cur)&&(!lastKnownCameraPrefs||cameraPrefsLookBlank(lastKnownCameraPrefs))){
+      earlyPersistLog('flushPendingCameraPrefsQuiet skipped blank bootstrap');
+      return;
+    }
     saveCameraPrefsQuiet(opts);
   }
 
@@ -1185,7 +1394,8 @@
     try{
       const fp=mvpInitFingerprint(msg);
       const now=Date.now();
-      if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<600&&configLoadedFromBackend&&configHasSceneData()) return;
+      const dedupMs=bootSettling()?2500:600;
+      if(fp&&fp===lastMvpInitKey&&now-lastMvpInitAt<dedupMs&&configLoadedFromBackend&&configHasSceneData()) return;
       if(fp){ lastMvpInitKey=fp; lastMvpInitAt=now; }
       const st=state();
       var heldStrategy=null;
@@ -1246,99 +1456,30 @@
         }
       }
       const syncEditor=hookFn('syncEditorFromSelection');
-      if(syncEditor) syncEditor();
+      if(syncEditor&&!bootSettling()) syncEditor();
       configLoadedFromBackend=true;
       pendingMvpInitMsg=null;
       clearTimeout(configBootstrapWatchdog);
       rememberAppScenariosFromConfig(st.config);
       reinjectRememberedAppScenarios(st.config);
       rememberCameraPrefsFromConfig(st.config);
+      // If disk/inbound came back blank but this session still holds richer
+      // lastKnown (quiet-save wipe race), reinject and heal disk.
+      if(lastKnownCameraPrefs&&cameraPrefsLookBlank(st.config.cameraPrefs)&&!cameraPrefsLookBlank(lastKnownCameraPrefs)){
+        try{
+          st.config.cameraPrefs=JSON.parse(JSON.stringify(lastKnownCameraPrefs));
+          earlyPersistLog('applyMvpInit reinjected cameraPrefs from lastKnown');
+          saveCameraPrefsQuiet();
+        }catch(_){}
+      }
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
-      try{
-        if(global.OneToneCameraPresenceActions){
-          if(typeof global.OneToneCameraPresenceActions.syncUiFromPrefs==='function'){
-            global.OneToneCameraPresenceActions.syncUiFromPrefs();
-          }
-          if(typeof global.OneToneCameraPresenceActions.reconcileRuntime==='function'){
-            global.OneToneCameraPresenceActions.reconcileRuntime({reason:'config_applied'});
-          }
-        }
-        if(global.OneToneCameraGazeCalibration&&typeof global.OneToneCameraGazeCalibration.loadFromPrefs==='function'){
-          global.OneToneCameraGazeCalibration.loadFromPrefs();
-        }
-      }catch(_){}
-      if(global.OneToneAppStartMinimized) global.OneToneAppStartMinimized.loadState();
-      const scheduleBootMic=hookFn('scheduleBootMicReady');
-      const scheduleVoiceBoot=hookFn('scheduleDeferredVoiceEngineBoot');
-      if(scheduleBootMic) scheduleBootMic();
-      if(scheduleVoiceBoot) scheduleVoiceBoot();
-      const vw=voiceWakeApi();
-      if(vw&&typeof vw.initSapiPresetsFromConfig==='function') vw.initSapiPresetsFromConfig();
-      const syncVoice=hookFn('syncVoiceSettingsFromConfig');
-      if(!toggleBusy&&syncVoice){
-        setTimeout(function(){
-          if(voiceToggleBusy()) return;
-          syncVoice();
-        },800);
+      if(bootSettling()){
+        scheduleDeferredMvpInitSideEffects();
+        return;
       }
-      const syncKeyWake=hookFn('syncKeyWakeSettingsFromConfig');
-      if(syncKeyWake) setTimeout(syncKeyWake,1200);
-      const ensureNotify=hookFn('ensureNotificationPermission');
-      if(ensureNotify) setTimeout(ensureNotify,3000);
-      mvpInitRenderSerial++;
-      const serial=mvpInitRenderSerial;
-      const ui=global.OneToneState.ui;
-      const renderHome=hookFn('renderHome');
-      const renderHomeLive=hookFn('renderHomeLiveZone');
-      const renderUpdate=hookFn('renderUpdateUi');
-      const welcomeOpen=hookFn('welcomeOpen');
-      const habitSetupOpen=global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.isOpen
-        &&global.OneToneHabitTriggerSetup.isOpen();
-      requestAnimationFrame(function(){
-        if(serial!==mvpInitRenderSerial) return;
-        if(renderHome&&!habitSetupOpen) renderHome();
-        if(renderHomeLive&&!habitSetupOpen) renderHomeLive();
-        if(renderUpdate&&!habitSetupOpen) renderUpdate();
-        if(welcomeOpen&&welcomeOpen()) return;
-        if(habitSetupOpen) return;
-        if(ui.drawerOpen){
-          const renderEditor=hookFn('renderEditor');
-          const renderListen=hookFn('renderListenRuntime');
-          const mappingListUiActive=hookFn('mappingListUiActive');
-          const renderMappingChrome=hookFn('renderMappingChrome');
-          const renderTrash=hookFn('renderTrashList');
-          const renderSapi=hookFn('renderVoiceSapiStatus');
-          const renderVosk=hookFn('renderVoiceVoskStatus');
-          if(renderEditor) renderEditor();
-          if(renderListen) renderListen();
-          if(mappingListUiActive&&mappingListUiActive()&&renderMappingChrome) renderMappingChrome();
-          if(ui.settingsPanel==='general'&&renderTrash) renderTrash();
-          if(ui.settingsPanel==='voiceWake'&&!toggleBusy){
-            const sapiCfg=st.config.voiceSapi||st.config.voice_sapi||{};
-            const voskCfg=st.config.voiceVosk||st.config.voice_vosk||{};
-            if(renderSapi) renderSapi({
-              enabled:!!sapiCfg.enabled,
-              state:'stopped',
-              phrases:Array.isArray(sapiCfg.phrases)?sapiCfg.phrases:[]
-            });
-            if(renderVosk) renderVosk({
-              enabled:!!voskCfg.enabled,
-              state:'stopped',
-              phrases:Array.isArray(voskCfg.phrases)?voskCfg.phrases:[]
-            });
-          }
-        }
-      });
-      const startPoll=hookFn('startVoiceStatusPoll');
-      if(vw&&typeof vw.isPollStarted==='function'&&!vw.isPollStarted()&&startPoll){
-        setTimeout(function(){
-          if(vw.isPollStarted()) return;
-          if(welcomeOpen&&welcomeOpen()) return;
-          startPoll();
-        },welcomeOpen&&welcomeOpen()?4000:3000);
-      }
+      runMvpInitHeavySideEffects();
     }catch(err){
       console.error('applyMvpInit',err);
       pendingMvpInitMsg=msg;
@@ -1384,6 +1525,7 @@
   var pullBackendConfigInFlight=false;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
+    if(bootSettling()&&configLoadedFromBackend&&configHasSceneData()) return Promise.resolve(false);
     clearTimeout(pullBackendConfigTimer);
     return new Promise(function(resolve){
       pullBackendConfigTimer=setTimeout(function(){
@@ -1412,6 +1554,13 @@
 
   var configSyncPollTimer=0;
   function startConfigSyncPoll(ms,maxAttempts){
+    if(bootSettling()){
+      var session=global.OneToneAppSession;
+      if(session&&session.whenBootSettled){
+        session.whenBootSettled(function(){ startConfigSyncPoll(ms,maxAttempts); });
+      }
+      return;
+    }
     maxAttempts=maxAttempts||15;
     clearInterval(configSyncPollTimer);
     var left=maxAttempts;
@@ -1495,7 +1644,6 @@
       });
     }
     setTimeout(unlockConfigUi,2000);
-    startConfigSyncPoll(1500,12);
   }
 
   function installToJsReady(){
@@ -1525,6 +1673,7 @@
     applyMvpInit:applyMvpInit,
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,
+    flushDeferredMvpInitSideEffects:flushDeferredMvpInitSideEffects,
     pullBackendConfig:pullBackendConfig,
     startConfigSyncPoll:startConfigSyncPoll,
     requestBackendConfig:requestBackendConfig,

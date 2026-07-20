@@ -41,12 +41,7 @@ pub fn start_voice_kws_native(
         })
         .map_err(|e| format!("spawn kws worker failed: {e}"))?;
 
-    let handle = VoiceKwsHandle::new(
-        stop,
-        event_rx,
-        event_tx,
-        Some(thread),
-    );
+    let handle = VoiceKwsHandle::new(stop, event_rx, event_tx, Some(thread));
     Ok(handle)
 }
 

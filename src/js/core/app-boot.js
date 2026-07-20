@@ -5,6 +5,8 @@
     var hooks=h();
     var state=global.OneToneState.state;
     var t=hooks.t;
+    var session=global.OneToneAppSession;
+    if(session&&session.markBootStarted) session.markBootStarted(8000);
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
     hooks.markBoot('script init');
     if(window.OneToneLocaleDefaults) window.OneToneLocaleDefaults.applyUiLocaleBootstrap();
@@ -44,7 +46,6 @@
       if(hooks.welcomeOpen()) hooks.openWelcome();
       if(hooks.welcomeOpen()) hooks.markBoot('welcome opened');
       hooks.scheduleLangBootstrap();
-      hooks.setUiBootstrapping(false);
       hooks.markBoot('first raf complete');
     });
     hooks.markBoot('setRecording begin');
@@ -52,20 +53,24 @@
     hooks.markBoot('setRecording complete');
     hooks.pushLog(t('waitLog'));
     hooks.deferProcessUsagePoll();
-    setTimeout(function(){
-      if(!hooks.welcomeOpen()&&!hooks.onboardIsOpen()) hooks.maybeStartProcessUsagePoll();
-    },4000);
+    if(session&&session.whenBootSettled){
+      session.whenBootSettled(function(){
+        hooks.markBoot('boot settled');
+        if(!hooks.welcomeOpen()&&!hooks.onboardIsOpen()) hooks.maybeStartProcessUsagePoll();
+        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.startConfigSyncPoll==='function'){
+          global.OneToneConfigPersist.startConfigSyncPoll(3000,8);
+        }
+        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+          global.OneToneConfigPersist.flushDeferredMvpInitSideEffects();
+        }
+        if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
+          global.OneToneVoiceEngineReadiness.checkAfterBoot();
+        }
+      });
+    }
     setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);
     setTimeout(function(){ hooks.markBoot('fallbackConfigLoaded begin'); hooks.fallbackConfigLoaded(); }, 3500);
-    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.startConfigSyncPoll==='function'){
-      global.OneToneConfigPersist.startConfigSyncPoll(2000,15);
-    }
     installRuntimeRefreshOnFocus();
-    setTimeout(function(){
-      if(global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.checkAfterBoot){
-        global.OneToneVoiceEngineReadiness.checkAfterBoot();
-      }
-    },4500);
   }
 
   var lastRuntimeRefreshAt=0;
@@ -74,6 +79,7 @@
       var now=Date.now();
       if(now-lastRuntimeRefreshAt<800) return;
       lastRuntimeRefreshAt=now;
+      if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()) return;
       if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
       if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
         global.OneToneConfigPersist.pullBackendConfig();

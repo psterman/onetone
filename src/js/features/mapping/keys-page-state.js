@@ -75,6 +75,9 @@
     if(changed&&!(opts&&opts.skipScroll)){
       scrollActiveStepIntoView(opts);
     }
+    if(changed&&global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountKeys){
+      try{ global.OneToneAgentCapabilityUi.mountKeys(); }catch(_){}
+    }
   }
 
   function init(){

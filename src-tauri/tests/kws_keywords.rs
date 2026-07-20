@@ -15,8 +15,8 @@ fn model_dir() -> PathBuf {
 fn vocab_and_golden() -> (HashSet<String>, HashMap<String, Vec<String>>) {
     let dir = model_dir();
     let vocab = load_kws_token_vocab(&dir.join("tokens.txt")).expect("vocab");
-    let golden_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("resources/kws/onetone-keywords.txt");
+    let golden_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/kws/onetone-keywords.txt");
     let golden = load_golden_keyword_map(&golden_path).expect("golden");
     (vocab, golden)
 }
@@ -52,7 +52,11 @@ fn pure_english_phrase_skipped() {
 #[test]
 fn build_runtime_file_writes_keywords() {
     let dir = model_dir();
-    let phrases = vec!["开始输入".into(), "打开 Cursor".into(), "Open Cursor".into()];
+    let phrases = vec![
+        "开始输入".into(),
+        "打开 Cursor".into(),
+        "Open Cursor".into(),
+    ];
     let result = build_runtime_keywords_file(&dir, &phrases).expect("build");
     assert!(result.encoded.contains(&"开始输入".to_string()));
     assert!(result.skipped.contains(&"Open Cursor".to_string()));

@@ -137,6 +137,11 @@
   }
 
   function startTargetRecordForKeysPanel(){
+    var cap=global.OneToneAgentCapabilityUi;
+    if(cap&&cap.hasSelectedSlot&&cap.hasSelectedSlot()&&cap.recordSelectedSlot){
+      cap.recordSelectedSlot();
+      return;
+    }
     var rec=global.OneToneMappingRecording;
     if(rec&&rec.isPending&&rec.isPending()) return;
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close){
@@ -163,6 +168,12 @@
     }
     if(step==='target'){
       setDetailStep('target',{skipScroll:true});
+      var cap=global.OneToneAgentCapabilityUi;
+      if(cap&&cap.hasSelectedSlot&&cap.hasSelectedSlot()&&cap.recordSelectedSlot){
+        cap.recordSelectedSlot();
+        highlightRow('target');
+        return;
+      }
       openTargetKeyPicker();
       highlightRow('target');
     }
@@ -180,6 +191,7 @@
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
       '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',
       '.keys-workflow-keycap-zone','.keys-workflow-footer-zone','.keys-trigger-modes-block','#keysTargetKeycapHint',
+      '.codex-cap-item','.codex-cap-strip','.codex-cap-block','.codex-pack-host',
       'input','button','select','textarea','label',
       '.keys-trigger-mode-seg','.keys-trigger-conflict-btn','.keys-finish-delay-input'
     ].join(','));

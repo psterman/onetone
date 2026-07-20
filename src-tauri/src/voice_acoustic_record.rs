@@ -12,9 +12,7 @@ use crossbeam_channel::bounded;
 use parking_lot::Mutex;
 use std::thread::JoinHandle;
 
-use crate::voice_acoustic_command::{
-    utterance_capture_complete, MANUAL_MAX_MS, RECORD_TIMEOUT_MS,
-};
+use crate::voice_acoustic_command::{utterance_capture_complete, MANUAL_MAX_MS, RECORD_TIMEOUT_MS};
 
 pub const TARGET_SAMPLE_RATE: u32 = 16_000;
 const LEVEL_EMIT_MIN_MS: u64 = 80;
@@ -120,10 +118,7 @@ pub type LevelEmitFn = Arc<dyn Fn(CaptureLevelTick) + Send + Sync + 'static>;
 
 impl ManualCaptureSession {
     /// Open mic, `play()`, then return. Level ticks fire on a background thread.
-    pub fn start(
-        manual_max_ms: u32,
-        on_level: Option<LevelEmitFn>,
-    ) -> Result<Self, CaptureError> {
+    pub fn start(manual_max_ms: u32, on_level: Option<LevelEmitFn>) -> Result<Self, CaptureError> {
         let manual_max_ms = manual_max_ms.clamp(500, MANUAL_MAX_MS.max(500));
         let stop = Arc::new(AtomicBool::new(false));
         let pcm = Arc::new(Mutex::new(Vec::new()));
@@ -245,10 +240,7 @@ fn run_manual_capture_loop(
     ready_tx: crossbeam_channel::Sender<Result<(), CaptureError>>,
     stream_ready: Arc<AtomicBool>,
 ) -> Result<(), CaptureError> {
-    let mut last_err = CaptureError::new(
-        CaptureErrorKind::BuildStream,
-        "microphone open failed",
-    );
+    let mut last_err = CaptureError::new(CaptureErrorKind::BuildStream, "microphone open failed");
 
     let opened = 'open: {
         for attempt in 1..=OPEN_RETRY_COUNT {
@@ -376,9 +368,9 @@ struct ManualStreamBundle {
 
 fn open_manual_input_stream() -> Result<ManualStreamBundle, CaptureError> {
     let host = cpal::default_host();
-    let device = host
-        .default_input_device()
-        .ok_or_else(|| CaptureError::new(CaptureErrorKind::NoDefaultInput, "no default input device"))?;
+    let device = host.default_input_device().ok_or_else(|| {
+        CaptureError::new(CaptureErrorKind::NoDefaultInput, "no default input device")
+    })?;
     let (stream_config, sample_format, sample_rate) = pick_input_config(&device)?;
     let channels = stream_config.channels as usize;
     let (tx, rx) = bounded::<Vec<f32>>(256);
@@ -432,7 +424,10 @@ fn open_manual_input_stream() -> Result<ManualStreamBundle, CaptureError> {
     })?;
 
     stream.play().map_err(|e| {
-        CaptureError::new(CaptureErrorKind::PlayStream, format!("play input stream: {e}"))
+        CaptureError::new(
+            CaptureErrorKind::PlayStream,
+            format!("play input stream: {e}"),
+        )
     })?;
 
     Ok(ManualStreamBundle {
@@ -450,9 +445,9 @@ pub fn capture_pcm_mono_16k(
 ) -> Result<Vec<f32>, CaptureError> {
     let timeout_ms = timeout_ms.min(RECORD_TIMEOUT_MS).max(500);
     let host = cpal::default_host();
-    let device = host
-        .default_input_device()
-        .ok_or_else(|| CaptureError::new(CaptureErrorKind::NoDefaultInput, "no default input device"))?;
+    let device = host.default_input_device().ok_or_else(|| {
+        CaptureError::new(CaptureErrorKind::NoDefaultInput, "no default input device")
+    })?;
     let (stream_config, sample_format, sample_rate) = pick_input_config(&device)?;
     let channels = stream_config.channels as usize;
     let (tx, rx) = bounded::<Vec<f32>>(256);
@@ -498,11 +493,19 @@ pub fn capture_pcm_mono_16k(
             ));
         }
     }
-    .map_err(|e| CaptureError::new(CaptureErrorKind::BuildStream, format!("build input stream: {e}")))?;
+    .map_err(|e| {
+        CaptureError::new(
+            CaptureErrorKind::BuildStream,
+            format!("build input stream: {e}"),
+        )
+    })?;
 
-    stream
-        .play()
-        .map_err(|e| CaptureError::new(CaptureErrorKind::PlayStream, format!("play input stream: {e}")))?;
+    stream.play().map_err(|e| {
+        CaptureError::new(
+            CaptureErrorKind::PlayStream,
+            format!("play input stream: {e}"),
+        )
+    })?;
     drop(tx);
 
     let started = Instant::now();
