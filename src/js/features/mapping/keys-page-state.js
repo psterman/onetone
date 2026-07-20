@@ -78,6 +78,12 @@
     if(changed&&global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.mountKeys){
       try{ global.OneToneAgentCapabilityUi.mountKeys(); }catch(_){}
     }
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.applyCodexStepChrome&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()){
+      var core=global.OneToneMappingCore;
+      var m=core&&core.selected?core.selected():null;
+      try{ capUi.applyCodexStepChrome(step,m); }catch(_){}
+    }
   }
 
   function init(){

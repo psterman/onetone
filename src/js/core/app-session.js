@@ -57,6 +57,32 @@
     return String(cfg.voiceListeningStrategy||cfg.voice_listening_strategy||'auto').trim()||'auto';
   }
 
+  function runtimeEngineBootHealthy(snapshot, engine){
+    if(!snapshot||!engine) return false;
+    var key=engine==='vosk'?'voiceVosk':(engine==='kws'?'voiceKws':(engine==='sapi'?'voiceSapi':''));
+    if(!key) return false;
+    var res=snapshot[key]||{};
+    var st=String(res.state||'').trim().toLowerCase();
+    return st==='starting'||st==='listening'||st==='cooldown'||st==='triggered';
+  }
+
+  function runtimeAlreadyMatchesStrategy(snapshot, strategy){
+    if(!snapshot) return false;
+    var sup=snapshot.voiceSupervisor||snapshot.supervisor||{};
+    var desired=String(sup.desiredEngine||snapshot.engine||'').trim().toLowerCase();
+    if(strategy==='off') return desired==='none';
+    if(strategy==='enhanced') return desired==='vosk'&&runtimeEngineBootHealthy(snapshot,'vosk');
+    if(strategy==='resourceSaver'){
+      if(desired==='none') return true;
+      return desired==='kws'&&runtimeEngineBootHealthy(snapshot,'kws');
+    }
+    if(strategy==='auto'){
+      if(desired==='kws'&&runtimeEngineBootHealthy(snapshot,'kws')) return true;
+      if(desired==='vosk'&&runtimeEngineBootHealthy(snapshot,'vosk')) return true;
+    }
+    return false;
+  }
+
   function activateVoiceBoot(cfg,which){
     var strategy=currentListeningStrategy(cfg);
     if(strategy==='off') return Promise.resolve(null);
@@ -136,18 +162,26 @@
       }
 
       if(strategy!=='advanced'){
-        global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).then(function(bundle){
-          if(bundle){
-            var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
-            var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
-            var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
-            if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
-            if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
-            if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
-            hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
+        global.OneToneIpc.invoke('cmd_request_runtime',{}).catch(function(){ return null; }).then(function(snapshot){
+          if(runtimeAlreadyMatchesStrategy(snapshot,strategy)){
+            markVoiceEngineBootHandled();
+            hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+            return null;
           }
-          markVoiceEngineBootHandled();
-          hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+          return global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).then(function(bundle){
+            if(bundle){
+              var voskRes=(bundle&&bundle.voiceVosk)||{enabled:false,state:'stopped'};
+              var sapiRes=(bundle&&bundle.voiceSapi)||{enabled:false,state:'stopped'};
+              var kwsRes=(bundle&&bundle.voiceKws)||{enabled:false,state:'stopped'};
+              if(hooks().renderVoiceVoskStatus) hooks().renderVoiceVoskStatus(voskRes);
+              if(hooks().renderVoiceSapiStatus) hooks().renderVoiceSapiStatus(sapiRes);
+              if(hooks().renderVoiceKwsStatus) hooks().renderVoiceKwsStatus(kwsRes);
+              hooks().syncHomeFromVoiceSettings(voskRes,sapiRes,null,{homeOnly:true,lightOnly:true},kwsRes);
+            }
+            markVoiceEngineBootHandled();
+            hooks().renderHomeLiveZone&&hooks().renderHomeLiveZone();
+            return null;
+          });
         }).catch(function(err){
           console.error('voice boot strategy',err);
           markVoiceEngineBootHandled();

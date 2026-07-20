@@ -211,6 +211,31 @@
     }
     return;
     }
+    if(Rec().mode()==='agentBinding'){
+    const code=String(e.code||'');
+    const key=String(e.key||'');
+    e.preventDefault();
+    e.stopPropagation();
+    const mods={ctrl:e.ctrlKey,shift:e.shiftKey,alt:e.altKey,meta:e.metaKey};
+    if(isModifierCode(code)){
+    cap.pendingModifier=code;
+    cap.mods=mods;
+    noteModifierSide(code);
+    const standalone=normalizeStandaloneModifier(code);
+    var hint=t('agentCapRecording','按下快捷键…');
+    if($('targetState')) $('targetState').textContent=hint+(standalone||'');
+    hooks().pushLog(t('logWaitMain'));
+    if(standalone) Rec().updatePreview('agentBinding',standalone);
+    return;
+    }
+    const main=normalizeKeyFromCode(code, key);
+    const combo=normalizeTargetCombination(mods, main, cap.modSide);
+    if(combo){
+    if($('targetState')) $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(combo);
+    Rec().finishAgentBinding(combo);
+    }
+    return;
+    }
     if(Rec().mode()==='target'){
     e.preventDefault();
     e.stopPropagation();
@@ -323,7 +348,7 @@
   }
 
   function handleKeyUp(e){
-    if(Rec().mode()!=='target'&&Rec().mode()!=='schemeSwitch'&&Rec().mode()!=='mappingSwitch'&&Rec().mode()!=='trigger') return;
+    if(Rec().mode()!=='target'&&Rec().mode()!=='schemeSwitch'&&Rec().mode()!=='mappingSwitch'&&Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return;
     const code=String(e.code||'');
     if(!isModifierCode(code)) return;
     if(cap.pendingModifier===code){
@@ -336,6 +361,12 @@
     e.stopPropagation();
     $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
     Rec().finishFrontendTrigger(modifierName);
+    }
+    else if(Rec().mode()==='agentBinding'){
+    e.preventDefault();
+    e.stopPropagation();
+    if($('targetState')) $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
+    Rec().finishAgentBinding(modifierName);
     }
     else{
     Rec().updatePreview('target',sanitizeTargetCombo(modifierName));
@@ -370,6 +401,11 @@
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
     $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(preview);
+    }else if(Rec().mode()==='agentBinding'){
+    if(rejectLeftMouseRecording('trigger', seen, seen, null)) return true;
+    const previewAb=Rec().previewCaptureKey('agentBinding',seen);
+    Rec().updatePreview('agentBinding',previewAb);
+    $('targetState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(previewAb);
     }else if(Rec().mode()==='nativeRestore'){
     $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(seen);
     }
@@ -377,6 +413,9 @@
     if(Rec().mode()==='trigger' && Rec().isHardwareCaptureToken(seen)){
     hooks().armTriggerPeripheralGuard(450);
     Rec().finishDetectedHardwareTrigger(seen, msg.device||'');
+    }
+    if(Rec().mode()==='agentBinding' && Rec().isHardwareCaptureToken(seen)){
+    Rec().finishAgentBinding(seen);
     }
     return true;
     }
@@ -393,6 +432,10 @@
     Rec().updatePreview('target',preview);
     Rec().notifyOnboardingPreview('target',preview);
     $('targetState').textContent=t('comboHint');
+    }else if(Rec().mode()==='agentBinding'){
+    const previewPending=Rec().previewCaptureKey('agentBinding',seen);
+    Rec().updatePreview('agentBinding',previewPending);
+    if($('targetState')) $('targetState').textContent=t('comboHint')+hooks().friendlyKeyName(previewPending);
     }
     return true;
     }
@@ -400,7 +443,7 @@
     const key=msg.key||'AutoTrigger';
     const captureMode=msg.mode||'trigger';
     if(captureMode==='agentBinding'){
-    if(Rec().mode()==='trigger'){
+    if(Rec().mode()==='agentBinding'||Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
     Rec().finishAgentBinding(key, msg.sourceKey||'', msg.source||null);
     }

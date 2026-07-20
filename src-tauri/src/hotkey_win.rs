@@ -250,6 +250,12 @@ fn resolve_active_binding(name: &str, device: Option<&str>) -> Option<String> {
     resolve_binding_in_list(&bindings, name, device)
 }
 
+/// Multi-key chords use RegisterHotKey (WM_HOTKEY). The low-level hook must not swallow
+/// only the terminal key — Ctrl/Shift would still reach the OS and switch IME layouts.
+fn hook_handles_binding(binding: &str) -> bool {
+    !binding.contains('+')
+}
+
 const RECORD_KEYS: &[&str] = &[
     "Volume_Up",
     "Volume_Down",
@@ -711,19 +717,21 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
         return true;
     }
 
-    if resolve_active_binding(&ev.key, ev.device.as_deref()).is_some() {
-        if let Some(sender) = active_sender().lock().unwrap().as_ref() {
-            sender.send(wire).ok();
+    if let Some(binding) = resolve_active_binding(&ev.key, ev.device.as_deref()) {
+        if hook_handles_binding(&binding) {
+            if let Some(sender) = active_sender().lock().unwrap().as_ref() {
+                sender.send(wire).ok();
+            }
+            emit_input_obs(
+                onetone_logic::runtime_event::kind::INPUT_CAPTURED,
+                &ev.key,
+                ev.device.as_deref(),
+                report_hex,
+                "binding",
+                source,
+            );
+            return true;
         }
-        emit_input_obs(
-            onetone_logic::runtime_event::kind::INPUT_CAPTURED,
-            &ev.key,
-            ev.device.as_deref(),
-            report_hex,
-            "binding",
-            source,
-        );
-        return true;
     }
 
     if is_extension_key(&ev.key) {
@@ -870,9 +878,6 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
 }
 
 unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if send_guard::is_active() {
-        return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
-    }
     let recording = is_recording();
     let is_key_down = wparam == WM_KEYDOWN as usize || wparam == WM_SYSKEYDOWN as usize;
     let is_key_up = wparam == WM_KEYUP as usize || wparam == WM_SYSKEYUP as usize;
@@ -882,6 +887,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
         }
         if let Some(name) = vk_to_name(kb.vkCode as u32) {
+            if send_guard::blocks_key(&name) {
+                return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+            }
             if recording {
                 if is_key_down {
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
@@ -908,6 +916,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
             }
             if let Some(dispatch) = resolve_active_binding(&name, None) {
+                if !hook_handles_binding(&dispatch) {
+                    return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
+                }
                 let payload = if is_key_down {
                     dispatch.clone()
                 } else if is_key_up {
@@ -993,15 +1004,14 @@ unsafe extern "system" fn wnd_proc(
     }
 
     if msg == WM_HOTKEY {
-        if send_guard::is_active() {
-            return 1;
-        }
         let id = wparam as u32;
         let ctx_ptr = winuser::GetWindowLongPtrW(hwnd, winuser::GWLP_USERDATA) as *mut WndCtx;
         if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
             if !ctx_ptr.is_null() {
                 if let Some(name) = (*ctx_ptr).names.get(&id) {
-                    sender.send(name.clone()).ok();
+                    if !send_guard::blocks_key(name) {
+                        sender.send(name.clone()).ok();
+                    }
                 }
             }
             return 1;
@@ -1019,7 +1029,9 @@ unsafe extern "system" fn wnd_proc(
                 return 1;
             }
             if let Some(name) = (*ctx_ptr).names.get(&id) {
-                (*ctx_ptr).tx.send(name.clone()).ok();
+                if !send_guard::blocks_key(name) {
+                    (*ctx_ptr).tx.send(name.clone()).ok();
+                }
             }
         }
         return 1;

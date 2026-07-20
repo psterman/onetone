@@ -131,6 +131,13 @@
   }
 
   function openTargetKeyPicker(){
+    var cap=global.OneToneAgentCapabilityUi;
+    if(cap&&cap.isCodexKeysEditing&&cap.isCodexKeysEditing()){
+      setDetailStep('target',{skipScroll:true});
+      if(cap.recordSelectedSlot) cap.recordSelectedSlot();
+      highlightRow('target');
+      return;
+    }
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.open){
       global.OneToneTargetKeyPicker.open();
     }
@@ -138,8 +145,8 @@
 
   function startTargetRecordForKeysPanel(){
     var cap=global.OneToneAgentCapabilityUi;
-    if(cap&&cap.hasSelectedSlot&&cap.hasSelectedSlot()&&cap.recordSelectedSlot){
-      cap.recordSelectedSlot();
+    if(cap&&cap.activeCodexMapping&&cap.activeCodexMapping()){
+      if(cap.recordSelectedSlot) cap.recordSelectedSlot();
       return;
     }
     var rec=global.OneToneMappingRecording;
@@ -169,8 +176,8 @@
     if(step==='target'){
       setDetailStep('target',{skipScroll:true});
       var cap=global.OneToneAgentCapabilityUi;
-      if(cap&&cap.hasSelectedSlot&&cap.hasSelectedSlot()&&cap.recordSelectedSlot){
-        cap.recordSelectedSlot();
+      if(cap&&cap.activeCodexMapping&&cap.activeCodexMapping()){
+        if(cap.recordSelectedSlot) cap.recordSelectedSlot();
         highlightRow('target');
         return;
       }

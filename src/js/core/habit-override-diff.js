@@ -302,6 +302,40 @@
     return n;
   }
 
+  function activeAgentBindings(m, triggerType){
+    var list=Array.isArray(m&&m.agentBindings)?m.agentBindings:[];
+    var out=[];
+    for(var i=0;i<list.length;i++){
+      var b=list[i];
+      if(!b) continue;
+      if(triggerType&&String(b.triggerType||'').trim()!==triggerType) continue;
+      if(b.enabled===false) continue;
+      var binding=String(b.triggerBinding||'').trim();
+      if(!binding) continue;
+      out.push({
+        slotId:String(b.slotId||'').trim(),
+        triggerType:String(b.triggerType||'').trim(),
+        triggerBinding:binding
+      });
+    }
+    return out;
+  }
+
+  function countAgentBindingOverrides(m, triggerType){
+    return activeAgentBindings(m,triggerType).length;
+  }
+
+  function buildAgentBindingItems(m, triggerType){
+    var list=activeAgentBindings(m,triggerType);
+    return list.map(function(b){
+      return {
+        field:'agentBinding:'+b.triggerType+':'+(b.slotId||''),
+        label:b.slotId||b.triggerType,
+        value:b.triggerBinding
+      };
+    });
+  }
+
   function buildCameraOverrideItems(m,labels){
     labels=labels||{};
     var ov=m&&m.cameraOverride&&typeof m.cameraOverride==='object'?m.cameraOverride:null;
@@ -410,6 +444,16 @@
     var acousticCommandCount=m?countAcousticCommands(m):0;
     var keysOverrides=m?buildKeyOverrideItems(m,keyBaseline,labels):[];
     var voiceOverrides=m?buildVoiceOverrideItems(ov,voiceBaseline,labels):[];
+    var agentKeyOverrideCount=m?countAgentBindingOverrides(m,'key'):0;
+    var agentVoiceOverrideCount=m?countAgentBindingOverrides(m,'voice'):0;
+    if(agentKeyOverrideCount>0){
+      keysOverrideCount+=agentKeyOverrideCount;
+      keysOverrides=keysOverrides.concat(buildAgentBindingItems(m,'key'));
+    }
+    if(agentVoiceOverrideCount>0){
+      voiceOverrideCount+=agentVoiceOverrideCount;
+      voiceOverrides=voiceOverrides.concat(buildAgentBindingItems(m,'voice'));
+    }
     var cameraOverrides=m?buildCameraOverrideItems(m,labels):[];
     var stateOverrides=m?buildStateOverrideItems(m,labels):[];
     var savedChangeCount=keysOverrideCount+voiceOverrideCount+cameraOverrideCount+stateOverrides.length+acousticCommandCount;

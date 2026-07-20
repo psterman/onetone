@@ -134,6 +134,7 @@ pub fn execute_agent_action(
                 window,
                 &action_id,
                 slot_id.as_deref(),
+                req.mapping_id.as_deref(),
                 resolved_mode,
                 resolved_scope,
             );

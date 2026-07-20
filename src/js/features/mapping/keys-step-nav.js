@@ -50,7 +50,9 @@
 
   function resolveStepHints(m){
     var mode=recordingMode();
-    var recHint=mode==='trigger'?t('keysFlowNodeRecordingTrigger'):mode==='target'?t('keysFlowNodeRecordingTarget'):'';
+    var recHint=mode==='trigger'?t('keysFlowNodeRecordingTrigger')
+      :mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中')
+      :mode==='target'?t('keysFlowNodeRecordingTarget'):'';
     var trig='';
     var tgt='';
     var fin='';
@@ -64,10 +66,13 @@
       fin=finTxt&&finTxt.text?finTxt.text:'';
     }
     if(!fin&&m&&core()&&core().isSaved&&core().isSaved(m)) fin=t('habitKeyMapStatusEnabled');
+    var capUi=global.OneToneAgentCapabilityUi;
+    var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
     return {
       trigger:recHint&&mode==='trigger'?recHint:(trig||t('keysStatusUnset')),
-      target:recHint&&mode==='target'?recHint:(tgt||t('keysStatusUnset')),
-      finish:fin||t('keysStatusUnset')
+      target:recHint&&(mode==='target'||mode==='agentBinding')?recHint:(tgt||t('keysStatusUnset')),
+      finish:fin||t('keysStatusUnset'),
+      codexCtx:!!codexCtx
     };
   }
 
@@ -81,7 +86,7 @@
       var on=page===step;
       btn.classList.toggle('is-active',on);
       btn.setAttribute('aria-pressed',on?'true':'false');
-      btn.classList.toggle('is-recording',mode===page);
+      btn.classList.toggle('is-recording',mode===page||(page==='target'&&mode==='agentBinding'));
     });
   }
 

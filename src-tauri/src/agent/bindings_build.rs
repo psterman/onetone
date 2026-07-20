@@ -4,16 +4,16 @@ use crate::agent::actions::action_by_id;
 use crate::agent::templates::{codex_micro_13_template, is_essential_slot};
 use crate::config::AgentBinding;
 
-/// OneTone recommended physical chords (not Codex official keymap).
+/// Codex App official shortcuts where published; slash slots use OneTone overlay chords.
 fn default_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
-        "summonCodex" => "Ctrl+Alt+C",
-        "pushToTalk" => "Ctrl+Alt+Space",
-        "stopOrSend" => "Ctrl+Alt+Enter",
-        "cancel" => "Ctrl+Alt+Backspace",
-        "newThread" => "Ctrl+Alt+N",
-        "quickChat" => "Ctrl+Alt+Shift+N",
-        "commandPalette" => "Ctrl+Alt+K",
+        "summonCodex" => "Ctrl+Shift+P",
+        "pushToTalk" => "Ctrl+Shift+D",
+        "stopOrSend" => "Enter",
+        "cancel" => "Escape",
+        "newThread" => "Ctrl+N",
+        "quickChat" => "Ctrl+Alt+N",
+        "commandPalette" => "Ctrl+K",
         "status" => "Ctrl+Alt+S",
         "plan" => "Ctrl+Alt+P",
         "review" => "Ctrl+Alt+R",
@@ -89,7 +89,12 @@ mod tests {
         assert!(rows.iter().any(|b| {
             b.trigger_type == "key"
                 && b.slot_id == "summonCodex"
-                && b.trigger_binding == "Ctrl+Alt+C"
+                && b.trigger_binding == "Ctrl+Shift+P"
+        }));
+        assert!(rows.iter().any(|b| {
+            b.trigger_type == "key"
+                && b.slot_id == "pushToTalk"
+                && b.trigger_binding == "Ctrl+Shift+D"
         }));
         assert!(rows
             .iter()

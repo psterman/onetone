@@ -3,7 +3,7 @@
  * Keys: mount inside 识别 / 收尾 columns (not trigger).
  * Target slots: summon / talk / palette / status / plan
  * Finish slots: cancel / stopOrSend
- * Auto-seed writes OneTone recommended key chords — click loads/selects (no recording).
+ * Auto-seed writes Codex official key chords — click loads/selects (no recording).
  * Long-press / right-click / Alt+click keeps the original physical-key recording path.
  */
 (function (global) {
@@ -80,16 +80,11 @@
 
   /** Codex mapping for keys hub (selected scheme) or scenario return id. */
   function activeCodexMapping() {
-    var m = codexScenarioMapping();
-    if (m) return m;
-    try {
-      var core = global.OneToneMappingCore;
-      var T = global.OneToneAgentScenarioTemplate;
-      if (!core || !core.selected || !T || !T.isCodexScenario) return null;
-      var sel = core.selected();
-      if (sel && T.isCodexScenario(sel)) return sel;
-    } catch (_) {}
-    return null;
+    // Codex capability UI is only valid for app-scenario context.
+    // If we fall back to "currently selected mapping" here, global pages
+    // may accidentally show Codex app-scenario overrides and edits would
+    // be saved into the wrong mapping.
+    return codexScenarioMapping();
   }
 
   /**
@@ -97,6 +92,47 @@
    * never IME targetKey (RAlt etc.).
    * @returns {string} raw chord or ''
    */
+  function ensureDefaultSelection(m) {
+    if (!m || selectedSlotId) return;
+    selectedSlotId = 'pushToTalk';
+  }
+
+  /** Hide IME / global voice chrome; show Codex-specific labels per step. */
+  function applyCodexStepChrome(step, m) {
+    var imeBlock = document.getElementById('habitFlowImeBlock');
+    var voiceSummary = document.getElementById('keysCaptureVoiceSummary');
+    var trigLbl = document.getElementById('habitFlowStepTriggerLbl');
+    var tgtLbl = document.getElementById('habitFlowStepTargetLbl');
+    var keycapHint = document.getElementById('keysKeycapHint');
+    var targetKeycapHint = document.getElementById('keysTargetKeycapHint');
+    var onCodex = !!(m && global.OneToneAgentScenarioTemplate
+      && global.OneToneAgentScenarioTemplate.isCodexScenario
+      && global.OneToneAgentScenarioTemplate.isCodexScenario(m));
+    if (!onCodex) {
+      if (imeBlock) imeBlock.hidden = false;
+      if (voiceSummary) voiceSummary.classList.remove('sr-only');
+      return;
+    }
+    if (imeBlock) imeBlock.hidden = step === 'target' || step === 'finish';
+    if (voiceSummary) voiceSummary.classList.add('sr-only');
+    if (trigLbl) trigLbl.textContent = t('keysFlowNodeTriggerTitle', '触发');
+    if (tgtLbl) tgtLbl.textContent = t('codexCapTargetTitle', '能力快捷键');
+    if (step === 'trigger') {
+      if (keycapHint) keycapHint.textContent = t('codexStepTriggerKeycapHint', '点击录制物理触发键');
+      if (targetKeycapHint) targetKeycapHint.textContent = t('keysTargetKeycapHint', '点击录制语音快捷键');
+    } else if (step === 'target') {
+      ensureDefaultSelection(m);
+      if (keycapHint) keycapHint.textContent = t('keysKeycapHint', '点击修改快捷键');
+      if (targetKeycapHint) targetKeycapHint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
+    }
+  }
+
+  function pushToTalkDisplay(m) {
+    m = m || activeCodexMapping();
+    if (!m) return '';
+    return friendlyChord(chordForSlot(m, 'pushToTalk'));
+  }
+
   function flowTargetDisplayKey(m) {
     var cm = m;
     var T = global.OneToneAgentScenarioTemplate;
@@ -105,6 +141,8 @@
     }
     if (!cm) return '';
     if (selectedSlotId) return chordForSlot(cm, selectedSlotId);
+    var pt = chordForSlot(cm, 'pushToTalk');
+    if (pt) return pt;
     for (var i = 0; i < TARGET_SLOT_IDS.length; i++) {
       var chord = chordForSlot(cm, TARGET_SLOT_IDS[i]);
       if (chord) return chord;
@@ -270,14 +308,9 @@
     if (host) host.classList.add('is-codex-cap-edit');
     if (hint) {
       if (name) {
-        hint.textContent = t('codexCapKeycapHint', '能力「')
-          + name
-          + t('codexCapKeycapHint2', '」· ')
-          + (friendlyChord(chord) || t('codexCapUnset', '未设置'))
-          + t('codexCapKeycapHint3', ' · 长按录制自定义');
+        hint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
       } else {
-        hint.textContent = (friendlyChord(chord) || t('codexCapUnset', '未设置'))
-          + t('codexCapKeycapHint3', ' · 点按能力卡片切换 · 长按录制自定义');
+        hint.textContent = t('codexStepRecognitionKeycapHint', '点按下方能力卡片 · 长按录制自定义快捷键');
       }
     }
     return true;
@@ -321,9 +354,16 @@
 
   function recordSelectedSlot() {
     var m = codexScenarioMapping();
-    if (!m || !selectedSlotId) return false;
-    var chip = document.querySelector('[data-codex-chip-key="' + selectedSlotId + '"]');
-    startRecord(m, selectedSlotId, chip);
+    if (!m) return false;
+    var slotId = selectedSlotId;
+    if (!slotId) {
+      slotId = TARGET_SLOT_IDS.indexOf('pushToTalk') >= 0 ? 'pushToTalk' : TARGET_SLOT_IDS[0];
+    }
+    if (!slotId) return false;
+    selectedSlotId = slotId;
+    applyRecognitionOverlay();
+    var chip = document.querySelector('[data-codex-chip-key="' + slotId + '"]');
+    startRecord(m, slotId, chip);
     return true;
   }
 
@@ -709,8 +749,10 @@
     var T = global.OneToneAgentScenarioTemplate;
     if (T && T.fillEmptyKeyDefaults) T.fillEmptyKeyDefaults(m);
     if (step === 'target') {
+      ensureDefaultSelection(m);
       renderKeysPanel(targetHost, m, 'target');
       hideHost(finishHost);
+      applyRecognitionOverlay();
     } else if (step === 'finish') {
       hideHost(targetHost);
       renderKeysPanel(finishHost, m, 'finish');
@@ -720,6 +762,7 @@
       hideHost(targetHost);
       hideHost(finishHost);
     }
+    applyCodexStepChrome(step, m);
   }
 
   function mountKeys() {
@@ -782,7 +825,9 @@
     getSelectedSlotId: getSelectedSlotId,
     recordSelectedSlot: recordSelectedSlot,
     clearSelection: clearSelection,
-    findChordConflict: findChordConflict,
+    pushToTalkDisplay: pushToTalkDisplay,
+    applyCodexStepChrome: applyCodexStepChrome,
+    isCodexKeysEditing: function () { return !!activeCodexMapping(); },
     TARGET_SLOT_IDS: TARGET_SLOT_IDS,
     FINISH_SLOT_IDS: FINISH_SLOT_IDS
   };

@@ -112,6 +112,11 @@ fn release_guard() {
     clear_armed_keys();
 }
 
+/// Clear an active send guard immediately (e.g. after hold-to-talk key release).
+pub fn disarm() {
+    release_guard();
+}
+
 pub fn wait_until_inactive(timeout_ms: u64) -> bool {
     let started = Instant::now();
     let timeout = Duration::from_millis(timeout_ms);

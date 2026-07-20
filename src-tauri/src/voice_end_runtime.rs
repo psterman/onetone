@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, WebviewWindow};
 
-use crate::config::VoiceConfig;
+use crate::config::{agent_key_binding_for_slot, canonical_trigger, is_app_scenario_mapping, MappingEntry, VoiceConfig};
 use crate::voice_vosk::{matches_final, normalize_phrase};
 use crate::AppState;
 
@@ -79,6 +79,28 @@ pub fn resolve_voice_input_target_key(cfg: &VoiceConfig) -> Option<String> {
     None
 }
 
+/// App-scenario push-to-talk chord when present; otherwise global IME voice shortcut.
+pub fn resolve_voice_key_for_mapping(
+    cfg: &VoiceConfig,
+    mapping: Option<&MappingEntry>,
+) -> Option<String> {
+    if let Some(m) = mapping {
+        if let Some(b) = agent_key_binding_for_slot(m, "pushToTalk") {
+            let chord = canonical_trigger(b.trigger_binding.trim());
+            if !chord.is_empty() {
+                return Some(chord);
+            }
+        }
+        if is_app_scenario_mapping(m) {
+            let target = canonical_trigger(m.target_key.trim());
+            if !target.is_empty() {
+                return Some(target);
+            }
+        }
+    }
+    resolve_voice_input_target_key(cfg)
+}
+
 fn resolve_stop_target_key(cfg: &VoiceConfig, session_mapping_id: &str) -> String {
     let ctx = crate::scene_config::SceneResolveContext {
         active_scene_id: session_mapping_id,
@@ -150,6 +172,48 @@ pub fn wake_key_cooldown_remaining_ms(state: &AppState, cooldown_ms: u32) -> Opt
 
 pub fn mark_voice_wake_key_sent(state: &AppState) {
     *state.voice_wake_last_key_at.lock() = Some(Instant::now());
+}
+
+/// True when the voice shortcut must stay pressed until release (Codex dictation).
+pub fn is_hold_to_talk_voice_key(key: &str) -> bool {
+    crate::key_chord::is_hold_to_talk_chord(key)
+}
+
+pub fn held_voice_chord(state: &AppState) -> Option<String> {
+    state.held_voice_chord.lock().clone()
+}
+
+pub fn set_held_voice_chord(state: &AppState, chord: &str) {
+    *state.held_voice_chord.lock() = Some(chord.trim().to_string());
+}
+
+pub fn clear_held_voice_chord(state: &AppState) -> Option<String> {
+    state.held_voice_chord.lock().take()
+}
+
+/// Press and track a hold-to-talk chord; returns false if send failed.
+pub fn begin_hold_voice_chord(state: &AppState, chord: &str) -> bool {
+    if !is_hold_to_talk_voice_key(chord) {
+        return false;
+    }
+    if !crate::keyboard::press_chord(chord) {
+        return false;
+    }
+    set_held_voice_chord(state, chord);
+    mark_voice_wake_key_sent(state);
+    true
+}
+
+/// Release a held voice chord if one is active.
+pub fn end_hold_voice_chord(state: &AppState) -> bool {
+    let Some(chord) = clear_held_voice_chord(state) else {
+        return false;
+    };
+    let ok = crate::keyboard::release_chord(&chord);
+    if ok {
+        crate::app_log::log_line(state, "hold", &format!("hold release key={chord}"));
+    }
+    ok
 }
 
 pub fn send_wake_to_target(
@@ -873,6 +937,13 @@ pub fn is_start_phrase(cfg: &VoiceConfig, phrase: &str) -> bool {
 }
 
 pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) {
+    if held_voice_chord(state).is_some() {
+        end_hold_voice_chord(state);
+        if session_state(state) == "dictating" {
+            reset_voice_session(state, Some(app), "hold-to-talk release");
+        }
+        return;
+    }
     if session_state(state) != "dictating" {
         return;
     }
@@ -881,7 +952,7 @@ pub fn stop_dictation_after_trigger_key(state: &Arc<AppState>, app: &AppHandle) 
         Some(app),
         "trigger key",
         CommitPolicy::AutoConfig,
-        true,
+        false,
     );
 }
 
@@ -1454,6 +1525,13 @@ fn clean_phrases(phrases: Vec<String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hold_to_talk_voice_key_matches_side_modifiers() {
+        assert!(is_hold_to_talk_voice_key("Ctrl+Shift+D"));
+        assert!(is_hold_to_talk_voice_key("LCtrl+LShift+D"));
+        assert!(!is_hold_to_talk_voice_key("Ctrl+Alt+C"));
+    }
 
     #[test]
     fn can_enter_dictating_with_kws_only() {

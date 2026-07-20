@@ -55,7 +55,19 @@
     if(opts.fromHub) ui().habitHubEditReturn=true;
     var cfg=state().config||{};
     var baseline=diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
-    if(baseline) syncEditor(baseline.id);
+    if(baseline&&baseline.id){
+      syncEditor(baseline.id);
+    }else{
+      // Fallback: first non-app mapping as global baseline.
+      var maps=cfg.mappings||[];
+      for(var i=0;i<maps.length;i++){
+        var m=maps[i];
+        if(!m||!m.id) continue;
+        if(diff()&&diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)) continue;
+        syncEditor(m.id);
+        break;
+      }
+    }
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
     render();
     // Global keys: never show Codex UI — clear any leftover hosts.
@@ -70,7 +82,19 @@
     if(opts.fromHub) ui().habitHubEditReturn=true;
     var cfg=state().config||{};
     var baseline=diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
-    if(baseline) syncEditor(baseline.id);
+    if(baseline&&baseline.id){
+      syncEditor(baseline.id);
+    }else{
+      // Fallback: first non-app mapping as global baseline.
+      var maps=cfg.mappings||[];
+      for(var i=0;i<maps.length;i++){
+        var m=maps[i];
+        if(!m||!m.id) continue;
+        if(diff()&&diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)) continue;
+        syncEditor(m.id);
+        break;
+      }
+    }
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
     render();
     setTimeout(function(){
@@ -82,6 +106,21 @@
     opts=opts||{};
     clearScenarioContext();
     if(opts.fromHub) ui().habitHubEditReturn=true;
+    var cfg=state().config||{};
+    var baseline=diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
+    if(baseline&&baseline.id){
+      syncEditor(baseline.id);
+    }else{
+      // Fallback: first non-app mapping as global baseline.
+      var maps=cfg.mappings||[];
+      for(var i=0;i<maps.length;i++){
+        var m=maps[i];
+        if(!m||!m.id) continue;
+        if(diff()&&diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)) continue;
+        syncEditor(m.id);
+        break;
+      }
+    }
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
     render();
     setTimeout(function(){
@@ -389,6 +428,8 @@
   }
 
   function saveCurrentScenario(){
+    var h=global.__vp_bootstrap_hooks__||global.__vp_mapping_list_ui_hooks__||{};
+    if(h.flushAllEditorToMappings) h.flushAllEditorToMappings();
     var wiz=global.OneToneHabitScenarioWizard;
     if(wiz&&wiz.saveScenario) return wiz.saveScenario({fromPanel:true});
     return Promise.resolve(null);

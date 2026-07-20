@@ -64,17 +64,17 @@
   var APP_TARGET_ID = 'codex-chat';
 
   /**
-   * OneTone recommended physical chords for Codex Micro capability triggers.
-   * Not Codex official keymap — safe-ish Ctrl+Alt* family to avoid common app conflicts.
+   * Codex App official shortcuts (developers.openai.com/codex/app/commands).
+   * Insert-only slash slots keep OneTone chords for voice/keys overlay.
    */
   var DEFAULT_KEY_BY_SLOT = {
-    summonCodex: 'Ctrl+Alt+C',
-    pushToTalk: 'Ctrl+Alt+Space',
-    stopOrSend: 'Ctrl+Alt+Enter',
-    cancel: 'Ctrl+Alt+Backspace',
-    newThread: 'Ctrl+Alt+N',
-    quickChat: 'Ctrl+Alt+Shift+N',
-    commandPalette: 'Ctrl+Alt+K',
+    summonCodex: 'Ctrl+Shift+P',
+    pushToTalk: 'Ctrl+Shift+D',
+    stopOrSend: 'Enter',
+    cancel: 'Escape',
+    newThread: 'Ctrl+N',
+    quickChat: 'Ctrl+Alt+N',
+    commandPalette: 'Ctrl+K',
     status: 'Ctrl+Alt+S',
     plan: 'Ctrl+Alt+P',
     review: 'Ctrl+Alt+R',

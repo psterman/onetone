@@ -3,8 +3,9 @@ use std::sync::Arc;
 use tauri::AppHandle;
 use tauri::Manager;
 
+use crate::app_chat_workflow;
 use crate::app_identity;
-use crate::config::effective_mapping_for_trigger;
+use crate::config::{effective_mapping_for_trigger, is_app_scenario_mapping};
 use crate::key_chord::{build_pressed_chord, chord_parts, is_modifier_name, is_modifier_only_chord};
 use crate::press_gesture::parse_physical_event;
 use crate::runtime_event;
@@ -110,6 +111,26 @@ fn execute_agent_binding(
     );
 }
 
+fn try_end_hold_voice_on_keyup(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    let Some(held) = crate::voice_end_runtime::held_voice_chord(state.as_ref()) else {
+        return false;
+    };
+    let key = event.key.trim();
+    let ends_hold = chord_parts(&held).iter().any(|part| {
+        key.eq_ignore_ascii_case(part)
+            || crate::key_chord::chord_token_matches(part, key)
+    });
+    if !ends_hold {
+        return false;
+    }
+    crate::voice_end_runtime::stop_dictation_after_trigger_key(state, app);
+    true
+}
+
 fn try_dispatch_agent_modifier_keyup(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
@@ -174,11 +195,14 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
             return;
         }
         clear_agent_modifier_tap(state, &event.key);
+        let app = window.app_handle();
+        if try_end_hold_voice_on_keyup(state, &app, &event) {
+            return;
+        }
         let maybe_dispatch = state.gesture.lock().on_keyup(&event);
         if let Some(dispatch_key) = maybe_dispatch {
             // For hold-to-talk (LongPress mode): key release should end the current dictation
             // session (if any) and run finish/send, instead of re-sending the wake key.
-            let app = window.app_handle();
             crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
             let _ = dispatch_key;
         }
@@ -190,6 +214,11 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
     // Modifier-only agent bindings fire on keyup after a clean tap — never on keydown.
     let chord = build_pressed_chord(&event.key);
     if is_modifier_only_chord(&chord) {
+        return;
+    }
+
+    // Agent chords registered via WM_HOTKEY (e.g. Codex pushToTalk Ctrl+Shift+D).
+    if try_dispatch_agent_key(state, window, &event.key) {
         return;
     }
 
@@ -228,6 +257,48 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
         };
         let mapping_id = mapping.id.clone();
         let duration_ms = cfg.key_press_duration_ms;
+
+        // App-scenario long-press with Codex hold-to-talk: skip empty targetKey SendKey path.
+        if mapping.trigger_mode == crate::config::TriggerMode::LongPress
+            && is_app_scenario_mapping(mapping)
+        {
+            let app_target = mapping.app_target_id.trim().to_string();
+            if let Some(voice_key) =
+                crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, Some(mapping))
+            {
+                if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key) {
+                    if let Some(profile) = app_chat_workflow::profile_for(&app_target) {
+                        drop(cfg);
+                        let ok = app_chat_workflow::run_hold_voice_foreground(
+                            state,
+                            window,
+                            &mapping_id,
+                            &voice_key,
+                            profile,
+                        )
+                        .is_ok();
+                        let cue = crate::config::runtime_sound_cue(
+                            &state.cfg.lock(),
+                            if ok { "key_wake" } else { "send_fail" },
+                        );
+                        crate::ipc::core::push_runtime_with_cue(
+                            state.as_ref(),
+                            window,
+                            if ok { "codex_hold_start" } else { "codex_hold_failed" },
+                            &mapping_id,
+                            cue.as_deref(),
+                        );
+                        if ok {
+                            crate::coach_hud::flash_success(&window.app_handle(), state.as_ref());
+                        } else {
+                            crate::coach_hud::push_state(&window.app_handle(), state.as_ref());
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
         let foreground = app_identity::foreground_app_identity();
         let effective = effective_mapping_for_trigger(mapping, foreground.as_ref());
         let actions = {
@@ -248,18 +319,25 @@ fn try_dispatch_agent_key(
     window: &tauri::WebviewWindow,
     physical_key: &str,
 ) -> bool {
-    let chord = build_pressed_chord(physical_key);
+    let chord = if physical_key.contains('+') {
+        crate::config::canonical_trigger(physical_key)
+    } else {
+        build_pressed_chord(physical_key)
+    };
     if is_modifier_only_chord(&chord) {
         return false;
     }
-    // Combo bindings only fire when the terminal (non-modifier) key is pressed.
-    let parts = chord_parts(&chord);
-    if parts.len() > 1 {
-        let terminal = parts.last().map(String::as_str).unwrap_or("");
-        if !physical_key.trim().eq_ignore_ascii_case(terminal)
-            && !crate::key_chord::chord_token_matches(terminal, physical_key)
-        {
-            return false;
+    // WM_HOTKEY delivers the full chord string; only filter terminal-key events for
+    // per-key hook delivery (e.g. keydown "D" while modifiers are held).
+    if !physical_key.contains('+') {
+        let parts = chord_parts(&chord);
+        if parts.len() > 1 {
+            let terminal = parts.last().map(String::as_str).unwrap_or("");
+            if !physical_key.trim().eq_ignore_ascii_case(terminal)
+                && !crate::key_chord::chord_token_matches(terminal, physical_key)
+            {
+                return false;
+            }
         }
     }
     let (mapping_id, action_id, slot_id, provider_id, execution_mode, activation_scope) = {
@@ -267,6 +345,16 @@ fn try_dispatch_agent_key(
         let Some((mapping, b)) = cfg.find_agent_key_dispatch(&chord) else {
             return false;
         };
+        // Physical Ctrl+Shift+D must reach Codex as a native hold; only PageDown synthesizes it.
+        if b.action_id == "startDictation" && crate::key_chord::is_hold_to_talk_chord(&chord) {
+            return false;
+        }
+        if b.action_id == "startDictation"
+            && crate::voice_end_runtime::session_state(state.as_ref()) == "dictating"
+            && crate::voice_end_runtime::held_voice_chord(state.as_ref()).is_some()
+        {
+            return true;
+        }
         let provider = if mapping.agent_provider_id.trim().is_empty() {
             "codex".to_string()
         } else {

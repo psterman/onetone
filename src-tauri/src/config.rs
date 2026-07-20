@@ -2689,9 +2689,15 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
         }
     }
     for chord in agent_key_chords(m) {
-        if !chord.is_empty() && !out.contains(&chord) {
-            out.push(chord);
+        if chord.is_empty() || out.contains(&chord) {
+            continue;
         }
+        // Hold-to-talk (Codex Ctrl+Shift+D) must reach the app as a physical hold.
+        // OneTone synthesizes it only from PageDown / mapping long-press — never via hotkey.
+        if crate::key_chord::is_hold_to_talk_chord(&chord) {
+            continue;
+        }
+        out.push(chord);
     }
     out
 }
@@ -2797,7 +2803,10 @@ pub fn agent_voice_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
 }
 
 pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
-    let tk = canonical_trigger(&m.trigger_key);
+    let mut tk = canonical_trigger(&m.trigger_key);
+    if tk.is_empty() {
+        tk = canonical_trigger(&m.source_key);
+    }
     if tk.contains('+') {
         if is_allowed_trigger(&tk) {
             return vec![tk];
@@ -2827,7 +2836,7 @@ pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     if !is_allowed_trigger(&tk) {
         return vec![];
     }
-    physical_bindings(&m.trigger_key)
+    physical_bindings(&tk)
 }
 
 fn needs_autotrigger_default_source(m: &MappingEntry) -> bool {
@@ -3070,6 +3079,126 @@ pub fn effective_mapping_for_trigger(
         apply_finish_mode_to_mapping(&mut effective, &rule.finish_mode);
     }
     effective
+}
+
+/// Dedicated app scenario (Codex / custom bind) — not a global row with preset finish chips.
+pub fn is_app_scenario_mapping(m: &MappingEntry) -> bool {
+    if !m.app_target_id.trim().is_empty() {
+        return true;
+    }
+    for rule in &m.app_behavior_rules {
+        if rule.app_id.trim() == "custom" {
+            return true;
+        }
+        let Some(spec) = rule.app_match.as_ref() else {
+            continue;
+        };
+        let has_exe = spec.exe_names.iter().any(|n| !n.trim().is_empty());
+        let has_path = spec
+            .full_path
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty())
+            || spec
+                .path_contains
+                .as_deref()
+                .is_some_and(|s| !s.trim().is_empty());
+        let has_title = spec
+            .title_contains
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty());
+        if has_exe || has_path || has_title {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn mapping_matches_foreground_identity(
+    m: &MappingEntry,
+    identity: &crate::app_identity::AppIdentity,
+) -> bool {
+    if let Some(preset) = identity.matched_preset_app_id.as_deref() {
+        let preset = preset.trim();
+        if !preset.is_empty() {
+            if m.app_target_id.trim() == preset {
+                return true;
+            }
+            if m.app_behavior_rules
+                .iter()
+                .any(|r| r.app_id.trim() == preset)
+            {
+                return true;
+            }
+        }
+    }
+    match_behavior_rule(&m.app_behavior_rules, identity).is_some()
+}
+
+/// When a dedicated app scenario owns the foreground app, global preset rows that route
+/// workflow to that app must not steal triggers (e.g. global `Ctrl+Shift+D` vs Codex hold).
+pub fn mapping_shadowed_by_foreground_app_scenario(
+    cfg: &VoiceConfig,
+    mapping: &MappingEntry,
+    identity: &crate::app_identity::AppIdentity,
+) -> bool {
+    if is_app_scenario_mapping(mapping) {
+        return false;
+    }
+    find_app_scenario_for_foreground(cfg, identity).is_some()
+        && resolve_foreground_workflow_target(mapping, identity).is_some()
+}
+
+/// Best dedicated app-scenario mapping for the foreground app (prefers agent packs).
+pub fn find_app_scenario_for_foreground<'a>(
+    cfg: &'a VoiceConfig,
+    identity: &crate::app_identity::AppIdentity,
+) -> Option<&'a MappingEntry> {
+    cfg.active_mappings()
+        .into_iter()
+        .filter(|m| is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity))
+        .max_by_key(|m| {
+            let agent = m
+                .agent_bindings
+                .iter()
+                .filter(|b| b.enabled && !b.trigger_binding.trim().is_empty())
+                .count();
+            let template = usize::from(!m.agent_template_id.trim().is_empty());
+            (agent, template)
+        })
+}
+
+/// When a global trigger mapping fires, resolve workflow app from foreground + behavior rules.
+pub fn resolve_foreground_workflow_target(
+    mapping: &MappingEntry,
+    identity: &crate::app_identity::AppIdentity,
+) -> Option<String> {
+    if is_app_scenario_mapping(mapping) {
+        return None;
+    }
+    let preset = identity.matched_preset_app_id.as_deref()?.trim();
+    if preset.is_empty() || !is_workflow_app_target(preset) {
+        return None;
+    }
+    if mapping.app_target_id.trim() == preset {
+        return Some(preset.to_string());
+    }
+    if match_behavior_rule(&mapping.app_behavior_rules, identity).is_some() {
+        return Some(preset.to_string());
+    }
+    None
+}
+
+pub fn agent_key_binding_for_slot<'a>(
+    m: &'a MappingEntry,
+    slot_id: &str,
+) -> Option<&'a AgentBinding> {
+    let slot_id = slot_id.trim();
+    m.agent_bindings.iter().find(|b| {
+        b.enabled
+            && b.slot_id == slot_id
+            && b.trigger_type.eq_ignore_ascii_case("key")
+            && !b.trigger_binding.trim().is_empty()
+    })
 }
 
 impl VoiceConfig {
@@ -3438,6 +3567,12 @@ impl VoiceConfig {
                 m.id = new_mapping_id();
             }
             m.trigger_key = canonical_trigger(&m.trigger_key);
+            if m.trigger_key.is_empty() {
+                let from_source = canonical_trigger(&m.source_key);
+                if is_allowed_trigger(&from_source) {
+                    m.trigger_key = from_source.clone();
+                }
+            }
             apply_autotrigger_source(m);
             ensure_autotrigger_bindings(m);
             if m.source_key.trim().is_empty() {
@@ -3578,20 +3713,40 @@ impl VoiceConfig {
         event: &crate::press_gesture::PhysicalKeyEvent,
     ) -> Option<&MappingEntry> {
         let canonical = canonical_trigger(&event.key);
+        let foreground = crate::app_identity::foreground_app_identity();
+        let mut candidates: Vec<&MappingEntry> = Vec::new();
         for m in self.active_mappings() {
             if !mapping_matches_device(m, event.device.as_deref()) {
                 continue;
             }
-            if canonical_trigger(&m.trigger_key) == canonical {
-                return Some(m);
-            }
-            for pb in mapping_physical_bindings(m) {
-                if pb == event.key || pb == canonical {
-                    return Some(m);
-                }
+            let matches_trigger = canonical_trigger(&m.trigger_key) == canonical;
+            let matches_physical = mapping_physical_bindings(m)
+                .iter()
+                .any(|pb| pb == &event.key || pb == &canonical);
+            if matches_trigger || matches_physical {
+                candidates.push(m);
             }
         }
-        None
+        if let Some(ref identity) = foreground {
+            candidates.retain(|m| !mapping_shadowed_by_foreground_app_scenario(self, m, identity));
+        }
+        if candidates.is_empty() {
+            return None;
+        }
+        if candidates.len() == 1 {
+            return Some(candidates[0]);
+        }
+        if let Some(ref identity) = foreground {
+            if let Some(hit) = candidates.iter().copied().find(|m| {
+                is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
+            }) {
+                return Some(hit);
+            }
+        }
+        if let Some(hit) = candidates.iter().copied().find(|m| is_app_scenario_mapping(m)) {
+            return Some(hit);
+        }
+        Some(candidates[0])
     }
 
     /// All modifier-only agent watch chords across enabled mappings.
@@ -4997,6 +5152,36 @@ mod tests {
     }
 
     #[test]
+    fn hotkey_registration_skips_hold_to_talk_agent_chord() {
+        let mut m = VoiceConfig::default().mappings[0].clone();
+        m.trigger_key.clear();
+        m.source_key = "PageDown".into();
+        m.agent_bindings.push(AgentBinding {
+            slot_id: "pushToTalk".into(),
+            action_id: "startDictation".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "LCtrl+LShift+D".into(),
+            enabled: true,
+            execution_mode: None,
+            activation_scope: "global".into(),
+        });
+        let bindings = hotkey_registration_bindings(&m);
+        assert!(bindings.iter().any(|b| b == "PageDown"));
+        assert!(!bindings.iter().any(|b| crate::key_chord::is_hold_to_talk_chord(b)));
+    }
+
+    #[test]
+    fn mapping_physical_bindings_falls_back_to_source_key() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].trigger_key.clear();
+        cfg.mappings[0].source_key = "PageDown".into();
+        let bindings = mapping_physical_bindings(&cfg.mappings[0]);
+        assert_eq!(bindings, vec!["PageDown".to_string()]);
+        cfg.normalize();
+        assert_eq!(cfg.mappings[0].trigger_key, "PageDown");
+    }
+
+    #[test]
     fn cycle_scheme_same_trigger_rotates() {
         let mut cfg = VoiceConfig::default();
         let id_a = cfg.mappings[0].id.clone();
@@ -5574,6 +5759,132 @@ mod tests {
         assert_eq!(fallback.trigger_mode, TriggerMode::Tap);
         assert!(fallback.cancel_enabled);
         assert!(fallback.auto_enter_enabled);
+    }
+
+    #[test]
+    fn global_preset_rules_are_not_app_scenarios() {
+        let mut global = VoiceConfig::default().mappings[0].clone();
+        global.app_behavior_rules = vec![
+            test_rule("cursor-chat", "confirm"),
+            test_rule("codex-chat", "confirm"),
+        ];
+        assert!(!is_app_scenario_mapping(&global));
+
+        let mut codex = global.clone();
+        codex.app_target_id = "codex-chat".into();
+        codex.agent_template_id = "codex-micro-13".into();
+        assert!(is_app_scenario_mapping(&codex));
+    }
+
+    #[test]
+    fn mapping_shadowed_when_dedicated_app_scenario_owns_foreground() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].trigger_key = "Ctrl+Shift+D".into();
+        cfg.mappings[0].target_key = "RAlt".into();
+        cfg.mappings[0].app_behavior_rules = vec![test_rule("codex-chat", "confirm")];
+        cfg.mappings.push(MappingEntry {
+            id: "codex-scene".into(),
+            label: String::new(),
+            group: "Codex".into(),
+            trigger_key: "PageDown".into(),
+            target_key: "Ctrl+Shift+D".into(),
+            enabled: true,
+            order: 1,
+            trigger_mode: TriggerMode::LongPress,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: "codex-chat".into(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: "codex-micro-13".into(),
+            agent_provider_id: "codex".into(),
+            agent_bindings: vec![],
+        });
+        let fg = test_identity(Some("codex-chat"), "Codex.exe");
+        assert!(mapping_shadowed_by_foreground_app_scenario(
+            &cfg,
+            &cfg.mappings[0],
+            &fg
+        ));
+        assert!(!mapping_shadowed_by_foreground_app_scenario(
+            &cfg,
+            &cfg.mappings[1],
+            &fg
+        ));
+        let cursor = test_identity(Some("cursor-chat"), "Cursor.exe");
+        assert!(!mapping_shadowed_by_foreground_app_scenario(
+            &cfg,
+            &cfg.mappings[0],
+            &cursor
+        ));
+    }
+
+    #[test]
+    fn find_app_scenario_for_foreground_prefers_agent_pack() {
+        let mut cfg = VoiceConfig::default();
+        let global_id = cfg.mappings[0].id.clone();
+        cfg.mappings[0].app_behavior_rules = vec![test_rule("codex-chat", "confirm")];
+        cfg.mappings.push(MappingEntry {
+            id: "codex-scene".into(),
+            label: String::new(),
+            group: "Codex".into(),
+            trigger_key: String::new(),
+            target_key: String::new(),
+            enabled: true,
+            order: 1,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: "codex-chat".into(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: "codex-micro-13".into(),
+            agent_provider_id: "codex".into(),
+            agent_bindings: vec![AgentBinding {
+                slot_id: "pushToTalk".into(),
+                action_id: "startDictation".into(),
+                trigger_type: "key".into(),
+                trigger_binding: "Ctrl+Alt+Space".into(),
+                enabled: true,
+                execution_mode: None,
+                activation_scope: "foregroundApp".into(),
+            }],
+        });
+        let fg = test_identity(Some("codex-chat"), "Codex.exe");
+        let hit = find_app_scenario_for_foreground(&cfg, &fg).expect("codex scenario");
+        assert_eq!(hit.id, "codex-scene");
+        assert_ne!(hit.id, global_id);
+        let workflow =
+            resolve_foreground_workflow_target(&cfg.mappings[0], &fg).expect("global workflow");
+        assert_eq!(workflow, "codex-chat");
     }
 
     #[test]

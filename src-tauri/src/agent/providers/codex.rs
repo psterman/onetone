@@ -57,6 +57,7 @@ impl CodexProviderAdapter {
         window: &WebviewWindow,
         action_id: &str,
         slot_id: Option<&str>,
+        mapping_id: Option<&str>,
         execution_mode: Option<ExecutionMode>,
         activation_scope: ActivationScope,
     ) -> ProviderActionOutcome {
@@ -81,7 +82,16 @@ impl CodexProviderAdapter {
             return ProviderActionOutcome::err("paused", None, mode);
         }
 
-        if activation_scope == ActivationScope::ForegroundApp {
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        let mapping_id = mapping_id.unwrap_or("").trim();
+        let explicit_codex_mapping = !mapping_id.is_empty()
+            && state
+                .cfg
+                .lock()
+                .find_mapping_by_id(mapping_id)
+                .is_some_and(|m| m.app_target_id.trim() == CODEX_APP_TARGET_ID);
+
+        if activation_scope == ActivationScope::ForegroundApp && !explicit_codex_mapping {
             let fg = app_chat_workflow::foreground_app_target_id();
             if fg.as_deref() != Some(CODEX_APP_TARGET_ID) {
                 return ProviderActionOutcome::err(
@@ -92,13 +102,10 @@ impl CodexProviderAdapter {
             }
         }
 
-        let duration_ms = state.cfg.lock().key_press_duration_ms;
-        let mapping_id = String::new();
-
         match action_id {
             "openAgent" | "focusComposer" => Self::focus_only(state, window, duration_ms, mode),
             "startDictation" => {
-                Self::start_dictation(state, window, &mapping_id, duration_ms, mode)
+                Self::start_dictation(state, window, mapping_id, duration_ms, mode)
             }
             "stopOrSendDictation" => Self::stop_or_send(state, window, mode),
             "cancel" => Self::send_hotkey("Esc", duration_ms, mode),

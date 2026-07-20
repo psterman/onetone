@@ -277,6 +277,54 @@ fn send_token_sequence(tokens: &[SendToken], hold_ms: u32) -> bool {
     true
 }
 
+/// Press a chord down without releasing (hold-to-talk: Codex Ctrl+Shift+D).
+pub fn press_chord(combo: &str) -> bool {
+    let trimmed = combo.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if is_right_alt_only(trimmed) || is_left_alt_only(trimmed) {
+        return false;
+    }
+    match parse_chord(trimmed) {
+        Ok(tokens) => {
+            send_guard::arm_keys(&send_guard::guard_keys_from_combo(trimmed));
+            send_guard::run_guarded(300_000, || {
+                let mut press: Vec<INPUT> =
+                    tokens.iter().copied().map(token_to_press_input).collect();
+                send_inputs(&mut press);
+            });
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Release a previously pressed chord (keyup half of hold-to-talk).
+pub fn release_chord(combo: &str) -> bool {
+    let trimmed = combo.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if is_right_alt_only(trimmed) || is_left_alt_only(trimmed) {
+        return false;
+    }
+    match parse_chord(trimmed) {
+        Ok(tokens) => {
+            let mut release: Vec<INPUT> = tokens
+                .iter()
+                .rev()
+                .copied()
+                .map(token_to_release_input)
+                .collect();
+            send_inputs(&mut release);
+            send_guard::disarm();
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 /// Match AHK's `{vkA5sc138}` as closely as possible.
 pub fn send_right_alt(duration_ms: u32) {
     let hold_ms = duration_ms.max(250) as u64;

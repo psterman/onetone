@@ -2,7 +2,12 @@ use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 
+use crate::agent::{execute_agent_action, AgentExecuteRequest};
 use crate::app_chat_workflow;
+use crate::app_identity;
+use crate::config::{
+    agent_key_binding_for_slot, find_app_scenario_for_foreground, resolve_foreground_workflow_target,
+};
 use crate::ipc::core::push_runtime_with_cue;
 use crate::AppState;
 
@@ -96,6 +101,114 @@ fn finish_send_key_dispatch(
     }
 }
 
+fn try_dispatch_app_scenario_agent(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    app_mapping_id: &str,
+) -> Option<bool> {
+    let plan = {
+        let cfg = state.cfg.lock();
+        let m = cfg.find_mapping_by_id(app_mapping_id)?;
+        let binding = agent_key_binding_for_slot(m, "pushToTalk")?;
+        let action_id = binding.action_id.trim().to_string();
+        if action_id.is_empty() {
+            return None;
+        }
+        let provider_id = if m.agent_provider_id.trim().is_empty() {
+            "codex".to_string()
+        } else {
+            m.agent_provider_id.clone()
+        };
+        Some((
+            provider_id,
+            action_id,
+            binding.slot_id.clone(),
+            binding.execution_mode.clone(),
+            if binding.activation_scope.trim().is_empty() {
+                None
+            } else {
+                Some(binding.activation_scope.clone())
+            },
+        ))
+    };
+    let (provider_id, action_id, slot_id, execution_mode, activation_scope) = plan?;
+    let result = execute_agent_action(
+        state,
+        window,
+        AgentExecuteRequest {
+            provider_id,
+            action_id,
+            mapping_id: Some(app_mapping_id.to_string()),
+            slot_id: if slot_id.is_empty() {
+                None
+            } else {
+                Some(slot_id)
+            },
+            execution_mode,
+            activation_scope,
+        },
+    );
+    Some(result.ok)
+}
+
+fn dispatch_app_workflow(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    workflow_mapping_id: &str,
+    workflow_target: &str,
+    log_mapping_id: &str,
+    trigger_key: &str,
+    target_key: &str,
+    source_key: &str,
+    duration_ms: u32,
+) {
+    let state2 = Arc::clone(state);
+    let window2 = window.clone();
+    let workflow_mapping_id = workflow_mapping_id.to_string();
+    let workflow_target = workflow_target.to_string();
+    let log_mapping_id = log_mapping_id.to_string();
+    let trigger_key = trigger_key.to_string();
+    let target_key = target_key.to_string();
+    let source_key = source_key.to_string();
+    let _ = std::thread::Builder::new()
+        .name("app-workflow".into())
+        .spawn(move || {
+            match app_chat_workflow::run_for_target_id(
+                &state2,
+                &window2,
+                &workflow_mapping_id,
+                &workflow_target,
+                duration_ms,
+            ) {
+                Ok(label) => finish_send_key_dispatch(
+                    &state2,
+                    &window2,
+                    &log_mapping_id,
+                    &trigger_key,
+                    &target_key,
+                    &source_key,
+                    true,
+                    "sent",
+                    &label,
+                ),
+                Err((prefix, err)) => {
+                    let reason = err.reason(&prefix);
+                    finish_send_key_dispatch(
+                        &state2,
+                        &window2,
+                        &log_mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        &source_key,
+                        false,
+                        &reason,
+                        &reason,
+                    );
+                }
+            }
+        });
+}
+
 pub(super) fn dispatch_send_key(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
@@ -129,6 +242,103 @@ pub(super) fn dispatch_send_key(
         );
         return;
     };
+
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        let app = window.app_handle();
+        let action =
+            crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
+        let (ok, reason, label) = match action {
+            crate::voice_end_runtime::TriggerWhileDictatingAction::Cancelled => {
+                (true, "cancelled", "esc")
+            }
+            crate::voice_end_runtime::TriggerWhileDictatingAction::Stopped => {
+                (true, "stopped", "stop")
+            }
+        };
+        finish_send_key_dispatch(
+            state,
+            window,
+            mapping_id,
+            &trigger_key,
+            &target_key,
+            source_key,
+            ok,
+            reason,
+            label,
+        );
+        return;
+    }
+
+    // Foreground-aware routing: app scenario (Codex pack) vs global default.
+    if let Some(fg) = app_identity::foreground_app_identity() {
+        let (app_scenario_id, workflow_target) = {
+            let cfg = state.cfg.lock();
+            let app_id = find_app_scenario_for_foreground(&cfg, &fg).map(|m| m.id.clone());
+            let workflow = cfg
+                .find_mapping_by_id(mapping_id)
+                .and_then(|tm| resolve_foreground_workflow_target(tm, &fg));
+            (app_id, workflow)
+        };
+
+        if let Some(ref app_id) = app_scenario_id {
+            if let Some(true) = try_dispatch_app_scenario_agent(state, window, app_id) {
+                let display_key = {
+                    let cfg = state.cfg.lock();
+                    let m = cfg.find_mapping_by_id(app_id);
+                    crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, m)
+                        .unwrap_or_else(|| key.to_string())
+                };
+                finish_send_key_dispatch(
+                    state,
+                    window,
+                    mapping_id,
+                    &trigger_key,
+                    &display_key,
+                    source_key,
+                    true,
+                    "sent",
+                    "agent_action",
+                );
+                return;
+            }
+            let app_workflow_target = {
+                let cfg = state.cfg.lock();
+                cfg.find_mapping_by_id(app_id)
+                    .map(|m| m.app_target_id.clone())
+                    .filter(|t| app_chat_workflow::profile_for(t).is_some())
+            };
+            if let Some(target) = app_workflow_target {
+                dispatch_app_workflow(
+                    state,
+                    window,
+                    app_id,
+                    &target,
+                    mapping_id,
+                    &trigger_key,
+                    &target_key,
+                    source_key,
+                    duration_ms,
+                );
+                return;
+            }
+        }
+
+        if let Some(workflow_target) = workflow_target {
+            let workflow_mapping_id = app_scenario_id.unwrap_or_else(|| mapping_id.to_string());
+            dispatch_app_workflow(
+                state,
+                window,
+                &workflow_mapping_id,
+                &workflow_target,
+                mapping_id,
+                &trigger_key,
+                &target_key,
+                source_key,
+                duration_ms,
+            );
+            return;
+        }
+    }
 
     if app_chat_workflow::profile_for(&app_target_id).is_some() {
         match app_chat_workflow::run_for_target_id(
@@ -166,32 +376,6 @@ pub(super) fn dispatch_send_key(
                 );
             }
         }
-        return;
-    }
-
-    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-        let app = window.app_handle();
-        let action =
-            crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
-        let (ok, reason, label) = match action {
-            crate::voice_end_runtime::TriggerWhileDictatingAction::Cancelled => {
-                (true, "cancelled", "esc")
-            }
-            crate::voice_end_runtime::TriggerWhileDictatingAction::Stopped => {
-                (true, "stopped", "stop")
-            }
-        };
-        finish_send_key_dispatch(
-            state,
-            window,
-            mapping_id,
-            &trigger_key,
-            &target_key,
-            source_key,
-            ok,
-            reason,
-            label,
-        );
         return;
     }
 

@@ -172,7 +172,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       if(disp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
         global.OneToneKeyIcons.syncDisplayIcon(disp,normalized);
       }
-    }else if(mode==='target'){
+    }else if(mode==='target'||mode==='agentBinding'){
       const el=$('targetView');
       const disp=$('targetDisplay');
       if(el) el.textContent=label;
@@ -311,7 +311,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const keySettings=$('keyWakeSettings');
     const triggerBtn=$('btnRecordTrigger');
     const targetBtn=$('btnRecordTarget');
-    const recording=rec.mode==='trigger'||rec.mode==='target';
+    const recording=rec.mode==='trigger'||rec.mode==='target'||rec.mode==='agentBinding';
     if(keySettings) keySettings.classList.toggle('is-recording',recording);
     if(triggerBtn){
       triggerBtn.classList.toggle('is-recording',rec.mode==='trigger');
@@ -322,7 +322,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     var triggerDisp=$('triggerDisplay');
     var targetDisp=$('targetDisplay');
     if(triggerDisp) triggerDisp.classList.toggle('is-recording',rec.mode==='trigger');
-    if(targetDisp) targetDisp.classList.toggle('is-recording',rec.mode==='target');
+    if(targetDisp) targetDisp.classList.toggle('is-recording',rec.mode==='target'||rec.mode==='agentBinding');
     const onboardTriggerBtn=$('btnOnboardStartTriggerRecord');
     const onboardTargetBtn=$('btnOnboardStartTargetRecord');
     const onboardTriggerCard=$('onboardTriggerCard');
@@ -529,18 +529,26 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         renderRecordCancelBar();
         return false;
       }
-      setRecording('trigger');
-      updateRecordingPreview('trigger','');
+      setRecording('agentBinding');
+      updateRecordingPreview('agentBinding','');
       var triggerState=$('triggerState');
-      if(triggerState) triggerState.textContent=t('triggerRecordHint');
+      var targetState=$('targetState');
+      var hint=t('agentCapRecording','按下快捷键…');
+      if(triggerState) triggerState.textContent=hint;
+      if(targetState) targetState.textContent=hint;
       rec.timer=setTimeout(function(){
-        if(rec.mode==='trigger'&&rec.agentBindingCapture){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
+        if(rec.mode==='agentBinding'&&rec.agentBindingCapture){ cancelRecording(); hooks().pushLog(t('logTimeout')); }
       },30000);
       return ok;
     });
   }
 
   function startTargetRecord(pinnedMappingId){
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.activeCodexMapping&&capUi.activeCodexMapping()){
+      if(capUi.recordSelectedSlot) capUi.recordSelectedSlot();
+      return Promise.resolve(true);
+    }
     if(global.OneToneTargetKeyPicker&&global.OneToneTargetKeyPicker.close) global.OneToneTargetKeyPicker.close();
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     hooks().ensureConfig();
@@ -625,7 +633,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   function previewCaptureKey(mode,key){
     const raw=String(key||'').trim();
     if(!raw) return '';
-    if(mode==='trigger') return hooks().normalizeTriggerKey(raw);
+    if(mode==='trigger'||mode==='agentBinding') return hooks().normalizeTriggerKey(raw);
     const media=hooks().normalizeMediaTargetKey(raw,raw);
     if(media) return media;
     return hooks().sanitizeTargetCombo(raw)||raw;
@@ -660,6 +668,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(!hooks().isAllowedTriggerKey(k)){ shortcutRejectedToast(k); return false; }
     const m=OneToneMappingCore.recording();
     if(!m) return false;
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()&&capUi.findChordConflict){
+      var capConflict=capUi.findChordConflict(m,k,'');
+      if(capConflict&&capConflict.kind==='capability'){
+        hooks().toast(t('codexTriggerNotAgentKey','这是 Codex 能力快捷键，请在「02 识别」步骤的能力卡片中设置'));
+        return false;
+      }
+    }
     if(rec.agentBindingCapture) return commitAgentBindingCapture(k, rawSourceKey, source);
     m.triggerKey=k;
     if(source){
@@ -807,7 +823,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       hooks().toast(t('leftMouseRejected'));
       return false;
     }
-    if(hooks().shouldIgnoreTargetLeftClickCapture(combo,combo,null)) return false;
+    var ignoreTarget=hooks().shouldIgnoreTargetLeftClickCapture;
+    if(!ignoreTarget&&global.OneToneAppKeyUtils){
+      ignoreTarget=global.OneToneAppKeyUtils.shouldIgnoreTargetLeftClickCapture;
+    }
+    if(ignoreTarget&&ignoreTarget(combo,combo,null)) return false;
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording();
     if(!m) return false;
     var hook=rec.beforeFinishTargetHook;

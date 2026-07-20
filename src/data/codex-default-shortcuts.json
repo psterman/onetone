@@ -1,0 +1,184 @@
+{
+  "app": "Codex",
+  "appTargetId": "codex-chat",
+  "providerId": "codex",
+  "version": "2026-07-20b",
+  "source": "Codex App 设置 → 键盘快捷键（用户截图，多页）",
+  "notes": {
+    "zh": "Codex 客户端内置快捷键完整清单。同一按键可能绑定多个命令（如 Ctrl+K 与 Ctrl+Shift+P 均可打开命令菜单）。",
+    "en": "Full Codex client shortcut list from settings screenshots. Some keys map to multiple commands."
+  },
+  "keyConflicts": [
+    {
+      "keys": ["Ctrl+Shift+P"],
+      "commands": ["Open command menu", "OneTone summonCodex"],
+      "note": "Codex 官方命令菜单与 OneTone「召唤 Codex」推荐键相同"
+    },
+    {
+      "keys": ["Ctrl+Alt+R"],
+      "commands": ["Rename chat", "OneTone review (/review)"],
+      "note": "重命名任务与 OneTone 审查槽位推荐键相同"
+    },
+    {
+      "keys": ["Ctrl+Alt+P"],
+      "commands": ["Pin or unpin the current chat", "OneTone plan (/plan)"],
+      "note": "切换置顶与 OneTone 计划槽位推荐键相同"
+    },
+    {
+      "keys": ["Ctrl+Alt+C"],
+      "commands": ["Copy session id"],
+      "note": "勿与旧版 OneTone summonCodex（Ctrl+Alt+C）混淆"
+    }
+  ],
+  "categories": [
+    {
+      "id": "chat",
+      "labelZh": "聊天与任务",
+      "labelEn": "Chat & tasks",
+      "shortcuts": [
+        { "id": "new-chat", "labelZh": "新建任务", "labelEn": "Start a new chat", "keys": ["Ctrl+N"], "assigned": true },
+        { "id": "new-chat-alt", "labelZh": null, "labelEn": null, "keys": ["Ctrl+Shift+O"], "assigned": true, "note": "截图中无中文标题" },
+        { "id": "quick-composer-chat", "labelZh": "新聊天", "labelEn": "Start a lightweight chat in the quick composer", "keys": ["Ctrl+Alt+N"], "assigned": true },
+        { "id": "archive-chat", "labelZh": "归档任务", "labelEn": "Archive the current chat", "keys": ["Ctrl+Shift+A"], "assigned": true },
+        { "id": "new-chat-outside-project", "labelZh": "新建无项目任务", "labelEn": "Start a new chat outside of any project", "keys": ["Ctrl+Alt+O"], "assigned": true },
+        { "id": "open-side-chat", "labelZh": "将当前任务作为侧边任务打开", "labelEn": "Open the current chat in a side chat", "keys": ["Ctrl+Alt+S"], "assigned": true },
+        { "id": "open-new-window-chat", "labelZh": "在新窗口中打开", "labelEn": "Open the current chat in a new window", "keys": [], "assigned": false },
+        { "id": "new-window", "labelZh": "New Window", "labelEn": "Open a new window", "keys": ["Ctrl+Shift+N"], "assigned": true },
+        { "id": "toggle-pin", "labelZh": "切换置顶状态", "labelEn": "Pin or unpin the current chat", "keys": ["Ctrl+Alt+P"], "assigned": true },
+        { "id": "rename-chat", "labelZh": "Rename chat", "labelEn": "Rename the current chat", "keys": ["Ctrl+Alt+R"], "assigned": true },
+        { "id": "continue-in-new-task", "labelZh": "在新任务中继续", "labelEn": "Create a new chat from the current chat", "keys": [], "assigned": false },
+        { "id": "focus-browser-address-bar", "labelZh": "聚焦浏览器地址栏", "labelEn": "Focus the in-app browser address bar", "keys": ["Ctrl+L"], "assigned": true },
+        { "id": "open-folder", "labelZh": "打开文件夹", "labelEn": "Add a local project to ChatGPT", "keys": ["Ctrl+O"], "assigned": true }
+      ]
+    },
+    {
+      "id": "composer",
+      "labelZh": "Composer 与语音",
+      "labelEn": "Composer & voice",
+      "shortcuts": [
+        { "id": "start-dictation", "labelZh": "开始听写", "labelEn": "Start dictation in the current composer", "keys": ["Ctrl+Shift+D"], "assigned": true, "behavior": "press-to-start" },
+        { "id": "toggle-voice-mode", "labelZh": "切换语音模式", "labelEn": "Start or stop voice mode", "keys": ["Ctrl+Shift+V"], "assigned": true },
+        { "id": "open-model-picker", "labelZh": "打开模型选择器", "labelEn": "Open the composer model picker", "keys": ["Ctrl+Shift+M"], "assigned": true },
+        { "id": "open-project-picker", "labelZh": "Open project picker", "labelEn": "Open the composer project picker", "keys": ["Ctrl+Alt+Shift+O"], "assigned": true },
+        { "id": "hold-to-dictate-desktop", "labelZh": "按住听写快捷键", "labelEn": "Hold anywhere on desktop to dictate where your cursor is", "keys": [], "assigned": false, "behavior": "hold-to-talk" },
+        { "id": "toggle-dictation-desktop", "labelZh": "切换听写快捷键", "labelEn": "Press once anywhere on desktop to dictate, then press again to stop", "keys": [], "assigned": false, "behavior": "toggle" }
+      ]
+    },
+    {
+      "id": "navigation",
+      "labelZh": "导航与标签",
+      "labelEn": "Navigation & tabs",
+      "shortcuts": [
+        { "id": "nav-back", "labelZh": "返回", "labelEn": "Go back in navigation history", "keys": ["Ctrl+[", "Mouse Back"], "assigned": true },
+        { "id": "nav-forward", "labelZh": "前进", "labelEn": "Go forward in navigation history", "keys": ["Ctrl+]", "Mouse Forward"], "assigned": true },
+        { "id": "browser-back", "labelZh": "浏览器返回", "labelEn": "Go back in browser history", "keys": ["Alt+Left"], "assigned": true, "note": "截图中呈灰色，可能为系统保留或未启用" },
+        { "id": "browser-forward", "labelZh": "浏览器前进", "labelEn": "Go forward in browser history", "keys": ["Alt+Right"], "assigned": true, "note": "截图中呈灰色，可能为系统保留或未启用" },
+        { "id": "cycle-recent-next", "labelZh": "下一个最近查看的任务", "labelEn": "Cycle to the next recently viewed chat", "keys": ["Ctrl+Tab"], "assigned": true },
+        { "id": "next-tab", "labelZh": "下一个标签页", "labelEn": "Switch to the next tab", "keys": ["Ctrl+Tab", "Ctrl+Shift+]", "Ctrl+PageDown"], "assigned": true },
+        { "id": "next-chat", "labelZh": "下一项任务", "labelEn": "Switch to the next chat", "keys": ["Ctrl+Shift+]", "Ctrl+PageDown"], "assigned": true },
+        { "id": "cycle-recent-prev", "labelZh": "上一个最近查看的任务", "labelEn": "Cycle to the previous recently viewed chat", "keys": ["Ctrl+Shift+Tab"], "assigned": true },
+        { "id": "prev-tab", "labelZh": "上一个标签页", "labelEn": "Switch to the previous tab", "keys": ["Ctrl+Shift+Tab", "Ctrl+Shift+[", "Ctrl+PageUp"], "assigned": true },
+        { "id": "prev-chat", "labelZh": "上一个任务", "labelEn": "Switch to the previous chat", "keys": ["Ctrl+Shift+[", "Ctrl+PageUp"], "assigned": true },
+        { "id": "switch-chat-search", "labelZh": "Switch chat…", "labelEn": "Search and switch to a chat", "keys": [], "assigned": false },
+        { "id": "go-to-task-1", "labelZh": "转到任务 1", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+1"], "assigned": true },
+        { "id": "go-to-task-2", "labelZh": "转到任务 2", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+2"], "assigned": true },
+        { "id": "go-to-task-3", "labelZh": "转到任务 3", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+3"], "assigned": true },
+        { "id": "go-to-task-4", "labelZh": "转到任务 4", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+4"], "assigned": true },
+        { "id": "go-to-task-5", "labelZh": "转到任务 5", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+5"], "assigned": true },
+        { "id": "go-to-task-6", "labelZh": "转到任务 6", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+6"], "assigned": true },
+        { "id": "go-to-task-7", "labelZh": "转到任务 7", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+7"], "assigned": true },
+        { "id": "go-to-task-8", "labelZh": "转到任务 8", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+8"], "assigned": true },
+        { "id": "go-to-task-9", "labelZh": "转到任务 9", "labelEn": "Open the visible chat in this shortcut slot", "keys": ["Ctrl+9"], "assigned": true },
+        { "id": "close-tab", "labelZh": "Close Tab", "labelEn": "Close the active tab", "keys": ["Ctrl+W", "Ctrl+F4"], "assigned": true }
+      ]
+    },
+    {
+      "id": "command",
+      "labelZh": "命令与搜索",
+      "labelEn": "Command & search",
+      "shortcuts": [
+        { "id": "open-command-menu", "labelZh": "Open command menu", "labelEn": "Open the command menu", "keys": ["Ctrl+K", "Ctrl+Shift+P"], "assigned": true },
+        { "id": "search-files", "labelZh": "Search Files…", "labelEn": "Search files", "keys": ["Ctrl+P"], "assigned": true },
+        { "id": "show-shortcuts", "labelZh": "显示键盘快捷键", "labelEn": "Show the shortcuts available right now", "keys": ["Ctrl+/"], "assigned": true }
+      ]
+    },
+    {
+      "id": "panels",
+      "labelZh": "面板与浏览器",
+      "labelEn": "Panels & browser",
+      "shortcuts": [
+        { "id": "new-browser-tab", "labelZh": "打开浏览器标签页", "labelEn": "Open a new browser tab", "keys": ["Ctrl+T"], "assigned": true },
+        { "id": "open-review-tab", "labelZh": "打开审查选项卡", "labelEn": "Open the review tab", "keys": ["Ctrl+Shift+G"], "assigned": true },
+        { "id": "toggle-bottom-panel", "labelZh": "切换底部面板", "labelEn": "Show or hide the bottom panel", "keys": ["Ctrl+J"], "assigned": true },
+        { "id": "toggle-browser-panel", "labelZh": "显示/隐藏浏览器面板", "labelEn": "Show or hide the browser panel", "keys": ["Ctrl+Shift+B"], "assigned": true },
+        { "id": "toggle-pinned-summary", "labelZh": "切换置顶摘要", "labelEn": "Show or hide the pinned summary", "keys": [], "assigned": false },
+        { "id": "toggle-git-review", "labelZh": "切换审阅", "labelEn": "Show or hide Review for the current Git-backed chat", "keys": [], "assigned": false },
+        { "id": "toggle-sidebar", "labelZh": "切换边栏", "labelEn": "Show or hide the sidebar", "keys": ["Ctrl+B"], "assigned": true },
+        { "id": "toggle-review-panel", "labelZh": "切换审阅面板", "labelEn": "Show or hide Review for the current chat", "keys": ["Ctrl+Alt+B"], "assigned": true },
+        { "id": "toggle-file-tree", "labelZh": "Toggle File Tree", "labelEn": "Toggle the file tree panel", "keys": ["Ctrl+Shift+E"], "assigned": true },
+        { "id": "toggle-maximized-sidebar", "labelZh": "显示/隐藏最大化侧边栏", "labelEn": "Expand or restore the side panel", "keys": [], "assigned": false },
+        { "id": "reload-browser", "labelZh": "Reload Browser Page", "labelEn": "Reload the active browser page", "keys": ["Ctrl+R"], "assigned": true },
+        { "id": "force-reload-browser", "labelZh": "Force Reload Browser Page", "labelEn": "Force reload the active browser page", "keys": ["Ctrl+Shift+R"], "assigned": true }
+      ]
+    },
+    {
+      "id": "copy",
+      "labelZh": "复制与剪贴板",
+      "labelEn": "Copy & clipboard",
+      "shortcuts": [
+        { "id": "copy-conversation-path", "labelZh": "Copy conversation path", "labelEn": "Copy the current chat path", "keys": ["Ctrl+Alt+Shift+C"], "assigned": true },
+        { "id": "copy-deeplink", "labelZh": "Copy deeplink", "labelEn": "Copy a deeplink to the current chat", "keys": ["Ctrl+Alt+L"], "assigned": true },
+        { "id": "copy-session-id", "labelZh": "Copy session id", "labelEn": "Copy the current chat session ID", "keys": ["Ctrl+Alt+C"], "assigned": true },
+        { "id": "copy-working-directory", "labelZh": "Copy working directory", "labelEn": "Copy the current chat working directory", "keys": ["Ctrl+Shift+C"], "assigned": true }
+      ]
+    },
+    {
+      "id": "edit",
+      "labelZh": "编辑与设置",
+      "labelEn": "Edit & settings",
+      "shortcuts": [
+        { "id": "undo", "labelZh": "Undo last action", "labelEn": "Undo the most recent app action", "keys": ["Ctrl+Z"], "assigned": true },
+        { "id": "redo", "labelZh": "Redo last action", "labelEn": "Redo the most recently undone app action", "keys": ["Ctrl+Y", "Ctrl+Shift+Z"], "assigned": true },
+        { "id": "settings", "labelZh": "设置", "labelEn": "Open ChatGPT settings", "keys": ["Ctrl+,"], "assigned": true },
+        { "id": "approve-request", "labelZh": "批准请求", "labelEn": "Approve the active request", "keys": ["Enter"], "assigned": true },
+        { "id": "decline-request", "labelZh": "拒绝请求", "labelEn": "Decline the active request", "keys": ["Escape"], "assigned": true }
+      ]
+    },
+    {
+      "id": "terminal",
+      "labelZh": "终端、环境与调试",
+      "labelEn": "Terminal, environment & debug",
+      "shortcuts": [
+        { "id": "open-terminal", "labelZh": "打开终端", "labelEn": "Open the terminal panel", "keys": ["Ctrl+`"], "assigned": true },
+        { "id": "environment-action-1", "labelZh": "环境操作 1", "labelEn": "Run the environment action in this shortcut slot", "keys": ["Shift+Win+D"], "assigned": true },
+        { "id": "start-trace-recording", "labelZh": "Start Trace Recording", "labelEn": "Start or stop trace recording", "keys": ["Ctrl+Shift+S"], "assigned": true }
+      ]
+    }
+  ],
+  "onetoneAgentSlots": {
+    "description": "OneTone Codex 场景推荐映射（与 Codex 设置页条目可能不完全一一对应）",
+    "reference": "src/js/features/agent/agent-actions.js DEFAULT_KEY_BY_SLOT",
+    "slots": {
+      "summonCodex": { "labelZh": "召唤 Codex", "labelEn": "Summon Codex", "keys": ["Ctrl+Shift+P"], "codexOfficialId": "open-command-menu" },
+      "pushToTalk": {
+        "labelZh": "开始说话",
+        "labelEn": "Start talking",
+        "keys": ["Ctrl+Shift+D"],
+        "behavior": "hold-to-talk",
+        "codexOfficialId": "start-dictation",
+        "note": "Codex 设置中为「开始听写」；OneTone 外设映射为按住触发并保持该键"
+      },
+      "stopOrSend": { "labelZh": "结束或发送", "labelEn": "Stop or send", "keys": ["Enter"], "codexOfficialId": "approve-request" },
+      "cancel": { "labelZh": "取消", "labelEn": "Cancel", "keys": ["Escape"], "codexOfficialId": "decline-request" },
+      "newThread": { "labelZh": "新聊天", "labelEn": "New thread", "keys": ["Ctrl+N"], "codexOfficialId": "new-chat" },
+      "quickChat": { "labelZh": "快速聊天", "labelEn": "Quick chat", "keys": ["Ctrl+Alt+N"], "codexOfficialId": "quick-composer-chat" },
+      "commandPalette": { "labelZh": "命令菜单", "labelEn": "Command palette", "keys": ["Ctrl+K"], "codexOfficialId": "open-command-menu" },
+      "status": { "labelZh": "查看状态", "labelEn": "Status", "keys": ["Ctrl+Alt+S"] },
+      "plan": { "labelZh": "制定计划", "labelEn": "Plan", "keys": ["Ctrl+Alt+P"], "conflictsWith": "toggle-pin" },
+      "review": { "labelZh": "审查", "labelEn": "Review", "keys": ["Ctrl+Alt+R"], "conflictsWith": "rename-chat" },
+      "permissions": { "labelZh": "权限", "labelEn": "Permissions", "keys": ["Ctrl+Alt+,"] },
+      "switchAgent": { "labelZh": "切换助手", "labelEn": "Switch agent", "keys": ["Ctrl+Alt+."] },
+      "appsOrPlugins": { "labelZh": "应用与插件", "labelEn": "Apps", "keys": ["Ctrl+Alt+A"] }
+    }
+  }
+}

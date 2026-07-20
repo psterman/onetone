@@ -19,6 +19,80 @@
     return keysPanelVisible();
   }
 
+  // Returns true when the user entered keys panel FROM an app scenario
+  // (i.e. habitScenarioReturnId points to an app-scenario mapping).
+  // When false, the keys panel is showing GLOBAL mappings only.
+  function isInAppScenarioContext(){
+    var id=String(ui().habitScenarioReturnId||'').trim();
+    if(!id) return false;
+    if(!core()||!core().byId) return false;
+    var m=core().byId(id);
+    if(!m) return false;
+    var diff=global.OneToneHabitOverrideDiff;
+    return !!(diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+  }
+
+  /** Mapping that opened this keys panel from an app scenario (Codex etc.). */
+  function appScenarioContextMapping(){
+    var id=String(ui().habitScenarioReturnId||'').trim();
+    if(!id||!core()||!core().byId) return null;
+    var m=core().byId(id);
+    var diff=global.OneToneHabitOverrideDiff;
+    if(!m||!diff||!diff.isAppScenarioMapping||!diff.isAppScenarioMapping(m)) return null;
+    return m;
+  }
+
+  function sameAppScenarioGroup(a, ctx){
+    if(!a||!ctx) return false;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(!diff||!diff.isAppScenarioMapping||!diff.isAppScenarioMapping(a)) return false;
+    var appId=String(ctx.appTargetId||'').trim();
+    var tplId=String(ctx.agentTemplateId||'').trim();
+    if(appId&&String(a.appTargetId||'').trim()===appId) return true;
+    if(tplId&&String(a.agentTemplateId||'').trim()===tplId) return true;
+    return a.id===ctx.id;
+  }
+
+  // Filter the sorted() list to only include mappings appropriate for the
+  // current context.  In global context, app-scenario mappings are hidden so
+  // they cannot be accidentally selected/edited from the global keys panel.
+  // In app-scenario context, only show mappings for the same app/template.
+  function contextFilteredSchemes(){
+    if(!core()||!core().sorted) return [];
+    var all=core().sorted();
+    var diff=global.OneToneHabitOverrideDiff;
+    var ctx=appScenarioContextMapping();
+    if(ctx){
+      return all.filter(function(m){ return sameAppScenarioGroup(m, ctx); });
+    }
+    if(!diff||!diff.isAppScenarioMapping) return all;
+    return all.filter(function(m){ return !diff.isAppScenarioMapping(m); });
+  }
+
+  /** Keep selectedMappingId aligned with the active keys-panel context. */
+  function ensureContextSelection(){
+    var schemes=contextFilteredSchemes();
+    var ctx=appScenarioContextMapping();
+    if(ctx){
+      if(state().selectedMappingId!==ctx.id){
+        state().selectedMappingId=ctx.id;
+        var h=global.__vp_bootstrap_hooks__||global.__vp_mapping_list_ui_hooks__||{};
+        if(h.syncEditorFromSelection) h.syncEditorFromSelection();
+      }
+      return ctx.id;
+    }
+    if(!schemes.length) return state().selectedMappingId;
+    var selected=state().selectedMappingId;
+    var selInList=schemes.some(function(m){ return m.id===selected; });
+    if(!selInList){
+      selected=schemes[0].id;
+      state().selectedMappingId=selected;
+      var hooksRef=global.__vp_bootstrap_hooks__||global.__vp_mapping_list_ui_hooks__||{};
+      if(hooksRef.syncEditorFromSelection) hooksRef.syncEditorFromSelection();
+    }
+    return selected;
+  }
+
   function habitName(m){
     if(!m) return '—';
     if((m.group||'').trim()) return m.group.trim();
@@ -124,6 +198,12 @@
 
   function scopeSummaryText(m){
     if(!m) return '—';
+    var ctx=appScenarioContextMapping();
+    if(ctx&&m.id===ctx.id){
+      var rulesCtx=appRules();
+      var appOnly=String(m.appTargetId||'').trim();
+      if(appOnly&&rulesCtx&&rulesCtx.appDisplayName) return rulesCtx.appDisplayName(appOnly);
+    }
     var rules=appRules();
     var primary=String(m.appTargetId||'').trim();
     var names=[];
@@ -217,13 +297,19 @@
     var rec=global.OneToneMappingRecording;
     var recMode=rec&&rec.mode?rec.mode():'none';
     var recPending=rec&&rec.isPending?rec.isPending():false;
-    var recording=recMode==='trigger'||recMode==='target';
-    if(nameEl) nameEl.textContent=habitName(m)+(trigLabel?' · '+trigLabel:(trig?' · '+friendlyKey(trig):''));
+    var recording=recMode==='trigger'||recMode==='target'||recMode==='agentBinding';
+    var capUi=global.OneToneAgentCapabilityUi;
+    var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
+    if(nameEl){
+      if(codexCtx) nameEl.textContent=habitName(m);
+      else nameEl.textContent=habitName(m)+(trigLabel?' · '+trigLabel:(trig?friendlyKey(trig):''));
+    }
     if(statusEl){
       var pillCls='keys-scheme-summary-pill';
       var pillText='';
       if(recording){
-        pillText=recMode==='trigger'?t('keysStatusRecordingTrigger'):t('keysStatusRecordingTarget');
+        pillText=recMode==='trigger'?t('keysStatusRecordingTrigger')
+          :(recMode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysStatusRecordingTarget'));
       }else if(dirty){
         pillText=t('keysSummaryStatusDirty');
         pillCls+=' is-dirty';
@@ -240,8 +326,20 @@
       statusEl.className=pillCls;
     }
     if(trigVal) trigVal.textContent=trigLabel||(trig?friendlyKey(trig):t('keysStatusUnset'));
-    if(scopeVal) scopeVal.textContent=scopeSummaryText(m);
-    if(saveBtn) saveBtn.disabled=!dirty;
+    if(scopeVal){
+      if(codexCtx&&capUi&&capUi.pushToTalkDisplay){
+        var talkKey=capUi.pushToTalkDisplay(m);
+        scopeVal.textContent=talkKey
+          ?(t('codexSummaryTalkKey','说话键')+' '+talkKey)
+          :scopeSummaryText(m);
+      }else{
+        scopeVal.textContent=scopeSummaryText(m);
+      }
+    }
+    if(saveBtn){
+      saveBtn.disabled=!dirty;
+      saveBtn.hidden=!!codexCtx;
+    }
     if(testBtn){
       var tgt=core().editorTarget?core().editorTarget(m):((m.targetKey||'').trim());
       testBtn.disabled=!trig||!tgt;
@@ -250,7 +348,7 @@
       keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
     }
     if(targetKeycapHost){
-      targetKeycapHost.setAttribute('title',recording&&recMode==='target'?t('keysKeycapRecording'):t('keysTargetKeycapHint'));
+      targetKeycapHost.setAttribute('title',recording&&(recMode==='target'||recMode==='agentBinding')?t('keysKeycapRecording'):t('keysTargetKeycapHint'));
       targetKeycapHost.classList.toggle('is-record-pending',!!recPending);
       targetKeycapHost.setAttribute('aria-disabled',recPending?'true':'false');
     }
@@ -263,6 +361,13 @@
     else if(targetKeycapHint) targetKeycapHint.textContent=t('keysTargetKeycapHint');
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
+    }
+    if(codexCtx&&capUi&&capUi.applyCodexStepChrome){
+      var step='trigger';
+      if(global.OneToneKeysPageState&&global.OneToneKeysPageState.getStep){
+        step=global.OneToneKeysPageState.getStep()||'trigger';
+      }
+      capUi.applyCodexStepChrome(step,m);
     }
   }
 
@@ -527,8 +632,8 @@
     var lbl=$('keysHabitSwitcherLbl');
     if(lbl) lbl.textContent=t('keysStatusHabitLbl');
     if(!sel||!core()||!core().sorted) return;
-    var schemes=core().sorted();
-    var selected=state().selectedMappingId;
+    var schemes=contextFilteredSchemes();
+    var selected=ensureContextSelection();
     if(!schemes.length){
       sel.innerHTML='<option value="">'+esc(t('mappingEmptyTitle'))+'</option>';
       sel.disabled=true;
@@ -625,8 +730,8 @@
       if(card) card.hidden=true;
       return;
     }
-    var schemes=core().sorted();
-    var selected=state().selectedMappingId;
+    var schemes=contextFilteredSchemes();
+    var selected=ensureContextSelection();
     if(card) card.hidden=false;
     if(countEl) countEl.textContent=String(schemes.length);
     if(!schemes.length){
@@ -681,8 +786,8 @@
       tabs.innerHTML='';
       return;
     }
-    var schemes=core().sorted();
-    var selected=state().selectedMappingId;
+    var schemes=contextFilteredSchemes();
+    var selected=ensureContextSelection();
     if(!schemes.length){
       tabs.innerHTML='<p class="keys-workflow-tabs-empty">'+esc(t('mappingEmptyTitle'))+'</p>';
       return;
@@ -720,6 +825,8 @@
   function switchActiveScheme(id){
     id=String(id||'').trim();
     if(!id||id===state().selectedMappingId) return;
+    var schemes=contextFilteredSchemes();
+    if(!schemes.some(function(m){ return m.id===id; })) return;
     if(isEditorDirty()){
       var modal=global.OneToneMappingConfirmModal;
       if(modal&&modal.open){
@@ -840,7 +947,7 @@
     if(!btn||!bar) return;
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
-    var recording=mode==='trigger'||mode==='target';
+    var recording=mode==='trigger'||mode==='target'||mode==='agentBinding';
     var onKeys=keysPanelActive();
     var host=(onKeys&&recording&&feedbackMain)?feedbackMain:bar;
     if(btn.parentNode!==host) host.appendChild(btn);
@@ -853,10 +960,10 @@
     if(!wrap||!text) return;
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
-    var recording=mode==='trigger'||mode==='target';
+    var recording=mode==='trigger'||mode==='target'||mode==='agentBinding';
     wrap.hidden=!recording;
     wrap.classList.toggle('is-trigger',mode==='trigger');
-    wrap.classList.toggle('is-target',mode==='target');
+    wrap.classList.toggle('is-target',mode==='target'||mode==='agentBinding');
     if(!recording){
       if(conflict){ conflict.hidden=true; conflict.textContent=''; }
       ['habitKeyMapRowTrigger','habitKeyMapRowTarget'].forEach(function(id){
@@ -875,8 +982,9 @@
     var trigRow=$('habitKeyMapRowTrigger');
     var tgtRow=$('habitKeyMapRowTarget');
     if(trigRow) trigRow.classList.toggle('is-recording-active',mode==='trigger');
-    if(tgtRow) tgtRow.classList.toggle('is-recording-active',mode==='target');
-    text.textContent=mode==='trigger'?t('keysRecordingTrigger'):t('keysRecordingTarget');
+    if(tgtRow) tgtRow.classList.toggle('is-recording-active',mode==='target'||mode==='agentBinding');
+    text.textContent=mode==='trigger'?t('keysRecordingTrigger')
+      :(mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中'):t('keysRecordingTarget'));
     var previewKey='';
     if(mode==='trigger'&&ed()) previewKey=ed().getEditorTriggerKey?ed().getEditorTriggerKey():'';
     if(mode==='target'&&ed()) previewKey=ed().getEditorTargetKey?ed().getEditorTargetKey():'';

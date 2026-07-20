@@ -51,6 +51,7 @@
       normalizeMediaTargetKey:deps.normalizeMediaTargetKey,
       maybeEnableMappingAfterComplete:deps.maybeEnableMappingAfterComplete,
       shouldIgnoreTriggerLeftClickCapture:deps.shouldIgnoreTriggerLeftClickCapture,
+      shouldIgnoreTargetLeftClickCapture:deps.shouldIgnoreTargetLeftClickCapture,
       armTriggerPeripheralGuard:ed().armTriggerPeripheralGuard,
       getPendingNewDraftId:ed().getPendingNewDraftId,
       setPendingNewDraftId:ed().setPendingNewDraftId

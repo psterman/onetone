@@ -182,6 +182,12 @@ pub fn chord_token_matches(stored: &str, pressed: &str) -> bool {
     }
 }
 
+/// Codex / app-native push-to-talk chord — must reach the foreground app physically;
+/// OneTone only synthesizes it from a separate trigger (e.g. PageDown long-press).
+pub fn is_hold_to_talk_chord(combo: &str) -> bool {
+    chords_equivalent("Ctrl+Shift+D", combo.trim())
+}
+
 /// Compare stored binding chord with live pressed chord (Ctrl+Alt+C ≈ LCtrl+LAlt+C).
 pub fn chords_equivalent(stored: &str, pressed: &str) -> bool {
     let stored_parts = chord_parts(stored);

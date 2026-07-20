@@ -122,6 +122,8 @@ pub struct AppState {
     pub voice_session_commit_token: Mutex<u64>,
     /// Last time a voice wake/stop shortcut was physically sent (RAlt etc.).
     pub voice_wake_last_key_at: Mutex<Option<std::time::Instant>>,
+    /// Chord held down for hold-to-talk (e.g. Codex Ctrl+Shift+D).
+    pub held_voice_chord: Mutex<Option<String>>,
     pub voice_vosk_probe: Mutex<Option<crate::voice_vosk::VoskResourceProbe>>,
     pub voice_vosk_epoch: AtomicU64,
     pub voice_kws: Mutex<Option<crate::voice_kws::VoiceKwsHandle>>,
@@ -233,6 +235,7 @@ pub fn run() {
         voice_degraded_reason: Mutex::new(String::new()),
         voice_session_commit_token: Mutex::new(0),
         voice_wake_last_key_at: Mutex::new(None),
+        held_voice_chord: Mutex::new(None),
         voice_vosk_probe: Mutex::new(None),
         voice_vosk_epoch: AtomicU64::new(0),
         voice_kws: Mutex::new(None),

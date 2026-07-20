@@ -203,7 +203,74 @@ pub fn run_for_target_id(
         "unknown_app_target".to_string(),
         AppChatWorkflowError::NotFound,
     ))?;
+    if let Some(voice_key) = {
+        let cfg = state.cfg.lock();
+        let mapping = cfg.find_mapping_by_id(mapping_id);
+        crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
+    } {
+        let mapping_targets_app = {
+            let cfg = state.cfg.lock();
+            cfg.find_mapping_by_id(mapping_id)
+                .is_some_and(|m| m.app_target_id.trim() == app_target_id)
+        };
+        let foreground_matches =
+            foreground_app_target_id().as_deref() == Some(app_target_id);
+        if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key)
+            && (mapping_targets_app || foreground_matches)
+        {
+            return run_hold_voice_foreground(
+                state,
+                window,
+                mapping_id,
+                &voice_key,
+                profile,
+            );
+        }
+    }
     run_app_chat_workflow(state, window, mapping_id, profile, duration_ms)
+}
+
+#[cfg(windows)]
+pub fn run_hold_voice_foreground(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    mapping_id: &str,
+    voice_key: &str,
+    profile: &AppChatProfile,
+) -> Result<String, (String, AppChatWorkflowError)> {
+    let app = window.app_handle();
+    let prefix = profile.error_prefix;
+
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
+        crate::app_log::log_line(state.as_ref(), "hold", &format!("{prefix} hold toggle {mapping_id}"));
+        return Ok(format!("{prefix}_hold_toggle"));
+    }
+
+    if !crate::voice_end_runtime::begin_hold_voice_chord(state.as_ref(), voice_key) {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "hold",
+            &format!("{prefix} hold press failed key={voice_key}"),
+        );
+        return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
+    }
+
+    if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {
+        crate::voice_end_runtime::enter_dictating(
+            state,
+            Some(&app),
+            mapping_id,
+            &format!("{prefix} hold-to-talk"),
+        );
+    }
+
+    crate::app_log::log_line(
+        state.as_ref(),
+        "hold",
+        &format!("{prefix} hold start key={voice_key} mapping={mapping_id}"),
+    );
+    Ok(format!("{prefix}_hold_start"))
 }
 
 /// Focus the app composer without starting voice input (AgentAction openAgent / focusComposer).
@@ -293,7 +360,8 @@ fn activate_voice_input(
 
     let voice_key = {
         let cfg = state.cfg.lock();
-        crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
+        let mapping = cfg.find_mapping_by_id(mapping_id);
+        crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
     }
     .ok_or((prefix.to_string(), AppChatWorkflowError::VoiceFailed))?;
 
@@ -302,10 +370,15 @@ fn activate_voice_input(
         return Ok(());
     }
 
-    if !crate::keyboard::send_chord(&voice_key, duration_ms) {
+    if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key) {
+        if !crate::voice_end_runtime::begin_hold_voice_chord(state.as_ref(), &voice_key) {
+            return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
+        }
+    } else if !crate::keyboard::send_chord(&voice_key, duration_ms) {
         return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
+    } else {
+        crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
     }
-    crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
 
     if profile.post_voice_key_ms > 0 {
         std::thread::sleep(Duration::from_millis(profile.post_voice_key_ms));
@@ -751,7 +824,8 @@ fn activate_voice_for_custom(
 
     let voice_key = {
         let cfg = state.cfg.lock();
-        crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
+        let mapping = cfg.find_mapping_by_id(mapping_id);
+        crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
     }
     .ok_or(("custom".to_string(), AppChatWorkflowError::VoiceFailed))?;
 
