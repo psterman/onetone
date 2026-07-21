@@ -1,0 +1,102 @@
+/* Shared Codex Micro hardware tokens — main pad + overlay must stay in sync. */
+:root {
+  --micro-hw-gap: 5px;
+  --micro-hw-key-radius: 8px;
+  --micro-hw-face-radius: 18px;
+  --micro-hw-body-radius: 24px;
+  --micro-hw-body-pad: 10px;
+  --micro-hw-face-pad: 8px;
+  --micro-hw-ink: #3a4454;
+  --micro-hw-muted: #8a95a5;
+  --micro-hw-press-y: 2px;
+  --micro-hw-press-scale: 0.97;
+  --micro-hw-screen-opacity: 0.82;
+  --micro-hw-advanced-opacity: 0.55;
+  --micro-hw-status-idle: rgba(138, 149, 165, 0.35);
+  --micro-hw-status-running: rgba(42, 156, 196, 0.75);
+  --micro-hw-status-listening: rgba(240, 180, 41, 0.9);
+  --micro-hw-status-done: rgba(64, 180, 120, 0.85);
+  --micro-hw-status-failed: rgba(220, 80, 90, 0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --micro-hw-ink: #e8f0f8;
+    --micro-hw-muted: #9aa8b8;
+  }
+}
+
+.micro-hw__key.is-screen-only {
+  opacity: var(--micro-hw-screen-opacity);
+}
+
+.micro-hw__key.is-advanced-only {
+  opacity: var(--micro-hw-advanced-opacity);
+}
+
+.micro-hw__key.is-route-disabled {
+  opacity: 0.32;
+  filter: saturate(0.25) grayscale(0.35);
+  pointer-events: none;
+}
+
+.micro-hw__key.is-pressed,
+.micro-hw__key.is-active {
+  transform: translateY(var(--micro-hw-press-y)) scale(var(--micro-hw-press-scale));
+}
+
+.micro-hw__key[data-run-status="running"] {
+  box-shadow: 0 0 0 2px var(--micro-hw-status-running), 0 0 12px var(--micro-hw-status-running);
+}
+
+.micro-hw__key[data-run-status="listening"] {
+  box-shadow: 0 0 0 2px var(--micro-hw-status-listening), 0 0 14px var(--micro-hw-status-listening);
+}
+
+.micro-hw__key[data-run-status="done"] {
+  box-shadow: 0 0 0 2px var(--micro-hw-status-done), 0 0 10px var(--micro-hw-status-done);
+}
+
+.micro-hw__key[data-run-status="failed"] {
+  box-shadow: 0 0 0 2px var(--micro-hw-status-failed), 0 0 10px var(--micro-hw-status-failed);
+}
+
+.micro-hw__key--agent[data-run-status="idle"],
+.micro-hw__key--agent:not([data-run-status]) {
+  --ag-glow: var(--micro-hw-status-idle);
+}
+
+.micro-hw__key--agent[data-run-status="running"] { --ag-glow: var(--micro-hw-status-running); }
+.micro-hw__key--agent[data-run-status="listening"] { --ag-glow: var(--micro-hw-status-listening); }
+.micro-hw__key--agent[data-run-status="done"] { --ag-glow: var(--micro-hw-status-done); }
+.micro-hw__key--agent[data-run-status="failed"] { --ag-glow: var(--micro-hw-status-failed); }
+
+.codex-micro-pad__run-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  min-height: 22px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--micro-hw-ink);
+  background: rgba(26, 45, 74, 0.06);
+}
+
+.codex-micro-pad__run-status[data-status="listening"] {
+  background: rgba(240, 180, 41, 0.18);
+}
+.codex-micro-pad__run-status[data-status="running"] {
+  background: rgba(42, 156, 196, 0.16);
+}
+.codex-micro-pad__run-status[data-status="done"] {
+  background: rgba(64, 180, 120, 0.16);
+}
+.codex-micro-pad__run-status[data-status="failed"] {
+  background: rgba(220, 80, 90, 0.16);
+}
+.codex-micro-pad__run-status[data-status="idle"] {
+  opacity: 0.75;
+}

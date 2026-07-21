@@ -308,6 +308,40 @@ pub fn focus_composer_only(
     Err(AppChatWorkflowError::NotFound)
 }
 
+/// IPC-safe focus for overlay / virtual-pad hold-to-talk — no UIA, no launch polling.
+#[cfg(windows)]
+pub fn quick_focus_codex_for_hold() -> bool {
+    if crate::app_identity::foreground_app_target_id()
+        .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
+    {
+        return true;
+    }
+    if crate::keyboard::restore_external_foreground() {
+        std::thread::sleep(Duration::from_millis(30));
+        if crate::app_identity::foreground_app_target_id()
+            .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
+        {
+            return true;
+        }
+    }
+    let Some(profile) = profile_for(CODEX_APP_TARGET_ID) else {
+        return false;
+    };
+    let Some(hwnd) = find_app_window(profile) else {
+        return false;
+    };
+    if !crate::keyboard::focus_window(hwnd) {
+        return false;
+    }
+    std::thread::sleep(Duration::from_millis(40));
+    crate::app_identity::foreground_app_target_id().is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
+}
+
+#[cfg(not(windows))]
+pub fn quick_focus_codex_for_hold() -> bool {
+    false
+}
+
 #[cfg(windows)]
 fn run_app_chat_workflow(
     state: &Arc<AppState>,

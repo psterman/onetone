@@ -4,5 +4,8 @@ description = "Minimal IPC for the Codex Micro overlay window"
 permissions = [
   "allow-cmd-codex-micro-overlay-get-state",
   "allow-cmd-codex-micro-overlay-dismiss",
+  "allow-cmd-codex-micro-overlay-start-drag",
+  "allow-cmd-codex-micro-overlay-snap-position",
+  "allow-cmd-codex-micro-overlay-set-minimized",
   "allow-cmd-codex-micro-pad-fire",
 ]

@@ -4,8 +4,14 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use serde::Serialize;
+
+use crate::agent::bindings_build::build_codex_micro_13_bindings;
+use crate::agent::templates::{CODEX_MICRO_13_TEMPLATE_ID, CODEX_PROVIDER_ID};
 use crate::app_chat_workflow::CODEX_APP_TARGET_ID;
-use crate::config::{agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry, VoiceConfig};
+use crate::config::{
+    agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry, VoiceConfig,
+};
 
 const EVENT_PREFIX: &str = "codexNumpad:";
 const MICRO_EVENT_PREFIX: &str = "codexMicroKey:";
@@ -44,6 +50,8 @@ pub struct CodexNumpadRouteSnapshot {
 #[derive(Debug, Clone, Default)]
 struct HookGate {
     require_num_lock_off: bool,
+    pad_active: bool,
+    software_enhance_enabled: bool,
     routes: HashMap<String, CodexNumpadRouteSnapshot>,
     routes_by_micro: HashMap<String, CodexNumpadRouteSnapshot>,
 }
@@ -108,16 +116,50 @@ pub fn lookup_route_by_micro_key(micro_key_id: &str) -> Option<CodexNumpadRouteS
         .cloned()
 }
 
+/// True when an enabled Codex Micro pad has software enhance on.
+pub fn software_enhance_enabled() -> bool {
+    let gate = hook_gate().lock().unwrap();
+    gate.pad_active && gate.software_enhance_enabled
+}
+
+/// Advanced micro keys that may fire without a slot when software enhance is on.
+pub fn is_software_enhance_micro_key(micro_key_id: &str) -> bool {
+    matches!(
+        micro_key_id.trim(),
+        "ENC_CW"
+            | "ENC_CC"
+            | "NAV_UP"
+            | "NAV_DOWN"
+            | "NAV_LEFT"
+            | "NAV_RIGHT"
+            | "NAV_PRESS"
+    )
+}
+
 /// Vendor HID / fttawa Micro hardware — Codex foreground + pad enabled.
 pub fn vendor_micro_should_dispatch(micro_key_id: &str) -> bool {
     if !codex_is_foreground() {
         return false;
     }
-    let gate = hook_gate().lock().unwrap();
-    if gate.routes_by_micro.is_empty() && gate.routes.is_empty() {
+    let id = micro_key_id.trim();
+    if id.is_empty() {
         return false;
     }
-    gate.routes_by_micro.contains_key(micro_key_id.trim())
+    let gate = hook_gate().lock().unwrap();
+    if !gate.pad_active {
+        return false;
+    }
+    if gate.routes_by_micro.contains_key(id) {
+        return true;
+    }
+    // M3 protocol NAV / encoder rotate: only when software enhance is on.
+    if gate.software_enhance_enabled {
+        return matches!(
+            id,
+            "NAV_UP" | "NAV_DOWN" | "NAV_LEFT" | "NAV_RIGHT" | "ENC_CW" | "ENC_CC" | "NAV_PRESS"
+        );
+    }
+    false
 }
 
 pub fn format_event(source: &NumpadSourceKey, key_down: bool) -> String {
@@ -160,9 +202,9 @@ fn codex_is_foreground() -> bool {
 }
 
 /// Public FG check for screen/overlay Micro fire (M2).
-/// Treat overlay itself as in-session so clicking keycaps does not fail `not_foreground`.
+/// Uses stable Codex latch + overlay HWND tree so overlay taps don't fail spuriously.
 pub fn codex_foreground_for_micro() -> bool {
-    codex_is_foreground() || crate::codex_micro_overlay::overlay_is_foreground()
+    crate::codex_micro_overlay::micro_pad_session_active()
 }
 
 /// Five-condition conservative swallow check for the LL keyboard hook.
@@ -194,7 +236,388 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
     *hook_gate().lock().unwrap() = gate;
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexPadReadiness {
+    pub codex_foreground: bool,
+    pub mapping_found: bool,
+    pub mapping_enabled: bool,
+    pub pad_enabled: bool,
+    pub overlay_enabled: bool,
+    pub num_lock_blocking: bool,
+    pub hook_routes: u32,
+    pub layout_profile: String,
+    pub ready: bool,
+    /// User-facing blocker id: none | no_mapping | pad_off | not_foreground | num_lock | no_routes
+    pub blocker: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexPadEnsureResult {
+    pub changed: bool,
+    pub readiness: CodexPadReadiness,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mapping_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub codex_micro_pad: Option<CodexMicroPadConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_bindings: Option<Vec<crate::config::AgentBinding>>,
+}
+
+fn is_codex_scenario(m: &MappingEntry) -> bool {
+    m.app_target_id.trim() == CODEX_APP_TARGET_ID
+        || m.agent_template_id.trim() == CODEX_MICRO_13_TEMPLATE_ID
+}
+
+fn needs_auto_ready(m: &MappingEntry) -> bool {
+    if !m.enabled || !is_codex_scenario(m) {
+        return false;
+    }
+    if m.agent_bindings.is_empty() {
+        return true;
+    }
+    match &m.codex_micro_pad {
+        None => true,
+        Some(pad) => {
+            if !pad.enabled || pad.keys.is_empty() {
+                return true;
+            }
+            pad_routes_need_heal(m, pad)
+        }
+    }
+}
+
+fn pad_routes_need_heal(m: &MappingEntry, pad: &CodexMicroPadConfig) -> bool {
+    pad.keys.iter().any(|route| {
+        route.enabled
+            && !route.slot_id.trim().is_empty()
+            && agent_key_binding_for_slot(m, &route.slot_id).is_none()
+    })
+}
+
+/// True when pad route + agent key binding exist (same gate as hook merge / fire).
+pub fn micro_key_routable(mapping: &MappingEntry, pad: &CodexMicroPadConfig, micro_key_id: &str) -> bool {
+    let id = micro_key_id.trim();
+    let Some(route) = pad
+        .keys
+        .iter()
+        .find(|k| k.micro_key_id == id && k.enabled)
+    else {
+        return false;
+    };
+    if route.slot_id.trim().is_empty() {
+        return false;
+    }
+    agent_key_binding_for_slot(mapping, &route.slot_id).is_some()
+}
+
+fn default_route_for_micro_key(micro_key_id: &str) -> Option<CodexMicroPadKeyRoute> {
+    default_codex_micro_pad_routes()
+        .into_iter()
+        .find(|r| r.micro_key_id == micro_key_id)
+}
+
+/// Ensure pad route exists and is enabled; returns (slot_id, changed).
+fn heal_pad_route_for_micro_key(
+    pad: &mut CodexMicroPadConfig,
+    micro_key_id: &str,
+) -> Option<(String, bool)> {
+    let id = micro_key_id.trim();
+    let def = default_route_for_micro_key(id);
+    let mut changed = false;
+
+    if let Some(idx) = pad.keys.iter().position(|k| k.micro_key_id == id) {
+        let route = &mut pad.keys[idx];
+        if let Some(ref d) = def {
+            if route.slot_id.trim().is_empty() {
+                route.slot_id = d.slot_id.clone();
+                changed = true;
+            }
+            if !route.enabled && !route.slot_id.trim().is_empty() {
+                route.enabled = true;
+                changed = true;
+            }
+            if route.source_scan == 0 && d.source_scan > 0 {
+                route.source_scan = d.source_scan;
+                route.source_extended = d.source_extended;
+                changed = true;
+            }
+            if route.ui_icon_id.trim().is_empty() && !d.ui_icon_id.is_empty() {
+                route.ui_icon_id = d.ui_icon_id.clone();
+                changed = true;
+            }
+        }
+        let slot = route.slot_id.trim().to_string();
+        if slot.is_empty() {
+            return None;
+        }
+        Some((slot, changed))
+    } else if let Some(d) = def {
+        let slot = d.slot_id.clone();
+        pad.keys.push(d);
+        Some((slot, true))
+    } else {
+        None
+    }
+}
+
+fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> bool {
+    let slot_id = slot_id.trim();
+    if slot_id.is_empty() {
+        return false;
+    }
+    let mut changed = false;
+    let seed_key = build_codex_micro_13_bindings(locale).into_iter().find(|s| {
+        s.slot_id == slot_id && s.trigger_type.eq_ignore_ascii_case("key")
+    });
+    if let Some(seed) = seed_key {
+        match m.agent_bindings.iter_mut().find(|b| {
+            b.slot_id == slot_id && b.trigger_type.eq_ignore_ascii_case("key")
+        }) {
+            Some(existing) => {
+                if !existing.enabled {
+                    existing.enabled = true;
+                    changed = true;
+                }
+                if existing.trigger_binding.trim().is_empty() {
+                    existing.trigger_binding = seed.trigger_binding;
+                    changed = true;
+                }
+            }
+            None => {
+                m.agent_bindings.push(seed);
+                changed = true;
+            }
+        }
+    }
+    if agent_key_binding_for_slot(m, slot_id).is_none() {
+        for seed in build_codex_micro_13_bindings(locale) {
+            if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
+                m.agent_bindings.push(seed);
+                changed = true;
+            }
+        }
+    }
+    changed
+}
+
+/// Patch missing/disabled pad route + agent key binding (in-memory + hook cache).
+pub fn try_heal_micro_route(state: &crate::AppState, micro_key_id: &str, locale: &str) -> bool {
+    let id = micro_key_id.trim();
+    if id.is_empty() {
+        return false;
+    }
+    let mut changed = false;
+    {
+        let mut cfg = state.cfg.lock();
+        for m in cfg.mappings.iter_mut() {
+            if !m.enabled || !is_codex_scenario(m) {
+                continue;
+            }
+            if seed_codex_scenario_meta(m) {
+                changed = true;
+            }
+            let slot_id = {
+                let pad = m.codex_micro_pad.get_or_insert_with(default_codex_micro_pad);
+                if !pad.enabled {
+                    pad.enabled = true;
+                    changed = true;
+                }
+                let Some((slot_id, route_changed)) = heal_pad_route_for_micro_key(pad, id) else {
+                    continue;
+                };
+                if route_changed {
+                    changed = true;
+                }
+                slot_id
+            };
+            if heal_slot_key_bindings(m, &slot_id, locale) {
+                changed = true;
+            }
+            if let Some(pad) = m.codex_micro_pad.as_mut() {
+                if heal_stock_mic_on_numpad0(pad) {
+                    changed = true;
+                }
+            }
+            break;
+        }
+        if changed {
+            sync_hook_cache(&cfg);
+        }
+    }
+    changed
+}
+
+fn seed_codex_scenario_meta(m: &mut MappingEntry) -> bool {
+    let mut changed = false;
+    if m.app_target_id.trim().is_empty() {
+        m.app_target_id = CODEX_APP_TARGET_ID.into();
+        changed = true;
+    }
+    if m.agent_template_id.trim().is_empty() {
+        m.agent_template_id = CODEX_MICRO_13_TEMPLATE_ID.into();
+        changed = true;
+    }
+    if m.agent_provider_id.trim().is_empty() {
+        m.agent_provider_id = CODEX_PROVIDER_ID.into();
+        changed = true;
+    }
+    changed
+}
+
+/// Out-of-box: seed Codex Micro pad + bindings when a Codex scenario exists but was never wired.
+pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEnsureResult {
+    let mut changed = false;
+    let mut touched_mapping_id: Option<String> = None;
+    let mut touched_pad: Option<CodexMicroPadConfig> = None;
+    let mut touched_bindings: Option<Vec<crate::config::AgentBinding>> = None;
+
+    for m in cfg.mappings.iter_mut() {
+        if !needs_auto_ready(m) {
+            continue;
+        }
+        if seed_codex_scenario_meta(m) {
+            changed = true;
+        }
+        if m.agent_bindings.is_empty() {
+            m.agent_bindings = build_codex_micro_13_bindings(locale);
+            touched_bindings = Some(m.agent_bindings.clone());
+            changed = true;
+        } else if m
+            .codex_micro_pad
+            .as_ref()
+            .is_some_and(|pad| pad_routes_need_heal(m, pad))
+        {
+            let seeds = build_codex_micro_13_bindings(locale);
+            for seed in seeds {
+                if agent_key_binding_for_slot(m, &seed.slot_id).is_none() {
+                    m.agent_bindings.push(seed);
+                    changed = true;
+                }
+            }
+            if changed {
+                touched_bindings = Some(m.agent_bindings.clone());
+            }
+        }
+        let pad = m
+            .codex_micro_pad
+            .get_or_insert_with(default_codex_micro_pad);
+        if !pad.enabled {
+            pad.enabled = true;
+            changed = true;
+        }
+        if !pad.overlay_enabled {
+            pad.overlay_enabled = true;
+            changed = true;
+        }
+        if pad.layout_profile.trim().is_empty() {
+            pad.layout_profile = "standard".into();
+            changed = true;
+        }
+        pad.software_enhance_enabled = false;
+        if pad.keys.is_empty() {
+            pad.keys = default_codex_micro_pad_routes();
+            changed = true;
+        }
+        if heal_stock_mic_on_numpad0(pad) {
+            changed = true;
+        }
+        touched_mapping_id = Some(m.id.clone());
+        touched_pad = Some(pad.clone());
+        // First matching Codex scenario only — same as overlay / hook merge priority.
+        break;
+    }
+
+    let readiness = readiness_snapshot(cfg);
+    CodexPadEnsureResult {
+        changed,
+        readiness,
+        mapping_id: touched_mapping_id,
+        codex_micro_pad: touched_pad,
+        agent_bindings: touched_bindings,
+    }
+}
+
+pub fn readiness_snapshot(cfg: &VoiceConfig) -> CodexPadReadiness {
+    let codex_fg = codex_is_foreground();
+    let (num_lock_blocking, hook_routes) = {
+        let gate = hook_gate().lock().unwrap();
+        (
+            gate.require_num_lock_off && !num_lock_is_off(),
+            gate.routes.len() as u32,
+        )
+    };
+
+    let mapping = cfg
+        .active_mappings()
+        .into_iter()
+        .find(|m| is_codex_scenario(m));
+
+    let (mapping_found, mapping_enabled, pad_enabled, overlay_enabled, layout_profile) =
+        if let Some(m) = mapping {
+            let pad = m.codex_micro_pad.as_ref();
+            (
+                true,
+                true,
+                pad.is_some_and(|p| p.enabled),
+                pad.is_some_and(|p| p.overlay_enabled),
+                pad.map(|p| p.layout_profile.clone())
+                    .filter(|s| !s.trim().is_empty())
+                    .unwrap_or_else(|| "standard".into()),
+            )
+        } else {
+            // Still report disabled pad state when scenario exists but mapping is off.
+            let dormant = cfg.mappings.iter().find(|m| is_codex_scenario(m));
+            let pad = dormant.and_then(|m| m.codex_micro_pad.as_ref());
+            (
+                dormant.is_some(),
+                dormant.is_some_and(|m| m.enabled),
+                pad.is_some_and(|p| p.enabled),
+                pad.is_some_and(|p| p.overlay_enabled),
+                pad.map(|p| p.layout_profile.clone())
+                    .filter(|s| !s.trim().is_empty())
+                    .unwrap_or_else(|| "standard".into()),
+            )
+        };
+
+    let blocker = if !mapping_found {
+        "no_mapping".into()
+    } else if !mapping_enabled {
+        "mapping_off".into()
+    } else if !pad_enabled {
+        "pad_off".into()
+    } else if !codex_fg {
+        "not_foreground".into()
+    } else if num_lock_blocking {
+        "num_lock".into()
+    } else if hook_routes == 0 {
+        "no_routes".into()
+    } else {
+        "none".into()
+    };
+
+    let ready = blocker == "none";
+
+    CodexPadReadiness {
+        codex_foreground: codex_fg,
+        mapping_found,
+        mapping_enabled,
+        pad_enabled,
+        overlay_enabled,
+        num_lock_blocking,
+        hook_routes,
+        layout_profile,
+        ready,
+        blocker,
+    }
+}
+
 fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicroPadConfig) {
+    gate.pad_active = true;
+    if pad.software_enhance_enabled {
+        gate.software_enhance_enabled = true;
+    }
     if pad.require_num_lock_off {
         gate.require_num_lock_off = true;
     }
@@ -249,6 +672,8 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         require_foreground: true,
         require_num_lock_off: false,
         overlay_enabled: true,
+        layout_profile: "standard".into(),
+        software_enhance_enabled: false,
         keys: default_codex_micro_pad_routes(),
     }
 }
@@ -317,7 +742,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "AG03" => "folder",
         "AG04" => "agent",
         "AG05" => "cloud",
-        "ENC" => "codex",
+        "ENC" => "power",
         "JOY" => "empty",
         _ => "",
     };
@@ -328,6 +753,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         slot_id: slot_id.into(),
         ui_icon_id: ui_icon_id.into(),
         enabled: true,
+        advanced: false,
     }
 }
 
@@ -420,5 +846,127 @@ mod tests {
         assert_eq!(act10.source_scan, 0x52);
         assert_eq!(enc.source_scan, 0);
         assert!(!heal_stock_mic_on_numpad0(&mut pad));
+    }
+
+    #[test]
+    fn ensure_ready_seeds_pad_and_bindings() {
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings.push(MappingEntry {
+            id: "codex-1".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CODEX_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            codex_micro_pad: None,
+        });
+        let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
+        assert!(result.changed);
+        assert!(result.readiness.mapping_found);
+        let m = cfg.mappings.iter().find(|m| m.id == "codex-1").unwrap();
+        assert!(!m.agent_bindings.is_empty());
+        let pad = m.codex_micro_pad.as_ref().unwrap();
+        assert!(pad.enabled);
+        assert_eq!(pad.layout_profile, "standard");
+        assert!(pad.keys.iter().any(|k| k.micro_key_id == "ACT10"));
+        sync_hook_cache(&cfg);
+        let snap = readiness_snapshot(&cfg);
+        assert!(snap.hook_routes > 0);
+    }
+
+    #[test]
+    fn heal_disabled_act10_route_and_missing_binding() {
+        use crate::config::{AgentBinding, MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        for k in pad.keys.iter_mut() {
+            if k.micro_key_id == "ACT10" {
+                k.enabled = false;
+            }
+        }
+        let mut m = MappingEntry {
+            id: "codex-heal".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CODEX_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![AgentBinding {
+                slot_id: "pushToTalk".into(),
+                action_id: "startDictation".into(),
+                trigger_type: "key".into(),
+                trigger_binding: String::new(),
+                enabled: false,
+                execution_mode: None,
+                activation_scope: "global".into(),
+            }],
+            codex_micro_pad: Some(pad),
+        };
+        let (slot, route_changed) = {
+            let pad = m.codex_micro_pad.as_mut().unwrap();
+            heal_pad_route_for_micro_key(pad, "ACT10").unwrap()
+        };
+        assert_eq!(slot, "pushToTalk");
+        assert!(route_changed);
+        assert!(heal_slot_key_bindings(&mut m, &slot, "zh-CN"));
+        let pad = m.codex_micro_pad.as_ref().unwrap();
+        let act10 = pad.keys.iter().find(|k| k.micro_key_id == "ACT10").unwrap();
+        assert!(act10.enabled);
+        assert!(agent_key_binding_for_slot(&m, "pushToTalk").is_some());
+        let cfg = VoiceConfig {
+            mappings: vec![m],
+            ..VoiceConfig::default()
+        };
+        sync_hook_cache(&cfg);
+        assert!(lookup_route_by_micro_key("ACT10").is_some());
     }
 }

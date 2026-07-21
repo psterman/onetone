@@ -4,133 +4,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
-  <style>
-    :root{
-      --hw-ink:#3a4454;
-      --hw-muted:#8a95a5;
-      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
-    }
-    @media (prefers-color-scheme:dark){
-      :root{--hw-ink:#e8f0f8;--hw-muted:#9aa8b8}
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important;user-select:none}
-    .root{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:6px}
-    .foot{margin-top:6px;text-align:center;font-size:10px;color:var(--hw-muted);line-height:1.3;display:flex;align-items:center;justify-content:center;gap:8px}
-    .foot__close{
-      border:none;background:rgba(26,45,74,.08);color:var(--hw-ink);border-radius:999px;
-      font-size:10px;line-height:1;padding:4px 10px;cursor:pointer;
-    }
-    .foot__close:hover{background:rgba(26,45,74,.14)}
-    @media (prefers-color-scheme:dark){
-      .foot__close{background:rgba(255,255,255,.1);color:#e8f0f8}
-      .foot__close:hover{background:rgba(255,255,255,.16)}
-    }
-    .overlay-close{
-      position:absolute;top:8px;right:8px;z-index:5;width:22px;height:22px;border:none;border-radius:50%;
-      background:rgba(26,45,74,.12);color:var(--hw-ink);cursor:pointer;font-size:14px;line-height:22px;padding:0;
-    }
-    .overlay-close:hover{background:rgba(26,45,74,.2)}
-    @media (prefers-color-scheme:dark){
-      .overlay-close{background:rgba(255,255,255,.12);color:#e8f0f8}
-      .overlay-close:hover{background:rgba(255,255,255,.2)}
-    }
-    .wrap{position:relative;width:100%;max-width:288px;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
-    .wrap.is-visible{opacity:1;transform:none;pointer-events:auto}
-    .micro-hw{
-      position:relative;width:100%;aspect-ratio:1;border-radius:24px;padding:10px;
-      background:linear-gradient(145deg,#fafbfc 0%,#eef0f3 55%,#e6e9ee 100%);
-      box-shadow:0 14px 32px rgba(26,45,74,.18),0 2px 6px rgba(26,45,74,.06);
-    }
-    @media (prefers-color-scheme:dark){
-      .micro-hw{background:linear-gradient(145deg,#3a4556,#2a3342);box-shadow:0 14px 32px rgba(0,0,0,.45)}
-    }
-    .micro-hw__face{
-      position:relative;width:100%;height:100%;border-radius:18px;padding:8px;
-      background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.18)),rgba(232,236,242,.55);
-      border:1px solid rgba(255,255,255,.65);backdrop-filter:blur(10px);
-    }
-    @media (prefers-color-scheme:dark){
-      .micro-hw__face{background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02)),rgba(40,50,64,.65);border-color:rgba(255,255,255,.1)}
-    }
-    .micro-hw__screw{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6a7382,#2c3440 70%);z-index:2}
-    .micro-hw__screw--tl{top:6px;left:6px}.micro-hw__screw--tr{top:6px;right:6px}
-    .micro-hw__screw--bl{bottom:6px;left:6px}.micro-hw__screw--br{bottom:6px;right:6px}
-    .micro-hw__grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;width:100%;height:100%}
-    .micro-hw__key{
-      border:none;padding:0;border-radius:8px;display:flex;align-items:center;justify-content:center;
-      min-width:0;min-height:0;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease,background .12s ease;
-    }
-    .micro-hw__key--span2{grid-column:span 2}
-    .micro-hw__key--agent{
-      background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(255,255,255,.18));
-      border:1px solid rgba(255,255,255,.45);
-      box-shadow:inset 0 0 10px var(--ag-glow,rgba(80,200,255,.35)),0 0 8px var(--ag-glow,rgba(80,200,255,.22));
-    }
-    .micro-hw__key--agent[data-ag="0"]{--ag-glow:rgba(64,220,180,.55)}
-    .micro-hw__key--agent[data-ag="1"]{--ag-glow:rgba(255,170,60,.55)}
-    .micro-hw__key--agent[data-ag="2"]{--ag-glow:rgba(80,140,255,.55)}
-    .micro-hw__key--agent[data-ag="3"]{--ag-glow:rgba(240,245,255,.5)}
-    .micro-hw__key--agent[data-ag="4"]{--ag-glow:rgba(255,90,140,.5)}
-    .micro-hw__key--agent[data-ag="5"]{--ag-glow:rgba(120,230,255,.5)}
-    .micro-hw__key--command{
-      background:linear-gradient(180deg,#f8f9fb,#eef0f4);border:1px solid rgba(26,45,74,.08);
-      box-shadow:0 1px 0 rgba(255,255,255,.9),0 2px 4px rgba(26,45,74,.08);color:var(--hw-ink);
-    }
-    .micro-hw__key--control{
-      background:linear-gradient(180deg,#f3f5f8,#e8ecf2);border:1px solid rgba(26,45,74,.1);
-      box-shadow:0 1px 0 rgba(255,255,255,.85),0 2px 4px rgba(26,45,74,.08);color:var(--hw-ink);cursor:pointer;
-    }
-    @media (prefers-color-scheme:dark){
-      .micro-hw__key--command,.micro-hw__key--control{background:linear-gradient(180deg,#3a4658,#2e3848);border-color:rgba(255,255,255,.08);color:#e8f0f8}
-    }
-    .micro-hw__key--command,.micro-hw__key--agent{cursor:pointer}
-    .micro-hw__key--placeholder{background:transparent;box-shadow:none;pointer-events:none}
-    .micro-hw__key.is-bound.micro-hw__key--command,.micro-hw__key.is-bound.micro-hw__key--control{border-color:rgba(42,156,196,.35)}
-    .micro-hw__key.is-pressed,.micro-hw__key.is-active{
-      transform:translateY(2px) scale(.97);filter:brightness(1.08);
-      box-shadow:inset 0 2px 6px rgba(26,45,74,.18),0 0 12px var(--ag-glow,rgba(42,156,196,.35));
-    }
-    .micro-hw__dial{
-      width:78%;aspect-ratio:1;border-radius:50%;
-      background:radial-gradient(circle at 35% 30%,#fafbfc,#d8dde5 70%,#c5cbd4);
-      box-shadow:inset 0 2px 4px rgba(255,255,255,.7),0 2px 6px rgba(26,45,74,.12);position:relative;
-    }
-    .micro-hw__dial::after{content:'';position:absolute;left:50%;top:18%;width:3px;height:28%;margin-left:-1.5px;border-radius:2px;background:#3a4454;opacity:.85}
-    .micro-hw__joy{
-      width:52%;aspect-ratio:1;border-radius:50%;
-      background:radial-gradient(circle at 40% 35%,#3a4250,#1a1f28 75%);box-shadow:0 2px 6px rgba(0,0,0,.25);position:relative;
-    }
-    .micro-hw__joy::before,.micro-hw__joy::after{content:'';position:absolute;background:rgba(180,190,205,.45);border-radius:1px}
-    .micro-hw__joy::before{left:20%;right:20%;top:48%;height:2px}
-    .micro-hw__joy::after{top:20%;bottom:20%;left:48%;width:2px}
-    .micro-hw__icon{width:42%;height:42%;max-width:20px;max-height:20px;color:var(--hw-ink);display:block}
-    .micro-hw__icon svg{width:100%;height:100%;display:block;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-    .micro-hw__key--agent .micro-hw__icon{opacity:.15;width:28%;height:28%}
-    .micro-hw__leds{position:absolute;left:14px;bottom:10px;display:flex;gap:3px;z-index:2}
-    .micro-hw__led{width:3px;height:3px;border-radius:50%;background:#f0b429;box-shadow:0 0 4px rgba(240,180,41,.8)}
-  </style>
+  <link rel="stylesheet" href="css/codex-micro-overlay.css" />
 </head>
 <body>
   <div class="root">
     <div class="wrap" id="wrap">
-      <button type="button" class="overlay-close" id="closeBtn" title="关闭悬浮键盘" aria-label="关闭">×</button>
-      <div class="micro-hw micro-hw--sm">
-        <div class="micro-hw__face">
-          <span class="micro-hw__screw micro-hw__screw--tl"></span>
-          <span class="micro-hw__screw micro-hw__screw--tr"></span>
-          <span class="micro-hw__screw micro-hw__screw--bl"></span>
-          <span class="micro-hw__screw micro-hw__screw--br"></span>
-          <div class="micro-hw__grid" id="grid"></div>
-          <div class="micro-hw__leds" aria-hidden="true">
-            <span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>
+      <div class="overlay-mini" id="overlayMini">
+        <span class="overlay-mini__mark" aria-hidden="true">M</span>
+        <div class="overlay-mini__leds" id="miniLeds" data-pad-status="idle" aria-hidden="true">
+          <span class="overlay-mini__led"></span>
+          <span class="overlay-mini__led"></span>
+          <span class="overlay-mini__led"></span>
+        </div>
+        <button type="button" class="overlay-mini__btn" data-act="expand" title="展开" aria-label="展开">▢</button>
+        <button type="button" class="overlay-mini__btn" data-act="close" title="关闭" aria-label="关闭">×</button>
+      </div>
+
+      <div class="overlay-full" id="overlayFull">
+        <header class="overlay-chrome">
+          <span class="overlay-chrome__title">Codex Micro</span>
+          <button type="button" class="overlay-chrome__btn" data-act="minimize" title="最小化" aria-label="最小化">—</button>
+          <button type="button" class="overlay-chrome__btn overlay-chrome__btn--close" data-act="close" title="关闭" aria-label="关闭">×</button>
+        </header>
+        <div class="overlay-body">
+          <div class="micro-hw micro-hw--sm">
+            <span class="micro-hw__aura" aria-hidden="true"></span>
+            <div class="micro-hw__face">
+              <span class="micro-hw__brand micro-hw__brand--left" aria-hidden="true">Work Loud | OneTone 2026</span>
+              <span class="micro-hw__brand micro-hw__brand--right" aria-hidden="true">You can just build things</span>
+              <span class="micro-hw__arrow" aria-hidden="true">↑</span>
+              <span class="micro-hw__aux-hole" aria-hidden="true"></span>
+              <div class="micro-hw__grid" id="grid"></div>
+              <div class="micro-hw__leds" id="leds" data-pad-status="idle" aria-hidden="true">
+                <span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>
+              </div>
+              <span class="micro-hw__build" aria-hidden="true">Let's build</span>
+              <div class="status-chip" id="statusChip" data-status="idle"></div>
+            </div>
           </div>
+          <p class="foot" id="footHint">仅 Codex 前台 · 点击触发</p>
         </div>
       </div>
-      <p class="foot" id="foot">
-        <span>仅 Codex 前台 · 点击触发</span>
-        <button type="button" class="foot__close" id="closeTextBtn">关闭</button>
-      </p>
     </div>
   </div>
   <script>
@@ -158,12 +72,10 @@
 
     var ICON={
       fast:'<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 10-14h-7l0-6z"/></svg>',
-      approve:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
       reject:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
       fork:'<svg viewBox="0 0 24 24"><path d="M7 4v8a4 4 0 004 4h2a4 4 0 004-4V4"/><path d="M17 4l3 3-3 3M7 4L4 7l3 3"/></svg>',
       mic:'<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
       send:'<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 7v10"/></svg>',
-      new:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
       codex:'<svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z"/></svg>',
       palette:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>',
       status:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
@@ -175,9 +87,67 @@
       empty:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>'
     };
 
+    var STATUS_LABEL={idle:'',running:'执行中',listening:'听写中',done:'完成',failed:'失败'};
+    var REASON_HINT={
+      not_foreground:'请切换到 Codex 桌面版窗口',
+      unbound:'此键未启用或未绑定快捷键',
+      no_profile:'Codex 场景未配置',
+      hold_failed:'无法启动听写（请确认 Codex 已打开）',
+      invalid_key:'无效按键',
+      invalid_phase:'无效操作'
+    };
+    var DEFAULT_FOOT='仅 Codex 前台 · 点击触发';
+    var lastFootHint=DEFAULT_FOOT;
+    var boundKeys={};
     var wrap=document.getElementById('wrap');
     var grid=document.getElementById('grid');
+    var leds=document.getElementById('leds');
+    var miniLeds=document.getElementById('miniLeds');
+    var statusChip=document.getElementById('statusChip');
+    var footHint=document.getElementById('footHint');
     var activePtr='';
+    /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
+    var holdLockId='';
+    var holdSuppressCancel=false;
+    var holdUiReleased=false;
+    var lastGridSig='';
+    var localPadStatus='idle';
+    var localStatusMicro='';
+    var localStatusTimer=null;
+    var localMinimized=false;
+    var backendPadStatus='idle';
+    var STATUS_MS={running:800,done:600,failed:1200};
+    var enhanceOn=false;
+    var JOY_DIR_MS=3000;
+    var joyDirUntil=0;
+    var joyDirTimer=null;
+    var joyDirKeyHandler=null;
+    var dragging=false;
+    var overlayHoldInstalled=false;
+
+    function ensureOverlayHoldPointerUp(){
+      if(overlayHoldInstalled) return;
+      overlayHoldInstalled=true;
+      function endOverlayPtr(e){
+        if(!activePtr) return;
+        if(holdSuppressCancel && e && e.type==='pointercancel') return;
+        var id=activePtr;
+        activePtr='';
+        if(id==='ACT10') holdSuppressCancel=false;
+        if(id==='ACT10') holdUiReleased=true;
+        releaseKeyVisual(id);
+        applyLocalStatusDom();
+        fire(id,'up');
+      }
+      window.addEventListener('pointerup',endOverlayPtr,true);
+      window.addEventListener('pointercancel',endOverlayPtr,true);
+      window.addEventListener('mouseup',endOverlayPtr,true);
+      window.addEventListener('pointermove',function(e){
+        if(!activePtr) return;
+        if(typeof e.buttons==='number' && e.buttons!==0 && (e.buttons&1)!==0) return;
+        endOverlayPtr(e);
+      },true);
+    }
 
     function cellMap(cells){
       var map={};
@@ -185,75 +155,377 @@
       return map;
     }
 
+    function sourceClass(kind){
+      if(kind==='screen') return ' is-screen-only';
+      if(kind==='advanced') return ' is-advanced-only';
+      return '';
+    }
+
+    function clearLocalTimer(){
+      if(localStatusTimer){ clearTimeout(localStatusTimer); localStatusTimer=null; }
+    }
+
+    function effectivePadStatus(){
+      if(localPadStatus!=='idle') return localPadStatus;
+      return backendPadStatus||'idle';
+    }
+
+    function applyRgbGlow(rgb){
+      if(!rgb||rgb.r==null){
+        wrap.classList.remove('has-rgb-glow');
+        return;
+      }
+      wrap.classList.add('has-rgb-glow');
+      wrap.style.setProperty('--overlay-rgb-glow', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.32)');
+    }
+
+    function applyLocalStatusDom(){
+      var padSt=effectivePadStatus();
+      var showListen=padSt==='listening' && !holdUiReleased;
+      wrap.classList.toggle('is-status-open', showListen || padSt==='failed');
+      wrap.classList.toggle('is-minimized', !!localMinimized);
+      if(leds) leds.setAttribute('data-pad-status', padSt);
+      if(miniLeds) miniLeds.setAttribute('data-pad-status', padSt);
+      if(statusChip){
+        statusChip.setAttribute('data-status', padSt);
+        statusChip.textContent=STATUS_LABEL[padSt]||'';
+      }
+      if(footHint){
+        if(showListen) footHint.textContent='听写中 · 松开结束';
+        else if(padSt==='running') footHint.textContent='执行中';
+        else if(padSt==='failed') footHint.textContent=lastFootHint||'触发失败';
+        else if(joyDirUntil && Date.now()<=joyDirUntil) footHint.textContent='方向模式 · 方向键/Enter/Esc';
+        else footHint.textContent=DEFAULT_FOOT;
+      }
+    }
+
+    function mergeRunStatus(cellId, backendRun){
+      var br=String(backendRun||'idle');
+      if(localPadStatus==='listening' && localStatusMicro===cellId){
+        return activePtr===cellId ? 'listening' : 'idle';
+      }
+      if(localPadStatus!=='idle' && localStatusMicro===cellId) return localPadStatus;
+      return br;
+    }
+
+    function releaseKeyVisual(id){
+      if(!grid||!id) return;
+      grid.querySelectorAll('[data-micro-key="'+id+'"]').forEach(function(el){
+        el.classList.remove('is-pressed','is-active');
+        el.setAttribute('data-run-status','idle');
+      });
+    }
+
+    function setLocalStatus(status, microId){
+      localPadStatus=status||'idle';
+      localStatusMicro=localPadStatus==='idle' ? '' : String(microId||localStatusMicro||'');
+      applyLocalStatusDom();
+      grid.querySelectorAll('[data-micro-key]').forEach(function(el){
+        var id=el.getAttribute('data-micro-key');
+        var br=el.getAttribute('data-backend-run')||'idle';
+        el.setAttribute('data-run-status', mergeRunStatus(id, br));
+      });
+      clearLocalTimer();
+      if(localPadStatus==='running'){
+        localStatusTimer=setTimeout(function(){ setLocalStatus('done', localStatusMicro); }, STATUS_MS.running);
+      } else if(localPadStatus==='done'){
+        localStatusTimer=setTimeout(function(){
+          setLocalStatus('idle', '');
+          lastGridSig='';
+          pull();
+        }, STATUS_MS.done);
+      } else if(localPadStatus==='failed'){
+        localStatusTimer=setTimeout(function(){ setLocalStatus('idle', ''); }, STATUS_MS.failed);
+      }
+    }
+
+    function exitJoyDir(){
+      joyDirUntil=0;
+      if(joyDirTimer){ clearTimeout(joyDirTimer); joyDirTimer=null; }
+      if(joyDirKeyHandler){
+        window.removeEventListener('keydown', joyDirKeyHandler, true);
+        joyDirKeyHandler=null;
+      }
+      grid.querySelectorAll('[data-micro-key="JOY"]').forEach(function(el){ el.classList.remove('is-joy-dir'); });
+      applyLocalStatusDom();
+    }
+
+    function enterJoyDir(){
+      if(!enhanceOn) return;
+      exitJoyDir();
+      joyDirUntil=Date.now()+JOY_DIR_MS;
+      grid.querySelectorAll('[data-micro-key="JOY"]').forEach(function(el){ el.classList.add('is-joy-dir'); });
+      joyDirKeyHandler=function(e){
+        if(!joyDirUntil || Date.now()>joyDirUntil){ exitJoyDir(); return; }
+        var nav=null;
+        if(e.key==='ArrowUp') nav='NAV_UP';
+        else if(e.key==='ArrowDown') nav='NAV_DOWN';
+        else if(e.key==='ArrowLeft') nav='NAV_LEFT';
+        else if(e.key==='ArrowRight') nav='NAV_RIGHT';
+        else if(e.key==='Enter') nav='NAV_PRESS';
+        else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); exitJoyDir(); return; }
+        if(!nav) return;
+        e.preventDefault(); e.stopPropagation();
+        fire(nav,'down').then(function(){ fire(nav,'up'); });
+      };
+      window.addEventListener('keydown', joyDirKeyHandler, true);
+      joyDirTimer=setTimeout(exitJoyDir, JOY_DIR_MS);
+      applyLocalStatusDom();
+    }
+
+    function setFootHint(text){
+      lastFootHint=text||DEFAULT_FOOT;
+      if(footHint) footHint.textContent=lastFootHint;
+    }
+
     function fire(id,phase){
-      return invoke('cmd_codex_micro_pad_fire',{microKeyId:id,phase:phase}).catch(function(){ return null; });
+      return invoke('cmd_codex_micro_pad_fire',{microKeyId:id,phase:phase}).then(function(res){
+        if(!res) return res;
+        var reason=String(res.reason||'');
+        if(reason==='hold_down'){
+          holdLockId=id;
+          holdSuppressCancel=true;
+          holdUiReleased=false;
+          setLocalStatus('listening', id);
+        } else if(reason==='hold_up'){
+          holdLockId='';
+          holdSuppressCancel=false;
+          holdUiReleased=false;
+          setLocalStatus('done', id);
+        }
+        else if(reason==='hold_busy'){
+          setFootHint('听写进行中');
+        }
+        else if(reason==='fired' || reason==='enhance_pulse') setLocalStatus('running', id);
+        else if(!res.ok && phase==='down'){
+          if(holdLockId===id){
+            holdLockId='';
+            holdSuppressCancel=false;
+          }
+          setLocalStatus('failed', id);
+          setFootHint(REASON_HINT[reason]||DEFAULT_FOOT);
+        } else if(res.ok && phase==='down'){
+          setFootHint(DEFAULT_FOOT);
+        }
+        return res;
+      }).catch(function(){
+        if(phase==='down'){
+          if(holdLockId===id){
+            holdLockId='';
+            holdSuppressCancel=false;
+          }
+          setLocalStatus('failed', id);
+        }
+        return null;
+      });
     }
 
     function bindFire(){
+      ensureOverlayHoldPointerUp();
       grid.querySelectorAll('[data-micro-key]').forEach(function(el){
         if(el.classList.contains('micro-hw__key--placeholder')) return;
         var id=el.getAttribute('data-micro-key');
+        if(id==='JOY' && enhanceOn){
+          el.addEventListener('pointerdown',function(e){
+            if(e.button!=null&&e.button!==0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var isCenter=!!(e.target&&e.target.closest&&e.target.closest('.micro-hw__joy'));
+            if(isCenter && joyDirUntil && Date.now()<=joyDirUntil){
+              fire('NAV_PRESS','down').then(function(){ fire('NAV_PRESS','up'); });
+              return;
+            }
+            enterJoyDir();
+          });
+          return;
+        }
         el.addEventListener('pointerdown',function(e){
           if(e.button!=null&&e.button!==0) return;
           e.preventDefault();
+          e.stopPropagation();
           activePtr=id;
+          if(id==='ACT10'){
+            holdLockId=id;
+            holdSuppressCancel=true;
+            holdUiReleased=false;
+          }
           el.classList.add('is-pressed','is-active');
           try{ el.setPointerCapture(e.pointerId); }catch(_){}
           fire(id,'down');
         });
-        el.addEventListener('pointerup',function(){
-          if(activePtr!==id) return;
-          activePtr='';
-          el.classList.remove('is-pressed','is-active');
-          fire(id,'up');
-        });
-        el.addEventListener('pointercancel',function(){
-          if(activePtr!==id) return;
-          activePtr='';
-          el.classList.remove('is-pressed','is-active');
-          fire(id,'up');
-        });
+        if(id==='ENC' && enhanceOn){
+          el.addEventListener('wheel',function(e){
+            e.preventDefault(); e.stopPropagation();
+            var cw=e.deltaY>0||e.deltaX>0;
+            var mid=cw?'ENC_CW':'ENC_CC';
+            fire(mid,'down').then(function(){ fire(mid,'up'); });
+          },{passive:false});
+        }
       });
+    }
+
+    function gridSignature(s,map,active){
+      var parts=(s.cells||[]).map(function(c){
+        if(!c||!c.microKeyId) return '';
+        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.runStatus||'');
+      });
+      return [!!s.visible,!!s.softwareEnhanceEnabled,!!s.minimized,active,parts.join('|')].join(';');
+    }
+
+    function patchGridRunStates(map,active){
+      if(!grid) return;
+      grid.querySelectorAll('[data-micro-key]').forEach(function(el){
+        var id=el.getAttribute('data-micro-key');
+        var info=map[id]||{};
+        var backendRun=String(info.runStatus||'idle');
+        el.setAttribute('data-backend-run',backendRun);
+        el.setAttribute('data-run-status',mergeRunStatus(id,backendRun));
+        var pressed=activePtr===id;
+        el.classList.toggle('is-pressed',pressed);
+        el.classList.toggle('is-active',pressed);
+      });
+    }
+
+    function shouldDeferGridRebuild(){
+      return !!holdLockId || localPadStatus==='listening' || !!activePtr;
     }
 
     function render(s){
       s=s||{};
       wrap.classList.toggle('is-visible',!!s.visible);
-      if(!s.visible) return;
+      if(!s.visible){ exitJoyDir(); holdLockId=''; return; }
+      enhanceOn=!!s.softwareEnhanceEnabled;
+      localMinimized=!!s.minimized;
+      applyRgbGlow(s.rgb);
       var map=cellMap(s.cells);
       var active=String(s.activeMicroKeyId||'');
+      backendPadStatus=String(s.padStatus||'idle');
+      var snapMicro=String(s.statusMicroKeyId||'');
+      if(backendPadStatus==='listening' || backendPadStatus==='running' || backendPadStatus==='done' || backendPadStatus==='failed'){
+        if(localPadStatus!==backendPadStatus || localStatusMicro!==snapMicro){
+          if(backendPadStatus==='listening'){
+            clearLocalTimer();
+            localPadStatus=backendPadStatus;
+            localStatusMicro=snapMicro;
+            if(snapMicro && activePtr) holdLockId=snapMicro;
+          } else if(!localStatusTimer) {
+            localPadStatus=backendPadStatus;
+            localStatusMicro=snapMicro;
+          }
+        }
+      } else if((backendPadStatus==='done' || backendPadStatus==='idle') && snapMicro==='ACT10'){
+        activePtr='';
+        holdLockId='';
+        holdSuppressCancel=false;
+        holdUiReleased=false;
+        releaseKeyVisual('ACT10');
+        if(!localStatusTimer){
+          localPadStatus=backendPadStatus;
+          localStatusMicro=backendPadStatus==='idle' ? '' : snapMicro;
+        }
+      } else if(backendPadStatus==='idle' && !localStatusTimer && localPadStatus!=='listening' && localPadStatus!=='running' && !activePtr){
+        localPadStatus='idle';
+        localStatusMicro='';
+        if(!holdSuppressCancel) holdLockId='';
+      }
+      var sig=gridSignature(s,map,active);
+      if(shouldDeferGridRebuild()){
+        (s.cells||[]).forEach(function(c){ if(c&&c.microKeyId) boundKeys[c.microKeyId]=!!c.bound; });
+        patchGridRunStates(map,active);
+        applyLocalStatusDom();
+        return;
+      }
+      if(sig===lastGridSig){
+        patchGridRunStates(map,active);
+        applyLocalStatusDom();
+        return;
+      }
+      lastGridSig=sig;
+      boundKeys={};
       grid.innerHTML=LAYOUT.map(function(cell){
         var info=map[cell.id]||{};
         var bound=!!info.bound;
+        boundKeys[cell.id]=bound;
         var iconId=info.uiIconId||cell.icon||'empty';
-        var cls='micro-hw__key micro-hw__key--'+cell.kind;
+        var kind=String(info.sourceKind||'none');
+        var backendRun=String(info.runStatus||'idle');
+        var runSt=mergeRunStatus(cell.id, backendRun);
+        var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind);
         if(cell.span===2) cls+=' micro-hw__key--span2';
         if(bound) cls+=' is-bound';
-        if(active&&active===cell.id) cls+=' is-pressed is-active';
+        else cls+=' is-route-disabled';
+        if(active&&active===cell.id&&activePtr===cell.id) cls+=' is-pressed is-active';
+        if(cell.id==='JOY' && joyDirUntil && Date.now()<=joyDirUntil) cls+=' is-joy-dir';
+        var agAttr=cell.ag!=null ? ' data-ag="'+cell.ag+'"' : '';
         var style='grid-row:'+cell.row+';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
-        var ag=cell.ag!=null?' data-ag="'+cell.ag+'"':'';
         var tag=cell.kind==='placeholder'?'div':'button';
         var type=tag==='button'?' type="button"':'';
-        var inner='<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>';
-        return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+ag+' style="'+style+'">'+inner+'</'+tag+'>';
+        var inner=cell.id==='ENC'
+          ? '<span class="micro-hw__pwr is-on" aria-hidden="true"><span class="micro-hw__pwr-rocker"></span></span>'
+          : (cell.id==='JOY'
+            ? '<span class="micro-hw__joy" aria-hidden="true"></span>'
+            : '<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>');
+        return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
+          +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-source-kind="'+kind+'" style="'+style+'"'
+          +(cell.id==='ACT10'?' title="小键盘 0 · 按住说话"':'')
+          +'>'+inner+'</'+tag+'>';
       }).join('');
+      applyLocalStatusDom();
       bindFire();
     }
 
     function dismiss(){
       invoke('cmd_codex_micro_overlay_dismiss',{}).catch(function(){});
     }
-    document.getElementById('closeBtn').addEventListener('click',function(e){
-      e.preventDefault(); e.stopPropagation(); dismiss();
+
+    function isDragBlocked(target){
+      return !!(target && target.closest && target.closest('[data-micro-key],[data-act],button,a,input,select,textarea'));
+    }
+
+    wrap.addEventListener('pointerdown',function(e){
+      if(e.button!=null&&e.button!==0) return;
+      if(isDragBlocked(e.target)) return;
+      dragging=true;
+      invoke('cmd_codex_micro_overlay_start_drag',{}).catch(function(){});
     });
-    document.getElementById('closeTextBtn').addEventListener('click',function(e){
-      e.preventDefault(); e.stopPropagation(); dismiss();
+    window.addEventListener('pointerup',function(){
+      if(!dragging) return;
+      dragging=false;
+      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
+    });
+    window.addEventListener('pointercancel',function(){
+      if(!dragging) return;
+      dragging=false;
+      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
+    });
+
+    document.querySelectorAll('[data-act="close"]').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.preventDefault(); e.stopPropagation();
+        dismiss();
+      });
+    });
+
+    document.querySelectorAll('[data-act="minimize"]').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.preventDefault(); e.stopPropagation();
+        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:true}).catch(function(){});
+      });
+    });
+
+    document.querySelectorAll('[data-act="expand"]').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.preventDefault(); e.stopPropagation();
+        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
+      });
     });
 
     if(listen){ listen('codex_micro_overlay_state',function(ev){ render(ev.payload); }).catch(function(){}); }
-    function pull(){ invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){}); }
+    function pull(){
+      if(holdLockId||localPadStatus==='listening') return;
+      invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
+    }
     pull();
-    // Slow poll as backup if an event is missed (avoid 假死 from aggressive IPC).
     setInterval(pull, 1500);
   </script>
 </body>

@@ -1,0 +1,751 @@
+/* Codex Micro floating overlay — hardware-like translucent Micro shell. */
+
+@import url("codex-micro-hw-tokens.css");
+
+:root {
+  --overlay-ink: var(--micro-hw-ink, #3a4454);
+  --overlay-muted: var(--micro-hw-muted, #7d8998);
+  --overlay-shell: rgba(204, 255, 226, 0.82);
+  --overlay-shell-hot: rgba(106, 255, 181, 0.5);
+  --overlay-face: rgba(232, 238, 244, 0.68);
+  --overlay-key-face: #f7f9fb;
+  --overlay-key-side: #d9e0e8;
+  --overlay-gap: 8px;
+  --overlay-led-idle: #f5b51b;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+  user-select: none;
+}
+
+body {
+  padding: 0;
+}
+
+.root {
+  width: 100%;
+  height: 100%;
+  padding: 7px;
+}
+
+.wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform: translateY(5px) scale(0.985);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  cursor: grab;
+  overflow: visible;
+}
+
+.wrap::before,
+.wrap::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #4d5967, #131820 72%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.wrap::before { top: 0; left: 0; }
+.wrap::after { top: 0; right: 0; }
+
+.wrap:active { cursor: grabbing; }
+.wrap.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+
+.wrap [data-micro-key],
+.wrap [data-act],
+.wrap button { cursor: pointer; }
+
+/* Chrome is an invisible handle until hover/status needs it. */
+.overlay-chrome {
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.wrap:hover .overlay-chrome,
+.wrap.is-status-open .overlay-chrome {
+  opacity: 1;
+}
+
+.overlay-chrome__title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 800;
+  color: #778597;
+  letter-spacing: 0;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.overlay-chrome__btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(235, 240, 246, 0.58);
+  color: #687687;
+  font-size: 14px;
+  line-height: 24px;
+  padding: 0;
+  backdrop-filter: blur(6px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.overlay-chrome__btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #263241;
+}
+
+.overlay-chrome__btn--close:hover {
+  background: rgba(255, 216, 216, 0.92);
+  color: #a3231c;
+}
+
+.overlay-body {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.overlay-full {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.overlay-body .micro-hw {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 26px;
+  border-radius: 46px;
+  background:
+    radial-gradient(circle at 20% 96%, rgba(35, 255, 148, 0.62), transparent 34%),
+    radial-gradient(circle at 86% 6%, rgba(182, 255, 220, 0.8), transparent 28%),
+    linear-gradient(145deg, rgba(235, 255, 245, 0.9), rgba(190, 255, 220, 0.78));
+  box-shadow:
+    0 24px 56px rgba(15, 40, 35, 0.24),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.52),
+    inset 0 0 28px rgba(64, 255, 158, 0.35),
+    0 0 34px rgba(66, 255, 161, 0.33);
+  overflow: visible;
+}
+
+.wrap.has-rgb-glow .micro-hw {
+  box-shadow:
+    0 24px 56px rgba(15, 40, 35, 0.24),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.52),
+    inset 0 0 28px rgba(64, 255, 158, 0.35),
+    0 0 38px var(--overlay-rgb-glow, rgba(66, 255, 161, 0.34));
+}
+
+.micro-hw__aura {
+  position: absolute;
+  inset: 11px;
+  border-radius: 36px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(51, 255, 152, 0.45), transparent 24% 72%, rgba(51, 255, 152, 0.36)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 42%);
+  filter: blur(1px);
+}
+
+.overlay-body .micro-hw__face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 32px 37px 35px;
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(218, 226, 234, 0.42)),
+    var(--overlay-face);
+  border: 1px solid rgba(112, 126, 142, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -12px 24px rgba(126, 142, 158, 0.12),
+    0 2px 8px rgba(20, 30, 44, 0.18);
+  backdrop-filter: blur(9px);
+}
+
+.overlay-body .micro-hw__face::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+}
+
+.micro-hw__brand {
+  position: absolute;
+  z-index: 3;
+  font-size: 8px;
+  line-height: 1;
+  color: rgba(85, 99, 116, 0.7);
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.micro-hw__brand--left {
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+}
+
+.micro-hw__brand--right {
+  right: 12px;
+  top: 49%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: right center;
+}
+
+.micro-hw__arrow {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  z-index: 3;
+  color: rgba(33, 44, 56, 0.66);
+  font-size: 19px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.micro-hw__build {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 8px;
+  color: rgba(67, 78, 92, 0.68);
+  pointer-events: none;
+}
+
+.micro-hw__aux-hole {
+  position: absolute;
+  left: 41px;
+  bottom: 47px;
+  z-index: 4;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 36%, #080b10, #000 72%);
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.16),
+    0 2px 8px rgba(0, 0, 0, 0.28),
+    0 0 0 4px rgba(225, 231, 237, 0.5);
+  pointer-events: none;
+}
+
+.overlay-body .micro-hw__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: var(--overlay-gap);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.overlay-body .micro-hw__key {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--overlay-ink);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.12s ease,
+    filter 0.12s ease,
+    opacity 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.micro-hw__key--span2 { grid-column: span 2; }
+
+.micro-hw__key.is-screen-only { opacity: 0.78; }
+.micro-hw__key.is-advanced-only { opacity: 0.48; }
+
+.micro-hw__key.is-pressed,
+.micro-hw__key.is-active {
+  transform: translateY(3px) scale(0.965);
+  filter: brightness(1.04);
+}
+
+/* Frosted top agent keys. */
+.micro-hw__key--agent {
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(70, 86, 190, 0.18) 0 12%, transparent 13%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.38), rgba(205, 214, 224, 0.36));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 16px rgba(115, 129, 146, 0.12),
+    0 2px 5px rgba(28, 36, 47, 0.1);
+  backdrop-filter: blur(7px);
+}
+
+.micro-hw__key--agent::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: -1;
+  border-radius: 13px;
+  background: radial-gradient(circle, var(--ag-halo, rgba(92, 212, 255, 0.35)), transparent 68%);
+  opacity: 0.78;
+  filter: blur(2px);
+}
+
+.micro-hw__key--agent:not(.is-bound)::before {
+  opacity: 0.24;
+}
+
+.micro-hw__key--agent[data-ag="0"] { --ag-halo: rgba(53, 255, 183, 0.62); }
+.micro-hw__key--agent[data-ag="1"] { --ag-halo: rgba(255, 189, 70, 0.7); }
+.micro-hw__key--agent[data-ag="2"] { --ag-halo: rgba(85, 139, 255, 0.68); }
+.micro-hw__key--agent[data-ag="3"] { --ag-halo: rgba(232, 238, 248, 0.5); }
+.micro-hw__key--agent[data-ag="4"] { --ag-halo: rgba(255, 88, 144, 0.64); }
+.micro-hw__key--agent[data-ag="5"] { --ag-halo: rgba(101, 226, 255, 0.62); }
+
+.micro-hw__key--agent[data-run-status="running"] { --ag-halo: rgba(42, 156, 196, 0.72); }
+.micro-hw__key--agent[data-run-status="listening"] { --ag-halo: rgba(240, 180, 41, 0.76); }
+.micro-hw__key--agent[data-run-status="done"] { --ag-halo: rgba(64, 180, 120, 0.68); }
+.micro-hw__key--agent[data-run-status="failed"] { --ag-halo: rgba(220, 80, 90, 0.72); }
+
+.micro-hw__key--agent .micro-hw__icon {
+  display: block;
+  width: 30%;
+  height: 30%;
+  opacity: 0.13;
+}
+
+/* White sculpted command keys. */
+.micro-hw__key--command {
+  border-radius: 11px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f2f5f8 52%, #dce4eb 100%);
+  border: 1px solid rgba(92, 105, 122, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -6px 11px rgba(139, 152, 169, 0.16),
+    0 5px 0 #cfd8e0,
+    0 7px 12px rgba(35, 45, 58, 0.18);
+}
+
+.micro-hw__key--command.is-pressed,
+.micro-hw__key--command.is-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 3px 8px rgba(67, 78, 92, 0.16),
+    0 2px 0 #c1ccd5,
+    0 3px 7px rgba(35, 45, 58, 0.12);
+}
+
+.micro-hw__key--control {
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.micro-hw__key[data-run-status="running"]:not(.micro-hw__key--agent) {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-running),
+    0 0 14px var(--micro-hw-status-running),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 5px 0 #cfd8e0;
+}
+
+.micro-hw__key[data-run-status="listening"]:not(.micro-hw__key--agent) {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-listening),
+    0 0 16px var(--micro-hw-status-listening),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 5px 0 #cfd8e0;
+}
+
+.micro-hw__key[data-run-status="done"]:not(.micro-hw__key--agent) {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-done),
+    0 0 12px var(--micro-hw-status-done),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 5px 0 #cfd8e0;
+}
+
+.micro-hw__key[data-run-status="failed"]:not(.micro-hw__key--agent) {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-failed),
+    0 0 12px var(--micro-hw-status-failed),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 5px 0 #cfd8e0;
+}
+
+.micro-hw__icon {
+  position: relative;
+  z-index: 1;
+  width: 44%;
+  height: 44%;
+  max-width: 23px;
+  max-height: 23px;
+  color: #263341;
+  display: block;
+}
+
+.micro-hw__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.micro-hw__key--span2 .micro-hw__icon {
+  width: 24px;
+  height: 24px;
+  max-width: none;
+  max-height: none;
+}
+
+/* Top-left master power rocker. */
+.micro-hw__pwr {
+  position: relative;
+  width: 46%;
+  height: 74%;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, #d5dbe3 0%, #bcc5d0 48%, #aeb8c4 100%);
+  box-shadow:
+    inset 0 2px 5px rgba(22, 31, 44, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.micro-hw__pwr-rocker {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 9%;
+  height: 38%;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #eef2f6 55%, #d8e0e8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 2px 4px rgba(26, 36, 48, 0.2);
+  transition: top 0.14s ease, box-shadow 0.14s ease;
+}
+
+.micro-hw__pwr.is-on .micro-hw__pwr-rocker {
+  top: 9%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 2px 5px rgba(26, 36, 48, 0.22),
+    0 0 8px rgba(72, 196, 120, 0.28);
+}
+
+.micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker {
+  top: 53%;
+  opacity: 0.88;
+}
+
+.micro-hw__key.is-pressed .micro-hw__pwr.is-on .micro-hw__pwr-rocker,
+.micro-hw__key.is-active .micro-hw__pwr.is-on .micro-hw__pwr-rocker {
+  top: 53%;
+}
+
+.micro-hw__key.is-pressed .micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker,
+.micro-hw__key.is-active .micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker {
+  top: 9%;
+}
+
+/* Top-right joystick/advanced control, intentionally dimmed when source is advanced-only. */
+.micro-hw__joy {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #3d4047, #13161b 72%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.12),
+    inset 0 -5px 8px rgba(0, 0, 0, 0.42),
+    0 4px 8px rgba(0, 0, 0, 0.34);
+  position: relative;
+}
+
+.micro-hw__joy::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px dashed rgba(30, 34, 41, 0.72);
+  opacity: 0.85;
+}
+
+.micro-hw__joy::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  width: 3px;
+  height: 25%;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.micro-hw__key.is-joy-dir {
+  opacity: 1;
+}
+
+.micro-hw__key.is-joy-dir .micro-hw__joy {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-listening),
+    0 0 16px rgba(240, 180, 41, 0.45),
+    inset 0 -5px 8px rgba(0, 0, 0, 0.42);
+}
+
+.micro-hw__leds {
+  position: absolute;
+  left: 41px;
+  bottom: 77px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.micro-hw__led {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--overlay-led-idle);
+  box-shadow: 0 0 6px rgba(245, 181, 27, 0.85);
+}
+
+.micro-hw__leds[data-pad-status="running"] .micro-hw__led {
+  background: var(--micro-hw-status-running);
+  box-shadow: 0 0 7px var(--micro-hw-status-running);
+}
+
+.micro-hw__leds[data-pad-status="listening"] .micro-hw__led {
+  background: var(--micro-hw-status-listening);
+  box-shadow: 0 0 8px var(--micro-hw-status-listening);
+}
+
+.micro-hw__leds[data-pad-status="done"] .micro-hw__led {
+  background: var(--micro-hw-status-done);
+  box-shadow: 0 0 7px var(--micro-hw-status-done);
+}
+
+.micro-hw__leds[data-pad-status="failed"] .micro-hw__led {
+  background: var(--micro-hw-status-failed);
+  box-shadow: 0 0 7px var(--micro-hw-status-failed);
+}
+
+.status-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 21px;
+  z-index: 6;
+  transform: translateX(-50%);
+  min-width: 54px;
+  min-height: 18px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(245, 248, 251, 0.78);
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(22, 31, 44, 0.12);
+}
+
+.wrap.is-status-open .status-chip {
+  opacity: 1;
+}
+
+.status-chip[data-status="listening"] { background: rgba(255, 235, 178, 0.92); }
+.status-chip[data-status="failed"] { background: rgba(255, 220, 220, 0.92); }
+.status-chip[data-status="running"] { background: rgba(216, 246, 255, 0.92); }
+.status-chip[data-status="done"] { background: rgba(218, 248, 230, 0.92); }
+
+.foot {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  z-index: 7;
+  margin: 0;
+  padding: 3px 8px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(245, 248, 251, 0.72);
+  color: #6f7f91;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(22, 31, 44, 0.1);
+}
+
+.wrap:hover .foot,
+.wrap.is-status-open .foot {
+  opacity: 1;
+}
+
+/* —— Minimized —— */
+.overlay-mini {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 14% 80%, rgba(56, 255, 152, 0.48), transparent 36%),
+    linear-gradient(145deg, rgba(235, 255, 245, 0.92), rgba(202, 255, 225, 0.82));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 10px 28px rgba(15, 40, 35, 0.18);
+  cursor: grab;
+}
+
+.overlay-mini:active { cursor: grabbing; }
+.wrap.is-minimized .overlay-full { display: none; }
+.wrap.is-minimized .overlay-mini { display: flex; }
+
+.overlay-mini__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ffffff, #e7edf2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #263341;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #cfd8e0, 0 5px 8px rgba(35, 45, 58, 0.16);
+}
+
+.overlay-mini__leds {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.overlay-mini__led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--overlay-led-idle);
+  box-shadow: 0 0 5px rgba(245, 181, 27, 0.8);
+}
+
+.overlay-mini__leds[data-pad-status="running"] .overlay-mini__led { background: var(--micro-hw-status-running); }
+.overlay-mini__leds[data-pad-status="listening"] .overlay-mini__led { background: var(--micro-hw-status-listening); }
+.overlay-mini__leds[data-pad-status="done"] .overlay-mini__led { background: var(--micro-hw-status-done); }
+.overlay-mini__leds[data-pad-status="failed"] .overlay-mini__led { background: var(--micro-hw-status-failed); }
+
+.overlay-mini__btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
+  color: #687687;
+  font-size: 14px;
+  line-height: 26px;
+  padding: 0;
+}
+
+.overlay-mini__btn:hover {
+  background: rgba(255, 255, 255, 0.88);
+  color: #263241;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --overlay-ink: #e8f0f8;
+    --overlay-muted: #9aa8b8;
+    --overlay-face: rgba(48, 58, 73, 0.72);
+    --overlay-key-face: #354153;
+    --overlay-key-side: #222a36;
+  }
+
+  .overlay-body .micro-hw {
+    background:
+      radial-gradient(circle at 20% 96%, rgba(35, 255, 148, 0.5), transparent 34%),
+      linear-gradient(145deg, rgba(90, 180, 130, 0.58), rgba(31, 45, 54, 0.82));
+  }
+
+  .overlay-body .micro-hw__face {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02)),
+      var(--overlay-face);
+    border-color: rgba(255, 255, 255, 0.13);
+  }
+
+  .micro-hw__key--agent {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(102, 122, 255, 0.16) 0 12%, transparent 13%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .micro-hw__key--command {
+    background: linear-gradient(180deg, #f2f6fa, #ccd5df);
+    color: #233040;
+  }
+
+  .micro-hw__brand,
+  .micro-hw__build,
+  .micro-hw__arrow {
+    color: rgba(218, 229, 240, 0.58);
+  }
+}

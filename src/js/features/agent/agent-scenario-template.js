@@ -339,10 +339,24 @@
       essentialsOnly: false,
       reset: !!opts.reset || !hadPack,
       cameraTarget: 'override',
-      enableProfile: 'scenarioAllKeys',
+      enableProfile: opts.enableProfile || (
+        opts.layoutProfile === 'beginner' ? 'scenarioEssentials' : 'scenarioAllKeys'
+      ),
       setAppTarget: true,
       persist: true
     });
+
+    var MicroPad = global.OneToneCodexMicroPadUi;
+    if (MicroPad && MicroPad.applyLayoutProfile) {
+      MicroPad.applyLayoutProfile(m, opts.layoutProfile || 'standard', { persist: true });
+    } else if (MicroPad && MicroPad.ensurePad) {
+      MicroPad.ensurePad(m, { persist: true });
+    }
+    if (m.codexMicroPad) {
+      if (opts.enablePad !== false) m.codexMicroPad.enabled = true;
+      if (opts.overlayEnabled !== false) m.codexMicroPad.overlayEnabled = true;
+      m.codexMicroPad.softwareEnhanceEnabled = false;
+    }
 
     toast(
       result.created

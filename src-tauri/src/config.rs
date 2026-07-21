@@ -1236,6 +1236,12 @@ pub struct CodexMicroPadConfig {
     pub require_num_lock_off: bool,
     #[serde(default)]
     pub overlay_enabled: bool,
+    /// beginner | standard | advanced | custom — UI Profile only; does not change scan codes.
+    #[serde(default)]
+    pub layout_profile: String,
+    /// Optional software enhance (ENC wheel / JOY nav). Default off — M4.
+    #[serde(default)]
+    pub software_enhance_enabled: bool,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
 }
@@ -1257,6 +1263,9 @@ pub struct CodexMicroPadKeyRoute {
     pub ui_icon_id: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    /// Advanced-only routes (ENC_CW / NAV_*). Primary 12 + screen ENC stay false.
+    #[serde(default)]
+    pub advanced: bool,
 }
 
 /// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.

@@ -3,7 +3,7 @@
   "labelZh": "Codex Micro 小键盘布局",
   "labelEn": "Codex Micro numpad layout",
   "cells": [
-    { "microKeyId": "ENC", "uiLabelZh": "旋钮", "uiLabelEn": "Dial", "kind": "control", "gridRow": 1, "gridCol": 1, "defaultSlotId": "summonCodex", "icon": "codex" },
+    { "microKeyId": "ENC", "uiLabelZh": "总开关", "uiLabelEn": "Power", "kind": "control", "gridRow": 1, "gridCol": 1, "defaultSlotId": "summonCodex", "icon": "power" },
     { "microKeyId": "AG00", "uiLabelZh": "任务 1", "uiLabelEn": "Agent 1", "kind": "agent", "gridRow": 1, "gridCol": 2, "defaultSlotId": "status", "icon": "status" },
     { "microKeyId": "AG01", "uiLabelZh": "任务 2", "uiLabelEn": "Agent 2", "kind": "agent", "gridRow": 1, "gridCol": 3, "defaultSlotId": "plan", "icon": "plan" },
     { "microKeyId": "AG02", "uiLabelZh": "任务 3", "uiLabelEn": "Agent 3", "kind": "agent", "gridRow": 1, "gridCol": 4, "defaultSlotId": "review", "icon": "review" },
@@ -31,6 +31,6 @@
     { "microKeyId": "ACT09", "sourceScan": 79, "sourceExtended": false, "slotId": "newThread", "uiIconId": "fork" },
     { "microKeyId": "ACT10", "sourceScan": 82, "sourceExtended": false, "slotId": "pushToTalk", "uiIconId": "mic" },
     { "microKeyId": "ACT12", "sourceScan": 81, "sourceExtended": false, "slotId": "stopOrSend", "uiIconId": "send" },
-    { "microKeyId": "ENC", "sourceScan": 0, "sourceExtended": false, "slotId": "summonCodex", "uiIconId": "codex" }
+    { "microKeyId": "ENC", "sourceScan": 0, "sourceExtended": false, "slotId": "summonCodex", "uiIconId": "power" }
   ]
 }

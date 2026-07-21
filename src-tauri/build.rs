@@ -104,8 +104,13 @@ fn main() {
         "cmd_coach_hud_set_enabled",
         "cmd_codex_micro_overlay_get_state",
         "cmd_codex_micro_overlay_dismiss",
+        "cmd_codex_micro_overlay_start_drag",
+        "cmd_codex_micro_overlay_snap_position",
+        "cmd_codex_micro_overlay_set_minimized",
         "cmd_codex_micro_pad_fire",
         "cmd_codex_micro_pad_set_flags",
+        "cmd_codex_micro_pad_ensure_ready",
+        "cmd_codex_micro_pad_get_readiness",
         "cmd_acoustic_voice_command_status",
         "cmd_acoustic_voice_command_preflight",
         "cmd_acoustic_voice_command_set_suspend",
@@ -121,7 +126,8 @@ fn main() {
     println!("cargo:rerun-if-changed=../src/js/features/voice/voice-ui-bindings.js");
     println!("cargo:rerun-if-changed=../src/js/core/config-persist.js");
     println!("cargo:rerun-if-changed=../src/index.html");
-    println!("cargo:rerun-if-changed=tauri.conf.json");
+    println!("cargo:rerun-if-changed=../src/codex-micro-overlay.html");
+    println!("cargo:rerun-if-changed=../src/css/codex-micro-overlay.css");
 
     tauri_build::try_build(
         tauri_build::Attributes::new()

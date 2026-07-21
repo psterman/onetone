@@ -1,4 +1,6 @@
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 
 use tauri::AppHandle;
 use tauri::Emitter;
@@ -12,6 +14,190 @@ use crate::press_gesture::parse_physical_event;
 use crate::runtime_event;
 use crate::AgentModifierTapState;
 use crate::AppState;
+
+/// Invalidates in-flight overlay hold start + LMB watcher (each down/up bumps).
+static OVERLAY_PAD_HOLD_GEN: AtomicU64 = AtomicU64::new(0);
+
+static OVERLAY_PAD_PTT_CHORD: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+fn overlay_pad_ptt_chord_slot() -> &'static Mutex<Option<String>> {
+    OVERLAY_PAD_PTT_CHORD.get_or_init(|| Mutex::new(None))
+}
+
+fn set_overlay_pad_ptt_chord(chord: String) {
+    let chord = chord.trim();
+    if chord.is_empty() {
+        return;
+    }
+    *overlay_pad_ptt_chord_slot().lock().unwrap() = Some(chord.to_string());
+}
+
+fn take_overlay_pad_ptt_chord() -> Option<String> {
+    overlay_pad_ptt_chord_slot().lock().unwrap().take()
+}
+
+fn focus_codex_before_ptt_release() {
+    #[cfg(windows)]
+    {
+        let _ = app_chat_workflow::quick_focus_codex_for_hold();
+        std::thread::sleep(Duration::from_millis(35));
+    }
+}
+
+/// Release simulated Ctrl+Shift+D to Codex — must focus Codex first (not overlay).
+fn release_overlay_ptt_chord(state: &AppState) {
+    focus_codex_before_ptt_release();
+    if crate::voice_end_runtime::held_voice_chord(state).is_some() {
+        let _ = crate::voice_end_runtime::end_hold_voice_chord(state);
+        let _ = take_overlay_pad_ptt_chord();
+        return;
+    }
+    if let Some(chord) = take_overlay_pad_ptt_chord() {
+        let _ = crate::keyboard::release_chord(&chord);
+        crate::send_guard::disarm();
+    }
+}
+
+fn bump_overlay_pad_hold_gen() -> u64 {
+    OVERLAY_PAD_HOLD_GEN.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn overlay_pad_hold_gen() -> u64 {
+    OVERLAY_PAD_HOLD_GEN.load(Ordering::SeqCst)
+}
+
+#[cfg(windows)]
+fn primary_button_down() -> bool {
+    use winapi::um::winuser::{GetAsyncKeyState, VK_LBUTTON};
+    unsafe { (GetAsyncKeyState(VK_LBUTTON as i32) as u16) & 0x8000 != 0 }
+}
+
+#[cfg(not(windows))]
+fn primary_button_down() -> bool {
+    false
+}
+
+fn finish_micro_pad_hold(state: &Arc<AppState>, app: &AppHandle, micro_key_id: &str) {
+    bump_overlay_pad_hold_gen();
+    *state.codex_numpad_hold_source.lock() = None;
+    release_overlay_ptt_chord(state.as_ref());
+    if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+        crate::voice_end_runtime::reset_voice_session(state, Some(app), "hold-to-talk release");
+    }
+    crate::codex_micro_overlay::note_pad_run_status("done", micro_key_id);
+    crate::codex_micro_overlay::push_overlay_status(app, state.as_ref());
+}
+
+fn spawn_overlay_hold_lmb_watch(
+    state: Arc<AppState>,
+    app: AppHandle,
+    micro_key_id: String,
+    gen: u64,
+) {
+    let _ = std::thread::Builder::new()
+        .name("overlay-pad-hold-lmb".into())
+        .spawn(move || {
+            let mut seen_down = false;
+            for _ in 0..50 {
+                if gen != overlay_pad_hold_gen() {
+                    return;
+                }
+                if primary_button_down() {
+                    seen_down = true;
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if !seen_down {
+                if gen == overlay_pad_hold_gen() {
+                    finish_micro_pad_hold(&state, &app, &micro_key_id);
+                }
+                return;
+            }
+            loop {
+                if gen != overlay_pad_hold_gen() {
+                    return;
+                }
+                if !primary_button_down() {
+                    if gen == overlay_pad_hold_gen() {
+                        finish_micro_pad_hold(&state, &app, &micro_key_id);
+                    }
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+}
+
+fn spawn_overlay_hold_start(
+    state: Arc<AppState>,
+    app: AppHandle,
+    micro_key_id: String,
+    mapping_id: String,
+    trigger_binding: String,
+    gen: u64,
+) {
+    let _ = std::thread::Builder::new()
+        .name("overlay-pad-hold-start".into())
+        .spawn(move || {
+            if gen != overlay_pad_hold_gen() {
+                return;
+            }
+            ensure_codex_focus_for_pad_hold(state.as_ref(), 0);
+            if gen != overlay_pad_hold_gen() {
+                return;
+            }
+            let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+                if gen == overlay_pad_hold_gen() {
+                    *state.codex_numpad_hold_source.lock() = None;
+                    crate::codex_micro_overlay::note_pad_run_status("failed", &micro_key_id);
+                    crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                }
+                return;
+            };
+            let exec_window = app
+                .get_webview_window("main")
+                .or_else(|| app.get_webview_window(crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL));
+            let Some(exec_window) = exec_window else {
+                return;
+            };
+            if !primary_button_down() {
+                if gen == overlay_pad_hold_gen() {
+                    *state.codex_numpad_hold_source.lock() = None;
+                }
+                return;
+            }
+            let hold_ok = app_chat_workflow::run_hold_voice_foreground(
+                &state,
+                &exec_window,
+                &mapping_id,
+                &trigger_binding,
+                profile,
+            )
+            .is_ok();
+            if !hold_ok {
+                if gen == overlay_pad_hold_gen() {
+                    *state.codex_numpad_hold_source.lock() = None;
+                    crate::codex_micro_overlay::note_pad_run_status("failed", &micro_key_id);
+                    crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                }
+                return;
+            }
+            set_overlay_pad_ptt_chord(trigger_binding.clone());
+            if gen != overlay_pad_hold_gen() {
+                release_overlay_ptt_chord(state.as_ref());
+                return;
+            }
+            if !primary_button_down() {
+                finish_micro_pad_hold(&state, &app, &micro_key_id);
+                return;
+            }
+            crate::codex_micro_overlay::refocus_overlay(&app);
+            spawn_overlay_hold_lmb_watch(state.clone(), app.clone(), micro_key_id.clone(), gen);
+            crate::codex_micro_overlay::note_pad_run_status("listening", &micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        });
+}
 
 use super::trigger_dispatch::dispatch_trigger_action;
 
@@ -112,12 +298,42 @@ fn execute_agent_binding(
     );
 }
 
-fn try_end_codex_numpad_hold(state: &Arc<AppState>, app: &AppHandle, source_id: &str) -> bool {
+fn codex_numpad_hold_ids_match(held_id: &str, micro_key_id: &str, source_id: Option<&str>) -> bool {
+    if held_id == micro_key_id {
+        return true;
+    }
+    source_id.is_some_and(|sid| held_id == sid)
+}
+
+/// Drop stale hold latch when chord is no longer physically held.
+fn clear_stale_codex_numpad_hold(state: &AppState) -> bool {
     let held = state.codex_numpad_hold_source.lock().clone();
     let Some(held_id) = held else {
         return false;
     };
-    if held_id != source_id {
+    if crate::voice_end_runtime::held_voice_chord(state).is_some() {
+        return false;
+    }
+    *state.codex_numpad_hold_source.lock() = None;
+    crate::app_log::log_line(
+        state,
+        "hold",
+        &format!("cleared stale numpad hold latch ({held_id})"),
+    );
+    true
+}
+
+fn try_end_codex_numpad_hold(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    micro_key_id: &str,
+    source_id: Option<&str>,
+) -> bool {
+    let held = state.codex_numpad_hold_source.lock().clone();
+    let Some(held_id) = held else {
+        return false;
+    };
+    if !codex_numpad_hold_ids_match(&held_id, micro_key_id, source_id) {
         return false;
     }
     *state.codex_numpad_hold_source.lock() = None;
@@ -147,7 +363,11 @@ fn try_dispatch_codex_numpad(
     );
     if let Some(route) = crate::codex_numpad_layer::lookup_route(&source) {
         crate::codex_micro_overlay::note_micro_key(&route.micro_key_id, key_down);
-        crate::codex_micro_overlay::push_state(&window.app_handle(), state.as_ref());
+        if route.is_hold {
+            crate::codex_micro_overlay::push_overlay_status(&window.app_handle(), state.as_ref());
+        } else {
+            crate::codex_micro_overlay::push_state(&window.app_handle(), state.as_ref());
+        }
     }
 
     let Some(route) = crate::codex_numpad_layer::lookup_route(&source) else {
@@ -157,23 +377,30 @@ fn try_dispatch_codex_numpad(
     if route.is_hold {
         let app = window.app_handle();
         if !key_down {
-            try_end_codex_numpad_hold(state, &app, &source_id);
+            try_end_codex_numpad_hold(state, &app, &route.micro_key_id, Some(&source_id));
             return true;
         }
+        clear_stale_codex_numpad_hold(state.as_ref());
         if state.codex_numpad_hold_source.lock().is_some() {
             return true;
         }
         let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
             return true;
         };
-        *state.codex_numpad_hold_source.lock() = Some(source_id);
-        let _ = app_chat_workflow::run_hold_voice_foreground(
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms);
+        *state.codex_numpad_hold_source.lock() = Some(route.micro_key_id.clone());
+        let hold_ok = app_chat_workflow::run_hold_voice_foreground(
             state,
             window,
             &route.mapping_id,
             &route.trigger_binding,
             profile,
-        );
+        )
+        .is_ok();
+        if !hold_ok {
+            *state.codex_numpad_hold_source.lock() = None;
+        }
         return true;
     }
 
@@ -205,6 +432,13 @@ fn try_dispatch_codex_micro_key(
     true
 }
 
+/// Overlay hold-to-talk must target Codex, not the overlay webview (fast path — no UIA).
+fn ensure_codex_focus_for_pad_hold(state: &AppState, _duration_ms: u32) {
+    if !app_chat_workflow::quick_focus_codex_for_hold() {
+        crate::app_log::log_line(state, "hold", "quick_focus_codex_for_hold failed");
+    }
+}
+
 /// Screen / overlay fire path for Micro keycaps (M2 run mode).
 /// `emit_pad_event`: when true, notify main UI + overlay highlight (hardware path).
 pub fn fire_codex_micro_pad_key(
@@ -218,18 +452,23 @@ pub fn fire_codex_micro_pad_key(
     if micro_key_id.is_empty() {
         return serde_json::json!({ "ok": false, "reason": "invalid_key" });
     }
-    if !crate::codex_numpad_layer::codex_foreground_for_micro() {
+    let app = window.app_handle();
+    let session_ok = crate::codex_numpad_layer::codex_foreground_for_micro()
+        || window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL;
+    if !session_ok {
+        if key_down {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        }
         return serde_json::json!({ "ok": false, "reason": "not_foreground" });
     }
 
-    let app = window.app_handle();
     // Overlay invokes this command on its own webview; execute/hold need the main window.
     let exec_window = app
         .get_webview_window("main")
         .unwrap_or_else(|| window.clone());
 
     crate::codex_micro_overlay::note_micro_key(micro_key_id, key_down);
-    crate::codex_micro_overlay::push_state(&app, state.as_ref());
     if emit_pad_event {
         let payload = serde_json::json!({
             "type": "codex_micro_pad_key",
@@ -240,36 +479,119 @@ pub fn fire_codex_micro_pad_key(
     }
 
     let Some(route) = crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id) else {
+        // M4: software-enhance keys may pulse without a bound slot (NAV injects arrows).
+        if crate::codex_numpad_layer::is_software_enhance_micro_key(micro_key_id)
+            && crate::codex_numpad_layer::software_enhance_enabled()
+        {
+            if key_down {
+                inject_software_enhance_key(micro_key_id);
+                crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+            }
+            crate::codex_micro_overlay::push_state(&app, state.as_ref());
+            return serde_json::json!({
+                "ok": true,
+                "reason": "enhance_pulse",
+                "microKeyId": micro_key_id,
+            });
+        }
+        if key_down {
+            {
+                let cfg = state.cfg.lock();
+                crate::codex_numpad_layer::sync_hook_cache(&cfg);
+            }
+            if crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id).is_some() {
+                return fire_codex_micro_pad_key(state, window, micro_key_id, key_down, emit_pad_event);
+            }
+            let mut healed = crate::codex_numpad_layer::try_heal_micro_route(
+                state.as_ref(),
+                micro_key_id,
+                "zh-CN",
+            );
+            if !healed {
+                let mut cfg = state.cfg.lock();
+                let result =
+                    crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
+                if result.changed {
+                    crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                    healed = true;
+                }
+            }
+            if healed
+                && crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id).is_some()
+            {
+                let state_bg = Arc::clone(state);
+                std::thread::spawn(move || {
+                    let cfg = state_bg.cfg.lock();
+                    crate::config::save_config(&cfg);
+                });
+                return fire_codex_micro_pad_key(state, window, micro_key_id, key_down, emit_pad_event);
+            }
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+        }
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({ "ok": false, "reason": "unbound" });
     };
 
     if route.is_hold {
+        let from_overlay =
+            window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL;
         if !key_down {
-            let held = state.codex_numpad_hold_source.lock().clone();
-            if held.as_deref() == Some(micro_key_id) {
-                *state.codex_numpad_hold_source.lock() = None;
-                crate::voice_end_runtime::stop_dictation_after_trigger_key(state, &app);
-            }
+            finish_micro_pad_hold(state, &app, micro_key_id);
             return serde_json::json!({ "ok": true, "reason": "hold_up", "slotId": route.slot_id });
         }
-        if state.codex_numpad_hold_source.lock().is_some() {
+        clear_stale_codex_numpad_hold(state.as_ref());
+        if !from_overlay && state.codex_numpad_hold_source.lock().is_some() {
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({ "ok": true, "reason": "hold_busy", "slotId": route.slot_id });
         }
+        if from_overlay {
+            take_overlay_pad_ptt_chord();
+            if crate::voice_end_runtime::held_voice_chord(state.as_ref()).is_some() {
+                release_overlay_ptt_chord(state.as_ref());
+            }
+            let gen = bump_overlay_pad_hold_gen();
+            *state.codex_numpad_hold_source.lock() = Some(micro_key_id.to_string());
+            spawn_overlay_hold_start(
+                Arc::clone(state),
+                app.clone(),
+                micro_key_id.to_string(),
+                route.mapping_id.clone(),
+                route.trigger_binding.clone(),
+                gen,
+            );
+            crate::codex_micro_overlay::note_pad_run_status("listening", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return serde_json::json!({ "ok": true, "reason": "hold_down", "slotId": route.slot_id });
+        }
         let Some(profile) = app_chat_workflow::profile_for(CODEX_APP_TARGET_ID) else {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({ "ok": false, "reason": "no_profile" });
         };
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        ensure_codex_focus_for_pad_hold(state.as_ref(), duration_ms);
         *state.codex_numpad_hold_source.lock() = Some(micro_key_id.to_string());
-        let _ = app_chat_workflow::run_hold_voice_foreground(
+        let hold_ok = app_chat_workflow::run_hold_voice_foreground(
             state,
             &exec_window,
             &route.mapping_id,
             &route.trigger_binding,
             profile,
-        );
+        )
+        .is_ok();
+        if !hold_ok {
+            *state.codex_numpad_hold_source.lock() = None;
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return serde_json::json!({ "ok": false, "reason": "hold_failed" });
+        }
+        crate::codex_micro_overlay::note_pad_run_status("listening", micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({ "ok": true, "reason": "hold_down", "slotId": route.slot_id });
     }
 
     if !key_down {
+        crate::codex_micro_overlay::push_state(&app, state.as_ref());
         return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
     }
     execute_agent_binding(
@@ -282,12 +604,29 @@ pub fn fire_codex_micro_pad_key(
         None,
         Some("foregroundApp".into()),
     );
+    crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+    crate::codex_micro_overlay::push_state(&app, state.as_ref());
     serde_json::json!({
         "ok": true,
         "reason": "fired",
         "slotId": route.slot_id,
         "actionId": route.action_id,
     })
+}
+
+/// M4 software enhance: NAV_* → arrow/Enter pulse. ENC_CW/CC are highlight-only without HID writeback.
+fn inject_software_enhance_key(micro_key_id: &str) {
+    let chord = match micro_key_id.trim() {
+        "NAV_UP" => Some("Up"),
+        "NAV_DOWN" => Some("Down"),
+        "NAV_LEFT" => Some("Left"),
+        "NAV_RIGHT" => Some("Right"),
+        "NAV_PRESS" => Some("Enter"),
+        _ => None,
+    };
+    if let Some(c) = chord {
+        let _ = crate::keyboard::send_chord(c, 40);
+    }
 }
 
 fn try_end_hold_voice_on_keyup(

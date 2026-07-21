@@ -15,8 +15,10 @@ use crate::AppState;
 
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
-const OVERLAY_WIDTH: f64 = 300.0;
-const OVERLAY_HEIGHT: f64 = 328.0;
+const OVERLAY_WIDTH: f64 = 432.0;
+const OVERLAY_HEIGHT_FULL: f64 = 432.0;
+const OVERLAY_WIDTH_MINI: f64 = 148.0;
+const OVERLAY_HEIGHT_MINI: f64 = 48.0;
 const HIGHLIGHT_MS: u64 = 320;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -24,6 +26,15 @@ static HIGHLIGHT_UNTIL: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new(
 static LAST_FOREGROUND_CODEX: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static LAST_VISIBLE: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static FG_CONFIRM: OnceLock<ParkingMutex<(bool, u8)>> = OnceLock::new();
+/// (status, micro_key_id, since)
+static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceLock::new();
+static OVERLAY_MINIMIZED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+static OVERLAY_USER_POSITIONED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceLock::new();
+
+const STATUS_RUNNING_MS: u64 = 800;
+const STATUS_DONE_MS: u64 = 600;
+const STATUS_FAILED_MS: u64 = 1200;
 
 fn active_micro_key() -> &'static Mutex<String> {
     ACTIVE_MICRO_KEY.get_or_init(|| Mutex::new(String::new()))
@@ -43,6 +54,18 @@ fn last_visible() -> &'static ParkingMutex<bool> {
 
 fn fg_confirm() -> &'static ParkingMutex<(bool, u8)> {
     FG_CONFIRM.get_or_init(|| ParkingMutex::new((false, 0)))
+}
+
+fn overlay_minimized() -> &'static ParkingMutex<bool> {
+    OVERLAY_MINIMIZED.get_or_init(|| ParkingMutex::new(false))
+}
+
+fn overlay_user_positioned() -> &'static ParkingMutex<bool> {
+    OVERLAY_USER_POSITIONED.get_or_init(|| ParkingMutex::new(false))
+}
+
+fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
+    OVERLAY_USER_POSITION.get_or_init(|| ParkingMutex::new(None))
 }
 
 /// Require two consecutive FG samples before flipping — avoids show/hide thrash 假死.
@@ -71,6 +94,18 @@ pub struct CodexMicroOverlayCell {
     pub sub: String,
     pub ui_icon_id: String,
     pub kind: String,
+    /// primary | screen | advanced | none — honest brightness for overlay.
+    pub source_kind: String,
+    /// idle | running | listening | done | failed
+    pub run_status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexMicroOverlayRgb {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -80,6 +115,11 @@ pub struct CodexMicroOverlaySnapshot {
     pub enabled: bool,
     pub bound_count: u32,
     pub active_micro_key_id: String,
+    pub pad_status: String,
+    pub status_micro_key_id: String,
+    pub software_enhance_enabled: bool,
+    pub minimized: bool,
+    pub rgb: Option<CodexMicroOverlayRgb>,
     pub cells: Vec<CodexMicroOverlayCell>,
 }
 
@@ -226,6 +266,45 @@ pub fn overlay_is_foreground() -> bool {
     false
 }
 
+/// Overlay fire / screen tap is allowed while Codex was recently foreground (stable latch),
+/// Codex is foreground now, or the overlay HWND (or a child) holds focus.
+pub fn micro_pad_session_active() -> bool {
+  #[cfg(windows)]
+  {
+    codex_is_foreground() || overlay_is_foreground() || *last_foreground_codex().lock()
+  }
+  #[cfg(not(windows))]
+  {
+    false
+  }
+}
+
+#[cfg(windows)]
+fn hwnd_belongs_to_overlay(fg: isize, overlay: isize) -> bool {
+    use winapi::shared::windef::HWND;
+    use winapi::um::winuser::GetParent;
+
+    if fg == 0 || overlay == 0 {
+        return false;
+    }
+    if fg == overlay {
+        return true;
+    }
+    unsafe {
+        let mut cur = fg;
+        for _ in 0..32 {
+            if cur == overlay {
+                return true;
+            }
+            cur = GetParent(cur as HWND) as isize;
+            if cur == 0 {
+                break;
+            }
+        }
+    }
+    false
+}
+
 #[cfg(windows)]
 fn overlay_hwnd_is_foreground() -> bool {
     use winapi::um::winuser::GetForegroundWindow;
@@ -234,7 +313,10 @@ fn overlay_hwnd_is_foreground() -> bool {
     if overlay_hwnd == 0 {
         return false;
     }
-    unsafe { GetForegroundWindow() as isize == overlay_hwnd }
+    unsafe {
+        let fg = GetForegroundWindow() as isize;
+        hwnd_belongs_to_overlay(fg, overlay_hwnd)
+    }
 }
 
 #[cfg(windows)]
@@ -260,6 +342,24 @@ pub fn cache_overlay_hwnd_from_window(win: &WebviewWindow) {
         let _ = win;
     }
 }
+
+/// Return overlay HWND to foreground after hold-to-talk chord press (keeps pointer tracking).
+#[cfg(windows)]
+pub fn refocus_overlay(app: &AppHandle) {
+    let hwnd = *overlay_hwnd_cache().lock();
+    if hwnd != 0 {
+        let _ = crate::keyboard::focus_window(hwnd as winapi::shared::windef::HWND);
+    } else if let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) {
+        cache_overlay_hwnd_from_window(&win);
+        let hwnd = *overlay_hwnd_cache().lock();
+        if hwnd != 0 {
+            let _ = crate::keyboard::focus_window(hwnd as winapi::shared::windef::HWND);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn refocus_overlay(_app: &AppHandle) {}
 
 /// Show pad when Codex desktop is focused, or while the user is clicking the pad itself.
 #[cfg(windows)]
@@ -303,15 +403,101 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
     build_snapshot_from_cfg(&cfg)
 }
 
+fn pad_run_status_slot() -> &'static ParkingMutex<(String, String, Instant)> {
+    PAD_RUN_STATUS.get_or_init(|| {
+        ParkingMutex::new(("idle".into(), String::new(), Instant::now()))
+    })
+}
+
+/// Record pad run status for overlay / FE sync. Timers resolved in `effective_pad_run_status`.
+pub fn note_pad_run_status(status: &str, micro_key_id: &str) {
+    let status = status.trim();
+    if status.is_empty() {
+        return;
+    }
+    *pad_run_status_slot().lock() = (
+        status.to_string(),
+        micro_key_id.trim().to_string(),
+        Instant::now(),
+    );
+}
+
+fn effective_pad_run_status() -> (String, String) {
+    let (status, micro, since) = pad_run_status_slot().lock().clone();
+    let elapsed = since.elapsed().as_millis() as u64;
+    match status.as_str() {
+        "listening" => (status, micro),
+        "running" if elapsed >= STATUS_RUNNING_MS => {
+            // Auto-advance running → done, then idle on next reads.
+            *pad_run_status_slot().lock() =
+                ("done".into(), micro.clone(), Instant::now());
+            ("done".into(), micro)
+        }
+        "done" if elapsed >= STATUS_DONE_MS => {
+            *pad_run_status_slot().lock() = ("idle".into(), String::new(), Instant::now());
+            ("idle".into(), String::new())
+        }
+        "failed" if elapsed >= STATUS_FAILED_MS => {
+            *pad_run_status_slot().lock() = ("idle".into(), String::new(), Instant::now());
+            ("idle".into(), String::new())
+        }
+        _ => (status, micro),
+    }
+}
+
+fn source_kind_for_route(
+    micro_key_id: &str,
+    route: Option<&crate::config::CodexMicroPadKeyRoute>,
+) -> &'static str {
+    let Some(r) = route else {
+        return if micro_key_id == "JOY" || micro_key_id.starts_with("NAV_") {
+            "advanced"
+        } else {
+            "none"
+        };
+    };
+    let slot = r.slot_id.trim();
+    let advanced = r.advanced
+        || micro_key_id.starts_with("NAV_")
+        || micro_key_id == "ENC_CW"
+        || micro_key_id == "ENC_CC";
+    if advanced {
+        return "advanced";
+    }
+    if r.source_scan > 0 && !slot.is_empty() {
+        return "primary";
+    }
+    if !slot.is_empty() {
+        return "screen";
+    }
+    if micro_key_id == "JOY" {
+        return "advanced";
+    }
+    "none"
+}
+
 fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     // Use stable host latch (same as maybe_tick) so show/hide doesn't thrash on a raw FG blip.
     let show = *last_foreground_codex().lock();
+    let (pad_status, status_micro) = effective_pad_run_status();
+    let vendor = crate::codex_micro_vendor::protocol_snapshot();
+    let rgb = vendor.rgb.as_ref().map(|c| CodexMicroOverlayRgb {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+    });
+    let minimized = *overlay_minimized().lock();
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
         return CodexMicroOverlaySnapshot {
             visible: false,
             enabled: false,
             bound_count: 0,
             active_micro_key_id: String::new(),
+            pad_status,
+            status_micro_key_id: status_micro,
+            software_enhance_enabled: false,
+            minimized,
+            rgb,
             cells: vec![],
         };
     };
@@ -324,7 +510,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             let s = r.slot_id.trim();
             if s.is_empty() { None } else { Some(s) }
         });
-        let bound = slot_id.is_some();
+        let bound = crate::codex_numpad_layer::micro_key_routable(mapping, pad, def.micro_key_id);
         if bound {
             bound_count += 1;
         }
@@ -342,6 +528,12 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             .map(|r| r.ui_icon_id.trim().to_string())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| def.default_icon.to_string());
+        let source_kind = source_kind_for_route(def.micro_key_id, route).to_string();
+        let run_status = if !status_micro.is_empty() && status_micro == def.micro_key_id {
+            pad_status.clone()
+        } else {
+            "idle".into()
+        };
         cells.push(CodexMicroOverlayCell {
             micro_key_id: def.micro_key_id.to_string(),
             label: label_for_cell(def),
@@ -349,6 +541,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             sub,
             ui_icon_id,
             kind: def.kind.to_string(),
+            source_kind,
+            run_status,
         });
     }
 
@@ -372,8 +566,28 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         enabled: pad.enabled,
         bound_count,
         active_micro_key_id: active,
+        pad_status,
+        status_micro_key_id: status_micro,
+        software_enhance_enabled: pad.software_enhance_enabled,
+        minimized,
+        rgb,
         cells,
     }
+}
+
+pub fn set_overlay_minimized(minimized: bool) {
+    *overlay_minimized().lock() = minimized;
+}
+
+pub fn snap_overlay_position(win: &WebviewWindow) {
+    if let Ok(pos) = win.outer_position() {
+        *overlay_user_position().lock() = Some((pos.x, pos.y));
+        *overlay_user_positioned().lock() = true;
+    }
+}
+
+pub fn start_overlay_drag(win: &WebviewWindow) -> Result<(), String> {
+    win.start_dragging().map_err(|e| e.to_string())
 }
 
 pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
@@ -387,6 +601,15 @@ pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
 }
 
 pub fn push_state(app: &AppHandle, state: &AppState) {
+    push_state_impl(app, state, true);
+}
+
+/// Status-only refresh — skip reposition/resize (hold-to-talk must not thrash overlay layout).
+pub fn push_overlay_status(app: &AppHandle, state: &AppState) {
+    push_state_impl(app, state, false);
+}
+
+fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
     let snapshot = build_snapshot(state);
     let visible = snapshot.visible;
     {
@@ -401,13 +624,18 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
             let Some(win) = app_clone.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
                 return;
             };
-            cache_overlay_hwnd_from_window(&win);
-            if visible {
+            if reposition {
+                cache_overlay_hwnd_from_window(&win);
+            }
+            if visible && reposition {
                 position_overlay(&win);
-                let _ = win.set_size(Size::Logical(LogicalSize::new(
-                    OVERLAY_WIDTH,
-                    OVERLAY_HEIGHT,
-                )));
+                let minimized = payload.minimized;
+                let (w, h) = if minimized {
+                    (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
+                } else {
+                    (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
+                };
+                let _ = win.set_size(Size::Logical(LogicalSize::new(w, h)));
                 let _ = win.set_always_on_top(true);
                 #[cfg(windows)]
                 {
@@ -427,7 +655,7 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
                 {
                     let _ = win.show();
                 }
-            } else {
+            } else if !visible {
                 let _ = win.hide();
             }
             let _ = win.emit("codex_micro_overlay_state", &payload);
@@ -435,9 +663,22 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
 }
 
 fn position_overlay(win: &WebviewWindow) {
+    if *overlay_user_positioned().lock() {
+        if let Some((x, y)) = *overlay_user_position().lock() {
+            let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
+            return;
+        }
+    }
+
+    let minimized = *overlay_minimized().lock();
+    let (logical_w, logical_h) = if minimized {
+        (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
+    } else {
+        (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
+    };
     let scale = win.scale_factor().unwrap_or(1.0);
-    let w = (OVERLAY_WIDTH * scale).round() as i32;
-    let h = (OVERLAY_HEIGHT * scale).round() as i32;
+    let w = (logical_w * scale).round() as i32;
+    let h = (logical_h * scale).round() as i32;
     let margin = (12.0 * scale).round() as i32;
 
     let monitor = monitor_for_codex(win)
@@ -521,6 +762,7 @@ fn codex_window_center() -> Option<(i32, i32)> {
 
 /// Hide overlay and persist `overlayEnabled = false` on the active Codex pad.
 pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
+    *overlay_minimized().lock() = false;
     let mut changed = false;
     {
         let mut cfg = state.cfg.lock();
@@ -555,7 +797,46 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
+    let was_fg = *last_foreground_codex().lock();
     let host_ok = stable_overlay_host(overlay_host_allows_show());
+    let is_fg = *last_foreground_codex().lock();
+
+    if is_fg {
+        let result = {
+            let mut cfg = state.cfg.lock();
+            let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
+            let should_ensure = !was_fg
+                || blocker == "no_routes"
+                || blocker == "pad_off"
+                || blocker == "no_mapping";
+            if !should_ensure {
+                None
+            } else {
+                let result = crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
+                if result.changed {
+                    crate::config::save_config(&cfg);
+                    crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                }
+                Some(result)
+            }
+        };
+        if let Some(result) = result {
+            if result.changed {
+                if let Some(main) = app.get_webview_window("main") {
+                    let _ = main.emit(
+                        "to_js",
+                        &serde_json::json!({
+                            "type": "codex_micro_pad_ready",
+                            "readiness": result.readiness,
+                            "mappingId": result.mapping_id,
+                            "codexMicroPad": result.codex_micro_pad,
+                            "agentBindings": result.agent_bindings,
+                        }),
+                    );
+                }
+            }
+        }
+    }
 
     let highlight_expired = highlight_until()
         .lock()
@@ -641,6 +922,8 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             overlay_enabled: false,
+            layout_profile: String::new(),
+            software_enhance_enabled: false,
             keys: vec![],
         })];
         let snap = build_snapshot_from_cfg(&cfg);
@@ -657,6 +940,8 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -665,6 +950,7 @@ mod tests {
                     slot_id: "plan".into(),
                     ui_icon_id: String::new(),
                     enabled: true,
+                    advanced: false,
                 },
                 CodexMicroPadKeyRoute {
                     micro_key_id: "ACT07".into(),
@@ -673,6 +959,7 @@ mod tests {
                     slot_id: "commandPalette".into(),
                     ui_icon_id: "palette".into(),
                     enabled: true,
+                    advanced: false,
                 },
             ],
         });
@@ -705,9 +992,44 @@ mod tests {
         assert!(plan.bound);
         assert_eq!(plan.sub, "插入 /plan");
         assert_ne!(plan.sub, "Ctrl+Alt+P");
+        assert_eq!(plan.source_kind, "primary");
 
         let act07 = snap.cells.iter().find(|c| c.micro_key_id == "ACT07").unwrap();
         assert_eq!(act07.label, "命令菜单");
         assert_eq!(act07.sub, "Ctrl+K");
+        assert_eq!(act07.source_kind, "primary");
+
+        let joy = snap.cells.iter().find(|c| c.micro_key_id == "JOY").unwrap();
+        assert_eq!(joy.source_kind, "advanced");
+        assert_eq!(snap.pad_status, "idle");
+    }
+
+    #[test]
+    fn overlay_source_kind_marks_screen_enc() {
+        use crate::config::CodexMicroPadKeyRoute;
+
+        let mapping = codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            keys: vec![CodexMicroPadKeyRoute {
+                micro_key_id: "ENC".into(),
+                source_scan: 0,
+                source_extended: false,
+                slot_id: "summonCodex".into(),
+                ui_icon_id: "codex".into(),
+                enabled: true,
+                advanced: false,
+            }],
+        });
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![mapping];
+        let snap = build_snapshot_from_cfg(&cfg);
+        let enc = snap.cells.iter().find(|c| c.micro_key_id == "ENC").unwrap();
+        assert!(enc.bound);
+        assert_eq!(enc.source_kind, "screen");
     }
 }

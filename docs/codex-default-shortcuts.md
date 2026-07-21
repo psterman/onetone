@@ -175,7 +175,7 @@ OneTone Codex 应用场景可在 **触发页** 预览、**识别页** 配置 **M
 - **右侧方案**：显示全部虚拟键盘映射（键位 · 小键盘源 · 能力 · 快捷键/插入文案）；点击行可编辑键帽
 - **置顶小窗**：固定运行模式，点击键帽触发；配置请回识别页
 - Codex 桌面端前台进程为 **`ChatGPT.exe`**（Windows 包 `OpenAI.Codex_*`）；仍兼容 `Codex.exe` 辅助进程
-- **fttawa 硬件**：[fttawa/codex-micro](https://github.com/fttawa/codex-micro) 经 vendor HID（`v.oai.hid`）上报；旋转 `ENC_CW`/`ENC_CC` 与导航 `NAV_*` 暂不绑定
+- **fttawa 硬件**：[fttawa/codex-micro](https://github.com/fttawa/codex-micro) 经 vendor HID 上报 `v.oai.hid` / `v.oai.rad`；`rad` 按写死象限映射 `NAV_*`（死区 `d≤0.2`，**无 center**）；`device.status` / `sys.version` / `v.oai.thstatus` / `v.oai.rgbcfg` / `lights.preview` 仅软件灯色模型。旋转与 NAV 需开启软件增强才派发。
 
 布局数据：[`src/data/codex-micro-pad-layout.json`](../src/data/codex-micro-pad-layout.json)  
 UI：[`src/css/codex-micro-pad.css`](../src/css/codex-micro-pad.css) · [`codex-micro-pad-ui.js`](../src/js/features/agent/codex-micro-pad-ui.js) · [`codex-micro-overlay.html`](../src/codex-micro-overlay.html)  

@@ -1205,6 +1205,7 @@ unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
         return false;
     }
     let data = std::slice::from_raw_parts(hid.bRawData.as_ptr(), len);
+    let mut handled = false;
     for ev in crate::codex_micro_vendor::ingest_hid_report(data) {
         if crate::codex_numpad_layer::vendor_micro_should_dispatch(&ev.micro_key_id) {
             if let Some(sender) = active_sender().lock().unwrap().as_ref() {
@@ -1214,8 +1215,11 @@ unsafe fn dispatch_raw_hid_input(raw: &RAWINPUT, device: Option<&str>) -> bool {
                 );
                 sender.send(payload).ok();
             }
-            return true;
+            handled = true;
         }
+    }
+    if handled {
+        return true;
     }
     if let Some(name) = scan_consumer_bytes(data) {
         return dispatch_key_event(&name, false, device, "raw_input");

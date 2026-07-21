@@ -89,6 +89,12 @@
         }
         return;
       }
+      if(msg.type==='codex_micro_pad_ready'){
+        if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.onPadReady){
+          global.OneToneCodexMicroPadUi.onPadReady(msg);
+        }
+        return;
+      }
       if(msg.type==='codex_micro_overlay_dismissed'){
         if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.onOverlayDismissed){
           global.OneToneCodexMicroPadUi.onOverlayDismissed();
