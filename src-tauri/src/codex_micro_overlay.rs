@@ -17,6 +17,8 @@ pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
 const OVERLAY_HEIGHT_FULL: f64 = 432.0;
+/// Left NAV rail (inverted-T arrow panel) extra width when JOY is open.
+const NAV_RAIL_WIDTH: f64 = 120.0;
 const OVERLAY_WIDTH_MINI: f64 = 148.0;
 const OVERLAY_HEIGHT_MINI: f64 = 48.0;
 const HIGHLIGHT_MS: u64 = 320;
@@ -31,6 +33,8 @@ static PAD_RUN_STATUS: OnceLock<ParkingMutex<(String, String, Instant)>> = OnceL
 static OVERLAY_MINIMIZED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITIONED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceLock::new();
+/// Last applied (minimized, joy_nav_open) — used to detect JOY-only resize for anchoring.
+static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<(bool, bool)>> = OnceLock::new();
 
 const STATUS_RUNNING_MS: u64 = 800;
 const STATUS_DONE_MS: u64 = 600;
@@ -46,6 +50,11 @@ fn highlight_until() -> &'static ParkingMutex<Option<Instant>> {
 
 fn last_foreground_codex() -> &'static ParkingMutex<bool> {
     LAST_FOREGROUND_CODEX.get_or_init(|| ParkingMutex::new(false))
+}
+
+#[cfg(test)]
+pub(crate) fn test_set_foreground_latch(v: bool) {
+    *last_foreground_codex().lock() = v;
 }
 
 fn last_visible() -> &'static ParkingMutex<bool> {
@@ -66,6 +75,10 @@ fn overlay_user_positioned() -> &'static ParkingMutex<bool> {
 
 fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
     OVERLAY_USER_POSITION.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn overlay_last_geom() -> &'static ParkingMutex<(bool, bool)> {
+    OVERLAY_LAST_GEOM.get_or_init(|| ParkingMutex::new((false, false)))
 }
 
 /// Require two consecutive FG samples before flipping — avoids show/hide thrash 假死.
@@ -113,6 +126,13 @@ pub struct CodexMicroOverlayRgb {
 pub struct CodexMicroOverlaySnapshot {
     pub visible: bool,
     pub enabled: bool,
+    pub overlay_enabled: bool,
+    /// Derived: "codex" when pad.enabled, else "numpad".
+    pub pad_mode: String,
+    /// Overlay session: JOY left NAV rail open (not persisted).
+    pub joy_nav_panel_open: bool,
+    pub require_num_lock_off: bool,
+    pub num_lock_blocking: bool,
     pub bound_count: u32,
     pub active_micro_key_id: String,
     pub pad_status: String,
@@ -134,10 +154,10 @@ struct OverlayCellDef {
 const OVERLAY_CELLS: &[OverlayCellDef] = &[
     OverlayCellDef {
         micro_key_id: "ENC",
-        label_zh: "旋钮",
-        label_en: "Dial",
+        label_zh: "总开关",
+        label_en: "Power",
         kind: "control",
-        default_icon: "codex",
+        default_icon: "power",
     },
     OverlayCellDef {
         micro_key_id: "AG00",
@@ -372,13 +392,15 @@ fn overlay_host_allows_show() -> bool {
     false
 }
 
+/// Overlay visibility depends only on `overlay_enabled` (not `pad.enabled`).
+/// Numpad mode (`pad.enabled=false`) still shows the floating pad.
 fn active_codex_mapping_with_overlay(cfg: &VoiceConfig) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
     for m in cfg.active_mappings() {
         if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
             continue;
         }
         let pad = m.codex_micro_pad.as_ref()?;
-        if !pad.enabled || !pad.overlay_enabled {
+        if !pad.overlay_enabled {
             continue;
         }
         return Some((m, pad));
@@ -487,10 +509,16 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         b: c.b,
     });
     let minimized = *overlay_minimized().lock();
+    let joy_open = crate::codex_numpad_layer::joy_nav_panel_open();
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
         return CodexMicroOverlaySnapshot {
             visible: false,
             enabled: false,
+            overlay_enabled: false,
+            pad_mode: "numpad".into(),
+            joy_nav_panel_open: false,
+            require_num_lock_off: false,
+            num_lock_blocking: false,
             bound_count: 0,
             active_micro_key_id: String::new(),
             pad_status,
@@ -510,7 +538,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             let s = r.slot_id.trim();
             if s.is_empty() { None } else { Some(s) }
         });
-        let bound = crate::codex_numpad_layer::micro_key_routable(mapping, pad, def.micro_key_id);
+        let bound = if def.micro_key_id == "JOY" || def.micro_key_id == "ENC" {
+            true
+        } else {
+            crate::codex_numpad_layer::micro_key_routable(mapping, pad, def.micro_key_id)
+        };
         if bound {
             bound_count += 1;
         }
@@ -561,9 +593,22 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         }
     };
 
+    let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
+    let pad_mode = if pad.enabled {
+        "codex".to_string()
+    } else {
+        "numpad".to_string()
+    };
+    // Rail only meaningful in Codex mode; snapshot mirrors gate after auto-close.
+    let joy_nav_panel_open = pad.enabled && joy_open;
     CodexMicroOverlaySnapshot {
-        visible: show && pad.enabled && pad.overlay_enabled,
+        visible: show && pad.overlay_enabled,
         enabled: pad.enabled,
+        overlay_enabled: pad.overlay_enabled,
+        pad_mode,
+        joy_nav_panel_open,
+        require_num_lock_off: pad.require_num_lock_off,
+        num_lock_blocking: readiness.num_lock_blocking,
         bound_count,
         active_micro_key_id: active,
         pad_status,
@@ -573,6 +618,95 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         rgb,
         cells,
     }
+}
+
+/// Toggle Codex ↔ numpad mode (`pad.enabled` only). Does not hide the overlay.
+/// Switching to numpad auto-closes the JOY NAV rail.
+pub fn toggle_pad_mode(app: &AppHandle, state: &AppState) -> Result<String, String> {
+    let mode;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg
+            .mappings
+            .iter_mut()
+            .find(|m| m.app_target_id.trim() == crate::app_chat_workflow::CODEX_APP_TARGET_ID)
+        else {
+            return Err("no_mapping".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(crate::codex_numpad_layer::default_codex_micro_pad);
+        pad.enabled = !pad.enabled;
+        if !pad.enabled {
+            crate::codex_numpad_layer::set_joy_nav_panel_open(false);
+        }
+        mode = if pad.enabled {
+            "codex".to_string()
+        } else {
+            "numpad".to_string()
+        };
+        crate::config::save_config(&cfg);
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+    }
+    push_state(app, state);
+    Ok(mode)
+}
+
+/// Toggle JOY left NAV rail (overlay session only). No-op / forced closed in numpad mode.
+pub fn toggle_joy_nav_panel(app: &AppHandle, state: &AppState) -> Result<bool, String> {
+    let open;
+    {
+        let cfg = state.cfg.lock();
+        let pad_enabled = cfg
+            .active_mappings()
+            .iter()
+            .find(|m| m.app_target_id.trim() == CODEX_APP_TARGET_ID)
+            .and_then(|m| m.codex_micro_pad.as_ref())
+            .map(|p| p.enabled)
+            .unwrap_or(false);
+        if !pad_enabled {
+            crate::codex_numpad_layer::set_joy_nav_panel_open(false);
+            open = false;
+        } else {
+            let next = !crate::codex_numpad_layer::joy_nav_panel_open();
+            crate::codex_numpad_layer::set_joy_nav_panel_open(next);
+            open = next;
+        }
+    }
+    push_state(app, state);
+    Ok(open)
+}
+
+/// Legacy ENC master toggle (kept for compatibility). Prefer `toggle_pad_mode`.
+pub fn toggle_pad_master(app: &AppHandle, state: &AppState) -> Result<bool, String> {
+    let mode = toggle_pad_mode(app, state)?;
+    Ok(mode == "codex")
+}
+
+/// Toggle NumLock routing mode (legacy; settings-page only). Kept for compatibility.
+pub fn toggle_pad_num_mode(app: &AppHandle, state: &AppState) -> Result<bool, String> {
+    let require_off;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg
+            .mappings
+            .iter_mut()
+            .find(|m| m.app_target_id.trim() == crate::app_chat_workflow::CODEX_APP_TARGET_ID)
+        else {
+            return Err("no_mapping".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(crate::codex_numpad_layer::default_codex_micro_pad);
+        pad.require_num_lock_off = !pad.require_num_lock_off;
+        require_off = pad.require_num_lock_off;
+        crate::config::save_config(&cfg);
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+    }
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let _ = crate::keyboard::send_chord("NumLock", duration_ms);
+    push_state(app, state);
+    Ok(require_off)
 }
 
 pub fn set_overlay_minimized(minimized: bool) {
@@ -628,14 +762,7 @@ fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
                 cache_overlay_hwnd_from_window(&win);
             }
             if visible && reposition {
-                position_overlay(&win);
-                let minimized = payload.minimized;
-                let (w, h) = if minimized {
-                    (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
-                } else {
-                    (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
-                };
-                let _ = win.set_size(Size::Logical(LogicalSize::new(w, h)));
+                apply_overlay_geometry(&win, &payload);
                 let _ = win.set_always_on_top(true);
                 #[cfg(windows)]
                 {
@@ -662,6 +789,72 @@ fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
         });
 }
 
+fn overlay_logical_size(minimized: bool, joy_open: bool) -> (f64, f64) {
+    if minimized {
+        (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
+    } else if joy_open {
+        (OVERLAY_WIDTH + NAV_RAIL_WIDTH, OVERLAY_HEIGHT_FULL)
+    } else {
+        (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
+    }
+}
+
+/// Resize overlay. When only JOY rail toggles, shift X so the main pad stays put
+/// (rail grows/shrinks to the left). Accepts a possible one-frame flicker on some DPI setups.
+fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) {
+    let minimized = snapshot.minimized;
+    let joy_open = snapshot.joy_nav_panel_open;
+    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open);
+    let next_geom = (minimized, joy_open);
+    let prev_geom = *overlay_last_geom().lock();
+
+    let joy_only_toggle = !minimized
+        && !prev_geom.0
+        && prev_geom.1 != joy_open
+        && win.is_visible().unwrap_or(false);
+
+    if joy_only_toggle {
+        resize_overlay_anchored(win, logical_w, logical_h);
+    } else {
+        position_overlay(win);
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    }
+    *overlay_last_geom().lock() = next_geom;
+}
+
+/// Keep the main keyboard's screen position stable while the left NAV rail opens/closes.
+fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as i32;
+
+    let Ok(pos) = win.outer_position() else {
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        return;
+    };
+    let Ok(size) = win.outer_size() else {
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        return;
+    };
+
+    let new_x = anchored_origin_x(pos.x, size.width, target_w);
+    let new_y = pos.y;
+
+    // Position first, then size — reduces the visible jump of the pad column.
+    let _ = win.set_position(Position::Physical(PhysicalPosition::new(new_x, new_y)));
+    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+
+    // Keep drag/snap cache aligned with the new top-left.
+    if *overlay_user_positioned().lock() {
+        *overlay_user_position().lock() = Some((new_x, new_y));
+    }
+}
+
+/// Physical X so the right edge of the window stays fixed when width changes.
+fn anchored_origin_x(old_x: i32, old_width: u32, target_width: i32) -> i32 {
+    let dw = target_width - old_width as i32;
+    old_x - dw
+}
+
 fn position_overlay(win: &WebviewWindow) {
     if *overlay_user_positioned().lock() {
         if let Some((x, y)) = *overlay_user_position().lock() {
@@ -671,11 +864,9 @@ fn position_overlay(win: &WebviewWindow) {
     }
 
     let minimized = *overlay_minimized().lock();
-    let (logical_w, logical_h) = if minimized {
-        (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
-    } else {
-        (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
-    };
+    let joy_open = crate::codex_numpad_layer::joy_nav_panel_open()
+        && crate::codex_numpad_layer::pad_mapping_active();
+    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open);
     let scale = win.scale_factor().unwrap_or(1.0);
     let w = (logical_w * scale).round() as i32;
     let h = (logical_h * scale).round() as i32;
@@ -807,8 +998,8 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
             let should_ensure = !was_fg
                 || blocker == "no_routes"
-                || blocker == "pad_off"
                 || blocker == "no_mapping";
+            // Note: "pad_off" is intentional numpad mode — do not auto-re-enable.
             if !should_ensure {
                 None
             } else {
@@ -926,9 +1117,41 @@ mod tests {
             software_enhance_enabled: false,
             keys: vec![],
         })];
+        test_set_foreground_latch(true);
         let snap = build_snapshot_from_cfg(&cfg);
         assert!(!snap.visible);
         assert!(snap.cells.is_empty());
+    }
+
+    #[test]
+    fn anchored_origin_keeps_right_edge() {
+        // Expand 432 → 552 (+120): origin shifts left by 120.
+        assert_eq!(anchored_origin_x(1000, 432, 552), 880);
+        // Collapse 552 → 432 (-120): origin shifts right by 120.
+        assert_eq!(anchored_origin_x(880, 552, 432), 1000);
+        // No change.
+        assert_eq!(anchored_origin_x(100, 432, 432), 100);
+    }
+
+    #[test]
+    fn overlay_visible_in_numpad_mode_when_overlay_enabled() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: false,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.visible, "numpad mode must keep overlay visible");
+        assert!(!snap.enabled);
+        assert_eq!(snap.pad_mode, "numpad");
+        assert!(!snap.joy_nav_panel_open);
+        assert!(!snap.cells.is_empty());
     }
 
     #[test]

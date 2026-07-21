@@ -52,6 +52,8 @@ struct HookGate {
     require_num_lock_off: bool,
     pad_active: bool,
     software_enhance_enabled: bool,
+    /// Overlay session: JOY NAV rail open — physical arrows only hijacked when true.
+    joy_nav_panel_open: bool,
     routes: HashMap<String, CodexNumpadRouteSnapshot>,
     routes_by_micro: HashMap<String, CodexNumpadRouteSnapshot>,
 }
@@ -103,6 +105,46 @@ pub fn parse_micro_key_event(raw: &str) -> Option<(String, bool)> {
     Some((id.to_string(), phase.eq_ignore_ascii_case("down")))
 }
 
+pub fn arrow_nav_micro_key(name: &str) -> Option<&'static str> {
+    match name.trim() {
+        "Up" => Some("NAV_UP"),
+        "Down" => Some("NAV_DOWN"),
+        "Left" => Some("NAV_LEFT"),
+        "Right" => Some("NAV_RIGHT"),
+        _ => None,
+    }
+}
+
+/// Physical arrows → NAV_* only when Codex mapping is on AND JOY rail is open.
+pub fn pad_should_capture_arrows() -> bool {
+    if !codex_is_foreground() {
+        return false;
+    }
+    let gate = hook_gate().lock().unwrap();
+    gate.pad_active && gate.joy_nav_panel_open
+}
+
+/// Whether Codex Micro pad mapping is currently active (pad.enabled).
+pub fn pad_mapping_active() -> bool {
+    hook_gate().lock().unwrap().pad_active
+}
+
+/// Numpad-mode fire rule: only ENC may still summon Codex.
+pub fn numpad_mode_allows_fire(micro_key_id: &str) -> bool {
+    if pad_mapping_active() {
+        return true;
+    }
+    micro_key_id.trim() == "ENC"
+}
+
+pub fn joy_nav_panel_open() -> bool {
+    hook_gate().lock().unwrap().joy_nav_panel_open
+}
+
+pub fn set_joy_nav_panel_open(open: bool) {
+    hook_gate().lock().unwrap().joy_nav_panel_open = open;
+}
+
 pub fn lookup_route_by_micro_key(micro_key_id: &str) -> Option<CodexNumpadRouteSnapshot> {
     let id = micro_key_id.trim();
     if id.is_empty() {
@@ -114,6 +156,61 @@ pub fn lookup_route_by_micro_key(micro_key_id: &str) -> Option<CodexNumpadRouteS
         .routes_by_micro
         .get(id)
         .cloned()
+}
+
+/// Resolve ENC → summonCodex from config even when `pad.enabled=false` (numpad-mode exception).
+pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSnapshot> {
+    for m in cfg.active_mappings() {
+        if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
+            continue;
+        }
+        let Some(pad) = m.codex_micro_pad.as_ref() else {
+            continue;
+        };
+        let route = pad
+            .keys
+            .iter()
+            .find(|k| k.micro_key_id == "ENC" && k.enabled)
+            .cloned()
+            .unwrap_or_else(|| CodexMicroPadKeyRoute {
+                micro_key_id: "ENC".into(),
+                source_scan: 0,
+                source_extended: false,
+                slot_id: "summonCodex".into(),
+                ui_icon_id: String::new(),
+                enabled: true,
+                advanced: false,
+            });
+        let slot = if route.slot_id.trim().is_empty() {
+            "summonCodex"
+        } else {
+            route.slot_id.trim()
+        };
+        let binding = agent_key_binding_for_slot(m, slot);
+        let action_id = binding
+            .map(|b| b.action_id.clone())
+            .unwrap_or_else(|| "openAgent".into());
+        let trigger_binding = binding
+            .map(|b| b.trigger_binding.clone())
+            .unwrap_or_else(|| {
+                crate::agent::bindings_build::default_key_for_slot(slot).to_string()
+            });
+        let provider = if m.agent_provider_id.trim().is_empty() {
+            CODEX_PROVIDER_ID.to_string()
+        } else {
+            m.agent_provider_id.clone()
+        };
+        return Some(CodexNumpadRouteSnapshot {
+            mapping_id: m.id.clone(),
+            slot_id: slot.to_string(),
+            action_id,
+            provider_id: provider,
+            trigger_binding,
+            micro_key_id: "ENC".into(),
+            is_hold: false,
+        });
+    }
+    None
 }
 
 /// True when an enabled Codex Micro pad has software enhance on.
@@ -223,7 +320,13 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
 }
 
 pub fn sync_hook_cache(cfg: &VoiceConfig) {
+    // Preserve overlay-session JOY rail state across config-driven cache rebuilds.
+    let prev_joy = hook_gate()
+        .lock()
+        .unwrap()
+        .joy_nav_panel_open;
     let mut gate = HookGate::default();
+    gate.joy_nav_panel_open = prev_joy;
     for m in cfg.active_mappings() {
         let Some(pad) = m.codex_micro_pad.as_ref() else {
             continue;
@@ -232,6 +335,10 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
             continue;
         }
         merge_pad_routes(&mut gate, m, pad);
+    }
+    // Numpad mode: never leave arrow capture armed.
+    if !gate.pad_active {
+        gate.joy_nav_panel_open = false;
     }
     *hook_gate().lock().unwrap() = gate;
 }
@@ -280,7 +387,11 @@ fn needs_auto_ready(m: &MappingEntry) -> bool {
     match &m.codex_micro_pad {
         None => true,
         Some(pad) => {
-            if !pad.enabled || pad.keys.is_empty() {
+            // pad.enabled=false is intentional numpad mode — do not auto-re-enable.
+            if !pad.enabled {
+                return pad.keys.is_empty();
+            }
+            if pad.keys.is_empty() {
                 return true;
             }
             pad_routes_need_heal(m, pad)
@@ -420,10 +531,7 @@ pub fn try_heal_micro_route(state: &crate::AppState, micro_key_id: &str, locale:
             }
             let slot_id = {
                 let pad = m.codex_micro_pad.get_or_insert_with(default_codex_micro_pad);
-                if !pad.enabled {
-                    pad.enabled = true;
-                    changed = true;
-                }
+                // Heal routes without forcing Codex mode back on.
                 let Some((slot_id, route_changed)) = heal_pad_route_for_micro_key(pad, id) else {
                     continue;
                 };
@@ -503,10 +611,7 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
         let pad = m
             .codex_micro_pad
             .get_or_insert_with(default_codex_micro_pad);
-        if !pad.enabled {
-            pad.enabled = true;
-            changed = true;
-        }
+        // Do not force pad.enabled=true — numpad mode is a user choice.
         if !pad.overlay_enabled {
             pad.overlay_enabled = true;
             changed = true;
@@ -968,5 +1073,74 @@ mod tests {
         };
         sync_hook_cache(&cfg);
         assert!(lookup_route_by_micro_key("ACT10").is_some());
+    }
+
+    #[test]
+    fn numpad_mode_blocks_all_keys_except_enc() {
+        set_joy_nav_panel_open(true);
+        // Empty cache → pad inactive (numpad mode).
+        *hook_gate().lock().unwrap() = HookGate {
+            joy_nav_panel_open: true,
+            ..HookGate::default()
+        };
+        assert!(!pad_mapping_active());
+        assert!(numpad_mode_allows_fire("ENC"));
+        assert!(!numpad_mode_allows_fire("ACT10"));
+        assert!(!numpad_mode_allows_fire("AG00"));
+        assert!(!numpad_mode_allows_fire("NAV_UP"));
+        assert!(!numpad_mode_allows_fire("JOY"));
+        // Arrows never captured when pad inactive, even if joy flag stale.
+        assert!(!pad_should_capture_arrows());
+    }
+
+    #[test]
+    fn arrow_capture_requires_joy_rail_open() {
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut cfg = VoiceConfig::default();
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        cfg.mappings = vec![MappingEntry {
+            id: "codex-arrows".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CODEX_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: CODEX_PROVIDER_ID.into(),
+            agent_bindings: build_codex_micro_13_bindings("zh-CN"),
+            codex_micro_pad: Some(pad),
+        }];
+        sync_hook_cache(&cfg);
+        assert!(pad_mapping_active());
+        set_joy_nav_panel_open(false);
+        assert!(!joy_nav_panel_open());
+        assert!(!pad_should_capture_arrows());
+        set_joy_nav_panel_open(true);
+        assert!(joy_nav_panel_open());
+        // Without Codex FG, capture stays false even with joy open.
+        assert!(!pad_should_capture_arrows());
     }
 }

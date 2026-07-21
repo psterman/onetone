@@ -5,7 +5,7 @@ use crate::agent::templates::{codex_micro_13_template, is_essential_slot};
 use crate::config::AgentBinding;
 
 /// Codex App official shortcuts where published; slash slots use OneTone overlay chords.
-fn default_key_for_slot(slot_id: &str) -> &'static str {
+pub fn default_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
         "summonCodex" => "Ctrl+Shift+P",
         "pushToTalk" => "Ctrl+Shift+D",

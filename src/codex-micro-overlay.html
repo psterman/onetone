@@ -26,24 +26,28 @@
           <button type="button" class="overlay-chrome__btn" data-act="minimize" title="最小化" aria-label="最小化">—</button>
           <button type="button" class="overlay-chrome__btn overlay-chrome__btn--close" data-act="close" title="关闭" aria-label="关闭">×</button>
         </header>
-        <div class="overlay-body">
+        <div class="overlay-body" id="overlayBody">
+          <aside class="overlay-nav-rail" id="navRail" aria-label="方向键" hidden>
+            <span class="overlay-nav-rail__screw overlay-nav-rail__screw--tl" aria-hidden="true"></span>
+            <span class="overlay-nav-rail__screw overlay-nav-rail__screw--tr" aria-hidden="true"></span>
+            <span class="overlay-nav-rail__screw overlay-nav-rail__screw--bl" aria-hidden="true"></span>
+            <span class="overlay-nav-rail__screw overlay-nav-rail__screw--br" aria-hidden="true"></span>
+            <div class="overlay-nav-rail__pad">
+              <button type="button" class="overlay-nav-key overlay-nav-key--up" data-nav="NAV_UP" title="上" aria-label="上"></button>
+              <button type="button" class="overlay-nav-key overlay-nav-key--left" data-nav="NAV_LEFT" title="左" aria-label="左"></button>
+              <button type="button" class="overlay-nav-key overlay-nav-key--down" data-nav="NAV_DOWN" title="下" aria-label="下"></button>
+              <button type="button" class="overlay-nav-key overlay-nav-key--right" data-nav="NAV_RIGHT" title="右" aria-label="右"></button>
+            </div>
+          </aside>
           <div class="micro-hw micro-hw--sm">
             <span class="micro-hw__aura" aria-hidden="true"></span>
             <div class="micro-hw__face">
-              <span class="micro-hw__brand micro-hw__brand--left" aria-hidden="true">Work Loud | OneTone 2026</span>
-              <span class="micro-hw__brand micro-hw__brand--right" aria-hidden="true">You can just build things</span>
-              <span class="micro-hw__arrow" aria-hidden="true">↑</span>
-              <span class="micro-hw__aux-hole" aria-hidden="true"></span>
               <div class="micro-hw__grid" id="grid"></div>
-              <div class="micro-hw__leds" id="leds" data-pad-status="idle" aria-hidden="true">
-                <span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>
-              </div>
-              <span class="micro-hw__build" aria-hidden="true">Let's build</span>
-              <div class="status-chip" id="statusChip" data-status="idle"></div>
+              <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
             </div>
           </div>
-          <p class="foot" id="footHint">仅 Codex 前台 · 点击触发</p>
         </div>
+        <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -94,17 +98,17 @@
       no_profile:'Codex 场景未配置',
       hold_failed:'无法启动听写（请确认 Codex 已打开）',
       invalid_key:'无效按键',
-      invalid_phase:'无效操作'
+      invalid_phase:'无效操作',
+      numpad_mode:'数字键模式 · 未触发 Codex'
     };
-    var DEFAULT_FOOT='仅 Codex 前台 · 点击触发';
-    var lastFootHint=DEFAULT_FOOT;
     var boundKeys={};
     var wrap=document.getElementById('wrap');
     var grid=document.getElementById('grid');
-    var leds=document.getElementById('leds');
+    var navRail=document.getElementById('navRail');
+    var overlayBody=document.getElementById('overlayBody');
+    var overlayToast=document.getElementById('overlayToast');
     var miniLeds=document.getElementById('miniLeds');
     var statusChip=document.getElementById('statusChip');
-    var footHint=document.getElementById('footHint');
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -118,12 +122,33 @@
     var backendPadStatus='idle';
     var STATUS_MS={running:800,done:600,failed:1200};
     var enhanceOn=false;
-    var JOY_DIR_MS=3000;
-    var joyDirUntil=0;
-    var joyDirTimer=null;
-    var joyDirKeyHandler=null;
+    var padEnabled=true;
+    var padMode='codex';
+    var joyNavOpen=false;
+    var requireNumLockOff=false;
+    var numLockBlocking=false;
+    var joyDrag={active:false,lastNav:'',lastFire:0};
+    var navRepeatTimer=null;
     var dragging=false;
     var overlayHoldInstalled=false;
+    var toastTimer=null;
+    var DEFAULT_FOOT='';
+    var SVG_ARROW={
+      up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M12 5l-5 5M12 5l5 5"/></svg>',
+      down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M12 19l-5-5M12 19l5-5"/></svg>',
+      left:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M5 12l5-5M5 12l5 5"/></svg>',
+      right:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M19 12l-5-5M19 12l-5 5"/></svg>'
+    };
+
+    function toast(msg){
+      if(!overlayToast||!msg) return;
+      overlayToast.textContent=msg;
+      overlayToast.classList.add('is-show');
+      if(toastTimer) clearTimeout(toastTimer);
+      toastTimer=setTimeout(function(){
+        overlayToast.classList.remove('is-show');
+      },1800);
+    }
 
     function ensureOverlayHoldPointerUp(){
       if(overlayHoldInstalled) return;
@@ -155,7 +180,8 @@
       return map;
     }
 
-    function sourceClass(kind){
+    function sourceClass(kind, cellId){
+      if(cellId==='JOY') return '';
       if(kind==='screen') return ' is-screen-only';
       if(kind==='advanced') return ' is-advanced-only';
       return '';
@@ -184,18 +210,23 @@
       var showListen=padSt==='listening' && !holdUiReleased;
       wrap.classList.toggle('is-status-open', showListen || padSt==='failed');
       wrap.classList.toggle('is-minimized', !!localMinimized);
-      if(leds) leds.setAttribute('data-pad-status', padSt);
+      wrap.classList.toggle('is-mode-codex', padMode==='codex');
+      wrap.classList.toggle('is-mode-numpad', padMode==='numpad');
+      wrap.classList.toggle('is-joy-open', !!joyNavOpen);
+      wrap.classList.toggle('is-pad-off', padMode==='numpad');
+      if(overlayBody) overlayBody.classList.toggle('has-nav-rail', !!joyNavOpen);
+      if(navRail){
+        if(joyNavOpen){
+          navRail.hidden=false;
+          navRail.removeAttribute('hidden');
+        } else {
+          navRail.hidden=true;
+          navRail.setAttribute('hidden','');
+        }
+      }
       if(miniLeds) miniLeds.setAttribute('data-pad-status', padSt);
       if(statusChip){
         statusChip.setAttribute('data-status', padSt);
-        statusChip.textContent=STATUS_LABEL[padSt]||'';
-      }
-      if(footHint){
-        if(showListen) footHint.textContent='听写中 · 松开结束';
-        else if(padSt==='running') footHint.textContent='执行中';
-        else if(padSt==='failed') footHint.textContent=lastFootHint||'触发失败';
-        else if(joyDirUntil && Date.now()<=joyDirUntil) footHint.textContent='方向模式 · 方向键/Enter/Esc';
-        else footHint.textContent=DEFAULT_FOOT;
       }
     }
 
@@ -239,47 +270,58 @@
       }
     }
 
-    function exitJoyDir(){
-      joyDirUntil=0;
-      if(joyDirTimer){ clearTimeout(joyDirTimer); joyDirTimer=null; }
-      if(joyDirKeyHandler){
-        window.removeEventListener('keydown', joyDirKeyHandler, true);
-        joyDirKeyHandler=null;
-      }
-      grid.querySelectorAll('[data-micro-key="JOY"]').forEach(function(el){ el.classList.remove('is-joy-dir'); });
-      applyLocalStatusDom();
+    function encInnerHtml(codexOn){
+      return '<span class="micro-hw__enc" aria-hidden="true">'
+        +'<span class="micro-hw__mode-switch'+(codexOn?' is-on':'')+'" data-act="pad-mode" role="switch" aria-checked="'+(codexOn?'true':'false')+'" title="'+(codexOn?'Codex 场景模式':'数字键模式')+'">'
+        +'<span class="micro-hw__mode-track"><span class="micro-hw__mode-thumb"></span></span>'
+        +'</span>'
+        +'<span class="micro-hw__icon micro-hw__enc-icon">'+(ICON.codex)+'</span>'
+        +'</span>';
     }
 
-    function enterJoyDir(){
-      if(!enhanceOn) return;
-      exitJoyDir();
-      joyDirUntil=Date.now()+JOY_DIR_MS;
-      grid.querySelectorAll('[data-micro-key="JOY"]').forEach(function(el){ el.classList.add('is-joy-dir'); });
-      joyDirKeyHandler=function(e){
-        if(!joyDirUntil || Date.now()>joyDirUntil){ exitJoyDir(); return; }
-        var nav=null;
-        if(e.key==='ArrowUp') nav='NAV_UP';
-        else if(e.key==='ArrowDown') nav='NAV_DOWN';
-        else if(e.key==='ArrowLeft') nav='NAV_LEFT';
-        else if(e.key==='ArrowRight') nav='NAV_RIGHT';
-        else if(e.key==='Enter') nav='NAV_PRESS';
-        else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); exitJoyDir(); return; }
-        if(!nav) return;
-        e.preventDefault(); e.stopPropagation();
-        fire(nav,'down').then(function(){ fire(nav,'up'); });
-      };
-      window.addEventListener('keydown', joyDirKeyHandler, true);
-      joyDirTimer=setTimeout(exitJoyDir, JOY_DIR_MS);
-      applyLocalStatusDom();
+    function joyInnerHtml(open){
+      return '<span class="micro-hw__joy-toggle'+(open?' is-on':'')+'" aria-hidden="true">'
+        +'<svg class="micro-hw__joy-icon" viewBox="0 0 24 24" fill="none">'
+        +'<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.8"/>'
+        +'<circle cx="12" cy="12" r="3.2" fill="currentColor"/>'
+        +'<path d="M12 4.5v2.2M12 17.3v2.2M4.5 12h2.2M17.3 12h2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+        +'</svg></span>';
+    }
+
+    function fireNav(nav){
+      var now=Date.now();
+      if(nav===joyDrag.lastNav && now-joyDrag.lastFire<110) return;
+      joyDrag.lastNav=nav;
+      joyDrag.lastFire=now;
+      invoke('cmd_codex_micro_pad_fire',{microKeyId:nav,phase:'down'}).then(function(res){
+        if(res&&!res.ok&&res.reason==='numpad_mode') toast(REASON_HINT.numpad_mode);
+      });
+    }
+
+    function stopNavRepeat(){
+      if(navRepeatTimer){ clearInterval(navRepeatTimer); navRepeatTimer=null; }
+      joyDrag.lastNav='';
+      if(navRail){
+        navRail.querySelectorAll('.overlay-nav-key').forEach(function(k){ k.classList.remove('is-lit'); });
+      }
+    }
+
+    function startNavRepeat(nav, keyEl){
+      if(!padEnabled||!joyNavOpen) return;
+      stopNavRepeat();
+      if(keyEl) keyEl.classList.add('is-lit');
+      fireNav(nav);
+      navRepeatTimer=setInterval(function(){ fireNav(nav); }, 140);
     }
 
     function setFootHint(text){
-      lastFootHint=text||DEFAULT_FOOT;
-      if(footHint) footHint.textContent=lastFootHint;
+      if(text) toast(text);
     }
 
     function fire(id,phase){
+      var isNav=/^NAV_/.test(id);
       return invoke('cmd_codex_micro_pad_fire',{microKeyId:id,phase:phase}).then(function(res){
+        if(isNav) return res;
         if(!res) return res;
         var reason=String(res.reason||'');
         if(reason==='hold_down'){
@@ -296,7 +338,14 @@
         else if(reason==='hold_busy'){
           setFootHint('听写进行中');
         }
-        else if(reason==='fired' || reason==='enhance_pulse') setLocalStatus('running', id);
+        else if(reason==='numpad_mode'){
+          toast(REASON_HINT.numpad_mode);
+          setLocalStatus('failed', id);
+        }
+        else if(reason==='fired' || reason==='enhance_pulse' || reason==='healing'){
+          setLocalStatus('running', id);
+          if(id==='ENC' && phase==='down') toast('召唤 Codex');
+        }
         else if(!res.ok && phase==='down'){
           if(holdLockId===id){
             holdLockId='';
@@ -304,8 +353,6 @@
           }
           setLocalStatus('failed', id);
           setFootHint(REASON_HINT[reason]||DEFAULT_FOOT);
-        } else if(res.ok && phase==='down'){
-          setFootHint(DEFAULT_FOOT);
         }
         return res;
       }).catch(function(){
@@ -320,27 +367,101 @@
       });
     }
 
+    function bindJoy(el){
+      el.addEventListener('pointerdown',function(e){
+        if(e.button!=null&&e.button!==0) return;
+        e.preventDefault(); e.stopPropagation();
+        el.classList.add('is-pressed','is-active');
+      });
+      function joyUp(){ el.classList.remove('is-pressed','is-active'); }
+      el.addEventListener('pointerup',joyUp);
+      el.addEventListener('pointercancel',joyUp);
+      el.addEventListener('click',function(e){
+        e.preventDefault(); e.stopPropagation();
+        if(!padEnabled){
+          toast(REASON_HINT.numpad_mode);
+          return;
+        }
+        invoke('cmd_codex_micro_overlay_toggle_joy_panel',{}).then(function(open){
+          joyNavOpen=!!open;
+          applyLocalStatusDom();
+          toast(open?'方向键面板已打开':'方向键面板已关闭');
+          pull();
+        }).catch(function(){ toast('无法切换摇杆面板'); });
+      });
+    }
+
+    function bindEnc(el){
+      var modeSw=el.querySelector('[data-act="pad-mode"]');
+      if(modeSw){
+        modeSw.addEventListener('pointerdown',function(e){
+          e.preventDefault(); e.stopPropagation();
+        });
+        modeSw.addEventListener('click',function(e){
+          e.preventDefault(); e.stopPropagation();
+          invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
+            padMode=String(mode||'')==='numpad'?'numpad':'codex';
+            padEnabled=padMode==='codex';
+            if(!padEnabled) joyNavOpen=false;
+            applyLocalStatusDom();
+            toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
+            lastGridSig='';
+            pull();
+          }).catch(function(){ toast('无法切换模式'); });
+        });
+      }
+      el.addEventListener('pointerdown',function(e){
+        if(e.button!=null&&e.button!==0) return;
+        if(e.target&&e.target.closest&&e.target.closest('[data-act="pad-mode"]')) return;
+        e.preventDefault(); e.stopPropagation();
+        el.classList.add('is-pressed','is-active');
+      });
+      function encUp(){ el.classList.remove('is-pressed','is-active'); }
+      el.addEventListener('pointerup',encUp);
+      el.addEventListener('pointercancel',encUp);
+      el.addEventListener('click',function(e){
+        if(e.target&&e.target.closest&&e.target.closest('[data-act="pad-mode"]')) return;
+        e.preventDefault(); e.stopPropagation();
+        fire('ENC','down');
+      });
+    }
+
+    function bindNavRail(){
+      if(!navRail||navRail._bound) return;
+      navRail._bound=true;
+      navRail.querySelectorAll('[data-nav]').forEach(function(btn){
+        var dir=btn.getAttribute('data-nav');
+        var icon=dir==='NAV_UP'?SVG_ARROW.up:dir==='NAV_DOWN'?SVG_ARROW.down:dir==='NAV_LEFT'?SVG_ARROW.left:SVG_ARROW.right;
+        btn.innerHTML=icon;
+        btn.addEventListener('pointerdown',function(e){
+          if(e.button!=null&&e.button!==0) return;
+          e.preventDefault(); e.stopPropagation();
+          try{ btn.setPointerCapture(e.pointerId); }catch(_){}
+          startNavRepeat(dir, btn);
+        });
+        btn.addEventListener('pointerup',function(e){
+          stopNavRepeat();
+          try{ btn.releasePointerCapture(e.pointerId); }catch(_){}
+        });
+        btn.addEventListener('pointercancel',stopNavRepeat);
+        btn.addEventListener('lostpointercapture',stopNavRepeat);
+      });
+    }
+
     function bindFire(){
       ensureOverlayHoldPointerUp();
+      bindNavRail();
       grid.querySelectorAll('[data-micro-key]').forEach(function(el){
         if(el.classList.contains('micro-hw__key--placeholder')) return;
         var id=el.getAttribute('data-micro-key');
-        if(id==='JOY' && enhanceOn){
-          el.addEventListener('pointerdown',function(e){
-            if(e.button!=null&&e.button!==0) return;
-            e.preventDefault();
-            e.stopPropagation();
-            var isCenter=!!(e.target&&e.target.closest&&e.target.closest('.micro-hw__joy'));
-            if(isCenter && joyDirUntil && Date.now()<=joyDirUntil){
-              fire('NAV_PRESS','down').then(function(){ fire('NAV_PRESS','up'); });
-              return;
-            }
-            enterJoyDir();
-          });
-          return;
-        }
+        if(id==='JOY'){ bindJoy(el); return; }
+        if(id==='ENC'){ bindEnc(el); return; }
         el.addEventListener('pointerdown',function(e){
           if(e.button!=null&&e.button!==0) return;
+          if(!padEnabled){
+            toast(REASON_HINT.numpad_mode);
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
           activePtr=id;
@@ -353,13 +474,19 @@
           try{ el.setPointerCapture(e.pointerId); }catch(_){}
           fire(id,'down');
         });
-        if(id==='ENC' && enhanceOn){
-          el.addEventListener('wheel',function(e){
-            e.preventDefault(); e.stopPropagation();
-            var cw=e.deltaY>0||e.deltaX>0;
-            var mid=cw?'ENC_CW':'ENC_CC';
-            fire(mid,'down').then(function(){ fire(mid,'up'); });
-          },{passive:false});
+        if(id!=='ACT10'){
+          el.addEventListener('pointerup',function(e){
+            if(e.button!=null&&e.button!==0) return;
+            if(activePtr!==id) return;
+            activePtr='';
+            el.classList.remove('is-pressed','is-active');
+            fire(id,'up');
+          });
+          el.addEventListener('pointercancel',function(e){
+            if(activePtr!==id) return;
+            activePtr='';
+            el.classList.remove('is-pressed','is-active');
+          });
         }
       });
     }
@@ -369,7 +496,7 @@
         if(!c||!c.microKeyId) return '';
         return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.runStatus||'');
       });
-      return [!!s.visible,!!s.softwareEnhanceEnabled,!!s.minimized,active,parts.join('|')].join(';');
+      return [!!s.visible,!!s.enabled,String(s.padMode||''),!!s.joyNavPanelOpen,!!s.softwareEnhanceEnabled,!!s.minimized,active,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -393,7 +520,12 @@
     function render(s){
       s=s||{};
       wrap.classList.toggle('is-visible',!!s.visible);
-      if(!s.visible){ exitJoyDir(); holdLockId=''; return; }
+      if(!s.visible){ holdLockId=''; return; }
+      padEnabled=!!s.enabled;
+      padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
+      joyNavOpen=!!s.joyNavPanelOpen && padMode==='codex';
+      requireNumLockOff=!!s.requireNumLockOff;
+      numLockBlocking=!!s.numLockBlocking;
       enhanceOn=!!s.softwareEnhanceEnabled;
       localMinimized=!!s.minimized;
       applyRgbGlow(s.rgb);
@@ -450,24 +582,32 @@
         var kind=String(info.sourceKind||'none');
         var backendRun=String(info.runStatus||'idle');
         var runSt=mergeRunStatus(cell.id, backendRun);
-        var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind);
+        var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind, cell.id);
         if(cell.span===2) cls+=' micro-hw__key--span2';
         if(bound) cls+=' is-bound';
-        else cls+=' is-route-disabled';
+        else if(cell.id!=='ENC' && cell.id!=='JOY') cls+=' is-route-disabled';
+        if(cell.id==='ENC'){
+          cls+= padEnabled ? ' is-mode-on' : ' is-mode-off';
+        }
+        if(cell.id==='JOY'){
+          if(joyNavOpen) cls+=' is-joy-on';
+          if(padEnabled) cls+=' is-nav-live';
+        }
         if(active&&active===cell.id&&activePtr===cell.id) cls+=' is-pressed is-active';
-        if(cell.id==='JOY' && joyDirUntil && Date.now()<=joyDirUntil) cls+=' is-joy-dir';
         var agAttr=cell.ag!=null ? ' data-ag="'+cell.ag+'"' : '';
         var style='grid-row:'+cell.row+';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
         var tag=cell.kind==='placeholder'?'div':'button';
         var type=tag==='button'?' type="button"':'';
         var inner=cell.id==='ENC'
-          ? '<span class="micro-hw__pwr is-on" aria-hidden="true"><span class="micro-hw__pwr-rocker"></span></span>'
+          ? encInnerHtml(padEnabled)
           : (cell.id==='JOY'
-            ? '<span class="micro-hw__joy" aria-hidden="true"></span>'
+            ? joyInnerHtml(joyNavOpen)
             : '<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>');
         return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-source-kind="'+kind+'" style="'+style+'"'
           +(cell.id==='ACT10'?' title="小键盘 0 · 按住说话"':'')
+          +(cell.id==='ENC'?' title="召唤 Codex"':'')
+          +(cell.id==='JOY'?' title="方向键面板"':'')
           +'>'+inner+'</'+tag+'>';
       }).join('');
       applyLocalStatusDom();
@@ -479,7 +619,7 @@
     }
 
     function isDragBlocked(target){
-      return !!(target && target.closest && target.closest('[data-micro-key],[data-act],button,a,input,select,textarea'));
+      return !!(target && target.closest && target.closest('[data-micro-key],[data-nav],[data-act],button,a,input,select,textarea'));
     }
 
     wrap.addEventListener('pointerdown',function(e){

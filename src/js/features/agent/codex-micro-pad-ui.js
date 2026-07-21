@@ -228,6 +228,11 @@
   var joyDirMapping = null;
   var readinessPollTimer = null;
   var lastReadiness = null;
+  /** Settings preview only — does not touch overlay session / config. */
+  var previewPadMode = 'codex';
+  var previewJoyOpen = false;
+  /** Edit-keycap modal draft (strict mode requires declaration). */
+  var editDraft = null;
 
   var PRIMARY_MICRO_IDS = [
     'AG00', 'AG01', 'AG02', 'AG03', 'AG04', 'AG05',
@@ -1051,8 +1056,79 @@
     var mode = opts.mode || 'preview';
     var sizeCls = opts.compact ? ' micro-hw--sm' : '';
     var compactCls = mode === 'overlay' ? ' micro-hw--compact' : '';
+    // Preview uses local state; other modes reflect pad.enabled for shell color.
+    var codexOn = mode === 'preview'
+      ? previewPadMode === 'codex'
+      : !!(pad && pad.enabled);
+    var joyOpen = !!(previewJoyOpen && codexOn);
+    var shellCls = 'micro-hw-shell'
+      + (codexOn ? ' is-mode-codex' : ' is-mode-numpad')
+      + (joyOpen ? ' has-nav-rail' : '');
+
+    function navRailBtn(navId, dirCls, arrowSvg, labelFallback) {
+      var route = routeForMicroKey(pad, navId);
+      var bound = !!(route && route.enabled && route.slotId);
+      var chord = bound ? slotSubForDisplay(m, route.slotId) : '';
+      var title = bound
+        ? (slotLabel(route.slotId) + (chord ? ' · ' + chord : ''))
+        : (labelFallback + ' · ' + (mode === 'config' || mode === 'edit'
+          ? t('codexMicroPadNavEditHint', '点击绑定能力（默认注入方向键）')
+          : t('codexMicroPadNavDefault', '默认注入方向键')));
+      return '<button type="button" class="micro-hw-nav-key ' + dirCls + (bound ? ' is-bound' : '') + '" data-nav="' + navId + '" title="' + esc(title) + '" aria-label="' + esc(title) + '">'
+        + arrowSvg
+        + '</button>';
+    }
+
+    function navLegendHtml() {
+      if (mode !== 'config' && mode !== 'edit') return '';
+      if (!joyOpen) return '';
+      var dirs = [
+        { id: 'NAV_UP', short: '↑' },
+        { id: 'NAV_DOWN', short: '↓' },
+        { id: 'NAV_LEFT', short: '←' },
+        { id: 'NAV_RIGHT', short: '→' }
+      ];
+      var parts = dirs.map(function (d) {
+        var route = routeForMicroKey(pad, d.id);
+        var bound = !!(route && route.enabled && route.slotId);
+        var label = bound
+          ? slotLabel(route.slotId)
+          : t('codexMicroPadNavDefault', '默认方向');
+        return '<button type="button" class="micro-hw-nav-legend__item' + (bound ? ' is-bound' : '') + '" data-nav="' + d.id + '" title="' + esc(label) + '">'
+          + '<span class="micro-hw-nav-legend__arrow">' + d.short + '</span>'
+          + '<span class="micro-hw-nav-legend__label">' + esc(label) + '</span>'
+          + '</button>';
+      });
+      return '<div class="micro-hw-nav-legend" role="group" aria-label="' + esc(t('codexMicroPadNavMapTitle', '方向键映射')) + '">'
+        + '<span class="micro-hw-nav-legend__head">' + esc(t('codexMicroPadNavMapTitle', '方向键映射')) + '</span>'
+        + parts.join('')
+        + '</div>';
+    }
+
     var html =
-      '<div class="micro-hw' + sizeCls + compactCls + '">' +
+      '<div class="micro-hw-wrap">' +
+      '<div class="' + shellCls + '">' +
+      '<aside class="micro-hw-nav-rail" aria-label="' + esc(t('codexMicroPadNavRail', '方向键')) + '"' +
+      (joyOpen ? '' : ' hidden') + '>' +
+      '<span class="micro-hw-nav-rail__screw micro-hw-nav-rail__screw--tl" aria-hidden="true"></span>' +
+      '<span class="micro-hw-nav-rail__screw micro-hw-nav-rail__screw--tr" aria-hidden="true"></span>' +
+      '<span class="micro-hw-nav-rail__screw micro-hw-nav-rail__screw--bl" aria-hidden="true"></span>' +
+      '<span class="micro-hw-nav-rail__screw micro-hw-nav-rail__screw--br" aria-hidden="true"></span>' +
+      '<div class="micro-hw-nav-rail__pad">' +
+      navRailBtn('NAV_UP', 'micro-hw-nav-key--up',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M12 5l-5 5M12 5l5 5"/></svg>',
+        t('codexMicroPadNavUp', '上')) +
+      navRailBtn('NAV_LEFT', 'micro-hw-nav-key--left',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M5 12l5-5M5 12l5 5"/></svg>',
+        t('codexMicroPadNavLeft', '左')) +
+      navRailBtn('NAV_DOWN', 'micro-hw-nav-key--down',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M12 19l-5-5M12 19l5-5"/></svg>',
+        t('codexMicroPadNavDown', '下')) +
+      navRailBtn('NAV_RIGHT', 'micro-hw-nav-key--right',
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M19 12l-5-5M19 12l-5 5"/></svg>',
+        t('codexMicroPadNavRight', '右')) +
+      '</div></aside>' +
+      '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-pad-off') + '">' +
       '<div class="micro-hw__face">' +
       '<div class="micro-hw__grid">';
 
@@ -1069,6 +1145,8 @@
       if (isAdvancedOnly(route, cell.microKeyId) || (cell.microKeyId === 'JOY' && !isPrimaryMapped(route))) {
         cls += ' is-advanced-only';
       }
+      if (cell.microKeyId === 'ENC') cls += codexOn ? ' is-mode-on' : ' is-mode-off';
+      if (cell.microKeyId === 'JOY' && joyOpen) cls += ' is-joy-on';
       if (highlightSlotId && route && route.slotId === highlightSlotId) cls += ' is-focused';
       if (activeHighlightId && activeHighlightId === cell.microKeyId) cls += ' is-pressed is-active';
       var runSt = (padRunStatus !== 'idle' && padRunMicroKeyId === cell.microKeyId)
@@ -1084,9 +1162,20 @@
 
       var iconId = resolveIconId(route, cell.microKeyId);
       if (cell.microKeyId === 'ENC') {
-        html += '<span class="micro-hw__pwr is-on" aria-hidden="true"><span class="micro-hw__pwr-rocker"></span></span>';
+        html += '<span class="micro-hw__enc" aria-hidden="true">'
+          + '<span class="micro-hw__mode-switch' + (codexOn ? ' is-on' : '') + '" data-act="pad-mode" role="switch" aria-checked="' + (codexOn ? 'true' : 'false') + '" title="' +
+          esc(codexOn ? t('codexMicroPadModeCodex', 'Codex 场景模式') : t('codexMicroPadModeNumpad', '数字键模式')) + '">'
+          + '<span class="micro-hw__mode-track"><span class="micro-hw__mode-thumb"></span></span>'
+          + '</span>'
+          + '<span class="micro-hw__icon micro-hw__enc-icon">' + iconSvg('codex') + '</span>'
+          + '</span>';
       } else if (cell.microKeyId === 'JOY') {
-        html += '<span class="micro-hw__joy" aria-hidden="true"></span>';
+        html += '<span class="micro-hw__joy-toggle' + (joyOpen ? ' is-on' : '') + '" aria-hidden="true">'
+          + '<svg class="micro-hw__joy-icon" viewBox="0 0 24 24" fill="none">'
+          + '<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.8"/>'
+          + '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>'
+          + '<path d="M12 4.5v2.2M12 17.3v2.2M4.5 12h2.2M17.3 12h2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+          + '</svg></span>';
       } else {
         html += '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(iconId) + '</span>';
       }
@@ -1094,12 +1183,12 @@
         var sub = bound
           ? slotSubForDisplay(m, route.slotId)
           : (cell.microKeyId === 'JOY'
-            ? t('codexMicroPadJoyHint', '软件增强：点按进入方向模式')
+            ? t('codexMicroPadJoyHint', '点击展开左侧方向键（预览）')
             : t('codexMicroPadUnbound', '未配置'));
         if (cell.microKeyId === 'ENC' && bound) {
           sub = slotSubForDisplay(m, route.slotId);
-        } else         if (cell.microKeyId === 'ENC' && isEnhanceOn(pad)) {
-          sub = t('codexMicroPadEncWheelHint', '点击召唤 · 滚轮旋转');
+        } else if (cell.microKeyId === 'ENC') {
+          sub = t('codexMicroPadEncSummonHint', '点击召唤 · 旁侧开关切模式');
         } else if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
           var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
           var chordLbl = bound ? slotSubForDisplay(m, route.slotId) : '';
@@ -1108,7 +1197,7 @@
             sub += ' · ' + t('codexMicroPadHoldHint', '按住说话');
           }
         }
-        html += '<span class="micro-hw__sub">' + esc(sub) + '</span>';
+        html += '<span class="micro-hw__sub" title="' + esc(sub) + '">' + esc(sub) + '</span>';
       }
       html += '</' + tag + '>';
     });
@@ -1116,8 +1205,14 @@
     html += '</div>' +
       '<div class="micro-hw__leds" data-pad-status="' + esc(padRunStatus) + '" aria-hidden="true">' +
       '<span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>' +
-      '</div></div></div>';
+      '</div></div></div></div>' +
+      navLegendHtml() +
+      '</div>';
     return html;
+  }
+
+  function isNavMicroKey(id) {
+    return /^NAV_/.test(String(id || ''));
   }
 
   function cellByMicroId(microKeyId) {
@@ -1555,6 +1650,9 @@
       '<p class="codex-pad-mgr__hint" id="codexPadMgrHint">' + esc(modeHintText()) + '</p>' +
       '</div>' +
       '<div class="codex-pad-mgr__settings">' +
+      '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="enabled"' +
+      (pad.enabled ? ' checked' : '') + '>' +
+      esc(t('codexMicroPadEnableCodex', 'Codex 场景映射（关=数字键模式）')) + '</label>' +
       '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="overlay"' +
       (pad.overlayEnabled ? ' checked' : '') + '>' +
       esc(t('codexMicroPadOverlayEnable', '前台置顶小键盘')) + '</label>' +
@@ -1614,6 +1712,18 @@
       });
     });
 
+    var enabledMgrEl = body.querySelector('[data-act="enabled"]');
+    if (enabledMgrEl) {
+      enabledMgrEl.addEventListener('change', function () {
+        pad.enabled = !!enabledMgrEl.checked;
+        previewPadMode = pad.enabled ? 'codex' : 'numpad';
+        if (!pad.enabled) previewJoyOpen = false;
+        if (pad.enabled) pad.overlayEnabled = true;
+        persistPadFlags(m);
+        renderPadManager(m);
+        notifyLinkedUi(m);
+      });
+    }
     var overlayEl = body.querySelector('[data-act="overlay"]');
     if (overlayEl) {
       overlayEl.addEventListener('change', function () {
@@ -1719,11 +1829,85 @@
 
   function bindPadClicks(host, m, mode) {
     if (!host) return;
+
+    function rerenderPreviewLocal() {
+      var pad = m && m.codexMicroPad;
+      var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
+      if (oldWrap && pad) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = renderHardwarePad(m, pad, { mode: mode });
+        var next = tmp.firstChild;
+        if (next) {
+          oldWrap.parentNode.replaceChild(next, oldWrap);
+          bindPadClicks(host, m, mode);
+        }
+        return;
+      }
+      if (host.id === 'codexMicroPadHostTrigger') renderTrigger(host, m);
+      else if (host.id === 'codexMicroPadHostTarget') renderTarget(host, m);
+    }
+
+    // Preview-only: mode switch / JOY rail — local state, never call overlay IPC.
+    host.querySelectorAll('[data-act="pad-mode"]').forEach(function (sw) {
+      sw.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (mode === 'preview') {
+          previewPadMode = previewPadMode === 'codex' ? 'numpad' : 'codex';
+          if (previewPadMode === 'numpad') previewJoyOpen = false;
+          toast(previewPadMode === 'codex'
+            ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+            : t('codexMicroPadModeNumpad', '数字键模式'));
+          rerenderPreviewLocal();
+          return;
+        }
+        // Config / manager: switch is visual only — real toggle lives in checkboxes.
+        toast(t('codexMicroPadModeSwitchHint', '请在「启用小键盘」开关中切换 Codex / 数字键模式'));
+      });
+    });
+
+    host.querySelectorAll('[data-nav]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var nav = btn.getAttribute('data-nav');
+        if (!nav) return;
+        if (mode === 'run' && m && isEnhanceOn(m.codexMicroPad)) {
+          fireEnhanceTap(m, nav);
+          return;
+        }
+        if (mode === 'edit' || mode === 'config') {
+          openEditKeycap(m, nav);
+          return;
+        }
+        toast(t('codexMicroPadNavPreview', '方向键预览') + ' · ' + String(nav || '')
+          + ' · ' + t('codexMicroPadNavEditHint', '点击绑定能力（默认注入方向键）'));
+      });
+    });
+
     host.querySelectorAll('.micro-hw__key[data-micro-key]').forEach(function (el) {
       if (el.classList.contains('micro-hw__key--placeholder')) return;
       var id = el.getAttribute('data-micro-key');
       if (mode === 'preview') {
-        el.addEventListener('click', function () {
+        el.addEventListener('click', function (e) {
+          if (e.target && e.target.closest && e.target.closest('[data-act="pad-mode"]')) return;
+          if (id === 'JOY') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (previewPadMode !== 'codex') {
+              toast(t('codexMicroPadNumpadPassThrough', '数字键模式 · 未触发 Codex'));
+              return;
+            }
+            previewJoyOpen = !previewJoyOpen;
+            toast(previewJoyOpen
+              ? t('codexMicroPadJoyNavOpen', '方向键面板已打开（预览）')
+              : t('codexMicroPadJoyNavClose', '方向键面板已关闭'));
+            rerenderPreviewLocal();
+            return;
+          }
+          if (id === 'ENC') {
+            toast(t('codexMicroPadSummonCodex', '召唤 Codex（预览）'));
+          }
           previewKeyInHero(m, id);
         });
         return;
@@ -1739,28 +1923,49 @@
         return;
       }
       if (mode === 'edit' || mode === 'config') {
+        if (id === 'JOY') {
+          el.addEventListener('click', function (e) {
+            if (e.target && e.target.closest && e.target.closest('[data-act="pad-mode"]')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var codexOn = !!(m.codexMicroPad && m.codexMicroPad.enabled);
+            if (!codexOn) {
+              toast(t('codexMicroPadNumpadPassThrough', '数字键模式 · 未触发 Codex'));
+              return;
+            }
+            previewJoyOpen = !previewJoyOpen;
+            toast(previewJoyOpen
+              ? t('codexMicroPadJoyNavOpen', '方向键面板已打开（预览）')
+              : t('codexMicroPadJoyNavClose', '方向键面板已关闭'));
+            rerenderPreviewLocal();
+          });
+          return;
+        }
         if (isHoldMicroKey(m, id) && m.codexMicroPad && m.codexMicroPad.enabled) {
           bindHoldFirePointer(el, m, id);
           return;
         }
-        el.addEventListener('click', function () {
+        el.addEventListener('click', function (e) {
+          if (e.target && e.target.closest && e.target.closest('[data-act="pad-mode"]')) return;
           openEditKeycap(m, id);
         });
         return;
       }
       if (mode === 'run') {
-        if (id === 'JOY' && isEnhanceOn(m.codexMicroPad)) {
-          el.addEventListener('pointerdown', function (e) {
-            if (e.button != null && e.button !== 0) return;
+        if (id === 'JOY') {
+          el.addEventListener('click', function (e) {
             e.preventDefault();
-            var isCenter = !!(e.target && e.target.closest && e.target.closest('.micro-hw__joy'));
-            if (isCenter && isJoyDirectionActive()) {
-              fireEnhanceTap(m, 'NAV_PRESS');
+            e.stopPropagation();
+            if (!(m.codexMicroPad && m.codexMicroPad.enabled)) {
+              toast(t('codexMicroPadNumpadPassThrough', '数字键模式 · 未触发 Codex'));
               return;
             }
-            enterJoyDirectionMode(m);
+            previewJoyOpen = !previewJoyOpen;
+            toast(previewJoyOpen
+              ? t('codexMicroPadJoyNavOpen', '方向键面板已打开（预览）')
+              : t('codexMicroPadJoyNavClose', '方向键面板已关闭'));
+            rerenderPreviewLocal();
           });
-          el.addEventListener('click', function (e) { e.preventDefault(); });
           return;
         }
         if (isHoldMicroKey(m, id)) {
@@ -1840,7 +2045,7 @@
       '</p></div>' +
       '<label class="codex-micro-pad__toggle codex-micro-pad__toggle--enable">' +
       '<input type="checkbox" data-act="enabled"' + (pad.enabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadEnable', '启用小键盘')) + '</label>' +
+      esc(t('codexMicroPadEnableCodex', 'Codex 场景映射（关=数字键模式）')) + '</label>' +
       renderHardwarePad(m, pad, { mode: 'config' }) +
       '<div class="codex-micro-pad__inline-actions">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="manage">' +
@@ -1860,10 +2065,13 @@
     if (enabledEl) {
       enabledEl.addEventListener('change', function () {
         pad.enabled = !!enabledEl.checked;
+        previewPadMode = pad.enabled ? 'codex' : 'numpad';
+        if (!pad.enabled) previewJoyOpen = false;
         // Enabling the layer also turns on foreground overlay by default (fewer checkboxes).
         if (pad.enabled) pad.overlayEnabled = true;
         persistPadFlags(m);
         refreshTrigger(m);
+        renderTarget(host, m);
         padInvoke('cmd_codex_micro_pad_get_readiness', {}).then(function (r) {
           if (r) updateReadinessDom(host, r);
         });
@@ -1970,8 +2178,9 @@
     var modal = ensureEditModal();
     document.getElementById('microHwEditTitle').textContent =
       t('codexMicroEditTitle', '编辑键帽');
-    document.getElementById('microHwEditSub').textContent =
-      t('codexMicroEditHint', '选择显示在 {id} 上的图标').replace('{id}', microKeyId);
+    document.getElementById('microHwEditSub').textContent = isNavMicroKey(microKeyId)
+      ? t('codexMicroPadNavEditSub', '方向键默认注入箭头；可选绑定能力覆盖')
+      : t('codexMicroEditHint', '选择显示在 {id} 上的图标').replace('{id}', microKeyId);
     var search = document.getElementById('microHwEditSearch');
     search.placeholder = t('codexMicroEditSearch', '搜索键帽');
     search.value = '';
@@ -1982,7 +2191,9 @@
         ? scanLabel(editDraft.sourceScan, editDraft.sourceExtended)
         : (microKeyId === 'ENC'
           ? t('codexMicroPadScreenPower', '屏幕总开关')
-          : t('codexMicroPadTapRecord', '点击绑定'));
+          : (isNavMicroKey(microKeyId)
+            ? t('codexMicroPadNavScreenOnly', '屏幕方向键 · 无实体扫码')
+            : t('codexMicroPadTapRecord', '点击绑定')));
     var dbgSum = document.getElementById('microHwEditDebugSummary');
     var dbgScan = document.getElementById('microHwEditDebugScan');
     if (dbgSum) dbgSum.textContent = t('codexMicroPadDebugSummary', '诊断（scanCode）');
@@ -1991,11 +2202,13 @@
         ' · sourceScan=0x' + Number(editDraft.sourceScan || 0).toString(16) +
         ' · extended=' + (editDraft.sourceExtended ? '1' : '0');
     }
-    if (microKeyId === 'ENC') {
+    if (microKeyId === 'ENC' || isNavMicroKey(microKeyId)) {
       var recBtn = document.getElementById('microHwEditRecord');
       if (recBtn) {
         recBtn.disabled = true;
-        recBtn.title = t('codexMicroPadEncScreenOnly', '总开关默认仅屏幕点击，不占用小键盘 0（说话键）');
+        recBtn.title = microKeyId === 'ENC'
+          ? t('codexMicroPadEncScreenOnly', '总开关默认仅屏幕点击，不占用小键盘 0（说话键）')
+          : t('codexMicroPadNavScreenOnly', '屏幕方向键 · 无实体扫码');
       }
     } else {
       var recBtn2 = document.getElementById('microHwEditRecord');
@@ -2006,7 +2219,9 @@
     }
 
     var slotSel = document.getElementById('microHwEditSlot');
-    slotSel.innerHTML = '<option value="">' + esc(t('codexMicroPadPickSlot', '选择能力')) + '</option>';
+    slotSel.innerHTML = '<option value="">' + esc(isNavMicroKey(microKeyId)
+      ? t('codexMicroPadNavDefaultSlot', '默认 · 注入方向键')
+      : t('codexMicroPadPickSlot', '选择能力')) + '</option>';
     allSlotOptions().forEach(function (o) {
       var opt = document.createElement('option');
       opt.value = o.id;
@@ -2070,15 +2285,17 @@
       return;
     }
     var suggest = AGENT_NUMPAD_SUGGEST[editDraft.microKeyId];
-    var scan = editDraft.microKeyId === 'ENC' ? 0 : (editDraft.sourceScan || 0);
+    var navKey = isNavMicroKey(editDraft.microKeyId);
+    var scan = (editDraft.microKeyId === 'ENC' || navKey) ? 0 : (editDraft.sourceScan || 0);
     upsertRoute(m, pad, editDraft.microKeyId, {
       uiIconId: editDraft.uiIconId,
       slotId: slotId,
       enabled: !!slotId,
       sourceScan: scan,
-      sourceExtended: editDraft.microKeyId === 'ENC' ? false : editDraft.sourceExtended
+      sourceExtended: (editDraft.microKeyId === 'ENC' || navKey) ? false : editDraft.sourceExtended,
+      advanced: navKey ? true : undefined
     });
-    if (slotId && !scan && suggest && editDraft.microKeyId !== 'ENC') {
+    if (slotId && !scan && suggest && editDraft.microKeyId !== 'ENC' && !navKey) {
       upsertRoute(m, pad, editDraft.microKeyId, {
         sourceScan: suggest.sourceScan,
         sourceExtended: !!suggest.sourceExtended
@@ -2115,12 +2332,13 @@
     if (patch.enabled != null) route.enabled = !!patch.enabled;
     if (patch.uiIconId != null) route.uiIconId = patch.uiIconId;
     if (patch.advanced != null) route.advanced = !!patch.advanced;
-    // ENC / JOY stay screen-only by default — never auto-fill a physical scan.
-    if (microKeyId === 'ENC' || microKeyId === 'JOY') {
-      if (microKeyId === 'ENC') {
+    // ENC / JOY / NAV stay screen-only — never auto-fill a physical scan.
+    if (microKeyId === 'ENC' || microKeyId === 'JOY' || isNavMicroKey(microKeyId)) {
+      if (microKeyId === 'ENC' || isNavMicroKey(microKeyId)) {
         route.sourceScan = 0;
         route.sourceExtended = false;
       }
+      if (isNavMicroKey(microKeyId)) route.advanced = true;
     } else if (route.slotId && !route.sourceScan) {
       var def = LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === microKeyId; });
       var suggest = AGENT_NUMPAD_SUGGEST[microKeyId];
@@ -2139,6 +2357,11 @@
   function startRecordNumpad(m, pad, microKeyId, done) {
     if (microKeyId === 'ENC') {
       toast(t('codexMicroPadEncScreenOnly', '总开关默认仅屏幕点击，不占用小键盘 0（说话键）'));
+      if (done) done();
+      return;
+    }
+    if (isNavMicroKey(microKeyId)) {
+      toast(t('codexMicroPadNavScreenOnly', '屏幕方向键 · 无实体扫码'));
       if (done) done();
       return;
     }

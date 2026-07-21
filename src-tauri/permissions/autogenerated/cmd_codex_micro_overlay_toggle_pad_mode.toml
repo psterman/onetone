@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-micro-overlay-toggle-pad-mode"
+description = "Enables the cmd_codex_micro_overlay_toggle_pad_mode command without any pre-configured scope."
+commands.allow = ["cmd_codex_micro_overlay_toggle_pad_mode"]
+
+[[permission]]
+identifier = "deny-cmd-codex-micro-overlay-toggle-pad-mode"
+description = "Denies the cmd_codex_micro_overlay_toggle_pad_mode command without any pre-configured scope."
+commands.deny = ["cmd_codex_micro_overlay_toggle_pad_mode"]

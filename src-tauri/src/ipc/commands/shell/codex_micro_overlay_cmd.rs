@@ -40,3 +40,35 @@ pub fn cmd_codex_micro_overlay_set_minimized(
     codex_micro_overlay::set_overlay_minimized(minimized);
     codex_micro_overlay::push_state(&app, state.inner());
 }
+
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_toggle_master(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<bool, String> {
+    codex_micro_overlay::toggle_pad_master(&app, state.inner())
+}
+
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_toggle_num_mode(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<bool, String> {
+    codex_micro_overlay::toggle_pad_num_mode(&app, state.inner())
+}
+
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_toggle_pad_mode(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<String, String> {
+    codex_micro_overlay::toggle_pad_mode(&app, state.inner())
+}
+
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_toggle_joy_panel(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<bool, String> {
+    codex_micro_overlay::toggle_joy_nav_panel(&app, state.inner())
+}

@@ -270,6 +270,111 @@ fn clear_agent_modifier_tap(state: &Arc<AppState>, key: &str) {
     }
 }
 
+fn is_overlay_pad_window(window: &tauri::WebviewWindow) -> bool {
+    window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL
+}
+
+fn run_overlay_tap_action(
+    state: &Arc<AppState>,
+    exec_window: &tauri::WebviewWindow,
+    route: &crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
+) {
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let mut chord = route.trigger_binding.trim().to_string();
+    if chord.is_empty() {
+        chord = crate::agent::bindings_build::default_key_for_slot(&route.slot_id).to_string();
+    }
+    let hotkey_action = matches!(
+        route.action_id.as_str(),
+        "openAgent"
+            | "commandPalette"
+            | "cancel"
+            | "newThread"
+            | "quickChat"
+            | "stopOrSendDictation"
+    );
+    if hotkey_action && !chord.is_empty() {
+        if route.action_id != "openAgent" {
+            let _ = app_chat_workflow::quick_focus_codex_for_hold();
+        }
+        let _ = crate::keyboard::send_chord(&chord, duration_ms);
+        return;
+    }
+    execute_agent_binding(
+        state,
+        exec_window,
+        &route.mapping_id,
+        &route.provider_id,
+        &route.action_id,
+        &route.slot_id,
+        None,
+        Some("foregroundApp".into()),
+    );
+}
+
+fn spawn_overlay_tap_fire(
+    state: Arc<AppState>,
+    app: AppHandle,
+    exec_window: tauri::WebviewWindow,
+    route: crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
+    micro_key_id: String,
+) {
+    let _ = std::thread::Builder::new()
+        .name("overlay-pad-tap".into())
+        .spawn(move || {
+            run_overlay_tap_action(&state, &exec_window, &route);
+            crate::codex_micro_overlay::note_pad_run_status("done", &micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        });
+}
+
+fn spawn_overlay_heal_and_fire(
+    state: Arc<AppState>,
+    app: AppHandle,
+    overlay_window: tauri::WebviewWindow,
+    micro_key_id: String,
+    emit_pad_event: bool,
+) {
+    let _ = std::thread::Builder::new()
+        .name("overlay-pad-heal".into())
+        .spawn(move || {
+            {
+                let cfg = state.cfg.lock();
+                crate::codex_numpad_layer::sync_hook_cache(&cfg);
+            }
+            let mut healed = crate::codex_numpad_layer::try_heal_micro_route(
+                state.as_ref(),
+                &micro_key_id,
+                "zh-CN",
+            );
+            if !healed {
+                let mut cfg = state.cfg.lock();
+                let result =
+                    crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
+                if result.changed {
+                    crate::codex_numpad_layer::sync_hook_cache(&cfg);
+                    healed = true;
+                }
+            }
+            if healed {
+                let cfg = state.cfg.lock();
+                crate::config::save_config(&cfg);
+            }
+            if crate::codex_numpad_layer::lookup_route_by_micro_key(&micro_key_id).is_some() {
+                let _ = fire_codex_micro_pad_key(
+                    &state,
+                    &overlay_window,
+                    &micro_key_id,
+                    true,
+                    emit_pad_event,
+                );
+            } else {
+                crate::codex_micro_overlay::note_pad_run_status("failed", &micro_key_id);
+            }
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        });
+}
+
 fn execute_agent_binding(
     state: &Arc<AppState>,
     window: &tauri::WebviewWindow,
@@ -463,6 +568,60 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "not_foreground" });
     }
 
+    // Numpad mode: ENC is the only Codex exception (summonCodex). All other keys blocked.
+    if !crate::codex_numpad_layer::numpad_mode_allows_fire(micro_key_id) {
+        if key_down {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        }
+        return serde_json::json!({
+            "ok": false,
+            "reason": "numpad_mode",
+            "microKeyId": micro_key_id,
+        });
+    }
+    if !crate::codex_numpad_layer::pad_mapping_active() {
+        // ENC-only path (numpad mode exception).
+        if !key_down {
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": "summonCodex" });
+        }
+        let exec_window = app
+            .get_webview_window("main")
+            .unwrap_or_else(|| window.clone());
+        crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
+        let route = {
+            let cfg = state.cfg.lock();
+            crate::codex_numpad_layer::resolve_enc_summon_route(&cfg)
+        };
+        let Some(route) = route else {
+            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return serde_json::json!({ "ok": false, "reason": "unbound" });
+        };
+        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        if is_overlay_pad_window(window) {
+            spawn_overlay_tap_fire(
+                Arc::clone(state),
+                app.clone(),
+                exec_window,
+                route,
+                micro_key_id.to_string(),
+            );
+        } else {
+            run_overlay_tap_action(state, &exec_window, &route);
+            crate::codex_micro_overlay::note_pad_run_status("done", micro_key_id);
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        }
+        return serde_json::json!({
+            "ok": true,
+            "reason": "fired",
+            "slotId": "summonCodex",
+            "actionId": "openAgent",
+        });
+    }
+
     // Overlay invokes this command on its own webview; execute/hold need the main window.
     let exec_window = app
         .get_webview_window("main")
@@ -481,13 +640,14 @@ pub fn fire_codex_micro_pad_key(
     let Some(route) = crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id) else {
         // M4: software-enhance keys may pulse without a bound slot (NAV injects arrows).
         if crate::codex_numpad_layer::is_software_enhance_micro_key(micro_key_id)
-            && crate::codex_numpad_layer::software_enhance_enabled()
+            && (crate::codex_numpad_layer::software_enhance_enabled()
+                || is_overlay_pad_window(window))
         {
             if key_down {
                 inject_software_enhance_key(micro_key_id);
                 crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
             }
-            crate::codex_micro_overlay::push_state(&app, state.as_ref());
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({
                 "ok": true,
                 "reason": "enhance_pulse",
@@ -495,6 +655,22 @@ pub fn fire_codex_micro_pad_key(
             });
         }
         if key_down {
+            if is_overlay_pad_window(window) {
+                crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+                spawn_overlay_heal_and_fire(
+                    Arc::clone(state),
+                    app.clone(),
+                    window.clone(),
+                    micro_key_id.to_string(),
+                    emit_pad_event,
+                );
+                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                return serde_json::json!({
+                    "ok": true,
+                    "reason": "healing",
+                    "microKeyId": micro_key_id,
+                });
+            }
             {
                 let cfg = state.cfg.lock();
                 crate::codex_numpad_layer::sync_hook_cache(&cfg);
@@ -533,8 +709,7 @@ pub fn fire_codex_micro_pad_key(
     };
 
     if route.is_hold {
-        let from_overlay =
-            window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL;
+        let from_overlay = is_overlay_pad_window(window);
         if !key_down {
             finish_micro_pad_hold(state, &app, micro_key_id);
             return serde_json::json!({ "ok": true, "reason": "hold_up", "slotId": route.slot_id });
@@ -591,8 +766,25 @@ pub fn fire_codex_micro_pad_key(
     }
 
     if !key_down {
-        crate::codex_micro_overlay::push_state(&app, state.as_ref());
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
+    }
+    if is_overlay_pad_window(window) {
+        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        spawn_overlay_tap_fire(
+            Arc::clone(state),
+            app.clone(),
+            exec_window.clone(),
+            route.clone(),
+            micro_key_id.to_string(),
+        );
+        return serde_json::json!({
+            "ok": true,
+            "reason": "fired",
+            "slotId": route.slot_id,
+            "actionId": route.action_id,
+        });
     }
     execute_agent_binding(
         state,

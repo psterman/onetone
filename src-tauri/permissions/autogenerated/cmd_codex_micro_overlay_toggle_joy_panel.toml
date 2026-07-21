@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-micro-overlay-toggle-joy-panel"
+description = "Enables the cmd_codex_micro_overlay_toggle_joy_panel command without any pre-configured scope."
+commands.allow = ["cmd_codex_micro_overlay_toggle_joy_panel"]
+
+[[permission]]
+identifier = "deny-cmd-codex-micro-overlay-toggle-joy-panel"
+description = "Denies the cmd_codex_micro_overlay_toggle_joy_panel command without any pre-configured scope."
+commands.deny = ["cmd_codex_micro_overlay_toggle_joy_panel"]

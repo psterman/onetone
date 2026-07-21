@@ -2576,6 +2576,16 @@
       display:block;gap:0;overflow:hidden;
       border:1px solid var(--outline-variant);background:var(--surface);
     }
+    /* Micro pad + JOY rail need room; avoid clipping the left arrow strip */
+    #settingsPanelKeys #habitKeyMapRowTarget.habit-flow-step,
+    #settingsPanelKeys #habitKeyMapRowTarget.keys-step-card{
+      overflow:visible;
+    }
+    #settingsPanelKeys #habitKeyMapRowTarget .keys-step-body,
+    #settingsPanelKeys #habitKeyMapRowTarget .flow-step-body,
+    #settingsPanelKeys #codexMicroPadHostTarget{
+      overflow:visible;max-width:100%;min-width:0;
+    }
     #settingsPanelKeys .flow-step-card-head,
     #settingsPanelKeys .keys-step-card-head{
       display:flex;align-items:center;gap:10px;padding:12px 16px;
@@ -7929,7 +7939,11 @@
       background:rgba(42,156,196,.14);color:var(--primary);white-space:nowrap;
     }
     .codex-cap-item.has-micro-pad{border-color:rgba(42,156,196,.28)}
-    .codex-cap-sub{font-size:10px;opacity:.7;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .codex-cap-sub{
+      font-size:10px;opacity:.7;max-width:100%;overflow:hidden;
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+      white-space:normal;word-break:break-word;line-height:1.25;
+    }
     .codex-cap-all summary{cursor:pointer;font-size:12px;font-weight:600;margin:2px 0}
     .habit-hub-more-menu{position:relative;display:inline-flex;align-items:center}
     .habit-hub-more-menu>summary{list-style:none;cursor:pointer}

@@ -130,8 +130,14 @@ body {
   width: 100%;
   height: 100%;
   padding: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+}
+
+.overlay-body.has-nav-rail {
+  justify-content: flex-start;
 }
 
 .overlay-full {
@@ -140,11 +146,102 @@ body {
   position: relative;
 }
 
+/* Left inverted-T arrow rail (JOY panel) — matches hardware chiclet reference */
+.overlay-nav-rail {
+  position: relative;
+  flex: 0 0 112px;
+  width: 112px;
+  margin: 18px 0 18px 6px;
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(210, 255, 232, 0.78), rgba(170, 245, 210, 0.62));
+  box-shadow:
+    0 12px 28px rgba(20, 50, 40, 0.18),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.55),
+    0 0 20px rgba(80, 230, 160, 0.28);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.overlay-nav-rail[hidden] {
+  display: none !important;
+}
+
+.overlay-nav-rail__screw {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #5a6570, #1a2028 70%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), 0 1px 1px rgba(0,0,0,0.2);
+}
+.overlay-nav-rail__screw--tl { top: 8px; left: 8px; }
+.overlay-nav-rail__screw--tr { top: 8px; right: 8px; }
+.overlay-nav-rail__screw--bl { bottom: 8px; left: 8px; }
+.overlay-nav-rail__screw--br { bottom: 8px; right: 8px; }
+
+.overlay-nav-rail__pad {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(2, 28px);
+  gap: 6px;
+  place-items: center;
+}
+
+.overlay-nav-key {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  color: #2a3340;
+  background: linear-gradient(180deg, #fbfcfd 0%, #eef2f6 100%);
+  box-shadow:
+    0 2px 0 #c5ced8,
+    0 3px 6px rgba(30, 40, 55, 0.14),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+  display: grid;
+  place-items: center;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
+}
+
+.overlay-nav-key svg {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+
+.overlay-nav-key--up { grid-column: 2; grid-row: 1; }
+.overlay-nav-key--left { grid-column: 1; grid-row: 2; }
+.overlay-nav-key--down { grid-column: 2; grid-row: 2; }
+.overlay-nav-key--right { grid-column: 3; grid-row: 2; }
+
+.overlay-nav-key:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f6f9 100%);
+}
+
+.overlay-nav-key:active,
+.overlay-nav-key.is-lit {
+  transform: translateY(1px) scale(0.96);
+  background: linear-gradient(180deg, #d8fff0 0%, #b8f5d8 100%);
+  color: #0d6b45;
+  box-shadow:
+    0 1px 0 #9ecfba,
+    0 1px 3px rgba(20, 80, 55, 0.2),
+    inset 0 1px 2px rgba(0, 80, 50, 0.08);
+}
+
 .overlay-body .micro-hw {
   position: relative;
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   height: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: auto;
+  max-width: 432px;
   margin: 0;
   padding: 26px;
   border-radius: 46px;
@@ -158,6 +255,20 @@ body {
     inset 0 0 28px rgba(64, 255, 158, 0.35),
     0 0 34px rgba(66, 255, 161, 0.33);
   overflow: visible;
+  transition: background 0.28s ease, box-shadow 0.28s ease;
+}
+
+/* Numpad mode: cooler blue-gray shell */
+.wrap.is-mode-numpad .overlay-body .micro-hw {
+  background:
+    radial-gradient(circle at 20% 96%, rgba(120, 160, 210, 0.35), transparent 34%),
+    radial-gradient(circle at 86% 6%, rgba(200, 215, 235, 0.7), transparent 28%),
+    linear-gradient(145deg, rgba(236, 242, 250, 0.92), rgba(190, 205, 225, 0.78));
+  box-shadow:
+    0 24px 56px rgba(20, 30, 50, 0.22),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.5),
+    inset 0 0 24px rgba(120, 150, 190, 0.28),
+    0 0 28px rgba(100, 140, 200, 0.22);
 }
 
 .wrap.has-rgb-glow .micro-hw {
@@ -253,20 +364,131 @@ body {
   pointer-events: none;
 }
 
-.micro-hw__aux-hole {
-  position: absolute;
-  left: 41px;
-  bottom: 47px;
-  z-index: 4;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 42% 36%, #080b10, #000 72%);
+.wrap.is-pad-off .micro-hw__key:not([data-micro-key="ENC"]) {
+  opacity: 0.55;
+  filter: saturate(0.7);
+}
+
+.wrap.is-pad-off .micro-hw__key[data-micro-key="ENC"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wrap.is-pad-off .micro-hw__key:not([data-micro-key="ENC"]) {
+  /* still clickable so toast can explain numpad mode */
+  pointer-events: auto;
+}
+
+.wrap.is-joy-open .micro-hw__key[data-micro-key="JOY"] {
   box-shadow:
-    inset 0 1px 3px rgba(255, 255, 255, 0.16),
-    0 2px 8px rgba(0, 0, 0, 0.28),
-    0 0 0 4px rgba(225, 231, 237, 0.5);
+    0 0 0 2px rgba(40, 190, 130, 0.55),
+    0 0 14px rgba(50, 220, 150, 0.4);
+}
+
+/* ENC: Material mode switch + summon icon */
+.micro-hw__enc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.micro-hw__mode-switch {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 34px;
+  height: 18px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.micro-hw__mode-track {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: #c5ccd6;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.micro-hw__mode-switch.is-on .micro-hw__mode-track {
+  background: #34c759;
+}
+
+.micro-hw__mode-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.micro-hw__mode-switch.is-on .micro-hw__mode-thumb {
+  transform: translateX(16px);
+}
+
+.micro-hw__enc-icon {
+  margin-top: 10px;
+}
+
+.micro-hw__joy-toggle {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #6a7788;
+  transition: color 0.18s ease, transform 0.12s ease;
+}
+
+.micro-hw__joy-toggle.is-on {
+  color: #1aa866;
+}
+
+.micro-hw__joy-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.micro-hw__key.is-joy-on .micro-hw__joy-toggle {
+  transform: scale(1.06);
+}
+
+.overlay-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%) translateY(8px);
+  z-index: 20;
+  max-width: 86%;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(28, 36, 48, 0.88);
+  color: #f4f7fb;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+}
+
+.overlay-toast.is-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .overlay-body .micro-hw__grid {
@@ -446,194 +668,46 @@ body {
   max-height: none;
 }
 
-/* Top-left master power rocker. */
-.micro-hw__pwr {
-  position: relative;
-  width: 46%;
-  height: 74%;
-  border-radius: 6px;
-  background:
-    linear-gradient(180deg, #d5dbe3 0%, #bcc5d0 48%, #aeb8c4 100%);
-  box-shadow:
-    inset 0 2px 5px rgba(22, 31, 44, 0.18),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.45),
-    0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.micro-hw__pwr-rocker {
-  position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 9%;
-  height: 38%;
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #eef2f6 55%, #d8e0e8 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 2px 4px rgba(26, 36, 48, 0.2);
-  transition: top 0.14s ease, box-shadow 0.14s ease;
-}
-
-.micro-hw__pwr.is-on .micro-hw__pwr-rocker {
-  top: 9%;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 2px 5px rgba(26, 36, 48, 0.22),
-    0 0 8px rgba(72, 196, 120, 0.28);
-}
-
-.micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker {
-  top: 53%;
-  opacity: 0.88;
-}
-
-.micro-hw__key.is-pressed .micro-hw__pwr.is-on .micro-hw__pwr-rocker,
-.micro-hw__key.is-active .micro-hw__pwr.is-on .micro-hw__pwr-rocker {
-  top: 53%;
-}
-
-.micro-hw__key.is-pressed .micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker,
-.micro-hw__key.is-active .micro-hw__pwr:not(.is-on) .micro-hw__pwr-rocker {
-  top: 9%;
-}
-
-/* Top-right joystick/advanced control, intentionally dimmed when source is advanced-only. */
-.micro-hw__joy {
-  width: 72%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #3d4047, #13161b 72%);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.12),
-    inset 0 -5px 8px rgba(0, 0, 0, 0.42),
-    0 4px 8px rgba(0, 0, 0, 0.34);
-  position: relative;
-}
-
-.micro-hw__joy::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 1px dashed rgba(30, 34, 41, 0.72);
-  opacity: 0.85;
-}
-
-.micro-hw__joy::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 18%;
-  width: 3px;
-  height: 25%;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.micro-hw__key.is-joy-dir {
-  opacity: 1;
-}
-
-.micro-hw__key.is-joy-dir .micro-hw__joy {
-  box-shadow:
-    0 0 0 2px var(--micro-hw-status-listening),
-    0 0 16px rgba(240, 180, 41, 0.45),
-    inset 0 -5px 8px rgba(0, 0, 0, 0.42);
-}
-
-.micro-hw__leds {
-  position: absolute;
-  left: 41px;
-  bottom: 77px;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.micro-hw__led {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--overlay-led-idle);
-  box-shadow: 0 0 6px rgba(245, 181, 27, 0.85);
-}
-
-.micro-hw__leds[data-pad-status="running"] .micro-hw__led {
-  background: var(--micro-hw-status-running);
-  box-shadow: 0 0 7px var(--micro-hw-status-running);
-}
-
-.micro-hw__leds[data-pad-status="listening"] .micro-hw__led {
-  background: var(--micro-hw-status-listening);
-  box-shadow: 0 0 8px var(--micro-hw-status-listening);
-}
-
-.micro-hw__leds[data-pad-status="done"] .micro-hw__led {
-  background: var(--micro-hw-status-done);
-  box-shadow: 0 0 7px var(--micro-hw-status-done);
-}
-
-.micro-hw__leds[data-pad-status="failed"] .micro-hw__led {
-  background: var(--micro-hw-status-failed);
-  box-shadow: 0 0 7px var(--micro-hw-status-failed);
-}
-
 .status-chip {
   position: absolute;
   left: 50%;
   bottom: 21px;
   z-index: 6;
   transform: translateX(-50%);
-  min-width: 54px;
-  min-height: 18px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(245, 248, 251, 0.78);
-  color: #334155;
-  font-size: 10px;
-  font-weight: 700;
-  text-align: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
   opacity: 0;
   pointer-events: none;
-  box-shadow: 0 1px 4px rgba(22, 31, 44, 0.12);
+  box-shadow: none;
 }
 
 .wrap.is-status-open .status-chip {
   opacity: 1;
 }
 
-.status-chip[data-status="listening"] { background: rgba(255, 235, 178, 0.92); }
-.status-chip[data-status="failed"] { background: rgba(255, 220, 220, 0.92); }
-.status-chip[data-status="running"] { background: rgba(216, 246, 255, 0.92); }
-.status-chip[data-status="done"] { background: rgba(218, 248, 230, 0.92); }
-
-.foot {
-  position: absolute;
-  left: 50%;
-  bottom: 13px;
-  z-index: 7;
-  margin: 0;
-  padding: 3px 8px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: rgba(245, 248, 251, 0.72);
-  color: #6f7f91;
-  font-size: 10px;
-  line-height: 1.2;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  box-shadow: 0 1px 4px rgba(22, 31, 44, 0.1);
+.status-chip[data-status="listening"] {
+  background: var(--micro-hw-status-listening);
+  box-shadow: 0 0 10px var(--micro-hw-status-listening);
 }
 
-.wrap:hover .foot,
-.wrap.is-status-open .foot {
-  opacity: 1;
+.status-chip[data-status="failed"] {
+  background: var(--micro-hw-status-failed);
+  box-shadow: 0 0 10px var(--micro-hw-status-failed);
 }
+
+.status-chip[data-status="running"] {
+  background: var(--micro-hw-status-running);
+  box-shadow: 0 0 10px var(--micro-hw-status-running);
+}
+
+.status-chip[data-status="done"] {
+  background: var(--micro-hw-status-done);
+  box-shadow: 0 0 10px var(--micro-hw-status-done);
+}
+
+.foot { display: none; }
 
 /* —— Minimized —— */
 .overlay-mini {
@@ -741,11 +815,5 @@ body {
   .micro-hw__key--command {
     background: linear-gradient(180deg, #f2f6fa, #ccd5df);
     color: #233040;
-  }
-
-  .micro-hw__brand,
-  .micro-hw__build,
-  .micro-hw__arrow {
-    color: rgba(218, 229, 240, 0.58);
   }
 }
