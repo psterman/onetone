@@ -219,7 +219,10 @@
     }
 
     if(listen){ listen('codex_micro_overlay_state',function(ev){ render(ev.payload); }).catch(function(){}); }
-    invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
+    function pull(){ invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){}); }
+    pull();
+    // Slow poll as backup if an event is missed (avoid 假死 from aggressive IPC).
+    setInterval(pull, 1500);
   </script>
 </body>
 </html>

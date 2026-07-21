@@ -103,6 +103,8 @@ fn main() {
         "cmd_coach_hud_dismiss",
         "cmd_coach_hud_set_enabled",
         "cmd_codex_micro_overlay_get_state",
+        "cmd_codex_micro_pad_fire",
+        "cmd_codex_micro_pad_set_flags",
         "cmd_acoustic_voice_command_status",
         "cmd_acoustic_voice_command_preflight",
         "cmd_acoustic_voice_command_set_suspend",

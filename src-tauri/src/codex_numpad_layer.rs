@@ -247,7 +247,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         enabled: true,
         require_foreground: true,
         require_num_lock_off: false,
-        overlay_enabled: false,
+        overlay_enabled: true,
         keys: default_codex_micro_pad_routes(),
     }
 }

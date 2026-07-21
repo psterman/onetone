@@ -73,6 +73,21 @@ pub fn cmd_save(
         return Ok(());
     }
 
+    // Trigger mode / finish timing only — reset press machines; skip mvp_init/voice/camera.
+    if config::is_mapping_gesture_only_change(&existing, &cfg) {
+        crate::config::save_config(&cfg);
+        *state.cfg.lock() = cfg.clone();
+        state.machine_pool.lock().reset_all();
+        crate::app_log::log_line(
+            &state,
+            "config",
+            "cmd_save gesture/timing only, skip mvp_init/voice",
+        );
+        let ack = serde_json::json!({"type":"mvp_saved","ok":true,"quiet":true});
+        window.emit("to_js", &ack).ok();
+        return Ok(());
+    }
+
     crate::config::save_config(&cfg);
     *state.cfg.lock() = cfg.clone();
     crate::config::apply_config(&state, &cfg);

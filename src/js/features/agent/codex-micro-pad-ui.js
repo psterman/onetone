@@ -173,6 +173,24 @@
     else if (p && p.save) p.save();
   }
 
+  /** Checkbox flags only — avoid full cmd_save payload (假死 on keys panel). */
+  function persistPadFlags(m) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var pad = m && m.codexMicroPad;
+    if (!invoke || !m || !m.id || !pad) {
+      persist();
+      return;
+    }
+    invoke('cmd_codex_micro_pad_set_flags', {
+      mappingId: String(m.id),
+      enabled: !!pad.enabled,
+      requireNumLockOff: !!pad.requireNumLockOff,
+      overlayEnabled: !!pad.overlayEnabled
+    }).catch(function () {
+      persist();
+    });
+  }
+
   function toast(msg) {
     try {
       if (global.OneToneUiFeedback && global.OneToneUiFeedback.toast) {
@@ -344,7 +362,7 @@
         enabled: true,
         requireForeground: true,
         requireNumLockOff: false,
-        overlayEnabled: false,
+        overlayEnabled: true,
         keys: defaultSeedRoutes()
       };
       if (opts.persist !== false) persist();
@@ -635,10 +653,9 @@
     var hintId = step === 'target' ? 'keysTargetKeycapHint' : 'keysKeycapHint';
     var hint = document.getElementById(hintId);
     if (hint) {
-      hint.textContent = t(
-        'codexStepTriggerPreviewHint',
-        '预览键位命令 · 不修改映射 · 到「识别」页点击键帽可编辑'
-      );
+      hint.textContent = step === 'target'
+        ? t('codexStepRecognitionKeycapHint', '点击下方键帽编辑能力 · 长按物理说话键听写')
+        : t('keysKeycapHint', '点击修改快捷键');
     }
     return true;
   }
@@ -772,16 +789,14 @@
     host.innerHTML =
       '<div class="codex-micro-pad">' +
       '<div class="codex-micro-pad__head">' +
-      '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', 'Micro 小键盘层')) + '</p>' +
+      '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', '小键盘')) + '</p>' +
       '<span class="codex-micro-pad__status">' +
       esc(on
         ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
         : t('codexMicroPadStatusOff', '已关闭')) +
       '</span></div>' +
       renderHardwarePad(m, pad, { mode: 'preview' }) +
-      '<p class="codex-micro-pad__hint">' +
-      esc(t('codexMicroPadPreviewHint', '点击键帽预览数字与命令 · 不修改映射 · 到「识别」页可编辑')) +
-      '</p></div>';
+      '</div>';
     bindPadClicks(host, m, 'preview');
     if (previewMicroKeyId) {
       applyPressedClass(previewMicroKeyId);
@@ -810,7 +825,7 @@
       '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadConfigTitle', '小键盘键位配置')) + '</p>' +
       '<label class="codex-micro-pad__toggle"><input type="checkbox" data-act="enabled"' +
       (pad.enabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadEnable', '启用 Micro 小键盘层')) + '</label></div>' +
+      esc(t('codexMicroPadEnable', '启用小键盘层')) + '</label></div>' +
       renderModeSeg() +
       '<div class="codex-micro-pad__toggles">' +
       '<label class="codex-micro-pad__toggle"><input type="checkbox" data-act="numlock"' +
@@ -818,14 +833,17 @@
       esc(t('codexMicroPadNumLockOff', '仅在关闭数字锁定（NumLock）时生效')) + '</label>' +
       '<label class="codex-micro-pad__toggle"><input type="checkbox" data-act="overlay"' +
       (pad.overlayEnabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadOverlayEnable', 'Codex 前台显示置顶小窗')) + '</label></div>' +
+      esc(t('codexMicroPadOverlayEnable', '右下角置顶小键盘（本页与 Codex 桌面端显示）')) + '</label></div>' +
       renderHardwarePad(m, pad, { mode: padUiMode === 'run' ? 'run' : 'config' }) +
       '<div class="codex-micro-pad__toolbar">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="restore">' +
-      esc(t('codexMicroPadRestore', '恢复默认 Micro 键位')) + '</button>' +
+      esc(t('codexMicroPadRestore', '恢复默认键位')) + '</button>' +
       '<button type="button" class="codex-micro-pad__btn" data-act="clear">' +
       esc(t('codexMicroPadClear', '清空所有映射')) + '</button>' +
       '</div>' +
+      '<p class="codex-micro-pad__hint">' +
+      esc(t('codexMicroPadForegroundHint', '网页版 ChatGPT 不会显示 · 本设置页或 Codex 桌面端前台可见')) +
+      '</p>' +
       '<p class="codex-micro-pad__hint">' + esc(modeHintText()) + '</p></div>';
 
     host.querySelectorAll('[data-pad-mode]').forEach(function (btn) {
@@ -837,13 +855,12 @@
       });
     });
 
-    // Toggle flags: persist only. Rebuilding the pad (or AgentCapabilityUi.refresh)
-    // inside the change handler used to 假死 the window.
+    // Toggle flags: dedicated quiet IPC. Full persist/buildSavePayload used to 假死.
     var enabledEl = host.querySelector('[data-act="enabled"]');
     if (enabledEl) {
       enabledEl.addEventListener('change', function () {
         pad.enabled = !!enabledEl.checked;
-        persist();
+        persistPadFlags(m);
         refreshTrigger(m);
       });
     }
@@ -851,14 +868,14 @@
     if (numLockEl) {
       numLockEl.addEventListener('change', function () {
         pad.requireNumLockOff = !!numLockEl.checked;
-        persist();
+        persistPadFlags(m);
       });
     }
     var overlayEl = host.querySelector('[data-act="overlay"]');
     if (overlayEl) {
       overlayEl.addEventListener('change', function () {
         pad.overlayEnabled = !!overlayEl.checked;
-        persist();
+        persistPadFlags(m);
       });
     }
     host.querySelector('[data-act="restore"]').addEventListener('click', function () {
@@ -866,7 +883,7 @@
       ensurePad(m, { force: true });
       renderTarget(host, m);
       notifyLinkedUi(m);
-      toast(t('codexMicroPadRestored', '已恢复默认 Micro 键位映射（含 12 矩阵键与旋钮）'));
+      toast(t('codexMicroPadRestored', '已恢复默认键位映射（含 12 矩阵键与旋钮）'));
     });
     host.querySelector('[data-act="clear"]').addEventListener('click', function () {
       pad.keys = [];

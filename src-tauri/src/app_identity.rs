@@ -84,6 +84,34 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
     None
 }
 
+/// Fallback when full path is unavailable (common for some packaged-app queries):
+/// ChatGPT.exe / Codex.exe + window title mentioning Codex, excluding consumer ChatGPT package.
+pub fn preset_app_id_for_exe_title(exe_name: &str, window_title: &str, full_path: Option<&str>) -> Option<String> {
+    if let Some(path) = full_path {
+        if let Some(id) = preset_app_id_for_path(path) {
+            return Some(id);
+        }
+        // Consumer ChatGPT store package — never treat as Codex.
+        if path.contains("OpenAI.ChatGPT") {
+            return None;
+        }
+    }
+    let exe = exe_name.rsplit(['\\', '/']).next().unwrap_or(exe_name);
+    let is_codex_exe = exe.eq_ignore_ascii_case("ChatGPT.exe") || exe.eq_ignore_ascii_case("Codex.exe");
+    if !is_codex_exe {
+        return None;
+    }
+    let title = window_title.to_ascii_lowercase();
+    if title.contains("codex") {
+        return Some(CODEX_APP_TARGET_ID.to_string());
+    }
+    // Path already proved OpenAI.Codex_* even if title is empty/generic.
+    if full_path.is_some_and(|p| p.contains("OpenAI.Codex")) {
+        return Some(CODEX_APP_TARGET_ID.to_string());
+    }
+    None
+}
+
 pub fn preset_app_id_for_pid(pid: u32) -> Option<String> {
     let path = process_image_path(pid)?;
     preset_app_id_for_path(&path)
@@ -195,15 +223,18 @@ fn window_title_for_hwnd(hwnd: winapi::shared::windef::HWND) -> String {
 fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option<AppIdentity> {
     let exe_name = process_exe_name(pid)?;
     let full_path = process_image_path(pid);
-    let matched_preset_app_id = full_path
-        .as_deref()
-        .and_then(preset_app_id_for_path)
-        .or_else(|| preset_app_id_for_pid(pid));
     let window_title = if hwnd.is_null() {
         String::new()
     } else {
         window_title_for_hwnd(hwnd)
     };
+    let matched_preset_app_id = full_path
+        .as_deref()
+        .and_then(preset_app_id_for_path)
+        .or_else(|| preset_app_id_for_pid(pid))
+        .or_else(|| {
+            preset_app_id_for_exe_title(&exe_name, &window_title, full_path.as_deref())
+        });
     Some(AppIdentity {
         pid,
         exe_name,
@@ -579,6 +610,22 @@ mod tests {
         assert_eq!(
             preset_app_id_for_path(
                 r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn preset_exe_title_fallback_matches_codex_ui() {
+        assert_eq!(
+            preset_app_id_for_exe_title("ChatGPT.exe", "Codex", None).as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        assert_eq!(
+            preset_app_id_for_exe_title(
+                "ChatGPT.exe",
+                "New chat",
+                Some(r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe")
             ),
             None
         );

@@ -116,13 +116,10 @@
     if (imeBlock) imeBlock.hidden = step === 'target' || step === 'finish';
     if (voiceSummary) voiceSummary.classList.add('sr-only');
     if (trigLbl) trigLbl.textContent = t('keysFlowNodeTriggerTitle', '触发');
-    if (tgtLbl) tgtLbl.textContent = t('codexMicroPadTitle', 'Micro 小键盘层');
+    if (tgtLbl) tgtLbl.textContent = t('codexMicroPadTitle', '小键盘');
     if (step === 'trigger') {
       if (keycapHint) {
-        keycapHint.textContent = t(
-          'codexStepTriggerPreviewHint',
-          '预览键位命令 · 不修改映射 · 到「识别」页点击键帽可编辑'
-        );
+        keycapHint.textContent = t('keysKeycapHint', '点击修改快捷键');
       }
       if (targetKeycapHint) targetKeycapHint.textContent = t('keysTargetKeycapHint', '点击录制语音快捷键');
       if (global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.applyTriggerHeroPreview) {
@@ -134,7 +131,7 @@
       if (targetKeycapHint) {
         targetKeycapHint.textContent = t(
           'codexStepRecognitionKeycapHint',
-          '点击下方小键盘键帽编辑能力 · 长按物理说话键听写'
+          '点击下方键帽编辑能力 · 长按物理说话键听写'
         );
       }
     }

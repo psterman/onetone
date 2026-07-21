@@ -317,10 +317,13 @@
   }
 
   function sceneIconHtml(m){
-    var isApp=global.OneToneHabitOverrideDiff
-      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping
-      &&global.OneToneHabitOverrideDiff.isAppScenarioMapping(m);
-    if(isApp){
+    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:null;
+    var diff=global.OneToneHabitOverrideDiff;
+    var isBaseline=!!(diff&&diff.isGlobalBaselineMapping
+      &&diff.isGlobalBaselineMapping(m,cfg||{},global.OneToneMappingCore));
+    var isApp=!!(diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+    // Universal / baseline must never wear an app (e.g. Cursor) icon.
+    if(!isBaseline&&isApp){
       var hub=global.OneToneHabitHub;
       if(hub&&hub.renderMappingAppIcon){
         var badge=hub.renderMappingAppIcon(m,'wb-scene-app-badge');
@@ -352,7 +355,9 @@
 
   function sceneCardHtml(m,activeId){
     var active=m.id===activeId;
-    var name=global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—';
+    var name=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)
+      ?global.OneToneHabitProfile.habitDisplayName(m)
+      :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—');
     return '<button type="button" class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
       +sceneIconHtml(m)
       +'<span class="wb-scene-card-body">'

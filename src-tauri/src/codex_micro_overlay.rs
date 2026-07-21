@@ -22,6 +22,8 @@ const HIGHLIGHT_MS: u64 = 320;
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
 static HIGHLIGHT_UNTIL: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
 static LAST_FOREGROUND_CODEX: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+static LAST_VISIBLE: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+static FG_CONFIRM: OnceLock<ParkingMutex<(bool, u8)>> = OnceLock::new();
 
 fn active_micro_key() -> &'static Mutex<String> {
     ACTIVE_MICRO_KEY.get_or_init(|| Mutex::new(String::new()))
@@ -33,6 +35,31 @@ fn highlight_until() -> &'static ParkingMutex<Option<Instant>> {
 
 fn last_foreground_codex() -> &'static ParkingMutex<bool> {
     LAST_FOREGROUND_CODEX.get_or_init(|| ParkingMutex::new(false))
+}
+
+fn last_visible() -> &'static ParkingMutex<bool> {
+    LAST_VISIBLE.get_or_init(|| ParkingMutex::new(false))
+}
+
+fn fg_confirm() -> &'static ParkingMutex<(bool, u8)> {
+    FG_CONFIRM.get_or_init(|| ParkingMutex::new((false, 0)))
+}
+
+/// Require two consecutive FG samples before flipping — avoids show/hide thrash 假死.
+fn stable_overlay_host(raw: bool) -> bool {
+    let mut slot = fg_confirm().lock();
+    let (pending, streak) = *slot;
+    if pending == raw {
+        *slot = (pending, streak.saturating_add(1));
+    } else {
+        *slot = (raw, 1);
+    }
+    let (pending, streak) = *slot;
+    let mut last = last_foreground_codex().lock();
+    if streak >= 2 && *last != pending {
+        *last = pending;
+    }
+    *last
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -167,10 +194,12 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let Some(win) = app.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
+        eprintln!("codex_micro_overlay: window label missing — overlay will not show");
         return Ok(());
     };
     win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = win.set_shadow(false);
+    let _ = win.set_always_on_top(true);
     Ok(())
 }
 
@@ -182,6 +211,35 @@ fn codex_is_foreground() -> bool {
 
 #[cfg(not(windows))]
 fn codex_is_foreground() -> bool {
+    false
+}
+
+/// Show pad while configuring in OneTone, or when Codex desktop is focused.
+/// (Web ChatGPT / other apps do not count — click fire still requires Codex FG.)
+#[cfg(windows)]
+fn overlay_host_allows_show() -> bool {
+    if codex_is_foreground() {
+        return true;
+    }
+    let Some(identity) = crate::app_identity::foreground_app_identity() else {
+        return false;
+    };
+    let exe = identity.exe_name.to_ascii_lowercase();
+    if exe.contains("onetone") {
+        return true;
+    }
+    identity
+        .full_path
+        .as_deref()
+        .map(|p| {
+            let pl = p.to_ascii_lowercase();
+            pl.contains("onetone") || pl.contains("voice-pilot")
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(not(windows))]
+fn overlay_host_allows_show() -> bool {
     false
 }
 
@@ -217,7 +275,7 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
 }
 
 fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
-    let codex_fg = codex_is_foreground();
+    let show = overlay_host_allows_show();
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
         return CodexMicroOverlaySnapshot {
             visible: false,
@@ -274,7 +332,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     };
 
     CodexMicroOverlaySnapshot {
-        visible: codex_fg,
+        visible: show,
         enabled: pad.enabled,
         bound_count,
         active_micro_key_id: active,
@@ -295,6 +353,9 @@ pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
 pub fn push_state(app: &AppHandle, state: &AppState) {
     let snapshot = build_snapshot(state);
     let visible = snapshot.visible;
+    {
+        *last_visible().lock() = visible;
+    }
     let payload = snapshot;
     let app_clone = app.clone();
 
@@ -310,6 +371,7 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
                     OVERLAY_WIDTH,
                     OVERLAY_HEIGHT,
                 )));
+                let _ = win.set_always_on_top(true);
                 #[cfg(windows)]
                 {
                     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -367,10 +429,7 @@ fn position_overlay(win: &WebviewWindow) {
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
-    let codex_fg = codex_is_foreground();
-    let mut last = last_foreground_codex().lock();
-    let changed = *last != codex_fg;
-    *last = codex_fg;
+    let host_ok = stable_overlay_host(overlay_host_allows_show());
 
     let highlight_expired = highlight_until()
         .lock()
@@ -380,7 +439,13 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         active_micro_key().lock().unwrap().clear();
     }
 
-    if changed || highlight_expired {
+    let desired_visible = {
+        let cfg = state.cfg.lock();
+        active_codex_mapping_with_overlay(&cfg).is_some() && host_ok
+    };
+    let vis_changed = *last_visible().lock() != desired_visible;
+
+    if vis_changed || highlight_expired {
         push_state(app, state);
     }
 }

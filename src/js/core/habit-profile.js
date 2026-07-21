@@ -43,11 +43,17 @@
     var group=String(m.group||'').trim();
     var appId=String(m.appTargetId||'').trim();
     if(appId){
-      if(isReservedHabitName(group)){
-        return t('habitWizardDefaultName','{app} 场景').replace('{app}',appDisplayNameForId(appId)||appId);
+      var appName=appDisplayNameForId(appId)||appId;
+      // Normalize legacy "Codex 工作流 场景" / reserved names to "{app} 场景".
+      if(isReservedHabitName(group)
+        || !group
+        || group===appName
+        || group.indexOf('工作流')>=0
+        || /workflow/i.test(group)){
+        return t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
       }
       if(group) return group;
-      return t('habitWizardDefaultName','{app} 场景').replace('{app}',appDisplayNameForId(appId)||appId);
+      return t('habitWizardDefaultName','{app} 场景').replace('{app}',appName);
     }
     if(isReservedHabitName(group)){
       if(group==='通用设置'||/^universal settings$/i.test(group)) return universal();

@@ -1309,12 +1309,13 @@
   }
 
   function reinjectRememberedAppScenarios(cfg){
-    if(!cfg||typeof cfg!=='object') return cfg;
+    if(!cfg||typeof cfg!=='object') return 0;
     cfg.mappings=Array.isArray(cfg.mappings)?cfg.mappings:[];
     var ids={};
     cfg.mappings.forEach(function(m){ if(m&&m.id) ids[String(m.id)]=true; });
     var trashIds={};
     (cfg.trash||[]).forEach(function(m){ if(m&&m.id) trashIds[String(m.id)]=true; });
+    var added=0;
     Object.keys(lastKnownAppScenarios).forEach(function(id){
       if(ids[id]||trashIds[id]) return;
       var snap=lastKnownAppScenarios[id];
@@ -1325,8 +1326,9 @@
         cfg.mappings.push(snap);
       }
       ids[id]=true;
+      added++;
     });
-    return cfg;
+    return added;
   }
 
   /** Keep in-memory app scenarios when a stale mvp_init omits them (before next save). */
@@ -1409,10 +1411,12 @@
       }catch(_){ heldStrategy=null; }
       if(msg.config){
         var inbound=normalizeInboundConfig(msg.config);
+        var rustMapN=Array.isArray(msg.config.mappings)?msg.config.mappings.length:0;
         if(configLoadedFromBackend) mergeLocalAppScenarios(st.config,inbound);
         // Always reinject localStorage / in-memory app scenarios omitted by a partial payload.
         reinjectRememberedAppScenarios(inbound);
         st.config=inbound;
+        st.__vp_rustMapN=rustMapN;
       }
       if(heldStrategy&&st.config){
         st.config.voiceListeningStrategy=heldStrategy;
@@ -1472,6 +1476,14 @@
           saveCameraPrefsQuiet();
         }catch(_){}
       }
+      // FE may hold Codex/Cursor rows that disk omitted — write them back.
+      var rustMapN=Number(st.__vp_rustMapN)||0;
+      var finalMapN=st.config.mappings?st.config.mappings.length:0;
+      if(finalMapN>rustMapN){
+        earlyPersistLog('applyMvpInit heal disk maps '+rustMapN+' -> '+finalMapN);
+        save();
+      }
+      try{ delete st.__vp_rustMapN; }catch(_){}
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);

@@ -472,12 +472,17 @@
         }
       }else{
         global.OneToneSceneFlowSummary.applyFinishMode(m,mode);
-        hooks().save();
-        renderKeyFinishFlowPanel();
-        hooks().renderMappingList();
-        if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero) global.OneToneSceneTabs.renderHero();
-        if(global.OneToneHabitMulti) global.OneToneHabitMulti.render();
-        if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
+        persistGestureChange();
+        refreshAfterGestureChange();
+        if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero){
+          setTimeout(function(){ global.OneToneSceneTabs.renderHero(); },0);
+        }
+        if(global.OneToneHabitMulti){
+          setTimeout(function(){ global.OneToneHabitMulti.render(); },0);
+        }
+        if(global.OneToneHabitKeyMappingTable){
+          setTimeout(function(){ global.OneToneHabitKeyMappingTable.syncRowStatus(); },0);
+        }
       }
       return true;
     }
@@ -513,10 +518,8 @@
           global.OneToneSceneFlowSummary.applyFinishMode(m,'confirm');
         }
       }
-      hooks().save();
-      renderKeyFinishFlowPanel();
-      hooks().renderMappingList();
-      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+      persistGestureChange();
+      refreshAfterGestureChange();
       return true;
     }
     var holdSwitch=el.closest&&el.closest('[data-keys-hold-switch]');
@@ -532,10 +535,8 @@
       if(global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.applyFinishMode&&prevG==='hold'){
         global.OneToneSceneFlowSummary.applyFinishMode(row,'confirm');
       }
-      hooks().save();
-      renderKeyFinishFlowPanel();
-      hooks().renderMappingList();
-      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+      persistGestureChange();
+      refreshAfterGestureChange();
       return true;
     }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
@@ -551,17 +552,37 @@
       }
       m[field]=!m[field];
       scheduleTimingSave();
-      renderKeyFinishFlowPanel();
-      hooks().renderMappingList();
-      if(global.OneToneHabitKeyMappingTable) global.OneToneHabitKeyMappingTable.syncRowStatus();
+      refreshAfterGestureChange();
+      if(global.OneToneHabitKeyMappingTable){
+        setTimeout(function(){ global.OneToneHabitKeyMappingTable.syncRowStatus(); },0);
+      }
       return true;
     }
     return false;
   }
 
+  function persistGestureChange(){
+    // Prefer async quiet save; gesture-only changes skip mvp_init on the Rust side.
+    var p=global.OneToneConfigPersist;
+    if(p&&p.saveAsync) p.saveAsync();
+    else if(hooks().save) hooks().save();
+    else if(p&&p.save) p.save();
+  }
+
+  function refreshAfterGestureChange(){
+    renderKeyFinishFlowPanel();
+    var panelUi=global.OneToneKeysPanelUi;
+    if(panelUi&&panelUi.renderGestureUiOnly) panelUi.renderGestureUiOnly();
+    else if(panelUi&&panelUi.render) panelUi.render();
+    // Defer list remount so the segment click paints first (avoids keys-panel 假死).
+    setTimeout(function(){
+      if(hooks().renderMappingList) hooks().renderMappingList();
+    },0);
+  }
+
   function scheduleTimingSave(){
     clearTimeout(timingSaveTimer);
-    timingSaveTimer=setTimeout(function(){ hooks().save(); },280);
+    timingSaveTimer=setTimeout(function(){ persistGestureChange(); },280);
   }
 
   function formatTimingSec(ms){ return (Number(ms)/1000).toFixed(1); }

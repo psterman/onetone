@@ -53,6 +53,9 @@
   function homeMappingShortName(m){
     if(!m) return t('homeLiveUnset');
     if(hooks().isDraftMapping(m)) return t('homeLiveSchemeDraft');
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
+      return global.OneToneHabitProfile.habitDisplayName(m);
+    }
     if((m.group||'').trim()) return m.group.trim();
     const labels=mappingLabels(m);
     if(labels.triggerLabel) return labels.triggerLabel;

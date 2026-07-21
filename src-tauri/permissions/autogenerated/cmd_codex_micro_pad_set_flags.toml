@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-micro-pad-set-flags"
+description = "Enables the cmd_codex_micro_pad_set_flags command without any pre-configured scope."
+commands.allow = ["cmd_codex_micro_pad_set_flags"]
+
+[[permission]]
+identifier = "deny-cmd-codex-micro-pad-set-flags"
+description = "Denies the cmd_codex_micro_pad_set_flags command without any pre-configured scope."
+commands.deny = ["cmd_codex_micro_pad_set_flags"]

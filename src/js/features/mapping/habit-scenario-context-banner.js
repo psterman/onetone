@@ -343,9 +343,14 @@
       var preview=buildPreview(scenarioM);
       if(textEl) textEl.textContent=t(panelTitleKey(opts.panel)).replace('{name}',name);
       if(subEl){
-        subEl.textContent=opts.panel==='camera'
-          ?t('habitScenarioContextCameraNote')
-          :t('habitScenarioContextNotGlobal');
+        if(opts.panel==='camera'){
+          subEl.hidden=false;
+          subEl.textContent=t('habitScenarioContextCameraNote');
+        }else{
+          // Keys/voice: blue banner title is enough — no second "not global" line.
+          subEl.textContent='';
+          subEl.hidden=true;
+        }
       }
       if(previewEl){
         previewEl.hidden=false;

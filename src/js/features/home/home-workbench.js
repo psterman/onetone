@@ -574,6 +574,28 @@
     }
   }
 
+  function openWorkbenchScenario(id){
+    id=String(id||'').trim();
+    if(!id) return;
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.selectMapping){
+      global.OneToneHomeScheme.selectMapping(id);
+    }
+    var m=global.OneToneMappingCore&&global.OneToneMappingCore.byId
+      ?global.OneToneMappingCore.byId(id):null;
+    var diff=global.OneToneHabitOverrideDiff;
+    var banner=global.OneToneHabitScenarioContextBanner;
+    var isApp=!!(m&&diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+    if(isApp&&banner&&banner.openScenarioKeysEdit){
+      banner.openScenarioKeysEdit(id,{returnToHub:true});
+      return;
+    }
+    if(banner&&banner.openGlobalKeys){
+      banner.openGlobalKeys({fromHub:true});
+      return;
+    }
+    openSettings({panel:'keys',focus:id});
+  }
+
   function selectWorkbenchMapping(id){
     if(!id||!global.OneToneHomeScheme) return;
     global.OneToneHomeScheme.selectMapping(id);
@@ -592,7 +614,7 @@
       }
       var scenario=e.target.closest&&e.target.closest('[data-wb-scenario-id]');
       if(scenario){
-        selectWorkbenchMapping(scenario.getAttribute('data-wb-scenario-id')||'');
+        openWorkbenchScenario(scenario.getAttribute('data-wb-scenario-id')||'');
         return;
       }
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn');

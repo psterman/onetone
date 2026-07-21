@@ -95,6 +95,9 @@
 
   function habitName(m){
     if(!m) return '—';
+    if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
+      return global.OneToneHabitProfile.habitDisplayName(m);
+    }
     if((m.group||'').trim()) return m.group.trim();
     if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName) return global.OneToneHomeScheme.shortName(m);
     if((m.label||'').trim()) return m.label.trim();
@@ -928,6 +931,16 @@
     if(lbl) lbl.textContent=t('keysAppContextLbl');
     var m=core()&&core().selected?core().selected():null;
     if(!wrap) return;
+    // App-scenario keys already have the blue context banner — hide this third title strip.
+    if(isInAppScenarioContext()){
+      wrap.hidden=true;
+      return;
+    }
+    var capUi=global.OneToneAgentCapabilityUi;
+    if(capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing()){
+      wrap.hidden=true;
+      return;
+    }
     if(!m||!core().isSaved||!core().isSaved(m)){
       wrap.hidden=true;
       return;
@@ -1163,6 +1176,15 @@
     }
   }
 
+  function renderGestureUiOnly(){
+    if(!keysPanelActive()) return;
+    var m=core()&&core().selected?core().selected():null;
+    renderTriggerModeSegments(m);
+    renderTriggerConflict(m);
+    renderSchemeSummary(m);
+    renderFlowStatusBar(m);
+  }
+
   function render(){
     if(!keysPanelActive()) return;
     if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.render();
@@ -1337,6 +1359,7 @@
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,
     renderKeysHub:renderKeysHub,
+    renderGestureUiOnly:renderGestureUiOnly,
     renameScheme:renameScheme,
     renderWorkflowOverview:renderWorkflowOverview,
     renderWorkflowTemplates:renderWorkflowTemplates,

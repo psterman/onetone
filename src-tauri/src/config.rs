@@ -4148,7 +4148,11 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 has_exe || has_path || has_title
             });
         }
-        if is_app_scene {
+        if is_app_scene
+            || prev.codex_micro_pad.is_some()
+            || !prev.agent_template_id.trim().is_empty()
+            || prev.agent_provider_id.trim().eq_ignore_ascii_case("codex")
+        {
             preserved.push(prev.clone());
         }
     }
@@ -4434,6 +4438,52 @@ pub(crate) fn is_codex_micro_pad_only_change(old: &VoiceConfig, new: &VoiceConfi
         return false;
     }
     config_json_without_codex_micro_pad(old) == config_json_without_codex_micro_pad(new)
+}
+
+/// Strip gesture / finish timing fields so trigger-mode toggles can quiet-save.
+fn config_json_without_mapping_gesture_fields(cfg: &VoiceConfig) -> serde_json::Value {
+    let mut value = serde_json::to_value(cfg).unwrap_or(serde_json::Value::Null);
+    if let Some(obj) = value.as_object_mut() {
+        for list_key in ["mappings", "trash"] {
+            if let Some(arr) = obj.get_mut(list_key).and_then(|v| v.as_array_mut()) {
+                for item in arr {
+                    if let Some(m) = item.as_object_mut() {
+                        for key in [
+                            "triggerMode",
+                            "cancelEnabled",
+                            "autoEnterEnabled",
+                            "intervalMs",
+                            "enterDelayMs",
+                        ] {
+                            m.remove(key);
+                        }
+                    }
+                }
+            }
+        }
+        // Top-level mirrors used by older payloads.
+        for key in [
+            "cancelEnabled",
+            "autoEnterEnabled",
+            "intervalMs",
+            "enterDelayMs",
+        ] {
+            obj.remove(key);
+        }
+    }
+    value
+}
+
+/// True when only start/finish gesture fields changed (触发方式 / 收尾开关 / 延时).
+/// Full `mvp_init` + camera remount used to 假死 the keys panel on every segment click.
+pub(crate) fn is_mapping_gesture_only_change(old: &VoiceConfig, new: &VoiceConfig) -> bool {
+    let full_old = serde_json::to_value(old).unwrap_or(serde_json::Value::Null);
+    let full_new = serde_json::to_value(new).unwrap_or(serde_json::Value::Null);
+    if full_old == full_new {
+        return false;
+    }
+    config_json_without_mapping_gesture_fields(old)
+        == config_json_without_mapping_gesture_fields(new)
 }
 
 pub fn start_watcher(state: Arc<AppState>, app: tauri::AppHandle) {
@@ -5853,6 +5903,26 @@ mod tests {
         }
         assert!(!is_codex_micro_pad_only_change(&old, &with_label));
         assert!(!is_codex_micro_pad_only_change(&old, &old));
+    }
+
+    #[test]
+    fn quiet_save_for_mapping_gesture_only() {
+        let old = VoiceConfig::default();
+        let mut gesture_only = old.clone();
+        if let Some(m) = gesture_only.mappings.first_mut() {
+            m.trigger_mode = crate::config::TriggerMode::Double;
+            m.cancel_enabled = !m.cancel_enabled;
+            m.auto_enter_enabled = !m.auto_enter_enabled;
+            m.interval_ms = m.interval_ms.saturating_add(100);
+        }
+        assert!(is_mapping_gesture_only_change(&old, &gesture_only));
+
+        let mut with_key = gesture_only.clone();
+        if let Some(m) = with_key.mappings.first_mut() {
+            m.trigger_key = "F8".into();
+        }
+        assert!(!is_mapping_gesture_only_change(&old, &with_key));
+        assert!(!is_mapping_gesture_only_change(&old, &old));
     }
 
     #[test]

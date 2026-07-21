@@ -3643,8 +3643,22 @@
     .habit-hub-inline-create-grid{display:flex;flex-wrap:wrap;gap:8px}
     .habit-hub-inline-create .habit-wizard-app-card{min-width:112px}
     .habit-hub-inline-create .habit-wizard-app-card.is-exists{opacity:.72}
-    #settingsPanelKeys.is-scenario-config .keys-scheme-status-actions #btnKeysSchemeAdd,
-    #settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
+#settingsPanelKeys.is-scenario-config .keys-scheme-status-actions #btnKeysSchemeAdd,
+#settingsPanelVoiceWake.is-scenario-config .voice-scheme-status-actions #btnVoiceSchemeAdd{display:none}
+
+/* App-scenario keys: blue banner is the only title; hide duplicate summary + context strips. */
+#settingsPanelKeys.is-scenario-config .keys-scheme-status-main{
+  display:none !important;
+}
+#settingsPanelKeys.is-scenario-config #keysAppContext,
+#settingsPanelKeys.is-scenario-config #keysAppContextStripWrap,
+#settingsPanelKeys.is-scenario-config #keysAppBindingStrip{
+  display:none !important;
+}
+#settingsPanelKeys.is-scenario-config #keysWorkflowTabsBar{
+  padding-top:8px;
+  padding-bottom:8px;
+}
     .habit-scenario-context-banner[hidden]{display:none!important}
     .habit-scenario-context-banner-main{display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1}
     .habit-scenario-context-banner-icon{
