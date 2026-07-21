@@ -90,6 +90,7 @@ permissions = [
   "allow-cmd-coach-hud-dismiss",
   "allow-cmd-coach-hud-set-enabled",
   "allow-cmd-codex-micro-overlay-get-state",
+  "allow-cmd-codex-micro-overlay-dismiss",
   "allow-cmd-codex-micro-pad-fire",
   "allow-cmd-codex-micro-pad-set-flags",
   "allow-cmd-acoustic-voice-command-status",

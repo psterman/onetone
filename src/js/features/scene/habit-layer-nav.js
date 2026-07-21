@@ -179,11 +179,15 @@
   }
 
   function onPanelVisibility(){
+    var view=ui().habitView||'hub';
+    var detailOpen=panelActive()&&view==='detail';
     if(panelActive()) startForegroundPoll();
     else stopForegroundPoll();
     applyHabitLayerVisibility();
     renderHabitLayerNav();
-    if(panelActive()){
+    // Hub list must stay light — do NOT activate apps/advanced layer side-effects
+    // (AppBehaviorRules / voice / finish-flow) or opening「我的习惯」can 假死.
+    if(detailOpen){
       onLayerActivated(ui().habitLayer||'global');
     }
   }

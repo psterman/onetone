@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摄像头 Pro - Windows Hello 延伸功能设计原型</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --background: #f8fafc;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --card-foreground: #0f172a;
+            --border: #e2e8f0;
+            --primary: #3b82f6;
+            --primary-foreground: #ffffff;
+            --muted: #f1f5f9;
+            --muted-foreground: #64748b;
+            --accent: #f0f9ff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --destructive: #ef4444;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            padding: 24px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--muted-foreground);
+        }
+
+        /* 模拟现有摄像头页面的三标签结构 */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: var(--muted);
+            padding: 6px;
+            border-radius: var(--radius);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--muted-foreground);
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: var(--card);
+        }
+
+        .tab.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* Pro 安全横幅 */
+        .security-banner {
+            background: linear-gradient(135deg, #10b98115 0%, #3b82f615 100%);
+            border: 1px solid #10b98130;
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .security-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--success);
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: white;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .security-content {
+            flex: 1;
+        }
+
+        .security-content h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .security-content p {
+            font-size: 13px;
+            color: var(--muted-foreground);
+        }
+
+        /* Hello 检测到的引导卡片 */
+        .hello-upgrade-card {
+            background: linear-gradient(135deg, #3b82f610 0%, #8b5cf610 100%);
+            border: 1px solid #3b82f630;
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hello-upgrade-content {
+            flex: 1;
+        }
+
+        .hello-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .hello-upgrade-content h3 {
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+
+        .hello-upgrade-content p {
+            font-size: 13px;
+            color: var(--muted-foreground);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .feature-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .upgrade-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+            white-space: nowrap;
+        }
+
+        .upgrade-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* 主内容区 */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 760px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 左侧：功能面板 */
+        .features-panel {
+            display: grid;
+            gap: 12px;
+        }
+
+        .feature-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+
+        .feature-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--muted);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .feature-item:hover {
+            background: var(--accent);
+        }
+
+        .feature-item.locked {
+            opacity: 0.6;
+        }
+
+        .feature-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            font-size: 16px;
+        }
+
+        .feature-icon.pro {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .feature-icon.free {
+            background: var(--muted-foreground);
+            color: white;
+        }
+
+        .feature-text {
+            flex: 1;
+        }
+
+        .feature-text strong {
+            font-size: 14px;
+            display: block;
+        }
+
+        .feature-text span {
+            font-size: 12px;
+            color: var(--muted-foreground);
+        }
+
+        .hello-tag {
+            font-size: 11px;
+            background: #3b82f620;
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .pro-tag {
+            font-size: 11px;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .glance-tag {
+            font-size: 11px;
+            background: #10b98120;
+            color: #10b981;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* 右侧：预览和设备 */
+        .preview-panel {
+            display: grid;
+            gap: 12px;
+        }
+
+        .preview-shell {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+        }
+
+        .preview-video {
+            width: 100%;
+            aspect-ratio: 16/10;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .face-indicator {
+            width: 120px;
+            height: 120px;
+            border: 3px solid #10b981;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 48px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+        }
+
+        .gaze-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: rgba(59, 130, 246, 0.6);
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            transition: all 0.15s ease;
+        }
+
+        .visualizer {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .visualizer-bar {
+            width: 8px;
+            height: 32px;
+            border-radius: 4px;
+            background: var(--border);
+            transition: background 0.3s;
+        }
+
+        .visualizer-bar.green {
+            background: #10b981;
+        }
+
+        .visualizer-bar.yellow {
+            background: #f59e0b;
+        }
+
+        .visualizer-bar.red {
+            background: #ef4444;
+        }
+
+        .device-status {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+
+        .device-status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .device-status-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--success);
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .device-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .metric {
+            background: var(--muted);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .metric label {
+            display: block;
+            font-size: 11px;
+            color: var(--muted-foreground);
+            margin-bottom: 4px;
+        }
+
+        .metric value {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* 分类标签 */
+        .category-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 6px;
+            background: var(--muted);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .category-tab {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--muted-foreground);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .category-tab:hover {
+            background: var(--card);
+        }
+
+        .category-tab.active {
+            background: var(--card);
+            color: var(--primary);
+        }
+
+        .category-content {
+            display: none;
+        }
+
+        .category-content.active {
+            display: block;
+        }
+
+        /* 折叠面板 */
+        .fold-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 16px;
+        }
+
+        .fold-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .fold-header:hover {
+            background: var(--muted);
+        }
+
+        .fold-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fold-header span {
+            color: var(--muted-foreground);
+        }
+
+        .fold-arrow {
+            transition: transform 0.2s;
+        }
+
+        .fold-panel.open .fold-arrow {
+            transform: rotate(180deg);
+        }
+
+        .fold-content {
+            padding: 0 16px 16px 16px;
+            display: none;
+        }
+
+        .fold-panel.open .fold-content {
+            display: block;
+        }
+
+        /* 控制面板 */
+        .controls {
+            margin-top: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+
+        .controls h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .control-row label {
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .switch {
+            width: 44px;
+            height: 26px;
+            background: var(--border);
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .switch.on {
+            background: var(--success);
+        }
+
+        .switch-knob {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: left 0.2s;
+        }
+
+        .switch.on .switch-knob {
+            left: 21px;
+        }
+
+        /* 弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            animation: scaleIn 0.2s ease;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+
+        .modal p {
+            color: var(--muted-foreground);
+            margin-bottom: 16px;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+
+        .modal-btn.secondary {
+            background: var(--muted);
+            color: var(--foreground);
+        }
+
+        .modal-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 摄像头设置</h1>
+            <p>OneTone Pro 视觉交互演示 - 参考 Glance 功能</p>
+        </div>
+
+        <!-- 三标签 -->
+        <div class="tabs">
+            <div class="tab" onclick="switchTab('trigger')">01 摄像头看到什么</div>
+            <div class="tab" onclick="switchTab('action')">02 识别后做什么</div>
+            <div class="tab active" onclick="switchTab('pro')">03 高级确认 Pro</div>
+        </div>
+
+        <!-- 安全横幅 -->
+        <div class="security-banner">
+            <div class="security-icon">🛡️</div>
+            <div class="security-content">
+                <h3>Pro 安全优先原则</h3>
+                <p>高风险操作（发送、确认）不会因单个视觉动作直接发出，需要二次确认。</p>
+            </div>
+        </div>
+
+        <!-- Hello 升级引导卡片（检测到摄像头时显示） -->
+        <div class="hello-upgrade-card" id="helloCard">
+            <div class="hello-upgrade-content">
+                <div class="hello-badge">
+                    <span>🎯</span>
+                    <span>Windows Hello 已就绪</span>
+                </div>
+                <h3>检测到您的电脑支持红外摄像头！</h3>
+                <p>升级 Pro 解锁 10+ 高级功能，包括隐私卫士、智能指针、健康助手等，参考 Glance by Mirametrix。</p>
+                <div class="feature-grid">
+                    <div class="feature-chip">🛡️ 隐私卫士</div>
+                    <div class="feature-chip">🖱️ 智能指针</div>
+                    <div class="feature-chip">🪟 窗口快移</div>
+                    <div class="feature-chip">💪 健康助手</div>
+                </div>
+            </div>
+            <button class="upgrade-btn" onclick="showUpgradeModal()">升级到 Pro</button>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="content-grid">
+            <!-- 左侧：功能分类 -->
+            <div class="features-panel">
+                <!-- 分类标签 -->
+                <div class="category-tabs">
+                    <div class="category-tab active" onclick="switchCategory('security')">🔐 安全增强</div>
+                    <div class="category-tab" onclick="switchCategory('privacy')">🛡️ 隐私保护</div>
+                    <div class="category-tab" onclick="switchCategory('multiscreen')">🖥️ 多屏管理</div>
+                    <div class="category-tab" onclick="switchCategory('health')">💪 健康助手</div>
+                </div>
+
+                <!-- 安全增强内容 -->
+                <div class="category-content active" id="category-security">
+                    <div class="feature-section">
+                        <h4>
+                            <span>🔐</span>
+                            Windows Hello 安全增强
+                            <span style="margin-left:auto;font-size:12px;color:var(--muted-foreground);">Pro 专属</span>
+                        </h4>
+                        <div class="feature-list">
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">✓</div>
+                                <div class="feature-text">
+                                    <strong>视觉操作二次确认</strong>
+                                    <span>高风险操作需要看区+眨眼双确认</span>
+                                </div>
+                                <span class="hello-tag">Hello 专属</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">🔓</div>
+                                <div class="feature-text">
+                                    <strong>回席自动解锁</strong>
+                                    <span>回来时用 Windows Hello 快速恢复监听</span>
+                                </div>
+                                <span class="hello-tag">Hello 专属</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">⚙️</div>
+                                <div class="feature-text">
+                                    <strong>敏感设置保护</strong>
+                                    <span>修改高风险规则时需要认证</span>
+                                </div>
+                                <span class="hello-tag">Hello 专属</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 隐私保护内容 -->
+                <div class="category-content" id="category-privacy">
+                    <div class="feature-section">
+                        <h4>
+                            <span>🛡️</span>
+                            隐私保护（Glance 同款）
+                            <span style="margin-left:auto;font-size:12px;color:var(--muted-foreground);">Pro 专属</span>
+                        </h4>
+                        <div class="feature-list">
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">👥</div>
+                                <div class="feature-text">
+                                    <strong>隐私卫士</strong>
+                                    <span>检测到多人时自动模糊屏幕</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">⚠️</div>
+                                <div class="feature-text">
+                                    <strong>隐私提醒</strong>
+                                    <span>有人靠近时温和提醒</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">🖥️</div>
+                                <div class="feature-text">
+                                    <strong>智能显示</strong>
+                                    <span>模糊不看的屏幕内容</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon free">🚪</div>
+                                <div class="feature-text">
+                                    <strong>离席智能暂停</strong>
+                                    <span>离开后先暂停语音再隐私屏</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 多屏管理内容 -->
+                <div class="category-content" id="category-multiscreen">
+                    <div class="feature-section">
+                        <h4>
+                            <span>🖥️</span>
+                            多屏管理（Glance 同款）
+                            <span style="margin-left:auto;font-size:12px;color:var(--muted-foreground);">Pro 专属</span>
+                        </h4>
+                        <div class="feature-list">
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">🖱️</div>
+                                <div class="feature-text">
+                                    <strong>智能指针</strong>
+                                    <span>视线切换屏幕时，鼠标自动跟随</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">🪟</div>
+                                <div class="feature-text">
+                                    <strong>窗口快移</strong>
+                                    <span>拖拽窗口时看哪个屏，窗口就移过去</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">🎯</div>
+                                <div class="feature-text">
+                                    <strong>多屏视线切换</strong>
+                                    <span>看哪个屏，语音助手目标就切到哪</span>
+                                </div>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 健康助手内容 -->
+                <div class="category-content" id="category-health">
+                    <div class="feature-section">
+                        <h4>
+                            <span>💪</span>
+                            健康助手
+                            <span style="margin-left:auto;font-size:12px;color:var(--muted-foreground);">Pro 专属</span>
+                        </h4>
+                        <div class="feature-list">
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">👀</div>
+                                <div class="feature-text">
+                                    <strong>20-20-20 规则</strong>
+                                    <span>每20分钟提醒看远方20秒</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">😉</div>
+                                <div class="feature-text">
+                                    <strong>智能眨眼提醒</strong>
+                                    <span>根据眨眼频率提醒保护眼睛</span>
+                                </div>
+                                <span class="glance-tag">Glance</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">💺</div>
+                                <div class="feature-text">
+                                    <strong>坐姿提醒</strong>
+                                    <span>红外检测坐姿变化，提醒调整</span>
+                                </div>
+                                <span class="hello-tag">Hello 专属</span>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                            <div class="feature-item locked" onclick="toggleFeature(this)">
+                                <div class="feature-icon pro">📊</div>
+                                <div class="feature-text">
+                                    <strong>专注时段统计</strong>
+                                    <span>统计一天的专注和用眼时长</span>
+                                </div>
+                                <span class="pro-tag">Pro</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览和设备状态 -->
+            <div class="preview-panel">
+                <div class="preview-shell">
+                    <div class="preview-video" id="previewVideo">
+                        <div class="face-indicator">😊</div>
+                        <div class="gaze-dot" id="gazeDot" style="top:50%;left:50%;"></div>
+                    </div>
+                    <div class="visualizer">
+                        <div class="visualizer-bar green" id="viz1"></div>
+                        <div class="visualizer-bar green" id="viz2"></div>
+                        <div class="visualizer-bar green" id="viz3"></div>
+                        <div class="visualizer-bar green" id="viz4"></div>
+                        <div class="visualizer-bar green" id="viz5"></div>
+                    </div>
+                    <p style="text-align:center;margin-top:8px;font-size:12px;color:var(--muted-foreground);">
+                        Visualizer: <strong id="vizStatus">绿色 - 最佳范围</strong>
+                    </p>
+                </div>
+
+                <div class="device-status">
+                    <div class="device-status-header">
+                        <h4>设备状态</h4>
+                        <div class="status-badge">
+                            <div class="status-dot"></div>
+                            <span>红外摄像头已检测</span>
+                        </div>
+                    </div>
+                    <div class="device-metrics">
+                        <div class="metric">
+                            <label>摄像头类型</label>
+                            <value>Windows Hello 红外</value>
+                        </div>
+                        <div class="metric">
+                            <label>分辨率</label>
+                            <value>1080p</value>
+                        </div>
+                        <div class="metric">
+                            <label>人脸检测</label>
+                            <value id="faceStatus">检测中</value>
+                        </div>
+                        <div class="metric">
+                            <label>视线追踪</label>
+                            <value id="gazeStatus">就绪</value>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 折叠面板 -->
+        <div class="fold-panel" id="fold1">
+            <div class="fold-header" onclick="toggleFold('fold1')">
+                <h4>
+                    <span>👀</span>
+                    看区确认
+                    <span>(先看粗三区，不直接发送)</span>
+                </h4>
+                <span class="fold-arrow">▼</span>
+            </div>
+            <div class="fold-content">
+                <p style="color:var(--muted-foreground);font-size:13px;margin-bottom:12px;">
+                    升级 Pro 后可用：左取消 / 中继续 / 右下确认
+                </p>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                    <div style="background:var(--muted);padding:24px;border-radius:8px;text-align:center;font-weight:600;">左<br>取消</div>
+                    <div style="background:var(--muted);padding:24px;border-radius:8px;text-align:center;font-weight:600;">中<br>继续</div>
+                    <div style="background:var(--muted);padding:24px;border-radius:8px;text-align:center;font-weight:600;">右下<br>确认</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="controls">
+            <h4>演示控制</h4>
+            <div class="control-row">
+                <label>模拟检测到 Windows Hello 摄像头</label>
+                <div class="switch on" id="helloSwitch" onclick="toggleHelloSwitch()">
+                    <div class="switch-knob"></div>
+                </div>
+            </div>
+            <div class="control-row">
+                <label>模拟视线移动（演示用）</label>
+                <div class="switch" id="gazeSwitch" onclick="toggleGazeDemo()">
+                    <div class="switch-knob"></div>
+                </div>
+            </div>
+            <div class="control-row">
+                <label>模拟位置变化（Visualizer 演示）</label>
+                <div class="switch" id="vizSwitch" onclick="toggleVizDemo()">
+                    <div class="switch-knob"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 升级弹窗 -->
+    <div class="modal-overlay" id="upgradeModal">
+        <div class="modal">
+            <h3>🎉 升级到 Pro</h3>
+            <p>
+                解锁全部高级功能：<br><br>
+                • 🔐 Windows Hello 安全增强<br>
+                • 🛡️ 隐私卫士（Glance 同款）<br>
+                • 🖱️ 智能指针（Glance 同款）<br>
+                • 🪟 窗口快移（Glance 同款）<br>
+                • 💪 健康助手（20-20-20 规则）
+            </p>
+            <div class="modal-btns">
+                <button class="modal-btn secondary" onclick="closeModal()">稍后再说</button>
+                <button class="modal-btn primary" onclick="closeModal()">立即升级</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 标签切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // 分类切换
+        function switchCategory(category) {
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.category-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('category-' + category).classList.add('active');
+        }
+
+        // 折叠面板
+        function toggleFold(id) {
+            const panel = document.getElementById(id);
+            panel.classList.toggle('open');
+        }
+
+        // Hello 开关
+        let helloEnabled = true;
+        function toggleHelloSwitch() {
+            helloEnabled = !helloEnabled;
+            const sw = document.getElementById('helloSwitch');
+            const card = document.getElementById('helloCard');
+            sw.classList.toggle('on', helloEnabled);
+            card.style.display = helloEnabled ? 'flex' : 'none';
+        }
+
+        // 视线演示
+        let gazeDemoActive = false;
+        let gazeInterval = null;
+
+        function toggleGazeDemo() {
+            gazeDemoActive = !gazeDemoActive;
+            const sw = document.getElementById('gazeSwitch');
+            sw.classList.toggle('on', gazeDemoActive);
+
+            if (gazeDemoActive) {
+                gazeInterval = setInterval(moveGaze, 500);
+            } else {
+                clearInterval(gazeInterval);
+            }
+        }
+
+        function moveGaze() {
+            const dot = document.getElementById('gazeDot');
+            const x = 20 + Math.random() * 60;
+            const y = 20 + Math.random() * 60;
+            dot.style.left = x + '%';
+            dot.style.top = y + '%';
+        }
+
+        // Visualizer 演示
+        let vizDemoActive = false;
+        let vizInterval = null;
+        let vizState = 0;
+
+        function toggleVizDemo() {
+            vizDemoActive = !vizDemoActive;
+            const sw = document.getElementById('vizSwitch');
+            sw.classList.toggle('on', vizDemoActive);
+
+            if (vizDemoActive) {
+                vizInterval = setInterval(changeVizState, 2000);
+            } else {
+                clearInterval(vizInterval);
+                setVizState(0); // 重置为绿色
+            }
+        }
+
+        function changeVizState() {
+            vizState = (vizState + 1) % 3;
+            setVizState(vizState);
+        }
+
+        function setVizState(state) {
+            const statusEl = document.getElementById('vizStatus');
+            const states = [
+                { color: 'green', text: '绿色 - 最佳范围' },
+                { color: 'yellow', text: '黄色 - 边缘范围' },
+                { color: 'red', text: '红色 - 未检测到人脸' }
+            ];
+
+            for (let i = 1; i <= 5; i++) {
+                const bar = document.getElementById('viz' + i);
+                bar.classList.remove('green', 'yellow', 'red');
+                bar.classList.add(states[state].color);
+            }
+
+            statusEl.textContent = states[state].text;
+        }
+
+        // 功能项点击
+        function toggleFeature(el) {
+            if (el.classList.contains('locked')) {
+                el.style.background = 'rgba(59,130,246,0.1)';
+                setTimeout(() => {
+                    el.style.background = '';
+                }, 300);
+            }
+        }
+
+        // 升级弹窗
+        function showUpgradeModal() {
+            document.getElementById('upgradeModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('upgradeModal').classList.remove('active');
+        }
+
+        // 模拟人脸状态变化
+        setInterval(() => {
+            const faceStatus = document.getElementById('faceStatus');
+            const statuses = ['检测中', '正常', '检测到眨眼', '检测到多张人脸'];
+            faceStatus.textContent = statuses[Math.floor(Math.random() * statuses.length)];
+        }, 2500);
+    </script>
+</body>
+</html>

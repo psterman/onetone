@@ -1461,10 +1461,10 @@
       if(Tseed&&Tseed.applyCodexPackToMapping){
         Tseed.applyCodexPackToMapping(m,{
           channels:['keys','voice','camera'],
-          essentialsOnly:true,
+          essentialsOnly:false,
           reset:true,
           cameraTarget:'override',
-          enableProfile:'scenarioEssentials',
+          enableProfile:'scenarioAllKeys',
           setAppTarget:true,
           persist:false
         });
@@ -1810,10 +1810,10 @@
           if(Treset&&Treset.applyCodexPackToMapping&&mreset){
             Treset.applyCodexPackToMapping(mreset,{
               channels:['keys','voice','camera'],
-              essentialsOnly:true,
+              essentialsOnly:false,
               reset:true,
               cameraTarget:'override',
-              enableProfile:'scenarioEssentials',
+              enableProfile:'scenarioAllKeys',
               setAppTarget:true,
               persist:true
             });

@@ -137,19 +137,25 @@
   }
 
   /**
-   * @param {'globalSafe'|'scenarioEssentials'} profile
+   * @param {'globalSafe'|'scenarioEssentials'|'scenarioAllKeys'} profile
+   * @param {'key'|'voice'} [triggerType]
    * globalSafe: only summon/pushToTalk/cancel enabled
-   * scenarioEssentials: all 5 essentials enabled
+   * scenarioEssentials: all 5 essentials enabled (key + voice)
+   * scenarioAllKeys: all 13 keys enabled; voice stays essentials
    */
-  function slotEnabledByProfile(slotId, profile) {
+  function slotEnabledByProfile(slotId, profile, triggerType) {
     profile = profile || 'scenarioEssentials';
     if (profile === 'globalSafe') return isGlobalSafeSlot(slotId);
+    if (profile === 'scenarioAllKeys') {
+      if (triggerType === 'key') return true;
+      return isEssentialSlot(slotId);
+    }
     return isEssentialSlot(slotId);
   }
 
   /**
    * Build key+voice bindings.
-   * @param {{ enableProfile?: 'globalSafe'|'scenarioEssentials' }} opts
+   * @param {{ enableProfile?: 'globalSafe'|'scenarioEssentials'|'scenarioAllKeys' }} opts
    */
   function buildCodexMicro13Bindings(opts) {
     opts = opts || {};
@@ -158,7 +164,6 @@
     for (var i = 0; i < SLOTS.length; i++) {
       var s = SLOTS[i];
       var a = actionById(s.actionId);
-      var enabled = slotEnabledByProfile(s.slotId, profile);
       var scope = a ? a.scope : 'foregroundApp';
       var mode = a ? a.mode : 'execute';
       out.push({
@@ -166,7 +171,7 @@
         actionId: s.actionId,
         triggerType: 'key',
         triggerBinding: defaultKeyForSlot(s.slotId),
-        enabled: enabled,
+        enabled: slotEnabledByProfile(s.slotId, profile, 'key'),
         executionMode: mode,
         activationScope: scope
       });
@@ -175,12 +180,42 @@
         actionId: s.actionId,
         triggerType: 'voice',
         triggerBinding: phraseForAction(s.actionId),
-        enabled: enabled,
+        enabled: slotEnabledByProfile(s.slotId, profile, 'voice'),
         executionMode: mode,
         activationScope: scope
       });
     }
     return out;
+  }
+
+  /** Slash insert text for insertOnly slots (e.g. "/plan"), else ''. */
+  function insertTextForSlot(slotId) {
+    var s = slotById(slotId);
+    if (!s) return '';
+    var a = actionById(s.actionId);
+    return (a && a.insert) ? String(a.insert) : '';
+  }
+
+  /**
+   * UI subtitle for a slot: insertOnly →「插入 /plan」; else friendly chord fallback.
+   * Does not replace chordForSlot (conflict detection still uses real chords).
+   */
+  function slotSubForDisplay(slotId, chordFriendly) {
+    var insert = insertTextForSlot(slotId);
+    if (insert) {
+      return isEnLocale() ? ('Insert ' + insert) : ('插入 ' + insert);
+    }
+    return chordFriendly || '';
+  }
+
+  /** Same as slotSubForDisplay when chord is unknown — insert text or slot label. */
+  function displayActionForSlot(slotId, chordFriendly) {
+    var insert = insertTextForSlot(slotId);
+    if (insert) {
+      return isEnLocale() ? ('Insert ' + insert) : ('插入 ' + insert);
+    }
+    if (chordFriendly) return chordFriendly;
+    return labelForSlot(slotById(slotId));
   }
 
   function essentialSlots() {
@@ -262,6 +297,9 @@
     parseAgentActionToken: parseAgentActionToken,
     labelForSlot: labelForSlot,
     phraseForAction: phraseForAction,
+    insertTextForSlot: insertTextForSlot,
+    slotSubForDisplay: slotSubForDisplay,
+    displayActionForSlot: displayActionForSlot,
     execute: execute
   };
 })(typeof window !== 'undefined' ? window : globalThis);

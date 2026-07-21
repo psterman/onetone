@@ -717,6 +717,7 @@ pub fn run() {
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
             ipc::cmd_codex_micro_overlay_get_state,
+            ipc::cmd_codex_micro_overlay_dismiss,
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_codex_micro_pad_set_flags,
             ipc::cmd_acoustic_voice_command_status,

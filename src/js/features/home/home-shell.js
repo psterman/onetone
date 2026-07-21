@@ -36,6 +36,15 @@
     }
   }
   function openHomeSetupFlow(){
+    var unlocked=false;
+    try{
+      unlocked=!!(hooks().isHomeAdvancedUnlocked&&hooks().isHomeAdvancedUnlocked());
+    }catch(_){}
+    // Button label is「我的习惯」when unlocked — open the hub, not onboarding.
+    if(unlocked&&global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+      global.OneToneSettingsDrawer.open({panel:'habits'});
+      return;
+    }
     if(window.OneToneOnboarding) window.OneToneOnboarding.open(true);
   }
 

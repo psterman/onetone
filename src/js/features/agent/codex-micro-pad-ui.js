@@ -16,7 +16,7 @@
       { microKeyId: 'AG04', uiLabelZh: '任务 5', uiLabelEn: 'Agent 5', kind: 'agent', gridRow: 2, gridCol: 3, agIndex: 4 },
       { microKeyId: 'AG05', uiLabelZh: '任务 6', uiLabelEn: 'Agent 6', kind: 'agent', gridRow: 2, gridCol: 4, agIndex: 5 },
       { microKeyId: 'ACT06', uiLabelZh: '快速', uiLabelEn: 'Fast', kind: 'command', gridRow: 3, gridCol: 2 },
-      { microKeyId: 'ACT07', uiLabelZh: '批准', uiLabelEn: 'Approve', kind: 'command', gridRow: 3, gridCol: 3 },
+      { microKeyId: 'ACT07', uiLabelZh: '命令菜单', uiLabelEn: 'Command palette', kind: 'command', gridRow: 3, gridCol: 3 },
       { microKeyId: 'ACT08', uiLabelZh: '拒绝', uiLabelEn: 'Reject', kind: 'command', gridRow: 3, gridCol: 4 },
       { microKeyId: 'ACT09', uiLabelZh: '分支', uiLabelEn: 'Fork', kind: 'command', gridRow: 3, gridCol: 5 },
       { microKeyId: 'ACT10', uiLabelZh: '开始说话', uiLabelEn: 'Mic', kind: 'command', gridRow: 4, gridCol: 2, gridColSpan: 2 },
@@ -33,9 +33,9 @@
       { microKeyId: 'ACT07', sourceScan: 0x35, sourceExtended: true, slotId: 'commandPalette', uiIconId: 'palette' },
       { microKeyId: 'ACT08', sourceScan: 0x4A, sourceExtended: false, slotId: 'cancel', uiIconId: 'reject' },
       { microKeyId: 'ACT09', sourceScan: 0x4F, sourceExtended: false, slotId: 'newThread', uiIconId: 'fork' },
-      { microKeyId: 'ACT10', sourceScan: 0x50, sourceExtended: false, slotId: 'pushToTalk', uiIconId: 'mic' },
+      { microKeyId: 'ACT10', sourceScan: 0x52, sourceExtended: false, slotId: 'pushToTalk', uiIconId: 'mic' },
       { microKeyId: 'ACT12', sourceScan: 0x51, sourceExtended: false, slotId: 'stopOrSend', uiIconId: 'send' },
-      { microKeyId: 'ENC', sourceScan: 0x52, sourceExtended: false, slotId: 'summonCodex', uiIconId: 'codex' }
+      { microKeyId: 'ENC', sourceScan: 0, sourceExtended: false, slotId: 'summonCodex', uiIconId: 'codex' }
     ]
   };
 
@@ -237,6 +237,21 @@
     return A && A.defaultKeyForSlot ? A.defaultKeyForSlot(slotId) : '';
   }
 
+  /** Display subtitle: insertOnly →「插入 /xxx」; else friendly chord. chordForSlot unchanged. */
+  function slotSubForDisplay(m, slotId) {
+    var A = agent();
+    var chord = friendlyChord(chordForSlot(m, slotId));
+    if (A && A.slotSubForDisplay) return A.slotSubForDisplay(slotId, chord);
+    return chord;
+  }
+
+  function displayActionForSlot(m, slotId) {
+    var A = agent();
+    var chord = friendlyChord(chordForSlot(m, slotId));
+    if (A && A.displayActionForSlot) return A.displayActionForSlot(slotId, chord);
+    return chord || slotLabel(slotId);
+  }
+
   function friendlyChord(raw) {
     var kl = global.OneToneKeyLabels;
     if (kl && kl.formatChord) return kl.formatChord(raw, lang());
@@ -351,6 +366,19 @@
         }
       }
     }
+    // Stock: mic was Numpad 2, ENC stole Numpad 0 — move mic to 0.
+    var act10Idx = findIdx('ACT10');
+    var encIdx2 = findIdx('ENC');
+    if (act10Idx >= 0 && encIdx2 >= 0) {
+      var mic = out[act10Idx];
+      var dial = out[encIdx2];
+      if (Number(mic.sourceScan) === 0x50 && !mic.sourceExtended
+          && Number(dial.sourceScan) === 0x52 && !dial.sourceExtended) {
+        mic.sourceScan = 0x52;
+        dial.sourceScan = 0;
+        dial.sourceExtended = false;
+      }
+    }
     return out;
   }
 
@@ -380,7 +408,8 @@
         m.codexMicroPad.keys.push(seedRoute(seed));
       }
     });
-    if (before !== JSON.stringify(m.codexMicroPad.keys) && opts.persist !== false) persist();
+    // Heal-only scan moves: persist quietly later via normal save — never block hub open.
+    if (before !== JSON.stringify(m.codexMicroPad.keys) && opts.persist === true) persist();
     return m.codexMicroPad;
   }
 
@@ -453,7 +482,7 @@
         numpadLabel: numpadLabel,
         slotId: slotId,
         slotLabel: bound ? slotLabel(slotId) : '',
-        chord: bound ? friendlyChord(chordForSlot(m, slotId)) : '',
+        chord: bound ? slotSubForDisplay(m, slotId) : '',
         enabled: !(route && route.enabled === false),
         bound: bound,
         uiIconId: resolveIconId(route, cell.microKeyId)
@@ -571,7 +600,7 @@
       html += '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(iconId) + '</span>';
       if (mode !== 'overlay') {
         var sub = bound
-          ? friendlyChord(chordForSlot(m, route.slotId))
+          ? slotSubForDisplay(m, route.slotId)
           : t('codexMicroPadUnbound', '未配置');
         html += '<span class="micro-hw__sub">' + esc(sub) + '</span>';
       }
@@ -833,7 +862,7 @@
       esc(t('codexMicroPadNumLockOff', '仅在关闭数字锁定（NumLock）时生效')) + '</label>' +
       '<label class="codex-micro-pad__toggle"><input type="checkbox" data-act="overlay"' +
       (pad.overlayEnabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadOverlayEnable', '右下角置顶小键盘（本页与 Codex 桌面端显示）')) + '</label></div>' +
+      esc(t('codexMicroPadOverlayEnable', 'Codex 前台时显示置顶小键盘')) + '</label></div>' +
       renderHardwarePad(m, pad, { mode: padUiMode === 'run' ? 'run' : 'config' }) +
       '<div class="codex-micro-pad__toolbar">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="restore">' +
@@ -842,7 +871,7 @@
       esc(t('codexMicroPadClear', '清空所有映射')) + '</button>' +
       '</div>' +
       '<p class="codex-micro-pad__hint">' +
-      esc(t('codexMicroPadForegroundHint', '网页版 ChatGPT 不会显示 · 本设置页或 Codex 桌面端前台可见')) +
+      esc(t('codexMicroPadForegroundHint', '仅 Codex 桌面端前台显示与触发 · 网页版 ChatGPT 无效')) +
       '</p>' +
       '<p class="codex-micro-pad__hint">' + esc(modeHintText()) + '</p></div>';
 
@@ -1025,7 +1054,7 @@
     var hint = document.getElementById('microHwAssignHint');
     if (!hint || !editDraft) return;
     var chord = editDraft.slotId
-      ? friendlyChord(chordForSlot(editDraft.mapping, editDraft.slotId))
+      ? slotSubForDisplay(editDraft.mapping, editDraft.slotId)
       : '';
     hint.textContent = editDraft.slotId
       ? (slotLabel(editDraft.slotId) + (chord ? ' · ' + chord : ''))
@@ -1257,12 +1286,35 @@
     }, 280);
   }
 
+  function onOverlayDismissed() {
+    var cfg = global.OneToneState && global.OneToneState.state && global.OneToneState.state.config;
+    if (!cfg || !Array.isArray(cfg.mappings)) return;
+    var changed = false;
+    var last = null;
+    for (var i = 0; i < cfg.mappings.length; i++) {
+      var m = cfg.mappings[i];
+      if (!m || !m.codexMicroPad) continue;
+      if (m.codexMicroPad.overlayEnabled) {
+        m.codexMicroPad.overlayEnabled = false;
+        changed = true;
+        last = m;
+      }
+    }
+    if (!changed) return;
+    var host = document.getElementById('codexMicroPadHostTarget');
+    var Cap = global.OneToneAgentCapabilityUi;
+    var cur = Cap && Cap.activeCodexMapping ? Cap.activeCodexMapping() : last;
+    if (host && !host.hidden && cur) renderTarget(host, cur);
+    else if (cur) notifyLinkedUi(cur);
+  }
+
   global.OneToneCodexMicroPadUi = {
     ensurePad: ensurePad,
     mount: mount,
     ensureHosts: ensureHosts,
     refreshTrigger: refreshTrigger,
     onPadKeyEvent: onPadKeyEvent,
+    onOverlayDismissed: onOverlayDismissed,
     onCapabilitySelected: onCapabilitySelected,
     routeForSlot: routeForSlot,
     badgeForSlot: badgeForSlot,
@@ -1276,6 +1328,9 @@
     ICON_DEFS: ICON_DEFS,
     DEFAULT_ICON_BY_MICRO: DEFAULT_ICON_BY_MICRO,
     sourceId: sourceId,
-    scanLabel: scanLabel
+    scanLabel: scanLabel,
+    chordForSlot: chordForSlot,
+    slotSubForDisplay: slotSubForDisplay,
+    displayActionForSlot: displayActionForSlot
   };
 })(typeof window !== 'undefined' ? window : globalThis);

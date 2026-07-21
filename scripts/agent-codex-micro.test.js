@@ -14,21 +14,49 @@ var A = global.OneToneAgentActions;
 var T = global.OneToneAgentScenarioTemplate;
 assert.ok(A && T);
 
-// Key bindings seeded with OneTone recommended chords (not empty)
-var scen = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioEssentials' });
-var keyBindings = scen.filter(function (b) { return b.triggerType === 'key'; });
+// scenarioAllKeys: 13 keys on, voice essentials only
+var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
+var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
 assert.equal(keyBindings.length, 13);
 keyBindings.forEach(function (b) {
   assert.ok(b.triggerBinding, 'key binding recommended for ' + b.slotId);
   assert.equal(b.triggerBinding, A.defaultKeyForSlot(b.slotId));
+  assert.equal(b.enabled, true, 'key enabled for ' + b.slotId);
 });
-assert.equal(A.defaultKeyForSlot('summonCodex'), 'Ctrl+Alt+C');
-assert.equal(A.defaultKeyForSlot('commandPalette'), 'Ctrl+Alt+K');
-var voiceOn = scen.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
-assert.ok(voiceOn.length >= 3);
+assert.equal(A.defaultKeyForSlot('summonCodex'), 'Ctrl+Shift+P');
+assert.equal(A.defaultKeyForSlot('commandPalette'), 'Ctrl+K');
+
+var voiceOn = allKeys.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
+assert.equal(voiceOn.length, A.essentialSlots().length);
 voiceOn.forEach(function (b) {
+  assert.ok(A.isEssentialSlot(b.slotId), 'voice only essentials: ' + b.slotId);
   assert.ok(b.triggerBinding, 'voice phrase for ' + b.slotId);
 });
+assert.ok(!allKeys.some(function (b) {
+  return b.triggerType === 'voice' && b.slotId === 'permissions' && b.enabled;
+}), 'permissions voice stays off');
+
+// scenarioEssentials still 5 for both channels
+var scen = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioEssentials' });
+var scenKeyOn = scen.filter(function (b) { return b.triggerType === 'key' && b.enabled; });
+var scenVoiceOn = scen.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
+assert.equal(scenKeyOn.length, 5);
+assert.equal(scenVoiceOn.length, 5);
+
+// globalSafe still 3
+var safe = A.buildCodexMicro13Bindings({ enableProfile: 'globalSafe' });
+var safeOn = safe.filter(function (b) { return b.enabled; });
+assert.equal(safeOn.length, 6); // 3 key + 3 voice
+safeOn.forEach(function (b) {
+  assert.ok(A.isGlobalSafeSlot(b.slotId));
+});
+
+// Slash display helpers (do not change chord semantics)
+assert.equal(A.insertTextForSlot('plan'), '/plan');
+assert.equal(A.slotSubForDisplay('plan', 'Ctrl+Alt+P'), '插入 /plan');
+assert.equal(A.displayActionForSlot('plan', 'Ctrl+Alt+P'), '插入 /plan');
+assert.equal(A.slotSubForDisplay('commandPalette', 'Ctrl+K'), 'Ctrl+K');
+assert.equal(A.insertTextForSlot('status'), '/status');
 
 // Multi-scenario: createNew always creates; openExisting reuses
 var createdList = [];
@@ -64,7 +92,7 @@ var opened = T.findOrCreateCodexScenario();
 assert.equal(opened.mapping.id, createdList[0].id, 'recommend reuses first');
 assert.equal(opened.created, false);
 
-// ensurePackForMapping seeds current mapping with recommended keys
+// ensurePackForMapping seeds with scenarioAllKeys
 var empty = {
   id: 'm-empty',
   appTargetId: 'codex-chat',
@@ -78,7 +106,12 @@ assert.equal(empty.triggerKey, 'VolUp');
 assert.equal(empty.targetKey, 'Ctrl+Win');
 empty.agentBindings.filter(function (x) { return x.triggerType === 'key'; }).forEach(function (x) {
   assert.ok(x.triggerBinding, 'seeded key for ' + x.slotId);
+  assert.equal(x.enabled, true, 'all keys enabled for ' + x.slotId);
 });
+var emptyVoiceOn = empty.agentBindings.filter(function (x) {
+  return x.triggerType === 'voice' && x.enabled;
+});
+assert.equal(emptyVoiceOn.length, A.essentialSlots().length);
 
 // Backfill empty keys on older packs
 var legacy = {
@@ -90,7 +123,23 @@ var legacy = {
   ]
 };
 assert.ok(T.fillEmptyKeyDefaults(legacy));
-assert.equal(legacy.agentBindings[0].triggerBinding, 'Ctrl+Alt+C');
+assert.equal(legacy.agentBindings[0].triggerBinding, 'Ctrl+Shift+P');
+
+// ACT07 face copy = 命令菜单
+var layout = JSON.parse(fs.readFileSync(
+  path.join(__dirname, '../src/data/codex-micro-pad-layout.json'), 'utf8'));
+var act07 = layout.cells.find(function (c) { return c.microKeyId === 'ACT07'; });
+assert.ok(act07);
+assert.equal(act07.uiLabelZh, '命令菜单');
+assert.equal(act07.uiLabelEn, 'Command palette');
+assert.equal(act07.defaultSlotId, 'commandPalette');
+
+var padSrc = fs.readFileSync(
+  path.join(__dirname, '../src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
+assert.ok(padSrc.indexOf("uiLabelZh: '命令菜单'") >= 0);
+assert.ok(padSrc.indexOf('function slotSubForDisplay') >= 0);
+assert.ok(padSrc.indexOf('function chordForSlot') >= 0);
+assert.ok(padSrc.indexOf("uiLabelZh: '批准'") < 0);
 
 // Capability UI: load recommended keys, no recording main path
 var capSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/agent-capability-ui.js'), 'utf8');
@@ -103,6 +152,7 @@ assert.ok(capSrc.indexOf('findChordConflict') >= 0);
 assert.ok(capSrc.indexOf('startAgentBinding') >= 0);
 assert.ok(capSrc.indexOf('function startRecord') >= 0);
 assert.ok(capSrc.indexOf('套用 Codex 推荐') < 0);
+assert.ok(capSrc.indexOf('slotSubForDisplay') >= 0);
 
 // Conflict helper: duplicate chords rejected
 var conflictMap = {
@@ -111,7 +161,7 @@ var conflictMap = {
   triggerKey: 'F8',
   targetKey: 'RAlt',
   agentBindings: [
-    { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: 'Ctrl+Alt+C', enabled: true },
+    { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: 'Ctrl+Shift+P', enabled: true },
     { slotId: 'status', actionId: 'status', triggerType: 'key', triggerBinding: 'Ctrl+Alt+S', enabled: true }
   ]
 };
@@ -119,19 +169,20 @@ var conflictMap = {
 require(path.join(__dirname, '../src/js/features/agent/agent-capability-ui.js'));
 var Cap = global.OneToneAgentCapabilityUi;
 assert.ok(Cap && Cap.findChordConflict);
-var c1 = Cap.findChordConflict(conflictMap, 'Ctrl+Alt+C', 'status');
+var c1 = Cap.findChordConflict(conflictMap, 'Ctrl+Shift+P', 'status');
 assert.ok(c1 && c1.slotId === 'summonCodex');
 var c2 = Cap.findChordConflict(conflictMap, 'RAlt', 'summonCodex');
 assert.ok(c2 && c2.kind === 'ime');
 var c3 = Cap.findChordConflict(conflictMap, 'Ctrl+Alt+P', 'plan');
 assert.equal(c3, null);
 
-// Hub: no main-row apply CTA; has more-menu reset; t fallback
+// Hub: no main-row apply CTA; has more-menu reset; t fallback; scenarioAllKeys
 var hubSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/mapping/habit-hub.js'), 'utf8');
 assert.ok(hubSrc.indexOf('data-habit-codex-apply-card') < 0);
 assert.ok(hubSrc.indexOf('habit-hub-more-menu') >= 0);
 assert.ok(hubSrc.indexOf('function(key, fb)') >= 0 || hubSrc.indexOf('function(key,fb)') >= 0);
 assert.ok(hubSrc.indexOf("appId!=='codex-chat'") >= 0);
+assert.ok(hubSrc.indexOf("enableProfile:'scenarioAllKeys'") >= 0);
 
 // Keys page remounts on step change
 var keysState = fs.readFileSync(path.join(__dirname, '../src/js/features/mapping/keys-page-state.js'), 'utf8');

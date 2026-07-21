@@ -24,7 +24,8 @@ fn default_key_for_slot(slot_id: &str) -> &'static str {
     }
 }
 
-/// Build key+voice bindings for Codex Micro 13. Essentials enabled; others disabled.
+/// Build key+voice bindings for Codex Micro 13.
+/// Keys: all 13 enabled (numpad simulator). Voice: essentials only (reduce misfires).
 pub fn build_codex_micro_13_bindings(locale: &str) -> Vec<AgentBinding> {
     let en = locale.trim().eq_ignore_ascii_case("en")
         || locale.trim().eq_ignore_ascii_case("en-US")
@@ -48,7 +49,7 @@ pub fn build_codex_micro_13_bindings(locale: &str) -> Vec<AgentBinding> {
             action_id: slot.action_id.into(),
             trigger_type: "key".into(),
             trigger_binding: default_key_for_slot(slot.slot_id).into(),
-            enabled: essential,
+            enabled: true,
             execution_mode: Some(slot.execution_mode.as_str().into()),
             activation_scope: slot.activation_scope.as_str().into(),
         });
@@ -69,20 +70,30 @@ pub fn build_codex_micro_13_bindings(locale: &str) -> Vec<AgentBinding> {
 mod tests {
     use super::*;
     use crate::agent::templates::ESSENTIAL_SLOT_IDS;
+    use std::collections::HashSet;
 
     #[test]
-    fn builds_thirteen_slots_key_and_voice() {
+    fn builds_thirteen_slots_key_all_voice_essentials() {
         let rows = build_codex_micro_13_bindings("zh-CN");
         assert_eq!(rows.len(), 26);
-        let enabled_slots: std::collections::HashSet<_> = rows
+
+        let key_enabled: HashSet<_> = rows
             .iter()
-            .filter(|b| b.enabled)
+            .filter(|b| b.trigger_type == "key" && b.enabled)
+            .map(|b| b.slot_id.as_str())
+            .collect();
+        assert_eq!(key_enabled.len(), 13, "all 13 key bindings enabled");
+
+        let voice_enabled: HashSet<_> = rows
+            .iter()
+            .filter(|b| b.trigger_type == "voice" && b.enabled)
             .map(|b| b.slot_id.as_str())
             .collect();
         for id in ESSENTIAL_SLOT_IDS {
-            assert!(enabled_slots.contains(id), "essential {id} not enabled");
+            assert!(voice_enabled.contains(id), "essential voice {id} not enabled");
         }
-        assert!(enabled_slots.len() <= 5);
+        assert_eq!(voice_enabled.len(), ESSENTIAL_SLOT_IDS.len());
+
         assert!(rows
             .iter()
             .any(|b| b.trigger_type == "voice" && !b.trigger_binding.is_empty()));

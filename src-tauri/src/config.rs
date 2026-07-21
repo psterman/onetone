@@ -3643,6 +3643,9 @@ impl VoiceConfig {
             if m.enter_delay_ms < 1000 {
                 m.enter_delay_ms = self.enter_delay_ms;
             }
+            if let Some(pad) = m.codex_micro_pad.as_mut() {
+                crate::codex_numpad_layer::heal_stock_mic_on_numpad0(pad);
+            }
             m.voice_override = normalize_voice_override(m.voice_override.take());
             // Legacy configs may still carry triggerDevice full paths ??? migrate below.
             if !m.trigger_device.trim().is_empty() {

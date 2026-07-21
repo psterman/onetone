@@ -160,8 +160,9 @@ fn codex_is_foreground() -> bool {
 }
 
 /// Public FG check for screen/overlay Micro fire (M2).
+/// Treat overlay itself as in-session so clicking keycaps does not fail `not_foreground`.
 pub fn codex_foreground_for_micro() -> bool {
-    codex_is_foreground()
+    codex_is_foreground() || crate::codex_micro_overlay::overlay_is_foreground()
 }
 
 /// Five-condition conservative swallow check for the LL keyboard hook.
@@ -264,11 +265,42 @@ pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
         route("ACT07", 0x35, true, "commandPalette"),
         route("ACT08", 0x4A, false, "cancel"),
         route("ACT09", 0x4F, false, "newThread"),
-        route("ACT10", 0x50, false, "pushToTalk"),
+        route("ACT10", 0x52, false, "pushToTalk"),
         route("ACT12", 0x51, false, "stopOrSend"),
-        route("ENC", 0x52, false, "summonCodex"),
+        // ENC: vendor HID / overlay only — do not steal physical Numpad 0 (mic).
+        route("ENC", 0, false, "summonCodex"),
         // JOY: bindable in UI; no default scan/slot (added by frontend ensurePad).
     ]
+}
+
+/// Stock layout used to put mic on Numpad 2 and ENC on Numpad 0.
+/// Heal so physical Numpad 0 holds push-to-talk (matches wide mic keycap).
+pub fn heal_stock_mic_on_numpad0(pad: &mut CodexMicroPadConfig) -> bool {
+    let mut act10_i = None;
+    let mut enc_i = None;
+    for (i, k) in pad.keys.iter().enumerate() {
+        match k.micro_key_id.as_str() {
+            "ACT10" => act10_i = Some(i),
+            "ENC" => enc_i = Some(i),
+            _ => {}
+        }
+    }
+    let (Some(ai), Some(ei)) = (act10_i, enc_i) else {
+        return false;
+    };
+    let act10 = &pad.keys[ai];
+    let enc = &pad.keys[ei];
+    if act10.source_scan == 0x50
+        && !act10.source_extended
+        && enc.source_scan == 0x52
+        && !enc.source_extended
+    {
+        pad.keys[ai].source_scan = 0x52;
+        pad.keys[ei].source_scan = 0;
+        pad.keys[ei].source_extended = false;
+        return true;
+    }
+    false
 }
 
 fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexMicroPadKeyRoute {
@@ -359,10 +391,34 @@ mod tests {
         assert!(!keys.iter().any(|k| k.micro_key_id == "DIAL"));
         let enc = keys.iter().find(|k| k.micro_key_id == "ENC").unwrap();
         assert_eq!(enc.slot_id, "summonCodex");
-        assert_eq!(enc.source_scan, 0x52);
+        assert_eq!(enc.source_scan, 0);
+        let act10 = keys.iter().find(|k| k.micro_key_id == "ACT10").unwrap();
+        assert_eq!(act10.slot_id, "pushToTalk");
+        assert_eq!(act10.source_scan, 0x52);
+        assert!(!act10.source_extended);
         let act07 = keys.iter().find(|k| k.micro_key_id == "ACT07").unwrap();
         assert_eq!(act07.slot_id, "commandPalette");
         assert_eq!(act07.source_scan, 0x35);
         assert!(act07.source_extended);
+    }
+
+    #[test]
+    fn heal_moves_mic_from_numpad2_to_numpad0() {
+        let mut pad = default_codex_micro_pad();
+        // Simulate legacy stock layout.
+        for k in &mut pad.keys {
+            if k.micro_key_id == "ACT10" {
+                k.source_scan = 0x50;
+            }
+            if k.micro_key_id == "ENC" {
+                k.source_scan = 0x52;
+            }
+        }
+        assert!(heal_stock_mic_on_numpad0(&mut pad));
+        let act10 = pad.keys.iter().find(|k| k.micro_key_id == "ACT10").unwrap();
+        let enc = pad.keys.iter().find(|k| k.micro_key_id == "ENC").unwrap();
+        assert_eq!(act10.source_scan, 0x52);
+        assert_eq!(enc.source_scan, 0);
+        assert!(!heal_stock_mic_on_numpad0(&mut pad));
     }
 }

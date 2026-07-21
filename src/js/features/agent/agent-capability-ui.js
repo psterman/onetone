@@ -469,9 +469,15 @@
       var enabled = !b || b.enabled !== false;
       var icon = SLOT_ICONS[s.slotId] || SLOT_ICONS.appsOrPlugins;
       var name = A.labelForSlot(s);
-      var sub = mode === 'voice'
-        ? (value || t('codexCapTapPhrase', '点按改口令'))
-        : friendlyChord(value) || t('codexCapTapLoad', '点击加载推荐键');
+      var sub;
+      if (mode === 'voice') {
+        sub = value || t('codexCapTapPhrase', '点按改口令');
+      } else if (A.slotSubForDisplay) {
+        sub = A.slotSubForDisplay(s.slotId, friendlyChord(value))
+          || t('codexCapTapLoad', '点击加载推荐键');
+      } else {
+        sub = friendlyChord(value) || t('codexCapTapLoad', '点击加载推荐键');
+      }
       var microBadge = mode === 'keys' ? microPadBadge(m, s.slotId) : '';
       var attr = mode === 'voice' ? 'data-codex-chip-voice' : 'data-codex-chip-key';
       html += '<button type="button" class="codex-cap-item'
@@ -871,6 +877,7 @@
     pushToTalkDisplay: pushToTalkDisplay,
     applyCodexStepChrome: applyCodexStepChrome,
     isCodexKeysEditing: function () { return !!activeCodexMapping(); },
+    findChordConflict: findChordConflict,
     TARGET_SLOT_IDS: TARGET_SLOT_IDS,
     FINISH_SLOT_IDS: FINISH_SLOT_IDS
   };

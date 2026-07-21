@@ -160,14 +160,19 @@
 
 OneTone Codex 应用场景可在 **触发页** 预览、**识别页** 配置 **Micro 小键盘层**：
 
-- **物理键**（`sourceScan` + `sourceExtended`）或 vendor `microKeyId` → **Codex 能力 slot** → **`agentBindings.triggerBinding` 输出和弦**
-- **仅 Codex 前台** 吞物理小键盘；其他 App 不受影响
+- **物理键**（`sourceScan` + `sourceExtended`）或 vendor `microKeyId` → **Codex 能力 slot** → **key binding 已启用时** 执行 hotkey / slash（`insertOnly` 仅插入、不回车）
+- **创建 / 重置**默认 profile：`scenarioAllKeys` — **13 个 key 全启用**，**voice 仍 essentials**（降低 `/permissions`、`/agent`、`/apps` 等误触）
+- **仅 Codex 前台** 吞物理小键盘并显示置顶悬浮盘；其他 App / OneTone 设置页不显示悬浮盘
+- **悬浮盘**：贴 Codex 所在显示器右下角；点 **× / 关闭** 会关掉 `overlayEnabled`（可在识别页重新勾选）
+- **默认物理键**：麦克风（ACT10 / 按住听写）= **小键盘 0**；旋钮 ENC 无默认数字键（走 vendor HID / 点悬浮盘）
 - **13 个可见键**：`AG00–AG05`、`ACT06–ACT10`、`ACT12`、旋钮按压 `ENC`、摇杆 `JOY`
+- **ACT07** 面文案为 **命令菜单**（slot=`commandPalette` / `Ctrl+K`）；批准/发送仍为 **ACT12 → stopOrSend**
+- **Slash 槽位展示**：UI / overlay 副文案为「插入 /plan」等；冲突检测仍用真实 chord（勿与展示文案混用）
 - 默认：矩阵 12 键 + `ENC` 已预填能力与小键盘源；`JOY` 默认可点可绑，无 scan / 无 slot
 - 旋钮协议 ID 统一为 **`ENC`**（不再使用 `DIAL`）；已删除幽灵键 `NPAD0` / `NPAD_ENTER`
 - **触发页**：点键帽只在 hero 预览「小键盘键 · 能力」，不改配置
 - **识别页**：编辑 / 运行 两模式（默认编辑）；编辑打开键帽弹层；运行用鼠标点虚拟盘试触发（说话键按住听写；需 Codex 前台）
-- **右侧方案**：显示全部虚拟键盘映射（键位 · 小键盘源 · 能力 · 快捷键）；点击行可编辑键帽
+- **右侧方案**：显示全部虚拟键盘映射（键位 · 小键盘源 · 能力 · 快捷键/插入文案）；点击行可编辑键帽
 - **置顶小窗**：固定运行模式，点击键帽触发；配置请回识别页
 - Codex 桌面端前台进程为 **`ChatGPT.exe`**（Windows 包 `OpenAI.Codex_*`）；仍兼容 `Codex.exe` 辅助进程
 - **fttawa 硬件**：[fttawa/codex-micro](https://github.com/fttawa/codex-micro) 经 vendor HID（`v.oai.hid`）上报；旋转 `ENC_CW`/`ENC_CC` 与导航 `NAV_*` 暂不绑定

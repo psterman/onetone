@@ -80,10 +80,10 @@
     }
     return applyCodexPackToMapping(m, {
       channels: ['keys', 'voice', 'camera'],
-      essentialsOnly: true,
+      essentialsOnly: false,
       reset: !hasCodexPack(m),
       cameraTarget: 'override',
-      enableProfile: 'scenarioEssentials',
+      enableProfile: 'scenarioAllKeys',
       setAppTarget: true,
       persist: opts.persist !== false
     });
@@ -147,7 +147,7 @@
   function applyKeysVoice(m, opts) {
     var A = agent();
     if (!A || !m) return;
-    var profile = opts.enableProfile || 'scenarioEssentials';
+    var profile = opts.enableProfile || 'scenarioAllKeys';
     var channels = opts.channels || ['keys', 'voice'];
     var wantKeys = channels.indexOf('keys') >= 0;
     var wantVoice = channels.indexOf('voice') >= 0;
@@ -272,7 +272,7 @@
    *   essentialsOnly?: boolean,
    *   reset?: boolean,
    *   cameraTarget?: 'override'|'globalPrefs',
-   *   enableProfile?: 'globalSafe'|'scenarioEssentials',
+   *   enableProfile?: 'globalSafe'|'scenarioEssentials'|'scenarioAllKeys',
    *   setAppTarget?: boolean,
    *   persist?: boolean
    * }} opts
@@ -283,7 +283,7 @@
     if (!A) return null;
     var channels = opts.channels || ['keys', 'voice', 'camera'];
     var enableProfile = opts.enableProfile
-      || (opts.cameraTarget === 'globalPrefs' ? 'globalSafe' : 'scenarioEssentials');
+      || (opts.cameraTarget === 'globalPrefs' ? 'globalSafe' : 'scenarioAllKeys');
 
     var channelOpts = {
       channels: channels,
@@ -336,10 +336,10 @@
 
     applyCodexPackToMapping(m, {
       channels: ['keys', 'voice', 'camera'],
-      essentialsOnly: true,
+      essentialsOnly: false,
       reset: !!opts.reset || !hadPack,
       cameraTarget: 'override',
-      enableProfile: 'scenarioEssentials',
+      enableProfile: 'scenarioAllKeys',
       setAppTarget: true,
       persist: true
     });

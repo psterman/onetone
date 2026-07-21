@@ -89,6 +89,12 @@
         }
         return;
       }
+      if(msg.type==='codex_micro_overlay_dismissed'){
+        if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.onOverlayDismissed){
+          global.OneToneCodexMicroPadUi.onOverlayDismissed();
+        }
+        return;
+      }
       if(msg.type==='mvp_paused'&&msg.ok){ runtime.paused=true; hooks.render(); }
       if(msg.type==='mvp_resumed'&&msg.ok){ runtime.paused=false; hooks.render(); }
       function applyRuntimeFields(msg){

@@ -63,6 +63,11 @@ const PRESET_MATCHERS: &[PresetMatcher] = &[
     },
 ];
 
+fn path_has_marker(path: &str, marker: &str) -> bool {
+    path.to_ascii_lowercase()
+        .contains(&marker.to_ascii_lowercase())
+}
+
 pub fn preset_app_id_for_path(path: &str) -> Option<String> {
     let file_name = path.rsplit(['\\', '/']).next().unwrap_or_default();
     for matcher in PRESET_MATCHERS {
@@ -75,7 +80,7 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
         }
         let path_ok = matcher
             .path_marker
-            .map(|marker| path.contains(marker))
+            .map(|marker| path_has_marker(path, marker))
             .unwrap_or(true);
         if path_ok {
             return Some(matcher.id.to_string());
@@ -84,29 +89,54 @@ pub fn preset_app_id_for_path(path: &str) -> Option<String> {
     None
 }
 
+/// True when process AUMID / path belongs to the Store Codex package (not consumer ChatGPT).
+fn looks_like_codex_package(path: Option<&str>, aumid: Option<&str>) -> bool {
+    if path.is_some_and(|p| path_has_marker(p, "OpenAI.ChatGPT") && !path_has_marker(p, "OpenAI.Codex"))
+    {
+        return false;
+    }
+    if path.is_some_and(|p| path_has_marker(p, "OpenAI.Codex")) {
+        return true;
+    }
+    aumid.is_some_and(|id| {
+        let lower = id.to_ascii_lowercase();
+        lower.starts_with("openai.codex_") || lower.contains("openai.codex_")
+    })
+}
+
 /// Fallback when full path is unavailable (common for some packaged-app queries):
-/// ChatGPT.exe / Codex.exe + window title mentioning Codex, excluding consumer ChatGPT package.
+/// ChatGPT.exe / Codex.exe + Codex package path/AUMID, or title mentioning Codex.
+/// Store Codex UI currently titles itself "ChatGPT" (no "codex" substring).
 pub fn preset_app_id_for_exe_title(exe_name: &str, window_title: &str, full_path: Option<&str>) -> Option<String> {
+    preset_app_id_for_exe_title_with_aumid(exe_name, window_title, full_path, None)
+}
+
+pub fn preset_app_id_for_exe_title_with_aumid(
+    exe_name: &str,
+    window_title: &str,
+    full_path: Option<&str>,
+    aumid: Option<&str>,
+) -> Option<String> {
     if let Some(path) = full_path {
         if let Some(id) = preset_app_id_for_path(path) {
             return Some(id);
         }
         // Consumer ChatGPT store package — never treat as Codex.
-        if path.contains("OpenAI.ChatGPT") {
+        if path_has_marker(path, "OpenAI.ChatGPT") && !path_has_marker(path, "OpenAI.Codex") {
             return None;
         }
     }
     let exe = exe_name.rsplit(['\\', '/']).next().unwrap_or(exe_name);
-    let is_codex_exe = exe.eq_ignore_ascii_case("ChatGPT.exe") || exe.eq_ignore_ascii_case("Codex.exe");
+    let is_codex_exe =
+        exe.eq_ignore_ascii_case("ChatGPT.exe") || exe.eq_ignore_ascii_case("Codex.exe");
     if !is_codex_exe {
         return None;
     }
-    let title = window_title.to_ascii_lowercase();
-    if title.contains("codex") {
+    if looks_like_codex_package(full_path, aumid) {
         return Some(CODEX_APP_TARGET_ID.to_string());
     }
-    // Path already proved OpenAI.Codex_* even if title is empty/generic.
-    if full_path.is_some_and(|p| p.contains("OpenAI.Codex")) {
+    let title = window_title.to_ascii_lowercase();
+    if title.contains("codex") {
         return Some(CODEX_APP_TARGET_ID.to_string());
     }
     None
@@ -220,6 +250,62 @@ fn window_title_for_hwnd(hwnd: winapi::shared::windef::HWND) -> String {
 }
 
 #[cfg(windows)]
+fn application_user_model_id(pid: u32) -> Option<String> {
+    use std::os::windows::ffi::OsStringExt;
+    use winapi::shared::minwindef::HMODULE;
+    use winapi::um::handleapi::CloseHandle;
+    use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
+    use winapi::um::processthreadsapi::OpenProcess;
+    use winapi::um::winnt::{HANDLE, PROCESS_QUERY_LIMITED_INFORMATION};
+
+    type GetAumidFn = unsafe extern "system" fn(HANDLE, *mut u32, *mut u16) -> i32;
+
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if handle.is_null() {
+            return None;
+        }
+        let module: HMODULE = LoadLibraryA(b"kernel32.dll\0".as_ptr() as *const i8);
+        if module.is_null() {
+            CloseHandle(handle);
+            return None;
+        }
+        let sym = GetProcAddress(module, b"GetApplicationUserModelId\0".as_ptr() as *const i8);
+        if sym.is_null() {
+            CloseHandle(handle);
+            return None;
+        }
+        let get_aumid: GetAumidFn = std::mem::transmute(sym);
+        let mut len: u32 = 256;
+        let mut buf = vec![0u16; len as usize];
+        let mut hr = get_aumid(handle, &mut len, buf.as_mut_ptr());
+        if hr < 0 && len > 0 && len < 4096 {
+            buf.resize(len as usize, 0);
+            hr = get_aumid(handle, &mut len, buf.as_mut_ptr());
+        }
+        CloseHandle(handle);
+        if hr < 0 || len == 0 {
+            return None;
+        }
+        let end = (len as usize).min(buf.len());
+        let end = buf[..end].iter().position(|&c| c == 0).unwrap_or(end);
+        let s = std::ffi::OsString::from_wide(&buf[..end])
+            .to_string_lossy()
+            .to_string();
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn application_user_model_id(_pid: u32) -> Option<String> {
+    None
+}
+
+#[cfg(windows)]
 fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option<AppIdentity> {
     let exe_name = process_exe_name(pid)?;
     let full_path = process_image_path(pid);
@@ -228,12 +314,18 @@ fn identity_for_pid_hwnd(pid: u32, hwnd: winapi::shared::windef::HWND) -> Option
     } else {
         window_title_for_hwnd(hwnd)
     };
+    let aumid = application_user_model_id(pid);
     let matched_preset_app_id = full_path
         .as_deref()
         .and_then(preset_app_id_for_path)
         .or_else(|| preset_app_id_for_pid(pid))
         .or_else(|| {
-            preset_app_id_for_exe_title(&exe_name, &window_title, full_path.as_deref())
+            preset_app_id_for_exe_title_with_aumid(
+                &exe_name,
+                &window_title,
+                full_path.as_deref(),
+                aumid.as_deref(),
+            )
         });
     Some(AppIdentity {
         pid,
@@ -619,6 +711,30 @@ mod tests {
     fn preset_exe_title_fallback_matches_codex_ui() {
         assert_eq!(
             preset_app_id_for_exe_title("ChatGPT.exe", "Codex", None).as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        // Store Codex window title is often just "ChatGPT" — need package path/AUMID.
+        assert_eq!(
+            preset_app_id_for_exe_title("ChatGPT.exe", "ChatGPT", None),
+            None
+        );
+        assert_eq!(
+            preset_app_id_for_exe_title_with_aumid(
+                "ChatGPT.exe",
+                "ChatGPT",
+                None,
+                Some("OpenAI.Codex_2p2nqsd0c76g0!App")
+            )
+            .as_deref(),
+            Some(CODEX_APP_TARGET_ID)
+        );
+        assert_eq!(
+            preset_app_id_for_exe_title(
+                "ChatGPT.exe",
+                "ChatGPT",
+                Some(r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe")
+            )
+            .as_deref(),
             Some(CODEX_APP_TARGET_ID)
         );
         assert_eq!(

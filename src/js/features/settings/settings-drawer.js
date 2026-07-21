@@ -361,10 +361,17 @@
         }else if(view==='hub'&&global.OneToneHabitHub){
           global.OneToneHabitHub.render();
         }
-        if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
-        if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.render();
-        if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.onPanelVisibility();
-        if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+        // Hub: only list + shell. Defer layer/voice chrome until user opens a scenario.
+        if(view==='hub'){
+          if(global.OneToneHabitLayerNav&&global.OneToneHabitLayerNav.onPanelVisibility){
+            global.OneToneHabitLayerNav.onPanelVisibility();
+          }
+        }else{
+          if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
+          if(global.OneToneSceneFlowSummary) global.OneToneSceneFlowSummary.render();
+          if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.onPanelVisibility();
+          if(global.OneToneSceneVoiceTab) global.OneToneSceneVoiceTab.render();
+        }
         var ms=Math.round(((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now())-t0);
         feLog('fe habit panel refresh done '+ms+'ms view='+view);
       }catch(err){
@@ -383,10 +390,13 @@
       setTimeout(finishHeavy,0);
     }
 
-    requestAnimationFrame(function(){
-      if(!ui.drawerOpen||!isHabitsPanel()) return;
-      hooks().renderMappingChrome();
-    });
+    // Keys chrome is for keys panel — skip on habits hub (was remounting scheme/voice UI).
+    if(view!=='hub'){
+      requestAnimationFrame(function(){
+        if(!ui.drawerOpen||!isHabitsPanel()) return;
+        hooks().renderMappingChrome();
+      });
+    }
   }
 
 

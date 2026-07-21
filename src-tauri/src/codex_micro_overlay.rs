@@ -16,7 +16,7 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 300.0;
-const OVERLAY_HEIGHT: f64 = 300.0;
+const OVERLAY_HEIGHT: f64 = 328.0;
 const HIGHLIGHT_MS: u64 = 320;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -157,8 +157,8 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
     },
     OverlayCellDef {
         micro_key_id: "ACT07",
-        label_zh: "批准",
-        label_en: "Approve",
+        label_zh: "命令菜单",
+        label_en: "Command palette",
         kind: "command",
         default_icon: "palette",
     },
@@ -197,6 +197,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         eprintln!("codex_micro_overlay: window label missing — overlay will not show");
         return Ok(());
     };
+    cache_overlay_hwnd_from_window(&win);
     win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = win.set_shadow(false);
     let _ = win.set_always_on_top(true);
@@ -214,28 +215,56 @@ fn codex_is_foreground() -> bool {
     false
 }
 
-/// Show pad while configuring in OneTone, or when Codex desktop is focused.
-/// (Web ChatGPT / other apps do not count — click fire still requires Codex FG.)
+/// True when the Micro overlay webview itself holds foreground (user clicked a keycap).
+#[cfg(windows)]
+pub fn overlay_is_foreground() -> bool {
+    overlay_hwnd_is_foreground()
+}
+
+#[cfg(not(windows))]
+pub fn overlay_is_foreground() -> bool {
+    false
+}
+
+#[cfg(windows)]
+fn overlay_hwnd_is_foreground() -> bool {
+    use winapi::um::winuser::GetForegroundWindow;
+
+    let overlay_hwnd = *overlay_hwnd_cache().lock();
+    if overlay_hwnd == 0 {
+        return false;
+    }
+    unsafe { GetForegroundWindow() as isize == overlay_hwnd }
+}
+
+#[cfg(windows)]
+static OVERLAY_HWND: OnceLock<ParkingMutex<isize>> = OnceLock::new();
+
+#[cfg(windows)]
+fn overlay_hwnd_cache() -> &'static ParkingMutex<isize> {
+    OVERLAY_HWND.get_or_init(|| ParkingMutex::new(0))
+}
+
+pub fn cache_overlay_hwnd_from_window(win: &WebviewWindow) {
+    #[cfg(windows)]
+    {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        if let Ok(handle) = win.window_handle() {
+            if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                *overlay_hwnd_cache().lock() = platform.hwnd.get() as isize;
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = win;
+    }
+}
+
+/// Show pad when Codex desktop is focused, or while the user is clicking the pad itself.
 #[cfg(windows)]
 fn overlay_host_allows_show() -> bool {
-    if codex_is_foreground() {
-        return true;
-    }
-    let Some(identity) = crate::app_identity::foreground_app_identity() else {
-        return false;
-    };
-    let exe = identity.exe_name.to_ascii_lowercase();
-    if exe.contains("onetone") {
-        return true;
-    }
-    identity
-        .full_path
-        .as_deref()
-        .map(|p| {
-            let pl = p.to_ascii_lowercase();
-            pl.contains("onetone") || pl.contains("voice-pilot")
-        })
-        .unwrap_or(false)
+    codex_is_foreground() || overlay_hwnd_is_foreground()
 }
 
 #[cfg(not(windows))]
@@ -275,7 +304,8 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
 }
 
 fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
-    let show = overlay_host_allows_show();
+    // Use stable host latch (same as maybe_tick) so show/hide doesn't thrash on a raw FG blip.
+    let show = *last_foreground_codex().lock();
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
         return CodexMicroOverlaySnapshot {
             visible: false,
@@ -298,10 +328,16 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         if bound {
             bound_count += 1;
         }
-        let sub = slot_id
-            .and_then(|slot| agent_key_binding_for_slot(mapping, slot))
-            .map(|b| b.trigger_binding.clone())
-            .unwrap_or_default();
+        let mut sub = String::new();
+        if let Some(slot) = slot_id {
+            if let Some(insert) = crate::agent::templates::slot_by_id(slot)
+                .and_then(|s| s.insert_text)
+            {
+                sub = format!("插入 {insert}");
+            } else if let Some(b) = agent_key_binding_for_slot(mapping, slot) {
+                sub = b.trigger_binding.clone();
+            }
+        }
         let ui_icon_id = route
             .map(|r| r.ui_icon_id.trim().to_string())
             .filter(|s| !s.is_empty())
@@ -332,7 +368,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     };
 
     CodexMicroOverlaySnapshot {
-        visible: show,
+        visible: show && pad.enabled && pad.overlay_enabled,
         enabled: pad.enabled,
         bound_count,
         active_micro_key_id: active,
@@ -365,6 +401,7 @@ pub fn push_state(app: &AppHandle, state: &AppState) {
             let Some(win) = app_clone.get_webview_window(CODEX_MICRO_OVERLAY_LABEL) else {
                 return;
             };
+            cache_overlay_hwnd_from_window(&win);
             if visible {
                 position_overlay(&win);
                 let _ = win.set_size(Size::Logical(LogicalSize::new(
@@ -403,10 +440,8 @@ fn position_overlay(win: &WebviewWindow) {
     let h = (OVERLAY_HEIGHT * scale).round() as i32;
     let margin = (12.0 * scale).round() as i32;
 
-    let monitor = win
-        .current_monitor()
-        .ok()
-        .flatten()
+    let monitor = monitor_for_codex(win)
+        .or_else(|| win.current_monitor().ok().flatten())
         .or_else(|| win.primary_monitor().ok().flatten());
 
     let (work_x, work_y, work_right, work_bottom) = if let Some(m) = monitor {
@@ -428,6 +463,97 @@ fn position_overlay(win: &WebviewWindow) {
     let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
 }
 
+/// Prefer the monitor that hosts the Codex desktop window.
+fn monitor_for_codex(win: &WebviewWindow) -> Option<tauri::Monitor> {
+    let (cx, cy) = codex_window_center()?;
+    let monitors = win.available_monitors().ok()?;
+    for m in monitors {
+        let pos = m.position();
+        let size = m.size();
+        let right = pos.x + size.width as i32;
+        let bottom = pos.y + size.height as i32;
+        if cx >= pos.x && cy >= pos.y && cx < right && cy < bottom {
+            return Some(m);
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn codex_window_center() -> Option<(i32, i32)> {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::{GetForegroundWindow, GetWindowRect};
+
+    // Overlay only shows while Codex is FG — use the foreground HWND (O(1)).
+    // Avoid EnumWindows + per-process identity probes (was a 假死 risk on ticks).
+    if !codex_is_foreground() {
+        return None;
+    }
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            return None;
+        }
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetWindowRect(hwnd, &mut rect) == 0 {
+            return None;
+        }
+        let area = (rect.right - rect.left) as i64 * (rect.bottom - rect.top) as i64;
+        if area <= 0 {
+            return None;
+        }
+        Some((
+            (rect.left + rect.right) / 2,
+            (rect.top + rect.bottom) / 2,
+        ))
+    }
+}
+
+#[cfg(not(windows))]
+fn codex_window_center() -> Option<(i32, i32)> {
+    None
+}
+
+/// Hide overlay and persist `overlayEnabled = false` on the active Codex pad.
+pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
+    let mut changed = false;
+    {
+        let mut cfg = state.cfg.lock();
+        for m in cfg.mappings.iter_mut() {
+            if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
+                continue;
+            }
+            let Some(pad) = m.codex_micro_pad.as_mut() else {
+                continue;
+            };
+            if !pad.overlay_enabled {
+                continue;
+            }
+            pad.overlay_enabled = false;
+            changed = true;
+        }
+        if changed {
+            crate::config::save_config(&cfg);
+            crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        }
+    }
+    if changed {
+        push_state(app, state);
+        if let Some(main) = app.get_webview_window("main") {
+            let _ = main.emit(
+                "to_js",
+                &serde_json::json!({ "type": "codex_micro_overlay_dismissed" }),
+            );
+        }
+    }
+    changed
+}
+
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let host_ok = stable_overlay_host(overlay_host_allows_show());
 
@@ -444,6 +570,22 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         active_codex_mapping_with_overlay(&cfg).is_some() && host_ok
     };
     let vis_changed = *last_visible().lock() != desired_visible;
+
+    if vis_changed {
+        let raw = overlay_host_allows_show();
+        let fg = crate::app_identity::foreground_app_identity();
+        let detail = format!(
+            "overlay visible={} host_ok={} raw_host={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+            desired_visible,
+            host_ok,
+            raw,
+            fg.as_ref().map(|i| i.exe_name.as_str()).unwrap_or(""),
+            fg.as_ref().map(|i| i.window_title.as_str()).unwrap_or(""),
+            fg.as_ref().and_then(|i| i.matched_preset_app_id.as_deref()),
+            fg.as_ref().and_then(|i| i.full_path.as_deref()).unwrap_or(""),
+        );
+        crate::app_log::log_line(state, "codex_overlay", &detail);
+    }
 
     if vis_changed || highlight_expired {
         push_state(app, state);
@@ -504,5 +646,68 @@ mod tests {
         let snap = build_snapshot_from_cfg(&cfg);
         assert!(!snap.visible);
         assert!(snap.cells.is_empty());
+    }
+
+    #[test]
+    fn overlay_sub_prefers_insert_text_and_act07_is_command_palette() {
+        use crate::config::{AgentBinding, CodexMicroPadKeyRoute};
+
+        let mut mapping = codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            keys: vec![
+                CodexMicroPadKeyRoute {
+                    micro_key_id: "AG01".into(),
+                    source_scan: 0x48,
+                    source_extended: false,
+                    slot_id: "plan".into(),
+                    ui_icon_id: String::new(),
+                    enabled: true,
+                },
+                CodexMicroPadKeyRoute {
+                    micro_key_id: "ACT07".into(),
+                    source_scan: 0x35,
+                    source_extended: true,
+                    slot_id: "commandPalette".into(),
+                    ui_icon_id: "palette".into(),
+                    enabled: true,
+                },
+            ],
+        });
+        mapping.agent_bindings = vec![
+            AgentBinding {
+                slot_id: "plan".into(),
+                action_id: "plan".into(),
+                trigger_type: "key".into(),
+                trigger_binding: "Ctrl+Alt+P".into(),
+                enabled: true,
+                execution_mode: Some("insertOnly".into()),
+                activation_scope: "foregroundApp".into(),
+            },
+            AgentBinding {
+                slot_id: "commandPalette".into(),
+                action_id: "commandPalette".into(),
+                trigger_type: "key".into(),
+                trigger_binding: "Ctrl+K".into(),
+                enabled: true,
+                execution_mode: Some("execute".into()),
+                activation_scope: "foregroundApp".into(),
+            },
+        ];
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![mapping];
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.cells.is_empty());
+
+        let plan = snap.cells.iter().find(|c| c.micro_key_id == "AG01").unwrap();
+        assert!(plan.bound);
+        assert_eq!(plan.sub, "插入 /plan");
+        assert_ne!(plan.sub, "Ctrl+Alt+P");
+
+        let act07 = snap.cells.iter().find(|c| c.micro_key_id == "ACT07").unwrap();
+        assert_eq!(act07.label, "命令菜单");
+        assert_eq!(act07.sub, "Ctrl+K");
     }
 }
