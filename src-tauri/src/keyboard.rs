@@ -77,7 +77,7 @@ pub fn show_window_no_activate(target_hwnd: winapi::shared::windef::HWND) -> boo
 
 #[cfg(windows)]
 pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
-    use winapi::um::processthreadsapi::GetCurrentThreadId;
+    use winapi::um::processthreadsapi::GetCurrentProcessId;
     use winapi::um::winuser::{
         AllowSetForegroundWindow, AttachThreadInput, BringWindowToTop, GetForegroundWindow,
         GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow,
@@ -107,21 +107,25 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
         let mut target_pid = 0u32;
         let fg_thread = GetWindowThreadProcessId(fg, &mut fg_pid);
         let target_thread = GetWindowThreadProcessId(target_hwnd, &mut target_pid);
-        let current_thread = GetCurrentThreadId();
-        if fg_thread != 0 && fg_thread != target_thread {
+        let our_pid = GetCurrentProcessId();
+        // AttachThreadInput against our own WebView2/UI threads deadlocks the overlay
+        // (soft-keyboard clicks → focus Codex while overlay owns FG). Never attach when
+        // either side is our process; also never join the calling worker into the queue.
+        let use_attach = fg_pid != 0
+            && target_pid != 0
+            && fg_pid != our_pid
+            && target_pid != our_pid
+            && fg_thread != 0
+            && target_thread != 0
+            && fg_thread != target_thread;
+        if use_attach {
             AttachThreadInput(fg_thread, target_thread, 1);
-        }
-        if current_thread != target_thread {
-            AttachThreadInput(current_thread, target_thread, 1);
         }
         AllowSetForegroundWindow(ASFW_ANY);
         BringWindowToTop(target_hwnd);
         let ok = SetForegroundWindow(target_hwnd) != 0;
-        if fg_thread != 0 && fg_thread != target_thread {
+        if use_attach {
             AttachThreadInput(fg_thread, target_thread, 0);
-        }
-        if current_thread != target_thread {
-            AttachThreadInput(current_thread, target_thread, 0);
         }
         ok
     }
@@ -311,14 +315,18 @@ pub fn release_chord(combo: &str) -> bool {
     }
     match parse_chord(trimmed) {
         Ok(tokens) => {
-            let mut release: Vec<INPUT> = tokens
-                .iter()
-                .rev()
-                .copied()
-                .map(token_to_release_input)
-                .collect();
-            send_inputs(&mut release);
-            send_guard::disarm();
+            // Keep guard armed across keyup + short drain so LL-hook / hotkey echo
+            // cannot re-enter hold start (observed as double start/release → 假死).
+            send_guard::arm_keys(&send_guard::guard_keys_from_combo(trimmed));
+            send_guard::run_guarded(220, || {
+                let mut release: Vec<INPUT> = tokens
+                    .iter()
+                    .rev()
+                    .copied()
+                    .map(token_to_release_input)
+                    .collect();
+                send_inputs(&mut release);
+            });
             true
         }
         Err(_) => false,

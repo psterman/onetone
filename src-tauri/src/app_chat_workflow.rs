@@ -242,6 +242,18 @@ pub fn run_hold_voice_foreground(
     let app = window.app_handle();
     let prefix = profile.error_prefix;
 
+    // Already holding this chord: ignore duplicate starts (overlay + presence race).
+    if crate::voice_end_runtime::held_voice_chord(state.as_ref())
+        .is_some_and(|held| crate::key_chord::chords_equivalent(&held, voice_key))
+    {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "hold",
+            &format!("{prefix} hold already active key={voice_key}"),
+        );
+        return Ok(format!("{prefix}_hold_active"));
+    }
+
     if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
         crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
         crate::app_log::log_line(state.as_ref(), "hold", &format!("{prefix} hold toggle {mapping_id}"));

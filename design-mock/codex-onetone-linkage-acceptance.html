@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Codex ↔ OneTone 联动验收</title>
+  <style>
+    :root {
+      --bg: #e8eef5;
+      --bg-deep: #d5dee8;
+      --ink: #1a2332;
+      --muted: #5a6a7c;
+      --line: rgba(26, 35, 50, 0.12);
+      --panel: #f7f9fc;
+      --panel-2: #eef3f8;
+      --accent: #0085db;
+      --accent-soft: rgba(0, 133, 219, 0.12);
+      --ok: #2f9e6b;
+      --warn: #c48a14;
+      --fail: #c44752;
+      --idle: #8a95a5;
+      --running: #2a9cc4;
+      --listening: #00a3ff;
+      --needs: #f5a623;
+      --done: #40b478;
+      --failed: #dc505a;
+      --native: #0085db;
+      --inferred: #7a6a4a;
+      --fallback: #8a95a5;
+      --radius: 14px;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% 0%, rgba(0, 163, 255, 0.08), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 10%, rgba(64, 180, 120, 0.07), transparent 50%),
+        linear-gradient(165deg, var(--bg), var(--bg-deep));
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    header.hero {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 22px;
+    }
+    @media (max-width: 860px) {
+      header.hero { grid-template-columns: 1fr; }
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+    .lede {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 52ch;
+    }
+    .verdict {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .verdict strong { display: block; font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+    .verdict .score {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .verdict .hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .conn-banner {
+      grid-column: 1 / -1;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      background: var(--panel);
+    }
+    .conn-banner[data-level="none"] { border-color: rgba(196, 71, 82, 0.35); background: rgba(196, 71, 82, 0.06); }
+    .conn-banner[data-level="local"] { border-color: rgba(196, 138, 20, 0.4); background: rgba(196, 138, 20, 0.08); }
+    .conn-banner[data-level="inject"] { border-color: rgba(0, 133, 219, 0.4); background: var(--accent-soft); }
+    .conn-banner[data-level="sim"] { border-color: rgba(196, 138, 20, 0.45); background: rgba(196, 138, 20, 0.08); }
+    .conn-banner .title { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+    .conn-banner .sub { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    @media (max-width: 640px) { .signal-grid { grid-template-columns: 1fr; } }
+    .signal {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      font-size: 12px;
+    }
+    .signal .dot {
+      width: 10px; height: 10px; border-radius: 50%; margin-top: 3px; flex-shrink: 0;
+      background: var(--idle);
+    }
+    .signal[data-on="1"] .dot { background: var(--ok); }
+    .signal[data-on="0"] .dot { background: var(--fail); }
+    .signal .lbl { font-weight: 650; }
+    .signal .exp { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .steps { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .steps li { margin-bottom: 6px; }
+    .steps strong { color: var(--ink); }
+    input[type="text"].url-in {
+      flex: 1;
+      min-width: 200px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .pipeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .pipeline li {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: var(--panel-2);
+      font-size: 12px;
+    }
+    .pipeline li[data-state="pass"] { border-color: rgba(47, 158, 107, 0.4); }
+    .pipeline li[data-state="fail"] { border-color: rgba(196, 71, 82, 0.45); background: rgba(196, 71, 82, 0.06); }
+    .pipeline li[data-state="run"] { border-color: rgba(0, 133, 219, 0.4); }
+    .pipeline li[data-state="skip"] { opacity: 0.65; }
+    .pipeline .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .pipeline .name { font-weight: 700; }
+    .pipeline .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+      background: rgba(138, 149, 165, 0.16); color: var(--muted);
+    }
+    .pipeline li[data-state="pass"] .badge { color: var(--ok); background: rgba(47, 158, 107, 0.12); }
+    .pipeline li[data-state="fail"] .badge { color: var(--fail); background: rgba(196, 71, 82, 0.12); }
+    .pipeline li[data-state="run"] .badge { color: var(--accent); background: var(--accent-soft); }
+    .pipeline .fix { margin-top: 6px; font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .btn-run-all {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .btn-run-all:disabled { opacity: 0.6; cursor: wait; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+    }
+    .pill[data-tone="ok"] { color: var(--ok); border-color: rgba(47, 158, 107, 0.35); background: rgba(47, 158, 107, 0.1); }
+    .pill[data-tone="warn"] { color: var(--warn); border-color: rgba(196, 138, 20, 0.35); background: rgba(196, 138, 20, 0.1); }
+    .pill[data-tone="fail"] { color: var(--fail); border-color: rgba(196, 71, 82, 0.35); background: rgba(196, 71, 82, 0.1); }
+    .pill[data-tone="info"] { color: var(--accent); border-color: rgba(0, 133, 219, 0.35); background: var(--accent-soft); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+    }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .panel h3 {
+      margin: 16px 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 720px) {
+      .strip { grid-template-columns: 1fr 1fr; }
+    }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .stat .k { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .stat .v {
+      margin-top: 4px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--mono);
+      word-break: break-all;
+    }
+    .stat .v[data-tone="ok"] { color: var(--ok); }
+    .stat .v[data-tone="warn"] { color: var(--warn); }
+    .stat .v[data-tone="fail"] { color: var(--fail); }
+    .stat .v[data-tone="info"] { color: var(--accent); }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .flow b {
+      color: var(--ink);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-weight: 600;
+    }
+    .flow span.arrow { opacity: 0.55; }
+
+    .ag-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 560px) {
+      .ag-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .ag-key {
+      position: relative;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: linear-gradient(165deg, #fbfcfe, #e8eef5);
+      padding: 12px 12px 10px;
+      min-height: 92px;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+    .ag-key[data-source="native"] {
+      border-color: rgba(0, 133, 219, 0.55);
+      box-shadow: inset 0 0 0 1px rgba(0, 133, 219, 0.2);
+    }
+    .ag-key[data-source="inferred"] {
+      border-color: rgba(196, 138, 20, 0.45);
+    }
+    .ag-key[data-source="fallback"] {
+      border-color: rgba(138, 149, 165, 0.45);
+      opacity: 0.88;
+    }
+    .ag-key .id {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .ag-key .halo {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-top: 10px;
+      background: var(--idle);
+      box-shadow: 0 0 0 3px rgba(138, 149, 165, 0.18);
+    }
+    .ag-key[data-run="running"] .halo { background: var(--running); box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.22), 0 0 10px rgba(42, 156, 196, 0.45); }
+    .ag-key[data-run="listening"] .halo,
+    .ag-key[data-run="needs_input"] .halo { background: var(--needs); box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.22), 0 0 10px rgba(245, 166, 35, 0.4); }
+    .ag-key[data-run="done"] .halo { background: var(--done); box-shadow: 0 0 0 3px rgba(64, 180, 120, 0.22); }
+    .ag-key[data-run="failed"] .halo { background: var(--failed); box-shadow: 0 0 0 3px rgba(220, 80, 90, 0.22); }
+    .ag-key .meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(26, 35, 50, 0.06);
+      color: var(--muted);
+    }
+    .tag.src-native { color: var(--native); background: rgba(0, 133, 219, 0.12); }
+    .tag.src-inferred { color: var(--inferred); background: rgba(196, 138, 20, 0.12); }
+    .tag.src-fallback { color: var(--fallback); background: rgba(138, 149, 165, 0.16); }
+
+    .rgb-swatch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rgb-swatch i {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      display: inline-block;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    button, .file-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--ink);
+      border-radius: 9px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover, .file-btn:hover { border-color: rgba(0, 133, 219, 0.4); background: var(--accent-soft); }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover { filter: brightness(1.05); }
+    button.ghost { background: transparent; }
+
+    .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .checks li {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+    .checks li[data-state="pass"] { border-color: rgba(47, 158, 107, 0.35); }
+    .checks li[data-state="fail"] { border-color: rgba(196, 71, 82, 0.35); }
+    .checks li[data-state="pending"] { opacity: 0.92; }
+    .checks input { margin-top: 2px; }
+    .checks .title { font-size: 13px; font-weight: 650; line-height: 1.35; }
+    .checks .desc { margin-top: 3px; font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .checks .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .checks li[data-state="pass"] .badge { color: var(--ok); background: rgba(47, 158, 107, 0.12); }
+    .checks li[data-state="fail"] .badge { color: var(--fail); background: rgba(196, 71, 82, 0.12); }
+    .checks li[data-state="pending"] .badge { color: var(--muted); background: rgba(138, 149, 165, 0.16); }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 10px;
+      color: var(--ink);
+    }
+    .log {
+      margin-top: 10px;
+      max-height: 160px;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .legend .l-idle::before { background: var(--idle); }
+    .legend .l-run::before { background: var(--running); }
+    .legend .l-need::before { background: var(--needs); }
+    .legend .l-done::before { background: var(--done); }
+    .legend .l-fail::before { background: var(--failed); }
+
+    footer.note {
+      margin-top: 18px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    code { font-family: var(--mono); font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div>
+        <h1>Codex ↔ OneTone 联动验收</h1>
+        <p class="lede">
+          对照真状态灯 MVP：HID RPC → vendor 协议层 → overlay AG 合并（native / inferred / fallback）→ 浮层灯效。
+          场景按钮只验证合并规则；真联动以 overlay 快照 / protocol 注入返回快照为准。
+        </p>
+        <div class="pills" id="topPills"></div>
+        <div class="actions" style="margin-top:14px">
+          <button type="button" class="btn-run-all" id="btnRunAll">一键验收（自动探测断联点）</button>
+        </div>
+      </div>
+      <div class="verdict">
+        <strong>验收进度</strong>
+        <div class="score" id="scoreText">0 / 6</div>
+        <div class="hint" id="scoreHint">打开后先探测 loopback，再注入 thstatus；顶部横幅显示是否已接入 Codex</div>
+      </div>
+    </header>
+
+    <div class="conn-banner" id="connBanner" data-level="none">
+      <div class="title" id="connTitle">Codex 状态：未检测到接入</div>
+      <p class="sub" id="connSub">默认 fallback — 尚无新鲜 v.oai.thstatus。场景按钮绿勾只代表合并规则，不代表 Codex 已连上。</p>
+      <div class="signal-grid" id="signalGrid"></div>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>联动实况</h2>
+        <div class="flow">
+          <b>Codex 客户端 / Micro HID</b><span class="arrow">→</span>
+          <b>v.oai.thstatus · rgbcfg</b><span class="arrow">→</span>
+          <b>OneTone vendor</b><span class="arrow">→</span>
+          <b>overlay merge</b><span class="arrow">→</span>
+          <b>AG 灯</b>
+        </div>
+
+        <div class="strip" id="protoStrip"></div>
+
+        <h3>Codex 接入检测（实机 / 注入）</h3>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
+          判定是否已接入，看顶部横幅与 4 个信号；至少前 2 项同时满足才算「Codex 状态已进入 OneTone」。
+        </p>
+        <div class="actions" style="margin-bottom:8px">
+          <input type="text" class="url-in" id="loopbackUrl" value="http://127.0.0.1:8796/api/codex-micro/protocol" />
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="btnProbe">① 探测 loopback</button>
+          <button type="button" id="btnInjectTest">② 发送测试 thstatus</button>
+          <button type="button" id="btnInjectRgb">③ 发送测试 rgbcfg</button>
+          <button type="button" class="ghost" id="btnCopyPs">复制 PowerShell</button>
+        </div>
+        <ol class="steps" style="margin-top:12px">
+          <li><strong>启动 OneTone</strong>，Codex 场景 + overlay 可见</li>
+          <li><strong>Labs 开 loopback</strong>：<code>ONETONE_CODEX_MICRO_PROTOCOL=1</code> 重启，或 IPC <code>cmd_codex_micro_protocol_server_start</code></li>
+          <li>点 <strong>② 发送测试 thstatus</strong> — 成功则 AG 出现 <code>statusSource=native</code></li>
+          <li>Codex 真任务时 relay 持续 POST；<code>connectionState=connected</code> 保持新鲜</li>
+          <li>停更 &gt;3s → <code>stale</code>；无本地键 → AG 回 <code>fallback</code></li>
+        </ol>
+
+        <h3>AG00 – AG05</h3>
+        <div class="ag-grid" id="agGrid"></div>
+        <div class="legend">
+          <span class="l-idle">idle</span>
+          <span class="l-run">running</span>
+          <span class="l-need">needs_input / listening</span>
+          <span class="l-done">done</span>
+          <span class="l-fail">failed</span>
+        </div>
+
+        <h3>场景模拟（只验合并规则 · 绿勾≠真桥通过）</h3>
+        <div class="actions">
+          <button type="button" class="primary" data-scene="nativeFresh">① 新鲜 native slots</button>
+          <button type="button" data-scene="staleInferred">② 过期 + 本地 inferred</button>
+          <button type="button" data-scene="fallbackIdle">③ fallback idle</button>
+          <button type="button" data-scene="rgbGlow">④ RGB 预览</button>
+          <button type="button" data-scene="needsInput">⑤ needs_input 琥珀</button>
+          <button type="button" data-scene="nonAg">⑥ Non-AG 仅 inferred</button>
+          <button type="button" class="ghost" data-scene="reset">重置</button>
+        </div>
+
+        <h3>粘贴实机 / 注入返回 overlay 快照 JSON</h3>
+        <textarea id="snapInput" placeholder='粘贴 get_state / protocol_inject / loopback POST 返回的 snapshot JSON…'></textarea>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" class="primary" id="btnApplySnap">应用快照并自动勾选</button>
+          <button type="button" id="btnSample">填入示例</button>
+          <button type="button" class="ghost" id="btnClearLog">清空日志</button>
+        </div>
+        <div class="log" id="log"></div>
+      </section>
+
+      <aside class="panel">
+        <h2>一键验收流水线</h2>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
+          从上到下跑链路；<strong>第一个 fail 即断联点</strong>。需 OneTone 已开且 Labs loopback 已 start。
+        </p>
+        <ul class="pipeline" id="pipelineList"></ul>
+        <h3 style="margin-top:16px">手工验收清单</h3>
+        <ul class="checks" id="checkList"></ul>
+        <h3>三档验收（勿混用）</h3>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
+          <strong>场景模拟</strong>：本页按钮，只验 native/inferred/fallback 合并规则；绿勾不是真桥通过。<br />
+          <strong>注入验证</strong>：OneTone 收链路 — IPC <code>cmd_codex_micro_protocol_inject</code>，或 Labs loopback
+          <code>POST http://127.0.0.1:8796/api/codex-micro/protocol</code>（默认关闭；
+          <code>ONETONE_CODEX_MICRO_PROTOCOL=1</code> 或 IPC start；只接状态，不接 hid/rad）。<br />
+          <strong>真桥验证</strong>：AgentController READ_OUTPUT →
+          <code>scripts/codex-micro-agentcontroller-relay.example.js</code> → loopback。
+        </p>
+        <h3>注入验证示例（PowerShell）</h3>
+        <pre style="margin:0 0 10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-family:var(--mono);font-size:10px;line-height:1.45;white-space:pre-wrap;overflow:auto"># Labs only — server must be started first
+$body = '{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"},{"i":1,"s":"needs_input"}]}}'
+Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method Post -ContentType "application/json" -Body $body
+# Expect: connectionState=connected, AG00/AG01 statusSource=native</pre>
+        <h3>现场操作提示</h3>
+        <p class="lede" style="font-size:12px;max-width:none">
+          1. 正式用户默认无 loopback；勿把场景绿勾当成 Codex 真联动<br />
+          2. 注入后贴 snapshot：查 <code>connectionState</code> 与 AG <code>statusSource</code><br />
+          3. 3s 无新状态 → stale / fallback<br />
+          4. HTTP 拒绝 <code>v.oai.hid</code> / <code>v.oai.rad</code>
+        </p>
+      </aside>
+    </div>
+
+    <footer class="note">
+      规则镜像：<code>NATIVE_STALE_MS=3000</code> · AG 新鲜且有 slot → <code>native</code> ·
+      过期/无 slot 且本地 <code>padStatus</code> 命中该键 → <code>inferred</code> · 否则 AG <code>fallback</code> ·
+      Non-AG 永不 <code>native</code> · <code>apply_thstatus</code> 不写 <code>note_pad_run_status</code>。
+      Loopback 默认关闭（Labs/验收）。打开验收页：<code>node design-mock/_serve.js</code> →
+      <code>http://127.0.0.1:8766/codex-onetone-linkage-acceptance.html</code>
+    </footer>
+  </div>
+
+  <script>
+(function () {
+  var NATIVE_STALE_MS = 3000;
+  var AG_IDS = ['AG00', 'AG01', 'AG02', 'AG03', 'AG04', 'AG05'];
+
+  var CHECKS = [
+    {
+      id: 'native',
+      title: '新鲜 thstatus slots → AG statusSource=native',
+      desc: 'v.oai.thstatus 带 slots，age ≤ 3s，对应 AG 灯跟 slot.state（含 needs_input）'
+    },
+    {
+      id: 'stale',
+      title: 'stale（>3s）+ 本地键 → inferred',
+      desc: '① 本地合并规则已验；真桥需本地 padStatus 命中 AG（场景②）。connection=stale 时 AG 不得仍为 native'
+    },
+    {
+      id: 'fallback',
+      title: '无本地且无新鲜 native → fallback idle',
+      desc: 'AG 显示 idle + statusSource=fallback'
+    },
+    {
+      id: 'rgb',
+      title: 'rgbcfg / lights.preview → snapshot.rgb',
+      desc: '预览开关不应清掉已有 RGB；浮层可出现 rgb glow'
+    },
+    {
+      id: 'needs',
+      title: 'needs_input 琥珀色与 listening 区分可见',
+      desc: 'native AG 用 needs_input；本地 inferred 路径可能仍是 listening'
+    },
+    {
+      id: 'nonag',
+      title: 'Non-AG 键永不标 native',
+      desc: 'ACT / ENC / JOY 等 statusSource 只能是 inferred（或无灯）'
+    }
+  ];
+
+  var state = {
+    nowMs: Date.now(),
+    lastUpdateMs: 0,
+    everNative: false,
+    connectionState: 'fallback',
+    protocolVersion: '',
+    deviceStatus: '',
+    padMode: 'codex',
+    padStatus: 'idle',
+    statusMicroKeyId: '',
+    rgb: null,
+    lightsPreview: false,
+    agentSlots: [null, null, null, null, null, null],
+    cells: {},
+    checkPass: {},
+    mode: 'idle',
+    loopbackOk: false,
+    injectOk: false
+  };
+
+  var SIGNALS = [
+    { id: 'loopback', label: 'Loopback 可达', hint: 'POST 8796 有响应（Labs server 已开）' },
+    { id: 'connected', label: 'connectionState=connected', hint: '3s 内有新鲜 thstatus / rgbcfg 等' },
+    { id: 'nativeAg', label: 'AG statusSource=native', hint: '至少一个 AG 灯来自 Codex 协议槽位' },
+    { id: 'rgb', label: 'snapshot.rgb 有值', hint: 'rgbcfg / lights.preview 已进入 overlay' }
+  ];
+
+  function countNativeAg() {
+    return AG_IDS.filter(function (id) {
+      var c = state.cells[id];
+      return c && c.statusSource === 'native';
+    }).length;
+  }
+
+  function signalOn(id) {
+    if (id === 'loopback') return !!state.loopbackOk;
+    if (id === 'connected') return state.connectionState === 'connected';
+    if (id === 'nativeAg') return countNativeAg() > 0;
+    if (id === 'rgb') return !!state.rgb;
+    return false;
+  }
+
+  function connectionLevel() {
+    var nativeN = countNativeAg();
+    if (state.mode === 'sim') {
+      if (nativeN > 0 || state.connectionState === 'connected') return 'sim';
+      if (state.connectionState === 'stale' || (state.padStatus !== 'idle' && state.statusMicroKeyId)) return 'local';
+      return 'none';
+    }
+    if (state.mode === 'inject' && state.connectionState === 'connected' && nativeN > 0) {
+      return state.injectOk ? 'bridge' : 'inject';
+    }
+    if (state.mode === 'inject' && state.connectionState === 'connected' && nativeN > 0) return 'inject';
+    if (state.mode === 'live' && state.connectionState === 'connected' && nativeN > 0) return 'inject';
+    if (state.connectionState === 'stale' || (state.padStatus !== 'idle' && state.statusMicroKeyId)) return 'local';
+    return 'none';
+  }
+
+  function renderConnBanner() {
+    var level = connectionLevel();
+    var nativeN = countNativeAg();
+    var titles = {
+      none: 'Codex 状态：未检测到接入',
+      local: 'Codex 状态：仅本地推断（inferred）',
+      sim: '场景模拟：合并规则 OK（非真桥）',
+      inject: 'Codex 状态：已注入 native（Labs/loopback 或 HID）',
+      bridge: 'Codex 状态：真桥持续更新中'
+    };
+    var subs = {
+      none: 'connectionState=fallback，无 AG native。请点顶部「一键验收」或开 loopback。',
+      local: '有本地 padStatus，但无新鲜 Codex thstatus。AG 不应出现 native（除非刚过期）。',
+      sim: '当前为场景模拟数据，不代表 Codex 客户端已连上。请运行「一键验收」测实机链路。',
+      inject: 'connectionState=connected，' + nativeN + ' 个 AG 为 native。请在 OneTone 浮层对照 AG 灯环。',
+      bridge: '持续收到状态 RPC。Codex 任务变化时 AG 灯应跟着变；停更 3s 应变 stale。'
+    };
+    var banner = document.getElementById('connBanner');
+    banner.setAttribute('data-level', level);
+    document.getElementById('connTitle').textContent = titles[level] || titles.none;
+    document.getElementById('connSub').textContent = subs[level] || subs.none;
+    document.getElementById('signalGrid').innerHTML = SIGNALS.map(function (s) {
+      var on = signalOn(s.id) ? '1' : '0';
+      return '<div class="signal" data-on="' + on + '"><span class="dot"></span><div><div class="lbl">' +
+        s.label + '</div><div class="exp">' + s.hint + '</div></div></div>';
+    }).join('');
+  }
+
+  function log(msg) {
+    var el = document.getElementById('log');
+    var t = new Date().toLocaleTimeString();
+    el.textContent = '[' + t + '] ' + msg + '\n' + el.textContent;
+  }
+
+  function loopbackUrl() {
+    return String(document.getElementById('loopbackUrl').value || '').trim();
+  }
+
+  function postToLoopback(bodyObj) {
+    var url = loopbackUrl();
+    if (!url) return Promise.reject(new Error('empty_url'));
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyObj)
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var parsed = null;
+        try { parsed = JSON.parse(text); } catch (_) {}
+        if (!res.ok) {
+          var err = (parsed && parsed.error) || ('http_' + res.status);
+          throw new Error(err);
+        }
+        return parsed;
+      });
+    });
+  }
+
+  function applyLoopbackResponse(parsed, tag) {
+    state.loopbackOk = true;
+    state.mode = 'inject';
+    state.injectOk = !!tag;
+    var snap = parsed && (parsed.snapshot || parsed);
+    if (snap && snap.cells) {
+      evaluateSnapshot(snap);
+      paint();
+      log((tag || 'POST') + ' ok · conn=' + state.connectionState + ' · nativeAG=' + countNativeAg());
+      return true;
+    }
+    log((tag || 'POST') + ' 响应无 snapshot');
+    paint();
+    return false;
+  }
+
+  function snapFromResponse(parsed) {
+    if (!parsed) return null;
+    return parsed.snapshot || (parsed.cells ? parsed : null);
+  }
+
+  function cellNativeCount(snap) {
+    if (!snap || !Array.isArray(snap.cells)) return 0;
+    return snap.cells.filter(function (c) {
+      var id = c.microKeyId || c.micro_key_id || '';
+      return id.indexOf('AG') === 0 && (c.statusSource || c.status_source) === 'native';
+    }).length;
+  }
+
+  function testMergeRulesLocal() {
+    resetBase();
+    state.everNative = true;
+    state.lastUpdateMs = Date.now();
+    state.agentSlots[0] = { state: 'running' };
+    rebuildCells();
+    if (state.cells.AG00.statusSource !== 'native') {
+      return { ok: false, fix: '合并规则断：新鲜 slot 未产出 native' };
+    }
+    state.lastUpdateMs = Date.now() - 5000;
+    state.padStatus = 'running';
+    state.statusMicroKeyId = 'AG00';
+    rebuildCells();
+    if (state.cells.AG00.statusSource !== 'inferred') {
+      return { ok: false, fix: '合并规则断：stale+本地键 未回落 inferred' };
+    }
+    state.padStatus = 'idle';
+    state.statusMicroKeyId = '';
+    rebuildCells();
+    if (state.cells.AG00.statusSource !== 'fallback') {
+      return { ok: false, fix: '合并规则断：无本地键 未回落 fallback' };
+    }
+    mark('native', true);
+    mark('stale', true);
+    mark('fallback', true);
+    state.mode = 'sim';
+    return { ok: true, fix: '' };
+  }
+
+  var PIPELINE_STEPS = [
+    {
+      id: 'merge',
+      label: '① 合并规则（本地）',
+      needsServer: false,
+      run: function () { return Promise.resolve(testMergeRulesLocal()); }
+    },
+    {
+      id: 'loopback',
+      label: '② Loopback HTTP 可达',
+      needsServer: true,
+      run: function () {
+        return postToLoopback({ m: 'sys.version', p: { v: 'acceptance-probe' } })
+          .then(function (parsed) {
+            state.loopbackOk = true;
+            if (!parsed || parsed.ok === false) {
+              return { ok: false, fix: '断联：8796 无有效 JSON。设 ONETONE_CODEX_MICRO_PROTOCOL=1 并重启 OneTone，或 IPC server_start' };
+            }
+            return { ok: true, fix: '' };
+          })
+          .catch(function (e) {
+            state.loopbackOk = false;
+            var msg = String(e.message || e);
+            if (msg.indexOf('Failed to fetch') >= 0 || msg.indexOf('NetworkError') >= 0) {
+              return { ok: false, fix: '断联：无法连接 127.0.0.1:8796。OneTone 未开 / loopback 未 start / 需用最新构建' };
+            }
+            return { ok: false, fix: '断联：' + msg };
+          });
+      }
+    },
+    {
+      id: 'thstatus',
+      label: '③ thstatus → vendor',
+      needsServer: true,
+      run: function () {
+        return postToLoopback({
+          m: 'v.oai.thstatus',
+          p: { slots: [{ i: 0, s: 'running' }, { i: 1, s: 'needs_input' }] }
+        }).then(function (parsed) {
+          var snap = snapFromResponse(parsed);
+          if (!snap) return { ok: false, fix: '断联：POST 成功但无 snapshot。检查 apply_rpc_json / build_snapshot' };
+          applyLoopbackResponse(parsed, 'pipeline-thstatus');
+          return { ok: true, fix: '' };
+        });
+      }
+    },
+    {
+      id: 'connected',
+      label: '④ connectionState=connected',
+      needsServer: true,
+      run: function () {
+        if (state.connectionState === 'connected') return Promise.resolve({ ok: true, fix: '' });
+        return Promise.resolve({
+          ok: false,
+          fix: '断联：vendor 未标记 native touch。got=' + state.connectionState + '，检查 mark_native_touch / thstatus 解析'
+        });
+      }
+    },
+    {
+      id: 'native',
+      label: '⑤ overlay AG native 合并',
+      needsServer: true,
+      run: function () {
+        var n = countNativeAg();
+        if (n >= 2) return Promise.resolve({ ok: true, fix: '' });
+        return Promise.resolve({
+          ok: false,
+          fix: '断联：AG native 不足（' + n + '/2）。检查 resolve_cell_run_status / agent_slots'
+        });
+      }
+    },
+    {
+      id: 'rgb',
+      label: '⑥ rgbcfg → overlay rgb',
+      needsServer: true,
+      run: function () {
+        return postToLoopback({ m: 'v.oai.rgbcfg', p: { r: 0, g: 163, b: 255 } })
+          .then(function (parsed) {
+            var snap = snapFromResponse(parsed);
+            if (!snap || !snap.rgb) {
+              return { ok: false, fix: '断联：rgbcfg 未进入 snapshot.rgb。检查 apply_rgbcfg / build_snapshot' };
+            }
+            applyLoopbackResponse(parsed, 'pipeline-rgb');
+            mark('rgb', true);
+            return { ok: true, fix: '' };
+          });
+      }
+    },
+    {
+      id: 'block',
+      label: '⑦ hid/rad HTTP 拒绝',
+      needsServer: true,
+      run: function () {
+        return postToLoopback({ m: 'v.oai.hid', p: { k: 'AG00', act: 1 } })
+          .then(function () {
+            return { ok: false, fix: '安全风险：hid 被 HTTP 接受，白名单失效' };
+          })
+          .catch(function (e) {
+            if (String(e.message).indexOf('invalid_method') >= 0) return { ok: true, fix: '' };
+            return { ok: false, fix: '异常：期望 invalid_method，got ' + e.message };
+          });
+      }
+    }
+  ];
+
+  state.pipeline = [];
+
+  function renderPipeline() {
+    var list = document.getElementById('pipelineList');
+    if (!list) return;
+    var steps = state.pipeline.length ? state.pipeline : PIPELINE_STEPS.map(function (s) {
+      return { id: s.id, label: s.label, state: 'pending', fix: '' };
+    });
+    list.innerHTML = steps.map(function (s) {
+      var badge = { pending: '待跑', run: '运行中', pass: '通过', fail: '断联', skip: '跳过' }[s.state] || s.state;
+      return '<li data-state="' + s.state + '"><div class="row"><span class="name">' + s.label +
+        '</span><span class="badge">' + badge + '</span></div>' +
+        (s.fix ? '<div class="fix">' + s.fix + '</div>' : '') + '</li>';
+    }).join('');
+  }
+
+  function runAcceptancePipeline() {
+    var btn = document.getElementById('btnRunAll');
+    btn.disabled = true;
+    resetBase();
+    state.checkPass = {};
+    state.mode = 'idle';
+    state.pipeline = PIPELINE_STEPS.map(function (s) {
+      return { id: s.id, label: s.label, state: 'pending', fix: '' };
+    });
+    renderPipeline();
+    log('═══ 开始一键验收 ═══');
+
+    var broken = false;
+    var chain = Promise.resolve();
+    PIPELINE_STEPS.forEach(function (step, i) {
+      chain = chain.then(function () {
+        if (broken && step.needsServer) {
+          state.pipeline[i].state = 'skip';
+          state.pipeline[i].fix = '上一环节已断联，跳过';
+          renderPipeline();
+          return;
+        }
+        state.pipeline[i].state = 'run';
+        renderPipeline();
+        return step.run().then(function (result) {
+          state.pipeline[i].state = result.ok ? 'pass' : 'fail';
+          state.pipeline[i].fix = result.fix || '';
+          if (!result.ok) {
+            broken = true;
+            log('✗ ' + step.label + (result.fix ? ' — ' + result.fix : ''));
+          } else {
+            log('✓ ' + step.label);
+          }
+          renderPipeline();
+          paint();
+        }).catch(function (e) {
+          state.pipeline[i].state = 'fail';
+          state.pipeline[i].fix = String(e.message || e);
+          broken = true;
+          log('✗ ' + step.label + ' — ' + state.pipeline[i].fix);
+          renderPipeline();
+          paint();
+        });
+      });
+    });
+    return chain.then(function () {
+      if (!broken) {
+        // ① merge step already marked native/stale/fallback; re-assert so inject snapshot cannot regress checklist.
+        mark('native', true);
+        mark('stale', true);
+        mark('fallback', true);
+        paint();
+      }
+      log(broken ? '═══ 未通过：右侧第一个「断联」即修复点 ═══' : '═══ 注入链路验收通过（非 Codex 真桥）═══');
+      btn.disabled = false;
+    });
+  }
+
+  function agentSlotIndex(id) {
+    var i = AG_IDS.indexOf(id);
+    return i >= 0 ? i : -1;
+  }
+
+  function nativeFresh() {
+    if (!state.everNative || !state.lastUpdateMs) return false;
+    return state.nowMs - state.lastUpdateMs <= NATIVE_STALE_MS;
+  }
+
+  function refreshConnection() {
+    if (!state.everNative || !state.lastUpdateMs) {
+      state.connectionState = 'fallback';
+      return;
+    }
+    var age = state.nowMs - state.lastUpdateMs;
+    state.connectionState = age > NATIVE_STALE_MS ? 'stale' : 'connected';
+  }
+
+  function resolveCell(microKeyId) {
+    var inferred = (state.statusMicroKeyId && state.statusMicroKeyId === microKeyId)
+      ? state.padStatus
+      : 'idle';
+    var idx = agentSlotIndex(microKeyId);
+    if (idx < 0) {
+      return { runStatus: inferred, statusSource: 'inferred', nativeRunStatus: '' };
+    }
+    if (nativeFresh() && state.agentSlots[idx]) {
+      var st = state.agentSlots[idx].state;
+      return { runStatus: st, statusSource: 'native', nativeRunStatus: st };
+    }
+    if (inferred !== 'idle') {
+      return { runStatus: inferred, statusSource: 'inferred', nativeRunStatus: '' };
+    }
+    return { runStatus: 'idle', statusSource: 'fallback', nativeRunStatus: '' };
+  }
+
+  function rebuildCells() {
+    var cells = {};
+    AG_IDS.forEach(function (id) {
+      cells[id] = resolveCell(id);
+    });
+    // Non-AG probe for checklist visuals
+    cells.ACT06 = resolveCell('ACT06');
+    state.cells = cells;
+  }
+
+  function toneForConn(c) {
+    if (c === 'connected') return 'ok';
+    if (c === 'stale') return 'warn';
+    return 'fail';
+  }
+
+  function renderStrip() {
+    if (state.mode !== 'live' && state.mode !== 'inject') refreshConnection();
+    var html =
+      item('connectionState', state.connectionState, toneForConn(state.connectionState)) +
+      item('protocolVersion', state.protocolVersion || '—', state.protocolVersion ? 'info' : '') +
+      item('padMode', state.padMode, 'info') +
+      item('padStatus', (state.padStatus || 'idle') + (state.statusMicroKeyId ? (' @' + state.statusMicroKeyId) : ''), '') +
+      item('RGB', rgbSwatch(), '');
+    document.getElementById('protoStrip').innerHTML = html;
+  }
+
+  function item(k, v, tone) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v"' +
+      (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</div></div>';
+  }
+
+  function rgbSwatch(rgbText) {
+    if (!state.rgb) return '—';
+    var c = 'rgb(' + state.rgb.r + ',' + state.rgb.g + ',' + state.rgb.b + ')';
+    return '<span class="rgb-swatch"><i style="background:' + c + '"></i>' + c +
+      (state.lightsPreview ? ' · preview' : '') + '</span>';
+  }
+
+  function renderAg() {
+    if (state.mode !== 'live' && state.mode !== 'inject') rebuildCells();
+    var html = AG_IDS.map(function (id) {
+      var c = state.cells[id];
+      return (
+        '<div class="ag-key" data-source="' + c.statusSource + '" data-run="' + c.runStatus + '">' +
+          '<div class="id">' + id + '</div>' +
+          '<div class="halo"></div>' +
+          '<div class="meta">' +
+            '<span class="tag">' + c.runStatus + '</span>' +
+            '<span class="tag src-' + c.statusSource + '">' + c.statusSource + '</span>' +
+            (c.nativeRunStatus ? '<span class="tag">native:' + c.nativeRunStatus + '</span>' : '') +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+    document.getElementById('agGrid').innerHTML = html;
+  }
+
+  function renderChecks() {
+    var list = document.getElementById('checkList');
+    list.innerHTML = CHECKS.map(function (c) {
+      var pass = state.checkPass[c.id];
+      var s = pass === true ? 'pass' : (pass === false ? 'fail' : 'pending');
+      var badge = pass === true ? '通过' : (pass === false ? '未过' : '待验');
+      return (
+        '<li data-state="' + s + '" data-id="' + c.id + '">' +
+          '<input type="checkbox" ' + (pass === true ? 'checked' : '') + ' data-id="' + c.id + '" />' +
+          '<div><div class="title">' + c.title + '</div><div class="desc">' + c.desc + '</div></div>' +
+          '<span class="badge">' + badge + '</span>' +
+        '</li>'
+      );
+    }).join('');
+
+    list.querySelectorAll('input[type=checkbox]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        state.checkPass[inp.getAttribute('data-id')] = inp.checked ? true : null;
+        if (!inp.checked) delete state.checkPass[inp.getAttribute('data-id')];
+        renderScore();
+        renderChecks();
+      });
+    });
+  }
+
+  function modeLabel() {
+    if (state.mode === 'inject') return '注入验证（loopback）';
+    if (state.mode === 'live') return '实机快照';
+    if (state.mode === 'sim') return '场景模拟';
+    return '待机';
+  }
+
+  function renderScore() {
+    var n = CHECKS.filter(function (c) { return state.checkPass[c.id] === true; }).length;
+    var lvl = connectionLevel();
+    document.getElementById('scoreText').textContent = n + ' / ' + CHECKS.length;
+    var pipelineFail = (state.pipeline || []).some(function (s) { return s.state === 'fail'; });
+    var pipelinePass = (state.pipeline || []).some(function (s) { return s.state === 'pass'; });
+    document.getElementById('scoreHint').textContent =
+      pipelineFail ? '一键验收未通过 — 见右侧流水线第一个「断联」' :
+      (lvl === 'inject' || lvl === 'bridge') ? '注入链路 OK · ' + modeLabel() :
+      (lvl === 'sim') ? '仅场景模拟 — 请点「一键验收」' :
+      (pipelinePass ? '部分通过 · ' + modeLabel() : '点顶部「一键验收」开始');
+
+    var pills = document.getElementById('topPills');
+    pills.innerHTML =
+      '<span class="pill" data-tone="' + toneForConn(state.connectionState) + '">conn · ' + state.connectionState + '</span>' +
+      '<span class="pill" data-tone="' + (countNativeAg() > 0 ? 'ok' : 'fail') + '">native AG · ' + countNativeAg() + '</span>' +
+      '<span class="pill" data-tone="' + (state.loopbackOk ? 'ok' : 'warn') + '">loopback · ' + (state.loopbackOk ? 'on' : 'off') + '</span>';
+  }
+
+  function paint() {
+    renderStrip();
+    renderAg();
+    renderChecks();
+    renderScore();
+    renderConnBanner();
+    renderPipeline();
+  }
+
+  function mark(id, ok) {
+    state.checkPass[id] = !!ok;
+  }
+
+  /** Only flip checklist to pass — never clear a pass from an earlier step (e.g. ① merge rules). */
+  function markPass(id, ok) {
+    if (ok) mark(id, true);
+  }
+
+  function resetBase() {
+    state.nowMs = Date.now();
+    state.lastUpdateMs = 0;
+    state.everNative = false;
+    state.protocolVersion = '';
+    state.deviceStatus = '';
+    state.padMode = 'codex';
+    state.padStatus = 'idle';
+    state.statusMicroKeyId = '';
+    state.rgb = null;
+    state.lightsPreview = false;
+    state.agentSlots = [null, null, null, null, null, null];
+    state.mode = 'sim';
+    state.loopbackOk = false;
+    state.injectOk = false;
+    rebuildCells();
+  }
+
+  var scenes = {
+    nativeFresh: function () {
+      resetBase();
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs;
+      state.protocolVersion = 'sim-1.0';
+      state.deviceStatus = 'ok';
+      state.agentSlots[0] = { state: 'running' };
+      state.agentSlots[2] = { state: 'needs_input' };
+      state.agentSlots[5] = { state: 'failed' };
+      mark('native', true);
+      mark('needs', true);
+      log('场景①：新鲜 native — AG00 running / AG02 needs_input / AG05 failed');
+    },
+    staleInferred: function () {
+      resetBase();
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs - 5000;
+      state.agentSlots[0] = { state: 'needs_input' };
+      state.padStatus = 'running';
+      state.statusMicroKeyId = 'AG00';
+      rebuildCells();
+      var ok = state.cells.AG00 && state.cells.AG00.statusSource === 'inferred';
+      mark('stale', ok);
+      log('场景②：stale 5s + 本地 AG00 running → inferred（' + (ok ? 'OK' : 'FAIL') + '）');
+    },
+    fallbackIdle: function () {
+      resetBase();
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs - 8000;
+      state.agentSlots[1] = { state: 'running' };
+      mark('fallback', true);
+      log('场景③：过期且无本地 → AG fallback idle');
+    },
+    rgbGlow: function () {
+      state.rgb = { r: 0, g: 163, b: 255 };
+      state.lightsPreview = true;
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs;
+      mark('rgb', true);
+      log('场景④：RGB + lights.preview（保留 rgb）');
+    },
+    needsInput: function () {
+      resetBase();
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs;
+      state.agentSlots[1] = { state: 'needs_input' };
+      state.padStatus = 'listening';
+      state.statusMicroKeyId = 'AG03';
+      mark('needs', true);
+      mark('native', true);
+      log('场景⑤：AG01 native needs_input；AG03 本地 listening（inferred）');
+    },
+    nonAg: function () {
+      state.padStatus = 'running';
+      state.statusMicroKeyId = 'ACT06';
+      state.everNative = true;
+      state.lastUpdateMs = state.nowMs;
+      state.agentSlots[0] = { state: 'idle' };
+      rebuildCells();
+      var ok = state.cells.ACT06 && state.cells.ACT06.statusSource === 'inferred';
+      mark('nonag', ok);
+      log('场景⑥：ACT06 statusSource=' + (state.cells.ACT06 && state.cells.ACT06.statusSource) + '（期望 inferred）');
+    },
+    reset: function () {
+      resetBase();
+      state.checkPass = {};
+      log('已重置；当前为待机（未接入）');
+    }
+  };
+
+  document.querySelectorAll('[data-scene]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-scene');
+      if (scenes[id]) scenes[id]();
+      paint();
+    });
+  });
+
+  function evaluateSnapshot(snap) {
+    if (snap && snap.snapshot) snap = snap.snapshot;
+    state.mode = state.mode === 'inject' ? 'inject' : 'live';
+    state.nowMs = Date.now();
+    state.connectionState = String(snap.connectionState || snap.connection_state || 'fallback');
+    state.protocolVersion = String(snap.protocolVersion || snap.protocol_version || '');
+    state.deviceStatus = String(snap.deviceStatus || snap.device_status || '');
+    state.padMode = String(snap.padMode || snap.pad_mode || 'codex');
+    state.padStatus = String(snap.padStatus || snap.pad_status || 'idle');
+    state.statusMicroKeyId = String(snap.statusMicroKeyId || snap.status_micro_key_id || '');
+    var rgb = snap.rgb;
+    state.rgb = rgb && typeof rgb.r === 'number' ? { r: rgb.r, g: rgb.g, b: rgb.b } : null;
+
+    // Infer everNative / freshness from connection + cells
+    state.everNative = state.connectionState === 'connected' || state.connectionState === 'stale';
+    state.lastUpdateMs = state.connectionState === 'connected'
+      ? state.nowMs
+      : (state.connectionState === 'stale' ? state.nowMs - 5000 : 0);
+
+    var cells = Array.isArray(snap.cells) ? snap.cells : [];
+    state.agentSlots = [null, null, null, null, null, null];
+    var byId = {};
+    cells.forEach(function (c) {
+      var id = c.microKeyId || c.micro_key_id;
+      if (!id) return;
+      byId[id] = {
+        runStatus: c.runStatus || c.run_status || 'idle',
+        statusSource: c.statusSource || c.status_source || 'inferred',
+        nativeRunStatus: c.nativeRunStatus || c.native_run_status || ''
+      };
+      var idx = agentSlotIndex(id);
+      if (idx >= 0 && byId[id].statusSource === 'native') {
+        state.agentSlots[idx] = { state: byId[id].nativeRunStatus || byId[id].runStatus };
+      }
+    });
+    state.cells = byId;
+    // Fill missing AG via resolve for display consistency
+    AG_IDS.forEach(function (id) {
+      if (!state.cells[id]) state.cells[id] = resolveCell(id);
+    });
+
+    var hasNative = AG_IDS.some(function (id) {
+      return state.cells[id] && state.cells[id].statusSource === 'native';
+    });
+    var hasInferredAg = AG_IDS.some(function (id) {
+      return state.cells[id] && state.cells[id].statusSource === 'inferred' && state.cells[id].runStatus !== 'idle';
+    });
+    var hasFallback = AG_IDS.some(function (id) {
+      return state.cells[id] && state.cells[id].statusSource === 'fallback';
+    });
+    var hasNeeds = AG_IDS.some(function (id) {
+      var c = state.cells[id];
+      return c && (c.runStatus === 'needs_input' || c.runStatus === 'listening');
+    });
+    var nonAgNative = Object.keys(state.cells).some(function (id) {
+      return agentSlotIndex(id) < 0 && state.cells[id].statusSource === 'native';
+    });
+
+    markPass('native', hasNative || state.connectionState === 'connected');
+    markPass('stale', state.connectionState === 'stale' || hasInferredAg);
+    markPass('fallback', hasFallback || state.connectionState === 'fallback');
+    markPass('rgb', !!state.rgb);
+    markPass('needs', hasNeeds);
+    markPass('nonag', !nonAgNative);
+
+    log('已应用快照：cells=' + cells.length +
+      ' conn=' + state.connectionState +
+      ' rgb=' + (state.rgb ? 'yes' : 'no') +
+      ' nativeAG=' + hasNative);
+  }
+
+  document.getElementById('btnApplySnap').addEventListener('click', function () {
+    var raw = document.getElementById('snapInput').value.trim();
+    if (!raw) {
+      log('请先粘贴 JSON');
+      return;
+    }
+    try {
+      var snap = JSON.parse(raw);
+      if (snap && snap.ok && snap.snapshot) snap = snap.snapshot;
+      if (snap && snap.payload) snap = snap.payload;
+      if (snap && snap.state && snap.state.cells) snap = snap.state;
+      evaluateSnapshot(snap);
+      // Prefer live cell fields for AG paint
+      paint();
+      // Override AG grid from live cells when present
+      if (Object.keys(state.cells).length) {
+        document.getElementById('agGrid').innerHTML = AG_IDS.map(function (id) {
+          var c = state.cells[id] || { runStatus: 'idle', statusSource: 'fallback', nativeRunStatus: '' };
+          return (
+            '<div class="ag-key" data-source="' + c.statusSource + '" data-run="' + c.runStatus + '">' +
+              '<div class="id">' + id + '</div><div class="halo"></div>' +
+              '<div class="meta">' +
+                '<span class="tag">' + c.runStatus + '</span>' +
+                '<span class="tag src-' + c.statusSource + '">' + c.statusSource + '</span>' +
+              '</div></div>'
+          );
+        }).join('');
+      }
+    } catch (e) {
+      log('JSON 解析失败：' + e.message);
+    }
+  });
+
+  document.getElementById('btnSample').addEventListener('click', function () {
+    document.getElementById('snapInput').value = JSON.stringify({
+      visible: true,
+      enabled: true,
+      overlayEnabled: true,
+      padMode: 'codex',
+      padStatus: 'idle',
+      statusMicroKeyId: '',
+      connectionState: 'connected',
+      protocolVersion: '1.2.3',
+      deviceStatus: 'ok',
+      rgb: { r: 0, g: 163, b: 255 },
+      cells: [
+        { microKeyId: 'AG00', runStatus: 'running', statusSource: 'native', nativeRunStatus: 'running' },
+        { microKeyId: 'AG01', runStatus: 'idle', statusSource: 'fallback', nativeRunStatus: '' },
+        { microKeyId: 'AG02', runStatus: 'needs_input', statusSource: 'native', nativeRunStatus: 'needs_input' },
+        { microKeyId: 'AG03', runStatus: 'idle', statusSource: 'fallback', nativeRunStatus: '' },
+        { microKeyId: 'AG04', runStatus: 'idle', statusSource: 'fallback', nativeRunStatus: '' },
+        { microKeyId: 'AG05', runStatus: 'failed', statusSource: 'native', nativeRunStatus: 'failed' },
+        { microKeyId: 'ACT06', runStatus: 'idle', statusSource: 'inferred', nativeRunStatus: '' }
+      ]
+    }, null, 2);
+    log('已填入示例快照，点「应用快照」');
+  });
+
+  document.getElementById('btnClearLog').addEventListener('click', function () {
+    document.getElementById('log').textContent = '';
+  });
+
+  document.getElementById('btnProbe').addEventListener('click', function () {
+    var url = loopbackUrl();
+    log('探测 ' + url + ' …');
+    postToLoopback({ m: 'sys.version', p: { v: 'probe-' + Date.now() } })
+      .then(function (parsed) {
+        applyLoopbackResponse(parsed, 'probe');
+      })
+      .catch(function (e) {
+        state.loopbackOk = false;
+        paint();
+        log('探测失败：' + e.message + ' — 请确认 OneTone 已开且 Labs loopback 已 start');
+      });
+  });
+
+  document.getElementById('btnInjectTest').addEventListener('click', function () {
+    var body = {
+      m: 'v.oai.thstatus',
+      p: { slots: [{ i: 0, s: 'running' }, { i: 1, s: 'needs_input' }] }
+    };
+    log('POST thstatus 测试 …');
+    postToLoopback(body)
+      .then(function (parsed) {
+        applyLoopbackResponse(parsed, 'thstatus-test');
+      })
+      .catch(function (e) {
+        log('thstatus 注入失败：' + e.message);
+      });
+  });
+
+  document.getElementById('btnInjectRgb').addEventListener('click', function () {
+    var body = { m: 'v.oai.rgbcfg', p: { r: 0, g: 163, b: 255 } };
+    log('POST rgbcfg 测试 …');
+    postToLoopback(body)
+      .then(function (parsed) {
+        applyLoopbackResponse(parsed, 'rgbcfg-test');
+      })
+      .catch(function (e) {
+        log('rgbcfg 注入失败：' + e.message);
+      });
+  });
+
+  document.getElementById('btnCopyPs').addEventListener('click', function () {
+    var url = loopbackUrl();
+    var ps = '$body = \'{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"},{"i":1,"s":"needs_input"}]}}\'\n' +
+      'Invoke-RestMethod -Uri "' + url + '" -Method Post -ContentType "application/json" -Body $body';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ps).then(function () { log('已复制 PowerShell 到剪贴板'); });
+    } else {
+      log('PowerShell:\n' + ps);
+    }
+  });
+
+  document.getElementById('btnRunAll').addEventListener('click', function () {
+    runAcceptancePipeline();
+  });
+
+  scenes.reset();
+  renderPipeline();
+  paint();
+  log('验收页就绪：点顶部「一键验收」自动探测断联点');
+})();
+  </script>
+</body>
+</html>

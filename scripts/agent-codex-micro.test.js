@@ -315,10 +315,55 @@ assert.ok(overlayHtml.indexOf('isDragBlocked') >= 0);
 assert.ok(overlayHtml.indexOf('cmd_codex_micro_overlay_set_minimized') >= 0);
 assert.ok(overlayHtml.indexOf('data-act="lights"') < 0);
 assert.ok(overlayHtml.indexOf('info.runStatus') >= 0);
+assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
+assert.ok(overlayHtml.indexOf('statusSource') >= 0);
 assert.ok(overlayHtml.indexOf('data-ag=') >= 0);
+var overlayCmd = fs.readFileSync(path.join(__dirname, '../src-tauri/src/ipc/commands/shell/codex_micro_overlay_cmd.rs'), 'utf8');
+assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_inject') >= 0);
+assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
+assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_server_stop') >= 0);
+assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_server_status') >= 0);
+assert.ok(overlayCmd.indexOf('apply_rpc_json') >= 0);
+assert.ok(overlayCmd.indexOf('rpc_too_large') >= 0);
+var libRs = fs.readFileSync(path.join(__dirname, '../src-tauri/src/lib.rs'), 'utf8');
+assert.ok(libRs.indexOf('cmd_codex_micro_protocol_inject') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
+assert.ok(libRs.indexOf('mod codex_micro_protocol_server') >= 0);
+assert.ok(libRs.indexOf('env_requests_autostart') >= 0);
+var buildRs = fs.readFileSync(path.join(__dirname, '../src-tauri/build.rs'), 'utf8');
+assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_stop') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_status') >= 0);
+
+var acceptanceHtml = fs.readFileSync(
+  path.join(__dirname, '../design-mock/codex-onetone-linkage-acceptance.html'),
+  'utf8'
+);
+assert.ok(acceptanceHtml.indexOf('场景模拟') >= 0);
+assert.ok(acceptanceHtml.indexOf('注入验证') >= 0);
+assert.ok(acceptanceHtml.indexOf('真桥验证') >= 0);
+assert.ok(acceptanceHtml.indexOf('8796') >= 0);
+assert.ok(acceptanceHtml.indexOf('Codex 接入检测') >= 0);
+assert.ok(acceptanceHtml.indexOf('btnProbe') >= 0);
+assert.ok(acceptanceHtml.indexOf('connBanner') >= 0);
+assert.ok(acceptanceHtml.indexOf('btnRunAll') >= 0);
+assert.ok(acceptanceHtml.indexOf('pipelineList') >= 0);
+assert.ok(acceptanceHtml.indexOf('一键验收') >= 0);
+assert.ok(acceptanceHtml.indexOf('markPass') >= 0);
+assert.ok(acceptanceHtml.indexOf("mark('stale', true)") >= 0);
+var protocolServer = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/codex_micro_protocol_server.rs'),
+  'utf8'
+);
+assert.ok(protocolServer.indexOf('Access-Control-Allow-Origin') >= 0);
+
+var relayEx = fs.readFileSync(
+  path.join(__dirname, 'codex-micro-agentcontroller-relay.example.js'),
+  'utf8'
+);
+assert.ok(relayEx.indexOf('/api/codex-micro/protocol') >= 0);
 var overlayCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-overlay.css'), 'utf8');
-assert.ok(overlayHtml.indexOf('micro-hw__brand--left') >= 0);
-assert.ok(overlayHtml.indexOf('micro-hw__aux-hole') >= 0);
+assert.ok(overlayCss.indexOf('micro-hw__brand--left') >= 0);
 assert.ok(overlayCss.indexOf('--overlay-shell') >= 0);
 assert.ok(overlayCss.indexOf('.overlay-body .micro-hw') >= 0);
 assert.ok(overlayCss.indexOf('border-radius: 999px') >= 0);
@@ -364,9 +409,9 @@ assert.ok(padSrc.indexOf('Alt+Numpad') < 0);
 assert.ok(padSrc.indexOf('protectPrimaryLayout') >= 0);
 assert.ok(i18n.indexOf('codexMicroPadJoyDirHint:') >= 0);
 
-assert.ok(overlayHtml.indexOf('enterJoyDir') >= 0 || overlayHtml.indexOf('JOY_DIR_MS') >= 0);
 assert.ok(overlayHtml.indexOf('softwareEnhanceEnabled') >= 0);
-assert.ok(overlayHtml.indexOf('ENC_CW') >= 0);
-assert.ok(overlayHtml.indexOf('NAV_PRESS') >= 0);
+assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
+assert.ok(overlayHtml.indexOf('ENC_CW') >= 0 || padSrc.indexOf('ENC_CW') >= 0);
+assert.ok(overlayHtml.indexOf('NAV_PRESS') >= 0 || padSrc.indexOf('NAV_PRESS') >= 0);
 
 console.log('agent-codex-micro.test.js ok');

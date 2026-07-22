@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex Micro 摇杆开关</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Theme Variables */
+    [data-theme="light"] {
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+      --panel-bg: linear-gradient(145deg, #ffffff, #f1f5f9);
+      --panel-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+      --panel-border: rgba(15, 23, 42, 0.08);
+      --panel-inner: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+      
+      --joystick-base-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+      --joystick-base-shadow: 
+        0 8px 16px rgba(15, 23, 42, 0.18),
+        inset 0 -5px 10px rgba(15, 23, 42, 0.12),
+        inset 0 5px 10px rgba(255, 255, 255, 0.95);
+      
+      --joystick-stem-bg: linear-gradient(145deg, #94a3b8, #64748b);
+      --joystick-stem-shadow: 
+        0 6px 12px rgba(15, 23, 42, 0.25),
+        inset 0 -4px 8px rgba(15, 23, 42, 0.2),
+        inset 0 4px 8px rgba(255, 255, 255, 0.25);
+      
+      --joystick-top-bg: linear-gradient(145deg, #64748b, #475569);
+      --joystick-top-shadow: 
+        0 4px 8px rgba(15, 23, 42, 0.3),
+        inset 0 -2px 4px rgba(15, 23, 42, 0.25),
+        inset 0 2px 4px rgba(255, 255, 255, 0.2);
+      
+      --joystick-active-base: linear-gradient(145deg, #86efac, #22c55e);
+      --joystick-active-stem: linear-gradient(145deg, #4ade80, #22c55e);
+      --joystick-active-top: linear-gradient(145deg, #22c55e, #16a34a);
+      --joystick-active-glow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 40px rgba(34, 197, 94, 0.3);
+      
+      --joystick-pressed-shadow: 
+        0 2px 6px rgba(15, 23, 42, 0.2),
+        inset 0 6px 12px rgba(15, 23, 42, 0.35),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.2);
+      
+      --dir-btn-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+      --dir-btn-shadow: 
+        0 6px 12px rgba(15, 23, 42, 0.18),
+        inset 0 -4px 8px rgba(15, 23, 42, 0.12),
+        inset 0 4px 8px rgba(255, 255, 255, 0.9);
+      
+      --dir-btn-active-bg: linear-gradient(145deg, #fbbf24, #f59e0b);
+      --dir-btn-active-shadow: 
+        0 2px 6px rgba(15, 23, 42, 0.15),
+        inset 0 6px 12px rgba(15, 23, 42, 0.25),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.6);
+      
+      --screw-bg: radial-gradient(circle at 35% 30%, #cbd5e1, #94a3b8 70%);
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --text-active: #22c55e;
+      
+      --led-off: #cbd5e1;
+      --led-on: #22c55e;
+      --led-glow: 0 0 12px rgba(34, 197, 94, 0.9), 0 0 24px rgba(34, 197, 94, 0.5);
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      --panel-bg: linear-gradient(145deg, #334155, #1e293b);
+      --panel-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.25);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --panel-inner: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+      
+      --joystick-base-bg: linear-gradient(145deg, #475569, #334155);
+      --joystick-base-shadow: 
+        0 10px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -5px 10px rgba(0, 0, 0, 0.4),
+        inset 0 5px 10px rgba(255, 255, 255, 0.12);
+      
+      --joystick-stem-bg: linear-gradient(145deg, #334155, #1e293b);
+      --joystick-stem-shadow: 
+        0 8px 16px rgba(0, 0, 0, 0.5),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.4),
+        inset 0 4px 8px rgba(255, 255, 255, 0.12);
+      
+      --joystick-top-bg: linear-gradient(145deg, #1e293b, #0f172a);
+      --joystick-top-shadow: 
+        0 6px 12px rgba(0, 0, 0, 0.55),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.4),
+        inset 0 3px 6px rgba(255, 255, 255, 0.1);
+      
+      --joystick-active-base: linear-gradient(145deg, #22c55e, #16a34a);
+      --joystick-active-stem: linear-gradient(145deg, #4ade80, #22c55e);
+      --joystick-active-top: linear-gradient(145deg, #22c55e, #15803d);
+      --joystick-active-glow: 0 0 30px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.4);
+      
+      --joystick-pressed-shadow: 
+        0 3px 8px rgba(0, 0, 0, 0.4),
+        inset 0 6px 12px rgba(0, 0, 0, 0.6),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+      
+      --dir-btn-bg: linear-gradient(145deg, #475569, #334155);
+      --dir-btn-shadow: 
+        0 8px 16px rgba(0, 0, 0, 0.45),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.35),
+        inset 0 4px 8px rgba(255, 255, 255, 0.12);
+      
+      --dir-btn-active-bg: linear-gradient(145deg, #f59e0b, #d97706);
+      --dir-btn-active-shadow: 
+        0 3px 8px rgba(0, 0, 0, 0.35),
+        inset 0 6px 12px rgba(0, 0, 0, 0.55),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+      
+      --screw-bg: radial-gradient(circle at 35% 30%, #475569, #1e293b 70%);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-active: #4ade80;
+      
+      --led-off: #475569;
+      --led-on: #4ade80;
+      --led-glow: 0 0 14px rgba(74, 222, 128, 0.95), 0 0 28px rgba(74, 222, 128, 0.55);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-gradient);
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', system-ui, sans-serif;
+      transition: background 0.4s ease;
+      padding: 40px;
+      gap: 40px;
+    }
+
+    .header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .title {
+      color: var(--text-primary);
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .theme-toggle-btn {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--panel-shadow);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .theme-toggle-btn:active {
+      transform: translateY(0);
+    }
+
+    .control-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 60px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* Panel Styles */
+    .control-panel {
+      position: relative;
+      border-radius: 24px;
+      background: var(--panel-bg);
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 35px;
+      border: 1px solid var(--panel-border);
+      gap: 25px;
+    }
+
+    .control-panel::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      border-radius: 18px;
+      background: var(--panel-inner);
+      border: 1px solid var(--panel-border);
+      pointer-events: none;
+    }
+
+    .screw {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--screw-bg);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(255, 255, 255, 0.1);
+      z-index: 2;
+    }
+
+    .screw-tl { top: 18px; left: 18px; }
+    .screw-tr { top: 18px; right: 18px; }
+    .screw-bl { bottom: 18px; left: 18px; }
+    .screw-br { bottom: 18px; right: 18px; }
+
+    .screw::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 1.5px;
+      background: rgba(0, 0, 0, 0.5);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .panel-title {
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 600;
+      z-index: 2;
+    }
+
+    /* Joystick Styles */
+    .joystick-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      z-index: 2;
+    }
+
+    .joystick-btn {
+      position: relative;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: var(--joystick-base-bg);
+      box-shadow: var(--joystick-base-shadow);
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .joystick-btn.active {
+      background: var(--joystick-active-base);
+      box-shadow: var(--joystick-active-glow), var(--joystick-base-shadow);
+    }
+
+    .joystick-stem {
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: var(--joystick-stem-bg);
+      box-shadow: var(--joystick-stem-shadow);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .joystick-btn.active .joystick-stem {
+      background: var(--joystick-active-stem);
+    }
+
+    .joystick-top {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--joystick-top-bg);
+      box-shadow: var(--joystick-top-shadow);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .joystick-btn.active .joystick-top {
+      background: var(--joystick-active-top);
+    }
+
+    .joystick-btn:active .joystick-stem {
+      transform: translateY(5px);
+    }
+
+    .joystick-btn:active .joystick-top {
+      transform: translateY(5px);
+      box-shadow: var(--joystick-pressed-shadow);
+    }
+
+    .joystick-btn:active {
+      transform: scale(0.98);
+    }
+
+    .joystick-top::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15), transparent 60%);
+      pointer-events: none;
+    }
+
+    .joystick-top::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.3), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Cross pattern */
+    .joystick-cross {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 55px;
+      height: 55px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .joystick-cross::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 5px;
+      margin-top: -2.5px;
+      background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.4) 20%, rgba(0, 0, 0, 0.4) 80%, transparent 100%);
+      border-radius: 2.5px;
+    }
+
+    .joystick-cross::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      margin-left: -2.5px;
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.4) 20%, rgba(0, 0, 0, 0.4) 80%, transparent 100%);
+      border-radius: 2.5px;
+    }
+
+    /* Status indicator */
+    .joystick-status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .joystick-leds {
+      display: flex;
+      gap: 6px;
+    }
+
+    .joystick-led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--led-off);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .joystick-btn.active ~ .joystick-status .joystick-led {
+      background: var(--led-on);
+      box-shadow: var(--led-glow), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    }
+
+    .joystick-state {
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: all 0.3s ease;
+    }
+
+    .joystick-btn.active ~ .joystick-status .joystick-state {
+      color: var(--text-active);
+      font-weight: 700;
+    }
+
+    /* Directional Pad Styles */
+    .dpad-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      z-index: 2;
+    }
+
+    .dpad-container {
+      position: relative;
+      width: 200px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dpad-btn {
+      position: absolute;
+      width: 65px;
+      height: 65px;
+      border-radius: 10px;
+      background: var(--dir-btn-bg);
+      box-shadow: var(--dir-btn-shadow);
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dpad-btn svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--text-secondary);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      transition: all 0.15s ease;
+    }
+
+    .dpad-btn:active {
+      transform: translateY(4px);
+      background: var(--dir-btn-active-bg);
+      box-shadow: var(--dir-btn-active-shadow);
+    }
+
+    .dpad-btn:active svg {
+      stroke: white;
+    }
+
+    /* Inverted-T Layout */
+    .dpad-up {
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .dpad-up:active {
+      transform: translateX(-50%) translateY(4px);
+    }
+
+    .dpad-left {
+      left: 5px;
+      bottom: 5px;
+    }
+
+    .dpad-left:active {
+      transform: translateY(4px);
+    }
+
+    .dpad-down {
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .dpad-down:active {
+      transform: translateX(-50%) translateY(4px);
+    }
+
+    .dpad-right {
+      right: 5px;
+      bottom: 5px;
+    }
+
+    .dpad-right:active {
+      transform: translateY(4px);
+    }
+
+    .dpad-indicator {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      min-height: 18px;
+      transition: all 0.3s ease;
+    }
+
+    .dpad-indicator.active {
+      color: var(--text-active);
+    }
+
+    .instructions {
+      color: var(--text-secondary);
+      font-size: 14px;
+      text-align: center;
+      max-width: 550px;
+      line-height: 1.8;
+    }
+
+    .instructions strong {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="header">
+    <h1 class="title">Codex Micro 摇杆开关</h1>
+    <p class="subtitle">三层摇杆 + 倒T方向键 · 双主题支持</p>
+    <button class="theme-toggle-btn" id="themeToggleBtn">
+      <span class="theme-icon">🌙</span>
+      <span>切换主题</span>
+    </button>
+  </div>
+
+  <div class="control-container">
+    <!-- Joystick Panel -->
+    <div class="control-panel">
+      <div class="screw screw-tl"></div>
+      <div class="screw screw-tr"></div>
+      <div class="screw screw-bl"></div>
+      <div class="screw screw-br"></div>
+      <div class="panel-title">摇杆开关</div>
+      
+      <div class="joystick-wrapper">
+        <button class="joystick-btn" id="joystickBtn">
+          <div class="joystick-stem"></div>
+          <div class="joystick-top">
+            <div class="joystick-cross"></div>
+          </div>
+        </button>
+        <div class="joystick-status">
+          <div class="joystick-leds">
+            <div class="joystick-led"></div>
+            <div class="joystick-led"></div>
+            <div class="joystick-led"></div>
+          </div>
+          <div class="joystick-state" id="joystickState">未激活</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D-Pad Panel -->
+    <div class="control-panel">
+      <div class="screw screw-tl"></div>
+      <div class="screw screw-tr"></div>
+      <div class="screw screw-bl"></div>
+      <div class="screw screw-br"></div>
+      <div class="panel-title">方向键</div>
+      
+      <div class="dpad-wrapper">
+        <div class="dpad-container">
+          <button class="dpad-btn dpad-up" data-dir="上">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+            </svg>
+          </button>
+          <button class="dpad-btn dpad-left" data-dir="左">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 12l8-8v5h8v6h-8v5z"/>
+            </svg>
+          </button>
+          <button class="dpad-btn dpad-down" data-dir="下">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20l8-8h-5V4H9v8H4z"/>
+            </svg>
+          </button>
+          <button class="dpad-btn dpad-right" data-dir="右">
+            <svg viewBox="0 0 24 24 24">
+              <path d="M20 12l-8 8v-5H4V8h8V3z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="dpad-indicator" id="dpadIndicator">等待输入</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="instructions">
+    <strong>使用说明：</strong><br>
+    • <strong>点击摇杆</strong>切换激活状态（绿色发光）<br>
+    • <strong>三层摇杆设计</strong>：底座+杆身+顶帽，一眼可辨<br>
+    • <strong>倒T方向键</strong>：上、左、下、右，经典排列<br>
+    • <strong>LED指示灯</strong>：三个灯同步显示激活状态<br>
+    • <strong>支持深色/浅色</strong>双主题切换
+  </p>
+
+  <script>
+    // Theme Toggle
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const body = document.body;
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', newTheme);
+      
+      const themeIcon = themeToggleBtn.querySelector('.theme-icon');
+      themeIcon.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+    });
+
+    // Joystick Control
+    const joystickBtn = document.getElementById('joystickBtn');
+    const joystickState = document.getElementById('joystickState');
+
+    joystickBtn.addEventListener('click', () => {
+      joystickBtn.classList.toggle('active');
+      const isActive = joystickBtn.classList.contains('active');
+      joystickState.textContent = isActive ? '已激活' : '未激活';
+    });
+
+    // D-Pad Controls
+    const dpadBtns = document.querySelectorAll('.dpad-btn');
+    const dpadIndicator = document.getElementById('dpadIndicator');
+
+    dpadBtns.forEach(btn => {
+      btn.addEventListener('pointerdown', () => {
+        const dir = btn.getAttribute('data-dir');
+        dpadIndicator.textContent = `${dir} · 按下`;
+        dpadIndicator.classList.add('active');
+      });
+
+      btn.addEventListener('pointerup', () => {
+        dpadIndicator.textContent = '等待输入';
+        dpadIndicator.classList.remove('active');
+      });
+
+      btn.addEventListener('pointerleave', () => {
+        dpadIndicator.textContent = '等待输入';
+        dpadIndicator.classList.remove('active');
+      });
+
+      btn.addEventListener('pointercancel', () => {
+        dpadIndicator.textContent = '等待输入';
+        dpadIndicator.classList.remove('active');
+      });
+    });
+  </script>
+</body>
+</html>

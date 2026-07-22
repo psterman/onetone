@@ -1036,7 +1036,9 @@ unsafe extern "system" fn wnd_proc(
         if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
             if !ctx_ptr.is_null() {
                 if let Some(name) = (*ctx_ptr).names.get(&id) {
-                    if !send_guard::blocks_key(name) {
+                    if send_guard::blocks_key(name) {
+                        send_guard::note_blocked();
+                    } else {
                         sender.send(name.clone()).ok();
                     }
                 }
@@ -1056,7 +1058,9 @@ unsafe extern "system" fn wnd_proc(
                 return 1;
             }
             if let Some(name) = (*ctx_ptr).names.get(&id) {
-                if !send_guard::blocks_key(name) {
+                if send_guard::blocks_key(name) {
+                    send_guard::note_blocked();
+                } else {
                     (*ctx_ptr).tx.send(name.clone()).ok();
                 }
             }

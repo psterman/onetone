@@ -14,16 +14,513 @@
   --micro-hw-advanced-opacity: 0.55;
   --micro-hw-status-idle: rgba(138, 149, 165, 0.35);
   --micro-hw-status-running: rgba(42, 156, 196, 0.75);
-  --micro-hw-status-listening: rgba(240, 180, 41, 0.9);
+  --micro-hw-status-listening: rgba(0, 163, 255, 0.9);
   --micro-hw-status-done: rgba(64, 180, 120, 0.85);
   --micro-hw-status-failed: rgba(220, 80, 90, 0.9);
+
+  /* ENC mode switch — main-blue sculpted toggle (theme primary cyan) */
+  --micro-ms-off-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+  --micro-ms-off-shadow:
+    0 4px 8px rgba(15, 23, 42, 0.16),
+    inset 0 -3px 6px rgba(15, 23, 42, 0.1),
+    inset 0 3px 6px rgba(255, 255, 255, 0.95);
+  --micro-ms-on-bg: linear-gradient(145deg, #4db6ff, #00a3ff);
+  --micro-ms-on-shadow:
+    0 0 14px rgba(0, 163, 255, 0.5),
+    0 4px 8px rgba(15, 23, 42, 0.14),
+    inset 0 -3px 6px rgba(0, 80, 140, 0.18),
+    inset 0 3px 6px rgba(255, 255, 255, 0.55);
+  --micro-ms-knob-bg: linear-gradient(145deg, #ffffff, #f8fafc);
+  --micro-ms-knob-shadow:
+    0 3px 8px rgba(15, 23, 42, 0.22),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.06),
+    inset 0 2px 4px rgba(255, 255, 255, 1);
+  --micro-ms-knob-pressed-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.18),
+    inset 0 3px 6px rgba(15, 23, 42, 0.14),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.6);
+  --micro-ms-label-off: #64748b;
+  --micro-ms-label-on: #ffffff;
+
+  /* JOY stick + D-pad — theme blue active / press */
+  --micro-joy-base-bg: linear-gradient(145deg, #e8eef5, #d5dde8);
+  --micro-joy-base-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.08),
+    inset 0 -1px 3px rgba(15, 23, 42, 0.05),
+    inset 0 2px 3px rgba(255, 255, 255, 0.85);
+  --micro-joy-stem-bg: linear-gradient(145deg, #a8b4c4, #7d8b9c);
+  --micro-joy-stem-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.1),
+    inset 0 -1px 2px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.22);
+  --micro-joy-top-bg: linear-gradient(145deg, #6b7a8c, #556274);
+  --micro-joy-top-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.12),
+    inset 0 -1px 1px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.18);
+  --micro-joy-on-base: linear-gradient(145deg, #5ec8e8, #00a3ff);
+  --micro-joy-on-stem: linear-gradient(145deg, #7ed4ef, #00a3ff);
+  --micro-joy-on-top: linear-gradient(145deg, #00a3ff, #0085db);
+  --micro-joy-on-glow: 0 0 6px rgba(0, 163, 255, 0.28), 0 0 12px rgba(0, 163, 255, 0.14);
+  --micro-joy-pressed-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.14),
+    inset 0 2px 5px rgba(15, 23, 42, 0.18),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.22);
+  --micro-joy-cross: rgba(15, 23, 42, 0.4);
+  --micro-dpad-rail-bg: linear-gradient(145deg, rgba(241, 245, 249, 0.94), rgba(226, 232, 240, 0.9));
+  --micro-dpad-rail-shadow:
+    0 10px 22px rgba(15, 23, 42, 0.12),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.72);
+  --micro-dpad-btn-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+  --micro-dpad-btn-shadow:
+    0 4px 8px rgba(15, 23, 42, 0.16),
+    inset 0 -3px 5px rgba(15, 23, 42, 0.1),
+    inset 0 3px 5px rgba(255, 255, 255, 0.9);
+  --micro-dpad-btn-ink: #64748b;
+  --micro-dpad-press-bg: linear-gradient(145deg, #5ec8e8, #00a3ff);
+  --micro-dpad-press-shadow:
+    0 0 10px rgba(0, 163, 255, 0.35),
+    0 1px 3px rgba(15, 23, 42, 0.12),
+    inset 0 3px 6px rgba(0, 80, 140, 0.18),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.45);
+  --micro-dpad-press-ink: #ffffff;
+  --micro-key-press-bg: linear-gradient(180deg, #5ec8e8 0%, #00a3ff 100%);
+  --micro-key-press-ink: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --micro-hw-ink: #e8f0f8;
-    --micro-hw-muted: #9aa8b8;
+    --micro-hw-ink: #e6edf3;
+    --micro-hw-muted: #9ca9bc;
+    --micro-ms-off-bg: linear-gradient(145deg, #3d4d62, #2a3648);
+    --micro-ms-off-shadow:
+      0 5px 10px rgba(0, 0, 0, 0.45),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+      inset 0 3px 6px rgba(255, 255, 255, 0.1);
+    --micro-ms-on-bg: linear-gradient(145deg, #66cfff, #0085db);
+    --micro-ms-on-shadow:
+      0 0 16px rgba(0, 163, 255, 0.55),
+      0 5px 10px rgba(0, 0, 0, 0.4),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.25),
+      inset 0 3px 6px rgba(255, 255, 255, 0.28);
+    --micro-ms-knob-bg: radial-gradient(circle at 30% 30%, #475569, #1e293b 100%);
+    --micro-ms-knob-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.45),
+      0 -1px 2px rgba(255, 255, 255, 0.06),
+      0 3px 6px rgba(0, 0, 0, 0.35);
+    --micro-ms-knob-pressed-shadow:
+      inset 0 4px 8px rgba(0, 0, 0, 0.65),
+      0 -1px 2px rgba(255, 255, 255, 0.05),
+      0 2px 4px rgba(0, 0, 0, 0.35);
+    --micro-ms-label-off: #94a3b8;
+    --micro-ms-label-on: #e6edf3;
+    --micro-joy-base-bg: linear-gradient(145deg, #475569, #334155);
+    --micro-joy-base-shadow:
+      0 2px 5px rgba(0, 0, 0, 0.28),
+      inset 0 -1px 3px rgba(0, 0, 0, 0.2),
+      inset 0 2px 3px rgba(255, 255, 255, 0.08);
+    --micro-joy-stem-bg: linear-gradient(145deg, #334155, #1e293b);
+    --micro-joy-stem-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.28),
+      inset 0 -1px 2px rgba(0, 0, 0, 0.22),
+      inset 0 1px 2px rgba(255, 255, 255, 0.1);
+    --micro-joy-top-bg: linear-gradient(145deg, #1e293b, #0f172a);
+    --micro-joy-top-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+      inset 0 1px 2px rgba(255, 255, 255, 0.08);
+    --micro-joy-on-base: linear-gradient(145deg, #00a3ff, #0085db);
+    --micro-joy-on-stem: linear-gradient(145deg, #66cfff, #00a3ff);
+    --micro-joy-on-top: linear-gradient(145deg, #00a3ff, #006bb3);
+    --micro-joy-on-glow: 0 0 6px rgba(0, 163, 255, 0.3), 0 0 12px rgba(0, 163, 255, 0.15);
+    --micro-joy-pressed-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      inset 0 2px 5px rgba(0, 0, 0, 0.32),
+      inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+    --micro-joy-cross: rgba(255, 255, 255, 0.35);
+    --micro-dpad-rail-bg: linear-gradient(145deg, rgba(36, 48, 66, 0.94), rgba(22, 30, 44, 0.92));
+    --micro-dpad-rail-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.4),
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.08),
+      0 0 16px rgba(0, 163, 255, 0.1);
+    --micro-dpad-btn-bg: linear-gradient(145deg, #475569, #334155);
+    --micro-dpad-btn-shadow:
+      0 4px 8px rgba(0, 0, 0, 0.4),
+      inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+      inset 0 3px 5px rgba(255, 255, 255, 0.1);
+    --micro-dpad-btn-ink: #94a3b8;
+    --micro-dpad-press-bg: linear-gradient(145deg, #5ec8e8, #00a3ff);
+    --micro-dpad-press-shadow:
+      0 0 12px rgba(0, 163, 255, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 3px 6px rgba(0, 0, 0, 0.25),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.2);
+    --micro-dpad-press-ink: #ffffff;
+    --micro-key-press-bg: linear-gradient(180deg, #5ec8e8 0%, #00a3ff 100%);
+    --micro-key-press-ink: #ffffff;
   }
+}
+
+html[data-theme="dark"] {
+  --micro-hw-ink: #e6edf3;
+  --micro-hw-muted: #9ca9bc;
+  --micro-ms-off-bg: linear-gradient(145deg, #3d4d62, #2a3648);
+  --micro-ms-off-shadow:
+    0 5px 10px rgba(0, 0, 0, 0.45),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+    inset 0 3px 6px rgba(255, 255, 255, 0.1);
+  --micro-ms-on-bg: linear-gradient(145deg, #66cfff, #0085db);
+  --micro-ms-on-shadow:
+    0 0 16px rgba(0, 163, 255, 0.55),
+    0 5px 10px rgba(0, 0, 0, 0.4),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.25),
+    inset 0 3px 6px rgba(255, 255, 255, 0.28);
+  --micro-ms-knob-bg: radial-gradient(circle at 30% 30%, #475569, #1e293b 100%);
+  --micro-ms-knob-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.45),
+    0 -1px 2px rgba(255, 255, 255, 0.06),
+    0 3px 6px rgba(0, 0, 0, 0.35);
+  --micro-ms-knob-pressed-shadow:
+    inset 0 4px 8px rgba(0, 0, 0, 0.65),
+    0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+  --micro-ms-label-off: #94a3b8;
+  --micro-ms-label-on: #e6edf3;
+  --micro-joy-base-bg: linear-gradient(145deg, #475569, #334155);
+  --micro-joy-base-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 2px 3px rgba(255, 255, 255, 0.08);
+  --micro-joy-stem-bg: linear-gradient(145deg, #334155, #1e293b);
+  --micro-joy-stem-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.22),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  --micro-joy-top-bg: linear-gradient(145deg, #1e293b, #0f172a);
+  --micro-joy-top-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08);
+  --micro-joy-on-base: linear-gradient(145deg, #00a3ff, #0085db);
+  --micro-joy-on-stem: linear-gradient(145deg, #66cfff, #00a3ff);
+  --micro-joy-on-top: linear-gradient(145deg, #00a3ff, #006bb3);
+  --micro-joy-on-glow: 0 0 6px rgba(0, 163, 255, 0.3), 0 0 12px rgba(0, 163, 255, 0.15);
+  --micro-joy-pressed-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    inset 0 2px 5px rgba(0, 0, 0, 0.32),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.08);
+  --micro-joy-cross: rgba(255, 255, 255, 0.35);
+  --micro-dpad-rail-bg: linear-gradient(145deg, rgba(36, 48, 66, 0.94), rgba(22, 30, 44, 0.92));
+  --micro-dpad-rail-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.08),
+    0 0 16px rgba(0, 163, 255, 0.1);
+  --micro-dpad-btn-bg: linear-gradient(145deg, #475569, #334155);
+  --micro-dpad-btn-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+    inset 0 3px 5px rgba(255, 255, 255, 0.1);
+  --micro-dpad-btn-ink: #94a3b8;
+  --micro-dpad-press-bg: linear-gradient(145deg, #5ec8e8, #00a3ff);
+  --micro-dpad-press-shadow:
+    0 0 12px rgba(0, 163, 255, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 3px 6px rgba(0, 0, 0, 0.25),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.2);
+  --micro-dpad-press-ink: #ffffff;
+  --micro-key-press-bg: linear-gradient(180deg, #5ec8e8 0%, #00a3ff 100%);
+  --micro-key-press-ink: #ffffff;
+}
+
+html[data-theme="light"] {
+  --micro-hw-ink: #3a4454;
+  --micro-hw-muted: #8a95a5;
+  --micro-ms-off-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+  --micro-ms-off-shadow:
+    0 4px 8px rgba(15, 23, 42, 0.16),
+    inset 0 -3px 6px rgba(15, 23, 42, 0.1),
+    inset 0 3px 6px rgba(255, 255, 255, 0.95);
+  --micro-ms-on-bg: linear-gradient(145deg, #4db6ff, #00a3ff);
+  --micro-ms-on-shadow:
+    0 0 14px rgba(0, 163, 255, 0.5),
+    0 4px 8px rgba(15, 23, 42, 0.14),
+    inset 0 -3px 6px rgba(0, 80, 140, 0.18),
+    inset 0 3px 6px rgba(255, 255, 255, 0.55);
+  --micro-ms-knob-bg: linear-gradient(145deg, #ffffff, #f8fafc);
+  --micro-ms-knob-shadow:
+    0 3px 8px rgba(15, 23, 42, 0.22),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.06),
+    inset 0 2px 4px rgba(255, 255, 255, 1);
+  --micro-ms-knob-pressed-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.18),
+    inset 0 3px 6px rgba(15, 23, 42, 0.14),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.6);
+  --micro-ms-label-off: #64748b;
+  --micro-ms-label-on: #ffffff;
+  --micro-joy-base-bg: linear-gradient(145deg, #e8eef5, #d5dde8);
+  --micro-joy-base-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.08),
+    inset 0 -1px 3px rgba(15, 23, 42, 0.05),
+    inset 0 2px 3px rgba(255, 255, 255, 0.85);
+  --micro-joy-stem-bg: linear-gradient(145deg, #a8b4c4, #7d8b9c);
+  --micro-joy-stem-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.1),
+    inset 0 -1px 2px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.22);
+  --micro-joy-top-bg: linear-gradient(145deg, #6b7a8c, #556274);
+  --micro-joy-top-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.12),
+    inset 0 -1px 1px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.18);
+  --micro-joy-on-base: linear-gradient(145deg, #5ec8e8, #00a3ff);
+  --micro-joy-on-stem: linear-gradient(145deg, #7ed4ef, #00a3ff);
+  --micro-joy-on-top: linear-gradient(145deg, #00a3ff, #0085db);
+  --micro-joy-on-glow: 0 0 6px rgba(0, 163, 255, 0.28), 0 0 12px rgba(0, 163, 255, 0.14);
+  --micro-joy-pressed-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.14),
+    inset 0 2px 5px rgba(15, 23, 42, 0.18),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.22);
+  --micro-joy-cross: rgba(15, 23, 42, 0.4);
+  --micro-dpad-rail-bg: linear-gradient(145deg, rgba(241, 245, 249, 0.94), rgba(226, 232, 240, 0.9));
+  --micro-dpad-rail-shadow:
+    0 10px 22px rgba(15, 23, 42, 0.12),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.72);
+  --micro-dpad-btn-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+  --micro-dpad-btn-shadow:
+    0 4px 8px rgba(15, 23, 42, 0.16),
+    inset 0 -3px 5px rgba(15, 23, 42, 0.1),
+    inset 0 3px 5px rgba(255, 255, 255, 0.9);
+  --micro-dpad-btn-ink: #64748b;
+  --micro-dpad-press-bg: linear-gradient(145deg, #5ec8e8, #00a3ff);
+  --micro-dpad-press-shadow:
+    0 0 10px rgba(0, 163, 255, 0.35),
+    0 1px 3px rgba(15, 23, 42, 0.12),
+    inset 0 3px 6px rgba(0, 80, 140, 0.18),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.45);
+  --micro-dpad-press-ink: #ffffff;
+  --micro-key-press-bg: linear-gradient(180deg, #5ec8e8 0%, #00a3ff 100%);
+  --micro-key-press-ink: #ffffff;
+}
+
+/* ENC main-blue mode switch (shared; size / placement tuned in pad / overlay). */
+.micro-hw__mode-switch {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: var(--micro-ms-off-bg);
+  box-shadow: var(--micro-ms-off-shadow);
+  cursor: pointer;
+  pointer-events: auto;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s ease;
+}
+
+.micro-hw__mode-switch.is-on {
+  background: var(--micro-ms-on-bg);
+  box-shadow: var(--micro-ms-on-shadow);
+}
+
+.micro-hw__mode-switch.is-pressed,
+.micro-hw__mode-switch:active {
+  transform: scale(0.97);
+}
+
+.micro-hw__mode-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--micro-ms-knob-bg);
+  box-shadow: var(--micro-ms-knob-shadow);
+  transition:
+    left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s ease,
+    box-shadow 0.2s ease;
+  pointer-events: none;
+}
+
+.micro-hw__mode-switch.is-on .micro-hw__mode-knob {
+  left: 22px;
+}
+
+.micro-hw__mode-switch.is-pressed .micro-hw__mode-knob,
+.micro-hw__mode-switch:active .micro-hw__mode-knob {
+  transform: scale(0.92);
+  box-shadow: var(--micro-ms-knob-pressed-shadow);
+}
+
+.micro-hw__mode-label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.micro-hw__mode-label--off {
+  right: 5px;
+  color: var(--micro-ms-label-off);
+  opacity: 0.75;
+}
+
+.micro-hw__mode-label--on {
+  left: 5px;
+  color: var(--micro-ms-label-on);
+  opacity: 0;
+  text-shadow: 0 1px 1px rgba(0, 80, 140, 0.25);
+}
+
+.micro-hw__mode-switch.is-on .micro-hw__mode-label--off {
+  opacity: 0;
+}
+
+.micro-hw__mode-switch.is-on .micro-hw__mode-label--on {
+  opacity: 1;
+}
+
+/* JOY: 3-layer stick (shared; size tuned in pad / overlay). */
+.micro-hw__joy-stick {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--micro-joy-base-bg);
+  box-shadow: var(--micro-joy-base-shadow);
+  transition:
+    background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.12s ease;
+  pointer-events: none;
+}
+
+.micro-hw__joy-stick.is-on {
+  background: var(--micro-joy-on-base);
+  box-shadow: var(--micro-joy-on-glow), var(--micro-joy-base-shadow);
+}
+
+.micro-hw__joy-stem {
+  position: absolute;
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  background: var(--micro-joy-stem-bg);
+  box-shadow: var(--micro-joy-stem-shadow);
+  transition: background 0.28s ease, transform 0.12s ease;
+}
+
+.micro-hw__joy-stick.is-on .micro-hw__joy-stem {
+  background: var(--micro-joy-on-stem);
+}
+
+.micro-hw__joy-top {
+  position: absolute;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  background: var(--micro-joy-top-bg);
+  box-shadow: var(--micro-joy-top-shadow);
+  transition: background 0.28s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.micro-hw__joy-stick.is-on .micro-hw__joy-top {
+  background: var(--micro-joy-on-top);
+}
+
+.micro-hw__joy-top::before {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), transparent 62%);
+  pointer-events: none;
+}
+
+.micro-hw__joy-cross {
+  position: absolute;
+  inset: 18%;
+  pointer-events: none;
+}
+
+.micro-hw__joy-cross::before,
+.micro-hw__joy-cross::after {
+  content: '';
+  position: absolute;
+  border-radius: 2px;
+  background: var(--micro-joy-cross);
+}
+
+.micro-hw__joy-cross::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2.5px;
+  margin-top: -1.25px;
+}
+
+.micro-hw__joy-cross::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2.5px;
+  margin-left: -1.25px;
+}
+
+.micro-hw__key[data-micro-key="JOY"].is-pressed .micro-hw__joy-stick,
+.micro-hw__key[data-micro-key="JOY"].is-active .micro-hw__joy-stick,
+.micro-hw__key[data-micro-key="JOY"]:active .micro-hw__joy-stick {
+  transform: scale(0.97);
+}
+
+.micro-hw__key[data-micro-key="JOY"].is-pressed .micro-hw__joy-stem,
+.micro-hw__key[data-micro-key="JOY"].is-active .micro-hw__joy-stem,
+.micro-hw__key[data-micro-key="JOY"]:active .micro-hw__joy-stem,
+.micro-hw__key[data-micro-key="JOY"].is-pressed .micro-hw__joy-top,
+.micro-hw__key[data-micro-key="JOY"].is-active .micro-hw__joy-top,
+.micro-hw__key[data-micro-key="JOY"]:active .micro-hw__joy-top {
+  transform: translateY(2px);
+}
+
+.micro-hw__key[data-micro-key="JOY"].is-pressed .micro-hw__joy-top,
+.micro-hw__key[data-micro-key="JOY"].is-active .micro-hw__joy-top,
+.micro-hw__key[data-micro-key="JOY"]:active .micro-hw__joy-top {
+  box-shadow: var(--micro-joy-pressed-shadow);
+}
+
+.micro-hw__key[data-micro-key="JOY"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.micro-hw__key[data-micro-key="JOY"].is-pressed,
+.micro-hw__key[data-micro-key="JOY"].is-active,
+.micro-hw__key[data-micro-key="JOY"].is-joy-on {
+  transform: none;
+  filter: none;
+  box-shadow: none !important;
 }
 
 .micro-hw__key.is-screen-only {

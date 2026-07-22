@@ -14,6 +14,8 @@ const REPORT_ID: u8 = 0x06;
 const REPORT_DATA_SIZE: usize = 63;
 const MAX_PAYLOAD_SIZE: usize = 61;
 const CHANNEL_RPC: u8 = 2;
+/// Native protocol freshness window — older than this → stale/fallback for AG lights.
+pub const NATIVE_STALE_MS: u64 = 3000;
 
 /// Deadzone for `v.oai.rad` distance — at or below this → release / idle (no NAV).
 pub const RAD_DEADZONE: f64 = 0.2;
@@ -38,18 +40,77 @@ pub struct CodexMicroRgbCfg {
     pub b: u8,
 }
 
-#[derive(Debug, Clone, Default)]
+/// Per-agent slot light snapshot from `v.oai.thstatus` (AG00–AG05).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CodexMicroAgentSlotState {
+    /// idle | running | needs_input | done | failed
+    pub state: String,
+    pub rgb: Option<CodexMicroRgbCfg>,
+    pub raw: String,
+    pub updated_at_ms: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct CodexMicroProtocolState {
     /// Raw device.status payload snippet / label.
     pub device_status: String,
     /// sys.version string.
     pub version: String,
-    /// Mapped five-state: idle | running | listening | done | failed.
+    /// Mapped pad five-state: idle | running | listening | done | failed (global chip only).
     pub pad_status: String,
     pub rgb: Option<CodexMicroRgbCfg>,
     pub lights_preview: bool,
     /// Last NAV_* held from rad (None = deadzone / released). Never NAV_PRESS from rad.
     pub last_nav: Option<String>,
+    /// `None` = no native slot data (do not pretend idle is native).
+    pub agent_slots: [Option<CodexMicroAgentSlotState>; 6],
+    pub last_update_ms: u64,
+    pub ever_native: bool,
+    /// connected | stale | fallback — refreshed in `protocol_snapshot()`.
+    pub connection_state: String,
+}
+
+impl Default for CodexMicroProtocolState {
+    fn default() -> Self {
+        Self {
+            device_status: String::new(),
+            version: String::new(),
+            pad_status: String::new(),
+            rgb: None,
+            lights_preview: false,
+            last_nav: None,
+            agent_slots: [None, None, None, None, None, None],
+            last_update_ms: 0,
+            ever_native: false,
+            connection_state: "fallback".into(),
+        }
+    }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn mark_native_touch(state: &mut CodexMicroProtocolState) {
+    state.ever_native = true;
+    state.last_update_ms = now_ms();
+    state.connection_state = "connected".into();
+}
+
+fn refresh_connection_state(state: &mut CodexMicroProtocolState) {
+    if !state.ever_native || state.last_update_ms == 0 {
+        state.connection_state = "fallback".into();
+        return;
+    }
+    let age = now_ms().saturating_sub(state.last_update_ms);
+    state.connection_state = if age > NATIVE_STALE_MS {
+        "stale".into()
+    } else {
+        "connected".into()
+    };
 }
 
 struct ReportReassembler {
@@ -219,8 +280,45 @@ pub fn reset_protocol_state() {
     *protocol_state().lock().unwrap() = CodexMicroProtocolState::default();
 }
 
+#[cfg(test)]
+pub fn test_force_last_update_ms(ms: u64) {
+    let mut state = protocol_state().lock().unwrap();
+    state.last_update_ms = ms;
+    state.ever_native = true;
+    refresh_connection_state(&mut state);
+}
+
+/// Shared mutex so vendor + overlay protocol tests don't race.
+#[cfg(test)]
+pub fn test_protocol_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap()
+}
+
 pub fn protocol_snapshot() -> CodexMicroProtocolState {
-    protocol_state().lock().unwrap().clone()
+    let mut state = protocol_state().lock().unwrap().clone();
+    refresh_connection_state(&mut state);
+    state
+}
+
+/// True when connection is connected and age is within NATIVE_STALE_MS.
+pub fn native_fresh(state: &CodexMicroProtocolState) -> bool {
+    state.ever_native
+        && state.last_update_ms > 0
+        && now_ms().saturating_sub(state.last_update_ms) <= NATIVE_STALE_MS
+}
+
+/// AG00–AG05 index from micro key id.
+pub fn agent_slot_index(micro_key_id: &str) -> Option<usize> {
+    match micro_key_id.trim() {
+        "AG00" => Some(0),
+        "AG01" => Some(1),
+        "AG02" => Some(2),
+        "AG03" => Some(3),
+        "AG04" => Some(4),
+        "AG05" => Some(5),
+        _ => None,
+    }
 }
 
 /// Map stick angle + distance → NAV_* or None (deadzone). **Never** returns center / NAV_PRESS.
@@ -345,13 +443,17 @@ fn apply_device_status(json: &str) {
             .or_else(|| extract_json_string_field(&p, "status"))
         {
             state.device_status = s;
+            mark_native_touch(&mut state);
             return;
         }
         state.device_status = p;
+        mark_native_touch(&mut state);
     } else if let Some(s) = extract_json_string_field(json, "result") {
         state.device_status = s;
+        mark_native_touch(&mut state);
     } else {
         state.device_status = "ok".into();
+        mark_native_touch(&mut state);
     }
 }
 
@@ -364,11 +466,13 @@ fn apply_sys_version(json: &str) {
             .or_else(|| extract_json_string_field(&p, "version"))
         {
             state.version = v;
+            mark_native_touch(&mut state);
             return;
         }
     }
     if let Some(v) = extract_json_string_field(json, "result") {
         state.version = v;
+        mark_native_touch(&mut state);
     }
 }
 
@@ -384,14 +488,52 @@ fn apply_thstatus(json: &str) {
         })
         .unwrap_or_default();
     let mapped = map_thstatus_to_pad(&raw);
-    {
-        let mut state = protocol_state().lock().unwrap();
-        state.pad_status = mapped.clone();
+    let slots_src = payload.as_ref().and_then(|p| {
+        extract_json_array_field(p, "slots")
+            .or_else(|| extract_json_array_field(p, "agents"))
+            .or_else(|| extract_json_array_field(p, "th"))
+    });
+    let parsed_slots = slots_src
+        .as_ref()
+        .map(|arr| parse_thstatus_slots(arr))
+        .unwrap_or_default();
+
+    let mut state = protocol_state().lock().unwrap();
+    if !mapped.is_empty() {
+        state.pad_status = mapped;
     }
-    if !mapped.is_empty() && mapped != "idle" {
-        crate::codex_micro_overlay::note_pad_run_status(&mapped, "");
-    } else if mapped == "idle" {
-        crate::codex_micro_overlay::note_pad_run_status("idle", "");
+    for (idx, slot) in parsed_slots {
+        if idx < 6 {
+            state.agent_slots[idx] = Some(slot);
+        }
+    }
+    mark_native_touch(&mut state);
+}
+
+/// Agent slot normalize: idle | running | needs_input | done | failed.
+pub fn map_agent_slot_state(raw: &str) -> String {
+    let s = raw.trim().to_ascii_lowercase();
+    match s.as_str() {
+        "" | "idle" | "blank" | "ready" | "ok" => "idle".into(),
+        "running" | "busy" | "working" | "thinking" => "running".into(),
+        "needs_input" | "waiting" | "approval" | "attention" | "listening" | "dictating"
+        | "ptt" | "mic" => "needs_input".into(),
+        "done" | "success" | "complete" | "completed" => "done".into(),
+        "failed" | "error" | "fail" => "failed".into(),
+        _ => {
+            if s.contains("need") || s.contains("wait") || s.contains("approv") || s.contains("listen")
+            {
+                "needs_input".into()
+            } else if s.contains("run") || s.contains("work") || s.contains("think") {
+                "running".into()
+            } else if s.contains("fail") || s.contains("err") {
+                "failed".into()
+            } else if s.contains("done") || s.contains("success") || s.contains("complete") {
+                "done".into()
+            } else {
+                "idle".into()
+            }
+        }
     }
 }
 
@@ -400,11 +542,12 @@ fn map_thstatus_to_pad(raw: &str) -> String {
     match s.as_str() {
         "" | "idle" | "ready" | "ok" => "idle".into(),
         "running" | "busy" | "working" | "thinking" => "running".into(),
-        "listening" | "dictating" | "ptt" | "mic" => "listening".into(),
+        "listening" | "dictating" | "ptt" | "mic" | "needs_input" | "waiting" | "approval"
+        | "attention" => "listening".into(),
         "done" | "success" | "complete" | "completed" => "done".into(),
         "failed" | "error" | "fail" => "failed".into(),
         _ => {
-            if s.contains("listen") {
+            if s.contains("listen") || s.contains("need") || s.contains("wait") {
                 "listening".into()
             } else if s.contains("run") || s.contains("work") {
                 "running".into()
@@ -419,6 +562,66 @@ fn map_thstatus_to_pad(raw: &str) -> String {
     }
 }
 
+fn parse_thstatus_slots(array_json: &str) -> Vec<(usize, CodexMicroAgentSlotState)> {
+    let mut out = Vec::new();
+    let ts = now_ms();
+    for obj in iter_json_array_objects(array_json) {
+        let idx = extract_slot_index(&obj);
+        let Some(idx) = idx else {
+            continue;
+        };
+        if idx >= 6 {
+            continue;
+        }
+        let raw = extract_json_string_field(&obj, "s")
+            .or_else(|| extract_json_string_field(&obj, "status"))
+            .or_else(|| extract_json_string_field(&obj, "state"))
+            .unwrap_or_default();
+        let state = map_agent_slot_state(&raw);
+        let rgb = extract_slot_rgb(&obj);
+        out.push((
+            idx,
+            CodexMicroAgentSlotState {
+                state,
+                rgb,
+                raw,
+                updated_at_ms: ts,
+            },
+        ));
+    }
+    out
+}
+
+fn extract_slot_index(obj: &str) -> Option<usize> {
+    if let Some(n) = extract_json_u8_field(obj, "i").map(|v| v as usize) {
+        return Some(n);
+    }
+    if let Some(n) = extract_json_u8_field(obj, "index").map(|v| v as usize) {
+        return Some(n);
+    }
+    if let Some(n) = extract_json_u8_field(obj, "slot").map(|v| v as usize) {
+        return Some(n);
+    }
+    if let Some(s) = extract_json_string_field(obj, "i")
+        .or_else(|| extract_json_string_field(obj, "index"))
+        .or_else(|| extract_json_string_field(obj, "slot"))
+    {
+        let t = s.trim();
+        if let Some(rest) = t.strip_prefix("AG0").or_else(|| t.strip_prefix("ag0")) {
+            return rest.parse().ok();
+        }
+        return t.parse().ok();
+    }
+    None
+}
+
+fn extract_slot_rgb(obj: &str) -> Option<CodexMicroRgbCfg> {
+    let r = extract_json_u8_field(obj, "r")?;
+    let g = extract_json_u8_field(obj, "g")?;
+    let b = extract_json_u8_field(obj, "b")?;
+    Some(CodexMicroRgbCfg { r, g, b })
+}
+
 fn apply_rgbcfg(json: &str) {
     let payload = match extract_json_object_field(json, "p")
         .or_else(|| extract_json_object_field(json, "params"))
@@ -429,7 +632,9 @@ fn apply_rgbcfg(json: &str) {
     let r = extract_json_u8_field(&payload, "r").unwrap_or(0);
     let g = extract_json_u8_field(&payload, "g").unwrap_or(0);
     let b = extract_json_u8_field(&payload, "b").unwrap_or(0);
-    protocol_state().lock().unwrap().rgb = Some(CodexMicroRgbCfg { r, g, b });
+    let mut state = protocol_state().lock().unwrap();
+    state.rgb = Some(CodexMicroRgbCfg { r, g, b });
+    mark_native_touch(&mut state);
 }
 
 fn apply_lights_preview(json: &str) {
@@ -442,6 +647,7 @@ fn apply_lights_preview(json: &str) {
         .unwrap_or(true);
     let mut state = protocol_state().lock().unwrap();
     state.lights_preview = on;
+    // Only update rgb when preview supplies r/g/b — never clear existing rgbcfg on on/off-only.
     if on {
         if let Some(rgb) = payload.as_ref().and_then(|p| {
             let r = extract_json_u8_field(p, "r")?;
@@ -452,6 +658,7 @@ fn apply_lights_preview(json: &str) {
             state.rgb = Some(rgb);
         }
     }
+    mark_native_touch(&mut state);
 }
 
 fn is_micro_key_id(key: &str) -> bool {
@@ -531,14 +738,107 @@ fn extract_json_object_field(json: &str, field: &str) -> Option<String> {
     None
 }
 
+fn extract_json_array_field(json: &str, field: &str) -> Option<String> {
+    let needle = format!("\"{field}\":[");
+    let start = json.find(&needle)? + needle.len() - 1;
+    let slice = json.get(start..)?;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (i, ch) in slice.char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(slice[..=i].to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn iter_json_array_objects(array_json: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let bytes = array_json.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() && bytes[i] != b'[' {
+        i += 1;
+    }
+    if i >= bytes.len() {
+        return out;
+    }
+    i += 1;
+    while i < bytes.len() {
+        while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\n' || bytes[i] == b'\t' || bytes[i] == b',') {
+            i += 1;
+        }
+        if i >= bytes.len() || bytes[i] == b']' {
+            break;
+        }
+        if bytes[i] != b'{' {
+            // Skip non-object tokens.
+            i += 1;
+            continue;
+        }
+        let start = i;
+        let mut depth = 0usize;
+        let mut in_string = false;
+        let mut escaped = false;
+        while i < bytes.len() {
+            let ch = bytes[i] as char;
+            if in_string {
+                if escaped {
+                    escaped = false;
+                } else if ch == '\\' {
+                    escaped = true;
+                } else if ch == '"' {
+                    in_string = false;
+                }
+                i += 1;
+                continue;
+            }
+            match ch {
+                '"' => in_string = true,
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        if let Ok(s) = std::str::from_utf8(&bytes[start..=i]) {
+                            out.push(s.to_string());
+                        }
+                        i += 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::MutexGuard;
 
     fn test_lock() -> MutexGuard<'static, ()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+        crate::codex_micro_vendor::test_protocol_lock()
     }
 
     #[test]
@@ -637,6 +937,8 @@ mod tests {
         reset_protocol_state();
         let _ = apply_rpc_json(r#"{"m":"v.oai.thstatus","p":{"s":"listening"}}"#);
         assert_eq!(protocol_snapshot().pad_status, "listening");
+        assert!(protocol_snapshot().ever_native);
+        assert_eq!(protocol_snapshot().connection_state, "connected");
         let _ = apply_rpc_json(r#"{"m":"v.oai.rgbcfg","p":{"r":10,"g":20,"b":30}}"#);
         let rgb = protocol_snapshot().rgb.expect("rgb");
         assert_eq!((rgb.r, rgb.g, rgb.b), (10, 20, 30));
@@ -644,6 +946,46 @@ mod tests {
         assert_eq!(protocol_snapshot().version, "1.2.3");
         let _ = apply_rpc_json(r#"{"m":"lights.preview","p":{"on":true,"r":1,"g":2,"b":3}}"#);
         assert!(protocol_snapshot().lights_preview);
+        assert_eq!(protocol_snapshot().rgb.as_ref().map(|c| c.r), Some(1));
+    }
+
+    #[test]
+    fn thstatus_slots_update_agent_slots() {
+        let _g = test_lock();
+        reset_protocol_state();
+        let _ = apply_rpc_json(
+            r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"},{"index":2,"state":"needs_input"},{"slot":"AG05","s":"failed"}]}}"#,
+        );
+        let snap = protocol_snapshot();
+        assert_eq!(snap.agent_slots[0].as_ref().map(|s| s.state.as_str()), Some("running"));
+        assert!(snap.agent_slots[1].is_none());
+        assert_eq!(
+            snap.agent_slots[2].as_ref().map(|s| s.state.as_str()),
+            Some("needs_input")
+        );
+        assert_eq!(snap.agent_slots[5].as_ref().map(|s| s.state.as_str()), Some("failed"));
+        assert!(native_fresh(&snap));
+    }
+
+    #[test]
+    fn thstatus_unknown_does_not_panic() {
+        let _g = test_lock();
+        reset_protocol_state();
+        let _ = apply_rpc_json(r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":9,"s":"weird"},{"foo":1}]}}"#);
+        let snap = protocol_snapshot();
+        assert!(snap.agent_slots.iter().all(|s| s.is_none()));
+        assert_eq!(map_agent_slot_state("thinking"), "running");
+        assert_eq!(map_agent_slot_state("approval"), "needs_input");
+    }
+
+    #[test]
+    fn lights_preview_on_off_preserves_rgbcfg() {
+        let _g = test_lock();
+        reset_protocol_state();
+        let _ = apply_rpc_json(r#"{"m":"v.oai.rgbcfg","p":{"r":9,"g":8,"b":7}}"#);
+        let _ = apply_rpc_json(r#"{"m":"lights.preview","p":{"on":true}}"#);
+        let rgb = protocol_snapshot().rgb.expect("rgb kept");
+        assert_eq!((rgb.r, rgb.g, rgb.b), (9, 8, 7));
     }
 
     #[test]

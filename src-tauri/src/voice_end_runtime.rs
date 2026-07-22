@@ -196,6 +196,14 @@ pub fn begin_hold_voice_chord(state: &AppState, chord: &str) -> bool {
     if !is_hold_to_talk_voice_key(chord) {
         return false;
     }
+    // Idempotent: parallel overlay/presence paths were double-pressing the same chord
+    // (log: hold start → hold start within 2ms) and thrashing focus/SendInput.
+    if let Some(held) = held_voice_chord(state) {
+        if crate::key_chord::chords_equivalent(&held, chord) {
+            return true;
+        }
+        let _ = end_hold_voice_chord(state);
+    }
     if !crate::keyboard::press_chord(chord) {
         return false;
     }

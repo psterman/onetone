@@ -5,6 +5,7 @@
   "description": "一声 onetone — 硬件启动键到语音输入法快捷键的映射工具（Tauri + Rust）",
   "scripts": {
     "serve": "serve src -l 1420 --no-port-switching",
+    "dev:labs": "powershell -NoProfile -Command \"$env:ONETONE_CODEX_MICRO_PROTOCOL='1'; npm run dev\"",
     "tauri": "tauri",
     "dev": "tauri dev",
     "prepare-vosk": "node scripts/ensure-vosk-cn-model.js",

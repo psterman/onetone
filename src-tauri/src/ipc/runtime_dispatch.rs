@@ -319,12 +319,36 @@ fn spawn_overlay_tap_fire(
     route: crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
     micro_key_id: String,
 ) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    // One focus+SendInput at a time — parallel taps deadlocked via AttachThreadInput/WebView2.
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::SeqCst) {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "codex_pad",
+            &format!("tap dropped busy key={micro_key_id} slot={}", route.slot_id),
+        );
+        crate::codex_micro_overlay::note_pad_run_status("done", &micro_key_id);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return;
+    }
+    crate::app_log::log_line(
+        state.as_ref(),
+        "codex_pad",
+        &format!(
+            "tap fire key={micro_key_id} slot={} action={}",
+            route.slot_id, route.action_id
+        ),
+    );
     let _ = std::thread::Builder::new()
         .name("overlay-pad-tap".into())
         .spawn(move || {
-            run_overlay_tap_action(&state, &exec_window, &route);
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                run_overlay_tap_action(&state, &exec_window, &route);
+            }));
             crate::codex_micro_overlay::note_pad_run_status("done", &micro_key_id);
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            BUSY.store(false, Ordering::SeqCst);
         });
 }
 
@@ -569,17 +593,50 @@ pub fn fire_codex_micro_pad_key(
     }
 
     // Numpad mode: ENC is the only Codex exception (summonCodex). All other keys blocked.
+    // If config says Codex mode but hook cache drifted, resync once before rejecting.
     if !crate::codex_numpad_layer::numpad_mode_allows_fire(micro_key_id) {
+        {
+            let cfg = state.cfg.lock();
+            let cfg_on = cfg
+                .active_mappings()
+                .iter()
+                .find(|m| m.app_target_id.trim() == CODEX_APP_TARGET_ID)
+                .and_then(|m| m.codex_micro_pad.as_ref())
+                .map(|p| p.enabled)
+                .unwrap_or(false);
+            if cfg_on {
+                crate::codex_numpad_layer::sync_hook_cache(&cfg);
+            }
+        }
+        if !crate::codex_numpad_layer::numpad_mode_allows_fire(micro_key_id) {
+            if key_down {
+                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            }
+            return serde_json::json!({
+                "ok": false,
+                "reason": "numpad_mode",
+                "microKeyId": micro_key_id,
+            });
+        }
+    }
+
+    // Overlay / enhance NAV: async inject only — never block IPC or thrash overlay state.
+    // (Sync SendInput into the overlay webview + status push every 140ms caused UI freeze.)
+    if is_nav_micro_key(micro_key_id)
+        && crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id).is_none()
+        && (crate::codex_numpad_layer::software_enhance_enabled()
+            || is_overlay_pad_window(window))
+    {
         if key_down {
-            crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
-            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            spawn_nav_arrow_inject(micro_key_id.to_string());
         }
         return serde_json::json!({
-            "ok": false,
-            "reason": "numpad_mode",
+            "ok": true,
+            "reason": "enhance_pulse",
             "microKeyId": micro_key_id,
         });
     }
+
     if !crate::codex_numpad_layer::pad_mapping_active() {
         // ENC-only path (numpad mode exception).
         if !key_down {
@@ -644,10 +701,16 @@ pub fn fire_codex_micro_pad_key(
                 || is_overlay_pad_window(window))
         {
             if key_down {
-                inject_software_enhance_key(micro_key_id);
-                crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+                if is_nav_micro_key(micro_key_id) {
+                    spawn_nav_arrow_inject(micro_key_id.to_string());
+                } else {
+                    // ENC_CW / ENC_CC: highlight-only, no HID.
+                    crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+                    crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                }
+            } else if !is_nav_micro_key(micro_key_id) {
+                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             }
-            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({
                 "ok": true,
                 "reason": "enhance_pulse",
@@ -817,8 +880,34 @@ fn inject_software_enhance_key(micro_key_id: &str) {
         _ => None,
     };
     if let Some(c) = chord {
-        let _ = crate::keyboard::send_chord(c, 40);
+        let _ = crate::keyboard::send_chord(c, 35);
     }
+}
+
+/// Overlay D-pad: focus Codex then inject arrow. Never run on the IPC thread (sleep + focus
+/// would freeze the overlay), and never emit overlay status (repeat would thrash the webview).
+fn spawn_nav_arrow_inject(micro_key_id: String) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("overlay-nav-inject".into())
+        .spawn(move || {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = app_chat_workflow::quick_focus_codex_for_hold();
+                inject_software_enhance_key(&micro_key_id);
+            }));
+            BUSY.store(false, Ordering::SeqCst);
+        });
+}
+
+fn is_nav_micro_key(micro_key_id: &str) -> bool {
+    matches!(
+        micro_key_id.trim(),
+        "NAV_UP" | "NAV_DOWN" | "NAV_LEFT" | "NAV_RIGHT" | "NAV_PRESS"
+    )
 }
 
 fn try_end_hold_voice_on_keyup(
@@ -1064,7 +1153,17 @@ fn try_dispatch_agent_key(
             return false;
         };
         // Physical Ctrl+Shift+D must reach Codex as a native hold; only PageDown synthesizes it.
+        // But while WE are synthesizing / already holding, consume the echo — do not fall through
+        // into classic LongPress (log: double hold start/release → 假死).
         if b.action_id == "startDictation" && crate::key_chord::is_hold_to_talk_chord(&chord) {
+            if crate::send_guard::blocks_key(physical_key)
+                || crate::send_guard::blocks_key(&chord)
+                || crate::voice_end_runtime::held_voice_chord(state.as_ref())
+                    .is_some_and(|held| crate::key_chord::chords_equivalent(&held, &chord))
+            {
+                crate::send_guard::note_blocked();
+                return true;
+            }
             return false;
         }
         if b.action_id == "startDictation"

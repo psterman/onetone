@@ -9,6 +9,7 @@ mod audio_win;
 mod backdrop;
 mod coach_hud;
 mod codex_micro_overlay;
+mod codex_micro_protocol_server;
 mod codex_micro_vendor;
 mod codex_numpad_layer;
 mod config;
@@ -626,6 +627,25 @@ pub fn run() {
                     });
             }
 
+            // Labs/验收 only — default OFF for normal users.
+            // Set ONETONE_CODEX_MICRO_PROTOCOL=1 to auto-start 127.0.0.1 status loopback.
+            if codex_micro_protocol_server::env_requests_autostart() {
+                let labs_app = app.handle().clone();
+                let labs_state = Arc::clone(&app_state);
+                match codex_micro_protocol_server::start(labs_app, labs_state, None) {
+                    Ok(r) => app_log::log_line(
+                        &app_state,
+                        "codex_micro_protocol",
+                        &format!("Labs autostart ok url={}", r.url),
+                    ),
+                    Err(err) => app_log::log_line(
+                        &app_state,
+                        "codex_micro_protocol",
+                        &format!("Labs autostart failed: {err}"),
+                    ),
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -717,6 +737,10 @@ pub fn run() {
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
             ipc::cmd_codex_micro_overlay_get_state,
+            ipc::cmd_codex_micro_protocol_inject,
+            ipc::cmd_codex_micro_protocol_server_start,
+            ipc::cmd_codex_micro_protocol_server_stop,
+            ipc::cmd_codex_micro_protocol_server_status,
             ipc::cmd_codex_micro_overlay_dismiss,
             ipc::cmd_codex_micro_overlay_start_drag,
             ipc::cmd_codex_micro_overlay_snap_position,

@@ -387,6 +387,10 @@ fn needs_auto_ready(m: &MappingEntry) -> bool {
     match &m.codex_micro_pad {
         None => true,
         Some(pad) => {
+            // Dismiss (X) persists overlay_enabled=false; re-open when Codex FG triggers ensure.
+            if !pad.overlay_enabled {
+                return true;
+            }
             // pad.enabled=false is intentional numpad mode — do not auto-re-enable.
             if !pad.enabled {
                 return pad.keys.is_empty();

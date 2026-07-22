@@ -35,12 +35,19 @@ pub fn arm_keys(keys: &[String]) {
 }
 
 pub fn guard_keys_from_combo(combo: &str) -> Vec<String> {
-    combo
-        .split('+')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .flat_map(|part| expand_guard_aliases(part))
-        .collect()
+    let trimmed = combo.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let mut out = HashSet::new();
+    // Arm the full chord name so WM_HOTKEY("Ctrl+Alt+N") is blocked while we inject it.
+    out.insert(trimmed.to_string());
+    for part in trimmed.split('+').map(str::trim).filter(|s| !s.is_empty()) {
+        for alias in expand_guard_aliases(part) {
+            out.insert(alias);
+        }
+    }
+    out.into_iter().collect()
 }
 
 fn expand_guard_aliases(key: &str) -> Vec<String> {
@@ -82,16 +89,40 @@ fn keys_match(a: &str, b: &str) -> bool {
     a.eq_ignore_ascii_case(b)
 }
 
+fn chord_parts_all_guarded(chord: &str, guarded: &HashSet<String>) -> bool {
+    let parts: Vec<&str> = chord
+        .split('+')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    if parts.len() < 2 {
+        return false;
+    }
+    parts
+        .iter()
+        .all(|p| guarded.iter().any(|g| keys_match(g, p)))
+}
+
 pub fn blocks_key(key: &str) -> bool {
     if !is_active() {
         return false;
     }
     let key = key.trim();
+    if key.is_empty() {
+        return false;
+    }
     let guarded = GUARDED_KEYS.lock().unwrap_or_else(|e| e.into_inner());
     if guarded.is_empty() {
         return true;
     }
-    guarded.iter().any(|g| keys_match(g, key))
+    if guarded.iter().any(|g| keys_match(g, key)) {
+        return true;
+    }
+    // Injected chords re-enter as full names via WM_HOTKEY (e.g. "Ctrl+Alt+N").
+    if key.contains('+') && chord_parts_all_guarded(key, &guarded) {
+        return true;
+    }
+    false
 }
 
 pub fn is_active() -> bool {
@@ -145,8 +176,12 @@ pub fn run_guarded<F: FnOnce()>(guard_ms: u64, f: F) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex as StdMutex;
     use std::thread;
     use std::time::Duration as StdDuration;
+
+    // Process-global guard state races under parallel libtest; serialize these cases.
+    static TEST_LOCK: StdMutex<()> = StdMutex::new(());
 
     fn reset() {
         release_guard();
@@ -155,6 +190,7 @@ mod tests {
 
     #[test]
     fn guard_expires_after_timeout() {
+        let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         reset();
         arm_keys(&["RAlt".into()]);
         run_guarded(40, || {});
@@ -166,6 +202,7 @@ mod tests {
 
     #[test]
     fn blocks_only_armed_keys() {
+        let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         reset();
         arm_keys(&["RAlt".into(), "Alt".into()]);
         SEND_GUARD_UNTIL_MS.store(now_ms().saturating_add(500), Ordering::SeqCst);
@@ -181,5 +218,21 @@ mod tests {
         let keys = guard_keys_from_combo("Ctrl+L");
         assert!(keys.iter().any(|k| k.eq_ignore_ascii_case("Ctrl")));
         assert!(keys.iter().any(|k| k.eq_ignore_ascii_case("L")));
+        assert!(keys.iter().any(|k| k == "Ctrl+L"));
+    }
+
+    #[test]
+    fn blocks_full_chord_name_while_injecting() {
+        let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        reset();
+        arm_keys(&guard_keys_from_combo("Ctrl+Alt+N"));
+        SEND_GUARD_UNTIL_MS.store(now_ms().saturating_add(500), Ordering::SeqCst);
+        SEND_GUARD.store(true, Ordering::SeqCst);
+        // WM_HOTKEY delivers the full registered chord string.
+        assert!(blocks_key("Ctrl+Alt+N"));
+        assert!(blocks_key("ctrl+alt+n"));
+        assert!(blocks_key("N"));
+        assert!(!blocks_key("F13"));
+        reset();
     }
 }

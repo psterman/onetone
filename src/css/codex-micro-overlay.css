@@ -5,13 +5,13 @@
 :root {
   --overlay-ink: var(--micro-hw-ink, #3a4454);
   --overlay-muted: var(--micro-hw-muted, #7d8998);
-  --overlay-shell: rgba(204, 255, 226, 0.82);
-  --overlay-shell-hot: rgba(106, 255, 181, 0.5);
+  --overlay-shell: rgba(226, 236, 248, 0.88);
+  --overlay-shell-hot: rgba(0, 163, 255, 0.35);
   --overlay-face: rgba(232, 238, 244, 0.68);
   --overlay-key-face: #f7f9fb;
   --overlay-key-side: #d9e0e8;
   --overlay-gap: 8px;
-  --overlay-led-idle: #f5b51b;
+  --overlay-led-idle: rgba(0, 163, 255, 0.45);
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
 }
 
@@ -34,7 +34,15 @@ body {
 .root {
   width: 100%;
   height: 100%;
-  padding: 7px;
+  padding: 16px;
+}
+
+/* Mini bar window is only ~48px tall — root padding must collapse or buttons spill out. */
+.root:has(.wrap.is-minimized) {
+  padding: 0;
+}
+.root.is-mini-host {
+  padding: 0;
 }
 
 .wrap {
@@ -49,25 +57,15 @@ body {
   overflow: visible;
 }
 
-.wrap::before,
-.wrap::after {
-  content: "";
-  position: absolute;
-  z-index: 5;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #4d5967, #131820 72%);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.28),
-    0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-.wrap::before { top: 0; left: 0; }
-.wrap::after { top: 0; right: 0; }
-
 .wrap:active { cursor: grabbing; }
 .wrap.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+
+/* Decorative top screw dots removed — do not reintroduce via ::before/::after. */
+.wrap::before,
+.wrap::after {
+  content: none !important;
+  display: none !important;
+}
 
 .wrap [data-micro-key],
 .wrap [data-act],
@@ -94,12 +92,7 @@ body {
 }
 
 .overlay-chrome__title {
-  flex: 1;
-  font-size: 11px;
-  font-weight: 800;
-  color: #778597;
-  letter-spacing: 0;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  display: none !important;
 }
 
 .overlay-chrome__btn {
@@ -132,12 +125,13 @@ body {
   padding: 0;
   display: flex;
   align-items: stretch;
+  /* Pad stays on the right; rail slot is always reserved to the left of it. */
   justify-content: flex-end;
   gap: 0;
 }
 
 .overlay-body.has-nav-rail {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .overlay-full {
@@ -146,28 +140,40 @@ body {
   position: relative;
 }
 
-/* Left inverted-T arrow rail (JOY panel) — matches hardware chiclet reference */
+/* Left inverted-T D-pad rail (JOY panel) — always takes layout space so open/close
+   never reflows the main keyboard. Visibility is opacity-only. */
 .overlay-nav-rail {
   position: relative;
-  flex: 0 0 112px;
-  width: 112px;
-  margin: 18px 0 18px 6px;
+  flex: 0 0 140px;
+  width: 140px;
+  margin: 14px 0 14px 6px;
   border-radius: 22px;
-  background:
-    linear-gradient(145deg, rgba(210, 255, 232, 0.78), rgba(170, 245, 210, 0.62));
-  box-shadow:
-    0 12px 28px rgba(20, 50, 40, 0.18),
-    inset 0 0 0 1.5px rgba(255, 255, 255, 0.55),
-    0 0 20px rgba(80, 230, 160, 0.28);
+  background: var(--micro-dpad-rail-bg);
+  box-shadow: var(--micro-dpad-rail-shadow);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  overflow: visible;
+  opacity: 0;
+  transform: translateX(8px) scale(0.96);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .overlay-nav-rail[hidden] {
-  display: none !important;
+  /* Keep flex slot — do not display:none (that shifts the pad). */
+  display: flex !important;
+  opacity: 0;
+  transform: translateX(8px) scale(0.96);
+  pointer-events: none;
+}
+
+.overlay-body.has-nav-rail .overlay-nav-rail,
+.overlay-body.has-nav-rail .overlay-nav-rail[hidden] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .overlay-nav-rail__screw {
@@ -185,32 +191,31 @@ body {
 
 .overlay-nav-rail__pad {
   display: grid;
-  grid-template-columns: repeat(3, 28px);
-  grid-template-rows: repeat(2, 28px);
-  gap: 6px;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(2, 40px);
+  gap: 8px;
   place-items: center;
 }
 
 .overlay-nav-key {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 8px;
+  border-radius: 11px;
   padding: 0;
-  color: #2a3340;
-  background: linear-gradient(180deg, #fbfcfd 0%, #eef2f6 100%);
-  box-shadow:
-    0 2px 0 #c5ced8,
-    0 3px 6px rgba(30, 40, 55, 0.14),
-    inset 0 1px 0 rgba(255,255,255,0.95);
+  color: var(--micro-dpad-btn-ink);
+  background: var(--micro-dpad-btn-bg);
+  box-shadow: var(--micro-dpad-btn-shadow);
   display: grid;
   place-items: center;
-  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
+  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
 .overlay-nav-key svg {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  stroke: none;
   pointer-events: none;
 }
 
@@ -220,24 +225,21 @@ body {
 .overlay-nav-key--right { grid-column: 3; grid-row: 2; }
 
 .overlay-nav-key:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #f3f6f9 100%);
+  filter: brightness(1.04);
 }
 
 .overlay-nav-key:active,
 .overlay-nav-key.is-lit {
-  transform: translateY(1px) scale(0.96);
-  background: linear-gradient(180deg, #d8fff0 0%, #b8f5d8 100%);
-  color: #0d6b45;
-  box-shadow:
-    0 1px 0 #9ecfba,
-    0 1px 3px rgba(20, 80, 55, 0.2),
-    inset 0 1px 2px rgba(0, 80, 50, 0.08);
+  transform: translateY(3px);
+  background: var(--micro-dpad-press-bg);
+  color: var(--micro-dpad-press-ink);
+  box-shadow: var(--micro-dpad-press-shadow);
 }
 
 .overlay-body .micro-hw {
   position: relative;
-  flex: 1 1 auto;
-  width: auto;
+  flex: 0 0 auto;
+  width: min(432px, calc(100% - 152px));
   min-width: 0;
   height: 100%;
   aspect-ratio: auto;
@@ -305,6 +307,7 @@ body {
     inset 0 -12px 24px rgba(126, 142, 158, 0.12),
     0 2px 8px rgba(20, 30, 44, 0.18);
   backdrop-filter: blur(9px);
+  overflow: visible;
 }
 
 .overlay-body .micro-hw__face::before {
@@ -316,52 +319,12 @@ body {
   pointer-events: none;
 }
 
-.micro-hw__brand {
-  position: absolute;
-  z-index: 3;
-  font-size: 8px;
-  line-height: 1;
-  color: rgba(85, 99, 116, 0.7);
-  letter-spacing: 0;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.micro-hw__brand--left {
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%) rotate(-90deg);
-  transform-origin: left center;
-}
-
-.micro-hw__brand--right {
-  right: 12px;
-  top: 49%;
-  transform: translateY(-50%) rotate(90deg);
-  transform-origin: right center;
-}
-
+.micro-hw__brand,
+.micro-hw__brand--left,
+.micro-hw__brand--right,
+.micro-hw__build,
 .micro-hw__arrow {
-  position: absolute;
-  left: 50%;
-  top: 4px;
-  transform: translateX(-50%);
-  z-index: 3;
-  color: rgba(33, 44, 56, 0.66);
-  font-size: 19px;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.micro-hw__build {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  z-index: 3;
-  font-size: 8px;
-  color: rgba(67, 78, 92, 0.68);
-  pointer-events: none;
+  display: none !important;
 }
 
 .wrap.is-pad-off .micro-hw__key:not([data-micro-key="ENC"]) {
@@ -380,12 +343,10 @@ body {
 }
 
 .wrap.is-joy-open .micro-hw__key[data-micro-key="JOY"] {
-  box-shadow:
-    0 0 0 2px rgba(40, 190, 130, 0.55),
-    0 0 14px rgba(50, 220, 150, 0.4);
+  box-shadow: none;
 }
 
-/* ENC: Material mode switch + summon icon */
+/* ENC: main-blue mode switch only (no icon / keycap frame) */
 .micro-hw__enc {
   position: relative;
   display: grid;
@@ -394,73 +355,92 @@ body {
   height: 100%;
 }
 
-.micro-hw__mode-switch {
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  width: 34px;
-  height: 18px;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.micro-hw__mode-track {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: #c5ccd6;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
-  transition: background 0.2s ease;
+.overlay-body .micro-hw__mode-switch {
   position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 52px;
+  height: 26px;
 }
 
-.micro-hw__mode-switch.is-on .micro-hw__mode-track {
-  background: #34c759;
+.overlay-body .micro-hw__mode-switch.is-pressed,
+.overlay-body .micro-hw__mode-switch:active {
+  transform: scale(0.97);
 }
 
-.micro-hw__mode-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.28);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+.overlay-body .micro-hw__mode-knob {
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
 }
 
-.micro-hw__mode-switch.is-on .micro-hw__mode-thumb {
-  transform: translateX(16px);
+.overlay-body .micro-hw__mode-switch.is-on .micro-hw__mode-knob {
+  left: 29px;
 }
 
-.micro-hw__enc-icon {
-  margin-top: 10px;
+.overlay-body .micro-hw__mode-label {
+  font-size: 8px;
 }
 
-.micro-hw__joy-toggle {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: #6a7788;
-  transition: color 0.18s ease, transform 0.12s ease;
+.overlay-body .micro-hw__mode-label--off {
+  right: 6px;
 }
 
-.micro-hw__joy-toggle.is-on {
-  color: #1aa866;
+.overlay-body .micro-hw__mode-label--on {
+  left: 6px;
 }
 
-.micro-hw__joy-icon {
-  width: 28px;
-  height: 28px;
+.overlay-body .micro-hw__key[data-micro-key="ENC"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  filter: none !important;
+  opacity: 1 !important;
 }
 
-.micro-hw__key.is-joy-on .micro-hw__joy-toggle {
-  transform: scale(1.06);
+.overlay-body .micro-hw__key[data-micro-key="ENC"].is-pressed,
+.overlay-body .micro-hw__key[data-micro-key="ENC"].is-active {
+  transform: none;
+  filter: none;
+  box-shadow: none !important;
+}
+
+.overlay-body .micro-hw__key[data-micro-key="ENC"] .micro-hw__enc-icon,
+.overlay-body .micro-hw__key[data-micro-key="ENC"] .micro-hw__sub {
+  display: none !important;
+}
+
+.overlay-body .micro-hw__joy-stick {
+  width: 52px;
+  height: 52px;
+}
+
+.overlay-body .micro-hw__key[data-micro-key="JOY"] {
+  z-index: 4;
+  overflow: visible;
+}
+
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]),
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) {
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  border-color: rgba(0, 163, 255, 0.45) !important;
+  box-shadow:
+    0 0 12px rgba(0, 163, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 0 rgba(0, 100, 160, 0.35) !important;
+  filter: none;
+}
+
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__meta,
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__meta {
+  color: var(--micro-key-press-ink) !important;
+  opacity: 1;
 }
 
 .overlay-toast {
@@ -568,15 +548,27 @@ body {
 .micro-hw__key--agent[data-ag="5"] { --ag-halo: rgba(101, 226, 255, 0.62); }
 
 .micro-hw__key--agent[data-run-status="running"] { --ag-halo: rgba(42, 156, 196, 0.72); }
-.micro-hw__key--agent[data-run-status="listening"] { --ag-halo: rgba(240, 180, 41, 0.76); }
+.micro-hw__key--agent[data-run-status="listening"] { --ag-halo: rgba(0, 163, 255, 0.76); }
+.micro-hw__key--agent[data-run-status="needs_input"] { --ag-halo: rgba(245, 166, 35, 0.82); }
+.micro-hw__key--agent[data-status-source="native"] {
+  box-shadow:
+    0 0 0 2px rgba(0, 163, 255, 0.35),
+    0 0 18px var(--ag-halo, rgba(0, 163, 255, 0.45));
+}
+.micro-hw__key--agent[data-status-source="fallback"],
+.micro-hw__key--agent[data-status-source="inferred"] {
+  /* quieter than native — no error chrome */
+}
 .micro-hw__key--agent[data-run-status="done"] { --ag-halo: rgba(64, 180, 120, 0.68); }
 .micro-hw__key--agent[data-run-status="failed"] { --ag-halo: rgba(220, 80, 90, 0.72); }
 
 .micro-hw__key--agent .micro-hw__icon {
   display: block;
-  width: 30%;
-  height: 30%;
-  opacity: 0.13;
+  width: 54%;
+  height: 54%;
+  max-width: 34px;
+  max-height: 34px;
+  opacity: 0.92;
 }
 
 /* White sculpted command keys. */
@@ -590,15 +582,6 @@ body {
     inset 0 -6px 11px rgba(139, 152, 169, 0.16),
     0 5px 0 #cfd8e0,
     0 7px 12px rgba(35, 45, 58, 0.18);
-}
-
-.micro-hw__key--command.is-pressed,
-.micro-hw__key--command.is-active {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    inset 0 3px 8px rgba(67, 78, 92, 0.16),
-    0 2px 0 #c1ccd5,
-    0 3px 7px rgba(35, 45, 58, 0.12);
 }
 
 .micro-hw__key--control {
@@ -622,6 +605,14 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 5px 0 #cfd8e0;
 }
+.micro-hw__key[data-run-status="needs_input"]:not(.micro-hw__key--agent),
+.micro-hw__key--agent[data-run-status="needs_input"] {
+  box-shadow:
+    0 0 0 2px rgba(245, 166, 35, 0.9),
+    0 0 16px rgba(245, 166, 35, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 5px 0 #e8d4a8;
+}
 
 .micro-hw__key[data-run-status="done"]:not(.micro-hw__key--agent) {
   box-shadow:
@@ -642,12 +633,13 @@ body {
 .micro-hw__icon {
   position: relative;
   z-index: 1;
-  width: 44%;
-  height: 44%;
-  max-width: 23px;
-  max-height: 23px;
+  width: 56%;
+  height: 56%;
+  max-width: 34px;
+  max-height: 34px;
   color: #263341;
   display: block;
+  transition: transform 0.14s ease, opacity 0.14s ease;
 }
 
 .micro-hw__icon svg {
@@ -656,16 +648,70 @@ body {
   display: block;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.75;
+  stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .micro-hw__key--span2 .micro-hw__icon {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   max-width: none;
   max-height: none;
+}
+
+/* Hover caption: name + shortcut */
+.micro-hw__meta {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 5px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1px;
+  max-height: 42%;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.overlay-body .micro-hw__key:hover .micro-hw__meta,
+.overlay-body .micro-hw__key:focus-visible .micro-hw__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.overlay-body .micro-hw__key:hover .micro-hw__icon,
+.overlay-body .micro-hw__key:focus-visible .micro-hw__icon {
+  transform: translateY(-7px);
+}
+
+.micro-hw__meta-name,
+.micro-hw__meta-chord {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.micro-hw__meta-name {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: inherit;
+}
+
+.micro-hw__meta-chord {
+  font-size: 8px;
+  font-weight: 600;
+  opacity: 0.72;
+  color: inherit;
 }
 
 .status-chip {
@@ -716,14 +762,17 @@ body {
   gap: 8px;
   width: 100%;
   height: 100%;
-  padding: 8px 12px;
-  border-radius: 18px;
+  min-height: 0;
+  padding: 6px 10px;
+  border-radius: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 14% 80%, rgba(56, 255, 152, 0.48), transparent 36%),
-    linear-gradient(145deg, rgba(235, 255, 245, 0.92), rgba(202, 255, 225, 0.82));
+    radial-gradient(circle at 12% 80%, rgba(0, 163, 255, 0.18), transparent 42%),
+    linear-gradient(145deg, rgba(236, 242, 250, 0.96), rgba(210, 222, 238, 0.9));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 10px 28px rgba(15, 40, 35, 0.18);
+    0 8px 22px rgba(20, 30, 50, 0.16);
   cursor: grab;
 }
 
@@ -732,18 +781,20 @@ body {
 .wrap.is-minimized .overlay-mini { display: flex; }
 
 .overlay-mini__mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 9px;
-  background: linear-gradient(180deg, #ffffff, #e7edf2);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #e8eef5);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #263341;
+  color: #1a2436;
   font-size: 10px;
   font-weight: 800;
-  box-shadow: 0 3px 0 #cfd8e0, 0 5px 8px rgba(35, 45, 58, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 2px 4px rgba(15, 23, 42, 0.12);
 }
 
 .overlay-mini__leds {
@@ -751,6 +802,8 @@ body {
   gap: 4px;
   flex: 1;
   justify-content: center;
+  align-items: center;
+  min-width: 0;
 }
 
 .overlay-mini__led {
@@ -758,62 +811,269 @@ body {
   height: 6px;
   border-radius: 50%;
   background: var(--overlay-led-idle);
-  box-shadow: 0 0 5px rgba(245, 181, 27, 0.8);
+  box-shadow: 0 0 6px rgba(0, 163, 255, 0.35);
+  flex-shrink: 0;
 }
 
-.overlay-mini__leds[data-pad-status="running"] .overlay-mini__led { background: var(--micro-hw-status-running); }
-.overlay-mini__leds[data-pad-status="listening"] .overlay-mini__led { background: var(--micro-hw-status-listening); }
-.overlay-mini__leds[data-pad-status="done"] .overlay-mini__led { background: var(--micro-hw-status-done); }
-.overlay-mini__leds[data-pad-status="failed"] .overlay-mini__led { background: var(--micro-hw-status-failed); }
+.overlay-mini__leds[data-pad-status="idle"] .overlay-mini__led,
+.overlay-mini__leds:not([data-pad-status]) .overlay-mini__led {
+  background: rgba(0, 163, 255, 0.4);
+  box-shadow: 0 0 5px rgba(0, 163, 255, 0.28);
+}
+.overlay-mini__leds[data-pad-status="running"] .overlay-mini__led {
+  background: var(--micro-hw-status-running);
+  box-shadow: 0 0 6px var(--micro-hw-status-running);
+}
+.overlay-mini__leds[data-pad-status="listening"] .overlay-mini__led {
+  background: var(--micro-hw-status-listening);
+  box-shadow: 0 0 6px var(--micro-hw-status-listening);
+}
+.overlay-mini__leds[data-pad-status="done"] .overlay-mini__led {
+  background: var(--micro-hw-status-done);
+  box-shadow: 0 0 6px var(--micro-hw-status-done);
+}
+.overlay-mini__leds[data-pad-status="failed"] .overlay-mini__led {
+  background: var(--micro-hw-status-failed);
+  box-shadow: 0 0 6px var(--micro-hw-status-failed);
+}
 
 .overlay-mini__btn {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.52);
-  color: #687687;
-  font-size: 14px;
-  line-height: 26px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4a5568;
+  font-size: 13px;
+  line-height: 24px;
   padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .overlay-mini__btn:hover {
-  background: rgba(255, 255, 255, 0.88);
-  color: #263241;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a2436;
 }
 
+/* Dark: graphite + cyan — match app html[data-theme="dark"] / --vp-* tokens */
 @media (prefers-color-scheme: dark) {
   :root {
-    --overlay-ink: #e8f0f8;
-    --overlay-muted: #9aa8b8;
-    --overlay-face: rgba(48, 58, 73, 0.72);
-    --overlay-key-face: #354153;
-    --overlay-key-side: #222a36;
+    --overlay-ink: #e6edf3;
+    --overlay-muted: #9ca9bc;
+    --overlay-face: rgba(26, 36, 54, 0.9);
+    --overlay-key-face: #2c3a4f;
+    --overlay-key-side: #121820;
+    --overlay-shell: rgba(36, 48, 66, 0.92);
+    --overlay-shell-hot: rgba(0, 163, 255, 0.35);
   }
 
+  .overlay-chrome__title {
+    color: #9ca9bc;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+
+  .overlay-chrome__btn {
+    background: rgba(36, 48, 66, 0.82);
+    color: #c5d0de;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .overlay-chrome__btn:hover {
+    background: rgba(44, 58, 79, 0.95);
+    color: #e6edf3;
+  }
+
+  /* Chassis: navy graphite + soft primary cyan glow (no mint). */
   .overlay-body .micro-hw {
     background:
-      radial-gradient(circle at 20% 96%, rgba(35, 255, 148, 0.5), transparent 34%),
-      linear-gradient(145deg, rgba(90, 180, 130, 0.58), rgba(31, 45, 54, 0.82));
+      radial-gradient(circle at 20% 96%, rgba(0, 163, 255, 0.2), transparent 36%),
+      radial-gradient(circle at 86% 6%, rgba(94, 200, 232, 0.1), transparent 30%),
+      linear-gradient(145deg, rgba(36, 48, 66, 0.94), rgba(15, 20, 25, 0.96));
+    box-shadow:
+      0 24px 56px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+      inset 0 0 28px rgba(0, 163, 255, 0.06),
+      0 0 28px rgba(0, 163, 255, 0.12);
+  }
+
+  .wrap.is-mode-numpad .overlay-body .micro-hw {
+    background:
+      radial-gradient(circle at 20% 96%, rgba(94, 200, 232, 0.16), transparent 36%),
+      radial-gradient(circle at 86% 6%, rgba(0, 163, 255, 0.08), transparent 30%),
+      linear-gradient(145deg, rgba(32, 44, 62, 0.94), rgba(14, 18, 26, 0.96));
+    box-shadow:
+      0 24px 56px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+      inset 0 0 24px rgba(94, 200, 232, 0.08),
+      0 0 24px rgba(94, 200, 232, 0.1);
+  }
+
+  .wrap.has-rgb-glow .micro-hw {
+    box-shadow:
+      0 24px 56px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+      inset 0 0 28px rgba(0, 163, 255, 0.08),
+      0 0 36px var(--overlay-rgb-glow, rgba(0, 163, 255, 0.28));
+  }
+
+  .micro-hw__aura {
+    background:
+      linear-gradient(90deg, rgba(0, 163, 255, 0.22), transparent 24% 72%, rgba(94, 200, 232, 0.16)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%);
   }
 
   .overlay-body .micro-hw__face {
     background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02)),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
       var(--overlay-face);
-    border-color: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -12px 24px rgba(0, 0, 0, 0.22),
+      0 2px 8px rgba(0, 0, 0, 0.28);
   }
 
-  .micro-hw__key--agent {
+  .overlay-body .micro-hw__face::before {
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .micro-hw__brand,
+  .micro-hw__build,
+  .micro-hw__arrow {
+    color: rgba(156, 169, 188, 0.72);
+  }
+
+  /* Agent: frosted raised surface over graphite face. */
+  .overlay-body .micro-hw__key--agent {
     background:
-      radial-gradient(circle at 50% 50%, rgba(102, 122, 255, 0.16) 0 12%, transparent 13%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
-    border-color: rgba(255, 255, 255, 0.12);
+      radial-gradient(circle at 50% 50%, rgba(0, 163, 255, 0.1) 0 12%, transparent 13%),
+      linear-gradient(180deg, rgba(44, 58, 79, 0.96), rgba(26, 36, 54, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e6edf3;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -6px 12px rgba(0, 0, 0, 0.28),
+      0 2px 6px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
   }
 
-  .micro-hw__key--command {
-    background: linear-gradient(180deg, #f2f6fa, #ccd5df);
-    color: #233040;
+  .overlay-body .micro-hw__key--agent::before {
+    opacity: 0.4;
+    filter: blur(3px);
+  }
+
+  .overlay-body .micro-hw__key--agent:not(.is-bound)::before {
+    opacity: 0.16;
+  }
+
+  .overlay-body .micro-hw__key--agent .micro-hw__icon {
+    opacity: 0.95;
+    color: #e6edf3;
+  }
+
+  /* Command: dark sculpted keys (same family as app surfaces, not white). */
+  .overlay-body .micro-hw__key--command {
+    background: linear-gradient(180deg, #344556 0%, #2a3648 52%, #1e2a3a 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e6edf3;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -6px 11px rgba(0, 0, 0, 0.32),
+      0 5px 0 #0c1016,
+      0 7px 12px rgba(0, 0, 0, 0.42);
+  }
+
+  .overlay-body .micro-hw__key--command .micro-hw__icon {
+    color: #e6edf3;
+    opacity: 1;
+  }
+
+  .overlay-body .micro-hw__meta-name {
+    color: #e6edf3;
+  }
+
+  .overlay-body .micro-hw__meta-chord {
+    color: #9ca9bc;
+    opacity: 0.9;
+  }
+
+  .overlay-body .micro-hw__key[data-run-status="running"]:not(.micro-hw__key--agent),
+  .overlay-body .micro-hw__key[data-run-status="listening"]:not(.micro-hw__key--agent),
+  .overlay-body .micro-hw__key[data-run-status="done"]:not(.micro-hw__key--agent),
+  .overlay-body .micro-hw__key[data-run-status="failed"]:not(.micro-hw__key--agent) {
+    box-shadow:
+      0 0 0 2px var(--micro-hw-status-running),
+      0 0 14px var(--micro-hw-status-running),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 5px 0 #0c1016;
+  }
+
+  .overlay-body .micro-hw__key[data-run-status="listening"]:not(.micro-hw__key--agent) {
+    box-shadow:
+      0 0 0 2px var(--micro-hw-status-listening),
+      0 0 16px var(--micro-hw-status-listening),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 5px 0 #0c1016;
+  }
+
+  .overlay-body .micro-hw__key[data-run-status="done"]:not(.micro-hw__key--agent) {
+    box-shadow:
+      0 0 0 2px var(--micro-hw-status-done),
+      0 0 12px var(--micro-hw-status-done),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 5px 0 #0c1016;
+  }
+
+  .overlay-body .micro-hw__key[data-run-status="failed"]:not(.micro-hw__key--agent) {
+    box-shadow:
+      0 0 0 2px var(--micro-hw-status-failed),
+      0 0 12px var(--micro-hw-status-failed),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 5px 0 #0c1016;
+  }
+
+  .overlay-body .micro-hw__key.is-joy-on {
+    box-shadow: none;
+  }
+
+  .overlay-body .micro-hw__key.is-advanced-only {
+    opacity: 0.82;
+  }
+
+  .overlay-body .micro-hw__key.is-screen-only {
+    opacity: 0.9;
+  }
+
+  .overlay-mini {
+    background:
+      radial-gradient(circle at 12% 80%, rgba(0, 163, 255, 0.22), transparent 42%),
+      linear-gradient(145deg, rgba(36, 48, 66, 0.96), rgba(15, 20, 25, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 22px rgba(0, 0, 0, 0.42);
+  }
+
+  .overlay-mini__mark {
+    background: linear-gradient(180deg, #344556, #1e2a3a);
+    color: #e6edf3;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 2px 4px rgba(0, 0, 0, 0.35);
+  }
+
+  .overlay-mini__btn {
+    background: rgba(36, 48, 66, 0.88);
+    color: #c5d0de;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .overlay-mini__btn:hover {
+    background: rgba(44, 58, 79, 0.98);
+    color: #e6edf3;
   }
 }

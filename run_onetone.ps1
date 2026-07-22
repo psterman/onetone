@@ -2,7 +2,8 @@ param(
   [switch]$Rebuild,
   [switch]$LaunchOnly,
   [switch]$Safe,
-  [switch]$Kws
+  [switch]$Kws,
+  [switch]$CodexMicroProtocol
 )
 
 $ErrorActionPreference = 'Stop'
@@ -136,18 +137,43 @@ function Test-OnetoneRunning {
   return $null -ne (Get-Process onetone -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
 
+function Start-OnetoneProcess {
+  param(
+    [string]$ExePath,
+    [string]$WorkingDirectory,
+    [hashtable]$ExtraEnv = @{}
+  )
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $ExePath
+  $psi.WorkingDirectory = $WorkingDirectory
+  $psi.UseShellExecute = $false
+  foreach ($key in [System.Environment]::GetEnvironmentVariables('Process').Keys) {
+    $psi.EnvironmentVariables[$key] = [System.Environment]::GetEnvironmentVariable($key, 'Process')
+  }
+  foreach ($entry in $ExtraEnv.GetEnumerator()) {
+    if ($null -eq $entry.Value -or $entry.Value -eq '') {
+      $psi.EnvironmentVariables.Remove($entry.Key) | Out-Null
+    } else {
+      $psi.EnvironmentVariables[$entry.Key] = [string]$entry.Value
+    }
+  }
+  [System.Diagnostics.Process]::Start($psi) | Out-Null
+}
+
 function Start-OnetoneExe {
   param(
     [string]$ExePath,
-    [switch]$Safe
+    [switch]$Safe,
+    [switch]$CodexMicroProtocol
   )
   $exeDir = Split-Path -Parent $ExePath
-  if ($Safe -and (Test-OnetoneRunning)) {
-    Write-LaunchLog "safe mode requested, stopping existing onetone"
+  if (($Safe -or $CodexMicroProtocol) -and (Test-OnetoneRunning)) {
+    $why = if ($CodexMicroProtocol) { 'CodexMicroProtocol' } else { 'safe mode' }
+    Write-LaunchLog "$why requested, stopping existing onetone"
     Stop-AppProcessGracefully -Name 'onetone'
   }
   if (Test-OnetoneRunning) {
-    Write-LaunchLog "onetone already running, bring to front"
+    Write-LaunchLog 'onetone already running, bring to front'
     Start-Process -FilePath $ExePath -WorkingDirectory $exeDir
     return
   }
@@ -156,38 +182,16 @@ function Start-OnetoneExe {
   Sync-VoskBundleResources -ReleaseDir $releaseDir
   Sync-KwsBundleResources -ReleaseDir $releaseDir
   Write-LaunchLog "runtime log: $(Join-Path $logDir 'runtime-live.log')"
-  $oldLogDir = $env:ONETONE_LOG_DIR
+  $extraEnv = @{ ONETONE_LOG_DIR = $logDir }
   if ($Safe) {
-    Write-LaunchLog "launching safe mode"
-    $oldSafe = $env:ONETONE_SAFE_MODE
-    try {
-      $env:ONETONE_LOG_DIR = $logDir
-      $env:ONETONE_SAFE_MODE = '1'
-      Start-Process -FilePath $ExePath -WorkingDirectory $exeDir
-    } finally {
-      if ($null -eq $oldLogDir) {
-        Remove-Item Env:\ONETONE_LOG_DIR -ErrorAction SilentlyContinue
-      } else {
-        $env:ONETONE_LOG_DIR = $oldLogDir
-      }
-      if ($null -eq $oldSafe) {
-        Remove-Item Env:\ONETONE_SAFE_MODE -ErrorAction SilentlyContinue
-      } else {
-        $env:ONETONE_SAFE_MODE = $oldSafe
-      }
-    }
-  } else {
-    try {
-      $env:ONETONE_LOG_DIR = $logDir
-      Start-Process -FilePath $ExePath -WorkingDirectory $exeDir
-    } finally {
-      if ($null -eq $oldLogDir) {
-        Remove-Item Env:\ONETONE_LOG_DIR -ErrorAction SilentlyContinue
-      } else {
-        $env:ONETONE_LOG_DIR = $oldLogDir
-      }
-    }
+    Write-LaunchLog 'launching safe mode'
+    $extraEnv['ONETONE_SAFE_MODE'] = '1'
   }
+  if ($CodexMicroProtocol) {
+    $extraEnv['ONETONE_CODEX_MICRO_PROTOCOL'] = '1'
+    Write-LaunchLog 'Labs: ONETONE_CODEX_MICRO_PROTOCOL=1 (loopback 8796)'
+  }
+  Start-OnetoneProcess -ExePath $ExePath -WorkingDirectory $exeDir -ExtraEnv $extraEnv
   Write-LaunchLog "launched onetone.exe from $ExePath"
 }
 
@@ -301,7 +305,7 @@ try {
     Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
     Sync-KwsBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
     Write-LaunchLog "launch dev build (up to date): $releaseExe"
-    Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
+    Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol
     exit 0
   }
 
@@ -309,7 +313,7 @@ try {
     $existing = Resolve-LaunchExe
     if ($existing) {
       Write-LaunchLog "launch only: $existing"
-      Start-OnetoneExe -ExePath $existing -Safe:$Safe
+      Start-OnetoneExe -ExePath $existing -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol
       exit 0
     }
     if (-not (Test-Path $releaseExe)) {
@@ -317,7 +321,7 @@ try {
       $needBuild = $true
     } else {
       Write-LaunchLog "launch dev build: $releaseExe"
-      Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe
+      Start-OnetoneExe -ExePath (Resolve-Path $releaseExe).Path -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol
       exit 0
     }
   }
@@ -366,7 +370,7 @@ try {
   Sync-KwsBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)
 
   Write-LaunchLog 'build ok'
-  Start-OnetoneExe -ExePath $releaseExe -Safe:$Safe
+  Start-OnetoneExe -ExePath $releaseExe -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol
   exit 0
 }
 catch {

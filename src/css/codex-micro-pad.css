@@ -306,25 +306,24 @@
 }
 
 .micro-hw-shell.has-nav-rail {
-  max-width: 540px;
+  max-width: 560px;
 }
 
 .micro-hw-nav-rail {
   position: relative;
   z-index: 2;
-  flex: 0 0 96px;
-  width: 96px;
-  min-width: 96px;
-  max-width: 96px;
+  flex: 0 0 128px;
+  width: 128px;
+  min-width: 128px;
+  max-width: 128px;
   margin: 10px 0;
   border-radius: 18px;
-  background: linear-gradient(145deg, rgba(210, 255, 232, 0.78), rgba(170, 245, 210, 0.62));
-  box-shadow:
-    0 10px 22px rgba(20, 50, 40, 0.14),
-    inset 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  background: var(--micro-dpad-rail-bg);
+  box-shadow: var(--micro-dpad-rail-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 
 .micro-hw-nav-rail[hidden] {
@@ -345,38 +344,48 @@
 
 .micro-hw-nav-rail__pad {
   display: grid;
-  grid-template-columns: repeat(3, 24px);
-  grid-template-rows: repeat(2, 24px);
-  gap: 5px;
+  grid-template-columns: repeat(3, 36px);
+  grid-template-rows: repeat(2, 36px);
+  gap: 6px;
   place-items: center;
 }
 
 .micro-hw-nav-key {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0;
-  color: #2a3340;
-  background: linear-gradient(180deg, #fbfcfd 0%, #eef2f6 100%);
-  box-shadow: 0 2px 0 #c5ced8, 0 2px 5px rgba(30, 40, 55, 0.12);
+  color: var(--micro-dpad-btn-ink);
+  background: var(--micro-dpad-btn-bg);
+  box-shadow: var(--micro-dpad-btn-shadow);
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
-.micro-hw-nav-key svg { width: 12px; height: 12px; pointer-events: none; }
+.micro-hw-nav-key svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+  pointer-events: none;
+}
 .micro-hw-nav-key--up { grid-column: 2; grid-row: 1; }
 .micro-hw-nav-key--left { grid-column: 1; grid-row: 2; }
 .micro-hw-nav-key--down { grid-column: 2; grid-row: 2; }
 .micro-hw-nav-key--right { grid-column: 3; grid-row: 2; }
-.micro-hw-nav-key:active {
-  transform: translateY(1px) scale(0.96);
-  background: linear-gradient(180deg, #d8fff0 0%, #b8f5d8 100%);
-  color: #0d6b45;
+.micro-hw-nav-key:active,
+.micro-hw-nav-key.is-lit {
+  transform: translateY(3px);
+  background: var(--micro-dpad-press-bg);
+  color: var(--micro-dpad-press-ink);
+  box-shadow: var(--micro-dpad-press-shadow);
 }
 .micro-hw-nav-key.is-bound {
-  box-shadow: 0 2px 0 #9fd4b8, 0 0 0 1.5px rgba(13, 107, 69, 0.35);
-  color: #0d6b45;
+  box-shadow:
+    var(--micro-dpad-btn-shadow),
+    0 0 0 1.5px rgba(0, 163, 255, 0.35);
 }
 
 .micro-hw-wrap {
@@ -495,6 +504,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   padding: 12px;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .micro-hw__pwr {
@@ -533,87 +543,69 @@
   min-height: 36px;
 }
 
+/* Size tweak — shared main-blue styles live in codex-micro-hw-tokens.css */
 .micro-hw__mode-switch {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  width: 30px;
-  height: 16px;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.micro-hw__mode-track {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: #c5ccd6;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
-  transition: background 0.2s ease;
   position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 40px;
+  height: 20px;
 }
 
-.micro-hw__mode-switch.is-on .micro-hw__mode-track {
-  background: #34c759;
+.micro-hw__mode-switch.is-pressed,
+.micro-hw__mode-switch:active {
+  transform: scale(0.97);
 }
 
-.micro-hw__mode-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.28);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+.micro-hw__mode-knob {
+  width: 16px;
+  height: 16px;
 }
 
-.micro-hw__mode-switch.is-on .micro-hw__mode-thumb {
-  transform: translateX(14px);
+.micro-hw__mode-switch.is-on .micro-hw__mode-knob {
+  left: 22px;
 }
 
-.micro-hw__enc-icon {
-  margin-top: 12px;
-  width: 38% !important;
-  height: 38% !important;
+.micro-hw__mode-label {
+  font-size: 6.5px;
 }
 
-.micro-hw__joy-toggle {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: #6a7788;
-  transition: color 0.18s ease, transform 0.12s ease;
+/* ENC: switch only — no keycap chrome */
+.micro-hw__key[data-micro-key="ENC"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  filter: none !important;
+  opacity: 1 !important;
 }
 
-.micro-hw__joy-toggle.is-on {
-  color: #1aa866;
+.micro-hw__key[data-micro-key="ENC"].is-pressed,
+.micro-hw__key[data-micro-key="ENC"].is-active {
+  transform: none;
+  filter: none;
+  box-shadow: none !important;
 }
 
-.micro-hw__joy-icon {
-  width: 52%;
-  max-width: 28px;
-  aspect-ratio: 1;
+.micro-hw__key[data-micro-key="ENC"] .micro-hw__enc-icon,
+.micro-hw__key[data-micro-key="ENC"] .micro-hw__sub {
+  display: none !important;
 }
 
-.micro-hw__key.is-joy-on .micro-hw__joy-toggle {
-  transform: scale(1.06);
+.micro-hw__joy-stick {
+  width: 40px;
+  height: 40px;
 }
 
-.micro-hw__key.is-joy-on {
-  box-shadow:
-    0 0 0 2px rgba(40, 190, 130, 0.45),
-    0 0 12px rgba(50, 220, 150, 0.28);
+.micro-hw__key[data-micro-key="JOY"] {
+  z-index: 4;
+  overflow: visible;
 }
 
 .micro-hw__key.is-joy-dir {
-  box-shadow: 0 0 0 2px var(--micro-hw-status-listening, rgba(240, 180, 41, 0.9)),
-    0 0 14px var(--micro-hw-status-listening, rgba(240, 180, 41, 0.55));
+  box-shadow: 0 0 0 2px var(--micro-hw-status-listening, rgba(0, 163, 255, 0.9)),
+    0 0 14px var(--micro-hw-status-listening, rgba(0, 163, 255, 0.55));
 }
 
 .micro-hw__switch {
@@ -709,12 +701,13 @@
 }
 
 .micro-hw__icon {
-  width: 42%;
-  height: 42%;
-  max-width: 22px;
-  max-height: 22px;
+  width: 54%;
+  height: 54%;
+  max-width: 30px;
+  max-height: 30px;
   color: var(--hw-ink);
   display: block;
+  transition: transform 0.14s ease;
 }
 .micro-hw__icon svg {
   width: 100%;
@@ -722,30 +715,70 @@
   display: block;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.8;
+  stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .micro-hw__key--agent .micro-hw__icon {
-  opacity: 0.15;
-  width: 28%;
-  height: 28%;
+  opacity: 0.92;
+  width: 52%;
+  height: 52%;
+  max-width: 28px;
+  max-height: 28px;
+}
+
+.micro-hw__meta {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 4px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transform: translateY(3px);
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.micro-hw__key:hover .micro-hw__meta,
+.micro-hw__key:focus-visible .micro-hw__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.micro-hw__key:hover .micro-hw__icon,
+.micro-hw__key:focus-visible .micro-hw__icon {
+  transform: translateY(-6px);
+}
+
+.micro-hw__meta-name,
+.micro-hw__meta-chord {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--hw-ink);
+}
+
+.micro-hw__meta-name {
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.micro-hw__meta-chord {
+  font-size: 7px;
+  font-weight: 600;
+  color: var(--hw-muted);
 }
 
 .micro-hw__sub {
-  font-size: 8px;
-  line-height: 1.15;
-  color: var(--hw-muted);
-  max-width: 96%;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  white-space: normal;
-  word-break: break-word;
-  text-align: center;
-  pointer-events: none;
+  display: none;
 }
 
 .micro-hw--compact .micro-hw__sub {
@@ -761,18 +794,25 @@
   outline-offset: 1px;
 }
 
-.micro-hw__key.is-pressed,
-.micro-hw__key.is-active {
-  transform: translateY(2px) scale(0.97);
-  filter: brightness(1.08);
+.micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]),
+.micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) {
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  border-color: rgba(0, 163, 255, 0.4) !important;
   box-shadow:
-    inset 0 2px 6px rgba(26, 45, 74, 0.18),
-    0 0 14px var(--ag-glow, rgba(42, 156, 196, 0.35));
+    0 0 10px rgba(0, 163, 255, 0.3),
+    inset 0 2px 6px rgba(0, 80, 140, 0.18) !important;
+  filter: none;
 }
 
-.micro-hw__key--command.is-pressed,
-.micro-hw__key--command.is-active {
-  background: linear-gradient(180deg, #e8eef5 0%, #dce4ee 100%);
+.micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
+.micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon {
+  color: var(--micro-key-press-ink) !important;
+  opacity: 1;
+}
+
+.micro-hw-nav-legend {
+  display: none !important;
 }
 
 .micro-hw__leds {
@@ -821,27 +861,78 @@
 .micro-hw--sm .micro-hw__grid { gap: 5px; }
 .micro-hw--sm .micro-hw__key { border-radius: 8px; }
 
+/* Dark pad: align with app --vp-* graphite + cyan (not mint / not white keys). */
 html[data-theme="dark"] .micro-hw {
-  --hw-ink: #e8f0f8;
-  --hw-muted: #9aa8b8;
-  background: linear-gradient(145deg, #3a4556 0%, #2a3342 100%);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --hw-ink: #e6edf3;
+  --hw-muted: #9ca9bc;
+  --hw-face: rgba(26, 36, 54, 0.72);
+  --hw-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.25);
+  background:
+    radial-gradient(circle at 20% 96%, rgba(0, 163, 255, 0.14), transparent 36%),
+    linear-gradient(145deg, #243042 0%, #0f1419 100%);
+  box-shadow: var(--hw-shadow);
+}
+html[data-theme="dark"] .micro-hw-shell.is-mode-codex .micro-hw {
+  background:
+    radial-gradient(circle at 20% 96%, rgba(0, 163, 255, 0.16), transparent 36%),
+    linear-gradient(145deg, #243042 0%, #0f1419 100%);
+}
+html[data-theme="dark"] .micro-hw-shell.is-mode-numpad .micro-hw {
+  background:
+    radial-gradient(circle at 20% 96%, rgba(94, 200, 232, 0.12), transparent 36%),
+    linear-gradient(145deg, #1e2a3a 0%, #0e1218 100%);
 }
 html[data-theme="dark"] .micro-hw__face {
   background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-    rgba(40, 50, 64, 0.65);
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+    rgba(26, 36, 54, 0.72);
   border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .micro-hw__key--agent {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 163, 255, 0.1) 0 12%, transparent 13%),
+    linear-gradient(180deg, rgba(44, 58, 79, 0.96), rgba(26, 36, 54, 0.98));
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e6edf3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 10px var(--ag-glow, rgba(0, 163, 255, 0.22));
+}
+html[data-theme="dark"] .micro-hw__key--agent .micro-hw__icon {
+  opacity: 0.95;
+  color: #e6edf3;
 }
 html[data-theme="dark"] .micro-hw__key--command {
-  background: linear-gradient(180deg, #3a4658 0%, #2e3848 100%);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #e8f0f8;
+  background: linear-gradient(180deg, #344556 0%, #2a3648 52%, #1e2a3a 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e6edf3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.28);
+}
+html[data-theme="dark"] .micro-hw__key--command .micro-hw__icon,
+html[data-theme="dark"] .micro-hw__meta-name {
+  color: #e6edf3;
+}
+html[data-theme="dark"] .micro-hw__meta-chord {
+  color: #9ca9bc;
+}
+html[data-theme="dark"] .micro-hw__key--control {
+  background: linear-gradient(180deg, #2c3a4f 0%, #1a2436 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e6edf3;
+}
+html[data-theme="dark"] .micro-hw__key[data-micro-key="JOY"],
+html[data-theme="dark"] .micro-hw__key[data-micro-key="ENC"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 html[data-theme="dark"] .codex-micro-pad__btn {
-  background: #2a3342;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #e8f0f8;
+  background: #1a2436;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e6edf3;
 }
 
 /* —— Edit keycap modal —— */

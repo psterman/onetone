@@ -55,7 +55,18 @@ function mapThstatus(raw) {
   var s = String(raw || '').trim().toLowerCase();
   if (!s || s === 'idle' || s === 'ready' || s === 'ok') return 'idle';
   if (s === 'running' || s === 'busy' || s === 'working' || s === 'thinking') return 'running';
-  if (s === 'listening' || s === 'dictating' || s === 'ptt' || s === 'mic') return 'listening';
+  if (s === 'listening' || s === 'dictating' || s === 'ptt' || s === 'mic' || s === 'needs_input' || s === 'waiting' || s === 'approval' || s === 'attention') return 'listening';
+  if (s === 'done' || s === 'success' || s === 'complete' || s === 'completed') return 'done';
+  if (s === 'failed' || s === 'error' || s === 'fail') return 'failed';
+  return 'idle';
+}
+
+/** AG slot lights: idle | running | needs_input | done | failed */
+function mapAgentSlotState(raw) {
+  var s = String(raw || '').trim().toLowerCase();
+  if (!s || s === 'idle' || s === 'blank' || s === 'ready' || s === 'ok') return 'idle';
+  if (s === 'running' || s === 'busy' || s === 'working' || s === 'thinking') return 'running';
+  if (s === 'needs_input' || s === 'waiting' || s === 'approval' || s === 'attention' || s === 'listening' || s === 'dictating' || s === 'ptt' || s === 'mic') return 'needs_input';
   if (s === 'done' || s === 'success' || s === 'complete' || s === 'completed') return 'done';
   if (s === 'failed' || s === 'error' || s === 'fail') return 'failed';
   return 'idle';
@@ -89,6 +100,10 @@ assert.strictEqual(mapThstatus('running'), 'running');
 assert.strictEqual(mapThstatus('done'), 'done');
 assert.strictEqual(mapThstatus('failed'), 'failed');
 assert.strictEqual(mapThstatus('idle'), 'idle');
+assert.strictEqual(mapAgentSlotState('thinking'), 'running');
+assert.strictEqual(mapAgentSlotState('approval'), 'needs_input');
+assert.strictEqual(mapAgentSlotState('listening'), 'needs_input');
+assert.strictEqual(mapAgentSlotState('failed'), 'failed');
 
 // Constants mirror Rust
 assert.strictEqual(RAD_DEADZONE, 0.2);
@@ -111,6 +126,15 @@ assert.ok(vendor.indexOf('sys.version') >= 0);
 assert.ok(vendor.indexOf('device.status') >= 0);
 assert.ok(vendor.indexOf('v.oai.thstatus') >= 0);
 assert.ok(vendor.indexOf('fn rad_to_nav') >= 0);
+assert.ok(vendor.indexOf('agent_slots') >= 0);
+assert.ok(vendor.indexOf('ever_native') >= 0);
+assert.ok(vendor.indexOf('NATIVE_STALE_MS') >= 0);
+assert.ok(vendor.indexOf('needs_input') >= 0);
+assert.ok(vendor.indexOf('connection_state') >= 0);
+// Protocol must not drive overlay local run status from thstatus.
+assert.ok(vendor.indexOf('apply_thstatus') >= 0);
+var thFn = vendor.slice(vendor.indexOf('fn apply_thstatus'), vendor.indexOf('fn map_agent_slot_state'));
+assert.ok(thFn.indexOf('note_pad_run_status') < 0);
 
 // M4 cross-check: enhance keys + no Alt+Numpad in pad UI
 var padUi = fs.readFileSync(
@@ -124,5 +148,51 @@ assert.ok(padUi.indexOf('enterJoyDirectionMode') >= 0);
 assert.ok(padUi.indexOf("window.addEventListener('keydown'") >= 0
   || padUi.indexOf('window.addEventListener("keydown"') >= 0
   || padUi.indexOf("addEventListener('keydown', joyDirKeyHandler") >= 0);
+
+var overlayHtml = fs.readFileSync(
+  path.join(__dirname, '../src/codex-micro-overlay.html'),
+  'utf8'
+);
+assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
+assert.ok(overlayHtml.indexOf('statusSource') >= 0);
+
+var overlayCss = fs.readFileSync(
+  path.join(__dirname, '../src/css/codex-micro-overlay.css'),
+  'utf8'
+);
+assert.ok(overlayCss.indexOf('needs_input') >= 0);
+
+// Loopback HTTP status surface (Labs) — status only, never hid/rad
+var protocolServer = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/codex_micro_protocol_server.rs'),
+  'utf8'
+);
+assert.ok(protocolServer.indexOf('codex_micro_protocol_server') >= 0 || protocolServer.indexOf('PROTOCOL_PATH') >= 0);
+assert.ok(protocolServer.indexOf('v.oai.thstatus') >= 0);
+assert.ok(protocolServer.indexOf('v.oai.rgbcfg') >= 0);
+assert.ok(protocolServer.indexOf('lights.preview') >= 0);
+assert.ok(protocolServer.indexOf('device.status') >= 0);
+assert.ok(protocolServer.indexOf('sys.version') >= 0);
+assert.ok(protocolServer.indexOf('ALLOWED_METHODS') >= 0);
+assert.ok(protocolServer.indexOf('fn allowed_http_method') >= 0);
+// Default HTTP whitelist must NOT include action methods
+var allowBlock = protocolServer.slice(
+  protocolServer.indexOf('ALLOWED_METHODS'),
+  protocolServer.indexOf(']', protocolServer.indexOf('ALLOWED_METHODS')) + 1
+);
+assert.ok(allowBlock.indexOf('v.oai.hid') < 0);
+assert.ok(allowBlock.indexOf('v.oai.rad') < 0);
+assert.ok(protocolServer.indexOf('is_http_action_method') >= 0);
+assert.ok(protocolServer.indexOf('Default: OFF') >= 0 || protocolServer.indexOf('默认') >= 0);
+assert.ok(protocolServer.indexOf('ONETONE_CODEX_MICRO_PROTOCOL') >= 0);
+assert.ok(protocolServer.indexOf('8796') >= 0);
+
+var relay = fs.readFileSync(
+  path.join(__dirname, 'codex-micro-agentcontroller-relay.example.js'),
+  'utf8'
+);
+assert.ok(relay.indexOf('v.oai.thstatus') >= 0);
+assert.ok(relay.indexOf("ALLOWED['v.oai.hid']") < 0);
+assert.ok(relay.indexOf("'v.oai.hid'") < 0 || relay.indexOf('hid/rad') >= 0);
 
 console.log('codex-micro-rpc.test.js ok');

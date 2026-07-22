@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拟真 Micro Codex 开关按钮</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Theme Variables */
+    [data-theme="light"] {
+      --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+      --panel-bg: linear-gradient(145deg, #ffffff, #f1f5f9);
+      --panel-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+      --panel-border: rgba(15, 23, 42, 0.08);
+      --panel-inner: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7));
+      
+      --switch-off-bg: linear-gradient(145deg, #e2e8f0, #cbd5e1);
+      --switch-off-shadow: 
+        0 8px 16px rgba(15, 23, 42, 0.18),
+        inset 0 -5px 10px rgba(15, 23, 42, 0.12),
+        inset 0 5px 10px rgba(255, 255, 255, 0.95);
+      
+      --switch-on-bg: linear-gradient(145deg, #93c5fd, #3b82f6);
+      --switch-on-shadow: 
+        0 0 35px rgba(59, 130, 246, 0.55),
+        0 8px 16px rgba(15, 23, 42, 0.15),
+        inset 0 -5px 10px rgba(15, 23, 42, 0.1),
+        inset 0 5px 10px rgba(255, 255, 255, 0.75);
+      
+      --knob-bg: linear-gradient(145deg, #ffffff, #f8fafc);
+      --knob-shadow: 
+        0 6px 16px rgba(15, 23, 42, 0.22),
+        inset 0 -3px 6px rgba(15, 23, 42, 0.06),
+        inset 0 3px 6px rgba(255, 255, 255, 1);
+      
+      --knob-pressed-shadow: 
+        0 3px 8px rgba(15, 23, 42, 0.18),
+        inset 0 5px 10px rgba(15, 23, 42, 0.15),
+        inset 0 -2px 4px rgba(255, 255, 255, 0.6);
+      
+      --screw-bg: radial-gradient(circle at 35% 30%, #cbd5e1, #94a3b8 70%);
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      
+      --led-off: #cbd5e1;
+      --led-on: #3b82f6;
+      --led-glow: 0 0 12px rgba(59, 130, 246, 0.9), 0 0 24px rgba(59, 130, 246, 0.5);
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      --panel-bg: linear-gradient(145deg, #334155, #1e293b);
+      --panel-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.25);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --panel-inner: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+      
+      --switch-off-bg: linear-gradient(145deg, #475569, #334155);
+      --switch-off-shadow: 
+        0 10px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -5px 10px rgba(0, 0, 0, 0.4),
+        inset 0 5px 10px rgba(255, 255, 255, 0.12);
+      
+      --switch-on-bg: linear-gradient(145deg, #60a5fa, #2563eb);
+      --switch-on-shadow: 
+        0 0 38px rgba(37, 99, 235, 0.7),
+        0 10px 20px rgba(0, 0, 0, 0.4),
+        inset 0 -5px 10px rgba(0, 0, 0, 0.25),
+        inset 0 5px 10px rgba(255, 255, 255, 0.35);
+      
+      --knob-bg: radial-gradient(circle at 30% 30%, #475569, #1e293b 100%);
+      --knob-shadow: 
+        inset 0 3px 6px rgba(0, 0, 0, 0.5),
+        0 -2px 4px rgba(255, 255, 255, 0.06),
+        0 6px 12px rgba(0, 0, 0, 0.35);
+      
+      --knob-pressed-shadow: 
+        inset 0 6px 12px rgba(0, 0, 0, 0.7),
+        0 -1px 2px rgba(255, 255, 255, 0.06),
+        0 3px 6px rgba(0, 0, 0, 0.35);
+      
+      --screw-bg: radial-gradient(circle at 35% 30%, #475569, #1e293b 70%);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      
+      --led-off: #475569;
+      --led-on: #60a5fa;
+      --led-glow: 0 0 14px rgba(96, 165, 250, 0.95), 0 0 28px rgba(96, 165, 250, 0.55);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-gradient);
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', system-ui, sans-serif;
+      transition: background 0.4s ease;
+      padding: 40px;
+      gap: 40px;
+    }
+
+    .header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .title {
+      color: var(--text-primary);
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 10px 20px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--panel-shadow);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .theme-toggle-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Switch Container */
+    .switch-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* Switch Panel */
+    .switch-panel {
+      position: relative;
+      width: 220px;
+      height: 160px;
+      border-radius: 24px;
+      background: var(--panel-bg);
+      box-shadow: var(--panel-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .switch-panel::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      border-radius: 18px;
+      background: var(--panel-inner);
+      border: 1px solid var(--panel-border);
+      pointer-events: none;
+    }
+
+    /* Screw decorations */
+    .screw {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--screw-bg);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(255, 255, 255, 0.1);
+      z-index: 2;
+    }
+
+    .screw-tl { top: 18px; left: 18px; }
+    .screw-tr { top: 18px; right: 18px; }
+    .screw-bl { bottom: 18px; left: 18px; }
+    .screw-br { bottom: 18px; right: 18px; }
+
+    .screw::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 1.5px;
+      background: rgba(0, 0, 0, 0.5);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    /* Switch Wrapper */
+    .switch-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 3;
+    }
+
+    /* Toggle Switch - The Big Button */
+    .toggle-switch {
+      position: relative;
+      width: 170px;
+      height: 70px;
+      border-radius: 35px;
+      background: var(--switch-off-bg);
+      box-shadow: var(--switch-off-shadow);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Knob */
+    .toggle-switch .knob {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--knob-bg);
+      box-shadow: var(--knob-shadow);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Icon inside knob */
+    .toggle-switch .knob .icon {
+      width: 32px;
+      height: 32px;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+
+    /* State Labels on Switch */
+    .toggle-switch .state-label {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch .state-label.off-label {
+      right: 22px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .toggle-switch .state-label.on-label {
+      left: 22px;
+      color: white;
+      opacity: 0;
+    }
+
+    /* ON STATE */
+    .toggle-switch.is-on {
+      background: var(--switch-on-bg);
+      box-shadow: var(--switch-on-shadow);
+    }
+
+    .toggle-switch.is-on .knob {
+      left: 106px;
+    }
+
+    .toggle-switch.is-on .knob .icon {
+      opacity: 1;
+    }
+
+    .toggle-switch.is-on .state-label.off-label {
+      opacity: 0;
+    }
+
+    .toggle-switch.is-on .state-label.on-label {
+      opacity: 1;
+    }
+
+    /* PRESSED STATE */
+    .toggle-switch.is-pressed {
+      transform: scale(0.98);
+    }
+
+    .toggle-switch.is-pressed .knob {
+      transform: scale(0.92);
+      box-shadow: var(--knob-pressed-shadow);
+    }
+
+    /* LED Indicators */
+    .led-indicator {
+      display: flex;
+      gap: 8px;
+    }
+
+    .led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--led-off);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch.is-on ~ .led-indicator .led {
+      background: var(--led-on);
+      box-shadow: var(--led-glow), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+    }
+
+    /* Status Text */
+    .status-text {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch.is-on ~ .status-text {
+      color: var(--led-on);
+    }
+
+    /* Switch Variants */
+    .variant-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .variant-label {
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+
+    /* Smaller Switch */
+    .switch-panel.small {
+      width: 180px;
+      height: 130px;
+      border-radius: 20px;
+    }
+
+    .switch-panel.small .screw {
+      width: 10px;
+      height: 10px;
+    }
+
+    .switch-panel.small .screw::after {
+      width: 6px;
+    }
+
+    .switch-panel.small .screw-tl { top: 14px; left: 14px; }
+    .switch-panel.small .screw-tr { top: 14px; right: 14px; }
+    .switch-panel.small .screw-bl { bottom: 14px; left: 14px; }
+    .switch-panel.small .screw-br { bottom: 14px; right: 14px; }
+
+    .switch-panel.small .toggle-switch {
+      width: 130px;
+      height: 52px;
+      border-radius: 26px;
+    }
+
+    .switch-panel.small .toggle-switch .knob {
+      width: 40px;
+      height: 40px;
+      top: 6px;
+      left: 6px;
+    }
+
+    .switch-panel.small .toggle-switch.is-on .knob {
+      left: 84px;
+    }
+
+    .switch-panel.small .toggle-switch .knob .icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    .switch-panel.small .toggle-switch .state-label {
+      font-size: 11px;
+    }
+
+    .switch-panel.small .toggle-switch .state-label.off-label {
+      right: 18px;
+    }
+
+    .switch-panel.small .toggle-switch .state-label.on-label {
+      left: 18px;
+    }
+
+    /* Instructions */
+    .instructions {
+      color: var(--text-secondary);
+      font-size: 14px;
+      text-align: center;
+      max-width: 500px;
+      line-height: 1.8;
+    }
+
+    .instructions strong {
+      color: var(--text-primary);
+    }
+
+    /* Color Variants */
+    .switch-panel.green .toggle-switch {
+      --switch-on-bg: linear-gradient(145deg, #86efac, #22c55e);
+      --switch-on-shadow: 
+        0 0 30px rgba(34, 197, 94, 0.5),
+        0 6px 12px rgba(0, 0, 0, 0.12),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+        inset 0 4px 8px rgba(255, 255, 255, 0.6);
+      --led-on: #22c55e;
+      --led-glow: 0 0 10px rgba(34, 197, 94, 0.9), 0 0 20px rgba(34, 197, 94, 0.5);
+    }
+
+    .switch-panel.orange .toggle-switch {
+      --switch-on-bg: linear-gradient(145deg, #fcd34d, #f59e0b);
+      --switch-on-shadow: 
+        0 0 30px rgba(245, 158, 11, 0.5),
+        0 6px 12px rgba(0, 0, 0, 0.12),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+        inset 0 4px 8px rgba(255, 255, 255, 0.6);
+      --led-on: #f59e0b;
+      --led-glow: 0 0 10px rgba(245, 158, 11, 0.9), 0 0 20px rgba(245, 158, 11, 0.5);
+    }
+
+    .switch-panel.pink .toggle-switch {
+      --switch-on-bg: linear-gradient(145deg, #f9a8d4, #ec4899);
+      --switch-on-shadow: 
+        0 0 30px rgba(236, 72, 153, 0.5),
+        0 6px 12px rgba(0, 0, 0, 0.12),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+        inset 0 4px 8px rgba(255, 255, 255, 0.6);
+      --led-on: #ec4899;
+      --led-glow: 0 0 10px rgba(236, 72, 153, 0.9), 0 0 20px rgba(236, 72, 153, 0.5);
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="header">
+    <h1 class="title">拟真 Micro Codex 开关</h1>
+    <p class="subtitle">按压切换 · 滑动旋钮 · 双主题支持</p>
+    <button class="theme-toggle-btn" id="themeToggleBtn">
+      <span class="theme-icon">🌙</span>
+      <span>切换主题</span>
+    </button>
+  </div>
+
+  <div class="switch-container">
+    <!-- Main Large Switch - Blue -->
+    <div class="variant-section">
+      <span class="variant-label">Main - Blue</span>
+      <div class="switch-panel">
+        <div class="screw screw-tl"></div>
+        <div class="screw screw-tr"></div>
+        <div class="screw screw-bl"></div>
+        <div class="screw screw-br"></div>
+        
+        <div class="switch-wrapper">
+          <button class="toggle-switch">
+            <span class="state-label on-label">ON</span>
+            <span class="state-label off-label">OFF</span>
+            <div class="knob">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" style="opacity: 0.6;"/>
+                <path d="M5 12l4 4L19 6" style="opacity: 0;"/>
+              </svg>
+            </div>
+          </button>
+          <div class="status-text">OFF</div>
+          <div class="led-indicator">
+            <div class="led"></div>
+            <div class="led"></div>
+            <div class="led"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Green Variant -->
+    <div class="variant-section">
+      <span class="variant-label">Variant - Green</span>
+      <div class="switch-panel small green">
+        <div class="screw screw-tl"></div>
+        <div class="screw screw-tr"></div>
+        <div class="screw screw-bl"></div>
+        <div class="screw screw-br"></div>
+        
+        <div class="switch-wrapper">
+          <button class="toggle-switch">
+            <span class="state-label on-label">ON</span>
+            <span class="state-label off-label">OFF</span>
+            <div class="knob">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" style="opacity: 0.6;"/>
+                <path d="M5 12l4 4L19 6" style="opacity: 0;"/>
+              </svg>
+            </div>
+          </button>
+          <div class="status-text">OFF</div>
+          <div class="led-indicator">
+            <div class="led"></div>
+            <div class="led"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orange Variant -->
+    <div class="variant-section">
+      <span class="variant-label">Variant - Orange</span>
+      <div class="switch-panel small orange">
+        <div class="screw screw-tl"></div>
+        <div class="screw screw-tr"></div>
+        <div class="screw screw-bl"></div>
+        <div class="screw screw-br"></div>
+        
+        <div class="switch-wrapper">
+          <button class="toggle-switch">
+            <span class="state-label on-label">ON</span>
+            <span class="state-label off-label">OFF</span>
+            <div class="knob">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" style="opacity: 0.6;"/>
+                <path d="M5 12l4 4L19 6" style="opacity: 0;"/>
+              </svg>
+            </div>
+          </button>
+          <div class="status-text">OFF</div>
+          <div class="led-indicator">
+            <div class="led"></div>
+            <div class="led"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pink Variant -->
+    <div class="variant-section">
+      <span class="variant-label">Variant - Pink</span>
+      <div class="switch-panel small pink">
+        <div class="screw screw-tl"></div>
+        <div class="screw screw-tr"></div>
+        <div class="screw screw-bl"></div>
+        <div class="screw screw-br"></div>
+        
+        <div class="switch-wrapper">
+          <button class="toggle-switch">
+            <span class="state-label on-label">ON</span>
+            <span class="state-label off-label">OFF</span>
+            <div class="knob">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" style="opacity: 0.6;"/>
+                <path d="M5 12l4 4L19 6" style="opacity: 0;"/>
+              </svg>
+            </div>
+          </button>
+          <div class="status-text">OFF</div>
+          <div class="led-indicator">
+            <div class="led"></div>
+            <div class="led"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="instructions">
+    <strong>使用说明：</strong><br>
+    • <strong>点击</strong>任意开关按钮进行切换<br>
+    • <strong>按住</strong>按钮可以体验<strong>明显的按压效果</strong><br>
+    • 开关有<strong>滑动旋钮</strong>和<strong>ON/OFF</strong>文字指示<br>
+    • LED 指示灯同步显示状态<br>
+    • 点击顶部按钮切换<strong>深色/浅色</strong>主题
+  </p>
+
+  <script>
+    // Initialize all toggle switches
+    document.querySelectorAll('.toggle-switch').forEach(btn => {
+      const wrapper = btn.closest('.switch-wrapper');
+      const statusText = wrapper.querySelector('.status-text');
+      const knob = btn.querySelector('.knob');
+      const iconPaths = knob.querySelectorAll('.icon path');
+
+      btn.addEventListener('click', () => {
+        const isOn = btn.classList.toggle('is-on');
+        statusText.textContent = isOn ? 'ON' : 'OFF';
+        
+        // Toggle icons
+        if (iconPaths.length >= 2) {
+          iconPaths[0].style.opacity = isOn ? '0' : '0.6';
+          iconPaths[1].style.opacity = isOn ? '1' : '0';
+        }
+      });
+
+      // Pressed state animation
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 && e.button !== undefined) return;
+        btn.classList.add('is-pressed');
+      });
+
+      btn.addEventListener('pointerup', () => {
+        btn.classList.remove('is-pressed');
+      });
+
+      btn.addEventListener('pointerleave', () => {
+        btn.classList.remove('is-pressed');
+      });
+
+      btn.addEventListener('pointercancel', () => {
+        btn.classList.remove('is-pressed');
+      });
+    });
+
+    // Theme toggle
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const body = document.body;
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', newTheme);
+      
+      const themeIcon = themeToggleBtn.querySelector('.theme-icon');
+      themeIcon.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+    });
+  </script>
+</body>
+</html>
