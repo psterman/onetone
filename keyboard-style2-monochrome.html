@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字键盘 - 简约单色调风格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.375rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 28px;
+        }
+
+        .keyboard-wrapper {
+            display: inline-block;
+            background: #ffffff;
+            padding: 28px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 56px);
+            gap: 8px;
+        }
+
+        .key {
+            width: 56px;
+            height: 56px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            user-select: none;
+        }
+
+        .key:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .key:active {
+            transform: scale(0.97);
+            background: #e2e8f0;
+        }
+
+        .key-number {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+
+        .key-label {
+            font-size: 0.6rem;
+            color: #64748b;
+            margin-top: 2px;
+            text-align: center;
+            line-height: 1.2;
+            letter-spacing: 0.2px;
+        }
+
+        /* 特殊键样式 */
+        .key-tall {
+            grid-row: span 2;
+            height: 120px;
+        }
+
+        .key-wide {
+            grid-column: span 2;
+            width: 120px;
+        }
+
+        /* 功能区域 - 单色调配色 */
+        .key-agent {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .key-agent .key-number {
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .key-agent .key-label {
+            color: #475569;
+        }
+
+        .key-agent:hover {
+            background: #e2e8f0;
+        }
+
+        .key-action {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .key-action .key-number {
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .key-action .key-label {
+            color: #475569;
+        }
+
+        .key-action:hover {
+            background: #e2e8f0;
+        }
+
+        .key-basic {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .key-basic .key-number {
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .key-basic .key-label {
+            color: #475569;
+        }
+
+        .key-basic:hover {
+            background: #e2e8f0;
+        }
+
+        .key-control {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+
+        .key-control .key-number {
+            color: #475569;
+        }
+
+        .key-control .key-label {
+            color: #64748b;
+        }
+
+        .key-control:hover {
+            background: #f1f5f9;
+        }
+
+        /* 图例 */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .legend-agent .legend-color {
+            background: #f1f5f9;
+        }
+
+        .legend-action .legend-color {
+            background: #f1f5f9;
+        }
+
+        .legend-basic .legend-color {
+            background: #f1f5f9;
+        }
+
+        .legend-control .legend-color {
+            background: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>数字键盘</h1>
+        <p class="subtitle">简约单色调风格</p>
+
+        <div class="keyboard-wrapper">
+            <div class="keypad">
+                <!-- 第一行 -->
+                <div class="key key-control">
+                    <span class="key-number">/</span>
+                    <span class="key-label">命令菜单</span>
+                </div>
+                <div class="key key-control">
+                    <span class="key-number">*</span>
+                    <span class="key-label">快速创建</span>
+                </div>
+                <div class="key key-control">
+                    <span class="key-number">-</span>
+                    <span class="key-label">删除</span>
+                </div>
+                <div class="key key-control">
+                    <span class="key-number">←</span>
+                    <span class="key-label">取消</span>
+                </div>
+
+                <!-- 第二行 - Agent区 -->
+                <div class="key key-agent">
+                    <span class="key-number">7</span>
+                    <span class="key-label">Agent切换</span>
+                </div>
+                <div class="key key-agent">
+                    <span class="key-number">8</span>
+                    <span class="key-label">Claude模型</span>
+                </div>
+                <div class="key key-agent">
+                    <span class="key-number">9</span>
+                    <span class="key-label">Codex模式</span>
+                </div>
+                <div class="key key-control key-tall">
+                    <span class="key-number">+</span>
+                    <span class="key-label">快捷聊天</span>
+                </div>
+
+                <!-- 第三行 - 快捷操作区 -->
+                <div class="key key-action">
+                    <span class="key-number">4</span>
+                    <span class="key-label">快速执行</span>
+                </div>
+                <div class="key key-action">
+                    <span class="key-number">5</span>
+                    <span class="key-label">收藏夹</span>
+                </div>
+                <div class="key key-action">
+                    <span class="key-number">6</span>
+                    <span class="key-label">应用切换</span>
+                </div>
+
+                <!-- 第四行 - 基础功能区 -->
+                <div class="key key-basic">
+                    <span class="key-number">1</span>
+                    <span class="key-label">上下文</span>
+                </div>
+                <div class="key key-basic">
+                    <span class="key-number">2</span>
+                    <span class="key-label">撤销/重做</span>
+                </div>
+                <div class="key key-basic">
+                    <span class="key-number">3</span>
+                    <span class="key-label">快速搜索</span>
+                </div>
+                <div class="key key-control key-tall">
+                    <span class="key-number">Ent</span>
+                    <span class="key-label">确认执行</span>
+                </div>
+
+                <!-- 第五行 -->
+                <div class="key key-control key-wide">
+                    <span class="key-number">0</span>
+                    <span class="key-label">语音输入</span>
+                </div>
+                <div class="key key-control">
+                    <span class="key-number">.</span>
+                    <span class="key-label">设置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图例 -->
+        <div class="legend">
+            <div class="legend-item legend-agent">
+                <div class="legend-color"></div>
+                <span>Agent/模型</span>
+            </div>
+            <div class="legend-item legend-action">
+                <div class="legend-color"></div>
+                <span>快捷操作</span>
+            </div>
+            <div class="legend-item legend-basic">
+                <div class="legend-color"></div>
+                <span>基础功能</span>
+            </div>
+            <div class="legend-item legend-control">
+                <div class="legend-color"></div>
+                <span>输入控制</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', function() {
+                this.style.transform = 'scale(0.97)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

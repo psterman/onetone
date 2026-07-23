@@ -129,12 +129,22 @@ pub fn pad_mapping_active() -> bool {
     hook_gate().lock().unwrap().pad_active
 }
 
-/// Numpad-mode fire rule: only ENC may still summon Codex.
+/// Numpad-mode fire rule: ENC still summons Codex; NP* inject digits; other Micro keys blocked.
 pub fn numpad_mode_allows_fire(micro_key_id: &str) -> bool {
     if pad_mapping_active() {
         return true;
     }
-    micro_key_id.trim() == "ENC"
+    let id = micro_key_id.trim();
+    id == "ENC" || is_overlay_numpad_key(id)
+}
+
+/// Soft-pad digit keys shown only in 数字键模式 (not Codex AG/ACT routes).
+pub fn is_overlay_numpad_key(micro_key_id: &str) -> bool {
+    matches!(
+        micro_key_id.trim(),
+        "NP0" | "NP1" | "NP2" | "NP3" | "NP4" | "NP5" | "NP6" | "NP7" | "NP8" | "NP9"
+            | "NP_DOT" | "NP_ENTER" | "NP_DIV" | "NP_MUL" | "NP_SUB" | "NP_ADD"
+    )
 }
 
 pub fn joy_nav_panel_open() -> bool {
@@ -561,6 +571,157 @@ pub fn try_heal_micro_route(state: &crate::AppState, micro_key_id: &str, locale:
     changed
 }
 
+/// One-click heal for binding diagnose: restore missing routes/slots/chords, ENC screen-only,
+/// and reset scan conflicts to stock defaults. Does not rewrite intentional non-empty chords.
+pub fn heal_codex_pad_bindings(
+    cfg: &mut VoiceConfig,
+    mapping_id: Option<&str>,
+    locale: &str,
+) -> CodexPadEnsureResult {
+    let id = mapping_id.map(|s| s.trim()).filter(|s| !s.is_empty());
+    let mapping_idx = if let Some(want) = id {
+        cfg.mappings.iter().position(|m| m.id == want)
+    } else {
+        cfg.mappings
+            .iter()
+            .position(|m| m.enabled && is_codex_scenario(m))
+            .or_else(|| cfg.mappings.iter().position(is_codex_scenario))
+    };
+
+    let Some(idx) = mapping_idx else {
+        return CodexPadEnsureResult {
+            changed: false,
+            readiness: readiness_snapshot(cfg),
+            mapping_id: id.map(|s| s.to_string()),
+            codex_micro_pad: None,
+            agent_bindings: None,
+        };
+    };
+
+    let mut changed = false;
+    {
+        let m = &mut cfg.mappings[idx];
+        if seed_codex_scenario_meta(m) {
+            changed = true;
+        }
+        if m.agent_bindings.is_empty() {
+            m.agent_bindings = build_codex_micro_13_bindings(locale);
+            changed = true;
+        }
+        {
+            let pad = m.codex_micro_pad.get_or_insert_with(default_codex_micro_pad);
+            if pad.layout_profile.trim().is_empty() {
+                pad.layout_profile = "standard".into();
+                changed = true;
+            }
+            if heal_stock_mic_on_numpad0(pad) {
+                changed = true;
+            }
+            // Heal every stock primary route (AG/ACT/ENC).
+            let primary_ids: Vec<String> = default_codex_micro_pad_routes()
+                .into_iter()
+                .map(|r| r.micro_key_id)
+                .collect();
+            for mid in &primary_ids {
+                if let Some((slot, route_changed)) = heal_pad_route_for_micro_key(pad, mid) {
+                    if route_changed {
+                        changed = true;
+                    }
+                    // Slot heal needs &mut mapping; collect and apply below.
+                    let _ = slot;
+                }
+            }
+            // ENC must stay screen-only.
+            if let Some(enc) = pad.keys.iter_mut().find(|k| k.micro_key_id == "ENC") {
+                if enc.source_scan != 0 || enc.source_extended {
+                    enc.source_scan = 0;
+                    enc.source_extended = false;
+                    changed = true;
+                }
+                if enc.slot_id.trim().is_empty() {
+                    enc.slot_id = "summonCodex".into();
+                    changed = true;
+                }
+                if !enc.enabled {
+                    enc.enabled = true;
+                    changed = true;
+                }
+            }
+            // Reset scan conflicts to stock defaults.
+            if heal_scan_conflicts_to_defaults(pad) {
+                changed = true;
+            }
+        }
+        // Heal key bindings for all routed slots.
+        let slots: Vec<String> = m
+            .codex_micro_pad
+            .as_ref()
+            .map(|p| {
+                p.keys
+                    .iter()
+                    .filter(|k| k.enabled && !k.slot_id.trim().is_empty())
+                    .map(|k| k.slot_id.trim().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+        for slot in slots {
+            if heal_slot_key_bindings(m, &slot, locale) {
+                changed = true;
+            }
+        }
+    }
+
+    if changed {
+        sync_hook_cache(cfg);
+    }
+    let m = &cfg.mappings[idx];
+    CodexPadEnsureResult {
+        changed,
+        readiness: readiness_snapshot(cfg),
+        mapping_id: Some(m.id.clone()),
+        codex_micro_pad: m.codex_micro_pad.clone(),
+        agent_bindings: Some(m.agent_bindings.clone()),
+    }
+}
+
+/// When two enabled routes share the same physical scan, reset both to stock defaults.
+fn heal_scan_conflicts_to_defaults(pad: &mut CodexMicroPadConfig) -> bool {
+    let defaults = default_codex_micro_pad_routes();
+    let mut changed = false;
+    // Collect conflicted micro ids.
+    let mut seen: Vec<(u16, bool, String)> = Vec::new();
+    let mut conflicted: Vec<String> = Vec::new();
+    for r in &pad.keys {
+        if !r.enabled || r.source_scan == 0 {
+            continue;
+        }
+        if let Some((_, _, other)) = seen
+            .iter()
+            .find(|(s, e, _)| *s == r.source_scan && *e == r.source_extended)
+        {
+            conflicted.push(other.clone());
+            conflicted.push(r.micro_key_id.clone());
+        } else {
+            seen.push((r.source_scan, r.source_extended, r.micro_key_id.clone()));
+        }
+    }
+    conflicted.sort();
+    conflicted.dedup();
+    for id in conflicted {
+        let Some(def) = defaults.iter().find(|d| d.micro_key_id == id) else {
+            continue;
+        };
+        if let Some(route) = pad.keys.iter_mut().find(|k| k.micro_key_id == id) {
+            if route.source_scan != def.source_scan || route.source_extended != def.source_extended {
+                route.source_scan = def.source_scan;
+                route.source_extended = def.source_extended;
+                changed = true;
+            }
+        }
+    }
+    changed
+}
+
 fn seed_codex_scenario_meta(m: &mut MappingEntry) -> bool {
     let mut changed = false;
     if m.app_target_id.trim().is_empty() {
@@ -790,18 +951,22 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
 
 pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
     vec![
-        route("AG00", 0x47, false, "status"),
-        route("AG01", 0x48, false, "plan"),
-        route("AG02", 0x49, false, "review"),
+        route("AG00", 0x47, false, "switchAgent"),
+        route("AG01", 0x48, false, "claudeModel"),
+        route("AG02", 0x49, false, "switchModel"),
         route("AG03", 0x4B, false, "permissions"),
-        route("AG04", 0x4C, false, "switchAgent"),
+        route("AG04", 0x4C, false, "status"),
         route("AG05", 0x4D, false, "appsOrPlugins"),
         route("ACT06", 0x37, false, "quickChat"),
         route("ACT07", 0x35, true, "commandPalette"),
         route("ACT08", 0x4A, false, "cancel"),
         route("ACT09", 0x4F, false, "newThread"),
+        // Soft physical: Numpad 2 / 3 (not on Micro 13 face; fire via scan).
+        route("UNDO", 0x50, false, "undo"),
+        route("SEARCH", 0x51, false, "quickSearch"),
         route("ACT10", 0x52, false, "pushToTalk"),
-        route("ACT12", 0x51, false, "stopOrSend"),
+        // Send / confirm → Numpad Enter (region 4 preview; frees 3 for search).
+        route("ACT12", 0x1C, true, "stopOrSend"),
         // ENC: vendor HID / overlay only — do not steal physical Numpad 0 (mic).
         route("ENC", 0, false, "summonCodex"),
         // JOY: bindable in UI; no default scan/slot (added by frontend ensurePad).
@@ -844,13 +1009,15 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "ACT07" => "palette",
         "ACT08" => "reject",
         "ACT09" => "fork",
+        "UNDO" => "undo",
+        "SEARCH" => "search",
         "ACT10" => "mic",
         "ACT12" => "send",
-        "AG00" => "status",
-        "AG01" => "plan",
-        "AG02" => "review",
+        "AG00" => "agent",
+        "AG01" => "claude",
+        "AG02" => "model",
         "AG03" => "folder",
-        "AG04" => "agent",
+        "AG04" => "status",
         "AG05" => "cloud",
         "ENC" => "power",
         "JOY" => "empty",
@@ -936,6 +1103,31 @@ mod tests {
         assert_eq!(act07.slot_id, "commandPalette");
         assert_eq!(act07.source_scan, 0x35);
         assert!(act07.source_extended);
+        let ag00 = keys.iter().find(|k| k.micro_key_id == "AG00").unwrap();
+        assert_eq!(ag00.slot_id, "switchAgent");
+        let ag01 = keys.iter().find(|k| k.micro_key_id == "AG01").unwrap();
+        assert_eq!(ag01.slot_id, "claudeModel");
+        let ag02 = keys.iter().find(|k| k.micro_key_id == "AG02").unwrap();
+        assert_eq!(ag02.slot_id, "switchModel");
+        let ag04 = keys.iter().find(|k| k.micro_key_id == "AG04").unwrap();
+        assert_eq!(ag04.slot_id, "status");
+        let ag03 = keys.iter().find(|k| k.micro_key_id == "AG03").unwrap();
+        assert_eq!(ag03.slot_id, "permissions");
+        let ag05 = keys.iter().find(|k| k.micro_key_id == "AG05").unwrap();
+        assert_eq!(ag05.slot_id, "appsOrPlugins");
+        let act09 = keys.iter().find(|k| k.micro_key_id == "ACT09").unwrap();
+        assert_eq!(act09.slot_id, "newThread");
+        assert_eq!(act09.source_scan, 0x4F);
+        let undo = keys.iter().find(|k| k.micro_key_id == "UNDO").unwrap();
+        assert_eq!(undo.slot_id, "undo");
+        assert_eq!(undo.source_scan, 0x50);
+        let search = keys.iter().find(|k| k.micro_key_id == "SEARCH").unwrap();
+        assert_eq!(search.slot_id, "quickSearch");
+        assert_eq!(search.source_scan, 0x51);
+        let act12 = keys.iter().find(|k| k.micro_key_id == "ACT12").unwrap();
+        assert_eq!(act12.slot_id, "stopOrSend");
+        assert_eq!(act12.source_scan, 0x1C);
+        assert!(act12.source_extended);
     }
 
     #[test]
@@ -1081,6 +1273,83 @@ mod tests {
     }
 
     #[test]
+    fn heal_codex_pad_bindings_fixes_empty_chord_and_enc_scan() {
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        for k in &mut pad.keys {
+            if k.micro_key_id == "ENC" {
+                k.source_scan = 0x10;
+            }
+        }
+        let mut bindings = build_codex_micro_13_bindings("zh-CN");
+        for b in &mut bindings {
+            if b.slot_id == "pushToTalk" && b.trigger_type == "key" {
+                b.trigger_binding.clear();
+            }
+        }
+        let m = MappingEntry {
+            id: "codex-heal-all".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CODEX_APP_TARGET_ID.into(),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: bindings,
+            codex_micro_pad: Some(pad),
+        };
+        let mut cfg = VoiceConfig {
+            mappings: vec![m],
+            ..VoiceConfig::default()
+        };
+        let before = crate::codex_pad_binding_diagnose::diagnose_codex_pad_bindings_for_cfg(
+            &cfg,
+            Some("codex-heal-all"),
+        );
+        assert!(!before.ok);
+        let result = heal_codex_pad_bindings(&mut cfg, Some("codex-heal-all"), "zh-CN");
+        assert!(result.changed);
+        let after = crate::codex_pad_binding_diagnose::diagnose_codex_pad_bindings_for_cfg(
+            &cfg,
+            Some("codex-heal-all"),
+        );
+        assert!(after.ok, "issues={:?}", after.issues);
+        let enc = cfg.mappings[0]
+            .codex_micro_pad
+            .as_ref()
+            .unwrap()
+            .keys
+            .iter()
+            .find(|k| k.micro_key_id == "ENC")
+            .unwrap();
+        assert_eq!(enc.source_scan, 0);
+        assert!(agent_key_binding_for_slot(&cfg.mappings[0], "pushToTalk").is_some());
+    }
+
+    #[test]
     fn numpad_mode_blocks_all_keys_except_enc() {
         set_joy_nav_panel_open(true);
         // Empty cache → pad inactive (numpad mode).
@@ -1090,6 +1359,11 @@ mod tests {
         };
         assert!(!pad_mapping_active());
         assert!(numpad_mode_allows_fire("ENC"));
+        assert!(numpad_mode_allows_fire("NP7"));
+        assert!(numpad_mode_allows_fire("NP_ENTER"));
+        assert!(numpad_mode_allows_fire("NP_ADD"));
+        assert!(numpad_mode_allows_fire("NP_DIV"));
+        assert!(numpad_mode_allows_fire("NP_DOT"));
         assert!(!numpad_mode_allows_fire("ACT10"));
         assert!(!numpad_mode_allows_fire("AG00"));
         assert!(!numpad_mode_allows_fire("NAV_UP"));

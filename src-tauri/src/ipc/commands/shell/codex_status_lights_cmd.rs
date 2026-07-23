@@ -146,6 +146,8 @@ pub fn cmd_codex_hook_setup_status(
                 && hooks_raw.contains(&probe_script.replace('\\', "/"))));
 
     let app_view = crate::codex_app_state::snapshot();
+    let pad = crate::pad_status::snapshot();
+    let pad_ui = crate::pad_status::ui_status_from_pad(&pad);
     let srv = crate::codex_micro_protocol_server::status();
     let app_state_enabled = {
         let cfg = state.cfg.lock();
@@ -163,7 +165,11 @@ pub fn cmd_codex_hook_setup_status(
 
     let panel_phase = if !probe_configured {
         "not_configured"
-    } else if app_view.last_source == "codex_hook" && !app_view.last_event.is_empty() {
+    } else if (pad.source_enum() == crate::pad_status::PadSource::Hook
+        || app_view.last_source == "codex_hook")
+        && (!pad.last_event.as_ref().map(|e| e.is_empty()).unwrap_or(true)
+            || !app_view.last_event.is_empty())
+    {
         "connected"
     } else {
         "configured_waiting"
@@ -185,15 +191,41 @@ pub fn cmd_codex_hook_setup_status(
         probe_configured,
         probe_script_path: probe_script.clone(),
         hooks_draft_json: build_hooks_draft_json(&probe_script),
-        light_status: if app_view.status.trim().is_empty() {
+        light_status: if pad_ui.trim().is_empty() {
             "idle".into()
         } else {
-            app_view.status
+            pad_ui
         },
-        last_event: app_view.last_event,
-        last_source: app_view.last_source,
-        last_seen_at: app_view.last_seen_at,
-        age_ms: app_view.age_ms,
+        last_event: if !pad
+            .last_event
+            .as_ref()
+            .map(|e| e.is_empty())
+            .unwrap_or(true)
+        {
+            pad.last_event.clone().unwrap_or_default()
+        } else {
+            app_view.last_event
+        },
+        last_source: if pad.updated_at > 0 {
+            pad.display_source_label().to_string()
+        } else {
+            app_view.last_source
+        },
+        last_seen_at: if pad.updated_at > 0 {
+            pad.updated_at
+        } else {
+            app_view.last_seen_at
+        },
+        age_ms: if pad.updated_at > 0 {
+            pad.age_ms(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0),
+            )
+        } else {
+            app_view.age_ms
+        },
         app_state_enabled,
         loopback_enabled: srv.enabled,
         loopback_url: srv.url,

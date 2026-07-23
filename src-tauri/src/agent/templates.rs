@@ -87,8 +87,28 @@ const CODEX_MICRO_13_SLOTS: &[AgentSlotDef] = &[
         execution_mode: ExecutionMode::Execute,
         activation_scope: ActivationScope::ForegroundApp,
         insert_text: None,
-        label_zh: "新聊天",
-        label_en: "New thread",
+        label_zh: "上下文",
+        label_en: "Context",
+    },
+    AgentSlotDef {
+        slot_id: "undo",
+        action_id: "undo",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "撤销",
+        label_en: "Undo",
+    },
+    AgentSlotDef {
+        slot_id: "quickSearch",
+        action_id: "quickSearch",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "快速搜索",
+        label_en: "Quick search",
     },
     AgentSlotDef {
         slot_id: "quickChat",
@@ -161,6 +181,26 @@ const CODEX_MICRO_13_SLOTS: &[AgentSlotDef] = &[
         label_en: "Switch agent",
     },
     AgentSlotDef {
+        slot_id: "claudeModel",
+        action_id: "claudeModel",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::Global,
+        insert_text: Some("/model"),
+        label_zh: "Claude 模型",
+        label_en: "Claude model",
+    },
+    AgentSlotDef {
+        slot_id: "switchModel",
+        action_id: "switchModel",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::InsertOnly,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: Some("/model"),
+        label_zh: "切换模型",
+        label_en: "Switch model",
+    },
+    AgentSlotDef {
         slot_id: "appsOrPlugins",
         action_id: "appsOrPlugins",
         secondary_action_id: None,
@@ -203,12 +243,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn codex_micro_13_has_thirteen_slots() {
+    fn codex_micro_13_has_expected_slots() {
         let t = codex_micro_13_template();
-        assert_eq!(t.slots.len(), 13);
+        assert_eq!(t.slots.len(), 17);
         assert_eq!(t.template_id, CODEX_MICRO_13_TEMPLATE_ID);
         assert_eq!(t.provider_id, CODEX_PROVIDER_ID);
         assert_eq!(t.app_target_id, "codex-chat");
+        assert!(slot_by_id("claudeModel").is_some());
+        assert!(slot_by_id("switchModel").is_some());
+        assert!(slot_by_id("undo").is_some());
+        assert!(slot_by_id("quickSearch").is_some());
         for slot in t.slots {
             assert!(
                 action_by_id(slot.action_id).is_some(),

@@ -32,7 +32,9 @@
     { id: 'startDictation', labelZh: '开始说话', labelEn: 'Start talking', risk: 'confirm', scope: 'global', mode: 'execute', phrasesZh: '开始说话', phrasesEn: 'start talking' },
     { id: 'stopOrSendDictation', labelZh: '结束或发送', labelEn: 'Stop or send', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '结束输入', phrasesEn: 'stop dictation' },
     { id: 'cancel', labelZh: '取消', labelEn: 'Cancel', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '取消', phrasesEn: 'cancel' },
-    { id: 'newThread', labelZh: '新聊天', labelEn: 'New thread', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '新建对话', phrasesEn: 'new chat' },
+    { id: 'newThread', labelZh: '上下文', labelEn: 'Context', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '新建对话', phrasesEn: 'new chat' },
+    { id: 'undo', labelZh: '撤销', labelEn: 'Undo', risk: 'safe', scope: 'foregroundApp', mode: 'execute', phrasesZh: '撤销', phrasesEn: 'undo' },
+    { id: 'quickSearch', labelZh: '快速搜索', labelEn: 'Quick search', risk: 'safe', scope: 'foregroundApp', mode: 'execute', phrasesZh: '搜索', phrasesEn: 'search' },
     { id: 'quickChat', labelZh: '快速聊天', labelEn: 'Quick chat', risk: 'confirm', scope: 'foregroundApp', mode: 'execute', phrasesZh: '快速聊天', phrasesEn: 'quick chat' },
     { id: 'commandPalette', labelZh: '命令菜单', labelEn: 'Command palette', risk: 'safe', scope: 'foregroundApp', mode: 'execute', phrasesZh: '打开命令菜单', phrasesEn: 'open command palette' },
     { id: 'status', labelZh: '查看状态', labelEn: 'Status', risk: 'safe', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '查看状态', phrasesEn: 'show status', insert: '/status' },
@@ -40,6 +42,8 @@
     { id: 'review', labelZh: '审查', labelEn: 'Review', risk: 'safe', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '开始审查', phrasesEn: 'start review', insert: '/review' },
     { id: 'permissions', labelZh: '权限', labelEn: 'Permissions', risk: 'confirm', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '打开权限', phrasesEn: 'open permissions', insert: '/permissions' },
     { id: 'switchAgent', labelZh: '切换助手', labelEn: 'Switch agent', risk: 'confirm', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '切换助手', phrasesEn: 'switch agent', insert: '/agent' },
+    { id: 'claudeModel', labelZh: 'Claude 模型', labelEn: 'Claude model', risk: 'safe', scope: 'global', mode: 'execute', phrasesZh: '切换 Claude 模型', phrasesEn: 'claude model', insert: '/model' },
+    { id: 'switchModel', labelZh: '切换模型', labelEn: 'Switch model', risk: 'confirm', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '切换模型', phrasesEn: 'switch model', insert: '/model' },
     { id: 'appsOrPlugins', labelZh: '应用与插件', labelEn: 'Apps', risk: 'safe', scope: 'foregroundApp', mode: 'insertOnly', phrasesZh: '打开应用', phrasesEn: 'open apps', insert: '/apps' }
   ];
 
@@ -48,7 +52,9 @@
     { slotId: 'pushToTalk', actionId: 'startDictation', labelZh: '开始说话', labelEn: 'Start talking' },
     { slotId: 'stopOrSend', actionId: 'stopOrSendDictation', labelZh: '结束或发送', labelEn: 'Stop or send' },
     { slotId: 'cancel', actionId: 'cancel', labelZh: '取消', labelEn: 'Cancel' },
-    { slotId: 'newThread', actionId: 'newThread', labelZh: '新聊天', labelEn: 'New thread' },
+    { slotId: 'newThread', actionId: 'newThread', labelZh: '上下文', labelEn: 'Context' },
+    { slotId: 'undo', actionId: 'undo', labelZh: '撤销', labelEn: 'Undo' },
+    { slotId: 'quickSearch', actionId: 'quickSearch', labelZh: '快速搜索', labelEn: 'Quick search' },
     { slotId: 'quickChat', actionId: 'quickChat', labelZh: '快速聊天', labelEn: 'Quick chat' },
     { slotId: 'commandPalette', actionId: 'commandPalette', labelZh: '命令菜单', labelEn: 'Command palette' },
     { slotId: 'status', actionId: 'status', labelZh: '查看状态', labelEn: 'Status' },
@@ -56,6 +62,8 @@
     { slotId: 'review', actionId: 'review', labelZh: '审查', labelEn: 'Review' },
     { slotId: 'permissions', actionId: 'permissions', labelZh: '权限', labelEn: 'Permissions' },
     { slotId: 'switchAgent', actionId: 'switchAgent', labelZh: '切换助手', labelEn: 'Switch agent' },
+    { slotId: 'claudeModel', actionId: 'claudeModel', labelZh: 'Claude 模型', labelEn: 'Claude model' },
+    { slotId: 'switchModel', actionId: 'switchModel', labelZh: '切换模型', labelEn: 'Switch model' },
     { slotId: 'appsOrPlugins', actionId: 'appsOrPlugins', labelZh: '应用与插件', labelEn: 'Apps' }
   ];
 
@@ -68,11 +76,13 @@
    * Insert-only slash slots keep OneTone chords for voice/keys overlay.
    */
   var DEFAULT_KEY_BY_SLOT = {
-    summonCodex: 'Ctrl+Shift+P',
+    summonCodex: '',
     pushToTalk: 'Ctrl+Shift+D',
     stopOrSend: 'Enter',
     cancel: 'Escape',
     newThread: 'Ctrl+N',
+    undo: 'Ctrl+Z',
+    quickSearch: 'Ctrl+F',
     quickChat: 'Ctrl+Alt+N',
     commandPalette: 'Ctrl+K',
     status: 'Ctrl+Alt+S',
@@ -80,6 +90,8 @@
     review: 'Ctrl+Alt+R',
     permissions: 'Ctrl+Alt+,',
     switchAgent: 'Ctrl+Alt+.',
+    claudeModel: '',
+    switchModel: 'Ctrl+Alt+M',
     appsOrPlugins: 'Ctrl+Alt+A'
   };
 

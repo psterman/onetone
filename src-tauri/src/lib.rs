@@ -9,10 +9,12 @@ mod audio_win;
 mod backdrop;
 mod coach_hud;
 mod codex_app_state;
+mod pad_status;
 mod codex_micro_overlay;
 mod codex_micro_protocol_server;
 mod codex_micro_vendor;
 mod codex_numpad_layer;
+mod codex_pad_binding_diagnose;
 mod config;
 mod cursor_workflow;
 mod device_identity;
@@ -768,6 +770,9 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_get_readiness,
             ipc::cmd_codex_status_lights_set,
             ipc::cmd_codex_hook_setup_status,
+            ipc::cmd_pad_status_diagnose,
+            ipc::cmd_codex_pad_binding_diagnose,
+            ipc::cmd_codex_pad_binding_heal,
             ipc::cmd_acoustic_voice_command_status,
             ipc::cmd_acoustic_voice_command_preflight,
             ipc::cmd_acoustic_voice_command_set_suspend,

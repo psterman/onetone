@@ -7,11 +7,13 @@ use crate::config::AgentBinding;
 /// Codex App official shortcuts where published; slash slots use OneTone overlay chords.
 pub fn default_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
-        "summonCodex" => "Ctrl+Shift+P",
+        "summonCodex" => "",
         "pushToTalk" => "Ctrl+Shift+D",
         "stopOrSend" => "Enter",
         "cancel" => "Escape",
         "newThread" => "Ctrl+N",
+        "undo" => "Ctrl+Z",
+        "quickSearch" => "Ctrl+F",
         "quickChat" => "Ctrl+Alt+N",
         "commandPalette" => "Ctrl+K",
         "status" => "Ctrl+Alt+S",
@@ -19,6 +21,8 @@ pub fn default_key_for_slot(slot_id: &str) -> &'static str {
         "review" => "Ctrl+Alt+R",
         "permissions" => "Ctrl+Alt+,",
         "switchAgent" => "Ctrl+Alt+.",
+        "claudeModel" => "",
+        "switchModel" => "Ctrl+Alt+M",
         "appsOrPlugins" => "Ctrl+Alt+A",
         _ => "",
     }
@@ -100,7 +104,12 @@ mod tests {
         assert!(rows.iter().any(|b| {
             b.trigger_type == "key"
                 && b.slot_id == "summonCodex"
-                && b.trigger_binding == "Ctrl+Shift+P"
+                && b.trigger_binding.is_empty()
+        }));
+        assert!(rows.iter().any(|b| {
+            b.trigger_type == "key"
+                && b.slot_id == "claudeModel"
+                && b.trigger_binding.is_empty()
         }));
         assert!(rows.iter().any(|b| {
             b.trigger_type == "key"
@@ -109,7 +118,13 @@ mod tests {
         }));
         assert!(rows
             .iter()
-            .filter(|b| b.trigger_type == "key")
+            .filter(|b| {
+                b.trigger_type == "key"
+                    && b.slot_id != "summonCodex"
+                    && b.slot_id != "claudeModel"
+            })
             .all(|b| !b.trigger_binding.is_empty()));
+        assert_eq!(default_key_for_slot("summonCodex"), "");
+        assert_eq!(default_key_for_slot("claudeModel"), "");
     }
 }

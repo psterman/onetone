@@ -96,6 +96,8 @@ fn normalize_source(raw: &str) -> Option<&'static str> {
     match raw.trim() {
         "codex_hook" => Some("codex_hook"),
         "codex_app" => Some("codex_app"),
+        "claude_hook" => Some("claude_hook"),
+        "claude_app" => Some("claude_app"),
         _ => None,
     }
 }
@@ -103,10 +105,11 @@ fn normalize_source(raw: &str) -> Option<&'static str> {
 /// Map lifecycle event → light status. Subagent* returns None (record only).
 pub fn map_event_to_status(event: &str) -> Option<&'static str> {
     match event.trim() {
-        "UserPromptSubmit" | "PreToolUse" | "PostToolUse" => Some("running"),
-        "PermissionRequest" => Some("needs_input"),
-        "Stop" => Some("done"),
-        "SessionStart" => Some("idle"),
+        "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch" => Some("running"),
+        "PermissionRequest" | "Elicitation" => Some("needs_input"),
+        "Stop" | "TaskCompleted" => Some("done"),
+        "StopFailure" | "PostToolUseFailure" => Some("failed"),
+        "SessionStart" | "SessionEnd" => Some("idle"),
         _ => None,
     }
 }
@@ -204,7 +207,11 @@ pub fn apply_payload(payload: &CodexAppStatePayload) -> CodexAppStateView {
     let now = now_ms();
     let mut g = store().lock().unwrap();
     apply_payload_at(&mut g, payload, now);
-    view_from(&g, now)
+    let view = view_from(&g, now);
+    drop(g);
+    // State Core — overlay / AG lights must follow pad_status, not this store alone.
+    let _ = crate::pad_status::ingest_codex_payload(payload);
+    view
 }
 
 fn view_from(store: &CodexAppStateStore, now: u64) -> CodexAppStateView {
@@ -237,27 +244,30 @@ pub fn snapshot() -> CodexAppStateView {
 
 /// Fresh app/hook signal for overlay merge (not Micro native).
 ///
-/// `needs_input` / `running` stick until the next Hook event remaps status
-/// (permission dialogs often stay open far longer than HOOK_STALE_MS).
-/// Other statuses still expire after HOOK_STALE_MS.
+/// Reads **pad_status** State Core (legacy store remains for HTTP view / tests).
 pub fn fresh_signal() -> Option<(String, String)> {
     fresh_signal_at(now_ms())
 }
 
 fn fresh_signal_at(now: u64) -> Option<(String, String)> {
-    let mut g = store().lock().unwrap();
-    settle(&mut g, now);
-    if g.source.is_empty() || g.updated_at_ms == 0 {
+    let pad = crate::pad_status::snapshot_at(now);
+    if pad.updated_at == 0 {
         return None;
     }
-    let sticky = g.status == "needs_input" || g.status == "running";
+    let sticky = pad.is_sticky_active(now)
+        || matches!(
+            pad.state.as_str(),
+            "needs_input" | "running"
+        );
     if !sticky {
-        let age = now.saturating_sub(g.updated_at_ms);
+        let age = now.saturating_sub(pad.updated_at);
         if age > HOOK_STALE_MS {
             return None;
         }
     }
-    Some((g.source.clone(), g.status.clone()))
+    // Prefer agent-aware labels for overlay statusSource (Claude Hook vs Codex Hook).
+    let src = pad.display_source_label().to_string();
+    Some((src, pad.state.clone()))
 }
 
 /// Apply raw JSON body; returns view on success.
@@ -270,6 +280,7 @@ pub fn apply_raw_json(raw: &str) -> Result<CodexAppStateView, String> {
 pub fn reset_for_test() {
     let mut g = store().lock().unwrap();
     *g = CodexAppStateStore::default();
+    crate::pad_status::reset_for_test();
 }
 
 #[cfg(test)]
@@ -282,7 +293,10 @@ pub fn test_store_lock() -> std::sync::MutexGuard<'static, ()> {
 pub fn apply_payload_at_for_test(payload: &CodexAppStatePayload, now: u64) -> CodexAppStateView {
     let mut g = store().lock().unwrap();
     apply_payload_at(&mut g, payload, now);
-    view_from(&g, now)
+    let view = view_from(&g, now);
+    drop(g);
+    let _ = crate::pad_status::ingest_codex_app_payload_at(payload, now);
+    view
 }
 
 #[cfg(test)]

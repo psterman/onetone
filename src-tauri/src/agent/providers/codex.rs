@@ -4,12 +4,14 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{Manager, WebviewWindow};
 
 use crate::agent::actions::{action_by_id, ActivationScope, ExecutionMode, ProviderSupport};
 use crate::agent::insert_text;
 use crate::agent::templates::{slot_by_id, CODEX_PROVIDER_ID};
-use crate::app_chat_workflow::{self, AppChatWorkflowError, CODEX_APP_TARGET_ID};
+use crate::app_chat_workflow::{
+    self, AppChatWorkflowError, CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID,
+};
 use crate::AppState;
 
 #[derive(Debug, Clone)]
@@ -105,15 +107,24 @@ impl CodexProviderAdapter {
 
         match action_id {
             "openAgent" | "focusComposer" => Self::focus_only(state, window, duration_ms, mode),
+            "claudeModel" => Self::claude_model(state, window, duration_ms, mode),
             "startDictation" => {
                 Self::start_dictation(state, window, mapping_id, duration_ms, mode)
             }
             "stopOrSendDictation" => Self::stop_or_send(state, window, mode),
             "cancel" => Self::send_hotkey("Esc", duration_ms, mode),
             "newThread" => Self::focus_then_hotkey(state, window, "Ctrl+N", duration_ms, mode),
+            "undo" => Self::focus_then_hotkey(state, window, "Ctrl+Z", duration_ms, mode),
+            "quickSearch" => Self::focus_then_hotkey(state, window, "Ctrl+F", duration_ms, mode),
             "quickChat" => Self::focus_then_hotkey(state, window, "Ctrl+Alt+N", duration_ms, mode),
             "commandPalette" => Self::focus_then_hotkey(state, window, "Ctrl+K", duration_ms, mode),
-            "status" | "plan" | "review" | "permissions" | "switchAgent" | "appsOrPlugins" => {
+            "status"
+            | "plan"
+            | "review"
+            | "permissions"
+            | "switchAgent"
+            | "switchModel"
+            | "appsOrPlugins" => {
                 let text = slot_id
                     .and_then(slot_by_id)
                     .and_then(|s| s.insert_text)
@@ -126,6 +137,40 @@ impl CodexProviderAdapter {
                 Some(format!("no codex handler for {action_id}")),
                 mode,
             ),
+        }
+    }
+
+    fn claude_model(
+        _state: &Arc<AppState>,
+        window: &WebviewWindow,
+        duration_ms: u32,
+        mode: ExecutionMode,
+    ) -> ProviderActionOutcome {
+        #[cfg(not(windows))]
+        {
+            let _ = (window, duration_ms);
+            return ProviderActionOutcome::err("not_running", None, mode);
+        }
+        #[cfg(windows)]
+        {
+            let fg = app_chat_workflow::foreground_app_target_id();
+            if fg.as_deref() == Some(CLAUDE_CODE_APP_TARGET_ID) {
+                let text = slot_by_id("claudeModel")
+                    .and_then(|s| s.insert_text)
+                    .or_else(|| default_slash("claudeModel"))
+                    .unwrap_or("/model");
+                let mode = ExecutionMode::InsertOnly;
+                return match insert_text::insert_text_no_enter(text, duration_ms) {
+                    Ok(()) => ProviderActionOutcome::ok_mode(mode),
+                    Err(e) => {
+                        ProviderActionOutcome::err(e.as_reason(), Some(format!("{e:?}")), mode)
+                    }
+                };
+            }
+            match focus_claude_composer(window, duration_ms) {
+                Ok(()) => ProviderActionOutcome::ok_mode(mode),
+                Err(e) => map_workflow_err(e, mode),
+            }
         }
     }
 
@@ -248,6 +293,7 @@ fn default_slash(action_id: &str) -> Option<&'static str> {
         "review" => Some("/review"),
         "permissions" => Some("/permissions"),
         "switchAgent" => Some("/agent"),
+        "claudeModel" | "switchModel" => Some("/model"),
         "appsOrPlugins" => Some("/apps"),
         _ => None,
     }
@@ -275,6 +321,15 @@ fn focus_codex_composer(
     app_chat_workflow::focus_composer_only(&app, CODEX_APP_TARGET_ID, duration_ms)
 }
 
+#[cfg(windows)]
+fn focus_claude_composer(
+    window: &WebviewWindow,
+    duration_ms: u32,
+) -> Result<(), AppChatWorkflowError> {
+    let app = window.app_handle();
+    app_chat_workflow::focus_composer_only(&app, CLAUDE_CODE_APP_TARGET_ID, duration_ms)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,5 +345,11 @@ mod tests {
             CodexProviderAdapter::supports("openAgent"),
             ProviderSupport::Unsupported
         );
+        assert_ne!(
+            CodexProviderAdapter::supports("claudeModel"),
+            ProviderSupport::Unsupported
+        );
+        assert_eq!(default_slash("switchModel"), Some("/model"));
+        assert_eq!(default_slash("claudeModel"), Some("/model"));
     }
 }

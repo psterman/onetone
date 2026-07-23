@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Mode 键盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #020617;
+            color: #e5e7eb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            font-size: 0.78rem;
+            color: #6b7280;
+        }
+
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .toggle-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-label.active {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            width: 54px;
+            height: 30px;
+            background: #1e293b;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #334155;
+        }
+
+        .toggle-switch.on {
+            background: #374151;
+            border-color: #60a5fa;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #4b5563;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.on::after {
+            left: 26px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .keyboard-wrapper {
+            background: linear-gradient(180deg, #111827 0%, #020617 100%);
+            padding: 28px;
+            border-radius: 20px;
+            border: 1px solid #1f2937;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 60px);
+            gap: 10px;
+        }
+
+        .key {
+            width: 60px;
+            height: 60px;
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.12s ease;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .key::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+        }
+
+        .key:hover {
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .key:active {
+            transform: scale(0.95);
+        }
+
+        .key-num {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-bottom: 2px;
+            font-family: monospace;
+        }
+
+        .key-main {
+            font-size: 1.15rem;
+            font-weight: 600;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+
+        .key-func {
+            font-size: 0.55rem;
+            color: #9ca3af;
+            line-height: 1.1;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .key-dot {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 6px;
+            height: 6px;
+            background: #4b5563;
+            border-radius: 50%;
+        }
+
+        .key-dot.active {
+            background: #22d3ee;
+            box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+        }
+
+        .key.highlight {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            border-color: #4b5563;
+        }
+
+        .key.codex {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            border-color: #3b82f6;
+        }
+
+        .key.codex .key-main,
+        .key.codex .key-func {
+            color: white;
+        }
+
+        .key.claude {
+            background: linear-gradient(135deg, #581c87 0%, #6d28d9 100%);
+            border-color: #8b5cf6;
+        }
+
+        .key.claude .key-main,
+        .key.claude .key-func {
+            color: white;
+        }
+
+        .key.action {
+            background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+            border-color: #10b981;
+        }
+
+        .key.action .key-main,
+        .key.action .key-func {
+            color: white;
+        }
+
+        .key-tall {
+            grid-row: span 2;
+            height: 130px;
+        }
+
+        .key-wide {
+            grid-column: span 2;
+            width: 130px;
+        }
+
+        .mapping-panel {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .map-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: left;
+        }
+
+        .map-title {
+            font-size: 0.72rem;
+            color: #6b7280;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .map-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        .map-item:last-child {
+            border-bottom: none;
+        }
+
+        .map-key {
+            font-size: 0.78rem;
+            color: #6b7280;
+            font-family: monospace;
+        }
+
+        .map-func {
+            font-size: 0.78rem;
+            color: #d1d5db;
+        }
+
+        .hint-text {
+            margin-top: 18px;
+            font-size: 0.76rem;
+            color: #6b7280;
+            padding: 10px 16px;
+            background: #111827;
+            border-radius: 10px;
+            border: 1px solid #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Dual Mode Keypad</div>
+            <div class="subtitle">双模式键盘 · 数字键与AI快捷键</div>
+        </div>
+
+        <div class="toggle-wrapper">
+            <span class="toggle-label" id="label-num">Numeric</span>
+            <div class="toggle-switch on" id="toggle-switch"></div>
+            <span class="toggle-label active" id="label-ai">AI Mode</span>
+        </div>
+
+        <div class="keyboard-wrapper">
+            <div class="keypad">
+                <!-- Row 1 -->
+                <div class="key" data-key="/">
+                    <div class="key-dot"></div>
+                    <span class="key-num">/</span>
+                    <span class="key-main" id="main-1">⌘</span>
+                    <span class="key-func" id="func-1">CMD MENU</span>
+                </div>
+                <div class="key" data-key="*">
+                    <div class="key-dot"></div>
+                    <span class="key-num">*</span>
+                    <span class="key-main" id="main-2">✦</span>
+                    <span class="key-func" id="func-2">NEW FILE</span>
+                </div>
+                <div class="key" data-key="-">
+                    <div class="key-dot"></div>
+                    <span class="key-num">-</span>
+                    <span class="key-main" id="main-3">⌫</span>
+                    <span class="key-func" id="func-3">DELETE</span>
+                </div>
+                <div class="key action" data-key="back">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">←</span>
+                    <span class="key-main" id="main-4">⎋</span>
+                    <span class="key-func" id="func-4">CANCEL</span>
+                </div>
+
+                <!-- Row 2 - Claude / AI -->
+                <div class="key claude" data-key="7">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">7</span>
+                    <span class="key-main" id="main-5">📎</span>
+                    <span class="key-func" id="func-5">CONTEXT</span>
+                </div>
+                <div class="key claude" data-key="8">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">8</span>
+                    <span class="key-main" id="main-6">📝</span>
+                    <span class="key-func" id="func-6">PROMPT</span>
+                </div>
+                <div class="key claude" data-key="9">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">9</span>
+                    <span class="key-main" id="main-7">👁</span>
+                    <span class="key-func" id="func-7">REVIEW</span>
+                </div>
+                <div class="key action key-tall" data-key="+">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">+</span>
+                    <span class="key-main" id="main-8">💬</span>
+                    <span class="key-func" id="func-8">CHAT</span>
+                </div>
+
+                <!-- Row 3 - Codex / Dev -->
+                <div class="key codex" data-key="4">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">4</span>
+                    <span class="key-main" id="main-9">⚡</span>
+                    <span class="key-func" id="func-9">PERMIT</span>
+                </div>
+                <div class="key codex" data-key="5">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">5</span>
+                    <span class="key-main" id="main-10">⭐</span>
+                    <span class="key-func" id="func-10">FAV</span>
+                </div>
+                <div class="key codex" data-key="6">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">6</span>
+                    <span class="key-main" id="main-11">📁</span>
+                    <span class="key-func" id="func-11">APPS</span>
+                </div>
+
+                <!-- Row 4 - Edit -->
+                <div class="key highlight" data-key="1">
+                    <div class="key-dot"></div>
+                    <span class="key-num">1</span>
+                    <span class="key-main" id="main-12">↶</span>
+                    <span class="key-func" id="func-12">UNDO</span>
+                </div>
+                <div class="key highlight" data-key="2">
+                    <div class="key-dot"></div>
+                    <span class="key-num">2</span>
+                    <span class="key-main" id="main-13">↷</span>
+                    <span class="key-func" id="func-13">REDO</span>
+                </div>
+                <div class="key highlight" data-key="3">
+                    <div class="key-dot"></div>
+                    <span class="key-num">3</span>
+                    <span class="key-main" id="main-14">🔍</span>
+                    <span class="key-func" id="func-14">SEARCH</span>
+                </div>
+                <div class="key action key-tall" data-key="enter">
+                    <div class="key-dot active"></div>
+                    <span class="key-num">↵</span>
+                    <span class="key-main" id="main-15">▶</span>
+                    <span class="key-func" id="func-15">RUN</span>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="key key-wide" data-key="0">
+                    <div class="key-dot"></div>
+                    <span class="key-num">0</span>
+                    <span class="key-main" id="main-16">🎤</span>
+                    <span class="key-func" id="func-16">VOICE</span>
+                </div>
+                <div class="key" data-key=".">
+                    <div class="key-dot"></div>
+                    <span class="key-num">.</span>
+                    <span class="key-main" id="main-17">⚙</span>
+                    <span class="key-func" id="func-17">SET</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mapping-panel">
+            <div class="map-card">
+                <div class="map-title">Claude AI Functions</div>
+                <div class="map-item">
+                    <span class="map-key">7</span>
+                    <span class="map-func">Attach Context</span>
+                </div>
+                <div class="map-item">
+                    <span class="map-key">8</span>
+                    <span class="map-func">Prompt Templates</span>
+                </div>
+                <div class="map-item">
+                    <span class="map-key">9</span>
+                    <span class="map-func">Code Review</span>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="map-title">Codex Dev Tools</div>
+                <div class="map-item">
+                    <span class="map-key">4</span>
+                    <span class="map-func">Permission Grants</span>
+                </div>
+                <div class="map-item">
+                    <span class="map-key">5</span>
+                    <span class="map-func">Favorites</span>
+                </div>
+                <div class="map-item">
+                    <span class="map-key">6</span>
+                    <span class="map-func">App Launcher</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="hint-text">
+            💡 数字键始终显示在左上角，下方显示对应AI功能，一个键盘两种用途
+        </div>
+    </div>
+
+    <script>
+        const toggleSwitch = document.getElementById('toggle-switch');
+        const labelNum = document.getElementById('label-num');
+        const labelAI = document.getElementById('label-ai');
+        
+        let isAIMode = true;
+
+        const aiMode = {
+            main: ['⌘', '✦', '⌫', '⎋', '📎', '📝', '👁', '💬', '⚡', '⭐', '📁', '↶', '↷', '🔍', '▶', '🎤', '⚙'],
+            func: ['CMD MENU', 'NEW FILE', 'DELETE', 'CANCEL', 'CONTEXT', 'PROMPT', 'REVIEW', 'CHAT', 'PERMIT', 'FAV', 'APPS', 'UNDO', 'REDO', 'SEARCH', 'RUN', 'VOICE', 'SET']
+        };
+
+        const numMode = {
+            main: ['/', '*', '-', '←', '7', '8', '9', '+', '4', '5', '6', '1', '2', '3', 'ENTER', '0', '.'],
+            func: ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+        };
+
+        function toggleMode() {
+            isAIMode = !isAIMode;
+
+            if (isAIMode) {
+                toggleSwitch.classList.add('on');
+                labelNum.classList.remove('active');
+                labelAI.classList.add('active');
+            } else {
+                toggleSwitch.classList.remove('on');
+                labelNum.classList.add('active');
+                labelAI.classList.remove('active');
+            }
+
+            updateKeys();
+        }
+
+        function updateKeys() {
+            const data = isAIMode ? aiMode : numMode;
+
+            for (let i = 0; i < 17; i++) {
+                const mainEl = document.getElementById(`main-${i+1}`);
+                const funcEl = document.getElementById(`func-${i+1}`);
+                
+                if (mainEl) mainEl.textContent = data.main[i];
+                if (funcEl) funcEl.textContent = data.func[i];
+            }
+
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                if (isAIMode) {
+                    const keyData = key.dataset.key;
+                    if (keyData === '+' || keyData === 'enter' || keyData === 'back') {
+                        key.classList.add('action');
+                    } else if (['4','5','6'].includes(keyData)) {
+                        key.classList.add('codex');
+                    } else if (['7','8','9'].includes(keyData)) {
+                        key.classList.add('claude');
+                    } else if (['1','2','3'].includes(keyData)) {
+                        key.classList.add('highlight');
+                    }
+                } else {
+                    key.classList.remove('action', 'codex', 'claude', 'highlight');
+                }
+            });
+
+            const numLabels = document.querySelectorAll('.key-num');
+            numLabels.forEach(el => {
+                el.style.opacity = isAIMode ? '0.6' : '1';
+            });
+        }
+
+        toggleSwitch.addEventListener('click', toggleMode);
+
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', () => {
+                key.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    key.style.transform = '';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

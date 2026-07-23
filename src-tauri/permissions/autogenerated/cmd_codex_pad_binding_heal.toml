@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-pad-binding-heal"
+description = "Enables the cmd_codex_pad_binding_heal command without any pre-configured scope."
+commands.allow = ["cmd_codex_pad_binding_heal"]
+
+[[permission]]
+identifier = "deny-cmd-codex-pad-binding-heal"
+description = "Denies the cmd_codex_pad_binding_heal command without any pre-configured scope."
+commands.deny = ["cmd_codex_pad_binding_heal"]

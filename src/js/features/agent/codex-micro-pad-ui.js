@@ -8,33 +8,54 @@
   var LAYOUT = {
     cells: [
       { microKeyId: 'ENC', uiLabelZh: '总开关', uiLabelEn: 'Power', kind: 'control', gridRow: 1, gridCol: 1 },
-      { microKeyId: 'AG00', uiLabelZh: '任务 1', uiLabelEn: 'Agent 1', kind: 'agent', gridRow: 1, gridCol: 2, agIndex: 0 },
-      { microKeyId: 'AG01', uiLabelZh: '任务 2', uiLabelEn: 'Agent 2', kind: 'agent', gridRow: 1, gridCol: 3, agIndex: 1 },
-      { microKeyId: 'AG02', uiLabelZh: '任务 3', uiLabelEn: 'Agent 3', kind: 'agent', gridRow: 1, gridCol: 4, agIndex: 2 },
+      { microKeyId: 'AG00', uiLabelZh: 'Agent', uiLabelEn: 'Agent', kind: 'agent', gridRow: 1, gridCol: 2, agIndex: 0 },
+      { microKeyId: 'AG01', uiLabelZh: 'Claude', uiLabelEn: 'Claude', kind: 'agent', gridRow: 1, gridCol: 3, agIndex: 1 },
+      { microKeyId: 'AG02', uiLabelZh: 'Codex', uiLabelEn: 'Codex', kind: 'agent', gridRow: 1, gridCol: 4, agIndex: 2 },
       { microKeyId: 'JOY', uiLabelZh: '摇杆', uiLabelEn: 'Stick', kind: 'control', gridRow: 1, gridCol: 5 },
-      { microKeyId: 'AG03', uiLabelZh: '任务 4', uiLabelEn: 'Agent 4', kind: 'agent', gridRow: 2, gridCol: 2, agIndex: 3 },
-      { microKeyId: 'AG04', uiLabelZh: '任务 5', uiLabelEn: 'Agent 5', kind: 'agent', gridRow: 2, gridCol: 3, agIndex: 4 },
-      { microKeyId: 'AG05', uiLabelZh: '任务 6', uiLabelEn: 'Agent 6', kind: 'agent', gridRow: 2, gridCol: 4, agIndex: 5 },
+      { microKeyId: 'AG03', uiLabelZh: '权限', uiLabelEn: 'Permissions', kind: 'agent', gridRow: 2, gridCol: 2, agIndex: 3 },
+      { microKeyId: 'AG04', uiLabelZh: '常用', uiLabelEn: 'Status', kind: 'agent', gridRow: 2, gridCol: 3, agIndex: 4 },
+      { microKeyId: 'AG05', uiLabelZh: '应用', uiLabelEn: 'Apps', kind: 'agent', gridRow: 2, gridCol: 4, agIndex: 5 },
       { microKeyId: 'ACT06', uiLabelZh: '快速', uiLabelEn: 'Fast', kind: 'command', gridRow: 3, gridCol: 2 },
       { microKeyId: 'ACT07', uiLabelZh: '命令菜单', uiLabelEn: 'Command palette', kind: 'command', gridRow: 3, gridCol: 3 },
       { microKeyId: 'ACT08', uiLabelZh: '拒绝', uiLabelEn: 'Reject', kind: 'command', gridRow: 3, gridCol: 4 },
-      { microKeyId: 'ACT09', uiLabelZh: '分支', uiLabelEn: 'Fork', kind: 'command', gridRow: 3, gridCol: 5 },
+      { microKeyId: 'ACT09', uiLabelZh: '上下文', uiLabelEn: 'Context', kind: 'command', gridRow: 3, gridCol: 5 },
       { microKeyId: 'ACT10', uiLabelZh: '开始说话', uiLabelEn: 'Mic', kind: 'command', gridRow: 4, gridCol: 2, gridColSpan: 2 },
       { microKeyId: 'ACT12', uiLabelZh: '发送', uiLabelEn: 'Send', kind: 'command', gridRow: 4, gridCol: 4 }
     ],
+    numpadCells: [
+      { microKeyId: 'ENC', uiLabelZh: '总开关', uiLabelEn: 'Power', kind: 'control', gridRow: 1, gridCol: 1 },
+      { microKeyId: 'NP_DIV', uiLabelZh: '除', uiLabelEn: '/', kind: 'numpad', gridRow: 1, gridCol: 2, digit: '/' },
+      { microKeyId: 'NP_MUL', uiLabelZh: '乘', uiLabelEn: '*', kind: 'numpad', gridRow: 1, gridCol: 3, digit: '*' },
+      { microKeyId: 'NP_SUB', uiLabelZh: '减', uiLabelEn: '-', kind: 'numpad', gridRow: 1, gridCol: 4, digit: '-' },
+      { microKeyId: 'NP7', uiLabelZh: '7', uiLabelEn: '7', kind: 'numpad', gridRow: 2, gridCol: 1, digit: '7' },
+      { microKeyId: 'NP8', uiLabelZh: '8', uiLabelEn: '8', kind: 'numpad', gridRow: 2, gridCol: 2, digit: '8' },
+      { microKeyId: 'NP9', uiLabelZh: '9', uiLabelEn: '9', kind: 'numpad', gridRow: 2, gridCol: 3, digit: '9' },
+      { microKeyId: 'NP_ADD', uiLabelZh: '加', uiLabelEn: '+', kind: 'numpad', gridRow: 2, gridCol: 4, gridRowSpan: 2, digit: '+' },
+      { microKeyId: 'NP4', uiLabelZh: '4', uiLabelEn: '4', kind: 'numpad', gridRow: 3, gridCol: 1, digit: '4' },
+      { microKeyId: 'NP5', uiLabelZh: '5', uiLabelEn: '5', kind: 'numpad', gridRow: 3, gridCol: 2, digit: '5' },
+      { microKeyId: 'NP6', uiLabelZh: '6', uiLabelEn: '6', kind: 'numpad', gridRow: 3, gridCol: 3, digit: '6' },
+      { microKeyId: 'NP1', uiLabelZh: '1', uiLabelEn: '1', kind: 'numpad', gridRow: 4, gridCol: 1, digit: '1' },
+      { microKeyId: 'NP2', uiLabelZh: '2', uiLabelEn: '2', kind: 'numpad', gridRow: 4, gridCol: 2, digit: '2' },
+      { microKeyId: 'NP3', uiLabelZh: '3', uiLabelEn: '3', kind: 'numpad', gridRow: 4, gridCol: 3, digit: '3' },
+      { microKeyId: 'NP_ENTER', uiLabelZh: '回车', uiLabelEn: 'Enter', kind: 'numpad', gridRow: 4, gridCol: 4, gridRowSpan: 2, digit: '↵' },
+      { microKeyId: 'NP0', uiLabelZh: '0', uiLabelEn: '0', kind: 'numpad', gridRow: 5, gridCol: 1, gridColSpan: 2, digit: '0' },
+      { microKeyId: 'NP_DOT', uiLabelZh: '小数点', uiLabelEn: '.', kind: 'numpad', gridRow: 5, gridCol: 3, digit: '.' }
+    ],
     defaultRoutes: [
-      { microKeyId: 'AG00', sourceScan: 0x47, sourceExtended: false, slotId: 'status', uiIconId: 'status' },
-      { microKeyId: 'AG01', sourceScan: 0x48, sourceExtended: false, slotId: 'plan', uiIconId: 'plan' },
-      { microKeyId: 'AG02', sourceScan: 0x49, sourceExtended: false, slotId: 'review', uiIconId: 'review' },
+      { microKeyId: 'AG00', sourceScan: 0x47, sourceExtended: false, slotId: 'switchAgent', uiIconId: 'agent' },
+      { microKeyId: 'AG01', sourceScan: 0x48, sourceExtended: false, slotId: 'claudeModel', uiIconId: 'claude' },
+      { microKeyId: 'AG02', sourceScan: 0x49, sourceExtended: false, slotId: 'switchModel', uiIconId: 'model' },
       { microKeyId: 'AG03', sourceScan: 0x4B, sourceExtended: false, slotId: 'permissions', uiIconId: 'folder' },
-      { microKeyId: 'AG04', sourceScan: 0x4C, sourceExtended: false, slotId: 'switchAgent', uiIconId: 'agent' },
+      { microKeyId: 'AG04', sourceScan: 0x4C, sourceExtended: false, slotId: 'status', uiIconId: 'status' },
       { microKeyId: 'AG05', sourceScan: 0x4D, sourceExtended: false, slotId: 'appsOrPlugins', uiIconId: 'cloud' },
       { microKeyId: 'ACT06', sourceScan: 0x37, sourceExtended: false, slotId: 'quickChat', uiIconId: 'fast' },
       { microKeyId: 'ACT07', sourceScan: 0x35, sourceExtended: true, slotId: 'commandPalette', uiIconId: 'palette' },
       { microKeyId: 'ACT08', sourceScan: 0x4A, sourceExtended: false, slotId: 'cancel', uiIconId: 'reject' },
       { microKeyId: 'ACT09', sourceScan: 0x4F, sourceExtended: false, slotId: 'newThread', uiIconId: 'fork' },
+      { microKeyId: 'UNDO', sourceScan: 0x50, sourceExtended: false, slotId: 'undo', uiIconId: 'undo' },
+      { microKeyId: 'SEARCH', sourceScan: 0x51, sourceExtended: false, slotId: 'quickSearch', uiIconId: 'search' },
       { microKeyId: 'ACT10', sourceScan: 0x52, sourceExtended: false, slotId: 'pushToTalk', uiIconId: 'mic' },
-      { microKeyId: 'ACT12', sourceScan: 0x51, sourceExtended: false, slotId: 'stopOrSend', uiIconId: 'send' },
+      { microKeyId: 'ACT12', sourceScan: 0x1C, sourceExtended: true, slotId: 'stopOrSend', uiIconId: 'send' },
       { microKeyId: 'ENC', sourceScan: 0, sourceExtended: false, slotId: 'summonCodex', uiIconId: 'power' }
     ]
   };
@@ -44,13 +65,15 @@
     ACT07: 'palette',
     ACT08: 'reject',
     ACT09: 'fork',
+    UNDO: 'undo',
+    SEARCH: 'search',
     ACT10: 'mic',
     ACT12: 'send',
-    AG00: 'status',
-    AG01: 'plan',
-    AG02: 'review',
+    AG00: 'agent',
+    AG01: 'claude',
+    AG02: 'model',
     AG03: 'folder',
-    AG04: 'agent',
+    AG04: 'status',
     AG05: 'cloud',
     ENC: 'power',
     JOY: 'empty'
@@ -77,6 +100,10 @@
     { id: 'merge', label: 'MERGE' },
     { id: 'terminal', label: 'TERM' },
     { id: 'agent', label: 'AGENT' },
+    { id: 'claude', label: 'CLAUDE' },
+    { id: 'model', label: 'MODEL' },
+    { id: 'undo', label: 'UNDO' },
+    { id: 'search', label: 'FIND' },
     { id: 'empty', label: 'EMPT' }
   ];
 
@@ -101,6 +128,10 @@
     merge: '<svg viewBox="0 0 24 24"><circle cx="7" cy="6" r="2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="12" r="2"/><path d="M7 8v8M9 12h6"/></svg>',
     terminal: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10l3 2-3 2M12 14h5"/></svg>',
     agent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>',
+    claude: '<svg viewBox="0 0 24 24"><path d="M12 3l2.2 6.2L21 12l-6.8 2.8L12 21l-2.2-6.2L3 12l6.8-2.8z"/></svg>',
+    model: '<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 7V5h8v2M8 17v2h8v-2"/><path d="M9 11h6M9 14h4"/></svg>',
+    undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
+    search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>',
     empty: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>'
   };
 
@@ -1118,21 +1149,24 @@
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12l-8 8v-5H4V8h8V3z"/></svg>',
         t('codexMicroPadNavRight', '右')) +
       '</div></aside>' +
-      '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-pad-off') + '">' +
+      '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-mode-numpad') + '">' +
       '<div class="micro-hw__face">' +
-      '<div class="micro-hw__grid">';
+      '<div class="micro-hw__grid' + (codexOn ? '' : ' micro-hw__grid--numpad') + '">';
 
-    LAYOUT.cells.forEach(function (cell) {
-      if (cell.kind === 'numpad') return;
-      var route = routeForMicroKey(pad, cell.microKeyId);
-      var bound = !!(route && route.enabled && route.slotId);
+    var cells = codexOn ? LAYOUT.cells : (LAYOUT.numpadCells || LAYOUT.cells);
+    cells.forEach(function (cell) {
+      if (cell.kind === 'numpad' && codexOn) return;
+      var isNp = cell.kind === 'numpad';
+      var route = isNp ? null : routeForMicroKey(pad, cell.microKeyId);
+      var bound = isNp ? true : !!(route && route.enabled && route.slotId);
       var tag = cell.kind === 'placeholder' ? 'div' : 'button';
       var cls = 'micro-hw__key micro-hw__key--' + (cell.kind || 'command');
       if (cell.gridColSpan === 2) cls += ' micro-hw__key--span2';
+      if (cell.gridRowSpan === 2) cls += ' micro-hw__key--rowspan2';
       if (bound) cls += ' is-bound';
-      if (route && route.slotId && route.enabled === false) cls += ' is-route-disabled';
-      if (isScreenOnly(route) && !isAdvancedOnly(route, cell.microKeyId)) cls += ' is-screen-only';
-      if (isAdvancedOnly(route, cell.microKeyId) || (cell.microKeyId === 'JOY' && !isPrimaryMapped(route))) {
+      if (!isNp && route && route.slotId && route.enabled === false) cls += ' is-route-disabled';
+      if (!isNp && isScreenOnly(route) && !isAdvancedOnly(route, cell.microKeyId)) cls += ' is-screen-only';
+      if (!isNp && (isAdvancedOnly(route, cell.microKeyId) || (cell.microKeyId === 'JOY' && !isPrimaryMapped(route)))) {
         cls += ' is-advanced-only';
       }
       if (cell.microKeyId === 'ENC') cls += codexOn ? ' is-mode-on' : ' is-mode-off';
@@ -1142,7 +1176,8 @@
       var runSt = (padRunStatus !== 'idle' && padRunMicroKeyId === cell.microKeyId)
         ? padRunStatus
         : 'idle';
-      var style = 'grid-row:' + cell.gridRow + ';grid-column:' + cell.gridCol +
+      var style = 'grid-row:' + cell.gridRow + (cell.gridRowSpan ? ' / span ' + cell.gridRowSpan : '') +
+        ';grid-column:' + cell.gridCol +
         (cell.gridColSpan ? ' / span ' + cell.gridColSpan : '') + ';';
       var typeAttr = tag === 'button' ? ' type="button"' : '';
       var agAttr = cell.kind === 'agent' && cell.agIndex != null ? ' data-ag="' + cell.agIndex + '"' : '';
@@ -1178,10 +1213,12 @@
           + '<span class="micro-hw__joy-stem"></span>'
           + '<span class="micro-hw__joy-top"><span class="micro-hw__joy-cross"></span></span>'
           + '</span>';
+      } else if (isNp) {
+        html += '<span class="micro-hw__digit" aria-hidden="true">' + esc(cell.digit || cell.uiLabelZh || '') + '</span>';
       } else {
         html += '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(iconId) + '</span>';
       }
-      if (cell.microKeyId !== 'ENC') {
+      if (cell.microKeyId !== 'ENC' && !isNp) {
         var metaName = '';
         var metaChord = '';
         if (cell.microKeyId === 'JOY') {
@@ -1406,8 +1443,18 @@
     if (s === 'native' || s === 'native_micro') {
       return t('codexMicroPadStatusSourceNative', 'Native Micro');
     }
-    if (s === 'codex_hook') return t('codexMicroPadStatusSourceHook', 'Codex Hook');
-    if (s === 'codex_app') return t('codexMicroPadStatusSourceApp', 'Codex App');
+    if (s === 'codex_hook' || s === 'hook') {
+      return t('codexMicroPadStatusSourceHook', 'Codex Hook');
+    }
+    if (s === 'claude_hook') {
+      return t('codexMicroPadStatusSourceClaudeHook', 'Claude Hook');
+    }
+    if (s === 'codex_app' || s === 'app') {
+      return t('codexMicroPadStatusSourceApp', 'Codex App');
+    }
+    if (s === 'claude_app') {
+      return t('codexMicroPadStatusSourceClaudeApp', 'Claude App');
+    }
     if (s === 'inferred') return t('codexMicroPadStatusSourceInferred', 'Inferred');
     if (s === 'fallback') return t('codexMicroPadStatusSourceFallback', 'Fallback');
     return s || t('codexMicroPadStatusSourceFallback', 'Fallback');
@@ -1471,8 +1518,52 @@
       '<button type="button" class="codex-micro-pad__btn" data-act="hook-refresh">' +
       esc(t('codexMicroPadHookRefresh', '刷新状态')) + '</button>' +
       '</div>' +
+      '<details class="codex-pad-mgr__diag" id="codexPadDiag">' +
+      '<summary>' + esc(t('codexMicroPadDiagSummary', '状态诊断')) + '</summary>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadDiagHint', '只读解释当前 pad_status 与最近仲裁事件，不改灯色。')) +
+      '</p>' +
+      '<div class="codex-pad-mgr__diag-snap" data-pad-diag-snap aria-live="polite"></div>' +
+      '<div class="codex-pad-mgr__diag-filters" role="group" aria-label="' +
+      esc(t('codexMicroPadDiagFilterAria', '回放筛选')) + '">' +
+      '<button type="button" class="codex-micro-pad__btn is-active" data-act="pad-diag-filter" data-filter="all">' +
+      esc(t('codexMicroPadDiagFilterAll', '全部')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="pad-diag-filter" data-filter="accepted">' +
+      esc(t('codexMicroPadDiagFilterAccepted', '已接受')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="pad-diag-filter" data-filter="rejected">' +
+      esc(t('codexMicroPadDiagFilterRejected', '已拒绝')) + '</button>' +
+      '</div>' +
+      '<ol class="codex-pad-mgr__diag-replay" data-pad-diag-replay aria-live="polite"></ol>' +
+      '<p class="codex-pad-mgr__hint" data-pad-diag-empty hidden>' +
+      esc(t('codexMicroPadDiagReplayEmpty', '尚无 pad-status.jsonl 事件')) +
+      '</p>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="pad-diag-refresh">' +
+      esc(t('codexMicroPadDiagRefresh', '刷新诊断')) + '</button>' +
+      '</details>' +
       '<p class="codex-pad-mgr__hint is-error" data-hook-error hidden></p>' +
       '</div>'
+    );
+  }
+
+  function renderBindingValidateCard() {
+    return (
+      '<details class="codex-pad-mgr__bind" id="codexPadBindCard">' +
+      '<summary>' + esc(t('codexMicroPadBindSummary', '绑定校验')) + '</summary>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadBindHint', '检查缺槽、空热键、扫描码冲突；可一键修复（不改已有非空热键）。')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__bind-snap" data-bind-diag-snap aria-live="polite"></p>' +
+      '<ul class="codex-pad-mgr__bind-issues" data-bind-diag-issues></ul>' +
+      '<p class="codex-pad-mgr__hint" data-bind-diag-empty hidden>' +
+      esc(t('codexMicroPadBindOk', '绑定完整，未发现问题')) +
+      '</p>' +
+      '<div class="codex-pad-mgr__bind-actions">' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="pad-bind-refresh">' +
+      esc(t('codexMicroPadBindRefresh', '刷新校验')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="pad-bind-heal">' +
+      esc(t('codexMicroPadBindHeal', '一键修复')) + '</button>' +
+      '</div>' +
+      '</details>'
     );
   }
 
@@ -1529,6 +1620,239 @@
       return st;
     }).catch(function () {
       return null;
+    });
+  }
+
+  function formatAgeMs(ageMs) {
+    var n = Number(ageMs) || 0;
+    if (n <= 0) return '';
+    if (n < 1000) return '刚刚';
+    if (n < 60000) return Math.floor(n / 1000) + 's';
+    if (n < 3600000) return Math.floor(n / 60000) + 'm';
+    return Math.floor(n / 3600000) + 'h';
+  }
+
+  var padDiagFilter = 'all';
+  var padDiagLastView = null;
+
+  function formatDiagClock(ts) {
+    var n = Number(ts) || 0;
+    if (n <= 0) return '';
+    // jsonl stores ms epoch; tolerate seconds.
+    if (n < 1e12) n *= 1000;
+    try {
+      var d = new Date(n);
+      if (isNaN(d.getTime())) return '';
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mm = String(d.getMinutes()).padStart(2, '0');
+      var ss = String(d.getSeconds()).padStart(2, '0');
+      return hh + ':' + mm + ':' + ss;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function formatPadDiagnoseSnap(view) {
+    if (!view) return t('codexMicroPadDiagEmpty', '暂无诊断数据');
+    var bits = [
+      (view.uiStatus || view.state || 'idle'),
+      statusSourceLabel(view.sourceLegacy || view.source)
+    ];
+    if (view.confidence) bits.push(view.confidence);
+    var age = formatAgeMs(view.ageMs);
+    if (age) bits.push(age + ' 前');
+    var lines = ['当前 · ' + bits.join(' · ')];
+    if (view.message) lines.push('说明 · ' + view.message);
+    if (view.lastEvent) lines.push('事件 · ' + view.lastEvent);
+    if (view.sessionId) lines.push('会话 · ' + view.sessionId);
+    if (view.taskId) lines.push('任务 · ' + view.taskId);
+    if (view.logPath) lines.push('日志 · ' + view.logPath);
+    var hid = view.hid || {};
+    var hidSink = String(hid.sink || 'none');
+    var hidLine = '输出 · ' + (hidSink === 'soft_rgb' ? 'Soft RGB' : '无') +
+      (hid.emitEnabled ? ' · HID 可发射' : ' · HID 关闭');
+    if (hid.note) hidLine += ' · ' + hid.note;
+    lines.push(hidLine);
+    return lines.join('\n');
+  }
+
+  function filterDiagRows(rows, filter) {
+    var list = Array.isArray(rows) ? rows : [];
+    if (filter === 'accepted') return list.filter(function (r) { return !!r.accepted; });
+    if (filter === 'rejected') return list.filter(function (r) { return !r.accepted; });
+    return list;
+  }
+
+  function renderPadDiagnoseReplay(view, filter) {
+    var snapEl = document.querySelector('[data-pad-diag-snap]');
+    var listEl = document.querySelector('[data-pad-diag-replay]');
+    var emptyEl = document.querySelector('[data-pad-diag-empty]');
+    if (!listEl) return;
+    if (snapEl) snapEl.textContent = formatPadDiagnoseSnap(view || {});
+    var rows = filterDiagRows(view && view.recent, filter || padDiagFilter);
+    listEl.innerHTML = '';
+    if (!rows.length) {
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
+    rows.forEach(function (r) {
+      var li = document.createElement('li');
+      li.className = 'codex-pad-mgr__diag-row' + (r.accepted ? ' is-accepted' : ' is-rejected');
+      var ui = String(r.uiStatus || r.state || '').trim() || 'idle';
+      var clock = formatDiagClock(r.ts);
+      var why = r.rejectReason ? String(r.rejectReason) : '';
+      var msg = r.message ? String(r.message) : '';
+      var evt = r.lastEvent ? String(r.lastEvent) : '';
+      li.innerHTML =
+        '<span class="codex-pad-mgr__diag-mark" aria-hidden="true">' +
+        (r.accepted ? '✓' : '✗') +
+        '</span>' +
+        '<span class="codex-pad-mgr__diag-main">' +
+        '<span class="codex-pad-mgr__diag-top">' +
+        (clock ? '<time class="codex-pad-mgr__diag-time">' + esc(clock) + '</time>' : '') +
+        '<span class="codex-pad-mgr__diag-status" data-status="' + esc(ui) + '">' +
+        esc(padRunStatusLabel(ui)) +
+        '</span>' +
+        '<span class="codex-pad-mgr__diag-source">' +
+        esc(statusSourceLabel(r.source) || r.source || '') +
+        '</span>' +
+        '</span>' +
+        '<span class="codex-pad-mgr__diag-raw">' + esc(r.raw || '') + '</span>' +
+        (evt || msg || why
+          ? '<span class="codex-pad-mgr__diag-meta">' +
+            esc([evt, msg, why].filter(Boolean).join(' · ')) +
+            '</span>'
+          : '') +
+        '</span>';
+      listEl.appendChild(li);
+    });
+  }
+
+  function setPadDiagFilter(filter) {
+    padDiagFilter = filter === 'accepted' || filter === 'rejected' ? filter : 'all';
+    var card = document.getElementById('codexPadDiag');
+    if (card) {
+      card.querySelectorAll('[data-act="pad-diag-filter"]').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-filter') === padDiagFilter);
+      });
+    }
+    if (padDiagLastView) renderPadDiagnoseReplay(padDiagLastView, padDiagFilter);
+  }
+
+  function refreshPadDiagnose() {
+    var listEl = document.querySelector('[data-pad-diag-replay]');
+    var snapEl = document.querySelector('[data-pad-diag-snap]');
+    if (!listEl && !snapEl) return Promise.resolve(null);
+    return padInvoke('cmd_pad_status_diagnose', { limit: 48 })
+      .then(function (view) {
+        padDiagLastView = view || {};
+        renderPadDiagnoseReplay(padDiagLastView, padDiagFilter);
+        return view;
+      })
+      .catch(function () {
+        padDiagLastView = null;
+        if (snapEl) snapEl.textContent = t('codexMicroPadDiagFail', '诊断读取失败');
+        if (listEl) listEl.innerHTML = '';
+        return null;
+      });
+  }
+
+  function severityLabel(sev) {
+    if (sev === 'error') return t('codexMicroPadBindSevError', '错误');
+    if (sev === 'warn') return t('codexMicroPadBindSevWarn', '警告');
+    return t('codexMicroPadBindSevInfo', '提示');
+  }
+
+  function renderBindingDiagnose(view) {
+    var snapEl = document.querySelector('[data-bind-diag-snap]');
+    var listEl = document.querySelector('[data-bind-diag-issues]');
+    var emptyEl = document.querySelector('[data-bind-diag-empty]');
+    if (!listEl) return;
+    var issues = (view && Array.isArray(view.issues)) ? view.issues : [];
+    var ok = !!(view && view.ok);
+    var errN = issues.filter(function (i) { return i.severity === 'error'; }).length;
+    var warnN = issues.filter(function (i) { return i.severity === 'warn'; }).length;
+    if (snapEl) {
+      snapEl.textContent = ok
+        ? t('codexMicroPadBindSnapOk', '通过') +
+          (warnN ? (' · ' + warnN + ' ' + t('codexMicroPadBindSevWarn', '警告')) : '') +
+          (view && view.layoutProfile ? (' · ' + view.layoutProfile) : '')
+        : (t('codexMicroPadBindSnapFail', '未通过') +
+          ' · ' + errN + ' ' + t('codexMicroPadBindSevError', '错误') +
+          (warnN ? (' · ' + warnN + ' ' + t('codexMicroPadBindSevWarn', '警告')) : ''));
+      snapEl.setAttribute('data-ok', ok ? '1' : '0');
+    }
+    listEl.innerHTML = '';
+    var show = issues.filter(function (i) { return i.severity !== 'info'; });
+    // Still show info if nothing else.
+    if (!show.length) show = issues;
+    if (!show.length) {
+      if (emptyEl) emptyEl.hidden = false;
+      return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
+    show.forEach(function (i) {
+      var li = document.createElement('li');
+      li.className = 'codex-pad-mgr__bind-issue is-' + String(i.severity || 'info');
+      var where = [i.microKeyId, i.slotId].filter(Boolean).join(' · ');
+      li.innerHTML =
+        '<span class="codex-pad-mgr__bind-sev">' + esc(severityLabel(i.severity)) + '</span>' +
+        '<span class="codex-pad-mgr__bind-body">' +
+        (where ? '<span class="codex-pad-mgr__bind-where">' + esc(where) + '</span> ' : '') +
+        esc(i.detail || i.code || '') +
+        '</span>';
+      listEl.appendChild(li);
+    });
+  }
+
+  function refreshBindingDiagnose(m) {
+    var listEl = document.querySelector('[data-bind-diag-issues]');
+    var snapEl = document.querySelector('[data-bind-diag-snap]');
+    if (!listEl && !snapEl) return Promise.resolve(null);
+    return padInvoke('cmd_codex_pad_binding_diagnose', {
+      mappingId: m && m.id ? String(m.id) : null
+    }).then(function (view) {
+      renderBindingDiagnose(view || {});
+      return view;
+    }).catch(function () {
+      if (snapEl) snapEl.textContent = t('codexMicroPadBindFail', '绑定校验失败');
+      if (listEl) listEl.innerHTML = '';
+      return null;
+    });
+  }
+
+  function healBindingDiagnose(m) {
+    var snapEl = document.querySelector('[data-bind-diag-snap]');
+    var healBtn = document.querySelector('[data-act="pad-bind-heal"]');
+    if (healBtn) healBtn.disabled = true;
+    return padInvoke('cmd_codex_pad_binding_heal', {
+      mappingId: m && m.id ? String(m.id) : null,
+      locale: lang()
+    }).then(function (res) {
+      if (res && m) applyEnsurePayloadToMapping(m, res);
+      if (res && res.diagnose) renderBindingDiagnose(res.diagnose);
+      else return refreshBindingDiagnose(m).then(function () { return res; });
+      // Refresh on-screen pad keys without closing the bind card.
+      var host = document.getElementById('codexPadMgrPad');
+      if (host && m && m.codexMicroPad) {
+        var padBindMode = padUiMode === 'run' ? 'run' : (padUiMode === 'try' ? 'try' : 'config');
+        host.innerHTML = renderHardwarePad(m, m.codexMicroPad, { mode: padBindMode });
+      }
+      if (res && res.changed) {
+        toast(t('codexMicroPadBindHealed', '已修复可自动项'));
+        notifyLinkedUi(m);
+      } else {
+        toast(t('codexMicroPadBindHealNoop', '无需修复或无可自动项'));
+      }
+      return res;
+    }).catch(function () {
+      if (snapEl) snapEl.textContent = t('codexMicroPadBindHealFail', '一键修复失败');
+      toast(t('codexMicroPadBindHealFail', '一键修复失败'));
+      return null;
+    }).then(function (res) {
+      if (healBtn) healBtn.disabled = false;
+      return res;
     });
   }
 
@@ -1936,6 +2260,7 @@
         : '') +
       '</div>' +
       renderHookStatusCard(pad) +
+      renderBindingValidateCard() +
       (padUiMode === 'run'
         ? ('<div class="codex-micro-pad__run-status" data-status="' + esc(padRunStatus) + '"' +
           (window.__codexMicroStatusSource
@@ -2043,7 +2368,38 @@
     }
     var hookRefreshBtn = body.querySelector('[data-act="hook-refresh"]');
     if (hookRefreshBtn) {
-      hookRefreshBtn.addEventListener('click', function () { refreshHookSetupStatus(m); });
+      hookRefreshBtn.addEventListener('click', function () {
+        refreshHookSetupStatus(m).then(function () { refreshPadDiagnose(); });
+      });
+    }
+    var diagRefreshBtn = body.querySelector('[data-act="pad-diag-refresh"]');
+    if (diagRefreshBtn) {
+      diagRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
+    }
+    body.querySelectorAll('[data-act="pad-diag-filter"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setPadDiagFilter(btn.getAttribute('data-filter') || 'all');
+      });
+    });
+    var diagDetails = body.querySelector('#codexPadDiag');
+    if (diagDetails) {
+      diagDetails.addEventListener('toggle', function () {
+        if (diagDetails.open) refreshPadDiagnose();
+      });
+    }
+    var bindRefreshBtn = body.querySelector('[data-act="pad-bind-refresh"]');
+    if (bindRefreshBtn) {
+      bindRefreshBtn.addEventListener('click', function () { refreshBindingDiagnose(m); });
+    }
+    var bindHealBtn = body.querySelector('[data-act="pad-bind-heal"]');
+    if (bindHealBtn) {
+      bindHealBtn.addEventListener('click', function () { healBindingDiagnose(m); });
+    }
+    var bindDetails = body.querySelector('#codexPadBindCard');
+    if (bindDetails) {
+      bindDetails.addEventListener('toggle', function () {
+        if (bindDetails.open) refreshBindingDiagnose(m);
+      });
     }
     // Hook status IPC only on open / explicit refresh — every remount used to stack IPC + 假死.
     if (opts.refreshHook !== false && !opts.skipHookRefresh) {

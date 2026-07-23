@@ -14,16 +14,29 @@ var A = global.OneToneAgentActions;
 var T = global.OneToneAgentScenarioTemplate;
 assert.ok(A && T);
 
-// scenarioAllKeys: 13 keys on, voice essentials only
+// scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 13);
+assert.equal(keyBindings.length, 17);
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'quickSearch'; }));
+assert.equal(A.insertTextForSlot('switchModel'), '/model');
+assert.equal(A.insertTextForSlot('claudeModel'), '/model');
+assert.equal(A.defaultKeyForSlot('undo'), 'Ctrl+Z');
+assert.equal(A.defaultKeyForSlot('quickSearch'), 'Ctrl+F');
 keyBindings.forEach(function (b) {
+  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel') {
+    assert.equal(b.triggerBinding, '', b.slotId + ' uses focus workflow, no chord');
+    return;
+  }
   assert.ok(b.triggerBinding, 'key binding recommended for ' + b.slotId);
   assert.equal(b.triggerBinding, A.defaultKeyForSlot(b.slotId));
   assert.equal(b.enabled, true, 'key enabled for ' + b.slotId);
 });
-assert.equal(A.defaultKeyForSlot('summonCodex'), 'Ctrl+Shift+P');
+assert.equal(A.defaultKeyForSlot('summonCodex'), '');
+assert.equal(A.defaultKeyForSlot('claudeModel'), '');
 assert.equal(A.defaultKeyForSlot('commandPalette'), 'Ctrl+K');
 
 var voiceOn = allKeys.filter(function (b) { return b.triggerType === 'voice' && b.enabled; });
@@ -105,6 +118,10 @@ assert.ok(T.hasCodexPack(empty));
 assert.equal(empty.triggerKey, 'VolUp');
 assert.equal(empty.targetKey, 'Ctrl+Win');
 empty.agentBindings.filter(function (x) { return x.triggerType === 'key'; }).forEach(function (x) {
+  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel') {
+    assert.equal(x.triggerBinding, '', x.slotId + ' seeded empty (focus workflow)');
+    return;
+  }
   assert.ok(x.triggerBinding, 'seeded key for ' + x.slotId);
   assert.equal(x.enabled, true, 'all keys enabled for ' + x.slotId);
 });
@@ -113,7 +130,7 @@ var emptyVoiceOn = empty.agentBindings.filter(function (x) {
 });
 assert.equal(emptyVoiceOn.length, A.essentialSlots().length);
 
-// Backfill empty keys on older packs
+// summonCodex empty chord is intentional — fillEmptyKeyDefaults must not invent Ctrl+Shift+P
 var legacy = {
   id: 'm-legacy',
   appTargetId: 'codex-chat',
@@ -122,8 +139,8 @@ var legacy = {
     { slotId: 'summonCodex', actionId: 'openAgent', triggerType: 'key', triggerBinding: '', enabled: true }
   ]
 };
-assert.ok(T.fillEmptyKeyDefaults(legacy));
-assert.equal(legacy.agentBindings[0].triggerBinding, 'Ctrl+Shift+P');
+assert.equal(T.fillEmptyKeyDefaults(legacy), false);
+assert.equal(legacy.agentBindings[0].triggerBinding, '');
 
 // ACT07 face copy = 命令菜单
 var layout = JSON.parse(fs.readFileSync(
@@ -207,11 +224,41 @@ assert.ok(encDef);
 assert.equal(Number(encDef.sourceScan), 0, 'ENC screen-only (no physical scan)');
 assert.ok(micDef);
 assert.equal(Number(micDef.sourceScan), 0x52, 'Mic on Numpad 0');
+var ag00 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG00'; });
+var ag01 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG01'; });
+var ag02 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG02'; });
+var ag04 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG04'; });
+assert.equal(ag00.slotId, 'switchAgent');
+assert.equal(ag01.slotId, 'claudeModel');
+assert.equal(ag02.slotId, 'switchModel');
+assert.equal(ag04.slotId, 'status');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG00'; }).uiLabelZh, 'Agent');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG01'; }).uiLabelZh, 'Claude');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG02'; }).uiLabelZh, 'Codex');
+var ag03 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG03'; });
+var ag05 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG05'; });
+assert.equal(ag03.slotId, 'permissions');
+assert.equal(ag05.slotId, 'appsOrPlugins');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG03'; }).uiLabelZh, '权限');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG04'; }).uiLabelZh, '常用');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG05'; }).uiLabelZh, '应用');
 
 var physical = Pad.LAYOUT.defaultRoutes.filter(function (r) {
   return Number(r.sourceScan) > 0;
 });
-assert.equal(physical.length, 12, '12 physical numpad routes');
+assert.equal(physical.length, 14, '14 physical numpad routes (incl. UNDO/SEARCH; ENC screen-only)');
+
+var undoDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'UNDO'; });
+var searchDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'SEARCH'; });
+var act12Def = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'ACT12'; });
+assert.equal(undoDef.slotId, 'undo');
+assert.equal(Number(undoDef.sourceScan), 0x50);
+assert.equal(searchDef.slotId, 'quickSearch');
+assert.equal(Number(searchDef.sourceScan), 0x51);
+assert.equal(act12Def.slotId, 'stopOrSend');
+assert.equal(Number(act12Def.sourceScan), 0x1C);
+assert.equal(!!act12Def.sourceExtended, true);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).uiLabelZh, '上下文');
 
 var mapping = {
   id: 'm-m1-test',
@@ -319,6 +366,7 @@ assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
 assert.ok(overlayHtml.indexOf('statusSource') >= 0);
 assert.ok(overlayHtml.indexOf('statusSourceLabel') >= 0);
 assert.ok(overlayHtml.indexOf('Codex Hook') >= 0);
+assert.ok(overlayHtml.indexOf('Claude Hook') >= 0);
 assert.ok(overlayHtml.indexOf('Native Micro') >= 0);
 assert.ok(overlayHtml.indexOf('data-ag=') >= 0);
 assert.ok(overlayHtml.indexOf('overlayAppMeta') >= 0);
@@ -345,8 +393,10 @@ assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_stop') >= 0);
 assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_status') >= 0);
 assert.ok(buildRs.indexOf('cmd_codex_status_lights_set') >= 0);
 assert.ok(buildRs.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(buildRs.indexOf('cmd_pad_status_diagnose') >= 0);
 assert.ok(libRs.indexOf('cmd_codex_status_lights_set') >= 0);
 assert.ok(libRs.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(libRs.indexOf('cmd_pad_status_diagnose') >= 0);
 
 var acceptanceHtml = fs.readFileSync(
   path.join(__dirname, '../design-mock/codex-onetone-linkage-acceptance.html'),
@@ -464,9 +514,29 @@ var padUiSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/co
 assert.ok(padUiSrc.indexOf('statusSourceLabel') >= 0);
 assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
 assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
+assert.ok(padUiSrc.indexOf('Claude Hook') >= 0 || padUiSrc.indexOf('claude_hook') >= 0);
 assert.ok(padUiSrc.indexOf('renderHookStatusCard') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_status_lights_set') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_pad_status_diagnose') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_pad_binding_diagnose') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_pad_binding_heal') >= 0);
+assert.ok(padUiSrc.indexOf('healBindingDiagnose') >= 0);
+assert.ok(padUiSrc.indexOf('renderBindingValidateCard') >= 0);
+assert.ok(padUiSrc.indexOf('data-bind-diag-issues') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_pad_binding_diagnose') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_pad_binding_heal') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_pad_binding_diagnose') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_pad_binding_heal') >= 0);
+assert.ok(padUiSrc.indexOf('data-pad-diag-replay') >= 0);
+assert.ok(padUiSrc.indexOf('pad-diag-filter') >= 0);
+assert.ok(padUiSrc.indexOf('renderPadDiagnoseReplay') >= 0);
+assert.ok(padUiSrc.indexOf('HID 关闭') >= 0 || padUiSrc.indexOf('hid.emitEnabled') >= 0);
+assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/pad_status/adapters/hid.rs'), 'utf8').indexOf('hid_sink_disabled') >= 0);
+assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/pad_status/adapters/claude.rs'), 'utf8').indexOf('map_claude_event_to_state') >= 0);
+assert.ok(fs.existsSync(path.join(__dirname, 'claude-hook-probe.js')));
+assert.ok(fs.existsSync(path.join(__dirname, 'claude-hooks.example.json')));
+assert.ok(fs.readFileSync(path.join(__dirname, 'claude-hook-probe.js'), 'utf8').indexOf('claude_hook') >= 0);
 assert.ok(padUiSrc.indexOf('codexStatusLightsEnabled') >= 0);
 assert.ok(padUiSrc.indexOf('已配置，等待 Codex 事件') >= 0);
 assert.ok(padUiSrc.indexOf('已连接') >= 0);

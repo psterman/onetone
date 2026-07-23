@@ -279,6 +279,26 @@ fn run_overlay_tap_action(
     exec_window: &tauri::WebviewWindow,
     route: &crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
 ) {
+    // ENC 召回 / focusComposer: bring Codex + composer via workflow — never inject
+    // Ctrl+Shift+P (that chord is not a stable summon and often hits the wrong app).
+    if is_pad_summon_action(&route.action_id, &route.slot_id) {
+        execute_agent_binding(
+            state,
+            exec_window,
+            &route.mapping_id,
+            &route.provider_id,
+            if route.action_id.trim().is_empty() {
+                "openAgent"
+            } else {
+                route.action_id.as_str()
+            },
+            &route.slot_id,
+            None,
+            Some("global".into()),
+        );
+        return;
+    }
+
     let duration_ms = state.cfg.lock().key_press_duration_ms;
     let mut chord = route.trigger_binding.trim().to_string();
     if chord.is_empty() {
@@ -286,17 +306,16 @@ fn run_overlay_tap_action(
     }
     let hotkey_action = matches!(
         route.action_id.as_str(),
-        "openAgent"
-            | "commandPalette"
+        "commandPalette"
             | "cancel"
             | "newThread"
+            | "undo"
+            | "quickSearch"
             | "quickChat"
             | "stopOrSendDictation"
     );
     if hotkey_action && !chord.is_empty() {
-        if route.action_id != "openAgent" {
-            let _ = app_chat_workflow::quick_focus_codex_for_hold();
-        }
+        let _ = app_chat_workflow::quick_focus_codex_for_hold();
         let _ = crate::keyboard::send_chord(&chord, duration_ms);
         return;
     }
@@ -308,8 +327,26 @@ fn run_overlay_tap_action(
         &route.action_id,
         &route.slot_id,
         None,
-        Some("foregroundApp".into()),
+        Some(activation_scope_for_route(route)),
     );
+}
+
+/// ENC / summonCodex / Claude model key must use Global focus workflow.
+fn is_pad_summon_action(action_id: &str, slot_id: &str) -> bool {
+    matches!(
+        action_id.trim(),
+        "openAgent" | "focusComposer" | "claudeModel"
+    ) || matches!(slot_id.trim(), "summonCodex" | "claudeModel")
+}
+
+fn activation_scope_for_route(
+    route: &crate::codex_numpad_layer::CodexNumpadRouteSnapshot,
+) -> String {
+    if is_pad_summon_action(&route.action_id, &route.slot_id) {
+        "global".into()
+    } else {
+        "foregroundApp".into()
+    }
 }
 
 fn spawn_overlay_tap_fire(
@@ -592,7 +629,7 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "not_foreground" });
     }
 
-    // Numpad mode: ENC is the only Codex exception (summonCodex). All other keys blocked.
+    // Numpad mode: ENC summons Codex; NP* inject digits; other Micro keys blocked.
     // If config says Codex mode but hook cache drifted, resync once before rejecting.
     if !crate::codex_numpad_layer::numpad_mode_allows_fire(micro_key_id) {
         {
@@ -618,6 +655,20 @@ pub fn fire_codex_micro_pad_key(
                 "microKeyId": micro_key_id,
             });
         }
+    }
+
+    // Soft numpad digit / Enter / Dot — async inject (same pattern as NAV enhance).
+    if crate::codex_numpad_layer::is_overlay_numpad_key(micro_key_id)
+        && !crate::codex_numpad_layer::pad_mapping_active()
+    {
+        if key_down {
+            spawn_numpad_digit_inject(micro_key_id.to_string());
+        }
+        return serde_json::json!({
+            "ok": true,
+            "reason": "numpad_pulse",
+            "microKeyId": micro_key_id,
+        });
     }
 
     // Overlay / enhance NAV: async inject only — never block IPC or thrash overlay state.
@@ -857,7 +908,7 @@ pub fn fire_codex_micro_pad_key(
         &route.action_id,
         &route.slot_id,
         None,
-        Some("foregroundApp".into()),
+        Some(activation_scope_for_route(&route)),
     );
     crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
     crate::codex_micro_overlay::push_state(&app, state.as_ref());
@@ -901,6 +952,58 @@ fn spawn_nav_arrow_inject(micro_key_id: String) {
             }));
             BUSY.store(false, Ordering::SeqCst);
         });
+}
+
+fn spawn_numpad_digit_inject(micro_key_id: String) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("overlay-numpad-inject".into())
+        .spawn(move || {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = app_chat_workflow::quick_focus_codex_for_hold();
+                inject_overlay_numpad_key(&micro_key_id);
+            }));
+            BUSY.store(false, Ordering::SeqCst);
+        });
+}
+
+fn inject_overlay_numpad_key(micro_key_id: &str) {
+    #[cfg(windows)]
+    {
+        use winapi::um::winuser::{
+            VK_ADD, VK_DECIMAL, VK_DIVIDE, VK_MULTIPLY, VK_NUMPAD0, VK_NUMPAD1, VK_NUMPAD2,
+            VK_NUMPAD3, VK_NUMPAD4, VK_NUMPAD5, VK_NUMPAD6, VK_NUMPAD7, VK_NUMPAD8, VK_NUMPAD9,
+            VK_RETURN, VK_SUBTRACT,
+        };
+        let (vk, extended) = match micro_key_id.trim() {
+            "NP0" => (VK_NUMPAD0 as u16, false),
+            "NP1" => (VK_NUMPAD1 as u16, false),
+            "NP2" => (VK_NUMPAD2 as u16, false),
+            "NP3" => (VK_NUMPAD3 as u16, false),
+            "NP4" => (VK_NUMPAD4 as u16, false),
+            "NP5" => (VK_NUMPAD5 as u16, false),
+            "NP6" => (VK_NUMPAD6 as u16, false),
+            "NP7" => (VK_NUMPAD7 as u16, false),
+            "NP8" => (VK_NUMPAD8 as u16, false),
+            "NP9" => (VK_NUMPAD9 as u16, false),
+            "NP_DOT" => (VK_DECIMAL as u16, false),
+            "NP_DIV" => (VK_DIVIDE as u16, false),
+            "NP_MUL" => (VK_MULTIPLY as u16, false),
+            "NP_SUB" => (VK_SUBTRACT as u16, false),
+            "NP_ADD" => (VK_ADD as u16, false),
+            "NP_ENTER" => (VK_RETURN as u16, true),
+            _ => return,
+        };
+        crate::keyboard::tap_vk(vk, extended, 35);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = micro_key_id;
+    }
 }
 
 fn is_nav_micro_key(micro_key_id: &str) -> bool {
@@ -1201,4 +1304,44 @@ fn try_dispatch_agent_key(
         activation_scope,
     );
     true
+}
+
+#[cfg(test)]
+mod summon_tests {
+    use super::{activation_scope_for_route, is_pad_summon_action};
+    use crate::codex_numpad_layer::CodexNumpadRouteSnapshot;
+
+    fn route(action: &str, slot: &str) -> CodexNumpadRouteSnapshot {
+        CodexNumpadRouteSnapshot {
+            mapping_id: "m".into(),
+            slot_id: slot.into(),
+            action_id: action.into(),
+            provider_id: "codex".into(),
+            trigger_binding: String::new(),
+            micro_key_id: "ENC".into(),
+            is_hold: false,
+        }
+    }
+
+    #[test]
+    fn enc_summon_is_focus_workflow_not_chord() {
+        assert!(is_pad_summon_action("openAgent", "summonCodex"));
+        assert!(is_pad_summon_action("focusComposer", "x"));
+        assert!(is_pad_summon_action("claudeModel", "claudeModel"));
+        assert!(is_pad_summon_action("", "summonCodex"));
+        assert!(is_pad_summon_action("", "claudeModel"));
+        assert!(!is_pad_summon_action("commandPalette", "commandPalette"));
+        assert_eq!(
+            activation_scope_for_route(&route("openAgent", "summonCodex")),
+            "global"
+        );
+        assert_eq!(
+            activation_scope_for_route(&route("claudeModel", "claudeModel")),
+            "global"
+        );
+        assert_eq!(
+            activation_scope_for_route(&route("commandPalette", "commandPalette")),
+            "foregroundApp"
+        );
+    }
 }

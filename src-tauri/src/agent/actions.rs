@@ -139,6 +139,8 @@ pub const AGENT_ACTION_IDS: &[&str] = &[
     "stopOrSendDictation",
     "cancel",
     "newThread",
+    "undo",
+    "quickSearch",
     "quickChat",
     "commandPalette",
     "status",
@@ -146,6 +148,8 @@ pub const AGENT_ACTION_IDS: &[&str] = &[
     "review",
     "permissions",
     "switchAgent",
+    "claudeModel",
+    "switchModel",
     "appsOrPlugins",
 ];
 
@@ -261,12 +265,12 @@ const ACTIONS: &[AgentActionDef] = &[
     AgentActionDef {
         id: "newThread",
         label: LocalizedText {
-            zh: "新聊天",
-            en: "New thread",
+            zh: "上下文",
+            en: "Context",
         },
         description: LocalizedText {
-            zh: "新建 Codex 对话",
-            en: "Start a new Codex chat",
+            zh: "新建对话上下文",
+            en: "Start a new chat context",
         },
         risk_level: RiskLevel::Confirm,
         allowed_triggers: &["key", "voice", "camera"],
@@ -274,6 +278,48 @@ const ACTIONS: &[AgentActionDef] = &[
         default_voice_phrases: LocalizedText {
             zh: "新建对话",
             en: "new chat",
+        },
+        transport: Transport::Hotkey,
+        codex_support: ProviderSupport::Hotkey,
+        default_activation_scope: ActivationScope::ForegroundApp,
+    },
+    AgentActionDef {
+        id: "undo",
+        label: LocalizedText {
+            zh: "撤销",
+            en: "Undo",
+        },
+        description: LocalizedText {
+            zh: "发送 Ctrl+Z 撤销",
+            en: "Send Ctrl+Z to undo",
+        },
+        risk_level: RiskLevel::Safe,
+        allowed_triggers: &["key", "voice"],
+        default_execution_mode: ExecutionMode::Execute,
+        default_voice_phrases: LocalizedText {
+            zh: "撤销",
+            en: "undo",
+        },
+        transport: Transport::Hotkey,
+        codex_support: ProviderSupport::Hotkey,
+        default_activation_scope: ActivationScope::ForegroundApp,
+    },
+    AgentActionDef {
+        id: "quickSearch",
+        label: LocalizedText {
+            zh: "快速搜索",
+            en: "Quick search",
+        },
+        description: LocalizedText {
+            zh: "发送 Ctrl+F 打开搜索",
+            en: "Send Ctrl+F to search",
+        },
+        risk_level: RiskLevel::Safe,
+        allowed_triggers: &["key", "voice"],
+        default_execution_mode: ExecutionMode::Execute,
+        default_voice_phrases: LocalizedText {
+            zh: "搜索",
+            en: "search",
         },
         transport: Transport::Hotkey,
         codex_support: ProviderSupport::Hotkey,
@@ -421,6 +467,48 @@ const ACTIONS: &[AgentActionDef] = &[
         default_voice_phrases: LocalizedText {
             zh: "切换助手",
             en: "switch agent",
+        },
+        transport: Transport::InsertText,
+        codex_support: ProviderSupport::InsertOnly,
+        default_activation_scope: ActivationScope::ForegroundApp,
+    },
+    AgentActionDef {
+        id: "claudeModel",
+        label: LocalizedText {
+            zh: "Claude 模型",
+            en: "Claude model",
+        },
+        description: LocalizedText {
+            zh: "聚焦 Claude；已前台时插入 /model（不自动发送）",
+            en: "Focus Claude; if already foreground, insert /model (no Enter)",
+        },
+        risk_level: RiskLevel::Safe,
+        allowed_triggers: &["key", "voice"],
+        default_execution_mode: ExecutionMode::Execute,
+        default_voice_phrases: LocalizedText {
+            zh: "切换 Claude 模型",
+            en: "claude model",
+        },
+        transport: Transport::Workflow,
+        codex_support: ProviderSupport::Workflow,
+        default_activation_scope: ActivationScope::Global,
+    },
+    AgentActionDef {
+        id: "switchModel",
+        label: LocalizedText {
+            zh: "切换模型",
+            en: "Switch model",
+        },
+        description: LocalizedText {
+            zh: "在 Codex 输入框插入 /model（不自动发送）",
+            en: "Insert /model into the Codex composer (no Enter)",
+        },
+        risk_level: RiskLevel::Confirm,
+        allowed_triggers: &["key", "voice"],
+        default_execution_mode: ExecutionMode::InsertOnly,
+        default_voice_phrases: LocalizedText {
+            zh: "切换模型",
+            en: "switch model",
         },
         transport: Transport::InsertText,
         codex_support: ProviderSupport::InsertOnly,

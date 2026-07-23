@@ -421,10 +421,21 @@ fn handle_app_state_get(
         let cfg = state.cfg.lock();
         codex_micro_overlay::status_lights_enabled(&cfg)
     };
+    let pad = crate::pad_status::snapshot();
+    let app_status = crate::pad_status::ui_status_from_pad(&pad);
+    let soft_rgb = if lights {
+        crate::pad_status::rgb_for_ui_status(&app_status).map(|(r, g, b)| {
+            serde_json::json!({ "r": r, "g": g, "b": b })
+        })
+    } else {
+        None
+    };
     let payload = serde_json::json!({
         "ok": true,
         "disabled": !lights,
         "appStateEnabled": lights,
+        "appStatus": app_status,
+        "softRgb": soft_rgb,
         "state": view
     });
     let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
@@ -495,7 +506,10 @@ fn apply_app_state_from_http(
     };
     let pass = lights
         && view.status == "needs_input"
-        && (view.last_source == "codex_hook" || view.last_source == "codex_app");
+        && matches!(
+            view.last_source.as_str(),
+            "codex_hook" | "codex_app" | "claude_hook" | "claude_app"
+        );
     codex_micro_overlay::set_overlay_click_through(pass);
 
     // Best-effort UI refresh; never block the Hook HTTP response on it.

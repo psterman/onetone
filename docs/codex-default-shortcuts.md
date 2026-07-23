@@ -126,7 +126,7 @@
 
 | 槽位 | 中文 | English | 推荐键 | Codex 官方对应 |
 |------|------|---------|--------|----------------|
-| summonCodex | 召唤 Codex | Summon Codex | `Ctrl+Shift+P` | Open command menu |
+| summonCodex | 召唤 Codex | Summon Codex | （无热键）窗口聚焦 + 输入框 | OneTone `openAgent` / `focus_composer` |
 | pushToTalk | 开始说话 | Start talking | `Ctrl+Shift+D` | **开始听写** |
 | stopOrSend | 结束或发送 | Stop or send | `Enter` | 批准请求 |
 | cancel | 取消 | Cancel | `Escape` | 拒绝请求 |
@@ -148,7 +148,7 @@
 
 | 按键 | 冲突说明 |
 |------|----------|
-| `Ctrl+Shift+P` | Codex「命令菜单」与 OneTone「召唤 Codex」 |
+| `Ctrl+Shift+P` | 勿再绑「召唤 Codex」；ENC 召回走窗口聚焦，不发此弦 |
 | `Ctrl+Alt+R` | Codex「重命名任务」与 OneTone「审查」 |
 | `Ctrl+Alt+P` | Codex「切换置顶」与 OneTone「制定计划」 |
 | `Ctrl+PageDown` | Codex「下一标签/任务」；勿与外设 Page Down 触发键混用 |

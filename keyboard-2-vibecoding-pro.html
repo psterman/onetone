@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibecoding Pro 键盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .mode-btn.inactive {
+            background: #1e293b;
+            color: #64748b;
+            border-color: #334155;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-color: #818cf8;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .keyboard-wrapper {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            padding: 30px;
+            border-radius: 24px;
+            border: 1px solid #334155;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 64px);
+            gap: 12px;
+        }
+
+        .key {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            position: relative;
+        }
+
+        .key:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .key:active {
+            transform: scale(0.94);
+        }
+
+        .key::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+
+        .key-indicator {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 10px;
+            height: 10px;
+            background: #475569;
+            border-radius: 50%;
+        }
+
+        .key-indicator.on {
+            background: #22d3ee;
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+        }
+
+        .key-indicator.hot {
+            background: #f97316;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.6);
+        }
+
+        .key-main {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .key-sub {
+            font-size: 0.58rem;
+            color: #94a3b8;
+            line-height: 1.2;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .key.primary {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            border-color: #818cf8;
+        }
+
+        .key.primary .key-main,
+        .key.primary .key-sub {
+            color: white;
+        }
+
+        .key.codex {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-color: #60a5fa;
+        }
+
+        .key.codex .key-main,
+        .key.codex .key-sub {
+            color: white;
+        }
+
+        .key.claude {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border-color: #a78bfa;
+        }
+
+        .key.claude .key-main,
+        .key.claude .key-sub {
+            color: white;
+        }
+
+        .key.action {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #34d399;
+        }
+
+        .key.action .key-main,
+        .key.action .key-sub {
+            color: white;
+        }
+
+        .key-tall {
+            grid-row: span 2;
+            height: 140px;
+        }
+
+        .key-wide {
+            grid-column: span 2;
+            width: 140px;
+        }
+
+        .key-quad {
+            grid-column: span 2;
+            grid-row: span 2;
+            width: 140px;
+            height: 140px;
+        }
+
+        .info-panel {
+            margin-top: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .info-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 150px;
+        }
+
+        .info-title {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            padding: 4px 0;
+            color: #94a3b8;
+        }
+
+        .info-key {
+            color: #64748b;
+        }
+
+        .info-func {
+            color: #cbd5e1;
+        }
+
+        .gesture-hint {
+            margin-top: 20px;
+            padding: 12px 18px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+            font-size: 0.78rem;
+            color: #a5b4fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Vibecoding Pro</div>
+            <div class="subtitle">创新布局 · 三模式切换</div>
+        </div>
+
+        <div class="mode-indicator">
+            <button class="mode-btn" id="btn-num">数字键</button>
+            <button class="mode-btn active" id="btn-vibe">Vibecoding</button>
+            <button class="mode-btn" id="btn-agent">Agent Mode</button>
+        </div>
+
+        <div class="keyboard-wrapper">
+            <div class="keypad" id="keypad">
+                <!-- Row 1 - Control & Quick Access -->
+                <div class="key" data-key="/">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">⌘</span>
+                    <span class="key-sub" id="k-slash">CMD</span>
+                </div>
+                <div class="key" data-key="*">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">✦</span>
+                    <span class="key-sub" id="k-star">NEW</span>
+                </div>
+                <div class="key" data-key="-">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">⌫</span>
+                    <span class="key-sub" id="k-minus">DEL</span>
+                </div>
+                <div class="key action" data-key="esc">
+                    <div class="key-indicator hot"></div>
+                    <span class="key-main">⎋</span>
+                    <span class="key-sub" id="k-esc">ESC</span>
+                </div>
+
+                <!-- Row 2 - Claude & AI -->
+                <div class="key claude" data-key="7">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">7</span>
+                    <span class="key-sub" id="k-7">CONTEXT</span>
+                </div>
+                <div class="key claude" data-key="8">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">8</span>
+                    <span class="key-sub" id="k-8">PROMPT</span>
+                </div>
+                <div class="key claude" data-key="9">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">9</span>
+                    <span class="key-sub" id="k-9">REVIEW</span>
+                </div>
+                <div class="key primary key-tall" data-key="+">
+                    <div class="key-indicator hot"></div>
+                    <span class="key-main">💬</span>
+                    <span class="key-sub" id="k-plus">CHAT</span>
+                </div>
+
+                <!-- Row 3 - Codex & Dev -->
+                <div class="key codex" data-key="4">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">4</span>
+                    <span class="key-sub" id="k-4">PERM</span>
+                </div>
+                <div class="key codex" data-key="5">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">5</span>
+                    <span class="key-sub" id="k-5">FAV</span>
+                </div>
+                <div class="key codex" data-key="6">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">6</span>
+                    <span class="key-sub" id="k-6">APP</span>
+                </div>
+
+                <!-- Row 4 - Nav & Edit -->
+                <div class="key" data-key="1">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">1</span>
+                    <span class="key-sub" id="k-1">UNDO</span>
+                </div>
+                <div class="key" data-key="2">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">2</span>
+                    <span class="key-sub" id="k-2">REDO</span>
+                </div>
+                <div class="key" data-key="3">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">3</span>
+                    <span class="key-sub" id="k-3">SEARCH</span>
+                </div>
+                <div class="key action key-tall" data-key="enter">
+                    <div class="key-indicator hot"></div>
+                    <span class="key-main">⏎</span>
+                    <span class="key-sub" id="k-enter">RUN</span>
+                </div>
+
+                <!-- Row 5 - Media & Input -->
+                <div class="key primary key-wide" data-key="0">
+                    <div class="key-indicator on"></div>
+                    <span class="key-main">🎤</span>
+                    <span class="key-sub" id="k-0">VOICE</span>
+                </div>
+                <div class="key" data-key=".">
+                    <div class="key-indicator"></div>
+                    <span class="key-main">⚙</span>
+                    <span class="key-sub" id="k-dot">SET</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="info-title">Core Shortcuts</div>
+                <div class="info-item">
+                    <span class="info-key">7</span>
+                    <span class="info-func">Context Attach</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-key">8</span>
+                    <span class="info-func">Prompt Template</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-key">9</span>
+                    <span class="info-func">Code Review</span>
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-title">Dev Tools</div>
+                <div class="info-item">
+                    <span class="info-key">4</span>
+                    <span class="info-func">Permission</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-key">5</span>
+                    <span class="info-func">Favorites</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-key">6</span>
+                    <span class="info-func">Apps</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="gesture-hint">
+            💡 提示: 长按按键显示更多选项 · 双击切换模式
+        </div>
+    </div>
+
+    <script>
+        const btnNum = document.getElementById('btn-num');
+        const btnVibe = document.getElementById('btn-vibe');
+        const btnAgent = document.getElementById('btn-agent');
+        
+        let currentMode = 'vibe';
+
+        const vibeMode = {
+            'slash': 'CMD',
+            'star': 'NEW',
+            'minus': 'DEL',
+            'esc': 'ESC',
+            '7': 'CONTEXT',
+            '8': 'PROMPT',
+            '9': 'REVIEW',
+            'plus': 'CHAT',
+            '4': 'PERM',
+            '5': 'FAV',
+            '6': 'APP',
+            '1': 'UNDO',
+            '2': 'REDO',
+            '3': 'SEARCH',
+            'enter': 'RUN',
+            '0': 'VOICE',
+            'dot': 'SET'
+        };
+
+        const numMode = {
+            'slash': '/',
+            'star': '*',
+            'minus': '-',
+            'esc': '←',
+            '7': '7',
+            '8': '8',
+            '9': '9',
+            'plus': '+',
+            '4': '4',
+            '5': '5',
+            '6': '6',
+            '1': '1',
+            '2': '2',
+            '3': '3',
+            'enter': 'ENTER',
+            '0': '0',
+            'dot': '.'
+        };
+
+        const agentMode = {
+            'slash': 'LIST',
+            'star': 'TASK',
+            'minus': 'CLOSE',
+            'esc': 'HOME',
+            '7': 'CLAUDE',
+            '8': 'GPT-4',
+            '9': 'CODEX',
+            'plus': 'ASSIST',
+            '4': 'PLAN',
+            '5': 'EXEC',
+            '6': 'MONITOR',
+            '1': 'HISTORY',
+            '2': 'SAVE',
+            '3': 'EXPORT',
+            'enter': 'START',
+            '0': 'RECORD',
+            'dot': 'CONFIG'
+        };
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            [btnNum, btnVibe, btnAgent].forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            if (mode === 'num') btnNum.classList.add('active');
+            if (mode === 'vibe') btnVibe.classList.add('active');
+            if (mode === 'agent') btnAgent.classList.add('active');
+
+            updateLabels();
+        }
+
+        function updateLabels() {
+            let labels;
+            if (currentMode === 'num') labels = numMode;
+            else if (currentMode === 'vibe') labels = vibeMode;
+            else labels = agentMode;
+
+            for (let key in labels) {
+                const el = document.getElementById(`k-${key}`);
+                if (el) el.textContent = labels[key];
+            }
+
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                if (currentMode === 'num') {
+                    key.classList.remove('primary', 'codex', 'claude', 'action');
+                } else {
+                    const keyData = key.dataset.key;
+                    if (keyData === '+' || keyData === '0') {
+                        key.classList.add('primary');
+                    } else if (['4','5','6'].includes(keyData)) {
+                        key.classList.add('codex');
+                    } else if (['7','8','9'].includes(keyData)) {
+                        key.classList.add('claude');
+                    } else if (keyData === 'enter' || keyData === 'esc') {
+                        key.classList.add('action');
+                    }
+                }
+            });
+        }
+
+        btnNum.addEventListener('click', () => setMode('num'));
+        btnVibe.addEventListener('click', () => setMode('vibe'));
+        btnAgent.addEventListener('click', () => setMode('agent'));
+
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', () => {
+                key.style.transform = 'scale(0.94)';
+                setTimeout(() => {
+                    key.style.transform = '';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

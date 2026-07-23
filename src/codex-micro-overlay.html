@@ -26,11 +26,12 @@
           <button type="button" class="overlay-chrome__btn overlay-chrome__btn--close" data-act="close" title="关闭" aria-label="关闭">×</button>
         </header>
         <div class="overlay-body" id="overlayBody">
-          <aside class="overlay-nav-rail" id="navRail" aria-label="方向键" hidden>
+          <aside class="overlay-nav-rail" id="navRail" aria-label="方向轨" hidden>
             <span class="overlay-nav-rail__screw overlay-nav-rail__screw--tl" aria-hidden="true"></span>
             <span class="overlay-nav-rail__screw overlay-nav-rail__screw--tr" aria-hidden="true"></span>
             <span class="overlay-nav-rail__screw overlay-nav-rail__screw--bl" aria-hidden="true"></span>
             <span class="overlay-nav-rail__screw overlay-nav-rail__screw--br" aria-hidden="true"></span>
+            <div class="overlay-nav-rail__caption" id="navRailCaption" hidden></div>
             <div class="overlay-nav-rail__pad">
               <button type="button" class="overlay-nav-key overlay-nav-key--up" data-nav="NAV_UP" title="上" aria-label="上"></button>
               <button type="button" class="overlay-nav-key overlay-nav-key--left" data-nav="NAV_LEFT" title="左" aria-label="左"></button>
@@ -46,7 +47,10 @@
             </div>
           </div>
         </div>
-        <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite"></div>
+        <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite">
+          <div class="overlay-app-meta__row" id="overlayAppMetaRow"></div>
+          <div class="overlay-app-meta__task" id="overlayAppMetaTask" hidden></div>
+        </div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
     </div>
@@ -59,12 +63,12 @@
 
     var LAYOUT=[
       {id:'ENC',kind:'control',row:1,col:1,icon:'codex'},
-      {id:'AG00',kind:'agent',row:1,col:2,ag:0,icon:'status'},
-      {id:'AG01',kind:'agent',row:1,col:3,ag:1,icon:'plan'},
-      {id:'AG02',kind:'agent',row:1,col:4,ag:2,icon:'review'},
+      {id:'AG00',kind:'agent',row:1,col:2,ag:0,icon:'agent'},
+      {id:'AG01',kind:'agent',row:1,col:3,ag:1,icon:'claude'},
+      {id:'AG02',kind:'agent',row:1,col:4,ag:2,icon:'model'},
       {id:'JOY',kind:'control',row:1,col:5,icon:'empty'},
       {id:'AG03',kind:'agent',row:2,col:2,ag:3,icon:'folder'},
-      {id:'AG04',kind:'agent',row:2,col:3,ag:4,icon:'agent'},
+      {id:'AG04',kind:'agent',row:2,col:3,ag:4,icon:'status'},
       {id:'AG05',kind:'agent',row:2,col:4,ag:5,icon:'cloud'},
       {id:'ACT06',kind:'command',row:3,col:2,icon:'fast'},
       {id:'ACT07',kind:'command',row:3,col:3,icon:'palette'},
@@ -73,6 +77,35 @@
       {id:'ACT10',kind:'command',row:4,col:2,span:2,icon:'mic'},
       {id:'ACT12',kind:'command',row:4,col:4,icon:'send'}
     ];
+
+    /** PC numpad layout (ENC replaces NumLock): / * - · 789+ · 456 · 123 Enter · 0 . */
+    var LAYOUT_NUMPAD=[
+      {id:'ENC',kind:'control',row:1,col:1,icon:'codex'},
+      {id:'NP_DIV',kind:'numpad',row:1,col:2,label:'/'},
+      {id:'NP_MUL',kind:'numpad',row:1,col:3,label:'*'},
+      {id:'NP_SUB',kind:'numpad',row:1,col:4,label:'-'},
+      {id:'NP7',kind:'numpad',row:2,col:1,label:'7'},
+      {id:'NP8',kind:'numpad',row:2,col:2,label:'8'},
+      {id:'NP9',kind:'numpad',row:2,col:3,label:'9'},
+      {id:'NP_ADD',kind:'numpad',row:2,col:4,rowSpan:2,label:'+'},
+      {id:'NP4',kind:'numpad',row:3,col:1,label:'4'},
+      {id:'NP5',kind:'numpad',row:3,col:2,label:'5'},
+      {id:'NP6',kind:'numpad',row:3,col:3,label:'6'},
+      {id:'NP1',kind:'numpad',row:4,col:1,label:'1'},
+      {id:'NP2',kind:'numpad',row:4,col:2,label:'2'},
+      {id:'NP3',kind:'numpad',row:4,col:3,label:'3'},
+      {id:'NP_ENTER',kind:'numpad',row:4,col:4,rowSpan:2,label:'↵'},
+      {id:'NP0',kind:'numpad',row:5,col:1,span:2,label:'0'},
+      {id:'NP_DOT',kind:'numpad',row:5,col:3,label:'.'}
+    ];
+
+    function activeLayout(){
+      return padMode==='numpad' ? LAYOUT_NUMPAD : LAYOUT;
+    }
+
+    function isNumpadKeyId(id){
+      return /^NP/.test(String(id||''));
+    }
 
     var ICON={
       fast:'<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 10-14h-7l0-6z"/></svg>',
@@ -88,6 +121,10 @@
       folder:'<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
       cloud:'<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 00.5-8 5.5 5.5 0 00-10.7 1.5A3.5 3.5 0 007 18z"/></svg>',
       agent:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>',
+      claude:'<svg viewBox="0 0 24 24"><path d="M12 3l2.2 6.2L21 12l-6.8 2.8L12 21l-2.2-6.2L3 12l6.8-2.8z"/></svg>',
+      model:'<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 7V5h8v2M8 17v2h8v-2"/><path d="M9 11h6M9 14h4"/></svg>',
+      undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
+      search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>',
       empty:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>'
     };
 
@@ -105,11 +142,14 @@
     var wrap=document.getElementById('wrap');
     var grid=document.getElementById('grid');
     var navRail=document.getElementById('navRail');
+    var navRailCaption=document.getElementById('navRailCaption');
     var overlayBody=document.getElementById('overlayBody');
     var overlayToast=document.getElementById('overlayToast');
     var miniLeds=document.getElementById('miniLeds');
     var statusChip=document.getElementById('statusChip');
     var overlayAppMeta=document.getElementById('overlayAppMeta');
+    var overlayAppMetaRow=document.getElementById('overlayAppMetaRow');
+    var overlayAppMetaTask=document.getElementById('overlayAppMetaTask');
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -126,6 +166,8 @@
     var padEnabled=true;
     var padMode='codex';
     var joyNavOpen=false;
+    var joyArrowsLive=false;
+    var joyContextHint='';
     var requireNumLockOff=false;
     var numLockBlocking=false;
     var joyDrag={active:false,lastNav:'',lastFire:0,inflight:false};
@@ -199,7 +241,9 @@
       var s=String(source||'').trim();
       if(s==='native'||s==='native_micro') return 'Native Micro';
       if(s==='codex_hook') return 'Codex Hook';
+      if(s==='claude_hook') return 'Claude Hook';
       if(s==='codex_app') return 'Codex App';
+      if(s==='claude_app') return 'Claude App';
       if(s==='inferred') return 'Inferred';
       if(s==='fallback') return 'Fallback';
       return s||'Fallback';
@@ -215,50 +259,84 @@
       return '空闲';
     }
 
-    function mapHookEventToLight(event){
-      var ev=String(event||'').trim();
-      if(ev==='UserPromptSubmit'||ev==='PreToolUse'||ev==='PostToolUse') return 'running';
-      if(ev==='PermissionRequest') return 'needs_input';
-      if(ev==='Stop') return 'done';
-      if(ev==='SessionStart') return 'idle';
-      return '';
+    function formatAgeMs(ageMs){
+      var n=Number(ageMs)||0;
+      if(n<=0) return '';
+      if(n<1000) return '刚刚';
+      if(n<60_000) return Math.floor(n/1000)+'s 前';
+      if(n<3600_000) return Math.floor(n/60_000)+'m 前';
+      return Math.floor(n/3600_000)+'h 前';
     }
 
-    function lightHumanHint(status){
-      var st=String(status||'idle').trim();
-      if(st==='running') return 'Codex 处理中';
-      if(st==='needs_input') return '请在 Codex 确认';
-      if(st==='done') return '本回合完成';
-      if(st==='failed') return '出现失败';
-      if(st==='listening') return '听写中';
-      return '';
+    function shortId(id){
+      var s=String(id||'').trim();
+      if(!s) return '';
+      if(s.length<=10) return s;
+      return '…'+s.slice(-8);
     }
 
     function applyAppMetaChip(s){
       if(!overlayAppMeta) return;
-      var lastSrc=String(s&&s.appLastSource||'').trim();
-      var lastEv=String(s&&s.appLastEvent||'').trim();
-      var enabled=!!(s&&s.appStateEnabled);
-      var light=String(s&&(s.appStatus||s.app_status)||'').trim()
-        || mapHookEventToLight(lastEv)
-        || 'idle';
+      var lastSrc=String(s&&(s.appLastSource||s.app_last_source)||'').trim();
+      var lastEv=String(s&&(s.appLastEvent||s.app_last_event)||'').trim();
+      var enabled=!!(s&&(s.appStateEnabled||s.app_state_enabled));
+      var confidence=String(s&&(s.appConfidence||s.app_confidence)||'').trim();
+      var ageMs=Number(s&&(s.appAgeMs!=null?s.appAgeMs:s.app_age_ms))||0;
+      var msg=String(s&&(s.appMessage||s.app_message)||'').trim();
+      var taskId=String(s&&(s.appTaskId||s.app_task_id)||'').trim();
+      var sessionId=String(s&&(s.appSessionId||s.app_session_id)||'').trim();
+      // Snapshot-only: never re-derive light from lastEvent on the FE.
+      var light=String(s&&(s.appStatus||s.app_status)||'').trim()||'idle';
       // Event-driven only: hide quiet idle so the bar is not permanently sticky.
       if(!enabled || (!lastEv && !lastSrc) || light==='idle'){
         overlayAppMeta.hidden=true;
-        overlayAppMeta.textContent='';
+        if(overlayAppMetaRow) overlayAppMetaRow.textContent='';
+        if(overlayAppMetaTask){
+          overlayAppMetaTask.textContent='';
+          overlayAppMetaTask.hidden=true;
+        }
+        overlayAppMeta.removeAttribute('title');
         overlayAppMeta.removeAttribute('data-light');
         wrap.classList.remove('is-pass-through');
         return;
       }
       var bits=[lightStatusLabel(light)];
-      var hint=lightHumanHint(light);
-      if(hint) bits.push(hint);
       if(lastSrc==='codex_hook'||lastSrc==='codex_app') bits.push('Hook');
       else if(lastSrc) bits.push(statusSourceLabel(lastSrc));
-      overlayAppMeta.textContent=bits.join(' · ');
+      var age=formatAgeMs(ageMs);
+      if(age) bits.push(age);
+      if(confidence==='low') bits.push('推断');
+      if(overlayAppMetaRow) overlayAppMetaRow.textContent=bits.join(' · ');
+      else overlayAppMeta.textContent=bits.join(' · ');
+
+      var taskBits=[];
+      if(msg) taskBits.push(msg);
+      var tid=shortId(taskId);
+      var sid=shortId(sessionId);
+      if(tid) taskBits.push('任务 '+tid);
+      if(sid) taskBits.push('会话 '+sid);
+      if(overlayAppMetaTask){
+        if(taskBits.length){
+          overlayAppMetaTask.textContent=taskBits.join(' · ');
+          overlayAppMetaTask.hidden=false;
+        } else {
+          overlayAppMetaTask.textContent='';
+          overlayAppMetaTask.hidden=true;
+        }
+      }
+
+      var tipParts=[lightStatusLabel(light), statusSourceLabel(lastSrc)||lastSrc];
+      if(age) tipParts.push(age);
+      if(confidence) tipParts.push('置信度 '+confidence);
+      if(msg) tipParts.push(msg);
+      if(taskId) tipParts.push('任务 '+taskId);
+      if(sessionId) tipParts.push('会话 '+sessionId);
+      if(lastEv) tipParts.push('事件 '+lastEv);
+      overlayAppMeta.title=tipParts.filter(Boolean).join(' · ');
       overlayAppMeta.hidden=false;
       overlayAppMeta.setAttribute('data-source', lastSrc||'');
       overlayAppMeta.setAttribute('data-light', light);
+      overlayAppMeta.setAttribute('data-confidence', confidence||'');
       overlayAppMeta.setAttribute('data-enabled', '1');
       wrap.classList.toggle('is-pass-through', light==='needs_input' && enabled);
       if(statusChip){
@@ -278,46 +356,28 @@
       if(localStatusTimer){ clearTimeout(localStatusTimer); localStatusTimer=null; }
     }
 
-    var lastAppLightsOn=false;
-    var lastAppLight='idle';
+    var backendAppStatus='idle';
+    var backendAppLightsOn=false;
 
+    /** Local key feedback overrides; long-lived light comes from snapshot only. */
     function effectivePadStatus(){
       if(localPadStatus!=='idle') return localPadStatus;
-      // Codex Hook status lights drive the pad ring / mini LEDs (not vendor RGB alone).
-      if(lastAppLightsOn && lastAppLight && lastAppLight!=='idle') return lastAppLight;
+      if(backendAppLightsOn && backendAppStatus && backendAppStatus!=='idle') return backendAppStatus;
       return backendPadStatus||'idle';
     }
 
-    /** Official Micro thstatus palette → perimeter glow. */
-    function lightRgb(status){
-      var st=String(status||'').trim();
-      if(st==='running') return {r:48,g:83,b:254};
-      if(st==='needs_input') return {r:255,g:106,b:0};
-      if(st==='done') return {r:0,g:255,b:76};
-      if(st==='failed') return {r:255,g:0,b:51};
-      if(st==='listening') return {r:0,g:163,b:255};
-      return null;
-    }
-
     function applyPadLightGlow(s){
-      var appOn=!!(s&&s.appStateEnabled);
-      var appSt=String(s&&(s.appStatus||s.app_status)||'').trim()
-        || mapHookEventToLight(s&&(s.appLastEvent||s.app_last_event))
-        || 'idle';
-      lastAppLightsOn=appOn;
-      lastAppLight=appSt;
+      var appOn=!!(s&&(s.appStateEnabled||s.app_state_enabled));
+      var appSt=String(s&&(s.appStatus||s.app_status)||'').trim()||'idle';
+      backendAppLightsOn=appOn;
+      backendAppStatus=appSt;
       var padSt=effectivePadStatus();
       var light=appOn ? (appSt||'idle') : padSt;
       wrap.setAttribute('data-light', light);
 
+      // Soft RGB Output Adapter: color only from snapshot.rgb (Rust), never FE palette.
       var rgb=null;
-      if(appOn){
-        // Status-lights mode: semantic color only — never keep a sticky mint RGB ring.
-        rgb=lightRgb(appSt);
-      } else {
-        rgb=lightRgb(padSt);
-        if(!rgb && s && s.rgb && s.rgb.r!=null) rgb=s.rgb;
-      }
+      if(s && s.rgb && s.rgb.r!=null) rgb=s.rgb;
       if(!rgb){
         wrap.classList.remove('has-rgb-glow');
         wrap.style.removeProperty('--overlay-rgb-glow');
@@ -360,17 +420,28 @@
       wrap.classList.toggle('is-mode-codex', padMode==='codex');
       wrap.classList.toggle('is-mode-numpad', padMode==='numpad');
       wrap.classList.toggle('is-joy-open', !!joyNavOpen);
-      wrap.classList.toggle('is-pad-off', padMode==='numpad');
+      // Digits are first-class in numpad layout — do not dim the whole pad.
+      wrap.classList.toggle('is-pad-off', false);
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.classList.toggle('is-mini-host', !!localMinimized);
       if(overlayBody) overlayBody.classList.toggle('has-nav-rail', !!joyNavOpen);
       if(navRail){
+        navRail.classList.toggle('is-arrows-live', !!joyArrowsLive);
         if(joyNavOpen){
           navRail.hidden=false;
           navRail.removeAttribute('hidden');
         } else {
           navRail.hidden=true;
           navRail.setAttribute('hidden','');
+        }
+      }
+      if(navRailCaption){
+        if(joyNavOpen && joyContextHint){
+          navRailCaption.textContent=joyContextHint;
+          navRailCaption.hidden=false;
+        } else {
+          navRailCaption.textContent='';
+          navRailCaption.hidden=true;
         }
       }
       syncEncSwitchDom();
@@ -509,7 +580,7 @@
           lastGridSig='';
           pull();
         }
-        else if(reason==='fired' || reason==='enhance_pulse' || reason==='healing'){
+        else if(reason==='fired' || reason==='enhance_pulse' || reason==='healing' || reason==='numpad_pulse'){
           setLocalStatus('running', id);
           if(id==='ENC' && phase==='down') toast('召唤 Codex');
         }
@@ -551,10 +622,16 @@
         }
         invoke('cmd_codex_micro_overlay_toggle_joy_panel',{}).then(function(open){
           joyNavOpen=!!open;
-          // CSS keeps rail layout slot reserved — only fade/opacity changes (no pad shift).
           applyLocalStatusDom();
-          toast(open?'方向键面板已打开':'方向键面板已关闭');
-        }).catch(function(){ toast('无法切换摇杆面板'); });
+          return invoke('cmd_codex_micro_overlay_get_state',{});
+        }).then(function(s){
+          if(s) render(s);
+          if(!joyNavOpen){
+            toast('方向轨已关闭');
+            return;
+          }
+          toast(joyContextHint||(joyArrowsLive?'方向轨已开 · 物理方向键已接入':'方向轨已开'));
+        }).catch(function(){ toast('无法切换方向轨'); });
       });
     }
 
@@ -577,8 +654,15 @@
             padMode=String(mode||'')==='numpad'?'numpad':'codex';
             padEnabled=padMode==='codex';
             if(!padEnabled) joyNavOpen=false;
-            // Patch classes only — do not wipe grid / force pull (that caused flicker+shift).
             applyLocalStatusDom();
+            // Rebuild grid so Codex AG layout ↔ standard numpad positions.
+            lastGridSig='';
+            render(Object.assign({}, lastSnap, {
+              visible:true,
+              enabled:padEnabled,
+              padMode:padMode,
+              joyNavPanelOpen:joyNavOpen
+            }));
             toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
           }).catch(function(err){
             var msg=String((err&&err.message)||err||'');
@@ -636,7 +720,8 @@
         if(id==='ENC'){ bindEnc(el); return; }
         el.addEventListener('pointerdown',function(e){
           if(e.button!=null&&e.button!==0) return;
-          if(!padEnabled){
+          var numpadTap=isNumpadKeyId(id);
+          if(!padEnabled && !numpadTap){
             toastNumpadMode();
             return;
           }
@@ -684,14 +769,14 @@
     }
 
     function gridSignature(s,map,active){
-      // Mode / joy / minimized are CSS patches via applyLocalStatusDom — exclude them so
-      // switch toggles do not wipe #grid (innerHTML rebuild = flicker).
+      // Include padMode so Codex ↔ numpad swaps rebuild the physical key grid.
       // statusSource must be included so native→fallback with same idle still updates styles.
       var parts=(s.cells||[]).map(function(c){
         if(!c||!c.microKeyId) return '';
-        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.runStatus||'')+':'+(c.statusSource||'')+':'+(c.nativeRunStatus||'');
+        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.runStatus||'')+':'+(c.statusSource||'')+':'+(c.nativeRunStatus||'')+':'+(c.contextRank||'')+':'+(c.contextHint||'');
       });
-      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),active,parts.join('|')].join(';');
+      var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
+      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),active,mode,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -704,6 +789,11 @@
         el.setAttribute('data-backend-run',backendRun);
         el.setAttribute('data-run-status',mergeRunStatus(id,backendRun));
         el.setAttribute('data-status-source',src);
+        var rank=String(info.contextRank||'').trim();
+        el.classList.toggle('is-context-emphasize',rank==='emphasize');
+        el.classList.toggle('is-context-dim',rank==='dim');
+        if(info.contextHint) el.setAttribute('data-context-hint',String(info.contextHint));
+        else el.removeAttribute('data-context-hint');
         var pressed=activePtr===id;
         el.classList.toggle('is-pressed',pressed);
         el.classList.toggle('is-active',pressed);
@@ -721,9 +811,15 @@
       var st=j&&j.state?j.state:{};
       var out=Object.assign({}, base||{});
       out.appStateEnabled=!!(j&&j.appStateEnabled);
-      out.appStatus=String(st.status||'').trim()||'idle';
+      out.appStatus=String(j&&j.appStatus||st.status||'').trim()||'idle';
       out.appLastEvent=String(st.lastEvent||st.event||'').trim();
       out.appLastSource=String(st.lastSource||st.source||'').trim();
+      if(j&&j.softRgb&&j.softRgb.r!=null){
+        out.rgb={r:j.softRgb.r,g:j.softRgb.g,b:j.softRgb.b};
+      } else if(j&&j.appStateEnabled){
+        // Lights on + idle/no softRgb: clear sticky vendor mint.
+        out.rgb=null;
+      }
       return out;
     }
 
@@ -747,6 +843,8 @@
       padEnabled=!!s.enabled;
       padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
       joyNavOpen=!!s.joyNavPanelOpen && padMode==='codex';
+      joyArrowsLive=!!s.joyArrowsLive && joyNavOpen;
+      joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
       requireNumLockOff=!!s.requireNumLockOff;
       numLockBlocking=!!s.numLockBlocking;
       enhanceOn=!!s.softwareEnhanceEnabled;
@@ -798,9 +896,11 @@
       }
       lastGridSig=sig;
       boundKeys={};
-      grid.innerHTML=LAYOUT.map(function(cell){
+      grid.innerHTML=activeLayout().map(function(cell){
         var info=map[cell.id]||{};
         var bound=!!info.bound;
+        var isNp=cell.kind==='numpad';
+        if(isNp) bound=true;
         boundKeys[cell.id]=bound;
         var iconId=info.uiIconId||cell.icon||'empty';
         var kind=String(info.sourceKind||'none');
@@ -809,7 +909,9 @@
         var statusSrc=String(info.statusSource||'inferred');
         var cls='micro-hw__key micro-hw__key--'+cell.kind + sourceClass(kind, cell.id);
         if(cell.span===2) cls+=' micro-hw__key--span2';
-        if(bound) cls+=' is-bound';
+        if(cell.rowSpan===2) cls+=' micro-hw__key--rowspan2';
+        if(isNp) cls+=' is-bound';
+        else if(bound) cls+=' is-bound';
         else if(cell.id!=='ENC' && cell.id!=='JOY') cls+=' is-route-disabled';
         if(cell.id==='ENC'){
           cls+= padEnabled ? ' is-mode-on' : ' is-mode-off';
@@ -819,19 +921,29 @@
           if(padEnabled) cls+=' is-nav-live';
         }
         if(active&&active===cell.id&&activePtr===cell.id) cls+=' is-pressed is-active';
+        var ctxRank=String(info.contextRank||'').trim();
+        if(ctxRank==='emphasize') cls+=' is-context-emphasize';
+        else if(ctxRank==='dim') cls+=' is-context-dim';
+        var ctxHint=String(info.contextHint||'').trim();
         var agAttr=cell.ag!=null ? ' data-ag="'+cell.ag+'"' : '';
-        var style='grid-row:'+cell.row+';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
+        var style='grid-row:'+cell.row+(cell.rowSpan?' / span '+cell.rowSpan:'')
+          +';grid-column:'+cell.col+(cell.span?' / span '+cell.span:'')+';';
         var tag=cell.kind==='placeholder'?'div':'button';
         var type=tag==='button'?' type="button"':'';
-        var inner=cell.id==='ENC'
-          ? encInnerHtml(padEnabled)
-          : (cell.id==='JOY'
-            ? joyInnerHtml(joyNavOpen)
-            : '<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>');
-        if(cell.id!=='ENC'){
+        var inner;
+        if(cell.id==='ENC'){
+          inner=encInnerHtml(padEnabled);
+        } else if(cell.id==='JOY'){
+          inner=joyInnerHtml(joyNavOpen);
+        } else if(isNp){
+          inner='<span class="micro-hw__digit" aria-hidden="true">'+escHtml(cell.label||'')+'</span>';
+        } else {
+          inner='<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>';
+        }
+        if(cell.id!=='ENC' && !isNp){
           var metaName=String(info.label||'').trim();
           var metaChord=String(info.sub||'').trim();
-          if(cell.id==='JOY' && !metaName) metaName='方向键面板';
+          if(cell.id==='JOY' && !metaName) metaName='方向轨';
           if(metaName || metaChord){
             inner+='<span class="micro-hw__meta" aria-hidden="true">'
               +(metaName?'<span class="micro-hw__meta-name">'+escHtml(metaName)+'</span>':'')
@@ -839,18 +951,29 @@
               +'</span>';
           }
         }
+        var npAriaMap={'/':'除','*':'乘','-':'减','+':'加','.':'小数点','↵':'回车'};
         var aria=cell.id==='ENC'
           ? (padEnabled?'Codex 场景模式':'数字键模式')
-          : ([info.label, info.sub].filter(Boolean).join(' · ') || cell.id);
+          : (cell.id==='JOY'
+            ? (joyNavOpen?(joyContextHint||'方向轨已开'):'打开方向轨')
+            : (isNp ? (npAriaMap[cell.label]||String(cell.label||cell.id)) : ([info.label, info.sub].filter(Boolean).join(' · ') || cell.id)));
         if(cell.ag!=null && statusSrc){
           aria+=(aria?' · ':'')+statusSourceLabel(statusSrc);
         }
+        var actTitle='';
+        if(cell.id.indexOf('ACT')===0){
+          if(ctxHint) actTitle=ctxHint;
+          else if(cell.id==='ACT10') actTitle='按住说话';
+        }
         return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
-          +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'" style="'+style+'"'
+          +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'"'
+          +(ctxHint?' data-context-hint="'+escHtml(ctxHint)+'"':'')
+          +' style="'+style+'"'
           +' aria-label="'+escHtml(aria)+'"'
-          +(cell.id==='ACT10'?' title="按住说话"':'')
+          +(actTitle?' title="'+escHtml(actTitle)+'"':'')
           +(cell.id==='ENC'?' title="召唤 Codex"':'')
-          +(cell.id==='JOY'?' title="方向键面板"':'')
+          +(cell.id==='JOY'?' title="'+(joyNavOpen?(joyContextHint||'方向轨已开'):'打开方向轨')+'"':'')
+          +(isNp?' title="'+escHtml(aria)+'"':'')
           +'>'+inner+'</'+tag+'>';
       }).join('');
       applyLocalStatusDom();

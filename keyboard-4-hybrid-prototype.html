@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codex Micro Hybrid Prototype</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #eef3f7;
+      --panel: #ffffff;
+      --panel-2: #f7fafc;
+      --ink: #172033;
+      --muted: #637184;
+      --line: rgba(23, 32, 51, 0.12);
+      --line-strong: rgba(23, 32, 51, 0.18);
+      --shadow: 0 22px 60px rgba(28, 45, 70, 0.16);
+      --cyan: #1598bd;
+      --cyan-soft: #dff6fb;
+      --green: #188b55;
+      --green-soft: #e2f7eb;
+      --amber: #b7791f;
+      --amber-soft: #fff3d8;
+      --red: #b9363b;
+      --red-soft: #ffe6e8;
+      --violet: #6257c8;
+      --violet-soft: #ebe9ff;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 36px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.82), rgba(238,243,247,0.9)),
+        radial-gradient(circle at 18% 16%, rgba(21, 152, 189, 0.13), transparent 30%),
+        radial-gradient(circle at 80% 88%, rgba(24, 139, 85, 0.12), transparent 28%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    .canvas {
+      width: min(1120px, 100%);
+      min-height: 680px;
+      border: 1px solid rgba(255,255,255,0.82);
+      border-radius: 26px;
+      background: rgba(255,255,255,0.74);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      height: 76px;
+      padding: 0 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 800;
+      background: linear-gradient(145deg, #172033, #314157);
+      box-shadow: 0 8px 20px rgba(23,32,51,0.24);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 760;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(24,139,85,0.18);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 4px rgba(24,139,85,0.13);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 322px;
+      gap: 0;
+      min-height: 0;
+    }
+
+    .stage {
+      padding: 34px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .mode-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .mode-copy h1 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .mode-copy p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .segmented {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 14px;
+      background: #edf2f6;
+      border: 1px solid rgba(23,32,51,0.08);
+      flex-shrink: 0;
+    }
+
+    .segment {
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: 700 12px/1 system-ui;
+    }
+
+    .segment.active {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(23,32,51,0.12);
+    }
+
+    .device-zone {
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+    }
+
+    .keyboard-shell {
+      position: relative;
+      width: min(100%, 408px);
+      aspect-ratio: 1 / 1.18;
+      padding: 18px;
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at 22% 92%, rgba(21,152,189,0.16), transparent 34%),
+        linear-gradient(145deg, #f9fbfd 0%, #dfe7ee 100%);
+      box-shadow:
+        0 20px 46px rgba(23,32,51,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    .keyboard-face {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 14px;
+      border-radius: 25px;
+      border: 1px solid rgba(255,255,255,0.8);
+      background: rgba(255,255,255,0.52);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      height: 100%;
+    }
+
+    .key {
+      position: relative;
+      border: 1px solid rgba(23,32,51,0.1);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fff 0%, #edf2f6 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.9),
+        0 3px 8px rgba(23,32,51,0.1);
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      align-items: center;
+      justify-items: center;
+      padding: 8px 5px 7px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .key::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border-top: 3px solid transparent;
+      pointer-events: none;
+    }
+
+    .key.agent::before { border-top-color: var(--violet); }
+    .key.codex::before { border-top-color: var(--cyan); }
+    .key.action::before { border-top-color: var(--amber); }
+    .key.primary::before { border-top-color: var(--green); }
+    .key.danger::before { border-top-color: var(--red); }
+
+    .key.agent { background: linear-gradient(180deg, #fff, var(--violet-soft)); }
+    .key.codex { background: linear-gradient(180deg, #fff, var(--cyan-soft)); }
+    .key.action { background: linear-gradient(180deg, #fff, var(--amber-soft)); }
+    .key.primary { background: linear-gradient(180deg, #f7fffb, var(--green-soft)); border-color: rgba(24,139,85,0.18); }
+    .key.danger { background: linear-gradient(180deg, #fff, var(--red-soft)); border-color: rgba(185,54,59,0.16); }
+
+    .key:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 9px 18px rgba(23,32,51,0.14);
+    }
+
+    .key-symbol {
+      font-size: 20px;
+      font-weight: 820;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .key-label {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 780;
+      line-height: 1.2;
+    }
+
+    .key-source {
+      margin-top: 2px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 9px;
+      font-weight: 650;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .key.tall { grid-row: span 2; }
+    .key.wide { grid-column: span 2; }
+
+    .key.primary .key-symbol {
+      font-size: 24px;
+      color: var(--green);
+    }
+
+    .key.tall .key-symbol { font-size: 25px; }
+    .key.wide .key-symbol { font-size: 23px; }
+    .key-symbol.word {
+      font-size: 17px !important;
+      letter-spacing: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .key-led {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(99,113,132,0.28);
+    }
+
+    .key-led.on {
+      background: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(21,152,189,0.12), 0 0 10px rgba(21,152,189,0.55);
+    }
+
+    .keyboard-leds {
+      position: absolute;
+      left: 28px;
+      bottom: 24px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .keyboard-leds span {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(24,139,85,0.7);
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .legend-chip i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .side {
+      padding: 26px;
+      border-left: 1px solid var(--line);
+      background: rgba(247,250,252,0.76);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .side-section {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.78);
+    }
+
+    .side-title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .readiness {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--green-soft);
+      border: 1px solid rgba(24,139,85,0.18);
+    }
+
+    .readiness strong {
+      display: block;
+      font-size: 13px;
+      color: var(--green);
+    }
+
+    .readiness span {
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #42624e;
+    }
+
+    .mapping-row {
+      display: grid;
+      grid-template-columns: 62px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-top: 1px solid rgba(23,32,51,0.08);
+    }
+
+    .mapping-row:first-of-type { border-top: 0; }
+
+    .source {
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: #edf2f6;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .target {
+      min-width: 0;
+    }
+
+    .target b {
+      display: block;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .target span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      color: var(--ink);
+      font-weight: 760;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .btn.primary {
+      background: #172033;
+      color: white;
+      border-color: transparent;
+    }
+
+    @media (max-width: 860px) {
+      body { padding: 18px; }
+      .canvas { min-height: 0; }
+      .content { grid-template-columns: 1fr; }
+      .side { border-left: 0; border-top: 1px solid var(--line); }
+      .mode-row { align-items: flex-start; flex-direction: column; }
+      .topbar { height: auto; padding: 18px; align-items: flex-start; gap: 12px; flex-direction: column; }
+      .stage { padding: 22px; }
+      .keyboard-shell { width: min(100%, 360px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="canvas" aria-label="Codex Micro 修改后原型图">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">1T</div>
+        <div>
+          <div class="brand-title">OneTone Codex Micro</div>
+          <div class="brand-sub">普通数字键盘 12 键 + 屏幕开关，映射到 Codex 能力</div>
+        </div>
+      </div>
+      <div class="status-pill"><span class="status-dot"></span>已就绪 · Codex 前台</div>
+    </header>
+
+    <section class="content">
+      <div class="stage">
+        <div class="mode-row">
+          <div class="mode-copy">
+            <h1>更像真实小键盘，也更容易看懂每个键</h1>
+            <p>保留现有硬件质感和映射闭环，借鉴 Vibecoding Pro 的显式模式、键帽文字和主键强调。</p>
+          </div>
+          <div class="segmented" role="tablist" aria-label="键盘模式">
+            <button class="segment">数字键</button>
+            <button class="segment active">Codex 场景</button>
+            <button class="segment">试按</button>
+          </div>
+        </div>
+
+        <div class="device-zone">
+          <div class="keyboard-shell">
+            <div class="keyboard-face">
+              <div class="keypad">
+                <button class="key action" style="grid-row:1;grid-column:1;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">/</span>
+                  <span class="key-label">命令菜单</span>
+                  <span class="key-source">Numpad /</span>
+                </button>
+                <button class="key codex" style="grid-row:1;grid-column:2;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">*</span>
+                  <span class="key-label">快速提问</span>
+                  <span class="key-source">Numpad *</span>
+                </button>
+                <button class="key danger" style="grid-row:1;grid-column:3;">
+                  <span class="key-symbol">-</span>
+                  <span class="key-label">拒绝</span>
+                  <span class="key-source">Numpad -</span>
+                </button>
+                <button class="key action tall" style="grid-row:1 / span 2;grid-column:4;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">+</span>
+                  <span class="key-label">新线程</span>
+                  <span class="key-source">Numpad +</span>
+                </button>
+
+                <button class="key agent" style="grid-row:2;grid-column:1;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">7</span>
+                  <span class="key-label">状态</span>
+                  <span class="key-source">Numpad 7</span>
+                </button>
+                <button class="key agent" style="grid-row:2;grid-column:2;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">8</span>
+                  <span class="key-label">计划</span>
+                  <span class="key-source">Numpad 8</span>
+                </button>
+                <button class="key agent" style="grid-row:2;grid-column:3;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">9</span>
+                  <span class="key-label">审查</span>
+                  <span class="key-source">Numpad 9</span>
+                </button>
+
+                <button class="key agent" style="grid-row:3;grid-column:1;">
+                  <span class="key-symbol">4</span>
+                  <span class="key-label">权限</span>
+                  <span class="key-source">Numpad 4</span>
+                </button>
+                <button class="key agent" style="grid-row:3;grid-column:2;">
+                  <span class="key-symbol">5</span>
+                  <span class="key-label">切 Agent</span>
+                  <span class="key-source">Numpad 5</span>
+                </button>
+                <button class="key agent" style="grid-row:3;grid-column:3;">
+                  <span class="key-symbol">6</span>
+                  <span class="key-label">插件</span>
+                  <span class="key-source">Numpad 6</span>
+                </button>
+
+                <button class="key codex" style="grid-row:4;grid-column:1;">
+                  <span class="key-symbol">1</span>
+                  <span class="key-label">分支</span>
+                  <span class="key-source">Numpad 1</span>
+                </button>
+                <button class="key codex" style="grid-row:4;grid-column:2;">
+                  <span class="key-symbol">2</span>
+                  <span class="key-label">撤销</span>
+                  <span class="key-source">Numpad 2</span>
+                </button>
+                <button class="key codex" style="grid-row:4;grid-column:3;">
+                  <span class="key-symbol">3</span>
+                  <span class="key-label">搜索</span>
+                  <span class="key-source">Numpad 3</span>
+                </button>
+                <button class="key primary tall" style="grid-row:4 / span 2;grid-column:4;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol word">Enter</span>
+                  <span class="key-label">发送</span>
+                  <span class="key-source">Numpad Enter</span>
+                </button>
+
+                <button class="key primary wide" style="grid-row:5;grid-column:1 / span 2;">
+                  <span class="key-led on"></span>
+                  <span class="key-symbol">0</span>
+                  <span class="key-label">按住说话</span>
+                  <span class="key-source">Numpad 0</span>
+                </button>
+                <button class="key action" style="grid-row:5;grid-column:3;">
+                  <span class="key-symbol">.</span>
+                  <span class="key-label">设置</span>
+                  <span class="key-source">Numpad .</span>
+                </button>
+              </div>
+              <div class="keyboard-leds" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend" aria-label="分组说明">
+          <span class="legend-chip"><i style="background:var(--violet)"></i>Agent 能力</span>
+          <span class="legend-chip"><i style="background:var(--cyan)"></i>Codex 操作</span>
+          <span class="legend-chip"><i style="background:var(--amber)"></i>动作键</span>
+          <span class="legend-chip"><i style="background:var(--green)"></i>主流程</span>
+        </div>
+      </div>
+
+      <aside class="side">
+        <section class="readiness">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>映射已生效</strong>
+            <span>切到 Codex 桌面版后，物理小键盘会接管为这套虚拟键盘。</span>
+          </div>
+        </section>
+
+        <section class="side-section">
+          <h2 class="side-title">当前焦点能力</h2>
+          <div class="mapping-row">
+            <div class="source">0</div>
+            <div class="target"><b>按住说话</b><span>按下开始录音，松开结束</span></div>
+          </div>
+          <div class="mapping-row">
+            <div class="source">Enter</div>
+            <div class="target"><b>发送 / 停止</b><span>根据 Codex 当前状态自动判断</span></div>
+          </div>
+          <div class="mapping-row">
+            <div class="source">7 8 9</div>
+            <div class="target"><b>任务状态区</b><span>状态、计划、审查更靠近视线顶部</span></div>
+          </div>
+        </section>
+
+        <section class="side-section">
+          <h2 class="side-title">这版借鉴了什么</h2>
+          <div class="mapping-row">
+            <div class="source">模式</div>
+            <div class="target"><b>显式分段</b><span>替代隐性的单个开关心智</span></div>
+          </div>
+          <div class="mapping-row">
+            <div class="source">键帽</div>
+            <div class="target"><b>主符号 + 功能名</b><span>不用 hover 也能理解</span></div>
+          </div>
+          <div class="mapping-row">
+            <div class="source">主键</div>
+            <div class="target"><b>Mic / Send 加权</b><span>核心路径更容易被发现</span></div>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button class="btn">管理映射</button>
+          <button class="btn primary">开始试按</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

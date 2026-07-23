@@ -411,6 +411,17 @@ pub fn send_enter() {
     });
 }
 
+/// Pulse a virtual-key (down → brief hold → up). Used by overlay numpad digit taps.
+pub fn tap_vk(vk: u16, extended: bool, hold_ms: u32) {
+    let hold = hold_ms.max(25) as u64;
+    send_guard::arm_keys(&[]);
+    send_guard::run_guarded(hold + 40, || {
+        send_vk(vk, extended, false);
+        std::thread::sleep(std::time::Duration::from_millis(hold));
+        send_vk(vk, extended, true);
+    });
+}
+
 /// Left-click a point inside `hwnd`'s client area using relative ratios (0.0–1.0).
 #[cfg(windows)]
 pub fn click_client_relative(

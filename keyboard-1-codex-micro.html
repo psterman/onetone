@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codex Micro 键盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 12px 20px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .switch-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .switch-label.active {
+            color: #818cf8;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            width: 60px;
+            height: 32px;
+            background: #334155;
+            border-radius: 16px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.on {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .toggle-switch.on::after {
+            left: 31px;
+        }
+
+        .keyboard-wrapper {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            padding: 28px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 60px);
+            gap: 10px;
+        }
+
+        .key {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            border: 1px solid #475569;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            position: relative;
+        }
+
+        .key:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .key:active {
+            transform: scale(0.96);
+        }
+
+        .key-status {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background: #475569;
+            border-radius: 50%;
+        }
+
+        .key-status.on {
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .key-icon {
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .key-number {
+            font-size: 1.1rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .key-label {
+            font-size: 0.6rem;
+            color: #64748b;
+            margin-top: 4px;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .key.special {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            border-color: #10b981;
+        }
+
+        .key.special .key-number,
+        .key.special .key-label {
+            color: white;
+        }
+
+        .key.codex {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            border-color: #3b82f6;
+        }
+
+        .key.codex .key-number,
+        .key.codex .key-label {
+            color: white;
+        }
+
+        .key.claude {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            border-color: #8b5cf6;
+        }
+
+        .key.claude .key-number,
+        .key.claude .key-label {
+            color: white;
+        }
+
+        .key-tall {
+            grid-row: span 2;
+            height: 130px;
+        }
+
+        .key-wide {
+            grid-column: span 2;
+            width: 130px;
+        }
+
+        .legend {
+            margin-top: 25px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-special {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .legend-codex {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+        }
+
+        .legend-claude {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        }
+
+        .legend-normal {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        }
+
+        .key-mapping {
+            margin-top: 25px;
+            padding: 20px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            max-width: 400px;
+        }
+
+        .mapping-title {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .mapping-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+            font-size: 0.8rem;
+        }
+
+        .mapping-item:last-child {
+            border-bottom: none;
+        }
+
+        .mapping-key {
+            color: #64748b;
+        }
+
+        .mapping-func {
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Codex Micro 键盘</div>
+            <div class="subtitle">Vibecoding · 数字键双模式</div>
+        </div>
+
+        <div class="mode-switch">
+            <span class="switch-label" id="label-num">数字键</span>
+            <div class="toggle-switch on" id="mode-switch"></div>
+            <span class="switch-label active" id="label-codex">Codex</span>
+        </div>
+
+        <div class="keyboard-wrapper">
+            <div class="keypad" id="keypad">
+                <!-- Row 1 -->
+                <div class="key special" data-key="/">
+                    <div class="key-status on"></div>
+                    <span class="key-icon">📋</span>
+                    <span class="key-label" id="key-/-label">命令菜单</span>
+                </div>
+                <div class="key" data-key="*">
+                    <div class="key-status"></div>
+                    <span class="key-icon">✨</span>
+                    <span class="key-label" id="key-*-label">快速创建</span>
+                </div>
+                <div class="key" data-key="-">
+                    <div class="key-status"></div>
+                    <span class="key-icon">🗑️</span>
+                    <span class="key-label" id="key--label">删除</span>
+                </div>
+                <div class="key" data-key="backspace">
+                    <div class="key-status"></div>
+                    <span class="key-icon">↩️</span>
+                    <span class="key-label" id="key-back-label">取消</span>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="key codex" data-key="7">
+                    <div class="key-status on"></div>
+                    <span class="key-number">7</span>
+                    <span class="key-label" id="key-7-label">Agent</span>
+                </div>
+                <div class="key codex" data-key="8">
+                    <div class="key-status on"></div>
+                    <span class="key-number">8</span>
+                    <span class="key-label" id="key-8-label">微型计划</span>
+                </div>
+                <div class="key codex" data-key="9">
+                    <div class="key-status on"></div>
+                    <span class="key-number">9</span>
+                    <span class="key-label" id="key-9-label">审查</span>
+                </div>
+                <div class="key claude key-tall" data-key="+">
+                    <div class="key-status on"></div>
+                    <span class="key-icon">💬</span>
+                    <span class="key-label" id="key-+-label">快捷聊天</span>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="key codex" data-key="4">
+                    <div class="key-status on"></div>
+                    <span class="key-number">4</span>
+                    <span class="key-label" id="key-4-label">权限</span>
+                </div>
+                <div class="key codex" data-key="5">
+                    <div class="key-status on"></div>
+                    <span class="key-number">5</span>
+                    <span class="key-label" id="key-5-label">收藏</span>
+                </div>
+                <div class="key codex" data-key="6">
+                    <div class="key-status on"></div>
+                    <span class="key-number">6</span>
+                    <span class="key-label" id="key-6-label">应用</span>
+                </div>
+
+                <!-- Row 4 -->
+                <div class="key claude" data-key="1">
+                    <div class="key-status on"></div>
+                    <span class="key-number">1</span>
+                    <span class="key-label" id="key-1-label">上下文</span>
+                </div>
+                <div class="key claude" data-key="2">
+                    <div class="key-status on"></div>
+                    <span class="key-number">2</span>
+                    <span class="key-label" id="key-2-label">撤销</span>
+                </div>
+                <div class="key claude" data-key="3">
+                    <div class="key-status on"></div>
+                    <span class="key-number">3</span>
+                    <span class="key-label" id="key-3-label">搜索</span>
+                </div>
+                <div class="key special key-tall" data-key="enter">
+                    <div class="key-status on"></div>
+                    <span class="key-icon">✓</span>
+                    <span class="key-label" id="key-enter-label">执行</span>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="key key-wide" data-key="0">
+                    <div class="key-status"></div>
+                    <span class="key-icon">🎤</span>
+                    <span class="key-label" id="key-0-label">语音</span>
+                </div>
+                <div class="key" data-key=".">
+                    <div class="key-status"></div>
+                    <span class="key-icon">⚙️</span>
+                    <span class="key-label" id="key-dot-label">设置</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot legend-special"></div>
+                <span>核心功能</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot legend-codex"></div>
+                <span>Codex</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot legend-claude"></div>
+                <span>Claude</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot legend-normal"></div>
+                <span>常规</span>
+            </div>
+        </div>
+
+        <div class="key-mapping">
+            <div class="mapping-title">快捷键映射</div>
+            <div class="mapping-item">
+                <span class="mapping-key">切换模式</span>
+                <span class="mapping-func">Ctrl+Shift+P</span>
+            </div>
+            <div class="mapping-item">
+                <span class="mapping-key">快捷聊天</span>
+                <span class="mapping-func">Ctrl+Alt+N</span>
+            </div>
+            <div class="mapping-item">
+                <span class="mapping-key">收藏夹</span>
+                <span class="mapping-func">⌘⇧K</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modeSwitch = document.getElementById('mode-switch');
+        const labelNum = document.getElementById('label-num');
+        const labelCodex = document.getElementById('label-codex');
+        let isCodexMode = true;
+
+        const codexLabels = {
+            '1': '上下文',
+            '2': '撤销',
+            '3': '搜索',
+            '4': '权限',
+            '5': '收藏',
+            '6': '应用',
+            '7': 'Agent',
+            '8': '微型计划',
+            '9': '审查',
+            '0': '语音',
+            '.': '设置',
+            '/': '命令菜单',
+            '*': '快速创建',
+            '-': '删除',
+            '+': '快捷聊天',
+            'back': '取消',
+            'enter': '执行'
+        };
+
+        const numLabels = {
+            '1': '1',
+            '2': '2',
+            '3': '3',
+            '4': '4',
+            '5': '5',
+            '6': '6',
+            '7': '7',
+            '8': '8',
+            '9': '9',
+            '0': '0',
+            '.': '.',
+            '/': '/',
+            '*': '*',
+            '-': '-',
+            '+': '+',
+            'back': '←',
+            'enter': 'Enter'
+        };
+
+        modeSwitch.addEventListener('click', () => {
+            isCodexMode = !isCodexMode;
+            
+            if (isCodexMode) {
+                modeSwitch.classList.add('on');
+                labelNum.classList.remove('active');
+                labelCodex.classList.add('active');
+            } else {
+                modeSwitch.classList.remove('on');
+                labelNum.classList.add('active');
+                labelCodex.classList.remove('active');
+            }
+
+            updateLabels();
+        });
+
+        function updateLabels() {
+            const labels = isCodexMode ? codexLabels : numLabels;
+            
+            for (let key in labels) {
+                const el = document.getElementById(`key-${key}-label`);
+                if (el) {
+                    el.textContent = labels[key];
+                }
+            }
+
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                const keyData = key.dataset.key;
+                if (keyData && !isCodexMode) {
+                    key.classList.remove('special', 'codex', 'claude');
+                    const icon = key.querySelector('.key-icon');
+                    const num = key.querySelector('.key-number');
+                    if (icon) icon.style.display = 'none';
+                    if (num) {
+                        num.style.display = 'block';
+                        num.textContent = keyData;
+                    }
+                } else if (keyData && isCodexMode) {
+                    if (keyData === '/' || keyData === 'enter') {
+                        key.classList.add('special');
+                    } else if (['4','5','6','7','8','9'].includes(keyData)) {
+                        key.classList.add('codex');
+                    } else if (['1','2','3','+'].includes(keyData)) {
+                        key.classList.add('claude');
+                    }
+                    const icon = key.querySelector('.key-icon');
+                    if (icon) icon.style.display = 'block';
+                }
+            });
+        }
+
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', () => {
+                key.style.transform = 'scale(0.96)';
+                setTimeout(() => {
+                    key.style.transform = '';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

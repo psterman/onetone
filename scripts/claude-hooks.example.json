@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

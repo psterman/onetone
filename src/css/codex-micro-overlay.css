@@ -202,6 +202,26 @@ body {
   place-items: center;
 }
 
+.overlay-nav-rail__caption {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 10px;
+  z-index: 2;
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+  color: rgba(210, 224, 240, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.overlay-nav-rail.is-arrows-live .overlay-nav-rail__caption {
+  color: rgba(120, 210, 170, 0.95);
+}
+
 .overlay-nav-key {
   width: 40px;
   height: 40px;
@@ -584,6 +604,39 @@ body {
   overflow: visible;
 }
 
+/* 数字键模式：标准 PC 小键盘（4×5，+ / Enter 跨行） */
+.wrap.is-mode-numpad .overlay-body .micro-hw__grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+
+.micro-hw__key--numpad {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.micro-hw__key--rowspan2 {
+  align-self: stretch;
+}
+
+.micro-hw__digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--overlay-ink, #3a4454);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.micro-hw__key--numpad[data-micro-key="NP_ENTER"] .micro-hw__digit,
+.micro-hw__key--numpad[data-micro-key="NP_ADD"] .micro-hw__digit {
+  font-size: 24px;
+}
+
 .overlay-body .micro-hw__key {
   position: relative;
   z-index: 2;
@@ -679,6 +732,18 @@ body {
   max-width: 34px;
   max-height: 34px;
   opacity: 0.92;
+}
+
+/* ACT context from State Core — visual hint only; never blocks fire. */
+.overlay-body .micro-hw__key.is-context-emphasize {
+  outline: 2px solid rgba(245, 166, 35, 0.85);
+  outline-offset: 1px;
+  filter: brightness(1.06);
+  z-index: 2;
+}
+.overlay-body .micro-hw__key.is-context-dim {
+  opacity: 0.42;
+  filter: grayscale(0.35);
 }
 
 /* White sculpted command keys. */
@@ -882,19 +947,38 @@ body {
   color: rgba(230, 238, 248, 0.92);
   background: rgba(12, 22, 36, 0.88);
   border: 1px solid rgba(140, 170, 210, 0.18);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   max-width: calc(100% - 24px);
   box-sizing: border-box;
 }
 
-/* Soften pad while click-through: status beacon only, Codex dialog receives clicks. */
-.wrap.is-pass-through .overlay-body .micro-hw {
-  opacity: 0.92;
+.overlay-app-meta__row {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.wrap.is-pass-through .micro-hw__key {
-  pointer-events: none;
+
+.overlay-app-meta__task {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(190, 210, 230, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Soften pad while click-through: status beacon only, Codex dialog receives clicks. */
+.wrap.is-pass-through {
+  pointer-events: none !important;
+  cursor: default;
+}
+.wrap.is-pass-through .overlay-body .micro-hw {
+  opacity: 0.78;
+}
+.wrap.is-pass-through .micro-hw__key,
+.wrap.is-pass-through .overlay-chrome,
+.wrap.is-pass-through [data-act] {
+  pointer-events: none !important;
 }
 
 .overlay-app-meta[data-source="codex_hook"] {

@@ -4,6 +4,8 @@
 
 **这不是 Micro HID thstatus。** Hook 通过只说明接上了官方生命周期事件；`native` / Native Micro 仍只代表真 Micro 协议状态。
 
+状态归一与仲裁见 **[State Core](./pad-status-core.md)**：Overlay / AG00 只读 `pad_status`，不再双轨判灯。
+
 ## 3 分钟用户路径
 
 1. 打开 OneTone，进入 Codex 小键盘管理。
