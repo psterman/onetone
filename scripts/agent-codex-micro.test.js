@@ -259,6 +259,20 @@ assert.equal(act12Def.slotId, 'stopOrSend');
 assert.equal(Number(act12Def.sourceScan), 0x1C);
 assert.equal(!!act12Def.sourceExtended, true);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).uiLabelZh, '上下文');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridRow, 4);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 5);
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }));
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_LEFT'; }));
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_DOWN'; }));
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_RIGHT'; }));
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }).gridCol, 1);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ENC'; }).gridCol, 2);
+assert.ok(!Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'JOY'; }));
+assert.ok(Pad.cellByMicroId('NAV_UP'));
+assert.equal(Pad.DEFAULT_ICON_BY_MICRO.NAV_UP, 'navUp');
+assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }).gridCol, 1);
+assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 5);
+assert.ok(!layout.cells.find(function (c) { return c.microKeyId === 'JOY'; }));
 
 var mapping = {
   id: 'm-m1-test',
@@ -291,6 +305,8 @@ assert.equal(exported.kind, 'onetone-codex-numpad-layout');
 assert.ok(Array.isArray(exported.keys));
 
 var padSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
+assert.ok(padSrc.indexOf('navUp') >= 0);
+assert.ok(padSrc.indexOf('micro-hw-nav-rail') < 0, 'settings pad must not render JOY side rail');
 assert.ok(padSrc.indexOf('applyNumpadControllerStandard') >= 0);
 assert.ok(padSrc.indexOf('data-pad-mode="try"') >= 0 || padSrc.indexOf("id: 'try'") >= 0);
 assert.ok(padSrc.indexOf('Alt+Numpad') < 0);

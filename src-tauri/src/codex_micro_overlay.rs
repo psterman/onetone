@@ -20,7 +20,8 @@ const OVERLAY_WIDTH: f64 = 432.0;
 const OVERLAY_HEIGHT_FULL: f64 = 540.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).
-const NAV_RAIL_WIDTH: f64 = 152.0;
+/// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
+#[allow(dead_code)]
 const OVERLAY_WIDTH_MINI: f64 = 156.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
 const HIGHLIGHT_MS: u64 = 320;
@@ -159,9 +160,8 @@ fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySn
             let _ = win.show();
         }
     }
-    // During permission wait: collapse JOY context rail (physical arrows + visible
-    // D-pad would fight the approval UI / click-through beacon).
-    if pass && crate::codex_numpad_layer::joy_nav_panel_open() {
+    // Side-rail removed — keep latch closed for any legacy readers.
+    if pass {
         crate::codex_numpad_layer::set_joy_nav_panel_open(false);
     }
 }
@@ -295,6 +295,13 @@ struct OverlayCellDef {
 
 const OVERLAY_CELLS: &[OverlayCellDef] = &[
     OverlayCellDef {
+        micro_key_id: "NAV_UP",
+        label_zh: "上",
+        label_en: "Up",
+        kind: "nav",
+        default_icon: "navUp",
+    },
+    OverlayCellDef {
         micro_key_id: "ENC",
         label_zh: "总开关",
         label_en: "Power",
@@ -323,11 +330,11 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
         default_icon: "model",
     },
     OverlayCellDef {
-        micro_key_id: "JOY",
-        label_zh: "摇杆",
-        label_en: "Stick",
-        kind: "control",
-        default_icon: "empty",
+        micro_key_id: "NAV_LEFT",
+        label_zh: "左",
+        label_en: "Left",
+        kind: "nav",
+        default_icon: "navLeft",
     },
     OverlayCellDef {
         micro_key_id: "AG03",
@@ -351,6 +358,13 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
         default_icon: "cloud",
     },
     OverlayCellDef {
+        micro_key_id: "NAV_DOWN",
+        label_zh: "下",
+        label_en: "Down",
+        kind: "nav",
+        default_icon: "navDown",
+    },
+    OverlayCellDef {
         micro_key_id: "ACT06",
         label_zh: "快速",
         label_en: "Fast",
@@ -372,11 +386,11 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
         default_icon: "reject",
     },
     OverlayCellDef {
-        micro_key_id: "ACT09",
-        label_zh: "上下文",
-        label_en: "Context",
-        kind: "command",
-        default_icon: "fork",
+        micro_key_id: "NAV_RIGHT",
+        label_zh: "右",
+        label_en: "Right",
+        kind: "nav",
+        default_icon: "navRight",
     },
     OverlayCellDef {
         micro_key_id: "ACT10",
@@ -391,6 +405,13 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
         label_en: "Send",
         kind: "command",
         default_icon: "send",
+    },
+    OverlayCellDef {
+        micro_key_id: "ACT09",
+        label_zh: "上下文",
+        label_en: "Context",
+        kind: "command",
+        default_icon: "fork",
     },
 ];
 
@@ -1070,19 +1091,18 @@ fn resolve_overlay_rgb(
     vendor_rgb
 }
 
-/// JOY context rail: open latch + whether physical arrows are actually live.
+/// Deprecated joyNavPanelOpen always false; joy_arrows_live = pad_active && Codex FG.
 fn joy_context_fields(pad_enabled: bool) -> (bool, bool, String) {
-    let open = pad_enabled && crate::codex_numpad_layer::joy_nav_panel_open();
-    if !open {
-        return (false, false, String::new());
-    }
+    let _ = pad_enabled;
     let live = crate::codex_numpad_layer::pad_should_capture_arrows();
     let hint = if live {
-        "物理方向键 → Codex".into()
+        "方向键已接入".into()
+    } else if crate::codex_numpad_layer::pad_mapping_active() {
+        "切到 Codex 前台后方向键生效".into()
     } else {
-        "点 ENC 召唤后方向键生效".into()
+        String::new()
     };
-    (true, live, hint)
+    (false, live, hint)
 }
 
 /// Prefer the enabled Codex scenario that drives the overlay; fall back to any Codex mapping.
@@ -1109,7 +1129,6 @@ fn codex_mapping_index_for_pad_toggle(cfg: &VoiceConfig) -> Option<usize> {
 }
 
 /// Toggle Codex ↔ numpad mode (`pad.enabled` only). Does not hide the overlay.
-/// Switching to numpad auto-closes the JOY NAV rail.
 /// Disk save runs off the cfg lock — sync pretty-print + bak under lock used to 假死
 /// the UI when the mode switch was clicked several times quickly.
 pub fn toggle_pad_mode(app: &AppHandle, state: &AppState) -> Result<String, String> {
@@ -1152,29 +1171,11 @@ pub fn toggle_pad_mode(app: &AppHandle, state: &AppState) -> Result<String, Stri
     Ok(mode)
 }
 
-/// Toggle JOY left NAV rail (overlay session only). No-op / forced closed in numpad mode.
+/// Legacy no-op: side-rail removed. Always returns false so old FE does not open a rail.
 pub fn toggle_joy_nav_panel(app: &AppHandle, state: &AppState) -> Result<bool, String> {
-    let open;
-    {
-        let cfg = state.cfg.lock();
-        let pad_enabled = cfg
-            .active_mappings()
-            .iter()
-            .find(|m| m.app_target_id.trim() == CODEX_APP_TARGET_ID)
-            .and_then(|m| m.codex_micro_pad.as_ref())
-            .map(|p| p.enabled)
-            .unwrap_or(false);
-        if !pad_enabled {
-            crate::codex_numpad_layer::set_joy_nav_panel_open(false);
-            open = false;
-        } else {
-            let next = !crate::codex_numpad_layer::joy_nav_panel_open();
-            crate::codex_numpad_layer::set_joy_nav_panel_open(next);
-            open = next;
-        }
-    }
+    crate::codex_numpad_layer::set_joy_nav_panel_open(false);
     push_state(app, state);
-    Ok(open)
+    Ok(false)
 }
 
 /// Legacy ENC master toggle (kept for compatibility). Prefer `toggle_pad_mode`.
@@ -1301,8 +1302,8 @@ fn overlay_logical_size(minimized: bool, _joy_open: bool) -> (f64, f64) {
     if minimized {
         (OVERLAY_WIDTH_MINI, OVERLAY_HEIGHT_MINI)
     } else {
-        // Always include NAV rail strip — JOY toggle is CSS-only (no window jump).
-        (OVERLAY_WIDTH + NAV_RAIL_WIDTH, OVERLAY_HEIGHT_FULL)
+        // NAV keys live on the 5-col main pad — no side-rail width reserve.
+        (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
     }
 }
 
@@ -2046,7 +2047,7 @@ mod tests {
     }
 
     #[test]
-    fn joy_context_rail_hint_when_open_without_codex_fg() {
+    fn joy_arrows_live_follows_pad_active_not_rail() {
         let _iso = isolate_status_globals();
         let mut cfg = VoiceConfig::default();
         cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
@@ -2063,18 +2064,13 @@ mod tests {
         crate::codex_numpad_layer::set_joy_nav_panel_open(true);
         test_set_foreground_latch(true);
         let snap = build_snapshot_from_cfg(&cfg);
-        assert!(snap.joy_nav_panel_open);
+        assert!(!snap.joy_nav_panel_open, "side-rail deprecated → always false");
         assert!(!snap.joy_arrows_live, "no real Codex FG → arrows not live");
         assert!(
-            snap.joy_context_hint.contains("ENC") || snap.joy_context_hint.contains("召唤"),
+            snap.joy_context_hint.contains("前台") || snap.joy_context_hint.contains("方向"),
             "hint={}",
             snap.joy_context_hint
         );
-
-        crate::codex_numpad_layer::set_joy_nav_panel_open(false);
-        let snap2 = build_snapshot_from_cfg(&cfg);
-        assert!(!snap2.joy_nav_panel_open);
-        assert!(snap2.joy_context_hint.is_empty());
     }
 
     #[test]

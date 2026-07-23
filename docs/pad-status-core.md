@@ -41,7 +41,7 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 7. **Soft RGB**：`pad_status` → 语义色写入 snapshot.`rgb`；状态灯开时忽略 vendor `rgbcfg`（防 sticky mint）；FE 只消费 `rgb`，不再本地色表 / 事件推灯  
 8. **任务卡**：状态灯开且非 idle 时，meta 第二行展示 `message` · 短 `taskId` · 短 `sessionId`（同源 Core，不另判状态）  
 9. **ENC 召回**：`summonCodex` / `openAgent` 走 Global `focus_composer` 工作流，**不**注入 `Ctrl+Shift+P`；模式开关仍是 ENC 上的独立 switch  
-10. **JOY 方向轨**：打开后注入 NAV_*（overlay 键 + 物理方向键仅在 Codex 前台时 live）；`needs_input` 点击穿透时自动收起；hint 说明是否已劫持物理方向键  
+10. **主盘方向键**：左侧常驻 `NAV_UP/LEFT/DOWN/RIGHT`（默认注入箭头，可绑 slot）；物理方向键在 Codex 前台且场景映射开启时劫持；**不再**依赖 JOY 侧轨开关（`joyNavPanelOpen` 恒 false）  
 11. **状态诊断**：Pad 管理「状态诊断」只读 `pad_status` + `logs/pad-status.jsonl` 尾部（accept/reject），不另判灯  
 12. **ACT 上下文化**：状态灯开时 Overlay ACT 键按 Core UI 状态 `emphasize` / `dim`（如 `needs_input` 强调确认/拒绝）；**仅视觉提示，不硬拦 fire**  
 13. **jsonl 回放**：诊断区结构化时间线（时间 · UI 状态 · 来源 · raw · 拒因），可筛 全部/已接受/已拒绝；**只读，不回写 Core、不改灯**  

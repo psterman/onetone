@@ -276,7 +276,7 @@
     <div class="container">
         <div class="header">
             <div class="title">Soft Pad 玻璃键面预览</div>
-            <div class="subtitle">按键样式 / 质感 / UI 复刻自 keyboard-combined-glass.html · 布局仍为 Micro Soft Pad</div>
+            <div class="subtitle">按键样式 / 质感 / UI 复刻自 keyboard-combined-glass.html · 左列常驻方向键 · 无独立 JOY 侧轨</div>
         </div>
 
         <div class="mode-switch">
@@ -287,76 +287,82 @@
 
         <div class="keyboard-wrapper">
             <div class="softpad">
-                <!-- Row 1: ENC AG00 AG01 AG02 JOY -->
+                <!-- 5-col: NAV | ENC/empty | AG/ACT -->
                 <div class="key" style="grid-column:1;grid-row:1">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-icon">↑</div>
+                    <div class="key-label">UP</div>
+                </div>
+                <div class="key" style="grid-column:2;grid-row:1">
                     <div class="key-status agent-cyan"></div>
                     <div class="key-icon">⏻</div>
                     <div class="key-label">ENC</div>
                 </div>
-                <div class="key ai-claude" style="grid-column:2;grid-row:1">
+                <div class="key ai-claude" style="grid-column:3;grid-row:1">
                     <div class="key-status agent-purple"></div>
                     <div class="key-num">7</div>
                     <div class="key-label">AGENT</div>
                 </div>
-                <div class="key ai-claude" style="grid-column:3;grid-row:1">
+                <div class="key ai-claude" style="grid-column:4;grid-row:1">
                     <div class="key-status agent-purple"></div>
                     <div class="key-num">8</div>
                     <div class="key-label">CLAUDE</div>
                 </div>
-                <div class="key ai-claude" style="grid-column:4;grid-row:1">
+                <div class="key ai-claude" style="grid-column:5;grid-row:1">
                     <div class="key-status agent-purple"></div>
                     <div class="key-num">9</div>
                     <div class="key-label">CODEX</div>
                 </div>
-                <div class="key ai-codex" style="grid-column:5;grid-row:1">
-                    <div class="key-status agent-blue"></div>
-                    <div class="key-icon">◉</div>
-                    <div class="key-label">JOY</div>
-                </div>
 
-                <!-- Row 2: (empty under ENC) AG03 AG04 AG05 -->
-                <div class="key key-empty" style="grid-column:1;grid-row:2"></div>
-                <div class="key ai-codex" style="grid-column:2;grid-row:2">
+                <div class="key" style="grid-column:1;grid-row:2">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-icon">←</div>
+                    <div class="key-label">LEFT</div>
+                </div>
+                <div class="key key-empty" style="grid-column:2;grid-row:2"></div>
+                <div class="key ai-codex" style="grid-column:3;grid-row:2">
                     <div class="key-status agent-blue"></div>
                     <div class="key-num">4</div>
                     <div class="key-label">PERMIT</div>
                 </div>
-                <div class="key ai-codex" style="grid-column:3;grid-row:2">
+                <div class="key ai-codex" style="grid-column:4;grid-row:2">
                     <div class="key-status agent-blue"></div>
                     <div class="key-num">5</div>
                     <div class="key-label">STATUS</div>
                 </div>
-                <div class="key ai-codex" style="grid-column:4;grid-row:2">
+                <div class="key ai-codex" style="grid-column:5;grid-row:2">
                     <div class="key-status agent-blue"></div>
                     <div class="key-num">6</div>
                     <div class="key-label">APPS</div>
                 </div>
 
-                <!-- Row 3: ACT06–09 -->
-                <div class="key key-empty" style="grid-column:1;grid-row:3"></div>
-                <div class="key" style="grid-column:2;grid-row:3">
+                <div class="key" style="grid-column:1;grid-row:3">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-icon">↓</div>
+                    <div class="key-label">DOWN</div>
+                </div>
+                <div class="key key-empty" style="grid-column:2;grid-row:3"></div>
+                <div class="key" style="grid-column:3;grid-row:3">
                     <div class="key-status agent-cyan"></div>
                     <div class="key-num">/</div>
                     <div class="key-label">FAST</div>
                 </div>
-                <div class="key" style="grid-column:3;grid-row:3">
+                <div class="key" style="grid-column:4;grid-row:3">
                     <div class="key-status agent-cyan"></div>
                     <div class="key-num">*</div>
                     <div class="key-label">CMD</div>
                 </div>
-                <div class="key" style="grid-column:4;grid-row:3">
+                <div class="key" style="grid-column:5;grid-row:3">
                     <div class="key-status agent-red"></div>
                     <div class="key-num">−</div>
                     <div class="key-label">REJECT</div>
                 </div>
-                <div class="key" style="grid-column:5;grid-row:3">
-                    <div class="key-status agent-cyan"></div>
-                    <div class="key-num">1</div>
-                    <div class="key-label">CTX</div>
-                </div>
 
-                <!-- Row 4: Mic + Send -->
-                <div class="key key-empty" style="grid-column:1;grid-row:4"></div>
+                <div class="key" style="grid-column:1;grid-row:4">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-icon">→</div>
+                    <div class="key-label">RIGHT</div>
+                </div>
                 <div class="key key-wide ai-action" style="grid-column:2;grid-row:4">
                     <div class="key-status agent-green"></div>
                     <div class="key-icon">🎤</div>
@@ -366,6 +372,11 @@
                     <div class="key-status agent-green"></div>
                     <div class="key-icon">⏎</div>
                     <div class="key-label">SEND</div>
+                </div>
+                <div class="key" style="grid-column:5;grid-row:4">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-num">1</div>
+                    <div class="key-label">CTX</div>
                 </div>
             </div>
         </div>
@@ -402,9 +413,14 @@
                     <span class="status-func">拒绝</span>
                 </div>
                 <div class="status-item">
+                    <div class="status-dot" style="background:#22d3ee;"></div>
+                    <span class="status-key">↑←↓→</span>
+                    <span class="status-func">主盘方向键</span>
+                </div>
+                <div class="status-item">
                     <div class="status-dot" style="background:#3b82f6;"></div>
-                    <span class="status-key">ENC JOY</span>
-                    <span class="status-func">总开关 · 方向轨</span>
+                    <span class="status-key">ENC</span>
+                    <span class="status-func">总开关</span>
                 </div>
             </div>
         </div>

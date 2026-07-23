@@ -115,13 +115,13 @@ pub fn arrow_nav_micro_key(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Physical arrows → NAV_* only when Codex mapping is on AND JOY rail is open.
+/// Physical arrows → NAV_* when Codex is foreground and pad mapping is active
+/// (no longer requires JOY side-rail open — NAV lives on the main pad).
 pub fn pad_should_capture_arrows() -> bool {
     if !codex_is_foreground() {
         return false;
     }
-    let gate = hook_gate().lock().unwrap();
-    gate.pad_active && gate.joy_nav_panel_open
+    hook_gate().lock().unwrap().pad_active
 }
 
 /// Whether Codex Micro pad mapping is currently active (pad.enabled).
@@ -1373,7 +1373,7 @@ mod tests {
     }
 
     #[test]
-    fn arrow_capture_requires_joy_rail_open() {
+    fn arrow_capture_requires_pad_active_not_rail() {
         use crate::config::{MappingEntry, TriggerMode};
 
         let mut cfg = VoiceConfig::default();
@@ -1414,12 +1414,10 @@ mod tests {
         }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
+        // Rail latch ignored — capture depends on FG + pad_active only.
         set_joy_nav_panel_open(false);
-        assert!(!joy_nav_panel_open());
-        assert!(!pad_should_capture_arrows());
+        assert!(!pad_should_capture_arrows(), "no Codex FG → false");
         set_joy_nav_panel_open(true);
-        assert!(joy_nav_panel_open());
-        // Without Codex FG, capture stays false even with joy open.
-        assert!(!pad_should_capture_arrows());
+        assert!(!pad_should_capture_arrows(), "rail open still needs Codex FG");
     }
 }
