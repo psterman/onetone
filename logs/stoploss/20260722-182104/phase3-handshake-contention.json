@@ -1,0 +1,36 @@
+﻿{
+    "budget":  {
+                   "endsAt":  "2026-07-23T02:21:04.1512451+08:00",
+                   "elapsedMinutes":  0.7,
+                   "startedAt":  "2026-07-22T18:21:04.1512451+08:00",
+                   "exceeded":  false
+               },
+    "handlerImplemented":  [
+                               "sys.version",
+                               "device.status",
+                               "v.oai.thstatus",
+                               "v.oai.rgbcfg"
+                           ],
+    "timestamp":  "2026-07-22T18:21:45.7256871+08:00",
+    "processes":  {
+                      "AgentController":  true,
+                      "CodexDesktop":  true,
+                      "contentionRisk":  false,
+                      "CodexMicroSimulator":  false
+                  },
+    "codexRequestsSeen":  {
+                              "codexNeverSentRequest":  true,
+                              "note":  "If empty, Codex did not establish RPC session 鈥?not a handler bug",
+                              "methods":  [
+
+                                          ]
+                          },
+    "phase":  3,
+    "broker":  {
+                   "lockExists":  true,
+                   "lockPath":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\broker-v1.lock"
+               },
+    "codexLogHits":  [
+
+                     ]
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-status-lights-set"
+description = "Enables the cmd_codex_status_lights_set command without any pre-configured scope."
+commands.allow = ["cmd_codex_status_lights_set"]
+
+[[permission]]
+identifier = "deny-cmd-codex-status-lights-set"
+description = "Denies the cmd_codex_status_lights_set command without any pre-configured scope."
+commands.deny = ["cmd_codex_status_lights_set"]

@@ -8,6 +8,7 @@ mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
 mod coach_hud;
+mod codex_app_state;
 mod codex_micro_overlay;
 mod codex_micro_protocol_server;
 mod codex_micro_vendor;
@@ -627,22 +628,34 @@ pub fn run() {
                     });
             }
 
-            // Labs/验收 only — default OFF for normal users.
-            // Set ONETONE_CODEX_MICRO_PROTOCOL=1 to auto-start 127.0.0.1 status loopback.
-            if codex_micro_protocol_server::env_requests_autostart() {
-                let labs_app = app.handle().clone();
-                let labs_state = Arc::clone(&app_state);
-                match codex_micro_protocol_server::start(labs_app, labs_state, None) {
-                    Ok(r) => app_log::log_line(
-                        &app_state,
-                        "codex_micro_protocol",
-                        &format!("Labs autostart ok url={}", r.url),
-                    ),
-                    Err(err) => app_log::log_line(
-                        &app_state,
-                        "codex_micro_protocol",
-                        &format!("Labs autostart failed: {err}"),
-                    ),
+            // Hook → AG00 status lights need 127.0.0.1:8796. Start when status lights
+            // are enabled in config, or when Labs env is set (验收).
+            {
+                let lights_on = {
+                    let cfg = app_state.cfg.lock();
+                    codex_micro_overlay::status_lights_enabled(&cfg)
+                };
+                let labs = codex_micro_protocol_server::env_requests_autostart();
+                if lights_on || labs {
+                    let labs_app = app.handle().clone();
+                    let labs_state = Arc::clone(&app_state);
+                    let reason = if labs {
+                        "Labs"
+                    } else {
+                        "status_lights"
+                    };
+                    match codex_micro_protocol_server::start(labs_app, labs_state, None) {
+                        Ok(r) => app_log::log_line(
+                            &app_state,
+                            "codex_micro_protocol",
+                            &format!("{reason} autostart ok url={}", r.url),
+                        ),
+                        Err(err) => app_log::log_line(
+                            &app_state,
+                            "codex_micro_protocol",
+                            &format!("{reason} autostart failed: {err}"),
+                        ),
+                    }
                 }
             }
 
@@ -753,6 +766,8 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_set_flags,
             ipc::cmd_codex_micro_pad_ensure_ready,
             ipc::cmd_codex_micro_pad_get_readiness,
+            ipc::cmd_codex_status_lights_set,
+            ipc::cmd_codex_hook_setup_status,
             ipc::cmd_acoustic_voice_command_status,
             ipc::cmd_acoustic_voice_command_preflight,
             ipc::cmd_acoustic_voice_command_set_suspend,

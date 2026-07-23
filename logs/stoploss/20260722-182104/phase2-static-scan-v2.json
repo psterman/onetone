@@ -1,0 +1,75 @@
+﻿{
+    "packageRoot":  "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.715.9868.0_x64__2p2nqsd0c76g0",
+    "keyFiles":  [
+                     {
+                         "sha256":  "16888e755a2f2fbcd4e1994b10272f5f0ed963611b22c5f262ab60d9742e2397",
+                         "name":  "codex-micro-service-Cjfx6wOZ.js",
+                         "path":  "C:\\Users\\Administrator\\AppData\\Local\\Temp\\codex-asar-extract\\.vite\\build\\codex-micro-service-Cjfx6wOZ.js",
+                         "sizeBytes":  18243,
+                         "label":  "codex-micro-service",
+                         "baselineSha256":  "0bb261e3eed89ff69384754ab67df49c9f10dbd2fa567104c5859f43d026c911",
+                         "hashMatch":  false
+                     },
+                     {
+                         "sha256":  "5f9512b278a573171eb2cd36d98afd13cdb9315ac14f1ba544b0e28b7f782e92",
+                         "name":  "codex-micro-bridge-kIdGpn8c.js",
+                         "path":  "C:\\Users\\Administrator\\AppData\\Local\\Temp\\codex-asar-extract\\webview\\assets\\codex-micro-bridge-kIdGpn8c.js",
+                         "sizeBytes":  21458,
+                         "label":  "codex-micro-bridge",
+                         "baselineSha256":  "df6063eb17046594e769050c6bbb3ed169b1352bbd5867fffb4d1f8c724f3e93",
+                         "hashMatch":  false
+                     },
+                     {
+                         "sha256":  "7c7b138f76fb7f3ce3c052232e924c654368f4e014c18c68ee7976963a9c1485",
+                         "name":  "codex-micro-slot-signals-fmkxurMs.js",
+                         "path":  "C:\\Users\\Administrator\\AppData\\Local\\Temp\\codex-asar-extract\\webview\\assets\\codex-micro-slot-signals-fmkxurMs.js",
+                         "sizeBytes":  6834,
+                         "label":  "codex-micro-slot-signals",
+                         "baselineSha256":  "e5f0084a27fc0e908c4514a5d3bd0a90dba3f953a48521fb4ae2a43b1e5b28bb",
+                         "hashMatch":  false
+                     },
+                     {
+                         "sha256":  "80815366885246cd9644e13b770f38c7f9c0587db13cc8979310571ba0fa029a",
+                         "name":  "rpc_api_oai.js",
+                         "path":  "C:\\Users\\Administrator\\AppData\\Local\\Temp\\codex-asar-extract\\node_modules\\@worklouder\\device-kit-oai\\dist\\rpc_api_oai\\rpc_api_oai.js",
+                         "sizeBytes":  6716,
+                         "label":  "rpc_api_oai",
+                         "baselineSha256":  "80815366885246cd9644e13b770f38c7f9c0587db13cc8979310571ba0fa029a",
+                         "hashMatch":  true
+                     }
+                 ],
+    "judgment":  {
+                     "microCodeFound":  true,
+                     "hashDrift":  true,
+                     "featureFlagHint":  false,
+                     "physicalGateLikely":  false,
+                     "noMicroCode":  false
+                 },
+    "hitCounts":  {
+                      "thstatus":  0,
+                      "featureFlag":  0,
+                      "vidPid":  0,
+                      "total":  0,
+                      "physicalGate":  0
+                  },
+    "sampleHits":  {
+                       "featureFlag":  [
+
+                                       ],
+                       "vidPid":  [
+
+                                  ],
+                       "thstatus":  [
+
+                                    ],
+                       "physicalGate":  [
+
+                                        ]
+                   },
+    "phase":  2,
+    "timestamp":  "2026-07-22T18:24:32.6574294+08:00",
+    "scanRoot":  "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\codex-asar-extract",
+    "accessible":  true,
+    "accessError":  null,
+    "asarExtract":  "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\codex-asar-extract"
+}

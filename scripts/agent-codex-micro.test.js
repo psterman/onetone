@@ -317,7 +317,15 @@ assert.ok(overlayHtml.indexOf('data-act="lights"') < 0);
 assert.ok(overlayHtml.indexOf('info.runStatus') >= 0);
 assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
 assert.ok(overlayHtml.indexOf('statusSource') >= 0);
+assert.ok(overlayHtml.indexOf('statusSourceLabel') >= 0);
+assert.ok(overlayHtml.indexOf('Codex Hook') >= 0);
+assert.ok(overlayHtml.indexOf('Native Micro') >= 0);
 assert.ok(overlayHtml.indexOf('data-ag=') >= 0);
+assert.ok(overlayHtml.indexOf('overlayAppMeta') >= 0);
+assert.ok(overlayHtml.indexOf('appLastSource') >= 0);
+assert.ok(overlayHtml.indexOf('appLastEvent') >= 0);
+assert.ok(overlayHtml.indexOf('appStateEnabled') >= 0);
+assert.ok(overlayHtml.indexOf('applyAppMetaChip') >= 0);
 var overlayCmd = fs.readFileSync(path.join(__dirname, '../src-tauri/src/ipc/commands/shell/codex_micro_overlay_cmd.rs'), 'utf8');
 assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_inject') >= 0);
 assert.ok(overlayCmd.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
@@ -329,11 +337,16 @@ var libRs = fs.readFileSync(path.join(__dirname, '../src-tauri/src/lib.rs'), 'ut
 assert.ok(libRs.indexOf('cmd_codex_micro_protocol_inject') >= 0);
 assert.ok(libRs.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
 assert.ok(libRs.indexOf('mod codex_micro_protocol_server') >= 0);
+assert.ok(libRs.indexOf('mod codex_app_state') >= 0);
 assert.ok(libRs.indexOf('env_requests_autostart') >= 0);
 var buildRs = fs.readFileSync(path.join(__dirname, '../src-tauri/build.rs'), 'utf8');
 assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_start') >= 0);
 assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_stop') >= 0);
 assert.ok(buildRs.indexOf('cmd_codex_micro_protocol_server_status') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_status_lights_set') >= 0);
+assert.ok(buildRs.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_status_lights_set') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_hook_setup_status') >= 0);
 
 var acceptanceHtml = fs.readFileSync(
   path.join(__dirname, '../design-mock/codex-onetone-linkage-acceptance.html'),
@@ -342,9 +355,24 @@ var acceptanceHtml = fs.readFileSync(
 assert.ok(acceptanceHtml.indexOf('场景模拟') >= 0);
 assert.ok(acceptanceHtml.indexOf('注入验证') >= 0);
 assert.ok(acceptanceHtml.indexOf('真桥验证') >= 0);
+assert.ok(acceptanceHtml.indexOf('Hook 真桥') >= 0 || acceptanceHtml.indexOf('一键 Hook 验收') >= 0);
 assert.ok(acceptanceHtml.indexOf('8796') >= 0);
+assert.ok(acceptanceHtml.indexOf('/api/codex-app/state') >= 0);
+assert.ok(acceptanceHtml.indexOf('codex_hook') >= 0);
+assert.ok(acceptanceHtml.indexOf('不等于 Micro HID thstatus') >= 0 || acceptanceHtml.indexOf('≠ Micro HID thstatus') >= 0);
+assert.ok(acceptanceHtml.indexOf('btnHookRunAll') >= 0);
+assert.ok(acceptanceHtml.indexOf('runHookAcceptancePipeline') >= 0);
+assert.ok(acceptanceHtml.indexOf('btnCopyHooksJson') >= 0);
+assert.ok(acceptanceHtml.indexOf('/_onetone/hook-log') >= 0);
+assert.ok(acceptanceHtml.indexOf('Codex Hook 状态灯') >= 0);
+assert.ok(acceptanceHtml.indexOf('Micro 协议注入') >= 0);
+assert.ok(acceptanceHtml.indexOf('hookZonePills') >= 0);
+assert.ok(acceptanceHtml.indexOf('microZonePills') >= 0);
+assert.ok(acceptanceHtml.indexOf('native AG ·') < 0, 'top status must not use native AG to imply Hook');
+assert.ok(acceptanceHtml.indexOf('statusSourceLabel(c.statusSource)') >= 0);
 assert.ok(acceptanceHtml.indexOf('Codex 接入检测') >= 0);
 assert.ok(acceptanceHtml.indexOf('btnProbe') >= 0);
+assert.ok(acceptanceHtml.indexOf('btnHookProbe') >= 0);
 assert.ok(acceptanceHtml.indexOf('connBanner') >= 0);
 assert.ok(acceptanceHtml.indexOf('btnRunAll') >= 0);
 assert.ok(acceptanceHtml.indexOf('pipelineList') >= 0);
@@ -356,12 +384,106 @@ var protocolServer = fs.readFileSync(
   'utf8'
 );
 assert.ok(protocolServer.indexOf('Access-Control-Allow-Origin') >= 0);
+assert.ok(protocolServer.indexOf('APP_STATE_PATH') >= 0);
+assert.ok(protocolServer.indexOf('appStateEnabled') >= 0);
+assert.ok(protocolServer.indexOf('disabled') >= 0);
+
+var statusLightsCmd = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/ipc/commands/shell/codex_status_lights_cmd.rs'),
+  'utf8'
+);
+assert.ok(statusLightsCmd.indexOf('cmd_codex_status_lights_set') >= 0);
+assert.ok(statusLightsCmd.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(statusLightsCmd.indexOf('server_stop') < 0, 'disable must not stop listener');
+assert.ok(statusLightsCmd.indexOf('not_configured') >= 0);
+assert.ok(statusLightsCmd.indexOf('configured_waiting') >= 0);
+assert.ok(statusLightsCmd.indexOf('connected') >= 0);
+
+var configRs = fs.readFileSync(path.join(__dirname, '../src-tauri/src/config.rs'), 'utf8');
+assert.ok(configRs.indexOf('codex_status_lights_enabled') >= 0);
+
+var overlayRs = fs.readFileSync(path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'), 'utf8');
+assert.ok(overlayRs.indexOf('app_state_enabled') >= 0);
+assert.ok(overlayRs.indexOf('app_last_seen_at') >= 0);
+assert.ok(overlayRs.indexOf('status_lights_enabled') >= 0);
+
+// P0 Hook probe + reducer
+var hookProbePath = path.join(__dirname, 'codex-hook-probe.js');
+assert.ok(fs.existsSync(hookProbePath), 'codex-hook-probe.js exists');
+var hookProbe = require('./codex-hook-probe');
+var tmpJsonl = path.join(__dirname, '../logs/_test-codex-hook-probe.jsonl');
+try { fs.unlinkSync(tmpJsonl); } catch (_) {}
+var fields = hookProbe.extractSafeFields({
+  hook_event_name: 'UserPromptSubmit',
+  session_id: 's1',
+  prompt: 'SECRET_SHOULD_NOT_LOG',
+  tool_input: { cmd: 'rm -rf /' }
+});
+assert.equal(fields.hook_event_name, 'UserPromptSubmit');
+assert.ok(!JSON.stringify(fields).includes('SECRET'));
+assert.ok(!('tool_input' in fields));
+hookProbe.appendJsonl(fields, tmpJsonl);
+assert.ok(fs.existsSync(tmpJsonl));
+var jsonlLine = fs.readFileSync(tmpJsonl, 'utf8').trim();
+assert.ok(jsonlLine.indexOf('UserPromptSubmit') >= 0);
+assert.ok(jsonlLine.indexOf('SECRET') < 0);
+try { fs.unlinkSync(tmpJsonl); } catch (_) {}
+
+var { spawnSync } = require('child_process');
+var probeRun = spawnSync(process.execPath, [hookProbePath], {
+  input: JSON.stringify({ hook_event_name: 'Stop', session_id: 't' }),
+  encoding: 'utf8',
+  env: Object.assign({}, process.env, { ONETONE_CODEX_APP_STATE_URL: 'http://127.0.0.1:9/nope' }),
+  timeout: 5000
+});
+assert.equal(probeRun.status, 0, 'probe always exit 0');
+assert.equal(String(probeRun.stdout || ''), '', 'probe stdout empty');
+
+var hooksExample = JSON.parse(fs.readFileSync(path.join(__dirname, 'codex-hooks.example.json'), 'utf8'));
+assert.ok(hooksExample.hooks, 'hooks.example has top-level hooks');
+['SessionStart', 'UserPromptSubmit', 'PermissionRequest', 'PreToolUse', 'PostToolUse', 'Stop', 'SubagentStart', 'SubagentStop'].forEach(function (ev) {
+  assert.ok(hooksExample.hooks[ev], 'hooks.example has ' + ev);
+});
+assert.ok(fs.existsSync(path.join(__dirname, '../docs/codex-hook-onetone-setup.md')));
+
+var reducer = require('./codex-hook-reducer');
+var store = reducer.createStore();
+store = reducer.applyEvent(store, { source: 'codex_hook', event: 'UserPromptSubmit' }, 1000);
+assert.equal(store.status, 'running');
+store = reducer.applyEvent(store, { source: 'codex_hook', event: 'PermissionRequest' }, 1010);
+assert.equal(store.status, 'needs_input');
+store = reducer.applyEvent(store, { source: 'codex_hook', event: 'Stop' }, 1020);
+assert.equal(store.status, 'done');
+assert.equal(store.lastEvent, 'Stop');
+var afterIdle = reducer.snapshot(store, 1020 + reducer.IDLE_AFTER_DONE_MS);
+assert.equal(afterIdle.status, 'idle');
+assert.equal(afterIdle.lastEvent, 'Stop');
+assert.equal(afterIdle.lastSource, 'codex_hook');
+
+var padUiSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
+assert.ok(padUiSrc.indexOf('statusSourceLabel') >= 0);
+assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
+assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
+assert.ok(padUiSrc.indexOf('renderHookStatusCard') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_status_lights_set') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_hook_setup_status') >= 0);
+assert.ok(padUiSrc.indexOf('codexStatusLightsEnabled') >= 0);
+assert.ok(padUiSrc.indexOf('已配置，等待 Codex 事件') >= 0);
+assert.ok(padUiSrc.indexOf('已连接') >= 0);
+assert.ok(padUiSrc.indexOf('未配置') >= 0);
+assert.ok(i18n.indexOf('codexMicroPadStatusLightsEnable:') >= 0);
+assert.ok(i18n.indexOf('codexMicroPadHookPhaseWaiting:') >= 0);
 
 var relayEx = fs.readFileSync(
   path.join(__dirname, 'codex-micro-agentcontroller-relay.example.js'),
   'utf8'
 );
-assert.ok(relayEx.indexOf('/api/codex-micro/protocol') >= 0);
+assert.ok(relayEx.indexOf('codex-micro-agentcontroller-relay.js') >= 0);
+var relayMain = fs.readFileSync(
+  path.join(__dirname, 'codex-micro-agentcontroller-relay.js'),
+  'utf8'
+);
+assert.ok(relayMain.indexOf('/api/codex-micro/protocol') >= 0 || relayMain.indexOf('codex-micro-relay-lib') >= 0);
 var overlayCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-overlay.css'), 'utf8');
 assert.ok(overlayCss.indexOf('micro-hw__brand--left') >= 0);
 assert.ok(overlayCss.indexOf('--overlay-shell') >= 0);

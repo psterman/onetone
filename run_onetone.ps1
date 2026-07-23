@@ -137,6 +137,45 @@ function Test-OnetoneRunning {
   return $null -ne (Get-Process onetone -ErrorAction SilentlyContinue | Select-Object -First 1)
 }
 
+function Test-PortOpen {
+  param([int]$Port)
+  try {
+    $c = New-Object System.Net.Sockets.TcpClient
+    $iar = $c.BeginConnect('127.0.0.1', $Port, $null, $null)
+    $ok = $iar.AsyncWaitHandle.WaitOne(400)
+    if (-not $ok) { $c.Close(); return $false }
+    $c.EndConnect($iar) | Out-Null
+    $c.Close()
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+## Dev webview loads http://localhost:1420 — without serve, the window shows ERR_CONNECTION_REFUSED.
+function Ensure-FrontendServe {
+  if (Test-PortOpen -Port 1420) {
+    Write-LaunchLog 'frontend serve already on :1420'
+    return
+  }
+  Write-LaunchLog 'starting frontend serve on :1420 (required for webview)'
+  $npm = Get-Command npm -ErrorAction SilentlyContinue
+  if (-not $npm) {
+    Write-LaunchLog 'npm not found; cannot start serve — UI will show localhost refused'
+    return
+  }
+  Start-Process -FilePath $npm.Source -ArgumentList @('run', 'serve') -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+  $deadline = (Get-Date).AddSeconds(12)
+  while ((Get-Date) -lt $deadline) {
+    if (Test-PortOpen -Port 1420) {
+      Write-LaunchLog 'frontend serve ready on :1420'
+      return
+    }
+    Start-Sleep -Milliseconds 400
+  }
+  Write-LaunchLog 'frontend serve did not become ready on :1420'
+}
+
 function Start-OnetoneProcess {
   param(
     [string]$ExePath,
@@ -173,6 +212,7 @@ function Start-OnetoneExe {
     Stop-AppProcessGracefully -Name 'onetone'
   }
   if (Test-OnetoneRunning) {
+    Ensure-FrontendServe
     Write-LaunchLog 'onetone already running, bring to front'
     Start-Process -FilePath $ExePath -WorkingDirectory $exeDir
     return
@@ -181,6 +221,7 @@ function Start-OnetoneExe {
   $releaseDir = Split-Path -Parent $ExePath
   Sync-VoskBundleResources -ReleaseDir $releaseDir
   Sync-KwsBundleResources -ReleaseDir $releaseDir
+  Ensure-FrontendServe
   Write-LaunchLog "runtime log: $(Join-Path $logDir 'runtime-live.log')"
   $extraEnv = @{ ONETONE_LOG_DIR = $logDir }
   if ($Safe) {

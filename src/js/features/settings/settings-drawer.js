@@ -356,6 +356,7 @@
 
     function finishHeavy(){
       try{
+        if(normalizePanel(ui.settingsPanel)!=='habits') return;
         if(view==='wizard'&&global.OneToneHabitScenarioWizard){
           global.OneToneHabitScenarioWizard.render();
         }else if(view==='hub'&&global.OneToneHabitHub){
@@ -397,6 +398,14 @@
         hooks().renderMappingChrome();
       });
     }
+  }
+
+  function stopKeysPanelBackgroundWork(){
+    try{
+      if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
+        global.OneToneCodexMicroPadUi.stopBackgroundWork();
+      }
+    }catch(_){}
   }
 
 
@@ -604,6 +613,11 @@
       global.OneToneTargetKeyPicker.close();
     }
 
+    // Leaving keys: stop pad readiness remount/poll so「我的习惯」open is not stacked under it.
+    if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
+      stopKeysPanelBackgroundWork();
+    }
+
     ui.settingsPanel=panel;
 
     const highlight=navHighlightPanel(panel);
@@ -642,7 +656,22 @@
 
     if(panel==='keys'){
 
-      refreshKeysPanel();
+      if(opts.deferHeavy){
+        var afterHeavy=opts.afterHeavy;
+        requestAnimationFrame(function(){
+          setTimeout(function(){
+            if(normalizePanel(ui.settingsPanel)!=='keys') return;
+            if(typeof afterHeavy==='function'){
+              try{ afterHeavy(); }
+              catch(err){ console.error('keys panel deferHeavy',err); }
+            }else{
+              refreshKeysPanel();
+            }
+          },0);
+        });
+      }else{
+        refreshKeysPanel();
+      }
 
     }else if(panel==='basic'){
 
@@ -800,6 +829,9 @@
     hooks().ensureFullLangApplied();
 
     opts=opts||{};
+    try{
+      feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
+    }catch(_){}
 
     hooks().closeHomeSchemeMenu();
 
@@ -931,6 +963,7 @@
     open:openSettings,openDrawer:openDrawer,close:closeDrawer,
 
     setPanel:setSettingsPanel,syncChrome:syncSettingsChrome,
+    refreshKeysPanel:refreshKeysPanel,
 
     openScenarioDetail:openScenarioDetail,openScenarioHub:openScenarioHub,openHabitWizard:openHabitWizard,scrollToVoiceAction:scrollToVoiceAction,
 

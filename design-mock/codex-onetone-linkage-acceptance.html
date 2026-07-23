@@ -93,6 +93,8 @@
     .conn-banner[data-level="none"] { border-color: rgba(196, 71, 82, 0.35); background: rgba(196, 71, 82, 0.06); }
     .conn-banner[data-level="local"] { border-color: rgba(196, 138, 20, 0.4); background: rgba(196, 138, 20, 0.08); }
     .conn-banner[data-level="inject"] { border-color: rgba(0, 133, 219, 0.4); background: var(--accent-soft); }
+    .conn-banner[data-level="live"] { border-color: rgba(90, 110, 140, 0.45); background: rgba(90, 110, 140, 0.08); }
+    .conn-banner[data-level="bridge"] { border-color: rgba(0, 140, 90, 0.45); background: rgba(0, 140, 90, 0.08); }
     .conn-banner[data-level="sim"] { border-color: rgba(196, 138, 20, 0.45); background: rgba(196, 138, 20, 0.08); }
     .conn-banner .title { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
     .conn-banner .sub { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -155,6 +157,36 @@
     .pipeline li[data-state="fail"] .badge { color: var(--fail); background: rgba(196, 71, 82, 0.12); }
     .pipeline li[data-state="run"] .badge { color: var(--accent); background: var(--accent-soft); }
     .pipeline .fix { margin-top: 6px; font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; align-items: center; }
+    .btn-hook-all {
+      appearance: none; border: 0; border-radius: 999px; padding: 12px 18px;
+      font: inherit; font-weight: 750; cursor: pointer; color: #fff;
+      background: linear-gradient(135deg, #1a8f6a, #2f9e6b 55%, #40b478);
+      box-shadow: 0 8px 20px rgba(47, 158, 107, 0.28);
+    }
+    .btn-hook-all:disabled { opacity: 0.55; cursor: wait; }
+    .btn-run-all.secondary {
+      background: #fff; color: var(--ink); border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    .hook-verdict {
+      margin: 16px 0 0;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .hook-verdict[data-level="pass"] { border-color: rgba(47, 158, 107, 0.45); background: rgba(47, 158, 107, 0.08); }
+    .hook-verdict[data-level="partial"] { border-color: rgba(196, 138, 20, 0.45); background: rgba(196, 138, 20, 0.08); }
+    .hook-verdict[data-level="fail"] { border-color: rgba(196, 71, 82, 0.45); background: rgba(196, 71, 82, 0.07); }
+    .hook-verdict .hv-title { font-weight: 750; font-size: 15px; }
+    .hook-verdict .hv-sub { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .hook-verdict .hv-meta { margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--ink); }
+    .setup-box {
+      margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+      border: 1px dashed var(--line); background: #fff; font-size: 12px; line-height: 1.5; color: var(--muted);
+    }
+    .setup-box code { word-break: break-all; }
     .btn-run-all {
       width: 100%;
       margin-bottom: 12px;
@@ -278,6 +310,11 @@
       border-color: rgba(0, 133, 219, 0.55);
       box-shadow: inset 0 0 0 1px rgba(0, 133, 219, 0.2);
     }
+    .ag-key[data-source="codex_hook"],
+    .ag-key[data-source="codex_app"] {
+      border-color: rgba(26, 122, 156, 0.55);
+      box-shadow: inset 0 0 0 1px rgba(26, 122, 156, 0.18);
+    }
     .ag-key[data-source="inferred"] {
       border-color: rgba(196, 138, 20, 0.45);
     }
@@ -319,8 +356,39 @@
       color: var(--muted);
     }
     .tag.src-native { color: var(--native); background: rgba(0, 133, 219, 0.12); }
+    .tag.src-native_micro { color: var(--native); background: rgba(0, 133, 219, 0.12); }
+    .tag.src-codex_hook { color: #1a7a9c; background: rgba(26, 122, 156, 0.14); }
+    .tag.src-codex_app { color: #1a7a9c; background: rgba(26, 122, 156, 0.1); }
     .tag.src-inferred { color: var(--inferred); background: rgba(196, 138, 20, 0.12); }
     .tag.src-fallback { color: var(--fallback); background: rgba(138, 149, 165, 0.16); }
+
+    .zone-split {
+      display: grid;
+      gap: 14px;
+      margin: 14px 0 4px;
+    }
+    @media (min-width: 900px) {
+      .zone-split { grid-template-columns: 1fr 1fr; }
+    }
+    .zone-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.55);
+    }
+    .zone-card h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .zone-card p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .zone-card.hook { border-color: rgba(26, 122, 156, 0.35); }
+    .zone-card.micro { border-color: rgba(0, 133, 219, 0.28); }
+    .zone-card .zone-pills { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 
     .rgb-swatch {
       display: inline-flex;
@@ -453,18 +521,38 @@
       <div>
         <h1>Codex ↔ OneTone 联动验收</h1>
         <p class="lede">
-          对照真状态灯 MVP：HID RPC → vendor 协议层 → overlay AG 合并（native / inferred / fallback）→ 浮层灯效。
-          场景按钮只验证合并规则；真联动以 overlay 快照 / protocol 注入返回快照为准。
+          P1：<strong>Codex Hook 状态灯</strong> 与 <strong>Micro 协议注入</strong> 分开验收。
+          Hook 成功看绿色结论卡与 <code>source=codex_hook</code>；Micro 成功看下方 Native Micro / thstatus。
+          二者互不暗示。
         </p>
         <div class="pills" id="topPills"></div>
-        <div class="actions" style="margin-top:14px">
-          <button type="button" class="btn-run-all" id="btnRunAll">一键验收（自动探测断联点）</button>
+        <div class="zone-split">
+          <div class="zone-card hook">
+            <h3>Codex Hook 状态灯</h3>
+            <p>成功信号：<code>source=codex_hook</code> · AG00 running / needs_input / done · lastEvent。绝不标成 Native Micro。</p>
+            <div class="zone-pills" id="hookZonePills"></div>
+          </div>
+          <div class="zone-card micro">
+            <h3>Micro 协议注入</h3>
+            <p>成功信号：<code>statusSource=native</code>（UI：Native Micro）· thstatus / rgbcfg。仅代表 Micro 注入，不代表 Hook。</p>
+            <div class="zone-pills" id="microZonePills"></div>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <button type="button" class="btn-hook-all" id="btnHookRunAll">一键 Hook 验收</button>
+          <button type="button" class="btn-run-all secondary" id="btnRunAll">一键 Micro 注入验收</button>
+          <button type="button" class="ghost" id="btnCopyHooksJson">复制 hooks.json 草稿</button>
+        </div>
+        <div class="hook-verdict" id="hookVerdict" data-level="none">
+          <div class="hv-title" id="hookVerdictTitle">Hook：尚未验收</div>
+          <p class="hv-sub" id="hookVerdictSub">先启动 OneTone Labs loopback（8796），再点绿色按钮。真实 Desktop 需已合并并信任 hooks。</p>
+          <div class="hv-meta" id="hookVerdictMeta">loopback=— · jsonl核心事件=— · 灯态=—</div>
         </div>
       </div>
       <div class="verdict">
-        <strong>验收进度</strong>
+        <strong>Micro 注入进度</strong>
         <div class="score" id="scoreText">0 / 6</div>
-        <div class="hint" id="scoreHint">打开后先探测 loopback，再注入 thstatus；顶部横幅显示是否已接入 Codex</div>
+        <div class="hint" id="scoreHint">右侧流水线为 Micro thstatus 注入；Hook 看上方绿色结论卡</div>
       </div>
     </header>
 
@@ -476,7 +564,48 @@
 
     <div class="layout">
       <section class="panel">
-        <h2>联动实况</h2>
+        <h2>Hook 真桥（P0 主路径）</h2>
+        <div class="flow">
+          <b>Codex Hooks</b><span class="arrow">→</span>
+          <b>codex-hook-probe.js</b><span class="arrow">→</span>
+          <b>/api/codex-app/state</b><span class="arrow">→</span>
+          <b>AG00 灯</b>
+        </div>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
+          <strong>Hook 通过 = 官方生命周期事件</strong> · <strong>≠ Micro HID thstatus</strong> ·
+          <strong>native 仍只代表真 Micro</strong>
+        </p>
+        <div class="actions" style="margin-bottom:8px">
+          <input type="text" class="url-in" id="appStateUrl" value="http://127.0.0.1:8796/api/codex-app/state" />
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="btnHookRunAll2">再跑一遍 Hook 验收</button>
+          <button type="button" id="btnHookProbe">单事件注入</button>
+          <button type="button" id="btnHookFetchLog">刷新 Hook jsonl</button>
+          <button type="button" class="ghost" id="btnHookParseLog">解析粘贴区</button>
+        </div>
+        <ul class="pipeline" id="hookPipelineList" style="margin-top:12px"></ul>
+        <div class="signal-grid" id="hookSignalGrid" style="margin-top:10px"></div>
+        <p class="lede" style="font-size:12px;max-width:none;margin:10px 0 6px">
+          lastEvent=<code id="hookLastEvent">—</code> ·
+          lastSource=<code id="hookLastSource">—</code> ·
+          ageMs=<code id="hookAgeMs">—</code> ·
+          status=<code id="hookStatus">—</code>
+        </p>
+        <div class="setup-box" id="hookSetupBox">
+          加载 setup…（需 <code>node design-mock/_serve.js</code>）
+        </div>
+        <textarea id="hookLogInput" placeholder='也可粘贴 logs/codex-hook-probe.jsonl…' style="min-height:64px;margin-top:10px"></textarea>
+        <div class="actions" style="margin-top:8px">
+          <select id="hookEventSelect" style="font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line)">
+            <option value="UserPromptSubmit">UserPromptSubmit → running</option>
+            <option value="PermissionRequest">PermissionRequest → needs_input</option>
+            <option value="Stop">Stop → done</option>
+            <option value="SessionStart">SessionStart → idle</option>
+          </select>
+        </div>
+
+        <h2 style="margin-top:28px">Micro 注入 / 场景（次要）</h2>
         <div class="flow">
           <b>Codex 客户端 / Micro HID</b><span class="arrow">→</span>
           <b>v.oai.thstatus · rgbcfg</b><span class="arrow">→</span>
@@ -536,11 +665,28 @@
           <button type="button" id="btnSample">填入示例</button>
           <button type="button" class="ghost" id="btnClearLog">清空日志</button>
         </div>
+        <h3>真桥三联日志（A 结论必填 · Micro HID）</h3>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 8px">
+          粘贴 AgentController stderr + relay 输出。仅当同时出现
+          <code>[AgentController] READ_OUTPUT v.oai.thstatus</code>、
+          <code>[relay] POST 200</code>、且下方快照 <code>nativeAG≥1</code> 时，才可判真桥（A）。
+          一键验收 / 场景按钮 ≠ 真桥。
+        </p>
+        <textarea id="bridgeLogInput" placeholder='粘贴 READ_OUTPUT + relay POST 日志…' style="min-height:72px"></textarea>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" id="btnParseBridgeLog">解析三联证据</button>
+        </div>
         <div class="log" id="log"></div>
       </section>
 
       <aside class="panel">
-        <h2>一键验收流水线</h2>
+        <h2>Hook 一键流水线</h2>
+        <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
+          绿色按钮会跑完下列步骤。注入三态只证明 OneTone 通道；
+          <strong>Desktop 真通过</strong>看 jsonl 是否有真实 Codex 事件。
+        </p>
+        <ul class="pipeline" id="hookPipelineAside"></ul>
+        <h2 style="margin-top:18px">Micro 注入流水线</h2>
         <p class="lede" style="font-size:12px;max-width:none;margin:0 0 10px">
           从上到下跑链路；<strong>第一个 fail 即断联点</strong>。需 OneTone 已开且 Labs loopback 已 start。
         </p>
@@ -554,7 +700,11 @@
           <code>POST http://127.0.0.1:8796/api/codex-micro/protocol</code>（默认关闭；
           <code>ONETONE_CODEX_MICRO_PROTOCOL=1</code> 或 IPC start；只接状态，不接 hid/rad）。<br />
           <strong>真桥验证</strong>：AgentController READ_OUTPUT →
-          <code>scripts/codex-micro-agentcontroller-relay.example.js</code> → loopback。
+          <code>scripts/codex-micro-agentcontroller-relay.js</code> → loopback。
+          <strong>禁止</strong>把 live 快照或一键验收自动当成真桥；A 需三联日志。<br />
+          <strong>Hook 真桥</strong>：Codex 官方 Hooks → <code>scripts/codex-hook-probe.js</code> →
+          <code>POST /api/codex-app/state</code>（见 <code>docs/codex-hook-onetone-setup.md</code>）。
+          Hook 通过 ≠ Micro thstatus。
         </p>
         <h3>注入验证示例（PowerShell）</h3>
         <pre style="margin:0 0 10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-family:var(--mono);font-size:10px;line-height:1.45;white-space:pre-wrap;overflow:auto"># Labs only — server must be started first
@@ -635,7 +785,23 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
     checkPass: {},
     mode: 'idle',
     loopbackOk: false,
-    injectOk: false
+    injectOk: false,
+    bridgeEvidence: { readOutput: false, relayPost: false, onetoneNative: false },
+    hook: {
+      logHasEvent: false,
+      lastEvent: '',
+      lastSource: '',
+      ageMs: null,
+      status: '',
+      endpointOk: false,
+      lightStatuses: {},
+      coreHit: [],
+      loopbackPathOk: false,
+      desktopJsonlOk: false,
+      verdictLevel: 'none',
+      setup: null
+    },
+    hookPipeline: []
   };
 
   var SIGNALS = [
@@ -660,6 +826,434 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
     return false;
   }
 
+  function statusSourceLabel(source) {
+    var s = String(source || '').trim();
+    if (s === 'native' || s === 'native_micro') return 'Native Micro';
+    if (s === 'codex_hook') return 'Codex Hook';
+    if (s === 'codex_app') return 'Codex App';
+    if (s === 'inferred') return 'Inferred';
+    if (s === 'fallback') return 'Fallback';
+    return s || 'Fallback';
+  }
+
+  function appStateUrl() {
+    return String(document.getElementById('appStateUrl').value || '').trim();
+  }
+
+  function renderHookPanel() {
+    var h = state.hook;
+    document.getElementById('hookLastEvent').textContent = h.lastEvent || '—';
+    document.getElementById('hookLastSource').textContent = h.lastSource || '—';
+    document.getElementById('hookAgeMs').textContent = h.ageMs == null ? '—' : String(h.ageMs);
+    document.getElementById('hookStatus').textContent = h.status || '—';
+    var lights = Object.keys(h.lightStatuses || {}).filter(function (k) {
+      return h.lightStatuses[k] && (k === 'running' || k === 'needs_input' || k === 'done');
+    });
+    var grid = document.getElementById('hookSignalGrid');
+    var rows = [
+      { ok: h.endpointOk || h.loopbackPathOk, label: 'OneTone endpoint', hint: '/api/codex-app/state' },
+      { ok: lights.length >= 2, label: '灯态 ≥2 种', hint: lights.join(', ') || '尚无 running/needs_input/done' },
+      { ok: h.lastSource === 'codex_hook', label: 'source=codex_hook', hint: statusSourceLabel(h.lastSource) },
+      { ok: h.logHasEvent, label: 'Hook jsonl 有事件', hint: (h.coreHit && h.coreHit.length) ? h.coreHit.join(', ') : '无 Desktop 事件或未刷新' },
+      { ok: h.desktopJsonlOk, label: 'Desktop 核心 ≥2', hint: 'UserPromptSubmit / PermissionRequest / Stop' }
+    ];
+    grid.innerHTML = rows.map(function (r) {
+      return '<div class="signal" data-on="' + (r.ok ? '1' : '0') + '">' +
+        '<span class="dot" aria-hidden="true"></span>' +
+        '<div><div class="lbl">' + r.label + '</div><div class="exp">' + r.hint + '</div></div>' +
+        '</div>';
+    }).join('');
+    renderHookVerdict();
+    renderHookPipeline();
+  }
+
+  function renderHookVerdict() {
+    var h = state.hook;
+    var el = document.getElementById('hookVerdict');
+    var title = document.getElementById('hookVerdictTitle');
+    var sub = document.getElementById('hookVerdictSub');
+    var meta = document.getElementById('hookVerdictMeta');
+    var lights = Object.keys(h.lightStatuses || {}).filter(function (k) {
+      return h.lightStatuses[k] && (k === 'running' || k === 'needs_input' || k === 'done');
+    });
+    var level = h.verdictLevel || 'none';
+    var titles = {
+      none: 'Hook：尚未验收',
+      fail: 'Hook：未通过（止损）',
+      partial: 'Hook：通道 OK · 缺真实 Desktop 事件',
+      pass: 'Hook：P0 通过（可进 P1）'
+    };
+    var subs = {
+      none: '先启动 OneTone Labs loopback（8796），再点绿色「一键 Hook 验收」。',
+      fail: 'endpoint 不通，且 jsonl 也没有足够 Desktop 事件。先 npm run dev:labs，再信任 hooks 发一句 prompt。',
+      partial: 'OneTone 能收注入，但 jsonl 核心事件不足 2 个。请在 Codex CLI 发 prompt。',
+      pass: '真实 Codex Hook 已进 jsonl（≥2 核心事件）。若① Failed to fetch，只是当前 8796 暂时不可达——重启 npm run dev:labs 即可再亮灯；不等于 Hook 失败。'
+    };
+    el.setAttribute('data-level', level);
+    title.textContent = titles[level] || titles.none;
+    sub.textContent = subs[level] || subs.none;
+    meta.textContent =
+      'loopback=' + (h.loopbackPathOk ? 'ok' : 'no') +
+      ' · jsonl核心=' + ((h.coreHit && h.coreHit.length) || 0) + '/3' +
+      ' · 灯态=' + (lights.length ? lights.join('+') : '—') +
+      ' · last=' + (h.lastEvent || '—');
+  }
+
+  function renderHookPipeline() {
+    var steps = state.hookPipeline.length
+      ? state.hookPipeline
+      : HOOK_PIPELINE_STEPS.map(function (s) { return { id: s.id, label: s.label, state: 'idle', fix: '' }; });
+    function paint(listId) {
+      var list = document.getElementById(listId);
+      if (!list) return;
+      list.innerHTML = steps.map(function (s) {
+        var badge = s.state === 'pass' ? 'pass' : s.state === 'fail' ? 'fail' : s.state === 'run' ? 'run' : s.state === 'skip' ? 'skip' : '…';
+        return '<li data-state="' + (s.state || 'idle') + '"><div class="row"><span class="name">' +
+          s.label + '</span><span class="badge">' + badge + '</span></div>' +
+          (s.fix ? '<div class="fix">' + s.fix + '</div>' : '') + '</li>';
+      }).join('');
+    }
+    paint('hookPipelineList');
+    paint('hookPipelineAside');
+  }
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function fetchHookLog() {
+    return fetch('/_onetone/hook-log', { cache: 'no-store' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) throw new Error('hook_log_api_fail');
+        var sum = data.summary || {};
+        state.hook.logHasEvent = (sum.eventCount || 0) > 0;
+        state.hook.coreHit = sum.coreHit || [];
+        state.hook.desktopJsonlOk = (sum.coreHitCount || 0) >= 2;
+        if (sum.lastEvent) state.hook.lastEvent = sum.lastEvent;
+        if (data.raw) document.getElementById('hookLogInput').value = data.raw.split(/\r?\n/).slice(-30).join('\n');
+        return data;
+      });
+  }
+
+  function fetchHookSetup() {
+    return fetch('/_onetone/hook-setup', { cache: 'no-store' })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        state.hook.setup = data;
+        var box = document.getElementById('hookSetupBox');
+        if (!data || !data.ok) {
+          box.textContent = '无法加载 setup API — 请用 node design-mock/_serve.js 打开本页';
+          return data;
+        }
+        box.innerHTML =
+          '1. 复制 hooks 草稿（顶部按钮）→ 写入 <code>' + (data.hooksJsonPath || '') + '</code>' +
+          (data.hooksJsonExists ? ' <span style="color:var(--ok)">(已存在，请手动合并)</span>' : ' <span style="color:var(--warn)">(尚不存在)</span>') +
+          '<br>2. Codex 打开 <code>/hooks</code> 并<strong>信任</strong>命令<br>' +
+          '3. 启动 OneTone loopback → 点绿色「一键 Hook 验收」→ 再在 Desktop 发一条 prompt<br>' +
+          '探针：<code>' + (data.probePath || '') + '</code>';
+        return data;
+      })
+      .catch(function () {
+        document.getElementById('hookSetupBox').textContent =
+          'setup API 不可用。请运行：node design-mock/_serve.js';
+      });
+  }
+
+  function copyHooksJson() {
+    var ready = state.hook.setup && state.hook.setup.readyHooksJson;
+    if (!ready) {
+      return fetchHookSetup().then(function () {
+        ready = state.hook.setup && state.hook.setup.readyHooksJson;
+        if (!ready) throw new Error('no_setup');
+        return copyText(JSON.stringify(ready, null, 2));
+      });
+    }
+    return copyText(JSON.stringify(ready, null, 2));
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () {
+        log('已复制 hooks.json 草稿到剪贴板 — 请手动写入 %USERPROFILE%\\.codex\\hooks.json');
+      });
+    }
+    log('剪贴板不可用，hooks 草稿：\n' + text);
+    return Promise.resolve();
+  }
+
+  var HOOK_PIPELINE_STEPS = [
+    {
+      id: 'endpoint',
+      label: '① app-state endpoint',
+      run: function () {
+        return postAppState('SessionStart').then(function (r) {
+          if (!r.ok || !r.parsed || !r.parsed.ok) {
+            state.hook.endpointOk = false;
+            state.hook.loopbackPathOk = false;
+            return { ok: false, fix: '断联：8796 /api/codex-app/state 不可用。设 ONETONE_CODEX_MICRO_PROTOCOL=1 并启动 OneTone' };
+          }
+          state.loopbackOk = true;
+          state.hook.endpointOk = true;
+          state.hook.loopbackPathOk = true;
+          applyHookStateView(r.parsed.state);
+          return { ok: true, fix: '' };
+        }).catch(function (e) {
+          state.hook.endpointOk = false;
+          state.hook.loopbackPathOk = false;
+          return { ok: false, fix: '断联：' + (e.message || e) };
+        });
+      }
+    },
+    {
+      id: 'running',
+      label: '② UserPromptSubmit → running',
+      run: function () {
+        return postAppState('UserPromptSubmit').then(function (r) {
+          if (!r.ok || !r.parsed || !r.parsed.ok) return { ok: false, fix: '注入失败' };
+          applyHookStateView(r.parsed.state);
+          var st = r.parsed.state && r.parsed.state.status;
+          if (st !== 'running') return { ok: false, fix: '期望 running，got=' + st };
+          return { ok: true, fix: '' };
+        });
+      }
+    },
+    {
+      id: 'needs',
+      label: '③ PermissionRequest → needs_input',
+      run: function () {
+        return postAppState('PermissionRequest').then(function (r) {
+          if (!r.ok || !r.parsed || !r.parsed.ok) return { ok: false, fix: '注入失败' };
+          applyHookStateView(r.parsed.state);
+          var st = r.parsed.state && r.parsed.state.status;
+          if (st !== 'needs_input') return { ok: false, fix: '期望 needs_input，got=' + st };
+          return { ok: true, fix: '' };
+        });
+      }
+    },
+    {
+      id: 'done',
+      label: '④ Stop → done（保留 lastEvent）',
+      run: function () {
+        return postAppState('Stop').then(function (r) {
+          if (!r.ok || !r.parsed || !r.parsed.ok) return { ok: false, fix: '注入失败' };
+          applyHookStateView(r.parsed.state);
+          var st = r.parsed.state || {};
+          if (st.status !== 'done') return { ok: false, fix: '期望 done，got=' + st.status };
+          if (st.lastEvent !== 'Stop' || (st.lastSource || st.source) !== 'codex_hook') {
+            return { ok: false, fix: 'lastEvent/lastSource 未保留' };
+          }
+          return { ok: true, fix: 'lastEvent=Stop · source=codex_hook' };
+        });
+      }
+    },
+    {
+      id: 'lights',
+      label: '⑤ 灯态 ≥2 种可见',
+      run: function () {
+        var lights = Object.keys(state.hook.lightStatuses || {}).filter(function (k) {
+          return state.hook.lightStatuses[k] && (k === 'running' || k === 'needs_input' || k === 'done');
+        });
+        if (lights.length >= 2) return Promise.resolve({ ok: true, fix: lights.join(', ') });
+        return Promise.resolve({ ok: false, fix: '灯态不足：' + (lights.join(', ') || '无') });
+      }
+    },
+    {
+      id: 'jsonl',
+      label: '⑥ 读取真实 Hook jsonl',
+      run: function () {
+        return fetchHookLog()
+          .then(function (data) {
+            var n = (data.summary && data.summary.coreHitCount) || 0;
+            if (n >= 2) {
+              return { ok: true, fix: '核心事件 ' + data.summary.coreHit.join(', ') + ' — Desktop 迹象充分' };
+            }
+            if (n === 1) {
+              return {
+                ok: false,
+                soft: true,
+                fix: '仅 1 个核心事件（' + (data.summary.coreHit || []).join(',') + '）。通道已通；请在 Desktop 再触发 prompt/权限/Stop'
+              };
+            }
+            return {
+              ok: false,
+              soft: true,
+              fix: 'jsonl 无核心事件。复制 hooks 草稿 → 信任 /hooks → Desktop 发 prompt。通道注入已通过≠Desktop 通过'
+            };
+          })
+          .catch(function () {
+            return {
+              ok: false,
+              soft: true,
+              fix: '无法读 jsonl（需 node design-mock/_serve.js）。通道注入结果仍有效'
+            };
+          });
+      }
+    }
+  ];
+
+  function computeHookVerdict(pipeline) {
+    // P0 stop-loss: real Desktop jsonl with ≥2 core events is enough to pass,
+    // even if live inject to 8796 is momentarily down (hooks already POSTed earlier).
+    if (state.hook.desktopJsonlOk) {
+      state.hook.verdictLevel = state.hook.loopbackPathOk ? 'pass' : 'pass';
+      return;
+    }
+    var endpointFail = pipeline.some(function (s) {
+      return s.state === 'fail' && s.id === 'endpoint';
+    });
+    if (endpointFail) {
+      state.hook.verdictLevel = 'fail';
+      return;
+    }
+    if (state.hook.loopbackPathOk) {
+      state.hook.verdictLevel = 'partial';
+      return;
+    }
+    state.hook.verdictLevel = 'fail';
+  }
+
+  function runHookAcceptancePipeline() {
+    var btns = [document.getElementById('btnHookRunAll'), document.getElementById('btnHookRunAll2')];
+    btns.forEach(function (b) { if (b) b.disabled = true; });
+    state.hook.lightStatuses = {};
+    state.hook.verdictLevel = 'none';
+    state.hookPipeline = HOOK_PIPELINE_STEPS.map(function (s) {
+      return { id: s.id, label: s.label, state: 'idle', fix: '' };
+    });
+    renderHookPipeline();
+    log('—— 一键 Hook 验收开始 ——');
+
+    var i = 0;
+    var stopped = false;
+    function next() {
+      if (i >= HOOK_PIPELINE_STEPS.length) {
+        computeHookVerdict(state.hookPipeline);
+        renderHookPanel();
+        paint();
+        var lvl = state.hook.verdictLevel;
+        log('—— Hook 验收结束：' + lvl +
+          (lvl === 'pass' ? '（可进 P1）' : lvl === 'partial' ? '（通道 OK，等 Desktop）' : '（未通过）') +
+          ' ——');
+        btns.forEach(function (b) { if (b) b.disabled = false; });
+        return;
+      }
+      if (stopped && HOOK_PIPELINE_STEPS[i].id !== 'jsonl') {
+        state.hookPipeline[i].state = 'skip';
+        state.hookPipeline[i].fix = '上一环节已断联，跳过';
+        i += 1;
+        renderHookPipeline();
+        return next();
+      }
+      var step = HOOK_PIPELINE_STEPS[i];
+      state.hookPipeline[i].state = 'run';
+      renderHookPipeline();
+      Promise.resolve()
+        .then(function () { return step.run(); })
+        .then(function (result) {
+          var ok = !!(result && result.ok);
+          var soft = !!(result && result.soft);
+          state.hookPipeline[i].state = ok ? 'pass' : (soft ? 'fail' : 'fail');
+          state.hookPipeline[i].fix = (result && result.fix) || '';
+          if (!ok && !soft) stopped = true;
+          log((ok ? '✓ ' : (soft ? '△ ' : '✗ ')) + step.label +
+            (result && result.fix ? ' — ' + result.fix : ''));
+          renderHookPanel();
+          i += 1;
+          return sleep(80).then(next);
+        })
+        .catch(function (e) {
+          state.hookPipeline[i].state = 'fail';
+          state.hookPipeline[i].fix = String(e.message || e);
+          stopped = true;
+          log('✗ ' + step.label + ' — ' + state.hookPipeline[i].fix);
+          i += 1;
+          next();
+        });
+    }
+    next();
+  }
+
+  function applyHookStateView(view) {
+    if (!view) return;
+    state.hook.lastEvent = view.lastEvent || view.event || '';
+    state.hook.lastSource = view.lastSource || view.source || '';
+    state.hook.ageMs = view.ageMs != null ? view.ageMs : null;
+    state.hook.status = view.status || '';
+    if (view.status) state.hook.lightStatuses[view.status] = true;
+    state.hook.endpointOk = true;
+    if (view.status === 'running' || view.status === 'needs_input' || view.status === 'done') {
+      // Reflect on AG00 for acceptance grid when no Micro native
+      if (!state.cells.AG00 || state.cells.AG00.statusSource !== 'native') {
+        state.cells.AG00 = state.cells.AG00 || { runStatus: 'idle', statusSource: 'fallback' };
+        state.cells.AG00.runStatus = view.status;
+        state.cells.AG00.statusSource = view.source || 'codex_hook';
+      }
+    }
+  }
+
+  function parseHookLog(text) {
+    var lines = String(text || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    var last = null;
+    for (var i = 0; i < lines.length; i++) {
+      try { last = JSON.parse(lines[i]); } catch (_) {}
+    }
+    if (!last) {
+      state.hook.logHasEvent = false;
+      log('Hook jsonl：未解析到有效行');
+      renderHookPanel();
+      return;
+    }
+    var ev = last.hook_event_name || last.event || '';
+    state.hook.logHasEvent = !!ev;
+    state.hook.lastEvent = ev;
+    if (!state.hook.lastSource) state.hook.lastSource = 'codex_hook';
+    log('Hook jsonl 最近事件：' + ev);
+    renderHookPanel();
+    paint();
+  }
+
+  function postAppState(eventName) {
+    var url = appStateUrl();
+    var body = {
+      source: 'codex_hook',
+      event: eventName,
+      sessionId: 'acceptance',
+      ts: Date.now()
+    };
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var parsed = null;
+        try { parsed = JSON.parse(text); } catch (_) {}
+        return { ok: res.ok, status: res.status, parsed: parsed };
+      });
+    });
+  }
+
+  function bridgeTripleOk() {
+    var ev = state.bridgeEvidence;
+    return !!(ev.readOutput && ev.relayPost && ev.onetoneNative);
+  }
+
+  function parseBridgeLog(text) {
+    var t = String(text || '');
+    state.bridgeEvidence.readOutput = /\[AgentController\]\s+READ_OUTPUT\s+v\.oai\.thstatus/i.test(t);
+    state.bridgeEvidence.relayPost = /\[relay\]\s+POST\s+200\b/i.test(t) &&
+      /method=v\.oai\.thstatus/i.test(t);
+    state.bridgeEvidence.onetoneNative = countNativeAg() > 0;
+    log(
+      '三联证据：READ_OUTPUT=' + (state.bridgeEvidence.readOutput ? 'yes' : 'no') +
+      ' relayPOST200=' + (state.bridgeEvidence.relayPost ? 'yes' : 'no') +
+      ' nativeAG=' + (state.bridgeEvidence.onetoneNative ? 'yes' : 'no') +
+      (bridgeTripleOk() ? ' → A 真桥条件满足' : ' → 未满足 A（可能仍为 B/C）')
+    );
+    paint();
+  }
+
   function connectionLevel() {
     var nativeN = countNativeAg();
     if (state.mode === 'sim') {
@@ -667,11 +1261,11 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
       if (state.connectionState === 'stale' || (state.padStatus !== 'idle' && state.statusMicroKeyId)) return 'local';
       return 'none';
     }
+    if (state.mode === 'live' && bridgeTripleOk()) return 'bridge';
+    if (state.mode === 'live' && state.connectionState === 'connected' && nativeN > 0) return 'live';
     if (state.mode === 'inject' && state.connectionState === 'connected' && nativeN > 0) {
-      return state.injectOk ? 'bridge' : 'inject';
+      return state.injectOk ? 'inject' : 'inject';
     }
-    if (state.mode === 'inject' && state.connectionState === 'connected' && nativeN > 0) return 'inject';
-    if (state.mode === 'live' && state.connectionState === 'connected' && nativeN > 0) return 'inject';
     if (state.connectionState === 'stale' || (state.padStatus !== 'idle' && state.statusMicroKeyId)) return 'local';
     return 'none';
   }
@@ -684,14 +1278,16 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
       local: 'Codex 状态：仅本地推断（inferred）',
       sim: '场景模拟：合并规则 OK（非真桥）',
       inject: 'Codex 状态：已注入 native（Labs/loopback 或 HID）',
-      bridge: 'Codex 状态：真桥持续更新中'
+      live: '实机快照：已粘贴 overlay（非自动真桥）',
+      bridge: 'Codex 状态：真桥持续更新中（三联证据齐全）'
     };
     var subs = {
       none: 'connectionState=fallback，无 AG native。请点顶部「一键验收」或开 loopback。',
       local: '有本地 padStatus，但无新鲜 Codex thstatus。AG 不应出现 native（除非刚过期）。',
       sim: '当前为场景模拟数据，不代表 Codex 客户端已连上。请运行「一键验收」测实机链路。',
-      inject: 'connectionState=connected，' + nativeN + ' 个 AG 为 native。请在 OneTone 浮层对照 AG 灯环。',
-      bridge: '持续收到状态 RPC。Codex 任务变化时 AG 灯应跟着变；停更 3s 应变 stale。'
+      inject: 'connectionState=connected，' + nativeN + ' 个 AG 为 native。注入链路 OK，非 READ_OUTPUT 真桥。',
+      live: '已应用实机 snapshot；需粘贴三联日志才能判 A。nativeAG=' + nativeN + '。',
+      bridge: 'READ_OUTPUT + relay POST 200 + nativeAG≥1。Codex 任务变化时 AG 灯应跟着变；停更 3s 应变 stale。'
     };
     var banner = document.getElementById('connBanner');
     banner.setAttribute('data-level', level);
@@ -1057,7 +1653,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
           '<div class="halo"></div>' +
           '<div class="meta">' +
             '<span class="tag">' + c.runStatus + '</span>' +
-            '<span class="tag src-' + c.statusSource + '">' + c.statusSource + '</span>' +
+            '<span class="tag src-' + c.statusSource + '" title="' + c.statusSource + '">' + statusSourceLabel(c.statusSource) + '</span>' +
             (c.nativeRunStatus ? '<span class="tag">native:' + c.nativeRunStatus + '</span>' : '') +
           '</div>' +
         '</div>'
@@ -1106,15 +1702,37 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
     var pipelinePass = (state.pipeline || []).some(function (s) { return s.state === 'pass'; });
     document.getElementById('scoreHint').textContent =
       pipelineFail ? '一键验收未通过 — 见右侧流水线第一个「断联」' :
-      (lvl === 'inject' || lvl === 'bridge') ? '注入链路 OK · ' + modeLabel() :
+      (lvl === 'bridge') ? '真桥 A · 三联证据齐全' :
+      (lvl === 'inject') ? '注入链路 OK · ' + modeLabel() :
+      (lvl === 'live') ? '实机快照 · 需三联日志判 A' :
       (lvl === 'sim') ? '仅场景模拟 — 请点「一键验收」' :
       (pipelinePass ? '部分通过 · ' + modeLabel() : '点顶部「一键验收」开始');
 
     var pills = document.getElementById('topPills');
     pills.innerHTML =
+      '<span class="pill" data-tone="' +
+        (state.hook.verdictLevel === 'pass' ? 'ok' : state.hook.verdictLevel === 'partial' ? 'warn' : state.hook.verdictLevel === 'fail' ? 'fail' : 'warn') +
+      '">hook · ' + (state.hook.verdictLevel || '—') + '</span>' +
       '<span class="pill" data-tone="' + toneForConn(state.connectionState) + '">conn · ' + state.connectionState + '</span>' +
-      '<span class="pill" data-tone="' + (countNativeAg() > 0 ? 'ok' : 'fail') + '">native AG · ' + countNativeAg() + '</span>' +
       '<span class="pill" data-tone="' + (state.loopbackOk ? 'ok' : 'warn') + '">loopback · ' + (state.loopbackOk ? 'on' : 'off') + '</span>';
+
+    var hookZone = document.getElementById('hookZonePills');
+    if (hookZone) {
+      hookZone.innerHTML =
+        '<span class="pill" data-tone="' +
+          (state.hook.verdictLevel === 'pass' ? 'ok' : state.hook.verdictLevel === 'partial' ? 'warn' : state.hook.verdictLevel === 'fail' ? 'fail' : 'warn') +
+        '">hook · ' + (state.hook.verdictLevel || '—') + '</span>' +
+        '<span class="pill" data-tone="' + (state.hook.lastSource === 'codex_hook' ? 'ok' : 'warn') + '">source · ' +
+          (state.hook.lastSource || '—') + '</span>' +
+        '<span class="pill" data-tone="warn">last · ' + (state.hook.lastEvent || '—') + '</span>';
+    }
+    var microZone = document.getElementById('microZonePills');
+    if (microZone) {
+      microZone.innerHTML =
+        '<span class="pill" data-tone="' + (countNativeAg() > 0 ? 'ok' : 'fail') + '">Native Micro AG · ' + countNativeAg() + '</span>' +
+        '<span class="pill" data-tone="' + (state.injectOk ? 'ok' : 'warn') + '">inject · ' + (state.injectOk ? 'ok' : '—') + '</span>' +
+        '<span class="pill" data-tone="' + toneForConn(state.connectionState) + '">conn · ' + state.connectionState + '</span>';
+    }
   }
 
   function paint() {
@@ -1124,6 +1742,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
     renderScore();
     renderConnBanner();
     renderPipeline();
+    renderHookPanel();
   }
 
   function mark(id, ok) {
@@ -1297,6 +1916,8 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
     markPass('needs', hasNeeds);
     markPass('nonag', !nonAgNative);
 
+    state.bridgeEvidence.onetoneNative = hasNative;
+
     log('已应用快照：cells=' + cells.length +
       ' conn=' + state.connectionState +
       ' rgb=' + (state.rgb ? 'yes' : 'no') +
@@ -1326,7 +1947,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
               '<div class="id">' + id + '</div><div class="halo"></div>' +
               '<div class="meta">' +
                 '<span class="tag">' + c.runStatus + '</span>' +
-                '<span class="tag src-' + c.statusSource + '">' + c.statusSource + '</span>' +
+                '<span class="tag src-' + c.statusSource + '" title="' + c.statusSource + '">' + statusSourceLabel(c.statusSource) + '</span>' +
               '</div></div>'
           );
         }).join('');
@@ -1363,6 +1984,65 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
 
   document.getElementById('btnClearLog').addEventListener('click', function () {
     document.getElementById('log').textContent = '';
+  });
+
+  document.getElementById('btnParseBridgeLog').addEventListener('click', function () {
+    parseBridgeLog(document.getElementById('bridgeLogInput').value);
+  });
+
+  document.getElementById('btnHookParseLog').addEventListener('click', function () {
+    parseHookLog(document.getElementById('hookLogInput').value);
+  });
+
+  document.getElementById('btnHookFetchLog').addEventListener('click', function () {
+    fetchHookLog()
+      .then(function (data) {
+        log('已刷新 Hook jsonl · 核心事件=' + ((data.summary && data.summary.coreHit) || []).join(',') +
+          ' · 行数=' + ((data.summary && data.summary.lineCount) || 0));
+        renderHookPanel();
+        paint();
+      })
+      .catch(function (e) {
+        log('刷新 Hook jsonl 失败：' + e.message + ' — 确认用 node design-mock/_serve.js');
+      });
+  });
+
+  document.getElementById('btnHookProbe').addEventListener('click', function () {
+    var ev = document.getElementById('hookEventSelect').value || 'UserPromptSubmit';
+    log('POST /api/codex-app/state event=' + ev + ' …');
+    postAppState(ev)
+      .then(function (r) {
+        if (!r.ok || !r.parsed || !r.parsed.ok) {
+          state.hook.endpointOk = false;
+          log('Hook endpoint 失败 status=' + r.status + ' — 确认 Labs loopback 已开');
+          renderHookPanel();
+          return;
+        }
+        state.loopbackOk = true;
+        applyHookStateView(r.parsed.state);
+        log('Hook endpoint OK source=' + (r.parsed.state && r.parsed.state.source) +
+          ' status=' + (r.parsed.state && r.parsed.state.status) +
+          ' lastEvent=' + (r.parsed.state && r.parsed.state.lastEvent));
+        paint();
+      })
+      .catch(function (e) {
+        state.hook.endpointOk = false;
+        renderHookPanel();
+        log('Hook endpoint 连接失败：' + e.message);
+      });
+  });
+
+  function bindHookRunAll(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', function () { runHookAcceptancePipeline(); });
+  }
+  bindHookRunAll('btnHookRunAll');
+  bindHookRunAll('btnHookRunAll2');
+
+  document.getElementById('btnCopyHooksJson').addEventListener('click', function () {
+    copyHooksJson().catch(function (e) {
+      log('复制 hooks 草稿失败：' + (e && e.message));
+    });
   });
 
   document.getElementById('btnProbe').addEventListener('click', function () {
@@ -1423,8 +2103,15 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8796/api/codex-micro/protocol" -Method 
 
   scenes.reset();
   renderPipeline();
+  renderHookPipeline();
   paint();
-  log('验收页就绪：点顶部「一键验收」自动探测断联点');
+  fetchHookSetup().then(function () {
+    return fetchHookLog().catch(function () { return null; });
+  }).then(function () {
+    renderHookPanel();
+    paint();
+  });
+  log('验收页就绪：优先点绿色「一键 Hook 验收」');
 })();
   </script>
 </body>

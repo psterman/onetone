@@ -186,13 +186,75 @@ assert.ok(protocolServer.indexOf('is_http_action_method') >= 0);
 assert.ok(protocolServer.indexOf('Default: OFF') >= 0 || protocolServer.indexOf('默认') >= 0);
 assert.ok(protocolServer.indexOf('ONETONE_CODEX_MICRO_PROTOCOL') >= 0);
 assert.ok(protocolServer.indexOf('8796') >= 0);
+assert.ok(protocolServer.indexOf('/api/codex-app/state') >= 0 || protocolServer.indexOf('APP_STATE_PATH') >= 0);
+assert.ok(protocolServer.indexOf('codex_app_state') >= 0);
+assert.ok(protocolServer.indexOf('handle_app_state_post') >= 0);
+assert.ok(protocolServer.indexOf('handle_app_state_get') >= 0);
+assert.ok(protocolServer.indexOf('codex-micro-http') >= 0);
+
+var appStateRs = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/codex_app_state.rs'),
+  'utf8'
+);
+assert.ok(appStateRs.indexOf('codex_hook') >= 0);
+assert.ok(appStateRs.indexOf('codex_app') >= 0);
+assert.ok(appStateRs.indexOf('native_micro') >= 0); // rejected as source
+assert.ok(appStateRs.indexOf('v.oai.thstatus') < 0 || appStateRs.indexOf('Never converts') >= 0);
+assert.ok(appStateRs.indexOf('apply_rpc_json') < 0);
+assert.ok(appStateRs.indexOf('invalid_method') >= 0);
+assert.ok(appStateRs.indexOf('UserPromptSubmit') >= 0);
+assert.ok(appStateRs.indexOf('PermissionRequest') >= 0);
+assert.ok(appStateRs.indexOf('IDLE_AFTER_DONE_MS') >= 0);
+assert.ok(appStateRs.indexOf('last_event') >= 0);
+
+var reducer = require('./codex-hook-reducer');
+assert.equal(reducer.mapEventToStatus('UserPromptSubmit'), 'running');
+assert.equal(reducer.mapEventToStatus('PreToolUse'), 'running');
+assert.equal(reducer.mapEventToStatus('PostToolUse'), 'running');
+assert.equal(reducer.mapEventToStatus('PermissionRequest'), 'needs_input');
+assert.equal(reducer.mapEventToStatus('Stop'), 'done');
+var st = reducer.createStore();
+st = reducer.applyEvent(st, { source: 'codex_hook', event: 'Stop' }, 5000);
+assert.equal(st.status, 'done');
+var snapIdle = reducer.snapshot(st, 5000 + reducer.IDLE_AFTER_DONE_MS);
+assert.equal(snapIdle.status, 'idle');
+assert.equal(snapIdle.lastEvent, 'Stop');
+
+assert.ok(vendor.indexOf('map_thstatus_color_to_state') >= 0);
+assert.ok(vendor.indexOf('extract_json_array_field(json, "params")') >= 0);
+
+var relayLib = require('./codex-micro-relay-lib');
+var native = {
+  id: 42,
+  method: 'v.oai.thstatus',
+  params: [{ id: 0, c: 3166206, b: 1, e: 4, s: 0.4 }]
+};
+var norm = relayLib.normalizeCodexRpc(native);
+assert.strictEqual(norm.m, 'v.oai.thstatus');
+assert.strictEqual(norm.p.slots[0].i, 0);
+assert.strictEqual(norm.p.slots[0].s, 'running');
+assert.strictEqual(relayLib.mapThstatusColorToState(3166206), 'running');
+assert.strictEqual(relayLib.mapThstatusColorToState(16739584), 'needs_input');
+var relayArgs = relayLib.parseArgs(['node', 'relay.js', '--file', 'x.jsonl', '--url', 'http://127.0.0.1:8796/a']);
+assert.strictEqual(relayArgs.file, 'x.jsonl');
+assert.strictEqual(relayArgs.url, 'http://127.0.0.1:8796/a');
 
 var relay = fs.readFileSync(
+  path.join(__dirname, 'codex-micro-agentcontroller-relay.js'),
+  'utf8'
+);
+assert.ok(relay.indexOf('normalizeCodexRpc') >= 0);
+var relayLibSrc = fs.readFileSync(
+  path.join(__dirname, 'codex-micro-relay-lib.js'),
+  'utf8'
+);
+assert.ok(relayLibSrc.indexOf('--file') >= 0);
+assert.ok(relay.indexOf('[relay] POST') >= 0);
+
+var relayExample = fs.readFileSync(
   path.join(__dirname, 'codex-micro-agentcontroller-relay.example.js'),
   'utf8'
 );
-assert.ok(relay.indexOf('v.oai.thstatus') >= 0);
-assert.ok(relay.indexOf("ALLOWED['v.oai.hid']") < 0);
-assert.ok(relay.indexOf("'v.oai.hid'") < 0 || relay.indexOf('hid/rad') >= 0);
+assert.ok(relayExample.indexOf('codex-micro-agentcontroller-relay.js') >= 0);
 
 console.log('codex-micro-rpc.test.js ok');

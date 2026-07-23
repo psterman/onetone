@@ -53,11 +53,13 @@
 
   function renderSceneTabs(){
     applySceneTabVisibility();
-    if(panelActive()) renderSceneHeroCard();
+    // Hub list is owned by HabitHub — hero/switcher chrome is detail-only.
+    // Calling render() while hub is open used to stack with hub HTML and 假死.
+    var view=ui().habitView||'hub';
+    if(panelActive()&&view==='detail') renderSceneHeroCard();
     if(keysPanelActive()) renderKeysPanelChrome();
-    renderSceneGlobalFooter();
-    if(global.OneToneHabitLayerNav) global.OneToneHabitLayerNav.render();
-    // Habit hub owns its own refresh via settings-drawer; never re-enter from SceneTabs.
+    if(view==='detail'||keysPanelActive()) renderSceneGlobalFooter();
+    if(global.OneToneHabitLayerNav&&view==='detail') global.OneToneHabitLayerNav.render();
   }
 
   function findMapping(id){

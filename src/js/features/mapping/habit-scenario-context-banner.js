@@ -140,18 +140,47 @@
     state().selectedMappingId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='keys';
-    // Seed capability slots on this mapping only (never jump to another Codex scenario).
-    try{
-      var T=global.OneToneAgentScenarioTemplate;
-      var m=core()&&core().byId?core().byId(id):null;
-      if(T&&T.ensurePackForMapping&&m) T.ensurePackForMapping(m,{persist:true});
-    }catch(_){}
-    syncEditor(id);
-    if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
-    render();
-    setTimeout(function(){
-      if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
-    },60);
+
+    function finishHeavy(){
+      try{
+        try{
+          if(global.OneToneIpc&&global.OneToneIpc.invoke){
+            global.OneToneIpc.invoke('cmd_app_log',{line:'fe openScenarioKeysEdit heavy begin id='+id}).catch(function(){});
+          }
+        }catch(_){}
+        var T=global.OneToneAgentScenarioTemplate;
+        var m=core()&&core().byId?core().byId(id):null;
+        // Persist async after paint — sync cmd_save + full keys remount used to 假死.
+        if(T&&T.ensurePackForMapping&&m) T.ensurePackForMapping(m,{persist:false});
+        syncEditor(id);
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.refreshKeysPanel){
+          global.OneToneSettingsDrawer.refreshKeysPanel();
+        }else{
+          var hooks=global.__vp_bootstrap_hooks__||{};
+          if(hooks.renderKeyFinishFlowPanel) hooks.renderKeyFinishFlowPanel();
+          if(global.OneToneKeysPanelUi) global.OneToneKeysPanelUi.render();
+        }
+        render();
+        if(global.OneToneAgentCapabilityUi) global.OneToneAgentCapabilityUi.mountKeys();
+        var p=global.OneToneConfigPersist;
+        if(p&&p.saveAsync) p.saveAsync();
+        else if(p&&p.save) p.save();
+        try{
+          if(global.OneToneIpc&&global.OneToneIpc.invoke){
+            global.OneToneIpc.invoke('cmd_app_log',{line:'fe openScenarioKeysEdit heavy done id='+id}).catch(function(){});
+          }
+        }catch(_){}
+      }catch(err){
+        try{ console.error('openScenarioKeysEdit',err); }catch(_){}
+      }
+    }
+
+    if(global.OneToneSettingsDrawer){
+      // Paint keys panel chrome first, then load pack/pad (same pattern as habit hub).
+      global.OneToneSettingsDrawer.setPanel('keys',{deferHeavy:true,afterHeavy:finishHeavy});
+    }else{
+      finishHeavy();
+    }
   }
 
   function openScenarioVoiceEdit(id,opts){
@@ -205,13 +234,23 @@
     ui().habitScenarioReturnId=null;
     ui().habitScenarioReturnPanel=null;
     ui().habitScenarioReturnHub=false;
+    try{
+      if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
+        global.OneToneCodexMicroPadUi.stopBackgroundWork();
+      }
+    }catch(_){}
     if(global.OneToneHabitHub&&global.OneToneHabitHub.showHub){
       global.OneToneHabitHub.showHub();
     }else{
       ui().habitView='hub';
       if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
     }
-    render();
+    // Banner hide after hub chrome paints — avoid stacking with hub HTML build.
+    if(typeof requestAnimationFrame==='function'){
+      requestAnimationFrame(function(){ setTimeout(function(){ render(); },0); });
+    }else{
+      setTimeout(function(){ render(); },0);
+    }
   }
 
   function returnToScenarioConsole(){

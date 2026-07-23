@@ -181,12 +181,29 @@
   function onPanelVisibility(){
     var view=ui().habitView||'hub';
     var detailOpen=panelActive()&&view==='detail';
-    if(panelActive()) startForegroundPoll();
-    else stopForegroundPoll();
     applyHabitLayerVisibility();
+    // Hub: visibility only. Foreground poll + layer activate are detail/keys/voice work —
+    // starting them on「我的习惯」list open stacked with hub HTML and 假死'd the UI.
+    if(!panelActive()){
+      stopForegroundPoll();
+      renderHabitLayerNav();
+      return;
+    }
+    if(view==='hub'){
+      stopForegroundPoll();
+      // Light tab chrome only (labels stay cheap); no onLayerActivated.
+      if(typeof requestAnimationFrame==='function'){
+        requestAnimationFrame(function(){
+          if(!panelActive()||(ui().habitView||'hub')!=='hub') return;
+          renderHabitLayerNav();
+        });
+      }else{
+        renderHabitLayerNav();
+      }
+      return;
+    }
+    startForegroundPoll();
     renderHabitLayerNav();
-    // Hub list must stay light — do NOT activate apps/advanced layer side-effects
-    // (AppBehaviorRules / voice / finish-flow) or opening「我的习惯」can 假死.
     if(detailOpen){
       onLayerActivated(ui().habitLayer||'global');
     }

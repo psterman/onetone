@@ -783,6 +783,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         overlay_enabled: true,
         layout_profile: "standard".into(),
         software_enhance_enabled: false,
+        codex_status_lights_enabled: false,
         keys: default_codex_micro_pad_routes(),
     }
 }

@@ -1,0 +1,229 @@
+﻿{
+    "runId":  "20260722-182104",
+    "phase2":  [
+                   {
+                       "packageRoot":  "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.715.9868.0_x64__2p2nqsd0c76g0",
+                       "keyFiles":  {
+
+                                    },
+                       "judgment":  {
+                                        "microCodeFound":  false,
+                                        "hashDrift":  false,
+                                        "featureFlagHint":  false,
+                                        "physicalGateLikely":  false,
+                                        "noMicroCode":  false
+                                    },
+                       "hitCounts":  {
+                                         "thstatus":  0,
+                                         "featureFlag":  0,
+                                         "vidPid":  0,
+                                         "total":  0,
+                                         "physicalGate":  0
+                                     },
+                       "sampleHits":  {
+                                          "featureFlag":  [
+
+                                                          ],
+                                          "vidPid":  [
+
+                                                     ],
+                                          "thstatus":  [
+
+                                                       ],
+                                          "physicalGate":  [
+
+                                                           ]
+                                      },
+                       "phase":  2,
+                       "timestamp":  "2026-07-22T18:21:45.6703266+08:00",
+                       "accessible":  true,
+                       "accessError":  null
+                   },
+                   {
+                       "packageRoot":  "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.715.9868.0_x64__2p2nqsd0c76g0",
+                       "keyFiles":  {
+
+                                    },
+                       "judgment":  {
+                                        "microCodeFound":  false,
+                                        "hashDrift":  false,
+                                        "featureFlagHint":  false,
+                                        "physicalGateLikely":  false,
+                                        "noMicroCode":  false
+                                    },
+                       "hitCounts":  {
+                                         "thstatus":  0,
+                                         "featureFlag":  0,
+                                         "vidPid":  0,
+                                         "total":  0,
+                                         "physicalGate":  0
+                                     },
+                       "sampleHits":  {
+                                          "featureFlag":  [
+
+                                                          ],
+                                          "vidPid":  [
+
+                                                     ],
+                                          "thstatus":  [
+
+                                                       ],
+                                          "physicalGate":  [
+
+                                                           ]
+                                      },
+                       "phase":  2,
+                       "timestamp":  "2026-07-22T18:21:45.6703266+08:00",
+                       "accessible":  true,
+                       "accessError":  null
+                   }
+               ],
+    "phase1":  {
+                   "loopback":  {
+                                    "port8796Listening":  true,
+                                    "probe":  {
+                                                  "ok":  false,
+                                                  "connectionState":  "?",
+                                                  "nativeAg":  0,
+                                                  "raw":  "{\"error\":\"invalid_json\",\"ok\":false}"
+                                              }
+                                },
+                   "inputProbe":  {
+                                      "downLog":  "[send-micro] client=StoplossVerify key=ACT06 action=1 jsonl=C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\codex-micro-rpc.jsonl\r\n[send-micro] submit=Accepted detail=All reports were accepted by VHF.\r\n[send-micro] jsonl_len=5",
+                                      "notSent":  false,
+                                      "key":  "ACT06",
+                                      "inputAccepted":  true,
+                                      "attempted":  true,
+                                      "upLog":  "[send-micro] client=StoplossVerify key=ACT06 action=0 jsonl=C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\codex-micro-rpc.jsonl\r\n[send-micro] submit=Accepted detail=All reports were accepted by VHF.\r\n[send-micro] jsonl_len=5"
+                                  },
+                   "judgment":  {
+                                    "dCandidateNoInput":  false,
+                                    "noReadOutputAtAll":  true,
+                                    "continuePhase2":  true
+                                },
+                   "brokerLock":  {
+                                      "exists":  true,
+                                      "path":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\broker-v1.lock"
+                                  },
+                   "driver":  {
+                                  "detected":  true,
+                                  "names":  [
+                                                "Codex Micro Simulator UMDF2 Virtual HID"
+                                            ]
+                              },
+                   "phase":  1,
+                   "timestamp":  "2026-07-22T18:21:39.8214447+08:00",
+                   "readOutputScan":  {
+                                          "jsonlBeforeBytes":  5,
+                                          "hasAnyReadOutput":  false,
+                                          "jsonlAfter":  {
+                                                             "newBytes":  0,
+                                                             "lines":  [
+
+                                                                       ],
+                                                             "byteLength":  5,
+                                                             "methods":  {
+
+                                                                         },
+                                                             "exists":  true
+                                                         },
+                                          "tapCalledPath":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\codex-micro-rpc-tap-called.log",
+                                          "foundStatusMethods":  [
+
+                                                                 ],
+                                          "tapBeforeLines":  0,
+                                          "tapAfter":  {
+                                                           "lineCount":  0,
+                                                           "lines":  [
+
+                                                                     ],
+                                                           "newBytes":  0,
+                                                           "exists":  false
+                                                       },
+                                          "hasThstatus":  false,
+                                          "jsonlPath":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\codex-micro-rpc.jsonl",
+                                          "sampleLines":  [
+
+                                                          ]
+                                      },
+                   "budget":  {
+                                  "endsAt":  "2026-07-23T02:21:04.1512451+08:00",
+                                  "elapsedMinutes":  0.6,
+                                  "startedAt":  "2026-07-22T18:21:04.1512451+08:00",
+                                  "exceeded":  false
+                              },
+                   "envHints":  {
+                                    "AGENTCONTROLLER_CODEX_MICRO_RPC_JSONL":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\codex-micro-rpc.jsonl",
+                                    "AGENTCONTROLLER_CODEX_MICRO_RPC_TAP_DEBUG":  "1 (set before AgentController restart)"
+                                }
+               },
+    "phase4":  {
+                   "hashDrift":  [
+
+                                 ],
+                   "currentPackage":  "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.715.9868.0_x64__2p2nqsd0c76g0",
+                   "note":  "No safe downgrade performed; compare hashes only",
+                   "installedCodexPackages":  [
+                                                  "OpenAI.Codex_26.715.9868.0_x64__2p2nqsd0c76g0"
+                                              ],
+                   "readOutputInCurrentEnv":  false,
+                   "phase":  4,
+                   "timestamp":  "2026-07-22T18:21:45.7683380+08:00",
+                   "budget":  {
+                                  "endsAt":  "2026-07-23T02:21:04.1512451+08:00",
+                                  "elapsedMinutes":  0.7,
+                                  "startedAt":  "2026-07-22T18:21:04.1512451+08:00",
+                                  "exceeded":  false
+                              },
+                   "triggeredBecause":  "Phase 2 hash drift or feature flag hint",
+                   "baselineVersion":  "26.707.12708.0"
+               },
+    "phase3":  {
+                   "budget":  {
+                                  "endsAt":  "2026-07-23T02:21:04.1512451+08:00",
+                                  "elapsedMinutes":  0.7,
+                                  "startedAt":  "2026-07-22T18:21:04.1512451+08:00",
+                                  "exceeded":  false
+                              },
+                   "handlerImplemented":  [
+                                              "sys.version",
+                                              "device.status",
+                                              "v.oai.thstatus",
+                                              "v.oai.rgbcfg"
+                                          ],
+                   "timestamp":  "2026-07-22T18:21:45.7256871+08:00",
+                   "processes":  {
+                                     "AgentController":  true,
+                                     "CodexDesktop":  true,
+                                     "contentionRisk":  false,
+                                     "CodexMicroSimulator":  false
+                                 },
+                   "codexRequestsSeen":  {
+                                             "codexNeverSentRequest":  true,
+                                             "note":  "If empty, Codex did not establish RPC session 鈥?not a handler bug",
+                                             "methods":  [
+
+                                                         ]
+                                         },
+                   "phase":  3,
+                   "broker":  {
+                                  "lockExists":  true,
+                                  "lockPath":  "C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\CodexMicro\\broker-v1.lock"
+                              },
+                   "codexLogHits":  [
+
+                                    ]
+               },
+    "artifactDir":  "C:\\Users\\Administrator\\Desktop\\voice-pilot\\logs\\stoploss\\20260722-182104",
+    "recommendedConclusion":  "D",
+    "budget":  {
+                   "endsAt":  "2026-07-23T02:21:04.1512451+08:00",
+                   "elapsedMinutes":  0.7,
+                   "startedAt":  "2026-07-22T18:21:04.1512451+08:00",
+                   "exceeded":  false
+               },
+    "nextSteps":  [
+                      "Run codex-app-state-relay.js PoC",
+                      "Fill docs/codex-micro-bridge-stoploss-report.md"
+                  ]
+}

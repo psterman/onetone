@@ -16,7 +16,8 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
-const OVERLAY_HEIGHT_FULL: f64 = 432.0;
+/// Extra strip for status meta under the pad (avoids clipping Chinese glyphs).
+const OVERLAY_HEIGHT_FULL: f64 = 486.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).
 const NAV_RAIL_WIDTH: f64 = 152.0;
@@ -27,6 +28,8 @@ const HIGHLIGHT_MS: u64 = 320;
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
 static HIGHLIGHT_UNTIL: OnceLock<ParkingMutex<Option<Instant>>> = OnceLock::new();
 static LAST_FOREGROUND_CODEX: OnceLock<ParkingMutex<bool>> = OnceLock::new();
+/// Last applied click-through (needs_input pass-through to Codex permission UI).
+static LAST_PASS_THROUGH: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static LAST_VISIBLE: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static FG_CONFIRM: OnceLock<ParkingMutex<(bool, u8)>> = OnceLock::new();
 /// (status, micro_key_id, since)
@@ -56,6 +59,87 @@ fn last_foreground_codex() -> &'static ParkingMutex<bool> {
 #[cfg(test)]
 pub(crate) fn test_set_foreground_latch(v: bool) {
     *last_foreground_codex().lock() = v;
+}
+
+fn last_pass_through() -> &'static ParkingMutex<bool> {
+    LAST_PASS_THROUGH.get_or_init(|| ParkingMutex::new(false))
+}
+
+/// While Hook asks for permission, keep the pad as a status beacon even if FG
+/// briefly leaves the main Codex HWND (in-app permission sheet / child focus).
+fn hook_needs_input_hold() -> bool {
+    match crate::codex_app_state::fresh_signal() {
+        Some((source, status)) => {
+            status == "needs_input" && (source == "codex_hook" || source == "codex_app")
+        }
+        None => false,
+    }
+}
+
+/// Toggle WS_EX_TRANSPARENT on the overlay HWND (any thread — does not need the UI loop).
+/// Used so PermissionRequest can enable click-through even when WebView main is wedged.
+pub fn set_overlay_click_through(pass: bool) {
+    let mut last = last_pass_through().lock();
+    if *last == pass {
+        return;
+    }
+    *last = pass;
+    #[cfg(windows)]
+    {
+        let hwnd = *overlay_hwnd_cache().lock();
+        if hwnd == 0 {
+            return;
+        }
+        unsafe {
+            use winapi::um::winuser::{
+                GetWindowLongW, SetWindowLongW, GWL_EXSTYLE, WS_EX_TRANSPARENT,
+            };
+            let hwnd = hwnd as winapi::shared::windef::HWND;
+            let style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+            let new_style = if pass {
+                style | WS_EX_TRANSPARENT as i32
+            } else {
+                style & !(WS_EX_TRANSPARENT as i32)
+            };
+            if new_style != style {
+                SetWindowLongW(hwnd, GWL_EXSTYLE, new_style);
+            }
+            let _ = crate::keyboard::show_window_no_activate(hwnd);
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = pass;
+    }
+}
+
+/// While Hook asks for permission, let clicks reach Codex (avoid overlay covering the dialog = 假死感).
+fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySnapshot) {
+    let pass = snap.visible
+        && snap.app_state_enabled
+        && snap.app_status == "needs_input"
+        && (snap.app_last_source == "codex_hook" || snap.app_last_source == "codex_app");
+    // Prefer Win32 path (works off UI thread); keep Tauri API as a secondary sync.
+    set_overlay_click_through(pass);
+    let _ = win.set_ignore_cursor_events(pass);
+    if snap.visible {
+        let _ = win.set_always_on_top(true);
+        #[cfg(windows)]
+        {
+            let hwnd = *overlay_hwnd_cache().lock();
+            if hwnd != 0 {
+                let _ = crate::keyboard::show_window_no_activate(
+                    hwnd as winapi::shared::windef::HWND,
+                );
+            } else {
+                let _ = win.show();
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = win.show();
+        }
+    }
 }
 
 fn last_visible() -> &'static ParkingMutex<bool> {
@@ -112,7 +196,8 @@ pub struct CodexMicroOverlayCell {
     pub source_kind: String,
     /// idle | running | listening | needs_input | done | failed
     pub run_status: String,
-    /// native | inferred | fallback
+    /// native | inferred | fallback | codex_hook | codex_app
+    /// (`native_micro` is a display alias of `native`; not emitted by P0 merge.)
     pub status_source: String,
     /// Fresh native AG state (empty when not native).
     pub native_run_status: String,
@@ -149,6 +234,14 @@ pub struct CodexMicroOverlaySnapshot {
     pub connection_state: String,
     pub protocol_version: String,
     pub device_status: String,
+    /// App/Hook channel (not Micro thstatus): lastEvent / source / status / ageMs.
+    pub app_last_event: String,
+    pub app_last_source: String,
+    pub app_last_seen_at: u64,
+    pub app_status: String,
+    pub app_age_ms: u64,
+    /// Mirror of `codexMicroPad.codexStatusLightsEnabled` on the active Codex mapping.
+    pub app_state_enabled: bool,
     pub cells: Vec<CodexMicroOverlayCell>,
 }
 
@@ -400,15 +493,27 @@ pub fn refocus_overlay(app: &AppHandle) {
 #[cfg(not(windows))]
 pub fn refocus_overlay(_app: &AppHandle) {}
 
-/// Show pad when Codex desktop is focused, or while the user is clicking the pad itself.
+/// Show pad when Codex desktop is focused, or while the user is clicking the pad itself,
+/// or while Hook permission wait is active (dialog focus must not hide the beacon).
 #[cfg(windows)]
 fn overlay_host_allows_show() -> bool {
-    codex_is_foreground() || overlay_hwnd_is_foreground()
+    codex_is_foreground() || overlay_hwnd_is_foreground() || hook_needs_input_hold()
 }
 
 #[cfg(not(windows))]
 fn overlay_host_allows_show() -> bool {
     false
+}
+
+/// True when any Codex mapping has `codexStatusLightsEnabled` (status-bridge switch).
+pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
+    cfg.mappings.iter().any(|m| {
+        m.app_target_id.trim() == CODEX_APP_TARGET_ID
+            && m.codex_micro_pad
+                .as_ref()
+                .map(|p| p.codex_status_lights_enabled)
+                .unwrap_or(false)
+    })
 }
 
 /// Overlay visibility depends only on `overlay_enabled` (not `pad.enabled`).
@@ -519,9 +624,12 @@ fn source_kind_for_route(
 
 fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     // Use stable host latch (same as maybe_tick) so show/hide doesn't thrash on a raw FG blip.
-    let show = *last_foreground_codex().lock();
+    // Permission wait also forces show — in-app approval UI can steal FG from the main Codex HWND.
+    let show = *last_foreground_codex().lock() || hook_needs_input_hold();
     let (pad_status, status_micro) = effective_pad_run_status();
     let vendor = crate::codex_micro_vendor::protocol_snapshot();
+    let app_view = crate::codex_app_state::snapshot();
+    let app_state_enabled = status_lights_enabled(cfg);
     let rgb = vendor.rgb.as_ref().map(|c| CodexMicroOverlayRgb {
         r: c.r,
         g: c.g,
@@ -530,9 +638,14 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let minimized = *overlay_minimized().lock();
     let joy_open = crate::codex_numpad_layer::joy_nav_panel_open();
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
-        // Labs / loopback: still expose status merge on cells when protocol is live,
+        // Labs / loopback: still expose status merge on cells when protocol or app-state is live,
         // even if Codex Micro overlay mapping is not configured yet.
-        let cells = protocol_status_cells_if_active(&pad_status, &status_micro, &vendor);
+        let cells = protocol_status_cells_if_active(
+            &pad_status,
+            &status_micro,
+            &vendor,
+            app_state_enabled,
+        );
         return CodexMicroOverlaySnapshot {
             visible: false,
             enabled: false,
@@ -551,6 +664,12 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             connection_state: vendor.connection_state.clone(),
             protocol_version: vendor.version.clone(),
             device_status: vendor.device_status.clone(),
+            app_last_event: app_view.last_event.clone(),
+            app_last_source: app_view.last_source.clone(),
+            app_last_seen_at: app_view.last_seen_at,
+            app_status: app_view.status.clone(),
+            app_age_ms: app_view.age_ms,
+            app_state_enabled,
             cells,
         };
     };
@@ -586,8 +705,13 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| def.default_icon.to_string());
         let source_kind = source_kind_for_route(def.micro_key_id, route).to_string();
-        let (run_status, status_source, native_run_status) =
-            resolve_cell_run_status(def.micro_key_id, &pad_status, &status_micro, &vendor);
+        let (run_status, status_source, native_run_status) = resolve_cell_run_status(
+            def.micro_key_id,
+            &pad_status,
+            &status_micro,
+            &vendor,
+            app_state_enabled,
+        );
         cells.push(CodexMicroOverlayCell {
             micro_key_id: def.micro_key_id.to_string(),
             label: label_for_cell(def),
@@ -642,32 +766,47 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         connection_state: vendor.connection_state.clone(),
         protocol_version: vendor.version.clone(),
         device_status: vendor.device_status.clone(),
+        app_last_event: app_view.last_event,
+        app_last_source: app_view.last_source,
+        app_last_seen_at: app_view.last_seen_at,
+        app_status: app_view.status,
+        app_age_ms: app_view.age_ms,
+        app_state_enabled,
         cells,
     }
 }
 
-/// When overlay mapping is off but Codex protocol is live, still emit status cells for Labs/HTTP.
+/// When overlay mapping is off but Codex protocol or app-state is live, still emit status cells.
 fn protocol_status_cells_if_active(
     pad_status: &str,
     status_micro: &str,
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
+    app_state_enabled: bool,
 ) -> Vec<CodexMicroOverlayCell> {
-    if vendor.connection_state == "fallback" && !vendor.ever_native {
+    let app_live = (app_state_enabled && crate::codex_app_state::fresh_signal().is_some())
+        || !crate::codex_app_state::snapshot().last_event.is_empty();
+    if vendor.connection_state == "fallback" && !vendor.ever_native && !app_live {
         return vec![];
     }
-    build_protocol_status_cells(pad_status, status_micro, vendor)
+    build_protocol_status_cells(pad_status, status_micro, vendor, app_state_enabled)
 }
 
 fn build_protocol_status_cells(
     pad_status: &str,
     status_micro: &str,
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
+    app_state_enabled: bool,
 ) -> Vec<CodexMicroOverlayCell> {
     OVERLAY_CELLS
         .iter()
         .map(|def| {
-            let (run_status, status_source, native_run_status) =
-                resolve_cell_run_status(def.micro_key_id, pad_status, status_micro, vendor);
+            let (run_status, status_source, native_run_status) = resolve_cell_run_status(
+                def.micro_key_id,
+                pad_status,
+                status_micro,
+                vendor,
+                app_state_enabled,
+            );
             CodexMicroOverlayCell {
                 micro_key_id: def.micro_key_id.to_string(),
                 label: label_for_cell(def),
@@ -684,12 +823,14 @@ fn build_protocol_status_cells(
         .collect()
 }
 
-/// AG: native-first; Non-AG: inferred only.
+/// AG: when Codex status lights are on, Hook/app wins on AG00; else native-first.
+/// Non-AG: inferred only.
 fn resolve_cell_run_status(
     micro_key_id: &str,
     pad_status: &str,
     status_micro: &str,
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
+    app_state_enabled: bool,
 ) -> (String, String, String) {
     let inferred = if !status_micro.is_empty() && status_micro == micro_key_id {
         pad_status.to_string()
@@ -700,6 +841,23 @@ fn resolve_cell_run_status(
     let Some(idx) = crate::codex_micro_vendor::agent_slot_index(micro_key_id) else {
         return (inferred, "inferred".into(), String::new());
     };
+
+    // Status-lights path: official Hook → AG00 (global), preferred over Micro HID thstatus.
+    if app_state_enabled && idx == 0 {
+        if let Some((source, status)) = crate::codex_app_state::fresh_signal() {
+            if source == "codex_hook" || source == "codex_app" {
+                let native = if crate::codex_micro_vendor::native_fresh(vendor) {
+                    vendor.agent_slots[idx]
+                        .as_ref()
+                        .map(|s| s.state.clone())
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                return (status, source, native);
+            }
+        }
+    }
 
     let fresh = crate::codex_micro_vendor::native_fresh(vendor);
     if fresh {
@@ -908,6 +1066,16 @@ fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
                 }
             } else if !visible {
                 let _ = win.hide();
+            }
+            // Permission wait: click-through so Codex dialog stays usable (avoids 假死感).
+            if visible {
+                sync_needs_input_pass_through(&win, &payload);
+            } else {
+                let mut last = last_pass_through().lock();
+                if *last {
+                    *last = false;
+                    let _ = win.set_ignore_cursor_events(false);
+                }
             }
             let _ = win.emit("codex_micro_overlay_state", &payload);
         });
@@ -1161,7 +1329,7 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
 
     let desired_visible = {
         let cfg = state.cfg.lock();
-        active_codex_mapping_with_overlay(&cfg).is_some() && host_ok
+        active_codex_mapping_with_overlay(&cfg).is_some() && (host_ok || hook_needs_input_hold())
     };
     let vis_changed = *last_visible().lock() != desired_visible;
 
@@ -1237,6 +1405,7 @@ mod tests {
             overlay_enabled: false,
             layout_profile: String::new(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1283,6 +1452,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1305,6 +1475,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -1378,6 +1549,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
@@ -1412,6 +1584,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1424,6 +1597,69 @@ mod tests {
         assert_eq!(act.status_source, "inferred");
         assert_eq!(act.run_status, "idle");
         assert_eq!(snap.connection_state, "connected");
+    }
+
+    #[test]
+    fn overlay_ag_uses_codex_hook_when_no_native() {
+        let _g = crate::codex_micro_vendor::test_protocol_lock();
+        let _app = crate::codex_app_state::test_store_lock();
+        crate::codex_micro_vendor::reset_protocol_state();
+        crate::codex_app_state::reset_for_test();
+        let raw = r#"{"source":"codex_hook","event":"UserPromptSubmit","sessionId":"s"}"#;
+        let _ = crate::codex_app_state::apply_raw_json(raw).unwrap();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.app_state_enabled);
+        assert_eq!(snap.app_last_source, "codex_hook");
+        assert_eq!(snap.app_last_event, "UserPromptSubmit");
+        assert_eq!(snap.app_status, "running");
+        assert!(snap.app_last_seen_at > 0);
+        let ag00 = snap.cells.iter().find(|c| c.micro_key_id == "AG00").unwrap();
+        assert_eq!(ag00.status_source, "codex_hook");
+        assert_eq!(ag00.run_status, "running");
+        let ag01 = snap.cells.iter().find(|c| c.micro_key_id == "AG01").unwrap();
+        assert_ne!(ag01.status_source, "codex_hook");
+        crate::codex_app_state::reset_for_test();
+    }
+
+    #[test]
+    fn overlay_ag_ignores_hook_merge_when_status_lights_off() {
+        let _g = crate::codex_micro_vendor::test_protocol_lock();
+        let _app = crate::codex_app_state::test_store_lock();
+        crate::codex_micro_vendor::reset_protocol_state();
+        crate::codex_app_state::reset_for_test();
+        let raw = r#"{"source":"codex_hook","event":"UserPromptSubmit","sessionId":"s"}"#;
+        let _ = crate::codex_app_state::apply_raw_json(raw).unwrap();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.app_state_enabled);
+        assert_eq!(snap.app_last_source, "codex_hook");
+        assert_eq!(snap.app_last_event, "UserPromptSubmit");
+        let ag00 = snap.cells.iter().find(|c| c.micro_key_id == "AG00").unwrap();
+        assert_ne!(ag00.status_source, "codex_hook");
+        crate::codex_app_state::reset_for_test();
     }
 
     #[test]
@@ -1444,6 +1680,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1459,6 +1696,68 @@ mod tests {
         let ag00b = snap2.cells.iter().find(|c| c.micro_key_id == "AG00").unwrap();
         assert_eq!(ag00b.run_status, "idle");
         assert_eq!(ag00b.status_source, "fallback");
+    }
+
+    #[test]
+    fn overlay_status_lights_prefer_hook_over_native_on_ag00() {
+        let _g = crate::codex_micro_vendor::test_protocol_lock();
+        let _app = crate::codex_app_state::test_store_lock();
+        crate::codex_micro_vendor::reset_protocol_state();
+        crate::codex_app_state::reset_for_test();
+        let _ = crate::codex_micro_vendor::apply_rpc_json(
+            r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"}]}}"#,
+        );
+        let _ = crate::codex_app_state::apply_raw_json(
+            r#"{"source":"codex_hook","event":"PermissionRequest","sessionId":"s"}"#,
+        )
+        .unwrap();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.app_status, "needs_input");
+        let ag00 = snap.cells.iter().find(|c| c.micro_key_id == "AG00").unwrap();
+        assert_eq!(ag00.status_source, "codex_hook");
+        assert_eq!(ag00.run_status, "needs_input");
+        crate::codex_app_state::reset_for_test();
+    }
+
+    #[test]
+    fn overlay_stays_visible_during_hook_needs_input_without_fg() {
+        let _g = crate::codex_micro_vendor::test_protocol_lock();
+        let _app = crate::codex_app_state::test_store_lock();
+        crate::codex_micro_vendor::reset_protocol_state();
+        crate::codex_app_state::reset_for_test();
+        let _ = crate::codex_app_state::apply_raw_json(
+            r#"{"source":"codex_hook","event":"PermissionRequest","sessionId":"s"}"#,
+        )
+        .unwrap();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            keys: vec![],
+        })];
+        // Permission sheet stole FG — latch false, but pad must remain as status beacon.
+        test_set_foreground_latch(false);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.visible, "needs_input must keep overlay visible without FG");
+        assert_eq!(snap.app_status, "needs_input");
+        crate::codex_app_state::reset_for_test();
     }
 
     #[test]
@@ -1482,6 +1781,7 @@ mod tests {
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);

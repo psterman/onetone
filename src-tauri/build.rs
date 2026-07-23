@@ -119,6 +119,8 @@ fn main() {
         "cmd_codex_micro_pad_set_flags",
         "cmd_codex_micro_pad_ensure_ready",
         "cmd_codex_micro_pad_get_readiness",
+        "cmd_codex_status_lights_set",
+        "cmd_codex_hook_setup_status",
         "cmd_acoustic_voice_command_status",
         "cmd_acoustic_voice_command_preflight",
         "cmd_acoustic_voice_command_set_suspend",

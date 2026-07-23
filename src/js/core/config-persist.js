@@ -1537,6 +1537,16 @@
   var pullBackendConfigInFlight=false;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
+    // Pad manager / keycap edit open: cmd_ready → applyMvpInit remount storm 假死's the modal.
+    try{
+      var Pad=global.OneToneCodexMicroPadUi;
+      if(Pad&&typeof Pad.isPadManagerOpen==='function'&&Pad.isPadManagerOpen()){
+        return Promise.resolve(false);
+      }
+      if(document.getElementById('codexMicroEditModal')&&!document.getElementById('codexMicroEditModal').hidden){
+        return Promise.resolve(false);
+      }
+    }catch(_){}
     if(bootSettling()&&configLoadedFromBackend&&configHasSceneData()) return Promise.resolve(false);
     clearTimeout(pullBackendConfigTimer);
     return new Promise(function(resolve){

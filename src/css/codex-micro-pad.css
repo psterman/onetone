@@ -840,6 +840,10 @@
   background: var(--micro-hw-status-listening);
   box-shadow: 0 0 4px var(--micro-hw-status-listening);
 }
+.micro-hw__leds[data-pad-status="needs_input"] .micro-hw__led {
+  background: var(--micro-hw-status-needs-input, rgba(245, 166, 35, 0.88));
+  box-shadow: 0 0 4px var(--micro-hw-status-needs-input, rgba(245, 166, 35, 0.88));
+}
 .micro-hw__leds[data-pad-status="done"] .micro-hw__led {
   background: var(--micro-hw-status-done);
   box-shadow: 0 0 4px var(--micro-hw-status-done);
@@ -948,6 +952,10 @@ html[data-theme="dark"] .codex-micro-pad__btn {
   backdrop-filter: blur(8px);
 }
 .micro-hw-modal[hidden] { display: none !important; }
+/* Edit keycap must sit above pad manager (same base z-index used to hide「编辑键帽」). */
+.micro-hw-modal--edit {
+  z-index: 12120;
+}
 
 .micro-hw-modal__card {
   width: min(100%, 420px);
@@ -1017,6 +1025,124 @@ html[data-theme="dark"] .codex-micro-pad__btn {
 .codex-pad-mgr__setting input {
   margin-top: 2px;
   flex-shrink: 0;
+}
+
+.codex-pad-mgr__hook {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(245, 248, 252, 0.9);
+}
+
+.codex-pad-mgr__hook-live {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(26, 45, 74, 0.08);
+}
+
+.codex-pad-mgr__hook-led {
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--micro-hw-status-idle);
+  box-shadow: none;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.codex-pad-mgr__hook-live[data-light="running"] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-running);
+  box-shadow: 0 0 10px var(--micro-hw-status-running);
+}
+.codex-pad-mgr__hook-live[data-light="listening"] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-listening);
+  box-shadow: 0 0 10px var(--micro-hw-status-listening);
+}
+.codex-pad-mgr__hook-live[data-light="needs_input"] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-needs-input);
+  box-shadow: 0 0 10px var(--micro-hw-status-needs-input);
+}
+.codex-pad-mgr__hook-live[data-light="done"] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-done);
+  box-shadow: 0 0 10px var(--micro-hw-status-done);
+}
+.codex-pad-mgr__hook-live[data-light="failed"] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-failed);
+  box-shadow: 0 0 10px var(--micro-hw-status-failed);
+}
+.codex-pad-mgr__hook-live[data-light="idle"] .codex-pad-mgr__hook-led,
+.codex-pad-mgr__hook-live[data-light=""] .codex-pad-mgr__hook-led {
+  background: var(--micro-hw-status-idle);
+}
+
+.codex-pad-mgr__hook-live-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.codex-pad-mgr__hook-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+.codex-pad-mgr__hook-phase {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface, #152238);
+}
+
+.codex-pad-mgr__hook-hint-line {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-variant, #5a7086);
+}
+
+.codex-pad-mgr__hook[data-phase="connected"] .codex-pad-mgr__hook-phase {
+  color: #1f7a4d;
+}
+
+.codex-pad-mgr__hook[data-phase="configured_waiting"] .codex-pad-mgr__hook-phase {
+  color: #9a6b12;
+}
+
+.codex-pad-mgr__hook[data-phase="not_configured"] .codex-pad-mgr__hook-phase {
+  color: #5a7086;
+}
+
+.codex-pad-mgr__hook-meta {
+  font-size: 12px;
+  color: var(--on-surface-variant, #5a7086);
+}
+
+.codex-pad-mgr__hook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codex-pad-mgr__hint.is-error {
+  color: #b42318;
+}
+
+html[data-theme="dark"] .codex-pad-mgr__hook-live {
+  background: rgba(18, 28, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .codex-pad-mgr__hook-hint-line {
+  color: #9aa8b8;
 }
 
 .codex-pad-mgr__pad {

@@ -46,6 +46,7 @@
             </div>
           </div>
         </div>
+        <div class="overlay-app-meta" id="overlayAppMeta" hidden aria-live="polite"></div>
         <div class="overlay-toast" id="overlayToast" aria-live="polite"></div>
       </div>
     </div>
@@ -108,6 +109,7 @@
     var overlayToast=document.getElementById('overlayToast');
     var miniLeds=document.getElementById('miniLeds');
     var statusChip=document.getElementById('statusChip');
+    var overlayAppMeta=document.getElementById('overlayAppMeta');
     var activePtr='';
     /** ACT10 hold-to-talk: block grid rebuild while pressed (innerHTML breaks pointer capture). */
     var holdLockId='';
@@ -193,6 +195,78 @@
         .replace(/'/g,'&#39;');
     }
 
+    function statusSourceLabel(source){
+      var s=String(source||'').trim();
+      if(s==='native'||s==='native_micro') return 'Native Micro';
+      if(s==='codex_hook') return 'Codex Hook';
+      if(s==='codex_app') return 'Codex App';
+      if(s==='inferred') return 'Inferred';
+      if(s==='fallback') return 'Fallback';
+      return s||'Fallback';
+    }
+
+    function lightStatusLabel(status){
+      var st=String(status||'idle').trim();
+      if(st==='listening') return '听写中';
+      if(st==='needs_input') return '等待输入';
+      if(st==='running') return '执行中';
+      if(st==='done') return '完成';
+      if(st==='failed') return '失败';
+      return '空闲';
+    }
+
+    function mapHookEventToLight(event){
+      var ev=String(event||'').trim();
+      if(ev==='UserPromptSubmit'||ev==='PreToolUse'||ev==='PostToolUse') return 'running';
+      if(ev==='PermissionRequest') return 'needs_input';
+      if(ev==='Stop') return 'done';
+      if(ev==='SessionStart') return 'idle';
+      return '';
+    }
+
+    function lightHumanHint(status){
+      var st=String(status||'idle').trim();
+      if(st==='running') return 'Codex 处理中';
+      if(st==='needs_input') return '请在 Codex 确认';
+      if(st==='done') return '本回合完成';
+      if(st==='failed') return '出现失败';
+      if(st==='listening') return '听写中';
+      return '';
+    }
+
+    function applyAppMetaChip(s){
+      if(!overlayAppMeta) return;
+      var lastSrc=String(s&&s.appLastSource||'').trim();
+      var lastEv=String(s&&s.appLastEvent||'').trim();
+      var enabled=!!(s&&s.appStateEnabled);
+      var light=String(s&&(s.appStatus||s.app_status)||'').trim()
+        || mapHookEventToLight(lastEv)
+        || 'idle';
+      // Event-driven only: hide quiet idle so the bar is not permanently sticky.
+      if(!enabled || (!lastEv && !lastSrc) || light==='idle'){
+        overlayAppMeta.hidden=true;
+        overlayAppMeta.textContent='';
+        overlayAppMeta.removeAttribute('data-light');
+        wrap.classList.remove('is-pass-through');
+        return;
+      }
+      var bits=[lightStatusLabel(light)];
+      var hint=lightHumanHint(light);
+      if(hint) bits.push(hint);
+      if(lastSrc==='codex_hook'||lastSrc==='codex_app') bits.push('Hook');
+      else if(lastSrc) bits.push(statusSourceLabel(lastSrc));
+      overlayAppMeta.textContent=bits.join(' · ');
+      overlayAppMeta.hidden=false;
+      overlayAppMeta.setAttribute('data-source', lastSrc||'');
+      overlayAppMeta.setAttribute('data-light', light);
+      overlayAppMeta.setAttribute('data-enabled', '1');
+      wrap.classList.toggle('is-pass-through', light==='needs_input' && enabled);
+      if(statusChip){
+        statusChip.setAttribute('data-status', light);
+        statusChip.setAttribute('data-light', light);
+      }
+    }
+
     function sourceClass(kind, cellId){
       if(cellId==='JOY') return '';
       if(kind==='screen') return ' is-screen-only';
@@ -204,18 +278,53 @@
       if(localStatusTimer){ clearTimeout(localStatusTimer); localStatusTimer=null; }
     }
 
+    var lastAppLightsOn=false;
+    var lastAppLight='idle';
+
     function effectivePadStatus(){
       if(localPadStatus!=='idle') return localPadStatus;
+      // Codex Hook status lights drive the pad ring / mini LEDs (not vendor RGB alone).
+      if(lastAppLightsOn && lastAppLight && lastAppLight!=='idle') return lastAppLight;
       return backendPadStatus||'idle';
     }
 
-    function applyRgbGlow(rgb){
-      if(!rgb||rgb.r==null){
+    /** Official Micro thstatus palette → perimeter glow. */
+    function lightRgb(status){
+      var st=String(status||'').trim();
+      if(st==='running') return {r:48,g:83,b:254};
+      if(st==='needs_input') return {r:255,g:106,b:0};
+      if(st==='done') return {r:0,g:255,b:76};
+      if(st==='failed') return {r:255,g:0,b:51};
+      if(st==='listening') return {r:0,g:163,b:255};
+      return null;
+    }
+
+    function applyPadLightGlow(s){
+      var appOn=!!(s&&s.appStateEnabled);
+      var appSt=String(s&&(s.appStatus||s.app_status)||'').trim()
+        || mapHookEventToLight(s&&(s.appLastEvent||s.app_last_event))
+        || 'idle';
+      lastAppLightsOn=appOn;
+      lastAppLight=appSt;
+      var padSt=effectivePadStatus();
+      var light=appOn ? (appSt||'idle') : padSt;
+      wrap.setAttribute('data-light', light);
+
+      var rgb=null;
+      if(appOn){
+        // Status-lights mode: semantic color only — never keep a sticky mint RGB ring.
+        rgb=lightRgb(appSt);
+      } else {
+        rgb=lightRgb(padSt);
+        if(!rgb && s && s.rgb && s.rgb.r!=null) rgb=s.rgb;
+      }
+      if(!rgb){
         wrap.classList.remove('has-rgb-glow');
+        wrap.style.removeProperty('--overlay-rgb-glow');
         return;
       }
       wrap.classList.add('has-rgb-glow');
-      wrap.style.setProperty('--overlay-rgb-glow', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.32)');
+      wrap.style.setProperty('--overlay-rgb-glow', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.42)');
     }
 
     function syncEncSwitchDom(){
@@ -605,10 +714,36 @@
       return !!holdLockId || localPadStatus==='listening' || !!activePtr;
     }
 
+    var lastSnap={};
+    var APP_STATE_URL='http://127.0.0.1:8796/api/codex-app/state';
+
+    function mergeAppLightIntoSnap(base, j){
+      var st=j&&j.state?j.state:{};
+      var out=Object.assign({}, base||{});
+      out.appStateEnabled=!!(j&&j.appStateEnabled);
+      out.appStatus=String(st.status||'').trim()||'idle';
+      out.appLastEvent=String(st.lastEvent||st.event||'').trim();
+      out.appLastSource=String(st.lastSource||st.source||'').trim();
+      return out;
+    }
+
+    /** Bypass wedged Tauri IPC: poll Hook state over loopback HTTP for pad color. */
+    function pullAppLightHttp(){
+      fetch(APP_STATE_URL,{method:'GET',cache:'no-store'}).then(function(r){
+        return r.ok?r.json():null;
+      }).then(function(j){
+        if(!j||!j.ok) return;
+        lastSnap=mergeAppLightIntoSnap(lastSnap,j);
+        applyPadLightGlow(lastSnap);
+        applyAppMetaChip(lastSnap);
+      }).catch(function(){});
+    }
+
     function render(s){
       s=s||{};
+      lastSnap=Object.assign({}, lastSnap, s);
       wrap.classList.toggle('is-visible',!!s.visible);
-      if(!s.visible){ holdLockId=''; return; }
+      if(!s.visible){ holdLockId=''; applyAppMetaChip(s); return; }
       padEnabled=!!s.enabled;
       padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
       joyNavOpen=!!s.joyNavPanelOpen && padMode==='codex';
@@ -616,7 +751,8 @@
       numLockBlocking=!!s.numLockBlocking;
       enhanceOn=!!s.softwareEnhanceEnabled;
       localMinimized=!!s.minimized;
-      applyRgbGlow(s.rgb);
+      applyPadLightGlow(s);
+      applyAppMetaChip(s);
       var map=cellMap(s.cells);
       var active=String(s.activeMicroKeyId||'');
       backendPadStatus=String(s.padStatus||'idle');
@@ -706,6 +842,9 @@
         var aria=cell.id==='ENC'
           ? (padEnabled?'Codex 场景模式':'数字键模式')
           : ([info.label, info.sub].filter(Boolean).join(' · ') || cell.id);
+        if(cell.ag!=null && statusSrc){
+          aria+=(aria?' · ':'')+statusSourceLabel(statusSrc);
+        }
         return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'" style="'+style+'"'
           +' aria-label="'+escHtml(aria)+'"'
@@ -770,7 +909,9 @@
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
     }
     pull();
+    pullAppLightHttp();
     setInterval(pull, 1500);
+    setInterval(pullAppLightHttp, 500);
   </script>
 </body>
 </html>

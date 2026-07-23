@@ -2,7 +2,7 @@
 //!
 //! - **Default: OFF.** Normal users never get this listener.
 //! - Optional auto-start only when `ONETONE_CODEX_MICRO_PROTOCOL=1` (Labs/验收).
-//! - Bind: `127.0.0.1` only. No wildcard CORS.
+//! - Bind: `127.0.0.1` only. CORS `*` OK (loopback Labs; not a public surface).
 //! - Methods: status only (`thstatus` / `rgbcfg` / `lights.preview` / `device.status` / `sys.version`).
 //! - Never accepts `v.oai.hid` / `v.oai.rad` over HTTP (no remote key injection).
 
@@ -16,12 +16,14 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::AppHandle;
 
+use crate::codex_app_state;
 use crate::codex_micro_overlay::{self, CodexMicroOverlaySnapshot};
 use crate::AppState;
 
 pub const DEFAULT_PORT: u16 = 8796;
 pub const MAX_BODY_BYTES: usize = 16 * 1024;
 pub const PROTOCOL_PATH: &str = "/api/codex-micro/protocol";
+pub const APP_STATE_PATH: &str = codex_app_state::APP_STATE_PATH;
 
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
 pub const ENV_ENABLE: &str = "ONETONE_CODEX_MICRO_PROTOCOL";
@@ -243,26 +245,22 @@ pub fn apply_status_rpc(
     Ok(codex_micro_overlay::build_snapshot(state))
 }
 
-const RPC_DISPATCH_TIMEOUT: Duration = Duration::from_secs(8);
 
-/// HTTP serve thread entry — marshal onto the Tauri main thread (cfg/overlay are not safe off-UI).
+/// HTTP serve thread entry — vendor store is lock-safe; overlay push is fire-and-forget on UI thread.
 fn apply_status_rpc_from_http(
     app: &AppHandle,
     state: Arc<AppState>,
     raw: &str,
 ) -> Result<CodexMicroOverlaySnapshot, String> {
     validate_protocol_body(raw)?;
-    let app = app.clone();
-    let raw = raw.to_string();
-    let (tx, rx) = std::sync::mpsc::sync_channel(1);
-    app.clone()
-        .run_on_main_thread(move || {
-            let result = apply_status_rpc(&app, state.as_ref(), &raw);
-            let _ = tx.send(result);
-        })
-    .map_err(|e| format!("dispatch_failed:{e}"))?;
-    rx.recv_timeout(RPC_DISPATCH_TIMEOUT)
-        .map_err(|_| "dispatch_timeout".to_string())?
+    crate::codex_micro_vendor::apply_rpc_json(raw);
+    let snapshot = codex_micro_overlay::build_snapshot(state.as_ref());
+    let app2 = app.clone();
+    let state2 = Arc::clone(&state);
+    let _ = app.run_on_main_thread(move || {
+        codex_micro_overlay::push_overlay_status(&app2, state2.as_ref());
+    });
+    Ok(snapshot)
 }
 
 fn serve_loop(
@@ -278,9 +276,16 @@ fn serve_loop(
                     let _ = stream.shutdown(Shutdown::Both);
                     break;
                 }
-                if let Err(err) = handle_client(stream, &app, Arc::clone(&state)) {
-                    eprintln!("[codex-micro-protocol] request error: {err}");
-                }
+                // Concurrent handlers — one wedged main-thread RPC must not block Hook POSTs.
+                let app_c = app.clone();
+                let state_c = Arc::clone(&state);
+                let _ = thread::Builder::new()
+                    .name("codex-micro-http".into())
+                    .spawn(move || {
+                        if let Err(err) = handle_client(stream, &app_c, state_c) {
+                            eprintln!("[codex-micro-protocol] request error: {err}");
+                        }
+                    });
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 thread::sleep(Duration::from_millis(40));
@@ -325,18 +330,29 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
             &mut stream,
             204,
             "No Content",
-            &format!("{}\r\nAllow: POST, OPTIONS\r\n", cors_headers()),
+            &format!("{}\r\nAllow: GET, POST, OPTIONS\r\n", cors_headers()),
             b"",
         )?;
         return Ok(());
     }
 
-    if !method.eq_ignore_ascii_case("POST") {
+    let is_protocol = path == PROTOCOL_PATH;
+    let is_app_state = path == APP_STATE_PATH;
+    if !is_protocol && !is_app_state {
+        write_error(&mut stream, 404, "not_found")?;
+        return Ok(());
+    }
+
+    if method.eq_ignore_ascii_case("GET") {
+        if is_app_state {
+            return handle_app_state_get(&mut stream, Arc::clone(&state));
+        }
         write_error(&mut stream, 405, "not_found")?;
         return Ok(());
     }
-    if path != PROTOCOL_PATH {
-        write_error(&mut stream, 404, "not_found")?;
+
+    if !method.eq_ignore_ascii_case("POST") {
+        write_error(&mut stream, 405, "not_found")?;
         return Ok(());
     }
 
@@ -360,6 +376,10 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     }
     body.truncate(content_length);
     let raw = String::from_utf8(body).map_err(|_| "invalid_json".to_string())?;
+
+    if is_app_state {
+        return handle_app_state_post(&mut stream, app, state, &raw);
+    }
 
     match validate_protocol_body(&raw) {
         Ok(rpc_method) => match apply_status_rpc_from_http(app, state, &raw) {
@@ -392,6 +412,101 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     Ok(())
 }
 
+fn handle_app_state_get(
+    stream: &mut TcpStream,
+    state: Arc<AppState>,
+) -> Result<(), String> {
+    let view = codex_app_state::snapshot();
+    let lights = {
+        let cfg = state.cfg.lock();
+        codex_micro_overlay::status_lights_enabled(&cfg)
+    };
+    let payload = serde_json::json!({
+        "ok": true,
+        "disabled": !lights,
+        "appStateEnabled": lights,
+        "state": view
+    });
+    let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+    write_raw(
+        stream,
+        200,
+        "OK",
+        &format!(
+            "{}Content-Type: application/json; charset=utf-8\r\n",
+            cors_headers()
+        ),
+        &bytes,
+    )?;
+    Ok(())
+}
+
+fn handle_app_state_post(
+    stream: &mut TcpStream,
+    app: &AppHandle,
+    state: Arc<AppState>,
+    raw: &str,
+) -> Result<(), String> {
+    match apply_app_state_from_http(app, state, raw) {
+        Ok((view, lights_enabled)) => {
+            eprintln!(
+                "[codex-app-state] ok source={} event={} status={} lights={}",
+                view.source, view.event, view.status, lights_enabled
+            );
+            let payload = serde_json::json!({
+                "ok": true,
+                "disabled": !lights_enabled,
+                "appStateEnabled": lights_enabled,
+                "state": view
+            });
+            let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+            write_raw(
+                stream,
+                200,
+                "OK",
+                &format!(
+                    "{}Content-Type: application/json; charset=utf-8\r\n",
+                    cors_headers()
+                ),
+                &bytes,
+            )?;
+        }
+        Err(code) => {
+            eprintln!("[codex-app-state] reject err={code}");
+            let status = if code == "body_too_large" { 413 } else { 400 };
+            write_error(stream, status, &code)?;
+        }
+    }
+    Ok(())
+}
+
+fn apply_app_state_from_http(
+    app: &AppHandle,
+    state: Arc<AppState>,
+    raw: &str,
+) -> Result<(codex_app_state::CodexAppStateView, bool), String> {
+    let payload = codex_app_state::validate_app_state_body(raw).map_err(|e| e.to_string())?;
+    // Apply off the UI thread — Hook POST must not wait on a wedged WebView main loop
+    // (that was causing PermissionRequest to time out while the pad stayed "running" and blocked the dialog).
+    let view = codex_app_state::apply_payload(&payload);
+    let lights = {
+        let cfg = state.cfg.lock();
+        codex_micro_overlay::status_lights_enabled(&cfg)
+    };
+    let pass = lights
+        && view.status == "needs_input"
+        && (view.last_source == "codex_hook" || view.last_source == "codex_app");
+    codex_micro_overlay::set_overlay_click_through(pass);
+
+    // Best-effort UI refresh; never block the Hook HTTP response on it.
+    let app2 = app.clone();
+    let state2 = Arc::clone(&state);
+    let _ = app.run_on_main_thread(move || {
+        codex_micro_overlay::push_overlay_status(&app2, state2.as_ref());
+    });
+    Ok((view, lights))
+}
+
 fn find_header_end(buf: &[u8]) -> Option<usize> {
     buf.windows(4)
         .position(|w| w == b"\r\n\r\n")
@@ -419,9 +534,10 @@ fn parse_content_length(header: &str) -> Option<usize> {
 }
 
 fn cors_headers() -> String {
-    // Labs acceptance page only — not a public wildcard.
-    "Access-Control-Allow-Origin: http://127.0.0.1:8766\r\n\
-     Access-Control-Allow-Methods: POST, OPTIONS\r\n\
+    // Loopback Labs only (bound 127.0.0.1). Wildcard so overlay (tauri.localhost /
+    // localhost:1420) and acceptance (:8766) can poll / POST without CORS blocks.
+    "Access-Control-Allow-Origin: *\r\n\
+     Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
      Access-Control-Allow-Headers: Content-Type\r\n"
         .to_string()
 }
@@ -554,5 +670,19 @@ mod tests {
         let st = status();
         assert!(st.labs_only);
         assert!(!st.enabled);
+    }
+
+    #[test]
+    fn app_state_path_is_separate_from_protocol() {
+        assert_ne!(PROTOCOL_PATH, APP_STATE_PATH);
+        assert_eq!(APP_STATE_PATH, "/api/codex-app/state");
+        assert!(codex_app_state::validate_app_state_body(
+            r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
+        )
+        .is_ok());
+        assert_eq!(
+            codex_app_state::validate_app_state_body(r#"{"m":"v.oai.hid","p":{}}"#).err(),
+            Some("invalid_method")
+        );
     }
 }

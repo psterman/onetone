@@ -477,6 +477,11 @@ fn apply_sys_version(json: &str) {
 }
 
 fn apply_thstatus(json: &str) {
+    // Codex Desktop native: root `params` is a JSON array of slot lighting objects.
+    let codex_native_slots = extract_json_array_field(json, "params")
+        .map(|arr| parse_thstatus_slots(&arr))
+        .filter(|slots| !slots.is_empty());
+
     let payload = extract_json_object_field(json, "p")
         .or_else(|| extract_json_object_field(json, "params"));
     let raw = payload
@@ -488,15 +493,17 @@ fn apply_thstatus(json: &str) {
         })
         .unwrap_or_default();
     let mapped = map_thstatus_to_pad(&raw);
-    let slots_src = payload.as_ref().and_then(|p| {
+    let legacy_slots = payload.as_ref().and_then(|p| {
         extract_json_array_field(p, "slots")
             .or_else(|| extract_json_array_field(p, "agents"))
             .or_else(|| extract_json_array_field(p, "th"))
     });
-    let parsed_slots = slots_src
-        .as_ref()
-        .map(|arr| parse_thstatus_slots(arr))
-        .unwrap_or_default();
+    let parsed_slots = codex_native_slots.unwrap_or_else(|| {
+        legacy_slots
+            .as_ref()
+            .map(|arr| parse_thstatus_slots(arr))
+            .unwrap_or_default()
+    });
 
     let mut state = protocol_state().lock().unwrap();
     if !mapped.is_empty() {
@@ -508,6 +515,41 @@ fn apply_thstatus(json: &str) {
         }
     }
     mark_native_touch(&mut state);
+}
+
+/// Codex Micro official slot color → semantic state (AG00–AG05 lighting).
+pub fn map_thstatus_color_to_state(c: u32) -> &'static str {
+    match c {
+        0 | 16777215 => "idle",
+        3166206 => "running",
+        65356 => "done",
+        16739584 => "needs_input",
+        16711731 => "failed",
+        _ => "idle",
+    }
+}
+
+fn color_u32_to_rgb(c: u32) -> CodexMicroRgbCfg {
+    CodexMicroRgbCfg {
+        r: ((c >> 16) & 0xFF) as u8,
+        g: ((c >> 8) & 0xFF) as u8,
+        b: (c & 0xFF) as u8,
+    }
+}
+
+fn resolve_slot_state(obj: &str) -> String {
+    if let Some(s) = extract_json_string_field(obj, "s")
+        .or_else(|| extract_json_string_field(obj, "status"))
+        .or_else(|| extract_json_string_field(obj, "state"))
+    {
+        if !s.trim().is_empty() {
+            return map_agent_slot_state(&s);
+        }
+    }
+    if let Some(c) = extract_json_u32_field(obj, "c") {
+        return map_thstatus_color_to_state(c).to_string();
+    }
+    "idle".into()
 }
 
 /// Agent slot normalize: idle | running | needs_input | done | failed.
@@ -573,18 +615,14 @@ fn parse_thstatus_slots(array_json: &str) -> Vec<(usize, CodexMicroAgentSlotStat
         if idx >= 6 {
             continue;
         }
-        let raw = extract_json_string_field(&obj, "s")
-            .or_else(|| extract_json_string_field(&obj, "status"))
-            .or_else(|| extract_json_string_field(&obj, "state"))
-            .unwrap_or_default();
-        let state = map_agent_slot_state(&raw);
+        let state = resolve_slot_state(&obj);
         let rgb = extract_slot_rgb(&obj);
         out.push((
             idx,
             CodexMicroAgentSlotState {
                 state,
                 rgb,
-                raw,
+                raw: obj,
                 updated_at_ms: ts,
             },
         ));
@@ -593,6 +631,9 @@ fn parse_thstatus_slots(array_json: &str) -> Vec<(usize, CodexMicroAgentSlotStat
 }
 
 fn extract_slot_index(obj: &str) -> Option<usize> {
+    if let Some(n) = extract_json_u8_field(obj, "id").map(|v| v as usize) {
+        return Some(n);
+    }
     if let Some(n) = extract_json_u8_field(obj, "i").map(|v| v as usize) {
         return Some(n);
     }
@@ -616,10 +657,24 @@ fn extract_slot_index(obj: &str) -> Option<usize> {
 }
 
 fn extract_slot_rgb(obj: &str) -> Option<CodexMicroRgbCfg> {
-    let r = extract_json_u8_field(obj, "r")?;
-    let g = extract_json_u8_field(obj, "g")?;
-    let b = extract_json_u8_field(obj, "b")?;
-    Some(CodexMicroRgbCfg { r, g, b })
+    if let (Some(r), Some(g), Some(b)) = (
+        extract_json_u8_field(obj, "r"),
+        extract_json_u8_field(obj, "g"),
+        extract_json_u8_field(obj, "b"),
+    ) {
+        return Some(CodexMicroRgbCfg { r, g, b });
+    }
+    extract_json_u32_field(obj, "c").map(color_u32_to_rgb)
+}
+
+fn extract_json_u32_field(json: &str, field: &str) -> Option<u32> {
+    let needle = format!("\"{field}\":");
+    let start = json.find(&needle)? + needle.len();
+    let rest = json.get(start..)?.trim_start();
+    let end = rest
+        .find(|c: char| !(c.is_ascii_digit()))
+        .unwrap_or(rest.len());
+    rest[..end].parse().ok()
 }
 
 fn apply_rgbcfg(json: &str) {
@@ -947,6 +1002,32 @@ mod tests {
         let _ = apply_rpc_json(r#"{"m":"lights.preview","p":{"on":true,"r":1,"g":2,"b":3}}"#);
         assert!(protocol_snapshot().lights_preview);
         assert_eq!(protocol_snapshot().rgb.as_ref().map(|c| c.r), Some(1));
+    }
+
+    #[test]
+    fn thstatus_codex_native_params_array() {
+        let _g = test_lock();
+        reset_protocol_state();
+        let _ = apply_rpc_json(
+            r#"{"method":"v.oai.thstatus","params":[{"id":0,"c":3166206,"b":1,"e":4,"s":0.4}],"id":42}"#,
+        );
+        let snap = protocol_snapshot();
+        let slot = snap.agent_slots[0].as_ref().expect("slot 0");
+        assert_eq!(slot.state, "running");
+        assert!(slot.raw.contains("\"c\":3166206"));
+        assert!(slot.raw.contains("\"id\":0"));
+        assert!(native_fresh(&snap));
+        assert_eq!(snap.connection_state, "connected");
+    }
+
+    #[test]
+    fn map_thstatus_color_to_state_table() {
+        assert_eq!(map_thstatus_color_to_state(0), "idle");
+        assert_eq!(map_thstatus_color_to_state(16777215), "idle");
+        assert_eq!(map_thstatus_color_to_state(3166206), "running");
+        assert_eq!(map_thstatus_color_to_state(65356), "done");
+        assert_eq!(map_thstatus_color_to_state(16739584), "needs_input");
+        assert_eq!(map_thstatus_color_to_state(16711731), "failed");
     }
 
     #[test]
