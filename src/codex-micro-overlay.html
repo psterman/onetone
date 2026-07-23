@@ -306,8 +306,17 @@
         return;
       }
       var bits=[lightStatusLabel(light)];
-      if(lastSrc==='codex_hook'||lastSrc==='codex_app') bits.push('Hook');
-      else if(lastSrc) bits.push(statusSourceLabel(lastSrc));
+      if(lastSrc) bits.push(statusSourceLabel(lastSrc));
+      var agent=String(s&&(s.appAgent||s.app_agent)||'').trim();
+      if(agent==='claude'||agent==='codex'){
+        var agentLbl=agent==='claude'?'Claude':'Codex';
+        if(bits.indexOf(agentLbl)<0 && bits.indexOf(agentLbl+' Hook')<0 && bits.indexOf(agentLbl+' App')<0){
+          // Prefer source label (already agent-aware); only add agent when source is generic.
+          if(lastSrc!=='codex_hook'&&lastSrc!=='claude_hook'&&lastSrc!=='codex_app'&&lastSrc!=='claude_app'){
+            bits.push(agentLbl);
+          }
+        }
+      }
       var age=formatAgeMs(ageMs);
       if(age) bits.push(age);
       if(confidence==='low') bits.push('推断');

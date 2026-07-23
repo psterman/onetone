@@ -233,6 +233,36 @@ assert.equal(ag01.slotId, 'claudeModel');
 assert.equal(ag02.slotId, 'switchModel');
 assert.equal(ag04.slotId, 'status');
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG00'; }).uiLabelZh, 'Agent');
+assert.ok(typeof Pad.resolveStatusLightMicroKeyId === 'function');
+assert.equal(
+  Pad.resolveStatusLightMicroKeyId({ keys: Pad.LAYOUT.defaultRoutes }),
+  'AG04',
+  'default status slot hosts the status light'
+);
+assert.equal(
+  Pad.resolveStatusLightMicroKeyId({
+    keys: [{ microKeyId: 'AG05', slotId: 'status', enabled: true }]
+  }),
+  'AG05'
+);
+assert.equal(
+  Pad.resolveStatusLightMicroKeyId({
+    keys: [{ microKeyId: 'ACT09', slotId: 'status', enabled: true }]
+  }),
+  'ACT09'
+);
+assert.equal(
+  Pad.resolveStatusLightMicroKeyId({ keys: [] }),
+  'AG00',
+  'no status route falls back to AG00'
+);
+assert.equal(
+  Pad.resolveStatusLightMicroKeyId({
+    keys: [{ microKeyId: 'GHOST99', slotId: 'status', enabled: true }]
+  }),
+  '',
+  'status on invisible key → empty host'
+);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG01'; }).uiLabelZh, 'Claude');
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG02'; }).uiLabelZh, 'Codex');
 var ag03 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG03'; });
@@ -562,7 +592,23 @@ assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/pad_status/adap
 assert.ok(fs.existsSync(path.join(__dirname, 'claude-hook-probe.js')));
 assert.ok(fs.existsSync(path.join(__dirname, 'claude-hooks.example.json')));
 assert.ok(fs.readFileSync(path.join(__dirname, 'claude-hook-probe.js'), 'utf8').indexOf('claude_hook') >= 0);
+assert.ok(typeof Pad.statusSourceLabelFor === 'function');
+assert.equal(Pad.statusSourceLabelFor('hook', 'claude'), 'Claude Hook');
+assert.equal(Pad.statusSourceLabelFor('hook', 'codex'), 'Codex Hook');
+assert.equal(Pad.statusSourceLabelFor('claude_hook', ''), 'Claude Hook');
+assert.equal(Pad.statusSourceLabelFor('codex_hook', ''), 'Codex Hook');
+assert.equal(Pad.statusSourceLabel('hook'), 'hook', 'raw hook must not assume Codex');
+assert.equal(Pad.agentDisplayLabel('claude'), 'Claude');
+assert.equal(Pad.agentDisplayLabel('codex'), 'Codex');
+assert.ok(padUiSrc.indexOf('statusSourceLabelFor') >= 0);
+assert.ok(padUiSrc.indexOf('resolveStatusLightMicroKeyId') >= 0);
 assert.ok(padUiSrc.indexOf('codexStatusLightsEnabled') >= 0);
+assert.ok(
+  padUiSrc.indexOf('querySelector(\'[data-micro-key="AG00"]\')') < 0,
+  'applyHookLight must not hardcode AG00 host'
+);
+assert.ok(i18n.indexOf('Hook → status 绑定键') >= 0 || i18n.indexOf('status-bound key') >= 0);
+assert.ok(i18n.indexOf('Hook → AG00') < 0);
 assert.ok(padUiSrc.indexOf('已配置，等待 Codex 事件') >= 0);
 assert.ok(padUiSrc.indexOf('已连接') >= 0);
 assert.ok(padUiSrc.indexOf('未配置') >= 0);

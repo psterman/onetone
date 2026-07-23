@@ -104,6 +104,10 @@ pub struct PadStatusLogRow {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phase: Option<String>,
     pub source: String,
+    /// Agent-aware UI label: codex_hook / claude_hook / …
+    pub source_legacy: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
     pub confidence: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_event: Option<String>,
@@ -150,6 +154,20 @@ pub fn tail_events(limit: usize) -> Vec<PadStatusLogRow> {
             .and_then(|x| x.as_str())
             .map(|s| s.to_string());
         let ui_status = ui_status_from_norm(&state, phase.as_deref());
+        let source = norm
+            .and_then(|n| n.get("source"))
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        let agent = norm
+            .and_then(|n| n.get("agent"))
+            .and_then(|x| x.as_str())
+            .map(|s| s.to_string());
+        let source_legacy = crate::pad_status::PadStatus::display_source_label_for(
+            &source,
+            agent.as_deref(),
+        )
+        .to_string();
         let row = PadStatusLogRow {
             ts: v.get("ts").and_then(|x| x.as_u64()).unwrap_or(0),
             raw: v
@@ -165,11 +183,9 @@ pub fn tail_events(limit: usize) -> Vec<PadStatusLogRow> {
             state,
             ui_status,
             phase,
-            source: norm
-                .and_then(|n| n.get("source"))
-                .and_then(|x| x.as_str())
-                .unwrap_or("")
-                .to_string(),
+            source,
+            source_legacy,
+            agent,
             confidence: norm
                 .and_then(|n| n.get("confidence"))
                 .and_then(|x| x.as_str())

@@ -1,10 +1,10 @@
 # Codex Hook → OneTone 状态灯（P1-MVP）
 
-用 Codex **官方 Hooks** 把真实 Desktop 生命周期事件送进 OneTone，反射为虚拟键盘 **AG00** 状态灯。
+用 Codex **官方 Hooks** 把真实 Desktop 生命周期事件送进 OneTone，反射为虚拟键盘 **status 宿主键**状态灯（由 `pad.keys` 中 `slotId=status` 决定；默认 AG04；无 status 时 fallback AG00）。
 
 **这不是 Micro HID thstatus。** Hook 通过只说明接上了官方生命周期事件；`native` / Native Micro 仍只代表真 Micro 协议状态。
 
-状态归一与仲裁见 **[State Core](./pad-status-core.md)**：Overlay / AG00 只读 `pad_status`，不再双轨判灯。
+状态归一与仲裁见 **[State Core](./pad-status-core.md)**：Overlay / 状态灯宿主只读 `pad_status`，不再双轨判灯。
 
 ## 3 分钟用户路径
 
@@ -13,7 +13,7 @@
 3. 点 **复制 Hook 配置**，手动合并到 `%USERPROFILE%\.codex\hooks.json`（根对象只能有 `"hooks"`）。
 4. 在 `~/.codex/config.toml` 的 `[features]` 下设 `hooks = true`。
 5. 用 **Codex CLI** 信任：终端运行 `codex` → `/hooks` → Trust（聊天框里的 `/hooks` 无效）。
-6. 在 Codex 发一条 prompt → AG00 `running`；权限请求 → `needs_input`；完成 → `done` → 约 600ms `idle`。
+6. 在 Codex 发一条 prompt → status 宿主键 `running`；权限请求 → `needs_input`；完成 → `done` → 约 600ms `idle`。
 7. Hook 面板显示 **已连接** · Codex Hook · lastEvent。
 
 面板三态（诚实命名，**不**检测「已信任」）：
@@ -51,7 +51,7 @@ Loopback（Labs / 状态灯开启时 ensure）监听 `127.0.0.1:8796`：
 
 | Hook 事件 | 灯状态 |
 |-----------|--------|
-| `UserPromptSubmit` | running（AG00） |
+| `UserPromptSubmit` | running（status 宿主键） |
 | `PermissionRequest` | needs_input |
 | `Stop` | done → 约 600ms 后 idle |
 
@@ -65,7 +65,7 @@ UI：`codex_hook` →「Codex Hook」；`native` →「Native Micro」。禁止�
 `node design-mock/_serve.js` →  
 `http://127.0.0.1:8766/codex-onetone-linkage-acceptance.html`
 
-- **Codex Hook 状态灯** 区：`source=codex_hook`、AG00 灯态、lastEvent
+- **Codex Hook 状态灯** 区：`source=codex_hook`、status 宿主键灯态、lastEvent
 - **Micro 协议注入** 区：Native Micro / thstatus / rgbcfg
 - 顶部总状态不再用 `native AG` 暗示 Hook 成功
 

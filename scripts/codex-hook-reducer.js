@@ -3,7 +3,7 @@
 
 /**
  * Mirror of Rust CodexAppStateStore reducer (P0).
- * Global / AG00 lights only — no six-slot mapping.
+ * Global / status-slot host lights only — no six-slot mapping.
  */
 
 var IDLE_AFTER_DONE_MS = 600;

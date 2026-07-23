@@ -1242,7 +1242,7 @@ pub struct CodexMicroPadConfig {
     /// Optional software enhance (ENC wheel / JOY nav). Default off — M4.
     #[serde(default)]
     pub software_enhance_enabled: bool,
-    /// Status-bridge switch: Codex Hook / app-state → AG00 lights. Not a key route.
+    /// Status-bridge switch: Codex Hook / app-state → status-slot host lights. Not a key route.
     /// When false, overlay does not merge `codex_hook`; listener is not stopped.
     #[serde(default)]
     pub codex_status_lights_enabled: bool,

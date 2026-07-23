@@ -143,7 +143,7 @@ impl Confidence {
     }
 }
 
-/// Single source of truth for pad / AG00 perimeter lights and meta copy.
+/// Single source of truth for pad status-light perimeter and meta copy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PadStatus {
@@ -211,10 +211,22 @@ impl PadStatus {
 
     /// UI / meta source label (agent-aware: Claude Hook vs Codex Hook).
     pub fn display_source_label(&self) -> &'static str {
-        match (self.source_enum(), self.agent.as_deref()) {
+        Self::display_source_label_for(&self.source, self.agent.as_deref())
+    }
+
+    /// Same rules as [`Self::display_source_label`] for log / diagnose rows.
+    pub fn display_source_label_for(source: &str, agent: Option<&str>) -> &'static str {
+        let src = match source.trim() {
+            "native" | "native_micro" => PadSource::Native,
+            "hook" | "codex_hook" | "claude_hook" => PadSource::Hook,
+            "app" | "codex_app" | "claude_app" => PadSource::App,
+            "inferred" => PadSource::Inferred,
+            _ => PadSource::Fallback,
+        };
+        match (src, agent.map(|a| a.trim())) {
             (PadSource::Hook, Some("claude")) => "claude_hook",
             (PadSource::App, Some("claude")) => "claude_app",
-            (src, _) => src.to_legacy_label(),
+            (s, _) => s.to_legacy_label(),
         }
     }
 

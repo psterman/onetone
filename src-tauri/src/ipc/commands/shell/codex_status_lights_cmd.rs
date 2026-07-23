@@ -1,4 +1,4 @@
-//! P1: Codex status-lights bridge (Hook → AG00) — independent of key routes.
+//! P1: Codex status-lights bridge (Hook → status-slot host) — independent of key routes.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -37,6 +37,8 @@ pub struct CodexHookSetupStatus {
     pub light_status: String,
     pub last_event: String,
     pub last_source: String,
+    /// Core agent id when known: codex | claude | …
+    pub agent: String,
     pub last_seen_at: u64,
     pub age_ms: u64,
     pub app_state_enabled: bool,
@@ -166,7 +168,8 @@ pub fn cmd_codex_hook_setup_status(
     let panel_phase = if !probe_configured {
         "not_configured"
     } else if (pad.source_enum() == crate::pad_status::PadSource::Hook
-        || app_view.last_source == "codex_hook")
+        || app_view.last_source == "codex_hook"
+        || app_view.last_source == "claude_hook")
         && (!pad.last_event.as_ref().map(|e| e.is_empty()).unwrap_or(true)
             || !app_view.last_event.is_empty())
     {
@@ -211,6 +214,7 @@ pub fn cmd_codex_hook_setup_status(
         } else {
             app_view.last_source
         },
+        agent: pad.agent.clone().unwrap_or_default(),
         last_seen_at: if pad.updated_at > 0 {
             pad.updated_at
         } else {

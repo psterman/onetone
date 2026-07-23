@@ -1453,45 +1453,61 @@
     return mapHookEventToLight(st.lastEvent || st.last_event) || 'idle';
   }
 
-  function hookHumanHint(phase, light, source) {
+  function hookHumanHint(phase, light, source, agent) {
+    var src = String(source || '').trim();
+    var agentLbl = agentDisplayLabel(agent);
+    var who = agentLbl || (src.indexOf('claude') === 0 ? 'Claude' : 'Codex');
     if (phase === 'not_configured') {
       return t('codexMicroPadHookHintNone', '先复制 Hook 配置并合并到 Codex，再在 /hooks 里信任');
     }
     if (phase === 'configured_waiting') {
-      return t('codexMicroPadHookHintWaiting', '配置已就绪。在 Codex 发一条消息后，AG00 会亮起状态灯');
+      return t('codexMicroPadHookHintWaiting', '配置已就绪。在 Codex 发一条消息后，status 绑定键会亮起状态灯');
     }
     if (light === 'running') {
-      return t('codexMicroPadHookHintRunning', 'Codex 正在处理请求 · AG00 执行中');
+      return t('codexMicroPadHookHintRunningAgent', '{agent} 正在处理请求 · status 键执行中').replace(
+        '{agent}',
+        who
+      );
     }
     if (light === 'needs_input') {
-      return t('codexMicroPadHookHintNeedsInput', 'Codex 在等你确认权限或继续输入');
+      return t('codexMicroPadHookHintNeedsInputAgent', '{agent} 在等你确认权限或继续输入').replace(
+        '{agent}',
+        who
+      );
     }
     if (light === 'done') {
       return t('codexMicroPadHookHintDone', '本回合刚完成 · 状态灯稍后回到空闲');
     }
     if (light === 'failed') {
-      return t('codexMicroPadHookHintFailed', 'Codex 侧出现失败，可查看对话详情');
+      return t('codexMicroPadHookHintFailedAgent', '{agent} 侧出现失败，可查看对话详情').replace(
+        '{agent}',
+        who
+      );
     }
-    var src = String(source || '').trim();
-    if (src === 'codex_hook' || src === 'codex_app') {
-      return t('codexMicroPadHookHintIdleLinked', '已与 Codex 状态灯联动 · AG00 空闲待命');
+    if (src === 'codex_hook' || src === 'codex_app' || src === 'claude_hook' || src === 'claude_app') {
+      return t('codexMicroPadHookHintIdleLinkedAgent', '已与 {agent} 状态灯联动 · status 键空闲待命').replace(
+        '{agent}',
+        who
+      );
     }
     return t('codexMicroPadHookHintIdle', '状态灯已就绪');
   }
 
-  /** Honest status-source labels (native stays internal; UI says Native Micro). */
+  /** Honest status-source labels (native stays internal; UI says Native Micro).
+   * Prefer legacy labels (codex_hook / claude_hook). Raw "hook"/"app" alone are ambiguous —
+   * pass sourceLegacy or use statusSourceLabelFor(source, agent). */
   function statusSourceLabel(source) {
     var s = String(source || '').trim();
     if (s === 'native' || s === 'native_micro') {
       return t('codexMicroPadStatusSourceNative', 'Native Micro');
     }
-    if (s === 'codex_hook' || s === 'hook') {
+    if (s === 'codex_hook') {
       return t('codexMicroPadStatusSourceHook', 'Codex Hook');
     }
     if (s === 'claude_hook') {
       return t('codexMicroPadStatusSourceClaudeHook', 'Claude Hook');
     }
-    if (s === 'codex_app' || s === 'app') {
+    if (s === 'codex_app') {
       return t('codexMicroPadStatusSourceApp', 'Codex App');
     }
     if (s === 'claude_app') {
@@ -1499,7 +1515,28 @@
     }
     if (s === 'inferred') return t('codexMicroPadStatusSourceInferred', 'Inferred');
     if (s === 'fallback') return t('codexMicroPadStatusSourceFallback', 'Fallback');
+    // Ambiguous core channel — do not assume Codex.
+    if (s === 'hook' || s === 'app') return s;
     return s || t('codexMicroPadStatusSourceFallback', 'Fallback');
+  }
+
+  function statusSourceLabelFor(source, agent) {
+    var s = String(source || '').trim();
+    var a = String(agent || '').trim().toLowerCase();
+    if (s === 'hook' || s === 'codex_hook' || s === 'claude_hook') {
+      return statusSourceLabel(a === 'claude' ? 'claude_hook' : (s === 'claude_hook' ? 'claude_hook' : 'codex_hook'));
+    }
+    if (s === 'app' || s === 'codex_app' || s === 'claude_app') {
+      return statusSourceLabel(a === 'claude' ? 'claude_app' : (s === 'claude_app' ? 'claude_app' : 'codex_app'));
+    }
+    return statusSourceLabel(s);
+  }
+
+  function agentDisplayLabel(agent) {
+    var a = String(agent || '').trim().toLowerCase();
+    if (a === 'claude') return t('codexMicroPadAgentClaude', 'Claude');
+    if (a === 'codex') return t('codexMicroPadAgentCodex', 'Codex');
+    return a;
   }
 
   function hookPanelPhaseLabel(phase) {
@@ -1510,16 +1547,53 @@
     return t('codexMicroPadHookPhaseNone', '未配置');
   }
 
-  function applyHookLightToManagerPad(light, source) {
+  /**
+   * v1 status-light host: enabled slotId=status → that microKeyId;
+   * else fallback AG00 if in LAYOUT.cells; else '' (ring/Soft RGB only).
+   */
+  function resolveStatusLightMicroKeyId(pad) {
+    var keys = (pad && pad.keys) || [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var r = keys[i];
+      if (!r || r.enabled === false) continue;
+      if (String(r.slotId || '').trim() !== 'status') continue;
+      var id = String(r.microKeyId || '').trim();
+      if (!id) continue;
+      if (cellByMicroId(id)) return id;
+      return '';
+    }
+    if (cellByMicroId('AG00')) return 'AG00';
+    return '';
+  }
+
+  function applyHookLightToManagerPad(light, source, pad) {
     var host = document.getElementById('codexPadMgrPad');
     if (!host) return;
     var st = String(light || 'idle').trim() || 'idle';
     var src = String(source || 'codex_hook').trim() || 'codex_hook';
-    var ag = host.querySelector('[data-micro-key="AG00"]');
-    if (ag) {
-      ag.setAttribute('data-run-status', st);
-      ag.setAttribute('data-status-source', src);
-    }
+    var targetId = resolveStatusLightMicroKeyId(
+      pad || (padManagerMapping && padManagerMapping.codexMicroPad) || null
+    );
+    host.querySelectorAll('[data-micro-key]').forEach(function (el) {
+      var mid = el.getAttribute('data-micro-key');
+      var prevSrc = el.getAttribute('data-status-source') || '';
+      if (targetId && mid === targetId) {
+        el.setAttribute('data-run-status', st);
+        el.setAttribute('data-status-source', src);
+        return;
+      }
+      if (
+        prevSrc === 'codex_hook' ||
+        prevSrc === 'claude_hook' ||
+        prevSrc === 'codex_app' ||
+        prevSrc === 'hook' ||
+        prevSrc === 'app'
+      ) {
+        el.setAttribute('data-run-status', 'idle');
+        el.removeAttribute('data-status-source');
+      }
+    });
     var leds = host.querySelector('.micro-hw__leds');
     if (leds) leds.setAttribute('data-pad-status', st);
   }
@@ -1531,7 +1605,7 @@
       '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadHookTitle', 'Codex 状态灯')) + '</p>' +
       '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="status-lights"' +
       (on ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadStatusLightsEnable', '开启 Codex 状态灯（官方 Hook → AG00）')) +
+      esc(t('codexMicroPadStatusLightsEnable', '开启 Codex 状态灯（官方 Hook → status 绑定键）')) +
       '</label>' +
       '<p class="codex-pad-mgr__hint">' +
       esc(t('codexMicroPadStatusLightsHint', '跟 Codex Micro 一样用颜色表示状态；只收状态，不注入按键。')) +
@@ -1632,18 +1706,17 @@
       lightLbl.hidden = phase !== 'connected';
     }
     var metaEl = card.querySelector('[data-hook-meta]');
+    var agent = String(st.agent || '').trim();
     if (metaEl) {
       // Human source only — never raw event names / ageMs / loopback.
-      if (phase === 'connected' && (source === 'codex_hook' || source === 'codex_app')) {
-        metaEl.textContent = t('codexMicroPadHookMetaFromHook', '来自 Codex Hook');
-      } else if (phase === 'connected' && source) {
-        metaEl.textContent = statusSourceLabel(source);
+      if (phase === 'connected' && source) {
+        metaEl.textContent = statusSourceLabelFor(source, agent);
       } else {
         metaEl.textContent = '';
       }
     }
     var humanEl = card.querySelector('[data-hook-human]');
-    if (humanEl) humanEl.textContent = hookHumanHint(phase, lightForUi, source);
+    if (humanEl) humanEl.textContent = hookHumanHint(phase, lightForUi, source, agent);
     var trustEl = card.querySelector('[data-hook-trust]');
     if (trustEl) trustEl.hidden = phase !== 'configured_waiting';
     var errEl = card.querySelector('[data-hook-error]');
@@ -1698,7 +1771,7 @@
     if (!view) return t('codexMicroPadDiagEmpty', '暂无诊断数据');
     var bits = [
       (view.uiStatus || view.state || 'idle'),
-      statusSourceLabel(view.sourceLegacy || view.source)
+      statusSourceLabelFor(view.sourceLegacy || view.source, view.agent)
     ];
     if (view.confidence) bits.push(view.confidence);
     var age = formatAgeMs(view.ageMs);
@@ -1757,7 +1830,7 @@
         esc(padRunStatusLabel(ui)) +
         '</span>' +
         '<span class="codex-pad-mgr__diag-source">' +
-        esc(statusSourceLabel(r.source) || r.source || '') +
+        esc(statusSourceLabelFor(r.sourceLegacy || r.source, r.agent) || r.source || '') +
         '</span>' +
         '</span>' +
         '<span class="codex-pad-mgr__diag-raw">' + esc(r.raw || '') + '</span>' +
@@ -3309,6 +3382,8 @@
       return { status: padRunStatus, microKeyId: padRunMicroKeyId };
     },
     statusSourceLabel: statusSourceLabel,
+    statusSourceLabelFor: statusSourceLabelFor,
+    agentDisplayLabel: agentDisplayLabel,
     PAD_STATUS_MS: PAD_STATUS_MS,
     JOY_DIR_MS: JOY_DIR_MS,
     enterJoyDirectionMode: enterJoyDirectionMode,
@@ -3337,6 +3412,7 @@
     clearTriggerHeroPreview: clearTriggerHeroPreview,
     LAYOUT: LAYOUT,
     cellByMicroId: cellByMicroId,
+    resolveStatusLightMicroKeyId: resolveStatusLightMicroKeyId,
     ICON_DEFS: ICON_DEFS,
     DEFAULT_ICON_BY_MICRO: DEFAULT_ICON_BY_MICRO,
     sourceId: sourceId,

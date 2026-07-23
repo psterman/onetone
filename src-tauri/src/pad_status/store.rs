@@ -1,4 +1,4 @@
-//! Global PadStatus store — sole truth for overlay / AG00 lights.
+//! Global PadStatus store — sole truth for overlay / status-light host.
 
 use std::sync::{Mutex, OnceLock};
 

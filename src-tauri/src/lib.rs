@@ -630,7 +630,7 @@ pub fn run() {
                     });
             }
 
-            // Hook → AG00 status lights need 127.0.0.1:8796. Start when status lights
+            // Hook → status-slot host lights need 127.0.0.1:8796. Start when status lights
             // are enabled in config, or when Labs env is set (验收).
             {
                 let lights_on = {
