@@ -49,23 +49,27 @@
       :(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.listen?window.__TAURI_INTERNALS__.listen.bind(window.__TAURI_INTERNALS__):null);
 
     var LAYOUT=[
-      {id:'NAV_UP',kind:'nav',row:1,col:1,icon:'navUp'},
-      {id:'ENC',kind:'control',row:1,col:2,icon:'codex'},
-      {id:'AG00',kind:'agent',row:1,col:3,ag:0,icon:'agent'},
-      {id:'AG01',kind:'agent',row:1,col:4,ag:1,icon:'claude'},
-      {id:'AG02',kind:'agent',row:1,col:5,ag:2,icon:'model'},
-      {id:'NAV_LEFT',kind:'nav',row:2,col:1,icon:'navLeft'},
-      {id:'AG03',kind:'agent',row:2,col:3,ag:3,icon:'folder'},
-      {id:'AG04',kind:'agent',row:2,col:4,ag:4,icon:'status'},
-      {id:'AG05',kind:'agent',row:2,col:5,ag:5,icon:'cloud'},
-      {id:'NAV_DOWN',kind:'nav',row:3,col:1,icon:'navDown'},
-      {id:'ACT06',kind:'command',row:3,col:3,icon:'fast'},
-      {id:'ACT07',kind:'command',row:3,col:4,icon:'palette'},
-      {id:'ACT08',kind:'command',row:3,col:5,icon:'reject'},
-      {id:'NAV_RIGHT',kind:'nav',row:4,col:1,icon:'navRight'},
-      {id:'ACT10',kind:'command',row:4,col:2,span:2,icon:'mic'},
-      {id:'ACT12',kind:'command',row:4,col:4,icon:'send'},
-      {id:'ACT09',kind:'command',row:4,col:5,icon:'fork'}
+      {id:'ENC',kind:'control',row:1,col:2,icon:'power'},
+      {id:'ACT06',kind:'command',row:1,col:3,icon:'fast'},
+      {id:'ACT07',kind:'command',row:1,col:4,icon:'palette'},
+      {id:'ACT08',kind:'command',row:1,col:5,icon:'reject'},
+      {id:'NAV_UP',kind:'nav',row:2,col:1,icon:'navUp'},
+      {id:'AG00',kind:'agent',row:2,col:2,ag:0,icon:'agent'},
+      {id:'AG01',kind:'agent',row:2,col:3,ag:1,icon:'claude'},
+      {id:'AG02',kind:'agent',row:2,col:4,ag:2,icon:'model'},
+      {id:'PLUS',kind:'command',row:2,col:5,rowSpan:2,icon:'plus'},
+      {id:'NAV_LEFT',kind:'nav',row:3,col:1,icon:'navLeft'},
+      {id:'AG03',kind:'agent',row:3,col:2,ag:3,icon:'folder'},
+      {id:'AG04',kind:'agent',row:3,col:3,ag:4,icon:'status'},
+      {id:'AG05',kind:'agent',row:3,col:4,ag:5,icon:'cloud'},
+      {id:'NAV_DOWN',kind:'nav',row:4,col:1,icon:'navDown'},
+      {id:'ACT09',kind:'command',row:4,col:2,icon:'fork'},
+      {id:'UNDO',kind:'command',row:4,col:3,icon:'undo'},
+      {id:'SEARCH',kind:'command',row:4,col:4,icon:'search'},
+      {id:'ACT12',kind:'command',row:4,col:5,rowSpan:2,icon:'send'},
+      {id:'NAV_RIGHT',kind:'nav',row:5,col:1,icon:'navRight'},
+      {id:'ACT10',kind:'command',row:5,col:2,span:2,icon:'mic'},
+      {id:'DOT',kind:'command',row:5,col:4,icon:'dot'}
     ];
 
     /** PC numpad layout (ENC replaces NumLock): / * - · 789+ · 456 · 123 Enter · 0 . */
@@ -116,6 +120,9 @@
       undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a5 5 0 010 10h-1"/></svg>',
       search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg>',
       empty:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>',
+      plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+      dot:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>',
+      power:'<svg viewBox="0 0 24 24"><path d="M12 3v6"/><path d="M8.5 5.2a7 7 0 101.5 10.1"/></svg>',
       navUp:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>',
       navDown:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20l8-8h-5V4H9v8H4z"/></svg>',
       navLeft:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l8-8v5h8v6h-8v5z"/></svg>',
@@ -391,13 +398,13 @@
       if(!enc) return;
       enc.classList.toggle('is-mode-on', !!padEnabled);
       enc.classList.toggle('is-mode-off', !padEnabled);
-      var sw=enc.querySelector('[data-act="pad-mode"]');
-      if(sw){
-        sw.classList.toggle('is-on', !!padEnabled);
-        sw.setAttribute('aria-checked', padEnabled?'true':'false');
-        sw.setAttribute('title', padEnabled?'Codex 场景模式':'数字键模式');
-      }
+      enc.setAttribute('aria-checked', padEnabled?'true':'false');
       enc.setAttribute('aria-label', padEnabled?'Codex 场景模式':'数字键模式');
+      enc.setAttribute('title', padEnabled?'Codex 场景模式':'数字键模式');
+      var metaName=enc.querySelector('.micro-hw__meta-name');
+      var metaChord=enc.querySelector('.micro-hw__meta-chord');
+      if(metaName) metaName.textContent=padEnabled?'Codex 场景模式':'数字键模式';
+      if(metaChord) metaChord.textContent=padEnabled?'ON':'OFF';
     }
 
     function applyLocalStatusDom(){
@@ -458,13 +465,13 @@
       }
     }
 
-    function encInnerHtml(codexOn){
-      return '<span class="micro-hw__enc" aria-hidden="true">'
-        +'<span class="micro-hw__mode-switch'+(codexOn?' is-on':'')+'" data-act="pad-mode" role="switch" aria-checked="'+(codexOn?'true':'false')+'" title="'+(codexOn?'Codex 场景模式':'数字键模式')+'">'
-        +'<span class="micro-hw__mode-label micro-hw__mode-label--on">ON</span>'
-        +'<span class="micro-hw__mode-label micro-hw__mode-label--off">OFF</span>'
-        +'<span class="micro-hw__mode-knob"></span>'
-        +'</span>'
+    function encInnerHtml(codexOn, iconId){
+      var icon=(ICON[iconId]||ICON.power||ICON.codex||ICON.empty);
+      var label=codexOn?'Codex 场景模式':'数字键模式';
+      return '<span class="micro-hw__icon" aria-hidden="true">'+icon+'</span>'
+        +'<span class="micro-hw__meta" aria-hidden="true">'
+        +'<span class="micro-hw__meta-name">'+escHtml(label)+'</span>'
+        +'<span class="micro-hw__meta-chord">'+(codexOn?'ON':'OFF')+'</span>'
         +'</span>';
     }
 
@@ -524,58 +531,44 @@
     }
 
     function bindEnc(el){
-      var modeSw=el.querySelector('[data-act="pad-mode"]');
-      if(modeSw){
-        modeSw.addEventListener('pointerdown',function(e){
-          e.preventDefault(); e.stopPropagation();
-          if(e.button!=null&&e.button!==0) return;
-          modeSw.classList.add('is-pressed');
-        });
-        function clearPress(){ modeSw.classList.remove('is-pressed'); }
-        modeSw.addEventListener('pointerup',clearPress);
-        modeSw.addEventListener('pointerleave',clearPress);
-        modeSw.addEventListener('pointercancel',clearPress);
-        modeSw.addEventListener('click',function(e){
-          e.preventDefault(); e.stopPropagation();
-          modeSw.classList.remove('is-pressed');
-          if(padModeToggleBusy) return;
-          padModeToggleBusy=true;
-          invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
-            padMode=String(mode||'')==='numpad'?'numpad':'codex';
-            padEnabled=padMode==='codex';
-            applyLocalStatusDom();
-            // One local rebuild (Codex ↔ numpad). Suppress emit-driven second rebuild briefly.
-            padModeSuppressEmitUntil=Date.now()+450;
-            lastGridSig='';
-            render(Object.assign({}, lastSnap, {
-              visible:true,
-              enabled:padEnabled,
-              padMode:padMode,
-              joyArrowsLive:!!lastSnap.joyArrowsLive
-            }));
-            toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
-          }).catch(function(err){
-            var msg=String((err&&err.message)||err||'');
-            if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 工作场景');
-            else toast('无法切换模式');
-          }).then(function(){
-            setTimeout(function(){ padModeToggleBusy=false; }, 280);
-          });
-        });
-      }
       el.addEventListener('pointerdown',function(e){
         if(e.button!=null&&e.button!==0) return;
-        if(e.target&&e.target.closest&&e.target.closest('[data-act="pad-mode"]')) return;
         e.preventDefault(); e.stopPropagation();
         el.classList.add('is-pressed','is-active');
       });
       function encUp(){ el.classList.remove('is-pressed','is-active'); }
       el.addEventListener('pointerup',encUp);
+      el.addEventListener('pointerleave',encUp);
       el.addEventListener('pointercancel',encUp);
       el.addEventListener('click',function(e){
-        if(e.target&&e.target.closest&&e.target.closest('[data-act="pad-mode"]')) return;
         e.preventDefault(); e.stopPropagation();
-        fire('ENC','down');
+        el.classList.remove('is-pressed','is-active');
+        if(padModeToggleBusy) return;
+        padModeToggleBusy=true;
+        invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
+          padMode=String(mode||'')==='numpad'?'numpad':'codex';
+          padEnabled=padMode==='codex';
+          applyLocalStatusDom();
+          padModeSuppressEmitUntil=Date.now()+450;
+          lastGridSig='';
+          render(Object.assign({}, lastSnap, {
+            visible:true,
+            enabled:padEnabled,
+            padMode:padMode,
+            joyArrowsLive:!!lastSnap.joyArrowsLive
+          }));
+          toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
+          // Switching ON must summon/focus Codex so FG latch + key mapping actually activate.
+          if(padMode==='codex'){
+            fire('ENC','down');
+          }
+        }).catch(function(err){
+          var msg=String((err&&err.message)||err||'');
+          if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 工作场景');
+          else toast('无法切换模式');
+        }).then(function(){
+          setTimeout(function(){ padModeToggleBusy=false; }, 280);
+        });
       });
     }
 
@@ -796,7 +789,7 @@
         var type=tag==='button'?' type="button"':'';
         var inner;
         if(cell.id==='ENC'){
-          inner=encInnerHtml(padEnabled);
+          inner=encInnerHtml(padEnabled, iconId);
         } else if(isNp){
           inner='<span class="micro-hw__digit" aria-hidden="true">'+escHtml(cell.label||'')+'</span>';
         } else if(isNav){
@@ -804,7 +797,7 @@
         } else {
           inner='<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>';
         }
-        if(cell.id!=='ENC' && !isNp){
+        if(!isNp && cell.id!=='ENC'){
           var metaName=String(info.label||'').trim();
           var metaChord=String(info.sub||'').trim();
           if(metaName || metaChord){
@@ -832,13 +825,15 @@
           if(ctxHint) actTitle=ctxHint;
           else if(cell.id==='ACT10') actTitle='按住说话';
         }
-        return '<'+tag+type+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
+        var encAttrs=cell.id==='ENC'
+          ? ' data-act="pad-mode" role="switch" aria-checked="'+(padEnabled?'true':'false')+'"'
+          : '';
+        return '<'+tag+type+encAttrs+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'"'
           +(ctxHint?' data-context-hint="'+escHtml(ctxHint)+'"':'')
           +' style="'+style+'"'
           +' aria-label="'+escHtml(aria)+'"'
-          +(actTitle?' title="'+escHtml(actTitle)+'"':'')
-          +(cell.id==='ENC'?' title="召唤 Codex"':'')
+          +(cell.id==='ENC'?' title="'+escHtml(aria)+'"':(actTitle?' title="'+escHtml(actTitle)+'"':''))
           +(isNp?' title="'+escHtml(aria)+'"':'')
           +'>'+inner+'</'+tag+'>';
       }).join('');

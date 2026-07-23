@@ -145,8 +145,8 @@ body {
   flex: 0 0 auto;
   width: min(432px, 100%);
   min-width: 0;
-  height: 100%;
-  aspect-ratio: auto;
+  height: auto;
+  aspect-ratio: 1 / 1;
   max-width: 432px;
   margin: 0;
   padding: 26px;
@@ -394,26 +394,7 @@ body {
   left: 6px;
 }
 
-.overlay-body .micro-hw__key[data-micro-key="ENC"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  filter: none !important;
-  opacity: 1 !important;
-}
-
-.overlay-body .micro-hw__key[data-micro-key="ENC"].is-pressed,
-.overlay-body .micro-hw__key[data-micro-key="ENC"].is-active {
-  transform: none;
-  filter: none;
-  box-shadow: none !important;
-}
-
-.overlay-body .micro-hw__key[data-micro-key="ENC"] .micro-hw__enc-icon,
-.overlay-body .micro-hw__key[data-micro-key="ENC"] .micro-hw__sub {
-  display: none !important;
-}
+/* ENC uses the same Soft Pad keycap chrome as other keys. */
 
 .overlay-body .micro-hw__joy-stick {
   width: 52px;
@@ -425,8 +406,8 @@ body {
   overflow: visible;
 }
 
-.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]),
-.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) {
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="JOY"]),
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="JOY"]) {
   background: var(--micro-key-press-bg) !important;
   color: var(--micro-key-press-ink) !important;
   border-color: rgba(0, 163, 255, 0.45) !important;
@@ -437,10 +418,10 @@ body {
   filter: none;
 }
 
-.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
-.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
-.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__meta,
-.overlay-body .micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__meta {
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="JOY"]) .micro-hw__icon,
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="JOY"]) .micro-hw__icon,
+.overlay-body .micro-hw__key.is-pressed:not([data-micro-key="JOY"]) .micro-hw__meta,
+.overlay-body .micro-hw__key.is-active:not([data-micro-key="JOY"]) .micro-hw__meta {
   color: var(--micro-key-press-ink) !important;
   opacity: 1;
 }
@@ -476,7 +457,7 @@ body {
 .overlay-body .micro-hw__grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: var(--overlay-gap);
   width: 100%;
   height: 100%;

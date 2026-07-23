@@ -7,23 +7,28 @@
 
   var LAYOUT = {
     cells: [
-      { microKeyId: 'NAV_UP', uiLabelZh: '上', uiLabelEn: 'Up', kind: 'nav', gridRow: 1, gridCol: 1 },
+      /* 5×5 PC-numpad topology: NAV col1 (space above ↑), right +/Enter tall */
       { microKeyId: 'ENC', uiLabelZh: '总开关', uiLabelEn: 'Power', kind: 'control', gridRow: 1, gridCol: 2 },
-      { microKeyId: 'AG00', uiLabelZh: 'Agent', uiLabelEn: 'Agent', kind: 'agent', gridRow: 1, gridCol: 3, agIndex: 0 },
-      { microKeyId: 'AG01', uiLabelZh: 'Claude', uiLabelEn: 'Claude', kind: 'agent', gridRow: 1, gridCol: 4, agIndex: 1 },
-      { microKeyId: 'AG02', uiLabelZh: 'Codex', uiLabelEn: 'Codex', kind: 'agent', gridRow: 1, gridCol: 5, agIndex: 2 },
-      { microKeyId: 'NAV_LEFT', uiLabelZh: '左', uiLabelEn: 'Left', kind: 'nav', gridRow: 2, gridCol: 1 },
-      { microKeyId: 'AG03', uiLabelZh: '权限', uiLabelEn: 'Permissions', kind: 'agent', gridRow: 2, gridCol: 3, agIndex: 3 },
-      { microKeyId: 'AG04', uiLabelZh: '常用', uiLabelEn: 'Status', kind: 'agent', gridRow: 2, gridCol: 4, agIndex: 4 },
-      { microKeyId: 'AG05', uiLabelZh: '应用', uiLabelEn: 'Apps', kind: 'agent', gridRow: 2, gridCol: 5, agIndex: 5 },
-      { microKeyId: 'NAV_DOWN', uiLabelZh: '下', uiLabelEn: 'Down', kind: 'nav', gridRow: 3, gridCol: 1 },
-      { microKeyId: 'ACT06', uiLabelZh: '快速', uiLabelEn: 'Fast', kind: 'command', gridRow: 3, gridCol: 3 },
-      { microKeyId: 'ACT07', uiLabelZh: '命令菜单', uiLabelEn: 'Command palette', kind: 'command', gridRow: 3, gridCol: 4 },
-      { microKeyId: 'ACT08', uiLabelZh: '拒绝', uiLabelEn: 'Reject', kind: 'command', gridRow: 3, gridCol: 5 },
-      { microKeyId: 'NAV_RIGHT', uiLabelZh: '右', uiLabelEn: 'Right', kind: 'nav', gridRow: 4, gridCol: 1 },
-      { microKeyId: 'ACT10', uiLabelZh: '开始说话', uiLabelEn: 'Mic', kind: 'command', gridRow: 4, gridCol: 2, gridColSpan: 2 },
-      { microKeyId: 'ACT12', uiLabelZh: '发送', uiLabelEn: 'Send', kind: 'command', gridRow: 4, gridCol: 4 },
-      { microKeyId: 'ACT09', uiLabelZh: '上下文', uiLabelEn: 'Context', kind: 'command', gridRow: 4, gridCol: 5 }
+      { microKeyId: 'ACT06', uiLabelZh: '快速', uiLabelEn: 'Fast', kind: 'command', gridRow: 1, gridCol: 3 },
+      { microKeyId: 'ACT07', uiLabelZh: '命令菜单', uiLabelEn: 'Command palette', kind: 'command', gridRow: 1, gridCol: 4 },
+      { microKeyId: 'ACT08', uiLabelZh: '拒绝', uiLabelEn: 'Reject', kind: 'command', gridRow: 1, gridCol: 5 },
+      { microKeyId: 'NAV_UP', uiLabelZh: '上', uiLabelEn: 'Up', kind: 'nav', gridRow: 2, gridCol: 1 },
+      { microKeyId: 'AG00', uiLabelZh: 'Agent', uiLabelEn: 'Agent', kind: 'agent', gridRow: 2, gridCol: 2, agIndex: 0 },
+      { microKeyId: 'AG01', uiLabelZh: 'Claude', uiLabelEn: 'Claude', kind: 'agent', gridRow: 2, gridCol: 3, agIndex: 1 },
+      { microKeyId: 'AG02', uiLabelZh: 'Codex', uiLabelEn: 'Codex', kind: 'agent', gridRow: 2, gridCol: 4, agIndex: 2 },
+      { microKeyId: 'PLUS', uiLabelZh: '加', uiLabelEn: 'Plus', kind: 'command', gridRow: 2, gridCol: 5, gridRowSpan: 2 },
+      { microKeyId: 'NAV_LEFT', uiLabelZh: '左', uiLabelEn: 'Left', kind: 'nav', gridRow: 3, gridCol: 1 },
+      { microKeyId: 'AG03', uiLabelZh: '权限', uiLabelEn: 'Permissions', kind: 'agent', gridRow: 3, gridCol: 2, agIndex: 3 },
+      { microKeyId: 'AG04', uiLabelZh: '常用', uiLabelEn: 'Status', kind: 'agent', gridRow: 3, gridCol: 3, agIndex: 4 },
+      { microKeyId: 'AG05', uiLabelZh: '应用', uiLabelEn: 'Apps', kind: 'agent', gridRow: 3, gridCol: 4, agIndex: 5 },
+      { microKeyId: 'NAV_DOWN', uiLabelZh: '下', uiLabelEn: 'Down', kind: 'nav', gridRow: 4, gridCol: 1 },
+      { microKeyId: 'ACT09', uiLabelZh: '上下文', uiLabelEn: 'Context', kind: 'command', gridRow: 4, gridCol: 2 },
+      { microKeyId: 'UNDO', uiLabelZh: '撤销', uiLabelEn: 'Undo', kind: 'command', gridRow: 4, gridCol: 3 },
+      { microKeyId: 'SEARCH', uiLabelZh: '搜索', uiLabelEn: 'Find', kind: 'command', gridRow: 4, gridCol: 4 },
+      { microKeyId: 'ACT12', uiLabelZh: '发送', uiLabelEn: 'Send', kind: 'command', gridRow: 4, gridCol: 5, gridRowSpan: 2 },
+      { microKeyId: 'NAV_RIGHT', uiLabelZh: '右', uiLabelEn: 'Right', kind: 'nav', gridRow: 5, gridCol: 1 },
+      { microKeyId: 'ACT10', uiLabelZh: '开始说话', uiLabelEn: 'Mic', kind: 'command', gridRow: 5, gridCol: 2, gridColSpan: 2 },
+      { microKeyId: 'DOT', uiLabelZh: '小数点', uiLabelEn: 'Dot', kind: 'command', gridRow: 5, gridCol: 4 }
     ],
     numpadCells: [
       { microKeyId: 'ENC', uiLabelZh: '总开关', uiLabelEn: 'Power', kind: 'control', gridRow: 1, gridCol: 1 },
@@ -59,7 +64,9 @@
       { microKeyId: 'SEARCH', sourceScan: 0x51, sourceExtended: false, slotId: 'quickSearch', uiIconId: 'search' },
       { microKeyId: 'ACT10', sourceScan: 0x52, sourceExtended: false, slotId: 'pushToTalk', uiIconId: 'mic' },
       { microKeyId: 'ACT12', sourceScan: 0x1C, sourceExtended: true, slotId: 'stopOrSend', uiIconId: 'send' },
-      { microKeyId: 'ENC', sourceScan: 0, sourceExtended: false, slotId: 'summonCodex', uiIconId: 'power' }
+      { microKeyId: 'ENC', sourceScan: 0, sourceExtended: false, slotId: 'summonCodex', uiIconId: 'power' },
+      { microKeyId: 'PLUS', sourceScan: 0x4E, sourceExtended: false, slotId: '', uiIconId: 'plus' },
+      { microKeyId: 'DOT', sourceScan: 0x53, sourceExtended: false, slotId: '', uiIconId: 'dot' }
     ]
   };
 
@@ -80,6 +87,8 @@
     AG05: 'cloud',
     ENC: 'power',
     JOY: 'empty',
+    PLUS: 'plus',
+    DOT: 'dot',
     NAV_UP: 'navUp',
     NAV_DOWN: 'navDown',
     NAV_LEFT: 'navLeft',
@@ -115,6 +124,8 @@
     { id: 'model', label: 'MODEL' },
     { id: 'undo', label: 'UNDO' },
     { id: 'search', label: 'FIND' },
+    { id: 'plus', label: 'PLUS' },
+    { id: 'dot', label: 'DOT' },
     { id: 'empty', label: 'EMPT' }
   ];
 
@@ -123,6 +134,8 @@
     navDown: '<svg viewBox="0 0 24 24"><path d="M12 20l8-8h-5V4H9v8H4z"/></svg>',
     navLeft: '<svg viewBox="0 0 24 24"><path d="M4 12l8-8v5h8v6h-8v5z"/></svg>',
     navRight: '<svg viewBox="0 0 24 24"><path d="M20 12l-8 8v-5H4V8h8V3z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    dot: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>',
     fast: '<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 10-14h-7l0-6z"/></svg>',
     approve: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
     reject: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
@@ -281,7 +294,8 @@
 
   var PRIMARY_MICRO_IDS = [
     'AG00', 'AG01', 'AG02', 'AG03', 'AG04', 'AG05',
-    'ACT06', 'ACT07', 'ACT08', 'ACT09', 'ACT10', 'ACT12', 'ENC'
+    'ACT06', 'ACT07', 'ACT08', 'ACT09', 'ACT10', 'ACT12', 'ENC',
+    'UNDO', 'SEARCH', 'PLUS', 'DOT'
   ];
 
   var ENHANCE_MICRO_IDS = {
@@ -1223,30 +1237,32 @@
         }
         tipName = tipIns || slotLabel(route.slotId) || tipName;
       }
+      if (cell.microKeyId === 'ENC') {
+        tipName = codexOn
+          ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+          : t('codexMicroPadModeNumpad', '数字键模式');
+      }
       var ariaTip = tipChord ? (tipName + ' · ' + tipChord) : tipName;
+      var encModeAttr = cell.microKeyId === 'ENC' ? ' data-act="pad-mode"' : '';
       html += '<' + tag + typeAttr + ' class="' + cls + '" data-micro-key="' + esc(cell.microKeyId) + '"' +
         ' data-run-status="' + esc(runSt) + '"' +
-        agAttr + ' style="' + style + '" aria-label="' + esc(ariaTip) + '">';
+        agAttr + encModeAttr + ' style="' + style + '" aria-label="' + esc(ariaTip) + '"' +
+        (cell.microKeyId === 'ENC' ? ' role="switch" aria-checked="' + (codexOn ? 'true' : 'false') + '"' : '') +
+        '>';
 
       var iconId = resolveIconId(route, cell.microKeyId);
-      if (cell.microKeyId === 'ENC') {
-        html += '<span class="micro-hw__enc" aria-hidden="true">'
-          + '<span class="micro-hw__mode-switch' + (codexOn ? ' is-on' : '') + '" data-act="pad-mode" role="switch" aria-checked="' + (codexOn ? 'true' : 'false') + '" title="' +
-          esc(codexOn ? t('codexMicroPadModeCodex', 'Codex 场景模式') : t('codexMicroPadModeNumpad', '数字键模式')) + '">'
-          + '<span class="micro-hw__mode-label micro-hw__mode-label--on">ON</span>'
-          + '<span class="micro-hw__mode-label micro-hw__mode-label--off">OFF</span>'
-          + '<span class="micro-hw__mode-knob"></span>'
-          + '</span>'
-          + '</span>';
-      } else if (isNp) {
+      if (isNp) {
         html += '<span class="micro-hw__digit" aria-hidden="true">' + esc(cell.digit || cell.uiLabelZh || '') + '</span>';
       } else {
         html += '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(iconId) + '</span>';
       }
-      if (cell.microKeyId !== 'ENC' && !isNp) {
+      if (!isNp) {
         var metaName = '';
         var metaChord = '';
-        if (isNavMicroKey(cell.microKeyId)) {
+        if (cell.microKeyId === 'ENC') {
+          metaName = tipName;
+          metaChord = codexOn ? 'ON' : 'OFF';
+        } else if (isNavMicroKey(cell.microKeyId)) {
           metaName = cellLabel(cell);
           metaChord = bound && route && route.slotId
             ? friendlyChord(chordForSlot(m, route.slotId))
@@ -2533,7 +2549,7 @@
       else if (host.id === 'codexMicroPadHostTarget') renderTarget(host, m);
     }
 
-    // Preview-only: mode switch — local state, never call overlay IPC.
+    // ENC / pad-mode: preview is local; settings/manager/run toggle real pad + overlay.
     host.querySelectorAll('[data-act="pad-mode"]').forEach(function (sw) {
       sw.addEventListener('pointerdown', function (e) {
         if (e.button != null && e.button !== 0) return;
@@ -2548,7 +2564,6 @@
         e.stopPropagation();
         sw.classList.remove('is-pressed');
         if (mode === 'preview') {
-          // Debounce rapid preview mode flips (each rebuilds the whole pad shell).
           if (sw._padModeBusy) return;
           sw._padModeBusy = true;
           setTimeout(function () { sw._padModeBusy = false; }, 220);
@@ -2559,8 +2574,40 @@
           rerenderPreviewLocal();
           return;
         }
-        // Config / manager: switch is visual only — real toggle lives in checkboxes.
-        toast(t('codexMicroPadModeSwitchHint', '请在「启用小键盘」开关中切换 Codex / 数字键模式'));
+        // Config / manager / run: ENC toggles real Codex ↔ numpad and keeps overlay on.
+        if (!m || !m.codexMicroPad) return;
+        if (sw._padModeBusy) return;
+        sw._padModeBusy = true;
+        setTimeout(function () { sw._padModeBusy = false; }, 280);
+        var pad = m.codexMicroPad;
+        pad.enabled = !pad.enabled;
+        if (pad.enabled) pad.overlayEnabled = true;
+        previewPadMode = pad.enabled ? 'codex' : 'numpad';
+        persistPadFlags(m);
+        toast(pad.enabled
+          ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+          : t('codexMicroPadModeNumpad', '数字键模式'));
+        if (document.getElementById('codexPadMgrBody')) {
+          if (!remountPadManagerShell(m)) renderPadManager(m, { skipHookRefresh: true });
+        } else if (host.id === 'codexMicroPadHostTarget') {
+          if (!remountTargetPadShell(host, m)) renderTarget(host, m, { skipEnsure: true });
+        } else {
+          var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
+          if (oldWrap) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = renderHardwarePad(m, pad, { mode: mode });
+            var next = tmp.firstChild;
+            if (next) {
+              oldWrap.parentNode.replaceChild(next, oldWrap);
+              bindPadClicks(host, m, mode);
+            }
+          }
+        }
+        notifyLinkedUi(m);
+        // Turning Codex mode on → summon/focus so FG latch + key mapping activate.
+        if (pad.enabled) {
+          fireMicroKey(m, 'ENC', 'down');
+        }
       });
     });
 

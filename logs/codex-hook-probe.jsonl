@@ -168,3 +168,8 @@
 {"ts":1784811778122,"hook_event_name":"UserPromptSubmit","session_id":"019f8f09-5176-73f1-b2c9-8bd7f3b7a8d9","turn_id":"019f8f12-6d71-7b82-8a8a-c727fddbfabd","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions"}
 {"ts":1784811908694,"hook_event_name":"Stop","session_id":"019f8f09-5176-73f1-b2c9-8bd7f3b7a8d9","turn_id":"019f8f12-6d71-7b82-8a8a-c727fddbfabd","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions","stop_hook_active":false}
 {"ts":1784812543337,"hook_event_name":"Stop","session_id":"t"}
+{"ts":1784814583618,"hook_event_name":"Stop","session_id":"t"}
+{"ts":1784814592417,"hook_event_name":"Stop","session_id":"t"}
+{"ts":1784815127498,"hook_event_name":"Stop","session_id":"t"}
+{"ts":1784815833799,"hook_event_name":"UserPromptSubmit","session_id":"019f8f09-5176-73f1-b2c9-8bd7f3b7a8d9","turn_id":"019f8f50-4fd7-7ec2-bf1e-8546ffb47b86","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions"}
+{"ts":1784815955379,"hook_event_name":"Stop","session_id":"019f8f09-5176-73f1-b2c9-8bd7f3b7a8d9","turn_id":"019f8f50-4fd7-7ec2-bf1e-8546ffb47b86","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions","stop_hook_active":false}

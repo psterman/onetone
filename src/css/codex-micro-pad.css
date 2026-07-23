@@ -441,27 +441,7 @@
   font-size: 6.5px;
 }
 
-/* ENC: switch only — no keycap chrome */
-.micro-hw__key[data-micro-key="ENC"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  filter: none !important;
-  opacity: 1 !important;
-}
-
-.micro-hw__key[data-micro-key="ENC"].is-pressed,
-.micro-hw__key[data-micro-key="ENC"].is-active {
-  transform: none;
-  filter: none;
-  box-shadow: none !important;
-}
-
-.micro-hw__key[data-micro-key="ENC"] .micro-hw__enc-icon,
-.micro-hw__key[data-micro-key="ENC"] .micro-hw__sub {
-  display: none !important;
-}
+/* ENC uses the same keycap chrome as other Soft Pad keys (mode via data-act=pad-mode). */
 
 .micro-hw__joy-stick {
   width: 40px;
@@ -491,7 +471,7 @@
 .micro-hw__grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: 7px;
   width: 100%;
   height: 100%;
@@ -693,8 +673,8 @@
   outline-offset: 1px;
 }
 
-.micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]),
-.micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) {
+.micro-hw__key.is-pressed:not([data-micro-key="JOY"]),
+.micro-hw__key.is-active:not([data-micro-key="JOY"]) {
   background: var(--micro-key-press-bg) !important;
   color: var(--micro-key-press-ink) !important;
   border-color: rgba(0, 163, 255, 0.4) !important;
@@ -704,8 +684,8 @@
   filter: none;
 }
 
-.micro-hw__key.is-pressed:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon,
-.micro-hw__key.is-active:not([data-micro-key="ENC"]):not([data-micro-key="JOY"]) .micro-hw__icon {
+.micro-hw__key.is-pressed:not([data-micro-key="JOY"]) .micro-hw__icon,
+.micro-hw__key.is-active:not([data-micro-key="JOY"]) .micro-hw__icon {
   color: var(--micro-key-press-ink) !important;
   opacity: 1;
 }
@@ -826,8 +806,7 @@ html[data-theme="dark"] .micro-hw__key--control {
   border-color: rgba(255, 255, 255, 0.1);
   color: #e6edf3;
 }
-html[data-theme="dark"] .micro-hw__key[data-micro-key="JOY"],
-html[data-theme="dark"] .micro-hw__key[data-micro-key="ENC"] {
+html[data-theme="dark"] .micro-hw__key[data-micro-key="JOY"] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;

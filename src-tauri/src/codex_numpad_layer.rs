@@ -969,6 +969,9 @@ pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
         route("ACT12", 0x1C, true, "stopOrSend"),
         // ENC: vendor HID / overlay only — do not steal physical Numpad 0 (mic).
         route("ENC", 0, false, "summonCodex"),
+        // Right numpad column + decimal (face keys; bindable, no default slot).
+        route("PLUS", 0x4E, false, ""),
+        route("DOT", 0x53, false, ""),
         // JOY: bindable in UI; no default scan/slot (added by frontend ensurePad).
     ]
 }
@@ -1013,6 +1016,8 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "SEARCH" => "search",
         "ACT10" => "mic",
         "ACT12" => "send",
+        "PLUS" => "plus",
+        "DOT" => "dot",
         "AG00" => "agent",
         "AG01" => "claude",
         "AG02" => "model",
@@ -1021,6 +1026,10 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "AG05" => "cloud",
         "ENC" => "power",
         "JOY" => "empty",
+        "NAV_UP" => "navUp",
+        "NAV_DOWN" => "navDown",
+        "NAV_LEFT" => "navLeft",
+        "NAV_RIGHT" => "navRight",
         _ => "",
     };
     CodexMicroPadKeyRoute {

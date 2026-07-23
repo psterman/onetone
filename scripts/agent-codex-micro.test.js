@@ -246,7 +246,7 @@ assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG05'
 var physical = Pad.LAYOUT.defaultRoutes.filter(function (r) {
   return Number(r.sourceScan) > 0;
 });
-assert.equal(physical.length, 14, '14 physical numpad routes (incl. UNDO/SEARCH; ENC screen-only)');
+assert.equal(physical.length, 16, '16 physical numpad routes (incl. UNDO/SEARCH/PLUS/DOT; ENC screen-only)');
 
 var undoDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'UNDO'; });
 var searchDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'SEARCH'; });
@@ -260,18 +260,23 @@ assert.equal(Number(act12Def.sourceScan), 0x1C);
 assert.equal(!!act12Def.sourceExtended, true);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).uiLabelZh, '上下文');
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridRow, 4);
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 5);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 2);
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }));
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_LEFT'; }));
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_DOWN'; }));
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_RIGHT'; }));
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }).gridRow, 2);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }).gridCol, 1);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ENC'; }).gridCol, 2);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'PLUS'; }).gridCol, 5);
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT12'; }).gridRowSpan, 2);
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'UNDO' }));
+assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'DOT' }));
 assert.ok(!Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'JOY'; }));
 assert.ok(Pad.cellByMicroId('NAV_UP'));
 assert.equal(Pad.DEFAULT_ICON_BY_MICRO.NAV_UP, 'navUp');
 assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }).gridCol, 1);
-assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 5);
+assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 2);
 assert.ok(!layout.cells.find(function (c) { return c.microKeyId === 'JOY'; }));
 
 var mapping = {
@@ -590,7 +595,7 @@ assert.ok(indexHtml.indexOf('codex-micro-hw-tokens.css') >= 0);
 // M4: software enhance — JOY 3s dir mode, ENC wheel, primary layout guard
 assert.equal(Pad.JOY_DIR_MS, 3000);
 assert.ok(Array.isArray(Pad.PRIMARY_MICRO_IDS));
-assert.equal(Pad.PRIMARY_MICRO_IDS.length, 13);
+assert.equal(Pad.PRIMARY_MICRO_IDS.length, 17);
 assert.ok(Pad.PRIMARY_MICRO_IDS.indexOf('ENC') >= 0);
 assert.ok(Pad.PRIMARY_MICRO_IDS.indexOf('ACT10') >= 0);
 assert.equal(!!mapping.codexMicroPad.softwareEnhanceEnabled, false);
