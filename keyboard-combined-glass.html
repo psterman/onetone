@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玻璃质感综合键盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #151b2e 50%, #0a0e1a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: hidden;
+        }
+
+        /* 背景光晕效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(6, 182, 212, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        /* 模式切换 */
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: rgba(30, 41, 59, 0.6);
+            padding: 12px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            color: #94a3b8;
+            background: transparent;
+        }
+
+        .mode-btn:hover {
+            color: #cbd5e1;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+            color: #e0e7ff;
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+
+        /* 玻璃质感键盘 */
+        .keyboard-wrapper {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .keyboard-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        }
+
+        .keypad-container {
+            display: flex;
+            gap: 24px;
+        }
+
+        /* 数字键盘区域 */
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(4, 64px);
+            gap: 10px;
+        }
+
+        /* 方向键区域 */
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 64px);
+            grid-template-rows: repeat(4, 64px);
+            gap: 10px;
+        }
+
+        /* 通用按键样式 */
+        .key {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .key::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+
+        .key::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.2), transparent);
+        }
+
+        .key:hover {
+            transform: translateY(-3px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .key:active {
+            transform: translateY(-1px) scale(0.97);
+        }
+
+        /* 按键状态指示器 */
+        .key-status {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #475569;
+            transition: all 0.3s ease;
+        }
+
+        /* 不同状态的颜色 */
+        .key-status.agent-blue {
+            background: #3b82f6;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        }
+
+        .key-status.agent-purple {
+            background: #8b5cf6;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+        }
+
+        .key-status.agent-cyan {
+            background: #22d3ee;
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+        }
+
+        .key-status.agent-green {
+            background: #10b981;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+        }
+
+        .key-status.agent-orange {
+            background: #f59e0b;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+        }
+
+        .key-status.agent-red {
+            background: #ef4444;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+        }
+
+        /* 按键内容 */
+        .key-num {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 2px;
+        }
+
+        .key-label {
+            font-size: 0.62rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .key-icon {
+            font-size: 1.1rem;
+            margin-bottom: 2px;
+        }
+
+        /* 特殊按键样式 */
+        .key-wide {
+            grid-column: span 2;
+            width: 138px;
+        }
+
+        .key-tall {
+            grid-row: span 2;
+            height: 138px;
+        }
+
+        .key-big {
+            grid-column: span 2;
+            grid-row: span 2;
+            width: 138px;
+            height: 138px;
+        }
+
+        /* AI模式的颜色按键 */
+        .key.ai-claude {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(79, 70, 229, 0.1) 100%);
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        .key.ai-claude .key-num,
+        .key.ai-claude .key-label {
+            color: #c4b5fd;
+        }
+
+        .key.ai-codex {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.1) 100%);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .key.ai-codex .key-num,
+        .key.ai-codex .key-label {
+            color: #93c5fd;
+        }
+
+        .key.ai-action {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .key.ai-action .key-num,
+        .key.ai-action .key-label {
+            color: #6ee7b7;
+        }
+
+        /* Vibecoding模式 */
+        .key.vibe-main {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%);
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .key.vibe-main .key-num,
+        .key.vibe-main .key-label {
+            color: #fcd34d;
+        }
+
+        .key.vibe-secondary {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(219, 39, 119, 0.1) 100%);
+            border-color: rgba(236, 72, 153, 0.4);
+        }
+
+        .key.vibe-secondary .key-num,
+        .key.vibe-secondary .key-label {
+            color: #f9a8d4;
+        }
+
+        /* 方向键样式 */
+        .key.dpad-empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .key.dpad-empty::before,
+        .key.dpad-empty::after {
+            display: none;
+        }
+
+        /* 状态信息面板 */
+        .status-panel {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            max-width: 500px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: left;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .status-title {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-key {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-family: monospace;
+        }
+
+        .status-func {
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            margin-left: auto;
+        }
+
+        /* 点击动画 */
+        @keyframes keyPress {
+            0% { transform: translateY(-3px) scale(1); }
+            50% { transform: translateY(-1px) scale(0.97); }
+            100% { transform: translateY(-3px) scale(1); }
+        }
+
+        .key.active {
+            animation: keyPress 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">玻璃质感综合键盘</div>
+            <div class="subtitle">AI模式 · Vibecoding模式 · 数字键模式</div>
+        </div>
+
+        <div class="mode-switch">
+            <button class="mode-btn" id="btn-num">数字键</button>
+            <button class="mode-btn active" id="btn-ai">AI模式</button>
+            <button class="mode-btn" id="btn-vibe">Vibecoding</button>
+        </div>
+
+        <div class="keyboard-wrapper">
+            <div class="keypad-container">
+                <!-- 数字键盘区域 -->
+                <div class="numpad" id="numpad">
+                    <!-- 第一行 -->
+                    <div class="key" data-key="/" data-status="agent-cyan">
+                        <div class="key-status agent-cyan"></div>
+                        <div class="key-num">/</div>
+                        <div class="key-label" id="key-slash">CMD</div>
+                    </div>
+                    <div class="key" data-key="*" data-status="agent-orange">
+                        <div class="key-status agent-orange"></div>
+                        <div class="key-num">*</div>
+                        <div class="key-label" id="key-star">NEW</div>
+                    </div>
+                    <div class="key" data-key="-" data-status="agent-red">
+                        <div class="key-status agent-red"></div>
+                        <div class="key-num">-</div>
+                        <div class="key-label" id="key-minus">DEL</div>
+                    </div>
+                    <div class="key" data-key="back" data-status="agent-cyan">
+                        <div class="key-status agent-cyan"></div>
+                        <div class="key-icon">⎋</div>
+                        <div class="key-label" id="key-back">ESC</div>
+                    </div>
+
+                    <!-- 第二行 -->
+                    <div class="key" data-key="7" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-num">7</div>
+                        <div class="key-label" id="key-7">CONTEXT</div>
+                    </div>
+                    <div class="key" data-key="8" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-num">8</div>
+                        <div class="key-label" id="key-8">PROMPT</div>
+                    </div>
+                    <div class="key" data-key="9" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-num">9</div>
+                        <div class="key-label" id="key-9">REVIEW</div>
+                    </div>
+                    <div class="key key-tall" data-key="+" data-status="agent-green">
+                        <div class="key-status agent-green"></div>
+                        <div class="key-icon">💬</div>
+                        <div class="key-label" id="key-plus">CHAT</div>
+                    </div>
+
+                    <!-- 第三行 -->
+                    <div class="key" data-key="4" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-num">4</div>
+                        <div class="key-label" id="key-4">PERMIT</div>
+                    </div>
+                    <div class="key" data-key="5" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-num">5</div>
+                        <div class="key-label" id="key-5">FAV</div>
+                    </div>
+                    <div class="key" data-key="6" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-num">6</div>
+                        <div class="key-label" id="key-6">APPS</div>
+                    </div>
+
+                    <!-- 第四行 -->
+                    <div class="key" data-key="1" data-status="agent-cyan">
+                        <div class="key-status agent-cyan"></div>
+                        <div class="key-num">1</div>
+                        <div class="key-label" id="key-1">UNDO</div>
+                    </div>
+                    <div class="key" data-key="2" data-status="agent-cyan">
+                        <div class="key-status agent-cyan"></div>
+                        <div class="key-num">2</div>
+                        <div class="key-label" id="key-2">REDO</div>
+                    </div>
+                    <div class="key" data-key="3" data-status="agent-cyan">
+                        <div class="key-status agent-cyan"></div>
+                        <div class="key-num">3</div>
+                        <div class="key-label" id="key-3">SEARCH</div>
+                    </div>
+                    <div class="key key-tall" data-key="enter" data-status="agent-green">
+                        <div class="key-status agent-green"></div>
+                        <div class="key-icon">⏎</div>
+                        <div class="key-label" id="key-enter">RUN</div>
+                    </div>
+
+                    <!-- 第五行 -->
+                    <div class="key key-wide" data-key="0" data-status="agent-orange">
+                        <div class="key-status agent-orange"></div>
+                        <div class="key-icon">🎤</div>
+                        <div class="key-label" id="key-0">VOICE</div>
+                    </div>
+                    <div class="key" data-key="." data-status="agent-orange">
+                        <div class="key-status agent-orange"></div>
+                        <div class="key-icon">⚙</div>
+                        <div class="key-label" id="key-dot">SET</div>
+                    </div>
+                </div>
+
+                <!-- 方向键区域 -->
+                <div class="dpad" id="dpad">
+                    <!-- 第一行 -->
+                    <div class="key dpad-empty"></div>
+                    <div class="key" data-key="up" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-icon">↑</div>
+                        <div class="key-label" id="key-up">UP</div>
+                    </div>
+                    <div class="key dpad-empty"></div>
+
+                    <!-- 第二行 -->
+                    <div class="key" data-key="left" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-icon">←</div>
+                        <div class="key-label" id="key-left">LEFT</div>
+                    </div>
+                    <div class="key" data-key="select" data-status="agent-green">
+                        <div class="key-status agent-green"></div>
+                        <div class="key-icon">◉</div>
+                        <div class="key-label" id="key-select">OK</div>
+                    </div>
+                    <div class="key" data-key="right" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-icon">→</div>
+                        <div class="key-label" id="key-right">RIGHT</div>
+                    </div>
+
+                    <!-- 第三行 -->
+                    <div class="key dpad-empty"></div>
+                    <div class="key" data-key="down" data-status="agent-blue">
+                        <div class="key-status agent-blue"></div>
+                        <div class="key-icon">↓</div>
+                        <div class="key-label" id="key-down">DOWN</div>
+                    </div>
+                    <div class="key dpad-empty"></div>
+
+                    <!-- 第四行 -->
+                    <div class="key" data-key="copy" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-icon">📋</div>
+                        <div class="key-label" id="key-copy">COPY</div>
+                    </div>
+                    <div class="key" data-key="paste" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-icon">📄</div>
+                        <div class="key-label" id="key-paste">PASTE</div>
+                    </div>
+                    <div class="key" data-key="cut" data-status="agent-purple">
+                        <div class="key-status agent-purple"></div>
+                        <div class="key-icon">✂</div>
+                        <div class="key-label" id="key-cut">CUT</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 状态信息面板 -->
+        <div class="status-panel">
+            <div class="status-card">
+                <div class="status-title">AI功能区</div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #8b5cf6;"></div>
+                    <span class="status-key">7-9</span>
+                    <span class="status-func">Claude AI</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #3b82f6;"></div>
+                    <span class="status-key">4-6</span>
+                    <span class="status-func">Codex Dev</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #22d3ee;"></div>
+                    <span class="status-key">1-3</span>
+                    <span class="status-func">编辑工具</span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-title">操作区</div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #10b981;"></div>
+                    <span class="status-key">+ ENTER</span>
+                    <span class="status-func">执行/聊天</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #f59e0b;"></div>
+                    <span class="status-key">0 .</span>
+                    <span class="status-func">语音/设置</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: #ef4444;"></div>
+                    <span class="status-key">-</span>
+                    <span class="status-func">删除</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btnNum = document.getElementById('btn-num');
+        const btnAi = document.getElementById('btn-ai');
+        const btnVibe = document.getElementById('btn-vibe');
+        
+        let currentMode = 'ai';
+
+        // 三种模式的标签配置
+        const modeLabels = {
+            num: {
+                '/': '/',
+                '*': '*',
+                '-': '-',
+                'back': '←',
+                '7': '7',
+                '8': '8',
+                '9': '9',
+                '+': '+',
+                '4': '4',
+                '5': '5',
+                '6': '6',
+                '1': '1',
+                '2': '2',
+                '3': '3',
+                'enter': 'ENTER',
+                '0': '0',
+                '.': '.',
+                'up': '↑',
+                'down': '↓',
+                'left': '←',
+                'right': '→',
+                'select': 'OK',
+                'copy': 'COPY',
+                'paste': 'PASTE',
+                'cut': 'CUT'
+            },
+            ai: {
+                '/': 'CMD',
+                '*': 'NEW',
+                '-': 'DEL',
+                'back': 'ESC',
+                '7': 'CONTEXT',
+                '8': 'PROMPT',
+                '9': 'REVIEW',
+                '+': 'CHAT',
+                '4': 'PERMIT',
+                '5': 'FAV',
+                '6': 'APPS',
+                '1': 'UNDO',
+                '2': 'REDO',
+                '3': 'SEARCH',
+                'enter': 'RUN',
+                '0': 'VOICE',
+                '.': 'SET',
+                'up': 'UP',
+                'down': 'DOWN',
+                'left': 'LEFT',
+                'right': 'RIGHT',
+                'select': 'OK',
+                'copy': 'COPY',
+                'paste': 'PASTE',
+                'cut': 'CUT'
+            },
+            vibe: {
+                '/': 'VIBE',
+                '*': 'RND',
+                '-': 'STOP',
+                'back': 'RESET',
+                '7': 'BEAT',
+                '8': 'SYNC',
+                '9': 'JAM',
+                '+': 'REC',
+                '4': 'VOL',
+                '5': 'FX',
+                '6': 'LOOP',
+                '1': 'SAMP',
+                '2': 'SEQ',
+                '3': 'MIX',
+                'enter': 'PLAY',
+                '0': 'TALK',
+                '.': 'CONF',
+                'up': 'TEMPO+',
+                'down': 'TEMPO-',
+                'left': 'BACK',
+                'right': 'NEXT',
+                'select': 'TAP',
+                'copy': 'COPY',
+                'paste': 'PASTE',
+                'cut': 'CUT'
+            }
+        };
+
+        // 按键ID映射
+        const keyIdMap = {
+            '/': 'key-slash',
+            '*': 'key-star',
+            '-': 'key-minus',
+            'back': 'key-back',
+            '7': 'key-7',
+            '8': 'key-8',
+            '9': 'key-9',
+            '+': 'key-plus',
+            '4': 'key-4',
+            '5': 'key-5',
+            '6': 'key-6',
+            '1': 'key-1',
+            '2': 'key-2',
+            '3': 'key-3',
+            'enter': 'key-enter',
+            '0': 'key-0',
+            '.': 'key-dot',
+            'up': 'key-up',
+            'down': 'key-down',
+            'left': 'key-left',
+            'right': 'key-right',
+            'select': 'key-select',
+            'copy': 'key-copy',
+            'paste': 'key-paste',
+            'cut': 'key-cut'
+        };
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            [btnNum, btnAi, btnVibe].forEach(btn => btn.classList.remove('active'));
+            
+            if (mode === 'num') btnNum.classList.add('active');
+            else if (mode === 'ai') btnAi.classList.add('active');
+            else if (mode === 'vibe') btnVibe.classList.add('active');
+
+            updateKeyboard();
+        }
+
+        function updateKeyboard() {
+            const labels = modeLabels[currentMode];
+            const keys = document.querySelectorAll('.key:not(.dpad-empty)');
+            
+            keys.forEach(key => {
+                const keyId = key.dataset.key;
+                const labelEl = document.getElementById(keyIdMap[keyId]);
+                const statusEl = key.querySelector('.key-status');
+                const numEl = key.querySelector('.key-num');
+                const iconEl = key.querySelector('.key-icon');
+                
+                if (labelEl) {
+                    labelEl.textContent = labels[keyId];
+                }
+                
+                // 清除所有模式类
+                key.classList.remove('ai-claude', 'ai-codex', 'ai-action', 'vibe-main', 'vibe-secondary');
+                
+                if (currentMode === 'num') {
+                    // 数字模式：只显示数字，隐藏图标，状态显示为默认灰色
+                    if (statusEl) {
+                        statusEl.className = 'key-status';
+                    }
+                    if (iconEl) iconEl.style.display = 'none';
+                    if (numEl) numEl.style.display = 'block';
+                } else if (currentMode === 'ai') {
+                    // AI模式：Claude/Purple区 (7-9, copy/paste/cut)
+                    if (['7','8','9','copy','paste','cut'].includes(keyId)) {
+                        key.classList.add('ai-claude');
+                    }
+                    // Codex/Blue区 (4-6, 方向键)
+                    else if (['4','5','6','up','down','left','right','select'].includes(keyId)) {
+                        key.classList.add('ai-codex');
+                    }
+                    // Action/Green区 (enter, +)
+                    else if (['enter','+'].includes(keyId)) {
+                        key.classList.add('ai-action');
+                    }
+                    // 恢复图标显示
+                    if (iconEl) iconEl.style.display = 'block';
+                } else if (currentMode === 'vibe') {
+                    // Vibecoding模式：Vibe/Orange区 (7-9, 0, ., *)
+                    if (['7','8','9','0','.','*','enter','+'].includes(keyId)) {
+                        key.classList.add('vibe-main');
+                    }
+                    // Vibe/Pink区 (4-6, 方向键)
+                    else if (['4','5','6','up','down','left','right','select','1','2','3','copy','paste','cut'].includes(keyId)) {
+                        key.classList.add('vibe-secondary');
+                    }
+                    if (iconEl) iconEl.style.display = 'block';
+                }
+            });
+        }
+
+        btnNum.addEventListener('click', () => setMode('num'));
+        btnAi.addEventListener('click', () => setMode('ai'));
+        btnVibe.addEventListener('click', () => setMode('vibe'));
+
+        // 点击效果
+        document.querySelectorAll('.key:not(.dpad-empty)').forEach(key => {
+            key.addEventListener('click', () => {
+                key.classList.add('active');
+                setTimeout(() => {
+                    key.classList.remove('active');
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>

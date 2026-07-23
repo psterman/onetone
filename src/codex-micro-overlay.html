@@ -156,6 +156,9 @@
     var holdSuppressCancel=false;
     var holdUiReleased=false;
     var lastGridSig='';
+    /** Ignore stacked pad-mode clicks / emit rebuilds while a toggle is in flight (假死). */
+    var padModeToggleBusy=false;
+    var padModeSuppressEmitUntil=0;
     var localPadStatus='idle';
     var localStatusMicro='';
     var localStatusTimer=null;
@@ -650,12 +653,15 @@
         modeSw.addEventListener('click',function(e){
           e.preventDefault(); e.stopPropagation();
           modeSw.classList.remove('is-pressed');
+          if(padModeToggleBusy) return;
+          padModeToggleBusy=true;
           invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
             padMode=String(mode||'')==='numpad'?'numpad':'codex';
             padEnabled=padMode==='codex';
             if(!padEnabled) joyNavOpen=false;
             applyLocalStatusDom();
-            // Rebuild grid so Codex AG layout ↔ standard numpad positions.
+            // One local rebuild (Codex ↔ numpad). Suppress emit-driven second rebuild briefly.
+            padModeSuppressEmitUntil=Date.now()+450;
             lastGridSig='';
             render(Object.assign({}, lastSnap, {
               visible:true,
@@ -668,6 +674,8 @@
             var msg=String((err&&err.message)||err||'');
             if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 工作场景');
             else toast('无法切换模式');
+          }).then(function(){
+            setTimeout(function(){ padModeToggleBusy=false; }, 280);
           });
         });
       }
@@ -1026,7 +1034,26 @@
       });
     });
 
-    if(listen){ listen('codex_micro_overlay_state',function(ev){ render(ev.payload); }).catch(function(){}); }
+    if(listen){ listen('codex_micro_overlay_state',function(ev){
+      var s=ev&&ev.payload;
+      if(!s) return;
+      // After local pad-mode toggle, skip a redundant full grid rebuild from push_state.
+      if(Date.now()<padModeSuppressEmitUntil){
+        var incomingMode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
+        if(incomingMode===padMode){
+          lastSnap=Object.assign({}, lastSnap, s);
+          padEnabled=!!s.enabled;
+          joyNavOpen=!!s.joyNavPanelOpen && padMode==='codex';
+          joyArrowsLive=!!s.joyArrowsLive && joyNavOpen;
+          joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
+          applyPadLightGlow(lastSnap);
+          applyAppMetaChip(lastSnap);
+          applyLocalStatusDom();
+          return;
+        }
+      }
+      render(s);
+    }).catch(function(){}); }
     function pull(){
       if(holdLockId||localPadStatus==='listening') return;
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});

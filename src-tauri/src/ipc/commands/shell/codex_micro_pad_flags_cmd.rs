@@ -23,6 +23,7 @@ pub fn cmd_codex_micro_pad_set_flags(
         return Err("mapping_id_empty".into());
     }
 
+    let cfg_to_save;
     {
         let mut cfg = state.cfg.lock();
         let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
@@ -34,8 +35,8 @@ pub fn cmd_codex_micro_pad_set_flags(
         pad.enabled = enabled;
         pad.require_num_lock_off = require_num_lock_off;
         pad.overlay_enabled = overlay_enabled;
-        config::save_config(&cfg);
         codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
     }
 
     crate::app_log::log_line(
@@ -48,6 +49,8 @@ pub fn cmd_codex_micro_pad_set_flags(
     let _ = std::thread::Builder::new()
         .name("codex-micro-pad-flags".into())
         .spawn(move || {
+            // Disk write off the IPC hot path — rapid toggles used to stall the UI.
+            config::save_config(&cfg_to_save);
             codex_micro_overlay::push_state(&app, &state_bg);
         });
     Ok(())

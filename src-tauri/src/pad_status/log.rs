@@ -4,18 +4,43 @@ use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use serde::Serialize;
 
 use super::model::PadStatus;
 
+/// Production: on. Tests: off by default so arbiter/adapter ingest cannot dirty
+/// shared `logs/pad-status.jsonl`; the log unit test re-enables with a path override.
+#[cfg(not(test))]
 static ENABLED: AtomicBool = AtomicBool::new(true);
+#[cfg(test)]
+static ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// Test-only override so unit tests never touch the product `logs/pad-status.jsonl`.
+static LOG_PATH_OVERRIDE: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 pub fn set_enabled(on: bool) {
     ENABLED.store(on, Ordering::Relaxed);
 }
 
+/// Override log path (tests). Pass `None` to clear and restore production path.
+pub fn set_log_path_override(path: Option<PathBuf>) {
+    if let Ok(mut slot) = LOG_PATH_OVERRIDE.lock() {
+        *slot = path;
+    }
+}
+
 pub fn log_path() -> PathBuf {
+    if let Ok(slot) = LOG_PATH_OVERRIDE.lock() {
+        if let Some(ref p) = *slot {
+            return p.clone();
+        }
+    }
+    default_log_path()
+}
+
+fn default_log_path() -> PathBuf {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let logs = cwd.join("logs");
     if std::fs::create_dir_all(&logs).is_ok() {
@@ -56,6 +81,9 @@ pub fn append_event(
         return;
     };
     let path = log_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
     if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(path) {
         let _ = writeln!(f, "{text}");
     }
@@ -168,10 +196,54 @@ pub fn tail_events(limit: usize) -> Vec<PadStatusLogRow> {
 mod tests {
     use super::*;
     use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus};
+    use std::sync::Mutex as StdMutex;
+
+    /// Serialize log-path override tests (global override is process-wide).
+    static TEST_LOCK: StdMutex<()> = StdMutex::new(());
+
+    struct LogPathGuard {
+        path: PathBuf,
+    }
+
+    impl LogPathGuard {
+        fn new(path: PathBuf) -> Self {
+            set_log_path_override(Some(path.clone()));
+            Self { path }
+        }
+    }
+
+    impl Drop for LogPathGuard {
+        fn drop(&mut self) {
+            set_log_path_override(None);
+            set_enabled(false);
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+
+    fn unique_temp_log() -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        std::env::temp_dir().join(format!("onetone-pad-status-test-{nanos}.jsonl"))
+    }
+
+    #[test]
+    fn log_path_override_points_at_temp_file() {
+        let _lock = TEST_LOCK.lock().unwrap();
+        let tmp = unique_temp_log();
+        let _guard = LogPathGuard::new(tmp.clone());
+        assert_eq!(log_path(), tmp);
+        assert_ne!(log_path(), default_log_path());
+    }
 
     #[test]
     fn tail_events_reads_appended_lines() {
+        let _lock = TEST_LOCK.lock().unwrap();
+        let tmp = unique_temp_log();
+        let _guard = LogPathGuard::new(tmp.clone());
         set_enabled(true);
+
         let pad = PadStatus {
             state: PadState::Running.as_str().into(),
             phase: None,
@@ -199,10 +271,13 @@ mod tests {
             Some("low_confidence_vs_sticky"),
         );
         let rows = tail_events(10);
-        assert!(!rows.is_empty());
+        assert_eq!(rows.len(), 2, "isolated temp log must contain only this test's lines");
         let last = rows.last().unwrap();
         assert!(!last.accepted);
-        assert_eq!(last.reject_reason.as_deref(), Some("low_confidence_vs_sticky"));
+        assert_eq!(
+            last.reject_reason.as_deref(),
+            Some("low_confidence_vs_sticky")
+        );
         assert_eq!(last.ui_status, "idle");
 
         // Hold phase → listening ui_status for replay chips.
@@ -221,9 +296,13 @@ mod tests {
             None,
         );
         let rows2 = tail_events(10);
+        assert_eq!(rows2.len(), 3);
         let hold = rows2.last().unwrap();
         assert_eq!(hold.ui_status, "listening");
         assert_eq!(hold.message.as_deref(), Some("听写"));
         assert!(hold.accepted);
+
+        // Product path must not have been selected while override is active.
+        assert_eq!(log_path(), tmp);
     }
 }

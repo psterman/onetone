@@ -511,7 +511,11 @@ assert.equal(afterIdle.lastEvent, 'Stop');
 assert.equal(afterIdle.lastSource, 'codex_hook');
 
 var padUiSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/codex-micro-pad-ui.js'), 'utf8');
-assert.ok(padUiSrc.indexOf('statusSourceLabel') >= 0);
+assert.ok(padUiSrc.indexOf('remountTargetPadShell') >= 0);
+assert.ok(padUiSrc.indexOf('remountPadManagerShell') >= 0);
+assert.ok(padUiSrc.indexOf('padFlagsPersistTimer') >= 0);
+assert.ok(padUiSrc.indexOf('skipEnsure: true') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_micro_pad_set_flags') >= 0);
 assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
 assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
 assert.ok(padUiSrc.indexOf('Claude Hook') >= 0 || padUiSrc.indexOf('claude_hook') >= 0);

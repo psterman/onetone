@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soft Pad · 玻璃键面浅色预览</title>
+    <style>
+        /* 与 dark 预览同结构；浅色反相：白玻璃键 + 浅灰蓝底，保持角标色与分区语义 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Pro Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #e8eef6 0%, #f4f7fb 50%, #e6edf6 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(6, 182, 212, 0.07) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container { text-align: center; }
+        .header { margin-bottom: 30px; }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.72);
+            padding: 12px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            color: #64748b;
+            background: transparent;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.14) 0%, rgba(6, 182, 212, 0.14) 100%);
+            color: #334155;
+            border-color: rgba(99, 102, 241, 0.28);
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.12);
+        }
+
+        .keyboard-wrapper {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.62) 100%);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .keyboard-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+        }
+
+        .softpad {
+            display: grid;
+            grid-template-columns: repeat(5, 64px);
+            grid-template-rows: repeat(4, 64px);
+            gap: 10px;
+        }
+
+        .key {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.9) 100%);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+        }
+
+        .key::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent);
+        }
+
+        .key::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.08), transparent);
+        }
+
+        .key-status {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+
+        .key-status.agent-blue {
+            background: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.45);
+        }
+        .key-status.agent-purple {
+            background: #8b5cf6;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.45);
+        }
+        .key-status.agent-cyan {
+            background: #06b6d4;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+        }
+        .key-status.agent-green {
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+        .key-status.agent-orange {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+        .key-status.agent-red {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .key-num {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+
+        .key-label {
+            font-size: 0.62rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .key-icon {
+            font-size: 1.1rem;
+            margin-bottom: 2px;
+            color: #475569;
+        }
+
+        .key-wide {
+            grid-column: span 2;
+            width: 138px;
+        }
+
+        .key.ai-claude {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.16) 0%, rgba(99, 102, 241, 0.08) 100%);
+            border-color: rgba(139, 92, 246, 0.32);
+        }
+        .key.ai-claude .key-num,
+        .key.ai-claude .key-label { color: #6d28d9; }
+
+        .key.ai-codex {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(37, 99, 235, 0.07) 100%);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .key.ai-codex .key-num,
+        .key.ai-codex .key-label { color: #1d4ed8; }
+
+        .key.ai-action {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(5, 150, 105, 0.07) 100%);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .key.ai-action .key-num,
+        .key.ai-action .key-label { color: #047857; }
+
+        .key-empty {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            pointer-events: none;
+        }
+        .key-empty::before,
+        .key-empty::after { display: none; }
+
+        .status-panel {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 100%);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: left;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+        }
+
+        .status-title {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+        }
+        .status-item:last-child { border-bottom: none; }
+
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-key { font-size: 0.78rem; color: #64748b; font-family: monospace; }
+        .status-func { font-size: 0.78rem; color: #334155; margin-left: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">Soft Pad 玻璃键面预览 · 浅色</div>
+            <div class="subtitle">同款键面结构与分区语义 · 浅底白玻璃 · 布局仍为 Micro Soft Pad</div>
+        </div>
+
+        <div class="mode-switch">
+            <button class="mode-btn">数字键</button>
+            <button class="mode-btn active">AI模式</button>
+            <button class="mode-btn">Vibecoding</button>
+        </div>
+
+        <div class="keyboard-wrapper">
+            <div class="softpad">
+                <div class="key" style="grid-column:1;grid-row:1">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-icon">⏻</div>
+                    <div class="key-label">ENC</div>
+                </div>
+                <div class="key ai-claude" style="grid-column:2;grid-row:1">
+                    <div class="key-status agent-purple"></div>
+                    <div class="key-num">7</div>
+                    <div class="key-label">AGENT</div>
+                </div>
+                <div class="key ai-claude" style="grid-column:3;grid-row:1">
+                    <div class="key-status agent-purple"></div>
+                    <div class="key-num">8</div>
+                    <div class="key-label">CLAUDE</div>
+                </div>
+                <div class="key ai-claude" style="grid-column:4;grid-row:1">
+                    <div class="key-status agent-purple"></div>
+                    <div class="key-num">9</div>
+                    <div class="key-label">CODEX</div>
+                </div>
+                <div class="key ai-codex" style="grid-column:5;grid-row:1">
+                    <div class="key-status agent-blue"></div>
+                    <div class="key-icon">◉</div>
+                    <div class="key-label">JOY</div>
+                </div>
+
+                <div class="key key-empty" style="grid-column:1;grid-row:2"></div>
+                <div class="key ai-codex" style="grid-column:2;grid-row:2">
+                    <div class="key-status agent-blue"></div>
+                    <div class="key-num">4</div>
+                    <div class="key-label">PERMIT</div>
+                </div>
+                <div class="key ai-codex" style="grid-column:3;grid-row:2">
+                    <div class="key-status agent-blue"></div>
+                    <div class="key-num">5</div>
+                    <div class="key-label">STATUS</div>
+                </div>
+                <div class="key ai-codex" style="grid-column:4;grid-row:2">
+                    <div class="key-status agent-blue"></div>
+                    <div class="key-num">6</div>
+                    <div class="key-label">APPS</div>
+                </div>
+
+                <div class="key key-empty" style="grid-column:1;grid-row:3"></div>
+                <div class="key" style="grid-column:2;grid-row:3">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-num">/</div>
+                    <div class="key-label">FAST</div>
+                </div>
+                <div class="key" style="grid-column:3;grid-row:3">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-num">*</div>
+                    <div class="key-label">CMD</div>
+                </div>
+                <div class="key" style="grid-column:4;grid-row:3">
+                    <div class="key-status agent-red"></div>
+                    <div class="key-num">−</div>
+                    <div class="key-label">REJECT</div>
+                </div>
+                <div class="key" style="grid-column:5;grid-row:3">
+                    <div class="key-status agent-cyan"></div>
+                    <div class="key-num">1</div>
+                    <div class="key-label">CTX</div>
+                </div>
+
+                <div class="key key-empty" style="grid-column:1;grid-row:4"></div>
+                <div class="key key-wide ai-action" style="grid-column:2;grid-row:4">
+                    <div class="key-status agent-green"></div>
+                    <div class="key-icon">🎤</div>
+                    <div class="key-label">VOICE</div>
+                </div>
+                <div class="key ai-action" style="grid-column:4;grid-row:4">
+                    <div class="key-status agent-green"></div>
+                    <div class="key-icon">⏎</div>
+                    <div class="key-label">SEND</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-card">
+                <div class="status-title">AI功能区</div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#8b5cf6;"></div>
+                    <span class="status-key">7-9</span>
+                    <span class="status-func">Agent / Claude / Codex</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#3b82f6;"></div>
+                    <span class="status-key">4-6</span>
+                    <span class="status-func">权限 · 常用 · 应用</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#06b6d4;"></div>
+                    <span class="status-key">ACT</span>
+                    <span class="status-func">编辑 / 命令</span>
+                </div>
+            </div>
+            <div class="status-card">
+                <div class="status-title">操作区</div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#10b981;"></div>
+                    <span class="status-key">VOICE SEND</span>
+                    <span class="status-func">说话 / 发送</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#ef4444;"></div>
+                    <span class="status-key">REJECT</span>
+                    <span class="status-func">拒绝</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background:#3b82f6;"></div>
+                    <span class="status-key">ENC JOY</span>
+                    <span class="status-func">总开关 · 方向轨</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

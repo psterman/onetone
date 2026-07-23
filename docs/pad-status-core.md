@@ -12,6 +12,14 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 
 软件控制面止于「状态对象 + 展示」。**不**假装官方 Micro `READ_OUTPUT` / thstatus，也不把 Hook 标成 Native Micro。
 
+## 诚实边界 / 非目标
+
+- **AG00 / Soft RGB 读 Core** 不等于「全键只读 Core」：开启状态灯时，AG00 与 Overlay 灯环以 `pad_status` 为准；其它 AG / 非 AG 键仍可能在 `resolve_cell_run_status` 内走 native-first / inferred 的局部展示逻辑。
+- **native thstatus 止损**：`v.oai.thstatus` 保留在 vendor/protocol 展示与关灯路径；不回灌 State Core 作为 Hook 真相，也不作为产品主路径依赖。
+- **Claude adapter 现状**：当前是函数式 ingest 模块（Claude Hook → `agent=claude`），还不是通用 `AgentStatusAdapter` trait 体系。
+- **多应用数字键盘现状**：仍靠 `mapping.app_target_id` 与现有路由；产品级 `activeApp` / `padFace` / `appProfile` 切换尚未实现，下一刀独立规划。
+- **日志测试隔离**：单元测试使用临时 jsonl 与 path override，不应写入或弄脏产品运行日志 `logs/pad-status.jsonl`。
+
 ## `PadStatus` 字段
 
 - `state`: `idle` \| `running` \| `needs_input` \| `done` \| `error` \| `offline`
@@ -43,6 +51,14 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 17. **第一区 7/8/9（AG00/01/02）**：默认 `switchAgent` / `claudeModel` / `switchModel`；**AG00 仍是状态灯宿主**（按 micro_key_id 上色，与 slot 解耦）；`status` 默认迁到 AG04；`claudeModel` Global 聚焦 Claude（已前台则插 `/model`）  
 18. **第二区 4/5/6（AG03/04/05）**：默认 `permissions` / `status` / `appsOrPlugins`（权限 · 常用`/status` · 应用）；命令菜单仍在 `/`→ACT07，不占 5 键  
 19. **第三区 1/2/3**：Numpad1→ACT09 `newThread`（上下文）；Numpad2→软键 `UNDO`/`undo`（Ctrl+Z）；Numpad3→软键 `SEARCH`/`quickSearch`（Ctrl+F）；**发送迁到 Numpad Enter**（ACT12 scan `0x1C:ext`），Overlay 发送键仍为 ACT12
+20. **日志测试隔离**：单测通过 `set_log_path_override` 写临时 jsonl；`cfg(test)` 默认关 append，不污染产品 `logs/pad-status.jsonl`
+
+## 诚实边界 / 非目标
+
+- **开灯时只读 Core ≠ 全键只读 Core**：AG00 与 Soft RGB 在状态灯开启时**只读** State Core；`resolve_cell_run_status` 对 AG00 已走 Core，**其它 AG / 非 AG 键**仍可 native-first / inferred（overlay 内局部判断），未强制全键迁入 Core。
+- **native thstatus 止损**：留在 vendor / protocol 展示与关灯路径；**不**回灌 Core 作 Hook 真相（见 stoploss 报告）。
+- **Claude adapter**：当前为函数式 ingest（`ingest_claude_*`），**不是**通用 `AgentStatusAdapter` trait 体系。
+- **多应用数字键盘 / padFace**：仍靠 `mapping.app_target_id`；产品级 `activeApp` / `padFace` / `appProfile` **未实现**（下一刀）。
 
 ## 硬验收
 

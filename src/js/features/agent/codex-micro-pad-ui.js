@@ -327,6 +327,8 @@
   }
 
   /** Checkbox flags only — avoid full cmd_save payload (假死 on keys panel). */
+  var padFlagsPersistTimer = 0;
+  var padFlagsPersistPending = null;
   function persistPadFlags(m) {
     var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
     var pad = m && m.codexMicroPad;
@@ -334,14 +336,23 @@
       persist();
       return;
     }
-    invoke('cmd_codex_micro_pad_set_flags', {
+    // Coalesce rapid toggles — each click used to sync-save settings.json and 假死.
+    padFlagsPersistPending = {
       mappingId: String(m.id),
       enabled: !!pad.enabled,
       requireNumLockOff: !!pad.requireNumLockOff,
       overlayEnabled: !!pad.overlayEnabled
-    }).catch(function () {
-      persist();
-    });
+    };
+    if (padFlagsPersistTimer) clearTimeout(padFlagsPersistTimer);
+    padFlagsPersistTimer = setTimeout(function () {
+      padFlagsPersistTimer = 0;
+      var args = padFlagsPersistPending;
+      padFlagsPersistPending = null;
+      if (!args) return;
+      invoke('cmd_codex_micro_pad_set_flags', args).catch(function () {
+        persist();
+      });
+    }, 120);
   }
 
   function padInvoke(cmd, args) {
@@ -1025,10 +1036,53 @@
       return;
     }
     var targetHost = document.getElementById('codexMicroPadHostTarget');
-    if (targetHost && !targetHost.hidden) renderTarget(targetHost, m);
+    if (targetHost && !targetHost.hidden) renderTarget(targetHost, m, { skipEnsure: true });
     if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.renderKeysHub) {
       try { global.OneToneKeysPanelUi.renderKeysHub(); } catch (_) {}
     }
+  }
+
+  /** Swap only the hardware pad shell after mode toggle — keep checkbox alive (avoid remount 假死). */
+  function remountTargetPadShell(host, m) {
+    if (!host || !m) return false;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    if (!pad) return false;
+    var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
+    if (!oldWrap || !oldWrap.parentNode) return false;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = renderHardwarePad(m, pad, { mode: 'config' });
+    var next = tmp.firstChild;
+    if (!next) return false;
+    oldWrap.parentNode.replaceChild(next, oldWrap);
+    var toggle = host.querySelector('[data-act="enabled"]');
+    if (toggle) toggle.checked = !!pad.enabled;
+    bindPadClicks(host, m, 'config');
+    return true;
+  }
+
+  /** Soft-swap pad manager hardware shell (do not rebuild checkbox / sections). */
+  function remountPadManagerShell(m) {
+    if (!m) return false;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    var host = document.getElementById('codexPadMgrPad');
+    if (!host || !pad) return false;
+    var padBindMode = padUiMode === 'run' ? 'run' : (padUiMode === 'try' ? 'try' : 'config');
+    var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
+    var tmp = document.createElement('div');
+    tmp.innerHTML = renderHardwarePad(m, pad, { mode: padBindMode });
+    var next = tmp.firstChild;
+    if (!next) return false;
+    if (oldWrap && oldWrap.parentNode) oldWrap.parentNode.replaceChild(next, oldWrap);
+    else host.replaceChildren(next);
+    var body = document.getElementById('codexPadMgrBody');
+    var enabledEl = body && body.querySelector('[data-act="enabled"]');
+    if (enabledEl) enabledEl.checked = !!pad.enabled;
+    var overlayEl = body && body.querySelector('[data-act="overlay"]');
+    if (overlayEl) overlayEl.checked = !!pad.overlayEnabled;
+    bindPadClicks(host, m, padBindMode);
+    return true;
   }
 
   function onCapabilitySelected(m, slotId) {
@@ -2324,7 +2378,10 @@
         if (!pad.enabled) previewJoyOpen = false;
         if (pad.enabled) pad.overlayEnabled = true;
         persistPadFlags(m);
-        renderPadManager(m, { skipHookRefresh: true });
+        // Soft shell only — full renderPadManager on every click 假死'd the modal.
+        if (!remountPadManagerShell(m)) {
+          renderPadManager(m, { skipHookRefresh: true });
+        }
         notifyLinkedUi(m);
       });
     }
@@ -2520,6 +2577,10 @@
         e.stopPropagation();
         sw.classList.remove('is-pressed');
         if (mode === 'preview') {
+          // Debounce rapid preview mode flips (each rebuilds the whole pad shell).
+          if (sw._padModeBusy) return;
+          sw._padModeBusy = true;
+          setTimeout(function () { sw._padModeBusy = false; }, 220);
           previewPadMode = previewPadMode === 'codex' ? 'numpad' : 'codex';
           if (previewPadMode === 'numpad') previewJoyOpen = false;
           toast(previewPadMode === 'codex'
@@ -2727,8 +2788,12 @@
         // Enabling the layer also turns on foreground overlay by default (fewer checkboxes).
         if (pad.enabled) pad.overlayEnabled = true;
         persistPadFlags(m);
-        refreshTrigger(m);
-        renderTarget(host, m);
+        var triggerHost = document.getElementById('codexMicroPadHostTrigger');
+        if (triggerHost && !triggerHost.hidden) refreshTrigger(m);
+        // Soft shell swap only — full renderTarget+ensure_ready remount storm 假死's keys panel.
+        if (!remountTargetPadShell(host, m)) {
+          renderTarget(host, m, { skipEnsure: true });
+        }
         padInvoke('cmd_codex_micro_pad_get_readiness', {}).then(function (r) {
           if (r) updateReadinessDom(host, r);
         });
@@ -2759,9 +2824,6 @@
         // One soft remount without nested ensure_ready / notifyLinkedUi→renderTarget loop (假死).
         renderTarget(host, m, { skipEnsure: true });
         refreshTrigger(m);
-        if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.renderKeysHub) {
-          try { global.OneToneKeysPanelUi.renderKeysHub(); } catch (_) {}
-        }
         return;
       }
       startReadinessPoll(host);
@@ -3221,7 +3283,8 @@
     if (payload && payload.readiness) lastReadiness = payload.readiness;
     var host = document.getElementById('codexMicroPadHostTarget');
     if (host && m && !host.hidden) {
-      renderTarget(host, m);
+      // Never nest ensure_ready from its own ready event (toggle / heal 假死 loop).
+      renderTarget(host, m, { skipEnsure: true });
     } else if (m) {
       notifyLinkedUi(m);
     }

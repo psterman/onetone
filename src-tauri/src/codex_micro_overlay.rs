@@ -1110,8 +1110,11 @@ fn codex_mapping_index_for_pad_toggle(cfg: &VoiceConfig) -> Option<usize> {
 
 /// Toggle Codex ↔ numpad mode (`pad.enabled` only). Does not hide the overlay.
 /// Switching to numpad auto-closes the JOY NAV rail.
+/// Disk save runs off the cfg lock — sync pretty-print + bak under lock used to 假死
+/// the UI when the mode switch was clicked several times quickly.
 pub fn toggle_pad_mode(app: &AppHandle, state: &AppState) -> Result<String, String> {
     let mode;
+    let cfg_to_save;
     {
         let mut cfg = state.cfg.lock();
         let Some(idx) = codex_mapping_index_for_pad_toggle(&cfg) else {
@@ -1137,9 +1140,14 @@ pub fn toggle_pad_mode(app: &AppHandle, state: &AppState) -> Result<String, Stri
         } else {
             "numpad".to_string()
         };
-        crate::config::save_config(&cfg);
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
     }
+    let _ = std::thread::Builder::new()
+        .name("codex-pad-mode-save".into())
+        .spawn(move || {
+            crate::config::save_config(&cfg_to_save);
+        });
     push_state(app, state);
     Ok(mode)
 }
