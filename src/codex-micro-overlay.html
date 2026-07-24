@@ -466,8 +466,9 @@
 
     function mergeRunStatus(cellId, backendRun){
       var br=String(backendRun||'idle');
+      // Physical numpad: backend may report listening/running without local pointer.
       if(localPadStatus==='listening' && localStatusMicro===cellId){
-        return activePtr===cellId ? 'listening' : 'idle';
+        return 'listening';
       }
       if(localPadStatus!=='idle' && localStatusMicro===cellId) return localPadStatus;
       return br;
@@ -699,7 +700,7 @@
         el.classList.toggle('is-context-dim',rank==='dim');
         if(info.contextHint) el.setAttribute('data-context-hint',String(info.contextHint));
         else el.removeAttribute('data-context-hint');
-        var pressed=activePtr===id;
+        var pressed = (activePtr === id) || (!!active && active === id);
         el.classList.toggle('is-pressed',pressed);
         el.classList.toggle('is-active',pressed);
       });
@@ -772,7 +773,7 @@
             clearLocalTimer();
             localPadStatus=backendPadStatus;
             localStatusMicro=snapMicro;
-            if(snapMicro && activePtr) holdLockId=snapMicro;
+            if(snapMicro) holdLockId=snapMicro;
           } else if(!localStatusTimer) {
             localPadStatus=backendPadStatus;
             localStatusMicro=snapMicro;
@@ -828,7 +829,7 @@
           cls+= padEnabled ? ' is-mode-on' : ' is-mode-off';
         }
         if(isNav && joyArrowsLive) cls+=' is-nav-live';
-        if(active&&active===cell.id&&activePtr===cell.id) cls+=' is-pressed is-active';
+        if((active&&active===cell.id)||(activePtr&&activePtr===cell.id)) cls+=' is-pressed is-active';
         var ctxRank=String(info.contextRank||'').trim();
         if(ctxRank==='emphasize') cls+=' is-context-emphasize';
         else if(ctxRank==='dim') cls+=' is-context-dim';

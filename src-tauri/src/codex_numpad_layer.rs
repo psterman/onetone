@@ -117,10 +117,10 @@ pub fn arrow_nav_micro_key(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Physical arrows → NAV_* when Codex is foreground and pad mapping is active
+/// Physical arrows → NAV_* when Soft Pad session is active and pad mapping is on
 /// (no longer requires JOY side-rail open — NAV lives on the main pad).
 pub fn pad_should_capture_arrows() -> bool {
-    if !codex_is_foreground() {
+    if !codex_foreground_for_micro() {
         return false;
     }
     hook_gate().lock().unwrap().pad_active
@@ -323,7 +323,10 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
     if gate.routes.is_empty() {
         return false;
     }
-    if !codex_is_foreground() {
+    // Match overlay/screen Micro fire: Codex FG, Soft Pad overlay FG, or recent Codex latch.
+    // Strict `codex_is_foreground()` alone meant clicking the Soft Pad stole FG and
+    // physical numpad stopped driving the pad (看起来「虚拟键盘没反应」).
+    if !codex_foreground_for_micro() {
         return false;
     }
     if gate.require_num_lock_off && !num_lock_is_off() {
@@ -1501,10 +1504,10 @@ mod tests {
         }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
-        // Rail latch ignored — capture depends on FG + pad_active only.
+        // Capture depends on Soft Pad session (Codex/overlay FG latch) + pad_active.
         set_joy_nav_panel_open(false);
-        assert!(!pad_should_capture_arrows(), "no Codex FG → false");
+        assert!(!pad_should_capture_arrows(), "no Soft Pad session → false");
         set_joy_nav_panel_open(true);
-        assert!(!pad_should_capture_arrows(), "rail open still needs Codex FG");
+        assert!(!pad_should_capture_arrows(), "rail open still needs Soft Pad session");
     }
 }

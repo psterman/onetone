@@ -376,3 +376,6 @@
 {"ts":1784910577389,"hook_event_name":"UserPromptSubmit","session_id":"019f94f5-81d7-7552-ae27-b2d77a1905cf","turn_id":"019f94f5-f23d-74b0-9606-91bc9446947f","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions"}
 {"ts":1784910593538,"hook_event_name":"Stop","session_id":"019f94f5-81d7-7552-ae27-b2d77a1905cf","turn_id":"019f94f5-f23d-74b0-9606-91bc9446947f","cwd":"C:\\Users\\Administrator\\Desktop\\voice-pilot","model":"gpt-5.5","permission_mode":"bypassPermissions","stop_hook_active":false}
 {"ts":1784931743157,"hook_event_name":"Stop","session_id":"t"}
+{"ts":1784932992764,"hook_event_name":"SessionStart","session_id":"019f964b-f4f7-7811-9caa-49ea86c70715","cwd":"C:\\Users\\Administrator","model":"gpt-5.5","permission_mode":"default"}
+{"ts":1784932994029,"hook_event_name":"UserPromptSubmit","session_id":"019f964b-f4f7-7811-9caa-49ea86c70715","turn_id":"019f964b-f78e-7322-86fa-047a27eb6d19","cwd":"C:\\Users\\Administrator","model":"gpt-5.5","permission_mode":"default"}
+{"ts":1784932998567,"hook_event_name":"Stop","session_id":"019f964b-f4f7-7811-9caa-49ea86c70715","turn_id":"019f964b-f78e-7322-86fa-047a27eb6d19","cwd":"C:\\Users\\Administrator","model":"gpt-5.5","permission_mode":"default","stop_hook_active":false}
