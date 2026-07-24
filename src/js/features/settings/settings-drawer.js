@@ -14,7 +14,7 @@
 
   var PANEL_IDS={
 
-    basic:'settingsPanelBasic',keys:'settingsPanelKeys',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
+    basic:'settingsPanelBasic',keys:'settingsPanelKeys',softPad:'settingsPanelSoftPad',voiceWake:'settingsPanelVoiceWake',scenes:'settingsPanelScenes',
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
@@ -617,6 +617,21 @@
     if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
     }
+    if(panelChanged&&lastPanel==='softPad'&&panel!=='softPad'){
+      if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
+        global.OneToneCodexMicroPadUi.stopBackgroundWork();
+      }
+      if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.onPanelLeave){
+        try{ global.OneToneSoftPadHub.onPanelLeave(); }catch(_){}
+      }else{
+        var softPreview=document.getElementById('softPadPreviewHost');
+        var softSub=document.getElementById('softPadSubpageBody');
+        var softTiles=document.getElementById('softPadFuncTiles');
+        if(softPreview) softPreview.replaceChildren();
+        if(softSub) softSub.replaceChildren();
+        if(softTiles) softTiles.innerHTML='';
+      }
+    }
 
     ui.settingsPanel=panel;
 
@@ -672,6 +687,26 @@
       }else{
         refreshKeysPanel();
       }
+
+    }else if(panel==='softPad'){
+
+      // Defer heavy Soft Pad paint — sync render on open used to 假死 the drawer.
+      var softOpts={
+        mappingId:opts.mappingId||'',
+        skipHookRefresh:!!opts.skipHookRefresh
+      };
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='softPad') return;
+          if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
+            try{
+              global.OneToneSoftPadHub.render(softOpts);
+            }catch(err){
+              console.error('softPad panel defer render',err);
+            }
+          }
+        },0);
+      });
 
     }else if(panel==='basic'){
 

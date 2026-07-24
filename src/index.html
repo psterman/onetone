@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/voice-feedback-rail.css" />
   <link rel="stylesheet" href="css/codex-micro-hw-tokens.css" />
   <link rel="stylesheet" href="css/codex-micro-pad.css" />
+  <link rel="stylesheet" href="css/soft-pad-hub.css" />
   <link rel="stylesheet" href="css/typography.css" />
 </head>
 <body>
@@ -106,6 +107,10 @@
               <button type="button" class="wb-nav-item" data-wb-nav="triggers" id="wbNavTriggers">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                 <span data-i18n="homeWbNavTriggers">按键设置</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="softPad" id="wbNavSoftPad">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
+                <span data-i18n="homeWbNavSoftPad">虚拟键盘</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
@@ -437,6 +442,12 @@
                 <button type="button" class="settings-nav-item" data-panel="keys" id="settingsNavKeys">
                   <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
                   <span id="settingsNavKeysLabel">按键</span>
+                </button>
+                </div>
+                <div class="settings-nav-group" id="settingsNavSoftPadGroup">
+                <button type="button" class="settings-nav-item" data-panel="softPad" id="settingsNavSoftPad">
+                  <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
+                  <span id="settingsNavSoftPadLabel">虚拟键盘</span>
                 </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavVoiceWakeGroup">
@@ -1018,6 +1029,62 @@
               <button type="button" class="keys-app-chip keys-app-chip--add flow-scope-bar-add" id="btnKeysAppChipAdd">+ 添加应用</button>
               <span class="sr-only" id="keysAppContextStripLbl">预览应用上下文</span>
             </div>
+          </div>
+        </section>
+        <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
+          <div class="page-status-bar soft-pad-status-bar" id="softPadStatusBar">
+            <div class="page-status-bar-main keys-scheme-status-main">
+              <div class="keys-scheme-summary-title-row">
+                <span class="keys-scheme-summary-name" id="softPadSummaryName">—</span>
+                <span class="keys-scheme-summary-pill" id="softPadSummaryStatus">—</span>
+              </div>
+              <div class="keys-scheme-summary-meta">
+                <span class="keys-scheme-summary-item">
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryPresentationLbl">显示形态</span>
+                  <span class="keys-scheme-summary-val" id="softPadSummaryPresentation">—</span>
+                </span>
+                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                <span class="keys-scheme-summary-item">
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryKindLbl">应用</span>
+                  <span class="keys-scheme-summary-val" id="softPadSummaryKind">—</span>
+                </span>
+              </div>
+            </div>
+            <div class="page-status-bar-actions keys-scheme-status-actions">
+              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="softPadSummaryStatus"></button>
+            </div>
+          </div>
+          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
+          <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite"></p>
+          <header class="pref-page-head soft-pad-page-head sr-only">
+            <div class="soft-pad-page-head-text">
+              <h3 class="pref-page-title" id="settingsPanelSoftPadTitle">虚拟键盘</h3>
+              <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelSoftPadDesc">管理 Soft Pad 的外观、出现时机与应用内行为</p>
+            </div>
+          </header>
+          <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
+            <div class="keys-page-main soft-pad-page-main">
+              <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
+              <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="navigation" aria-label="功能"></div>
+              <div class="soft-pad-subpage" id="softPadSubpageHost" hidden>
+                <div class="soft-pad-subpage-bar">
+                  <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack">← 返回</button>
+                  <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                </div>
+                <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
+              </div>
+              <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
+            </div>
+            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="方案">
+              <section class="keys-aside-card soft-pad-scheme-card keys-hub-card" id="softPadSchemeCard">
+                <header class="keys-aside-card-head keys-hub-head">
+                  <span class="keys-aside-title" id="softPadSchemeTitleLbl">方案</span>
+                  <span class="keys-aside-count" id="softPadSchemeCount">—</span>
+                </header>
+                <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
+                <button type="button" class="keys-hub-scheme-add" id="btnSoftPadEnsureCodex">+ 准备 Codex 虚拟键盘</button>
+              </section>
+            </aside>
           </div>
         </section>
         <section class="settings-panel drawer-section scene-mode-page" id="settingsPanelScenes" hidden>
@@ -3548,6 +3615,7 @@
   <script src="js/features/agent/agent-actions.js"></script>
   <script src="js/features/agent/agent-scenario-template.js"></script>
   <script src="js/features/agent/codex-micro-pad-ui.js"></script>
+  <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
   <script src="js/features/mapping/habit-hub.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-command.js"></script>

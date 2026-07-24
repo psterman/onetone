@@ -347,20 +347,23 @@ assert.ok(padSrc.indexOf('data-pad-mode="try"') >= 0 || padSrc.indexOf("id: 'try
 assert.ok(padSrc.indexOf('Alt+Numpad') < 0);
 assert.ok(padSrc.indexOf('codexMicroPadCta') >= 0 || padSrc.indexOf('标准版：实体小键盘 12 键') >= 0);
 
-// Step1: recognition page slim — no inline layout+mode segments in renderTarget
+// Step1: recognition page slim — keys host is jump-only (no inline pad chrome)
 assert.ok(Pad.openPadManager && Pad.closePadManager);
 var renderTargetFn = padSrc.slice(
   padSrc.indexOf('function renderTarget'),
   padSrc.indexOf('function ensureEditModal')
 );
+assert.ok(renderTargetFn.indexOf('renderKeysSoftPadJump') >= 0, 'keys host delegates to Soft Pad jump');
 assert.ok(renderTargetFn.indexOf('renderProfileSeg') < 0, 'inline renderTarget must not use layout segments');
 assert.ok(renderTargetFn.indexOf('renderModeSeg') < 0, 'inline renderTarget must not use mode segments');
-assert.ok(renderTargetFn.indexOf('data-act="manage"') >= 0);
 assert.ok(renderTargetFn.indexOf('data-act="numlock"') < 0);
 assert.ok(renderTargetFn.indexOf('data-act="enhance"') < 0);
 assert.ok(renderTargetFn.indexOf('codex-micro-pad__toolbar') < 0);
-assert.ok(renderTargetFn.indexOf("bindPadClicks(host, m, 'config')") >= 0);
-assert.ok(renderTargetFn.indexOf("padUiMode = 'config'") >= 0);
+var keysJumpFn = padSrc.slice(
+  padSrc.indexOf('function renderKeysSoftPadJump'),
+  padSrc.indexOf('global.OneToneCodexMicroPadUi')
+);
+assert.ok(keysJumpFn.indexOf('data-act="manage"') >= 0);
 assert.ok(i18n.indexOf('codexMicroPadManage:') >= 0);
 assert.ok(i18n.indexOf('开箱模拟 Codex Micro 标准版') >= 0 || i18n.indexOf('out-of-box Codex Micro standard') >= 0);
 assert.ok(i18n.indexOf('实体 13 键') < 0);
@@ -823,6 +826,8 @@ var stripped = mapping.codexMicroPad.keys.filter(function (k) {
   return k.microKeyId !== 'AG03' && k.microKeyId !== 'ENC';
 });
 mapping.codexMicroPad.keys = stripped;
+// New id bypasses session heal cache so ensurePad re-runs protectPrimaryLayout.
+mapping.id = 'm-m1-test-restore';
 Pad.ensurePad(mapping, { persist: false });
 var ids = mapping.codexMicroPad.keys.map(function (k) { return k.microKeyId; });
 assert.ok(ids.indexOf('AG03') >= 0, 'ensurePad restores AG03');
@@ -842,5 +847,86 @@ assert.ok(overlayHtml.indexOf('softwareEnhanceEnabled') >= 0);
 assert.ok(overlayHtml.indexOf('data-status-source') >= 0);
 assert.ok(overlayHtml.indexOf('ENC_CW') >= 0 || padSrc.indexOf('ENC_CW') >= 0);
 assert.ok(overlayHtml.indexOf('NAV_PRESS') >= 0 || padSrc.indexOf('NAV_PRESS') >= 0);
+
+// Soft Pad hub: light switch / cancellable paint / no auto-create on scope tab
+var softPadHubSrc = fs.readFileSync(
+  path.join(__dirname, '../src/js/features/agent/soft-pad-hub-ui.js'),
+  'utf8'
+);
+function softPadFnSlice(src, name, nextName) {
+  var start = src.indexOf('function ' + name);
+  assert.ok(start >= 0, 'missing function ' + name);
+  var end = nextName ? src.indexOf('function ' + nextName, start + 1) : src.length;
+  assert.ok(end > start, 'missing end for ' + name);
+  return src.slice(start, end);
+}
+var selectScopeFn = softPadFnSlice(softPadHubSrc, 'selectScope', 'renderSchemeRow');
+assert.ok(selectScopeFn.indexOf('ensureAppSoftPad(') < 0, 'selectScope must not auto-create mapping');
+assert.ok(selectScopeFn.indexOf('showPrepareMain') >= 0, 'selectScope shows prepare CTA when missing mapping');
+var prepareAppFn = softPadFnSlice(softPadHubSrc, 'prepareAppFromUi', 'applyEnabledUi');
+assert.ok(prepareAppFn.indexOf('ensureAppSoftPad(') >= 0, 'prepareAppFromUi creates mapping');
+var ensureCodexFn = softPadFnSlice(softPadHubSrc, 'ensureCodex', 'prepareAppFromUi');
+assert.ok(ensureCodexFn.indexOf('prepareAppFromUi') >= 0, 'ensureCodex goes through prepare path');
+assert.ok(ensureCodexFn.indexOf('selectScope') < 0, 'ensureCodex must not re-enter selectScope');
+
+var toggleSelectedFn = softPadFnSlice(softPadHubSrc, 'toggleSelectedEnable', 'toggleRowEnable');
+var toggleRowFn = softPadFnSlice(softPadHubSrc, 'toggleRowEnable', 'isAgentPanelCurrent');
+assert.ok(toggleSelectedFn.indexOf('forceRemount: true') < 0, 'toggleSelectedEnable no forceRemount');
+assert.ok(toggleRowFn.indexOf('forceRemount: true') < 0, 'toggleRowEnable no forceRemount');
+assert.ok(toggleSelectedFn.indexOf('applyEnabledUi') >= 0, 'toggleSelectedEnable light UI path');
+
+var schedulePaintFn = softPadFnSlice(softPadHubSrc, 'schedulePaint', 'selectScheme');
+assert.ok(softPadHubSrc.indexOf('pendingPaintEntry') >= 0, 'pendingPaint queue exists');
+assert.ok(schedulePaintFn.indexOf('pendingPaintEntry') >= 0, 'schedulePaint records pending when busy');
+assert.ok(schedulePaintFn.indexOf('if (paintBusy) return;') < 0, 'schedulePaint must not bare-return on busy');
+
+var openSubpageFn = softPadFnSlice(softPadHubSrc, 'openSubpage', 'closeSubpage');
+var closeSubpageFn = softPadFnSlice(softPadHubSrc, 'closeSubpage', 'markActiveRow');
+// openSubpage must not bump selectToken (cancels deferred preview → blank/假死).
+assert.ok(openSubpageFn.indexOf('++selectToken') < 0 && openSubpageFn.indexOf('selectToken++') < 0);
+assert.ok(openSubpageFn.indexOf('paintSubpage(entry)') >= 0, 'openSubpage paints sync');
+assert.ok(openSubpageFn.indexOf('fe softPad.openSubpage') >= 0);
+assert.ok(closeSubpageFn.indexOf('++selectToken') >= 0 || closeSubpageFn.indexOf('selectToken++') >= 0);
+assert.ok(closeSubpageFn.indexOf('previewRestored') >= 0, 'closeSubpage defers preview restore');
+assert.ok(closeSubpageFn.indexOf('setTimeout') >= 0, 'closeSubpage async preview');
+assert.ok(softPadHubSrc.indexOf('++subpageToken') >= 0 || softPadHubSrc.indexOf('subpageToken++') >= 0);
+assert.ok(softPadHubSrc.indexOf('isAgentPanelCurrent') >= 0);
+assert.ok(softPadHubSrc.indexOf('onSoftPadPanelChanged') >= 0);
+
+var selectScopeNoDiag = selectScopeFn;
+var selectSchemeFn = softPadFnSlice(softPadHubSrc, 'selectScheme', 'selectScope');
+assert.ok(selectScopeNoDiag.indexOf('refreshHookSetupStatus') < 0);
+assert.ok(selectScopeNoDiag.indexOf('refreshClaudeActivityPad') < 0);
+assert.ok(selectScopeNoDiag.indexOf('cmd_pad_status_diagnose') < 0);
+assert.ok(selectSchemeFn.indexOf('refreshHookSetupStatus') < 0);
+assert.ok(selectSchemeFn.indexOf('cmd_pad_status_diagnose') < 0);
+
+var padUiAgentSrc = fs.readFileSync(
+  path.join(__dirname, '../src/js/features/agent/codex-micro-pad-ui.js'),
+  'utf8'
+);
+var fillLazyFn = softPadFnSlice(padUiAgentSrc, 'fillLazyAgentConnect', 'findMappingById');
+assert.ok(fillLazyFn.indexOf('refreshHookSetupStatus') >= 0);
+assert.ok(fillLazyFn.indexOf('refreshClaudeActivityPad') >= 0);
+assert.ok(padUiAgentSrc.indexOf('agentRefreshStillCurrent') >= 0);
+assert.ok(padUiAgentSrc.indexOf('isAgentPanelCurrent') >= 0);
+assert.ok(padUiAgentSrc.indexOf('setSoftPadControlsBusy') >= 0);
+assert.ok(padUiAgentSrc.indexOf('controlBusyUntil') >= 0);
+
+assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN excludes cursor');
+assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN excludes minimax');
+assert.ok(softPadHubSrc.indexOf('function appTitleFor(kind)') >= 0);
+assert.ok(softPadHubSrc.indexOf('function isHubSoftPadKind(kind)') >= 0);
+assert.ok(softPadHubSrc.indexOf("id: 'global'") < 0 || softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);
+assert.ok(softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);
+assert.ok(/function listAppScopes[\s\S]*?BUILTIN_SOFT_PAD_APPS\.map/.test(softPadHubSrc), 'scopes from builtin only');
+assert.ok(softPadHubSrc.indexOf('keepPreview') >= 0 || softPadHubSrc.indexOf("softPadView === 'layout'") >= 0, 'layout keeps preview');
+assert.ok(softPadHubSrc.indexOf('is-collapsed') >= 0, 'subpage collapses preview');
+assert.ok(padUiAgentSrc.indexOf("bindPadClicks(host, m, 'softPad')") >= 0);
+assert.ok(padUiAgentSrc.indexOf("mode === 'softPad'") >= 0);
+assert.ok(padUiAgentSrc.indexOf('openEditKeycap(m, id)') >= 0);
+assert.ok(padUiAgentSrc.indexOf('iconEffectTip') >= 0);
+assert.ok(padUiAgentSrc.indexOf('slotEffectTip') >= 0);
+assert.ok(padUiAgentSrc.indexOf('microHwEditEffectTip') >= 0);
 
 console.log('agent-codex-micro.test.js ok');

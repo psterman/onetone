@@ -702,6 +702,13 @@
     return changed;
   }
 
+  /** Session heal cache — avoid JSON.stringify+migrate on every Soft Pad scheme click (假死风暴). */
+  var padHealDone = Object.create(null);
+
+  function invalidatePadHeal(m) {
+    if (m && m.id) delete padHealDone[String(m.id)];
+  }
+
   function ensurePad(m, opts) {
     opts = opts || {};
     if (!m) return null;
@@ -714,9 +721,14 @@
         layoutProfile: 'standard',
         softwareEnhanceEnabled: false,
         codexStatusLightsEnabled: false,
+        presentation: 'full',
         keys: defaultSeedRoutes()
       };
+      if (m.id) padHealDone[String(m.id)] = true;
       if (opts.persist !== false) persist();
+      return m.codexMicroPad;
+    }
+    if (!opts.force && m.id && padHealDone[String(m.id)]) {
       return m.codexMicroPad;
     }
     if (!Array.isArray(m.codexMicroPad.keys)) m.codexMicroPad.keys = [];
@@ -726,6 +738,10 @@
     }
     if (m.codexMicroPad.codexStatusLightsEnabled == null) {
       m.codexMicroPad.codexStatusLightsEnabled = false;
+    }
+    if (!m.codexMicroPad.presentation ||
+        (m.codexMicroPad.presentation !== 'full' && m.codexMicroPad.presentation !== 'mini')) {
+      m.codexMicroPad.presentation = 'full';
     }
     var before = JSON.stringify(m.codexMicroPad.keys);
     m.codexMicroPad.keys = migrateLegacyKeys(m.codexMicroPad.keys);
@@ -743,6 +759,7 @@
     protectPrimaryLayout(m.codexMicroPad);
     // Heal-only scan moves: persist quietly later via normal save — never block hub open.
     if (before !== JSON.stringify(m.codexMicroPad.keys) && opts.persist === true) persist();
+    if (m.id) padHealDone[String(m.id)] = true;
     return m.codexMicroPad;
   }
 
@@ -793,6 +810,7 @@
 
   function applyLayoutProfile(m, profile, opts) {
     opts = opts || {};
+    invalidatePadHeal(m);
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
     var p = String(profile || 'standard').trim();
@@ -1054,9 +1072,20 @@
       && drawer && drawer.isKeysPanel && drawer.isKeysPanel());
   }
 
+  function softPadPanelActive() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.drawerOpen && ui.settingsPanel === 'softPad');
+  }
+
   function notifyLinkedUi(m) {
     // Pad-only refresh. Never call AgentCapabilityUi.refresh() here — that remounts
     // camera/MediaPipe and has 假死'd the UI when toggling Micro enable.
+    if (softPadPanelActive() && global.OneToneSoftPadHub && global.OneToneSoftPadHub.refreshSelected) {
+      // Skip while Soft Pad is mid-paint — refreshSelected→paintPreview would re-enter.
+      if (global.OneToneSoftPadHub.isPaintBusy && global.OneToneSoftPadHub.isPaintBusy()) return;
+      try { global.OneToneSoftPadHub.refreshSelected(m); } catch (_) {}
+      return;
+    }
     // Skip keys chrome when user already left keys (opening「我的习惯」was 假死'd by this).
     if (!keysPanelActive() && !isPadManagerOpen()) return;
     refreshTrigger(m);
@@ -1106,7 +1135,7 @@
     if (!next) return false;
     if (oldWrap && oldWrap.parentNode) oldWrap.parentNode.replaceChild(next, oldWrap);
     else host.replaceChildren(next);
-    var body = document.getElementById('codexPadMgrBody');
+    var body = activePadManagerBody();
     var enabledEl = body && body.querySelector('[data-act="enabled"]');
     if (enabledEl) enabledEl.checked = !!pad.enabled;
     var overlayEl = body && body.querySelector('[data-act="overlay"]');
@@ -1160,8 +1189,79 @@
     var A = agent();
     if (!A || !A.SLOTS) return [];
     return A.SLOTS.map(function (s) {
-      return { id: s.slotId, label: lang().indexOf('en') === 0 ? s.labelEn : s.labelZh };
+      var label = lang().indexOf('en') === 0 ? s.labelEn : s.labelZh;
+      var tip = slotEffectTip(s.slotId, label);
+      return { id: s.slotId, label: label, tip: tip };
     });
+  }
+
+  /** Hover / option tip: what this capability does when the key fires. */
+  function slotEffectTip(slotId, label) {
+    var A = agent();
+    var name = label || slotLabel(slotId) || String(slotId || '');
+    if (!slotId) {
+      return lang().indexOf('en') === 0
+        ? 'No capability — key will not run an action'
+        : '未绑定能力 — 按键不会执行动作';
+    }
+    var insert = A && A.insertTextForSlot ? A.insertTextForSlot(slotId) : '';
+    if (insert) {
+      return lang().indexOf('en') === 0
+        ? (name + ' — inserts ' + insert + ' into the agent chat')
+        : (name + ' — 向对话插入 ' + insert);
+    }
+    var chord = '';
+    try {
+      if (editDraft && editDraft.mapping) chord = friendlyChord(chordForSlot(editDraft.mapping, slotId));
+    } catch (_) {}
+    if (!chord && A && A.defaultKeyForSlot) chord = friendlyChord(A.defaultKeyForSlot(slotId));
+    if (chord) {
+      return lang().indexOf('en') === 0
+        ? (name + ' — sends shortcut ' + chord)
+        : (name + ' — 触发快捷键 ' + chord);
+    }
+    return lang().indexOf('en') === 0
+      ? (name + ' — runs this Soft Pad capability')
+      : (name + ' — 执行该 Soft Pad 能力');
+  }
+
+  var ICON_EFFECT_TIPS = {
+    approve: { zh: '确认 / 允许', en: 'Approve / allow' },
+    reject: { zh: '拒绝 / 取消', en: 'Reject / cancel' },
+    fork: { zh: '新建对话上下文', en: 'New thread / fork' },
+    mic: { zh: '开始说话（按住说话）', en: 'Push to talk' },
+    send: { zh: '结束或发送', en: 'Stop or send' },
+    new: { zh: '新建', en: 'New' },
+    power: { zh: '屏幕总开关 / 召唤', en: 'Screen power / summon' },
+    palette: { zh: '命令菜单', en: 'Command palette' },
+    status: { zh: '查看状态（插入 /status）', en: 'Status (insert /status)' },
+    plan: { zh: '制定计划（插入 /plan）', en: 'Plan (insert /plan)' },
+    review: { zh: '审查（插入 /review）', en: 'Review (insert /review)' },
+    folder: { zh: '权限（插入 /permissions）', en: 'Permissions (insert /permissions)' },
+    cloud: { zh: '应用与插件', en: 'Apps / plugins' },
+    agent: { zh: '切换助手', en: 'Switch agent' },
+    claude: { zh: 'Claude 模型（插入 /model）', en: 'Claude model (insert /model)' },
+    model: { zh: '切换模型（插入 /model）', en: 'Switch model (insert /model)' },
+    undo: { zh: '撤销', en: 'Undo' },
+    search: { zh: '快速搜索', en: 'Quick search' },
+    codex: { zh: 'Codex', en: 'Codex' },
+    fast: { zh: '快速聊天', en: 'Quick chat' },
+    navUp: { zh: '向上', en: 'Up' },
+    navDown: { zh: '向下', en: 'Down' },
+    navLeft: { zh: '向左', en: 'Left' },
+    navRight: { zh: '向右', en: 'Right' },
+    empty: { zh: '空白键帽', en: 'Empty keycap' }
+  };
+
+  function iconEffectTip(def) {
+    if (!def) return '';
+    var tip = ICON_EFFECT_TIPS[def.id];
+    var effect = tip
+      ? (lang().indexOf('en') === 0 ? tip.en : tip.zh)
+      : def.label;
+    return lang().indexOf('en') === 0
+      ? (def.label + ' — ' + effect + ' (keycap icon only; pick capability below)')
+      : (def.label + ' — ' + effect + '（仅键帽外观；能力请在下方选择）');
   }
 
   function findSourceConflict(pad, scan, ext, exceptMicroId) {
@@ -1183,7 +1283,7 @@
     var mode = opts.mode || 'preview';
     var sizeCls = opts.compact ? ' micro-hw--sm' : '';
     var compactCls = mode === 'overlay' ? ' micro-hw--compact' : '';
-    // Preview uses local state; other modes reflect pad.enabled for shell color.
+    // Preview uses local state; softPad/config/run reflect pad.enabled for shell color.
     var codexOn = mode === 'preview'
       ? previewPadMode === 'codex'
       : !!(pad && pad.enabled);
@@ -2371,9 +2471,32 @@
     }
   }
 
-  function refreshClaudeActivityPad() {
+  function agentRefreshStillCurrent(ctx) {
+    ctx = ctx || {};
+    // Soft Pad agent subpage only — modal/manager diagnose calls omit token.
+    if (ctx.token == null && ctx.requireSoftPad !== true) return true;
+    var Hub = global.OneToneSoftPadHub;
+    if (Hub && typeof Hub.isAgentPanelCurrent === 'function') {
+      if (!Hub.isAgentPanelCurrent(ctx.token, ctx.mappingId)) return false;
+    }
+    if (ctx.container && !ctx.container.isConnected) return false;
+    if (ctx.token != null && ctx.container) {
+      var stamped = ctx.container.getAttribute('data-agent-load-token');
+      if (stamped != null && String(stamped) !== String(ctx.token)) return false;
+    }
+    return true;
+  }
+
+  function refreshClaudeActivityPad(opts) {
+    opts = opts || {};
     var root = document.getElementById('codexClaudeActivityPad');
     if (!root) return Promise.resolve(null);
+    var ctx = {
+      token: opts.agentLoadToken != null ? opts.agentLoadToken : opts.token,
+      mappingId: opts.mappingId != null ? opts.mappingId : (opts.mapping && opts.mapping.id),
+      container: opts.container || null,
+      requireSoftPad: opts.requireSoftPad
+    };
     var diagP = padInvoke('cmd_pad_status_diagnose', { limit: 48 })
       .then(function (v) {
         padDiagLastView = v || {};
@@ -2386,6 +2509,7 @@
       return null;
     });
     return Promise.all([diagP, ovP]).then(function (pair) {
+      if (!agentRefreshStillCurrent(ctx)) return null;
       if (pair[0] && document.querySelector('[data-pad-diag-snap]')) {
         renderPadDiagnoseReplay(pair[0], padDiagFilter);
       }
@@ -2440,10 +2564,18 @@
     if (showLight) applyHookLightToManagerPad(lightForUi, source || 'codex_hook');
   }
 
-  function refreshHookSetupStatus(m) {
+  function refreshHookSetupStatus(m, opts) {
+    opts = opts || {};
+    var ctx = {
+      token: opts.agentLoadToken != null ? opts.agentLoadToken : opts.token,
+      mappingId: opts.mappingId != null ? opts.mappingId : (m && m.id),
+      container: opts.container || null,
+      requireSoftPad: opts.requireSoftPad
+    };
     return padInvoke('cmd_codex_hook_setup_status', {
       mappingId: m && m.id ? String(m.id) : null
     }).then(function (st) {
+      if (!agentRefreshStillCurrent(ctx)) return null;
       applyHookSetupStatusDom(st || {});
       return st;
     }).catch(function () {
@@ -3183,7 +3315,123 @@
     return t('codexMicroPadModeEditHint', '编辑：点击键帽修改能力');
   }
 
+  function renderPresentationSeg(pad) {
+    var cur = (pad && pad.presentation) === 'mini' ? 'mini' : 'full';
+    var opts = [
+      { id: 'full', label: t('codexMicroPadPresentationFull', '完整体') },
+      { id: 'mini', label: t('codexMicroPadPresentationMini', '精简态') }
+    ];
+    var html = '<div class="codex-micro-pad__modes" role="radiogroup" aria-label="' +
+      esc(t('codexMicroPadPresentationLbl', '显示形态')) + '">';
+    opts.forEach(function (opt) {
+      html += '<button type="button" class="codex-micro-pad__mode' +
+        (cur === opt.id ? ' is-active' : '') +
+        '" data-pad-presentation="' + opt.id + '" role="radio" aria-checked="' +
+        (cur === opt.id ? 'true' : 'false') + '">' + esc(opt.label) + '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderAgentConnectFold(pad, opts) {
+    opts = opts || {};
+    // Soft Pad panel: keep fold shell only — Hook/Claude cards are huge and were
+    // re-injected on every scheme click (DOM+listener 风暴 → 假死).
+    if (opts.lazyAgent) {
+      return (
+        '<details class="codex-pad-mgr__agent-connect" id="codexPadAgentConnect" data-lazy-agent="1">' +
+        '<summary>' + esc(t('codexMicroPadAgentConnect', 'Agent 接入')) + '</summary>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('codexMicroPadAgentConnectHint', 'Codex 状态灯与 Claude Activity 安装收纳于此，不影响布局编辑。')) +
+        '</p>' +
+        '<div class="codex-pad-mgr__agent-lazy" data-lazy-agent-body></div>' +
+        '</details>'
+      );
+    }
+    return (
+      '<details class="codex-pad-mgr__agent-connect" id="codexPadAgentConnect">' +
+      '<summary>' + esc(t('codexMicroPadAgentConnect', 'Agent 接入')) + '</summary>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadAgentConnectHint', 'Codex 状态灯与 Claude Activity 安装收纳于此，不影响布局编辑。')) +
+      '</p>' +
+      renderHookStatusCard(pad) +
+      renderClaudeActivityPadCard() +
+      '</details>'
+    );
+  }
+
+  function fillLazyAgentConnect(body, m, pad, opts) {
+    opts = opts || {};
+    if (!body || !m || !pad) return;
+    var host = body.querySelector('[data-lazy-agent-body]');
+    if (!host || host.getAttribute('data-filled') === '1') return;
+    var token = opts.agentLoadToken != null ? opts.agentLoadToken : opts.token;
+    if (token != null) body.setAttribute('data-agent-load-token', String(token));
+    host.setAttribute('data-filled', '1');
+    host.innerHTML = renderHookStatusCard(pad) + renderClaudeActivityPadCard();
+    bindAgentConnectEvents(body, m, pad);
+    var refreshOpts = {
+      agentLoadToken: token,
+      mappingId: m.id,
+      container: body,
+      requireSoftPad: true
+    };
+    refreshHookSetupStatus(m, refreshOpts);
+    refreshClaudeActivityPad(refreshOpts);
+  }
+
   var padManagerMapping = null;
+  var padManagerMode = 'modal';
+  var padManagerContainer = null;
+
+  function findMappingById(id) {
+    id = String(id || '');
+    if (!id) return null;
+    var st = global.OneToneState && global.OneToneState.state;
+    var list = (st && st.config && st.config.mappings) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && String(list[i].id) === id) return list[i];
+    }
+    return null;
+  }
+
+  function activePadManagerBody() {
+    if (padManagerContainer && padManagerContainer.isConnected) return padManagerContainer;
+    return document.getElementById('codexPadMgrBody');
+  }
+
+  var presentationPersistTimer = 0;
+  var presentationPersistPending = null;
+  function persistPresentation(m) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var pad = m && m.codexMicroPad;
+    if (!invoke || !m || !m.id || !pad) {
+      // Avoid sync full cmd_save on Soft Pad panel — that path 假死'd 返回.
+      return Promise.resolve();
+    }
+    var presentation = pad.presentation === 'mini' ? 'mini' : 'full';
+    pad.presentation = presentation;
+    presentationPersistPending = {
+      mappingId: String(m.id),
+      presentation: presentation
+    };
+    if (presentationPersistTimer) clearTimeout(presentationPersistTimer);
+    presentationPersistTimer = setTimeout(function () {
+      presentationPersistTimer = 0;
+      var args = presentationPersistPending;
+      presentationPersistPending = null;
+      if (!args) return;
+      invoke('cmd_codex_micro_pad_set_presentation', args).catch(function (err) {
+        try {
+          padInvoke('cmd_app_log', {
+            line: 'fe persistPresentation fail ' + (err && err.message ? err.message : 'unknown')
+          });
+        } catch (_) {}
+        // Do NOT fall back to full persist()/cmd_save — quiet IPC is required.
+      });
+    }, 120);
+    return Promise.resolve();
+  }
 
   function ensurePadManagerModal() {
     var el = document.getElementById('codexMicroPadManager');
@@ -3218,8 +3466,17 @@
     modal.querySelector('#codexPadMgrTitle').textContent =
       t('codexMicroPadManageTitle', '小键盘管理');
     modal.querySelector('[data-act="mgr-close"]').onclick = closePadManager;
+    var body = modal.querySelector('#codexPadMgrBody');
+    // Clear Soft Pad subpage host so only one #codexPadMgrPad exists.
+    var panelBody = document.getElementById('softPadSubpageBody') ||
+      document.getElementById('softPadMgrBody');
+    if (panelBody && panelBody !== body) panelBody.replaceChildren();
     modal.hidden = false;
-    renderPadManager(m);
+    renderCodexMicroPadManager({
+      container: body,
+      mode: 'modal',
+      mapping: m
+    });
   }
 
   function closePadManager() {
@@ -3230,6 +3487,10 @@
     if (modal) modal.hidden = true;
     var more = document.getElementById('codexPadMgrMore');
     if (more) more.hidden = true;
+    if (padManagerMode === 'modal') {
+      padManagerContainer = null;
+      padManagerMode = 'modal';
+    }
     var targetHost = document.getElementById('codexMicroPadHostTarget');
     var Cap = global.OneToneAgentCapabilityUi;
     var cur = Cap && Cap.activeCodexMapping ? Cap.activeCodexMapping() : null;
@@ -3238,26 +3499,450 @@
   }
 
   function isPadManagerOpen() {
+    if (padManagerMode === 'panel' && padManagerMapping && padManagerContainer && padManagerContainer.isConnected) {
+      return softPadPanelActive();
+    }
     var modal = document.getElementById('codexMicroPadManager');
     return !!(modal && !modal.hidden && padManagerMapping);
   }
 
-  function renderPadManager(m, opts) {
+  /** Soft Pad page preview host — visual anchor above function tiles. */
+  function remountSoftPadPreviewShell(host, m) {
+    if (!host || !m) return false;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    if (!pad) return false;
+    var root = host.querySelector('.codex-micro-pad.soft-pad-preview');
+    if (!root) return false;
+    var oldWrap = root.querySelector('.micro-hw-wrap') || root.querySelector('.micro-hw-shell');
+    if (!oldWrap || !oldWrap.parentNode) return false;
+    var n = countBound(pad);
+    var on = !!pad.enabled;
+    var statusEl = root.querySelector('.codex-micro-pad__status');
+    if (statusEl) {
+      statusEl.textContent = on
+        ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
+        : t('codexMicroPadStatusOff', '已关闭');
+    }
+    var tmp = document.createElement('div');
+    tmp.innerHTML = renderHardwarePad(m, pad, { mode: 'softPad' });
+    var next = tmp.firstChild;
+    if (!next) return false;
+    oldWrap.parentNode.replaceChild(next, oldWrap);
+    bindPadClicks(root, m, 'softPad');
+    return true;
+  }
+
+  function renderSoftPadPreview(host, m, opts) {
     opts = opts || {};
+    if (!host) return;
+    if (!m) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    var n = countBound(pad);
+    var on = pad && pad.enabled;
+    previewPadMode = on ? 'codex' : 'numpad';
+    host.hidden = false;
+    if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) return;
+    host.innerHTML =
+      '<div class="codex-micro-pad soft-pad-preview">' +
+      '<div class="codex-micro-pad__head">' +
+      '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', '虚拟键盘')) + '</p>' +
+      '<span class="codex-micro-pad__status">' +
+      esc(on
+        ? t('codexMicroPadStatusOn', '已开启 · 已绑定 {n} 个键').replace('{n}', String(n))
+        : t('codexMicroPadStatusOff', '已关闭')) +
+      '</span></div>' +
+      renderHardwarePad(m, pad, { mode: 'softPad' }) +
+      '<p class="soft-pad-preview__hint codex-pad-mgr__hint">' +
+      esc(t('softPadPreviewTapHint', '点击键帽编辑能力与快捷键映射')) +
+      '</p></div>';
+    bindPadClicks(host, m, 'softPad');
+  }
+
+  function softPadPanelChanged(m, opts) {
+    if (opts && typeof opts.onChanged === 'function') {
+      try { opts.onChanged(m, opts.panel || null); } catch (_) {}
+      return;
+    }
+    notifyLinkedUi(m);
+  }
+
+  /** Layout subpage — profile / import-export only; no second keyboard. */
+  function renderSoftPadLayoutPanel(container, m, opts) {
+    opts = opts || {};
+    if (!container || !m) return;
+    var pad = m.codexMicroPad;
+    if (!pad) {
+      ensurePad(m, { persist: false });
+      pad = m.codexMicroPad;
+    }
+    if (!pad) {
+      container.innerHTML = '<p class="codex-pad-mgr__hint">—</p>';
+      return;
+    }
+    var showEnhance = pad.layoutProfile === 'advanced';
+    container.innerHTML =
+      '<div class="codex-pad-mgr__section">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadProfileLbl', '布局')) + '</p>' +
+      renderProfileSeg(pad) +
+      '</div>' +
+      (showEnhance
+        ? ('<div class="codex-pad-mgr__settings">' +
+          '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="enhance"' +
+          (pad.softwareEnhanceEnabled ? ' checked' : '') + '>' +
+          esc(t('codexMicroPadEnhanceEnable', '软件增强：总开关滚轮 / 摇杆方向')) + '</label>' +
+          '</div>')
+        : '') +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadLayoutEditHint', '点上方预览里的键帽即可编辑能力；此处只调布局档位与导入导出。')) +
+      '</p>' +
+      '<div class="codex-pad-mgr__foot">' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="restore">' +
+      esc(t('codexMicroPadRestore', '恢复默认')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="export">' +
+      esc(t('codexMicroPadExport', '导出')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="import">' +
+      esc(t('codexMicroPadImport', '导入')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="copyCustom">' +
+      esc(t('codexMicroPadCopyCustom', '复制为自定义布局')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-danger" data-act="clear">' +
+      esc(t('codexMicroPadClear', '清空所有映射')) + '</button>' +
+      '<input type="file" accept="application/json,.json" data-act="importFile" hidden />' +
+      '</div>';
+    container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
+    container.setAttribute('data-soft-pad-panel', 'layout');
+    bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'layout' }));
+  }
+
+  /** Presentation subpage — full vs mini status bar. Keep ultra-light (no pad remount). */
+  function renderSoftPadPresentationPanel(container, m, opts) {
+    opts = opts || {};
+    if (!container || !m) return;
+    var pad = m.codexMicroPad;
+    if (!pad) {
+      ensurePad(m, { persist: false });
+      pad = m.codexMicroPad;
+    }
+    if (!pad) {
+      container.innerHTML = '<p class="codex-pad-mgr__hint">—</p>';
+      return;
+    }
+    var isMini = pad.presentation === 'mini';
+    container.innerHTML =
+      '<div class="codex-pad-mgr__section">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadPresentationLbl', '显示形态')) + '</p>' +
+      renderPresentationSeg(pad) +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(isMini
+        ? t('softPadPresMiniStatus', '小态栏：状态优先，操作能力有限（不是确认键条）')
+        : t('softPadPresFullStatus', '完整体：显示全部键位')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadPresentationHint', '精简态为灯条形态（展开/关闭），不是确认键条。')) +
+      '</p>' +
+      '</div>';
+    container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
+    container.setAttribute('data-soft-pad-panel', 'presentation');
+    bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'presentation' }));
+  }
+
+  /** Runtime subpage — when Soft Pad appears / takes over numpad. */
+  function renderSoftPadRuntimePanel(container, m, opts) {
+    opts = opts || {};
+    if (!container || !m) return;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    container.innerHTML =
+      '<div class="codex-pad-mgr__settings">' +
+      '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="enabled"' +
+      (pad.enabled ? ' checked' : '') + '>' +
+      esc(t('codexMicroPadEnableCodex', 'Codex 场景映射（关=数字键模式）')) + '</label>' +
+      '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="overlay"' +
+      (pad.overlayEnabled ? ' checked' : '') + '>' +
+      esc(t('codexMicroPadOverlayEnable', '前台置顶小键盘')) + '</label>' +
+      '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="numlock"' +
+      (pad.requireNumLockOff ? ' checked' : '') + '>' +
+      esc(t('codexMicroPadNumLockOff', 'NumLock 关闭时接管小键盘')) + '</label>' +
+      '</div>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadRuntimeHint', '控制虚拟键盘何时出现，以及是否接管数字小键盘。')) +
+      '</p>';
+    container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
+    container.setAttribute('data-soft-pad-panel', 'runtime');
+    bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'runtime' }));
+  }
+
+  /** Agent subpage — Hook/Claude only here; fill immediately (user entered intentionally). */
+  function renderSoftPadAgentPanel(container, m, opts) {
+    opts = opts || {};
+    if (!container || !m) return;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    var token = opts.agentLoadToken != null ? opts.agentLoadToken : opts.token;
+    container.innerHTML =
+      '<div class="codex-pad-mgr__agent-connect" data-lazy-agent="1">' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadAgentConnectHint', 'Codex 状态灯与 Claude Activity 安装收纳于此，不影响布局编辑。')) +
+      '</p>' +
+      '<div class="codex-pad-mgr__agent-lazy" data-lazy-agent-body></div>' +
+      '</div>';
+    container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
+    container.setAttribute('data-soft-pad-panel', 'agent');
+    if (token != null) container.setAttribute('data-agent-load-token', String(token));
+    fillLazyAgentConnect(container, m, pad, { agentLoadToken: token });
+  }
+
+  function setSoftPadControlsBusy(body, busy) {
+    if (!body) return;
+    body.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+      btn.disabled = !!busy;
+    });
+    body.querySelectorAll('[data-act="enabled"], [data-act="overlay"], [data-act="numlock"]').forEach(function (el) {
+      el.disabled = !!busy;
+    });
+  }
+
+  function bindSoftPadLightPanelEvents(body, m, pad, opts) {
+    opts = opts || {};
+    if (!body || !m || !pad) return;
+    var controlBusyUntil = 0;
+
+    function markBusy(ms) {
+      controlBusyUntil = Date.now() + (ms || 250);
+      setSoftPadControlsBusy(body, true);
+      var until = controlBusyUntil;
+      setTimeout(function () {
+        if (Date.now() >= until - 5) setSoftPadControlsBusy(body, false);
+      }, ms || 250);
+    }
+
+    function isBusy() {
+      return Date.now() < controlBusyUntil;
+    }
+
+    body.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-pad-presentation');
+        if (!next || (next !== 'full' && next !== 'mini')) return;
+        if (pad.presentation === next) return;
+        if (isBusy()) return;
+        markBusy(250);
+        pad.presentation = next;
+        body.querySelectorAll('[data-pad-presentation]').forEach(function (b) {
+          var on = b.getAttribute('data-pad-presentation') === next;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        var hints = body.querySelectorAll('.codex-pad-mgr__hint');
+        if (hints[0]) {
+          hints[0].textContent = next === 'mini'
+            ? t('softPadPresMiniStatus', '小态栏：状态优先，操作能力有限（不是确认键条）')
+            : t('softPadPresFullStatus', '完整体：显示全部键位');
+        }
+        persistPresentation(m);
+        softPadPanelChanged(m, opts);
+      });
+    });
+    body.querySelectorAll('[data-pad-profile]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-pad-profile');
+        if (!next) return;
+        applyLayoutProfile(m, next, { persist: true });
+        if (next !== 'advanced') pad.softwareEnhanceEnabled = false;
+        toast(t('codexMicroPadProfileApplied', '已切换布局：{p}').replace('{p}',
+          next === 'beginner' ? t('codexMicroPadProfileBeginner', '入门')
+            : next === 'advanced' ? t('codexMicroPadProfileAdvanced', '高级')
+              : t('codexMicroPadProfileStandard', '标准')));
+        softPadPanelChanged(m, opts);
+      });
+    });
+
+    var enabledEl = body.querySelector('[data-act="enabled"]');
+    if (enabledEl) {
+      enabledEl.addEventListener('change', function () {
+        if (isBusy()) {
+          enabledEl.checked = !!pad.enabled;
+          return;
+        }
+        var next = !!enabledEl.checked;
+        if (next === !!pad.enabled) return;
+        markBusy(250);
+        pad.enabled = next;
+        previewPadMode = pad.enabled ? 'codex' : 'numpad';
+        if (pad.enabled) pad.overlayEnabled = true;
+        var overlayElSync = body.querySelector('[data-act="overlay"]');
+        if (overlayElSync && pad.enabled) overlayElSync.checked = true;
+        persistPadFlags(m);
+        softPadPanelChanged(m, opts);
+      });
+    }
+    var overlayEl = body.querySelector('[data-act="overlay"]');
+    if (overlayEl) {
+      overlayEl.addEventListener('change', function () {
+        if (isBusy()) {
+          overlayEl.checked = !!pad.overlayEnabled;
+          return;
+        }
+        var next = !!overlayEl.checked;
+        if (next === !!pad.overlayEnabled) return;
+        markBusy(250);
+        pad.overlayEnabled = next;
+        persistPadFlags(m);
+        softPadPanelChanged(m, opts);
+      });
+    }
+    var numLockEl = body.querySelector('[data-act="numlock"]');
+    if (numLockEl) {
+      numLockEl.addEventListener('change', function () {
+        if (isBusy()) {
+          numLockEl.checked = !!pad.requireNumLockOff;
+          return;
+        }
+        var next = !!numLockEl.checked;
+        if (next === !!pad.requireNumLockOff) return;
+        markBusy(250);
+        pad.requireNumLockOff = next;
+        persistPadFlags(m);
+        softPadPanelChanged(m, opts);
+      });
+    }
+    var enhanceEl = body.querySelector('[data-act="enhance"]');
+    if (enhanceEl) {
+      enhanceEl.addEventListener('change', function () {
+        pad.softwareEnhanceEnabled = !!enhanceEl.checked;
+        persist();
+        softPadPanelChanged(m, opts);
+      });
+    }
+
+    var restoreBtn = body.querySelector('[data-act="restore"]');
+    if (restoreBtn) {
+      restoreBtn.addEventListener('click', function () {
+        var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
+          ? pad.layoutProfile
+          : 'standard';
+        applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+        softPadPanelChanged(m, opts);
+        toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+      });
+    }
+    var exportBtn = body.querySelector('[data-act="export"]');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        try {
+          var blob = new Blob([JSON.stringify(exportLayoutJson(m), null, 2)], { type: 'application/json' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'soft-pad-layout.json';
+          a.click();
+          URL.revokeObjectURL(a.href);
+          toast(t('codexMicroPadExported', '布局已导出'));
+        } catch (_) {
+          toast(t('codexMicroPadExportFail', '导出失败'));
+        }
+      });
+    }
+    var fileEl = body.querySelector('[data-act="importFile"]');
+    var importBtn = body.querySelector('[data-act="import"]');
+    if (importBtn && fileEl) {
+      importBtn.addEventListener('click', function () { fileEl.click(); });
+      fileEl.addEventListener('change', function () {
+        var file = fileEl.files && fileEl.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var data = JSON.parse(String(reader.result || ''));
+            if (importLayoutJson(m, data)) {
+              invalidatePadHeal(m);
+              toast(t('codexMicroPadImported', '布局已导入'));
+              softPadPanelChanged(m, opts);
+            }
+          } catch (_) {
+            toast(t('codexMicroPadImportInvalid', '无法导入：不是有效的布局文件'));
+          }
+          fileEl.value = '';
+        };
+        reader.readAsText(file);
+      });
+    }
+    var copyBtn = body.querySelector('[data-act="copyCustom"]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        copyAsCustomLayout(m);
+        invalidatePadHeal(m);
+        softPadPanelChanged(m, opts);
+      });
+    }
+    var clearBtn = body.querySelector('[data-act="clear"]');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        if (!window.confirm(t('codexMicroPadClearConfirm', '确定清空所有小键盘映射？'))) return;
+        pad.keys = [];
+        protectPrimaryLayout(pad);
+        invalidatePadHeal(m);
+        persist();
+        softPadPanelChanged(m, opts);
+        toast(t('codexMicroPadCleared', '已清空小键盘映射'));
+      });
+    }
+  }
+
+  /**
+   * Embeddable Soft Pad manager body.
+   * @param {{ container: HTMLElement, mode?: 'panel'|'modal', mappingId?: string, mapping?: object, skipHookRefresh?: boolean, refreshHook?: boolean, omitPad?: boolean, foldSettings?: boolean }} opts
+   */
+  function renderCodexMicroPadManager(opts) {
+    opts = opts || {};
+    var mode = opts.mode === 'panel' ? 'panel' : 'modal';
+    var omitPad = !!opts.omitPad;
+    var foldSettings = !!opts.foldSettings;
+    var m = opts.mapping || null;
+    if (!m && opts.mappingId) m = findMappingById(opts.mappingId);
     m = m || padManagerMapping;
     if (!m) return;
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
     var showEnhance = pad.layoutProfile === 'advanced';
-    var body = document.getElementById('codexPadMgrBody');
-    var modal = ensurePadManagerModal();
+    var body = opts.container || activePadManagerBody();
+    if (!body) {
+      if (mode === 'modal') {
+        ensurePadManagerModal();
+        body = document.getElementById('codexPadMgrBody');
+      }
+    }
     if (!body) return;
 
+    padManagerMode = mode;
+    padManagerContainer = body;
+    padManagerMapping = m;
+
+    if (mode === 'panel') {
+      var modalEl = document.getElementById('codexMicroPadManager');
+      if (modalEl) {
+        modalEl.hidden = true;
+        var modalBody = modalEl.querySelector('#codexPadMgrBody');
+        if (modalBody && modalBody !== body) modalBody.replaceChildren();
+      }
+    }
+
     var padBindMode = padUiMode === 'run' ? 'run' : (padUiMode === 'try' ? 'try' : 'config');
-    body.innerHTML =
+    var coreSettingsHtml =
       '<div class="codex-pad-mgr__section">' +
       '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadProfileLbl', '布局')) + '</p>' +
       renderProfileSeg(pad) +
+      '</div>' +
+      '<div class="codex-pad-mgr__section">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadPresentationLbl', '显示形态')) + '</p>' +
+      renderPresentationSeg(pad) +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('codexMicroPadPresentationHint', '精简态为灯条形态（展开/关闭），不是确认键条。')) +
+      '</p>' +
       '</div>' +
       '<div class="codex-pad-mgr__section">' +
       '<p class="codex-pad-mgr__label">' + esc(t('codexMicroPadModeLbl', '操作')) + '</p>' +
@@ -3279,9 +3964,27 @@
           (pad.softwareEnhanceEnabled ? ' checked' : '') + '>' +
           esc(t('codexMicroPadEnhanceEnable', '软件增强：总开关滚轮 / 摇杆方向')) + '</label>')
         : '') +
-      '</div>' +
-      renderHookStatusCard(pad) +
-      renderClaudeActivityPadCard() +
+      '</div>';
+
+    var settingsBlock = foldSettings
+      ? ('<details class="codex-pad-mgr__fold" id="codexPadSettingsFold" open>' +
+        '<summary>' + esc(t('codexMicroPadSettingsFold', '布局与形态')) + '</summary>' +
+        coreSettingsHtml +
+        '</details>')
+      : coreSettingsHtml;
+
+    var padBlock = omitPad
+      ? ''
+      : ('<div class="codex-pad-mgr__pad" id="codexPadMgrPad">' +
+        renderHardwarePad(m, pad, { mode: padBindMode }) +
+        '</div>');
+
+    // Panel Soft Pad: never mount Hook/Claude trees until Agent fold opens.
+    var lazyAgent = opts.lazyAgent != null ? !!opts.lazyAgent : !!(omitPad || foldSettings);
+
+    body.innerHTML =
+      settingsBlock +
+      renderAgentConnectFold(pad, { lazyAgent: lazyAgent }) +
       renderBindingValidateCard() +
       (padUiMode === 'run'
         ? ('<div class="codex-micro-pad__run-status" data-status="' + esc(padRunStatus) + '"' +
@@ -3295,9 +3998,7 @@
             : '') +
           '</div>')
         : '') +
-      '<div class="codex-pad-mgr__pad" id="codexPadMgrPad">' +
-      renderHardwarePad(m, pad, { mode: padBindMode }) +
-      '</div>' +
+      padBlock +
       '<div class="codex-pad-mgr__foot">' +
       '<button type="button" class="codex-micro-pad__btn" data-act="restore">' +
       esc(t('codexMicroPadRestore', '恢复默认')) + '</button>' +
@@ -3314,6 +4015,165 @@
       '<input type="file" accept="application/json,.json" data-act="importFile" hidden />' +
       '</div>';
 
+    if (body.setAttribute) body.setAttribute('data-soft-pad-mapping', String(m.id || ''));
+
+    // Keep the rest of event wiring by falling through — call shared binder.
+    bindPadManagerEvents(body, m, pad, Object.assign({}, opts, { lazyAgent: lazyAgent }));
+    if (!omitPad) {
+      bindPadClicks(body.querySelector('#codexPadMgrPad'), m, padBindMode);
+    }
+    if (padUiMode === 'try') startTryKeyListener(m);
+    else stopTryKeyListener();
+    if (mode === 'modal') {
+      var modalShow = document.getElementById('codexMicroPadManager');
+      if (modalShow) modalShow.hidden = false;
+    }
+  }
+
+  function bindAgentConnectEvents(body, m, pad) {
+    if (!body || !m || !pad) return;
+    function agentCtx() {
+      var tokenAttr = body.getAttribute('data-agent-load-token');
+      if (tokenAttr == null) return {};
+      return {
+        agentLoadToken: Number(tokenAttr),
+        mappingId: m.id,
+        container: body,
+        requireSoftPad: true
+      };
+    }
+    var lightsEl = body.querySelector('[data-act="status-lights"]');
+    if (lightsEl && !lightsEl.__softPadBound) {
+      lightsEl.__softPadBound = true;
+      lightsEl.addEventListener('change', function () {
+        setStatusLightsEnabled(m, !!lightsEl.checked);
+      });
+    }
+    var hookCopyBtn = body.querySelector('[data-act="hook-copy"]');
+    if (hookCopyBtn && !hookCopyBtn.__softPadBound) {
+      hookCopyBtn.__softPadBound = true;
+      hookCopyBtn.addEventListener('click', function () { copyHookDraft(m); });
+    }
+    var hookDocsBtn = body.querySelector('[data-act="hook-docs"]');
+    if (hookDocsBtn && !hookDocsBtn.__softPadBound) {
+      hookDocsBtn.__softPadBound = true;
+      hookDocsBtn.addEventListener('click', function () { openHookDocs(); });
+    }
+    var hookRefreshBtn = body.querySelector('[data-act="hook-refresh"]');
+    if (hookRefreshBtn && !hookRefreshBtn.__softPadBound) {
+      hookRefreshBtn.__softPadBound = true;
+      hookRefreshBtn.addEventListener('click', function () {
+        refreshHookSetupStatus(m, agentCtx()).then(function () { refreshPadDiagnose(); });
+      });
+    }
+    var diagRefreshBtn = body.querySelector('[data-act="pad-diag-refresh"]');
+    if (diagRefreshBtn && !diagRefreshBtn.__softPadBound) {
+      diagRefreshBtn.__softPadBound = true;
+      diagRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
+    }
+    body.querySelectorAll('[data-act="pad-diag-filter"]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () {
+        setPadDiagFilter(btn.getAttribute('data-filter') || 'all');
+      });
+    });
+    var diagDetails = body.querySelector('#codexPadDiag');
+    if (diagDetails && !diagDetails.__softPadBound) {
+      diagDetails.__softPadBound = true;
+      diagDetails.addEventListener('toggle', function () {
+        if (diagDetails.open) refreshPadDiagnose();
+      });
+    }
+    var claudeRefreshBtn = body.querySelector('[data-act="claude-act-refresh"]');
+    if (claudeRefreshBtn && !claudeRefreshBtn.__softPadBound) {
+      claudeRefreshBtn.__softPadBound = true;
+      claudeRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
+    }
+    var claudeRedetect = body.querySelector('[data-act="claude-hook-redetect"]');
+    if (claudeRedetect && !claudeRedetect.__softPadBound) {
+      claudeRedetect.__softPadBound = true;
+      claudeRedetect.addEventListener('click', function () {
+        redetectClaudeHookSetup();
+      });
+    }
+    var claudeHookCopy = body.querySelector('[data-act="claude-hook-copy"]');
+    if (claudeHookCopy && !claudeHookCopy.__softPadBound) {
+      claudeHookCopy.__softPadBound = true;
+      claudeHookCopy.addEventListener('click', function () { copyClaudeHookDraft(); });
+    }
+    var claudeHookOpen = body.querySelector('[data-act="claude-hook-open"]');
+    if (claudeHookOpen && !claudeHookOpen.__softPadBound) {
+      claudeHookOpen.__softPadBound = true;
+      claudeHookOpen.addEventListener('click', function () { openClaudeSettingsFile(); });
+    }
+    var claudeHookPreview = body.querySelector('[data-act="claude-hook-preview"]');
+    if (claudeHookPreview && !claudeHookPreview.__softPadBound) {
+      claudeHookPreview.__softPadBound = true;
+      claudeHookPreview.addEventListener('click', function () { previewClaudeHookInstall(); });
+    }
+    var claudeHookInstall = body.querySelector('[data-act="claude-hook-install"]');
+    if (claudeHookInstall && !claudeHookInstall.__softPadBound) {
+      claudeHookInstall.__softPadBound = true;
+      claudeHookInstall.addEventListener('click', function () { confirmClaudeHookInstall(); });
+    }
+    var claudeHookUnPrev = body.querySelector('[data-act="claude-hook-uninstall-preview"]');
+    if (claudeHookUnPrev && !claudeHookUnPrev.__softPadBound) {
+      claudeHookUnPrev.__softPadBound = true;
+      claudeHookUnPrev.addEventListener('click', function () { previewClaudeHookUninstall(); });
+    }
+    var claudeHookUn = body.querySelector('[data-act="claude-hook-uninstall"]');
+    if (claudeHookUn && !claudeHookUn.__softPadBound) {
+      claudeHookUn.__softPadBound = true;
+      claudeHookUn.addEventListener('click', function () { confirmClaudeHookUninstall(); });
+    }
+    var claudeCliPref = body.querySelector('[data-act="claude-cli-pref-toggle"]');
+    if (claudeCliPref && !claudeCliPref.__softPadBound) {
+      claudeCliPref.__softPadBound = true;
+      claudeCliPref.addEventListener('click', function () { toggleClaudeCliInjectPref(m); });
+    }
+    body.querySelectorAll('[data-act="claude-inject"]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () {
+        var preset = btn.getAttribute('data-preset') || '';
+        padInvoke('cmd_claude_activity_inject', { preset: preset })
+          .then(function () { return refreshPadDiagnose(); })
+          .then(function () {
+            toast(t('claudeActInjOk', '已注入测试事件（claude_hook）'));
+          })
+          .catch(function () {
+            toast(t('claudeActInjFail', '注入失败'));
+          });
+      });
+    });
+    var claudeClearBtn = body.querySelector('[data-act="claude-act-clear"]');
+    if (claudeClearBtn && !claudeClearBtn.__softPadBound) {
+      claudeClearBtn.__softPadBound = true;
+      claudeClearBtn.addEventListener('click', function () {
+        padInvoke('cmd_claude_activity_clear', {})
+          .then(function () { return refreshPadDiagnose(); })
+          .then(function () {
+            toast(t('claudeActClearOk', '已清空测试活动灯'));
+          })
+          .catch(function () {
+            toast(t('claudeActClearFail', '清空失败'));
+          });
+      });
+    }
+    body.querySelectorAll('[data-claude-act-pad-details],[data-claude-act-lights-details]').forEach(function (d) {
+      if (d.__softPadBound) return;
+      d.__softPadBound = true;
+      d.addEventListener('toggle', function () {
+        if (d.open) refreshClaudeActivityPad();
+      });
+    });
+  }
+
+  function bindPadManagerEvents(body, m, pad, opts) {
+    opts = opts || {};
+    if (!body || !m || !pad) return;
+
     body.querySelectorAll('[data-pad-mode]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = btn.getAttribute('data-pad-mode');
@@ -3321,6 +4181,17 @@
         if (padUiMode === 'try' && next !== 'try') stopTryKeyListener();
         padUiMode = next;
         renderPadManager(m, { skipHookRefresh: true });
+      });
+    });
+    body.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-pad-presentation');
+        if (!next || (next !== 'full' && next !== 'mini')) return;
+        if (pad.presentation === next) return;
+        pad.presentation = next;
+        persistPresentation(m);
+        renderPadManager(m, { skipHookRefresh: true });
+        notifyLinkedUi(m);
       });
     });
     body.querySelectorAll('[data-pad-profile]').forEach(function (btn) {
@@ -3345,7 +4216,6 @@
         previewPadMode = pad.enabled ? 'codex' : 'numpad';
         if (pad.enabled) pad.overlayEnabled = true;
         persistPadFlags(m);
-        // Soft shell only — full renderPadManager on every click 假死'd the modal.
         if (!remountPadManagerShell(m)) {
           renderPadManager(m, { skipHookRefresh: true });
         }
@@ -3376,112 +4246,6 @@
       });
     }
 
-    var lightsEl = body.querySelector('[data-act="status-lights"]');
-    if (lightsEl) {
-      lightsEl.addEventListener('change', function () {
-        setStatusLightsEnabled(m, !!lightsEl.checked);
-      });
-    }
-    var hookCopyBtn = body.querySelector('[data-act="hook-copy"]');
-    if (hookCopyBtn) {
-      hookCopyBtn.addEventListener('click', function () { copyHookDraft(m); });
-    }
-    var hookDocsBtn = body.querySelector('[data-act="hook-docs"]');
-    if (hookDocsBtn) {
-      hookDocsBtn.addEventListener('click', function () { openHookDocs(); });
-    }
-    var hookRefreshBtn = body.querySelector('[data-act="hook-refresh"]');
-    if (hookRefreshBtn) {
-      hookRefreshBtn.addEventListener('click', function () {
-        refreshHookSetupStatus(m).then(function () { refreshPadDiagnose(); });
-      });
-    }
-    var diagRefreshBtn = body.querySelector('[data-act="pad-diag-refresh"]');
-    if (diagRefreshBtn) {
-      diagRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
-    }
-    body.querySelectorAll('[data-act="pad-diag-filter"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        setPadDiagFilter(btn.getAttribute('data-filter') || 'all');
-      });
-    });
-    var diagDetails = body.querySelector('#codexPadDiag');
-    if (diagDetails) {
-      diagDetails.addEventListener('toggle', function () {
-        if (diagDetails.open) refreshPadDiagnose();
-      });
-    }
-    var claudeRefreshBtn = body.querySelector('[data-act="claude-act-refresh"]');
-    if (claudeRefreshBtn) {
-      claudeRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
-    }
-    var claudeRedetect = body.querySelector('[data-act="claude-hook-redetect"]');
-    if (claudeRedetect) {
-      claudeRedetect.addEventListener('click', function () {
-        redetectClaudeHookSetup();
-      });
-    }
-    var claudeHookCopy = body.querySelector('[data-act="claude-hook-copy"]');
-    if (claudeHookCopy) {
-      claudeHookCopy.addEventListener('click', function () { copyClaudeHookDraft(); });
-    }
-    var claudeHookOpen = body.querySelector('[data-act="claude-hook-open"]');
-    if (claudeHookOpen) {
-      claudeHookOpen.addEventListener('click', function () { openClaudeSettingsFile(); });
-    }
-    var claudeHookPreview = body.querySelector('[data-act="claude-hook-preview"]');
-    if (claudeHookPreview) {
-      claudeHookPreview.addEventListener('click', function () { previewClaudeHookInstall(); });
-    }
-    var claudeHookInstall = body.querySelector('[data-act="claude-hook-install"]');
-    if (claudeHookInstall) {
-      claudeHookInstall.addEventListener('click', function () { confirmClaudeHookInstall(); });
-    }
-    var claudeHookUnPrev = body.querySelector('[data-act="claude-hook-uninstall-preview"]');
-    if (claudeHookUnPrev) {
-      claudeHookUnPrev.addEventListener('click', function () { previewClaudeHookUninstall(); });
-    }
-    var claudeHookUn = body.querySelector('[data-act="claude-hook-uninstall"]');
-    if (claudeHookUn) {
-      claudeHookUn.addEventListener('click', function () { confirmClaudeHookUninstall(); });
-    }
-    var claudeCliPref = body.querySelector('[data-act="claude-cli-pref-toggle"]');
-    if (claudeCliPref) {
-      claudeCliPref.addEventListener('click', function () { toggleClaudeCliInjectPref(m); });
-    }
-    body.querySelectorAll('[data-act="claude-inject"]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var preset = btn.getAttribute('data-preset') || '';
-        padInvoke('cmd_claude_activity_inject', { preset: preset })
-          .then(function () { return refreshPadDiagnose(); })
-          .then(function () {
-            toast(t('claudeActInjOk', '已注入测试事件（claude_hook）'));
-          })
-          .catch(function () {
-            toast(t('claudeActInjFail', '注入失败'));
-          });
-      });
-    });
-    var claudeClearBtn = body.querySelector('[data-act="claude-act-clear"]');
-    if (claudeClearBtn) {
-      claudeClearBtn.addEventListener('click', function () {
-        padInvoke('cmd_claude_activity_clear', {})
-          .then(function () { return refreshPadDiagnose(); })
-          .then(function () {
-            toast(t('claudeActClearOk', '已清空测试活动灯'));
-          })
-          .catch(function () {
-            toast(t('claudeActClearFail', '清空失败'));
-          });
-      });
-    }
-    body.querySelectorAll('[data-claude-act-pad-details],[data-claude-act-lights-details]').forEach(function (d) {
-      d.addEventListener('toggle', function () {
-        if (d.open) refreshClaudeActivityPad();
-      });
-    });
-    // Initial Claude Activity paint (shared diagnose cache).
-    refreshClaudeActivityPad();
     var bindRefreshBtn = body.querySelector('[data-act="pad-bind-refresh"]');
     if (bindRefreshBtn) {
       bindRefreshBtn.addEventListener('click', function () { refreshBindingDiagnose(m); });
@@ -3496,52 +4260,87 @@
         if (bindDetails.open) refreshBindingDiagnose(m);
       });
     }
-    // Hook status IPC only on open / explicit refresh — every remount used to stack IPC + 假死.
-    if (opts.refreshHook !== false && !opts.skipHookRefresh) {
-      refreshHookSetupStatus(m);
+
+    var agentFold = body.querySelector('#codexPadAgentConnect');
+    if (agentFold && !agentFold.__softPadLazyBound) {
+      agentFold.__softPadLazyBound = true;
+      agentFold.addEventListener('toggle', function () {
+        if (!agentFold.open) return;
+        if (opts.lazyAgent || agentFold.getAttribute('data-lazy-agent') === '1') {
+          fillLazyAgentConnect(body, m, pad);
+        } else {
+          refreshHookSetupStatus(m);
+          refreshClaudeActivityPad();
+        }
+      });
     }
 
-    body.querySelector('[data-act="restore"]').addEventListener('click', function () {
-      var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
-        ? pad.layoutProfile
-        : 'standard';
-      applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
-      renderPadManager(m, { skipHookRefresh: true });
-      notifyLinkedUi(m);
-      toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
-    });
-    body.querySelector('[data-act="export"]').addEventListener('click', function () {
-      try {
-        var blob = new Blob([JSON.stringify(exportLayoutJson(m), null, 2)], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'codex-numpad-layout.json';
-        a.click();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-        toast(t('codexMicroPadExported', '布局已导出'));
-      } catch (err) {
-        toast(t('codexMicroPadExportFail', '导出失败'));
+    // Eager Agent cards (modal): bind + optional IPC. Soft Pad panel skips until fold open.
+    if (!opts.lazyAgent && body.querySelector('#codexPadHookCard')) {
+      bindAgentConnectEvents(body, m, pad);
+      if (opts.refreshHook !== false && !opts.skipHookRefresh) {
+        refreshHookSetupStatus(m);
+        refreshClaudeActivityPad();
       }
-    });
+    }
+
+    var restoreBtn = body.querySelector('[data-act="restore"]');
+    if (restoreBtn) {
+      restoreBtn.addEventListener('click', function () {
+        var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
+          ? pad.layoutProfile
+          : 'standard';
+        applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+        renderPadManager(m, { skipHookRefresh: true });
+        notifyLinkedUi(m);
+        toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+      });
+    }
+    var exportBtn = body.querySelector('[data-act="export"]');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        try {
+          var blob = new Blob([JSON.stringify(exportLayoutJson(m), null, 2)], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'codex-numpad-layout.json';
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          toast(t('codexMicroPadExported', '布局已导出'));
+        } catch (err) {
+          toast(t('codexMicroPadExportFail', '导出失败'));
+        }
+      });
+    }
 
     var moreMenu = body.querySelector('#codexPadMgrMore');
-    body.querySelector('[data-act="more-toggle"]').addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (!moreMenu) return;
-      moreMenu.hidden = !moreMenu.hidden;
-    });
-    body.querySelector('[data-act="copyCustom"]').addEventListener('click', function () {
-      copyAsCustomLayout(m);
-      if (moreMenu) moreMenu.hidden = true;
-      renderPadManager(m, { skipHookRefresh: true });
-      notifyLinkedUi(m);
-    });
+    var moreToggle = body.querySelector('[data-act="more-toggle"]');
+    if (moreToggle) {
+      moreToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!moreMenu) return;
+        moreMenu.hidden = !moreMenu.hidden;
+      });
+    }
+    var copyCustom = body.querySelector('[data-act="copyCustom"]');
+    if (copyCustom) {
+      copyCustom.addEventListener('click', function () {
+        copyAsCustomLayout(m);
+        if (moreMenu) moreMenu.hidden = true;
+        invalidatePadHeal(m);
+        renderPadManager(m, { skipHookRefresh: true });
+        notifyLinkedUi(m);
+      });
+    }
     var fileEl = body.querySelector('[data-act="importFile"]');
-    body.querySelector('[data-act="import"]').addEventListener('click', function () {
-      if (moreMenu) moreMenu.hidden = true;
-      if (fileEl) fileEl.click();
-    });
+    var importBtn = body.querySelector('[data-act="import"]');
+    if (importBtn) {
+      importBtn.addEventListener('click', function () {
+        if (moreMenu) moreMenu.hidden = true;
+        if (fileEl) fileEl.click();
+      });
+    }
     if (fileEl) {
       fileEl.addEventListener('change', function () {
         var file = fileEl.files && fileEl.files[0];
@@ -3551,6 +4350,7 @@
           try {
             var data = JSON.parse(String(reader.result || ''));
             if (importLayoutJson(m, data)) {
+              invalidatePadHeal(m);
               toast(t('codexMicroPadImported', '布局已导入'));
               renderPadManager(m, { skipHookRefresh: true });
               notifyLinkedUi(m);
@@ -3563,21 +4363,35 @@
         reader.readAsText(file);
       });
     }
-    body.querySelector('[data-act="clear"]').addEventListener('click', function () {
-      if (moreMenu) moreMenu.hidden = true;
-      if (!window.confirm(t('codexMicroPadClearConfirm', '确定清空所有小键盘映射？'))) return;
-      pad.keys = [];
-      protectPrimaryLayout(pad);
-      persist();
-      renderPadManager(m, { skipHookRefresh: true });
-      notifyLinkedUi(m);
-      toast(t('codexMicroPadCleared', '已清空小键盘映射'));
-    });
+    var clearBtn = body.querySelector('[data-act="clear"]');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        if (moreMenu) moreMenu.hidden = true;
+        if (!window.confirm(t('codexMicroPadClearConfirm', '确定清空所有小键盘映射？'))) return;
+        pad.keys = [];
+        protectPrimaryLayout(pad);
+        invalidatePadHeal(m);
+        persist();
+        renderPadManager(m, { skipHookRefresh: true });
+        notifyLinkedUi(m);
+        toast(t('codexMicroPadCleared', '已清空小键盘映射'));
+      });
+    }
+  }
 
-    if (padUiMode === 'try') startTryKeyListener(m);
-    else stopTryKeyListener();
-    bindPadClicks(body.querySelector('#codexPadMgrPad'), m, padBindMode);
-    modal.hidden = false;
+  function renderPadManager(m, opts) {
+    opts = opts || {};
+    var panelFold = softPadPanelActive() && padManagerMode === 'panel';
+    renderCodexMicroPadManager({
+      container: activePadManagerBody(),
+      mode: padManagerMode || 'modal',
+      mapping: m || padManagerMapping,
+      skipHookRefresh: opts.skipHookRefresh,
+      refreshHook: opts.refreshHook,
+      omitPad: panelFold,
+      foldSettings: panelFold,
+      lazyAgent: panelFold || !!opts.lazyAgent
+    });
   }
 
   function bindPadClicks(host, m, mode) {
@@ -3642,6 +4456,8 @@
           if (!remountPadManagerShell(m)) renderPadManager(m, { skipHookRefresh: true });
         } else if (host.id === 'codexMicroPadHostTarget') {
           if (!remountTargetPadShell(host, m)) renderTarget(host, m, { skipEnsure: true });
+        } else if (host.id === 'softPadPreviewHost' || host.closest('#softPadPreviewHost')) {
+          renderSoftPadPreview(host.id === 'softPadPreviewHost' ? host : document.getElementById('softPadPreviewHost'), m, { forceFull: true });
         } else {
           var oldWrap = host.querySelector('.micro-hw-wrap') || host.querySelector('.micro-hw-shell');
           if (oldWrap) {
@@ -3672,7 +4488,7 @@
           fireEnhanceTap(m, nav);
           return;
         }
-        if (mode === 'edit' || mode === 'config') {
+        if (mode === 'softPad' || mode === 'edit' || mode === 'config') {
           openEditKeycap(m, nav);
           return;
         }
@@ -3706,9 +4522,8 @@
         });
         return;
       }
-      if (mode === 'edit' || mode === 'config') {
-        // Edit/config always opens keycap editor — never bind hold-fire (pushToTalk used to
-        // swallow clicks so「编辑：点击键帽」looked like 面板没有变化).
+      if (mode === 'softPad' || mode === 'edit' || mode === 'config') {
+        // Soft Pad / edit / config: click keycap → capability editor (restore prior design).
         if (id === 'JOY') { return; }
         el.addEventListener('click', function (e) {
           if (e.target && e.target.closest && e.target.closest('[data-act="pad-mode"]')) return;
@@ -3770,102 +4585,26 @@
 
   function renderTarget(host, m, opts) {
     opts = opts || {};
-    if (!host || !m) {
-      stopReadinessPoll();
-      if (host) { host.innerHTML = ''; host.hidden = true; }
-      return;
-    }
-    // Recognition page: config + physical-key preview; never fire actions from this surface.
-    if (!isPadManagerOpen()) {
-      stopTryKeyListener();
-    }
-    ensurePad(m, { persist: false });
-    var pad = m.codexMicroPad;
-    host.hidden = false;
-    host.classList.remove('is-pad-run', 'is-pad-try');
-    padUiMode = 'config';
-    var readyBanner = renderReadinessBanner(lastReadiness);
-    host.innerHTML =
-      '<div class="codex-micro-pad codex-micro-pad--inline">' +
-      readyBanner +
-      '<div class="codex-micro-pad__cta-row">' +
-      '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-act="cta">' +
-      esc(t('codexMicroPadCta', '标准版：实体小键盘 12 键 + 屏幕总开关')) + '</button>' +
-      '<p class="codex-micro-pad__cta-sub">' +
-      esc(t('codexMicroPadCtaSub', '普通数字键盘 12 键 + 屏幕总开关，开箱模拟 Codex Micro 标准版')) +
-      '</p></div>' +
-      '<label class="codex-micro-pad__toggle codex-micro-pad__toggle--enable">' +
-      '<input type="checkbox" data-act="enabled"' + (pad.enabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadEnableCodex', 'Codex 场景映射（关=数字键模式）')) + '</label>' +
-      renderHardwarePad(m, pad, { mode: 'config' }) +
-      '<div class="codex-micro-pad__inline-actions">' +
-      '<button type="button" class="codex-micro-pad__btn" data-act="manage">' +
-      esc(t('codexMicroPadManage', '管理小键盘')) + '</button>' +
-      '</div></div>';
-
-    var ctaBtn = host.querySelector('[data-act="cta"]');
-    if (ctaBtn) {
-      ctaBtn.addEventListener('click', function () {
-        applyNumpadControllerStandard({ mode: 'openExisting', openPanel: false });
-        renderTarget(host, m);
-        notifyLinkedUi(m);
-      });
-    }
-
-    var enabledEl = host.querySelector('[data-act="enabled"]');
-    if (enabledEl) {
-      enabledEl.addEventListener('change', function () {
-        pad.enabled = !!enabledEl.checked;
-        previewPadMode = pad.enabled ? 'codex' : 'numpad';
-        // Enabling the layer also turns on foreground overlay by default (fewer checkboxes).
-        if (pad.enabled) pad.overlayEnabled = true;
-        persistPadFlags(m);
-        var triggerHost = document.getElementById('codexMicroPadHostTrigger');
-        if (triggerHost && !triggerHost.hidden) refreshTrigger(m);
-        // Soft shell swap only — full renderTarget+ensure_ready remount storm 假死's keys panel.
-        if (!remountTargetPadShell(host, m)) {
-          renderTarget(host, m, { skipEnsure: true });
-        }
-        padInvoke('cmd_codex_micro_pad_get_readiness', {}).then(function (r) {
-          if (r) updateReadinessDom(host, r);
-        });
-      });
-    }
-
-    var manageBtn = host.querySelector('[data-act="manage"]');
-    if (manageBtn) {
-      manageBtn.addEventListener('click', function () {
-        openPadManager(m);
-      });
-    }
-
-    // Silent edit: tap keycaps to change capability — physical keys highlight mapping.
-    bindPadClicks(host, m, 'config');
-    if (opts.skipEnsure) {
-      if (keysPanelActive()) startReadinessPoll(host);
-      return;
-    }
-    requestPadEnsureReady(m, function (res) {
-      // User may have left keys for「我的习惯」while ensure_ready was in flight.
-      if (!keysPanelActive()) {
-        stopReadinessPoll();
-        return;
-      }
-      if (res && res.readiness) updateReadinessDom(host, res.readiness);
-      if (res && res.changed) {
-        // One soft remount without nested ensure_ready / notifyLinkedUi→renderTarget loop (假死).
-        renderTarget(host, m, { skipEnsure: true });
-        refreshTrigger(m);
-        return;
-      }
-      startReadinessPoll(host);
-    });
+    stopReadinessPoll();
+    if (!isPadManagerOpen()) stopTryKeyListener();
+    // Keys page no longer hosts Soft Pad preview — jump only.
+    renderKeysSoftPadJump(host, m);
   }
 
   function ensureEditModal() {
     var el = document.getElementById('codexMicroEditModal');
     if (el) {
       el.classList.add('micro-hw-modal--edit');
+      if (!document.getElementById('microHwEditEffectTip')) {
+        var search = document.getElementById('microHwEditSearch');
+        if (search && search.parentNode) {
+          var tip = document.createElement('p');
+          tip.className = 'micro-hw-modal__effect-tip';
+          tip.id = 'microHwEditEffectTip';
+          tip.setAttribute('aria-live', 'polite');
+          search.parentNode.insertBefore(tip, search.nextSibling);
+        }
+      }
       return el;
     }
     el = document.createElement('div');
@@ -3880,6 +4619,7 @@
       '<button type="button" class="micro-hw-modal__close" data-act="close" aria-label="Close">×</button>' +
       '</div>' +
       '<input type="search" class="micro-hw-modal__search" id="microHwEditSearch" placeholder="" />' +
+      '<p class="micro-hw-modal__effect-tip" id="microHwEditEffectTip" aria-live="polite"></p>' +
       '<div class="micro-hw-modal__icons" id="microHwEditIcons"></div>' +
       '<div class="micro-hw-modal__assign">' +
       '<div><p class="micro-hw-modal__assign-label" id="microHwAssignTitle"></p>' +
@@ -3914,15 +4654,32 @@
       btn.type = 'button';
       btn.className = 'micro-hw-modal__icon-btn' + (editDraft.uiIconId === def.id ? ' is-selected' : '');
       btn.setAttribute('data-icon', def.id);
+      var tip = iconEffectTip(def);
+      btn.title = tip;
+      btn.setAttribute('aria-label', tip);
       btn.innerHTML =
-        '<span class="micro-hw__icon">' + iconSvg(def.id) + '</span>' +
+        '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(def.id) + '</span>' +
         '<span class="micro-hw-modal__icon-label">' + esc(def.label) + '</span>';
+      btn.addEventListener('mouseenter', function () {
+        showEditEffectTip(tip);
+      });
+      btn.addEventListener('focus', function () {
+        showEditEffectTip(tip);
+      });
       btn.addEventListener('click', function () {
         editDraft.uiIconId = def.id;
+        showEditEffectTip(tip);
         renderIconGrid(document.getElementById('microHwEditSearch').value);
       });
       host.appendChild(btn);
     });
+  }
+
+  function showEditEffectTip(text) {
+    var tip = document.getElementById('microHwEditEffectTip');
+    if (!tip) return;
+    tip.textContent = String(text || '');
+    tip.hidden = !text;
   }
 
   function openEditKeycap(m, microKeyId) {
@@ -3993,16 +4750,26 @@
       var opt = document.createElement('option');
       opt.value = o.id;
       opt.textContent = o.label;
+      if (o.tip) opt.title = o.tip;
       if (o.id === editDraft.slotId) opt.selected = true;
       slotSel.appendChild(opt);
     });
     updateAssignHint();
+    showEditEffectTip(
+      editDraft.slotId
+        ? slotEffectTip(editDraft.slotId)
+        : t('codexMicroEditEffectIdle', '悬停图标或选择能力，可预览按键效果')
+    );
 
     renderIconGrid('');
     search.oninput = function () { renderIconGrid(search.value); };
     slotSel.onchange = function () {
       editDraft.slotId = String(slotSel.value || '').trim();
       updateAssignHint();
+      showEditEffectTip(slotEffectTip(editDraft.slotId));
+    };
+    slotSel.onfocus = function () {
+      showEditEffectTip(slotEffectTip(editDraft.slotId));
     };
 
     modal.querySelector('[data-act="close"]').onclick = closeEditKeycap;
@@ -4035,12 +4802,11 @@
   function updateAssignHint() {
     var hint = document.getElementById('microHwAssignHint');
     if (!hint || !editDraft) return;
-    var chord = editDraft.slotId
-      ? slotSubForDisplay(editDraft.mapping, editDraft.slotId)
-      : '';
-    hint.textContent = editDraft.slotId
-      ? (slotLabel(editDraft.slotId) + (chord ? ' · ' + chord : ''))
-      : t('codexMicroPadUnbound', '未配置');
+    if (!editDraft.slotId) {
+      hint.textContent = t('codexMicroPadUnbound', '未配置');
+      return;
+    }
+    hint.textContent = slotEffectTip(editDraft.slotId);
   }
 
   function closeEditKeycap() {
@@ -4078,6 +4844,9 @@
     closeEditKeycap();
     if (isPadManagerOpen()) {
       renderPadManager(m, { skipHookRefresh: true });
+    } else if (softPadPanelActive()) {
+      var softHost = document.getElementById('softPadPreviewHost');
+      if (softHost) renderSoftPadPreview(softHost, m, { forceFull: true });
     } else {
       var targetHost = document.getElementById('codexMicroPadHostTarget');
       if (targetHost) renderTarget(targetHost, m);
@@ -4189,33 +4958,76 @@
 
   function refreshTrigger(m) {
     var host = document.getElementById('codexMicroPadHostTrigger');
-    if (host) renderTrigger(host, m);
+    if (host && !host.hidden) renderKeysSoftPadJump(host, m);
+  }
+
+  function clearKeysSoftPadHosts() {
+    ['codexMicroPadHostTrigger', 'codexMicroPadHostTarget'].forEach(function (id) {
+      var host = document.getElementById(id);
+      if (host) {
+        host.innerHTML = '';
+        host.hidden = true;
+      }
+    });
+    clearTriggerHeroPreview();
+    stopReadinessPoll();
+  }
+
+  function renderKeysSoftPadJump(host, m) {
+    if (!host) return;
+    if (!m) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    var eligible = global.OneToneSoftPadHub && global.OneToneSoftPadHub.isSoftPadSchemeEligible
+      ? global.OneToneSoftPadHub.isSoftPadSchemeEligible(m)
+      : !!(m.codexMicroPad || String(m.appTargetId || '') === 'codex-chat' || String(m.appTargetId || '') === 'claude-code');
+    if (!eligible) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="codex-micro-pad codex-micro-pad--keys-jump">' +
+      '<p class="codex-micro-pad__cta-sub">' +
+      esc(t('codexMicroPadKeysJumpHint', '虚拟键盘已移至独立目录统一管理')) +
+      '</p>' +
+      '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-act="manage">' +
+      esc(t('codexMicroPadManageInSoftPad', '在虚拟键盘中管理')) +
+      '</button></div>';
+    var manageBtn = host.querySelector('[data-act="manage"]');
+    if (manageBtn) {
+      manageBtn.addEventListener('click', function () {
+        var drawer = global.OneToneSettingsDrawer;
+        if (drawer && drawer.setPanel) {
+          drawer.setPanel('softPad', { mappingId: m && m.id ? String(m.id) : '' });
+        } else if (drawer && drawer.open) {
+          drawer.open({ panel: 'softPad', mappingId: m && m.id ? String(m.id) : '' });
+        } else {
+          openPadManager(m);
+        }
+      });
+    }
   }
 
   function mount(step, m) {
     var triggerHost = document.getElementById('codexMicroPadHostTrigger');
     var targetHost = document.getElementById('codexMicroPadHostTarget');
     if (!m) {
-      clearTriggerHeroPreview();
-      if (triggerHost) { triggerHost.innerHTML = ''; triggerHost.hidden = true; }
-      if (targetHost) { targetHost.innerHTML = ''; targetHost.hidden = true; }
+      clearKeysSoftPadHosts();
       return;
     }
+    // Soft Pad big preview lives on 虚拟键盘 page — Keys only shows a jump CTA.
     if (step === 'trigger') {
-      padUiMode = 'preview';
-      renderTrigger(triggerHost, m);
       if (targetHost) { targetHost.innerHTML = ''; targetHost.hidden = true; }
+      renderKeysSoftPadJump(triggerHost, m);
     } else if (step === 'target') {
-      clearTriggerHeroPreview();
-      if (padUiMode !== 'edit' && padUiMode !== 'run') {
-        padUiMode = 'edit';
-      }
-      renderTarget(targetHost, m);
       if (triggerHost) { triggerHost.innerHTML = ''; triggerHost.hidden = true; }
+      renderKeysSoftPadJump(targetHost, m);
     } else {
-      clearTriggerHeroPreview();
-      if (triggerHost) { triggerHost.innerHTML = ''; triggerHost.hidden = true; }
-      if (targetHost) { targetHost.innerHTML = ''; targetHost.hidden = true; }
+      clearKeysSoftPadHosts();
     }
   }
 
@@ -4380,7 +5192,14 @@
     badgeForSlot: badgeForSlot,
     listPadMappings: listPadMappings,
     openEditKeycap: openEditKeycap,
+    closeEditKeycap: closeEditKeycap,
     openPadManager: openPadManager,
+    renderCodexMicroPadManager: renderCodexMicroPadManager,
+    renderSoftPadPreview: renderSoftPadPreview,
+    renderSoftPadLayoutPanel: renderSoftPadLayoutPanel,
+    renderSoftPadPresentationPanel: renderSoftPadPresentationPanel,
+    renderSoftPadRuntimePanel: renderSoftPadRuntimePanel,
+    renderSoftPadAgentPanel: renderSoftPadAgentPanel,
     closePadManager: closePadManager,
     isPadManagerOpen: isPadManagerOpen,
     notifyLinkedUi: notifyLinkedUi,

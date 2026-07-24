@@ -719,47 +719,10 @@
   function renderCodexPadMapList(selectedId){
     var host=$('keysHubCodexPadMap');
     if(!host) return;
-    var Pad=global.OneToneCodexMicroPadUi;
-    var T=global.OneToneAgentScenarioTemplate;
-    var m=null;
-    if(selectedId&&core()&&core().sorted){
-      var schemes=core().sorted();
-      for(var i=0;i<schemes.length;i++){
-        if(schemes[i]&&schemes[i].id===selectedId){ m=schemes[i]; break; }
-      }
-    }
-    if(!m&&core()&&core().selected) m=core().selected();
-    if(!m||!T||!T.isCodexScenario||!T.isCodexScenario(m)||!Pad||!Pad.listPadMappings){
-      host.hidden=true;
-      host.innerHTML='';
-      return;
-    }
-    var rows=Pad.listPadMappings(m);
-    var bound=0;
-    for(var r=0;r<rows.length;r++){ if(rows[r]&&rows[r].bound) bound++; }
-    var html='<div class="keys-hub-pad-map">'
-      +'<div class="keys-hub-pad-map__head">'
-      +'<span class="keys-hub-pad-map__title">'+esc(t('codexMicroPadMapTitle','虚拟键盘映射'))+'</span>'
-      +'<span class="keys-hub-pad-map__count">'+esc(String(bound)+'/'+String(rows.length))+'</span>'
-      +'</div>'
-      +'<p class="keys-hub-pad-map__hint">'+esc(t('codexMicroPadMapHint','点击行编辑键帽'))+'</p>'
-      +'<div class="keys-hub-pad-map__table" role="list">';
-    rows.forEach(function(row){
-      var cap=row.bound?(row.slotLabel||row.slotId):t('codexMicroPadUnbound','未配置');
-      var chord=row.bound?(row.chord||'—'):'—';
-      var num=row.numpadLabel||'—';
-      html+='<button type="button" class="keys-hub-pad-map__row'+(row.bound?' is-bound':' is-unbound')+'" role="listitem"'
-        +' data-pad-map-key="'+esc(row.microKeyId)+'"'
-        +' title="'+esc(row.keyLabel+' · '+cap)+'">'
-        +'<span class="keys-hub-pad-map__key">'+esc(row.keyLabel)+'</span>'
-        +'<span class="keys-hub-pad-map__num">'+esc(num)+'</span>'
-        +'<span class="keys-hub-pad-map__cap">'+esc(cap)+'</span>'
-        +'<span class="keys-hub-pad-map__chord">'+esc(chord)+'</span>'
-        +'</button>';
-    });
-    html+='</div></div>';
-    host.innerHTML=html;
-    host.hidden=false;
+    // Soft Pad map moved to 虚拟键盘 page — keep host empty.
+    host.hidden=true;
+    host.innerHTML='';
+    void selectedId;
   }
 
   function renderKeysHub(){

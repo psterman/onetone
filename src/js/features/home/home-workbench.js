@@ -665,6 +665,7 @@
   var NAV_PANEL_MAP={
     habits:'schemes',
     keys:'triggers',
+    softPad:'softPad',
     voiceWake:'voice',
     models:'voice',
     camera:'camera',
@@ -829,6 +830,7 @@
       }
       if(action==='schemes'){ openSettings({panel:'habits'}); return; }
       if(action==='triggers'){ openSettings({panel:'keys'}); return; }
+      if(action==='softPad'){ openSettings({panel:'softPad'}); return; }
       if(action==='voice'){ openSettings({panel:'voiceWake'}); return; }
       if(action==='camera'){ openSettings({panel:'camera'}); return; }
       if(action==='sounds'){ openSettings({panel:'sounds'}); return; }

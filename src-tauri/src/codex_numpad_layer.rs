@@ -957,6 +957,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         software_enhance_enabled: false,
         codex_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
+        presentation: "full".into(),
         keys: default_codex_micro_pad_routes(),
     }
 }

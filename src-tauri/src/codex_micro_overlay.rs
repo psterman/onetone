@@ -1173,7 +1173,6 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         b: c.b,
     });
     let rgb = resolve_overlay_rgb(app_state_enabled, &app_status, &pad_status, vendor_rgb);
-    let minimized = *overlay_minimized().lock();
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -1181,6 +1180,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let claude_active = crate::pad_status::claude_lights::snapshot_active(now_ms);
 
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
+        let minimized = *overlay_minimized().lock();
         // Labs / loopback: still expose status merge on cells when protocol or app-state is live,
         // even if Codex Micro overlay mapping is not configured yet.
         let status_light_micro_key_id =
@@ -1194,6 +1194,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             software_enhance_enabled: false,
             codex_status_lights_enabled: app_state_enabled,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         };
         let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =
@@ -1251,6 +1252,12 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     };
 
     let status_light_micro_key_id = resolve_status_light_micro_key_id(pad);
+    // Config presentation is source of truth; keep runtime minimized aligned (restart / mapping switch).
+    let minimized = {
+        let want = presentation_is_mini(pad);
+        *overlay_minimized().lock() = want;
+        want
+    };
     let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =
         resolve_claude_agent_light_hosts(pad, &claude_active);
     let agent_lights: Vec<_> = claude_hosts.iter().map(|(_, l)| l.clone()).collect();
@@ -1770,6 +1777,46 @@ pub fn set_overlay_minimized(minimized: bool) {
     *overlay_minimized().lock() = minimized;
 }
 
+/// Set overlay mini/full chrome and persist `presentation` on the active overlay mapping.
+pub fn set_overlay_minimized_persist(_app: &AppHandle, state: &AppState, minimized: bool) {
+    *overlay_minimized().lock() = minimized;
+    let presentation = if minimized { "mini" } else { "full" };
+    let mut cfg = state.cfg.lock();
+    if let Some(pad) = active_codex_mapping_with_overlay_mut(&mut cfg) {
+        if pad.presentation != presentation {
+            pad.presentation = presentation.into();
+            crate::config::save_config(&cfg);
+            crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        }
+    }
+}
+
+fn active_codex_mapping_with_overlay_mut(
+    cfg: &mut VoiceConfig,
+) -> Option<&mut CodexMicroPadConfig> {
+    let idx = cfg.mappings.iter().position(|m| {
+        m.enabled
+            && m.app_target_id.trim() == CODEX_APP_TARGET_ID
+            && m.codex_micro_pad
+                .as_ref()
+                .map(|p| p.overlay_enabled)
+                .unwrap_or(false)
+    })?;
+    cfg.mappings.get_mut(idx)?.codex_micro_pad.as_mut()
+}
+
+pub fn normalize_presentation(raw: &str) -> &'static str {
+    if raw.trim().eq_ignore_ascii_case("mini") {
+        "mini"
+    } else {
+        "full"
+    }
+}
+
+pub fn presentation_is_mini(pad: &CodexMicroPadConfig) -> bool {
+    normalize_presentation(&pad.presentation) == "mini"
+}
+
 pub fn snap_overlay_position(win: &WebviewWindow) {
     if let Ok(pos) = win.outer_position() {
         *overlay_user_position().lock() = Some((pos.x, pos.y));
@@ -2209,6 +2256,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2257,6 +2305,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2282,6 +2331,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -2360,6 +2410,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
@@ -2396,6 +2447,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2425,6 +2477,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2457,6 +2510,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2487,6 +2541,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2524,6 +2579,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2559,6 +2615,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -2619,6 +2676,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2667,6 +2725,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2687,6 +2746,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         };
         // status AG04 excluded; pool has 5 AG keys → 6 lights overflow
@@ -2743,6 +2803,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2777,6 +2838,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2824,6 +2886,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false, // force pad_run as ACT context
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2861,6 +2924,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG05")],
         };
         assert_eq!(resolve_status_light_micro_key_id(&with_status), "AG05");
@@ -2874,6 +2938,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         };
         assert_eq!(resolve_status_light_micro_key_id(&empty), "AG00");
@@ -2912,6 +2977,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -2940,6 +3006,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("ACT09")],
         })];
         test_set_foreground_latch(true);
@@ -2967,6 +3034,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -2992,6 +3060,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -3022,6 +3091,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -3047,6 +3117,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         // Permission sheet stole FG — latch false, but pad must remain as status beacon.
@@ -3080,6 +3151,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -3103,6 +3175,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
@@ -3247,6 +3320,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3277,6 +3351,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3304,6 +3379,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3329,6 +3405,7 @@ mod tests {
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);

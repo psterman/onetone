@@ -1,0 +1,395 @@
+/* Soft Pad page — status + app switcher + hero preview + light aside */
+.soft-pad-page-head { margin-bottom: 8px; }
+
+.soft-pad-app-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.92);
+}
+.soft-pad-scope-hint {
+  margin: 0 0 12px;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.soft-pad-app-chip {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.soft-pad-app-chip:hover {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.85);
+}
+.soft-pad-app-chip.is-active {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+.soft-pad-app-chip[data-scope="claude"].is-active {
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.14);
+  border-color: rgba(217, 119, 6, 0.28);
+}
+.soft-pad-app-chip[data-scope="cursor"].is-active {
+  color: #334155;
+  background: rgba(100, 116, 139, 0.16);
+  border-color: rgba(100, 116, 139, 0.28);
+}
+.soft-pad-app-chip[data-scope="minimax"].is-active {
+  color: #6d28d9;
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.28);
+}
+.soft-pad-app-chip[data-scope="global"].is-active {
+  color: #0f766e;
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.28);
+}
+.soft-pad-app-chip.is-off {
+  opacity: 0.72;
+}
+.soft-pad-app-chip-icon,
+.soft-pad-scheme-icon,
+.soft-pad-app-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.soft-pad-page-body.keys-page-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1040px) {
+  .soft-pad-page-body.keys-page-body { grid-template-columns: 1fr; }
+}
+
+.soft-pad-preview-host {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 280px;
+  padding: 16px 12px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(26, 45, 74, 0.08);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.06), transparent 55%),
+    rgba(248, 250, 252, 0.65);
+}
+.soft-pad-preview-host .codex-micro-pad {
+  width: 100%;
+  max-width: 560px;
+}
+.soft-pad-preview-host .soft-pad-preview {
+  margin: 0 auto;
+}
+.soft-pad-preview-host.is-collapsed {
+  display: none !important;
+}
+.soft-pad-preview-host .soft-pad-preview__hint {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(26, 45, 74, 0.55);
+}
+.soft-pad-preview-host .micro-hw__key:not(.micro-hw__key--placeholder) {
+  cursor: pointer;
+}
+.soft-pad-func-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  max-width: 720px;
+}
+@media (max-width: 640px) {
+  .soft-pad-func-tiles { grid-template-columns: 1fr; }
+}
+.soft-pad-func-tile {
+  appearance: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 12px;
+  align-items: start;
+  text-align: left;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+}
+.soft-pad-func-tile:hover {
+  border-color: rgba(37, 99, 235, 0.28);
+  background: var(--primary-soft, rgba(37, 99, 235, 0.08));
+}
+.soft-pad-func-tile__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  flex-shrink: 0;
+}
+.soft-pad-func-tile__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+.soft-pad-func-tile[data-tile="presentation"] .soft-pad-func-tile__icon {
+  background: rgba(13, 148, 136, 0.12);
+  color: #0f766e;
+}
+.soft-pad-func-tile[data-tile="runtime"] .soft-pad-func-tile__icon {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+.soft-pad-func-tile[data-tile="agent"] .soft-pad-func-tile__icon {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+.soft-pad-func-tile__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.soft-pad-func-tile__title {
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--on-surface, #1e293b);
+}
+.soft-pad-func-tile__sub {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+.soft-pad-func-tile__status {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 650;
+  color: #334155;
+}
+.soft-pad-subpage {
+  max-width: 720px;
+  margin-bottom: 12px;
+}
+.soft-pad-subpage-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.soft-pad-subpage-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.soft-pad-subpage-body {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.9);
+}
+.soft-pad-agent-guide {
+  display: grid;
+  gap: 10px;
+}
+.soft-pad-agent-guide p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}
+.soft-pad-aside--secondary {
+  opacity: 0.92;
+  min-width: 0;
+}
+.soft-pad-aside--secondary .keys-aside-card {
+  max-height: min(420px, 56vh);
+  overflow: auto;
+}
+.soft-pad-page-body.keys-page-body {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+}
+#settingsPanelSoftPad .keys-hub-scheme-row {
+  flex-wrap: nowrap;
+  min-height: 40px;
+}
+#settingsPanelSoftPad .keys-hub-scheme-main {
+  overflow: hidden;
+}
+#settingsPanelSoftPad .keys-hub-scheme-actions {
+  flex-shrink: 0;
+}
+#settingsPanelSoftPad .keys-hub-scheme-editing {
+  display: none;
+}
+.soft-pad-empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+.soft-pad-empty__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.soft-pad-empty__desc {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+.codex-pad-mgr__fold,
+.codex-pad-mgr__agent-connect {
+  margin: 8px 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(248, 250, 252, 0.8);
+}
+.codex-pad-mgr__fold > summary,
+.codex-pad-mgr__agent-connect > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.codex-micro-pad--keys-jump {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(26, 45, 74, 0.18);
+  background: rgba(248, 250, 252, 0.9);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.codex-micro-pad--keys-jump .codex-micro-pad__cta-sub {
+  margin: 0;
+  flex: 1 1 180px;
+}
+
+/* Soft Pad scheme rows — reuse keys-hub layout; leading app icon only */
+.soft-pad-scheme-leading-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+.soft-pad-prepare-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+#settingsPanelSoftPad .keys-hub-scheme-tag {
+  font-size: var(--type-caption);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+#settingsPanelSoftPad .keys-hub-scheme-steps {
+  min-width: 2.4em;
+  text-align: right;
+  color: var(--on-surface-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+#settingsPanelSoftPad .keys-hub-scheme-add {
+  margin: 8px;
+  width: calc(100% - 16px);
+}
+#settingsPanelSoftPad .keys-aside-card {
+  border-radius: 12px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+}
+#settingsPanelSoftPad .keys-hub-scheme-row.is-draft {
+  border-style: dashed;
+}
+#settingsPanelSoftPad .keys-hub-scheme-row.is-disabled-scheme {
+  opacity: 0.78;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .keys-aside-card {
+  background: rgba(30, 40, 56, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .soft-pad-scope-hint {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-func-tile {
+  background: rgba(30, 40, 56, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-func-tile:hover {
+  background: rgba(37, 99, 235, 0.16);
+}
+html[data-theme="dark"] .soft-pad-func-tile__title {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-func-tile__sub,
+html[data-theme="dark"] .soft-pad-agent-guide p {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-subpage-body {
+  background: rgba(30, 40, 56, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-app-switcher {
+  background: rgba(30, 40, 56, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-app-chip {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-app-chip:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .soft-pad-preview-host {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(96, 165, 250, 0.08), transparent 55%),
+    rgba(30, 40, 56, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-preview-host .soft-pad-preview__hint {
+  color: rgba(226, 232, 240, 0.55);
+}
+html[data-theme="dark"] .codex-pad-mgr__fold,
+html[data-theme="dark"] .codex-pad-mgr__agent-connect {
+  background: rgba(30, 40, 56, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .codex-micro-pad--keys-jump {
+  background: rgba(30, 40, 56, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme="dark"] .soft-pad-empty__desc {
+  color: #9aa8b8;
+}

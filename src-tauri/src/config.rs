@@ -1249,8 +1249,15 @@ pub struct CodexMicroPadConfig {
     /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
     #[serde(default)]
     pub claude_cli_inject_pref_enabled: bool,
+    /// Overlay chrome: `"full"` | `"mini"`. Drives runtime `minimized`; mini = LED strip (not ACT keys).
+    #[serde(default = "default_codex_micro_presentation")]
+    pub presentation: String,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
+}
+
+fn default_codex_micro_presentation() -> String {
+    "full".into()
 }
 
 /// Physical numpad key -> Micro cell -> agent slot (output chord lives on slot binding).

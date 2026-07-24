@@ -82,7 +82,7 @@ pub fn cmd_codex_micro_overlay_set_minimized(
     state: State<'_, Arc<AppState>>,
     minimized: bool,
 ) {
-    codex_micro_overlay::set_overlay_minimized(minimized);
+    codex_micro_overlay::set_overlay_minimized_persist(&app, state.inner(), minimized);
     codex_micro_overlay::push_state(&app, state.inner());
 }
 

@@ -55,3 +55,43 @@ pub fn cmd_codex_micro_pad_set_flags(
         });
     Ok(())
 }
+
+/// Quiet-save Soft Pad presentation (`full` | `mini`) and sync overlay minimized.
+#[tauri::command]
+pub fn cmd_codex_micro_pad_set_presentation(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    presentation: String,
+) -> Result<(), String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+    let presentation = codex_micro_overlay::normalize_presentation(&presentation).to_string();
+    let minimized = presentation == "mini";
+
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
+        pad.presentation = presentation;
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+    codex_micro_overlay::set_overlay_minimized(minimized);
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("codex-micro-pad-presentation".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+    Ok(())
+}

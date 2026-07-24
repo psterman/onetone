@@ -107,23 +107,23 @@
   font-size: var(--type-phrase);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-name {
   font-size: var(--type-body-sm);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-pair,
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-steps,
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-editing {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-pair,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-steps,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-editing {
   font-size: var(--type-caption);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-draft,
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-tab-draft {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-draft,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-workflow-tab-draft {
   font-size: var(--type-status);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-aside-count,
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-templates-summary-count {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-aside-count,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-templates-summary-count {
   font-size: var(--type-caption);
 }
 

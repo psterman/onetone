@@ -14,6 +14,7 @@
       {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitWizard:true},
       {id:'model', labelKey:'homeWbQuickSwitchModel', hintKey:'homeWbCmdkHintSettings', panel:'voiceWake'},
       {id:'triggers', labelKey:'homeWbNavTriggers', hintKey:'homeWbCmdkHintSettings', panel:'keys'},
+      {id:'softPad', labelKey:'homeWbNavSoftPad', hintKey:'homeWbCmdkHintSettings', panel:'softPad'},
       {id:'schemes', labelKey:'homeWbNavSchemes', hintKey:'homeWbCmdkHintSettings', panel:'habits'},
       {id:'sounds', labelKey:'homeWbNavSounds', hintKey:'homeWbCmdkHintSettings', panel:'sounds'},
       {id:'general', labelKey:'homeWbNavGeneral', hintKey:'homeWbCmdkHintSettings', panel:'basic'},

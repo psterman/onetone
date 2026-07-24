@@ -6,6 +6,7 @@
   function applySettingsTexts(d){
     var settingsNavBasic=$('settingsNavBasicLabel'); if(settingsNavBasic) settingsNavBasic.textContent=d.settingsNavBasic;
     var settingsNavKeys=$('settingsNavKeysLabel'); if(settingsNavKeys) settingsNavKeys.textContent=d.settingsNavKeys;
+    var settingsNavSoftPad=$('settingsNavSoftPadLabel'); if(settingsNavSoftPad) settingsNavSoftPad.textContent=d.settingsNavSoftPad||'虚拟键盘';
     var settingsNavScenes=$('settingsNavScenesLabel'); if(settingsNavScenes) settingsNavScenes.textContent=d.settingsNavScenes;
     var settingsNavHabits=$('settingsNavHabitsLabel'); if(settingsNavHabits) settingsNavHabits.textContent=d.settingsNavHabits;
     var settingsNavVoiceWake=$('settingsNavVoiceWakeLabel'); if(settingsNavVoiceWake) settingsNavVoiceWake.textContent=d.settingsNavVoiceWake;
@@ -15,6 +16,8 @@
     var spBasic=$('settingsPanelBasicDesc'); if(spBasic) spBasic.textContent=d.settingsPanelBasicDesc;
     var spKeys=$('settingsPanelKeysDesc'); if(spKeys) spKeys.textContent=d.settingsPanelKeysDesc;
     var spKeysTitle=$('settingsPanelKeysTitle'); if(spKeysTitle) spKeysTitle.textContent=d.settingsNavKeys;
+    var spSoftPad=$('settingsPanelSoftPadDesc'); if(spSoftPad) spSoftPad.textContent=d.settingsPanelSoftPadDesc||'';
+    var spSoftPadTitle=$('settingsPanelSoftPadTitle'); if(spSoftPadTitle) spSoftPadTitle.textContent=d.settingsNavSoftPad||'虚拟键盘';
     var spHabits=$('settingsPanelHabitsDesc'); if(spHabits) spHabits.textContent=d.settingsPanelHabitsDesc;
     var spHabitsTitle=$('settingsPanelHabitsTitle'); if(spHabitsTitle) spHabitsTitle.textContent=d.settingsNavHabits;
     var spVoice=$('settingsPanelVoiceWakeDesc'); if(spVoice) spVoice.textContent=d.settingsPanelVoiceWakeDesc;

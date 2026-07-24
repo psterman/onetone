@@ -1934,13 +1934,13 @@
   padding: 5px 8px;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-schemes {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-schemes {
   display: grid;
   gap: 4px;
   padding: 0 8px 8px;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-row {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1952,12 +1952,12 @@
   background: transparent;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-row.is-editing {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-row.is-editing {
   border-color: rgba(42, 156, 196, 0.28);
   background: var(--primary-soft);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-main {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-main {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1972,14 +1972,14 @@
   cursor: pointer;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-copy {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-copy {
   display: grid;
   gap: 1px;
   flex: 1;
   min-width: 0;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-name {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-name {
   font-size: var(--type-caption);
   font-weight: 700;
   color: var(--on-surface);
@@ -1988,20 +1988,20 @@
   white-space: nowrap;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-pair {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-pair {
   font-size: var(--type-caption);
   font-weight: 600;
   color: var(--on-surface-muted);
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-actions {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
 }
 
-:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-hub-scheme-toggle {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake, #settingsPanelSoftPad) .keys-hub-scheme-toggle {
   transform: scale(0.85);
 }
 
