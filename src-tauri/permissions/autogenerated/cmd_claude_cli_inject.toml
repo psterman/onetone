@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-claude-cli-inject"
+description = "Enables the cmd_claude_cli_inject command without any pre-configured scope."
+commands.allow = ["cmd_claude_cli_inject"]
+
+[[permission]]
+identifier = "deny-cmd-claude-cli-inject"
+description = "Denies the cmd_claude_cli_inject command without any pre-configured scope."
+commands.deny = ["cmd_claude_cli_inject"]

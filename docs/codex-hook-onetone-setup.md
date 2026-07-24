@@ -1,10 +1,14 @@
-# Codex Hook → OneTone 状态灯（P1-MVP）
+# Codex / Claude Hook → OneTone 状态灯
 
-用 Codex **官方 Hooks** 把真实 Desktop 生命周期事件送进 OneTone，反射为虚拟键盘 **status 宿主键**状态灯（由 `pad.keys` 中 `slotId=status` 决定；默认 AG04；无 status 时 fallback AG00）。
+用 **官方 Hooks** 把生命周期事件送进 OneTone。分层：
 
-**这不是 Micro HID thstatus。** Hook 通过只说明接上了官方生命周期事件；`native` / Native Micro 仍只代表真 Micro 协议状态。
+- **Codex Hook** → 主 `PadStatus` **单灯**（`slotId=status`，默认 AG04）
+- **Claude Hook** → **Claude Agent Activity Pad**：`claude_lights` **自建多灯**（agent 活动灯 / OneTone 自建聚合；非官方硬件多灯协议）
+- **Micro native** `v.oai.thstatus` → AG00–AG05 官方多 AG（最高优先）
 
-状态归一与仲裁见 **[State Core](./pad-status-core.md)**：Overlay / 状态灯宿主只读 `pad_status`，不再双轨判灯。
+**Hook 通过 ≠ Micro HID thstatus。** Claude **不**写、也不消费 `v.oai.thstatus`。`native` 仍只代表真 Micro 协议状态。
+
+详见 **[State Core](./pad-status-core.md)**。
 
 ## 3 分钟用户路径
 
@@ -55,10 +59,12 @@ Loopback（Labs / 状态灯开启时 ensure）监听 `127.0.0.1:8796`：
 | `PermissionRequest` | needs_input |
 | `Stop` | done → 约 600ms 后 idle |
 
-- Subagent*：只记事件，不做六槽
+- Codex Subagent*：只记事件，不做六槽 / 不做 Codex Hook 多灯
+- Claude `SubagentStart/Stop`：只写 `claude_lights`，**不写**主 `PadStatus`；Soft RGB / app meta 仍跟主 `PadStatus`
+- Claude `needs_input`：主 ACT context idle 时才局部强调 ACT08/ACT12；不驱动 Soft RGB
 - idle 后仍保留 `appLastEvent` / `appLastSource` / `appLastSeenAt` / `appAgeMs`
 
-UI：`codex_hook` →「Codex Hook」；`native` →「Native Micro」。禁止把 Hook 标成 Native Micro。
+UI：`codex_hook` →「Codex Hook」；`claude_hook` →「Claude Hook」；`native` →「Native Micro」。禁止把 Hook 标成 Native Micro。
 
 ## 验收页
 
@@ -73,4 +79,6 @@ UI：`codex_hook` →「Codex Hook」；`native` →「Native Micro」。禁止�
 
 - Hook 通过 ≠ Micro HID thstatus
 - 不要把 Hook payload 转成 `v.oai.thstatus`
+- Claude 多灯 = OneTone 自建聚合，不是官方硬件多灯协议
+- Soft RGB / meta 跟主 `PadStatus`，不跟 Claude 多灯
 - 关状态灯不停 8796 listener（Labs Micro 注入可继续）

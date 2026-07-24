@@ -8,6 +8,8 @@ mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
 mod coach_hud;
+mod claude_cli_session;
+mod claude_hook_setup;
 mod codex_app_state;
 mod pad_status;
 mod codex_micro_overlay;
@@ -771,6 +773,14 @@ pub fn run() {
             ipc::cmd_codex_status_lights_set,
             ipc::cmd_codex_hook_setup_status,
             ipc::cmd_pad_status_diagnose,
+            ipc::cmd_claude_activity_inject,
+            ipc::cmd_claude_activity_clear,
+            ipc::cmd_claude_hook_setup_status,
+            ipc::cmd_claude_hook_install_confirm,
+            ipc::cmd_claude_hook_uninstall_onetone,
+            ipc::cmd_claude_cli_inject_pref_set,
+            ipc::cmd_claude_cli_inject,
+            ipc::cmd_claude_cli_decide,
             ipc::cmd_codex_pad_binding_diagnose,
             ipc::cmd_codex_pad_binding_heal,
             ipc::cmd_acoustic_voice_command_status,

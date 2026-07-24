@@ -380,6 +380,14 @@ pub fn foreground_app_target_id() -> Option<String> {
     foreground_app_identity().and_then(|i| i.matched_preset_app_id)
 }
 
+/// True when the live foreground process is OneTone itself (settings / Soft Pad manager).
+pub fn foreground_is_self() -> bool {
+    let Some(fg) = foreground_app_identity() else {
+        return false;
+    };
+    is_self_process(&fg.exe_name, fg.full_path.as_deref())
+}
+
 fn is_self_process(exe_name: &str, full_path: Option<&str>) -> bool {
     let lower = exe_name.to_ascii_lowercase();
     if lower.contains("onetone") {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-claude-cli-inject-pref-set"
+description = "Enables the cmd_claude_cli_inject_pref_set command without any pre-configured scope."
+commands.allow = ["cmd_claude_cli_inject_pref_set"]
+
+[[permission]]
+identifier = "deny-cmd-claude-cli-inject-pref-set"
+description = "Denies the cmd_claude_cli_inject_pref_set command without any pre-configured scope."
+commands.deny = ["cmd_claude_cli_inject_pref_set"]

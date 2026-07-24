@@ -12,23 +12,52 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 
 软件控制面止于「状态对象 + 展示」。**不**假装官方 Micro `READ_OUTPUT` / thstatus，也不把 Hook 标成 Native Micro。
 
-## 状态灯宿主（v1）+ agent 展示（v2）
+## 状态灯分层（Codex 单灯 / Claude 多灯 / Native 多 AG）
 
-- **宿主由当前 `pad.keys` 中绑定 `slotId === "status"` 的 `microKeyId` 决定**（`resolve_status_light_micro_key_id` / `resolveStatusLightMicroKeyId`）。
-- 无 enabled `status` 路由时 fallback `AG00`；若 fallback 键不在当前 overlay 布局，则**只保留**灯环 / Soft RGB，不强行给任意键上灯。
-- 默认 stock：`AG04 → status`，故默认灯在 **AG04**（不是 AG00）。AG00 默认仍是 `switchAgent`。
-- **单灯**：当前 State Core（含 Codex / Claude）只投到这一颗宿主键；不引入 per-agent 多灯。
-- **v2 meta / source**：State Core 保留 `agent`（`codex` / `claude`）；UI 通过 `display_source_label` 与 snapshot.`appAgent` 明确区分 `codex_hook` / `claude_hook`（及 app 变体）。Claude 事件仍点亮同一 status 键，只是来源标签不同。
-- Snapshot 字段：`statusLightMicroKeyId`（勿与本地 fire latch `statusMicroKeyId` 混淆）；`appAgent`（v2）。
+Cell 展示优先级（硬约束）：
+
+1. **fresh native** `v.oai.thstatus`（AG00–AG05）— 官方多 AG，最高可信  
+2. **Claude agent light**（`claude_lights` store，source=`claude_hook`）— OneTone **自建**多灯，非官方硬件协议  
+3. **Codex status host**（主 `PadStatus`，`slotId=status`，默认 AG04）— Codex Hook 单灯整体会话  
+4. local inferred / fallback  
+
+### Codex 单灯
+
+- 唯一主 `PadStatus`；宿主 = enabled `slotId=status`（无则 fallback AG00）。
+- Subagent* **不**生成多灯（只作 meta/lastEvent 参考）。
+- Soft RGB / `app_*` meta 仍跟主 `PadStatus`。
+
+### Claude Agent Activity Pad（自建多灯）
+
+定位：**Claude Code / Claude Desktop 的多 agent 活动控制层**，不是 Codex Micro 1:1，也不是官方硬件多灯协议。
+
+- 独立 `claude_lights`（Claude agent 活动灯 / OneTone 自建聚合）：`SubagentStart/Stop` **只写该 store，绝不写主 PadStatus**。
+- Key：`agent_id` → else `agent_type` → else `claude/main`。
+- Main 宿主 = `claudeModel`（默认 AG01）；subagent sticky 首次占位、Stop/`done`/`failed` TTL 经 `settle_at` **remove entry + host**；同 id 复用；排除 Codex status 宿主。
+- `failed`（`StopFailure` / `PostToolUseFailure`）稍长 TTL（约 1200ms），与 `done` **同一 settle 释放路径**。
+- Claude-lit AG 的 meta label 优先压缩后的 `agent_type` 短名（如 `code-reviewer`→`reviewer`），否则 `Claude`。
+- Claude `needs_input`：**仅当主 ACT context 为 idle** 时局部强调 ACT12（确认/继续）/ ACT08（拒绝/取消）；并给出文案-only `claudeWaitingHint`（如 `reviewer 等待确认`），**不**设灯色 / Soft RGB。
+- AG 池不足 → `agentLightsOverflow` 短串 + `agentLightsOverflowItems`；**不**占 ACT/NAV；overlay 首屏不画复杂 overflow UI。
+- 状态诊断（`cmd_pad_status_diagnose`）展示 Claude 活动灯行（含 resolver 同源 `hostKey`）与 overflow 列表；Pad 管理「Claude Activity Pad」区块展示 phase chips / top issues / Soft Pad 预览（overlay `cells` 上色）/ 测试注入。
+- **Claude Soft Pad 先可见**：Codex 前台逻辑保留；另当 Claude FG（`claude-code` app identity）或 Claude Hook/App 近窗活跃（`claude_lights.last_activity_at`，默认 5 分钟，或仍有 active lights）时 Soft Pad 浮层也可显示。**不**把 Terminal/PowerShell 当 Claude；**不**承诺全部 CLI 快捷键。`SessionStart` 只 bump 近窗（不写 running 灯）。**Claude Activity 接入面板**可检测/预览/确认安装/撤回 `~/.claude/settings.json` 中带 `--onetone-hook-id claude-activity-v1` 的 hooks（serde 合并，坏 JSON 拒绝；撤回不整文件还原）。CLI 键注入另有偏好开关（默认关），开启后仍须高置信 latch；偏好关时 Soft Pad 不键注入（Hook 审批 decide 除外）。PermissionRequest 可挂 pending 供 ACT12/08。overlay snapshot `visibleReason` 为 **host reason**。
+- Route 可选 serde 字段 `agentLightId`（无设置 UI）。
+- **禁止** Claude 多灯写 `v.oai.thstatus` / `vendor.agent_slots`，也**不**驱动 Soft RGB。
+
+### Micro native
+
+- `v.oai.thstatus` → `vendor.agent_slots`；source=`native`。
+- **禁止** Hook→thstatus 或 thstatus 回灌 Hook Core。
+- 同键冲突时 native **压过** Codex/Claude Hook 灯。
+
+Snapshot：`statusLightMicroKeyId`、`appAgent`、`agentLights`、`agentLightsOverflow`、`agentLightsOverflowItems`、`claudeWaitingHint`。
 
 ## 诚实边界 / 非目标
 
-- **宿主键 / Soft RGB 读 Core** 不等于「全键只读 Core」：开启状态灯时，**status 宿主键**与 Overlay 灯环以 `pad_status` 为准；其它 AG / 非 AG 键仍可能在 `resolve_cell_run_status` 内走 native-first / inferred 的局部展示逻辑。
-- **native thstatus 止损**：`v.oai.thstatus` 保留在 vendor/protocol 展示与关灯路径；不回灌 State Core 作为 Hook 真相，也不作为产品主路径依赖。
-- **Claude adapter 现状**：当前是函数式 ingest 模块（Claude Hook → `agent=claude`），还不是通用 `AgentStatusAdapter` trait 体系。
-- **多灯（v3）**：若产品需要 Claude / Codex 各一盏灯，再引入 `resolveAgentStatusLightMicroKeyId(pad, agent)`；本版不做。
-- **多应用数字键盘现状**：仍靠 `mapping.app_target_id` 与现有路由；产品级 `activeApp` / `padFace` / `appProfile` 切换尚未实现，下一刀独立规划。
-- **日志测试隔离**：单元测试使用临时 jsonl 与 path override，不应写入或弄脏产品运行日志 `logs/pad-status.jsonl`。
+- Soft RGB / meta 跟主 `PadStatus`，不跟 Claude 多灯。
+- Hook 通过 ≠ Micro native thstatus；不把 Hook 标成 Native Micro；**Claude 不使用 `v.oai.thstatus`**。
+- 不做 Codex Hook 多灯；不做 `agentLightId` 设置页 UI（本刀）。
+- **多应用数字键盘现状**：仍靠 `mapping.app_target_id`；产品级 `activeApp` / `padFace` 未实现。
+- **日志测试隔离**：单测临时 jsonl，不污染 `logs/pad-status.jsonl`。
 
 ## `PadStatus` 字段
 
@@ -53,11 +82,11 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 9. **ENC 召回**：`summonCodex` / `openAgent` 走 Global `focus_composer` 工作流，**不**注入 `Ctrl+Shift+P`；模式开关仍是 ENC 上的独立 switch  
 10. **主盘方向键**：左侧常驻 `NAV_UP/LEFT/DOWN/RIGHT`（默认注入箭头，可绑 slot）；物理方向键在 Codex 前台且场景映射开启时劫持；**不再**依赖 JOY 侧轨开关（`joyNavPanelOpen` 恒 false）  
 11. **状态诊断**：Pad 管理「状态诊断」只读 `pad_status` + `logs/pad-status.jsonl` 尾部（accept/reject），不另判灯  
-12. **ACT 上下文化**：状态灯开时 Overlay ACT 键按 Core UI 状态 `emphasize` / `dim`（如 `needs_input` 强调确认/拒绝）；**仅视觉提示，不硬拦 fire**  
+12. **ACT 上下文化**：状态灯开时 Overlay ACT 键按 **主 PadStatus** UI 状态 `emphasize` / `dim`；Claude Activity Pad 仅在主 context idle 时用 Claude `needs_input` 补局部提示（如确认/继续、拒绝/取消）；**仅视觉提示，不硬拦 fire**  
 13. **jsonl 回放**：诊断区结构化时间线（时间 · UI 状态 · 来源 · raw · 拒因），可筛 全部/已接受/已拒绝；**只读，不回写 Core、不改灯**  
 14. **可选 HID Output Adapter**：`plan_hid_output` 只产出意图（sink=`soft_rgb`/`none`，`emit_enabled=false`）；`try_emit` **恒拒绝**；不写 `v.oai.rgbcfg` / thstatus；诊断快照展示「HID 关闭」  
 15. **绑定配置校验**：Pad 管理「绑定校验」检查缺路由、空 slot、空热键、scan/slot/chord 冲突、ENC 屏幕键；`summonCodex` 空弦合法；**一键修复**补缺/空弦/ENC/scan 冲突（不改已有非空热键）  
-16. **Claude Input Adapter**：Claude Code Hook → `agent=claude` + `source=hook`（UI 标签 `claude_hook`）；核心事件 `UserPromptSubmit`/`PermissionRequest`/`Stop`/`StopFailure`；探针 `scripts/claude-hook-probe.js` POST 同一 `/api/codex-app/state`（`source=claude_hook`）；**不**伪造 HID  
+16. **Claude Input Adapter / Activity Pad**：Claude Code Hook → 主 `PadStatus`（`agent=claude`）+ 并行 `claude_lights`；探针 POST `/api/codex-app/state`；面板 `cmd_claude_hook_setup_status` / `install_confirm` / `uninstall_onetone` 合并写入 `~/.claude/settings.json`（`--onetone-hook-id claude-activity-v1`，PermissionRequest `timeout=60`）；`PermissionRequest` 可轮询 `/api/claude-approval`；CLI 键注入受 `claude_cli_inject_pref_enabled` + 高置信 latch 双闸；**不**伪造 HID / thstatus   
 17. **第一区 7/8/9（AG00/01/02）**：默认 `switchAgent` / `claudeModel` / `switchModel`；**状态灯宿主跟 `status` slot 走**（默认在 AG04；用户改绑后灯迁移）；`claudeModel` Global 聚焦 Claude（已前台则插 `/model`）  
 18. **第二区 4/5/6（AG03/04/05）**：默认 `permissions` / `status` / `appsOrPlugins`（权限 · 常用`/status` · 应用）；默认 `status` 在 AG04 即默认状态灯宿主；命令菜单仍在 `/`→ACT07，不占 5 键  
 19. **第三区 1/2/3**：Numpad1→ACT09 `newThread`（上下文）；Numpad2→软键 `UNDO`/`undo`（Ctrl+Z）；Numpad3→软键 `SEARCH`/`quickSearch`（Ctrl+F）；**发送迁到 Numpad Enter**（ACT12 scan `0x1C:ext`），Overlay 发送键仍为 ACT12
@@ -65,20 +94,20 @@ OneTone 虚拟小键盘的状态以 **State Core**（`pad_status`）为唯一真
 
 ## 诚实边界 / 非目标
 
-- **开灯时只读 Core ≠ 全键只读 Core**：status 宿主键与 Soft RGB 在状态灯开启时**只读** State Core；`resolve_cell_run_status` 仅对该宿主走 Core，**其它 AG / 非 AG 键**仍可 native-first / inferred（overlay 内局部判断），未强制全键迁入 Core。
-- **native thstatus 止损**：留在 vendor / protocol 展示与关灯路径；**不**回灌 Core 作 Hook 真相（见 stoploss 报告）。
-- **Claude adapter**：当前为函数式 ingest（`ingest_claude_*`），**不是**通用 `AgentStatusAdapter` trait 体系。
-- **多应用数字键盘 / padFace**：仍靠 `mapping.app_target_id`；产品级 `activeApp` / `padFace` / `appProfile` **未实现**（下一刀）。
+- Soft RGB / meta 跟主 `PadStatus`；Claude 多灯只点 AG cells。
+- **native thstatus 止损**：留在 vendor / protocol；**不**回灌 Core；同键 native 优先于 Hook。
+- Claude Agent Activity Pad = Hook + OneTone **自建聚合**，**不是**官方 Micro 多灯协议，**不**使用 `v.oai.thstatus`。
+- **多应用数字键盘 / padFace**：仍靠 `mapping.app_target_id`；未实现产品级切换。
 
 ## 硬验收
 
-开启 **Codex 状态灯** 时：
-
-- **status 宿主键**与 Overlay 灯环 **只**跟 `pad_status`  
-- meta：状态 · 来源（`codex_hook` / `claude_hook` 等）· 相对时间 · 低置信时标「推断」；snapshot 带 `appAgent`  
-- 关灯开关后 Overlay **不吃** hook 上灯（写入仍可进 loopback）
-- 用户把 `status` 改绑到其它可见键后，灯必须跟随；不写死 AG00
-- Claude / Codex 共用单灯；诊断回放不得把 Claude 标成 Codex Hook
+- Codex Hook 只亮 status 宿主；Subagent* 不多灯。
+- Claude 两 agent 同时 running → 两 AG `claude_hook`；不占 status 宿主。
+- SubagentStop 只清对应灯；不改主 `PadStatus`。
+- `done`/`failed` TTL 后 `settle_at` 同时清 store entry 与 sticky host。
+- thstatus 多 slot → native；同键 Hook 不压过 native。
+- 关灯后 Overlay 不吃 hook 上灯。
+- 诊断回放不得把 Claude 标成 Codex Hook。
 
 ## 相关
 

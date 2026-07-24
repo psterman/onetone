@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-claude-activity-inject"
+description = "Enables the cmd_claude_activity_inject command without any pre-configured scope."
+commands.allow = ["cmd_claude_activity_inject"]
+
+[[permission]]
+identifier = "deny-cmd-claude-activity-inject"
+description = "Denies the cmd_claude_activity_inject command without any pre-configured scope."
+commands.deny = ["cmd_claude_activity_inject"]

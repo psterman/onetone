@@ -54,6 +54,8 @@ struct HookGate {
     software_enhance_enabled: bool,
     /// Overlay session: JOY NAV rail open — physical arrows only hijacked when true.
     joy_nav_panel_open: bool,
+    /// Any Soft Pad mapping opted into Claude CLI key inject.
+    claude_cli_inject_pref_enabled: bool,
     routes: HashMap<String, CodexNumpadRouteSnapshot>,
     routes_by_micro: HashMap<String, CodexNumpadRouteSnapshot>,
 }
@@ -190,6 +192,7 @@ pub fn resolve_enc_summon_route(cfg: &VoiceConfig) -> Option<CodexNumpadRouteSna
                 ui_icon_id: String::new(),
                 enabled: true,
                 advanced: false,
+                agent_light_id: String::new(),
             });
         let slot = if route.slot_id.trim().is_empty() {
             "summonCodex"
@@ -341,6 +344,9 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
         let Some(pad) = m.codex_micro_pad.as_ref() else {
             continue;
         };
+        if pad.claude_cli_inject_pref_enabled {
+            gate.claude_cli_inject_pref_enabled = true;
+        }
         if !pad.enabled {
             continue;
         }
@@ -351,6 +357,11 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
         gate.joy_nav_panel_open = false;
     }
     *hook_gate().lock().unwrap() = gate;
+}
+
+/// Soft Pad user preference: allow Claude CLI key inject when latch is high.
+pub fn claude_cli_inject_pref_enabled() -> bool {
+    hook_gate().lock().unwrap().claude_cli_inject_pref_enabled
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -945,6 +956,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         layout_profile: "standard".into(),
         software_enhance_enabled: false,
         codex_status_lights_enabled: false,
+        claude_cli_inject_pref_enabled: false,
         keys: default_codex_micro_pad_routes(),
     }
 }
@@ -1040,6 +1052,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         ui_icon_id: ui_icon_id.into(),
         enabled: true,
         advanced: false,
+        agent_light_id: String::new(),
     }
 }
 

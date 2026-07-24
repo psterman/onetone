@@ -1548,7 +1548,7 @@
   }
 
   /**
-   * v1 status-light host: enabled slotId=status → that microKeyId;
+   * Codex status-light host: enabled slotId=status → that microKeyId;
    * else fallback AG00 if in LAYOUT.cells; else '' (ring/Soft RGB only).
    */
   function resolveStatusLightMicroKeyId(pad) {
@@ -1565,6 +1565,127 @@
     }
     if (cellByMicroId('AG00')) return 'AG00';
     return '';
+  }
+
+  var CLAUDE_AG_POOL = ['AG01', 'AG00', 'AG02', 'AG03', 'AG05', 'AG04'];
+  var CLAUDE_MAIN_KEY = 'claude/main';
+
+  function resolveClaudeMainLightMicroKeyId(pad) {
+    var keys = (pad && pad.keys) || [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var r = keys[i];
+      if (!r || r.enabled === false) continue;
+      if (String(r.slotId || '').trim() !== 'claudeModel') continue;
+      var id = String(r.microKeyId || '').trim();
+      if (!id) continue;
+      if (cellByMicroId(id)) return id;
+      return '';
+    }
+    if (cellByMicroId('AG01')) return 'AG01';
+    return '';
+  }
+
+  function shortAgentType(agentType) {
+    var raw = String(agentType || '').trim();
+    if (!raw) return 'Claude';
+    var lower = raw.toLowerCase();
+    if (lower === 'code-reviewer') return 'reviewer';
+    if (lower === 'test-runner') return 'tests';
+    if (lower === 'debugger') return 'debug';
+    var parts = raw.split(/[\/\-]/);
+    var seg = parts.length ? parts[parts.length - 1] : raw;
+    seg = String(seg || raw).trim() || raw;
+    if (seg.length > 10) seg = seg.slice(0, 10);
+    return seg || 'Claude';
+  }
+
+  /**
+   * Sticky Claude agent → AG hosts. Excludes Codex status host. No hash.
+   * lights: [{ agentKey, agentId, agentType, state, firstSeenAt }]
+   * stickyMap: optional { agentKey: microKeyId } mutated in place for reuse.
+   */
+  function assignClaudeAgentLightHosts(pad, lights, stickyMap) {
+    var statusHost = resolveStatusLightMicroKeyId(pad);
+    var mainHost = resolveClaudeMainLightMicroKeyId(pad);
+    var sticky = stickyMap || {};
+    var used = {};
+    if (statusHost) used[statusHost] = true;
+    var pool = CLAUDE_AG_POOL.filter(function (id) {
+      return cellByMicroId(id) && id !== statusHost;
+    });
+    var list = (lights || []).slice().filter(function (l) {
+      return l && String(l.state || '') !== 'idle';
+    });
+    list.sort(function (a, b) {
+      var fa = Number(a.firstSeenAt || a.first_seen_at || 0);
+      var fb = Number(b.firstSeenAt || b.first_seen_at || 0);
+      if (fa !== fb) return fa - fb;
+      return String(a.agentKey || a.agent_key || '').localeCompare(
+        String(b.agentKey || b.agent_key || '')
+      );
+    });
+    var assigned = [];
+    var overflow = [];
+    var mainActive = list.some(function (l) {
+      return String(l.agentKey || l.agent_key) === CLAUDE_MAIN_KEY;
+    });
+    list.forEach(function (light) {
+      var key = String(light.agentKey || light.agent_key || '').trim();
+      if (!key) return;
+      var isMain = key === CLAUDE_MAIN_KEY;
+      var host = '';
+      var keys = (pad && pad.keys) || [];
+      var i;
+      for (i = 0; i < keys.length; i++) {
+        var r = keys[i];
+        if (!r || r.enabled === false) continue;
+        var bind = String(r.agentLightId || r.agent_light_id || '').trim();
+        if (!bind) continue;
+        var mid = String(r.microKeyId || '').trim();
+        if (!mid || !cellByMicroId(mid) || mid === statusHost) continue;
+        if (
+          bind === key ||
+          bind === String(light.agentId || light.agent_id || '') ||
+          bind === String(light.agentType || light.agent_type || '')
+        ) {
+          host = mid;
+          break;
+        }
+      }
+      if (!host && isMain && mainHost) host = mainHost;
+      if (!host && sticky[key] && pool.indexOf(sticky[key]) >= 0 && !used[sticky[key]]) {
+        host = sticky[key];
+      }
+      if (!host) {
+        for (i = 0; i < pool.length; i++) {
+          var p = pool[i];
+          if (used[p]) continue;
+          if (!isMain && p === mainHost && mainActive) continue;
+          host = p;
+          break;
+        }
+      }
+      var agentType = String(light.agentType || light.agent_type || '').trim();
+      var agentId = String(light.agentId || light.agent_id || '').trim();
+      if (!host || (used[host] && sticky[key] !== host)) {
+        overflow.push({
+          agentKey: key,
+          agentId: agentId,
+          agentType: agentType,
+          shortLabel: shortAgentType(agentType)
+        });
+        return;
+      }
+      used[host] = true;
+      sticky[key] = host;
+      assigned.push({ microKeyId: host, light: light });
+    });
+    return {
+      assigned: assigned,
+      overflow: overflow,
+      sticky: sticky
+    };
   }
 
   function applyHookLightToManagerPad(light, source, pad) {
@@ -1683,6 +1804,598 @@
     );
   }
 
+  function claudeHookPhaseLabel(phase) {
+    if (phase === 'connected') return t('claudeActPhaseConnected', '已连接');
+    if (phase === 'waiting') return t('claudeActPhaseWaiting', '等待事件');
+    if (phase === 'stale') return t('claudeActPhaseStale', '已过期');
+    if (phase === 'not_installed') return t('claudeActPhaseNotInstalled', '未接入');
+    if (phase === 'error') return t('claudeActPhaseError', '异常');
+    return t('claudeActPhaseOffline', '离线');
+  }
+
+  function overflowReasonLabel(reason) {
+    if (reason === 'status_host') return t('claudeActOvStatusHost', '被 status 宿主占用');
+    if (reason === 'layout') return t('claudeActOvLayout', 'layout 不可见');
+    return t('claudeActOvPoolFull', 'AG 池满');
+  }
+
+  var claudeHookSetupLast = null;
+
+  function formatAgeSec(ms) {
+    var n = Number(ms) || 0;
+    if (n <= 0) return '';
+    if (n < 1000) return n + ' ms';
+    return Math.round(n / 1000) + ' 秒前';
+  }
+
+  function renderClaudeActivityPadCard() {
+    return (
+      '<div class="codex-pad-mgr__claude-act" id="codexClaudeActivityPad" data-phase="not_installed">' +
+      '<div class="codex-pad-mgr__claude-act-head">' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('claudeActTitle', 'Claude Activity 接入')) + '</p>' +
+      '</div>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t(
+        'claudeActHint',
+        '检测 → 预览 → 确认安装 Claude Hooks。需你确认后才会写入，并可撤回。CLI 操作键盘与 Hook 安装分开。'
+      )) +
+      '</p>' +
+      '<div class="codex-pad-mgr__claude-status" data-claude-setup-status aria-live="polite">' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Claude Hooks</span><strong data-setup-hooks>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>配置文件</span><code data-setup-settings>—</code></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Probe 脚本</span><strong data-setup-probe>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>最近事件</span><strong data-setup-event>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>Soft Pad</span><strong data-setup-softpad>—</strong></div>' +
+      '<div class="codex-pad-mgr__claude-status-row"><span>CLI 操作</span><strong data-setup-cli>—</strong></div>' +
+      '</div>' +
+      '<ol class="codex-pad-mgr__claude-steps" data-claude-setup-steps>' +
+      '<li data-step="1"><strong>1. 检测</strong><span data-step-1-body>查找 settings.json / 现有 hooks / probe</span></li>' +
+      '<li data-step="2"><strong>2. 预览</strong><span data-step-2-body>将新增的事件与 JSON diff</span></li>' +
+      '<li data-step="3"><strong>3. 安装</strong><span data-step-3-body>备份后合并 OneTone hooks</span></li>' +
+      '<li data-step="4"><strong>4. 验证</strong><span data-step-4-body>打开 Claude Code 发一句 prompt</span></li>' +
+      '</ol>' +
+      '<pre class="codex-pad-mgr__diag-pre" data-claude-setup-preview hidden></pre>' +
+      '<pre class="codex-pad-mgr__diag-pre" data-claude-setup-uninstall-preview hidden></pre>' +
+      '<ul class="codex-pad-mgr__claude-issues" data-claude-act-issues></ul>' +
+      '<div class="codex-pad-mgr__claude-act-actions codex-pad-mgr__claude-setup-actions">' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-hook-redetect">' +
+      esc(t('claudeActRedetect', '重新检测')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-hook-copy">' +
+      esc(t('claudeActHookCopy', '复制配置')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-hook-open">' +
+      esc(t('claudeActHookOpen', '打开配置文件')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-hook-preview">' +
+      esc(t('claudeActHookPreview', '预览安装')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="claude-hook-install">' +
+      esc(t('claudeActHookInstall', '确认安装')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-hook-uninstall-preview">' +
+      esc(t('claudeActHookUninstallPreview', '预览撤回')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-danger" data-act="claude-hook-uninstall">' +
+      esc(t('claudeActHookUninstall', '确认撤回')) + '</button>' +
+      '</div>' +
+      '<div class="codex-pad-mgr__claude-cli-bar" data-claude-cli-bar>' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('claudeCliBarTitle', 'Claude CLI 操作键盘')) + '</p>' +
+      '<p class="codex-pad-mgr__hint" data-claude-cli-map aria-live="polite">' +
+      esc(t('claudeCliMapPrefOff', '偏好：关闭 · 不会键注入')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t(
+        'claudeCliBarHint',
+        'CLI 操作通过键盘输入实现，只在偏好开启且 OneTone 确认当前前台是 Claude 会话时启用。无法确认时不会注入按键。'
+      )) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint">ACT12：确认 / 发送 · ACT08：拒绝 / 取消</p>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-cli-pref-toggle">' +
+      esc(t('claudeCliPrefEnable', '允许高置信时启用')) + '</button>' +
+      '</div>' +
+      '<div class="codex-pad-mgr__claude-chips" data-claude-act-chips aria-live="polite"></div>' +
+      '<p class="codex-pad-mgr__hint" data-claude-act-waiting hidden></p>' +
+      '<details class="codex-pad-mgr__diag" data-claude-act-pad-details>' +
+      '<summary>' + esc(t('claudeActPadPreview', 'Soft Pad 预览')) + '</summary>' +
+      '<div class="codex-pad-mgr__claude-pad-row">' +
+      '<div class="codex-pad-mgr__claude-pad" data-claude-act-pad></div>' +
+      '<div class="codex-pad-mgr__claude-detail" data-claude-act-detail>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('claudeActDetailEmpty', '点击左侧键查看详情（只读）')) +
+      '</p></div></div>' +
+      '</details>' +
+      '<details class="codex-pad-mgr__diag" data-claude-act-lights-details>' +
+      '<summary>' + esc(t('claudeActLights', 'Claude 活动灯')) + '</summary>' +
+      '<div class="codex-pad-mgr__claude-lights" data-claude-act-lights></div>' +
+      '<div class="codex-pad-mgr__claude-overflow" data-claude-act-overflow></div>' +
+      '</details>' +
+      '<details class="codex-pad-mgr__diag" data-claude-act-inject-details>' +
+      '<summary>' + esc(t('claudeActInject', '测试注入')) + '</summary>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('claudeActInjectNote', '测试注入，不是 native · 只写 claude_hook · 不写 thstatus')) +
+      '</p>' +
+      '<div class="codex-pad-mgr__claude-inject">' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="session_start">' +
+      esc(t('claudeActInjSession', '注入 SessionStart')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="running">' +
+      esc(t('claudeActInjRunning', '注入 Claude running')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="needs_input">' +
+      esc(t('claudeActInjNeeds', '注入 Claude needs_input')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="failed">' +
+      esc(t('claudeActInjFailed', '注入 Claude failed')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="two_subagents">' +
+      esc(t('claudeActInjTwo', '注入两个 subagents')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="claude-inject" data-preset="subagent_stop">' +
+      esc(t('claudeActInjStop', '注入 SubagentStop')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn is-danger" data-act="claude-act-clear">' +
+      esc(t('claudeActClear', '清空测试活动灯')) + '</button>' +
+      '</div>' +
+      '</details>' +
+      '</div>'
+    );
+  }
+
+  function applyClaudeHookSetupDom(st) {
+    var root = document.getElementById('codexClaudeActivityPad');
+    if (!root || !st) return;
+    claudeHookSetupLast = st;
+    var phase = String(st.installPhase || st.install_phase || 'not_installed');
+    root.setAttribute('data-phase', phase);
+    var hooksEl = root.querySelector('[data-setup-hooks]');
+    if (hooksEl) hooksEl.textContent = claudeHookPhaseLabel(phase);
+    var settingsEl = root.querySelector('[data-setup-settings]');
+    if (settingsEl) {
+      settingsEl.textContent = String(st.settingsPath || st.settings_path || '—');
+    }
+    var probeEl = root.querySelector('[data-setup-probe]');
+    if (probeEl) {
+      var pe = !!(st.probeExists || st.probe_exists);
+      var cpe = st.configuredProbeExists != null
+        ? !!(st.configuredProbeExists || st.configured_probe_exists)
+        : true;
+      if (!pe) probeEl.textContent = t('claudeActProbeMissing', '未找到');
+      else if (st.onetoneConfigured && !cpe) {
+        probeEl.textContent = t('claudeActProbeStalePath', '路径失效');
+      } else probeEl.textContent = t('claudeActProbeOk', '已找到');
+    }
+    var evEl = root.querySelector('[data-setup-event]');
+    if (evEl) {
+      var ev = String(st.lastEvent || st.last_event || '').trim();
+      var age = formatAgeSec(st.lastAgeMs || st.last_age_ms);
+      evEl.textContent = ev ? (age ? age + ' · ' + ev : ev) : '—';
+    }
+    var softEl = root.querySelector('[data-setup-softpad]');
+    if (softEl) {
+      softEl.textContent = (st.softPadVisible || st.soft_pad_visible)
+        ? t('claudeActSoftPadOn', '可显示')
+        : t('claudeActSoftPadOff', '未显示');
+    }
+    var cliEl = root.querySelector('[data-setup-cli]');
+    if (cliEl) {
+      var pref = !!(st.cliPrefEnabled || st.cli_pref_enabled);
+      var can = !!(st.cliCanInject || st.cli_can_inject);
+      if (!pref) cliEl.textContent = t('claudeCliStatusPrefOff', '未启用（偏好关）');
+      else if (can) cliEl.textContent = t('claudeCliStatusReady', '高置信可注入');
+      else cliEl.textContent = t('claudeCliStatusPrefOn', '允许高置信时启用 · 尚未确认会话');
+    }
+    var step1 = root.querySelector('[data-step-1-body]');
+    if (step1) {
+      step1.textContent =
+        (st.settingsExists || st.settings_exists ? '已找到 settings.json' : '尚无 settings.json') +
+        ' · ' +
+        ((st.hasUserHooks || st.has_user_hooks) ? '已有用户 hooks' : '无用户 hooks') +
+        ' · ' +
+        ((st.probeExists || st.probe_exists) ? 'probe 可用' : 'probe 缺失');
+    }
+    var installBtn = root.querySelector('[data-act="claude-hook-install"]');
+    if (installBtn) {
+      var canInstall = st.canInstall !== false && st.can_install !== false;
+      installBtn.disabled = !canInstall;
+      if (st.onetoneConfigured && st.configuredProbeExists === false) {
+        installBtn.textContent = t('claudeActHookReinstall', '重新安装并刷新路径');
+      } else {
+        installBtn.textContent = t('claudeActHookInstall', '确认安装');
+      }
+    }
+    var issuesEl = root.querySelector('[data-claude-act-issues]');
+    if (issuesEl && Array.isArray(st.issues)) {
+      issuesEl.innerHTML = '';
+      st.issues.slice(0, 6).forEach(function (iss) {
+        var li = document.createElement('li');
+        li.className = 'codex-pad-mgr__claude-issue is-' + String(iss.severity || 'info');
+        li.innerHTML =
+          '<span class="codex-pad-mgr__bind-sev">' + esc(severityLabel(iss.severity)) + '</span>' +
+          '<span class="codex-pad-mgr__bind-body">' +
+          '<strong>' + esc(iss.title || '') + '</strong> · ' +
+          esc(iss.reason || '') +
+          (iss.action ? (' · ' + esc(iss.action)) : '') +
+          '</span>';
+        issuesEl.appendChild(li);
+      });
+    }
+    var mapEl = root.querySelector('[data-claude-cli-map]');
+    var toggleBtn = root.querySelector('[data-act="claude-cli-pref-toggle"]');
+    var prefOn = !!(st.cliPrefEnabled || st.cli_pref_enabled);
+    if (mapEl) {
+      if (prefOn) {
+        mapEl.textContent = (st.cliCanInject || st.cli_can_inject)
+          ? t('claudeCliMapPrefOnReady', '偏好：允许高置信时启用 · 当前可注入')
+          : t('claudeCliMapPrefOnWait', '偏好：允许高置信时启用 · 尚未确认 Claude 会话');
+      } else {
+        mapEl.textContent = t('claudeCliMapPrefOff', '偏好：关闭 · 不会键注入');
+      }
+    }
+    if (toggleBtn) {
+      toggleBtn.textContent = prefOn
+        ? t('claudeCliPrefDisable', '关闭 CLI 键注入偏好')
+        : t('claudeCliPrefEnable', '允许高置信时启用');
+      toggleBtn.setAttribute('data-enabled', prefOn ? '1' : '0');
+    }
+  }
+
+  function refreshClaudeHookSetup() {
+    return padInvoke('cmd_claude_hook_setup_status', {})
+      .then(function (st) {
+        applyClaudeHookSetupDom(st || {});
+        return st;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  /** Lightweight redetect — avoid stacking diagnose+overlay IPCs that wedge the UI. */
+  function redetectClaudeHookSetup() {
+    var root = document.getElementById('codexClaudeActivityPad');
+    var btn = root && root.querySelector('[data-act="claude-hook-redetect"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = t('claudeActRedetecting', '检测中…');
+    }
+    var done = function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = t('claudeActRedetect', '重新检测');
+      }
+    };
+    return refreshClaudeHookSetup()
+      .then(function (st) {
+        done();
+        if (!st) {
+          toast(t('claudeActRedetectFail', '检测失败：应用可能未响应，请重启 OneTone'));
+          return null;
+        }
+        toast(t('claudeActRedetectOk', '已重新检测'));
+        // Soft paint only — do not chain full diagnose/overlay refresh here.
+        if (padDiagLastView) {
+          renderClaudeActivityPad(padDiagLastView, claudeActOverlaySnap);
+        }
+        return st;
+      })
+      .catch(function () {
+        done();
+        toast(t('claudeActRedetectFail', '检测失败：应用可能未响应，请重启 OneTone'));
+        return null;
+      });
+  }
+
+  var claudeActOverlaySnap = null;
+  var claudeActSelectedKey = '';
+
+  function patchClaudeActPadFromOverlayCells(root, cells) {
+    if (!root) return;
+    var map = {};
+    (cells || []).forEach(function (c) {
+      if (!c || !c.microKeyId) return;
+      map[c.microKeyId] = c;
+    });
+    root.querySelectorAll('[data-micro-key]').forEach(function (el) {
+      var mid = el.getAttribute('data-micro-key');
+      var info = map[mid];
+      if (!info) {
+        el.setAttribute('data-run-status', 'idle');
+        el.removeAttribute('data-status-source');
+        return;
+      }
+      var st = String(info.runStatus || info.run_status || 'idle').trim() || 'idle';
+      var src = String(info.statusSource || info.status_source || '').trim();
+      el.setAttribute('data-run-status', st);
+      if (src) el.setAttribute('data-status-source', src);
+      else el.removeAttribute('data-status-source');
+      el.classList.toggle('is-native-status', src === 'native');
+      el.classList.toggle('is-claude-lit', src === 'claude_hook' || src === 'claude_app');
+      var nameEl = el.querySelector('.micro-hw__meta-name');
+      var chordEl = el.querySelector('.micro-hw__meta-chord');
+      var label = String(info.label || '').trim();
+      var sub = String(info.sub || '').trim();
+      if (nameEl && label) nameEl.textContent = label;
+      if (chordEl && sub) chordEl.textContent = sub;
+      else if (chordEl && src) chordEl.textContent = statusSourceLabelFor(src, '');
+    });
+  }
+
+  function renderClaudeActDetail(microKeyId) {
+    var el = document.querySelector('[data-claude-act-detail]');
+    if (!el) return;
+    claudeActSelectedKey = String(microKeyId || '').trim();
+    var host = document.querySelector('[data-claude-act-pad]');
+    if (host) {
+      host.querySelectorAll('[data-micro-key]').forEach(function (node) {
+        node.classList.toggle('is-focused', node.getAttribute('data-micro-key') === claudeActSelectedKey);
+      });
+    }
+    if (!claudeActSelectedKey) {
+      el.innerHTML = '<p class="codex-pad-mgr__hint">' +
+        esc(t('claudeActDetailEmpty', '点击左侧键查看详情（只读）')) + '</p>';
+      return;
+    }
+    var cell = null;
+    var cells = (claudeActOverlaySnap && claudeActOverlaySnap.cells) || [];
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i].microKeyId === claudeActSelectedKey) {
+        cell = cells[i];
+        break;
+      }
+    }
+    var pad = (padManagerMapping && padManagerMapping.codexMicroPad) || null;
+    var route = routeForMicroKey(pad, claudeActSelectedKey);
+    var light = null;
+    var lights = (padDiagLastView && padDiagLastView.claudeLights) || [];
+    for (var j = 0; j < lights.length; j++) {
+      if (lights[j].hostKey === claudeActSelectedKey) {
+        light = lights[j];
+        break;
+      }
+    }
+    var lines = [
+      '键 · ' + claudeActSelectedKey,
+      'slot · ' + ((route && route.slotId) || '—'),
+      'scan · ' + (route
+        ? (scanLabel(route.sourceScan, route.sourceExtended) || String(route.sourceScan || '—'))
+        : '—'),
+      'status · ' + ((cell && (cell.runStatus || cell.run_status)) || 'idle'),
+      'source · ' + ((cell && (cell.statusSource || cell.status_source)) || '—'),
+      'label · ' + ((cell && cell.label) || '—'),
+      'sub · ' + ((cell && cell.sub) || '—')
+    ];
+    if (light) {
+      lines.push('Claude · ' + (light.shortLabel || light.agentType || light.agentKey));
+      lines.push('agentId · ' + (light.agentId || '—'));
+      lines.push('lastEvent · ' + (light.lastEvent || '—'));
+    }
+    var src = cell && (cell.statusSource || cell.status_source);
+    if (src === 'native') lines.push('覆盖 · Native thstatus 优先');
+    else if (src === 'claude_hook' || src === 'claude_app') lines.push('覆盖 · Claude activity light');
+    else if (src === 'codex_hook' || src === 'codex_app') lines.push('覆盖 · Codex status host');
+    el.innerHTML = '<pre class="codex-pad-mgr__diag-pre">' + esc(lines.join('\n')) + '</pre>';
+  }
+
+  function renderClaudeActivityPad(view, overlaySnap) {
+    var root = document.getElementById('codexClaudeActivityPad');
+    if (!root) return;
+    if (overlaySnap) claudeActOverlaySnap = overlaySnap;
+    var phase = String((view && view.claudeHookPhase) || 'offline');
+    root.setAttribute('data-phase', phase);
+
+    var chipsEl = root.querySelector('[data-claude-act-chips]');
+    if (chipsEl) {
+      var lastEv = (view && (view.claudeLastEvent || view.lastEvent)) || '—';
+      var age = formatAgeMs(view && view.claudeLastAgeMs);
+      var chips = [
+        { k: 'hook', label: 'Claude Hook', v: claudeHookPhaseLabel(phase), tip: phase, phase: phase },
+        {
+          k: 'event',
+          label: '最近事件',
+          v: lastEv + (age ? ' · ' + age : ''),
+          tip: (view && view.claudeLastSource) || ''
+        },
+        {
+          k: 'endpoint',
+          label: 'Endpoint',
+          v: view && view.claudeEndpointRecent ? 'recent' : 'idle',
+          tip: 'OneTone /api/codex-app/state 近窗 claude_hook'
+        },
+        {
+          k: 'lights',
+          label: '状态灯',
+          v: view && view.statusLightsEnabled ? 'on' : 'off',
+          tip: 'codexStatusLightsEnabled'
+        },
+        {
+          k: 'pad',
+          label: 'Soft Pad',
+          v: (view && view.padMode) || 'numpad',
+          tip: 'Codex mode / numpad mode'
+        },
+        {
+          k: 'native',
+          label: 'Native Micro',
+          v: (view && view.nativeConnectionState) || 'fallback',
+          tip: '仅 Micro thstatus，不是 Claude Hook'
+        },
+        {
+          k: 'term',
+          label: 'Terminal→Claude',
+          v: view && view.terminalHasClaudeChild ? 'yes' : 'no',
+          tip: '诊断-only：前台终端子孙是否含 claude.exe（不驱动 Soft Pad 显示）'
+        },
+        {
+          k: 'latch',
+          label: 'CLI latch',
+          v: (view && view.claudeCliLatch && view.claudeCliLatch.confidence) || 'none',
+          tip: (view && view.claudeCliLatch && view.claudeCliLatch.reason) || ''
+        },
+        {
+          k: 'inject',
+          label: 'can inject',
+          v: view && view.claudeCliCanInject && view.claudeCliCanInject.ok ? 'yes' : 'no',
+          tip: (view && view.claudeCliCanInject && view.claudeCliCanInject.reason) || ''
+        }
+      ];
+      chipsEl.innerHTML = chips.map(function (c) {
+        return (
+          '<span class="codex-pad-mgr__claude-chip" data-chip="' + esc(c.k) + '"' +
+          (c.phase ? ' data-phase="' + esc(c.phase) + '"' : '') +
+          ' title="' + esc((c.label + ' · ' + (c.tip || c.v)).trim()) + '">' +
+          '<span class="codex-pad-mgr__claude-chip-k">' + esc(c.label) + '</span>' +
+          '<span class="codex-pad-mgr__claude-chip-v">' + esc(c.v) + '</span></span>'
+        );
+      }).join('');
+    }
+
+    var mapEl = root.querySelector('[data-claude-cli-map]');
+    if (mapEl) {
+      var pending = view && view.claudePendingApproval;
+      var prefOn = claudeHookSetupLast &&
+        !!(claudeHookSetupLast.cliPrefEnabled || claudeHookSetupLast.cli_pref_enabled);
+      if (pending && pending.active) {
+        mapEl.textContent = t(
+          'claudeCliMapHook',
+          'Hook 审批通道就绪 · ACT12 允许 / ACT08 拒绝'
+        );
+      } else if (prefOn) {
+        mapEl.textContent = (claudeHookSetupLast.cliCanInject || claudeHookSetupLast.cli_can_inject)
+          ? t('claudeCliMapPrefOnReady', '偏好：允许高置信时启用 · 当前可注入')
+          : t('claudeCliMapPrefOnWait', '偏好：允许高置信时启用 · 尚未确认 Claude 会话');
+      } else {
+        mapEl.textContent = t(
+          'claudeCliMapPrefOff',
+          '偏好：关闭 · 不会键注入'
+        );
+      }
+    }
+
+    var issuesEl = root.querySelector('[data-claude-act-issues]');
+    if (issuesEl && !(claudeHookSetupLast && Array.isArray(claudeHookSetupLast.issues))) {
+      var issues = (view && Array.isArray(view.issues) ? view.issues : []).slice(0, 3);
+      issuesEl.innerHTML = '';
+      issues.forEach(function (iss) {
+        var li = document.createElement('li');
+        li.className = 'codex-pad-mgr__claude-issue is-' + String(iss.severity || 'info');
+        li.innerHTML =
+          '<span class="codex-pad-mgr__bind-sev">' + esc(severityLabel(iss.severity)) + '</span>' +
+          '<span class="codex-pad-mgr__bind-body">' +
+          '<strong>' + esc(iss.title || '') + '</strong> · ' +
+          esc(iss.reason || '') +
+          (iss.action ? (' · ' + esc(iss.action)) : '') +
+          '</span>';
+        issuesEl.appendChild(li);
+      });
+    }
+
+    var waitEl = root.querySelector('[data-claude-act-waiting]');
+    if (waitEl) {
+      var hint = String((view && view.claudeWaitingHint) || '').trim();
+      waitEl.hidden = !hint;
+      waitEl.textContent = hint;
+    }
+
+    var padHost = root.querySelector('[data-claude-act-pad]');
+    if (padHost && padManagerMapping) {
+      var pad = padManagerMapping.codexMicroPad || {};
+      padHost.innerHTML = renderHardwarePad(padManagerMapping, pad, {
+        mode: 'run',
+        compact: true
+      });
+      patchClaudeActPadFromOverlayCells(
+        padHost,
+        (claudeActOverlaySnap && claudeActOverlaySnap.cells) || []
+      );
+      padHost.querySelectorAll('[data-micro-key]').forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          renderClaudeActDetail(btn.getAttribute('data-micro-key'));
+        });
+      });
+      if (claudeActSelectedKey) renderClaudeActDetail(claudeActSelectedKey);
+    }
+
+    var lightsEl = root.querySelector('[data-claude-act-lights]');
+    if (lightsEl) {
+      var rows = (view && view.claudeLights) || [];
+      if (!rows.length) {
+        lightsEl.innerHTML =
+          '<p class="codex-pad-mgr__hint">' +
+          esc(t(
+            'claudeActLightsEmpty',
+            '还没有 Claude activity。合并 hooks 后打开 Claude CLI（SessionStart 可先亮 Soft Pad），或点击测试注入。'
+          )) +
+          '</p>';
+      } else {
+        var table =
+          '<table class="codex-pad-mgr__claude-table"><thead><tr>' +
+          '<th></th><th>短名</th><th>type</th><th>id</th><th>host</th><th>state</th><th>source</th><th>age</th><th>event</th>' +
+          '</tr></thead><tbody>';
+        rows.forEach(function (r) {
+          table +=
+            '<tr data-host-key="' + esc(r.hostKey || '') + '" data-act="claude-light-row">' +
+            '<td><span class="codex-pad-mgr__claude-dot" data-status="' + esc(r.state || 'idle') + '"></span></td>' +
+            '<td>' + esc(r.shortLabel || '') + '</td>' +
+            '<td>' + esc(r.agentType || '') + '</td>' +
+            '<td>' + esc(r.agentId || '') + '</td>' +
+            '<td>' + esc(r.hostKey || '') + '</td>' +
+            '<td>' + esc(r.state || '') + '</td>' +
+            '<td>' + esc(r.source || '') + '</td>' +
+            '<td>' + esc(formatAgeMs(r.ageMs) || '—') + '</td>' +
+            '<td>' + esc(r.lastEvent || '') + '</td>' +
+            '</tr>';
+        });
+        table += '</tbody></table>';
+        lightsEl.innerHTML = table;
+        lightsEl.querySelectorAll('[data-act="claude-light-row"]').forEach(function (tr) {
+          tr.addEventListener('click', function () {
+            renderClaudeActDetail(tr.getAttribute('data-host-key'));
+          });
+        });
+      }
+    }
+
+    var ovEl = root.querySelector('[data-claude-act-overflow]');
+    if (ovEl) {
+      var ov = (view && view.claudeOverflow) || [];
+      var count = Number(view && view.claudeOverflowCount) || ov.length;
+      if (!count) {
+        ovEl.innerHTML = '';
+      } else {
+        var html = '<p class="codex-pad-mgr__label">Overflow · ' + esc(String(count)) + '</p><ul>';
+        ov.forEach(function (o) {
+          html +=
+            '<li>' +
+            esc(o.shortLabel || o.agentType || o.agentKey || '?') +
+            ' · ' + esc(o.state || '') +
+            ' · ' + esc(overflowReasonLabel(o.reason)) +
+            ' · ' + esc(t('claudeActOvHint', '等待释放 / 调整 status 宿主')) +
+            '</li>';
+        });
+        html += '</ul>';
+        ovEl.innerHTML = html;
+      }
+    }
+  }
+
+  function refreshClaudeActivityPad() {
+    var root = document.getElementById('codexClaudeActivityPad');
+    if (!root) return Promise.resolve(null);
+    var diagP = padInvoke('cmd_pad_status_diagnose', { limit: 48 })
+      .then(function (v) {
+        padDiagLastView = v || {};
+        return padDiagLastView;
+      })
+      .catch(function () {
+        return padDiagLastView || {};
+      });
+    var ovP = padInvoke('cmd_codex_micro_overlay_get_state', {}).catch(function () {
+      return null;
+    });
+    return Promise.all([diagP, ovP]).then(function (pair) {
+      if (pair[0] && document.querySelector('[data-pad-diag-snap]')) {
+        renderPadDiagnoseReplay(pair[0], padDiagFilter);
+      }
+      renderClaudeActivityPad(pair[0], pair[1]);
+      return refreshClaudeHookSetup().then(function () { return pair[0]; });
+    }).catch(function () {
+      return null;
+    });
+  }
+
   function applyHookSetupStatusDom(st) {
     var card = document.getElementById('codexPadHookCard');
     if (!card || !st) return;
@@ -1778,6 +2491,7 @@
     if (age) bits.push(age + ' 前');
     var lines = ['当前 · ' + bits.join(' · ')];
     if (view.message) lines.push('说明 · ' + view.message);
+    if (view.claudeWaitingHint) lines.push('等待 · ' + view.claudeWaitingHint);
     if (view.lastEvent) lines.push('事件 · ' + view.lastEvent);
     if (view.sessionId) lines.push('会话 · ' + view.sessionId);
     if (view.taskId) lines.push('任务 · ' + view.taskId);
@@ -1788,6 +2502,37 @@
       (hid.emitEnabled ? ' · HID 可发射' : ' · HID 关闭');
     if (hid.note) hidLine += ' · ' + hid.note;
     lines.push(hidLine);
+    var claudeLights = Array.isArray(view.claudeLights) ? view.claudeLights : [];
+    if (claudeLights.length) {
+      lines.push('Claude 活动灯 · ' + claudeLights.length);
+      claudeLights.forEach(function (row) {
+        var label = row.shortLabel || shortAgentType(row.agentType) || row.agentType || row.agentKey || '?';
+        var host = row.hostKey || '—';
+        var st = row.state || 'idle';
+        var src = row.source || '';
+        var ageL = formatAgeMs(row.ageMs);
+        var sticky = row.stickyUntil ? String(row.stickyUntil) : '';
+        var evt = row.lastEvent || '';
+        var parts = [label, st, 'host ' + host];
+        if (src) parts.push(src);
+        if (ageL) parts.push(ageL);
+        if (row.agentId) parts.push('id ' + row.agentId);
+        if (evt) parts.push(evt);
+        if (sticky) parts.push('sticky ' + sticky);
+        lines.push('  · ' + parts.join(' · '));
+      });
+    }
+    var ovCount = Number(view.claudeOverflowCount) || 0;
+    var ov = Array.isArray(view.claudeOverflow) ? view.claudeOverflow : [];
+    if (ovCount > 0 || ov.length) {
+      var names = ov.map(function (o) {
+        return o.shortLabel || shortAgentType(o.agentType) || o.agentType || o.agentKey || '?';
+      }).filter(Boolean);
+      lines.push(
+        'Claude overflow · ' + (ovCount || ov.length) +
+        (names.length ? ' · ' + names.join(', ') : '')
+      );
+    }
     return lines.join('\n');
   }
 
@@ -1858,12 +2603,19 @@
   function refreshPadDiagnose() {
     var listEl = document.querySelector('[data-pad-diag-replay]');
     var snapEl = document.querySelector('[data-pad-diag-snap]');
-    if (!listEl && !snapEl) return Promise.resolve(null);
+    var claudeRoot = document.getElementById('codexClaudeActivityPad');
+    if (!listEl && !snapEl && !claudeRoot) return Promise.resolve(null);
     return padInvoke('cmd_pad_status_diagnose', { limit: 48 })
       .then(function (view) {
         padDiagLastView = view || {};
-        renderPadDiagnoseReplay(padDiagLastView, padDiagFilter);
-        return view;
+        if (listEl || snapEl) renderPadDiagnoseReplay(padDiagLastView, padDiagFilter);
+        if (!claudeRoot) return padDiagLastView;
+        return padInvoke('cmd_codex_micro_overlay_get_state', {})
+          .catch(function () { return null; })
+          .then(function (ov) {
+            renderClaudeActivityPad(padDiagLastView, ov);
+            return padDiagLastView;
+          });
       })
       .catch(function () {
         padDiagLastView = null;
@@ -2007,6 +2759,160 @@
     }).catch(function () {
       toast(t('codexMicroPadStatusLightsFail', '状态灯开关失败'));
       return null;
+    });
+  }
+
+  function copyClaudeHookDraft() {
+    return padInvoke('cmd_claude_hook_setup_status', {})
+      .then(function (st) {
+        applyClaudeHookSetupDom(st || {});
+        var text = (st && (st.draftJson || st.draft_json || st.hooksDraftJson || st.hooks_draft_json)) || '';
+        if (!text) {
+          toast(t('claudeActHookCopyFail', '无法生成 Claude Hook 配置'));
+          return;
+        }
+        var done = function () {
+          toast(t(
+            'claudeActHookCopied',
+            '已复制 Claude Hook 草稿（也可在面板确认安装；需你确认后才会写入）'
+          ));
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(done).catch(function () {
+            toast(t('claudeActHookCopyFail', '无法生成 Claude Hook 配置'));
+          });
+        }
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          done();
+        } catch (e) {
+          toast(t('claudeActHookCopyFail', '无法生成 Claude Hook 配置'));
+        }
+      })
+      .catch(function () {
+        toast(t('claudeActHookCopyFail', '无法生成 Claude Hook 配置'));
+      });
+  }
+
+  function previewClaudeHookInstall() {
+    return refreshClaudeHookSetup().then(function (st) {
+      var root = document.getElementById('codexClaudeActivityPad');
+      if (!root || !st) return;
+      var pre = root.querySelector('[data-claude-setup-preview]');
+      var un = root.querySelector('[data-claude-setup-uninstall-preview]');
+      if (un) un.hidden = true;
+      if (pre) {
+        pre.hidden = false;
+        pre.textContent =
+          String(st.previewCopy || st.preview_copy || '') +
+          '\n\n--- diff ---\n' +
+          String(st.diff || '') +
+          '\n\n--- mergedPreview ---\n' +
+          String(st.mergedPreview || st.merged_preview || '');
+      }
+      var step2 = root.querySelector('[data-step-2-body]');
+      if (step2) step2.textContent = String(st.diff || '已生成预览');
+      toast(t('claudeActHookPreviewOk', '已生成安装预览'));
+    });
+  }
+
+  function confirmClaudeHookInstall() {
+    return padInvoke('cmd_claude_hook_install_confirm', {})
+      .then(function (res) {
+        if (!res || !res.ok) {
+          toast(t('claudeActHookInstallFail', '安装失败：') + ((res && res.reason) || ''));
+          return refreshClaudeHookSetup();
+        }
+        toast(t(
+          'claudeActHookInstallOk',
+          '已安装 OneTone Claude Hooks' +
+            (res.backupPath ? (' · 备份：' + res.backupPath) : '')
+        ));
+        return refreshClaudeHookSetup().then(function () {
+          return refreshClaudeActivityPad();
+        });
+      })
+      .catch(function () {
+        toast(t('claudeActHookInstallFail', '安装失败'));
+      });
+  }
+
+  function previewClaudeHookUninstall() {
+    return refreshClaudeHookSetup().then(function (st) {
+      var root = document.getElementById('codexClaudeActivityPad');
+      if (!root || !st) return;
+      var pre = root.querySelector('[data-claude-setup-preview]');
+      var un = root.querySelector('[data-claude-setup-uninstall-preview]');
+      if (pre) pre.hidden = true;
+      if (un) {
+        un.hidden = false;
+        un.textContent = String(st.uninstallPreview || st.uninstall_preview || '');
+      }
+      toast(t('claudeActHookUninstallPreviewOk', '已显示撤回说明'));
+    });
+  }
+
+  function confirmClaudeHookUninstall() {
+    return padInvoke('cmd_claude_hook_uninstall_onetone', {})
+      .then(function (res) {
+        if (!res || !res.ok) {
+          toast(t('claudeActHookUninstallFail', '撤回失败：') + ((res && res.reason) || ''));
+          return refreshClaudeHookSetup();
+        }
+        toast(t(
+          'claudeActHookUninstallOk',
+          '已撤回 OneTone Claude Hooks' +
+            (res.backupPath ? (' · 备份：' + res.backupPath) : '')
+        ));
+        return refreshClaudeHookSetup().then(function () {
+          return refreshClaudeActivityPad();
+        });
+      })
+      .catch(function () {
+        toast(t('claudeActHookUninstallFail', '撤回失败'));
+      });
+  }
+
+  function openClaudeSettingsFile() {
+    return refreshClaudeHookSetup().then(function (st) {
+      var path = (st && (st.settingsPath || st.settings_path)) || '';
+      if (!path) {
+        toast(t('claudeActHookOpenFail', '无配置路径'));
+        return;
+      }
+      var url = 'file:///' + String(path).replace(/\\/g, '/');
+      return padInvoke('cmd_open_url', { url: url }).then(function () {
+        toast(t('claudeActHookOpenOk', '已尝试打开配置文件'));
+      }).catch(function () {
+        toast(t('claudeActHookOpenFail', '无法打开配置文件'));
+      });
+    });
+  }
+
+  function toggleClaudeCliInjectPref(m) {
+    if (!m || !m.id) {
+      toast(t('claudeCliPrefFail', '无 Soft Pad 映射'));
+      return Promise.resolve();
+    }
+    var root = document.getElementById('codexClaudeActivityPad');
+    var btn = root && root.querySelector('[data-act="claude-cli-pref-toggle"]');
+    var currentlyOn = btn && btn.getAttribute('data-enabled') === '1';
+    var next = !currentlyOn;
+    return padInvoke('cmd_claude_cli_inject_pref_set', {
+      mappingId: String(m.id),
+      enabled: next
+    }).then(function () {
+      toast(next
+        ? t('claudeCliPrefOnOk', '已允许高置信时启用 CLI 键注入')
+        : t('claudeCliPrefOffOk', '已关闭 CLI 键注入偏好'));
+      return refreshClaudeHookSetup();
+    }).catch(function () {
+      toast(t('claudeCliPrefFail', '偏好切换失败'));
     });
   }
 
@@ -2375,6 +3281,7 @@
         : '') +
       '</div>' +
       renderHookStatusCard(pad) +
+      renderClaudeActivityPadCard() +
       renderBindingValidateCard() +
       (padUiMode === 'run'
         ? ('<div class="codex-micro-pad__run-status" data-status="' + esc(padRunStatus) + '"' +
@@ -2504,6 +3411,77 @@
         if (diagDetails.open) refreshPadDiagnose();
       });
     }
+    var claudeRefreshBtn = body.querySelector('[data-act="claude-act-refresh"]');
+    if (claudeRefreshBtn) {
+      claudeRefreshBtn.addEventListener('click', function () { refreshPadDiagnose(); });
+    }
+    var claudeRedetect = body.querySelector('[data-act="claude-hook-redetect"]');
+    if (claudeRedetect) {
+      claudeRedetect.addEventListener('click', function () {
+        redetectClaudeHookSetup();
+      });
+    }
+    var claudeHookCopy = body.querySelector('[data-act="claude-hook-copy"]');
+    if (claudeHookCopy) {
+      claudeHookCopy.addEventListener('click', function () { copyClaudeHookDraft(); });
+    }
+    var claudeHookOpen = body.querySelector('[data-act="claude-hook-open"]');
+    if (claudeHookOpen) {
+      claudeHookOpen.addEventListener('click', function () { openClaudeSettingsFile(); });
+    }
+    var claudeHookPreview = body.querySelector('[data-act="claude-hook-preview"]');
+    if (claudeHookPreview) {
+      claudeHookPreview.addEventListener('click', function () { previewClaudeHookInstall(); });
+    }
+    var claudeHookInstall = body.querySelector('[data-act="claude-hook-install"]');
+    if (claudeHookInstall) {
+      claudeHookInstall.addEventListener('click', function () { confirmClaudeHookInstall(); });
+    }
+    var claudeHookUnPrev = body.querySelector('[data-act="claude-hook-uninstall-preview"]');
+    if (claudeHookUnPrev) {
+      claudeHookUnPrev.addEventListener('click', function () { previewClaudeHookUninstall(); });
+    }
+    var claudeHookUn = body.querySelector('[data-act="claude-hook-uninstall"]');
+    if (claudeHookUn) {
+      claudeHookUn.addEventListener('click', function () { confirmClaudeHookUninstall(); });
+    }
+    var claudeCliPref = body.querySelector('[data-act="claude-cli-pref-toggle"]');
+    if (claudeCliPref) {
+      claudeCliPref.addEventListener('click', function () { toggleClaudeCliInjectPref(m); });
+    }
+    body.querySelectorAll('[data-act="claude-inject"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var preset = btn.getAttribute('data-preset') || '';
+        padInvoke('cmd_claude_activity_inject', { preset: preset })
+          .then(function () { return refreshPadDiagnose(); })
+          .then(function () {
+            toast(t('claudeActInjOk', '已注入测试事件（claude_hook）'));
+          })
+          .catch(function () {
+            toast(t('claudeActInjFail', '注入失败'));
+          });
+      });
+    });
+    var claudeClearBtn = body.querySelector('[data-act="claude-act-clear"]');
+    if (claudeClearBtn) {
+      claudeClearBtn.addEventListener('click', function () {
+        padInvoke('cmd_claude_activity_clear', {})
+          .then(function () { return refreshPadDiagnose(); })
+          .then(function () {
+            toast(t('claudeActClearOk', '已清空测试活动灯'));
+          })
+          .catch(function () {
+            toast(t('claudeActClearFail', '清空失败'));
+          });
+      });
+    }
+    body.querySelectorAll('[data-claude-act-pad-details],[data-claude-act-lights-details]').forEach(function (d) {
+      d.addEventListener('toggle', function () {
+        if (d.open) refreshClaudeActivityPad();
+      });
+    });
+    // Initial Claude Activity paint (shared diagnose cache).
+    refreshClaudeActivityPad();
     var bindRefreshBtn = body.querySelector('[data-act="pad-bind-refresh"]');
     if (bindRefreshBtn) {
       bindRefreshBtn.addEventListener('click', function () { refreshBindingDiagnose(m); });
@@ -3413,6 +4391,11 @@
     LAYOUT: LAYOUT,
     cellByMicroId: cellByMicroId,
     resolveStatusLightMicroKeyId: resolveStatusLightMicroKeyId,
+    resolveClaudeMainLightMicroKeyId: resolveClaudeMainLightMicroKeyId,
+    assignClaudeAgentLightHosts: assignClaudeAgentLightHosts,
+    shortAgentType: shortAgentType,
+    CLAUDE_MAIN_KEY: CLAUDE_MAIN_KEY,
+    CLAUDE_AG_POOL: CLAUDE_AG_POOL,
     ICON_DEFS: ICON_DEFS,
     DEFAULT_ICON_BY_MICRO: DEFAULT_ICON_BY_MICRO,
     sourceId: sourceId,

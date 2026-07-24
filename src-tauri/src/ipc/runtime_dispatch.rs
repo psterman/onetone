@@ -619,14 +619,30 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "invalid_key" });
     }
     let app = window.app_handle();
+    let claude_inject_ok = crate::claude_cli_session::claude_cli_can_inject().ok
+        || crate::claude_cli_session::pending_approval_view().active;
     let session_ok = crate::codex_numpad_layer::codex_foreground_for_micro()
-        || window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL;
+        || window.label() == crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL
+        || claude_inject_ok;
     if !session_ok {
         if key_down {
             crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         }
         return serde_json::json!({ "ok": false, "reason": "not_foreground" });
+    }
+
+    // Claude Soft Pad C1/C2: ACT12/ACT08 when latch high or pending Hook approval.
+    if key_down {
+        if let Some(handled) = crate::claude_cli_session::try_softpad_fire(micro_key_id) {
+            let ok = handled.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+            crate::codex_micro_overlay::note_pad_run_status(
+                if ok { "done" } else { "failed" },
+                micro_key_id,
+            );
+            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+            return handled;
+        }
     }
 
     // Numpad mode: ENC summons Codex; NP* inject digits; other Micro keys blocked.

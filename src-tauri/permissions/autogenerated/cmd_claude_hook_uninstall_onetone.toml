@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-claude-hook-uninstall-onetone"
+description = "Enables the cmd_claude_hook_uninstall_onetone command without any pre-configured scope."
+commands.allow = ["cmd_claude_hook_uninstall_onetone"]
+
+[[permission]]
+identifier = "deny-cmd-claude-hook-uninstall-onetone"
+description = "Denies the cmd_claude_hook_uninstall_onetone command without any pre-configured scope."
+commands.deny = ["cmd_claude_hook_uninstall_onetone"]

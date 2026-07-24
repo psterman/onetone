@@ -5,6 +5,7 @@
 
 mod adapters;
 mod arbiter;
+pub mod claude_lights;
 mod log;
 mod model;
 mod store;
@@ -19,6 +20,7 @@ pub use adapters::codex::{
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
 pub use adapters::soft_rgb::{rgb_for_pad, rgb_for_ui_status, ui_status_from_pad};
 pub use arbiter::{propose, ProposeResult};
+pub use claude_lights::{ClaudeAgentLightState, CLAUDE_MAIN_KEY, short_agent_type};
 pub use log::{log_path, tail_events, PadStatusLogRow};
 pub use model::{
     Confidence, PadSource, PadState, PadStatus, PAD_SOURCE_RANK,
@@ -33,14 +35,17 @@ pub use store::{reset_for_test, test_lock};
 
 use crate::codex_app_state::CodexAppStatePayload;
 
-/// Ingest a validated Codex hook/app payload into State Core (and keep legacy view in sync upstream).
+/// Ingest a validated Codex/Claude hook/app payload into State Core (and Claude lights).
 pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
     if payload.source.trim() == "claude_hook" || payload.source.trim() == "claude_app" {
         return ingest_claude_payload(&ClaudeHookPayload {
             event: payload.event.clone(),
             session_id: payload.session_id.clone(),
             turn_id: payload.turn_id.clone(),
+            agent_id: payload.agent_id.clone(),
+            agent_type: payload.agent_type.clone(),
             ts: payload.ts,
+            source: payload.source.clone(),
         });
     }
     ingest_codex_app_payload(payload)

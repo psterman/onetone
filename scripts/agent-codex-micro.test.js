@@ -592,6 +592,172 @@ assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/pad_status/adap
 assert.ok(fs.existsSync(path.join(__dirname, 'claude-hook-probe.js')));
 assert.ok(fs.existsSync(path.join(__dirname, 'claude-hooks.example.json')));
 assert.ok(fs.readFileSync(path.join(__dirname, 'claude-hook-probe.js'), 'utf8').indexOf('claude_hook') >= 0);
+(function () {
+  var probe = require('./claude-hook-probe.js');
+  assert.equal(probe.approvalUrlFromStateUrl('http://127.0.0.1:8796/api/codex-app/state'), 'http://127.0.0.1:8796/api/claude-approval');
+  var out = probe.permissionDecisionStdout('allow');
+  assert.ok(out.indexOf('PermissionRequest') >= 0);
+  assert.ok(out.indexOf('"behavior":"allow"') >= 0 || out.indexOf('"behavior": "allow"') >= 0);
+  assert.ok(probe.DEFAULT_APPROVAL_URL.indexOf('/api/claude-approval') >= 0);
+})();
+assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/codex_micro_protocol_server.rs'), 'utf8').indexOf('CLAUDE_APPROVAL_PATH') >= 0);
+assert.ok(typeof Pad.assignClaudeAgentLightHosts === 'function');
+assert.equal(Pad.resolveClaudeMainLightMicroKeyId({ keys: Pad.LAYOUT.defaultRoutes }), 'AG01');
+(function () {
+  var sticky = {};
+  var r1 = Pad.assignClaudeAgentLightHosts(
+    { keys: Pad.LAYOUT.defaultRoutes },
+    [
+      { agentKey: 'claude/main', state: 'running', firstSeenAt: 1 },
+      { agentKey: 'a1', agentId: 'a1', agentType: 'rev', state: 'running', firstSeenAt: 2 },
+      { agentKey: 'a2', agentId: 'a2', agentType: 'test', state: 'running', firstSeenAt: 3 }
+    ],
+    sticky
+  );
+  assert.ok(r1.assigned.length >= 2);
+  var hosts = r1.assigned.map(function (x) { return x.microKeyId; });
+  assert.ok(hosts.indexOf('AG04') < 0, 'Claude must not steal Codex status host AG04');
+  assert.equal(sticky['a1'], r1.assigned.find(function (x) { return x.light.agentKey === 'a1'; }).microKeyId);
+  var r2 = Pad.assignClaudeAgentLightHosts(
+    { keys: Pad.LAYOUT.defaultRoutes },
+    [{ agentKey: 'a1', agentId: 'a1', state: 'running', firstSeenAt: 99 }],
+    sticky
+  );
+  assert.equal(r2.assigned[0].microKeyId, sticky.a1, 'sticky reuse same host');
+})();
+assert.ok(padUiSrc.indexOf('assignClaudeAgentLightHosts') >= 0);
+assert.ok(padUiSrc.indexOf('官方多灯') < 0);
+assert.ok(padUiSrc.indexOf('官方硬件多灯') < 0);
+var docsPad = fs.readFileSync(path.join(__dirname, '../docs/pad-status-core.md'), 'utf8');
+var docsHook = fs.readFileSync(path.join(__dirname, '../docs/codex-hook-onetone-setup.md'), 'utf8');
+assert.ok(docsPad.indexOf('Claude Agent Activity Pad') >= 0 || docsPad.indexOf('自建聚合') >= 0);
+assert.ok(docsPad.indexOf('v.oai.thstatus') >= 0);
+assert.ok(docsHook.indexOf('自建') >= 0);
+assert.ok(docsHook.indexOf('非官方硬件多灯协议') >= 0);
+// Soft RGB must not read Claude multi-lights
+var overlayRs = fs.readFileSync(path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'), 'utf8');
+var rgbFn = overlayRs.match(/fn resolve_overlay_rgb\([\s\S]*?\n\}/);
+assert.ok(rgbFn, 'resolve_overlay_rgb present');
+assert.ok(rgbFn[0].indexOf('claude') < 0, 'Soft RGB must not read Claude lights');
+assert.ok(rgbFn[0].indexOf('agent_lights') < 0);
+assert.ok(overlayRs.indexOf('effective_act_context') >= 0);
+assert.ok(fs.readFileSync(path.join(__dirname, '../src-tauri/src/pad_status/claude_lights.rs'), 'utf8').indexOf('FAILED_SETTLE_MS') >= 0);
+(function () {
+  var sticky = {};
+  var lights = [];
+  for (var i = 0; i < 8; i++) {
+    lights.push({ agentKey: 'x' + i, agentId: 'x' + i, agentType: 't', state: 'running', firstSeenAt: i });
+  }
+  var full = Pad.assignClaudeAgentLightHosts({ keys: Pad.LAYOUT.defaultRoutes }, lights, sticky);
+  assert.ok(full.assigned.length >= 1);
+  assert.ok(full.assigned.every(function (x) {
+    return x.microKeyId.indexOf('ACT') !== 0 && x.microKeyId.indexOf('NAV') !== 0 && x.microKeyId !== 'ENC';
+  }), 'Claude hosts must not occupy ACT/NAV/ENC');
+  assert.ok(full.overflow && full.overflow.length > 0, 'overflow when AG pool exhausted');
+})();
+assert.ok(typeof Pad.shortAgentType === 'function');
+assert.equal(Pad.shortAgentType('code-reviewer'), 'reviewer');
+assert.equal(Pad.shortAgentType('test-runner'), 'tests');
+assert.equal(Pad.shortAgentType('debugger'), 'debug');
+assert.equal(Pad.shortAgentType(''), 'Claude');
+assert.equal(Pad.shortAgentType('team/explorer'), 'explorer');
+assert.ok(padUiSrc.indexOf('shortAgentType') >= 0);
+assert.ok(padUiSrc.indexOf('Claude 活动灯') >= 0);
+assert.ok(padUiSrc.indexOf('renderClaudeActivityPadCard') >= 0);
+assert.ok(padUiSrc.indexOf('codexClaudeActivityPad') >= 0);
+assert.ok(padUiSrc.indexOf('patchClaudeActPadFromOverlayCells') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_activity_inject') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_activity_clear') >= 0);
+assert.ok(padUiSrc.indexOf('清空测试活动灯') >= 0);
+assert.ok(padUiSrc.indexOf('等待事件') >= 0 || padUiSrc.indexOf('脚本存在，等待 Claude 事件') >= 0);
+assert.ok(padUiSrc.indexOf('Claude Activity 接入') >= 0);
+assert.ok(padUiSrc.indexOf('确认安装') >= 0);
+assert.ok(padUiSrc.indexOf('确认撤回') >= 0);
+assert.ok(padUiSrc.indexOf('允许高置信时启用') >= 0);
+assert.ok(padUiSrc.indexOf('已启用 Claude 操作') < 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_hook_install_confirm') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_hook_uninstall_onetone') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_cli_inject_pref_set') >= 0);
+assert.ok(padUiSrc.indexOf('官方多灯') < 0);
+assert.ok(padUiSrc.indexOf('官方硬件多灯') < 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_micro_overlay_get_state') >= 0);
+assert.ok(padUiSrc.indexOf('Claude native thstatus') < 0);
+assert.ok(docsPad.indexOf('Claude Soft Pad 先可见') >= 0);
+assert.ok(docsPad.indexOf('SessionStart') >= 0);
+assert.ok(docsPad.indexOf('Terminal/PowerShell') >= 0);
+assert.ok(docsPad.indexOf('visibleReason') >= 0);
+assert.ok(overlayRs.indexOf('CLAUDE_ACTIVITY_SHOW_MS') >= 0);
+assert.ok(overlayRs.indexOf('claude_activity_hold') >= 0);
+assert.ok(overlayRs.indexOf('overlay_should_be_visible_host') >= 0);
+assert.ok(overlayRs.indexOf('visible_reason') >= 0);
+assert.ok(overlayRs.indexOf('WindowsTerminal') < 0);
+assert.ok(overlayRs.indexOf('powershell.exe') < 0);
+assert.ok(padUiSrc.indexOf('cmd_claude_hook_setup_status') >= 0);
+assert.ok(padUiSrc.indexOf('复制配置') >= 0);
+assert.ok(padUiSrc.indexOf('session_start') >= 0);
+assert.ok(padUiSrc.indexOf('允许高置信时启用') >= 0 || padUiSrc.indexOf('CLI 映射') >= 0);
+assert.ok(padUiSrc.indexOf('Terminal→Claude') >= 0);
+assert.ok(padUiSrc.indexOf('Claude Activity 接入') >= 0);
+assert.ok(padUiSrc.indexOf('官方硬件多灯协议') < 0);
+var hooksEx = fs.readFileSync(path.join(__dirname, '../scripts/claude-hooks.example.json'), 'utf8');
+assert.ok(hooksEx.indexOf('SessionStart') >= 0);
+assert.ok(hooksEx.indexOf('SubagentStart') >= 0);
+assert.ok(hooksEx.indexOf('claude-activity-v1') >= 0);
+assert.ok(hooksEx.indexOf('"timeout": 60') >= 0 || hooksEx.indexOf('"timeout":60') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_cli_inject') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_cli_decide') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_hook_install_confirm') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_hook_uninstall_onetone') >= 0);
+assert.ok(buildRs.indexOf('cmd_claude_hook_setup_status') >= 0);
+assert.ok(buildRs.indexOf('cmd_claude_hook_install_confirm') >= 0);
+var claudeSess = fs.readFileSync(path.join(__dirname, '../src-tauri/src/claude_cli_session.rs'), 'utf8');
+assert.ok(claudeSess.indexOf('try_softpad_fire') >= 0);
+assert.ok(claudeSess.indexOf('cli_inject_pref_enabled') >= 0 || claudeSess.indexOf('cli_inject_pref_disabled') >= 0);
+assert.ok(claudeSess.indexOf('overlay_host_allows_show') < 0);
+assert.ok(claudeSess.indexOf('note_permission_request') >= 0);
+var appIpc = fs.readFileSync(path.join(__dirname, '../src-tauri/permissions/app-ipc.toml'), 'utf8');
+assert.ok(appIpc.indexOf('allow-cmd-claude-activity-inject') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-activity-clear') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-hook-setup-status') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-hook-install-confirm') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-hook-uninstall-onetone') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-cli-inject-pref-set') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-cli-inject') >= 0);
+assert.ok(appIpc.indexOf('allow-cmd-claude-cli-decide') >= 0);
+assert.ok(fs.existsSync(path.join(__dirname, '../src-tauri/permissions/autogenerated/cmd_claude_activity_inject.toml')));
+assert.ok(fs.existsSync(path.join(__dirname, '../src-tauri/permissions/autogenerated/cmd_claude_activity_clear.toml')));
+assert.ok(buildRs.indexOf('cmd_claude_activity_inject') >= 0);
+assert.ok(buildRs.indexOf('cmd_claude_activity_clear') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_activity_inject') >= 0);
+assert.ok(libRs.indexOf('cmd_claude_activity_clear') >= 0);
+var overlayHtml = fs.readFileSync(path.join(__dirname, '../src/codex-micro-overlay.html'), 'utf8');
+assert.ok(overlayHtml.indexOf('claudeWaitingHint') >= 0);
+assert.ok(overlayHtml.indexOf('waitingHint') >= 0);
+assert.ok(
+  /light===['"]idle['"]\s*&&\s*waitingHint/.test(overlayHtml.replace(/\s+/g, '')) ||
+    overlayHtml.indexOf('light===\'idle\' && waitingHint') >= 0 ||
+    overlayHtml.indexOf('light==="idle" && waitingHint') >= 0 ||
+    overlayHtml.indexOf("light==='idle' && waitingHint") >= 0,
+  'idle + waitingHint meta branch'
+);
+assert.ok(fullOverflowHasShortLabel(), 'overflow items carry shortLabel');
+function fullOverflowHasShortLabel() {
+  var sticky = {};
+  var lights = [];
+  for (var i = 0; i < 8; i++) {
+    lights.push({
+      agentKey: 'y' + i,
+      agentId: 'y' + i,
+      agentType: 'code-reviewer',
+      state: 'running',
+      firstSeenAt: i
+    });
+  }
+  var full = Pad.assignClaudeAgentLightHosts({ keys: Pad.LAYOUT.defaultRoutes }, lights, sticky);
+  return full.overflow.some(function (o) {
+    return o && o.shortLabel === 'reviewer';
+  });
+}
 assert.ok(typeof Pad.statusSourceLabelFor === 'function');
 assert.equal(Pad.statusSourceLabelFor('hook', 'claude'), 'Claude Hook');
 assert.equal(Pad.statusSourceLabelFor('hook', 'codex'), 'Codex Hook');

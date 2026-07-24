@@ -1,22 +1,25 @@
-//! Claude Code / Claude Desktop → PadStatusCandidate.
+//! Claude Code / Claude Desktop → PadStatusCandidate + Claude multi-lights.
 //!
-//! Keyboard core only sees unified PadStatus (`agent=claude`). Does not forge HID / thstatus.
+//! SubagentStart/Stop update `claude_lights` only — never primary PadStatus.
+//! Does not forge HID / thstatus.
 
 use crate::pad_status::arbiter::DONE_SETTLE_MS;
+use crate::pad_status::claude_lights::{self, affects_primary_pad_status};
 use crate::pad_status::model::{
     Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
 };
 use crate::pad_status::store;
 
-/// Map Claude Code hook lifecycle event → core UI state.
-/// Subagent* / Notification / compact: record-only (None).
+/// Map Claude Code hook lifecycle event → core UI state for primary PadStatus.
+/// Subagent* never maps here (handled only by claude_lights).
 pub fn map_claude_event_to_state(event: &str) -> Option<&'static str> {
     match event.trim() {
         "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "PostToolBatch" => Some("running"),
         "PermissionRequest" | "Elicitation" => Some("needs_input"),
         "Stop" | "TaskCompleted" => Some("done"),
         "StopFailure" | "PostToolUseFailure" => Some("error"),
-        "SessionStart" | "SessionEnd" => Some("idle"),
+        // Session* never touch primary PadStatus (near-window bump only for SessionStart).
+        "SessionStart" | "SessionEnd" | "SubagentStart" | "SubagentStop" => None,
         _ => None,
     }
 }
@@ -27,7 +30,11 @@ pub struct ClaudeHookPayload {
     pub event: String,
     pub session_id: String,
     pub turn_id: String,
+    pub agent_id: String,
+    pub agent_type: String,
     pub ts: u64,
+    /// claude_hook | claude_app
+    pub source: String,
 }
 
 impl ClaudeHookPayload {
@@ -53,11 +60,19 @@ impl ClaudeHookPayload {
             .and_then(|m| m.get("ts"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0);
+        let source = get(&["source"]);
         Self {
             event: get(&["event", "hook_event_name", "hookEventName"]),
             session_id: get(&["sessionId", "session_id"]),
             turn_id: get(&["turnId", "turn_id", "task_id", "taskId"]),
+            agent_id: get(&["agentId", "agent_id"]),
+            agent_type: get(&["agentType", "agent_type"]),
             ts,
+            source: if source.is_empty() {
+                "claude_hook".into()
+            } else {
+                source
+            },
         }
     }
 }
@@ -81,6 +96,41 @@ pub fn ingest_claude_payload(payload: &ClaudeHookPayload) -> PadStatus {
 pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadStatus {
     let event = payload.event.trim();
     let incoming_session = payload.session_id.trim();
+    let src_label = if payload.source.trim() == "claude_app" {
+        "claude_app"
+    } else {
+        "claude_hook"
+    };
+
+    let at = if payload.ts > 0 { payload.ts } else { now };
+
+    // SessionStart: Soft Pad near-window only — no light, no primary.
+    if claude_lights::is_session_start(event) {
+        claude_lights::bump_activity(src_label, at);
+        return store::snapshot_at(now);
+    }
+    if claude_lights::is_session_lifecycle(event) {
+        return store::snapshot_at(now);
+    }
+
+    // Always feed multi-light store (Subagent* included). Never skip this for Subagent.
+    claude_lights::apply_claude_light(
+        event,
+        &payload.agent_id,
+        &payload.agent_type,
+        src_label,
+        &payload.session_id,
+        &payload.turn_id,
+        payload.ts,
+        now,
+    );
+    // Durable Soft Pad near-window stamp (even when light map skips unknown events).
+    claude_lights::bump_activity(src_label, at);
+
+    // Subagent* must not touch primary PadStatus.
+    if !affects_primary_pad_status(event) {
+        return store::snapshot_at(now);
+    }
 
     let cur = store::snapshot_at(now);
     let sticky = matches!(
@@ -93,12 +143,11 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
             .as_ref()
             .map(|s| !s.is_empty() && s != incoming_session)
             .unwrap_or(false);
-    if sticky && foreign && matches!(event, "Stop" | "SessionStart" | "SessionEnd") {
+    if sticky && foreign && matches!(event, "Stop") {
         return cur;
     }
 
     let Some(state_str) = map_claude_event_to_state(event) else {
-        // Record-only events: keep status, refresh last_event when same agent.
         return cur;
     };
     let state = PadState::parse(state_str).unwrap_or(PadState::Idle);
@@ -146,12 +195,20 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
             last_event: Some(event.to_string()),
         },
     };
-    store::apply_candidate_at(cand, now).winner
+    let winner = store::apply_candidate_at(cand, now).winner;
+    if matches!(event, "PermissionRequest" | "Elicitation") {
+        crate::claude_cli_session::note_permission_request(
+            incoming_session,
+            payload.turn_id.trim(),
+        );
+    }
+    winner
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pad_status::claude_lights;
     use crate::pad_status::store::{reset_for_test, test_lock};
 
     #[test]
@@ -161,18 +218,49 @@ mod tests {
         assert_eq!(map_claude_event_to_state("Stop"), Some("done"));
         assert_eq!(map_claude_event_to_state("StopFailure"), Some("error"));
         assert_eq!(map_claude_event_to_state("SubagentStart"), None);
+        assert_eq!(map_claude_event_to_state("SessionStart"), None);
+        assert_eq!(map_claude_event_to_state("SessionEnd"), None);
+    }
+
+    #[test]
+    fn session_start_bumps_activity_without_light_or_primary() {
+        let _g = test_lock();
+        reset_for_test();
+        claude_lights::reset_for_test();
+        let before = store::snapshot_at(10);
+        assert_eq!(before.state, "idle");
+        let after = ingest_claude_payload_at(
+            &ClaudeHookPayload {
+                event: "SessionStart".into(),
+                session_id: "s-sess".into(),
+                turn_id: String::new(),
+                agent_id: String::new(),
+                agent_type: String::new(),
+                ts: 100,
+                source: "claude_hook".into(),
+            },
+            100,
+        );
+        assert_eq!(after.state, "idle");
+        assert!(claude_lights::snapshot_active(100).is_empty());
+        assert_eq!(claude_lights::last_activity_age_ms(150), Some(50));
+        assert!(crate::codex_micro_overlay::claude_activity_hold_at(150));
     }
 
     #[test]
     fn ingest_sets_agent_claude_and_running() {
         let _g = test_lock();
         reset_for_test();
+        claude_lights::reset_for_test();
         let pad = ingest_claude_payload_at(
             &ClaudeHookPayload {
                 event: "UserPromptSubmit".into(),
                 session_id: "s1".into(),
                 turn_id: "t1".into(),
+                agent_id: String::new(),
+                agent_type: String::new(),
                 ts: 100,
+                source: "claude_hook".into(),
             },
             100,
         );
@@ -183,15 +271,47 @@ mod tests {
     }
 
     #[test]
+    fn subagent_does_not_mutate_primary_pad() {
+        let _g = test_lock();
+        reset_for_test();
+        claude_lights::reset_for_test();
+        // Seed Codex-like primary idle
+        let before = store::snapshot_at(1);
+        assert_eq!(before.state, "idle");
+        let after = ingest_claude_payload_at(
+            &ClaudeHookPayload {
+                event: "SubagentStart".into(),
+                session_id: "s".into(),
+                turn_id: String::new(),
+                agent_id: "agent-a".into(),
+                agent_type: "code-reviewer".into(),
+                ts: 50,
+                source: "claude_hook".into(),
+            },
+            50,
+        );
+        assert_eq!(after.state, "idle");
+        assert!(after.agent.is_none() || after.agent.as_deref() != Some("claude") || after.last_event.as_deref() != Some("SubagentStart"));
+        let lights = claude_lights::snapshot_active(50);
+        assert_eq!(lights.len(), 1);
+        assert_eq!(lights[0].agent_id, "agent-a");
+        assert_eq!(lights[0].state, "running");
+    }
+
+    #[test]
     fn permission_then_stop() {
         let _g = test_lock();
         reset_for_test();
+        claude_lights::reset_for_test();
         let _ = ingest_claude_payload_at(
             &ClaudeHookPayload {
                 event: "PermissionRequest".into(),
                 session_id: "s".into(),
                 turn_id: String::new(),
+                agent_id: String::new(),
+                agent_type: String::new(),
                 ts: 1,
+                source: "claude_hook".into(),
             },
             1,
         );
@@ -200,7 +320,10 @@ mod tests {
                 event: "Stop".into(),
                 session_id: "s".into(),
                 turn_id: String::new(),
+                agent_id: String::new(),
+                agent_type: String::new(),
                 ts: 2,
+                source: "claude_hook".into(),
             },
             2,
         );

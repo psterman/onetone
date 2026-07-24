@@ -290,10 +290,11 @@
       var msg=String(s&&(s.appMessage||s.app_message)||'').trim();
       var taskId=String(s&&(s.appTaskId||s.app_task_id)||'').trim();
       var sessionId=String(s&&(s.appSessionId||s.app_session_id)||'').trim();
+      var waitingHint=String(s&&(s.claudeWaitingHint||s.claude_waiting_hint)||'').trim();
       // Snapshot-only: never re-derive light from lastEvent on the FE.
       var light=String(s&&(s.appStatus||s.app_status)||'').trim()||'idle';
-      // Event-driven only: hide quiet idle so the bar is not permanently sticky.
-      if(!enabled || (!lastEv && !lastSrc) || light==='idle'){
+      // Quiet idle: hide unless Claude waiting hint (copy-only; no lamp color).
+      if(!enabled || (!lastEv && !lastSrc && !waitingHint) || (light==='idle' && !waitingHint)){
         overlayAppMeta.hidden=true;
         if(overlayAppMetaRow) overlayAppMetaRow.textContent='';
         if(overlayAppMetaTask){
@@ -301,6 +302,19 @@
           overlayAppMetaTask.hidden=true;
         }
         overlayAppMeta.removeAttribute('title');
+        overlayAppMeta.removeAttribute('data-light');
+        wrap.classList.remove('is-pass-through');
+        return;
+      }
+      if(light==='idle' && waitingHint){
+        overlayAppMeta.hidden=false;
+        if(overlayAppMetaRow) overlayAppMetaRow.textContent=waitingHint;
+        else overlayAppMeta.textContent=waitingHint;
+        if(overlayAppMetaTask){
+          overlayAppMetaTask.textContent='';
+          overlayAppMetaTask.hidden=true;
+        }
+        overlayAppMeta.setAttribute('title', waitingHint);
         overlayAppMeta.removeAttribute('data-light');
         wrap.classList.remove('is-pass-through');
         return;
@@ -325,6 +339,7 @@
 
       var taskBits=[];
       if(msg) taskBits.push(msg);
+      if(waitingHint && light!=='idle') taskBits.push(waitingHint);
       var tid=shortId(taskId);
       var sid=shortId(sessionId);
       if(tid) taskBits.push('任务 '+tid);

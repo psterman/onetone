@@ -45,6 +45,13 @@ static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new()
 const STATUS_RUNNING_MS: u64 = 800;
 const STATUS_DONE_MS: u64 = 600;
 const STATUS_FAILED_MS: u64 = 1200;
+/// Soft Pad stays host-visible while Claude Hook/App activity is within this window.
+pub const CLAUDE_ACTIVITY_SHOW_MS: u64 = 5 * 60 * 1000;
+
+#[cfg(test)]
+static TEST_FORCE_CODEX_FG: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new();
+#[cfg(test)]
+static TEST_FORCE_CLAUDE_FG: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new();
 
 fn active_micro_key() -> &'static Mutex<String> {
     ACTIVE_MICRO_KEY.get_or_init(|| Mutex::new(String::new()))
@@ -59,8 +66,40 @@ fn last_foreground_codex() -> &'static ParkingMutex<bool> {
 }
 
 #[cfg(test)]
+fn test_force_codex_fg() -> &'static ParkingMutex<Option<bool>> {
+    TEST_FORCE_CODEX_FG.get_or_init(|| ParkingMutex::new(None))
+}
+
+#[cfg(test)]
+fn test_force_claude_fg() -> &'static ParkingMutex<Option<bool>> {
+    TEST_FORCE_CLAUDE_FG.get_or_init(|| ParkingMutex::new(None))
+}
+
+#[cfg(test)]
 pub(crate) fn test_set_foreground_latch(v: bool) {
     *last_foreground_codex().lock() = v;
+    *fg_confirm().lock() = (v, 2);
+    *test_force_codex_fg().lock() = Some(v);
+}
+
+#[cfg(test)]
+pub(crate) fn test_set_claude_foreground(v: bool) {
+    *test_force_claude_fg().lock() = Some(v);
+}
+
+#[cfg(test)]
+pub(crate) fn test_clear_fg_overrides() {
+    *test_force_codex_fg().lock() = None;
+    *test_force_claude_fg().lock() = None;
+    *fg_confirm().lock() = (false, 0);
+    *last_foreground_codex().lock() = false;
+}
+
+/// Prime single-sample debounce so the next snapshot/tick sees a stable host.
+#[cfg(test)]
+pub(crate) fn test_prime_visible_host() {
+    let _ = overlay_should_be_visible_host();
+    let _ = overlay_should_be_visible_host();
 }
 
 fn last_pass_through() -> &'static ParkingMutex<bool> {
@@ -246,6 +285,11 @@ pub struct CodexMicroOverlayRgb {
 #[serde(rename_all = "camelCase")]
 pub struct CodexMicroOverlaySnapshot {
     pub visible: bool,
+    /// Host-side reason (not final visible): codex_foreground | overlay_foreground |
+    /// needs_input | claude_foreground | claude_activity | hidden.
+    /// `hidden` only when raw host is fully false; may be `claude_activity` while visible=false
+    /// if overlay_enabled is off.
+    pub visible_reason: String,
     pub enabled: bool,
     pub overlay_enabled: bool,
     /// Derived: "codex" when pad.enabled, else "numpad".
@@ -289,7 +333,28 @@ pub struct CodexMicroOverlaySnapshot {
     pub app_task_id: String,
     /// State Core session id (optional).
     pub app_session_id: String,
+    /// Claude Hook multi-lights (OneTone-built; not native thstatus).
+    pub agent_lights: Vec<crate::pad_status::ClaudeAgentLightState>,
+    /// When AG pool is full: short overflow hint (empty if none). Kept for FE compat.
+    pub agent_lights_overflow: String,
+    /// Structured overflow agents (diagnose / tooling; overlay should not render loudly).
+    pub agent_lights_overflow_items: Vec<ClaudeOverflowItem>,
+    /// Copy-only: which Claude agent waits for confirm when primary context is idle.
+    pub claude_waiting_hint: String,
     pub cells: Vec<CodexMicroOverlayCell>,
+}
+
+/// Unhosted Claude agent when AG pool is exhausted.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeOverflowItem {
+    pub agent_key: String,
+    pub agent_id: String,
+    pub agent_type: String,
+    pub short_label: String,
+    pub state: String,
+    /// pool_full | status_host | layout
+    pub reason: String,
 }
 
 struct OverlayCellDef {
@@ -464,13 +529,120 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
 
 #[cfg(windows)]
 fn codex_is_foreground() -> bool {
+    #[cfg(test)]
+    if let Some(v) = *test_force_codex_fg().lock() {
+        return v;
+    }
     crate::app_identity::foreground_app_target_id()
         .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID)
 }
 
 #[cfg(not(windows))]
 fn codex_is_foreground() -> bool {
+    #[cfg(test)]
+    if let Some(v) = *test_force_codex_fg().lock() {
+        return v;
+    }
     false
+}
+
+#[cfg(windows)]
+fn claude_is_foreground() -> bool {
+    #[cfg(test)]
+    if let Some(v) = *test_force_claude_fg().lock() {
+        return v;
+    }
+    crate::app_identity::foreground_app_target_id()
+        .is_some_and(|id| id.trim() == crate::app_identity::CLAUDE_CODE_APP_TARGET_ID)
+}
+
+#[cfg(not(windows))]
+fn claude_is_foreground() -> bool {
+    #[cfg(test)]
+    if let Some(v) = *test_force_claude_fg().lock() {
+        return v;
+    }
+    false
+}
+
+/// Claude Hook/App near-window (or active lights) keeps Soft Pad host-visible.
+/// Primary source: durable `claude_lights` stamp — not sole reliance on primary PadStatus.
+pub fn claude_activity_hold() -> bool {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    claude_activity_hold_at(now)
+}
+
+pub(crate) fn claude_activity_hold_at(now: u64) -> bool {
+    if let Some(age) = crate::pad_status::claude_lights::last_activity_age_ms(now) {
+        if age <= CLAUDE_ACTIVITY_SHOW_MS {
+            return true;
+        }
+    }
+    if !crate::pad_status::claude_lights::snapshot_active(now).is_empty() {
+        return true;
+    }
+    let pad = crate::pad_status::snapshot_at(now);
+    let src = pad.display_source_label();
+    if (src == "claude_hook" || src == "claude_app") && pad.updated_at > 0 {
+        return now.saturating_sub(pad.updated_at) <= CLAUDE_ACTIVITY_SHOW_MS;
+    }
+    false
+}
+
+/// Age used by diagnose for Claude Soft Pad hold (0 when no durable activity).
+pub fn claude_activity_age_ms_for_diagnose(now: u64) -> u64 {
+    crate::pad_status::claude_lights::last_activity_age_ms(now).unwrap_or(0)
+}
+
+/// Host-side reason (not final visible). `hidden` only when raw host is fully false.
+pub fn overlay_visible_reason() -> String {
+    // OneTone 主窗在前台时隐藏 Soft Pad，否则会挡住「重新检测 / 确认安装」。
+    if onetone_main_is_foreground() {
+        return "hidden".into();
+    }
+    if codex_is_foreground() {
+        return "codex_foreground".into();
+    }
+    if overlay_hwnd_is_foreground() {
+        return "overlay_foreground".into();
+    }
+    if hook_needs_input_hold() {
+        return "needs_input".into();
+    }
+    if claude_is_foreground() {
+        return "claude_foreground".into();
+    }
+    if claude_activity_hold() {
+        return "claude_activity".into();
+    }
+    "hidden".into()
+}
+
+/// Soft Pad must not cover OneTone settings while the user is configuring.
+fn onetone_main_is_foreground() -> bool {
+    if overlay_hwnd_is_foreground() {
+        return false;
+    }
+    crate::app_identity::foreground_is_self()
+}
+
+fn overlay_host_allows_show_raw() -> bool {
+    if onetone_main_is_foreground() {
+        return false;
+    }
+    codex_is_foreground()
+        || overlay_hwnd_is_foreground()
+        || hook_needs_input_hold()
+        || claude_is_foreground()
+        || claude_activity_hold()
+}
+
+/// Single debounce entry — callers must not wrap again with `stable_overlay_host`.
+fn overlay_should_be_visible_host() -> bool {
+    stable_overlay_host(overlay_host_allows_show_raw())
 }
 
 /// True when the Micro overlay webview itself holds foreground (user clicked a keycap).
@@ -589,18 +761,6 @@ pub fn refocus_overlay(app: &AppHandle) {
 #[cfg(not(windows))]
 pub fn refocus_overlay(_app: &AppHandle) {}
 
-/// Show pad when Codex desktop is focused, or while the user is clicking the pad itself,
-/// or while Hook permission wait is active (dialog focus must not hide the beacon).
-#[cfg(windows)]
-fn overlay_host_allows_show() -> bool {
-    codex_is_foreground() || overlay_hwnd_is_foreground() || hook_needs_input_hold()
-}
-
-#[cfg(not(windows))]
-fn overlay_host_allows_show() -> bool {
-    false
-}
-
 /// True when any Codex mapping has `codexStatusLightsEnabled` (status-bridge switch).
 pub fn status_lights_enabled(cfg: &VoiceConfig) -> bool {
     cfg.mappings.iter().any(|m| {
@@ -670,9 +830,232 @@ fn resolve_status_light_micro_key_id_impl(
     String::new()
 }
 
+const CLAUDE_AG_POOL: &[&str] = &["AG01", "AG00", "AG02", "AG03", "AG05", "AG04"];
+
+/// Claude main light host: enabled `claudeModel` slot, else AG01 if in layout.
+pub fn resolve_claude_main_light_micro_key_id(pad: &CodexMicroPadConfig) -> String {
+    if let Some(r) = pad
+        .keys
+        .iter()
+        .find(|k| k.enabled && k.slot_id.trim() == "claudeModel")
+    {
+        let id = r.micro_key_id.trim();
+        if !id.is_empty() && overlay_layout_has_micro_key(id) {
+            return id.to_string();
+        }
+    }
+    if overlay_layout_has_micro_key("AG01") {
+        return "AG01".into();
+    }
+    String::new()
+}
+
+/// Sticky Claude agent → microKey hosts. Excludes Codex status host. No hash reshuffle.
+/// Returns (assigned host→light, short overflow summary, structured overflow items).
+pub fn resolve_claude_agent_light_hosts(
+    pad: &CodexMicroPadConfig,
+    lights: &[crate::pad_status::ClaudeAgentLightState],
+) -> (
+    Vec<(String, crate::pad_status::ClaudeAgentLightState)>,
+    String,
+    Vec<ClaudeOverflowItem>,
+) {
+    let status_host = resolve_status_light_micro_key_id(pad);
+    let main_host = resolve_claude_main_light_micro_key_id(pad);
+
+    // Explicit agent_light_id bindings on routes.
+    let mut explicit: Vec<(String, String)> = Vec::new();
+    for r in &pad.keys {
+        if !r.enabled {
+            continue;
+        }
+        let bind = r.agent_light_id.trim();
+        if bind.is_empty() {
+            continue;
+        }
+        let mid = r.micro_key_id.trim();
+        if mid.is_empty() || !overlay_layout_has_micro_key(mid) {
+            continue;
+        }
+        if mid == status_host {
+            continue;
+        }
+        explicit.push((bind.to_string(), mid.to_string()));
+    }
+
+    let mut used: std::collections::HashSet<String> = std::collections::HashSet::new();
+    if !status_host.is_empty() {
+        used.insert(status_host.clone());
+    }
+    let mut assigned: Vec<(String, crate::pad_status::ClaudeAgentLightState)> = Vec::new();
+    let mut overflow_items: Vec<ClaudeOverflowItem> = Vec::new();
+
+    let mut ordered = lights.to_vec();
+    ordered.sort_by(|a, b| {
+        a.first_seen_at
+            .cmp(&b.first_seen_at)
+            .then_with(|| a.agent_key.cmp(&b.agent_key))
+    });
+
+    let pool: Vec<String> = CLAUDE_AG_POOL
+        .iter()
+        .copied()
+        .filter(|id| overlay_layout_has_micro_key(id) && *id != status_host.as_str())
+        .map(|s| s.to_string())
+        .collect();
+
+    let sticky = crate::pad_status::claude_lights::host_assignments();
+
+    for light in ordered {
+        if light.state == "idle" {
+            continue;
+        }
+        let key = light.agent_key.clone();
+        let is_main = key == crate::pad_status::CLAUDE_MAIN_KEY;
+
+        // 1) explicit route binding
+        let mut host = explicit
+            .iter()
+            .find(|(bind, _)| {
+                bind == &key
+                    || (!light.agent_id.is_empty() && bind == &light.agent_id)
+                    || (!light.agent_type.is_empty() && bind == &light.agent_type)
+            })
+            .map(|(_, m)| m.clone());
+
+        // 2) main → claudeModel host
+        if host.is_none() && is_main && !main_host.is_empty() {
+            host = Some(main_host.clone());
+        }
+
+        // 3) sticky reuse
+        if host.is_none() {
+            if let Some(prev) = sticky.get(&key) {
+                if pool.iter().any(|p| p == prev) && !used.contains(prev) {
+                    host = Some(prev.clone());
+                }
+            }
+        }
+
+        // 4) first free in pool (skip main_host if already used for main)
+        if host.is_none() {
+            for p in &pool {
+                if used.contains(p) {
+                    continue;
+                }
+                // Prefer not to steal main_host for a subagent when main is active
+                if !is_main && p == &main_host {
+                    let main_active = lights.iter().any(|l| {
+                        l.agent_key == crate::pad_status::CLAUDE_MAIN_KEY && l.state != "idle"
+                    });
+                    if main_active {
+                        continue;
+                    }
+                }
+                host = Some(p.clone());
+                break;
+            }
+        }
+
+        let push_overflow = |items: &mut Vec<ClaudeOverflowItem>, light: &crate::pad_status::ClaudeAgentLightState, reason: &str| {
+            items.push(ClaudeOverflowItem {
+                agent_key: light.agent_key.clone(),
+                agent_id: light.agent_id.clone(),
+                agent_type: light.agent_type.clone(),
+                short_label: crate::pad_status::short_agent_type(&light.agent_type),
+                state: light.state.clone(),
+                reason: reason.to_string(),
+            });
+        };
+
+        match host {
+            Some(h) => {
+                if used.contains(&h) {
+                    let conflict = assigned
+                        .iter()
+                        .find(|(m, l)| m == &h && l.agent_key != key)
+                        .is_some();
+                    if conflict {
+                        push_overflow(&mut overflow_items, &light, "pool_full");
+                        continue;
+                    }
+                }
+                used.insert(h.clone());
+                crate::pad_status::claude_lights::set_host_assignment(&key, &h);
+                assigned.push((h, light));
+            }
+            None => {
+                push_overflow(&mut overflow_items, &light, "pool_full");
+            }
+        }
+    }
+
+    let overflow_summary = if overflow_items.is_empty() {
+        String::new()
+    } else {
+        format!("+{} Claude agents", overflow_items.len())
+    };
+    (assigned, overflow_summary, overflow_items)
+}
+
+fn claude_host_map_for_cell(
+    hosts: &[(String, crate::pad_status::ClaudeAgentLightState)],
+    micro_key_id: &str,
+) -> Option<crate::pad_status::ClaudeAgentLightState> {
+    hosts
+        .iter()
+        .find(|(k, _)| k == micro_key_id)
+        .map(|(_, l)| l.clone())
+}
+
 fn label_for_cell(def: &OverlayCellDef) -> String {
     // Overlay HTML picks locale from localStorage; send both via zh default.
     def.label_zh.to_string()
+}
+
+/// Claude-lit AG keys prefer compressed agent_type short name; else "Claude".
+fn label_for_overlay_cell(
+    def: &OverlayCellDef,
+    claude_light: Option<&crate::pad_status::ClaudeAgentLightState>,
+) -> String {
+    if let Some(light) = claude_light {
+        return crate::pad_status::short_agent_type(&light.agent_type);
+    }
+    label_for_cell(def)
+}
+
+/// Claude needs_input only fills ACT emphasize when primary context is idle.
+fn effective_act_context(context_status: &str, claude_needs_input: bool) -> String {
+    if claude_needs_input && context_status.trim() == "idle" {
+        "needs_input".into()
+    } else {
+        context_status.to_string()
+    }
+}
+
+/// Copy-only waiting hint; does not drive Soft RGB or cell lamp color.
+fn claude_waiting_hint_for(
+    claude_hosts: &[(String, crate::pad_status::ClaudeAgentLightState)],
+    context_status: &str,
+) -> String {
+    if context_status.trim() != "idle" {
+        return String::new();
+    }
+    let mut waiting: Vec<&crate::pad_status::ClaudeAgentLightState> = claude_hosts
+        .iter()
+        .map(|(_, l)| l)
+        .filter(|l| l.state == "needs_input")
+        .collect();
+    if waiting.is_empty() {
+        return String::new();
+    }
+    waiting.sort_by(|a, b| {
+        a.first_seen_at
+            .cmp(&b.first_seen_at)
+            .then_with(|| a.agent_key.cmp(&b.agent_key))
+    });
+    let short = crate::pad_status::short_agent_type(&waiting[0].agent_type);
+    format!("{short} 等待确认")
 }
 
 pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
@@ -766,9 +1149,9 @@ fn source_kind_for_route(
 }
 
 fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
-    // Use stable host latch (same as maybe_tick) so show/hide doesn't thrash on a raw FG blip.
-    // Permission wait also forces show — in-app approval UI can steal FG from the main Codex HWND.
-    let show = *last_foreground_codex().lock() || hook_needs_input_hold();
+    // Single debounced host helper (same as maybe_tick) — do not re-derive from latch alone.
+    let show = overlay_should_be_visible_host();
+    let visible_reason = overlay_visible_reason();
     let (pad_status, status_micro) = effective_pad_run_status();
     let vendor = crate::codex_micro_vendor::protocol_snapshot();
     let app_state_enabled = status_lights_enabled(cfg);
@@ -791,20 +1174,44 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     });
     let rgb = resolve_overlay_rgb(app_state_enabled, &app_status, &pad_status, vendor_rgb);
     let minimized = *overlay_minimized().lock();
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let claude_active = crate::pad_status::claude_lights::snapshot_active(now_ms);
+
     let Some((mapping, pad)) = active_codex_mapping_with_overlay(cfg) else {
         // Labs / loopback: still expose status merge on cells when protocol or app-state is live,
         // even if Codex Micro overlay mapping is not configured yet.
         let status_light_micro_key_id =
             resolve_status_light_micro_key_id_impl(&[], overlay_layout_has_micro_key);
+        let empty_pad = CodexMicroPadConfig {
+            enabled: false,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: false,
+            layout_profile: String::new(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: app_state_enabled,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![],
+        };
+        let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =
+            resolve_claude_agent_light_hosts(&empty_pad, &claude_active);
+        let agent_lights: Vec<_> = claude_hosts.iter().map(|(_, l)| l.clone()).collect();
+        let context_status = act_context_status(app_state_enabled, &app_status, &pad_status);
+        let claude_waiting_hint = claude_waiting_hint_for(&claude_hosts, &context_status);
         let cells = protocol_status_cells_if_active(
             &pad_status,
             &status_micro,
             &vendor,
             app_state_enabled,
             &status_light_micro_key_id,
+            &claude_hosts,
         );
         return CodexMicroOverlaySnapshot {
             visible: false,
+            visible_reason,
             enabled: false,
             overlay_enabled: false,
             pad_mode: "numpad".into(),
@@ -835,11 +1242,23 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             app_message,
             app_task_id,
             app_session_id,
+            agent_lights,
+            agent_lights_overflow,
+            agent_lights_overflow_items,
+            claude_waiting_hint,
             cells,
         };
     };
 
     let status_light_micro_key_id = resolve_status_light_micro_key_id(pad);
+    let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =
+        resolve_claude_agent_light_hosts(pad, &claude_active);
+    let agent_lights: Vec<_> = claude_hosts.iter().map(|(_, l)| l.clone()).collect();
+    let claude_needs_input = claude_hosts
+        .iter()
+        .any(|(_, l)| l.state == "needs_input");
+    let context_status_for_hint = act_context_status(app_state_enabled, &app_status, &pad_status);
+    let claude_waiting_hint = claude_waiting_hint_for(&claude_hosts, &context_status_for_hint);
     let mut bound_count = 0u32;
     let mut cells = Vec::with_capacity(OVERLAY_CELLS.len());
     for def in OVERLAY_CELLS {
@@ -876,6 +1295,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| def.default_icon.to_string());
         let source_kind = source_kind_for_route(def.micro_key_id, route).to_string();
+        let claude_light = claude_host_map_for_cell(&claude_hosts, def.micro_key_id);
         let (run_status, status_source, native_run_status) = resolve_cell_run_status(
             def.micro_key_id,
             &pad_status,
@@ -883,10 +1303,12 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             &vendor,
             app_state_enabled,
             &status_light_micro_key_id,
+            claude_light.as_ref(),
         );
         let context_status = act_context_status(app_state_enabled, &app_status, &pad_status);
+        let effective_context = effective_act_context(&context_status, claude_needs_input);
         let (context_rank, context_hint) =
-            act_context_for(def.micro_key_id, &context_status);
+            act_context_for(def.micro_key_id, &effective_context);
         if !context_hint.is_empty() {
             if sub.is_empty() {
                 sub = context_hint.clone();
@@ -896,7 +1318,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         }
         cells.push(CodexMicroOverlayCell {
             micro_key_id: def.micro_key_id.to_string(),
-            label: label_for_cell(def),
+            label: label_for_overlay_cell(def, claude_light.as_ref()),
             bound,
             sub,
             ui_icon_id,
@@ -935,6 +1357,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
     CodexMicroOverlaySnapshot {
         visible: show && pad.overlay_enabled,
+        visible_reason,
         enabled: pad.enabled,
         overlay_enabled: pad.overlay_enabled,
         pad_mode,
@@ -965,6 +1388,10 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         app_message,
         app_task_id,
         app_session_id,
+        agent_lights,
+        agent_lights_overflow,
+        agent_lights_overflow_items,
+        claude_waiting_hint,
         cells,
     }
 }
@@ -976,6 +1403,7 @@ fn protocol_status_cells_if_active(
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
     app_state_enabled: bool,
     status_light_micro_key_id: &str,
+    claude_hosts: &[(String, crate::pad_status::ClaudeAgentLightState)],
 ) -> Vec<CodexMicroOverlayCell> {
     let app_live = app_state_enabled
         && (crate::pad_status::fresh_signal().is_some()
@@ -993,6 +1421,7 @@ fn protocol_status_cells_if_active(
         vendor,
         app_state_enabled,
         status_light_micro_key_id,
+        claude_hosts,
     )
 }
 
@@ -1002,12 +1431,18 @@ fn build_protocol_status_cells(
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
     app_state_enabled: bool,
     status_light_micro_key_id: &str,
+    claude_hosts: &[(String, crate::pad_status::ClaudeAgentLightState)],
 ) -> Vec<CodexMicroOverlayCell> {
     let app_status = crate::pad_status::ui_status_from_pad(&crate::pad_status::snapshot());
     let context_status = act_context_status(app_state_enabled, &app_status, pad_status);
+    let claude_needs_input = claude_hosts
+        .iter()
+        .any(|(_, l)| l.state == "needs_input");
+    let effective_context = effective_act_context(&context_status, claude_needs_input);
     OVERLAY_CELLS
         .iter()
         .map(|def| {
+            let claude_light = claude_host_map_for_cell(claude_hosts, def.micro_key_id);
             let (run_status, status_source, native_run_status) = resolve_cell_run_status(
                 def.micro_key_id,
                 pad_status,
@@ -1015,12 +1450,13 @@ fn build_protocol_status_cells(
                 vendor,
                 app_state_enabled,
                 status_light_micro_key_id,
+                claude_light.as_ref(),
             );
             let (context_rank, context_hint) =
-                act_context_for(def.micro_key_id, &context_status);
+                act_context_for(def.micro_key_id, &effective_context);
             CodexMicroOverlayCell {
                 micro_key_id: def.micro_key_id.to_string(),
-                label: label_for_cell(def),
+                label: label_for_overlay_cell(def, claude_light.as_ref()),
                 bound: false,
                 sub: context_hint.clone(),
                 ui_icon_id: def.default_icon.to_string(),
@@ -1058,8 +1494,8 @@ fn act_context_for(micro_key_id: &str, ui_status: &str) -> (String, String) {
     }
     match ui_status {
         "needs_input" => match id {
-            "ACT12" => ("emphasize".into(), "确认".into()),
-            "ACT08" => ("emphasize".into(), "拒绝".into()),
+            "ACT12" => ("emphasize".into(), "确认 / 继续".into()),
+            "ACT08" => ("emphasize".into(), "拒绝 / 取消".into()),
             "ACT06" | "ACT07" | "ACT10" => ("dim".into(), String::new()),
             _ => (String::new(), String::new()),
         },
@@ -1081,9 +1517,7 @@ fn act_context_for(micro_key_id: &str, ui_status: &str) -> (String, String) {
     }
 }
 
-/// When status lights are on, the resolved status-light host reads **only** pad_status State Core.
-/// Other AG: native-first, else idle/fallback. Non-AG: inferred only.
-/// Core host branch runs before non-AG early-return so ACT*/NAV* can host the lamp.
+/// Cell paint priority: fresh native > Claude agent host > Codex status host > inferred.
 fn resolve_cell_run_status(
     micro_key_id: &str,
     pad_status: &str,
@@ -1091,6 +1525,7 @@ fn resolve_cell_run_status(
     vendor: &crate::codex_micro_vendor::CodexMicroProtocolState,
     app_state_enabled: bool,
     status_light_micro_key_id: &str,
+    claude_light: Option<&crate::pad_status::ClaudeAgentLightState>,
 ) -> (String, String, String) {
     let inferred = if !status_micro.is_empty() && status_micro == micro_key_id {
         pad_status.to_string()
@@ -1098,26 +1533,42 @@ fn resolve_cell_run_status(
         "idle".into()
     };
 
-    let native_for = |id: &str| -> String {
-        let Some(idx) = crate::codex_micro_vendor::agent_slot_index(id) else {
-            return String::new();
-        };
+    let idx = crate::codex_micro_vendor::agent_slot_index(micro_key_id);
+    let native = if let Some(i) = idx {
         if crate::codex_micro_vendor::native_fresh(vendor) {
-            vendor.agent_slots[idx]
+            vendor.agent_slots[i]
                 .as_ref()
                 .map(|s| s.state.clone())
                 .unwrap_or_default()
         } else {
             String::new()
         }
+    } else {
+        String::new()
     };
 
-    // Status-lights path: host lamp is exclusively pad_status (no local re-judge).
+    // 1) Fresh native AG thstatus wins on this key (including Codex status host).
+    if let Some(i) = idx {
+        if crate::codex_micro_vendor::native_fresh(vendor) {
+            if let Some(slot) = vendor.agent_slots[i].as_ref() {
+                let st = slot.state.clone();
+                return (st.clone(), "native".into(), st);
+            }
+        }
+    }
+
+    // 2) Claude agent light host.
+    if let Some(cl) = claude_light {
+        if cl.state != "idle" {
+            return (cl.state.clone(), cl.source.clone(), native);
+        }
+    }
+
+    // 3) Codex status host → primary PadStatus (lights on).
     if app_state_enabled
         && !status_light_micro_key_id.is_empty()
         && micro_key_id == status_light_micro_key_id
     {
-        let native = native_for(micro_key_id);
         let pad = crate::pad_status::snapshot();
         if pad.updated_at > 0 {
             let ui = crate::pad_status::ui_status_from_pad(&pad);
@@ -1126,16 +1577,9 @@ fn resolve_cell_run_status(
         }
     }
 
-    let Some(idx) = crate::codex_micro_vendor::agent_slot_index(micro_key_id) else {
+    // Non-AG without Claude/Codex host: inferred only.
+    if idx.is_none() {
         return (inferred, "inferred".into(), String::new());
-    };
-
-    let fresh = crate::codex_micro_vendor::native_fresh(vendor);
-    if fresh {
-        if let Some(slot) = vendor.agent_slots[idx].as_ref() {
-            let st = slot.state.clone();
-            return (st.clone(), "native".into(), st);
-        }
     }
 
     if inferred != "idle" {
@@ -1608,7 +2052,7 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let was_fg = *last_foreground_codex().lock();
-    let host_ok = stable_overlay_host(overlay_host_allows_show());
+    let host_ok = overlay_should_be_visible_host();
     let is_fg = *last_foreground_codex().lock();
 
     if is_fg {
@@ -1658,18 +2102,19 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
 
     let desired_visible = {
         let cfg = state.cfg.lock();
-        active_codex_mapping_with_overlay(&cfg).is_some() && (host_ok || hook_needs_input_hold())
+        active_codex_mapping_with_overlay(&cfg).is_some() && host_ok
     };
     let vis_changed = *last_visible().lock() != desired_visible;
 
     if vis_changed {
-        let raw = overlay_host_allows_show();
+        let raw = overlay_host_allows_show_raw();
         let fg = crate::app_identity::foreground_app_identity();
         let detail = format!(
-            "overlay visible={} host_ok={} raw_host={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+            "overlay visible={} host_ok={} raw_host={} reason={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
             desired_visible,
             host_ok,
             raw,
+            overlay_visible_reason(),
             fg.as_ref().map(|i| i.exe_name.as_str()).unwrap_or(""),
             fg.as_ref().map(|i| i.window_title.as_str()).unwrap_or(""),
             fg.as_ref().and_then(|i| i.matched_preset_app_id.as_deref()),
@@ -1709,7 +2154,9 @@ mod tests {
         crate::codex_micro_vendor::reset_protocol_state();
         crate::codex_app_state::reset_for_test();
         crate::pad_status::reset_for_test();
+        crate::pad_status::claude_lights::reset_for_test();
         reset_pad_run_status_for_test();
+        test_clear_fg_overrides();
         (g, app, pad)
     }
 
@@ -1761,6 +2208,7 @@ mod tests {
             layout_profile: String::new(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1808,6 +2256,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1832,6 +2281,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -1841,6 +2291,7 @@ mod tests {
                     ui_icon_id: String::new(),
                     enabled: true,
                     advanced: false,
+                    agent_light_id: String::new(),
                 },
                 CodexMicroPadKeyRoute {
                     micro_key_id: "ACT07".into(),
@@ -1850,6 +2301,7 @@ mod tests {
                     ui_icon_id: "palette".into(),
                     enabled: true,
                     advanced: false,
+                    agent_light_id: String::new(),
                 },
             ],
         });
@@ -1889,8 +2341,8 @@ mod tests {
         assert_eq!(act07.sub, "Ctrl+K");
         assert_eq!(act07.source_kind, "primary");
 
-        let joy = snap.cells.iter().find(|c| c.micro_key_id == "JOY").unwrap();
-        assert_eq!(joy.source_kind, "advanced");
+        let nav = snap.cells.iter().find(|c| c.micro_key_id == "NAV_UP").unwrap();
+        assert_eq!(nav.source_kind, "advanced");
         assert_eq!(snap.pad_status, "idle");
     }
 
@@ -1907,6 +2359,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
@@ -1915,6 +2368,7 @@ mod tests {
                 ui_icon_id: "codex".into(),
                 enabled: true,
                 advanced: false,
+                agent_light_id: String::new(),
             }],
         });
         let mut cfg = VoiceConfig::default();
@@ -1941,6 +2395,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -1969,6 +2424,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2000,6 +2456,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2029,6 +2486,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2047,7 +2505,7 @@ mod tests {
     }
 
     #[test]
-    fn overlay_status_lights_prefer_hook_over_native_on_fallback_host() {
+    fn overlay_status_lights_native_wins_over_hook_on_same_ag() {
         let _iso = isolate_status_globals();
         let _ = crate::codex_micro_vendor::apply_rpc_json(
             r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"}]}}"#,
@@ -2065,6 +2523,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2072,13 +2531,309 @@ mod tests {
         assert_eq!(snap.app_status, "needs_input");
         assert_eq!(snap.status_light_micro_key_id, "AG00");
         let ag00 = snap.cells.iter().find(|c| c.micro_key_id == "AG00").unwrap();
-        assert_eq!(ag00.status_source, "codex_hook");
-        assert_eq!(ag00.run_status, "needs_input");
-        let rgb = snap.rgb.expect("soft rgb for needs_input");
+        // Native thstatus wins over Codex status-host Core on the same AG key.
+        assert_eq!(ag00.status_source, "native");
+        assert_eq!(ag00.run_status, "running");
+        assert_eq!(ag00.native_run_status, "running");
+        let rgb = snap.rgb.expect("soft rgb still from Core needs_input");
         assert_eq!((rgb.r, rgb.g, rgb.b), (255, 106, 0));
-        assert_eq!(snap.app_message, "等待确认");
-        assert_eq!(snap.app_session_id, "s");
-        assert!(snap.app_task_id.is_empty());
+    }
+
+    #[test]
+    fn overlay_native_wins_on_status_host_ag04() {
+        let _iso = isolate_status_globals();
+        let _ = crate::codex_micro_vendor::apply_rpc_json(
+            r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":4,"s":"running"}]}}"#,
+        );
+        let _ = crate::codex_app_state::apply_raw_json(
+            r#"{"source":"codex_hook","event":"PermissionRequest","sessionId":"s"}"#,
+        )
+        .unwrap();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.status_light_micro_key_id, "AG04");
+        let ag04 = snap.cells.iter().find(|c| c.micro_key_id == "AG04").unwrap();
+        assert_eq!(ag04.status_source, "native");
+        assert_eq!(ag04.run_status, "running");
+    }
+
+    fn claude_model_route(micro: &str) -> crate::config::CodexMicroPadKeyRoute {
+        crate::config::CodexMicroPadKeyRoute {
+            micro_key_id: micro.into(),
+            source_scan: 0x48,
+            source_extended: false,
+            slot_id: "claudeModel".into(),
+            ui_icon_id: "claude".into(),
+            enabled: true,
+            advanced: false,
+            agent_light_id: String::new(),
+        }
+    }
+
+    #[test]
+    fn overlay_claude_two_agents_light_two_ags() {
+        let _iso = isolate_status_globals();
+        let _ = crate::pad_status::ingest_claude_payload_at(
+            &crate::pad_status::ClaudeHookPayload {
+                event: "SubagentStart".into(),
+                session_id: "s".into(),
+                turn_id: String::new(),
+                agent_id: "a1".into(),
+                agent_type: "review".into(),
+                ts: 10,
+                source: "claude_hook".into(),
+            },
+            10,
+        );
+        let _ = crate::pad_status::ingest_claude_payload_at(
+            &crate::pad_status::ClaudeHookPayload {
+                event: "SubagentStart".into(),
+                session_id: "s".into(),
+                turn_id: String::new(),
+                agent_id: "a2".into(),
+                agent_type: "test".into(),
+                ts: 20,
+                source: "claude_hook".into(),
+            },
+            20,
+        );
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.agent_lights.len() >= 2);
+        let lit: Vec<_> = snap
+            .cells
+            .iter()
+            .filter(|c| c.status_source == "claude_hook" && c.run_status == "running")
+            .map(|c| c.micro_key_id.as_str())
+            .collect();
+        assert!(lit.len() >= 2, "expected two Claude hosts lit, got {:?}", lit);
+        assert!(!lit.contains(&"AG04"), "must not steal Codex status host");
+        let review = snap
+            .cells
+            .iter()
+            .find(|c| c.status_source == "claude_hook" && c.label == "review");
+        let test = snap
+            .cells
+            .iter()
+            .find(|c| c.status_source == "claude_hook" && c.label == "test");
+        assert!(review.is_some(), "Claude-lit label should use short agent_type");
+        assert!(test.is_some());
+    }
+
+    #[test]
+    fn overlay_claude_waiting_hint_when_primary_idle() {
+        let _iso = isolate_status_globals();
+        crate::pad_status::claude_lights::apply_claude_light(
+            "PermissionRequest",
+            "need-agent",
+            "code-reviewer",
+            "claude_hook",
+            "s",
+            "t",
+            50,
+            50,
+        );
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.app_status, "idle");
+        assert_eq!(snap.claude_waiting_hint, "reviewer 等待确认");
+    }
+
+    #[test]
+    fn resolve_claude_hosts_overflow_when_pool_full() {
+        let _iso = isolate_status_globals();
+        let pad = CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        };
+        // status AG04 excluded; pool has 5 AG keys → 6 lights overflow
+        let lights: Vec<_> = (0..6)
+            .map(|i| crate::pad_status::ClaudeAgentLightState {
+                agent_key: format!("agent-{i}"),
+                agent_id: format!("agent-{i}"),
+                agent_type: format!("t{i}"),
+                state: "running".into(),
+                source: "claude_hook".into(),
+                updated_at: i as u64,
+                first_seen_at: i as u64,
+                task_id: None,
+                session_id: None,
+                message: None,
+                last_event: None,
+                confidence: "high".into(),
+                sticky_until: None,
+            })
+            .collect();
+        let (assigned, overflow, items) = resolve_claude_agent_light_hosts(&pad, &lights);
+        assert_eq!(assigned.len(), 5);
+        assert!(!overflow.is_empty(), "expected overflow summary");
+        assert!(overflow.contains("Claude"));
+        assert_eq!(items.len(), 1);
+        assert!(!items[0].short_label.is_empty());
+        assert!(!assigned.iter().any(|(k, _)| k == "AG04"));
+        assert!(!assigned.iter().any(|(k, _)| k.starts_with("ACT")));
+        assert!(!assigned.iter().any(|(k, _)| k.starts_with("NAV")));
+    }
+
+    #[test]
+    fn snapshot_keeps_overflow_short_string_and_items() {
+        let _iso = isolate_status_globals();
+        for i in 0..6 {
+            crate::pad_status::claude_lights::apply_claude_light(
+                "SubagentStart",
+                &format!("agent-{i}"),
+                &format!("type-{i}"),
+                "claude_hook",
+                "s",
+                "",
+                i as u64,
+                i as u64,
+            );
+        }
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.agent_lights_overflow.is_empty());
+        assert!(snap.agent_lights_overflow.contains("Claude"));
+        assert!(!snap.agent_lights_overflow_items.is_empty());
+        assert!(snap.claude_waiting_hint.is_empty());
+    }
+
+    #[test]
+    fn overlay_claude_needs_input_emphasizes_act_when_primary_idle() {
+        let _iso = isolate_status_globals();
+        crate::pad_status::claude_lights::apply_claude_light(
+            "PermissionRequest",
+            "need-agent",
+            "review",
+            "claude_hook",
+            "s",
+            "t",
+            50,
+            50,
+        );
+        // Primary Core stays idle — Claude-only needs_input should fill ACT emphasize.
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.app_status, "idle");
+        let act12 = snap.cells.iter().find(|c| c.micro_key_id == "ACT12").unwrap();
+        let act08 = snap.cells.iter().find(|c| c.micro_key_id == "ACT08").unwrap();
+        assert_eq!(act12.context_rank, "emphasize");
+        assert!(act12.context_hint.contains("确认"));
+        assert_eq!(act08.context_rank, "emphasize");
+        assert!(act08.context_hint.contains("拒绝"));
+        assert_eq!(snap.claude_waiting_hint, "review 等待确认");
+        // Soft RGB follows primary idle — not Claude needs_input
+        assert!(
+            snap.rgb.is_none()
+                || {
+                    let rgb = snap.rgb.as_ref().unwrap();
+                    (rgb.r, rgb.g, rgb.b) != (255, 106, 0)
+                },
+            "Soft RGB must not follow Claude needs_input orange"
+        );
+    }
+
+    #[test]
+    fn overlay_claude_needs_input_does_not_override_primary_running() {
+        let _iso = isolate_status_globals();
+        crate::pad_status::claude_lights::apply_claude_light(
+            "PermissionRequest",
+            "need-agent",
+            "review",
+            "claude_hook",
+            "s",
+            "t",
+            50,
+            50,
+        );
+        note_pad_run_status("running", "AG00");
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: false, // force pad_run as ACT context
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![status_route("AG04"), claude_model_route("AG01")],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        let act12 = snap.cells.iter().find(|c| c.micro_key_id == "ACT12").unwrap();
+        let act08 = snap.cells.iter().find(|c| c.micro_key_id == "ACT08").unwrap();
+        // running context: ACT08 emphasize cancel, ACT12 dim — not needs_input confirm
+        assert_eq!(act08.context_rank, "emphasize");
+        assert_eq!(act08.context_hint, "可取消");
+        assert_eq!(act12.context_rank, "dim");
     }
 
     fn status_route(micro: &str) -> crate::config::CodexMicroPadKeyRoute {
@@ -2090,6 +2845,7 @@ mod tests {
             ui_icon_id: "status".into(),
             enabled: true,
             advanced: false,
+            agent_light_id: String::new(),
         }
     }
 
@@ -2104,6 +2860,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![status_route("AG05")],
         };
         assert_eq!(resolve_status_light_micro_key_id(&with_status), "AG05");
@@ -2116,6 +2873,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         };
         assert_eq!(resolve_status_light_micro_key_id(&empty), "AG00");
@@ -2132,6 +2890,7 @@ mod tests {
                 ui_icon_id: String::new(),
                 enabled: true,
                 advanced: false,
+                agent_light_id: String::new(),
             }],
             |id| id != "GHOST",
         );
@@ -2152,6 +2911,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -2179,6 +2939,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![status_route("ACT09")],
         })];
         test_set_foreground_latch(true);
@@ -2205,6 +2966,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -2229,6 +2991,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -2258,6 +3021,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2282,12 +3046,15 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         // Permission sheet stole FG — latch false, but pad must remain as status beacon.
         test_set_foreground_latch(false);
+        test_prime_visible_host();
         let snap = build_snapshot_from_cfg(&cfg);
         assert!(snap.visible, "needs_input must keep overlay visible without FG");
+        assert_eq!(snap.visible_reason, "needs_input");
         assert_eq!(snap.app_status, "needs_input");
     }
 
@@ -2312,6 +3079,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2334,6 +3102,7 @@ mod tests {
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
             keys: vec![],
         })];
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
@@ -2353,10 +3122,10 @@ mod tests {
     fn act_context_needs_input_emphasizes_confirm_reject() {
         let (rank12, hint12) = act_context_for("ACT12", "needs_input");
         assert_eq!(rank12, "emphasize");
-        assert_eq!(hint12, "确认");
+        assert_eq!(hint12, "确认 / 继续");
         let (rank08, hint08) = act_context_for("ACT08", "needs_input");
         assert_eq!(rank08, "emphasize");
-        assert_eq!(hint08, "拒绝");
+        assert_eq!(hint08, "拒绝 / 取消");
         let (rank10, _) = act_context_for("ACT10", "needs_input");
         assert_eq!(rank10, "dim");
         let (rank_ag, _) = act_context_for("AG00", "needs_input");
@@ -2379,5 +3148,192 @@ mod tests {
         );
         assert_eq!(act_context_status(true, "idle", "listening"), "listening");
         assert_eq!(act_context_status(false, "needs_input", "running"), "running");
+    }
+
+    #[test]
+    fn effective_act_context_claude_needs_input_only_when_idle() {
+        assert_eq!(
+            effective_act_context("idle", true),
+            "needs_input"
+        );
+        assert_eq!(
+            effective_act_context("running", true),
+            "running",
+            "Claude must not override Codex running"
+        );
+        assert_eq!(effective_act_context("idle", false), "idle");
+    }
+
+    #[test]
+    fn claude_activity_hold_hook_and_app_near_window() {
+        let _iso = isolate_status_globals();
+        let now = 1_000_000u64;
+        crate::pad_status::claude_lights::test_set_last_activity_at(now - 1_000, "claude_hook");
+        assert!(claude_activity_hold_at(now));
+        crate::pad_status::claude_lights::reset_for_test();
+        crate::pad_status::claude_lights::test_set_last_activity_at(now - 1_000, "claude_app");
+        assert!(claude_activity_hold_at(now));
+    }
+
+    #[test]
+    fn claude_activity_hold_stale_and_codex_native_excluded() {
+        let _iso = isolate_status_globals();
+        let now = 1_000_000u64;
+        crate::pad_status::claude_lights::test_set_last_activity_at(
+            now - CLAUDE_ACTIVITY_SHOW_MS - 1,
+            "claude_hook",
+        );
+        assert!(!claude_activity_hold_at(now), "stale Claude stamp");
+
+        crate::pad_status::claude_lights::reset_for_test();
+        // Codex primary must not alone keep hold when stamp/lights empty.
+        let _ = crate::codex_app_state::apply_raw_json(
+            r#"{"source":"codex_hook","event":"UserPromptSubmit","sessionId":"s","ts":999000}"#,
+        );
+        assert!(
+            !claude_activity_hold_at(now),
+            "codex_hook must not trigger Claude activity hold"
+        );
+    }
+
+    #[test]
+    fn claude_activity_hold_survives_codex_overwrite_of_primary() {
+        let _iso = isolate_status_globals();
+        let now = 50_000u64;
+        crate::pad_status::claude_lights::bump_activity("claude_hook", now - 2_000);
+        // Codex overwrites primary PadStatus — hold must still use durable stamp.
+        let _ = crate::codex_app_state::apply_raw_json(
+            r#"{"source":"codex_hook","event":"UserPromptSubmit","sessionId":"cx","ts":50000}"#,
+        );
+        assert!(
+            claude_activity_hold_at(now),
+            "last_activity_at must survive Codex primary overwrite"
+        );
+    }
+
+    #[test]
+    fn claude_activity_hold_active_lights() {
+        let _iso = isolate_status_globals();
+        crate::pad_status::claude_lights::apply_claude_light(
+            "SubagentStart",
+            "a1",
+            "code-reviewer",
+            "claude_hook",
+            "s",
+            "t",
+            100,
+            100,
+        );
+        // Clear durable stamp to prove active lights alone hold.
+        crate::pad_status::claude_lights::test_set_last_activity_at(0, "");
+        assert!(claude_activity_hold_at(100));
+    }
+
+    #[test]
+    fn overlay_visible_with_recent_claude_activity_without_codex_fg() {
+        let _iso = isolate_status_globals();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        crate::pad_status::claude_lights::bump_activity("claude_hook", now);
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(false);
+        test_prime_visible_host();
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.visible);
+        assert_eq!(snap.visible_reason, "claude_activity");
+    }
+
+    #[test]
+    fn overlay_hidden_when_claude_activity_stale_without_fg() {
+        let _iso = isolate_status_globals();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        crate::pad_status::claude_lights::test_set_last_activity_at(
+            now.saturating_sub(CLAUDE_ACTIVITY_SHOW_MS + 5_000),
+            "claude_hook",
+        );
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(false);
+        test_prime_visible_host();
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.visible);
+        assert_eq!(snap.visible_reason, "hidden");
+    }
+
+    #[test]
+    fn overlay_visible_reason_keeps_claude_activity_when_overlay_disabled() {
+        let _iso = isolate_status_globals();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        crate::pad_status::claude_lights::bump_activity("claude_hook", now);
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: false,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: true,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(false);
+        test_prime_visible_host();
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.visible, "overlay_enabled=false must hide pad");
+        assert_eq!(
+            snap.visible_reason, "claude_activity",
+            "host reason must not collapse to hidden when overlay is off"
+        );
+    }
+
+    #[test]
+    fn overlay_visible_reason_codex_foreground() {
+        let _iso = isolate_status_globals();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(snap.visible);
+        assert_eq!(snap.visible_reason, "codex_foreground");
     }
 }

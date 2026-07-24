@@ -1,41 +1,85 @@
 {
   "hooks": {
-    "UserPromptSubmit": [
+    "SessionStart": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
           }
         ]
       }
     ],
     "PermissionRequest": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 60
           }
         ]
       }
     ],
     "Stop": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
           }
         ]
       }
     ],
     "StopFailure": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"C:/Users/Administrator/Desktop/voice-pilot/scripts/claude-hook-probe.js\""
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"REPO_ROOT/scripts/claude-hook-probe.js\" --onetone-hook-id claude-activity-v1 --source onetone",
+            "timeout": 5
           }
         ]
       }

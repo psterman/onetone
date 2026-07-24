@@ -1246,6 +1246,9 @@ pub struct CodexMicroPadConfig {
     /// When false, overlay does not merge `codex_hook`; listener is not stopped.
     #[serde(default)]
     pub codex_status_lights_enabled: bool,
+    /// User opt-in for Claude CLI key inject. Default off. Still requires high-confidence latch.
+    #[serde(default)]
+    pub claude_cli_inject_pref_enabled: bool,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
 }
@@ -1270,6 +1273,9 @@ pub struct CodexMicroPadKeyRoute {
     /// Advanced-only routes (ENC_CW / NAV_*). Primary 12 + screen ENC stay false.
     #[serde(default)]
     pub advanced: bool,
+    /// Serde-only: bind this key to a Claude agent light id/type/`claude/main`. No settings UI yet.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub agent_light_id: String,
 }
 
 /// Binding from a physical key, voice phrase, or camera gesture to an AgentAction slot.

@@ -24,6 +24,7 @@ pub const DEFAULT_PORT: u16 = 8796;
 pub const MAX_BODY_BYTES: usize = 16 * 1024;
 pub const PROTOCOL_PATH: &str = "/api/codex-micro/protocol";
 pub const APP_STATE_PATH: &str = codex_app_state::APP_STATE_PATH;
+pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
 
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
 pub const ENV_ENABLE: &str = "ONETONE_CODEX_MICRO_PROTOCOL";
@@ -338,7 +339,8 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
 
     let is_protocol = path == PROTOCOL_PATH;
     let is_app_state = path == APP_STATE_PATH;
-    if !is_protocol && !is_app_state {
+    let is_claude_approval = path == CLAUDE_APPROVAL_PATH;
+    if !is_protocol && !is_app_state && !is_claude_approval {
         write_error(&mut stream, 404, "not_found")?;
         return Ok(());
     }
@@ -347,6 +349,9 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
         if is_app_state {
             return handle_app_state_get(&mut stream, Arc::clone(&state));
         }
+        if is_claude_approval {
+            return handle_claude_approval_get(&mut stream);
+        }
         write_error(&mut stream, 405, "not_found")?;
         return Ok(());
     }
@@ -354,6 +359,23 @@ fn handle_client(mut stream: TcpStream, app: &AppHandle, state: Arc<AppState>) -
     if !method.eq_ignore_ascii_case("POST") {
         write_error(&mut stream, 405, "not_found")?;
         return Ok(());
+    }
+
+    if is_claude_approval {
+        // Body optional; Soft Pad usually uses IPC decide. POST here is for Labs.
+        let content_length = parse_content_length(header).unwrap_or(0);
+        let mut body = buf[header_end..].to_vec();
+        let mut tmp2 = [0u8; 1024];
+        while body.len() < content_length {
+            let n = stream.read(&mut tmp2).map_err(|e| e.to_string())?;
+            if n == 0 {
+                break;
+            }
+            body.extend_from_slice(&tmp2[..n]);
+        }
+        body.truncate(content_length.min(MAX_BODY_BYTES));
+        let raw = String::from_utf8(body).unwrap_or_default();
+        return handle_claude_approval_post(&mut stream, &raw);
     }
 
     let content_length = parse_content_length(header).unwrap_or(0);
@@ -450,6 +472,58 @@ fn handle_app_state_get(
         &bytes,
     )?;
     Ok(())
+}
+
+/// Poll Soft Pad Hook-approval decision (C2). Returns decision once, then clears.
+fn handle_claude_approval_get(stream: &mut TcpStream) -> Result<(), String> {
+    let pending = crate::claude_cli_session::pending_approval_view();
+    let decision = crate::claude_cli_session::take_pending_decision();
+    let payload = serde_json::json!({
+        "ok": true,
+        "active": pending.active && decision.is_none(),
+        "requestId": pending.request_id,
+        "sessionId": pending.session_id,
+        "decision": decision,
+        "ageMs": pending.age_ms,
+    });
+    let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+    write_raw(
+        stream,
+        200,
+        "OK",
+        &format!(
+            "{}Content-Type: application/json; charset=utf-8\r\n",
+            cors_headers()
+        ),
+        &bytes,
+    )
+}
+
+fn handle_claude_approval_post(stream: &mut TcpStream, raw: &str) -> Result<(), String> {
+    let value: serde_json::Value =
+        serde_json::from_str(raw.trim()).unwrap_or_else(|_| serde_json::json!({}));
+    let decision = value
+        .get("decision")
+        .or_else(|| value.get("action"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let r = crate::claude_cli_session::claude_cli_decide(decision);
+    let payload = serde_json::json!({
+        "ok": r.ok,
+        "action": r.action,
+        "reason": r.reason,
+    });
+    let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+    write_raw(
+        stream,
+        if r.ok { 200 } else { 400 },
+        if r.ok { "OK" } else { "Bad Request" },
+        &format!(
+            "{}Content-Type: application/json; charset=utf-8\r\n",
+            cors_headers()
+        ),
+        &bytes,
+    )
 }
 
 fn handle_app_state_post(
@@ -690,6 +764,7 @@ mod tests {
     fn app_state_path_is_separate_from_protocol() {
         assert_ne!(PROTOCOL_PATH, APP_STATE_PATH);
         assert_eq!(APP_STATE_PATH, "/api/codex-app/state");
+        assert_eq!(CLAUDE_APPROVAL_PATH, "/api/claude-approval");
         assert!(codex_app_state::validate_app_state_body(
             r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
         )
