@@ -118,6 +118,20 @@ impl CodexProviderAdapter {
             "quickSearch" => Self::focus_then_hotkey(state, window, "Ctrl+F", duration_ms, mode),
             "quickChat" => Self::focus_then_hotkey(state, window, "Ctrl+Alt+N", duration_ms, mode),
             "commandPalette" => Self::focus_then_hotkey(state, window, "Ctrl+K", duration_ms, mode),
+            "openReviewTab" => {
+                Self::focus_then_hotkey(state, window, "Ctrl+Shift+G", duration_ms, mode)
+            }
+            "toggleReviewPanel" => {
+                Self::focus_then_hotkey(state, window, "Ctrl+Alt+B", duration_ms, mode)
+            }
+            "openTerminal" => Self::focus_then_hotkey(state, window, "Ctrl+`", duration_ms, mode),
+            "toggleBrowserPanel" => {
+                Self::focus_then_hotkey(state, window, "Ctrl+Shift+B", duration_ms, mode)
+            }
+            "newBrowserTab" => Self::focus_then_hotkey(state, window, "Ctrl+T", duration_ms, mode),
+            "focusBrowserAddressBar" => {
+                Self::focus_then_hotkey(state, window, "Ctrl+L", duration_ms, mode)
+            }
             "status"
             | "plan"
             | "review"

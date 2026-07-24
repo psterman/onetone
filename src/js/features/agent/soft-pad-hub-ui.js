@@ -14,6 +14,9 @@
   var agentLoadToken = 0;
   var subpageToken = 0;
   var paintReentry = 0;
+  /** Preview-only epoch — do not merge into selectToken (scope/scheme) on first cut. */
+  var previewEpoch = 0;
+  var previewTimer = 0;
 
   function feLog(line) {
     try {
@@ -735,10 +738,11 @@
   }
 
   /** Layered panel updates — never default to paintSubpage remount. */
-  function onSoftPadPanelChanged(m, panel) {
+  function onSoftPadPanelChanged(m, panel, changeOpts) {
     var entry = syncEntryFromMapping(m);
     if (!entry) return;
     panel = panel || softPadView;
+    changeOpts = changeOpts || {};
     // Presentation toggle is ultra-hot — skip chrome rebuild before return.
     if (panel === 'presentation') {
       updateStatusBar(entry);
@@ -752,21 +756,20 @@
     if (panel === 'layout') {
       updateStatusBar(entry);
       patchSchemeRowPresentation(entry);
-      // Profile/import may change routes — refresh preview while on layout (keep light).
+      // Profile/import may change routes — queue preview (hub/layout only).
       if (softPadView === 'layout' || softPadView === 'hub') {
-        paintPreview(entry);
+        schedulePreviewPaint(entry);
       }
       if (softPadView === 'hub') renderFuncTiles(entry);
-      else if (softPadView === 'layout') paintSubpage(entry);
+      else if (softPadView === 'layout' && changeOpts.remountLayout !== false) {
+        paintSubpage(entry);
+      }
       return;
     }
     if (panel === 'runtime') {
       updateStatusBar(entry);
       patchSchemeRowEnable(entry);
-      // Light shell remount only when enabled/mode may change pad chrome.
-      if (softPadView === 'hub' || softPadView === 'runtime') {
-        paintPreview(entry);
-      }
+      // Light panels never remount the keyboard (was a freeze source).
       syncRuntimeCheckboxes(entry);
       if (softPadView === 'hub') renderFuncTiles(entry);
       return;
@@ -775,7 +778,9 @@
       return;
     }
     updateStatusBar(entry);
-    paintPreview(entry);
+    if (softPadView === 'hub' || softPadView === 'layout') {
+      schedulePreviewPaint(entry);
+    }
     if (softPadView === 'hub') renderFuncTiles(entry);
   }
 
@@ -797,8 +802,8 @@
         String(entry.mapping.id) === String(selectedMappingId || '');
     }
 
-    var onChanged = function (mapping, panel) {
-      onSoftPadPanelChanged(mapping, panel || targetView);
+    var onChanged = function (mapping, panel, changeOpts) {
+      onSoftPadPanelChanged(mapping, panel || targetView, changeOpts);
     };
     if (e.subTitle) e.subTitle.textContent = subpageTitle(targetView);
     if (!stillValid()) return;
@@ -879,10 +884,13 @@
     clearSubpage();
     var entry = findEntry(selectedMappingId);
     var e = els();
-    // Instant hub chrome (tiles). Keep preview collapsed — sync unhide of micro-hw 假死'd 返回.
+    // Chrome-first: show tiles + existing preview immediately — never clear then wait (blank flash).
     if (e.tiles) e.tiles.hidden = !hasMapping(entry);
     if (e.subHost) e.subHost.hidden = true;
-    if (e.preview) {
+    if (e.preview && hasMapping(entry)) {
+      e.preview.classList.remove('is-collapsed');
+      e.preview.hidden = false;
+    } else if (e.preview) {
       e.preview.hidden = true;
       e.preview.classList.add('is-collapsed');
     }
@@ -890,27 +898,8 @@
     updateScopeHint();
     renderFuncTiles(entry);
     if (!hasMapping(entry)) return;
-
-    var token = selectToken;
-    var mapId = String(entry.mapping.id);
-    setTimeout(function () {
-      if (token !== selectToken) return;
-      if (softPadView !== 'hub') return;
-      if (String(selectedMappingId || '') !== mapId) return;
-      var cur = findEntry(mapId);
-      if (!hasMapping(cur)) return;
-      var pe = els().preview;
-      if (pe) {
-        pe.classList.remove('is-collapsed');
-        pe.hidden = false;
-      }
-      if (!pe || pe.childElementCount === 0 || hostsNeedPaint(cur)) {
-        schedulePaint(cur, { immediateMgr: false });
-      } else {
-        paintedMappingId = mapId;
-      }
-      feLog('fe softPad.closeSubpage previewRestored');
-    }, 0);
+    schedulePreviewPaint(entry);
+    feLog('fe softPad.closeSubpage previewQueued');
   }
 
   function markActiveRow(mappingId) {
@@ -969,6 +958,7 @@
   function paintPreview(entry) {
     if (!hasMapping(entry)) return;
     if (paintReentry > 0) return;
+    if (softPadView !== 'hub' && softPadView !== 'layout') return;
     var e = els();
     var Pad = global.OneToneCodexMicroPadUi;
     if (Pad && Pad.renderSoftPadPreview && e.preview) {
@@ -980,6 +970,24 @@
         paintReentry--;
       }
     }
+  }
+
+  /** Single cancelable preview queue (hub/layout only). Uses previewEpoch, not selectToken. */
+  function schedulePreviewPaint(entry) {
+    if (!hasMapping(entry)) return;
+    if (softPadView !== 'hub' && softPadView !== 'layout') return;
+    var token = ++previewEpoch;
+    var mapId = String(entry.mapping.id);
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () {
+      previewTimer = 0;
+      if (token !== previewEpoch) return;
+      if (softPadView !== 'hub' && softPadView !== 'layout') return;
+      if (String(selectedMappingId || '') !== mapId) return;
+      var cur = findEntry(mapId);
+      if (!hasMapping(cur)) return;
+      paintPreview(cur);
+    }, 0);
   }
 
   function boundKeyCount(entry) {
@@ -1297,7 +1305,9 @@
     if (!patchAppSwitcher()) renderAppSwitcher();
     if (softPadView === 'hub') renderFuncTiles(entry);
     else if (softPadView === 'runtime') syncRuntimeCheckboxes(entry);
-    paintPreview(entry);
+    if (softPadView === 'hub' || softPadView === 'layout') {
+      schedulePreviewPaint(entry);
+    }
   }
 
   function toastPad(msg) {
@@ -1446,7 +1456,7 @@
       updateStatusBar(entry);
       // Never remount pad while on light subpages (显示形态/返回假死).
       if (softPadView === 'hub' || softPadView === 'layout') {
-        paintPreview(entry);
+        schedulePreviewPaint(entry);
       }
       if (softPadView === 'hub') renderFuncTiles(entry);
       else {
@@ -1535,10 +1545,11 @@
     selectScheme: selectScheme,
     selectScope: selectScope,
     refreshSelected: refreshSelected,
+    schedulePreviewPaint: schedulePreviewPaint,
     onPanelLeave: onPanelLeave,
     ensureAppSoftPad: ensureAppSoftPad,
     isAgentPanelCurrent: isAgentPanelCurrent,
-    isPaintBusy: function () { return paintBusy || paintReentry > 0; },
+    isPaintBusy: function () { return paintBusy || paintReentry > 0 || !!previewTimer; },
     listSoftPadSchemes: listSoftPadSchemes,
     listAppScopes: listAppScopes,
     listHubEntries: listHubEntries,

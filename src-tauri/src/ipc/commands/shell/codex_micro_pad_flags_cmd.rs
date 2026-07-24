@@ -56,6 +56,68 @@ pub fn cmd_codex_micro_pad_set_flags(
     Ok(())
 }
 
+/// Quiet-save Soft Pad layout profile / enhance / key routes — never full `cmd_save`.
+/// Profile switches used to rebuild the whole settings payload and 假死 the Soft Pad UI.
+#[tauri::command]
+pub fn cmd_codex_micro_pad_set_layout(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    layout_profile: String,
+    software_enhance_enabled: bool,
+    keys: Vec<config::CodexMicroPadKeyRoute>,
+) -> Result<(), String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+    let mut profile = layout_profile.trim().to_string();
+    if profile.is_empty() {
+        profile = "standard".into();
+    }
+    if !matches!(
+        profile.as_str(),
+        "beginner" | "standard" | "advanced" | "custom"
+    ) {
+        profile = "standard".into();
+    }
+    // Enhance only applies to advanced; keep BE consistent with FE applyLayoutProfile.
+    let enhance = software_enhance_enabled && profile == "advanced";
+
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
+        pad.layout_profile = profile;
+        pad.software_enhance_enabled = enhance;
+        if !keys.is_empty() {
+            pad.keys = keys;
+        }
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    crate::app_log::log_line(
+        state.inner(),
+        "config",
+        "cmd_codex_micro_pad_set_layout quiet (skip mvp_init/voice)",
+    );
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("codex-micro-pad-layout".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+    Ok(())
+}
+
 /// Quiet-save Soft Pad presentation (`full` | `mini`) and sync overlay minimized.
 #[tauri::command]
 pub fn cmd_codex_micro_pad_set_presentation(

@@ -133,12 +133,21 @@
 | newThread | 新聊天 | New thread | `Ctrl+N` | 新建任务 |
 | quickChat | 快速聊天 | Quick chat | `Ctrl+Alt+N` | 新聊天 |
 | commandPalette | 命令菜单 | Command palette | `Ctrl+K` | Open command menu |
-| status | 查看状态 | Status | `Ctrl+Alt+S` | — |
-| plan | 制定计划 | Plan | `Ctrl+Alt+P` | ⚠ 与「切换置顶」冲突 |
-| review | 审查 | Review | `Ctrl+Alt+R` | ⚠ 与「Rename chat」冲突 |
+| openReviewTab | 打开审查选项卡 | Open review tab | `Ctrl+Shift+G` | Open the review tab（入口；≠ slash `/review`） |
+| toggleReviewPanel | 显示/隐藏当前聊天审阅面板 | Toggle review panel | `Ctrl+Alt+B` | Show or hide Review for the current chat |
+| openTerminal | 打开终端 | Open terminal | `Ctrl+\`` | Open the terminal panel |
+| toggleBrowserPanel | 显示/隐藏浏览器面板 | Toggle browser panel | `Ctrl+Shift+B` | Show or hide the browser panel |
+| newBrowserTab | 打开浏览器标签 | New browser tab | `Ctrl+T` | Open a new browser tab |
+| focusBrowserAddressBar | 聚焦浏览器地址栏 | Focus browser address bar | `Ctrl+L` | Focus the in-app browser address bar |
+| undo | 撤销 | Undo | `Ctrl+Z` | Undo last action |
+| status | 查看状态 | Status | `Ctrl+Alt+S` | — insertOnly `/status`（Soft Pad 不收录） |
+| plan | 制定计划 | Plan | `Ctrl+Alt+P` | ⚠ 与「切换置顶」冲突；insertOnly |
+| review | 审查（slash） | Review (slash) | `Ctrl+Alt+R` | ⚠ 与「Rename chat」冲突；insertOnly `/review`；**Soft Pad 用 openReviewTab / toggleReviewPanel** |
 | permissions | 权限 | Permissions | `Ctrl+Alt+,` | — |
 | switchAgent | 切换助手 | Switch agent | `Ctrl+Alt+.` | — |
 | appsOrPlugins | 应用与插件 | Apps | `Ctrl+Alt+A` | — |
+
+**Soft Pad `openEditKeycap` 白名单**：聚焦 / 命令菜单 / 新建 / 快速对话 / 查找 / 语音 / 发送·取消 / undo / 上述打开入口（审查选项卡、审阅面板、终端、浏览器面板、浏览器标签、地址栏）。一律标「Codex 桌面快捷键 / 打开入口」或 OneTone 工作流；**不**收录 insertOnly slash，**不**宣称 Micro 原生硬件协议。
 
 代码默认值：`src/js/features/agent/agent-actions.js`、`src-tauri/src/agent/bindings_build.rs`。
 

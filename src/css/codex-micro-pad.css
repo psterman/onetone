@@ -1630,6 +1630,191 @@ html[data-theme="dark"] .micro-hw-modal__effect-tip {
   color: #dbeafe;
 }
 
+.micro-hw-modal__lead {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #5a6b80;
+}
+.micro-hw-modal__effect-section {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: #f5f8fc;
+}
+.micro-hw-modal__effect-source {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #1e4a6e;
+  background: rgba(37, 99, 235, 0.1);
+}
+.micro-hw-modal__status-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5a6b80;
+}
+.micro-hw-modal__icon-preview {
+  margin: 8px 0 0;
+  min-height: 1.2em;
+  font-size: 11px;
+  color: #6b7a8d;
+}
+.micro-hw-modal__cap-trigger {
+  font-size: 10px;
+  font-weight: 650;
+  color: #3d6a90;
+  margin-top: 2px;
+}
+html[data-theme="dark"] .micro-hw-modal__lead { color: #9aa8b8; }
+html[data-theme="dark"] .micro-hw-modal__effect-section {
+  background: #151c27;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .micro-hw-modal__effect-source {
+  color: #bfdbfe;
+  background: rgba(96, 165, 250, 0.16);
+}
+html[data-theme="dark"] .micro-hw-modal__status-note,
+html[data-theme="dark"] .micro-hw-modal__icon-preview { color: #9aa8b8; }
+html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
+
+.micro-hw-modal__cap-section {
+  margin: 0 0 12px;
+}
+.micro-hw-modal__section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #1a2d4a;
+}
+.micro-hw-modal__cap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  padding: 2px;
+}
+.micro-hw-modal__cap-card {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: #f7f9fc;
+  color: #1a2d4a;
+  cursor: pointer;
+  font: inherit;
+}
+.micro-hw-modal__cap-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  color: #1a7a9c;
+}
+.micro-hw-modal__cap-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.micro-hw-modal__cap-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.micro-hw-modal__cap-card:hover {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: #f0f8fb;
+}
+.micro-hw-modal__cap-card.is-selected {
+  border-color: rgba(42, 156, 196, 0.7);
+  background: rgba(42, 156, 196, 0.12);
+  box-shadow: 0 0 0 1px rgba(42, 156, 196, 0.25);
+}
+.micro-hw-modal__cap-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+.micro-hw-modal__cap-result {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #5a6b80;
+}
+.micro-hw-modal__slot-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.micro-hw-modal__details {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: #fafbfc;
+}
+.micro-hw-modal__details > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  color: #3d4f66;
+  list-style: none;
+}
+.micro-hw-modal__details > summary::-webkit-details-marker { display: none; }
+.micro-hw-modal__details-hint {
+  font-size: 11px;
+  color: #6b7a8d;
+  margin: 6px 0 8px;
+  line-height: 1.4;
+}
+.micro-hw-modal__hw-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+html[data-theme="dark"] .micro-hw-modal__section-title { color: #e8eef6; }
+html[data-theme="dark"] .micro-hw-modal__cap-card {
+  background: #1a2330;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e8eef6;
+}
+html[data-theme="dark"] .micro-hw-modal__cap-card.is-selected {
+  background: rgba(42, 156, 196, 0.18);
+}
+html[data-theme="dark"] .micro-hw-modal__cap-icon {
+  background: #0f1520;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #7dd3f0;
+}
+html[data-theme="dark"] .micro-hw-modal__cap-result { color: #9aa8b8; }
+html[data-theme="dark"] .micro-hw-modal__details {
+  background: #151c27;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .micro-hw-modal__details > summary { color: #c5d0de; }
+
 .micro-hw-modal__icon-btn {
   aspect-ratio: 1;
   border-radius: 10px;

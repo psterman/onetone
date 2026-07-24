@@ -1537,13 +1537,17 @@
   var pullBackendConfigInFlight=false;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
-    // Pad manager / keycap edit open: cmd_ready → applyMvpInit remount storm 假死's the modal.
+    // Pad manager / Soft Pad / keycap edit open: cmd_ready → applyMvpInit remount storm 假死's the UI.
     try{
       var Pad=global.OneToneCodexMicroPadUi;
       if(Pad&&typeof Pad.isPadManagerOpen==='function'&&Pad.isPadManagerOpen()){
         return Promise.resolve(false);
       }
       if(document.getElementById('codexMicroEditModal')&&!document.getElementById('codexMicroEditModal').hidden){
+        return Promise.resolve(false);
+      }
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&ui.drawerOpen&&ui.settingsPanel==='softPad'){
         return Promise.resolve(false);
       }
     }catch(_){}

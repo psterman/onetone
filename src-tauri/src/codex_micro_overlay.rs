@@ -403,24 +403,24 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
     },
     OverlayCellDef {
         micro_key_id: "AG00",
-        label_zh: "Agent",
-        label_en: "Agent",
+        label_zh: "命令菜单",
+        label_en: "Command",
         kind: "agent",
-        default_icon: "agent",
+        default_icon: "palette",
     },
     OverlayCellDef {
         micro_key_id: "AG01",
-        label_zh: "Claude",
-        label_en: "Claude",
+        label_zh: "新建",
+        label_en: "New chat",
         kind: "agent",
-        default_icon: "claude",
+        default_icon: "fork",
     },
     OverlayCellDef {
         micro_key_id: "AG02",
-        label_zh: "Codex",
-        label_en: "Codex",
+        label_zh: "快速聊天",
+        label_en: "Quick chat",
         kind: "agent",
-        default_icon: "model",
+        default_icon: "fast",
     },
     OverlayCellDef {
         micro_key_id: "PLUS",
@@ -438,24 +438,24 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
     },
     OverlayCellDef {
         micro_key_id: "AG03",
-        label_zh: "权限",
-        label_en: "Permissions",
+        label_zh: "搜索",
+        label_en: "Find",
         kind: "agent",
-        default_icon: "folder",
+        default_icon: "search",
     },
     OverlayCellDef {
         micro_key_id: "AG04",
-        label_zh: "常用",
-        label_en: "Status",
+        label_zh: "发送",
+        label_en: "Send",
         kind: "agent",
-        default_icon: "status",
+        default_icon: "send",
     },
     OverlayCellDef {
         micro_key_id: "AG05",
-        label_zh: "应用",
-        label_en: "Apps",
+        label_zh: "取消",
+        label_en: "Cancel",
         kind: "agent",
-        default_icon: "cloud",
+        default_icon: "reject",
     },
     OverlayCellDef {
         micro_key_id: "NAV_DOWN",
@@ -466,8 +466,8 @@ const OVERLAY_CELLS: &[OverlayCellDef] = &[
     },
     OverlayCellDef {
         micro_key_id: "ACT09",
-        label_zh: "上下文",
-        label_en: "Context",
+        label_zh: "新建",
+        label_en: "New",
         kind: "command",
         default_icon: "fork",
     },
@@ -802,7 +802,8 @@ fn overlay_layout_has_micro_key(micro_key_id: &str) -> bool {
 }
 
 /// Resolve which Soft Pad key shows the single State Core status light (v1).
-/// Prefers enabled `slotId == "status"`; else fallback `AG00` if in overlay layout; else empty
+/// Prefers enabled `slotId == "status"`; else fallback `AG00` if in overlay layout; else empty.
+/// Stock Soft Pad has no status route — light hosts on AG00 while that key still fires commandPalette.
 /// (ring / Soft RGB only — do not force another key).
 pub fn resolve_status_light_micro_key_id(pad: &CodexMicroPadConfig) -> String {
     resolve_status_light_micro_key_id_impl(&pad.keys, overlay_layout_has_micro_key)
@@ -833,6 +834,7 @@ fn resolve_status_light_micro_key_id_impl(
 const CLAUDE_AG_POOL: &[&str] = &["AG01", "AG00", "AG02", "AG03", "AG05", "AG04"];
 
 /// Claude main light host: enabled `claudeModel` slot, else AG01 if in layout.
+/// Transition: shared stock maps AG01 to Codex `newThread` — Claude light may sit on that key until Claude-specific defaults land.
 pub fn resolve_claude_main_light_micro_key_id(pad: &CodexMicroPadConfig) -> String {
     if let Some(r) = pad
         .keys

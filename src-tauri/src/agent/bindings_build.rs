@@ -16,6 +16,12 @@ pub fn default_key_for_slot(slot_id: &str) -> &'static str {
         "quickSearch" => "Ctrl+F",
         "quickChat" => "Ctrl+Alt+N",
         "commandPalette" => "Ctrl+K",
+        "openReviewTab" => "Ctrl+Shift+G",
+        "toggleReviewPanel" => "Ctrl+Alt+B",
+        "openTerminal" => "Ctrl+`",
+        "toggleBrowserPanel" => "Ctrl+Shift+B",
+        "newBrowserTab" => "Ctrl+T",
+        "focusBrowserAddressBar" => "Ctrl+L",
         "status" => "Ctrl+Alt+S",
         "plan" => "Ctrl+Alt+P",
         "review" => "Ctrl+Alt+R",
@@ -79,14 +85,15 @@ mod tests {
     #[test]
     fn builds_thirteen_slots_key_all_voice_essentials() {
         let rows = build_codex_micro_13_bindings("zh-CN");
-        assert_eq!(rows.len(), 26);
+        let slot_count = crate::agent::templates::codex_micro_13_template().slots.len();
+        assert_eq!(rows.len(), slot_count * 2);
 
         let key_enabled: HashSet<_> = rows
             .iter()
             .filter(|b| b.trigger_type == "key" && b.enabled)
             .map(|b| b.slot_id.as_str())
             .collect();
-        assert_eq!(key_enabled.len(), 13, "all 13 key bindings enabled");
+        assert_eq!(key_enabled.len(), slot_count, "all template key bindings enabled");
 
         let voice_enabled: HashSet<_> = rows
             .iter()
@@ -116,6 +123,11 @@ mod tests {
                 && b.slot_id == "pushToTalk"
                 && b.trigger_binding == "Ctrl+Shift+D"
         }));
+        assert!(rows.iter().any(|b| {
+            b.trigger_type == "key"
+                && b.slot_id == "openTerminal"
+                && b.trigger_binding == "Ctrl+`"
+        }));
         assert!(rows
             .iter()
             .filter(|b| {
@@ -126,5 +138,7 @@ mod tests {
             .all(|b| !b.trigger_binding.is_empty()));
         assert_eq!(default_key_for_slot("summonCodex"), "");
         assert_eq!(default_key_for_slot("claudeModel"), "");
+        assert_eq!(default_key_for_slot("openTerminal"), "Ctrl+`");
+        assert_eq!(default_key_for_slot("openReviewTab"), "Ctrl+Shift+G");
     }
 }

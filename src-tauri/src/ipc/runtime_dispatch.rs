@@ -313,6 +313,12 @@ fn run_overlay_tap_action(
             | "quickSearch"
             | "quickChat"
             | "stopOrSendDictation"
+            | "openReviewTab"
+            | "toggleReviewPanel"
+            | "openTerminal"
+            | "toggleBrowserPanel"
+            | "newBrowserTab"
+            | "focusBrowserAddressBar"
     );
     if hotkey_action && !chord.is_empty() {
         let _ = app_chat_workflow::quick_focus_codex_for_hold();

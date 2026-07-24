@@ -17,15 +17,25 @@ assert.ok(A && T);
 // scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 17);
+assert.equal(keyBindings.length, 23);
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'quickSearch'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'openTerminal'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'openReviewTab'; }));
 assert.equal(A.insertTextForSlot('switchModel'), '/model');
 assert.equal(A.insertTextForSlot('claudeModel'), '/model');
 assert.equal(A.defaultKeyForSlot('undo'), 'Ctrl+Z');
 assert.equal(A.defaultKeyForSlot('quickSearch'), 'Ctrl+F');
+assert.equal(A.defaultKeyForSlot('openTerminal'), 'Ctrl+`');
+assert.equal(A.defaultKeyForSlot('openReviewTab'), 'Ctrl+Shift+G');
+assert.equal(A.defaultKeyForSlot('toggleReviewPanel'), 'Ctrl+Alt+B');
+assert.equal(A.defaultKeyForSlot('toggleBrowserPanel'), 'Ctrl+Shift+B');
+assert.equal(A.defaultKeyForSlot('newBrowserTab'), 'Ctrl+T');
+assert.equal(A.defaultKeyForSlot('focusBrowserAddressBar'), 'Ctrl+L');
+assert.equal(A.insertTextForSlot('openReviewTab'), '');
+assert.equal(A.insertTextForSlot('review'), '/review');
 keyBindings.forEach(function (b) {
   if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel') {
     assert.equal(b.triggerBinding, '', b.slotId + ' uses focus workflow, no chord');
@@ -228,16 +238,20 @@ var ag00 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 
 var ag01 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG01'; });
 var ag02 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG02'; });
 var ag04 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG04'; });
-assert.equal(ag00.slotId, 'switchAgent');
-assert.equal(ag01.slotId, 'claudeModel');
-assert.equal(ag02.slotId, 'switchModel');
-assert.equal(ag04.slotId, 'status');
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG00'; }).uiLabelZh, 'Agent');
+assert.equal(ag00.slotId, 'commandPalette');
+assert.equal(ag01.slotId, 'newThread');
+assert.equal(ag02.slotId, 'quickChat');
+assert.equal(ag04.slotId, 'stopOrSend');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG00'; }).uiLabelZh, '命令菜单');
 assert.ok(typeof Pad.resolveStatusLightMicroKeyId === 'function');
 assert.equal(
   Pad.resolveStatusLightMicroKeyId({ keys: Pad.LAYOUT.defaultRoutes }),
-  'AG04',
-  'default status slot hosts the status light'
+  'AG00',
+  'no status route → status light falls back to AG00'
+);
+assert.ok(
+  Pad.LAYOUT.defaultRoutes.every(function (r) { return r.slotId !== 'status'; }),
+  'stock Soft Pad has no status slot'
 );
 assert.equal(
   Pad.resolveStatusLightMicroKeyId({
@@ -263,15 +277,15 @@ assert.equal(
   '',
   'status on invisible key → empty host'
 );
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG01'; }).uiLabelZh, 'Claude');
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG02'; }).uiLabelZh, 'Codex');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG01'; }).uiLabelZh, '新建');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG02'; }).uiLabelZh, '快速聊天');
 var ag03 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG03'; });
 var ag05 = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'AG05'; });
-assert.equal(ag03.slotId, 'permissions');
-assert.equal(ag05.slotId, 'appsOrPlugins');
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG03'; }).uiLabelZh, '权限');
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG04'; }).uiLabelZh, '常用');
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG05'; }).uiLabelZh, '应用');
+assert.equal(ag03.slotId, 'quickSearch');
+assert.equal(ag05.slotId, 'cancel');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG03'; }).uiLabelZh, '搜索');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG04'; }).uiLabelZh, '发送');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'AG05'; }).uiLabelZh, '取消');
 
 var physical = Pad.LAYOUT.defaultRoutes.filter(function (r) {
   return Number(r.sourceScan) > 0;
@@ -281,16 +295,192 @@ assert.equal(physical.length, 16, '16 physical numpad routes (incl. UNDO/SEARCH/
 var undoDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'UNDO'; });
 var searchDef = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'SEARCH'; });
 var act12Def = Pad.LAYOUT.defaultRoutes.find(function (r) { return r.microKeyId === 'ACT12'; });
-assert.equal(undoDef.slotId, 'undo');
+assert.equal(undoDef.slotId, '', 'UNDO stock unbound — not in Codex Soft Pad picker');
 assert.equal(Number(undoDef.sourceScan), 0x50);
 assert.equal(searchDef.slotId, 'quickSearch');
 assert.equal(Number(searchDef.sourceScan), 0x51);
 assert.equal(act12Def.slotId, 'stopOrSend');
 assert.equal(Number(act12Def.sourceScan), 0x1C);
 assert.equal(!!act12Def.sourceExtended, true);
-assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).uiLabelZh, '上下文');
+assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).uiLabelZh, '新建');
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridRow, 4);
 assert.equal(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'ACT09'; }).gridCol, 2);
+
+// Codex Soft Pad openEditKeycap whitelist (one-press only; mapping-scoped)
+assert.ok(typeof Pad.allSlotOptions === 'function');
+assert.ok(Pad.CODEX_SOFT_PAD_SLOT_IDS);
+(function () {
+  var codexM = { appTargetId: 'codex-chat' };
+  var claudeM = { appTargetId: 'claude-code' };
+  var codexOpts = Pad.allSlotOptions(codexM);
+  var claudeOpts = Pad.allSlotOptions(claudeM);
+  var codexIds = codexOpts.map(function (o) { return o.id; });
+  var claudeIds = claudeOpts.map(function (o) { return o.id; });
+  var banned = [
+    'status', 'plan', 'review',
+    'permissions', 'switchAgent', 'switchModel', 'appsOrPlugins'
+  ];
+  banned.forEach(function (id) {
+    assert.ok(codexIds.indexOf(id) < 0, 'Codex Soft Pad picker excludes ' + id);
+    assert.ok(claudeIds.indexOf(id) < 0, 'Claude Soft Pad also excludes insertOnly ' + id);
+  });
+  assert.ok(codexIds.indexOf('claudeModel') < 0, 'Codex Soft Pad excludes claudeModel');
+  assert.ok(claudeIds.indexOf('claudeModel') >= 0, 'Claude Soft Pad still offers claudeModel');
+  assert.ok(claudeIds.length > 0, 'Claude Soft Pad has execute slots');
+  var claudeTips = claudeOpts.map(function (o) { return o.tip || ''; }).join('\n');
+  assert.ok(claudeTips.indexOf('向对话插入') < 0, 'Claude Soft Pad must not advertise slash insert');
+  assert.ok(claudeTips.indexOf('插入 /') < 0);
+  var whitelist = Object.keys(Pad.CODEX_SOFT_PAD_SLOT_IDS);
+  assert.ok(whitelist.indexOf('undo') >= 0, 'undo is Soft Pad open-entry');
+  assert.ok(whitelist.indexOf('openTerminal') >= 0);
+  whitelist.forEach(function (id) {
+    assert.ok(codexIds.indexOf(id) >= 0, 'Codex Soft Pad includes ' + id);
+  });
+  var tips = whitelist.map(function (id) {
+    return Pad.slotEffectTip(id, null, codexM) || '';
+  }).join('\n');
+  assert.ok(tips.indexOf('插入 /') < 0, 'Codex whitelist tips must not say 插入 /');
+  assert.ok(tips.indexOf('Insert /') < 0, 'Codex whitelist tips must not say Insert /');
+  assert.ok(tips.indexOf('inserts /') < 0, 'Codex whitelist tips must not say inserts /');
+
+  // Beginner capability cards + appearance-only icon tips
+  assert.ok(typeof Pad.capabilityCardCopy === 'function');
+  assert.ok(typeof Pad.iconEffectTip === 'function');
+  var nt = Pad.capabilityCardCopy('newThread');
+  assert.equal(nt.title, '新建对话');
+  assert.ok(nt.result.indexOf('Ctrl+N') >= 0);
+  assert.ok(nt.source.indexOf('桌面快捷键') >= 0 || nt.source.indexOf('desktop') >= 0);
+  assert.ok(Pad.capabilityCardCopy('commandPalette').result.indexOf('Ctrl+K') >= 0);
+  assert.ok(Pad.capabilityCardCopy('quickSearch').result.indexOf('Ctrl+F') >= 0);
+  var qc = Pad.capabilityCardCopy('quickChat');
+  assert.ok(qc.result.indexOf('Ctrl+Alt+N') >= 0);
+  assert.ok(qc.source.indexOf('桌面快捷键') >= 0 || qc.source.indexOf('desktop') >= 0);
+  assert.ok(qc.result.indexOf('官方') < 0);
+  assert.ok(qc.result.indexOf('Micro') < 0);
+  var sos = Pad.capabilityCardCopy('stopOrSend');
+  assert.ok(
+    sos.result.indexOf('审批焦点时') >= 0 || sos.result.indexOf('when focused') >= 0,
+    'stopOrSend must include conditional approve semantics'
+  );
+  assert.ok(sos.result.indexOf('批准请求') < 0 || sos.result.indexOf('审批焦点时') >= 0);
+  assert.ok(sos.result.indexOf('空') >= 0 || sos.result.indexOf('empty') >= 0 || sos.result.indexOf('invent') >= 0);
+  var cancelCopy = Pad.capabilityCardCopy('cancel');
+  assert.ok(
+    cancelCopy.result.indexOf('审批焦点时') >= 0 || cancelCopy.result.indexOf('when focused') >= 0,
+    'cancel must include conditional decline semantics'
+  );
+  var openReview = Pad.capabilityCardCopy('openReviewTab');
+  var toggleReview = Pad.capabilityCardCopy('toggleReviewPanel');
+  assert.equal(openReview.title, '打开审查选项卡');
+  assert.equal(toggleReview.title, '显示/隐藏当前聊天审阅面板');
+  assert.ok(openReview.result.indexOf('Ctrl+Shift+G') >= 0);
+  assert.ok(toggleReview.result.indexOf('Ctrl+Alt+B') >= 0);
+  assert.ok(openReview.result.indexOf('/review') < 0);
+  assert.ok(toggleReview.result.indexOf('/review') < 0);
+  var term = Pad.capabilityCardCopy('openTerminal');
+  assert.ok(term.result.indexOf('Ctrl+`') >= 0, 'openTerminal tip must keep backtick');
+  assert.equal(A.defaultKeyForSlot('openTerminal'), 'Ctrl+`');
+  assert.ok(Pad.capabilityCardCopy('toggleBrowserPanel').result.indexOf('Ctrl+Shift+B') >= 0);
+  assert.ok(Pad.capabilityCardCopy('newBrowserTab').result.indexOf('Ctrl+T') >= 0);
+  assert.ok(Pad.capabilityCardCopy('focusBrowserAddressBar').result.indexOf('Ctrl+L') >= 0);
+  assert.ok(Pad.capabilityCardCopy('undo').result.indexOf('Ctrl+Z') >= 0);
+  var iconTips = ['status', 'claude', 'send', 'fork', 'focus', 'browser', 'browserPlus'].map(function (id) {
+    return Pad.iconEffectTip({ id: id, label: id.toUpperCase() });
+  }).join('\n');
+  assert.ok(iconTips.indexOf('/status') < 0);
+  assert.ok(iconTips.indexOf('/model') < 0);
+  assert.ok(iconTips.indexOf('插入') < 0);
+  assert.ok(iconTips.indexOf('Insert') < 0);
+  assert.ok(iconTips.indexOf('外观：') >= 0 || iconTips.indexOf('Appearance:') >= 0);
+  assert.equal(Pad.SLOT_DEFAULT_ICON.newThread, 'fork');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.commandPalette, 'palette');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.summonCodex, 'focus');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.quickChat, 'fast');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.toggleBrowserPanel, 'browser');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.newBrowserTab, 'browserPlus');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.openTerminal, 'terminal');
+  assert.equal(Pad.SLOT_DEFAULT_ICON.undo, 'undo');
+  assert.ok(codexIds.indexOf('review') < 0, 'slash review stays out of Soft Pad');
+  assert.ok(codexIds.indexOf('openReviewTab') >= 0);
+  assert.ok(codexIds.indexOf('undo') >= 0);
+})();
+
+// Edit modal: capability-first + optional icon/hw details + dual tip hosts
+assert.ok(padSrc.indexOf('microHwCapList') >= 0);
+assert.ok(padSrc.indexOf('data-capability-slot') >= 0);
+assert.ok(padSrc.indexOf('maybeAutoSuggestIcon') >= 0);
+assert.ok(padSrc.indexOf('id="microHwIconDetails"') >= 0, 'icon appearance details restored');
+assert.ok(padSrc.indexOf('id="microHwEffectSection"') >= 0);
+assert.ok(padSrc.indexOf('id="microHwIconPreviewTip"') >= 0);
+assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind icon on every slot pick');
+(function () {
+  var ensureAt = padSrc.indexOf('function ensureEditModal');
+  var ensureSlice = padSrc.slice(ensureAt, ensureAt + 4200);
+  assert.ok(ensureSlice.indexOf('id="microHwCapList"') >= 0);
+  assert.ok(ensureSlice.indexOf('id="microHwEditIcons"') >= 0, 'icon grid in edit modal');
+  assert.ok(ensureSlice.indexOf('id="microHwIconDetails"') >= 0);
+  assert.ok(ensureSlice.indexOf('id="microHwEffectSection"') >= 0);
+  assert.ok(ensureSlice.indexOf('id="microHwIconPreviewTip"') >= 0);
+  assert.ok(ensureSlice.indexOf('id="microHwHwDetails"') >= 0);
+  var saveAt = padSrc.indexOf('function saveEditKeycap');
+  assert.ok(saveAt > 0, 'saveEditKeycap present');
+  var saveSlice = padSrc.slice(saveAt, saveAt + 900);
+  assert.ok(saveSlice.indexOf('editDraft.slotId') >= 0, 'save reads editDraft.slotId');
+  assert.ok(saveSlice.indexOf('microHwEditSlot.value') < 0, 'save must not read DOM select');
+  assert.ok(saveSlice.indexOf('Unique source of truth') >= 0);
+  assert.ok(padSrc.indexOf("setAttribute('data-icon-id'") >= 0 || padSrc.indexOf('data-icon-id') >= 0);
+
+  // Icon hover must not write into Zone 2 effect tip
+  var renderIconAt = padSrc.indexOf('function renderIconGrid');
+  var renderIconEnd = padSrc.indexOf('function showEditEffectTip', renderIconAt);
+  var renderIconSlice = padSrc.slice(renderIconAt, renderIconEnd > 0 ? renderIconEnd : renderIconAt + 1800);
+  assert.ok(renderIconSlice.indexOf('showIconPreviewTip') >= 0);
+  assert.ok(renderIconSlice.indexOf('showEditEffectTip') < 0, 'icon hover must not pollute effect tip');
+
+  // Status note uses dynamic host resolver, not hardcoded commandPalette
+  var statusNoteAt = padSrc.indexOf('function updateStatusLightNote');
+  assert.ok(statusNoteAt > 0);
+  var statusNoteSlice = padSrc.slice(statusNoteAt, statusNoteAt + 700);
+  assert.ok(statusNoteSlice.indexOf('resolveStatusLightMicroKeyId') >= 0);
+  assert.ok(statusNoteSlice.indexOf('commandPalette') < 0);
+  assert.ok(statusNoteSlice.indexOf('仍会打开命令菜单') < 0);
+
+  // Saved icon + reopen iconTouched inference
+  assert.ok(typeof Pad.resolveOpenEditIconState === 'function');
+  var custom = Pad.resolveOpenEditIconState(
+    { uiIconId: 'cloud', slotId: 'newThread' },
+    'newThread',
+    { uiIconId: 'fork' }
+  );
+  assert.equal(custom.uiIconId, 'cloud', 'prefer route.uiIconId');
+  assert.equal(custom.iconTouched, true, 'custom icon survives reopen as touched');
+  var stock = Pad.resolveOpenEditIconState(
+    { uiIconId: 'fork', slotId: 'newThread' },
+    'newThread',
+    { uiIconId: 'fork' }
+  );
+  assert.equal(stock.iconTouched, false, 'stock default icon is untouched');
+  var missing = Pad.resolveOpenEditIconState({}, 'commandPalette', null);
+  assert.equal(missing.uiIconId, 'palette');
+  assert.equal(missing.iconTouched, false);
+
+  // iconTouched blocks auto-suggest overwrite
+  var draftTouched = { slotId: 'newThread', uiIconId: 'cloud', iconTouched: true };
+  assert.equal(Pad.maybeAutoSuggestIcon(draftTouched), false);
+  assert.equal(draftTouched.uiIconId, 'cloud');
+  var draftFresh = { slotId: 'commandPalette', uiIconId: 'fork', iconTouched: false };
+  assert.equal(Pad.maybeAutoSuggestIcon(draftFresh), true);
+  assert.equal(draftFresh.uiIconId, 'palette');
+
+  assert.equal(Pad.humanMicroKeyLabel('AG00'), '数字区 7');
+  assert.equal(Pad.humanMicroKeyLabel('AG01'), '数字区 8');
+})();
+// JSON layout mirrors JS AG stock
+assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'AG00'; }).defaultSlotId, 'commandPalette');
+assert.equal(layout.cells.find(function (c) { return c.microKeyId === 'AG01'; }).defaultSlotId, 'newThread');
+assert.equal(layout.defaultRoutes.find(function (r) { return r.microKeyId === 'UNDO'; }).slotId, '');
+assert.ok(layout.defaultRoutes.every(function (r) { return r.slotId !== 'status'; }));
+
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_UP'; }));
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_LEFT'; }));
 assert.ok(Pad.LAYOUT.cells.find(function (c) { return c.microKeyId === 'NAV_DOWN'; }));
@@ -570,6 +760,27 @@ assert.ok(padUiSrc.indexOf('remountPadManagerShell') >= 0);
 assert.ok(padUiSrc.indexOf('padFlagsPersistTimer') >= 0);
 assert.ok(padUiSrc.indexOf('skipEnsure: true') >= 0);
 assert.ok(padUiSrc.indexOf('cmd_codex_micro_pad_set_flags') >= 0);
+assert.ok(padUiSrc.indexOf('cmd_codex_micro_pad_set_layout') >= 0, 'layout profile uses quiet IPC');
+assert.ok(padUiSrc.indexOf('function persistLayout') >= 0);
+assert.ok(padUiSrc.indexOf('remountLayout: false') >= 0, 'profile switch must not remount layout panel');
+assert.ok(padUiSrc.indexOf('data-pad-enhance-wrap') >= 0);
+assert.ok(padUiSrc.indexOf('patchSoftPadLayoutProfileUi') >= 0);
+assert.ok(libRs.indexOf('cmd_codex_micro_pad_set_layout') >= 0);
+var flagsCmdRs = fs.readFileSync(
+  path.join(__dirname, '../src-tauri/src/ipc/commands/shell/codex_micro_pad_flags_cmd.rs'),
+  'utf8'
+);
+assert.ok(flagsCmdRs.indexOf('cmd_codex_micro_pad_set_layout') >= 0);
+assert.ok(flagsCmdRs.indexOf('skip mvp_init/voice') >= 0);
+var applyLayoutFn = (function () {
+  var start = padUiSrc.indexOf('function applyLayoutProfile');
+  var end = padUiSrc.indexOf('function exportLayoutJson');
+  return padUiSrc.slice(start, end);
+})();
+assert.ok(applyLayoutFn.indexOf('persistLayout(m)') >= 0, 'applyLayoutProfile quiet-saves layout');
+assert.ok(applyLayoutFn.indexOf('persist();') < 0, 'applyLayoutProfile must not full cmd_save');
+var persistSrc = fs.readFileSync(path.join(__dirname, '../src/js/core/config-persist.js'), 'utf8');
+assert.ok(persistSrc.indexOf("settingsPanel==='softPad'") >= 0, 'pullBackendConfig skips Soft Pad');
 assert.ok(padUiSrc.indexOf('Native Micro') >= 0);
 assert.ok(padUiSrc.indexOf('Codex Hook') >= 0);
 assert.ok(padUiSrc.indexOf('Claude Hook') >= 0 || padUiSrc.indexOf('claude_hook') >= 0);
@@ -619,7 +830,7 @@ assert.equal(Pad.resolveClaudeMainLightMicroKeyId({ keys: Pad.LAYOUT.defaultRout
   );
   assert.ok(r1.assigned.length >= 2);
   var hosts = r1.assigned.map(function (x) { return x.microKeyId; });
-  assert.ok(hosts.indexOf('AG04') < 0, 'Claude must not steal Codex status host AG04');
+  assert.ok(hosts.indexOf('AG00') < 0, 'Claude must not steal Codex status host AG00');
   assert.equal(sticky['a1'], r1.assigned.find(function (x) { return x.light.agentKey === 'a1'; }).microKeyId);
   var r2 = Pad.assignClaudeAgentLightHosts(
     { keys: Pad.LAYOUT.defaultRoutes },
@@ -635,6 +846,10 @@ var docsPad = fs.readFileSync(path.join(__dirname, '../docs/pad-status-core.md')
 var docsHook = fs.readFileSync(path.join(__dirname, '../docs/codex-hook-onetone-setup.md'), 'utf8');
 assert.ok(docsPad.indexOf('Claude Agent Activity Pad') >= 0 || docsPad.indexOf('自建聚合') >= 0);
 assert.ok(docsPad.indexOf('v.oai.thstatus') >= 0);
+assert.ok(
+  docsPad.indexOf('不等同于官方 Codex Micro 原生硬件协议') >= 0,
+  'docs must state Soft Pad ≠ official Micro hardware protocol'
+);
 assert.ok(docsHook.indexOf('自建') >= 0);
 assert.ok(docsHook.indexOf('非官方硬件多灯协议') >= 0);
 // Soft RGB must not read Claude multi-lights
@@ -886,12 +1101,29 @@ var closeSubpageFn = softPadFnSlice(softPadHubSrc, 'closeSubpage', 'markActiveRo
 assert.ok(openSubpageFn.indexOf('++selectToken') < 0 && openSubpageFn.indexOf('selectToken++') < 0);
 assert.ok(openSubpageFn.indexOf('paintSubpage(entry)') >= 0, 'openSubpage paints sync');
 assert.ok(openSubpageFn.indexOf('fe softPad.openSubpage') >= 0);
+assert.ok(openSubpageFn.indexOf('schedulePreviewPaint') < 0, 'openSubpage must not schedule preview');
+assert.ok(openSubpageFn.indexOf('paintPreview') < 0, 'openSubpage must not paintPreview');
 assert.ok(closeSubpageFn.indexOf('++selectToken') >= 0 || closeSubpageFn.indexOf('selectToken++') >= 0);
-assert.ok(closeSubpageFn.indexOf('previewRestored') >= 0, 'closeSubpage defers preview restore');
-assert.ok(closeSubpageFn.indexOf('setTimeout') >= 0, 'closeSubpage async preview');
+assert.ok(closeSubpageFn.indexOf('schedulePreviewPaint') >= 0, 'closeSubpage queues preview once');
+assert.ok(closeSubpageFn.indexOf('preview.hidden = false') >= 0 || closeSubpageFn.indexOf('e.preview.hidden = false') >= 0 ||
+  closeSubpageFn.indexOf('hidden = false') >= 0, 'closeSubpage chrome-first unhides preview');
+assert.ok(closeSubpageFn.indexOf('replaceChildren') < 0, 'closeSubpage must not clear preview before paint');
 assert.ok(softPadHubSrc.indexOf('++subpageToken') >= 0 || softPadHubSrc.indexOf('subpageToken++') >= 0);
 assert.ok(softPadHubSrc.indexOf('isAgentPanelCurrent') >= 0);
 assert.ok(softPadHubSrc.indexOf('onSoftPadPanelChanged') >= 0);
+assert.ok(softPadHubSrc.indexOf('var selectToken') >= 0, 'selectToken kept for scope/scheme');
+assert.ok(softPadHubSrc.indexOf('var previewEpoch') >= 0, 'previewEpoch owns preview queue');
+assert.ok(softPadHubSrc.indexOf('function schedulePreviewPaint') >= 0, 'schedulePreviewPaint exists');
+var softPadOnChangedFn = softPadFnSlice(softPadHubSrc, 'onSoftPadPanelChanged', 'paintSubpage');
+assert.ok(softPadOnChangedFn.indexOf('remountLayout') >= 0, 'hub honors remountLayout=false');
+var onChangedRuntimeIdx = softPadOnChangedFn.indexOf("panel === 'runtime'");
+assert.ok(onChangedRuntimeIdx >= 0, 'onSoftPadPanelChanged has runtime branch');
+var onChangedRuntimeSlice = softPadOnChangedFn.slice(
+  onChangedRuntimeIdx,
+  softPadOnChangedFn.indexOf("panel === 'agent'", onChangedRuntimeIdx)
+);
+assert.ok(onChangedRuntimeSlice.indexOf('paintPreview') < 0, 'runtime branch must not paintPreview');
+assert.ok(onChangedRuntimeSlice.indexOf('schedulePreviewPaint') < 0, 'runtime branch must not schedule preview');
 
 var selectScopeNoDiag = selectScopeFn;
 var selectSchemeFn = softPadFnSlice(softPadHubSrc, 'selectScheme', 'selectScope');
@@ -908,10 +1140,39 @@ var padUiAgentSrc = fs.readFileSync(
 var fillLazyFn = softPadFnSlice(padUiAgentSrc, 'fillLazyAgentConnect', 'findMappingById');
 assert.ok(fillLazyFn.indexOf('refreshHookSetupStatus') >= 0);
 assert.ok(fillLazyFn.indexOf('refreshClaudeActivityPad') >= 0);
+assert.ok(fillLazyFn.indexOf('requireSoftPad && token == null') >= 0 ||
+  fillLazyFn.indexOf('requireSoftPad === true && token == null') >= 0 ||
+  /requireSoftPad[\s\S]*?token\s*==\s*null[\s\S]*?return/.test(fillLazyFn),
+  'fillLazyAgentConnect requireSoftPad without token must return');
 assert.ok(padUiAgentSrc.indexOf('agentRefreshStillCurrent') >= 0);
 assert.ok(padUiAgentSrc.indexOf('isAgentPanelCurrent') >= 0);
 assert.ok(padUiAgentSrc.indexOf('setSoftPadControlsBusy') >= 0);
 assert.ok(padUiAgentSrc.indexOf('controlBusyUntil') >= 0);
+
+function softPadPanelRenderSlice(src, name, nextName) {
+  return softPadFnSlice(src, name, nextName);
+}
+var presentationPanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadPresentationPanel', 'renderSoftPadRuntimePanel');
+var runtimePanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadRuntimePanel', 'renderSoftPadAgentPanel');
+var agentPanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadAgentPanel', 'setSoftPadControlsBusy');
+['renderSoftPadPreview', 'paintPreview', 'remountSoftPadPreviewShell'].forEach(function (banned) {
+  assert.ok(presentationPanelFn.indexOf(banned) < 0, 'presentation panel bans ' + banned);
+  assert.ok(runtimePanelFn.indexOf(banned) < 0, 'runtime panel bans ' + banned);
+  assert.ok(agentPanelFn.indexOf(banned) < 0, 'agent panel bans ' + banned);
+});
+
+var remountPreviewFn = softPadFnSlice(padUiAgentSrc, 'remountSoftPadPreviewShell', 'renderSoftPadPreview');
+assert.ok(remountPreviewFn.indexOf('bindPadClicks') < 0, 'remountSoftPadPreviewShell must not rebindPadClicks');
+assert.ok(padUiAgentSrc.indexOf('function ensureSoftPadPreviewDelegate') >= 0, 'Soft Pad preview uses event delegation');
+assert.ok(padUiAgentSrc.indexOf("data-soft-pad-preview-delegate") >= 0);
+
+var upsertRouteFn = softPadFnSlice(padUiAgentSrc, 'upsertRoute', 'startRecordNumpad');
+assert.ok(upsertRouteFn.indexOf('softPadPanelActive()') >= 0, 'upsertRoute Soft Pad quiet path');
+assert.ok(upsertRouteFn.indexOf('persistLayout(m)') >= 0, 'upsertRoute Soft Pad uses persistLayout');
+var saveEditFn = softPadFnSlice(padUiAgentSrc, 'saveEditKeycap', 'ensureAgentKeyBinding');
+assert.ok(saveEditFn.indexOf('forceFull: true') < 0, 'Soft Pad keycap save must not forceFull remount');
+assert.ok(saveEditFn.indexOf('schedulePreviewPaint') >= 0 || saveEditFn.indexOf('notifyLinkedUi') >= 0,
+  'Soft Pad keycap save refreshes via schedule/notify');
 
 assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?cursor-chat/.test(softPadHubSrc), 'BUILTIN excludes cursor');
 assert.ok(!/BUILTIN_SOFT_PAD_APPS[\s\S]*?minimax-chat/.test(softPadHubSrc), 'BUILTIN excludes minimax');
@@ -922,7 +1183,6 @@ assert.ok(softPadHubSrc.indexOf('pickDefaultScopeId') >= 0);
 assert.ok(/function listAppScopes[\s\S]*?BUILTIN_SOFT_PAD_APPS\.map/.test(softPadHubSrc), 'scopes from builtin only');
 assert.ok(softPadHubSrc.indexOf('keepPreview') >= 0 || softPadHubSrc.indexOf("softPadView === 'layout'") >= 0, 'layout keeps preview');
 assert.ok(softPadHubSrc.indexOf('is-collapsed') >= 0, 'subpage collapses preview');
-assert.ok(padUiAgentSrc.indexOf("bindPadClicks(host, m, 'softPad')") >= 0);
 assert.ok(padUiAgentSrc.indexOf("mode === 'softPad'") >= 0);
 assert.ok(padUiAgentSrc.indexOf('openEditKeycap(m, id)') >= 0);
 assert.ok(padUiAgentSrc.indexOf('iconEffectTip') >= 0);

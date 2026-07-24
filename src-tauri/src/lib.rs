@@ -768,6 +768,7 @@ pub fn run() {
             ipc::cmd_codex_micro_overlay_toggle_joy_panel,
             ipc::cmd_codex_micro_pad_fire,
             ipc::cmd_codex_micro_pad_set_flags,
+            ipc::cmd_codex_micro_pad_set_layout,
             ipc::cmd_codex_micro_pad_set_presentation,
             ipc::cmd_codex_micro_pad_ensure_ready,
             ipc::cmd_codex_micro_pad_get_readiness,

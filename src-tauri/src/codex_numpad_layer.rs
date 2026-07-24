@@ -466,7 +466,7 @@ fn heal_pad_route_for_micro_key(
     if let Some(idx) = pad.keys.iter().position(|k| k.micro_key_id == id) {
         let route = &mut pad.keys[idx];
         if let Some(ref d) = def {
-            if route.slot_id.trim().is_empty() {
+            if route.slot_id.trim().is_empty() && !d.slot_id.trim().is_empty() {
                 route.slot_id = d.slot_id.clone();
                 changed = true;
             }
@@ -964,18 +964,20 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
 
 pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
     vec![
-        route("AG00", 0x47, false, "switchAgent"),
-        route("AG01", 0x48, false, "claudeModel"),
-        route("AG02", 0x49, false, "switchModel"),
-        route("AG03", 0x4B, false, "permissions"),
-        route("AG04", 0x4C, false, "status"),
-        route("AG05", 0x4D, false, "appsOrPlugins"),
+        // AG zone: one-press Codex App shortcuts (Soft Pad beginner defaults).
+        route("AG00", 0x47, false, "commandPalette"),
+        route("AG01", 0x48, false, "newThread"),
+        route("AG02", 0x49, false, "quickChat"),
+        route("AG03", 0x4B, false, "quickSearch"),
+        route("AG04", 0x4C, false, "stopOrSend"),
+        route("AG05", 0x4D, false, "cancel"),
         route("ACT06", 0x37, false, "quickChat"),
         route("ACT07", 0x35, true, "commandPalette"),
         route("ACT08", 0x4A, false, "cancel"),
         route("ACT09", 0x4F, false, "newThread"),
         // Soft physical: Numpad 2 / 3 (not on Micro 13 face; fire via scan).
-        route("UNDO", 0x50, false, "undo"),
+        // UNDO unbound — not in Codex Soft Pad one-press picker; heal must not restore undo.
+        route("UNDO", 0x50, false, ""),
         route("SEARCH", 0x51, false, "quickSearch"),
         route("ACT10", 0x52, false, "pushToTalk"),
         // Send / confirm → Numpad Enter (region 4 preview; frees 3 for search).
@@ -1031,12 +1033,12 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "ACT12" => "send",
         "PLUS" => "plus",
         "DOT" => "dot",
-        "AG00" => "agent",
-        "AG01" => "claude",
-        "AG02" => "model",
-        "AG03" => "folder",
-        "AG04" => "status",
-        "AG05" => "cloud",
+        "AG00" => "palette",
+        "AG01" => "fork",
+        "AG02" => "fast",
+        "AG03" => "search",
+        "AG04" => "send",
+        "AG05" => "reject",
         "ENC" => "power",
         "JOY" => "empty",
         "NAV_UP" => "navUp",
@@ -1127,23 +1129,26 @@ mod tests {
         assert_eq!(act07.source_scan, 0x35);
         assert!(act07.source_extended);
         let ag00 = keys.iter().find(|k| k.micro_key_id == "AG00").unwrap();
-        assert_eq!(ag00.slot_id, "switchAgent");
+        assert_eq!(ag00.slot_id, "commandPalette");
         let ag01 = keys.iter().find(|k| k.micro_key_id == "AG01").unwrap();
-        assert_eq!(ag01.slot_id, "claudeModel");
+        assert_eq!(ag01.slot_id, "newThread");
         let ag02 = keys.iter().find(|k| k.micro_key_id == "AG02").unwrap();
-        assert_eq!(ag02.slot_id, "switchModel");
+        assert_eq!(ag02.slot_id, "quickChat");
         let ag04 = keys.iter().find(|k| k.micro_key_id == "AG04").unwrap();
-        assert_eq!(ag04.slot_id, "status");
+        assert_eq!(ag04.slot_id, "stopOrSend");
         let ag03 = keys.iter().find(|k| k.micro_key_id == "AG03").unwrap();
-        assert_eq!(ag03.slot_id, "permissions");
+        assert_eq!(ag03.slot_id, "quickSearch");
         let ag05 = keys.iter().find(|k| k.micro_key_id == "AG05").unwrap();
-        assert_eq!(ag05.slot_id, "appsOrPlugins");
+        assert_eq!(ag05.slot_id, "cancel");
         let act09 = keys.iter().find(|k| k.micro_key_id == "ACT09").unwrap();
         assert_eq!(act09.slot_id, "newThread");
         assert_eq!(act09.source_scan, 0x4F);
         let undo = keys.iter().find(|k| k.micro_key_id == "UNDO").unwrap();
-        assert_eq!(undo.slot_id, "undo");
+        assert_eq!(undo.slot_id, "");
         assert_eq!(undo.source_scan, 0x50);
+        assert!(keys.iter().all(|k| k.slot_id != "status"));
+        assert!(keys.iter().all(|k| k.slot_id != "undo"));
+        assert!(keys.iter().all(|k| k.slot_id != "claudeModel"));
         let search = keys.iter().find(|k| k.micro_key_id == "SEARCH").unwrap();
         assert_eq!(search.slot_id, "quickSearch");
         assert_eq!(search.source_scan, 0x51);

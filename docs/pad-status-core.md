@@ -18,12 +18,13 @@ Cell 展示优先级（硬约束）：
 
 1. **fresh native** `v.oai.thstatus`（AG00–AG05）— 官方多 AG，最高可信  
 2. **Claude agent light**（`claude_lights` store，source=`claude_hook`）— OneTone **自建**多灯，非官方硬件协议  
-3. **Codex status host**（主 `PadStatus`，`slotId=status`，默认 AG04）— Codex Hook 单灯整体会话  
+3. **Codex status host**（主 `PadStatus`，`slotId=status`，无则 fallback **AG00**）— Codex Hook 单灯整体会话  
 4. local inferred / fallback  
 
 ### Codex 单灯
 
 - 唯一主 `PadStatus`；宿主 = enabled `slotId=status`（无则 fallback AG00）。
+- **Stock Soft Pad 默认无 `status` route** → 灯落在 AG00；AG00 按下仍是 `commandPalette`（**灯 ≠ 点击语义**）。
 - Subagent* **不**生成多灯（只作 meta/lastEvent 参考）。
 - Soft RGB / `app_*` meta 仍跟主 `PadStatus`。
 
@@ -33,7 +34,9 @@ Cell 展示优先级（硬约束）：
 
 - 独立 `claude_lights`（Claude agent 活动灯 / OneTone 自建聚合）：`SubagentStart/Stop` **只写该 store，绝不写主 PadStatus**。
 - Key：`agent_id` → else `agent_type` → else `claude/main`。
-- Main 宿主 = `claudeModel`（默认 AG01）；subagent sticky 首次占位、Stop/`done`/`failed` TTL 经 `settle_at` **remove entry + host**；同 id 复用；排除 Codex status 宿主。
+- Main 宿主 = `claudeModel`（有则跟该键）；否则 fallback **AG01**。
+- **过渡态**：共享 stock 后 AG01 默认是 Codex `newThread`，Claude 主灯会落在「Codex 语义」键上；Claude 专用默认后续再做。
+- Subagent sticky 首次占位、Stop/`done`/`failed` TTL 经 `settle_at` **remove entry + host**；同 id 复用；排除 Codex status 宿主。
 - `failed`（`StopFailure` / `PostToolUseFailure`）稍长 TTL（约 1200ms），与 `done` **同一 settle 释放路径**。
 - Claude-lit AG 的 meta label 优先压缩后的 `agent_type` 短名（如 `code-reviewer`→`reviewer`），否则 `Claude`。
 - Claude `needs_input`：**仅当主 ACT context 为 idle** 时局部强调 ACT12（确认/继续）/ ACT08（拒绝/取消）；并给出文案-only `claudeWaitingHint`（如 `reviewer 等待确认`），**不**设灯色 / Soft RGB。
@@ -87,10 +90,14 @@ Snapshot：`statusLightMicroKeyId`、`appAgent`、`agentLights`、`agentLightsOv
 14. **可选 HID Output Adapter**：`plan_hid_output` 只产出意图（sink=`soft_rgb`/`none`，`emit_enabled=false`）；`try_emit` **恒拒绝**；不写 `v.oai.rgbcfg` / thstatus；诊断快照展示「HID 关闭」  
 15. **绑定配置校验**：Pad 管理「绑定校验」检查缺路由、空 slot、空热键、scan/slot/chord 冲突、ENC 屏幕键；`summonCodex` 空弦合法；**一键修复**补缺/空弦/ENC/scan 冲突（不改已有非空热键）  
 16. **Claude Input Adapter / Activity Pad**：Claude Code Hook → 主 `PadStatus`（`agent=claude`）+ 并行 `claude_lights`；探针 POST `/api/codex-app/state`；面板 `cmd_claude_hook_setup_status` / `install_confirm` / `uninstall_onetone` 合并写入 `~/.claude/settings.json`（`--onetone-hook-id claude-activity-v1`，PermissionRequest `timeout=60`）；`PermissionRequest` 可轮询 `/api/claude-approval`；CLI 键注入受 `claude_cli_inject_pref_enabled` + 高置信 latch 双闸；**不**伪造 HID / thstatus   
-17. **第一区 7/8/9（AG00/01/02）**：默认 `switchAgent` / `claudeModel` / `switchModel`；**状态灯宿主跟 `status` slot 走**（默认在 AG04；用户改绑后灯迁移）；`claudeModel` Global 聚焦 Claude（已前台则插 `/model`）  
-18. **第二区 4/5/6（AG03/04/05）**：默认 `permissions` / `status` / `appsOrPlugins`（权限 · 常用`/status` · 应用）；默认 `status` 在 AG04 即默认状态灯宿主；命令菜单仍在 `/`→ACT07，不占 5 键  
-19. **第三区 1/2/3**：Numpad1→ACT09 `newThread`（上下文）；Numpad2→软键 `UNDO`/`undo`（Ctrl+Z）；Numpad3→软键 `SEARCH`/`quickSearch`（Ctrl+F）；**发送迁到 Numpad Enter**（ACT12 scan `0x1C:ext`），Overlay 发送键仍为 ACT12
+17. **第一区 7/8/9（AG00/01/02）**：默认 `commandPalette` / `newThread` / `quickChat`（一键生效）；**状态灯**无 `status` route 时 fallback AG00（灯是 overlay；按下仍执行该键当前 slot，默认为命令菜单）  
+18. **第二区 4/5/6（AG03/04/05）**：默认 `quickSearch` / `stopOrSend` / `cancel`；Codex Soft Pad `openEditKeycap` 仅白名单一键能力（不含 insertOnly / `claudeModel` / `undo`）  
+19. **第三区 1/2/3**：Numpad1→ACT09 `newThread`；Numpad2→`UNDO` **空绑定**（heal 不写回 `undo`）；Numpad3→`SEARCH`/`quickSearch`；**发送**仍在 Numpad Enter（ACT12）与 AG04  
 20. **日志测试隔离**：单测通过 `set_log_path_override` 写临时 jsonl；`cfg(test)` 默认关 append，不污染产品 `logs/pad-status.jsonl`
+
+## Soft Pad 能力边界（诚实）
+
+OneTone Soft Pad 使用桌面快捷键、聚焦和语音工作流近似部分 Codex 操作（含审查/终端/浏览器等**打开入口**）；状态灯来自 Hook/本地状态，不等同于官方 Codex Micro 原生硬件协议。`openEditKeycap` 只暴露按一下就有可见结果的白名单能力；图标仅为外观，状态灯宿主与点击动作是两回事。
 
 ## 诚实边界 / 非目标
 

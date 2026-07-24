@@ -188,6 +188,40 @@ pub fn is_hold_to_talk_chord(combo: &str) -> bool {
     chords_equivalent("Ctrl+Shift+D", combo.trim())
 }
 
+/// Bare typing / dialog keys that must reach the focused app.
+/// Soft Pad documents Codex chords like Enter/Escape for `stopOrSend` / `cancel`, but
+/// registering them as global hotkeys (or LL-hook swallow) hijacks chat send / dialogs.
+pub fn is_pass_through_app_key(combo: &str) -> bool {
+    let c = combo.trim();
+    if c.is_empty() || c.contains('+') {
+        return false;
+    }
+    matches!(
+        c,
+        "Enter"
+            | "Return"
+            | "Escape"
+            | "Esc"
+            | "Tab"
+            | "Space"
+            | "Backspace"
+            | "Delete"
+            | "Insert"
+            | "Home"
+            | "End"
+            | "PageUp"
+            | "PageDown"
+            | "Up"
+            | "Down"
+            | "Left"
+            | "Right"
+            | "ArrowUp"
+            | "ArrowDown"
+            | "ArrowLeft"
+            | "ArrowRight"
+    )
+}
+
 /// Compare stored binding chord with live pressed chord (Ctrl+Alt+C ≈ LCtrl+LAlt+C).
 pub fn chords_equivalent(stored: &str, pressed: &str) -> bool {
     let stored_parts = chord_parts(stored);

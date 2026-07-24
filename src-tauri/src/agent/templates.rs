@@ -131,6 +131,66 @@ const CODEX_MICRO_13_SLOTS: &[AgentSlotDef] = &[
         label_en: "Command palette",
     },
     AgentSlotDef {
+        slot_id: "openReviewTab",
+        action_id: "openReviewTab",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "打开审查选项卡",
+        label_en: "Open review tab",
+    },
+    AgentSlotDef {
+        slot_id: "toggleReviewPanel",
+        action_id: "toggleReviewPanel",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "显示/隐藏当前聊天审阅面板",
+        label_en: "Toggle review panel",
+    },
+    AgentSlotDef {
+        slot_id: "openTerminal",
+        action_id: "openTerminal",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "打开终端",
+        label_en: "Open terminal",
+    },
+    AgentSlotDef {
+        slot_id: "toggleBrowserPanel",
+        action_id: "toggleBrowserPanel",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "显示/隐藏浏览器面板",
+        label_en: "Toggle browser panel",
+    },
+    AgentSlotDef {
+        slot_id: "newBrowserTab",
+        action_id: "newBrowserTab",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "打开浏览器标签",
+        label_en: "New browser tab",
+    },
+    AgentSlotDef {
+        slot_id: "focusBrowserAddressBar",
+        action_id: "focusBrowserAddressBar",
+        secondary_action_id: None,
+        execution_mode: ExecutionMode::Execute,
+        activation_scope: ActivationScope::ForegroundApp,
+        insert_text: None,
+        label_zh: "聚焦浏览器地址栏",
+        label_en: "Focus browser address bar",
+    },
+    AgentSlotDef {
         slot_id: "status",
         action_id: "status",
         secondary_action_id: None,
@@ -245,7 +305,7 @@ mod tests {
     #[test]
     fn codex_micro_13_has_expected_slots() {
         let t = codex_micro_13_template();
-        assert_eq!(t.slots.len(), 17);
+        assert_eq!(t.slots.len(), 23);
         assert_eq!(t.template_id, CODEX_MICRO_13_TEMPLATE_ID);
         assert_eq!(t.provider_id, CODEX_PROVIDER_ID);
         assert_eq!(t.app_target_id, "codex-chat");
@@ -253,6 +313,13 @@ mod tests {
         assert!(slot_by_id("switchModel").is_some());
         assert!(slot_by_id("undo").is_some());
         assert!(slot_by_id("quickSearch").is_some());
+        assert!(slot_by_id("openReviewTab").is_some());
+        assert!(slot_by_id("openTerminal").is_some());
+        assert!(slot_by_id("toggleBrowserPanel").is_some());
+        assert_eq!(
+            crate::agent::bindings_build::default_key_for_slot("openTerminal"),
+            "Ctrl+`"
+        );
         for slot in t.slots {
             assert!(
                 action_by_id(slot.action_id).is_some(),

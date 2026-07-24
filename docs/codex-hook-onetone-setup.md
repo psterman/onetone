@@ -2,7 +2,7 @@
 
 用 **官方 Hooks** 把生命周期事件送进 OneTone。分层：
 
-- **Codex Hook** → 主 `PadStatus` **单灯**（`slotId=status`，默认 AG04）
+- **Codex Hook** → 主 `PadStatus` **单灯**（`slotId=status`；无则 fallback AG00；stock Soft Pad 无 status route → 灯在 AG00，按下仍是命令菜单）
 - **Claude Hook** → **Claude Agent Activity Pad**：`claude_lights` **自建多灯**（agent 活动灯 / OneTone 自建聚合；非官方硬件多灯协议）
 - **Micro native** `v.oai.thstatus` → AG00–AG05 官方多 AG（最高优先）
 

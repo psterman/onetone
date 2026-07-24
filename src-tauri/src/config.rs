@@ -2765,6 +2765,11 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
         if crate::key_chord::is_hold_to_talk_chord(&chord) {
             continue;
         }
+        // Enter/Escape/… are Codex Soft Pad *documentation* chords — Soft Pad / Micro
+        // fires the slot; never RegisterHotKey / LL-swallow bare Enter (假死感).
+        if crate::key_chord::is_pass_through_app_key(&chord) {
+            continue;
+        }
         out.push(chord);
     }
     out
@@ -5331,6 +5336,50 @@ mod tests {
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.iter().any(|b| b == "PageDown"));
         assert!(!bindings.iter().any(|b| crate::key_chord::is_hold_to_talk_chord(b)));
+    }
+
+    #[test]
+    fn hotkey_registration_skips_bare_enter_escape_agent_chords() {
+        let mut m = VoiceConfig::default().mappings[0].clone();
+        m.trigger_key.clear();
+        m.source_key = "PageDown".into();
+        m.agent_bindings.push(AgentBinding {
+            slot_id: "stopOrSend".into(),
+            action_id: "stopOrSendDictation".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Enter".into(),
+            enabled: true,
+            execution_mode: None,
+            activation_scope: "foregroundApp".into(),
+        });
+        m.agent_bindings.push(AgentBinding {
+            slot_id: "cancel".into(),
+            action_id: "cancel".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Escape".into(),
+            enabled: true,
+            execution_mode: None,
+            activation_scope: "foregroundApp".into(),
+        });
+        m.agent_bindings.push(AgentBinding {
+            slot_id: "quickChat".into(),
+            action_id: "quickChat".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Ctrl+Alt+N".into(),
+            enabled: true,
+            execution_mode: None,
+            activation_scope: "foregroundApp".into(),
+        });
+        let bindings = hotkey_registration_bindings(&m);
+        assert!(bindings.iter().any(|b| b == "PageDown"));
+        assert!(bindings.iter().any(|b| b == "Ctrl+Alt+N"));
+        assert!(
+            !bindings.iter().any(|b| b == "Enter" || b == "Escape"),
+            "bare Enter/Escape must not be global hotkeys: {bindings:?}"
+        );
+        assert!(crate::key_chord::is_pass_through_app_key("Enter"));
+        assert!(crate::key_chord::is_pass_through_app_key("Escape"));
+        assert!(!crate::key_chord::is_pass_through_app_key("Ctrl+Alt+N"));
     }
 
     #[test]
