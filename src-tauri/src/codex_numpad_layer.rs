@@ -917,6 +917,8 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
         } else {
             mapping.agent_provider_id.clone()
         };
+        // Soft Pad / Numpad0 mic: hold Ctrl+Shift+D down until release (historical path).
+        // Tap + focus_then_hotkey pulse re-entered dispatch/FG and caused 循环假死风暴.
         let is_hold = binding.action_id == "startDictation"
             || binding.slot_id.eq_ignore_ascii_case("pushToTalk");
         let snapshot = CodexNumpadRouteSnapshot {
@@ -958,6 +960,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         codex_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
+        skin: "default".into(),
         keys: default_codex_micro_pad_routes(),
     }
 }
@@ -1375,6 +1378,62 @@ mod tests {
             .unwrap();
         assert_eq!(enc.source_scan, 0);
         assert!(agent_key_binding_for_slot(&cfg.mappings[0], "pushToTalk").is_some());
+    }
+
+    #[test]
+    fn push_to_talk_ctrl_shift_d_is_hold() {
+        use crate::config::{MappingEntry, TriggerMode};
+
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        let cfg = VoiceConfig {
+            mappings: vec![MappingEntry {
+                id: "codex-ptt-hold".into(),
+                label: String::new(),
+                group: "默认".into(),
+                app_target_id: CODEX_APP_TARGET_ID.into(),
+                trigger_key: "F1".into(),
+                target_key: "RAlt".into(),
+                enabled: true,
+                order: 0,
+                trigger_mode: TriggerMode::Tap,
+                trigger_source: None,
+                source_key: String::new(),
+                source_time: String::new(),
+                interval_ms: 1200,
+                enter_delay_ms: 5000,
+                cancel_enabled: true,
+                auto_enter_enabled: true,
+                switch_keys: vec![],
+                native_key_restore: false,
+                trigger_device: String::new(),
+                long_press_ms: 500,
+                double_click_ms: 400,
+                ime_preset_id: String::new(),
+                app_behavior_rules: vec![],
+                voice_override: None,
+                camera_override: None,
+                voice_commands: vec![],
+                acoustic_voice_commands: vec![],
+                agent_template_id: String::new(),
+                agent_provider_id: CODEX_PROVIDER_ID.into(),
+                agent_bindings: build_codex_micro_13_bindings("zh-CN"),
+                codex_micro_pad: Some(pad),
+            }],
+            ..VoiceConfig::default()
+        };
+        sync_hook_cache(&cfg);
+        let route = lookup_route_by_micro_key("ACT10").expect("ACT10 route");
+        assert_eq!(route.slot_id, "pushToTalk");
+        assert_eq!(route.action_id, "startDictation");
+        assert!(
+            crate::key_chord::is_hold_to_talk_chord(&route.trigger_binding),
+            "default pushToTalk uses Ctrl+Shift+D"
+        );
+        assert!(
+            route.is_hold,
+            "Soft Pad ACT10 must hold Ctrl+Shift+D until release (tap pulse caused 循环假死)"
+        );
     }
 
     #[test]

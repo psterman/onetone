@@ -131,6 +131,7 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         codex_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
+        skin: "default".into(),
         keys: vec![],
     }
 }
@@ -775,6 +776,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![
                 crate::config::CodexMicroPadKeyRoute {
                     micro_key_id: "AG04".into(),
@@ -833,6 +835,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         };
         let (_l, _o, _c, hint) = build_claude_diagnose(&pad, 10, true);

@@ -281,7 +281,11 @@ fn send_token_sequence(tokens: &[SendToken], hold_ms: u32) -> bool {
     true
 }
 
-/// Press a chord down without releasing (hold-to-talk: Codex Ctrl+Shift+D).
+/// Press a chord down without releasing (hold-to-talk synthesis).
+///
+/// Guard is echo-suppression only (~120ms). Do **not** keep `send_guard` armed for
+/// the whole physical hold — a multi-minute guard swallows Ctrl/Shift/D globally and
+/// makes Soft Pad / the desktop feel frozen (假死) while Numpad0 / ACT10 is held.
 pub fn press_chord(combo: &str) -> bool {
     let trimmed = combo.trim();
     if trimmed.is_empty() {
@@ -293,7 +297,7 @@ pub fn press_chord(combo: &str) -> bool {
     match parse_chord(trimmed) {
         Ok(tokens) => {
             send_guard::arm_keys(&send_guard::guard_keys_from_combo(trimmed));
-            send_guard::run_guarded(300_000, || {
+            send_guard::run_guarded(120, || {
                 let mut press: Vec<INPUT> =
                     tokens.iter().copied().map(token_to_press_input).collect();
                 send_inputs(&mut press);

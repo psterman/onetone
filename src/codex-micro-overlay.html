@@ -140,6 +140,21 @@
       numpad_mode:'请先打开模式开关 · 切换到 Codex 场景'
     };
     var boundKeys={};
+    var PAD_SKINS=['default','glass-light','hybrid-pro','vibe-light','vibe-dark'];
+    function normalizeOverlaySkin(raw){
+      var s=String(raw||'').trim().toLowerCase();
+      if(s==='vibe-dark') return 'vibe-light';
+      if(s==='glass-light'||s==='hybrid-pro'||s==='vibe-light'||s==='default') return s;
+      return 'default';
+    }
+    function syncOverlayTheme(){
+      try{
+        var th=localStorage.getItem('vp_theme');
+        document.documentElement.setAttribute('data-theme', th==='dark'?'dark':'light');
+      }catch(_){
+        document.documentElement.setAttribute('data-theme','light');
+      }
+    }
     var wrap=document.getElementById('wrap');
     var grid=document.getElementById('grid');
     var overlayToast=document.getElementById('overlayToast');
@@ -509,16 +524,20 @@
         if(isNav) return res;
         if(!res) return res;
         var reason=String(res.reason||'');
+        var slot=String(res.slotId||res.slot_id||'').trim();
+        var slotHint=slot?(' · '+slot):'';
         if(reason==='hold_down'){
           holdLockId=id;
           holdSuppressCancel=true;
           holdUiReleased=false;
           setLocalStatus('listening', id);
+          toast('听写中 · 松开结束'+slotHint);
         } else if(reason==='hold_up'){
           holdLockId='';
           holdSuppressCancel=false;
           holdUiReleased=false;
           setLocalStatus('done', id);
+          toast('已完成'+slotHint);
         }
         else if(reason==='hold_busy'){
           setFootHint('听写进行中');
@@ -532,6 +551,7 @@
         else if(reason==='fired' || reason==='enhance_pulse' || reason==='healing' || reason==='numpad_pulse'){
           setLocalStatus('running', id);
           if(id==='ENC' && phase==='down') toast('召唤 Codex');
+          else if(phase==='down') toast('已触发'+slotHint);
         }
         else if(!res.ok && phase==='down'){
           if(holdLockId===id){
@@ -723,6 +743,13 @@
     function render(s){
       s=s||{};
       lastSnap=Object.assign({}, lastSnap, s);
+      syncOverlayTheme();
+      var padSkin=normalizeOverlaySkin(s.skin||s.padSkin);
+      var rootEl=document.querySelector('.root');
+      if(rootEl) rootEl.setAttribute('data-pad-skin', padSkin);
+      wrap.setAttribute('data-pad-skin', padSkin);
+      var hw=wrap.querySelector('.micro-hw');
+      if(hw) hw.setAttribute('data-pad-skin', padSkin);
       wrap.classList.toggle('is-visible',!!s.visible);
       if(!s.visible){ holdLockId=''; applyAppMetaChip(s); return; }
       padEnabled=!!s.enabled;

@@ -310,6 +310,8 @@ pub struct CodexMicroOverlaySnapshot {
     pub status_light_micro_key_id: String,
     pub software_enhance_enabled: bool,
     pub minimized: bool,
+    /// Soft Pad visual skin (normalized): default | glass-light | hybrid-pro | vibe-light | vibe-dark.
+    pub skin: String,
     pub rgb: Option<CodexMicroOverlayRgb>,
     /// connected | stale | fallback (protocol debug).
     pub connection_state: String,
@@ -1197,6 +1199,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             codex_status_lights_enabled: app_state_enabled,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         };
         let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =
@@ -1230,6 +1233,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             status_light_micro_key_id,
             software_enhance_enabled: false,
             minimized,
+            skin: normalize_skin("").to_string(),
             rgb,
             connection_state: vendor.connection_state.clone(),
             protocol_version: vendor.version.clone(),
@@ -1382,6 +1386,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         status_light_micro_key_id,
         software_enhance_enabled: pad.software_enhance_enabled,
         minimized,
+        skin: normalize_skin(&pad.skin).to_string(),
         rgb,
         connection_state: vendor.connection_state.clone(),
         protocol_version: vendor.version.clone(),
@@ -1817,6 +1822,19 @@ pub fn normalize_presentation(raw: &str) -> &'static str {
 
 pub fn presentation_is_mini(pad: &CodexMicroPadConfig) -> bool {
     normalize_presentation(&pad.presentation) == "mini"
+}
+
+/// Soft Pad visual skins. Unknown / empty → `"default"`.
+pub fn normalize_skin(raw: &str) -> &'static str {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "glass-light" => "glass-light",
+        "hybrid-pro" => "hybrid-pro",
+        "vibe-light" => "vibe-light",
+        // Legacy / theme-auto id — persist as vibe-light; dark UI is CSS-driven.
+        "vibe-dark" => "vibe-light",
+        "default" | "" => "default",
+        _ => "default",
+    }
 }
 
 pub fn snap_overlay_position(win: &WebviewWindow) {
@@ -2259,6 +2277,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2308,6 +2327,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2334,6 +2354,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -2413,6 +2434,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
@@ -2450,6 +2472,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2480,6 +2503,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2513,6 +2537,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2544,6 +2569,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2582,6 +2608,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -2618,6 +2645,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -2679,6 +2707,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2728,6 +2757,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2749,6 +2779,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         };
         // status AG04 excluded; pool has 5 AG keys → 6 lights overflow
@@ -2806,6 +2837,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2841,6 +2873,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2889,6 +2922,7 @@ mod tests {
             codex_status_lights_enabled: false, // force pad_run as ACT context
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -2927,6 +2961,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG05")],
         };
         assert_eq!(resolve_status_light_micro_key_id(&with_status), "AG05");
@@ -2941,6 +2976,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         };
         assert_eq!(resolve_status_light_micro_key_id(&empty), "AG00");
@@ -2980,6 +3016,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -3009,6 +3046,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("ACT09")],
         })];
         test_set_foreground_latch(true);
@@ -3037,6 +3075,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -3063,6 +3102,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -3094,6 +3134,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -3120,6 +3161,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         // Permission sheet stole FG — latch false, but pad must remain as status beacon.
@@ -3154,6 +3196,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -3178,6 +3221,7 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
@@ -3323,6 +3367,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3354,6 +3399,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3382,6 +3428,7 @@ mod tests {
             codex_status_lights_enabled: true,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -3408,11 +3455,68 @@ mod tests {
             codex_status_lights_enabled: false,
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            skin: "default".into(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
         let snap = build_snapshot_from_cfg(&cfg);
         assert!(snap.visible);
         assert_eq!(snap.visible_reason, "codex_foreground");
+    }
+
+    #[test]
+    fn normalize_skin_whitelist_and_fallback() {
+        assert_eq!(normalize_skin(""), "default");
+        assert_eq!(normalize_skin("DEFAULT"), "default");
+        assert_eq!(normalize_skin("glass-light"), "glass-light");
+        assert_eq!(normalize_skin("hybrid-pro"), "hybrid-pro");
+        assert_eq!(normalize_skin("vibe-light"), "vibe-light");
+        assert_eq!(normalize_skin("vibe-dark"), "vibe-light");
+        assert_eq!(normalize_skin("unknown-skin"), "default");
+        assert_eq!(normalize_skin("  Glass-Light  "), "glass-light");
+    }
+
+    #[test]
+    fn snapshot_skin_from_pad_config() {
+        let _iso = isolate_status_globals();
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![codex_mapping(CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
+            skin: "hybrid-pro".into(),
+            keys: vec![],
+        })];
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap.skin, "hybrid-pro");
+
+        cfg.mappings[0].codex_micro_pad.as_mut().unwrap().skin = "nope".into();
+        let snap2 = build_snapshot_from_cfg(&cfg);
+        assert_eq!(snap2.skin, "default");
+    }
+
+    #[test]
+    fn missing_skin_field_deserializes_to_default() {
+        let json = r#"{
+            "enabled": true,
+            "requireForeground": true,
+            "requireNumLockOff": false,
+            "overlayEnabled": true,
+            "layoutProfile": "standard",
+            "softwareEnhanceEnabled": false,
+            "codexStatusLightsEnabled": false,
+            "claudeCliInjectPrefEnabled": false,
+            "presentation": "full",
+            "keys": []
+        }"#;
+        let pad: CodexMicroPadConfig = serde_json::from_str(json).expect("deserialize pad");
+        assert_eq!(pad.skin, "default");
     }
 }

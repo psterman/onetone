@@ -269,6 +269,17 @@ pub fn run_hold_voice_foreground(
         return Err((prefix.to_string(), AppChatWorkflowError::VoiceFailed));
     }
 
+    // Codex native Start Dictation (Ctrl+Shift+D): press the chord only.
+    // Entering OneTone `dictating` shows coach HUD / end-phrase ASR and competes for the mic.
+    if crate::key_chord::is_hold_to_talk_chord(voice_key) {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "hold",
+            &format!("{prefix} hold start native key={voice_key} mapping={mapping_id}"),
+        );
+        return Ok(format!("{prefix}_hold_start_native"));
+    }
+
     if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {
         crate::voice_end_runtime::enter_dictating(
             state,
@@ -429,6 +440,11 @@ fn activate_voice_input(
 
     if profile.post_voice_key_ms > 0 {
         std::thread::sleep(Duration::from_millis(profile.post_voice_key_ms));
+    }
+
+    // Codex native Start Dictation chord: do not enter OneTone dictating session.
+    if crate::key_chord::is_hold_to_talk_chord(&voice_key) {
+        return Ok(());
     }
 
     if crate::voice_end_runtime::can_enter_dictating(&state.cfg.lock()) {

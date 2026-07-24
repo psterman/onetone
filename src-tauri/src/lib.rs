@@ -770,6 +770,7 @@ pub fn run() {
             ipc::cmd_codex_micro_pad_set_flags,
             ipc::cmd_codex_micro_pad_set_layout,
             ipc::cmd_codex_micro_pad_set_presentation,
+            ipc::cmd_codex_micro_pad_set_skin,
             ipc::cmd_codex_micro_pad_ensure_ready,
             ipc::cmd_codex_micro_pad_get_readiness,
             ipc::cmd_codex_status_lights_set,

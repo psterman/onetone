@@ -1252,12 +1252,19 @@ pub struct CodexMicroPadConfig {
     /// Overlay chrome: `"full"` | `"mini"`. Drives runtime `minimized`; mini = LED strip (not ACT keys).
     #[serde(default = "default_codex_micro_presentation")]
     pub presentation: String,
+    /// Soft Pad visual skin: `"default"` | `"glass-light"` | `"hybrid-pro"` | `"vibe-light"` | `"vibe-dark"`.
+    #[serde(default = "default_codex_micro_skin")]
+    pub skin: String,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
 }
 
 fn default_codex_micro_presentation() -> String {
     "full".into()
+}
+
+fn default_codex_micro_skin() -> String {
+    "default".into()
 }
 
 /// Physical numpad key -> Micro cell -> agent slot (output chord lives on slot binding).

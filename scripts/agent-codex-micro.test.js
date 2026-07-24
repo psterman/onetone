@@ -17,13 +17,17 @@ assert.ok(A && T);
 // scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 23);
+assert.equal(keyBindings.length, 27);
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'quickSearch'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'openTerminal'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'openReviewTab'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'toggleSidebar'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'openSettings'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'navBack'; }));
+assert.ok(keyBindings.some(function (b) { return b.slotId === 'navForward'; }));
 assert.equal(A.insertTextForSlot('switchModel'), '/model');
 assert.equal(A.insertTextForSlot('claudeModel'), '/model');
 assert.equal(A.defaultKeyForSlot('undo'), 'Ctrl+Z');
@@ -31,6 +35,10 @@ assert.equal(A.defaultKeyForSlot('quickSearch'), 'Ctrl+F');
 assert.equal(A.defaultKeyForSlot('openTerminal'), 'Ctrl+`');
 assert.equal(A.defaultKeyForSlot('openReviewTab'), 'Ctrl+Shift+G');
 assert.equal(A.defaultKeyForSlot('toggleReviewPanel'), 'Ctrl+Alt+B');
+assert.equal(A.defaultKeyForSlot('toggleSidebar'), 'Ctrl+B');
+assert.equal(A.defaultKeyForSlot('openSettings'), 'Ctrl+,');
+assert.equal(A.defaultKeyForSlot('navBack'), 'Ctrl+[');
+assert.equal(A.defaultKeyForSlot('navForward'), 'Ctrl+]');
 assert.equal(A.defaultKeyForSlot('toggleBrowserPanel'), 'Ctrl+Shift+B');
 assert.equal(A.defaultKeyForSlot('newBrowserTab'), 'Ctrl+T');
 assert.equal(A.defaultKeyForSlot('focusBrowserAddressBar'), 'Ctrl+L');
@@ -333,6 +341,10 @@ assert.ok(Pad.CODEX_SOFT_PAD_SLOT_IDS);
   var whitelist = Object.keys(Pad.CODEX_SOFT_PAD_SLOT_IDS);
   assert.ok(whitelist.indexOf('undo') >= 0, 'undo is Soft Pad open-entry');
   assert.ok(whitelist.indexOf('openTerminal') >= 0);
+  assert.ok(whitelist.indexOf('toggleSidebar') >= 0);
+  assert.ok(whitelist.indexOf('openSettings') >= 0);
+  assert.ok(whitelist.indexOf('navBack') >= 0);
+  assert.ok(whitelist.indexOf('navForward') >= 0);
   whitelist.forEach(function (id) {
     assert.ok(codexIds.indexOf(id) >= 0, 'Codex Soft Pad includes ' + id);
   });
@@ -375,6 +387,22 @@ assert.ok(Pad.CODEX_SOFT_PAD_SLOT_IDS);
   assert.equal(toggleReview.title, '显示/隐藏当前聊天审阅面板');
   assert.ok(openReview.result.indexOf('Ctrl+Shift+G') >= 0);
   assert.ok(toggleReview.result.indexOf('Ctrl+Alt+B') >= 0);
+  assert.ok(Pad.capabilityCardCopy('toggleSidebar').result.indexOf('Ctrl+B') >= 0);
+  assert.ok(Pad.capabilityCardCopy('openSettings').result.indexOf('Ctrl+,') >= 0);
+  assert.ok(Pad.capabilityCardCopy('navBack').result.indexOf('Ctrl+[') >= 0);
+  assert.ok(Pad.capabilityCardCopy('navForward').result.indexOf('Ctrl+]') >= 0);
+  var ptt = Pad.capabilityCardCopy('pushToTalk');
+  assert.ok(ptt.result.indexOf('Ctrl+Shift+D') >= 0, 'pushToTalk must use Codex native Start dictation');
+  assert.ok(ptt.result.indexOf('按住') >= 0 || ptt.result.toLowerCase().indexOf('hold') >= 0,
+    'pushToTalk Soft Pad must advertise hold-to-talk (press_chord until release)');
+  assert.ok(ptt.result.indexOf('OneTone') < 0 && String(ptt.source || '').indexOf('OneTone') < 0,
+    'pushToTalk must not advertise OneTone voice workflow');
+  var pttHoldMap = {
+    agentBindings: [{ slotId: 'pushToTalk', triggerType: 'key', triggerBinding: 'Ctrl+Shift+D', enabled: true }],
+    codexMicroPad: { keys: [{ microKeyId: 'ACT10', slotId: 'pushToTalk', enabled: true }] }
+  };
+  assert.equal(Pad.isHoldMicroKey(pttHoldMap, 'ACT10'), true,
+    'default Ctrl+Shift+D mic must use Soft Pad hold pointer path');
   assert.ok(openReview.result.indexOf('/review') < 0);
   assert.ok(toggleReview.result.indexOf('/review') < 0);
   var term = Pad.capabilityCardCopy('openTerminal');
@@ -422,6 +450,16 @@ assert.ok(padSrc.indexOf('bindIconToCapabilitySlot') < 0, 'must not force-bind i
   assert.ok(ensureSlice.indexOf('id="microHwEffectSection"') >= 0);
   assert.ok(ensureSlice.indexOf('id="microHwIconPreviewTip"') >= 0);
   assert.ok(ensureSlice.indexOf('id="microHwHwDetails"') >= 0);
+  var renderCapAt = padSrc.indexOf('function renderCapabilityList');
+  assert.ok(renderCapAt > 0);
+  var renderCapSlice = padSrc.slice(renderCapAt, renderCapAt + 2200);
+  assert.ok(renderCapSlice.indexOf('cap-result') < 0, 'cap list must not embed explanation copy');
+  assert.ok(renderCapSlice.indexOf('cap-trigger') < 0, 'cap list must not embed source tag');
+  assert.ok(
+    renderCapSlice.indexOf("allSlotOptions(m).concat([{ id: '', label: '' }])") >= 0
+      || /allSlotOptions\(m\)\.concat\(\[\{\s*id:\s*''/.test(renderCapSlice),
+    'unbound option must be appended last'
+  );
   var saveAt = padSrc.indexOf('function saveEditKeycap');
   assert.ok(saveAt > 0, 'saveEditKeycap present');
   var saveSlice = padSrc.slice(saveAt, saveAt + 900);
@@ -1188,5 +1226,72 @@ assert.ok(padUiAgentSrc.indexOf('openEditKeycap(m, id)') >= 0);
 assert.ok(padUiAgentSrc.indexOf('iconEffectTip') >= 0);
 assert.ok(padUiAgentSrc.indexOf('slotEffectTip') >= 0);
 assert.ok(padUiAgentSrc.indexOf('microHwEditEffectTip') >= 0);
+
+// Soft Pad skins — visual only
+assert.ok(padUiAgentSrc.indexOf("var PAD_SKINS = ['default', 'glass-light', 'hybrid-pro', 'vibe-light', 'vibe-dark']") >= 0
+  || /PAD_SKINS\s*=\s*\[[^\]]*'default'[^\]]*'glass-light'[^\]]*'hybrid-pro'[^\]]*'vibe-light'[^\]]*'vibe-dark'/.test(padUiAgentSrc),
+  'PAD_SKINS whitelist');
+assert.ok(padUiAgentSrc.indexOf('function normalizePadSkin') >= 0);
+assert.ok(padUiAgentSrc.indexOf('function persistPadSkin') >= 0);
+assert.ok(padUiAgentSrc.indexOf('cmd_codex_micro_pad_set_skin') >= 0, 'quiet skin IPC');
+var persistSkinFn = softPadFnSlice(padUiAgentSrc, 'persistPadSkin', 'ensurePadManagerModal');
+assert.ok(persistSkinFn.indexOf("persist()") < 0 && !/\bpersist\s*\(/.test(persistSkinFn.replace(/\/\/[^\n]*/g, '')),
+  'persistPadSkin must not bare persist()');
+assert.ok(persistSkinFn.indexOf("'cmd_save'") < 0 && persistSkinFn.indexOf('"cmd_save"') < 0,
+  'persistPadSkin must not cmd_save');
+assert.ok(persistSkinFn.indexOf('patchSkinSegActive') < 0, 'persistPadSkin must not roll back UI on fail');
+assert.ok(persistSkinFn.indexOf('softPadSkinSaveFail') >= 0 || persistSkinFn.indexOf('toast(') >= 0,
+  'persistPadSkin toasts on fail instead of snapping to default');
+assert.ok(padUiAgentSrc.indexOf('data-pad-skin') >= 0, 'render stamps data-pad-skin');
+assert.ok(padUiAgentSrc.indexOf('function renderSkinSeg') >= 0);
+assert.ok(padUiAgentSrc.indexOf('function patchSoftPadPreviewSkin') >= 0);
+assert.ok(padUiAgentSrc.indexOf("var PAD_SKIN_CHOICES = ['default', 'glass-light', 'hybrid-pro', 'vibe-light']") >= 0
+  || /PAD_SKIN_CHOICES\s*=\s*\[[^\]]*'vibe-light'/.test(padUiAgentSrc),
+  'PAD_SKIN_CHOICES excludes vibe-dark');
+assert.ok(padUiAgentSrc.indexOf('function canonicalizePadSkin') >= 0);
+assert.ok(padUiAgentSrc.indexOf("mode !== 'softPad'") >= 0, 'softPad preview omits decorative LEDs');
+var presentationPanelFnSkin = softPadFnSlice(padUiAgentSrc, 'renderSoftPadPresentationPanel', 'renderSoftPadRuntimePanel');
+assert.ok(presentationPanelFnSkin.indexOf('renderSkinSeg') >= 0, 'presentation hosts skin UI');
+assert.ok(presentationPanelFnSkin.indexOf('paintPreview') < 0);
+assert.ok(presentationPanelFnSkin.indexOf('schedulePreviewPaint') < 0);
+var lightBindFn = softPadFnSlice(padUiAgentSrc, 'bindSoftPadLightPanelEvents', 'renderCodexMicroPadManager');
+var skinClickIdx = lightBindFn.indexOf('[data-pad-skin-opt]');
+assert.ok(skinClickIdx >= 0, 'skin click handler');
+var skinClickSlice = lightBindFn.slice(skinClickIdx, skinClickIdx + 900);
+assert.ok(skinClickSlice.indexOf('persistPadSkin') >= 0);
+assert.ok(skinClickSlice.indexOf('patchSoftPadPreviewSkin') >= 0);
+assert.ok(skinClickSlice.indexOf('paintPreview') < 0, 'skin switch no paintPreview');
+assert.ok(skinClickSlice.indexOf('schedulePreviewPaint') < 0, 'skin switch no schedulePreviewPaint');
+assert.ok(skinClickSlice.indexOf("panel: 'presentation'") >= 0);
+assert.ok(skinClickSlice.indexOf('persist()') < 0, 'skin switch no bare persist()');
+assert.ok(skinClickSlice.indexOf('skinPersistRollback') < 0, 'no rollback snap on click');
+assert.ok(skinClickSlice.indexOf('canonicalizePadSkin') >= 0);
+assert.ok(padUiAgentSrc.indexOf("data-micro-key") >= 0);
+assert.ok(padUiAgentSrc.indexOf('data-run-status') >= 0);
+assert.ok(padUiAgentSrc.indexOf('data-status-source') >= 0);
+assert.ok(softPadHubSrc.indexOf("softPadView === 'presentation'") >= 0, 'presentation keeps preview');
+
+var padCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-pad.css'), 'utf8');
+var overlayCss = fs.readFileSync(path.join(__dirname, '../src/css/codex-micro-overlay.css'), 'utf8');
+assert.ok(padCss.indexOf('[data-pad-skin="glass-light"]') >= 0);
+assert.ok(padCss.indexOf('[data-pad-skin="hybrid-pro"]') >= 0);
+assert.ok(padCss.indexOf('[data-pad-skin="vibe-light"]') >= 0);
+assert.ok(padCss.indexOf('[data-pad-skin="vibe-dark"]') >= 0);
+assert.ok(padCss.indexOf('font-family') >= 0 && padCss.indexOf(':hover') >= 0);
+assert.ok(padCss.indexOf(':active') >= 0 || padCss.indexOf('.is-pressed') >= 0);
+assert.ok(padCss.indexOf('html[data-theme="dark"]') >= 0 && padCss.indexOf('vibe-light') >= 0,
+  'dark theme skin counterparts exist');
+assert.ok(padCss.indexOf('.soft-pad-preview .micro-hw__leds') >= 0, 'CSS hides soft-pad LEDs');
+assert.ok(overlayCss.indexOf('[data-pad-skin="vibe-light"]') >= 0);
+assert.ok(overlayCss.indexOf('html[data-theme="dark"]') >= 0, 'overlay dark skin CSS');
+assert.ok(!/\[data-pad-skin=[\s\S]{0,200}body\s*\{/.test(padCss), 'skin CSS must not invade body');
+assert.ok(padCss.indexOf('.container {') < 0 || padCss.indexOf('[data-pad-skin') < padCss.lastIndexOf('[data-pad-skin'),
+  'no prototype .container skin block');
+
+var overlayHtml = fs.readFileSync(path.join(__dirname, '../src/codex-micro-overlay.html'), 'utf8');
+assert.ok(overlayHtml.indexOf('normalizeOverlaySkin') >= 0 || overlayHtml.indexOf('data-pad-skin') >= 0);
+assert.ok(overlayHtml.indexOf("setAttribute('data-pad-skin'") >= 0 || overlayHtml.indexOf('data-pad-skin') >= 0);
+assert.ok(overlayHtml.indexOf('vibe-light') >= 0);
+assert.ok(overlayHtml.indexOf('syncOverlayTheme') >= 0);
 
 console.log('agent-codex-micro.test.js ok');

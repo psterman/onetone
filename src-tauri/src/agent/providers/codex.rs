@@ -109,6 +109,8 @@ impl CodexProviderAdapter {
             "openAgent" | "focusComposer" => Self::focus_only(state, window, duration_ms, mode),
             "claudeModel" => Self::claude_model(state, window, duration_ms, mode),
             "startDictation" => {
+                // Hold-to-talk via press_chord(Ctrl+Shift+D). Do NOT pulse focus_then_hotkey —
+                // Soft Pad tap + SendInput echo + FG thrash caused 循环假死风暴.
                 Self::start_dictation(state, window, mapping_id, duration_ms, mode)
             }
             "stopOrSendDictation" => Self::stop_or_send(state, window, mode),
@@ -124,6 +126,12 @@ impl CodexProviderAdapter {
             "toggleReviewPanel" => {
                 Self::focus_then_hotkey(state, window, "Ctrl+Alt+B", duration_ms, mode)
             }
+            "toggleSidebar" => Self::focus_then_hotkey(state, window, "Ctrl+B", duration_ms, mode),
+            "openSettings" => {
+                Self::focus_then_settings(state, window, duration_ms, mode)
+            }
+            "navBack" => Self::focus_then_hotkey(state, window, "Ctrl+[", duration_ms, mode),
+            "navForward" => Self::focus_then_hotkey(state, window, "Ctrl+]", duration_ms, mode),
             "openTerminal" => Self::focus_then_hotkey(state, window, "Ctrl+`", duration_ms, mode),
             "toggleBrowserPanel" => {
                 Self::focus_then_hotkey(state, window, "Ctrl+Shift+B", duration_ms, mode)
@@ -229,6 +237,23 @@ impl CodexProviderAdapter {
                 mode,
             ),
         }
+    }
+
+    fn focus_then_settings(
+        state: &Arc<AppState>,
+        window: &WebviewWindow,
+        duration_ms: u32,
+        mode: ExecutionMode,
+    ) -> ProviderActionOutcome {
+        // Focus Codex, leave IME composition, then open settings — Ctrl+, must not type into composer.
+        let focus = Self::focus_only(state, window, duration_ms, mode);
+        if !focus.ok {
+            return focus;
+        }
+        std::thread::sleep(Duration::from_millis(80));
+        crate::keyboard::send_escape();
+        std::thread::sleep(Duration::from_millis(60));
+        Self::send_hotkey("Ctrl+,", duration_ms, mode)
     }
 
     fn stop_or_send(

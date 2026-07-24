@@ -634,8 +634,8 @@
   function syncHubChrome(entry) {
     var e = els();
     var onHub = softPadView === 'hub';
-    // 键位布局必须保留预览（点键帽编辑）；其它子页收起大键盘，避免占满视口像假死。
-    var keepPreview = onHub || softPadView === 'layout';
+    // 键位布局 / 显示形态保留预览；其它子页收起大键盘。
+    var keepPreview = onHub || softPadView === 'layout' || softPadView === 'presentation';
     if (e.tiles) e.tiles.hidden = !onHub || !entry;
     if (e.subHost) e.subHost.hidden = onHub || !hasMapping(entry);
     if (e.preview) {

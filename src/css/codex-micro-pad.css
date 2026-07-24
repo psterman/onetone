@@ -836,8 +836,8 @@ html[data-theme="dark"] .codex-micro-pad__btn {
 }
 
 .micro-hw-modal__card {
-  width: min(100%, 420px);
-  max-height: min(92vh, 640px);
+  width: min(100%, 440px);
+  max-height: min(96vh, 820px);
   overflow: auto;
   border-radius: 16px;
   background: #fff;
@@ -1666,6 +1666,7 @@ html[data-theme="dark"] .micro-hw-modal__effect-tip {
   color: #6b7a8d;
 }
 .micro-hw-modal__cap-trigger {
+  display: none;
   font-size: 10px;
   font-weight: 650;
   color: #3d6a90;
@@ -1693,22 +1694,25 @@ html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
   margin: 0 0 8px;
   color: #1a2d4a;
 }
+.micro-hw-modal--edit .micro-hw-modal__card {
+  max-height: min(96vh, 860px);
+}
 .micro-hw-modal__cap-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: min(42vh, 360px);
+  gap: 4px;
+  max-height: min(58vh, 520px);
   overflow: auto;
   padding: 2px;
 }
 .micro-hw-modal__cap-card {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
   text-align: left;
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid rgba(26, 45, 74, 0.12);
   background: #f7f9fc;
@@ -1753,9 +1757,10 @@ html[data-theme="dark"] .micro-hw-modal__cap-trigger { color: #7dd3f0; }
   font-weight: 700;
 }
 .micro-hw-modal__cap-result {
-  font-size: 11px;
-  line-height: 1.4;
-  color: #5a6b80;
+  display: none;
+}
+.micro-hw-modal__cap-trigger {
+  display: none;
 }
 .micro-hw-modal__slot-hidden {
   position: absolute;
@@ -1995,4 +2000,427 @@ html[data-theme="dark"] .soft-pad-hub__card {
 html[data-theme="dark"] .codex-pad-mgr__agent-connect {
   background: rgba(30, 40, 56, 0.7);
   border-color: rgba(255, 255, 255, 0.08);
+}
+/* —— Soft Pad visual skins (data-pad-skin only; status colors untouched) —— */
+.soft-pad-skin-seg {
+  gap: 6px;
+  max-width: 100%;
+}
+.soft-pad-skin-opt {
+  font-size: 11px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+/* Shared motion base for skinned keys */
+.micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__key:not(.micro-hw__key--placeholder) {
+  cursor: pointer;
+  will-change: transform, box-shadow;
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    filter 0.16s ease,
+    color 0.16s ease;
+}
+.micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__meta-name,
+.micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__meta-chord,
+.micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__digit {
+  transition: color 0.16s ease, opacity 0.16s ease, letter-spacing 0.16s ease;
+}
+
+/* —— glass-light —— */
+.micro-hw[data-pad-skin="glass-light"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
+  font-family: "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 247, 251, 0.88) 55%, rgba(230, 237, 246, 0.9) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow:
+    0 22px 48px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="glass-light"],
+.micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="glass-light"] {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(241, 245, 249, 0.9) 100%);
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.9));
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow:
+    0 6px 14px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+  color: #1e293b;
+  border-radius: 12px;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #64748b;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__digit {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #1e293b;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key.is-pressed {
+  transform: translateY(0) scale(0.96);
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.1),
+    inset 0 2px 4px rgba(15, 23, 42, 0.06);
+}
+
+/* —— hybrid-pro —— */
+.micro-hw[data-pad-skin="hybrid-pro"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
+  font-family: "Segoe UI", "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.86), rgba(238, 243, 247, 0.92));
+  border: 1px solid rgba(23, 32, 51, 0.12);
+  box-shadow:
+    0 20px 44px rgba(23, 32, 51, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #fbfcfe 0%, #eef2f6 100%);
+  border: 1px solid rgba(23, 32, 51, 0.14);
+  box-shadow:
+    0 3px 0 rgba(23, 32, 51, 0.1),
+    0 8px 16px rgba(23, 32, 51, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #172033;
+  border-radius: 11px;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent {
+  background: linear-gradient(180deg, #f7fbff 0%, #e8f1fa 100%);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command {
+  background: linear-gradient(180deg, #f8faf8 0%, #eef3ee 100%);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control {
+  background: linear-gradient(180deg, #f5f7ff 0%, #e8ecfa 100%);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #172033;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b677a;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #172033;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 5px 0 rgba(23, 32, 51, 0.12),
+    0 14px 22px rgba(23, 32, 51, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 rgba(23, 32, 51, 0.14),
+    inset 0 2px 5px rgba(23, 32, 51, 0.1);
+}
+
+/* —— vibe-light (light counterpart of vibe-dark) —— */
+.micro-hw[data-pad-skin="vibe-light"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-light"] .micro-hw {
+  font-family: "SF Pro Display", "Segoe UI Variable", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(99, 102, 241, 0.14), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(14, 165, 233, 0.1), transparent 40%),
+    linear-gradient(155deg, #f8fafc 0%, #eef2ff 55%, #e0e7ff 100%);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  box-shadow:
+    0 22px 48px rgba(79, 70, 229, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="vibe-light"],
+.micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="vibe-light"] {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(99, 102, 241, 0.14), transparent 42%),
+    linear-gradient(155deg, #f8fafc 0%, #eef2ff 100%);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__face {
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(160deg, #ffffff 0%, #eef2ff 100%);
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  box-shadow:
+    0 8px 18px rgba(79, 70, 229, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  color: #1e1b4b;
+  border-radius: 12px;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--control {
+  background: linear-gradient(160deg, #eef2ff 0%, #c7d2fe 100%);
+  border-color: rgba(79, 70, 229, 0.28);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-name {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #1e1b4b;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-chord {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #6366f1;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__digit {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #312e81;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 14px 28px rgba(79, 70, 229, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed {
+  transform: scale(0.94);
+  box-shadow:
+    0 2px 8px rgba(79, 70, 229, 0.14),
+    inset 0 2px 6px rgba(79, 70, 229, 0.1);
+}
+
+/* —— vibe-dark (experimental) —— */
+.micro-hw[data-pad-skin="vibe-dark"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-dark"] .micro-hw {
+  font-family: "SF Pro Display", "Segoe UI Variable", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.22), transparent 42%),
+    linear-gradient(155deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.45);
+}
+.micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="vibe-dark"],
+.micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="vibe-dark"] {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.22), transparent 42%),
+    linear-gradient(155deg, #1e293b 0%, #0f172a 100%);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__face {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(160deg, #334155 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow:
+    0 8px 18px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-radius: 12px;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key--control {
+  background: linear-gradient(160deg, #4f46e5 0%, #3730a3 100%);
+  border-color: rgba(165, 180, 252, 0.35);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__meta-name {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__meta-chord {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #a5b4fc;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__digit {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #f8fafc;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__icon {
+  color: #e2e8f0;
+  fill: currentColor;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: rgba(165, 180, 252, 0.4);
+  filter: brightness(1.08);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key.is-pressed {
+  transform: scale(0.94);
+  filter: brightness(0.95);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* —— Soft Pad skins: dark app theme counterparts (status colors untouched) —— */
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
+  background:
+    linear-gradient(145deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="glass-light"],
+html[data-theme="dark"] .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="glass-light"] {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.92));
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(145deg, rgba(51, 65, 85, 0.95), rgba(30, 41, 59, 0.92));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__digit {
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  border-color: rgba(129, 140, 248, 0.45);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
+  background: linear-gradient(160deg, #243044, #161e2c);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 8px 16px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent {
+  background: linear-gradient(180deg, #2a3b52 0%, #1a2738 100%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command {
+  background: linear-gradient(180deg, #2c3848 0%, #1c2633 100%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control {
+  background: linear-gradient(180deg, #303a55 0%, #1d2438 100%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit {
+  color: #f8fafc;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
+  color: #94a3b8;
+}
+
+/* vibe-light → vibe-dark look when app theme is dark */
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-light"] .micro-hw {
+  font-family: "SF Pro Display", "Segoe UI Variable", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.22), transparent 42%),
+    linear-gradient(155deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.45);
+}
+html[data-theme="dark"] .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="vibe-light"],
+html[data-theme="dark"] .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="vibe-light"] {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.22), transparent 42%),
+    linear-gradient(155deg, #1e293b 0%, #0f172a 100%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(160deg, #334155 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-radius: 12px;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--control {
+  background: linear-gradient(160deg, #4f46e5 0%, #3730a3 100%);
+  border-color: rgba(165, 180, 252, 0.35);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__digit {
+  color: #f8fafc;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-chord {
+  color: #a5b4fc;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__icon {
+  color: #e2e8f0;
+  fill: currentColor;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: rgba(165, 180, 252, 0.4);
+  filter: brightness(1.08);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed {
+  transform: scale(0.94);
+  filter: brightness(0.95);
+}
+
+/* Soft Pad preview: decorative bottom-left LEDs stay off (also omitted in softPad HTML). */
+.soft-pad-preview .micro-hw__leds {
+  display: none !important;
 }

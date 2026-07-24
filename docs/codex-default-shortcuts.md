@@ -135,6 +135,10 @@
 | commandPalette | 命令菜单 | Command palette | `Ctrl+K` | Open command menu |
 | openReviewTab | 打开审查选项卡 | Open review tab | `Ctrl+Shift+G` | Open the review tab（入口；≠ slash `/review`） |
 | toggleReviewPanel | 显示/隐藏当前聊天审阅面板 | Toggle review panel | `Ctrl+Alt+B` | Show or hide Review for the current chat |
+| toggleSidebar | 切换边栏 | Toggle sidebar | `Ctrl+B` | Show or hide the sidebar |
+| openSettings | 打开设置 | Open settings | `Ctrl+,` | Open ChatGPT settings（先聚焦并离开输入法） |
+| navBack | 返回 | Go back | `Ctrl+[` | Go back in navigation history |
+| navForward | 前进 | Go forward | `Ctrl+]` | Go forward in navigation history |
 | openTerminal | 打开终端 | Open terminal | `Ctrl+\`` | Open the terminal panel |
 | toggleBrowserPanel | 显示/隐藏浏览器面板 | Toggle browser panel | `Ctrl+Shift+B` | Show or hide the browser panel |
 | newBrowserTab | 打开浏览器标签 | New browser tab | `Ctrl+T` | Open a new browser tab |
@@ -147,7 +151,7 @@
 | switchAgent | 切换助手 | Switch agent | `Ctrl+Alt+.` | — |
 | appsOrPlugins | 应用与插件 | Apps | `Ctrl+Alt+A` | — |
 
-**Soft Pad `openEditKeycap` 白名单**：聚焦 / 命令菜单 / 新建 / 快速对话 / 查找 / 语音 / 发送·取消 / undo / 上述打开入口（审查选项卡、审阅面板、终端、浏览器面板、浏览器标签、地址栏）。一律标「Codex 桌面快捷键 / 打开入口」或 OneTone 工作流；**不**收录 insertOnly slash，**不**宣称 Micro 原生硬件协议。
+**Soft Pad `openEditKeycap` 白名单**：聚焦 / 命令菜单 / 新建 / 快速对话 / 查找 / 语音（Codex 开始听写 Ctrl+Shift+D）/ 发送·取消 / undo / 边栏·设置 / 返回·前进 / 上述打开入口（审查选项卡、审阅面板、终端、浏览器面板、浏览器标签、地址栏）。一律标「Codex 桌面快捷键 / 打开入口」或 OneTone 聚焦；**不**收录 insertOnly slash，**不**宣称 Micro 原生硬件协议。
 
 代码默认值：`src/js/features/agent/agent-actions.js`、`src-tauri/src/agent/bindings_build.rs`。
 

@@ -83,6 +83,10 @@
     undo: 1,
     openReviewTab: 1,
     toggleReviewPanel: 1,
+    toggleSidebar: 1,
+    openSettings: 1,
+    navBack: 1,
+    navForward: 1,
     openTerminal: 1,
     toggleBrowserPanel: 1,
     newBrowserTab: 1,
@@ -102,6 +106,10 @@
     undo: 'undo',
     openReviewTab: 'review',
     toggleReviewPanel: 'review',
+    toggleSidebar: 'folder',
+    openSettings: 'status',
+    navBack: 'navLeft',
+    navForward: 'navRight',
     openTerminal: 'terminal',
     toggleBrowserPanel: 'browser',
     newBrowserTab: 'browserPlus',
@@ -386,6 +394,40 @@
   };
 
   var LAYOUT_PROFILES = ['beginner', 'standard', 'advanced'];
+  /** All known skins (incl. legacy vibe-dark). */
+  var PAD_SKINS = ['default', 'glass-light', 'hybrid-pro', 'vibe-light', 'vibe-dark'];
+  /** User-selectable skins — vibe-dark is theme-auto only (hidden from picker). */
+  var PAD_SKIN_CHOICES = ['default', 'glass-light', 'hybrid-pro', 'vibe-light'];
+
+  function normalizePadSkin(raw) {
+    var s = String(raw || '').trim().toLowerCase();
+    return PAD_SKINS.indexOf(s) >= 0 ? s : 'default';
+  }
+
+  /** Persistable preference — never store vibe-dark (dark theme CSS handles it). */
+  function canonicalizePadSkin(raw) {
+    var s = normalizePadSkin(raw);
+    return s === 'vibe-dark' ? 'vibe-light' : s;
+  }
+
+  function isAppDarkTheme() {
+    try {
+      if (document.documentElement.getAttribute('data-theme') === 'dark') return true;
+      if (localStorage.getItem('vp_theme') === 'dark') return true;
+    } catch (_) {}
+    return false;
+  }
+
+  /**
+   * Skin stamped on DOM. Soft Pad settings use preference id + html[data-theme] CSS.
+   * Overlay may stamp vibe-dark when app theme is dark and preference is vibe-light.
+   */
+  function resolveEffectivePadSkin(raw, opts) {
+    opts = opts || {};
+    var base = canonicalizePadSkin(raw);
+    if (opts.forOverlay && isAppDarkTheme() && base === 'vibe-light') return 'vibe-dark';
+    return base;
+  }
 
   var AGENT_NUMPAD_SUGGEST = {
     AG00: { sourceScan: 0x47, sourceExtended: false },
@@ -513,7 +555,14 @@
 
   function applyEnsurePayloadToMapping(m, payload) {
     if (!m || !payload) return;
-    if (payload.codexMicroPad) m.codexMicroPad = payload.codexMicroPad;
+    if (payload.codexMicroPad) {
+      var prevSkin = m.codexMicroPad && m.codexMicroPad.skin;
+      m.codexMicroPad = payload.codexMicroPad;
+      if (m.codexMicroPad) {
+        if (!m.codexMicroPad.skin && prevSkin) m.codexMicroPad.skin = prevSkin;
+        m.codexMicroPad.skin = canonicalizePadSkin(m.codexMicroPad.skin);
+      }
+    }
     if (payload.agentBindings && payload.agentBindings.length) {
       m.agentBindings = payload.agentBindings;
     }
@@ -844,6 +893,7 @@
         softwareEnhanceEnabled: false,
         codexStatusLightsEnabled: false,
         presentation: 'full',
+        skin: 'default',
         keys: defaultSeedRoutes()
       };
       if (m.id) padHealDone[String(m.id)] = true;
@@ -865,6 +915,7 @@
         (m.codexMicroPad.presentation !== 'full' && m.codexMicroPad.presentation !== 'mini')) {
       m.codexMicroPad.presentation = 'full';
     }
+    m.codexMicroPad.skin = canonicalizePadSkin(m.codexMicroPad.skin);
     var before = JSON.stringify(m.codexMicroPad.keys);
     m.codexMicroPad.keys = migrateLegacyKeys(m.codexMicroPad.keys);
     healEncScreenOnly(m.codexMicroPad);
@@ -1370,8 +1421,8 @@
     }
     if (String(slotId) === 'pushToTalk') {
       return lang().indexOf('en') === 0
-        ? (name + ' — OneTone voice workflow')
-        : (name + ' — OneTone 语音工作流');
+        ? (name + ' — Codex Start dictation (Ctrl+Shift+D)')
+        : (name + ' — Codex 开始听写（Ctrl+Shift+D）');
     }
     if (String(slotId) === 'claudeModel') {
       return lang().indexOf('en') === 0
@@ -1392,7 +1443,7 @@
       return en ? 'OneTone focus' : 'OneTone 聚焦操作';
     }
     if (id === 'pushToTalk') {
-      return en ? 'OneTone voice workflow' : 'OneTone 语音工作流';
+      return en ? 'Codex desktop shortcut' : 'Codex 桌面快捷键';
     }
     if (id === 'stopOrSend') {
       return en ? 'General input / OneTone workflow' : '通用输入 / OneTone 工作流';
@@ -1402,6 +1453,8 @@
     }
     if (id === 'commandPalette' || id === 'newThread' || id === 'quickChat' || id === 'quickSearch'
       || id === 'undo' || id === 'openReviewTab' || id === 'toggleReviewPanel'
+      || id === 'toggleSidebar' || id === 'openSettings'
+      || id === 'navBack' || id === 'navForward'
       || id === 'openTerminal' || id === 'toggleBrowserPanel' || id === 'newBrowserTab'
       || id === 'focusBrowserAddressBar') {
       return en ? 'Codex desktop shortcut / open entry' : 'Codex 桌面快捷键 / 打开入口';
@@ -1488,9 +1541,9 @@
       },
       pushToTalk: {
         titleZh: '语音输入', titleEn: 'Voice input',
-        resultZh: '通过 OneTone 语音工作流开始口述',
-        resultEn: 'Starts dictation via OneTone voice workflow',
-        triggerZh: 'OneTone 语音工作流', triggerEn: 'OneTone voice workflow'
+        resultZh: '按住发送 Codex Ctrl+Shift+D（开始听写），松开结束',
+        resultEn: 'Hold Codex Ctrl+Shift+D (Start dictation); release to end',
+        triggerZh: 'Codex 桌面快捷键', triggerEn: 'Codex desktop shortcut'
       },
       stopOrSend: {
         titleZh: '发送或停止口述', titleEn: 'Send or stop dictation',
@@ -1526,6 +1579,30 @@
         titleZh: '显示/隐藏当前聊天审阅面板', titleEn: 'Toggle current-chat review panel',
         resultZh: '发送 Ctrl+Alt+B，显示或隐藏当前聊天的审阅面板（入口）',
         resultEn: 'Sends Ctrl+Alt+B to show or hide the review panel for the current chat (entry)',
+        triggerZh: 'Codex 桌面快捷键 / 打开入口', triggerEn: 'Codex desktop shortcut / open entry'
+      },
+      toggleSidebar: {
+        titleZh: '切换边栏', titleEn: 'Toggle sidebar',
+        resultZh: '发送 Ctrl+B，显示或隐藏边栏',
+        resultEn: 'Sends Ctrl+B to show or hide the sidebar',
+        triggerZh: 'Codex 桌面快捷键 / 打开入口', triggerEn: 'Codex desktop shortcut / open entry'
+      },
+      openSettings: {
+        titleZh: '打开设置', titleEn: 'Open settings',
+        resultZh: '先聚焦 Codex 并离开输入法，再发送 Ctrl+, 打开设置',
+        resultEn: 'Focuses Codex, clears IME, then sends Ctrl+, to open settings',
+        triggerZh: 'Codex 桌面快捷键 / 打开入口', triggerEn: 'Codex desktop shortcut / open entry'
+      },
+      navBack: {
+        titleZh: '返回', titleEn: 'Go back',
+        resultZh: '发送 Ctrl+[，在导航历史中后退',
+        resultEn: 'Sends Ctrl+[ to go back in navigation history',
+        triggerZh: 'Codex 桌面快捷键 / 打开入口', triggerEn: 'Codex desktop shortcut / open entry'
+      },
+      navForward: {
+        titleZh: '前进', titleEn: 'Go forward',
+        resultZh: '发送 Ctrl+]，在导航历史中前进',
+        resultEn: 'Sends Ctrl+] to go forward in navigation history',
         triggerZh: 'Codex 桌面快捷键 / 打开入口', triggerEn: 'Codex desktop shortcut / open entry'
       },
       openTerminal: {
@@ -1690,11 +1767,13 @@
       : !!(pad && pad.enabled);
     var shellCls = 'micro-hw-shell'
       + (codexOn ? ' is-mode-codex' : ' is-mode-numpad');
+    var skin = canonicalizePadSkin(pad && pad.skin);
 
     var html =
       '<div class="micro-hw-wrap">' +
       '<div class="' + shellCls + '">' +
-      '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-mode-numpad') + '">' +
+      '<div class="micro-hw' + sizeCls + compactCls + (codexOn ? '' : ' is-mode-numpad') +
+      '" data-pad-skin="' + esc(skin) + '">' +
       '<div class="micro-hw__face">' +
       '<div class="micro-hw__grid' + (codexOn ? '' : ' micro-hw__grid--numpad') + '">';
 
@@ -1795,10 +1874,16 @@
       html += '</' + tag + '>';
     });
 
-    html += '</div>' +
-      '<div class="micro-hw__leds" data-pad-status="' + esc(padRunStatus) + '" aria-hidden="true">' +
-      '<span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>' +
-      '</div></div></div></div>' +
+    html += '</div>';
+    // Soft Pad settings preview: hide decorative status LEDs (bottom-left dots).
+    // Overlay / manager keep them for run-status chrome. Not clickable; no protocol impact.
+    if (mode !== 'softPad') {
+      html +=
+        '<div class="micro-hw__leds" data-pad-status="' + esc(padRunStatus) + '" aria-hidden="true">' +
+        '<span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>' +
+        '</div>';
+    }
+    html += '</div></div></div>' +
       '</div>';
     return html;
   }
@@ -1910,7 +1995,22 @@
       toast(t('codexMicroPadNoProfile', '未找到 Codex 场景配置'));
       return;
     }
-    if (res.ok) return;
+    if (res.ok) {
+      var slot = String(res.slotId || res.slot_id || '').trim();
+      var label = slot ? slotLabel(slot) : '';
+      if (reason === 'hold_down') {
+        toast(t('softPadKeyListening', '听写中 · 松开结束') + (label ? ' · ' + label : ''));
+        return;
+      }
+      if (reason === 'hold_up') {
+        toast(t('softPadKeyDone', '已完成') + (label ? ' · ' + label : ''));
+        return;
+      }
+      if (reason === 'fired' || reason === 'enhance_pulse') {
+        toast(t('softPadKeyFired', '已触发') + (label ? ' · ' + label : ''));
+      }
+      return;
+    }
     if (reason === 'not_foreground') {
       toast(t('codexMicroPadNeedCodexFg', '请先切到 Codex 前台再运行'));
     } else if (reason === 'unbound') {
@@ -3737,6 +3837,48 @@
     return html;
   }
 
+  function skinLabel(id) {
+    if (id === 'glass-light') return t('softPadSkinGlassLight', '玻璃浅色');
+    if (id === 'hybrid-pro') return t('softPadSkinHybridPro', 'Hybrid Pro');
+    if (id === 'vibe-light') return t('softPadSkinVibeLight', 'Vibe Light');
+    return t('softPadSkinDefault', '默认');
+  }
+
+  function renderSkinSeg(pad) {
+    var cur = canonicalizePadSkin(pad && pad.skin);
+    var html = '<div class="codex-micro-pad__modes soft-pad-skin-seg" role="radiogroup" aria-label="' +
+      esc(t('softPadSkinLbl', '外观风格')) + '">';
+    PAD_SKIN_CHOICES.forEach(function (id) {
+      html += '<button type="button" class="codex-micro-pad__mode soft-pad-skin-opt' +
+        (cur === id ? ' is-active' : '') +
+        '" data-pad-skin-opt="' + id + '" role="radio" aria-checked="' +
+        (cur === id ? 'true' : 'false') + '">' + esc(skinLabel(id)) + '</button>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function patchSoftPadPreviewSkin(m) {
+    var skin = canonicalizePadSkin(m && m.codexMicroPad && m.codexMicroPad.skin);
+    var host = document.getElementById('softPadPreviewHost');
+    if (!host) return;
+    var root = host.querySelector('.codex-micro-pad.soft-pad-preview');
+    if (root) root.setAttribute('data-pad-skin', skin);
+    host.querySelectorAll('.micro-hw').forEach(function (el) {
+      el.setAttribute('data-pad-skin', skin);
+    });
+  }
+
+  function patchSkinSegActive(body, skin) {
+    if (!body) return;
+    var cur = canonicalizePadSkin(skin);
+    body.querySelectorAll('[data-pad-skin-opt]').forEach(function (b) {
+      var on = b.getAttribute('data-pad-skin-opt') === cur;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
   function renderAgentConnectFold(pad, opts) {
     opts = opts || {};
     // Soft Pad panel: keep fold shell only — Hook/Claude cards are huge and were
@@ -3835,6 +3977,43 @@
           });
         } catch (_) {}
         // Do NOT fall back to full persist()/cmd_save — quiet IPC is required.
+      });
+    }, 120);
+    return Promise.resolve();
+  }
+
+  var skinPersistTimer = 0;
+  var skinPersistPending = null;
+  function persistPadSkin(m) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var pad = m && m.codexMicroPad;
+    if (!invoke || !m || !m.id || !pad) {
+      return Promise.resolve();
+    }
+    var skin = canonicalizePadSkin(pad.skin);
+    pad.skin = skin;
+    skinPersistPending = {
+      mappingId: String(m.id),
+      skin: skin
+    };
+    if (skinPersistTimer) clearTimeout(skinPersistTimer);
+    skinPersistTimer = setTimeout(function () {
+      skinPersistTimer = 0;
+      var args = skinPersistPending;
+      skinPersistPending = null;
+      if (!args) return;
+      invoke('cmd_codex_micro_pad_set_skin', args).then(function () {
+        // Keep optimistic UI; quiet IPC already wrote config + pushed overlay.
+      }).catch(function (err) {
+        try {
+          padInvoke('cmd_app_log', {
+            line: 'fe persistPadSkin fail ' + (err && err.message ? err.message : 'unknown')
+          });
+        } catch (_) {}
+        // Match persistPresentation: do NOT roll back UI (stale binary without set_skin
+        // used to snap the seg control back to 默认). Toast so the user knows to rebuild.
+        toast(t('softPadSkinSaveFail', '外观风格保存失败，请重新编译运行后重试'));
+        // Quiet IPC only — never fall back to a full config save.
       });
     }, 120);
     return Promise.resolve();
@@ -3972,6 +4151,7 @@
     ensureSoftPadPreviewDelegate(host);
     var root = host.querySelector('.codex-micro-pad.soft-pad-preview');
     if (!root) return false;
+    root.setAttribute('data-pad-skin', canonicalizePadSkin(pad.skin));
     var oldWrap = root.querySelector('.micro-hw-wrap') || root.querySelector('.micro-hw-shell');
     if (!oldWrap || !oldWrap.parentNode) return false;
     var n = countBound(pad);
@@ -4009,8 +4189,9 @@
     ensureSoftPadPreviewDelegate(host);
     host.hidden = false;
     if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) return;
+    var skin = canonicalizePadSkin(pad && pad.skin);
     host.innerHTML =
-      '<div class="codex-micro-pad soft-pad-preview">' +
+      '<div class="codex-micro-pad soft-pad-preview" data-pad-skin="' + esc(skin) + '">' +
       '<div class="codex-micro-pad__head">' +
       '<p class="codex-micro-pad__title">' + esc(t('codexMicroPadTitle', '虚拟键盘')) + '</p>' +
       '<span class="codex-micro-pad__status">' +
@@ -4105,6 +4286,13 @@
       '<p class="codex-pad-mgr__hint">' +
       esc(t('codexMicroPadPresentationHint', '精简态为灯条形态（展开/关闭），不是确认键条。')) +
       '</p>' +
+      '</div>' +
+      '<div class="codex-pad-mgr__section">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('softPadSkinLbl', '外观风格')) + '</p>' +
+      renderSkinSeg(pad) +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadSkinHint', '只改视觉风格，不改变键位与能力。深色模式下会自动套用对应深色外观。')) +
+      '</p>' +
       '</div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'presentation');
@@ -4162,7 +4350,7 @@
 
   function setSoftPadControlsBusy(body, busy) {
     if (!body) return;
-    body.querySelectorAll('[data-pad-presentation], [data-pad-profile]').forEach(function (btn) {
+    body.querySelectorAll('[data-pad-presentation], [data-pad-profile], [data-pad-skin-opt]').forEach(function (btn) {
       btn.disabled = !!busy;
     });
     body.querySelectorAll(
@@ -4229,6 +4417,19 @@
         }
         persistPresentation(m);
         softPadPanelChanged(m, opts);
+      });
+    });
+    body.querySelectorAll('[data-pad-skin-opt]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var next = canonicalizePadSkin(btn.getAttribute('data-pad-skin-opt'));
+        if (next === canonicalizePadSkin(pad.skin)) return;
+        if (isBusy()) return;
+        markBusy(220);
+        pad.skin = next;
+        patchSkinSegActive(body, next);
+        patchSoftPadPreviewSkin(m);
+        persistPadSkin(m);
+        softPadPanelChanged(m, Object.assign({}, opts, { panel: 'presentation' }));
       });
     });
     body.querySelectorAll('[data-pad-profile]').forEach(function (btn) {
@@ -5180,19 +5381,13 @@
     host.innerHTML = '';
     if (slotSel) {
       slotSel.innerHTML = '';
-      var emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = isNavMicroKey(editDraft.microKeyId)
-        ? t('codexMicroPadNavDefaultSlot', '默认 · 注入方向键')
-        : t('codexMicroPadUnbound', '未绑定');
-      slotSel.appendChild(emptyOpt);
     }
-    var opts = [{ id: '', label: '' }].concat(allSlotOptions(m));
+    // Bound capabilities first; unbound / nav-default last.
+    var opts = allSlotOptions(m).concat([{ id: '', label: '' }]);
     opts.forEach(function (o) {
       var id = String(o.id || '');
       var copy = capabilityCardCopy(id);
       var iconId = iconIdForCapabilitySlot(id);
-      var trigger = copy.source || slotSourceTag(id) || '';
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'micro-hw-modal__cap-card' +
@@ -5201,16 +5396,13 @@
       btn.setAttribute('data-icon-id', iconId);
       btn.setAttribute('role', 'option');
       btn.setAttribute('aria-selected', String(editDraft.slotId || '') === id ? 'true' : 'false');
+      // List shows title only; effect tip below the list holds the explanation.
       btn.innerHTML =
         '<span class="micro-hw-modal__cap-icon micro-hw__icon" aria-hidden="true">' +
         iconSvg(iconId) +
         '</span>' +
         '<span class="micro-hw-modal__cap-text">' +
         '<span class="micro-hw-modal__cap-title">' + esc(copy.title) + '</span>' +
-        '<span class="micro-hw-modal__cap-result">' + esc(copy.result) + '</span>' +
-        (trigger
-          ? ('<span class="micro-hw-modal__cap-trigger">' + esc(trigger) + '</span>')
-          : '') +
         '</span>';
       btn.addEventListener('click', function () {
         editDraft.slotId = id;
@@ -5223,11 +5415,15 @@
         showCapabilityEffectTip();
       });
       host.appendChild(btn);
-      if (slotSel && id) {
+      if (slotSel) {
         var opt = document.createElement('option');
         opt.value = id;
-        opt.textContent = copy.title;
-        if (id === editDraft.slotId) opt.selected = true;
+        opt.textContent = id
+          ? copy.title
+          : (isNavMicroKey(editDraft.microKeyId)
+            ? t('codexMicroPadNavDefaultSlot', '默认 · 注入方向键')
+            : t('codexMicroPadUnbound', '未绑定'));
+        if (String(editDraft.slotId || '') === id) opt.selected = true;
         slotSel.appendChild(opt);
       }
     });
@@ -5866,6 +6062,11 @@
     applyTriggerHeroPreview: applyTriggerHeroPreview,
     clearTriggerHeroPreview: clearTriggerHeroPreview,
     LAYOUT: LAYOUT,
+    PAD_SKINS: PAD_SKINS,
+    PAD_SKIN_CHOICES: PAD_SKIN_CHOICES,
+    normalizePadSkin: normalizePadSkin,
+    canonicalizePadSkin: canonicalizePadSkin,
+    resolveEffectivePadSkin: resolveEffectivePadSkin,
     CODEX_SOFT_PAD_SLOT_IDS: CODEX_SOFT_PAD_SLOT_IDS,
     SLOT_DEFAULT_ICON: SLOT_DEFAULT_ICON,
     allSlotOptions: allSlotOptions,
@@ -5891,6 +6092,7 @@
     scanLabel: scanLabel,
     chordForSlot: chordForSlot,
     slotSubForDisplay: slotSubForDisplay,
-    displayActionForSlot: displayActionForSlot
+    displayActionForSlot: displayActionForSlot,
+    isHoldMicroKey: isHoldMicroKey
   };
 })(typeof window !== 'undefined' ? window : globalThis);
