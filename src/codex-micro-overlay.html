@@ -72,6 +72,27 @@
       {id:'DOT',kind:'command',row:5,col:4,icon:'dot'}
     ];
 
+    /** Soft Pad without left NAV column (navKeysEnabled=false). */
+    var LAYOUT_NO_NAV=[
+      {id:'ENC',kind:'control',row:1,col:1,icon:'power'},
+      {id:'ACT06',kind:'command',row:1,col:2,icon:'fast'},
+      {id:'ACT07',kind:'command',row:1,col:3,icon:'palette'},
+      {id:'ACT08',kind:'command',row:1,col:4,icon:'reject'},
+      {id:'AG00',kind:'agent',row:2,col:1,ag:0,icon:'agent'},
+      {id:'AG01',kind:'agent',row:2,col:2,ag:1,icon:'claude'},
+      {id:'AG02',kind:'agent',row:2,col:3,ag:2,icon:'model'},
+      {id:'PLUS',kind:'command',row:2,col:4,rowSpan:2,icon:'plus'},
+      {id:'AG03',kind:'agent',row:3,col:1,ag:3,icon:'folder'},
+      {id:'AG04',kind:'agent',row:3,col:2,ag:4,icon:'status'},
+      {id:'AG05',kind:'agent',row:3,col:3,ag:5,icon:'cloud'},
+      {id:'ACT09',kind:'command',row:4,col:1,icon:'fork'},
+      {id:'UNDO',kind:'command',row:4,col:2,icon:'undo'},
+      {id:'SEARCH',kind:'command',row:4,col:3,icon:'search'},
+      {id:'ACT12',kind:'command',row:4,col:4,rowSpan:2,icon:'send'},
+      {id:'ACT10',kind:'command',row:5,col:1,span:2,icon:'mic'},
+      {id:'DOT',kind:'command',row:5,col:3,icon:'dot'}
+    ];
+
     /** PC numpad layout (ENC replaces NumLock): / * - · 789+ · 456 · 123 Enter · 0 . */
     var LAYOUT_NUMPAD=[
       {id:'ENC',kind:'control',row:1,col:1,icon:'codex'},
@@ -93,8 +114,12 @@
       {id:'NP_DOT',kind:'numpad',row:5,col:3,label:'.'}
     ];
 
+    var navKeysEnabled=true;
+    var layoutColumns=5;
+
     function activeLayout(){
-      return padMode==='numpad' ? LAYOUT_NUMPAD : LAYOUT;
+      if(padMode==='numpad') return LAYOUT_NUMPAD;
+      return navKeysEnabled ? LAYOUT : LAYOUT_NO_NAV;
     }
 
     function isNumpadKeyId(id){
@@ -122,7 +147,7 @@
       empty:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2" stroke-dasharray="3 3"/></svg>',
       plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
       dot:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>',
-      power:'<svg viewBox="0 0 24 24"><path d="M12 3v6"/><path d="M8.5 5.2a7 7 0 101.5 10.1"/></svg>',
+      power:'<svg viewBox="0 0 24 24"><path d="M12 2v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>',
       navUp:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>',
       navDown:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20l8-8h-5V4H9v8H4z"/></svg>',
       navLeft:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l8-8v5h8v6h-8v5z"/></svg>',
@@ -526,7 +551,7 @@
     }
 
     function encInnerHtml(codexOn, iconId){
-      var icon=(ICON[iconId]||ICON.power||ICON.codex||ICON.empty);
+      var icon=(ICON.power||ICON[iconId]||ICON.empty);
       var label=codexOn?'Codex 场景模式':'数字键模式';
       return '<span class="micro-hw__icon" aria-hidden="true">'+icon+'</span>'
         +'<span class="micro-hw__meta" aria-hidden="true">'
@@ -730,7 +755,9 @@
         return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'');
       });
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
-      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),mode,parts.join('|')].join(';');
+      var navOn=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
+      var cols=Number(s.layoutColumns||s.layout_columns||0)|| (navOn?5:4);
+      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),mode,navOn?1:0,cols,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -834,8 +861,17 @@
       joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
       requireNumLockOff=!!s.requireNumLockOff;
       numLockBlocking=!!s.numLockBlocking;
+      navKeysEnabled=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
+      layoutColumns=Number(s.layoutColumns||s.layout_columns||0)||(navKeysEnabled?5:4);
+      if(padMode==='numpad') layoutColumns=4;
       enhanceOn=!!s.softwareEnhanceEnabled;
       localMinimized=!!s.minimized;
+      wrap.classList.toggle('is-no-nav', padMode==='codex' && !navKeysEnabled);
+      var hwGrid=wrap.querySelector('.micro-hw__grid');
+      if(hwGrid){
+        hwGrid.classList.toggle('micro-hw__grid--no-nav', padMode==='codex' && !navKeysEnabled);
+        hwGrid.classList.toggle('micro-hw__grid--numpad', padMode==='numpad');
+      }
       applyPadLightGlow(s);
       applyAppMetaChip(s);
       var map=cellMap(s.cells);

@@ -18,6 +18,7 @@ pub fn cmd_codex_micro_pad_set_flags(
     require_num_lock_off: bool,
     overlay_enabled: bool,
     require_foreground: Option<bool>,
+    nav_keys_enabled: Option<bool>,
 ) -> Result<(), String> {
     let mapping_id = mapping_id.trim().to_string();
     if mapping_id.is_empty() {
@@ -38,6 +39,10 @@ pub fn cmd_codex_micro_pad_set_flags(
         pad.overlay_enabled = overlay_enabled;
         if let Some(rf) = require_foreground {
             pad.require_foreground = rf;
+        }
+        // Do not reset require_num_lock_off / nav_keys_enabled when toggling enabled.
+        if let Some(nav) = nav_keys_enabled {
+            pad.nav_keys_enabled = nav;
         }
         // Settings chose "不显示浮窗" — clear session dismiss so flags are authoritative.
         if !overlay_enabled {

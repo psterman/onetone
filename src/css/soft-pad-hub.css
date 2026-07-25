@@ -210,6 +210,7 @@
   color: inherit;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
   overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .soft-pad-func-tile::before {
   content: '';
@@ -219,25 +220,28 @@
   bottom: 10px;
   width: 3px;
   border-radius: 0 2px 2px 0;
-  background: #2563eb;
-}
-.soft-pad-func-tile[data-tile="presentation"]::before {
-  background: #0d9488;
-}
-.soft-pad-func-tile[data-tile="runtime"]::before {
-  background: #d97706;
-}
-.soft-pad-func-tile[data-tile="agent"]::before {
-  background: #94a3b8;
+  background: rgba(26, 45, 74, 0.16);
+  transition: background 0.15s ease;
 }
 .soft-pad-func-tile:hover {
-  border-color: rgba(37, 99, 235, 0.28);
-  background: var(--primary-soft, rgba(37, 99, 235, 0.08));
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+  background: var(--primary-soft, rgba(42, 156, 196, 0.1));
 }
 .soft-pad-func-tile.is-active {
-  border-color: rgba(37, 99, 235, 0.36);
-  background: rgba(37, 99, 235, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, transparent);
+  background: var(--primary-soft, rgba(42, 156, 196, 0.16));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent),
+    0 1px 0 rgba(15, 23, 42, 0.03);
+}
+.soft-pad-func-tile.is-active::before {
+  background: var(--primary, #2a9cc4);
+}
+.soft-pad-func-tile.is-active .soft-pad-func-tile__index {
+  color: var(--primary-strong, #1f8fb8);
+}
+.soft-pad-func-tile.is-active .soft-pad-func-tile__title {
+  color: var(--indigo, #1a2d4a);
 }
 .soft-pad-func-tile.is-disabled,
 .soft-pad-func-tile:disabled {
@@ -249,6 +253,10 @@
   border-color: rgba(26, 45, 74, 0.1);
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+}
+.soft-pad-func-tile.is-disabled::before,
+.soft-pad-func-tile:disabled::before {
+  background: rgba(26, 45, 74, 0.12);
 }
 .soft-pad-func-tile__index {
   width: 32px;
@@ -346,10 +354,12 @@
   display: flex;
   flex-direction: column;
 }
-.soft-pad-subpage-body.is-editing-key {
+/* Only lock scroll while editing keycaps on the layout panel.
+   Leaving `is-editing-key` on「何时显示」used to clip cards 2/3 (no scroll). */
+.soft-pad-subpage-body.is-editing-key[data-soft-pad-panel="layout"] {
   overflow: hidden;
 }
-.soft-pad-subpage-body.is-editing-key .soft-pad-layout-editor {
+.soft-pad-subpage-body.is-editing-key[data-soft-pad-panel="layout"] .soft-pad-layout-editor {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -644,11 +654,21 @@ html[data-theme="dark"] .soft-pad-func-tile {
   border-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .soft-pad-func-tile:hover {
-  background: rgba(37, 99, 235, 0.16);
+  background: var(--primary-soft, rgba(94, 200, 232, 0.14));
+  border-color: color-mix(in srgb, var(--primary, #5ec8e8) 40%, transparent);
 }
 html[data-theme="dark"] .soft-pad-func-tile.is-active {
-  background: rgba(37, 99, 235, 0.2);
-  border-color: rgba(96, 165, 250, 0.4);
+  background: var(--primary-soft, rgba(94, 200, 232, 0.18));
+  border-color: color-mix(in srgb, var(--primary, #5ec8e8) 50%, transparent);
+}
+html[data-theme="dark"] .soft-pad-func-tile.is-active::before {
+  background: var(--primary, #5ec8e8);
+}
+html[data-theme="dark"] .soft-pad-func-tile.is-active .soft-pad-func-tile__index {
+  color: var(--primary, #5ec8e8);
+}
+html[data-theme="dark"] .soft-pad-func-tile.is-active .soft-pad-func-tile__title {
+  color: var(--indigo, #dce8f5);
 }
 html[data-theme="dark"] .soft-pad-func-tile.is-disabled:hover,
 html[data-theme="dark"] .soft-pad-func-tile:disabled:hover {
@@ -956,27 +976,21 @@ html[data-theme="dark"] .soft-pad-empty__desc {
 .soft-pad-show-scene__pad {
   position: absolute;
   z-index: 6;
-  border-radius: 10px;
-  border: 2px solid #fff;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  box-shadow:
-    0 0 0 2px rgba(251, 191, 36, 0.95),
-    0 0 0 5px rgba(255, 255, 255, 0.55),
-    0 12px 28px rgba(15, 23, 42, 0.55),
-    0 0 24px rgba(251, 191, 36, 0.35);
   transition: opacity 0.35s ease, transform 0.45s ease;
 }
 .soft-pad-show-scene__pad-tag {
   display: block;
   margin: 0 0 4px;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-align: center;
   color: #0f172a;
-  background: #fbbf24;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
   line-height: 1.35;
 }
 .soft-pad-show-scene__pad-tag--mini {
@@ -984,35 +998,48 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   flex: 0 0 auto;
   padding: 0 5px;
   font-size: 8px;
+  background: #fbbf24;
+  border-color: rgba(120, 53, 15, 0.25);
 }
-.soft-pad-show-scene__pad-keys {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
+.soft-pad-show-scene__pad-body {
+  pointer-events: none;
 }
 .soft-pad-show-scene__pad--full {
-  right: 7%;
-  bottom: 24px;
-  width: 78px;
-  padding: 5px;
+  right: 5%;
+  bottom: 22px;
+  width: 96px;
+  padding: 0;
   box-sizing: border-box;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-.soft-pad-show-scene__pad--full i {
-  display: block;
-  height: 11px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #94a3b8, #64748b);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+.soft-pad-show-scene__pad--full .soft-pad-demo-hw.micro-hw {
+  max-width: none;
+  width: 100%;
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow:
+    0 10px 22px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.35);
 }
-.soft-pad-show-scene__pad--full i:nth-child(5) {
-  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+.soft-pad-show-scene__pad--full .soft-pad-demo-hw__grid {
+  grid-template-rows: repeat(5, 12px) !important;
+  gap: 2px !important;
+}
+.soft-pad-show-scene__pad--full .soft-pad-demo-hw__key .micro-hw__digit {
+  font-size: 8px !important;
+}
+.soft-pad-show-scene__pad--full .soft-pad-demo-key__glyph {
+  width: 5px;
+  height: 5px;
 }
 .soft-pad-show-scene__pad--mini {
   right: 8%;
   bottom: 28px;
   width: auto;
-  min-width: 96px;
-  height: 22px;
+  min-width: 108px;
+  height: 24px;
   display: none;
   align-items: center;
   justify-content: flex-start;
@@ -1020,9 +1047,30 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   padding: 3px 8px 3px 4px;
   box-sizing: border-box;
   border-radius: 999px;
-  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at 20% 96%, rgba(35, 255, 148, 0.28), transparent 40%),
+    linear-gradient(145deg, rgba(235, 255, 245, 0.96), rgba(200, 250, 220, 0.9));
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
-.soft-pad-show-scene__pad--mini em {
+.soft-pad-show-scene__pad--mini[data-pad-skin="glass-light"] {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.92));
+}
+.soft-pad-show-scene__pad--mini[data-pad-skin="hybrid-pro"] {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(238, 243, 247, 0.94));
+}
+.soft-pad-show-scene__pad--mini[data-pad-skin="vibe-light"] {
+  background: linear-gradient(145deg, #fff7ed, #ffedd5);
+}
+.soft-pad-show-scene__mini-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.soft-pad-show-scene__pad--mini em,
+.soft-pad-show-scene__mini-face em {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1030,11 +1078,13 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   box-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
   opacity: 1;
 }
-.soft-pad-show-scene__pad--mini em:nth-of-type(2) {
+.soft-pad-show-scene__pad--mini em:nth-of-type(2),
+.soft-pad-show-scene__mini-face em:nth-of-type(2) {
   background: #38bdf8;
   box-shadow: 0 0 6px rgba(56, 189, 248, 0.7);
 }
-.soft-pad-show-scene__pad--mini em:nth-of-type(3) {
+.soft-pad-show-scene__pad--mini em:nth-of-type(3),
+.soft-pad-show-scene__mini-face em:nth-of-type(3) {
   background: #4ade80;
   box-shadow: 0 0 6px rgba(74, 222, 128, 0.7);
 }
@@ -1192,6 +1242,42 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.7));
 }
+.soft-pad-feature-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.soft-pad-feature-card__toggle {
+  margin: 0 0 6px;
+}
+.soft-pad-feature-card__cap {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.soft-pad-feature-card.is-disabled {
+  opacity: 0.62;
+}
+.soft-pad-feature-card.is-disabled .soft-pad-feature-card__toggle {
+  cursor: not-allowed;
+}
+.soft-pad-feature-hint {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #92400e;
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.soft-pad-feature-hint[hidden] {
+  display: none;
+}
+.soft-pad-numpad-arrow-story[data-nav-on="0"] .soft-pad-arrow-soft__rail {
+  opacity: 0.28;
+}
 .soft-pad-numpad-story {
   display: flex;
   flex-direction: column;
@@ -1304,9 +1390,148 @@ html[data-theme="dark"] .soft-pad-empty__desc {
     0 0 0 1px rgba(251, 191, 36, 0.35),
     0 8px 18px rgba(15, 23, 42, 0.2);
 }
+/* Soft Pad demos: real micro-hw + user skin (override dark chassis). */
+.soft-pad-demo-hw.micro-hw {
+  flex: none !important;
+  width: 100%;
+  max-width: 148px;
+  min-width: 0;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  margin: 0 auto;
+  padding: 8px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.soft-pad-demo-hw.soft-pad-demo-face {
+  display: block;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  gap: 0;
+}
+.soft-pad-demo-chassis.soft-pad-demo-hw.micro-hw {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.soft-pad-demo-chassis.soft-pad-demo-hw.micro-hw[data-pad-skin="default"],
+.soft-pad-demo-hw.micro-hw.is-demo-codex[data-pad-skin="default"] {
+  background:
+    radial-gradient(circle at 20% 96%, rgba(35, 255, 148, 0.28), transparent 34%),
+    linear-gradient(145deg, rgba(235, 255, 245, 0.95), rgba(200, 250, 220, 0.88));
+}
+.soft-pad-demo-hw__face {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 4px !important;
+  border-radius: 8px !important;
+}
+.soft-pad-demo-hw__grid {
+  display: grid !important;
+  grid-template-columns: repeat(var(--demo-cols, 5), minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(5, 18px) !important;
+  gap: 3px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.soft-pad-demo-hw__key {
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  pointer-events: none !important;
+  cursor: default !important;
+  transform: none !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+}
+.soft-pad-demo-hw__key:hover,
+.soft-pad-demo-hw__key:active,
+.soft-pad-demo-hw__key.is-pressed {
+  transform: none !important;
+}
+.soft-pad-demo-hw__key .micro-hw__digit {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+.soft-pad-demo-hw__key .micro-hw__icon,
+.soft-pad-demo-hw__key .soft-pad-demo-hw__icon {
+  width: 55%;
+  height: 55%;
+  max-width: 14px;
+  max-height: 14px;
+  color: inherit;
+  display: block;
+}
+.soft-pad-demo-hw__key .micro-hw__icon svg,
+.soft-pad-demo-hw__key .soft-pad-demo-hw__icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.soft-pad-demo-hw__key .micro-hw__meta {
+  display: none !important;
+}
+.soft-pad-demo-hw__key .soft-pad-demo-key__glyph {
+  background: rgba(255, 255, 255, 0.75);
+}
+.soft-pad-demo-switch__stack .soft-pad-demo-hw.micro-hw {
+  position: absolute;
+  inset: 0;
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 8px;
+  box-sizing: border-box;
+}
 .soft-pad-demo-chassis--switch {
   max-width: 168px;
   margin: 0 auto;
+}
+.soft-pad-demo-arrows-t {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 78px;
+}
+.soft-pad-demo-arrows-t__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 22px);
+  grid-template-rows: repeat(2, 22px);
+  gap: 3px;
+  width: max-content;
+  margin: 0 auto;
+}
+.soft-pad-demo-arrows-t__u { grid-column: 2; grid-row: 1; }
+.soft-pad-demo-arrows-t__l { grid-column: 1; grid-row: 2; }
+.soft-pad-demo-arrows-t__d { grid-column: 2; grid-row: 2; }
+.soft-pad-demo-arrows-t__r { grid-column: 3; grid-row: 2; }
+.soft-pad-nav-demo[data-nav-on="1"] .is-nav-demo {
+  animation: soft-pad-nav-key-pulse 1.8s ease-in-out infinite;
+}
+.soft-pad-nav-demo[data-nav-on="1"] .soft-pad-demo-arrows-t__grid .soft-pad-demo-key {
+  opacity: 0.55;
+}
+.soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-arrows-t__grid .soft-pad-demo-key {
+  animation: soft-pad-arrow-t-glow 2s ease-in-out infinite;
+}
+.soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__col:last-child {
+  opacity: 0.78;
+}
+.soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__bridge-txt {
+  color: #64748b;
+}
+@keyframes soft-pad-nav-key-pulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); filter: brightness(1); }
+  50% { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.55); filter: brightness(1.12); }
 }
 .soft-pad-demo-face {
   display: grid;
@@ -1672,6 +1897,15 @@ html[data-theme="dark"] .soft-pad-show-scene__win-body.is-browser::before {
 html[data-theme="dark"] .soft-pad-show-scene__caption {
   color: #94a3b8;
 }
+html[data-theme="dark"] .soft-pad-show-scene__pad-tag {
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme="dark"] .soft-pad-show-scene__pad-tag--mini {
+  color: #0f172a;
+  background: #fbbf24;
+}
 html[data-theme="dark"] .soft-pad-numpad-card {
   background: linear-gradient(180deg, rgba(30, 40, 56, 0.85), rgba(22, 30, 42, 0.7));
   border-color: rgba(255, 255, 255, 0.08);
@@ -1702,8 +1936,14 @@ html[data-theme="dark"] .soft-pad-arrow-t i {
 }
 html[data-theme="dark"] .soft-pad-numpad-card__tips,
 html[data-theme="dark"] .soft-pad-numpad-step__cap,
+html[data-theme="dark"] .soft-pad-feature-card__cap,
 html[data-theme="dark"] .soft-pad-numpad-arrow-story__lbl {
   color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-feature-hint {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 @media (max-width: 640px) {
@@ -1744,7 +1984,9 @@ html[data-theme="dark"] .soft-pad-numpad-arrow-story__lbl {
   .soft-pad-numpad-arrow-story__from,
   .soft-pad-numpad-arrow-story__to,
   .soft-pad-arrow-soft__rail i,
-  .soft-pad-arrow-t i {
+  .soft-pad-arrow-t i,
+  .soft-pad-nav-demo .is-nav-demo,
+  .soft-pad-nav-demo .soft-pad-demo-arrows-t__grid .soft-pad-demo-key {
     animation: none !important;
   }
 }

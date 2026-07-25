@@ -272,7 +272,8 @@
           mappingId: String(m.id),
           enabled: true,
           requireNumLockOff: !!m.codexMicroPad.requireNumLockOff,
-          overlayEnabled: true
+          overlayEnabled: true,
+          navKeysEnabled: m.codexMicroPad.navKeysEnabled !== false
         }).catch(function () {
           var p = global.OneToneConfigPersist;
           if (p && p.saveAsync) p.saveAsync();
@@ -457,6 +458,7 @@
     var e = els();
     if (e.subBody) {
       e.subBody.replaceChildren();
+      e.subBody.classList.remove('is-editing-key');
       e.subBody.removeAttribute('data-soft-pad-mapping');
       e.subBody.removeAttribute('data-soft-pad-panel');
       e.subBody.removeAttribute('data-agent-load-token');
@@ -817,7 +819,7 @@
     var showModeEl = e.subBody.querySelector('[data-act="showMode"]');
     if (showModeEl) showModeEl.value = mode;
     if (Pad && Pad.syncSoftPadShowModeChrome) {
-      Pad.syncSoftPadShowModeChrome(e.subBody, mode);
+      Pad.syncSoftPadShowModeChrome(e.subBody, mode, pad);
     } else {
       var hint = e.subBody.querySelector('[data-show-mode-hint]');
       if (hint) {
@@ -833,12 +835,69 @@
       if (scene) scene.setAttribute('data-show-scene', mode);
     }
     var numLockEl = e.subBody.querySelector('[data-act="numlock"]');
-    if (numLockEl) numLockEl.checked = !!pad.requireNumLockOff;
+    if (numLockEl) {
+      numLockEl.checked = !!pad.requireNumLockOff;
+      numLockEl.disabled = !pad.enabled;
+    }
+    var enabledEl = e.subBody.querySelector('[data-act="enabled"]');
+    if (enabledEl) enabledEl.checked = !!pad.enabled;
+    var navKeysEl = e.subBody.querySelector('[data-act="navKeys"]');
+    if (navKeysEl) {
+      navKeysEl.checked = pad.navKeysEnabled !== false;
+      navKeysEl.disabled = !pad.enabled;
+    }
+    var cards = e.subBody.querySelector('.soft-pad-feature-cards');
+    if (cards) cards.setAttribute('data-mapping-on', pad.enabled ? '1' : '0');
+    e.subBody.querySelectorAll('[data-feature="occupy"], [data-feature="nav"]').forEach(function (card) {
+      card.classList.toggle('is-disabled', !pad.enabled);
+      if (pad.enabled) card.removeAttribute('aria-disabled');
+      else card.setAttribute('aria-disabled', 'true');
+    });
     var numpadMap = e.subBody.querySelector('[data-numpad-on]');
     if (numpadMap) numpadMap.setAttribute('data-numpad-on', pad.requireNumLockOff ? '1' : '0');
     var demo = e.subBody.querySelector('[data-demo-mode]');
     if (demo && !demo.classList.contains('is-user-driven')) {
       demo.setAttribute('data-demo-mode', pad.requireNumLockOff ? 'soft' : 'numpad');
+    }
+    var navCap = e.subBody.querySelector('[data-nav-cap]');
+    if (navCap) {
+      navCap.textContent = pad.navKeysEnabled === false
+        ? t('softPadFeatureNavCapOff', '方向键保持系统原样，Soft Pad 不显示左侧方向列。')
+        : t('softPadFeatureNavCapOn', '主键盘方向键临时靠在虚拟键盘左侧；与小键盘 2/4/6/8 无关。');
+    }
+    var navHost = e.subBody.querySelector('[data-nav-demo-host]');
+    if (navHost && Pad && typeof Pad.renderNavArrowDemoHtml === 'function') {
+      navHost.innerHTML = Pad.renderNavArrowDemoHtml(pad);
+    } else {
+      var arrowStory = e.subBody.querySelector('[data-nav-on]');
+      if (arrowStory) {
+        arrowStory.setAttribute('data-nav-on', pad.navKeysEnabled === false ? '0' : '1');
+      }
+    }
+    var hint = e.subBody.querySelector('[data-numpad-hint]');
+    if (hint) {
+      var showHint = pad.requireNumLockOff && softLikelyNoNumpadHint();
+      if (showHint) {
+        hint.hidden = false;
+        hint.textContent = t('softPadNumpadNoPadHint',
+          '未检测到独立数字键区。你可以关闭占用，只用悬浮 Soft Pad。');
+      } else {
+        hint.hidden = true;
+      }
+    }
+  }
+
+  function softLikelyNoNumpadHint() {
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (Pad && typeof Pad.softLikelyNoNumpad === 'function') {
+      return Pad.softLikelyNoNumpad() === true;
+    }
+    try {
+      var touch = Number(navigator.maxTouchPoints || 0) > 0;
+      var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      return !!(touch && coarse);
+    } catch (_) {
+      return false;
     }
   }
 
@@ -882,8 +941,18 @@
       updateStatusBar(entry);
       patchSchemeRowEnable(entry);
       patchSchemeRowPresentation(entry);
-      // Light panels never remount the keyboard (was a freeze source).
+      // Never remount runtime three-cards on toggle — SVG demos remount = 假死.
       syncRuntimeCheckboxes(entry);
+      if (changeOpts.refreshPreview) {
+        var mapId = String(entry.mapping.id);
+        requestAnimationFrame(function () {
+          if (softPadView !== 'runtime') return;
+          if (String(selectedMappingId || '') !== mapId) return;
+          var cur = findEntry(mapId);
+          if (!hasMapping(cur)) return;
+          paintPreview(cur, { force: true });
+        });
+      }
       if (softPadView === 'hub' || softPadView === 'layout' || softPadView === 'presentation' ||
           softPadView === 'runtime' || softPadView === 'agent') {
         renderFuncTiles(entry);
@@ -929,6 +998,8 @@
 
     try {
       if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
+      // Layout sets is-editing-key (locks overflow). Drop it before any non-layout paint.
+      if (targetView !== 'layout') e.subBody.classList.remove('is-editing-key');
       if (targetView === 'agent' && !isHubSoftPadKind(selectedScopeId)) {
         e.subBody.innerHTML =
           '<div class="soft-pad-agent-guide">' +
@@ -1508,7 +1579,8 @@
       enabled: !!m.codexMicroPad.enabled,
       requireNumLockOff: !!m.codexMicroPad.requireNumLockOff,
       overlayEnabled: !!m.codexMicroPad.overlayEnabled,
-      requireForeground: m.codexMicroPad.requireForeground !== false
+      requireForeground: m.codexMicroPad.requireForeground !== false,
+      navKeysEnabled: m.codexMicroPad.navKeysEnabled !== false
     }).catch(function () {
       m.codexMicroPad.enabled = prevEnabled;
       m.codexMicroPad.overlayEnabled = prevOverlay;

@@ -1234,6 +1234,10 @@ pub struct CodexMicroPadConfig {
     pub require_foreground: bool,
     #[serde(default)]
     pub require_num_lock_off: bool,
+    /// When false, main-keyboard arrows are not captured into Soft Pad NAV_*.
+    /// NAV routes stay in config; preview/overlay hide the NAV column.
+    #[serde(default = "default_true")]
+    pub nav_keys_enabled: bool,
     #[serde(default)]
     pub overlay_enabled: bool,
     /// beginner | standard | advanced | custom — UI Profile only; does not change scan codes.

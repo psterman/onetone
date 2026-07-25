@@ -470,6 +470,13 @@ body {
   grid-template-rows: repeat(5, minmax(0, 1fr));
 }
 
+/* Soft Pad without left NAV column */
+.wrap.is-no-nav .overlay-body .micro-hw__grid,
+.overlay-body .micro-hw__grid--no-nav {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+
 .micro-hw__key--numpad {
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -490,6 +497,12 @@ body {
   color: var(--overlay-ink, #3a4454);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+.micro-hw__key[data-micro-key="ENC"].is-mode-on .micro-hw__icon {
+  color: #b45309;
+}
+.micro-hw__key[data-micro-key="ENC"].is-mode-off .micro-hw__icon {
+  color: var(--overlay-muted, #8a95a5);
 }
 
 .micro-hw__key--numpad[data-micro-key="NP_ENTER"] .micro-hw__digit,

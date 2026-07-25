@@ -483,6 +483,11 @@
   grid-template-rows: repeat(5, minmax(0, 1fr));
 }
 
+.micro-hw__grid--no-nav {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+
 .micro-hw__digit {
   display: flex;
   align-items: center;
@@ -495,6 +500,12 @@
   color: var(--micro-hw-ink, #3a4454);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+.micro-hw__key[data-micro-key="ENC"].is-mode-on .micro-hw__icon {
+  color: #b45309;
+}
+.micro-hw__key[data-micro-key="ENC"].is-mode-off .micro-hw__icon {
+  color: var(--micro-hw-muted, #8a95a5);
 }
 
 .micro-hw__key--rowspan2 {
@@ -1996,6 +2007,109 @@ html[data-theme="dark"] .micro-hw-modal__icon-btn {
   font-weight: 600;
   font-size: 13px;
   margin-bottom: 6px;
+}
+
+/* Soft Pad「更多」: horizontal tabs + theme cards */
+.soft-pad-more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.soft-pad-more__tabs.pref-segmented {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.soft-pad-more__tabs .pref-segmented-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.soft-pad-more__tabs .pref-segmented-btn.is-active {
+  color: var(--primary-strong, #1f8fb8);
+  background: var(--surface-high, #fff);
+  box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+}
+.soft-pad-more__panels {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.soft-pad-more__panel {
+  display: none;
+  min-width: 0;
+}
+.soft-pad-more__panel.is-active {
+  display: block;
+}
+.soft-pad-more__panel[hidden] {
+  display: none !important;
+}
+.soft-pad-more-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.1));
+  background: var(--surface-high, rgba(255, 255, 255, 0.96));
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+  box-sizing: border-box;
+}
+.soft-pad-more-card--lab {
+  border-style: dashed;
+  background: var(--surface-soft, rgba(241, 245, 249, 0.72));
+}
+.soft-pad-more-card__desc {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #5a7086);
+}
+.soft-pad-more-card .codex-pad-mgr__hook,
+.soft-pad-more-card .codex-pad-mgr__claude-act {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.soft-pad-more-card .codex-pad-mgr__diag {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.1));
+  background: rgba(248, 250, 252, 0.9);
+}
+.soft-pad-more-card .codex-pad-mgr__claude-cli-bar {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.08));
+}
+.soft-pad-more-card .codex-pad-mgr__hook-actions,
+.soft-pad-more-card .codex-pad-mgr__claude-setup-actions,
+.soft-pad-more-card .codex-pad-mgr__claude-inject {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html[data-theme="dark"] .soft-pad-more__tabs .pref-segmented-btn.is-active {
+  color: var(--primary, #5ec8e8);
+  background: rgba(30, 40, 56, 0.95);
+}
+html[data-theme="dark"] .soft-pad-more-card {
+  background: rgba(30, 40, 56, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-more-card--lab {
+  background: rgba(20, 28, 40, 0.55);
+}
+html[data-theme="dark"] .soft-pad-more-card .codex-pad-mgr__diag {
+  background: rgba(15, 20, 28, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .soft-pad-hub__card {
   background: rgba(30, 40, 56, 0.9);

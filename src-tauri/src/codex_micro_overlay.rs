@@ -318,6 +318,10 @@ pub struct CodexMicroOverlaySnapshot {
     pub joy_context_hint: String,
     pub require_num_lock_off: bool,
     pub num_lock_blocking: bool,
+    /// When false, main-keyboard arrows are not captured; overlay uses compact Soft Pad (no NAV col).
+    pub nav_keys_enabled: bool,
+    /// Soft Pad grid columns: 5 with NAV, 4 when navKeysEnabled is false (codex mode).
+    pub layout_columns: u32,
     pub bound_count: u32,
     pub active_micro_key_id: String,
     pub pad_status: String,
@@ -1209,7 +1213,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             enabled: false,
             require_foreground: true,
             require_num_lock_off: false,
-            overlay_enabled: false,
+            nav_keys_enabled: true,
+                        overlay_enabled: false,
             layout_profile: String::new(),
             software_enhance_enabled: false,
             codex_status_lights_enabled: app_state_enabled,
@@ -1242,6 +1247,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             joy_context_hint: String::new(),
             require_num_lock_off: false,
             num_lock_blocking: false,
+            nav_keys_enabled: true,
+            layout_columns: 5,
             bound_count: 0,
             active_micro_key_id: String::new(),
             pad_status,
@@ -1360,6 +1367,10 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             context_hint,
         });
     }
+    // NAV column is optional: keep routes in config, hide cells when navKeysEnabled is off.
+    if !pad.nav_keys_enabled {
+        cells.retain(|c| !c.micro_key_id.starts_with("NAV_"));
+    }
 
     let active = {
         let key = active_micro_key().lock().unwrap().clone();
@@ -1403,6 +1414,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         joy_context_hint,
         require_num_lock_off: pad.require_num_lock_off,
         num_lock_blocking: readiness.num_lock_blocking,
+        nav_keys_enabled: pad.nav_keys_enabled,
+        layout_columns: if pad.nav_keys_enabled { 5 } else { 4 },
         bound_count,
         active_micro_key_id: active,
         pad_status,
@@ -2283,6 +2296,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: false,
             layout_profile: String::new(),
             software_enhance_enabled: false,
@@ -2333,6 +2347,7 @@ mod tests {
             enabled: false,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2360,6 +2375,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2440,6 +2456,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2478,6 +2495,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2509,6 +2527,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2543,6 +2562,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2575,6 +2595,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2614,6 +2635,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2651,6 +2673,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2713,6 +2736,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2763,6 +2787,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2785,6 +2810,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2843,6 +2869,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2879,6 +2906,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2928,6 +2956,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2967,6 +2996,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -2982,6 +3012,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3022,6 +3053,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3052,6 +3084,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3081,6 +3114,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3108,6 +3142,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3140,6 +3175,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3167,6 +3203,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3202,6 +3239,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3227,6 +3265,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3259,6 +3298,66 @@ mod tests {
             "hint={}",
             snap_off.joy_context_hint
         );
+    }
+
+    #[test]
+    fn nav_keys_disabled_hides_nav_cells_keeps_routes() {
+        let _iso = isolate_status_globals();
+        let mut cfg = VoiceConfig::default();
+        let mut pad = CodexMicroPadConfig {
+            enabled: true,
+            require_foreground: true,
+            require_num_lock_off: false,
+            nav_keys_enabled: false,
+            overlay_enabled: true,
+            layout_profile: "standard".into(),
+            software_enhance_enabled: false,
+            codex_status_lights_enabled: false,
+            claude_cli_inject_pref_enabled: false,
+            presentation: "full".into(),
+            skin: "default".into(),
+            keys: crate::codex_numpad_layer::default_codex_micro_pad_routes(),
+        };
+        // NAV routes live in data even when capture/UI column is off.
+        pad.keys.push(crate::config::CodexMicroPadKeyRoute {
+            micro_key_id: "NAV_UP".into(),
+            source_scan: 0,
+            source_extended: false,
+            slot_id: "navUp".into(),
+            ui_icon_id: "navUp".into(),
+            enabled: true,
+            advanced: true,
+            agent_light_id: String::new(),
+        });
+        assert!(pad.keys.iter().any(|k| k.micro_key_id == "NAV_UP"));
+        cfg.mappings = vec![codex_mapping(pad.clone())];
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        test_set_foreground_latch(true);
+        let snap = build_snapshot_from_cfg(&cfg);
+        assert!(!snap.nav_keys_enabled);
+        assert_eq!(snap.layout_columns, 4);
+        assert!(
+            snap.cells.iter().all(|c| !c.micro_key_id.starts_with("NAV_")),
+            "overlay cells must hide NAV column when navKeysEnabled=false"
+        );
+        assert!(
+            cfg.mappings[0]
+                .codex_micro_pad
+                .as_ref()
+                .unwrap()
+                .keys
+                .iter()
+                .any(|k| k.micro_key_id == "NAV_UP"),
+            "NAV route must remain in config when nav off"
+        );
+        // Re-enable: NAV column returns; routes were never deleted.
+        pad.nav_keys_enabled = true;
+        cfg.mappings = vec![codex_mapping(pad)];
+        crate::codex_numpad_layer::sync_hook_cache(&cfg);
+        let snap_on = build_snapshot_from_cfg(&cfg);
+        assert!(snap_on.nav_keys_enabled);
+        assert_eq!(snap_on.layout_columns, 5);
+        assert!(snap_on.cells.iter().any(|c| c.micro_key_id == "NAV_UP"));
     }
 
     #[test]
@@ -3385,6 +3484,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3417,6 +3517,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3446,6 +3547,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: false,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3473,6 +3575,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
@@ -3508,6 +3611,7 @@ mod tests {
             enabled: true,
             require_foreground: true,
             require_num_lock_off: false,
+            nav_keys_enabled: true,
             overlay_enabled: true,
             layout_profile: "standard".into(),
             software_enhance_enabled: false,
