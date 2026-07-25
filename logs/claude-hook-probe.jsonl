@@ -327,3 +327,5 @@
 {"ts":1784992607477,"hook_event_name":"stop","session_id":"cc62f86d-ef30-42db-ab55-daa7c81f2284","model":"default"}
 {"ts":1784992814356}
 {"ts":1784992885550,"hook_event_name":"stop","session_id":"cc62f86d-ef30-42db-ab55-daa7c81f2284","model":"default"}
+{"ts":1784994560043,"hook_event_name":"beforeSubmitPrompt","session_id":"cc62f86d-ef30-42db-ab55-daa7c81f2284","model":"default"}
+{"ts":1784994636809,"hook_event_name":"stop","session_id":"cc62f86d-ef30-42db-ab55-daa7c81f2284","model":"default"}
