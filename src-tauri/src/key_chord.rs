@@ -222,6 +222,46 @@ pub fn is_pass_through_app_key(combo: &str) -> bool {
     )
 }
 
+/// Soft Pad / Micro `agentBindings.triggerBinding` values that are *target* chords:
+/// OneTone synthesizes them into Codex via SendInput. They must never be
+/// `RegisterHotKey`'d — Windows would deliver WM_HOTKEY to OneTone and Codex
+/// would never see the injection (Ctrl+K / Ctrl+N look "fired" but do nothing).
+pub fn is_app_synthesize_target_chord(combo: &str) -> bool {
+    let c = combo.trim();
+    if c.is_empty() {
+        return false;
+    }
+    if is_hold_to_talk_chord(c) || is_pass_through_app_key(c) {
+        return true;
+    }
+    // Keep in sync with agent::bindings_build::default_key_for_slot (non-empty rows).
+    const TARGETS: &[&str] = &[
+        "Ctrl+K",
+        "Ctrl+N",
+        "Ctrl+F",
+        "Ctrl+Alt+N",
+        "Ctrl+Z",
+        "Ctrl+Shift+G",
+        "Ctrl+Alt+B",
+        "Ctrl+B",
+        "Ctrl+,",
+        "Ctrl+[",
+        "Ctrl+]",
+        "Ctrl+`",
+        "Ctrl+Shift+B",
+        "Ctrl+T",
+        "Ctrl+L",
+        "Ctrl+Alt+S",
+        "Ctrl+Alt+P",
+        "Ctrl+Alt+R",
+        "Ctrl+Alt+,",
+        "Ctrl+Alt+.",
+        "Ctrl+Alt+M",
+        "Ctrl+Alt+A",
+    ];
+    TARGETS.iter().any(|t| chords_equivalent(t, c))
+}
+
 /// Compare stored binding chord with live pressed chord (Ctrl+Alt+C ≈ LCtrl+LAlt+C).
 pub fn chords_equivalent(stored: &str, pressed: &str) -> bool {
     let stored_parts = chord_parts(stored);
@@ -742,5 +782,19 @@ mod tests {
         assert!(!chords_equivalent("LAlt", "LAlt+Tab"));
         assert!(is_modifier_only_chord("LAlt"));
         assert!(!is_modifier_only_chord("Ctrl+Alt+C"));
+    }
+
+    #[test]
+    fn soft_pad_target_chords_are_synthesize_targets() {
+        assert!(is_app_synthesize_target_chord("Ctrl+K"));
+        assert!(is_app_synthesize_target_chord("Ctrl+N"));
+        assert!(is_app_synthesize_target_chord("Ctrl+Alt+N"));
+        assert!(is_app_synthesize_target_chord("Ctrl+Shift+D"));
+        assert!(is_app_synthesize_target_chord("Enter"));
+        assert!(is_app_synthesize_target_chord("Escape"));
+        assert!(is_app_synthesize_target_chord("Ctrl+`"));
+        // OneTone-side exclusive triggers stay registerable.
+        assert!(!is_app_synthesize_target_chord("F13"));
+        assert!(!is_app_synthesize_target_chord("Gamepad_A"));
     }
 }

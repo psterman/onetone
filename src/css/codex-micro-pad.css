@@ -619,30 +619,17 @@
 }
 
 .micro-hw__meta {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  bottom: 4px;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  opacity: 0;
-  transform: translateY(3px);
-  pointer-events: none;
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  display: none !important;
 }
 
 .micro-hw__key:hover .micro-hw__meta,
 .micro-hw__key:focus-visible .micro-hw__meta {
-  opacity: 1;
-  transform: none;
+  display: none !important;
 }
 
 .micro-hw__key:hover .micro-hw__icon,
 .micro-hw__key:focus-visible .micro-hw__icon {
-  transform: translateY(-6px);
+  transform: none;
 }
 
 .micro-hw__meta-name,

@@ -1895,8 +1895,39 @@
       }
       var ariaTip = tipChord ? (tipName + ' · ' + tipChord) : tipName;
       var encModeAttr = cell.microKeyId === 'ENC' ? ' data-act="pad-mode"' : '';
+      var metaName = '';
+      var metaChord = '';
+      if (cell.microKeyId === 'ENC') {
+        metaName = tipName;
+        metaChord = codexOn ? 'ON' : 'OFF';
+      } else if (!isNp && isNavMicroKey(cell.microKeyId)) {
+        metaName = cellLabel(cell);
+        metaChord = bound && route && route.slotId
+          ? friendlyChord(chordForSlot(m, route.slotId))
+          : t('codexMicroPadNavDefault', '默认注入方向键');
+      } else if (!isNp && bound && route && route.slotId) {
+        var insertCap = '';
+        var A = agent();
+        if (A && A.insertTextForSlot) {
+          var ins = A.insertTextForSlot(route.slotId);
+          if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
+        }
+        metaName = insertCap || slotLabel(route.slotId) || cellLabel(cell);
+        metaChord = friendlyChord(chordForSlot(m, route.slotId));
+        if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
+          var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
+          metaChord = numLbl + (metaChord ? ' · ' + metaChord : '');
+        }
+      } else if (!isNp) {
+        metaName = cellLabel(cell);
+        metaChord = t('codexMicroPadUnbound', '未配置');
+      } else {
+        metaName = String(cell.digit || cell.uiLabelZh || cell.microKeyId || '');
+      }
       html += '<' + tag + typeAttr + ' class="' + cls + '" data-micro-key="' + esc(cell.microKeyId) + '"' +
         ' data-run-status="' + esc(runSt) + '"' +
+        (metaName ? ' data-cap-name="' + esc(metaName) + '"' : '') +
+        (metaChord ? ' data-cap-chord="' + esc(metaChord) + '"' : '') +
         agAttr + encModeAttr + ' style="' + style + '" aria-label="' + esc(ariaTip) + '"' +
         (cell.microKeyId === 'ENC' ? ' role="switch" aria-checked="' + (codexOn ? 'true' : 'false') + '"' : '') +
         '>';
@@ -1905,44 +1936,8 @@
       if (isNp) {
         html += '<span class="micro-hw__digit" aria-hidden="true">' + esc(cell.digit || cell.uiLabelZh || '') + '</span>';
       } else {
-        // ENC uses same icon+hover-meta pattern as SEARCH (no always-on digit/label clutter).
         var encIconId = cell.microKeyId === 'ENC' ? 'power' : iconId;
         html += '<span class="micro-hw__icon" aria-hidden="true">' + iconSvg(encIconId) + '</span>';
-      }
-      if (!isNp) {
-        var metaName = '';
-        var metaChord = '';
-        if (cell.microKeyId === 'ENC') {
-          metaName = tipName;
-          metaChord = codexOn ? 'ON' : 'OFF';
-        } else if (isNavMicroKey(cell.microKeyId)) {
-          metaName = cellLabel(cell);
-          metaChord = bound && route && route.slotId
-            ? friendlyChord(chordForSlot(m, route.slotId))
-            : t('codexMicroPadNavDefault', '默认注入方向键');
-        } else if (bound && route && route.slotId) {
-          var insertCap = '';
-          var A = agent();
-          if (A && A.insertTextForSlot) {
-            var ins = A.insertTextForSlot(route.slotId);
-            if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
-          }
-          metaName = insertCap || slotLabel(route.slotId) || cellLabel(cell);
-          metaChord = friendlyChord(chordForSlot(m, route.slotId));
-          if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
-            var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
-            metaChord = numLbl + (metaChord ? ' · ' + metaChord : '');
-          }
-        } else {
-          metaName = cellLabel(cell);
-          metaChord = t('codexMicroPadUnbound', '未配置');
-        }
-        if (metaName || metaChord) {
-          html += '<span class="micro-hw__meta" aria-hidden="true">'
-            + (metaName ? '<span class="micro-hw__meta-name">' + esc(metaName) + '</span>' : '')
-            + (metaChord ? '<span class="micro-hw__meta-chord">' + esc(metaChord) + '</span>' : '')
-            + '</span>';
-        }
       }
       html += '</' + tag + '>';
     });
@@ -2888,13 +2883,11 @@
       else el.removeAttribute('data-status-source');
       el.classList.toggle('is-native-status', src === 'native');
       el.classList.toggle('is-claude-lit', src === 'claude_hook' || src === 'claude_app');
-      var nameEl = el.querySelector('.micro-hw__meta-name');
-      var chordEl = el.querySelector('.micro-hw__meta-chord');
       var label = String(info.label || '').trim();
       var sub = String(info.sub || '').trim();
-      if (nameEl && label) nameEl.textContent = label;
-      if (chordEl && sub) chordEl.textContent = sub;
-      else if (chordEl && src) chordEl.textContent = statusSourceLabelFor(src, '');
+      if (label) el.setAttribute('data-cap-name', label);
+      if (sub) el.setAttribute('data-cap-chord', sub);
+      else if (src) el.setAttribute('data-cap-chord', statusSourceLabelFor(src, ''));
     });
   }
 
@@ -4355,6 +4348,52 @@
     });
   }
 
+  function setSoftPadPreviewCaption(host, name, chord) {
+    if (!host) return;
+    var cap = host.querySelector('[data-soft-pad-caption]');
+    if (!cap) return;
+    var nameEl = cap.querySelector('[data-cap-name]');
+    var chordEl = cap.querySelector('[data-cap-chord]');
+    var n = String(name || '').trim();
+    var c = String(chord || '').trim();
+    if (nameEl) {
+      nameEl.textContent = n || t('softPadKeyCaptionIdle', '悬停或点按键查看名称');
+    }
+    if (chordEl) {
+      chordEl.textContent = c;
+      chordEl.hidden = !c;
+    }
+    cap.classList.toggle('is-active', !!n);
+  }
+
+  function bindSoftPadPreviewCaption(host) {
+    if (!host || host.__softPadCaptionBound) return;
+    host.__softPadCaptionBound = true;
+    host.addEventListener('pointerover', function (ev) {
+      var keyEl = ev.target && ev.target.closest && ev.target.closest('.micro-hw__key[data-micro-key]');
+      if (!keyEl || !host.contains(keyEl)) return;
+      setSoftPadPreviewCaption(
+        host,
+        keyEl.getAttribute('data-cap-name') || keyEl.getAttribute('aria-label') || '',
+        keyEl.getAttribute('data-cap-chord') || ''
+      );
+    });
+    host.addEventListener('pointerout', function (ev) {
+      var to = ev.relatedTarget;
+      if (to && host.contains(to) && to.closest && to.closest('.micro-hw__key[data-micro-key]')) return;
+      var focused = host.querySelector('.micro-hw__key.is-focused[data-micro-key]');
+      if (focused) {
+        setSoftPadPreviewCaption(
+          host,
+          focused.getAttribute('data-cap-name') || focused.getAttribute('aria-label') || '',
+          focused.getAttribute('data-cap-chord') || ''
+        );
+        return;
+      }
+      setSoftPadPreviewCaption(host, '', '');
+    });
+  }
+
   function remountSoftPadPreviewShell(host, m) {
     if (!host || !m) return false;
     ensurePad(m, { persist: false });
@@ -4379,12 +4418,34 @@
     if (hintEl) {
       hintEl.textContent = t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换');
     }
+    if (!root.querySelector('[data-soft-pad-caption]')) {
+      var cap = document.createElement('div');
+      cap.className = 'soft-pad-key-caption';
+      cap.setAttribute('data-soft-pad-caption', '');
+      cap.setAttribute('aria-live', 'polite');
+      cap.innerHTML =
+        '<span class="soft-pad-key-caption__name" data-cap-name></span>' +
+        '<span class="soft-pad-key-caption__chord" data-cap-chord hidden></span>';
+      if (hintEl && hintEl.parentNode) hintEl.parentNode.insertBefore(cap, hintEl);
+      else oldWrap.parentNode.appendChild(cap);
+    }
     var tmp = document.createElement('div');
     tmp.innerHTML = renderHardwarePad(m, pad, { mode: 'softPad' });
     var next = tmp.firstChild;
     if (!next) return false;
     oldWrap.parentNode.replaceChild(next, oldWrap);
     markSoftPadPreviewFocus(softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '');
+    bindSoftPadPreviewCaption(host);
+    var focused = host.querySelector('.micro-hw__key.is-focused[data-micro-key]');
+    if (focused) {
+      setSoftPadPreviewCaption(
+        host,
+        focused.getAttribute('data-cap-name') || focused.getAttribute('aria-label') || '',
+        focused.getAttribute('data-cap-chord') || ''
+      );
+    } else {
+      setSoftPadPreviewCaption(host, '', '');
+    }
     return true;
   }
 
@@ -4417,10 +4478,16 @@
         : t('codexMicroPadStatusOff', '已关闭')) +
       '</span></div>' +
       renderHardwarePad(m, pad, { mode: 'softPad' }) +
+      '<div class="soft-pad-key-caption" data-soft-pad-caption aria-live="polite">' +
+      '<span class="soft-pad-key-caption__name" data-cap-name>' +
+      esc(t('softPadKeyCaptionIdle', '悬停或点按键查看名称')) + '</span>' +
+      '<span class="soft-pad-key-caption__chord" data-cap-chord hidden></span>' +
+      '</div>' +
       '<p class="soft-pad-preview__hint codex-pad-mgr__hint">' +
       esc(t('softPadPreviewTapHint', '蓝框=正在编辑 · 点其它键可切换')) +
       '</p></div>';
     markSoftPadPreviewFocus(softPadLayoutFocusKeyId || (editDraft && editDraft.microKeyId) || '');
+    bindSoftPadPreviewCaption(host);
   }
 
   function softPadPanelChanged(m, opts) {
@@ -4508,9 +4575,21 @@
     if (id) previewMicroKeyId = id;
     var host = document.getElementById('softPadPreviewHost');
     if (!host) return;
+    var focused = null;
     host.querySelectorAll('.micro-hw__key[data-micro-key]').forEach(function (el) {
-      el.classList.toggle('is-focused', !!id && el.getAttribute('data-micro-key') === id);
+      var on = !!id && el.getAttribute('data-micro-key') === id;
+      el.classList.toggle('is-focused', on);
+      if (on) focused = el;
     });
+    if (focused) {
+      setSoftPadPreviewCaption(
+        host,
+        focused.getAttribute('data-cap-name') || focused.getAttribute('aria-label') || '',
+        focused.getAttribute('data-cap-chord') || ''
+      );
+    } else {
+      setSoftPadPreviewCaption(host, '', '');
+    }
   }
 
   function showSoftPadLayoutTools(container) {

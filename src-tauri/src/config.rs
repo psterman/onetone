@@ -2771,14 +2771,10 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
         if chord.is_empty() || out.contains(&chord) {
             continue;
         }
-        // Hold-to-talk (Codex Ctrl+Shift+D) must reach the app as a physical hold.
-        // OneTone synthesizes it only from PageDown / mapping long-press — never via hotkey.
-        if crate::key_chord::is_hold_to_talk_chord(&chord) {
-            continue;
-        }
-        // Enter/Escape/… are Codex Soft Pad *documentation* chords — Soft Pad / Micro
-        // fires the slot; never RegisterHotKey / LL-swallow bare Enter (假死感).
-        if crate::key_chord::is_pass_through_app_key(&chord) {
+        // Soft Pad / Micro agent key rows document *target* app chords (Ctrl+K, Enter, …).
+        // Pad routes + mapping.trigger_key own OneTone input; never RegisterHotKey targets
+        // or SendInput is stolen before Codex (command menu / new chat look fired but noop).
+        if crate::key_chord::is_app_synthesize_target_chord(&chord) {
             continue;
         }
         out.push(chord);
@@ -5350,7 +5346,7 @@ mod tests {
     }
 
     #[test]
-    fn hotkey_registration_skips_bare_enter_escape_agent_chords() {
+    fn hotkey_registration_skips_soft_pad_target_agent_chords() {
         let mut m = VoiceConfig::default().mappings[0].clone();
         m.trigger_key.clear();
         m.source_key = "PageDown".into();
@@ -5372,25 +5368,48 @@ mod tests {
             execution_mode: None,
             activation_scope: "foregroundApp".into(),
         });
-        m.agent_bindings.push(AgentBinding {
-            slot_id: "quickChat".into(),
-            action_id: "quickChat".into(),
-            trigger_type: "key".into(),
-            trigger_binding: "Ctrl+Alt+N".into(),
-            enabled: true,
-            execution_mode: None,
-            activation_scope: "foregroundApp".into(),
-        });
+        for (slot, chord) in [
+            ("quickChat", "Ctrl+Alt+N"),
+            ("commandPalette", "Ctrl+K"),
+            ("newThread", "Ctrl+N"),
+            ("quickSearch", "Ctrl+F"),
+            ("openTerminal", "Ctrl+`"),
+            ("pushToTalk", "Ctrl+Shift+D"),
+        ] {
+            m.agent_bindings.push(AgentBinding {
+                slot_id: slot.into(),
+                action_id: slot.into(),
+                trigger_type: "key".into(),
+                trigger_binding: chord.into(),
+                enabled: true,
+                execution_mode: None,
+                activation_scope: "foregroundApp".into(),
+            });
+        }
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.iter().any(|b| b == "PageDown"));
-        assert!(bindings.iter().any(|b| b == "Ctrl+Alt+N"));
-        assert!(
-            !bindings.iter().any(|b| b == "Enter" || b == "Escape"),
-            "bare Enter/Escape must not be global hotkeys: {bindings:?}"
-        );
+        for forbidden in [
+            "Enter",
+            "Escape",
+            "Ctrl+Alt+N",
+            "Ctrl+K",
+            "Ctrl+N",
+            "Ctrl+F",
+            "Ctrl+`",
+            "Ctrl+Shift+D",
+        ] {
+            assert!(
+                !bindings.iter().any(|b| b == forbidden),
+                "Soft Pad target {forbidden} must not be a global hotkey: {bindings:?}"
+            );
+        }
+        assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+K"));
+        assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+N"));
+        assert!(crate::key_chord::is_app_synthesize_target_chord("LCtrl+K"));
         assert!(crate::key_chord::is_pass_through_app_key("Enter"));
         assert!(crate::key_chord::is_pass_through_app_key("Escape"));
         assert!(!crate::key_chord::is_pass_through_app_key("Ctrl+Alt+N"));
+        assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+Alt+N"));
     }
 
     #[test]

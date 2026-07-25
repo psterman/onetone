@@ -306,7 +306,23 @@ fn run_overlay_tap_action(
             | "focusBrowserAddressBar"
     );
     if hotkey_action && !chord.is_empty() {
-        let _ = app_chat_workflow::quick_focus_codex_for_hold();
+        // Never SendInput while OneTone (overlay/main) still owns FG — chords land in
+        // WebView2 and freeze Soft Pad (Ctrl+F find / Ctrl+N noop storms).
+        crate::keyboard::track_foreground_for_send();
+        let focused = app_chat_workflow::quick_focus_codex_for_hold();
+        let codex_fg = crate::app_identity::foreground_app_target_id()
+            .is_some_and(|id| id.trim() == CODEX_APP_TARGET_ID);
+        if !focused || !codex_fg || crate::app_identity::foreground_is_self() {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "codex_pad",
+                &format!(
+                    "inject skipped chord={chord} focused={focused} codex_fg={codex_fg} self={}",
+                    crate::app_identity::foreground_is_self()
+                ),
+            );
+            return;
+        }
         let _ = crate::keyboard::send_chord(&chord, duration_ms);
         return;
     }
@@ -374,6 +390,8 @@ fn spawn_overlay_tap_fire(
             let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 run_overlay_tap_action(&state, &exec_window, &route);
             }));
+            crate::codex_micro_overlay::apply_overlay_no_activate();
+            crate::codex_micro_overlay::refocus_overlay(&app);
             crate::codex_micro_overlay::note_pad_run_status("done", &micro_key_id);
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             BUSY.store(false, Ordering::SeqCst);
@@ -886,35 +904,16 @@ pub fn fire_codex_micro_pad_key(
         crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({ "ok": true, "reason": "tap_up_ignored", "slotId": route.slot_id });
     }
-    if is_overlay_pad_window(window) {
-        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
-        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
-        spawn_overlay_tap_fire(
-            Arc::clone(state),
-            app.clone(),
-            exec_window.clone(),
-            route.clone(),
-            micro_key_id.to_string(),
-        );
-        return serde_json::json!({
-            "ok": true,
-            "reason": "fired",
-            "slotId": route.slot_id,
-            "actionId": route.action_id,
-        });
-    }
-    execute_agent_binding(
-        state,
-        &exec_window,
-        &route.mapping_id,
-        &route.provider_id,
-        &route.action_id,
-        &route.slot_id,
-        None,
-        Some(activation_scope_for_route(&route)),
-    );
+    // Always async — sync focus+SendInput on the IPC/UI thread freezes Soft Pad / WebView2.
     crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
     crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+    spawn_overlay_tap_fire(
+        Arc::clone(state),
+        app.clone(),
+        exec_window.clone(),
+        route.clone(),
+        micro_key_id.to_string(),
+    );
     serde_json::json!({
         "ok": true,
         "reason": "fired",

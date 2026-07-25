@@ -50,9 +50,10 @@ body {
   width: 100%;
   height: 100%;
   opacity: 0;
-  transform: translateY(5px) scale(0.985);
+  /* Opacity only — translate/scale made the pad look like it jumped on every show. */
+  transform: none;
   pointer-events: none;
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition: opacity 0.14s ease;
   cursor: grab;
   overflow: visible;
 }
@@ -126,9 +127,74 @@ body {
   height: auto;
   padding: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   gap: 0;
+}
+
+.overlay-pad-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 400px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.overlay-key-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 9px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  color: var(--overlay-ink, #3a4454);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.overlay-key-caption__name {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.72;
+}
+
+.overlay-key-caption__chord {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--overlay-muted, #7d8998);
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-key-caption.is-active .overlay-key-caption__name {
+  opacity: 1;
+}
+
+.overlay-key-caption__chord[hidden] {
+  display: none !important;
+}
+
+html[data-theme="dark"] .overlay-key-caption {
+  background: rgba(20, 28, 40, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .overlay-key-caption__chord {
+  color: #94a3b8;
 }
 
 .overlay-full {
@@ -142,26 +208,32 @@ body {
 
 .overlay-body .micro-hw {
   position: relative;
+  /* Fixed chassis — leave room below for overlay-key-caption. */
   flex: 0 0 auto;
-  width: min(432px, 100%);
-  min-width: 0;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  max-width: 432px;
-  margin: 0;
+  width: 400px;
+  height: 400px;
+  max-width: 400px;
+  max-height: 400px;
+  min-width: 400px;
+  min-height: 400px;
+  aspect-ratio: auto;
+  margin: 0 auto;
   padding: 26px;
   border-radius: 46px;
+  box-sizing: border-box;
+  contain: layout paint;
   /* Neutral chassis — status color comes from [data-light], not baked-in mint. */
   background:
     radial-gradient(circle at 20% 96%, rgba(148, 163, 184, 0.28), transparent 34%),
     radial-gradient(circle at 86% 6%, rgba(226, 232, 240, 0.7), transparent 28%),
     linear-gradient(145deg, rgba(241, 245, 249, 0.94), rgba(203, 213, 225, 0.82));
+  /* Outer glow uses a fixed blur budget so status changes don't look like resize. */
   box-shadow:
-    0 24px 56px rgba(20, 30, 50, 0.2),
+    0 18px 40px rgba(20, 30, 50, 0.2),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 24px rgba(148, 163, 184, 0.22),
     0 0 28px rgba(148, 163, 184, 0.18);
-  overflow: visible;
+  overflow: hidden;
   transition: background 0.28s ease, box-shadow 0.28s ease;
 }
 
@@ -172,10 +244,10 @@ body {
     radial-gradient(circle at 86% 6%, rgba(147, 170, 255, 0.55), transparent 28%),
     linear-gradient(145deg, rgba(232, 236, 255, 0.94), rgba(180, 190, 255, 0.78));
   box-shadow:
-    0 24px 56px rgba(20, 30, 80, 0.24),
+    0 18px 40px rgba(20, 30, 80, 0.24),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px rgba(48, 83, 254, 0.28),
-    0 0 40px rgba(48, 83, 254, 0.45);
+    0 0 28px rgba(48, 83, 254, 0.45);
 }
 .wrap[data-light="needs_input"] .overlay-body .micro-hw {
   background:
@@ -183,10 +255,10 @@ body {
     radial-gradient(circle at 86% 6%, rgba(255, 190, 120, 0.62), transparent 28%),
     linear-gradient(145deg, rgba(255, 244, 230, 0.94), rgba(255, 200, 140, 0.8));
   box-shadow:
-    0 24px 56px rgba(80, 40, 10, 0.26),
+    0 18px 40px rgba(80, 40, 10, 0.26),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px rgba(255, 106, 0, 0.32),
-    0 0 44px rgba(255, 106, 0, 0.55);
+    0 0 28px rgba(255, 106, 0, 0.55);
 }
 .wrap[data-light="listening"] .overlay-body .micro-hw {
   background:
@@ -194,10 +266,10 @@ body {
     radial-gradient(circle at 86% 6%, rgba(120, 210, 255, 0.55), transparent 28%),
     linear-gradient(145deg, rgba(230, 245, 255, 0.94), rgba(160, 210, 255, 0.78));
   box-shadow:
-    0 24px 56px rgba(10, 40, 70, 0.24),
+    0 18px 40px rgba(10, 40, 70, 0.24),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px rgba(0, 163, 255, 0.28),
-    0 0 40px rgba(0, 163, 255, 0.45);
+    0 0 28px rgba(0, 163, 255, 0.45);
 }
 .wrap[data-light="done"] .overlay-body .micro-hw {
   background:
@@ -205,10 +277,10 @@ body {
     radial-gradient(circle at 86% 6%, rgba(150, 255, 190, 0.55), transparent 28%),
     linear-gradient(145deg, rgba(235, 255, 245, 0.94), rgba(170, 255, 200, 0.78));
   box-shadow:
-    0 24px 56px rgba(15, 50, 30, 0.24),
+    0 18px 40px rgba(15, 50, 30, 0.24),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px rgba(0, 200, 90, 0.28),
-    0 0 40px rgba(0, 255, 76, 0.42);
+    0 0 28px rgba(0, 255, 76, 0.42);
 }
 .wrap[data-light="failed"] .overlay-body .micro-hw {
   background:
@@ -216,10 +288,10 @@ body {
     radial-gradient(circle at 86% 6%, rgba(255, 140, 160, 0.5), transparent 28%),
     linear-gradient(145deg, rgba(255, 236, 240, 0.94), rgba(255, 170, 185, 0.78));
   box-shadow:
-    0 24px 56px rgba(60, 10, 20, 0.26),
+    0 18px 40px rgba(60, 10, 20, 0.26),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px rgba(255, 0, 51, 0.28),
-    0 0 40px rgba(255, 0, 51, 0.48);
+    0 0 28px rgba(255, 0, 51, 0.48);
 }
 
 /* Numpad mode: cooler blue-gray shell */
@@ -229,7 +301,7 @@ body {
     radial-gradient(circle at 86% 6%, rgba(200, 215, 235, 0.7), transparent 28%),
     linear-gradient(145deg, rgba(236, 242, 250, 0.92), rgba(190, 205, 225, 0.78));
   box-shadow:
-    0 24px 56px rgba(20, 30, 50, 0.22),
+    0 18px 40px rgba(20, 30, 50, 0.22),
     inset 0 0 0 2px rgba(255, 255, 255, 0.5),
     inset 0 0 24px rgba(120, 150, 190, 0.28),
     0 0 28px rgba(100, 140, 200, 0.22);
@@ -237,10 +309,10 @@ body {
 
 .wrap.has-rgb-glow .micro-hw {
   box-shadow:
-    0 24px 56px rgba(15, 40, 35, 0.24),
+    0 18px 40px rgba(15, 40, 35, 0.24),
     inset 0 0 0 2px rgba(255, 255, 255, 0.52),
     inset 0 0 28px color-mix(in srgb, var(--overlay-rgb-glow, rgba(66, 255, 161, 0.34)) 55%, transparent),
-    0 0 38px var(--overlay-rgb-glow, rgba(66, 255, 161, 0.34));
+    0 0 28px var(--overlay-rgb-glow, rgba(66, 255, 161, 0.34));
 }
 
 .micro-hw__aura {
@@ -309,7 +381,7 @@ body {
     inset 0 -12px 24px rgba(126, 142, 158, 0.12),
     0 2px 8px rgba(20, 30, 44, 0.18);
   backdrop-filter: blur(9px);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .overlay-body .micro-hw__face::before {
@@ -728,15 +800,19 @@ body {
   transition: opacity 0.14s ease, transform 0.14s ease;
 }
 
+/* Captions live in .overlay-key-caption — never on keycaps. */
+.overlay-body .micro-hw__meta {
+  display: none !important;
+}
+
 .overlay-body .micro-hw__key:hover .micro-hw__meta,
 .overlay-body .micro-hw__key:focus-visible .micro-hw__meta {
-  opacity: 1;
-  transform: none;
+  display: none !important;
 }
 
 .overlay-body .micro-hw__key:hover .micro-hw__icon,
 .overlay-body .micro-hw__key:focus-visible .micro-hw__icon {
-  transform: translateY(-7px);
+  transform: none;
 }
 
 .micro-hw__meta-name,
@@ -1029,7 +1105,7 @@ body {
       radial-gradient(circle at 86% 6%, rgba(94, 200, 232, 0.1), transparent 30%),
       linear-gradient(145deg, rgba(36, 48, 66, 0.94), rgba(15, 20, 25, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px rgba(0, 163, 255, 0.06),
       0 0 28px rgba(0, 163, 255, 0.12);
@@ -1041,10 +1117,10 @@ body {
       radial-gradient(circle at 86% 6%, rgba(80, 110, 255, 0.18), transparent 30%),
       linear-gradient(145deg, rgba(36, 40, 66, 0.94), rgba(15, 18, 30, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px rgba(48, 83, 254, 0.2),
-      0 0 40px rgba(48, 83, 254, 0.4);
+      0 0 28px rgba(48, 83, 254, 0.4);
   }
   .wrap[data-light="needs_input"] .overlay-body .micro-hw {
     background:
@@ -1052,10 +1128,10 @@ body {
       radial-gradient(circle at 86% 6%, rgba(255, 150, 40, 0.22), transparent 30%),
       linear-gradient(145deg, rgba(66, 42, 24, 0.94), rgba(28, 16, 8, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px rgba(255, 106, 0, 0.28),
-      0 0 44px rgba(255, 106, 0, 0.5);
+      0 0 28px rgba(255, 106, 0, 0.5);
   }
   .wrap[data-light="done"] .overlay-body .micro-hw {
     background:
@@ -1063,10 +1139,10 @@ body {
       radial-gradient(circle at 86% 6%, rgba(64, 200, 120, 0.16), transparent 30%),
       linear-gradient(145deg, rgba(28, 48, 40, 0.94), rgba(12, 22, 18, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px rgba(0, 200, 90, 0.2),
-      0 0 40px rgba(0, 255, 76, 0.38);
+      0 0 28px rgba(0, 255, 76, 0.38);
   }
   .wrap[data-light="failed"] .overlay-body .micro-hw {
     background:
@@ -1074,10 +1150,10 @@ body {
       radial-gradient(circle at 86% 6%, rgba(255, 80, 100, 0.16), transparent 30%),
       linear-gradient(145deg, rgba(56, 28, 36, 0.94), rgba(24, 10, 14, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px rgba(255, 0, 51, 0.22),
-      0 0 40px rgba(255, 0, 51, 0.42);
+      0 0 28px rgba(255, 0, 51, 0.42);
   }
 
   .wrap.is-mode-numpad .overlay-body .micro-hw {
@@ -1086,7 +1162,7 @@ body {
       radial-gradient(circle at 86% 6%, rgba(0, 163, 255, 0.08), transparent 30%),
       linear-gradient(145deg, rgba(32, 44, 62, 0.94), rgba(14, 18, 26, 0.96));
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 24px rgba(94, 200, 232, 0.08),
       0 0 24px rgba(94, 200, 232, 0.1);
@@ -1094,7 +1170,7 @@ body {
 
   .wrap.has-rgb-glow .micro-hw {
     box-shadow:
-      0 24px 56px rgba(0, 0, 0, 0.5),
+      0 18px 40px rgba(0, 0, 0, 0.5),
       inset 0 0 0 2px rgba(255, 255, 255, 0.08),
       inset 0 0 28px color-mix(in srgb, var(--overlay-rgb-glow, rgba(0, 163, 255, 0.28)) 40%, transparent),
       0 0 36px var(--overlay-rgb-glow, rgba(0, 163, 255, 0.28));

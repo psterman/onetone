@@ -26,11 +26,17 @@
           <button type="button" class="overlay-chrome__btn overlay-chrome__btn--close" data-act="close" title="关闭" aria-label="关闭">×</button>
         </header>
         <div class="overlay-body" id="overlayBody">
-          <div class="micro-hw micro-hw--sm">
-            <span class="micro-hw__aura" aria-hidden="true"></span>
-            <div class="micro-hw__face">
-              <div class="micro-hw__grid" id="grid"></div>
-              <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
+          <div class="overlay-pad-stack">
+            <div class="micro-hw micro-hw--sm">
+              <span class="micro-hw__aura" aria-hidden="true"></span>
+              <div class="micro-hw__face">
+                <div class="micro-hw__grid" id="grid"></div>
+                <div class="status-chip" id="statusChip" data-status="idle" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="overlay-key-caption" id="overlayKeyCaption" aria-live="polite">
+              <span class="overlay-key-caption__name" data-cap-name>悬停按键查看名称</span>
+              <span class="overlay-key-caption__chord" data-cap-chord></span>
             </div>
           </div>
         </div>
@@ -194,6 +200,8 @@
     var holdSuppressCancel=false;
     var holdUiReleased=false;
     var lastGridSig='';
+    /** Drop stacked non-hold taps while inject is in flight (avoids WebView2 假死). */
+    var tapFireBusy=false;
     /** Ignore stacked pad-mode clicks / emit rebuilds while a toggle is in flight (假死). */
     var padModeToggleBusy=false;
     var padModeSuppressEmitUntil=0;
@@ -485,12 +493,11 @@
       enc.classList.toggle('is-mode-on', !!padEnabled);
       enc.classList.toggle('is-mode-off', !padEnabled);
       enc.setAttribute('aria-checked', padEnabled?'true':'false');
-      enc.setAttribute('aria-label', padEnabled?'Codex 场景模式':'数字键模式');
-      enc.setAttribute('title', padEnabled?'Codex 场景模式':'数字键模式');
-      var metaName=enc.querySelector('.micro-hw__meta-name');
-      var metaChord=enc.querySelector('.micro-hw__meta-chord');
-      if(metaName) metaName.textContent=padEnabled?'Codex 场景模式':'数字键模式';
-      if(metaChord) metaChord.textContent=padEnabled?'ON':'OFF';
+      var label=padEnabled?'Codex 场景模式':'数字键模式';
+      enc.setAttribute('aria-label', label);
+      enc.setAttribute('title', label);
+      enc.setAttribute('data-cap-name', label);
+      enc.setAttribute('data-cap-chord', padEnabled?'ON':'OFF');
     }
 
     function applyLocalStatusDom(){
@@ -552,12 +559,66 @@
 
     function encInnerHtml(codexOn, iconId){
       var icon=(ICON.power||ICON[iconId]||ICON.empty);
-      var label=codexOn?'Codex 场景模式':'数字键模式';
-      return '<span class="micro-hw__icon" aria-hidden="true">'+icon+'</span>'
-        +'<span class="micro-hw__meta" aria-hidden="true">'
-        +'<span class="micro-hw__meta-name">'+escHtml(label)+'</span>'
-        +'<span class="micro-hw__meta-chord">'+(codexOn?'ON':'OFF')+'</span>'
-        +'</span>';
+      return '<span class="micro-hw__icon" aria-hidden="true">'+icon+'</span>';
+    }
+
+    var keyCaptionIdle='悬停按键查看名称';
+    function setKeyCaption(name, chord){
+      var cap=document.getElementById('overlayKeyCaption');
+      if(!cap) return;
+      var nameEl=cap.querySelector('[data-cap-name]');
+      var chordEl=cap.querySelector('[data-cap-chord]');
+      var n=String(name||'').trim();
+      var c=String(chord||'').trim();
+      if(nameEl) nameEl.textContent=n||keyCaptionIdle;
+      if(chordEl){
+        chordEl.textContent=c;
+        chordEl.hidden=!c;
+      }
+      cap.classList.toggle('is-active', !!n);
+    }
+
+    function captionFromKeyEl(el){
+      if(!el) return setKeyCaption('', '');
+      var name=el.getAttribute('data-cap-name')||'';
+      var chord=el.getAttribute('data-cap-chord')||'';
+      if(!name){
+        var aria=String(el.getAttribute('aria-label')||'').trim();
+        if(aria.indexOf(' · ')>=0){
+          var parts=aria.split(' · ');
+          name=parts[0]||'';
+          chord=parts.slice(1).join(' · ');
+        } else name=aria;
+      }
+      setKeyCaption(name, chord);
+    }
+
+    function bindKeyCaption(){
+      if(!grid || grid.__capBound) return;
+      grid.__capBound=true;
+      grid.addEventListener('pointerover',function(e){
+        var el=e.target&&e.target.closest&&e.target.closest('[data-micro-key]');
+        if(!el || !grid.contains(el)) return;
+        captionFromKeyEl(el);
+      });
+      grid.addEventListener('pointerout',function(e){
+        var to=e.relatedTarget;
+        if(to && grid.contains(to)) return;
+        if(activePtr){
+          var pressed=grid.querySelector('[data-micro-key="'+activePtr+'"]');
+          if(pressed){ captionFromKeyEl(pressed); return; }
+        }
+        setKeyCaption('', '');
+      });
+      grid.addEventListener('focusin',function(e){
+        var el=e.target&&e.target.closest&&e.target.closest('[data-micro-key]');
+        if(el) captionFromKeyEl(el);
+      });
+      grid.addEventListener('focusout',function(e){
+        var to=e.relatedTarget;
+        if(to && grid.contains(to)) return;
+        if(!activePtr) setKeyCaption('', '');
+      });
     }
 
     function setFootHint(text){
@@ -703,21 +764,33 @@
             toastNumpadMode();
             return;
           }
+          // Non-hold keys: drop re-entrancy while a tap inject is in flight (rapid
+          // ACT09/SEARCH storms previously wedged WebView2 after FG thrash).
+          if(id!=='ACT10' && tapFireBusy){
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
           activePtr=id;
+          captionFromKeyEl(el);
           if(id==='ACT10'){
             holdLockId=id;
             holdSuppressCancel=true;
             holdUiReleased=false;
             setLocalStatus('listening', id);
           } else {
+            tapFireBusy=true;
             setLocalStatus('running', id);
           }
           el.classList.add('is-pressed','is-active');
           el.setAttribute('data-run-status', id==='ACT10'?'listening':'running');
           try{ el.setPointerCapture(e.pointerId); }catch(_){}
-          fire(id,'down');
+          fire(id,'down').then(function(){
+            if(id==='ACT10') return;
+            setTimeout(function(){ tapFireBusy=false; }, 220);
+          }).catch(function(){
+            if(id!=='ACT10') tapFireBusy=false;
+          });
         });
         // ACT10 hold: release via window pointerup (ensureOverlayHoldPointerUp).
         // Also bind element pointerup so mic ends even if capture fails.
@@ -748,8 +821,8 @@
     }
 
     function gridSignature(s,map,_active){
-      // Structural identity only — ephemeral press/run/context fields are patched in
-      // place. Including them forced grid.innerHTML remount on every tap → Soft Pad 抖动.
+      // Structural identity only — ephemeral press/run/context/connection fields are
+      // patched in place. Including connectionState/visible forced remount → 位移抖动.
       var parts=(s.cells||[]).map(function(c){
         if(!c||!c.microKeyId) return '';
         return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'');
@@ -757,7 +830,8 @@
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
       var navOn=s.navKeysEnabled!==false && s.nav_keys_enabled!==false;
       var cols=Number(s.layoutColumns||s.layout_columns||0)|| (navOn?5:4);
-      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),mode,navOn?1:0,cols,parts.join('|')].join(';');
+      if(mode==='numpad') cols=4;
+      return [!!s.softwareEnhanceEnabled,mode,navOn?1:0,cols,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -960,23 +1034,26 @@
         } else {
           inner='<span class="micro-hw__icon">'+(ICON[iconId]||ICON.empty)+'</span>';
         }
-        if(!isNp && cell.id!=='ENC'){
-          var metaName=String(info.label||'').trim();
-          var metaChord=String(info.sub||'').trim();
-          if(metaName || metaChord){
-            inner+='<span class="micro-hw__meta" aria-hidden="true">'
-              +(metaName?'<span class="micro-hw__meta-name">'+escHtml(metaName)+'</span>':'')
-              +(metaChord?'<span class="micro-hw__meta-chord">'+escHtml(metaChord)+'</span>':'')
-              +'</span>';
-          }
+        var metaName='';
+        var metaChord='';
+        if(cell.id==='ENC'){
+          metaName=padEnabled?'Codex 场景模式':'数字键模式';
+          metaChord=padEnabled?'ON':'OFF';
+        } else if(isNp){
+          metaName=String(cell.label||cell.id||'');
+        } else if(isNav){
+          metaName=({NAV_UP:'上',NAV_DOWN:'下',NAV_LEFT:'左',NAV_RIGHT:'右'})[cell.id]||cell.id;
+          metaChord=joyArrowsLive?'方向键已接入':'';
+        } else {
+          metaName=String(info.label||'').trim();
+          metaChord=String(info.sub||'').trim();
         }
         var npAriaMap={'/':'除','*':'乘','-':'减','+':'加','.':'小数点','↵':'回车'};
-        var navDirMap={NAV_UP:'上',NAV_DOWN:'下',NAV_LEFT:'左',NAV_RIGHT:'右'};
         var aria=cell.id==='ENC'
-          ? (padEnabled?'Codex 场景模式':'数字键模式')
+          ? metaName
           : (isNav
-            ? (navDirMap[cell.id]||cell.id)
-            : (isNp ? (npAriaMap[cell.label]||String(cell.label||cell.id)) : ([info.label, info.sub].filter(Boolean).join(' · ') || cell.id)));
+            ? metaName
+            : (isNp ? (npAriaMap[cell.label]||String(cell.label||cell.id)) : ([metaName, metaChord].filter(Boolean).join(' · ') || cell.id)));
         if(cell.ag!=null && statusSrc){
           aria+=(aria?' · ':'')+statusSourceLabel(statusSrc);
         }
@@ -994,6 +1071,8 @@
         return '<'+tag+type+encAttrs+' class="'+cls+'" data-micro-key="'+cell.id+'"'+agAttr
           +' data-run-status="'+runSt+'" data-backend-run="'+backendRun+'" data-status-source="'+escHtml(statusSrc)+'" data-source-kind="'+kind+'"'
           +(ctxHint?' data-context-hint="'+escHtml(ctxHint)+'"':'')
+          +(metaName?' data-cap-name="'+escHtml(metaName)+'"':'')
+          +(metaChord?' data-cap-chord="'+escHtml(metaChord)+'"':'')
           +' style="'+style+'"'
           +' aria-label="'+escHtml(aria)+'"'
           +(cell.id==='ENC'?' title="'+escHtml(aria)+'"':(actTitle?' title="'+escHtml(actTitle)+'"':''))
@@ -1002,6 +1081,8 @@
       }).join('');
       applyLocalStatusDom();
       bindFire();
+      bindKeyCaption();
+      setKeyCaption('', '');
     }
 
     function dismiss(){

@@ -130,6 +130,32 @@ pub fn set_overlay_click_through(pass: bool) {
     set_overlay_click_through_impl(pass, false);
 }
 
+/// Soft Pad must stay clickable without becoming the foreground window.
+/// Without WS_EX_NOACTIVATE, pad clicks steal FG from Codex; SendInput then lands in the
+/// overlay WebView2 (Ctrl+F/N) and freezes the pad.
+#[cfg(windows)]
+pub fn apply_overlay_no_activate() {
+    let hwnd = *overlay_hwnd_cache().lock();
+    if hwnd == 0 {
+        return;
+    }
+    unsafe {
+        use winapi::um::winuser::{
+            GetWindowLongW, SetWindowLongW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+        };
+        let hwnd = hwnd as winapi::shared::windef::HWND;
+        let style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+        let new_style = style | WS_EX_NOACTIVATE as i32 | WS_EX_LAYERED as i32;
+        if new_style != style {
+            SetWindowLongW(hwnd, GWL_EXSTYLE, new_style);
+        }
+        let _ = crate::keyboard::show_window_no_activate(hwnd);
+    }
+}
+
+#[cfg(not(windows))]
+pub fn apply_overlay_no_activate() {}
+
 fn set_overlay_click_through_impl(pass: bool, force: bool) {
     let mut last = last_pass_through().lock();
     if !force && *last == pass {
@@ -158,6 +184,7 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
             if new_style != style {
                 SetWindowLongW(hwnd, GWL_EXSTYLE, new_style);
             }
+            apply_overlay_no_activate();
             let _ = crate::keyboard::show_window_no_activate(hwnd);
         }
         *last = pass;
@@ -546,6 +573,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     win.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)))?;
     let _ = win.set_shadow(false);
     let _ = win.set_always_on_top(true);
+    apply_overlay_no_activate();
     Ok(())
 }
 
@@ -1939,6 +1967,7 @@ fn push_state_impl(app: &AppHandle, state: &AppState, reposition: bool) {
                     } else {
                         let _ = win.show();
                     }
+                    apply_overlay_no_activate();
                 }
                 #[cfg(not(windows))]
                 {
