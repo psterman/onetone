@@ -41,6 +41,9 @@ static OVERLAY_USER_POSITIONED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceLock::new();
 /// Last applied minimized flag. JOY rail no longer changes window size.
 static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new();
+/// Soft dismiss (X): hide until next Codex FG. Does not persist overlay_enabled=false
+/// (settings "不显示浮窗" owns that durable flag).
+static OVERLAY_SESSION_DISMISSED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
 
 const STATUS_RUNNING_MS: u64 = 800;
 const STATUS_DONE_MS: u64 = 600;
@@ -230,6 +233,19 @@ fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
 
 fn overlay_last_geom() -> &'static ParkingMutex<Option<bool>> {
     OVERLAY_LAST_GEOM.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn overlay_session_dismissed() -> &'static ParkingMutex<bool> {
+    OVERLAY_SESSION_DISMISSED.get_or_init(|| ParkingMutex::new(false))
+}
+
+/// Clear soft-dismiss latch (e.g. user chose durable "不显示浮窗" in settings).
+pub fn clear_overlay_session_dismissed() {
+    *overlay_session_dismissed().lock() = false;
+}
+
+fn is_overlay_session_dismissed() -> bool {
+    *overlay_session_dismissed().lock()
 }
 
 /// Require two consecutive FG samples before flipping — avoids show/hide thrash 假死.
@@ -1368,8 +1384,16 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     // Recompute with actual pad.enabled (early helper used mapping probe only).
     let (joy_nav_panel_open, joy_arrows_live, joy_context_hint) = joy_context_fields(pad.enabled);
     let readiness = crate::codex_numpad_layer::readiness_snapshot(cfg);
+    // "保持在最前" (require_foreground=false): stay visible while Soft Pad is enabled,
+    // except over OneTone main settings. Still not "hijack any app" for key dispatch.
+    let host_ok = if !pad.require_foreground {
+        !onetone_main_is_foreground()
+    } else {
+        show
+    };
+    let session_ok = !is_overlay_session_dismissed();
     CodexMicroOverlaySnapshot {
-        visible: show && pad.overlay_enabled,
+        visible: host_ok && pad.overlay_enabled && session_ok,
         visible_reason,
         enabled: pad.enabled,
         overlay_enabled: pad.overlay_enabled,
@@ -2084,37 +2108,17 @@ fn codex_window_center() -> Option<(i32, i32)> {
 /// Next time Codex becomes foreground, `ensure_codex_pad_ready` re-enables the overlay.
 pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
     *overlay_minimized().lock() = false;
-    let mut changed = false;
-    {
-        let mut cfg = state.cfg.lock();
-        for m in cfg.mappings.iter_mut() {
-            if m.app_target_id.trim() != CODEX_APP_TARGET_ID {
-                continue;
-            }
-            let Some(pad) = m.codex_micro_pad.as_mut() else {
-                continue;
-            };
-            if !pad.overlay_enabled {
-                continue;
-            }
-            pad.overlay_enabled = false;
-            changed = true;
-        }
-        if changed {
-            crate::config::save_config(&cfg);
-            crate::codex_numpad_layer::sync_hook_cache(&cfg);
-        }
+    // Soft dismiss only — do not persist overlay_enabled=false (that is settings
+    // "不显示浮窗"). Reappear when Codex returns to foreground.
+    *overlay_session_dismissed().lock() = true;
+    push_state(app, state);
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.emit(
+            "to_js",
+            &serde_json::json!({ "type": "codex_micro_overlay_dismissed" }),
+        );
     }
-    if changed {
-        push_state(app, state);
-        if let Some(main) = app.get_webview_window("main") {
-            let _ = main.emit(
-                "to_js",
-                &serde_json::json!({ "type": "codex_micro_overlay_dismissed" }),
-            );
-        }
-    }
-    changed
+    true
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &AppState) {
@@ -2123,6 +2127,11 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
     let is_fg = *last_foreground_codex().lock();
 
     if is_fg {
+        // Codex returned to FG — clear soft dismiss so the pad can show again
+        // (only when overlay_enabled remains true in settings).
+        if !was_fg && is_overlay_session_dismissed() {
+            *overlay_session_dismissed().lock() = false;
+        }
         let result = {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;

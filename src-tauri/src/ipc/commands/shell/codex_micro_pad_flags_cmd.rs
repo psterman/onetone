@@ -17,6 +17,7 @@ pub fn cmd_codex_micro_pad_set_flags(
     enabled: bool,
     require_num_lock_off: bool,
     overlay_enabled: bool,
+    require_foreground: Option<bool>,
 ) -> Result<(), String> {
     let mapping_id = mapping_id.trim().to_string();
     if mapping_id.is_empty() {
@@ -35,6 +36,13 @@ pub fn cmd_codex_micro_pad_set_flags(
         pad.enabled = enabled;
         pad.require_num_lock_off = require_num_lock_off;
         pad.overlay_enabled = overlay_enabled;
+        if let Some(rf) = require_foreground {
+            pad.require_foreground = rf;
+        }
+        // Settings chose "不显示浮窗" — clear session dismiss so flags are authoritative.
+        if !overlay_enabled {
+            codex_micro_overlay::clear_overlay_session_dismissed();
+        }
         codex_numpad_layer::sync_hook_cache(&cfg);
         cfg_to_save = cfg.clone();
     }

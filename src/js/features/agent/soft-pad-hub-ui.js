@@ -4,6 +4,9 @@
   var selectedMappingId = null;
   var selectedScopeId = 'codex';
   var softPadView = 'hub'; // hub | layout | presentation | runtime | agent
+  /** Last opened Soft Pad detail tile — restored on later opens; first prepare forces runtime. */
+  var lastSoftPadView = 'runtime';
+  var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1 };
   var chromeBound = false;
   var selectToken = 0;
   var selectTimer = 0;
@@ -588,19 +591,37 @@
         .replace('{n}', String(boundKeyCount(entry)));
     }
     if (tile === 'presentation') {
-      return entry && entry.presentation === 'mini'
-        ? t('softPadPresMini', '迷你条')
-        : t('softPadPresFull', '大键盘');
+      var skin = pad && pad.skin ? String(pad.skin) : 'graphite';
+      return t('softPadTilePresStatus', '皮肤 · {s}').replace('{s}', skin);
     }
     if (tile === 'runtime') {
-      var bits = [];
-      bits.push(entry && entry.padEnabled
-        ? t('softPadRuntimeStatusOn', '开着')
-        : t('softPadRuntimeStatusOff', '关着'));
-      if (pad && pad.overlayEnabled) bits.push(t('softPadRuntimeFloatStatus', '浮窗'));
-      return bits.join(' · ');
+      var Pad = global.OneToneCodexMicroPadUi;
+      var mode = Pad && Pad.resolveSoftPadShowMode
+        ? Pad.resolveSoftPadShowMode(pad)
+        : (pad && pad.overlayEnabled ? 'follow' : 'hidden');
+      if (Pad && Pad.softPadShowModeLabel) return Pad.softPadShowModeLabel(mode);
+      return softPadShowModeLabelFallback(mode);
     }
     return t('softPadTileMoreStatus', '进阶');
+  }
+
+  function softPadShowModeLabelFallback(mode) {
+    if (mode === 'front') return t('softPadShowModeFront', '保持在最前');
+    if (mode === 'mini') return t('softPadShowModeMini', '显示为迷你条');
+    if (mode === 'hidden') return t('softPadShowModeHidden', '不显示浮窗');
+    return t('softPadShowModeFollow', '跟随应用显示');
+  }
+
+  function defaultDetailView(opts) {
+    opts = opts || {};
+    if (opts.firstPrepare) return 'runtime';
+    if (opts.forceView && VALID_SOFT_PAD_VIEWS[opts.forceView]) return opts.forceView;
+    if (VALID_SOFT_PAD_VIEWS[lastSoftPadView]) return lastSoftPadView;
+    return 'runtime';
+  }
+
+  function rememberSoftPadView(view) {
+    if (VALID_SOFT_PAD_VIEWS[view]) lastSoftPadView = view;
   }
 
   function renderFuncTiles(entry) {
@@ -617,22 +638,22 @@
     var ready = hasMapping(entry);
     var tiles = [
       {
-        id: 'layout',
+        id: 'runtime',
         index: '1',
+        title: t('softPadTileRuntime', '何时显示'),
+        sub: t('softPadTileRuntimeSub', '浮窗怎么出现；要不要占数字键')
+      },
+      {
+        id: 'layout',
+        index: '2',
         title: t('softPadTileLayout', '改按键'),
         sub: t('softPadTileLayoutSub', '点键盘上的键，改它做什么')
       },
       {
         id: 'presentation',
-        index: '2',
-        title: t('softPadTilePres', '外观'),
-        sub: t('softPadTilePresSub', '大键盘或迷你条，换皮肤')
-      },
-      {
-        id: 'runtime',
         index: '3',
-        title: t('softPadTileRuntime', '何时显示'),
-        sub: t('softPadTileRuntimeSub', '跟应用一起出现；要不要占数字键')
+        title: t('softPadTilePres', '外观'),
+        sub: t('softPadTilePresSub', '换皮肤；大键盘/迷你条在「何时显示」')
       },
       {
         id: 'agent',
@@ -685,9 +706,9 @@
       e.stage.classList.remove('is-preview-collapsed');
       e.stage.classList.toggle('is-detail-open', detailOpen);
     }
-    // 改按键是默认落地页：不显示「返回」，避免回到空白提示态。
+    // 何时显示是默认落地页：不显示「返回」，避免回到空白提示态。
     if (e.subBack) {
-      e.subBack.hidden = softPadView === 'layout';
+      e.subBack.hidden = softPadView === 'runtime';
       e.subBack.textContent = t('softPadSubBack', '← 返回');
     }
     if (e.subTitle && detailOpen) e.subTitle.textContent = subpageTitle(softPadView);
@@ -789,12 +810,36 @@
     if (!e.subBody) return;
     var pad = entry.mapping.codexMicroPad;
     if (!pad) return;
-    var enabledEl = e.subBody.querySelector('[data-act="enabled"]');
-    var overlayEl = e.subBody.querySelector('[data-act="overlay"]');
+    var Pad = global.OneToneCodexMicroPadUi;
+    var mode = Pad && Pad.resolveSoftPadShowMode
+      ? Pad.resolveSoftPadShowMode(pad)
+      : (pad.overlayEnabled ? 'follow' : 'hidden');
+    var showModeEl = e.subBody.querySelector('[data-act="showMode"]');
+    if (showModeEl) showModeEl.value = mode;
+    if (Pad && Pad.syncSoftPadShowModeChrome) {
+      Pad.syncSoftPadShowModeChrome(e.subBody, mode);
+    } else {
+      var hint = e.subBody.querySelector('[data-show-mode-hint]');
+      if (hint) {
+        hint.textContent = mode === 'front'
+          ? t('softPadShowModeFrontHint', '浮窗保持可见；按键动作仍发给对应应用，不会接管其它窗口。')
+          : mode === 'mini'
+            ? t('softPadShowModeMiniHint', '精简为状态灯条，适合少占屏幕。')
+            : mode === 'hidden'
+              ? t('softPadShowModeHiddenHint', '不显示悬浮键盘；你改过的键位配置会保留。')
+              : t('softPadShowModeFollowHint', '目标应用在前台时显示悬浮键盘。');
+      }
+      var scene = e.subBody.querySelector('[data-show-scene]');
+      if (scene) scene.setAttribute('data-show-scene', mode);
+    }
     var numLockEl = e.subBody.querySelector('[data-act="numlock"]');
-    if (enabledEl) enabledEl.checked = !!pad.enabled;
-    if (overlayEl) overlayEl.checked = !!pad.overlayEnabled;
     if (numLockEl) numLockEl.checked = !!pad.requireNumLockOff;
+    var numpadMap = e.subBody.querySelector('[data-numpad-on]');
+    if (numpadMap) numpadMap.setAttribute('data-numpad-on', pad.requireNumLockOff ? '1' : '0');
+    var demo = e.subBody.querySelector('[data-demo-mode]');
+    if (demo && !demo.classList.contains('is-user-driven')) {
+      demo.setAttribute('data-demo-mode', pad.requireNumLockOff ? 'soft' : 'numpad');
+    }
   }
 
   /** Layered panel updates — never default to paintSubpage remount. */
@@ -836,6 +881,7 @@
     if (panel === 'runtime') {
       updateStatusBar(entry);
       patchSchemeRowEnable(entry);
+      patchSchemeRowPresentation(entry);
       // Light panels never remount the keyboard (was a freeze source).
       syncRuntimeCheckboxes(entry);
       if (softPadView === 'hub' || softPadView === 'layout' || softPadView === 'presentation' ||
@@ -949,21 +995,23 @@
     // Do NOT bump selectToken — cancels deferred preview paint.
     if (view === 'agent' || softPadView === 'agent') ++agentLoadToken;
     softPadView = view;
+    rememberSoftPadView(view);
     // Sync chrome + light panel immediately (no blank frame between hide tiles and fill body).
     syncHubChrome(entry);
     paintSubpage(entry);
+    ensureSoftPadPreview(entry);
   }
 
   function closeSubpage() {
     var from = softPadView;
     feLog('fe softPad.closeSubpage from=' + from);
     var entry = findEntry(selectedMappingId);
-    // 默认落地「改按键」：其它子页返回到 layout，不再回到空白提示态。
-    if (hasMapping(entry) && from !== 'layout') {
-      openSubpage('layout');
+    // 默认落地「何时显示」：其它子页返回到 runtime，不再回到空白提示态。
+    if (hasMapping(entry) && from !== 'runtime') {
+      openSubpage('runtime');
       return;
     }
-    if (from === 'layout') return;
+    if (from === 'runtime') return;
     ++selectToken;
     if (from === 'agent') ++agentLoadToken;
     softPadView = 'hub';
@@ -1043,13 +1091,21 @@
     }).join('');
   }
 
-  function paintPreview(entry) {
+  function paintPreview(entry, opts) {
+    opts = opts || {};
     if (!hasMapping(entry)) return;
     if (paintReentry > 0) return;
-    if (softPadView !== 'hub' && softPadView !== 'layout') return;
+    var light = softPadView === 'runtime' || softPadView === 'presentation' || softPadView === 'agent';
+    if (softPadView !== 'hub' && softPadView !== 'layout' && !light && !opts.force) return;
     var e = els();
+    if (!e.preview) return;
+    // Light pages: paint once when empty/stale — avoid remount loops (假死).
+    if (light && !opts.force) {
+      var hasPrev = !!e.preview.querySelector('.codex-micro-pad.soft-pad-preview');
+      if (hasPrev && paintedMappingId === String(entry.mapping.id)) return;
+    }
     var Pad = global.OneToneCodexMicroPadUi;
-    if (Pad && Pad.renderSoftPadPreview && e.preview) {
+    if (Pad && Pad.renderSoftPadPreview) {
       paintReentry++;
       try {
         Pad.renderSoftPadPreview(e.preview, entry.mapping);
@@ -1060,7 +1116,13 @@
     }
   }
 
-  /** Single cancelable preview queue (hub/layout only). Uses previewEpoch, not selectToken. */
+  /** Ensure left Soft Pad preview exists on light pages (何时显示 / 外观 / 更多). */
+  function ensureSoftPadPreview(entry) {
+    if (!hasMapping(entry)) return;
+    paintPreview(entry);
+  }
+
+  /** Single cancelable preview queue (hub/layout refresh). Uses previewEpoch, not selectToken. */
   function schedulePreviewPaint(entry) {
     if (!hasMapping(entry)) return;
     if (softPadView !== 'hub' && softPadView !== 'layout') return;
@@ -1074,7 +1136,7 @@
       if (String(selectedMappingId || '') !== mapId) return;
       var cur = findEntry(mapId);
       if (!hasMapping(cur)) return;
-      paintPreview(cur);
+      paintPreview(cur, { force: true });
     }, 0);
   }
 
@@ -1139,6 +1201,7 @@
       }
     } else {
       syncHubChrome(entry);
+      ensureSoftPadPreview(entry);
       paintSubpage(entry);
     }
   }
@@ -1190,7 +1253,10 @@
     if (softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent' ||
         softPadView === 'layout') {
       paintSubpage(entry);
-      if (softPadView !== 'layout') return;
+      if (softPadView !== 'layout') {
+        ensureSoftPadPreview(entry);
+        return;
+      }
     }
 
     if (selectTimer) clearTimeout(selectTimer);
@@ -1241,8 +1307,9 @@
     }
 
     if (opts.resetView !== false) {
-      // Default landing: 改按键（layout），不再停在空白提示态。
-      softPadView = 'layout';
+      // Default landing: 何时显示；later opens restore last tile.
+      softPadView = defaultDetailView(opts);
+      rememberSoftPadView(softPadView);
     }
 
     var sameMap = id === String(selectedMappingId || '');
@@ -1253,7 +1320,10 @@
       syncScopeChrome(entry, { rebuildSwitcher: !!opts.rebuildList });
       if (opts.rebuildList) renderSchemeList();
       renderFuncTiles(entry);
-      if (softPadView !== 'hub') paintSubpage(entry);
+      if (softPadView !== 'hub') {
+        paintSubpage(entry);
+        if (softPadView !== 'layout') ensureSoftPadPreview(entry);
+      }
       return;
     }
 
@@ -1281,11 +1351,12 @@
       return;
     }
 
-    // Same chip re-click: keep / restore default 改按键 detail (no idle tip).
+    // Same chip re-click: keep / restore default 何时显示 detail (no idle tip).
     if (!opts.force && String(scope.id) === String(selectedScopeId || '') &&
         scope.mapping && String(scope.mapping.id) === String(selectedMappingId || '') &&
         !hostsNeedPaint(scope.entry)) {
-      softPadView = 'layout';
+      softPadView = defaultDetailView(opts);
+      rememberSoftPadView(softPadView);
       syncScopeChrome(scope.entry, { rebuildSwitcher: false });
       renderFuncTiles(scope.entry);
       paintSubpage(scope.entry);
@@ -1387,12 +1458,14 @@
     var m = ensureAppSoftPad(appId, kind);
     if (!m) return;
     selectedScopeId = kind || 'codex';
+    lastSoftPadView = 'runtime';
     renderSchemeList();
     selectScheme(m.id, {
       force: true,
       forceRemount: true,
       scopeId: selectedScopeId,
-      rebuildList: true
+      rebuildList: true,
+      firstPrepare: true
     });
   }
 
@@ -1434,7 +1507,8 @@
       mappingId: String(m.id),
       enabled: !!m.codexMicroPad.enabled,
       requireNumLockOff: !!m.codexMicroPad.requireNumLockOff,
-      overlayEnabled: !!m.codexMicroPad.overlayEnabled
+      overlayEnabled: !!m.codexMicroPad.overlayEnabled,
+      requireForeground: m.codexMicroPad.requireForeground !== false
     }).catch(function () {
       m.codexMicroPad.enabled = prevEnabled;
       m.codexMicroPad.overlayEnabled = prevOverlay;
@@ -1571,7 +1645,7 @@
     var t0 = Date.now();
     feLog('fe softPad.render begin');
     bindChrome();
-    // Will land on layout via selectScheme({ resetView: true }); keep hub only until then.
+    // Will land on runtime via selectScheme({ resetView: true }); keep hub only until then.
     softPadView = 'hub';
     clearSubpage();
     var e = els();

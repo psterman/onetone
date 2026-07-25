@@ -416,10 +416,8 @@ fn needs_auto_ready(m: &MappingEntry) -> bool {
     match &m.codex_micro_pad {
         None => true,
         Some(pad) => {
-            // Dismiss (X) persists overlay_enabled=false; re-open when Codex FG triggers ensure.
-            if !pad.overlay_enabled {
-                return true;
-            }
+            // overlay_enabled=false is a durable user choice ("不显示浮窗") — do not
+            // treat it as "needs seed / reopen". Dismiss uses a session latch instead.
             // pad.enabled=false is intentional numpad mode — do not auto-re-enable.
             if !pad.enabled {
                 return pad.keys.is_empty();
@@ -796,10 +794,7 @@ pub fn ensure_codex_pad_ready(cfg: &mut VoiceConfig, locale: &str) -> CodexPadEn
             .codex_micro_pad
             .get_or_insert_with(default_codex_micro_pad);
         // Do not force pad.enabled=true — numpad mode is a user choice.
-        if !pad.overlay_enabled {
-            pad.overlay_enabled = true;
-            changed = true;
-        }
+        // Do not force overlay_enabled=true — "不显示浮窗" is a durable setting.
         if pad.layout_profile.trim().is_empty() {
             pad.layout_profile = "standard".into();
             changed = true;
