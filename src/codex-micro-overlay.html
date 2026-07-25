@@ -181,6 +181,17 @@
     var enhanceOn=false;
     var padEnabled=true;
     var padMode='codex';
+    try{
+      var savedMode=localStorage.getItem('onetoneSoftPadMode');
+      if(savedMode==='numpad'||savedMode==='codex'){
+        padMode=savedMode;
+        padEnabled=savedMode==='codex';
+      }
+    }catch(_){}
+
+    function persistPadMode(){
+      try{ localStorage.setItem('onetoneSoftPadMode', padMode); }catch(_){}
+    }
     var joyArrowsLive=false;
     var joyContextHint='';
     var requireNumLockOff=false;
@@ -226,20 +237,31 @@
       overlayHoldInstalled=true;
       function endOverlayPtr(e){
         if(!activePtr) return;
+        // Focus/SendInput blips emit pointercancel — ignoring keeps press visual until real up.
+        if(e && e.type==='pointercancel') return;
         if(holdSuppressCancel && e && e.type==='pointercancel') return;
         var id=activePtr;
         activePtr='';
         if(id==='ACT10') holdSuppressCancel=false;
         if(id==='ACT10') holdUiReleased=true;
-        releaseKeyVisual(id);
+        if(id==='ACT10'){
+          releaseKeyVisual(id);
+        } else {
+          // Brief linger so quick taps still show press flash.
+          var el=grid&&grid.querySelector('[data-micro-key="'+id+'"]');
+          setTimeout(function(){
+            if(activePtr===id) return;
+            releaseKeyVisual(id);
+            applyLocalStatusDom();
+          }, 120);
+          if(el){ /* keep is-pressed until linger */ }
+        }
         applyLocalStatusDom();
         fire(id,'up');
       }
       window.addEventListener('pointerup',endOverlayPtr,true);
-      window.addEventListener('pointercancel',endOverlayPtr,true);
       window.addEventListener('mouseup',endOverlayPtr,true);
-      // Do not end hold on pointermove — focus/inject blips used to zero `buttons`
-      // and abort presses, making the pad feel frozen.
+      // pointercancel ignored — see comment above.
     }
 
     function cellMap(cells){
@@ -497,8 +519,6 @@
       } else if(localPadStatus==='done'){
         localStatusTimer=setTimeout(function(){
           setLocalStatus('idle', '');
-          lastGridSig='';
-          pull();
         }, STATUS_MS.done);
       } else if(localPadStatus==='failed'){
         localStatusTimer=setTimeout(function(){ setLocalStatus('idle', ''); }, STATUS_MS.failed);
@@ -590,25 +610,49 @@
         el.classList.remove('is-pressed','is-active');
         if(padModeToggleBusy) return;
         padModeToggleBusy=true;
+        // Optimistic mode paint — show 数字键/Codex before IPC returns.
+        var optimistic=padMode==='codex'?'numpad':'codex';
+        padMode=optimistic;
+        padEnabled=optimistic==='codex';
+        persistPadMode();
+        applyLocalStatusDom();
+        padModeSuppressEmitUntil=Date.now()+450;
+        lastGridSig='';
+        render(Object.assign({}, lastSnap, {
+          visible:true,
+          enabled:padEnabled,
+          padMode:padMode,
+          joyArrowsLive:!!lastSnap.joyArrowsLive
+        }));
+        toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
         invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
-          padMode=String(mode||'')==='numpad'?'numpad':'codex';
-          padEnabled=padMode==='codex';
-          applyLocalStatusDom();
-          padModeSuppressEmitUntil=Date.now()+450;
-          lastGridSig='';
-          render(Object.assign({}, lastSnap, {
-            visible:true,
-            enabled:padEnabled,
-            padMode:padMode,
-            joyArrowsLive:!!lastSnap.joyArrowsLive
-          }));
-          toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
-          // Switching ON must summon/focus Codex so FG latch + key mapping actually activate.
+          var actual=String(mode||'')==='numpad'?'numpad':'codex';
+          if(actual!==padMode){
+            padMode=actual;
+            padEnabled=actual==='codex';
+            persistPadMode();
+            lastGridSig='';
+            render(Object.assign({}, lastSnap, {
+              visible:true,
+              enabled:padEnabled,
+              padMode:padMode,
+              joyArrowsLive:!!lastSnap.joyArrowsLive
+            }));
+          }
           if(padMode==='codex'){
             fire('ENC','down');
           }
         }).catch(function(err){
           var msg=String((err&&err.message)||err||'');
+          padMode=padMode==='codex'?'numpad':'codex';
+          padEnabled=padMode==='codex';
+          persistPadMode();
+          lastGridSig='';
+          render(Object.assign({}, lastSnap, {
+            visible:true,
+            enabled:padEnabled,
+            padMode:padMode
+          }));
           if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 工作场景');
           else toast('无法切换模式');
         }).then(function(){
@@ -628,6 +672,9 @@
           if(e.button!=null&&e.button!==0) return;
           var numpadTap=isNumpadKeyId(id);
           if(!padEnabled && !numpadTap){
+            // Still flash so user sees the key reacted, then toast.
+            el.classList.add('is-pressed','is-active');
+            setTimeout(function(){ el.classList.remove('is-pressed','is-active'); }, 120);
             toastNumpadMode();
             return;
           }
@@ -638,8 +685,12 @@
             holdLockId=id;
             holdSuppressCancel=true;
             holdUiReleased=false;
+            setLocalStatus('listening', id);
+          } else {
+            setLocalStatus('running', id);
           }
           el.classList.add('is-pressed','is-active');
+          el.setAttribute('data-run-status', id==='ACT10'?'listening':'running');
           try{ el.setPointerCapture(e.pointerId); }catch(_){}
           fire(id,'down');
         });
@@ -658,31 +709,28 @@
             return;
           }
           activePtr='';
-          el.classList.remove('is-pressed','is-active');
+          // Linger pressed look — instant feedback even on very short taps.
+          setTimeout(function(){
+            if(activePtr===id) return;
+            el.classList.remove('is-pressed','is-active');
+          }, 120);
           fire(id,'up');
         });
-        el.addEventListener('pointercancel',function(e){
-          if(activePtr!==id) return;
-          if(id==='ACT10' && holdSuppressCancel) return;
-          activePtr='';
-          if(id==='ACT10'){
-            holdLockId='';
-            holdSuppressCancel=false;
-          }
-          el.classList.remove('is-pressed','is-active');
+        el.addEventListener('pointercancel',function(){
+          // Ignore — focus steal during chord inject must not wipe press visual.
         });
       });
     }
 
-    function gridSignature(s,map,active){
-      // Include padMode so Codex ↔ numpad swaps rebuild the physical key grid.
-      // statusSource must be included so native→fallback with same idle still updates styles.
+    function gridSignature(s,map,_active){
+      // Structural identity only — ephemeral press/run/context fields are patched in
+      // place. Including them forced grid.innerHTML remount on every tap → Soft Pad 抖动.
       var parts=(s.cells||[]).map(function(c){
         if(!c||!c.microKeyId) return '';
-        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'')+':'+(c.runStatus||'')+':'+(c.statusSource||'')+':'+(c.nativeRunStatus||'')+':'+(c.contextRank||'')+':'+(c.contextHint||'');
+        return c.microKeyId+':'+(c.bound?1:0)+':'+(c.uiIconId||'')+':'+(c.sourceKind||'');
       });
       var mode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
-      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),active,mode,parts.join('|')].join(';');
+      return [!!s.visible,!!s.softwareEnhanceEnabled,String(s.connectionState||''),mode,parts.join('|')].join(';');
     }
 
     function patchGridRunStates(map,active){
@@ -707,7 +755,11 @@
     }
 
     function shouldDeferGridRebuild(){
-      return !!holdLockId || localPadStatus==='listening' || !!activePtr;
+      return !!holdLockId
+        || !!activePtr
+        || localPadStatus==='listening'
+        || localPadStatus==='running'
+        || localPadStatus==='done';
     }
 
     var lastSnap={};
@@ -752,9 +804,32 @@
       var hw=wrap.querySelector('.micro-hw');
       if(hw) hw.setAttribute('data-pad-skin', padSkin);
       wrap.classList.toggle('is-visible',!!s.visible);
-      if(!s.visible){ holdLockId=''; applyAppMetaChip(s); return; }
-      padEnabled=!!s.enabled;
-      padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
+      // Always sync mode — previously returned early while hidden, so first show
+      // still showed default Codex even when last mode was 数字键.
+      if(s.enabled!=null || s.padMode!=null){
+        if(s.enabled!=null) padEnabled=!!s.enabled;
+        padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
+        persistPadMode();
+      }
+      if(!s.visible){
+        holdLockId='';
+        applyAppMetaChip(s);
+        applyLocalStatusDom();
+        // Prefetch grid while hidden so show only toggles visibility.
+        if(grid && !grid.children.length){
+          var prefetch=Object.assign({}, s, { visible:true, _prefetch:1 });
+          // Fall through by forcing a one-shot paint without is-visible.
+          s=prefetch;
+          wrap.classList.toggle('is-visible', false);
+        } else {
+          return;
+        }
+      }
+      if(!s._prefetch){
+        padEnabled=!!s.enabled;
+        padMode=String(s.padMode||'')==='numpad'?'numpad':(padEnabled?'codex':'numpad');
+        persistPadMode();
+      }
       joyArrowsLive=!!s.joyArrowsLive && padMode==='codex';
       joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
       requireNumLockOff=!!s.requireNumLockOff;
@@ -872,7 +947,7 @@
         var actTitle='';
         if(isNav){
           if(joyContextHint) actTitle=joyContextHint;
-          else if(joyArrowsLive) actTitle='方向键已接入';
+          else if(joyArrowsLive) actTitle='主键盘方向键已接入';
         } else if(cell.id.indexOf('ACT')===0){
           if(ctxHint) actTitle=ctxHint;
           else if(cell.id==='ACT10') actTitle='按住说话';
@@ -939,31 +1014,43 @@
       });
     });
 
-    if(listen){ listen('codex_micro_overlay_state',function(ev){
-      var s=ev&&ev.payload;
-      if(!s) return;
-      // After local pad-mode toggle, skip a redundant full grid rebuild from push_state.
-      if(Date.now()<padModeSuppressEmitUntil){
-        var incomingMode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
-        if(incomingMode===padMode){
-          lastSnap=Object.assign({}, lastSnap, s);
-          padEnabled=!!s.enabled;
-          joyArrowsLive=!!s.joyArrowsLive && padMode==='codex';
-          joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
-          applyPadLightGlow(lastSnap);
-          applyAppMetaChip(lastSnap);
-          applyLocalStatusDom();
-          return;
+    function bootstrapOverlayState(){
+      // Seed chrome from last known mode immediately (before IPC).
+      applyLocalStatusDom();
+      pull();
+      pullAppLightHttp();
+    }
+    if(listen){
+      listen('codex_micro_overlay_state',function(ev){
+        var s=ev&&ev.payload;
+        if(!s) return;
+        // After local pad-mode toggle, skip a redundant full grid rebuild from push_state.
+        if(Date.now()<padModeSuppressEmitUntil){
+          var incomingMode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
+          if(incomingMode===padMode){
+            lastSnap=Object.assign({}, lastSnap, s);
+            padEnabled=!!s.enabled;
+            joyArrowsLive=!!s.joyArrowsLive && padMode==='codex';
+            joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
+            applyPadLightGlow(lastSnap);
+            applyAppMetaChip(lastSnap);
+            applyLocalStatusDom();
+            return;
+          }
         }
-      }
-      render(s);
-    }).catch(function(){}); }
+        render(s);
+      }).then(function(){
+        bootstrapOverlayState();
+      }).catch(function(){
+        bootstrapOverlayState();
+      });
+    } else {
+      bootstrapOverlayState();
+    }
     function pull(){
       if(holdLockId||localPadStatus==='listening') return;
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
     }
-    pull();
-    pullAppLightHttp();
     setInterval(pull, 1500);
     setInterval(pullAppLightHttp, 500);
   </script>

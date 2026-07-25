@@ -67,6 +67,9 @@ fn hook_gate() -> &'static Mutex<HookGate> {
 }
 
 /// Map LL keyboard hook scan + extended to a numpad physical key, if any.
+///
+/// Dedicated cursor keys share scancodes with numpad 8/2/4/6 but set LLKHF_EXTENDED.
+/// Those must return `None` here so the arrow → NAV_* path can claim them independently.
 pub fn normalize_numpad_physical(scan: u16, extended: bool) -> Option<NumpadSourceKey> {
     match scan {
         0x45 => None,
@@ -74,6 +77,8 @@ pub fn normalize_numpad_physical(scan: u16, extended: bool) -> Option<NumpadSour
         0x1C => None,
         0x35 if extended => Some(NumpadSourceKey { scan, extended: true }),
         0x35 if !extended => None,
+        // Numpad 8/2/4/6 (same scans as ↑↓←→). Extended = dedicated arrows → not Soft Pad.
+        0x48 | 0x50 | 0x4B | 0x4D if extended => None,
         0x47 | 0x48 | 0x49 | 0x4B | 0x4C | 0x4D | 0x4F | 0x50 | 0x51 | 0x52 | 0x53 => {
             Some(NumpadSourceKey {
                 scan,
@@ -958,8 +963,8 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         require_foreground: true,
         require_num_lock_off: false,
         overlay_enabled: true,
-        layout_profile: "standard".into(),
-        software_enhance_enabled: false,
+        layout_profile: "custom".into(),
+        software_enhance_enabled: true,
         codex_status_lights_enabled: false,
         claude_cli_inject_pref_enabled: false,
         presentation: "full".into(),
@@ -1084,6 +1089,30 @@ mod tests {
     #[test]
     fn normalize_numlock_never_mapped() {
         assert!(normalize_numpad_physical(0x45, false).is_none());
+    }
+
+    #[test]
+    fn dedicated_arrows_not_mapped_as_numpad_digits() {
+        // Main-keyboard ↑↓←→ share scans with numpad 8/2/4/6 but set extended.
+        for scan in [0x48u16, 0x50, 0x4B, 0x4D] {
+            assert!(
+                normalize_numpad_physical(scan, true).is_none(),
+                "extended scan {scan:#x} must be NAV, not Soft Pad digit"
+            );
+            let key = normalize_numpad_physical(scan, false).expect("non-ext numpad digit");
+            assert_eq!(key.scan, scan);
+            assert!(!key.extended);
+        }
+        // Neighbor numpad keys (7/9/5/1/3/0) stay Soft Pad regardless of extended flag
+        // (dedicated Home/PageUp etc. are not Soft Pad NAV targets here).
+        assert_eq!(
+            normalize_numpad_physical(0x47, false).unwrap().id(),
+            "sc47:ext0"
+        );
+        assert_eq!(
+            normalize_numpad_physical(0x52, false).unwrap().id(),
+            "sc52:ext0"
+        );
     }
 
     #[test]

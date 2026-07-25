@@ -1239,8 +1239,8 @@ pub struct CodexMicroPadConfig {
     /// beginner | standard | advanced | custom — UI Profile only; does not change scan codes.
     #[serde(default)]
     pub layout_profile: String,
-    /// Optional software enhance (ENC wheel / JOY nav). Default off — M4.
-    #[serde(default)]
+    /// Software enhance (ENC wheel / JOY nav). Default on; independent of layout profile.
+    #[serde(default = "default_true")]
     pub software_enhance_enabled: bool,
     /// Status-bridge switch: Codex Hook / app-state → status-slot host lights. Not a key route.
     /// When false, overlay does not merge `codex_hook`; listener is not stopped.

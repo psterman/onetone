@@ -1666,11 +1666,11 @@ fn joy_context_fields(pad_enabled: bool) -> (bool, bool, String) {
     let _ = pad_enabled;
     let live = crate::codex_numpad_layer::pad_should_capture_arrows();
     let hint = if live {
-        "方向键已接入".into()
+        "主键盘方向键已接入".into()
     } else if crate::codex_numpad_layer::pad_mapping_active() {
-        "切到 Codex 前台后方向键生效".into()
+        "切到 Codex 前台后主键盘方向键生效".into()
     } else {
-        String::new()
+        "启用 Soft Pad 后主键盘方向键接入左侧".into()
     };
     (false, live, hint)
 }
@@ -2190,8 +2190,11 @@ pub fn maybe_tick(app: &AppHandle, state: &AppState) {
         crate::app_log::log_line(state, "codex_overlay", &detail);
     }
 
-    if vis_changed || highlight_expired {
+    if vis_changed {
         push_state(app, state);
+    } else if highlight_expired {
+        // Clear press highlight without geometry/AOT thrash (was Soft Pad 抖动).
+        push_overlay_status(app, state);
     } else if hook_needs_input_hold() {
         // Re-assert click-through ~1Hz while permission wait is sticky (HWND/EXSTYLE can reset).
         let mut last = last_pass_resync().lock();
@@ -3226,14 +3229,26 @@ mod tests {
         })];
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
         crate::codex_numpad_layer::set_joy_nav_panel_open(true);
+        // Soft Pad session latch (Codex/overlay FG) enables main-keyboard → NAV_* capture.
         test_set_foreground_latch(true);
         let snap = build_snapshot_from_cfg(&cfg);
         assert!(!snap.joy_nav_panel_open, "side-rail deprecated → always false");
-        assert!(!snap.joy_arrows_live, "no real Codex FG → arrows not live");
+        assert!(snap.joy_arrows_live, "Soft Pad session + pad on → main arrows live");
         assert!(
-            snap.joy_context_hint.contains("前台") || snap.joy_context_hint.contains("方向"),
+            snap.joy_context_hint.contains("主键盘") || snap.joy_context_hint.contains("方向"),
             "hint={}",
             snap.joy_context_hint
+        );
+        test_set_foreground_latch(false);
+        let snap_off = build_snapshot_from_cfg(&cfg);
+        assert!(
+            !snap_off.joy_arrows_live,
+            "no Soft Pad session → arrows not live"
+        );
+        assert!(
+            snap_off.joy_context_hint.contains("前台") || snap_off.joy_context_hint.contains("方向"),
+            "hint={}",
+            snap_off.joy_context_hint
         );
     }
 

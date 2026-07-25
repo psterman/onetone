@@ -1064,14 +1064,24 @@
           </header>
           <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
             <div class="keys-page-main soft-pad-page-main">
-              <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
-              <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="navigation" aria-label="功能"></div>
-              <div class="soft-pad-subpage" id="softPadSubpageHost" hidden>
-                <div class="soft-pad-subpage-bar">
-                  <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack">← 返回</button>
-                  <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+              <div class="soft-pad-hub-stage" id="softPadHubStage">
+                <div class="soft-pad-hub-nav" id="softPadHubNav">
+                  <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
+                  <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="navigation" aria-label="你想改什么？"></div>
                 </div>
-                <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
+                <aside class="soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
+                  <div class="soft-pad-detail-idle" id="softPadDetailIdle">
+                    <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点左侧一项开始调整</p>
+                    <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">右侧打开详情；左侧键盘与列表保持不动</p>
+                  </div>
+                  <div class="soft-pad-detail-panel" id="softPadDetailPanel" hidden>
+                    <div class="soft-pad-subpage-bar">
+                      <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack">← 返回</button>
+                      <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                    </div>
+                    <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
+                  </div>
+                </aside>
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>

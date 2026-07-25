@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs><style>
+    .bg{fill:#f3f6f9}.panel{fill:#fbfcfe;stroke:#d8e2ed}.bar{fill:#fff;stroke:#dce5ef}.ink{fill:#132033}.muted{fill:#687789}.blue{fill:#2563eb}.tile{fill:#fff;stroke:#d7e1ec}.key{fill:#fff;stroke:#d7e1ec}.on{fill:#eef6ee;stroke:#9bd6a8}.mini{fill:#f5f7fa}.small{font:12px "Microsoft YaHei",Arial}.body{font:14px "Microsoft YaHei",Arial}.title{font:700 18px "Microsoft YaHei",Arial}.h1{font:700 24px "Microsoft YaHei",Arial}.label{font:700 17px "Microsoft YaHei",Arial}.num{font:700 20px Arial}
+  </style></defs>
+  <rect class="bg" width="1280" height="900"/>
+  <rect x="54" y="44" width="1172" height="812" rx="22" class="panel"/>
+  <rect x="54" y="44" width="1172" height="64" rx="22" class="bar"/>
+  <text x="86" y="84" class="h1 ink">Soft Pad</text>
+  <rect x="980" y="62" width="128" height="28" rx="14" fill="#ecfdf5" stroke="#bfe8ce"/><text x="1016" y="82" class="small" fill="#15803d">启用中</text>
+  <rect x="1122" y="62" width="70" height="28" rx="14" fill="#f1f5f9"/><text x="1142" y="82" class="small muted">Codex</text>
+  <g transform="translate(80 142)">
+    <text x="0" y="0" class="title ink">键盘预览</text><text x="0" y="26" class="body muted">小白默认只看结果，细节进子页</text>
+    <rect x="0" y="62" width="520" height="404" rx="20" fill="#edf3f8" stroke="#d8e2ed"/>
+    <g transform="translate(28 94)">
+      <rect class="key on" x="0" y="0" width="92" height="58" rx="12"/><text x="28" y="36" class="body ink">状态</text>
+      <rect class="key" x="108" y="0" width="92" height="58" rx="12"/><text x="138" y="36" class="body ink">命令</text>
+      <rect class="key" x="216" y="0" width="92" height="58" rx="12"/><text x="246" y="36" class="body ink">输入</text>
+      <rect class="key on" x="324" y="0" width="92" height="58" rx="12"/><text x="354" y="36" class="body ink">确认</text>
+      <rect class="key" x="0" y="76" width="92" height="58" rx="12"/><text x="42" y="112" class="body ink">7</text>
+      <rect class="key" x="108" y="76" width="92" height="58" rx="12"/><text x="150" y="112" class="body ink">8</text>
+      <rect class="key on" x="216" y="76" width="92" height="58" rx="12"/><text x="246" y="112" class="body ink">发送</text>
+      <rect class="key" x="324" y="76" width="92" height="58" rx="12"/><text x="366" y="112" class="body ink">9</text>
+      <rect class="key" x="0" y="152" width="92" height="58" rx="12"/><text x="42" y="188" class="body ink">4</text>
+      <rect class="key on" x="108" y="152" width="92" height="58" rx="12"/><text x="138" y="188" class="body ink">取消</text>
+      <rect class="key" x="216" y="152" width="200" height="58" rx="12"/><text x="292" y="188" class="body ink">空格</text>
+    </g>
+  </g>
+  <g transform="translate(640 142)">
+    <text x="0" y="0" class="title ink">你想改什么？</text><text x="0" y="26" class="body muted">动作入口更像任务清单，适合第一次配置</text>
+    <rect class="tile" x="0" y="62" width="496" height="84" rx="14"/>
+    <rect x="0" y="62" width="6" height="84" rx="3" class="blue"/><text x="24" y="114" class="num blue">1</text>
+    <text x="64" y="98" class="label ink">改按键</text><text x="64" y="122" class="small muted">点键盘上的键，改它做什么</text><text x="410" y="118" class="small muted">已设 12/15</text>
+    <rect class="tile" x="0" y="164" width="496" height="84" rx="14"/>
+    <rect x="0" y="164" width="6" height="84" rx="3" fill="#10b981"/><text x="24" y="216" class="num" fill="#10b981">2</text>
+    <text x="64" y="200" class="label ink">外观</text><text x="64" y="224" class="small muted">大键盘或迷你条，换皮肤</text><text x="424" y="220" class="small muted">大键盘</text>
+    <rect class="tile" x="0" y="266" width="496" height="84" rx="14"/>
+    <rect x="0" y="266" width="6" height="84" rx="3" fill="#f59e0b"/><text x="24" y="318" class="num" fill="#d97706">3</text>
+    <text x="64" y="302" class="label ink">何时显示</text><text x="64" y="326" class="small muted">跟应用一起出现；要不要占数字键</text><text x="390" y="322" class="small muted">开着 · 浮窗</text>
+    <rect class="tile" x="0" y="368" width="496" height="84" rx="14" opacity=".78"/>
+    <rect x="0" y="368" width="6" height="84" rx="3" fill="#94a3b8"/><text x="24" y="420" class="num" fill="#64748b">4</text>
+    <text x="64" y="404" class="label ink">更多</text><text x="64" y="428" class="small muted">状态灯等进阶选项</text><text x="442" y="424" class="small muted">进阶</text>
+  </g>
+  <text x="86" y="700" class="title ink">方案 B：动作优先列表版</text>
+  <text x="86" y="728" class="body muted">四格仍是导航，但视觉上变成“我要做什么”；阅读路径更明确，缺点是比 2×2 占高。</text>
+</svg>

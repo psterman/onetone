@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+  <defs>
+    <style>
+      .bg{fill:#eef3f8}.panel{fill:#f9fbfd;stroke:#d9e3ee;stroke-width:1}.top{fill:#fff;stroke:#dce5ef}.muted{fill:#6b7a8d}.ink{fill:#142033}.soft{fill:#f5f8fb}.key{fill:#fff;stroke:#d8e1ec}.key-on{fill:#e9f2ff;stroke:#9fc2ff}.tile{fill:#fff;stroke:#d8e1ec}.tile1{stroke:#6ea8ff;stroke-width:1.5}.icon{fill:#eef5ff;stroke:#cfe1ff}.status{fill:#64748b}.chip{fill:#eef2f6}.small{font:12px "Microsoft YaHei",Arial}.body{font:14px "Microsoft YaHei",Arial}.title{font:700 18px "Microsoft YaHei",Arial}.h1{font:700 24px "Microsoft YaHei",Arial}.label{font:700 16px "Microsoft YaHei",Arial}
+    </style>
+  </defs>
+  <rect class="bg" width="1280" height="900"/>
+  <rect x="54" y="44" width="1172" height="812" rx="24" class="panel"/>
+  <rect x="54" y="44" width="1172" height="64" rx="24" class="top"/>
+  <text x="86" y="84" class="h1 ink">Soft Pad</text>
+  <rect x="1020" y="62" width="88" height="28" rx="14" fill="#22c55e"/><text x="1044" y="82" class="small" fill="#fff">开着</text>
+  <rect x="1122" y="62" width="70" height="28" rx="14" class="chip"/><text x="1142" y="82" class="small muted">Codex</text>
+  <text x="86" y="150" class="title ink">键盘预览</text>
+  <text x="86" y="174" class="body muted">当前方案：标准 · 已设 12/15</text>
+  <g transform="translate(86 210)">
+    <rect width="660" height="304" rx="18" fill="#edf3f9" stroke="#d6e2ee"/>
+    <g transform="translate(24 26)">
+      <rect class="key" x="0" y="0" width="106" height="54" rx="10"/><text x="38" y="34" class="body ink">Esc</text>
+      <rect class="key-on" x="124" y="0" width="106" height="54" rx="10"/><text x="158" y="34" class="body ink">状态</text>
+      <rect class="key" x="248" y="0" width="106" height="54" rx="10"/><text x="286" y="34" class="body ink">命令</text>
+      <rect class="key" x="372" y="0" width="106" height="54" rx="10"/><text x="412" y="34" class="body ink">输入</text>
+      <rect class="key-on" x="496" y="0" width="106" height="54" rx="10"/><text x="532" y="34" class="body ink">确认</text>
+      <rect class="key" x="0" y="74" width="106" height="54" rx="10"/><text x="42" y="108" class="body ink">7</text>
+      <rect class="key" x="124" y="74" width="106" height="54" rx="10"/><text x="166" y="108" class="body ink">8</text>
+      <rect class="key-on" x="248" y="74" width="106" height="54" rx="10"/><text x="286" y="108" class="body ink">发送</text>
+      <rect class="key" x="372" y="74" width="106" height="54" rx="10"/><text x="414" y="108" class="body ink">4</text>
+      <rect class="key" x="496" y="74" width="106" height="54" rx="10"/><text x="538" y="108" class="body ink">5</text>
+      <rect class="key-on" x="0" y="148" width="106" height="54" rx="10"/><text x="34" y="182" class="body ink">取消</text>
+      <rect class="key" x="124" y="148" width="106" height="54" rx="10"/><text x="166" y="182" class="body ink">2</text>
+      <rect class="key" x="248" y="148" width="106" height="54" rx="10"/><text x="290" y="182" class="body ink">3</text>
+      <rect class="key" x="372" y="148" width="230" height="54" rx="10"/><text x="460" y="182" class="body ink">空格</text>
+    </g>
+  </g>
+  <text x="790" y="150" class="title ink">设置</text>
+  <text x="790" y="174" class="body muted">3 个常用入口 + 更多</text>
+  <g transform="translate(790 210)">
+    <rect class="tile tile1" x="0" y="0" width="360" height="92" rx="14"/>
+    <rect class="icon" x="18" y="22" width="48" height="48" rx="12"/><text x="33" y="53" class="label ink">⌘</text>
+    <text x="84" y="38" class="label ink">改按键</text><text x="84" y="62" class="small muted">点键盘上的键，改它做什么</text><text x="292" y="60" class="small status">已设 12/15</text>
+    <rect class="tile" x="0" y="112" width="360" height="92" rx="14"/>
+    <rect class="icon" x="18" y="134" width="48" height="48" rx="12"/><text x="33" y="165" class="label ink">▣</text>
+    <text x="84" y="150" class="label ink">外观</text><text x="84" y="174" class="small muted">大键盘或迷你条，换皮肤</text><text x="285" y="172" class="small status">大键盘</text>
+    <rect class="tile" x="0" y="224" width="360" height="92" rx="14"/>
+    <rect class="icon" x="18" y="246" width="48" height="48" rx="12"/><text x="32" y="277" class="label ink">◷</text>
+    <text x="84" y="262" class="label ink">何时显示</text><text x="84" y="286" class="small muted">跟应用一起出现；要不要占数字键</text><text x="270" y="284" class="small status">开着 · 浮窗</text>
+    <rect class="tile" x="0" y="336" width="360" height="92" rx="14"/>
+    <rect class="icon" x="18" y="358" width="48" height="48" rx="12"/><text x="35" y="389" class="label ink">⋯</text>
+    <text x="84" y="374" class="label ink">更多</text><text x="84" y="398" class="small muted">状态灯等进阶选项</text><text x="305" y="396" class="small status">进阶</text>
+  </g>
+  <text x="86" y="594" class="title ink">方案 A：贴近现状的稳妥版</text>
+  <text x="86" y="622" class="body muted">保持 2×2 导航块心智，只降低术语和状态噪音；实现成本最低，用户迁移最顺。</text>
+</svg>

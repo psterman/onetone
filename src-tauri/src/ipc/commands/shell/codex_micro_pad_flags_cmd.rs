@@ -81,8 +81,8 @@ pub fn cmd_codex_micro_pad_set_layout(
     ) {
         profile = "standard".into();
     }
-    // Enhance only applies to advanced; keep BE consistent with FE applyLayoutProfile.
-    let enhance = software_enhance_enabled && profile == "advanced";
+    // Enhance is independent of layout profile (hub no longer gates on "advanced").
+    let enhance = software_enhance_enabled;
 
     let cfg_to_save;
     {

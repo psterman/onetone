@@ -97,32 +97,25 @@ fn spawn_overlay_hold_lmb_watch(
     let _ = std::thread::Builder::new()
         .name("overlay-pad-hold-lmb".into())
         .spawn(move || {
-            let mut seen_down = false;
-            for _ in 0..50 {
+            // Soft Pad pointerup is authoritative. LMB is only a backup.
+            // Do NOT finish just because GetAsyncKeyState flickers after focus steal —
+            // that caused start/release storms and ChatGPT「未响应」(runtime-live.log).
+            let mut stable_up = 0u32;
+            for _ in 0..3_000 {
                 if gen != overlay_pad_hold_gen() {
                     return;
                 }
                 if primary_button_down() {
-                    seen_down = true;
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            if !seen_down {
-                if gen == overlay_pad_hold_gen() {
-                    finish_micro_pad_hold(&state, &app, &micro_key_id);
-                }
-                return;
-            }
-            loop {
-                if gen != overlay_pad_hold_gen() {
-                    return;
-                }
-                if !primary_button_down() {
-                    if gen == overlay_pad_hold_gen() {
-                        finish_micro_pad_hold(&state, &app, &micro_key_id);
+                    stable_up = 0;
+                } else {
+                    stable_up = stable_up.saturating_add(1);
+                    // Require ~80ms continuous up before treating as release.
+                    if stable_up >= 8 {
+                        if gen == overlay_pad_hold_gen() {
+                            finish_micro_pad_hold(&state, &app, &micro_key_id);
+                        }
+                        return;
                     }
-                    return;
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }
@@ -161,12 +154,8 @@ fn spawn_overlay_hold_start(
             let Some(exec_window) = exec_window else {
                 return;
             };
-            if !primary_button_down() {
-                if gen == overlay_pad_hold_gen() {
-                    *state.codex_numpad_hold_source.lock() = None;
-                }
-                return;
-            }
+            // Never abort on !primary_button_down after focus — LMB flicker used to skip
+            // press or immediately finish and storm Codex with Ctrl+Shift+D.
             let hold_ok = app_chat_workflow::run_hold_voice_foreground(
                 &state,
                 &exec_window,
@@ -186,10 +175,6 @@ fn spawn_overlay_hold_start(
             set_overlay_pad_ptt_chord(trigger_binding.clone());
             if gen != overlay_pad_hold_gen() {
                 release_overlay_ptt_chord(state.as_ref());
-                return;
-            }
-            if !primary_button_down() {
-                finish_micro_pad_hold(&state, &app, &micro_key_id);
                 return;
             }
             crate::codex_micro_overlay::refocus_overlay(&app);
@@ -535,11 +520,8 @@ fn try_dispatch_codex_numpad(
     );
     if let Some(route) = crate::codex_numpad_layer::lookup_route(&source) {
         crate::codex_micro_overlay::note_micro_key(&route.micro_key_id, key_down);
-        if route.is_hold {
-            crate::codex_micro_overlay::push_overlay_status(&window.app_handle(), state.as_ref());
-        } else {
-            crate::codex_micro_overlay::push_state(&window.app_handle(), state.as_ref());
-        }
+        // Status-only push — full push_state remounts geometry/AOT and makes Soft Pad 抖动.
+        crate::codex_micro_overlay::push_overlay_status(&window.app_handle(), state.as_ref());
     }
 
     let Some(route) = crate::codex_numpad_layer::lookup_route(&source) else {
@@ -851,15 +833,14 @@ pub fn fire_codex_micro_pad_key(
             return serde_json::json!({ "ok": true, "reason": "hold_up", "slotId": route.slot_id });
         }
         clear_stale_codex_numpad_hold(state.as_ref());
-        if !from_overlay && state.codex_numpad_hold_source.lock().is_some() {
+        // Overlay used to skip this check and spawn parallel hold threads → Ctrl+Shift+D
+        // start/release storms that hung ChatGPT (log: ChatGPT 未响应).
+        if state.codex_numpad_hold_source.lock().is_some() {
             crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
             return serde_json::json!({ "ok": true, "reason": "hold_busy", "slotId": route.slot_id });
         }
         if from_overlay {
-            take_overlay_pad_ptt_chord();
-            if crate::voice_end_runtime::held_voice_chord(state.as_ref()).is_some() {
-                release_overlay_ptt_chord(state.as_ref());
-            }
+            // Do not release an in-flight chord here — hold_busy above covers duplicates.
             let gen = bump_overlay_pad_hold_gen();
             *state.codex_numpad_hold_source.lock() = Some(micro_key_id.to_string());
             spawn_overlay_hold_start(
@@ -933,7 +914,7 @@ pub fn fire_codex_micro_pad_key(
         Some(activation_scope_for_route(&route)),
     );
     crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
-    crate::codex_micro_overlay::push_state(&app, state.as_ref());
+    crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
     serde_json::json!({
         "ok": true,
         "reason": "fired",

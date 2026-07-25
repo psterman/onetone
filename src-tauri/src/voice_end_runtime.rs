@@ -204,6 +204,18 @@ pub fn begin_hold_voice_chord(state: &AppState, chord: &str) -> bool {
         }
         let _ = end_hold_voice_chord(state);
     }
+    // Cooldown after release — Soft Pad LMB flicker used to start/release in a tight
+    // loop and hang ChatGPT (runtime-live: ChatGPT 未响应).
+    if let Some(at) = *state.voice_wake_last_key_at.lock() {
+        if Instant::now().saturating_duration_since(at) < Duration::from_millis(280) {
+            crate::app_log::log_line(
+                state,
+                "hold",
+                &format!("hold start cooldown key={}", chord.trim()),
+            );
+            return false;
+        }
+    }
     if !crate::keyboard::press_chord(chord) {
         return false;
     }
@@ -218,6 +230,8 @@ pub fn end_hold_voice_chord(state: &AppState) -> bool {
         return false;
     };
     let ok = crate::keyboard::release_chord(&chord);
+    // Arm cooldown so a focus-flicker re-press cannot immediately restart.
+    mark_voice_wake_key_sent(state);
     if ok {
         crate::app_log::log_line(state, "hold", &format!("hold release key={chord}"));
     }

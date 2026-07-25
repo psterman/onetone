@@ -525,6 +525,7 @@ body {
 .micro-hw__key.is-active {
   transform: translateY(3px) scale(0.965);
   filter: brightness(1.04);
+  transition: transform 0.05s ease, filter 0.05s ease, background 0.05s ease, box-shadow 0.05s ease;
 }
 
 /* Frosted top agent keys. */
@@ -1320,7 +1321,11 @@ body {
 .root[data-pad-skin="glass-light"] .micro-hw__key.is-pressed,
 .wrap[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .wrap[data-pad-skin="glass-light"] .micro-hw__key.is-pressed {
-  transform: scale(0.96);
+  transform: translateY(2px) scale(0.96);
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.18);
+  transition: transform 0.05s ease, background 0.05s ease, box-shadow 0.05s ease;
 }
 
 .root[data-pad-skin="hybrid-pro"] .micro-hw,
@@ -1359,7 +1364,11 @@ body {
 .root[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed,
 .wrap[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .wrap[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
-  transform: translateY(2px);
+  transform: translateY(2px) scale(0.97);
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  box-shadow: inset 0 2px 6px rgba(23, 32, 51, 0.2);
+  transition: transform 0.05s ease, background 0.05s ease;
 }
 
 .root[data-pad-skin="vibe-light"] .micro-hw,
@@ -1402,7 +1411,11 @@ body {
 .root[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed,
 .wrap[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .wrap[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed {
-  transform: scale(0.94);
+  transform: translateY(2px) scale(0.94);
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  box-shadow: inset 0 2px 8px rgba(79, 70, 229, 0.25);
+  transition: transform 0.05s ease, background 0.05s ease;
 }
 
 .root[data-pad-skin="vibe-dark"] .micro-hw,
@@ -1448,8 +1461,12 @@ body {
 .root[data-pad-skin="vibe-dark"] .micro-hw__key.is-pressed,
 .wrap[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .wrap[data-pad-skin="vibe-dark"] .micro-hw__key.is-pressed {
-  transform: scale(0.94);
-  filter: brightness(0.95);
+  transform: translateY(2px) scale(0.94);
+  filter: brightness(1.02);
+  background: var(--micro-key-press-bg) !important;
+  color: var(--micro-key-press-ink) !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.05s ease, background 0.05s ease;
 }
 
 /* Overlay skins under dark app theme (synced via vp_theme → data-theme) */

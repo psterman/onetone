@@ -669,8 +669,13 @@
 }
 
 .micro-hw__key.is-focused {
-  outline: 2px solid rgba(42, 156, 196, 0.55);
-  outline-offset: 1px;
+  outline: 2px solid rgba(37, 99, 235, 0.75);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  z-index: 2;
+}
+.soft-pad-preview-host .micro-hw__key.is-focused {
+  outline-color: rgba(37, 99, 235, 0.9);
 }
 
 .micro-hw__key.is-pressed:not([data-micro-key="JOY"]),
@@ -2010,6 +2015,116 @@ html[data-theme="dark"] .codex-pad-mgr__agent-connect {
   font-size: 11px;
   padding: 0 10px;
   white-space: nowrap;
+}
+
+/* Appearance page: clickable skin preview cards */
+.soft-pad-skin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+.soft-pad-skin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.soft-pad-skin-card:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.soft-pad-skin-card.is-active {
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.18),
+    0 10px 20px rgba(37, 99, 235, 0.1);
+  background: rgba(239, 246, 255, 0.95);
+}
+.soft-pad-skin-card__preview {
+  display: block;
+  pointer-events: none;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 92px;
+  background: rgba(248, 250, 252, 0.9);
+}
+.soft-pad-skin-card__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a2d4a;
+  line-height: 1.3;
+}
+.soft-pad-skin-mini.micro-hw {
+  width: 100%;
+  min-height: 92px;
+  padding: 8px;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+.soft-pad-skin-mini__face {
+  display: block;
+  height: 100%;
+  border-radius: 10px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+.soft-pad-skin-mini__grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(22px, 1fr));
+  gap: 5px;
+  height: 76px;
+  min-height: 76px;
+}
+.soft-pad-skin-mini__key {
+  min-height: 22px !important;
+  height: 100%;
+  width: 100%;
+  pointer-events: none !important;
+  cursor: default !important;
+  transform: none !important;
+}
+.soft-pad-skin-mini__key:hover,
+.soft-pad-skin-mini__key:active {
+  transform: none !important;
+}
+@media (max-width: 720px) {
+  .soft-pad-skin-grid {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+}
+html[data-theme="dark"] .soft-pad-skin-card {
+  background: rgba(30, 40, 56, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-skin-card:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+html[data-theme="dark"] .soft-pad-skin-card.is-active {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(96, 165, 250, 0.55);
+}
+html[data-theme="dark"] .soft-pad-skin-card__label {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-skin-card__preview {
+  background: rgba(15, 23, 42, 0.45);
 }
 
 /* Shared motion base for skinned keys */
