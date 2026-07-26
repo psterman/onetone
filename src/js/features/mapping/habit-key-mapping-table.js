@@ -210,6 +210,19 @@
     if(global.OneToneKeysPageState&&global.OneToneKeysPageState.init) global.OneToneKeysPageState.init();
     var flow=$('habitDefaultFlow');
     if(flow){
+      function handleKeycapFromEvent(e){
+        var keyArea=e.target.closest&&e.target.closest('.keys-keycap-host,.keys-step-key-area');
+        if(!keyArea) return false;
+        var stepFromKey=e.target.closest&&e.target.closest('[data-edit-step]');
+        var keyStep=stepFromKey&&stepFromKey.dataset.editStep;
+        if(keyStep==='trigger'||keyStep==='target'){
+          e.preventDefault();
+          e.stopPropagation();
+          handleKeycapStep(keyStep);
+          return true;
+        }
+        return false;
+      }
       flow.addEventListener('click',function(e){
         if(e.target.closest('.record-btn')){
           var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
@@ -244,6 +257,11 @@
         if(!stepEl) return;
         var step=stepEl.dataset.editStep;
         if(step) onStepClick(step);
+      });
+      flow.addEventListener('keydown',function(e){
+        var key=e.key||e.code||'';
+        if(key!=='Enter'&&key!==' '&&key!=='Spacebar'&&key!=='Space') return;
+        handleKeycapFromEvent(e);
       });
     }
   }

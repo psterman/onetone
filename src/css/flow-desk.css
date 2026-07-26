@@ -1,4 +1,5 @@
 /* Shared flow-desk layout skeleton — layout/spacing only; theme via page scoped CSS vars */
+/* ARIA tabs: tablist > tab (role=tab, aria-selected, aria-controls) + tabpanel (role=tabpanel, aria-labelledby). */
 
 .flow-nodes {
   position: relative;

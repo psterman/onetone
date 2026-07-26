@@ -952,7 +952,17 @@
       e.stopPropagation();
       var mDel=core()&&core().selected?core().selected():null;
       if(!mDel) return true;
-      removeRuleById(mDel,ruleDeleteBtn.getAttribute('data-rule-delete')||'');
+      var ruleIdDel=ruleDeleteBtn.getAttribute('data-rule-delete')||'';
+      var runDel=function(){ removeRuleById(mDel,ruleIdDel); };
+      var confirmApi=global.OneToneConfirm;
+      if(confirmApi&&confirmApi.ask){
+        confirmApi.ask('habitAppRuleDeleteConfirm',{
+          fallback:'确定删除这条应用规则？此操作不可撤销。'
+        }).then(function(ok){ if(ok) runDel(); });
+        return true;
+      }
+      if(!window.confirm(t('habitAppRuleDeleteConfirm')||'确定删除这条应用规则？此操作不可撤销。')) return true;
+      runDel();
       return true;
     }
     var primarySet=e.target.closest&&e.target.closest('[data-app-rule-primary]');

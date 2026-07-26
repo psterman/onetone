@@ -353,18 +353,84 @@
     return '<span class="wb-scene-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg></span>';
   }
 
+  function softPadSummaryLine(){
+    var hub=global.OneToneSoftPadHub;
+    var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
+    if(!entries.length) return t('homeWbChannelUnset');
+    var on=entries.filter(function(e){ return e&&e.padEnabled; });
+    if(!on.length) return entries.map(function(e){ return e.title; }).join(' · ');
+    return on.map(function(e){ return e.title; }).join(' · ');
+  }
+
+  function channelChip(label,value){
+    return '<span class="wb-habit-bar-chip"><span class="wb-habit-bar-chip-lbl">'+esc(label)+'</span>'
+      +'<strong>'+esc(value||t('homeWbChannelUnset'))+'</strong></span>';
+  }
+
+  function renderHabitBar(vm){
+    var host=$('wbHabitBar');
+    if(!host) return;
+    var activeId=activeSceneId();
+    var m=null;
+    if(activeId&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
+      m=global.OneToneMappingCore.byId(activeId);
+    }
+    if(!m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.activeMapping){
+      m=global.OneToneHomeScheme.activeMapping();
+    }
+    var name=m
+      ?(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName
+        ?global.OneToneHabitProfile.habitDisplayName(m)
+        :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—'))
+      :t('homeLiveUnset');
+    var keysLine=m&&global.OneToneHomeScheme?global.OneToneHomeScheme.pairLine(m):t('homeWbChannelUnset');
+    var voiceLine='—';
+    if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
+      voiceLine=String(m.voiceOverride.wakePhrases[0]||'');
+    }else if(vm&&vm.wakePrimary){
+      voiceLine=String(vm.wakePrimary);
+    }
+    var cam=global.OneToneCameraPresenceActions;
+    var camLine=t('homeWbChannelUnset');
+    if(cam&&cam.isEnabled&&cam.isEnabled()) camLine=t('homeWbHabitActive');
+    host.innerHTML=
+      '<div class="wb-habit-bar-main">'
+      +'<div class="wb-habit-bar-copy">'
+      +'<span class="wb-habit-bar-kicker">'+esc(t('homeWbHabitBarTitle'))+'</span>'
+      +'<strong class="wb-habit-bar-name">'+esc(name)+'</strong>'
+      +'<span class="wb-habit-bar-hint">'+esc(t('homeWbHeroModeHint'))+'</span>'
+      +'</div>'
+      +'<div class="wb-habit-bar-actions">'
+      +(m&&m.id
+        ?('<button type="button" class="wb-habit-bar-btn" data-wb-habit-edit="'+esc(m.id)+'">'+esc(t('homeWbHabitBarEdit'))+'</button>')
+        :'')
+      +'</div>'
+      +'</div>'
+      +'<div class="wb-habit-bar-channels" aria-label="'+esc(t('homeWbHabitBarTitle'))+'">'
+      +channelChip(t('homeWbChannelKeys'),keysLine)
+      +channelChip(t('homeWbChannelVoice'),voiceLine)
+      +channelChip(t('homeWbChannelCamera'),camLine)
+      +channelChip(t('homeWbChannelSoftPad'),softPadSummaryLine())
+      +'</div>';
+  }
+
   function sceneCardHtml(m,activeId){
     var active=m.id===activeId;
     var name=(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName)
       ?global.OneToneHabitProfile.habitDisplayName(m)
       :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—');
-    return '<button type="button" class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
+    var useLbl=active?t('homeWbHabitActive'):t('homeWbHabitBarUse');
+    return '<div class="wb-scene-card'+(active?' is-active':'')+'" data-wb-scenario-id="'+esc(m.id)+'">'
       +sceneIconHtml(m)
       +'<span class="wb-scene-card-body">'
       +'<span class="wb-scene-card-name">'+esc(name)+'</span>'
       +'<span class="wb-scene-card-desc">'+esc(sceneDesc(m))+'</span>'
+      +'<span class="wb-scene-card-actions">'
+      +'<button type="button" class="wb-scene-card-btn" data-wb-scenario-use="'+esc(m.id)+'">'+esc(useLbl)+'</button>'
+      +'<button type="button" class="wb-scene-card-btn wb-scene-card-btn--ghost" data-wb-scenario-edit="'+esc(m.id)+'">'+esc(t('homeWbHabitBarEdit'))+'</button>'
       +'</span>'
-      +'</button>';
+      +'</span>'
+      +'</div>';
   }
 
   function renderScenarioPanel(vm){
@@ -442,6 +508,7 @@
   }
 
   function renderAll(vm){
+    renderHabitBar(vm);
     renderHowTo(vm);
     renderScenarioPanel(vm);
   }
@@ -455,6 +522,7 @@
     renderAll:renderAll,
     renderHowTo:renderHowTo,
     renderPipeline:renderHowTo,
+    renderHabitBar:renderHabitBar,
     renderHabitGrid:renderHabitGrid,
     renderScenarioPanel:renderScenarioPanel,
     renderVoicePanel:renderMicCard,

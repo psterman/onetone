@@ -28,7 +28,7 @@
       if(btn){
         var on=page===step;
         btn.classList.toggle('is-active',on);
-        btn.setAttribute('aria-pressed',on?'true':'false');
+        btn.setAttribute('aria-selected',on?'true':'false');
       }
     });
   }

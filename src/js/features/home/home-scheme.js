@@ -218,6 +218,7 @@
     label:homeSchemeLabel,
     shortName:homeMappingShortName,
     pairLine:homeMappingPairLine,
+    activeMapping:homeActiveMapping,
     closeMenu:closeHomeSchemeMenu,
     toggleMenu:toggleHomeSchemeMenu,
     selectMapping:selectHomeMapping,

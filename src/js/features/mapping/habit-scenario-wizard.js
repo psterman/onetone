@@ -420,7 +420,7 @@
     cfg.mappings=cfg.mappings.filter(function(x){ return x&&x.id!==id; });
     if(String(state().selectedMappingId||'')===id){
       state().selectedMappingId=null;
-      ui().voiceEditSchemeId=null;
+      ui().voiceEditSchemeId='__global__';
     }
     pendingDraftId=null;
   }
@@ -532,7 +532,7 @@
     choosingReplacementApp=false;
     migrateFromId=String(opts.migrateFrom||'').trim()||null;
     state().selectedMappingId=null;
-    ui().voiceEditSchemeId=null;
+    ui().voiceEditSchemeId='__global__';
     ui().habitScenarioReturnId=null;
     ui().habitScenarioReturnPanel=null;
     ui().habitScenarioReturnHub=false;
@@ -587,7 +587,7 @@
     if(idx>=0) cfg.mappings.splice(idx,1);
     if(String(state().selectedMappingId||'')===pendingDraftId){
       state().selectedMappingId=null;
-      ui().voiceEditSchemeId=null;
+      ui().voiceEditSchemeId='__global__';
     }
     pendingDraftId=null;
   }
@@ -600,6 +600,37 @@
       global.OneToneHabitHub.applyShellVisibility&&global.OneToneHabitHub.applyShellVisibility();
       global.OneToneHabitHub.render();
     }else render();
+  }
+
+  function wizardHasDiscardableWork(){
+    if(pendingDraftId) return true;
+    var m=currentMapping();
+    if(!m) return !!pickedAppId;
+    var nameInput=$('habitScenarioNameInput');
+    if(nameInput){
+      var typed=String(nameInput.value||'').trim();
+      var hp=global.OneToneHabitProfile;
+      var saved=String((hp&&hp.habitDisplayName?hp.habitDisplayName(m):m.group)||m.label||'').trim();
+      if(typed&&typed!==saved) return true;
+    }
+    return false;
+  }
+
+  function requestShowHub(){
+    if(!wizardHasDiscardableWork()){
+      showHub();
+      return;
+    }
+    var confirmApi=global.OneToneConfirm;
+    var run=function(){ showHub(); };
+    if(confirmApi&&confirmApi.ask){
+      confirmApi.ask('habitScenarioDiscardConfirm',{
+        fallback:'确定离开？未保存的场景草稿将被丢弃。'
+      }).then(function(ok){ if(ok) run(); });
+      return;
+    }
+    if(!window.confirm(t('habitScenarioDiscardConfirm')||'确定离开？未保存的场景草稿将被丢弃。')) return;
+    run();
   }
 
   function restoreKeysToGlobal(){
@@ -770,9 +801,9 @@
       });
     }
     var back=$('btnHabitWizardBack');
-    if(back) back.addEventListener('click',function(e){ e.preventDefault(); showHub(); });
+    if(back) back.addEventListener('click',function(e){ e.preventDefault(); requestShowHub(); });
     var cancel=$('btnHabitScenarioCancel');
-    if(cancel) cancel.addEventListener('click',function(e){ e.preventDefault(); showHub(); });
+    if(cancel) cancel.addEventListener('click',function(e){ e.preventDefault(); requestShowHub(); });
     var save=$('btnHabitScenarioSave');
     if(save) save.addEventListener('click',function(e){ e.preventDefault(); saveScenario(); });
     var saveTop=$('btnHabitScenarioSaveTop');

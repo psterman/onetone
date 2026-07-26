@@ -318,12 +318,16 @@ html[data-theme="light"] {
   box-shadow: var(--micro-ms-off-shadow);
   cursor: pointer;
   pointer-events: auto;
-  outline: none;
   -webkit-tap-highlight-color: transparent;
   transition:
     background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.12s ease;
+}
+
+.micro-hw__mode-switch:focus-visible {
+  outline: 2px solid var(--micro-hw-accent, #2a9cc4);
+  outline-offset: 2px;
 }
 
 .micro-hw__mode-switch.is-on {
@@ -511,9 +515,13 @@ html[data-theme="light"] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  outline: none !important;
   filter: none !important;
   opacity: 1 !important;
+}
+
+.micro-hw__key[data-micro-key="JOY"]:focus-visible {
+  outline: 2px solid var(--micro-hw-accent, #2a9cc4);
+  outline-offset: 2px;
 }
 
 .micro-hw__key[data-micro-key="JOY"].is-pressed,
@@ -606,4 +614,15 @@ html[data-theme="light"] {
 }
 .codex-micro-pad__run-status[data-status="idle"] {
   opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .micro-hw__mode-switch,
+  .micro-hw__mode-knob,
+  .micro-hw__key,
+  .micro-hw__joy-top,
+  .micro-hw__key--agent {
+    transition: none !important;
+    animation: none !important;
+  }
 }

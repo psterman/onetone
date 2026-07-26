@@ -37,7 +37,8 @@
     ui().habitScenarioReturnPanel=null;
     ui().habitScenarioReturnHub=false;
     ui().habitHubEditReturn=false;
-    ui().voiceEditSchemeId=null;
+    ui().voiceEditSchemeId='__global__';
+    ui().cameraEditMode='global';
     if(global.OneToneHabitScenarioVoiceCommand&&global.OneToneHabitScenarioVoiceCommand.discardDraft){
       global.OneToneHabitScenarioVoiceCommand.discardDraft();
     }
@@ -80,21 +81,9 @@
     opts=opts||{};
     clearScenarioContext();
     if(opts.fromHub) ui().habitHubEditReturn=true;
-    var cfg=state().config||{};
-    var baseline=diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
-    if(baseline&&baseline.id){
-      syncEditor(baseline.id);
-    }else{
-      // Fallback: first non-app mapping as global baseline.
-      var maps=cfg.mappings||[];
-      for(var i=0;i<maps.length;i++){
-        var m=maps[i];
-        if(!m||!m.id) continue;
-        if(diff()&&diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)) continue;
-        syncEditor(m.id);
-        break;
-      }
-    }
+    // Global voice base: page-local sentinel — do not claim selectedMappingId as「正在编辑」.
+    state().selectedMappingId=null;
+    ui().voiceEditSchemeId='__global__';
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('voiceWake');
     render();
     setTimeout(function(){
@@ -106,21 +95,9 @@
     opts=opts||{};
     clearScenarioContext();
     if(opts.fromHub) ui().habitHubEditReturn=true;
-    var cfg=state().config||{};
-    var baseline=diff()&&diff().findGlobalBaselineMapping?diff().findGlobalBaselineMapping(cfg,core()):null;
-    if(baseline&&baseline.id){
-      syncEditor(baseline.id);
-    }else{
-      // Fallback: first non-app mapping as global baseline.
-      var maps=cfg.mappings||[];
-      for(var i=0;i<maps.length;i++){
-        var m=maps[i];
-        if(!m||!m.id) continue;
-        if(diff()&&diff().isAppScenarioMapping&&diff().isAppScenarioMapping(m)) continue;
-        syncEditor(m.id);
-        break;
-      }
-    }
+    ui().cameraEditMode='global';
+    // Global camera base (device/calibration/actions on cameraPrefs) — not habit edit.
+    state().selectedMappingId=null;
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
     render();
     setTimeout(function(){
@@ -215,6 +192,7 @@
     state().selectedMappingId=id;
     ui().habitScenarioReturnId=id;
     ui().habitScenarioReturnPanel='camera';
+    ui().cameraEditMode='appScenario';
     try{
       var Tc=global.OneToneAgentScenarioTemplate;
       var mc=core()&&core().byId?core().byId(id):null;
@@ -234,6 +212,7 @@
     ui().habitScenarioReturnId=null;
     ui().habitScenarioReturnPanel=null;
     ui().habitScenarioReturnHub=false;
+    ui().cameraEditMode='global';
     try{
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
@@ -380,11 +359,17 @@
     if(scenarioM){
       var name=scenarioName(scenarioM);
       var preview=buildPreview(scenarioM);
-      if(textEl) textEl.textContent=t(panelTitleKey(opts.panel)).replace('{name}',name);
+      if(textEl){
+        if(opts.panel==='camera'){
+          textEl.textContent=(t('habitEditingLabel')||'正在编辑')+' · '+name;
+        }else{
+          textEl.textContent=t(panelTitleKey(opts.panel)).replace('{name}',name);
+        }
+      }
       if(subEl){
         if(opts.panel==='camera'){
           subEl.hidden=false;
-          subEl.textContent=t('habitScenarioContextCameraNote');
+          subEl.textContent=t('cameraEditingAppScenario')||t('habitScenarioContextCameraNote');
         }else{
           // Keys/voice: blue banner title is enough — no second "not global" line.
           subEl.textContent='';
@@ -415,8 +400,19 @@
       }
       if(backEl) backEl.textContent=t('habitHubContextBack');
     }else if(hubReturn){
-      if(textEl) textEl.textContent=t('habitHubContextEditingGlobal');
-      if(subEl) subEl.textContent=t('habitHubContextGlobalHint');
+      if(textEl){
+        if(opts.panel==='camera') textEl.textContent=t('habitGlobalBaseLabel')||t('habitHubContextEditingGlobal');
+        else textEl.textContent=t('habitHubContextEditingGlobal');
+      }
+      if(subEl){
+        if(opts.panel==='camera'){
+          subEl.hidden=false;
+          subEl.textContent=t('cameraConfiguringBase')||t('habitHubContextGlobalHint');
+        }else{
+          subEl.hidden=false;
+          subEl.textContent=t('habitHubContextGlobalHint');
+        }
+      }
       if(previewEl) previewEl.hidden=true;
       setScenarioActionsVisible(opts.actionIds,false);
       if(backEl) backEl.textContent=t('habitHubContextBack');

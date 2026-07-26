@@ -22,9 +22,13 @@
   }
 
   function editingMapping(){
-    var id=ui()&&ui().voiceEditSchemeId;
-    if(id==null||id==='') return null;
-    id=String(id).trim();
+    // Prefer selectedMappingId; voiceEditSchemeId is a proxy / UI sentinel only.
+    var id=String(state().selectedMappingId||'').trim();
+    if(!id){
+      var sentinel=ui()&&ui().voiceEditSchemeId;
+      if(sentinel==null||sentinel===''||sentinel==='__global__') return null;
+      id=String(sentinel).trim();
+    }
     if(!id||!core()||!core().byId) return null;
     var m=core().byId(id);
     return m||null;

@@ -135,6 +135,10 @@
     if(openVoiceBtn) openVoiceBtn.addEventListener('click',function(e){ e.preventDefault(); openVoiceEdit(defaultVoiceNavId()); });
     var newVoiceBtn=$('btnSceneModeNewVoice');
     if(newVoiceBtn) newVoiceBtn.addEventListener('click',function(e){ e.preventDefault(); triggerNewVoiceScenario(); });
+    var emptyNewKey=$('btnSceneModeEmptyNewKey');
+    if(emptyNewKey) emptyNewKey.addEventListener('click',function(e){ e.preventDefault(); triggerNewScenario(); });
+    var emptyNewVoice=$('btnSceneModeEmptyNewVoice');
+    if(emptyNewVoice) emptyNewVoice.addEventListener('click',function(e){ e.preventDefault(); triggerNewVoiceScenario(); });
   }
 
   global.OneToneSceneModeHub={

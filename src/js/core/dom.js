@@ -21,5 +21,23 @@
   function markBoot(label){
     frontendLog('boot '+label);
   }
-  global.OneToneDom={$:$,setText:setText,log:frontendLog,markBoot:markBoot};
+  /**
+   * Migration helper for non-button activators (role=button divs, etc.).
+   * Prefer converting the element to <button type="button"> when possible.
+   */
+  function activateOnEnterSpace(el,fn){
+    if(!el||typeof fn!=='function') return function(){};
+    function onKey(e){
+      if(!e) return;
+      var key=e.key||e.code||'';
+      var isEnter=key==='Enter';
+      var isSpace=key===' '||key==='Spacebar'||key==='Space';
+      if(!isEnter&&!isSpace) return;
+      e.preventDefault();
+      fn(e);
+    }
+    el.addEventListener('keydown',onKey);
+    return function(){ el.removeEventListener('keydown',onKey); };
+  }
+  global.OneToneDom={$:$,setText:setText,log:frontendLog,markBoot:markBoot,activateOnEnterSpace:activateOnEnterSpace};
 })((typeof window!=='undefined')?window:globalThis);

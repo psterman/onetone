@@ -2659,23 +2659,23 @@
       '<div class="soft-pad-more" data-more-tab="status">' +
       '<div class="soft-pad-more__tabs pref-segmented is-wide" role="tablist" aria-label="' +
       esc(t('softPadMoreTabsAria', '更多选项')) + '">' +
-      '<button type="button" class="pref-segmented-btn is-active" role="tab" data-more-tab-btn="status" aria-selected="true">' +
+      '<button type="button" class="pref-segmented-btn is-active" role="tab" id="softPadMoreTabStatus" data-more-tab-btn="status" aria-controls="softPadMorePanelStatus" aria-selected="true">' +
       esc(t('softPadMoreTabStatus', '状态灯')) + '</button>' +
-      '<button type="button" class="pref-segmented-btn" role="tab" data-more-tab-btn="claude" aria-selected="false">' +
+      '<button type="button" class="pref-segmented-btn" role="tab" id="softPadMoreTabClaude" data-more-tab-btn="claude" aria-controls="softPadMorePanelClaude" aria-selected="false">' +
       esc(t('softPadMoreTabClaude', 'Claude')) + '</button>' +
-      '<button type="button" class="pref-segmented-btn" role="tab" data-more-tab-btn="lab" aria-selected="false">' +
+      '<button type="button" class="pref-segmented-btn" role="tab" id="softPadMoreTabLab" data-more-tab-btn="lab" aria-controls="softPadMorePanelLab" aria-selected="false">' +
       esc(t('softPadMoreTabLab', '开发测试')) + '</button>' +
       '</div>' +
       '<div class="soft-pad-more__panels">' +
-      '<section class="soft-pad-more__panel is-active" data-more-panel="status" role="tabpanel">' +
+      '<section class="soft-pad-more__panel is-active" id="softPadMorePanelStatus" data-more-panel="status" role="tabpanel" aria-labelledby="softPadMoreTabStatus">' +
       '<article class="soft-pad-more-card">' +
       renderHookStatusCard(pad, { includeDiag: false }) +
       '</article></section>' +
-      '<section class="soft-pad-more__panel" data-more-panel="claude" role="tabpanel" hidden>' +
+      '<section class="soft-pad-more__panel" id="softPadMorePanelClaude" data-more-panel="claude" role="tabpanel" aria-labelledby="softPadMoreTabClaude" hidden>' +
       '<article class="soft-pad-more-card">' +
       renderClaudeActivityPadCard({ includeLab: false }) +
       '</article></section>' +
-      '<section class="soft-pad-more__panel" data-more-panel="lab" role="tabpanel" hidden>' +
+      '<section class="soft-pad-more__panel" id="softPadMorePanelLab" data-more-panel="lab" role="tabpanel" aria-labelledby="softPadMoreTabLab" hidden>' +
       '<article class="soft-pad-more-card soft-pad-more-card--lab">' +
       '<p class="soft-pad-more-card__desc">' +
       esc(t('softPadMoreLabLead',
@@ -3106,7 +3106,7 @@
           '</tr></thead><tbody>';
         rows.forEach(function (r) {
           table +=
-            '<tr data-host-key="' + esc(r.hostKey || '') + '" data-act="claude-light-row">' +
+            '<tr data-host-key="' + esc(r.hostKey || '') + '" data-act="claude-light-row" tabindex="0" role="button" aria-label="' + esc(r.shortLabel || r.hostKey || 'Claude activity') + '">' +
             '<td><span class="codex-pad-mgr__claude-dot" data-status="' + esc(r.state || 'idle') + '"></span></td>' +
             '<td>' + esc(r.shortLabel || '') + '</td>' +
             '<td>' + esc(r.agentType || '') + '</td>' +
@@ -3121,8 +3121,15 @@
         table += '</tbody></table>';
         lightsEl.innerHTML = table;
         lightsEl.querySelectorAll('[data-act="claude-light-row"]').forEach(function (tr) {
-          tr.addEventListener('click', function () {
+          function openRow() {
             renderClaudeActDetail(tr.getAttribute('data-host-key'));
+          }
+          tr.addEventListener('click', openRow);
+          tr.addEventListener('keydown', function (e) {
+            var key = e.key || e.code || '';
+            if (key !== 'Enter' && key !== ' ' && key !== 'Spacebar' && key !== 'Space') return;
+            e.preventDefault();
+            openRow();
           });
         });
       }
@@ -5349,16 +5356,27 @@
     var restoreBtn = body.querySelector('[data-act="restore"]');
     if (restoreBtn) {
       restoreBtn.addEventListener('click', function () {
-        if (opts.panel === 'layout' && softPadPanelActive()) {
-          restoreDefaultCustomLayout(m);
-        } else {
-        var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
-          ? pad.layoutProfile
-          : 'standard';
-        applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+        var confirmApi = global.OneToneConfirm;
+        var run = function () {
+          if (opts.panel === 'layout' && softPadPanelActive()) {
+            restoreDefaultCustomLayout(m);
+          } else {
+            var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
+              ? pad.layoutProfile
+              : 'standard';
+            applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+          }
+          softPadPanelChanged(m, opts);
+          toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+        };
+        if (confirmApi && confirmApi.ask) {
+          confirmApi.ask('codexMicroPadRestoreConfirm', {
+            fallback: '确定恢复默认布局？当前自定义布局与按键映射将被覆盖。'
+          }).then(function (ok) { if (ok) run(); });
+          return;
         }
-        softPadPanelChanged(m, opts);
-        toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+        if (!window.confirm(t('codexMicroPadRestoreConfirm', '确定恢复默认布局？当前自定义布局与按键映射将被覆盖。'))) return;
+        run();
       });
     }
     var exportBtn = body.querySelector('[data-act="export"]');
@@ -5827,13 +5845,24 @@
     var restoreBtn = body.querySelector('[data-act="restore"]');
     if (restoreBtn) {
       restoreBtn.addEventListener('click', function () {
-        var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
-          ? pad.layoutProfile
-          : 'standard';
-        applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
-        renderPadManager(m, { skipHookRefresh: true });
-        notifyLinkedUi(m);
-        toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+        var confirmApi = global.OneToneConfirm;
+        var run = function () {
+          var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
+            ? pad.layoutProfile
+            : 'standard';
+          applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+          renderPadManager(m, { skipHookRefresh: true });
+          notifyLinkedUi(m);
+          toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
+        };
+        if (confirmApi && confirmApi.ask) {
+          confirmApi.ask('codexMicroPadRestoreConfirm', {
+            fallback: '确定恢复默认布局？当前自定义布局与按键映射将被覆盖。'
+          }).then(function (ok) { if (ok) run(); });
+          return;
+        }
+        if (!window.confirm(t('codexMicroPadRestoreConfirm', '确定恢复默认布局？当前自定义布局与按键映射将被覆盖。'))) return;
+        run();
       });
     }
     var exportBtn = body.querySelector('[data-act="export"]');

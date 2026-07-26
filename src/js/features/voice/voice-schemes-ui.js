@@ -43,20 +43,43 @@
     });
   }
 
+  /** UI sentinel only — maps to selectedMappingId=null + configuring global voice base. */
+  function isGlobalVoiceSentinel(id){
+    return id===GLOBAL_SCHEME_ID;
+  }
+
+  /**
+   * Voice edit selection proxies selectedMappingId.
+   * GLOBAL_SCHEME_ID = page-local「配全局语音底座」, not a third selectedMappingId value.
+   */
   function editSchemeId(cfg,schemes){
     cfg=cfg||{};
     schemes=schemes||[];
-    var editId=ui().voiceEditSchemeId;
-    if(editId!=null&&String(editId).trim()){
-      editId=String(editId).trim();
-      if(schemes.some(function(m){ return m.id===editId; })) return editId;
-    }
-    if(editId===null&&schemes.length) return GLOBAL_SCHEME_ID;
-    if(editId==null&&!schemes.length) return GLOBAL_SCHEME_ID;
+    var sentinel=ui().voiceEditSchemeId;
+    if(isGlobalVoiceSentinel(sentinel)) return GLOBAL_SCHEME_ID;
     var sel=String(state().selectedMappingId||'').trim();
     if(sel&&schemes.some(function(m){ return m.id===sel; })) return sel;
-    if(schemes.length) return schemes[0].id;
+    // Legacy proxy: voiceEditSchemeId still holds a mapping id until cleared.
+    if(sentinel!=null&&String(sentinel).trim()){
+      var legacy=String(sentinel).trim();
+      if(schemes.some(function(m){ return m.id===legacy; })){
+        state().selectedMappingId=legacy;
+        return legacy;
+      }
+    }
+    if(sentinel===null) return GLOBAL_SCHEME_ID;
     return GLOBAL_SCHEME_ID;
+  }
+
+  function setVoiceEditSelection(id){
+    id=id==null?'':String(id).trim();
+    if(!id||isGlobalVoiceSentinel(id)){
+      ui().voiceEditSchemeId=GLOBAL_SCHEME_ID;
+      state().selectedMappingId=null;
+      return;
+    }
+    ui().voiceEditSchemeId=id;
+    state().selectedMappingId=id;
   }
 
   function selectedSchemeId(cfg,schemes){
@@ -80,9 +103,11 @@
   }
 
   function selectVoiceRuntimeGlobal(){
-    ui().voiceEditSchemeId=null;
-    scheduleVoiceRender();
-    render();
+    leaveVoiceSchemeThen(function(){
+      setVoiceEditSelection(GLOBAL_SCHEME_ID);
+      scheduleVoiceRender();
+      render();
+    });
   }
 
   function activateSchemeEditing(id){
@@ -91,19 +116,61 @@
       selectVoiceRuntimeGlobal();
       return;
     }
-    ui().voiceEditSchemeId=id;
-    state().selectedMappingId=id;
-    if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
-      global.OneToneVoiceSchemeContext.activateEditingScheme();
-    }
-    scheduleVoiceRender();
-    render();
-    var tab=$('voiceWorkflowTab-'+id);
-    if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    leaveVoiceSchemeThen(function(){
+      setVoiceEditSelection(id);
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+        global.OneToneVoiceSchemeContext.activateEditingScheme();
+      }
+      scheduleVoiceRender();
+      render();
+      var tab=$('voiceWorkflowTab-'+id);
+      if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    },id);
   }
 
   function selectVoiceSchemeForEdit(id){
     activateSchemeEditing(id);
+  }
+
+  function currentVoiceEditMapping(cfg,schemes){
+    cfg=cfg||state().config||{};
+    schemes=schemes||voiceSchemes(cfg);
+    var cur=editSchemeId(cfg,schemes);
+    if(!cur||cur===GLOBAL_SCHEME_ID) return null;
+    for(var i=0;i<schemes.length;i++){
+      if(schemes[i]&&schemes[i].id===cur) return schemes[i];
+    }
+    return null;
+  }
+
+  function voiceSchemeNeedsLeaveConfirm(nextId){
+    var cfg=state().config||{};
+    var schemes=voiceSchemes(cfg);
+    var cur=editSchemeId(cfg,schemes);
+    nextId=nextId==null?null:String(nextId);
+    if(nextId!=null&&String(cur)===nextId) return false;
+    var m=currentVoiceEditMapping(cfg,schemes);
+    if(!m||!core()) return false;
+    if(core().isDraft&&core().isDraft(m)) return true;
+    if(core().isIncomplete&&core().isIncomplete(m)) return true;
+    return false;
+  }
+
+  function leaveVoiceSchemeThen(fn,nextId){
+    if(typeof fn!=='function') return;
+    if(!voiceSchemeNeedsLeaveConfirm(nextId)){
+      fn();
+      return;
+    }
+    var confirmApi=global.OneToneConfirm;
+    if(confirmApi&&confirmApi.ask){
+      confirmApi.ask('voiceUnsavedSwitchPrompt',{
+        fallback:'当前语音方案尚未完成，放弃并切换？'
+      }).then(function(ok){ if(ok) fn(); });
+      return;
+    }
+    if(!window.confirm(t('voiceUnsavedSwitchPrompt')||'当前语音方案尚未完成，放弃并切换？')) return;
+    fn();
   }
 
   function switchVoiceScheme(id,opts){
@@ -114,30 +181,37 @@
       selectVoiceRuntimeGlobal();
       return;
     }
-    ui().voiceEditSchemeId=id;
-    state().selectedMappingId=id;
-    if(!activate){
-      activateSchemeEditing(id);
-      return;
-    }
-    var st=state();
-    if(!st) return;
-    if(st.config&&st.config.activeSceneId===id&&ui().voiceEditSchemeId===id) return;
-    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-      global.OneToneSceneActivate.activateScene(id);
-    }
-    if(st.config) st.config.activeSceneId=id;
-    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-      global.OneToneConfigPersist.save();
-    }
-    if(global.OneToneSchemeSwitchFeedback&&global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch){
-      global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch();
-    }else{
-      scheduleVoiceRender();
-      render();
-    }
-    var tab=$('voiceWorkflowTab-'+id);
-    if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    leaveVoiceSchemeThen(function(){
+      setVoiceEditSelection(id);
+      if(!activate){
+        if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+          global.OneToneVoiceSchemeContext.activateEditingScheme();
+        }
+        scheduleVoiceRender();
+        render();
+        var tabEdit=$('voiceWorkflowTab-'+id);
+        if(tabEdit&&tabEdit.scrollIntoView) tabEdit.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+        return;
+      }
+      var st=state();
+      if(!st) return;
+      if(st.config&&st.config.activeSceneId===id&&String(state().selectedMappingId||'')===id) return;
+      if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+        global.OneToneSceneActivate.activateScene(id);
+      }
+      if(st.config) st.config.activeSceneId=id;
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+        global.OneToneConfigPersist.save();
+      }
+      if(global.OneToneSchemeSwitchFeedback&&global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch){
+        global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch();
+      }else{
+        scheduleVoiceRender();
+        render();
+      }
+      var tab=$('voiceWorkflowTab-'+id);
+      if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+    },id);
   }
 
   function renderGlobalTab(isEditing,isRunning){

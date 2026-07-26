@@ -85,7 +85,7 @@
       if(!btn) return;
       var on=page===step;
       btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-pressed',on?'true':'false');
+      btn.setAttribute('aria-selected',on?'true':'false');
       btn.classList.toggle('is-recording',mode===page||(page==='target'&&mode==='agentBinding'));
     });
   }

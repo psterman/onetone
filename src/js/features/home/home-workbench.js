@@ -464,6 +464,20 @@
     return t('homeWbHeroHintVoice');
   }
 
+  function renderHeroModeHint(){
+    var modes=$('wbHero');
+    if(!modes) return;
+    var hint=modes.querySelector('.wb-hero-mode-hint');
+    if(!hint){
+      var footer=modes.querySelector('.wb-hero-footer')||modes.querySelector('.wb-hero-modes');
+      hint=document.createElement('p');
+      hint.className='wb-hero-mode-hint';
+      if(footer&&footer.parentNode) footer.parentNode.insertBefore(hint,footer);
+      else modes.appendChild(hint);
+    }
+    hint.textContent=t('homeWbHeroModeHint');
+  }
+
   function renderCommandCard(vm){
     var card=$('wbTriggerCard');
     if(card){
@@ -476,6 +490,7 @@
       card.classList.toggle('is-mode-camera',heroMode==='camera');
     }
     renderHero(vm);
+    renderHeroModeHint();
     renderLiveText(vm);
     var dictating=vm.vpState==='DICTATING'||!!vm.summary.dictating;
     var actions=$('wbTriggerActions');
@@ -607,6 +622,25 @@
     if(!center||center._wbPanelsBound) return;
     center._wbPanelsBound=true;
     center.addEventListener('click',function(e){
+      var habitEdit=e.target.closest&&e.target.closest('[data-wb-habit-edit]');
+      if(habitEdit){
+        openWorkbenchScenario(habitEdit.getAttribute('data-wb-habit-edit')||'');
+        return;
+      }
+      var scenarioEdit=e.target.closest&&e.target.closest('[data-wb-scenario-edit]');
+      if(scenarioEdit){
+        e.preventDefault();
+        e.stopPropagation();
+        openWorkbenchScenario(scenarioEdit.getAttribute('data-wb-scenario-edit')||'');
+        return;
+      }
+      var scenarioUse=e.target.closest&&e.target.closest('[data-wb-scenario-use]');
+      if(scenarioUse){
+        e.preventDefault();
+        e.stopPropagation();
+        selectWorkbenchMapping(scenarioUse.getAttribute('data-wb-scenario-use')||'');
+        return;
+      }
       var habit=e.target.closest&&e.target.closest('[data-wb-habit-id]');
       if(habit){
         selectWorkbenchMapping(habit.getAttribute('data-wb-habit-id')||'');
@@ -614,7 +648,8 @@
       }
       var scenario=e.target.closest&&e.target.closest('[data-wb-scenario-id]');
       if(scenario){
-        openWorkbenchScenario(scenario.getAttribute('data-wb-scenario-id')||'');
+        // Card body click defaults to set in-use (not edit).
+        selectWorkbenchMapping(scenario.getAttribute('data-wb-scenario-id')||'');
         return;
       }
       var micBtn=e.target.closest&&e.target.closest('#wbVoiceChangeMic,.wb-hero-pill-mic-btn');
@@ -646,16 +681,14 @@
       var howto=e.target.closest&&e.target.closest('[data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
+        // Hero tabs own activation mode; howto cards only deep-link to settings.
         if(kind==='keys'){
           var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel
             ?global.OneToneHomeV9.buildViewModel():null;
-          setHeroMode('keys');
           openSettings({panel:'keys',focus:vm&&vm.m&&vm.m.id?vm.m.id:null});
         }else if(kind==='voice'){
-          setHeroMode('voice');
           openSettings({panel:'voiceWake'});
         }else if(kind==='camera'){
-          setHeroMode('camera');
           openSettings({panel:'camera'});
         }
       }

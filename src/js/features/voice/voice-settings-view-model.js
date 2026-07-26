@@ -43,24 +43,27 @@
       }
     }
     var uiEdit=global.OneToneState.ui&&global.OneToneState.ui.voiceEditSchemeId;
-    if(uiEdit!=null&&String(uiEdit).trim()){
+    if(uiEdit==='__global__'){
+      return {id:'',name:resolveHabitDisplayName(null),mapping:null};
+    }
+    var selId=state.selectedMappingId;
+    var sel=findById(selId);
+    if(sel&&isVoiceOnly(sel)){
+      return {id:selId,name:resolveHabitDisplayName(sel),mapping:sel};
+    }
+    if(uiEdit!=null&&String(uiEdit).trim()&&uiEdit!=='__global__'){
       var editMapping=findById(String(uiEdit).trim());
       if(editMapping&&isVoiceOnly(editMapping)){
         return {id:editMapping.id,name:resolveHabitDisplayName(editMapping),mapping:editMapping};
       }
     }
-    if(uiEdit===null){
+    if(uiEdit===null||uiEdit==='__global__'){
       return {id:'',name:resolveHabitDisplayName(null),mapping:null};
     }
     var activeId=cfg.activeSceneId;
     var active=findById(activeId);
     if(active&&isVoiceOnly(active)){
       return {id:activeId,name:resolveHabitDisplayName(active),mapping:active};
-    }
-    var selId=state.selectedMappingId;
-    var sel=findById(selId);
-    if(sel&&isVoiceOnly(sel)){
-      return {id:selId,name:resolveHabitDisplayName(sel),mapping:sel};
     }
     var first=Array.isArray(cfg.mappings)?cfg.mappings.find(isVoiceOnly):null;
     if(first){

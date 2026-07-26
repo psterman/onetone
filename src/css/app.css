@@ -2937,7 +2937,7 @@
     }
     .keys-app-rule-toggle{
       width:44px;height:24px;border-radius:999px;border:1px solid rgba(42,156,196,.35);
-      background:rgba(42,156,196,.18);cursor:pointer;position:relative;transition:all .15s ease;
+      background:rgba(42,156,196,.18);cursor:pointer;position:relative;transition:background .15s ease,border-color .15s ease;
     }
     .keys-app-rule-toggle::after{
       content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:999px;
@@ -3025,6 +3025,7 @@
     .scene-mode-empty[hidden]{display:none}
     .scene-mode-empty strong{font-size:14px;color:var(--on-surface)}
     .scene-mode-empty span{font-size:12px}
+    .scene-mode-empty-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
     @media(max-width:760px){
       .scene-mode-card{grid-template-columns:auto minmax(0,1fr)}
       .scene-mode-actions{grid-column:1 / -1;justify-content:flex-start}
@@ -7469,7 +7470,10 @@
       background:rgba(94,200,232,.28);border-color:rgba(94,200,232,.55);
       transform:scale(1.04);
     }
-    .camera-preview-start:focus-visible{outline:none}
+    .camera-preview-start:focus-visible{
+      outline:2px solid var(--primary);
+      outline-offset:2px;
+    }
     .camera-preview-start:disabled{cursor:default;opacity:.55}
     .camera-preview-start:disabled .camera-preview-start-icon{transform:none}
     .camera-gaze-overlay{

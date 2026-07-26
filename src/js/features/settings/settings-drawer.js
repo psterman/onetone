@@ -761,6 +761,12 @@
 
     }else if(panel==='camera'){
 
+      if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
+        ui.cameraEditMode='global';
+      }else{
+        ui.cameraEditMode='appScenario';
+        if(ui.habitScenarioReturnId) state().selectedMappingId=String(ui.habitScenarioReturnId);
+      }
       if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
         global.OneToneCameraPreview.onPanelVisible();
       }

@@ -1637,3 +1637,18 @@ html[data-theme="dark"] .wrap[data-pad-skin="vibe-light"] .micro-hw__key:not(.mi
   transform: translateY(-3px);
   filter: brightness(1.08);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-body *,
+  .micro-hw__key,
+  .micro-hw__joy-top,
+  .micro-hw__mode-switch,
+  .micro-hw__mode-knob {
+    animation: none !important;
+    transition: none !important;
+  }
+  .micro-hw__key:hover,
+  .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+    transform: none !important;
+  }
+}

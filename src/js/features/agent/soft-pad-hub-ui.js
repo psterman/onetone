@@ -1,8 +1,20 @@
 (function (global) {
   'use strict';
 
-  var selectedMappingId = null;
   var selectedScopeId = 'codex';
+
+  function getSelectedMappingId() {
+    var st = global.OneToneState && global.OneToneState.state;
+    if (!st || st.selectedMappingId == null || st.selectedMappingId === '') return null;
+    return String(st.selectedMappingId);
+  }
+
+  function setSelectedMappingId(id) {
+    var st = global.OneToneState && global.OneToneState.state;
+    if (!st) return;
+    st.selectedMappingId = (id == null || id === '') ? null : String(id);
+  }
+
   var softPadView = 'hub'; // hub | layout | presentation | runtime | agent
   /** Last opened Soft Pad detail tile — restored on later opens; first prepare forces runtime. */
   var lastSoftPadView = 'runtime';
@@ -510,6 +522,29 @@
     clearMain();
   }
 
+  function emptyCreateCtaHtml() {
+    return '<p class="soft-pad-empty__title">' + esc(t('softPadEmptyTitle', '还没有可配置的应用场景')) + '</p>' +
+      '<p class="soft-pad-empty__desc">' +
+      esc(t('softPadEmptyDesc', '虚拟键盘挂在应用场景上，没有全局小键盘。请先创建 Codex 或 Claude 应用场景。')) +
+      '</p>' +
+      '<div class="soft-pad-empty__actions">' +
+      '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-create-kind="codex">' +
+      esc(t('softPadEmptyCreateCodex', '创建 Codex 应用场景')) + '</button>' +
+      '<button type="button" class="codex-micro-pad__btn" data-soft-pad-create-kind="claude">' +
+      esc(t('softPadEmptyCreateClaude', '创建 Claude 应用场景')) + '</button>' +
+      '</div>';
+  }
+
+  function bindEmptyCreateCtas(host) {
+    if (!host) return;
+    host.querySelectorAll('[data-soft-pad-create-kind]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var kind = btn.getAttribute('data-soft-pad-create-kind') || 'codex';
+        prepareAppFromUi(appIdForKind(kind) || (kind === 'claude' ? 'claude-code' : 'codex-chat'), kind);
+      });
+    });
+  }
+
   function renderEmptyMain() {
     var e = els();
     clearMain();
@@ -518,11 +553,8 @@
     renderAppSwitcher();
     if (e.empty) {
       e.empty.hidden = false;
-      e.empty.innerHTML =
-        '<p class="soft-pad-empty__title">' + esc(t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘')) + '</p>' +
-        '<p class="soft-pad-empty__desc">' +
-        esc(t('softPadHubEmptyDescPrepare', '点右侧「准备」或下方按钮创建 Codex / Claude 等虚拟键盘。')) +
-        '</p>';
+      e.empty.innerHTML = emptyCreateCtaHtml();
+      bindEmptyCreateCtas(e.empty);
     }
   }
 
@@ -539,7 +571,7 @@
     ++selectToken;
     ++agentLoadToken;
     softPadView = 'hub';
-    selectedMappingId = null;
+    setSelectedMappingId(null);
     pendingPaintEntry = null;
     pendingPaintOpts = null;
     var e = els();
@@ -746,8 +778,8 @@
   }
 
   function syncEntryFromMapping(m) {
-    if (m && m.id) selectedMappingId = String(m.id);
-    var entry = findEntry(selectedMappingId);
+    if (m && m.id) setSelectedMappingId(String(m.id));
+    var entry = findEntry(getSelectedMappingId());
     if (entry && m && m.codexMicroPad) {
       entry.mapping = m;
       entry.padEnabled = !!m.codexMicroPad.enabled;
@@ -917,7 +949,7 @@
       }
       return;
     }
-    markActiveRow(selectedMappingId);
+    markActiveRow(getSelectedMappingId());
     if (!patchAppSwitcher()) renderAppSwitcher();
     updateScopeHint();
 
@@ -947,7 +979,7 @@
         var mapId = String(entry.mapping.id);
         requestAnimationFrame(function () {
           if (softPadView !== 'runtime') return;
-          if (String(selectedMappingId || '') !== mapId) return;
+          if (String(getSelectedMappingId() || '') !== mapId) return;
           var cur = findEntry(mapId);
           if (!hasMapping(cur)) return;
           paintPreview(cur, { force: true });
@@ -977,7 +1009,7 @@
     var targetView = softPadView;
     var t0 = Date.now();
     if (!entry || !hasMapping(entry) || !e.subBody || targetView === 'hub') return;
-    if (String(entry.mapping.id) !== String(selectedMappingId || '')) return;
+    if (String(entry.mapping.id) !== String(getSelectedMappingId() || '')) return;
     var Pad = global.OneToneCodexMicroPadUi;
     if (!Pad) {
       feLog('fe softPad.paintSubpage no Pad ui');
@@ -987,7 +1019,7 @@
     function stillValid() {
       return softPadView === targetView &&
         hasMapping(entry) &&
-        String(entry.mapping.id) === String(selectedMappingId || '');
+        String(entry.mapping.id) === String(getSelectedMappingId() || '');
     }
 
     var onChanged = function (mapping, panel, changeOpts) {
@@ -1050,7 +1082,7 @@
 
   function openSubpage(view) {
     if (view !== 'layout' && view !== 'presentation' && view !== 'runtime' && view !== 'agent') return;
-    var entry = findEntry(selectedMappingId);
+    var entry = findEntry(getSelectedMappingId());
     if (!hasMapping(entry)) return;
     // Re-clicking the active tile must not remount — that wiped the inline key editor.
     if (view === softPadView) {
@@ -1076,7 +1108,7 @@
   function closeSubpage() {
     var from = softPadView;
     feLog('fe softPad.closeSubpage from=' + from);
-    var entry = findEntry(selectedMappingId);
+    var entry = findEntry(getSelectedMappingId());
     // 默认落地「何时显示」：其它子页返回到 runtime，不再回到空白提示态。
     if (hasMapping(entry) && from !== 'runtime') {
       openSubpage('runtime');
@@ -1153,6 +1185,7 @@
         (scope.canPrepare ? ' is-prepare' : '') +
         '" role="tab" data-scope="' + esc(scope.id) + '"' +
         (scope.appId ? ' data-app-id="' + esc(scope.appId) + '"' : '') +
+        ' aria-controls="softPadHubStage"' +
         ' aria-selected="' + (active ? 'true' : 'false') + '"' +
         ' title="' + esc(scope.title) + '">' +
         icon +
@@ -1204,7 +1237,7 @@
       previewTimer = 0;
       if (token !== previewEpoch) return;
       if (softPadView !== 'hub' && softPadView !== 'layout') return;
-      if (String(selectedMappingId || '') !== mapId) return;
+      if (String(getSelectedMappingId() || '') !== mapId) return;
       var cur = findEntry(mapId);
       if (!hasMapping(cur)) return;
       paintPreview(cur, { force: true });
@@ -1241,7 +1274,7 @@
     if (opts.rebuildSwitcher || !patchAppSwitcher()) {
       renderAppSwitcher();
     }
-    markActiveRow(entry && entry.mapping ? entry.mapping.id : selectedMappingId);
+    markActiveRow(entry && entry.mapping ? entry.mapping.id : getSelectedMappingId());
     syncHubChrome(entry);
   }
 
@@ -1252,7 +1285,7 @@
       return;
     }
     hideEmpty();
-    selectedMappingId = String(entry.mapping.id);
+    setSelectedMappingId(String(entry.mapping.id));
     // Hub / 键位布局需要预览；其它轻量子页禁止重绘大键盘（假死根因）。
     if (softPadView === 'hub' || softPadView === 'layout') {
       paintPreview(entry);
@@ -1301,7 +1334,7 @@
         pendingPaintOpts = null;
         requestAnimationFrame(function () {
           if (!hasMapping(pe)) return;
-          if (String(selectedMappingId) !== String(pe.mapping.id)) return;
+          if (String(getSelectedMappingId()) !== String(pe.mapping.id)) return;
           flushPaint(pe, po);
         });
       }
@@ -1313,7 +1346,7 @@
     if (!hasMapping(entry)) return;
     var token = ++selectToken;
     hideEmpty();
-    selectedMappingId = String(entry.mapping.id);
+    setSelectedMappingId(String(entry.mapping.id));
     // Chrome-first: status / chips / aside highlight — never block on pad remount.
     syncScopeChrome(entry, { rebuildSwitcher: false });
     if (softPadView === 'hub') renderFuncTiles(entry);
@@ -1336,7 +1369,7 @@
     selectTimer = setTimeout(function () {
       selectTimer = 0;
       if (token !== selectToken) return;
-      if (String(selectedMappingId) !== String(entry.mapping.id)) return;
+      if (String(getSelectedMappingId()) !== String(entry.mapping.id)) return;
       if (softPadView === 'presentation' || softPadView === 'runtime' || softPadView === 'agent') return;
       requestAnimationFrame(function () {
         if (token !== selectToken) return;
@@ -1363,7 +1396,7 @@
       entry = entries[0] || null;
     }
     if (!entry) {
-      selectedMappingId = null;
+      setSelectedMappingId(null);
       selectedScopeId = 'codex';
       softPadView = 'hub';
       renderSchemeList();
@@ -1383,7 +1416,7 @@
       rememberSoftPadView(softPadView);
     }
 
-    var sameMap = id === String(selectedMappingId || '');
+    var sameMap = id === String(getSelectedMappingId() || '');
     var hostsOk = !hostsNeedPaint(entry);
 
     // Same mapping (e.g. 全局 ↔ Codex 共用) or already painted: chrome + skip pad remount.
@@ -1398,9 +1431,9 @@
       return;
     }
 
-    selectedMappingId = String(entry.mapping.id);
+    setSelectedMappingId(String(entry.mapping.id));
     if (opts.rebuildList) renderSchemeList();
-    else markActiveRow(selectedMappingId);
+    else markActiveRow(getSelectedMappingId());
 
     schedulePaint(entry, {
       forceRemount: !!opts.forceRemount || !hostsOk,
@@ -1424,7 +1457,7 @@
 
     // Same chip re-click: keep / restore default 何时显示 detail (no idle tip).
     if (!opts.force && String(scope.id) === String(selectedScopeId || '') &&
-        scope.mapping && String(scope.mapping.id) === String(selectedMappingId || '') &&
+        scope.mapping && String(scope.mapping.id) === String(getSelectedMappingId() || '') &&
         !hostsNeedPaint(scope.entry)) {
       softPadView = defaultDetailView(opts);
       rememberSoftPadView(softPadView);
@@ -1597,7 +1630,7 @@
   }
 
   function toggleSelectedEnable() {
-    var entry = findEntry(selectedMappingId);
+    var entry = findEntry(getSelectedMappingId());
     if (!entry || !entry.mapping || !entry.mapping.codexMicroPad) return;
     var next = !entry.mapping.codexMicroPad.enabled;
     setPadEnabled(entry.mapping, next);
@@ -1612,7 +1645,7 @@
     var next = !(pad && pad.enabled);
     setPadEnabled(entry.mapping, next);
     entry.padEnabled = next;
-    if (String(selectedMappingId) === String(mappingId)) {
+    if (String(getSelectedMappingId()) === String(mappingId)) {
       applyEnabledUi(entry);
     } else {
       patchSchemeRowEnable(entry);
@@ -1623,7 +1656,7 @@
   function isAgentPanelCurrent(token, mappingId) {
     if (softPadView !== 'agent') return false;
     if (token != null && Number(token) !== Number(agentLoadToken)) return false;
-    if (mappingId != null && String(mappingId) !== String(selectedMappingId || '')) return false;
+    if (mappingId != null && String(mappingId) !== String(getSelectedMappingId() || '')) return false;
     var ui = global.OneToneState && global.OneToneState.ui;
     if (ui) {
       if (ui.drawerOpen === false) return false;
@@ -1695,7 +1728,7 @@
   function refreshSelected(m) {
     if (paintReentry > 0) return;
     var entry = syncEntryFromMapping(m);
-    markActiveRow(selectedMappingId);
+    markActiveRow(getSelectedMappingId());
     if (!patchAppSwitcher()) renderAppSwitcher();
     updateScopeHint();
     if (entry) {
@@ -1732,17 +1765,26 @@
     if (opts.scopeId) selectedScopeId = String(opts.scopeId);
     if (selectedScopeId === 'global') selectedScopeId = 'codex';
     if (opts.mappingId) {
-      selectedMappingId = String(opts.mappingId);
-      var mapped = findEntry(selectedMappingId);
+      setSelectedMappingId(String(opts.mappingId));
+      var mapped = findEntry(getSelectedMappingId());
       if (mapped && !opts.scopeId) selectedScopeId = mapped.kind;
-    } else if (!selectedMappingId && entries.length) {
+    } else if (!getSelectedMappingId() && entries.length) {
       var defEntry = pickDefaultEntry(entries);
-      selectedMappingId = defEntry ? String(defEntry.mapping.id) : String(entries[0].mapping.id);
+      setSelectedMappingId(defEntry ? String(defEntry.mapping.id) : String(entries[0].mapping.id));
       if (!opts.scopeId) selectedScopeId = pickDefaultScopeId(entries);
     }
 
     if (!entries.length) {
-      selectedMappingId = null;
+      // Don't wipe unrelated habit edit selection when Soft Pad has no app scenarios yet.
+      var curId = getSelectedMappingId();
+      if (curId) {
+        var maps = mappings();
+        var curMap = null;
+        for (var ci = 0; ci < maps.length; ci++) {
+          if (maps[ci] && String(maps[ci].id) === String(curId)) { curMap = maps[ci]; break; }
+        }
+        if (curMap && isSoftPadSchemeEligible(curMap)) setSelectedMappingId(null);
+      }
       if (!opts.scopeId) selectedScopeId = 'codex';
       renderSchemeList();
       renderAppSwitcher();
@@ -1752,32 +1794,29 @@
       var empty = e.empty;
       if (empty) {
         empty.hidden = false;
-        empty.innerHTML =
-          '<p class="soft-pad-empty__title">' + esc(t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘')) + '</p>' +
-          '<p class="soft-pad-empty__desc">' +
-          esc(t('softPadHubEmptyDescPrepare', '点右侧「准备」或下方按钮创建 Codex / Claude 等虚拟键盘。')) +
-          '</p>';
+        empty.innerHTML = emptyCreateCtaHtml();
+        bindEmptyCreateCtas(empty);
       }
       feLog('fe softPad.render empty ' + (Date.now() - t0) + 'ms');
       return;
     }
-    if (!findEntry(selectedMappingId)) {
+    if (!findEntry(getSelectedMappingId())) {
       var fallback = pickDefaultEntry(entries) || entries[0];
-      selectedMappingId = String(fallback.mapping.id);
+      setSelectedMappingId(String(fallback.mapping.id));
       selectedScopeId = fallback.kind || pickDefaultScopeId(entries);
     }
 
-    var needEntry = findEntry(selectedMappingId);
+    var needEntry = findEntry(getSelectedMappingId());
     var needForce = hostsNeedPaint(needEntry) || !!opts.force || !!opts.mappingId;
     // Chrome + list sync now; pad preview always deferred (never block drawer open).
-    selectScheme(selectedMappingId, {
+    selectScheme(getSelectedMappingId(), {
       forceRemount: needForce,
       scopeId: selectedScopeId,
       rebuildList: false,
       immediateMgr: false,
       resetView: true
     });
-    feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(selectedMappingId || ''));
+    feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
   }
 
   function showList() { render({}); }

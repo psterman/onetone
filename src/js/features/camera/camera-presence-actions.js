@@ -345,23 +345,24 @@
 
   function scenarioCameraEditMapping(){
     var u=uiState();
+    // Explicit gate: never write cameraOverride only because selectedMappingId points at an app scenario.
+    if(String(u.cameraEditMode||'global')!=='appScenario') return null;
     if(String(u.habitScenarioReturnPanel||'')!=='camera') return null;
     var id=String(u.habitScenarioReturnId||'').trim();
     if(!id||!coreApi()||!coreApi().byId) return null;
+    // Keep navigation context and edit selection aligned.
+    var sel=String((stateRoot().selectedMappingId)||'').trim();
+    if(sel&&sel!==id) return null;
     var m=coreApi().byId(id);
     if(!m) return null;
     if(diffApi()&&diffApi().isAppScenarioMapping&&!diffApi().isAppScenarioMapping(m)) return null;
     return m;
   }
 
+  /** Runtime merge only — does not authorize writing override. */
   function resolveCameraOverrideMapping(){
     var edit=scenarioCameraEditMapping();
     if(edit) return edit;
-    var id=String(uiState().habitScenarioReturnId||'').trim();
-    if(id&&coreApi()&&coreApi().byId){
-      var ctx=coreApi().byId(id);
-      if(ctx&&diffApi()&&diffApi().isAppScenarioMapping&&diffApi().isAppScenarioMapping(ctx)) return ctx;
-    }
     var cfg=stateRoot().config||{};
     var activeId=String(cfg.activeSceneId||'').trim();
     if(activeId&&coreApi()&&coreApi().byId){

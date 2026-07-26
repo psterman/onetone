@@ -91,7 +91,7 @@
               </div>
               <div class="wb-command-search" id="wbCommandSearch">
                 <svg class="wb-command-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="wbCommandSearchInput" placeholder="搜索功能或设置…" autocomplete="off" aria-controls="wbCmdkPanel" aria-expanded="false" aria-autocomplete="list" role="combobox" />
+                <input type="search" id="wbCommandSearchInput" placeholder="搜索功能或设置…" autocomplete="off" aria-label="搜索功能或设置" aria-controls="wbCmdkPanel" aria-expanded="false" aria-autocomplete="list" role="combobox" />
                 <kbd>Ctrl K</kbd>
                 <div class="wb-cmdk-panel" id="wbCmdkPanel" role="listbox" hidden></div>
               </div>
@@ -198,15 +198,17 @@
                         </div>
                       </section>
 
+                      <section class="wb-habit-bar" id="wbHabitBar" aria-label="当前习惯"></section>
+
                       <section class="wb-howto" id="wbHowTo" aria-label="按键、语音与摄像头"></section>
 
                       <div class="wb-detail-row wb-detail-row--single" id="wbDetailRow" hidden>
                         <div id="wbVoicePanel" hidden></div>
                       </div>
 
-                      <section class="wb-scene-rail" id="wbSceneRail" aria-label="情景模式">
+                      <section class="wb-scene-rail" id="wbSceneRail" aria-label="习惯">
                         <div class="wb-scene-rail-head">
-                          <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">情景模式</span>
+                          <span class="wb-scene-rail-title" data-i18n="homeWbSceneRailTitle">我的习惯</span>
                         </div>
                         <div class="wb-scene-rail-track" id="wbScenarioPanel"></div>
                       </section>
@@ -735,7 +737,7 @@
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">
-                <section class="flow-nodes" id="keysFlowNodes" aria-label="触发流程导航">
+                <section class="flow-nodes" id="keysFlowNodes" role="tablist" aria-label="触发流程导航">
                   <div class="flow-nodes-track" aria-hidden="true">
                     <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
                       <defs>
@@ -752,7 +754,7 @@
                   <div class="flow-nodes-grid">
                     <div class="flow-node" data-keys-node="trigger">
                       <span class="flow-node-tag" id="keysFlowNodeTriggerTag">01 / 触发</span>
-                      <button type="button" class="flow-node-btn" id="keysFlowNodeTrigger" aria-controls="habitKeyMapRowTrigger">
+                      <button type="button" class="flow-node-btn is-active" id="keysFlowNodeTrigger" role="tab" aria-selected="true" aria-labelledby="keysFlowNodeTriggerTitle" aria-controls="habitKeyMapRowTrigger">
                         <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeTriggerTitle">触发</h3>
@@ -760,7 +762,7 @@
                     </div>
                     <div class="flow-node" data-keys-node="target">
                       <span class="flow-node-tag" id="keysFlowNodeTargetTag">02 / 识别</span>
-                      <button type="button" class="flow-node-btn" id="keysFlowNodeTarget" aria-controls="habitKeyMapRowTarget">
+                      <button type="button" class="flow-node-btn" id="keysFlowNodeTarget" role="tab" aria-selected="false" aria-labelledby="keysFlowNodeTargetTitle" aria-controls="habitKeyMapRowTarget">
                         <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeTargetTitle">识别</h3>
@@ -768,7 +770,7 @@
                     </div>
                     <div class="flow-node" data-keys-node="finish">
                       <span class="flow-node-tag" id="keysFlowNodeFinishTag">03 / 收尾</span>
-                      <button type="button" class="flow-node-btn" id="keysFlowNodeFinish" aria-controls="habitKeyMapRowFinish">
+                      <button type="button" class="flow-node-btn" id="keysFlowNodeFinish" role="tab" aria-selected="false" aria-labelledby="keysFlowNodeFinishTitle" aria-controls="habitKeyMapRowFinish">
                         <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeFinishTitle">收尾</h3>
@@ -778,7 +780,7 @@
                 </section>
                 <div class="flow-desk-panel" id="keysDeskPanel">
                 <div class="habit-default-flow home-key-map-flow keys-workflow-grid" id="habitDefaultFlow">
-                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger">
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger" role="tabpanel" aria-labelledby="keysFlowNodeTrigger">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
                       <span class="keys-workflow-col-tag" id="keysColTriggerLbl">触发</span>
                       <div class="keys-workflow-col-subhead">
@@ -789,7 +791,7 @@
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-workflow-keycap-zone">
                     <div class="keys-step-row keys-step-row--hero">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" title=""></div>
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="点击修改快捷键" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
                     <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
@@ -807,7 +809,7 @@
                     </div>
                   </div>
                   <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
-                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="target" id="habitKeyMapRowTarget">
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="target" id="habitKeyMapRowTarget" role="tabpanel" aria-labelledby="keysFlowNodeTarget">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
                       <span class="keys-workflow-col-tag" id="keysColCaptureLbl">识别</span>
                       <div class="keys-workflow-col-subhead">
@@ -818,7 +820,7 @@
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-workflow-keycap-zone">
                     <div class="keys-step-row keys-step-row--hero">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" title=""></div>
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" role="button" tabindex="0" aria-label="点击修改快捷键" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                     </div>
                     <p class="keys-keycap-hint" id="keysTargetKeycapHint">点击录制语音快捷键</p>
@@ -840,7 +842,7 @@
                     </div>
                   </div>
                   <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
-                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable habit-flow-step--finish" data-edit-step="finish" id="habitKeyMapRowFinish">
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable habit-flow-step--finish" data-edit-step="finish" id="habitKeyMapRowFinish" role="tabpanel" aria-labelledby="keysFlowNodeFinish">
                     <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
                       <span class="keys-workflow-col-tag" id="keysColActionLbl">收尾</span>
                       <div class="keys-workflow-col-subhead">
@@ -1051,7 +1053,7 @@
               </div>
             </div>
             <div class="page-status-bar-actions keys-scheme-status-actions">
-              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="softPadSummaryStatus"></button>
+              <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="softPadSummaryEnable" role="switch" aria-checked="false" aria-labelledby="settingsPanelSoftPadTitle"></button>
             </div>
           </div>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
@@ -1064,7 +1066,7 @@
           </header>
           <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
             <div class="keys-page-main soft-pad-page-main">
-              <div class="soft-pad-hub-stage" id="softPadHubStage">
+              <div class="soft-pad-hub-stage" id="softPadHubStage" role="tabpanel" aria-label="虚拟键盘详情">
                 <div class="soft-pad-hub-nav" id="softPadHubNav">
                   <div class="soft-pad-preview-host" id="softPadPreviewHost"></div>
                   <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="navigation" aria-label="你想改什么？"></div>
@@ -1121,6 +1123,10 @@
           <div class="scene-mode-empty" id="sceneModeEmpty" hidden>
             <strong id="sceneModeEmptyTitle">还没有情景动作</strong>
             <span id="sceneModeEmptyDesc">先去按键或语音页面保存动作，这里会自动收录。</span>
+            <div class="scene-mode-empty-actions" id="sceneModeEmptyActions">
+              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeEmptyNewKey">+ 新建按键情景</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeEmptyNewVoice">+ 新建语音情景</button>
+            </div>
           </div>
           <div class="scene-mode-list" id="sceneModeList" role="list"></div>
         </section>
@@ -1146,10 +1152,10 @@
                   </select>
                 </label>
                 <div class="habit-hub-view-toggle" role="group" aria-label="视图">
-                  <button type="button" class="habit-hub-view-btn is-active" data-habit-view="list" id="btnHabitHubViewList" aria-pressed="true" title="列表">
+                  <button type="button" class="habit-hub-view-btn is-active" data-habit-view="list" id="btnHabitHubViewList" aria-pressed="true" aria-label="列表视图" title="列表">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                   </button>
-                  <button type="button" class="habit-hub-view-btn" data-habit-view="grid" id="btnHabitHubViewGrid" aria-pressed="false" title="网格">
+                  <button type="button" class="habit-hub-view-btn" data-habit-view="grid" id="btnHabitHubViewGrid" aria-pressed="false" aria-label="网格视图" title="网格">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                   </button>
                 </div>
@@ -1206,7 +1212,7 @@
                   <div class="habit-scenario-app-info" id="habitScenarioAppInfo"></div>
                   <div class="habit-scenario-scenario-enable" id="habitScenarioEnableWrap">
                     <span class="habit-scenario-enable-lbl" id="habitScenarioEnableLbl">场景启用</span>
-                    <button type="button" class="toggle-switch" id="habitScenarioEnabledToggle" role="switch" aria-checked="false"></button>
+                    <button type="button" class="toggle-switch" id="habitScenarioEnabledToggle" role="switch" aria-checked="false" aria-labelledby="habitScenarioEnableLbl"></button>
                   </div>
                   <button type="button" class="habit-hub-act habit-scenario-change-app" id="btnHabitScenarioChangeApp" hidden>更换应用</button>
                 </div>
@@ -1269,7 +1275,7 @@
               <div class="habit-head-toolbar">
                 <div class="scene-hero-enable habit-head-enable" id="sceneHeroEnable">
                   <span class="scene-hero-enable-lbl" id="sceneHeroEnableLabel">已启用</span>
-                  <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false"></button>
+                  <button type="button" id="keySchemeEnabledToggle" class="toggle-switch" role="switch" aria-checked="false" aria-labelledby="sceneHeroEnableLabel"></button>
                 </div>
                 <div class="scene-hero-actions habit-head-actions">
                   <button type="button" class="key-scheme-card-btn is-primary scene-status-activate" id="btnKeySchemeActivate" hidden>切换到这套习惯</button>
@@ -1281,18 +1287,18 @@
           </div>
           <div class="habit-layer-shell habit-settings-shell" id="habitSettingsShell">
             <div class="habit-layer-tab-bar scene-tab-bar" id="habitLayerTabBar" role="tablist" aria-label="怎么用这套习惯">
-              <button type="button" class="scene-tab habit-layer-tab is-active" data-habit-layer="global" role="tab" id="habitLayerTabGlobal" aria-selected="true">
+              <button type="button" class="scene-tab habit-layer-tab is-active" data-habit-layer="global" role="tab" id="habitLayerTabGlobal" aria-selected="true" aria-controls="habitLayerGlobal">
                 <span id="habitLayerTabGlobalLabel">默认行为</span>
               </button>
-              <button type="button" class="scene-tab habit-layer-tab" data-habit-layer="apps" role="tab" id="habitLayerTabApps" aria-selected="false">
+              <button type="button" class="scene-tab habit-layer-tab" data-habit-layer="apps" role="tab" id="habitLayerTabApps" aria-selected="false" aria-controls="habitLayerApps">
                 <span id="habitLayerTabAppsLabel">应用例外</span>
               </button>
-              <button type="button" class="scene-tab habit-layer-tab" data-habit-layer="advanced" role="tab" id="habitLayerTabAdvanced" aria-selected="false">
+              <button type="button" class="scene-tab habit-layer-tab" data-habit-layer="advanced" role="tab" id="habitLayerTabAdvanced" aria-selected="false" aria-controls="habitLayerAdvanced">
                 <span id="habitLayerTabAdvancedLabel">出问题时</span>
               </button>
             </div>
-            <div class="habit-layer-pages" id="habitLayerPages" role="tabpanel">
-              <div class="habit-layer-page is-active" id="habitLayerGlobal" data-habit-layer-page="global">
+            <div class="habit-layer-pages" id="habitLayerPages">
+              <div class="habit-layer-page is-active" id="habitLayerGlobal" data-habit-layer-page="global" role="tabpanel" aria-labelledby="habitLayerTabGlobal">
                 <header class="pref-page-head habit-layer-page-head">
                   <div class="habit-layer-page-head-text">
                     <h3 class="pref-page-title habit-layer-page-title" id="habitLayerGlobalPageTitle">默认行为</h3>
@@ -1343,7 +1349,7 @@
                   </div>
                 </section>
               </div>
-              <div class="habit-layer-page" id="habitLayerApps" data-habit-layer-page="apps" hidden>
+              <div class="habit-layer-page" id="habitLayerApps" data-habit-layer-page="apps" role="tabpanel" aria-labelledby="habitLayerTabApps" hidden>
                 <header class="pref-page-head habit-layer-page-head">
                   <div class="habit-layer-page-head-text">
                     <h3 class="pref-page-title habit-layer-page-title" id="habitLayerAppsPageTitle">应用例外</h3>
@@ -1363,7 +1369,7 @@
                 <p class="habit-apps-auto-hint" id="habitAppsAutoDetectHint">不用切换模式，软件会自动识别当前应用并应用对应规则。</p>
                 <p class="habit-app-rules-footnote sr-only" id="habitAppRulesFootnote">—</p>
               </div>
-              <div class="habit-layer-page" id="habitLayerAdvanced" data-habit-layer-page="advanced" hidden>
+              <div class="habit-layer-page" id="habitLayerAdvanced" data-habit-layer-page="advanced" role="tabpanel" aria-labelledby="habitLayerTabAdvanced" hidden>
                 <header class="pref-page-head habit-layer-page-head">
                   <div class="habit-layer-page-head-text">
                     <h3 class="pref-page-title habit-layer-page-title" id="habitLayerAdvancedPageTitle">出问题时</h3>
@@ -1487,7 +1493,7 @@
             <div class="voice-page-main">
           <div class="voice-page-layout">
               <div class="keys-workflow-pipeline voice-workflow-pipeline" id="voiceWorkflowPipeline">
-            <section class="flow-nodes" id="voiceFlowNodes" aria-label="语音流程导航">
+            <section class="flow-nodes" id="voiceFlowNodes" role="tablist" aria-label="语音流程导航">
               <div class="flow-nodes-track" aria-hidden="true">
                 <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
                   <defs>
@@ -1504,7 +1510,7 @@
               <div class="flow-nodes-grid">
                 <div class="flow-node" data-voice-node="wake">
                   <span class="flow-node-tag" id="voiceFlowNodeWakeTag">01 / 声源采集</span>
-                  <button type="button" class="flow-node-btn" id="voiceFlowNodeWake" aria-controls="voiceSettingsWakeBody">
+                  <button type="button" class="flow-node-btn is-active" id="voiceFlowNodeWake" role="tab" aria-selected="true" aria-labelledby="voiceFlowNodeWakeTitle" aria-controls="voiceSettingsWakeBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
                   </button>
                   <h3 class="flow-node-title" id="voiceFlowNodeWakeTitle">语音唤醒</h3>
@@ -1512,7 +1518,7 @@
                 </div>
                 <div class="flow-node" data-voice-node="recognize">
                   <span class="flow-node-tag" id="voiceFlowNodeRecognizeTag">02 / 语音识别</span>
-                  <button type="button" class="flow-node-btn" id="voiceFlowNodeRecognize" aria-controls="voiceSettingsRecognizeBody">
+                  <button type="button" class="flow-node-btn" id="voiceFlowNodeRecognize" role="tab" aria-selected="false" aria-labelledby="voiceFlowNodeRecognizeTitle" aria-controls="voiceSettingsRecognizeBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   </button>
                   <h3 class="flow-node-title" id="voiceFlowNodeRecognizeTitle">语音识别</h3>
@@ -1520,7 +1526,7 @@
                 </div>
                 <div class="flow-node" data-voice-node="send">
                   <span class="flow-node-tag" id="voiceFlowNodeSendTag">03 / 语音发送</span>
-                  <button type="button" class="flow-node-btn" id="voiceFlowNodeSend" aria-controls="voiceSettingsSendBody">
+                  <button type="button" class="flow-node-btn" id="voiceFlowNodeSend" role="tab" aria-selected="false" aria-labelledby="voiceFlowNodeSendTitle" aria-controls="voiceSettingsSendBody">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </button>
                   <h3 class="flow-node-title" id="voiceFlowNodeSendTitle">语音发送</h3>
@@ -1537,7 +1543,7 @@
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabWakeHint"></span>
                       </div>
                     </div>
-                    <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody">
+                    <div class="flow-step-body keys-step-body voice-wake-stack" id="voiceSettingsWakeBody" role="tabpanel" aria-labelledby="voiceFlowNodeWake">
                     <header class="voice-step-page-head sr-only" id="voiceWakePageHead">
                       <h3 class="voice-step-page-title" id="voiceWakePageTitle">语音唤醒</h3>
                       <p class="voice-step-page-sub" id="voiceWakePageSub"></p>
@@ -1559,15 +1565,15 @@
                       <p class="voice-phrase-panel-title" id="voiceEditSectionPresets">全局唤醒</p>
                       <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
                       <div class="voice-phrase-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="唤醒怎么激活">
-                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true">输入文字</button>
-                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false">录制声音</button>
+                        <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">输入文字</button>
+                        <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceWakeKindSound" role="tab" aria-selected="false" aria-controls="voiceWakeKindSoundPane">录制声音</button>
                       </div>
                       <div class="flow-lang-toggle" id="voiceWakeLangToggle" role="group" aria-label="唤醒词语言" hidden>
                         <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceWakeLangZh">中</button>
                         <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceWakeLangEn">EN</button>
                       </div>
                     </div>
-                    <div class="voice-phrase-kind-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text">
+                    <div class="voice-phrase-kind-pane" id="voiceWakeKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceWakeKindText">
                     <section class="voice-wake-primary-card" id="voiceWakeHeroCard">
                       <p class="voice-wake-primary-lbl" id="voiceWakeHeroTitle">当前主唤醒动作</p>
                       <div class="voice-wake-primary-body">
@@ -1588,10 +1594,10 @@
                     <div class="voice-phrase-tags voice-wake-active-tags" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeActiveLbl"></div>
                     <div class="voice-phrase-add-row voice-wake-add-row" id="voiceWakeCustomBlock">
                       <div class="voice-wake-input-wrap">
-                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑">
+                        <input type="text" class="voice-phrase-custom-input" id="voiceWakeCustomInput" autocomplete="off" spellcheck="false" maxlength="20" placeholder="例如：嘿，电脑" aria-labelledby="voiceWakeCustomLbl">
                         <span class="voice-wake-input-count" id="voiceWakeCustomCount" aria-hidden="true">0/20</span>
                       </div>
-                      <button type="button" class="voice-phrase-custom-listen" id="btnVoiceWakeCustomListen" title="说一句，用识别结果填入">🎤</button>
+                      <button type="button" class="voice-phrase-custom-listen" id="btnVoiceWakeCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
                       <button type="button" class="voice-phrase-custom-add voice-wake-add-btn" id="btnVoiceWakeCustomAdd">+ 添加</button>
                     </div>
                     <p class="voice-phrase-panel-hint sr-only" id="voiceWakeCustomHint">点击标签开关；× 删除自定义</p>
@@ -1601,7 +1607,7 @@
                     </section>
                     </div>
                     </div>
-                    <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                    <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceWakeKindSound" hidden>
                       <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
                     </div>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
@@ -1658,7 +1664,7 @@
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabRecognizeHint"></span>
                       </div>
                     </div>
-                    <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody">
+                    <div class="flow-step-body keys-step-body voice-recognize-stack" id="voiceSettingsRecognizeBody" role="tabpanel" aria-labelledby="voiceFlowNodeRecognize">
                     <header class="voice-step-page-head" id="voiceRecognizePageHead">
                       <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">语音识别</h3>
                       <p class="voice-step-page-sub" id="voiceRecognizePageSub">配置听写中怎么停下、怎么取消</p>
@@ -1677,24 +1683,24 @@
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceCancelPresetsZhLabel">取消词</p>
                           <div class="voice-phrase-kind-tabs" id="voiceCancelKindTabs" role="tablist" aria-label="取消怎么激活">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true">输入文字</button>
-                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false">录制声音</button>
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceCancelKindText" role="tab" aria-selected="true" aria-controls="voiceCancelKindTextPane">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceCancelKindSound" role="tab" aria-selected="false" aria-controls="voiceCancelKindSoundPane">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceCancelLangToggle" role="group" aria-label="取消词语言">
                             <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceCancelLangZh">中</button>
                             <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceCancelLangEn">EN</button>
                           </div>
                         </div>
-                        <div class="voice-phrase-kind-pane" id="voiceCancelKindTextPane" data-phrase-kind-pane="text">
+                        <div class="voice-phrase-kind-pane" id="voiceCancelKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceCancelKindText">
                         <div class="voice-phrase-tags" id="voiceCancelPhraseTags" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel"></div>
                         <div class="voice-phrase-add-row" id="voiceCancelCustomBlock">
-                          <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了">
-                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceCancelCustomListen" title="说一句，用识别结果填入">🎤</button>
+                          <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了" aria-label="自定义取消词">
+                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceCancelCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
                           <button type="button" class="voice-phrase-custom-add" id="btnVoiceCancelCustomAdd">添加</button>
                         </div>
                         <p class="voice-phrase-panel-hint" id="voiceCancelCustomHint">丢弃本轮输入</p>
                         </div>
-                        <div class="voice-phrase-kind-pane" id="voiceCancelKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                        <div class="voice-phrase-kind-pane" id="voiceCancelKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceCancelKindSound" hidden>
                           <div id="voiceCancelAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
                         </div>
                       </div>
@@ -1702,25 +1708,25 @@
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceEndPresetsZhLabel">结束词</p>
                           <div class="voice-phrase-kind-tabs" id="voiceEndKindTabs" role="tablist" aria-label="确认怎么激活">
-                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true">输入文字</button>
-                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false">录制声音</button>
+                            <button type="button" class="voice-phrase-kind-tab is-on" data-phrase-kind="text" id="btnVoiceEndKindText" role="tab" aria-selected="true" aria-controls="voiceEndKindTextPane">输入文字</button>
+                            <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="sound" id="btnVoiceEndKindSound" role="tab" aria-selected="false" aria-controls="voiceEndKindSoundPane">录制声音</button>
                           </div>
                           <div class="flow-lang-toggle" id="voiceEndLangToggle" role="group" aria-label="结束词语言">
                             <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceEndLangZh">中</button>
                             <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceEndLangEn">EN</button>
                           </div>
                         </div>
-                        <div class="voice-phrase-kind-pane" id="voiceEndKindTextPane" data-phrase-kind-pane="text">
+                        <div class="voice-phrase-kind-pane" id="voiceEndKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceEndKindText">
                         <div class="voice-phrase-tags" id="voiceEndPhraseTags" role="listbox" aria-labelledby="voiceEndPresetsZhLabel"></div>
                         <div class="voice-phrase-add-row" id="voiceEndCustomBlock">
-                          <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样">
-                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceEndCustomListen" title="说一句，用识别结果填入">🎤</button>
+                          <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样" aria-label="自定义结束词">
+                          <button type="button" class="voice-phrase-custom-listen" id="btnVoiceEndCustomListen" title="说一句，用识别结果填入" aria-label="听写填入">🎤</button>
                           <button type="button" class="voice-phrase-custom-add" id="btnVoiceEndCustomAdd">添加</button>
                         </div>
                         <p class="voice-phrase-panel-hint" id="voiceEndSilenceNote">只停止录音，保留文本</p>
                         <p class="voice-phrase-panel-hint" id="voiceEndCustomHint">可添加预设以外的结束短语</p>
                         </div>
-                        <div class="voice-phrase-kind-pane" id="voiceEndKindSoundPane" data-phrase-kind-pane="sound" hidden>
+                        <div class="voice-phrase-kind-pane" id="voiceEndKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceEndKindSound" hidden>
                           <div id="voiceEndAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
                         </div>
                         <p class="voice-phrase-custom-lbl sr-only" id="voiceEndCustomLbl">自定义结束词</p>
@@ -1766,7 +1772,7 @@
                           <p class="sound-slot-title" id="recordingAudioTitle">录音期间静音系统扬声器</p>
                           <p class="sound-slot-desc" id="recordingAudioDesc">录音期间自动降低系统扬声器音量，避免录入回放声音。</p>
                         </div>
-                        <button type="button" class="toggle-switch" id="btnRecordingAudioMute" role="switch" aria-checked="false"></button>
+                        <button type="button" class="toggle-switch" id="btnRecordingAudioMute" role="switch" aria-checked="false" aria-labelledby="recordingAudioTitle"></button>
                       </div>
                       <div class="voice-recognize-audio-intensity" id="recordingAudioIntensityPanel">
                         <div class="recording-audio-strength-row">
@@ -1919,7 +1925,7 @@
                         <span class="home-key-map-step-label voice-subtab-hint" id="voiceSubtabSendHint"></span>
                       </div>
                     </div>
-                    <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody">
+                    <div class="flow-step-body keys-step-body" id="voiceSettingsSendBody" role="tabpanel" aria-labelledby="voiceFlowNodeSend">
                     <header class="voice-step-page-head" id="voiceSendPageHead">
                       <h3 class="voice-step-page-title" id="voiceSendPageTitle">语音发送</h3>
                       <p class="voice-step-page-sub" id="voiceSendPageSub">选一种方式即可；不确定就用「先确认」</p>
@@ -2403,7 +2409,7 @@
           </div>
           <header class="pref-page-head">
             <h3 class="pref-page-title" id="settingsPanelCameraTitle" data-i18n="cameraPageTitle">摄像头</h3>
-            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先设计 if-then 规则，再到执行方案里预览与校准；Pro 页仅说明未来视觉能力。</p>
+            <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCameraDesc" data-i18n="cameraPageSubtitle">先设计 if-then 规则，再到摄像头设置里预览与校准；Pro 含本机预览增强（美颜、面具等）。</p>
           </header>
           <span class="sr-only" id="cameraStatusText" data-i18n="cameraStatusIdle">待命 · 不会自动开启摄像头</span>
           <span class="sr-only" id="cameraInfoCurrentDevice">—</span>
@@ -2413,7 +2419,7 @@
           <span class="sr-only" id="cameraGlanceCalib" data-i18n="cameraGlanceCalibIdle">未开始</span>
 
           <div class="camera-workflow-shell" id="cameraWorkflowShell">
-            <section class="flow-nodes" id="cameraFlowNodes" aria-label="摄像头流程导航">
+            <section class="flow-nodes" id="cameraFlowNodes" role="tablist" aria-label="摄像头流程导航">
               <div class="flow-nodes-track" aria-hidden="true">
                 <svg class="flow-nodes-svg" viewBox="0 0 1000 8" fill="none" preserveAspectRatio="none">
                   <defs>
@@ -2430,7 +2436,7 @@
               <div class="flow-nodes-grid">
                 <div class="flow-node" data-camera-node="trigger">
                   <span class="flow-node-tag" id="cameraFlowNodeTriggerTag" data-i18n="cameraFlowNodeTriggerTag">01 / 视觉识别</span>
-                  <button type="button" class="flow-node-btn is-active" id="cameraFlowNodeTrigger" aria-controls="cameraPanelTrigger" aria-selected="true" aria-label="视觉识别">
+                  <button type="button" class="flow-node-btn is-active" id="cameraFlowNodeTrigger" role="tab" aria-controls="cameraPanelTrigger" aria-selected="true" aria-label="视觉识别">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
                   <h3 class="flow-node-title" id="cameraFlowNodeTriggerTitle" data-i18n="cameraFlowNodeTriggerTitle">视觉识别</h3>
@@ -2438,7 +2444,7 @@
                 </div>
                 <div class="flow-node" data-camera-node="action">
                   <span class="flow-node-tag" id="cameraFlowNodeActionTag" data-i18n="cameraFlowNodeActionTag">02 / 摄像头设置</span>
-                  <button type="button" class="flow-node-btn" id="cameraFlowNodeAction" aria-controls="cameraPanelAction" aria-selected="false" aria-label="摄像头设置">
+                  <button type="button" class="flow-node-btn" id="cameraFlowNodeAction" role="tab" aria-controls="cameraPanelAction" aria-selected="false" aria-label="摄像头设置">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                   </button>
                   <h3 class="flow-node-title" id="cameraFlowNodeActionTitle" data-i18n="cameraFlowNodeActionTitle">摄像头设置</h3>
@@ -2446,7 +2452,7 @@
                 </div>
                 <div class="flow-node is-pro-optional" data-camera-node="pro">
                   <span class="flow-node-tag" id="cameraFlowNodeProTag" data-i18n="cameraFlowNodeProTag">03 / Pro 视觉能力</span>
-                  <button type="button" class="flow-node-btn is-pro" id="cameraFlowNodePro" aria-controls="cameraPanelPro" aria-selected="false" aria-label="Pro 视觉能力">
+                  <button type="button" class="flow-node-btn is-pro" id="cameraFlowNodePro" role="tab" aria-controls="cameraPanelPro" aria-selected="false" aria-label="Pro 视觉能力">
                     <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 19l.8 2.2L8 22l-2.2.8L5 25l-.8-2.2L2 22l2.2-.8L5 19z"/></svg>
                     <span class="camera-pro-badge camera-pro-badge--node" data-i18n="cameraProBadge">Pro</span>
                   </button>
@@ -2468,15 +2474,15 @@
                     <button type="button" class="toggle-switch page-status-toggle" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="开启摄像头识别" title="开启摄像头识别"></button>
                   </div>
                   <div class="camera-rules-segment" id="cameraRulesSegment" role="tablist" aria-label="规则分段">
-                    <button type="button" class="camera-rules-seg-btn is-active" id="cameraRulesSegBasic" data-camera-rules-seg="basic" role="tab" aria-selected="true" data-i18n="cameraRulesSegBasic">基础识别</button>
-                    <button type="button" class="camera-rules-seg-btn" id="cameraRulesSegPro" data-camera-rules-seg="pro" role="tab" aria-selected="false">
+                    <button type="button" class="camera-rules-seg-btn is-active" id="cameraRulesSegBasic" data-camera-rules-seg="basic" role="tab" aria-selected="true" aria-controls="cameraRulesBasic" data-i18n="cameraRulesSegBasic">基础识别</button>
+                    <button type="button" class="camera-rules-seg-btn" id="cameraRulesSegPro" data-camera-rules-seg="pro" role="tab" aria-selected="false" aria-controls="cameraRulesPro">
                       <span data-i18n="cameraRulesSegPro">Pro 手势</span>
                       <span class="camera-chip camera-rules-pro-badge" data-i18n="cameraProBadge">Pro</span>
                     </button>
                   </div>
 
                   <div id="cameraPresenceConfig" class="camera-presence-config">
-                    <div class="camera-rule-list" id="cameraRulesBasic" data-camera-rules-panel="basic">
+                    <div class="camera-rule-list" id="cameraRulesBasic" data-camera-rules-panel="basic" role="tabpanel" aria-labelledby="cameraRulesSegBasic">
                       <div class="camera-rule-row" data-camera-card="away" data-camera-trigger="away" data-camera-bind-key="onAway" id="cameraBindRowAway">
                         <div class="camera-rule-row-main">
                           <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
@@ -2527,7 +2533,7 @@
                       </div>
                     </div>
 
-                    <div class="camera-rule-list" id="cameraRulesPro" data-camera-rules-panel="pro" hidden>
+                    <div class="camera-rule-list" id="cameraRulesPro" data-camera-rules-panel="pro" role="tabpanel" aria-labelledby="cameraRulesSegPro" hidden>
                       <p class="camera-rules-pro-hint" id="cameraRulesProHint" data-i18n="cameraRulesProHint">已可配置 · 开启预览后识别</p>
                       <div class="camera-rule-row" data-camera-card="openPalm" data-camera-trigger="openPalm" data-camera-bind-key="openPalm" id="cameraBindRowOpenPalm">
                         <div class="camera-rule-row-main">
@@ -2622,7 +2628,7 @@
                       <span class="sr-only" id="cameraWorkflowPreviewTitle" data-i18n="cameraWorkflowPreviewTitleTrigger">等待识别动作</span>
                       <div class="camera-preview-wrap">
                         <div class="camera-preview-shell camera-preview-shell--compact" id="cameraPreviewShell">
-                          <video id="cameraPreviewVideo" class="camera-preview-video" autoplay playsinline muted></video>
+                          <video id="cameraPreviewVideo" class="camera-preview-video" autoplay playsinline muted aria-label="摄像头预览"></video>
                           <button type="button" class="camera-preview-placeholder camera-preview-start" id="cameraPreviewStartBtn" aria-label="启动">
                             <span class="camera-preview-start-icon" aria-hidden="true">▶</span>
                           </button>
@@ -3540,6 +3546,7 @@
   <script src="js/core/app-runtime-hooks.js"></script>
   <script src="js/core/error-handlers.js"></script>
   <script src="js/core/app-toast.js"></script>
+  <script src="js/core/confirm.js"></script>
   <script src="js/core/app-global-error.js"></script>
   <script src="js/core/app-debug-state.js"></script>
   <script src="js/features/update/update.js"></script>

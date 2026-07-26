@@ -51,10 +51,16 @@
     return t('habitHubVoiceDefaultNameFallback');
   }
 
+  var GLOBAL_SCHEME_ID='__global__';
+
   function voiceEditSchemeId(){
-    var id=ui()&&ui().voiceEditSchemeId;
-    id=id==null?'':String(id).trim();
-    return id||null;
+    var sentinel=ui()&&ui().voiceEditSchemeId;
+    if(sentinel===GLOBAL_SCHEME_ID) return null;
+    var sel=String(state().selectedMappingId||'').trim();
+    if(sel) return sel;
+    sentinel=sentinel==null?'':String(sentinel).trim();
+    if(sentinel&&sentinel!==GLOBAL_SCHEME_ID) return sentinel;
+    return null;
   }
 
   function inferVoiceEditTargetId(){
@@ -64,11 +70,7 @@
   function resolveSaveTargetId(opts){
     opts=opts||{};
     if(opts.forceCreate) return null;
-    var id=voiceEditSchemeId();
-    if(!id){
-      id=String(state().selectedMappingId||'').trim();
-    }
-    return id||null;
+    return voiceEditSchemeId();
   }
 
   function resolveSaveTargetMapping(opts){
@@ -122,7 +124,8 @@
     if(!id||!core()||!core().byId) return null;
     var m=core().byId(id);
     if(!m||!isVoiceOnly(m)){
-      if(ui().voiceEditSchemeId===id) ui().voiceEditSchemeId=null;
+      if(String(ui().voiceEditSchemeId||'')===id) ui().voiceEditSchemeId=GLOBAL_SCHEME_ID;
+      if(String(state().selectedMappingId||'')===id) state().selectedMappingId=null;
       return null;
     }
     return m;
