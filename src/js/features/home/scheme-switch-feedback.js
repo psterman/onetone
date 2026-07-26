@@ -25,14 +25,14 @@
     var t=hooks.t;
     var msg=t('schemeSwitched')+(label||'');
     if(toId){
-      state.selectedMappingId=toId;
+      // Runtime in-use only — never drag editing selection or remount the editor form.
       if(state.config) state.config.activeSceneId=toId;
-      hooks.syncEditorFromSelection();
     }
     hooks.renderMappingList();
-    hooks.renderEditor();
     if(global.OneToneSceneTabs) global.OneToneSceneTabs.render();
-    hooks.render();
+    if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+      try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+    }
     if(toId){
       requestAnimationFrame(function(){
         var row=document.querySelector('.map-row[data-id="'+toId+'"]');
@@ -47,7 +47,6 @@
         hooks.toast(msg,'scheme');
       });
     }else{
-      hooks.render();
       hooks.toast(msg,'scheme');
     }
     notifyIfBackground(msg);

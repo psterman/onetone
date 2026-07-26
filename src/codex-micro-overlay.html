@@ -164,11 +164,11 @@
     var REASON_HINT={
       not_foreground:'请切换到 Codex 桌面版窗口',
       unbound:'此键未启用或未绑定快捷键',
-      no_profile:'Codex 场景未配置',
+      no_profile:'Codex 应用场景未配置',
       hold_failed:'无法启动听写（请确认 Codex 已打开）',
       invalid_key:'无效按键',
       invalid_phase:'无效操作',
-      numpad_mode:'请先打开模式开关 · 切换到 Codex 场景'
+      numpad_mode:'请先打开模式开关 · 切换到虚拟键盘模式'
     };
     var boundKeys={};
     var PAD_SKINS=['default','glass-light','hybrid-pro','vibe-light','vibe-dark'];
@@ -493,7 +493,7 @@
       enc.classList.toggle('is-mode-on', !!padEnabled);
       enc.classList.toggle('is-mode-off', !padEnabled);
       enc.setAttribute('aria-checked', padEnabled?'true':'false');
-      var label=padEnabled?'Codex 场景模式':'数字键模式';
+      var label=padEnabled?'虚拟键盘模式':'数字键模式';
       enc.setAttribute('aria-label', label);
       enc.setAttribute('title', label);
       enc.setAttribute('data-cap-name', label);
@@ -710,7 +710,7 @@
           padMode:padMode,
           joyArrowsLive:!!lastSnap.joyArrowsLive
         }));
-        toast(padMode==='codex'?'Codex 场景模式':'数字键模式');
+        toast(padMode==='codex'?'虚拟键盘模式':'数字键模式');
         invoke('cmd_codex_micro_overlay_toggle_pad_mode',{}).then(function(mode){
           var actual=String(mode||'')==='numpad'?'numpad':'codex';
           if(actual!==padMode){
@@ -739,7 +739,7 @@
             enabled:padEnabled,
             padMode:padMode
           }));
-          if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 工作场景');
+          if(msg.indexOf('no_mapping')>=0) toast('请先创建并启用 Codex 应用场景');
           else toast('无法切换模式');
         }).then(function(){
           setTimeout(function(){ padModeToggleBusy=false; }, 280);
@@ -1037,7 +1037,7 @@
         var metaName='';
         var metaChord='';
         if(cell.id==='ENC'){
-          metaName=padEnabled?'Codex 场景模式':'数字键模式';
+          metaName=padEnabled?'虚拟键盘模式':'数字键模式';
           metaChord=padEnabled?'ON':'OFF';
         } else if(isNp){
           metaName=String(cell.label||cell.id||'');

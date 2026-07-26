@@ -198,9 +198,7 @@
                         </div>
                       </section>
 
-                      <section class="wb-habit-bar" id="wbHabitBar" aria-label="当前习惯"></section>
-
-                      <section class="wb-howto" id="wbHowTo" aria-label="按键、语音与摄像头"></section>
+                      <section class="wb-howto" id="wbHowTo" aria-label="按键、语音、摄像头与虚拟键盘"></section>
 
                       <div class="wb-detail-row wb-detail-row--single" id="wbDetailRow" hidden>
                         <div id="wbVoicePanel" hidden></div>
@@ -668,7 +666,7 @@
             <div class="habit-scenario-context-banner-actions">
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToVoiceKeys" hidden>配语音</button>
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToCameraKeys" hidden>配摄像头</button>
-              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveKeys" hidden>保存场景</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveKeys" hidden>保存应用场景</button>
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackKeys"></button>
             </div>
           </div>
@@ -690,7 +688,7 @@
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnKeysMappingEnable" role="switch" aria-checked="false" aria-labelledby="keysSummaryStatus"></button>
               <button type="button" class="page-status-btn" id="btnKeysSchemeAdd">+ 新建</button>
             </div>
-            <span class="sr-only" id="keysWorkflowTabsLbl">当前编辑方案</span>
+            <span class="sr-only" id="keysWorkflowTabsLbl">正在编辑的习惯</span>
             <div class="keys-workflow-tabs sr-only" id="keysWorkflowTabs" role="tablist" aria-labelledby="keysWorkflowTabsLbl" hidden></div>
             <label class="keys-habit-switcher-assist sr-only">
               <span class="sr-only" id="keysHabitSwitcherLbl">当前习惯</span>
@@ -982,10 +980,10 @@
                 <div class="conflict-pill" id="conflictBanner" role="status"></div>
               </div>
             </div>
-            <aside class="keys-page-aside" id="keysPanelAside" aria-label="方案与模板">
+            <aside class="keys-page-aside" id="keysPanelAside" aria-label="习惯与模板">
               <section class="keys-aside-card keys-hub-card" id="keysHubCard">
                 <header class="keys-aside-card-head keys-hub-head">
-                  <span class="keys-aside-title" id="keysHubTitleLbl">方案</span>
+                  <span class="keys-aside-title" id="keysHubTitleLbl">习惯</span>
                   <span class="keys-aside-count" id="keysHubCount">—</span>
                 </header>
                 <div class="keys-hub-schemes" id="keysHubSchemeList" role="list"></div>
@@ -997,7 +995,7 @@
                     <span class="keys-hub-templates-summary-lbl" id="keysHubTemplatesLbl">从模板创建</span>
                     <span class="keys-hub-templates-summary-count" id="keysHubTemplatesCount">—</span>
                   </summary>
-                  <p class="keys-hub-templates-hint" id="keysHubTemplatesHint">创建新方案并预设识别与收尾；触发键仍需在左侧录制</p>
+                  <p class="keys-hub-templates-hint" id="keysHubTemplatesHint">创建新习惯并预设识别与收尾；触发键仍需在左侧录制</p>
                   <div class="keys-hub-templates" id="keysHubTemplateList"></div>
                   <div class="keys-hub-templates-fill" id="keysHubTemplatesFillWrap" hidden>
                     <span class="keys-hub-templates-fill-lbl" id="keysHubTemplatesFillLbl">套用到当前：</span>
@@ -1087,10 +1085,10 @@
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>
-            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="方案">
+            <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" aria-label="习惯">
               <section class="keys-aside-card soft-pad-scheme-card keys-hub-card" id="softPadSchemeCard">
                 <header class="keys-aside-card-head keys-hub-head">
-                  <span class="keys-aside-title" id="softPadSchemeTitleLbl">方案</span>
+                  <span class="keys-aside-title" id="softPadSchemeTitleLbl">习惯</span>
                   <span class="keys-aside-count" id="softPadSchemeCount">—</span>
                 </header>
                 <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
@@ -1102,30 +1100,30 @@
         <section class="settings-panel drawer-section scene-mode-page" id="settingsPanelScenes" hidden>
           <header class="pref-page-head scene-mode-head">
             <div class="scene-mode-head-text">
-              <h3 class="pref-page-title" id="settingsPanelScenesTitle">情景模式</h3>
+              <h3 class="pref-page-title" id="settingsPanelScenesTitle">我的习惯</h3>
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelScenesDesc">收录所有按键和语音动作，集中查看、跳转和调用。</p>
             </div>
             <div class="scene-mode-head-actions">
-              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeNew">+ 新建按键情景</button>
-              <button type="button" class="scene-mode-action" id="btnSceneModeNewVoice">+ 新建语音情景</button>
-              <button type="button" class="scene-mode-action" id="btnSceneModeManage" hidden aria-hidden="true" tabindex="-1">管理情景</button>
+              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeNew">+ 新建按键习惯</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeNewVoice">+ 新建语音习惯</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeManage" hidden aria-hidden="true" tabindex="-1">管理习惯</button>
               <button type="button" class="scene-mode-action" id="btnSceneModeOpenKeys"><span id="btnSceneModeOpenKeysText">配置按键</span></button>
               <button type="button" class="scene-mode-action" id="btnSceneModeOpenVoice"><span id="btnSceneModeOpenVoiceText">配置语音</span></button>
             </div>
           </header>
           <div class="scene-mode-toolbar">
-            <div class="scene-mode-filters" role="tablist" aria-label="情景模式过滤">
+            <div class="scene-mode-filters" role="tablist" aria-label="我的习惯过滤">
               <button type="button" class="scene-mode-filter is-active" data-scene-mode-filter="all" role="tab" aria-selected="true" id="sceneModeFilterAll"><span class="scene-mode-filter-label" id="sceneModeFilterAllLabel">全部</span><span class="scene-mode-filter-count" id="sceneModeFilterAllCount">0</span></button>
               <button type="button" class="scene-mode-filter" data-scene-mode-filter="key" role="tab" aria-selected="false" id="sceneModeFilterKey"><span class="scene-mode-filter-label" id="sceneModeFilterKeyLabel">按键</span><span class="scene-mode-filter-count" id="sceneModeFilterKeyCount">0</span></button>
               <button type="button" class="scene-mode-filter" data-scene-mode-filter="voice" role="tab" aria-selected="false" id="sceneModeFilterVoice"><span class="scene-mode-filter-label" id="sceneModeFilterVoiceLabel">语音</span><span class="scene-mode-filter-count" id="sceneModeFilterVoiceCount">0</span></button>
             </div>
           </div>
           <div class="scene-mode-empty" id="sceneModeEmpty" hidden>
-            <strong id="sceneModeEmptyTitle">还没有情景动作</strong>
+            <strong id="sceneModeEmptyTitle">还没有习惯动作</strong>
             <span id="sceneModeEmptyDesc">先去按键或语音页面保存动作，这里会自动收录。</span>
             <div class="scene-mode-empty-actions" id="sceneModeEmptyActions">
-              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeEmptyNewKey">+ 新建按键情景</button>
-              <button type="button" class="scene-mode-action" id="btnSceneModeEmptyNewVoice">+ 新建语音情景</button>
+              <button type="button" class="scene-mode-action is-primary" id="btnSceneModeEmptyNewKey">+ 新建按键习惯</button>
+              <button type="button" class="scene-mode-action" id="btnSceneModeEmptyNewVoice">+ 新建语音习惯</button>
             </div>
           </div>
           <div class="scene-mode-list" id="sceneModeList" role="list"></div>
@@ -1195,7 +1193,7 @@
                   <p class="pref-page-subtitle" id="habitScenarioDesc">选择应用后，仅保存相对通用设置的覆盖项</p>
                 </div>
                 <div class="habit-scenario-head-actions">
-                  <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSaveTop" disabled>保存场景</button>
+                  <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSaveTop" disabled>保存应用场景</button>
                 </div>
               </div>
             </header>
@@ -1246,7 +1244,7 @@
               <p class="habit-scenario-foot-hint" id="habitScenarioFootHint">未修改项沿用通用设置；本次只保存当前应用场景，不影响通用设置。</p>
               <div class="habit-scenario-foot-actions">
                 <button type="button" class="habit-hub-new-btn" id="btnHabitScenarioCancel">取消</button>
-                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSave" disabled>保存场景</button>
+                <button type="button" class="habit-hub-new-btn is-primary" id="btnHabitScenarioSave" disabled>保存应用场景</button>
               </div>
             </footer>
           </div>
@@ -1307,10 +1305,10 @@
                 </header>
                 <div class="habit-active-scenario" id="habitActiveScenario" hidden>
                   <div class="habit-active-scenario-text">
-                    <span class="habit-active-scenario-label" id="habitActiveScenarioLabel">当前情景</span>
+                    <span class="habit-active-scenario-label" id="habitActiveScenarioLabel">正在使用</span>
                     <strong class="habit-active-scenario-name" id="habitActiveScenarioName">—</strong>
                   </div>
-                  <p class="habit-active-scenario-hint" id="habitActiveScenarioHint">按你的触发键将从任意应用跳入该情景</p>
+                  <p class="habit-active-scenario-hint" id="habitActiveScenarioHint">按你的触发键将从任意应用跳入该习惯</p>
                 </div>
                 <div class="habit-page-status" id="habitPageStatus">
                   <div class="habit-page-status-main">
@@ -1436,7 +1434,7 @@
             <div class="habit-scenario-context-banner-actions">
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToKeysVoice" hidden>改按键</button>
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToCameraVoice" hidden>配摄像头</button>
-              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveVoice" hidden>保存场景</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveVoice" hidden>保存应用场景</button>
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackVoice"></button>
             </div>
           </div>
@@ -1467,11 +1465,11 @@
               </span>
             </div>
             <div class="page-status-bar-actions voice-scheme-status-actions">
-              <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">更新方案</button>
+              <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">保存到正在编辑的习惯</button>
               <button type="button" class="toggle-switch keys-summary-enable page-status-toggle" id="btnVoiceEnabled" role="switch" aria-checked="true" title="关闭后回退到系统默认听写" aria-label="关闭后回退到系统默认听写"></button>
               <button type="button" class="page-status-btn" id="btnVoiceSchemeAdd">+ 新建</button>
             </div>
-            <span class="sr-only" id="voiceWorkflowTabsLbl">语音方案</span>
+            <span class="sr-only" id="voiceWorkflowTabsLbl">语音通道</span>
             <div class="keys-workflow-tabs voice-workflow-tabs sr-only" id="voiceWorkflowTabs" role="tablist" aria-labelledby="voiceWorkflowTabsLbl" hidden>            </div>
           </div>
           <div class="voice-setup-banner" id="voiceSetupBanner" hidden role="alert">
@@ -2009,13 +2007,13 @@
               </div>
           </div>
             </div>
-            <aside class="voice-page-aside" id="voicePanelAside" aria-label="方案与模板">
+            <aside class="voice-page-aside" id="voicePanelAside" aria-label="习惯与模板">
               <section class="keys-aside-card keys-hub-card" id="voiceHubCard">
                 <header class="keys-aside-card-head keys-hub-head">
-                  <span class="keys-aside-title" id="voiceHubTitleLbl">方案</span>
+                  <span class="keys-aside-title" id="voiceHubTitleLbl">习惯</span>
                   <span class="keys-aside-count" id="voiceHubCount">—</span>
                 </header>
-                <p class="voice-hub-edit-hint" id="voiceHubEditHint">编辑不会切换当前生效方案；点「启用」才会切换。</p>
+                <p class="voice-hub-edit-hint" id="voiceHubEditHint">编辑不会切换当前正在使用的习惯；点「设为正在使用」才会切换。</p>
                 <div class="keys-hub-schemes" id="voiceHubSchemeList" role="list"></div>
                 <button type="button" class="keys-hub-scheme-add" id="btnVoiceHubAddDraft">+ 新建草稿</button>
                 <div class="keys-hub-divider" id="voiceHubDivider" aria-hidden="true"></div>
@@ -2403,7 +2401,7 @@
             </div>
             <div class="habit-scenario-context-banner-actions">
               <button type="button" class="habit-hub-act" id="btnHabitScenarioContextToKeysCamera" hidden>改按键</button>
-              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveCamera" hidden>保存场景</button>
+              <button type="button" class="habit-hub-act is-primary" id="btnHabitScenarioContextSaveCamera" hidden>保存应用场景</button>
               <button type="button" class="habit-scenario-context-banner-back is-primary" id="btnHabitScenarioContextBackCamera"></button>
             </div>
           </div>
@@ -3357,7 +3355,7 @@
         <div class="template-pick-grid habit-setup-mode-grid" id="habitSetupModeGrid" role="listbox" aria-label="快捷键方式"></div>
         <div class="habit-setup-actions habit-setup-actions--footer">
           <button type="button" class="btn secondary" id="btnHabitSetupBack">上一步</button>
-          <button type="button" class="btn primary" id="btnHabitSetupSave">存为习惯（全局方案）</button>
+          <button type="button" class="btn primary" id="btnHabitSetupSave">存为习惯（通用设置）</button>
         </div>
       </div>
       <div class="habit-setup-view habit-setup-screen" id="habitSetupVoiceLessonView" hidden>
@@ -3640,6 +3638,7 @@
   <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>
   <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
+  <script src="js/features/mapping/habit-channel-status-strip.js"></script>
   <script src="js/features/mapping/habit-scenario-access-cards.js"></script>
   <script src="js/features/mapping/habit-scenario-wizard.js"></script>
   <script src="js/features/mapping/habit-multi.js"></script>

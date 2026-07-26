@@ -117,10 +117,11 @@
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+opts.icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(opts.title)+'</span>'
+      +(opts.status?'<span class="wb-howto-card-status">'+esc(opts.status)+'</span>':'')
       +'</div>'
       +'<div class="wb-howto-card-main">'
       +'<strong class="wb-howto-card-value">'+esc(opts.value)+'</strong>'
-      +'<span class="wb-howto-card-art" aria-hidden="true">'+opts.art+'</span>'
+      +(opts.art?'<span class="wb-howto-card-art" aria-hidden="true">'+opts.art+'</span>':'')
       +'</div>'
       +'<div class="wb-howto-card-meta">'
       +'<div class="wb-howto-meta-row"><span>'+esc(opts.meta1Lbl)+'</span><strong>'+esc(opts.meta1Val)+'</strong></div>'
@@ -216,7 +217,12 @@
     var host=$('wbHowTo');
     if(!host) return;
     var mode=currentHeroMode();
+    var m=activeHabitMapping(vm);
     var trig=dash(vm&&vm.triggerKey);
+    var keysLine=m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine
+      ?global.OneToneHomeScheme.pairLine(m)
+      :trig;
+    if(!keysLine||keysLine==='—') keysLine=trig;
     var finish=dash(vm&&vm.finishText);
     var silence='—';
     if(vm&&vm.m&&vm.m.intervalMs!=null&&vm.cancelDelaySec){
@@ -224,20 +230,26 @@
     }
     var phrases=wakePhrases(vm);
     var wakeMain=phrases.length?phrases[0]:dash(vm&&vm.wakePrimary);
+    if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
+      wakeMain=String(m.voiceOverride.wakePhrases[0]||wakeMain);
+    }
     var cam=cameraHowToSnapshot();
+    var pad=softPadHowToSnapshot();
 
     var keyIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>';
     var voiceIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
     var camIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var softIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
     var camArt='<span class="wb-howto-cam-dot'+(cam.running?' is-on':(cam.enabled?' is-configured':''))+'" aria-hidden="true"></span>';
+    var softArt='<span class="wb-howto-softpad-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
 
     host.innerHTML=
-      '<div class="wb-howto-grid wb-howto-grid--trio">'
+      '<div class="wb-howto-grid wb-howto-grid--quad">'
       +howToCardHtml({
         kind:'keys',
         active:mode==='keys',
         title:t('homeWbHowToKeysTitle'),
-        value:trig,
+        value:keysLine,
         meta1Lbl:t('homeWbHowToFinish'),
         meta1Val:finish,
         meta2Lbl:t('homeWbHowToSilence'),
@@ -262,6 +274,7 @@
         active:mode==='camera',
         title:t('homeWbHowToCameraTitle'),
         value:cam.value,
+        status:cam.enabled?t('homeWbHabitActive'):'',
         meta1Lbl:t('homeWbHowToCameraPresence'),
         meta1Val:cam.presenceLbl,
         meta2Lbl:t('homeWbHowToCameraBound'),
@@ -269,6 +282,20 @@
         tip:t('homeWbHowToCameraTip'),
         icon:camIcon,
         art:camArt
+      })
+      +howToCardHtml({
+        kind:'softPad',
+        active:false,
+        title:t('homeWbHowToSoftPadTitle'),
+        value:pad.value,
+        status:pad.status,
+        meta1Lbl:t('homeWbHowToSoftPadStatus'),
+        meta1Val:pad.statusLbl,
+        meta2Lbl:t('homeWbHowToSoftPadApps'),
+        meta2Val:pad.countLbl,
+        tip:t('homeWbHowToSoftPadTip'),
+        icon:softIcon,
+        art:softArt
       })
       +'</div>';
   }
@@ -354,64 +381,53 @@
   }
 
   function softPadSummaryLine(){
+    var snap=softPadHowToSnapshot();
+    return snap.value;
+  }
+
+  function softPadHowToSnapshot(){
     var hub=global.OneToneSoftPadHub;
     var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
-    if(!entries.length) return t('homeWbChannelUnset');
+    if(!entries.length){
+      return {
+        value:t('homeWbChannelUnset'),
+        status:'',
+        statusLbl:t('homeWbChannelUnset'),
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}','0')
+      };
+    }
     var on=entries.filter(function(e){ return e&&e.padEnabled; });
-    if(!on.length) return entries.map(function(e){ return e.title; }).join(' · ');
-    return on.map(function(e){ return e.title; }).join(' · ');
+    var titles=(on.length?on:entries).map(function(e){ return e.title; }).filter(Boolean);
+    var value=titles.length?titles.join(' · '):t('homeWbChannelUnset');
+    return {
+      value:value,
+      status:on.length?t('homeWbHabitActive'):'',
+      statusLbl:on.length?t('homeWbHowToSoftPadOn'):t('homeWbHowToSoftPadOff'),
+      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length))
+    };
   }
 
-  function channelChip(label,value){
-    return '<span class="wb-habit-bar-chip"><span class="wb-habit-bar-chip-lbl">'+esc(label)+'</span>'
-      +'<strong>'+esc(value||t('homeWbChannelUnset'))+'</strong></span>';
-  }
-
-  function renderHabitBar(vm){
-    var host=$('wbHabitBar');
-    if(!host) return;
+  function activeHabitMapping(vm){
     var activeId=activeSceneId();
     var m=null;
     if(activeId&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
       m=global.OneToneMappingCore.byId(activeId);
     }
+    if(!m&&vm&&vm.m) m=vm.m;
     if(!m&&global.OneToneHomeScheme&&global.OneToneHomeScheme.activeMapping){
       m=global.OneToneHomeScheme.activeMapping();
     }
-    var name=m
-      ?(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName
-        ?global.OneToneHabitProfile.habitDisplayName(m)
-        :(global.OneToneHomeScheme?global.OneToneHomeScheme.shortName(m):'—'))
-      :t('homeLiveUnset');
-    var keysLine=m&&global.OneToneHomeScheme?global.OneToneHomeScheme.pairLine(m):t('homeWbChannelUnset');
-    var voiceLine='—';
-    if(m&&m.voiceOverride&&Array.isArray(m.voiceOverride.wakePhrases)&&m.voiceOverride.wakePhrases.length){
-      voiceLine=String(m.voiceOverride.wakePhrases[0]||'');
-    }else if(vm&&vm.wakePrimary){
-      voiceLine=String(vm.wakePrimary);
+    return m||null;
+  }
+
+  function renderHabitBar(vm){
+    // Channel summary moved into howto cards; in-use/edit lives on the scene rail.
+    // Keep host cleared if a stale shell still exists.
+    var host=$('wbHabitBar');
+    if(host){
+      host.innerHTML='';
+      host.hidden=true;
     }
-    var cam=global.OneToneCameraPresenceActions;
-    var camLine=t('homeWbChannelUnset');
-    if(cam&&cam.isEnabled&&cam.isEnabled()) camLine=t('homeWbHabitActive');
-    host.innerHTML=
-      '<div class="wb-habit-bar-main">'
-      +'<div class="wb-habit-bar-copy">'
-      +'<span class="wb-habit-bar-kicker">'+esc(t('homeWbHabitBarTitle'))+'</span>'
-      +'<strong class="wb-habit-bar-name">'+esc(name)+'</strong>'
-      +'<span class="wb-habit-bar-hint">'+esc(t('homeWbHeroModeHint'))+'</span>'
-      +'</div>'
-      +'<div class="wb-habit-bar-actions">'
-      +(m&&m.id
-        ?('<button type="button" class="wb-habit-bar-btn" data-wb-habit-edit="'+esc(m.id)+'">'+esc(t('homeWbHabitBarEdit'))+'</button>')
-        :'')
-      +'</div>'
-      +'</div>'
-      +'<div class="wb-habit-bar-channels" aria-label="'+esc(t('homeWbHabitBarTitle'))+'">'
-      +channelChip(t('homeWbChannelKeys'),keysLine)
-      +channelChip(t('homeWbChannelVoice'),voiceLine)
-      +channelChip(t('homeWbChannelCamera'),camLine)
-      +channelChip(t('homeWbChannelSoftPad'),softPadSummaryLine())
-      +'</div>';
   }
 
   function sceneCardHtml(m,activeId){

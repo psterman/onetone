@@ -32,6 +32,9 @@
     try{
       global.chrome&&global.chrome.webview&&global.chrome.webview.postMessage({type:'mvp_scheme_select',mappingId:id});
     }catch(_){}
+    if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+      try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+    }
   }
 
   global.OneToneSceneActivate={

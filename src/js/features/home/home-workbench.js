@@ -592,9 +592,6 @@
   function openWorkbenchScenario(id){
     id=String(id||'').trim();
     if(!id) return;
-    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.selectMapping){
-      global.OneToneHomeScheme.selectMapping(id);
-    }
     var m=global.OneToneMappingCore&&global.OneToneMappingCore.byId
       ?global.OneToneMappingCore.byId(id):null;
     var diff=global.OneToneHabitOverrideDiff;
@@ -604,11 +601,89 @@
       banner.openScenarioKeysEdit(id,{returnToHub:true});
       return;
     }
-    if(banner&&banner.openGlobalKeys){
+    if(m&&m.id&&global.OneToneState&&global.OneToneState.state){
+      global.OneToneState.state.selectedMappingId=m.id;
+    }
+    if(banner&&banner.openGlobalKeys&&!m){
       banner.openGlobalKeys({fromHub:true});
       return;
     }
     openSettings({panel:'keys',focus:id});
+  }
+
+  function currentHabitMapping(){
+    var id='';
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activeSceneId){
+      id=String(global.OneToneSceneActivate.activeSceneId()||'').trim();
+    }else{
+      var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+      id=String(cfg&&cfg.activeSceneId||'').trim();
+    }
+    if(id&&global.OneToneMappingCore&&global.OneToneMappingCore.byId){
+      return global.OneToneMappingCore.byId(id);
+    }
+    if(global.OneToneHomeScheme&&global.OneToneHomeScheme.activeMapping){
+      return global.OneToneHomeScheme.activeMapping();
+    }
+    return null;
+  }
+
+  function openHabitChannelChip(channel){
+    channel=String(channel||'').trim();
+    var m=currentHabitMapping();
+    var id=m&&m.id?String(m.id):'';
+    var diff=global.OneToneHabitOverrideDiff;
+    var banner=global.OneToneHabitScenarioContextBanner;
+    var isApp=!!(m&&diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
+
+    if(channel==='keys'){
+      if(isApp&&banner&&banner.openScenarioKeysEdit){
+        banner.openScenarioKeysEdit(id,{returnToHub:false});
+        return;
+      }
+      if(id&&global.OneToneState&&global.OneToneState.state){
+        global.OneToneState.state.selectedMappingId=id;
+      }
+      openSettings({panel:'keys',focus:id||undefined});
+      return;
+    }
+    if(channel==='voice'){
+      if(isApp&&banner&&banner.openScenarioVoiceEdit){
+        banner.openScenarioVoiceEdit(id,{returnToHub:false});
+        return;
+      }
+      if(banner&&banner.openGlobalVoice){
+        banner.openGlobalVoice({fromHub:false});
+        return;
+      }
+      openSettings({panel:'voiceWake'});
+      return;
+    }
+    if(channel==='camera'){
+      if(isApp&&banner&&banner.openScenarioCameraEdit){
+        banner.openScenarioCameraEdit(id,{returnToHub:false});
+        return;
+      }
+      if(banner&&banner.openGlobalCamera){
+        banner.openGlobalCamera({fromHub:false});
+        return;
+      }
+      openSettings({panel:'camera'});
+      return;
+    }
+    if(channel==='softPad'){
+      var hub=global.OneToneSoftPadHub;
+      var softId='';
+      if(m&&hub&&hub.isSoftPadSchemeEligible&&hub.isSoftPadSchemeEligible(m)){
+        softId=id;
+      }
+      if(softId&&global.OneToneState&&global.OneToneState.state){
+        global.OneToneState.state.selectedMappingId=softId;
+      }
+      // No Soft Pad on this habit / none configured → Soft Pad panel (empty CTA when none exist).
+      openSettings({panel:'softPad',mappingId:softId||undefined});
+      return;
+    }
   }
 
   function selectWorkbenchMapping(id){
@@ -622,6 +697,12 @@
     if(!center||center._wbPanelsBound) return;
     center._wbPanelsBound=true;
     center.addEventListener('click',function(e){
+      var channelChip=e.target.closest&&e.target.closest('[data-wb-habit-channel]');
+      if(channelChip){
+        e.preventDefault();
+        openHabitChannelChip(channelChip.getAttribute('data-wb-habit-channel')||'');
+        return;
+      }
       var habitEdit=e.target.closest&&e.target.closest('[data-wb-habit-edit]');
       if(habitEdit){
         openWorkbenchScenario(habitEdit.getAttribute('data-wb-habit-edit')||'');
@@ -681,15 +762,9 @@
       var howto=e.target.closest&&e.target.closest('[data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
-        // Hero tabs own activation mode; howto cards only deep-link to settings.
-        if(kind==='keys'){
-          var vm=global.OneToneHomeV9&&global.OneToneHomeV9.buildViewModel
-            ?global.OneToneHomeV9.buildViewModel():null;
-          openSettings({panel:'keys',focus:vm&&vm.m&&vm.m.id?vm.m.id:null});
-        }else if(kind==='voice'){
-          openSettings({panel:'voiceWake'});
-        }else if(kind==='camera'){
-          openSettings({panel:'camera'});
+        // Hero tabs own activation mode; howto cards deep-link via habit channel paths.
+        if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
+          openHabitChannelChip(kind);
         }
       }
     });

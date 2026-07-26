@@ -785,6 +785,15 @@
       }
     }
 
+    if(panel==='keys'||panel==='voiceWake'||panel==='camera'||panel==='softPad'){
+      if(global.OneToneHabitChannelStatusStrip){
+        if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
+        if(global.OneToneHabitChannelStatusStrip.render){
+          try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+        }
+      }
+    }
+
     lastPanel=panel;
 
     hooks().renderSettingsSchemeSubnav();

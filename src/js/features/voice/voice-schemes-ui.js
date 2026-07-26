@@ -173,9 +173,8 @@
     fn();
   }
 
-  function switchVoiceScheme(id,opts){
-    opts=opts||{};
-    var activate=opts.activate!==false;
+  /** Tab / arrow: edit only — never activate. */
+  function editVoiceScheme(id){
     id=String(id||'').trim();
     if(!id||id===GLOBAL_SCHEME_ID){
       selectVoiceRuntimeGlobal();
@@ -183,35 +182,54 @@
     }
     leaveVoiceSchemeThen(function(){
       setVoiceEditSelection(id);
-      if(!activate){
-        if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
-          global.OneToneVoiceSchemeContext.activateEditingScheme();
-        }
-        scheduleVoiceRender();
-        render();
-        var tabEdit=$('voiceWorkflowTab-'+id);
-        if(tabEdit&&tabEdit.scrollIntoView) tabEdit.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
-        return;
+      if(global.OneToneVoiceSchemeContext&&global.OneToneVoiceSchemeContext.activateEditingScheme){
+        global.OneToneVoiceSchemeContext.activateEditingScheme();
       }
-      var st=state();
-      if(!st) return;
-      if(st.config&&st.config.activeSceneId===id&&String(state().selectedMappingId||'')===id) return;
-      if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
-        global.OneToneSceneActivate.activateScene(id);
+      scheduleVoiceRender();
+      render();
+      var tabEdit=$('voiceWorkflowTab-'+id);
+      if(tabEdit&&tabEdit.scrollIntoView) tabEdit.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+      if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+        try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
       }
-      if(st.config) st.config.activeSceneId=id;
-      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-        global.OneToneConfigPersist.save();
-      }
-      if(global.OneToneSchemeSwitchFeedback&&global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch){
-        global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch();
-      }else{
-        scheduleVoiceRender();
-        render();
-      }
-      var tab=$('voiceWorkflowTab-'+id);
-      if(tab&&tab.scrollIntoView) tab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
     },id);
+  }
+
+  /** Set as in-use only — no leave confirm, no selectedMappingId change. */
+  function setVoiceInUse(id){
+    id=String(id||'').trim();
+    if(!id||id===GLOBAL_SCHEME_ID) return;
+    var st=state();
+    if(!st||!st.config) return;
+    if(String(st.config.activeSceneId||'')===id){
+      if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+        try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+      }
+      return;
+    }
+    if(global.OneToneSceneActivate&&global.OneToneSceneActivate.activateScene){
+      global.OneToneSceneActivate.activateScene(id);
+    }
+    st.config.activeSceneId=id;
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+      global.OneToneConfigPersist.save();
+    }
+    if(global.OneToneSchemeSwitchFeedback&&global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch){
+      global.OneToneSchemeSwitchFeedback.refreshVoiceAfterSceneSwitch();
+    }else{
+      scheduleVoiceRender();
+      render();
+    }
+    if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+      try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+    }
+  }
+
+  /** @deprecated use editVoiceScheme / setVoiceInUse */
+  function switchVoiceScheme(id,opts){
+    opts=opts||{};
+    if(opts.activate===false) editVoiceScheme(id);
+    else setVoiceInUse(id);
   }
 
   function renderGlobalTab(isEditing,isRunning){
@@ -428,7 +446,7 @@
       if(activateBtn){
         e.preventDefault();
         e.stopPropagation();
-        switchVoiceScheme(activateBtn.getAttribute('data-voice-scheme-activate')||'',{activate:true});
+        setVoiceInUse(activateBtn.getAttribute('data-voice-scheme-activate')||'');
         return;
       }
       var renameBtn=e.target.closest&&e.target.closest('[data-voice-scheme-rename]');
@@ -481,7 +499,7 @@
       var tab=e.target.closest&&e.target.closest('[data-voice-scheme-id]');
       if(tab){
         e.preventDefault();
-        switchVoiceScheme(tab.getAttribute('data-voice-scheme-id'),{activate:true});
+        editVoiceScheme(tab.getAttribute('data-voice-scheme-id'));
         return;
       }
       var add=e.target.closest&&e.target.closest('#btnVoiceSchemeAdd');
@@ -507,7 +525,7 @@
         else if(e.key==='ArrowLeft') idx=Math.max(0,idx-1);
         e.preventDefault();
         var next=tabBtns[idx];
-        if(next) switchVoiceScheme(next.getAttribute('data-voice-scheme-id')||'',{activate:true});
+        if(next) editVoiceScheme(next.getAttribute('data-voice-scheme-id')||'');
       });
     }
   }
@@ -528,6 +546,8 @@
     activeRuntimeSchemeId:activeRuntimeSchemeId,
     selectVoiceSchemeForEdit:selectVoiceSchemeForEdit,
     selectVoiceRuntimeGlobal:selectVoiceRuntimeGlobal,
+    editVoiceScheme:editVoiceScheme,
+    setVoiceInUse:setVoiceInUse,
     switchVoiceScheme:switchVoiceScheme,
     renameVoiceScheme:renameVoiceScheme,
     renderVoiceHub:renderVoiceHub,

@@ -495,6 +495,16 @@ html[data-theme="dark"] .wb-dot-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.wb-howto-grid--quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1280px) {
+  .wb-howto-grid--quad {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .wb-howto-grid--trio {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -504,7 +514,8 @@ html[data-theme="dark"] .wb-dot-grid {
 @media (max-width: 960px) {
   .wb-howto-grid,
   .wb-howto-grid--duo,
-  .wb-howto-grid--trio {
+  .wb-howto-grid--trio,
+  .wb-howto-grid--quad {
     grid-template-columns: 1fr;
   }
 }
@@ -564,6 +575,18 @@ html[data-theme="dark"] .wb-dot-grid {
   font-size: 12px;
   font-weight: 800;
   color: var(--on-surface-muted);
+}
+
+.wb-howto-card-status {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .wb-howto-card-main {
@@ -703,6 +726,28 @@ html[data-theme="dark"] .wb-dot-grid {
 .wb-howto-card.is-camera .wb-howto-card-ico {
   background: color-mix(in srgb, var(--wb-cyan) 16%, transparent);
   color: var(--wb-cyan);
+}
+
+.wb-howto-card.is-softPad .wb-howto-card-ico {
+  background: color-mix(in srgb, #6366f1 14%, transparent);
+  color: #4f46e5;
+}
+
+.wb-howto-softpad-art {
+  display: grid;
+  grid-template-columns: repeat(3, 8px);
+  gap: 3px;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.wb-howto-softpad-art i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, #6366f1 35%, var(--outline-variant));
+  background: color-mix(in srgb, #6366f1 14%, transparent);
 }
 
 .wb-howto-cam-dot {
@@ -3158,6 +3203,24 @@ html[data-theme="dark"] .wb-pipeline-node-val.is-finish { color: #a78bfa; }
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(26, 45, 74, 0.04);
+  border: 1px solid transparent;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.wb-habit-bar-chip:hover {
+  border-color: rgba(26, 45, 74, 0.16);
+  background: rgba(26, 45, 74, 0.07);
+  transform: translateY(-1px);
+}
+
+.wb-habit-bar-chip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .wb-habit-bar-chip-lbl {

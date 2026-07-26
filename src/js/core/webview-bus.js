@@ -168,7 +168,7 @@
           hooks().ensureConfig();
           state.config.mappings.forEach(function(mapping){ mapping.enabled=(mapping.id===msg.toId); });
           if(state.config) state.config.activeSceneId=msg.toId;
-          state.selectedMappingId=msg.toId;
+          // Do not touch selectedMappingId — in-use ≠ editing.
         }
         hooks().showSchemeSwitchFeedback(msg.toId, msg.label||'');
       }

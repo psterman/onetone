@@ -465,6 +465,12 @@
     if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.syncScenarioVoiceEditor){
       global.OneToneVoiceStepWake.syncScenarioVoiceEditor();
     }
+    if(global.OneToneHabitChannelStatusStrip){
+      if(global.OneToneHabitChannelStatusStrip.bindOnce) global.OneToneHabitChannelStatusStrip.bindOnce();
+      if(global.OneToneHabitChannelStatusStrip.render){
+        try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
+      }
+    }
   }
 
   function saveCurrentScenario(){

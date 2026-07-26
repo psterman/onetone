@@ -328,7 +328,7 @@
     var mode = opts.mode || 'openExisting';
     var result = mode === 'createNew' ? createNewCodexScenario() : findOrCreateCodexScenario();
     if (!result || !result.mapping) {
-      toast(t('habitCodexApplyFailed', '无法创建 Codex 工作场景'));
+      toast(t('habitCodexApplyFailed', '无法创建 Codex 应用场景'));
       return null;
     }
     var m = result.mapping;
@@ -360,7 +360,7 @@
 
     toast(
       result.created
-        ? t('habitCodexCreated', '已创建 Codex 工作场景 · 常用能力已准备好')
+        ? t('habitCodexCreated', '已创建 Codex 应用场景 · 常用能力已准备好')
         : (opts.reset
           ? t('habitCodexReset', '已重置能力槽位 · 请重新录制快捷键')
           : t('habitCodexUpdated', '常用能力已准备好 · 点击录制你的快捷键'))

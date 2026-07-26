@@ -637,9 +637,34 @@
       var enabled=st.config.mappings.find(function(m){return m.enabled;});
       st.config.activeSceneId=(enabled&&enabled.id)||st.config.mappings[0].id;
     }
-    if(!st.selectedMappingId||!st.config.mappings.some(function(m){ return m.id===st.selectedMappingId; })){
+    // Editing selection is independent of in-use. After first ready:
+    // - null is legal (global voice/camera base edit)
+    // - only heal when id was deleted from mappings
+    var editReady=!!st.__vp_editSelectionReady;
+    var selRaw=st.selectedMappingId;
+    var selId=selRaw==null||selRaw===''?null:String(selRaw).trim();
+    var selExists=!!(selId&&st.config.mappings.some(function(m){ return m.id===selId; }));
+    if(!editReady){
       var active=String(st.config.activeSceneId||'').trim();
-      st.selectedMappingId=(active&&st.config.mappings.some(function(m){ return m.id===active; })?active:st.config.mappings[0].id);
+      if(active&&st.config.mappings.some(function(m){ return m.id===active; })){
+        st.selectedMappingId=active;
+      }else if(st.config.mappings[0]){
+        st.selectedMappingId=st.config.mappings[0].id;
+      }
+      st.__vp_editSelectionReady=true;
+    }else if(selId&&!selExists){
+      var activeHeal=String(st.config.activeSceneId||'').trim();
+      if(activeHeal&&st.config.mappings.some(function(m){ return m.id===activeHeal; })){
+        st.selectedMappingId=activeHeal;
+      }else if(st.config.mappings[0]){
+        st.selectedMappingId=st.config.mappings[0].id;
+      }else{
+        st.selectedMappingId=null;
+      }
+    }else if(selId){
+      st.selectedMappingId=selId;
+    }else{
+      st.selectedMappingId=null;
     }
     if(st.config.schemeSwitchKey===undefined||st.config.schemeSwitchKey===null) st.config.schemeSwitchKey='';
     st.config.schemeSwitchKey='';
@@ -729,7 +754,7 @@
       :null;
     const payload={
       version:6,
-      activeSceneId:String(st.config.activeSceneId||st.selectedMappingId||''),
+      activeSceneId:String(st.config.activeSceneId||''),
       mappings:st.config.mappings.map(function(m,i){
         hooks().ensureMappingExtras(m);
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
@@ -1431,12 +1456,11 @@
       if(msg.update&&normalizeUpdate) st.update=normalizeUpdate(msg.update);
       else if(!st.update&&defaultUpdate) st.update=defaultUpdate();
       ensureConfig();
-      const activeId=String(st.config.activeSceneId||'').trim();
-      if(activeId&&st.config.mappings.some(function(m){ return m.id===activeId; })){
-        st.selectedMappingId=activeId;
-      }else if(!st.selectedMappingId&&st.config.mappings[0]){
-        st.selectedMappingId=st.config.mappings[0].id;
-      }
+      // Do NOT force selectedMappingId = activeSceneId here.
+      // Runtime switch / full config sync must preserve editing selection
+      // (including null = global voice/camera base). Heal-only lives in ensureConfig.
+      // Long-term: mvp_scheme_switched should be a dedicated runtime event that
+      // only merges activeSceneId/enabled/use stats instead of full applyMvpInit.
       const toggleBusy=voiceToggleBusy();
       const selectedMapping=hookFn('selectedMapping');
       const m=selectedMapping?selectedMapping():null;

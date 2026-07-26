@@ -1522,7 +1522,7 @@
     // Soft detect-only hint; no duplicate 配按键/配语音/配摄像头 CTAs (card already has them).
     if(!isCodexDetected()) return '';
     var existing=findAppScenarioByAppId(A.APP_TARGET_ID);
-    var title=t('habitCodexDetectTitle','检测到 Codex，可创建 Codex 工作场景');
+    var title=t('habitCodexDetectTitle','检测到 Codex，可创建 Codex 应用场景');
     var hint=existing
       ?t('habitCodexDetectHintReady','常用能力已准备好 · 在下方场景卡中改按键 / 配语音 / 配摄像头')
       :t('habitCodexDetectHint','点「+ 新建应用场景」选择 Codex，即可准备常用能力');
@@ -1533,7 +1533,7 @@
       +'</div>';
     if(!existing){
       html+='<button type="button" class="habit-hub-act is-primary" data-habit-codex-apply>'
-        +esc(t('habitCodexApply','创建 Codex 场景'))+'</button>';
+        +esc(t('habitCodexApply','创建 Codex 应用场景'))+'</button>';
     }
     html+='</div>';
     return html;
@@ -1571,7 +1571,7 @@
     if(A){
       html+='<button type="button" class="habit-hub-codex-recommend" data-habit-codex-apply role="listitem">'
         +'<span class="habit-hub-codex-recommend-badge">'+esc(t('habitCodexBadge','OneTone 推荐'))+'</span>'
-        +'<span class="habit-hub-codex-recommend-title">'+esc(t('habitCodexCardTitle','Codex 工作场景'))+'</span>'
+        +'<span class="habit-hub-codex-recommend-title">'+esc(t('habitCodexCardTitle','Codex 应用场景'))+'</span>'
         +'<span class="habit-hub-codex-recommend-sub">'+esc(t('habitCodexCardSub','一键准备常用能力与推荐快捷键'))+'</span>'
         +'<span class="habit-hub-codex-recommend-note">'+esc(A.DISCLAIMER_ZH)+'</span>'
         +'</button>';

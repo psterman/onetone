@@ -525,7 +525,7 @@
   function emptyCreateCtaHtml() {
     return '<p class="soft-pad-empty__title">' + esc(t('softPadEmptyTitle', '还没有可配置的应用场景')) + '</p>' +
       '<p class="soft-pad-empty__desc">' +
-      esc(t('softPadEmptyDesc', '虚拟键盘挂在应用场景上，没有全局小键盘。请先创建 Codex 或 Claude 应用场景。')) +
+      esc(t('softPadBoundaryHint', '虚拟键盘只绑定到应用场景。先创建 Codex 或 Claude 应用场景，再配置它的虚拟键盘。')) +
       '</p>' +
       '<div class="soft-pad-empty__actions">' +
       '<button type="button" class="codex-micro-pad__btn codex-micro-pad__btn--primary" data-soft-pad-create-kind="codex">' +
@@ -1440,6 +1440,9 @@
       immediateMgr: !!opts.immediateMgr,
       previewOnly: !!opts.previewOnly
     });
+    if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+      try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+    }
   }
 
   function selectScope(scopeId, opts) {
@@ -1797,6 +1800,10 @@
         empty.innerHTML = emptyCreateCtaHtml();
         bindEmptyCreateCtas(empty);
       }
+      ensureSoftPadBoundaryHint();
+      if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+        try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+      }
       feLog('fe softPad.render empty ' + (Date.now() - t0) + 'ms');
       return;
     }
@@ -1816,7 +1823,34 @@
       immediateMgr: false,
       resetView: true
     });
+    ensureSoftPadBoundaryHint();
+    if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+      try { global.OneToneHabitChannelStatusStrip.render(); } catch (_) {}
+    }
     feLog('fe softPad.render chrome ' + (Date.now() - t0) + 'ms map=' + String(getSelectedMappingId() || ''));
+  }
+
+  function ensureSoftPadBoundaryHint() {
+    var panel = document.getElementById('settingsPanelSoftPad');
+    if (!panel) return;
+    var hint = document.getElementById('softPadBoundaryHint');
+    if (!hint) {
+      hint = document.createElement('p');
+      hint.id = 'softPadBoundaryHint';
+      hint.className = 'soft-pad-boundary-hint';
+      hint.setAttribute('role', 'note');
+      var status = document.getElementById('softPadStatusBar');
+      var strip = document.getElementById('habitChannelStatusStripSoftPad');
+      var anchor = status || panel.firstChild;
+      if (strip && strip.nextSibling) panel.insertBefore(hint, strip.nextSibling);
+      else if (status) panel.insertBefore(hint, status);
+      else panel.insertBefore(hint, anchor);
+    }
+    hint.textContent = t('softPadBoundaryHint',
+      '虚拟键盘只绑定到应用场景。先创建 Codex 或 Claude 应用场景，再配置它的虚拟键盘。');
+    var entries = listSoftPadSchemes();
+    // Always show boundary when no real Soft Pad app scenarios exist.
+    hint.hidden = entries.length > 0;
   }
 
   function showList() { render({}); }

@@ -3649,6 +3649,33 @@
     .habit-scenario-access-badge.is-inherit{color:var(--on-surface-muted);background:var(--surface-soft)}
     .habit-scenario-access-badge.is-override{color:var(--primary);border-color:rgba(42,156,196,.28);background:rgba(42,156,196,.08)}
     .habit-scenario-access-badge.is-disabled{color:#b45309;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.12)}
+    .habit-channel-status-strip{
+      margin:0 0 10px;padding:10px 12px;border-radius:12px;
+      border:1px solid rgba(26,45,74,.12);background:rgba(26,45,74,.04);
+    }
+    .habit-channel-status-strip-main{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    }
+    .habit-channel-status-strip-lines{min-width:0;flex:1}
+    .habit-channel-status-strip-editing,
+    .habit-channel-status-strip-active{
+      margin:0;font-size:12px;font-weight:750;line-height:1.4;color:var(--on-surface);
+    }
+    .habit-channel-status-strip-active{margin-top:2px;color:var(--on-surface-muted);font-weight:650}
+    .habit-channel-status-strip-hint{
+      margin:6px 0 0;font-size:11px;line-height:1.4;color:var(--on-surface-muted);font-weight:600;
+    }
+    .habit-channel-status-strip-btn{
+      appearance:none;border:1px solid rgba(26,45,74,.16);background:var(--surface,#fff);
+      color:var(--on-surface);border-radius:10px;padding:7px 10px;font-size:12px;font-weight:750;cursor:pointer;
+      white-space:nowrap;
+    }
+    .habit-channel-status-strip-btn[hidden]{display:none!important}
+    .soft-pad-boundary-hint{
+      margin:0 0 10px;padding:10px 12px;border-radius:12px;
+      border:1px dashed rgba(26,45,74,.18);background:rgba(245,158,11,.06);
+      font-size:12px;line-height:1.45;color:var(--on-surface-muted);font-weight:650;
+    }
     .habit-scenario-context-banner{
       display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
       margin:0 0 10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(42,156,196,.35);

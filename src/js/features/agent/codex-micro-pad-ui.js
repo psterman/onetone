@@ -578,9 +578,9 @@
     }
     switch (r.blocker) {
       case 'no_mapping':
-        return t('codexMicroPadReadinessNoMapping', '请先创建 Codex 工作场景');
+        return t('codexMicroPadReadinessNoMapping', '请先创建 Codex 应用场景');
       case 'mapping_off':
-        return t('codexMicroPadReadinessMappingOff', '请启用 Codex 工作场景');
+        return t('codexMicroPadReadinessMappingOff', '请启用 Codex 应用场景');
       case 'pad_off':
         return t('codexMicroPadReadinessPadOff', '请开启「启用小键盘」');
       case 'not_foreground':
@@ -1890,7 +1890,7 @@
       }
       if (cell.microKeyId === 'ENC') {
         tipName = codexOn
-          ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+          ? t('codexMicroPadModeCodex', '虚拟键盘模式')
           : t('codexMicroPadModeNumpad', '数字键模式');
       }
       var ariaTip = tipChord ? (tipName + ' · ' + tipChord) : tipName;
@@ -2094,7 +2094,7 @@
       return;
     }
     if (reason === 'no_profile') {
-      toast(t('codexMicroPadNoProfile', '未找到 Codex 场景配置'));
+      toast(t('codexMicroPadNoProfile', '未找到 Codex 应用场景配置'));
       return;
     }
     if (res.ok) {
@@ -3839,7 +3839,7 @@
     }
     if (reason === 'hold_busy') return;
     if (reason === 'numpad_mode') {
-      toast(t('codexMicroPadNumpadPassThrough', '请先打开模式开关 · 切换到 Codex 场景'));
+      toast(t('codexMicroPadNumpadPassThrough', '请先打开模式开关 · 切换到虚拟键盘模式'));
       return;
     }
     if (reason === 'fired' || reason === 'enhance_pulse') {
@@ -4327,7 +4327,7 @@
         previewPadMode = pad.enabled ? 'codex' : 'numpad';
         persistPadFlags(m);
         toast(pad.enabled
-          ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+          ? t('codexMicroPadModeCodex', '虚拟键盘模式')
           : t('codexMicroPadModeNumpad', '数字键模式'));
         if (!remountSoftPadPreviewShell(host, m)) {
           renderSoftPadPreview(host, m, { forceFull: true });
@@ -5505,7 +5505,7 @@
       '<div class="codex-pad-mgr__settings">' +
       '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="enabled"' +
       (pad.enabled ? ' checked' : '') + '>' +
-      esc(t('codexMicroPadEnableCodex', 'Codex 场景映射（关=数字键模式）')) + '</label>' +
+      esc(t('codexMicroPadEnableCodex', '虚拟键盘映射（关=数字键模式）')) + '</label>' +
       '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="overlay"' +
       (pad.overlayEnabled ? ' checked' : '') + '>' +
       esc(t('codexMicroPadOverlayEnable', '前台置顶小键盘')) + '</label>' +
@@ -6003,7 +6003,7 @@
           setTimeout(function () { sw._padModeBusy = false; }, 220);
           previewPadMode = previewPadMode === 'codex' ? 'numpad' : 'codex';
           toast(previewPadMode === 'codex'
-            ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+            ? t('codexMicroPadModeCodex', '虚拟键盘模式')
             : t('codexMicroPadModeNumpad', '数字键模式'));
           rerenderPreviewLocal();
           return;
@@ -6019,7 +6019,7 @@
         previewPadMode = pad.enabled ? 'codex' : 'numpad';
         persistPadFlags(m);
         toast(pad.enabled
-          ? t('codexMicroPadModeCodex', 'Codex 场景模式')
+          ? t('codexMicroPadModeCodex', '虚拟键盘模式')
           : t('codexMicroPadModeNumpad', '数字键模式'));
         if (document.getElementById('codexPadMgrBody')) {
           if (!remountPadManagerShell(m)) renderPadManager(m, { skipHookRefresh: true });
