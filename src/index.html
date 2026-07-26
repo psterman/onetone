@@ -40,7 +40,7 @@
         </div>
       </div>
       <div class="header-actions">
-        <button type="button" class="vp-header-target" id="vp9HeaderTarget" title="">
+        <button type="button" class="vp-header-target" id="vp9HeaderTarget" title="当前目标应用" aria-label="当前目标应用">
           <span class="logo" aria-hidden="true">◎</span>
           <span class="vp-header-target-label">—</span>
           <span aria-hidden="true">▾</span>
@@ -171,7 +171,7 @@
                               <div class="wb-hero-ripple" aria-hidden="true"></div>
                               <div class="wb-hero-ring-outer" aria-hidden="true">
                                 <div class="wb-hero-ring-middle">
-                                  <button type="button" class="wb-hero-orb" id="wbHeroOrb" data-mode="voice" aria-label="">
+                                  <button type="button" class="wb-hero-orb" id="wbHeroOrb" data-mode="voice" aria-label="听写状态 · 点击切换或开始">
                                     <span class="wb-hero-orb-icon" id="wbHeroOrbIcon" aria-hidden="true">
                                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v11m0 0a4 4 0 01-4-4V5a4 4 0 118 0v4a4 4 0 01-4 4zm0 0v3m0 0a7 7 0 01-7-7M12 15a7 7 0 007-7M12 18v3m-3 0h6"/></svg>
                                     </span>
@@ -2640,21 +2640,27 @@
                           </div>
                         </div>
                         <select id="cameraDeviceSelect" class="camera-device-select" aria-label="摄像头设备"></select>
-                        <div class="camera-runtime-status camera-runtime-status--card" id="cameraRuntimeStatus">
-                          <div class="camera-card-kicker" data-i18n="cameraRuntimeStatusKicker">运行状态</div>
-                          <p class="camera-runtime-status-text" id="cameraRuntimeStatusText" data-i18n="cameraRuntimeStatusIdle">已配置 · 未运行</p>
-                          <p class="camera-runtime-event-text" id="cameraRuntimeEventText" data-i18n="cameraRuntimeNoEvent">尚无识别事件</p>
-                          <ul class="camera-quality-summary-list" id="cameraQualitySummary">
-                            <li><span data-i18n="cameraQualityFaceLabel">人脸</span>：<strong id="cameraQualityFaceText">—</strong></li>
-                            <li><span data-i18n="cameraQualityGestureLabel">手势</span>：<strong id="cameraQualityGestureText">—</strong></li>
-                            <li><span data-i18n="cameraQualityGazeLabel">视线</span>：<strong id="cameraQualityGazeText">—</strong></li>
-                            <li><span data-i18n="cameraQualityCalibLabel">校准</span>：<strong id="cameraQualityCalibText">—</strong></li>
-                          </ul>
-                          <div class="camera-action-bar camera-runtime-actions">
-                            <button type="button" class="control-btn" id="cameraRuntimeStopBtn" hidden data-i18n="cameraRuntimeStop">停止摄像头</button>
-                            <button type="button" class="control-btn is-primary" id="cameraRuntimeRestartBtn" hidden data-i18n="cameraRuntimeRestart">重新启动</button>
+                        <section class="camera-media-settings camera-media-settings--panel camera-media-settings--below-preview" id="cameraMediaSettings">
+                          <div class="camera-card-kicker" data-i18n="cameraMediaSettingsSummary">设备参数</div>
+                          <div class="camera-card-title" data-i18n="cameraMediaSettingsTitle">方向 · 分辨率 · 帧率</div>
+                          <div class="camera-media-settings-body camera-media-settings-body--compact">
+                            <div class="camera-media-select-row camera-media-select-row--triple">
+                              <label class="camera-media-field">
+                                <span class="camera-media-label" data-i18n="cameraResOrientationLabel">屏幕方向</span>
+                                <select id="cameraResGroupSelect" class="camera-device-select camera-cap-select" aria-label="屏幕方向"></select>
+                              </label>
+                              <label class="camera-media-field">
+                                <span class="camera-media-label" data-i18n="cameraInfoResolution">分辨率</span>
+                                <select id="cameraResSelect" class="camera-device-select camera-cap-select" aria-label="分辨率"></select>
+                              </label>
+                              <label class="camera-media-field camera-media-field--fps">
+                                <span class="camera-media-label" data-i18n="cameraCapFrameRate">FPS</span>
+                                <select id="cameraFpsSelect" class="camera-device-select camera-cap-select" aria-label="FPS"></select>
+                              </label>
+                            </div>
+                            <p class="camera-cap-hint" id="cameraCapabilityHint" data-i18n="cameraCapHintIdle">开启识别后可从下拉菜单切换分辨率与帧率</p>
                           </div>
-                        </div>
+                        </section>
                       </div>
                       <span class="sr-only" id="cameraPresenceStatusPill" data-i18n="cameraPresenceStateIdle">待命</span>
                       <span class="sr-only" id="cameraPresenceHeadText">—</span>
@@ -2666,26 +2672,21 @@
                     </aside>
 
                     <div class="camera-execution-side" id="cameraExecutionSide">
-                      <section class="camera-media-settings camera-media-settings--panel" id="cameraMediaSettings">
-                        <div class="camera-card-kicker" data-i18n="cameraMediaSettingsSummary">设备参数</div>
-                        <div class="camera-card-title" data-i18n="cameraMediaSettingsTitle">分辨率与帧率</div>
-                        <div class="camera-media-settings-body">
-                          <div class="camera-media-block">
-                            <div class="camera-media-label" data-i18n="cameraInfoResolution">分辨率</div>
-                            <div class="scene-tab-bar camera-res-group-bar" id="cameraResGroupBar" role="tablist" aria-label="resolution aspect">
-                              <button type="button" class="scene-tab is-active" data-res-group="landscape" role="tab" aria-selected="true" data-i18n="cameraResGroupLandscape">横屏</button>
-                              <button type="button" class="scene-tab" data-res-group="portrait" role="tab" aria-selected="false" data-i18n="cameraResGroupPortrait">竖屏</button>
-                              <button type="button" class="scene-tab" data-res-group="square" role="tab" aria-selected="false" data-i18n="cameraResGroupSquare">方形</button>
-                            </div>
-                            <div class="camera-fps-pills camera-res-pills" id="cameraResPills" role="group" aria-label="resolution"></div>
-                          </div>
-                          <div class="camera-media-block camera-fps-block">
-                            <div class="camera-media-label" data-i18n="cameraCapFrameRate">FPS</div>
-                            <div class="camera-fps-pills" id="cameraFpsPills" role="group" aria-label="FPS"></div>
-                          </div>
-                          <p class="camera-cap-hint" id="cameraCapabilityHint" data-i18n="cameraCapHintIdle">开启识别后可切换分辨率与帧率</p>
+                      <div class="camera-runtime-status camera-runtime-status--card" id="cameraRuntimeStatus">
+                        <div class="camera-card-kicker" data-i18n="cameraRuntimeStatusKicker">运行状态</div>
+                        <p class="camera-runtime-status-text" id="cameraRuntimeStatusText" data-i18n="cameraRuntimeStatusIdle">已配置 · 未运行</p>
+                        <p class="camera-runtime-event-text" id="cameraRuntimeEventText" data-i18n="cameraRuntimeNoEvent">尚无识别事件</p>
+                        <ul class="camera-quality-summary-list" id="cameraQualitySummary">
+                          <li><span data-i18n="cameraQualityFaceLabel">人脸</span>：<strong id="cameraQualityFaceText">—</strong></li>
+                          <li><span data-i18n="cameraQualityGestureLabel">手势</span>：<strong id="cameraQualityGestureText">—</strong></li>
+                          <li><span data-i18n="cameraQualityGazeLabel">视线</span>：<strong id="cameraQualityGazeText">—</strong></li>
+                          <li><span data-i18n="cameraQualityCalibLabel">校准</span>：<strong id="cameraQualityCalibText">—</strong></li>
+                        </ul>
+                        <div class="camera-action-bar camera-runtime-actions">
+                          <button type="button" class="control-btn" id="cameraRuntimeStopBtn" hidden data-i18n="cameraRuntimeStop">停止摄像头</button>
+                          <button type="button" class="control-btn is-primary" id="cameraRuntimeRestartBtn" hidden data-i18n="cameraRuntimeRestart">重新启动</button>
                         </div>
-                      </section>
+                      </div>
 
                       <section class="camera-calib-block" id="cameraCalibBlock">
                         <div class="camera-card-kicker" data-i18n="cameraCalibBlockKicker">校准</div>

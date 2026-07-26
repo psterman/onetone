@@ -1895,32 +1895,32 @@
       }
       var ariaTip = tipChord ? (tipName + ' · ' + tipChord) : tipName;
       var encModeAttr = cell.microKeyId === 'ENC' ? ' data-act="pad-mode"' : '';
-      var metaName = '';
-      var metaChord = '';
-      if (cell.microKeyId === 'ENC') {
-        metaName = tipName;
-        metaChord = codexOn ? 'ON' : 'OFF';
+        var metaName = '';
+        var metaChord = '';
+        if (cell.microKeyId === 'ENC') {
+          metaName = tipName;
+          metaChord = codexOn ? 'ON' : 'OFF';
       } else if (!isNp && isNavMicroKey(cell.microKeyId)) {
-        metaName = cellLabel(cell);
-        metaChord = bound && route && route.slotId
-          ? friendlyChord(chordForSlot(m, route.slotId))
-          : t('codexMicroPadNavDefault', '默认注入方向键');
+          metaName = cellLabel(cell);
+          metaChord = bound && route && route.slotId
+            ? friendlyChord(chordForSlot(m, route.slotId))
+            : t('codexMicroPadNavDefault', '默认注入方向键');
       } else if (!isNp && bound && route && route.slotId) {
-        var insertCap = '';
-        var A = agent();
-        if (A && A.insertTextForSlot) {
-          var ins = A.insertTextForSlot(route.slotId);
-          if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
-        }
-        metaName = insertCap || slotLabel(route.slotId) || cellLabel(cell);
-        metaChord = friendlyChord(chordForSlot(m, route.slotId));
-        if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
-          var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
-          metaChord = numLbl + (metaChord ? ' · ' + metaChord : '');
-        }
+          var insertCap = '';
+          var A = agent();
+          if (A && A.insertTextForSlot) {
+            var ins = A.insertTextForSlot(route.slotId);
+            if (ins) insertCap = (lang().toLowerCase().indexOf('en') === 0 ? 'Insert ' : '插入 ') + ins;
+          }
+          metaName = insertCap || slotLabel(route.slotId) || cellLabel(cell);
+          metaChord = friendlyChord(chordForSlot(m, route.slotId));
+          if (cell.microKeyId === 'ACT10' && route && Number(route.sourceScan) > 0) {
+            var numLbl = scanLabel(route.sourceScan, route.sourceExtended);
+            metaChord = numLbl + (metaChord ? ' · ' + metaChord : '');
+          }
       } else if (!isNp) {
-        metaName = cellLabel(cell);
-        metaChord = t('codexMicroPadUnbound', '未配置');
+          metaName = cellLabel(cell);
+          metaChord = t('codexMicroPadUnbound', '未配置');
       } else {
         metaName = String(cell.digit || cell.uiLabelZh || cell.microKeyId || '');
       }
@@ -1947,8 +1947,8 @@
     // Overlay / manager keep them for run-status chrome. Not clickable; no protocol impact.
     if (mode !== 'softPad') {
       html +=
-        '<div class="micro-hw__leds" data-pad-status="' + esc(padRunStatus) + '" aria-hidden="true">' +
-        '<span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>' +
+      '<div class="micro-hw__leds" data-pad-status="' + esc(padRunStatus) + '" aria-hidden="true">' +
+      '<span class="micro-hw__led"></span><span class="micro-hw__led"></span><span class="micro-hw__led"></span>' +
         '</div>';
     }
     html += '</div></div></div>' +
@@ -5352,10 +5352,10 @@
         if (opts.panel === 'layout' && softPadPanelActive()) {
           restoreDefaultCustomLayout(m);
         } else {
-          var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
-            ? pad.layoutProfile
-            : 'standard';
-          applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
+        var profile = pad.layoutProfile === 'beginner' || pad.layoutProfile === 'advanced'
+          ? pad.layoutProfile
+          : 'standard';
+        applyLayoutProfile(m, profile, { persist: true, resetKeys: true });
         }
         softPadPanelChanged(m, opts);
         toast(t('codexMicroPadRestored', '已恢复默认：实体 12 键 + 屏幕总开关'));
@@ -5417,11 +5417,11 @@
           clearCapabilityMappings(m);
           toast(t('softPadLayoutCleared', '已清空按键能力绑定（滚轮/摇杆增强仍可用）'));
         } else {
-          pad.keys = [];
-          protectPrimaryLayout(pad);
-          invalidatePadHeal(m);
+        pad.keys = [];
+        protectPrimaryLayout(pad);
+        invalidatePadHeal(m);
           persistLayout(m);
-          toast(t('codexMicroPadCleared', '已清空小键盘映射'));
+        toast(t('codexMicroPadCleared', '已清空小键盘映射'));
         }
         softPadPanelChanged(m, opts);
       });
@@ -5496,7 +5496,7 @@
       esc(t('codexMicroPadNumLockOff', 'NumLock 关闭时接管小键盘')) + '</label>' +
       '<div data-pad-enhance-wrap="1"' + (showEnhance ? '' : ' hidden') + '>' +
       '<label class="codex-pad-mgr__setting"><input type="checkbox" data-act="enhance"' +
-      (pad.softwareEnhanceEnabled ? ' checked' : '') + '>' +
+          (pad.softwareEnhanceEnabled ? ' checked' : '') + '>' +
       esc(t('codexMicroPadEnhanceEnable', '软件增强：总开关滚轮 / 摇杆方向')) + '</label>' +
       '</div>' +
       '</div>';
@@ -5744,7 +5744,7 @@
         // Soft remount pad shell + patch profile chrome — avoid full manager rebuild 假死.
         patchSoftPadLayoutProfileUi(body, pad);
         if (!remountPadManagerShell(m)) {
-          renderPadManager(m, { skipHookRefresh: true });
+        renderPadManager(m, { skipHookRefresh: true });
         }
         notifyLinkedUi(m);
       });
@@ -6154,10 +6154,10 @@
           '<p class="soft-pad-keycap-editor__key-name" id="microHwEditSub"></p>' +
           '</div></div>'
         : '<div class="micro-hw-modal__head">' +
-          '<div><p class="micro-hw-modal__title" id="microHwEditTitle"></p>' +
+      '<div><p class="micro-hw-modal__title" id="microHwEditTitle"></p>' +
           '<p class="micro-hw-modal__sub" id="microHwEditSub"></p>' +
           '<p class="micro-hw-modal__lead" id="microHwEditLead"></p></div>' +
-          '<button type="button" class="micro-hw-modal__close" data-act="close" aria-label="Close">×</button>' +
+      '<button type="button" class="micro-hw-modal__close" data-act="close" aria-label="Close">×</button>' +
           '</div>') +
       '<div class="soft-pad-keycap-editor__scroll">' +
       // Effect first — stay visible while picking a capability below.
@@ -6398,7 +6398,7 @@
       var lead = document.getElementById('microHwEditLead');
       if (lead) {
         lead.textContent = isNavMicroKey(microKeyId)
-          ? t('codexMicroPadNavEditSub', '方向键默认注入箭头；可选绑定能力覆盖')
+      ? t('codexMicroPadNavEditSub', '方向键默认注入箭头；可选绑定能力覆盖')
           : t('codexMicroEditHint', '先选择这个键的动作；键帽图标只影响外观。');
       }
       var capTitle = document.getElementById('microHwCapTitle');
@@ -6442,12 +6442,12 @@
           : (isNavMicroKey(microKeyId)
             ? t('codexMicroPadNavScreenOnly', '屏幕方向键 · 无实体扫码')
             : t('codexMicroPadTapRecord', '点击绑定')));
-      if (microKeyId === 'ENC' || isNavMicroKey(microKeyId)) {
+    if (microKeyId === 'ENC' || isNavMicroKey(microKeyId)) {
         recBtn.disabled = true;
         recBtn.title = microKeyId === 'ENC'
           ? t('codexMicroPadEncScreenOnly', '总开关默认仅屏幕点击，不占用小键盘 0（说话键）')
           : t('codexMicroPadNavScreenOnly', '屏幕方向键 · 无实体扫码');
-      } else {
+    } else {
         recBtn.disabled = false;
         recBtn.title = '';
       }

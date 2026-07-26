@@ -1,4 +1,5 @@
-/* Soft Pad page — status + app switcher + hero preview + light aside */
+/* Soft Pad page - status + app switcher + hero preview + light aside
+   Colors follow app.css tokens (cyan brand), not a separate Tailwind blue system. */
 .soft-pad-page-head { margin-bottom: 8px; }
 
 .soft-pad-app-switcher {
@@ -7,24 +8,24 @@
   gap: 8px;
   margin: 0 0 8px;
   padding: 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(26, 45, 74, 0.1);
-  background: rgba(248, 250, 252, 0.92);
+  border-radius: var(--radius-row, 16px);
+  border: 1px solid var(--outline-variant);
+  background: color-mix(in srgb, var(--surface-high) 92%, transparent);
 }
 .soft-pad-scope-hint {
   margin: 0 0 12px;
   padding: 0 4px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #64748b;
+  font-size: var(--type-body, 13px);
+  line-height: var(--type-lh-body, 1.45);
+  color: var(--on-surface-muted);
 }
 .soft-pad-app-chip {
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
-  color: #64748b;
+  color: var(--on-surface-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-body, 13px);
   font-weight: 600;
   padding: 8px 14px;
   border-radius: 10px;
@@ -35,13 +36,17 @@
   gap: 7px;
 }
 .soft-pad-app-chip:hover {
-  color: #334155;
-  background: rgba(255, 255, 255, 0.85);
+  color: var(--btn-label);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+.soft-pad-app-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .soft-pad-app-chip.is-active {
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.28);
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: var(--outline);
 }
 .soft-pad-app-chip[data-scope="claude"].is-active {
   color: #b45309;
@@ -49,9 +54,9 @@
   border-color: rgba(217, 119, 6, 0.28);
 }
 .soft-pad-app-chip[data-scope="cursor"].is-active {
-  color: #334155;
-  background: rgba(100, 116, 139, 0.16);
-  border-color: rgba(100, 116, 139, 0.28);
+  color: var(--btn-label);
+  background: color-mix(in srgb, var(--indigo-muted) 18%, transparent);
+  border-color: color-mix(in srgb, var(--indigo-muted) 32%, transparent);
 }
 .soft-pad-app-chip[data-scope="minimax"].is-active {
   color: #6d28d9;
@@ -139,7 +144,7 @@
   border-radius: 16px;
   border: 1px solid rgba(26, 45, 74, 0.08);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.06), transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(42, 156, 196, 0.06), transparent 55%),
     rgba(248, 250, 252, 0.65);
   box-sizing: border-box;
 }
@@ -192,7 +197,7 @@
 .soft-pad-key-caption__chord {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--on-surface-muted);
   max-width: 28%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -234,7 +239,7 @@
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.4;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 .soft-pad-func-tile {
   appearance: none;
@@ -309,7 +314,7 @@
   place-items: center;
   font-size: 13px;
   font-weight: 750;
-  color: #64748b;
+  color: var(--on-surface-muted);
   flex-shrink: 0;
 }
 .soft-pad-func-tile__copy {
@@ -325,7 +330,7 @@
 .soft-pad-func-tile__sub {
   font-size: 12px;
   line-height: 1.35;
-  color: #64748b;
+  color: var(--on-surface-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -335,7 +340,7 @@
   max-width: 120px;
   font-size: 12px;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--indigo-muted);
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
@@ -349,7 +354,7 @@
   align-items: flex-start;
   gap: 6px;
   padding: 20px 18px;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 .soft-pad-detail-idle[hidden] {
   display: none !important;
@@ -364,7 +369,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 .soft-pad-detail-panel {
   flex: 1 1 auto;
@@ -400,7 +405,7 @@
   flex-direction: column;
 }
 /* Only lock scroll while editing keycaps on the layout panel.
-   Leaving `is-editing-key` on「何时显示」used to clip cards 2/3 (no scroll). */
+   Leaving `is-editing-key` on銆屼綍鏃舵樉绀恒€島sed to clip cards 2/3 (no scroll). */
 .soft-pad-subpage-body.is-editing-key[data-soft-pad-panel="layout"] {
   overflow: hidden;
 }
@@ -423,8 +428,8 @@
   flex: 0 0 auto;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(37, 99, 235, 0.06);
-  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: rgba(42, 156, 196, 0.06);
+  border: 1px solid rgba(42, 156, 196, 0.12);
 }
 .soft-pad-layout-lead {
   margin: 0;
@@ -459,7 +464,7 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 .soft-pad-layout-actions[open] .soft-pad-layout-actions-label {
   margin-bottom: 8px;
@@ -535,7 +540,7 @@
   margin: 0 0 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(42, 156, 196, 0.14);
   background: rgba(248, 250, 252, 0.97);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
 }
@@ -608,7 +613,7 @@
 .soft-pad-empty__desc {
   margin: 0;
   font-size: 13px;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 .codex-pad-mgr__fold,
 .codex-pad-mgr__agent-connect {
@@ -640,7 +645,7 @@
   flex: 1 1 180px;
 }
 
-/* Soft Pad scheme rows — reuse keys-hub layout; leading app icon only */
+/* Soft Pad scheme rows - reuse keys-hub layout; leading app icon only */
 .soft-pad-scheme-leading-icon {
   width: 20px;
   height: 20px;
@@ -686,13 +691,13 @@ html[data-theme="dark"] #settingsPanelSoftPad .keys-aside-card {
 }
 
 html[data-theme="dark"] .soft-pad-scope-hint {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-func-tiles__title {
   color: #e2e8f0;
 }
 html[data-theme="dark"] .soft-pad-func-tiles__sub {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-func-tile {
   background: rgba(30, 40, 56, 0.85);
@@ -727,7 +732,7 @@ html[data-theme="dark"] .soft-pad-func-tile__index,
 html[data-theme="dark"] .soft-pad-func-tile__status,
 html[data-theme="dark"] .soft-pad-func-tile__sub,
 html[data-theme="dark"] .soft-pad-agent-guide p {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-detail {
   background: rgba(30, 40, 56, 0.75);
@@ -737,7 +742,7 @@ html[data-theme="dark"] .soft-pad-detail-idle__title {
   color: #e2e8f0;
 }
 html[data-theme="dark"] .soft-pad-detail-idle__sub {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-subpage-body {
   background: rgba(30, 40, 56, 0.85);
@@ -752,7 +757,7 @@ html[data-theme="dark"] .soft-pad-layout-lead {
 }
 html[data-theme="dark"] .soft-pad-layout-enhance-hint,
 html[data-theme="dark"] .soft-pad-layout-actions-label {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-layout-actions {
   background: rgba(30, 40, 56, 0.75);
@@ -774,7 +779,7 @@ html[data-theme="dark"] .soft-pad-app-switcher {
   border-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .soft-pad-app-chip {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-app-chip:hover {
   color: #e2e8f0;
@@ -797,7 +802,7 @@ html[data-theme="dark"] .soft-pad-key-caption__name {
   color: #e2e8f0;
 }
 html[data-theme="dark"] .soft-pad-key-caption__chord {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .codex-pad-mgr__fold,
 html[data-theme="dark"] .codex-pad-mgr__agent-connect {
@@ -812,7 +817,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   color: #9aa8b8;
 }
 
-/* ── 何时显示：显示方式场景动画 + 数字键映射 ── */
+/* 鈹€鈹€ 浣曟椂鏄剧ず锛氭樉绀烘柟寮忓満鏅姩鐢?+ 鏁板瓧閿槧灏?鈹€鈹€ */
 .soft-pad-runtime-show {
   margin-bottom: 16px;
 }
@@ -1164,7 +1169,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   margin: 6px 0 0;
   text-align: center;
   font-size: 11px;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 
 /* Taskbar active underline follows foreground window */
@@ -1177,7 +1182,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   animation: soft-pad-scene-task-other 3.6s ease-in-out infinite;
 }
 
-/* follow: target FG ↔ other FG, float appears only with target */
+/* follow: target FG 鈫?other FG, float appears only with target */
 .soft-pad-show-scene[data-show-scene="follow"] .soft-pad-show-scene__win--target {
   animation: soft-pad-scene-fg-target 3.6s ease-in-out infinite;
 }
@@ -1309,7 +1314,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   margin: 0 0 8px;
   font-size: 11px;
   line-height: 1.45;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 .soft-pad-feature-card.is-disabled {
   opacity: 0.62;
@@ -1372,7 +1377,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   margin: 8px 0 0;
   font-size: 11px;
   line-height: 1.45;
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 
 /* Step 1+2: realistic numpad / Soft Pad demo */
@@ -1394,12 +1399,12 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
-  color: #334155;
+  color: var(--btn-label);
   background: rgba(100, 116, 139, 0.14);
 }
 .soft-pad-demo-compare__tag.is-soft {
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.14);
+  color: var(--primary-strong);
+  background: rgba(42, 156, 196, 0.14);
 }
 .soft-pad-demo-compare__bridge {
   flex: 0 0 44px;
@@ -1413,14 +1418,14 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   width: 100%;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.15), rgba(37, 99, 235, 0.85), rgba(15, 23, 42, 0.15));
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.15), rgba(42, 156, 196, 0.85), rgba(15, 23, 42, 0.15));
   background-size: 200% 100%;
   animation: soft-pad-numpad-flow 1.6s linear infinite;
 }
 .soft-pad-demo-compare__bridge-txt {
   font-size: 9px;
   font-weight: 800;
-  color: #1d4ed8;
+  color: var(--primary-strong);
   white-space: nowrap;
 }
 .soft-pad-demo-chassis {
@@ -1582,7 +1587,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   opacity: 0.78;
 }
 .soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__bridge-txt {
-  color: #64748b;
+  color: var(--on-surface-muted);
 }
 @keyframes soft-pad-nav-key-pulse {
   0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); filter: brightness(1); }
@@ -1632,7 +1637,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   border-color: rgba(30, 64, 175, 0.45);
 }
 .soft-pad-demo-face--soft .soft-pad-demo-key--command {
-  background: linear-gradient(180deg, #94a3b8, #64748b);
+  background: linear-gradient(180deg, var(--indigo-muted), var(--on-surface-muted));
   border-color: rgba(51, 65, 85, 0.5);
 }
 .soft-pad-demo-face--soft .soft-pad-demo-key--nav,
@@ -1670,7 +1675,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   padding: 5px 6px;
   border-radius: 6px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  color: #64748b;
+  color: var(--on-surface-muted);
   background: rgba(241, 245, 249, 0.8);
   transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
@@ -1711,9 +1716,9 @@ html[data-theme="dark"] .soft-pad-empty__desc {
 }
 .soft-pad-demo-switch[data-demo-mode="numpad"] .soft-pad-demo-switch__mode[data-mode="numpad"],
 .soft-pad-demo-switch[data-demo-mode="soft"] .soft-pad-demo-switch__mode[data-mode="soft"] {
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--primary-strong);
+  background: rgba(42, 156, 196, 0.12);
+  border-color: rgba(42, 156, 196, 0.35);
 }
 .soft-pad-demo-switch__hint {
   margin: 8px 0 0;
@@ -1763,7 +1768,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.2); }
 }
 
-/* Step 3: arrows inverted-T → left rail */
+/* Step 3: arrows inverted-T 鈫?left rail */
 .soft-pad-numpad-arrow-story {
   display: flex;
   align-items: center;
@@ -1781,7 +1786,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
 .soft-pad-numpad-arrow-story__lbl {
   font-size: 10px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--on-surface-muted);
   text-align: center;
 }
 .soft-pad-numpad-arrow-story__flow {
@@ -1808,7 +1813,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   font-style: normal;
   font-size: 11px;
   font-weight: 800;
-  color: #334155;
+  color: var(--btn-label);
   background: #f1f5f9;
   border: 1px solid rgba(15, 23, 42, 0.1);
 }
@@ -1846,14 +1851,14 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   gap: 3px;
   padding: 3px;
   border-radius: 6px;
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(42, 156, 196, 0.3);
+  background: rgba(42, 156, 196, 0.08);
 }
 .soft-pad-arrow-soft__pad b {
   display: block;
   height: 14px;
   border-radius: 2px;
-  background: rgba(37, 99, 235, 0.45);
+  background: rgba(42, 156, 196, 0.45);
 }
 .soft-pad-numpad-arrow-story__from {
   animation: soft-pad-arrow-from-pulse 3.2s ease-in-out infinite;
@@ -1880,7 +1885,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
 .soft-pad-numpad-card__tips {
   margin: 0;
   padding-left: 1.15em;
-  color: #64748b;
+  color: var(--on-surface-muted);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -1929,7 +1934,7 @@ html[data-theme="dark"] .soft-pad-show-scene__win {
   border-color: rgba(255, 255, 255, 0.12);
 }
 html[data-theme="dark"] .soft-pad-show-scene__titlebar {
-  background: linear-gradient(180deg, #334155, #1e293b);
+  background: linear-gradient(180deg, var(--btn-label), #1e293b);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .soft-pad-show-scene__win-title {
@@ -1946,11 +1951,11 @@ html[data-theme="dark"] .soft-pad-show-scene__content em {
   background: rgba(148, 163, 184, 0.28);
 }
 html[data-theme="dark"] .soft-pad-show-scene__win-body.is-browser::before {
-  background: #334155;
+  background: var(--btn-label);
   border-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .soft-pad-show-scene__caption {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-show-scene__pad-tag {
   color: #e2e8f0;
@@ -1979,7 +1984,7 @@ html[data-theme="dark"] .soft-pad-demo-compare__tag {
 html[data-theme="dark"] .soft-pad-demo-switch__mode {
   background: rgba(30, 41, 59, 0.8);
   border-color: rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-demo-switch__hint {
   color: #fbbf24;
@@ -1993,7 +1998,7 @@ html[data-theme="dark"] .soft-pad-numpad-card__tips,
 html[data-theme="dark"] .soft-pad-numpad-step__cap,
 html[data-theme="dark"] .soft-pad-feature-card__cap,
 html[data-theme="dark"] .soft-pad-numpad-arrow-story__lbl {
-  color: #94a3b8;
+  color: var(--indigo-muted);
 }
 html[data-theme="dark"] .soft-pad-feature-hint {
   color: #fde68a;

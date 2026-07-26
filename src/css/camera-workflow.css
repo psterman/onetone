@@ -77,6 +77,10 @@
   height:100%;
 }
 
+.camera-pro-preview-host .camera-media-settings--below-preview{
+  display:none;
+}
+
 .camera-pro-preview-host .camera-preview-shell--compact{
   max-width:none;
 }
@@ -485,6 +489,52 @@
   border-top:none;
 }
 
+.camera-media-settings--below-preview{
+  width:100%;
+  margin-top:2px;
+}
+
+.camera-media-settings-body--compact{
+  gap:8px;
+}
+
+.camera-media-select-row{
+  display:grid;
+  grid-template-columns:minmax(0,1.6fr) minmax(88px,.7fr);
+  gap:10px;
+  align-items:end;
+}
+
+.camera-media-select-row--triple{
+  grid-template-columns:minmax(96px,.9fr) minmax(0,1.2fr) minmax(72px,.7fr);
+}
+
+.camera-media-field{
+  display:grid;
+  gap:6px;
+  min-width:0;
+}
+
+.camera-media-field .camera-media-label{
+  margin:0;
+}
+
+.camera-cap-select{
+  width:100%;
+  min-width:0;
+}
+
+.camera-execution-side > .camera-runtime-status--card{
+  margin:0;
+}
+
+@media (max-width:720px){
+  .camera-media-select-row,
+  .camera-media-select-row--triple{
+    grid-template-columns:1fr;
+  }
+}
+
 .camera-runtime-status--card{
   border:1px solid var(--outline-variant);
   border-radius:12px;
@@ -562,6 +612,10 @@
 
 .camera-hero-preview .camera-runtime-status--card{
   margin-top:10px;
+}
+
+.camera-hero-preview .camera-media-settings--below-preview{
+  margin-top:4px;
 }
 
 @media (max-width:900px){

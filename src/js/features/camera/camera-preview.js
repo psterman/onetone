@@ -809,9 +809,9 @@
   function setCapHint(kind){
     var el=$('cameraCapabilityHint');
     if(!el) return;
-    if(kind==='live') el.textContent=t('cameraCapHintLive','点选分辨率或 FPS 即可切换；不支持的档位会自动回退');
+    if(kind==='live') el.textContent=t('cameraCapHintLive','从下拉菜单选择即可切换；不支持的档位会自动回退');
     else if(kind==='unsupported') el.textContent=t('cameraCapHintUnsupported','当前设备能力有限，仍可尝试切换常见档位');
-    else el.textContent=t('cameraCapHintIdle','开启识别后可切换分辨率与帧率');
+    else el.textContent=t('cameraCapHintIdle','开启识别后可从下拉菜单切换分辨率与帧率');
   }
 
   function syncPreviewAspect(w,h){
@@ -821,40 +821,90 @@
     else shell.style.aspectRatio='16 / 9';
   }
 
-  function fillResPills(caps,live){
-    var group=findResGroup(uiResGroup)||RES_GROUPS[0];
-    var resPills=$('cameraResPills');
-    var groupBar=$('cameraResGroupBar');
-    if(groupBar){
-      var tabs=groupBar.querySelectorAll('[data-res-group]');
-      for(var t=0;t<tabs.length;t++){
-        var gid=String(tabs[t].getAttribute('data-res-group')||'');
-        var active=gid===uiResGroup;
-        tabs[t].classList.toggle('is-active',active);
-        tabs[t].setAttribute('aria-selected',active?'true':'false');
-      }
+  function optionLabelWithCap(base,live,caps,w,h,fps){
+    if(live&&caps&&!modeAllowed(caps,w||0,h||0,fps||0)){
+      return base+' · '+t('cameraCapLimited','受限');
     }
-    if(!resPills) return;
-    resPills.innerHTML='';
+    return base;
+  }
+
+  function fillOrientationSelect(){
+    var sel=$('cameraResGroupSelect');
+    if(!sel) return;
+    sel.innerHTML='';
+    for(var g=0;g<RES_GROUPS.length;g++){
+      var group=RES_GROUPS[g];
+      var opt=document.createElement('option');
+      opt.value=group.id;
+      opt.textContent=t(group.labelKey,group.labelFallback||group.id);
+      sel.appendChild(opt);
+    }
+    var want=uiResGroup||'landscape';
+    if(findResGroup(want)) sel.value=want;
+    else sel.value='landscape';
+    uiResGroup=String(sel.value||'landscape');
+  }
+
+  function fillResSelect(caps,live){
+    var sel=$('cameraResSelect');
+    if(!sel) return;
+    var group=findResGroup(uiResGroup)||RES_GROUPS[0];
+    var prev=uiResKey||'';
     var items=group&&group.items?group.items:[];
+    sel.innerHTML='';
     for(var i=0;i<items.length;i++){
       var it=items[i];
       var key=resKey(it.w,it.h);
-      var btn=document.createElement('button');
-      btn.type='button';
-      btn.className='camera-fps-pill'+(uiResKey===key?' is-active':'');
-      btn.setAttribute('data-res',key);
-      btn.textContent=resLabel(it);
-        btn.disabled=false;
-      if(live&&caps&&!modeAllowed(caps,it.w,it.h,0)) btn.style.opacity='0.45';
-      resPills.appendChild(btn);
+      var opt=document.createElement('option');
+      opt.value=key;
+      opt.textContent=optionLabelWithCap(resLabel(it),live,caps,it.w,it.h,0);
+      sel.appendChild(opt);
     }
+    if(prev){
+      var kept=false;
+      for(var k=0;k<items.length;k++){
+        if(resKey(items[k].w,items[k].h)===prev){ kept=true; break; }
+      }
+      if(kept){
+        sel.value=prev;
+        uiResKey=prev;
+      }else if(sel.options.length){
+        sel.selectedIndex=0;
+        uiResKey=String(sel.value||'');
+      }else{
+        uiResKey='';
+      }
+    }else if(sel.options.length){
+      sel.selectedIndex=0;
+      uiResKey=String(sel.value||'');
+    }else{
+      uiResKey='';
+    }
+  }
+
+  function fillFpsSelect(caps,live){
+    var sel=$('cameraFpsSelect');
+    if(!sel) return;
+    sel.innerHTML='';
+    var autoOpt=document.createElement('option');
+    autoOpt.value='0';
+    autoOpt.textContent=t('cameraFpsAuto','Auto');
+    sel.appendChild(autoOpt);
+    for(var p=0;p<FPS_PILLS.length;p++){
+      var fps=FPS_PILLS[p];
+      var opt=document.createElement('option');
+      opt.value=String(fps);
+      opt.textContent=optionLabelWithCap(String(fps),live,caps,0,0,fps);
+      sel.appendChild(opt);
+    }
+    var want=String(uiFps>0?uiFps:0);
+    if(Array.prototype.some.call(sel.options,function(o){ return o.value===want; })) sel.value=want;
+    else sel.value='0';
   }
 
   function fillCapabilitySelects(caps,settings){
     var prefs=cameraPrefs();
     var live=!!previewLive&&!!stream;
-    var fpsPills=$('cameraFpsPills');
 
     if(settings&&settings.width&&settings.height){
       uiResKey=resKey(settings.width,settings.height);
@@ -871,7 +921,7 @@
     }else if(prefs.selectedFrameRate===0){
       uiFps=0;
     }else if(settings&&settings.frameRate&&prefs.selectedFrameRate>0){
-      // Prefer saved preference for pill highlight when set.
+      // Prefer saved preference for select highlight when set.
       uiFps=prefs.selectedFrameRate|0;
     }else if(settings&&settings.frameRate){
       uiFps=Math.round(Number(settings.frameRate)||0);
@@ -881,28 +931,9 @@
       uiFps=0;
     }
 
-    fillResPills(caps,live);
-
-    if(fpsPills){
-      fpsPills.innerHTML='';
-      var autoPill=document.createElement('button');
-      autoPill.type='button';
-      autoPill.className='camera-fps-pill'+(uiFps===0?' is-active':'');
-      autoPill.setAttribute('data-fps','0');
-      autoPill.textContent=t('cameraFpsAuto','Auto');
-      fpsPills.appendChild(autoPill);
-      for(var p=0;p<FPS_PILLS.length;p++){
-        var fps=FPS_PILLS[p];
-        var pill=document.createElement('button');
-        pill.type='button';
-        pill.className='camera-fps-pill'+(uiFps===fps?' is-active':'');
-        pill.setAttribute('data-fps',String(fps));
-        pill.textContent=String(fps);
-        pill.disabled=false;
-        if(live&&caps&&!modeAllowed(caps,0,0,fps)) pill.style.opacity='0.45';
-        fpsPills.appendChild(pill);
-      }
-    }
+    fillOrientationSelect();
+    fillResSelect(caps,live);
+    fillFpsSelect(caps,live);
 
     if(settings&&settings.width&&settings.height){
       syncPreviewAspect(settings.width,settings.height);
@@ -2107,43 +2138,41 @@
   }
 
   function bindMediaCapabilityUi(){
-    var groupBar=$('cameraResGroupBar');
-    var resPills=$('cameraResPills');
-    var fpsPills=$('cameraFpsPills');
-    if(groupBar){
-      groupBar.addEventListener('click',function(e){
-        var btn=e.target&&e.target.closest?e.target.closest('[data-res-group]'):null;
-        if(!btn) return;
-        e.preventDefault();
-        var gid=String(btn.getAttribute('data-res-group')||'landscape');
+    var groupSel=$('cameraResGroupSelect');
+    var resSel=$('cameraResSelect');
+    var fpsSel=$('cameraFpsSelect');
+    if(groupSel){
+      groupSel.addEventListener('change',function(){
+        var gid=String(groupSel.value||'landscape');
         if(gid===uiResGroup) return;
         uiResGroup=gid;
         var group=findResGroup(uiResGroup);
-        if(group&&group.items&&group.items.length){
-          uiResKey=resKey(group.items[0].w,group.items[0].h);
+        var items=group&&group.items?group.items:[];
+        var keep=false;
+        for(var i=0;i<items.length;i++){
+          if(resKey(items[i].w,items[i].h)===uiResKey){ keep=true; break; }
         }
-        fillResPills(lastCapabilities,!!previewLive&&!!stream);
+        if(!keep&&items.length){
+          uiResKey=resKey(items[0].w,items[0].h);
+        }
+        fillResSelect(lastCapabilities,!!previewLive&&!!stream);
         applyCapabilityChange();
       });
     }
-    if(resPills){
-      resPills.addEventListener('click',function(e){
-        var btn=e.target&&e.target.closest?e.target.closest('[data-res]'):null;
-        if(!btn||btn.disabled) return;
-        e.preventDefault();
-        var key=String(btn.getAttribute('data-res')||'');
+    if(resSel){
+      resSel.addEventListener('change',function(){
+        var key=String(resSel.value||'');
         if(!key||key===uiResKey) return;
         uiResKey=key;
+        uiResGroup=inferResGroup(uiResKey);
+        var groupSelLive=$('cameraResGroupSelect');
+        if(groupSelLive) groupSelLive.value=uiResGroup;
         applyCapabilityChange();
       });
     }
-    if(fpsPills){
-      fpsPills.addEventListener('click',function(e){
-        var btn=e.target&&e.target.closest?e.target.closest('[data-fps]'):null;
-        if(!btn||btn.disabled) return;
-        e.preventDefault();
-        var raw=btn.getAttribute('data-fps');
-        var fps=raw==null||raw===''?0:(parseInt(raw,10)||0);
+    if(fpsSel){
+      fpsSel.addEventListener('change',function(){
+        var fps=parseInt(fpsSel.value,10)||0;
         if(fps===uiFps) return;
         uiFps=fps;
         applyCapabilityChange();
