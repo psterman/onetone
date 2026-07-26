@@ -703,7 +703,7 @@
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadInput'))+'</span><strong>'+esc(softChannel.apps)+'</strong><em>'+esc(t('habitHubChannelSoftPadBoundHint'))+'</em></span></div>';
     html+=softPadChannelRail();
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadOutput'))+'</span><strong>'+esc(softChannel.status)+'</strong></span></div>';
-    html+=ctaActBtn('data-habit-global-softpad',t('habitHubGlobalOpenSoftPad'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
+    html+=ctaActBtn('data-habit-global-softpad',t('habitHubOpenAppSoftPad')||t('habitHubGlobalOpenSoftPad'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
     html+='<span class="habit-hub-channel-hover-tip">'+esc(softTip)+'</span>';
     html+='</div>';
     html+='</div></article>';
@@ -1372,6 +1372,30 @@
     return t('habitWizardDefaultName').replace('{app}',appDisplayName(appId)||appId||'—');
   }
 
+  function countAppScenarios(appId,exceptMappingId){
+    appId=String(appId||'').trim();
+    exceptMappingId=String(exceptMappingId||'').trim();
+    if(!appId) return 0;
+    var cfg=state().config||{};
+    var list=Array.isArray(cfg.mappings)?cfg.mappings:[];
+    var n=0;
+    for(var i=0;i<list.length;i++){
+      var m=list[i];
+      if(!m||!isAppScenario(m)) continue;
+      if(exceptMappingId&&m.id===exceptMappingId) continue;
+      if(String(m.appTargetId||'')===appId) n++;
+    }
+    return n;
+  }
+
+  /** Unique display group for multi-workflow apps (Codex). First stays base name; next get · 2, · 3… */
+  function uniqueScenarioName(appId,exceptMappingId){
+    var base=defaultScenarioName(appId);
+    var n=countAppScenarios(appId,exceptMappingId);
+    if(n<=0) return base;
+    return base+' · '+(n+1);
+  }
+
   function findAppScenarioByAppId(appId,exceptMappingId){
     appId=String(appId||'').trim();
     // All custom picks share appTargetId "custom"; uniqueness is by process identity, not this id.
@@ -1482,7 +1506,7 @@
     var m={
       id:id,
       label:'',
-      group:defaultScenarioName(appId),
+      group:appId==='codex-chat'?uniqueScenarioName(appId):defaultScenarioName(appId),
       triggerKey:'',
       targetKey:'',
       enabled:true,
@@ -2155,6 +2179,8 @@
     createAppScenario:createAppScenario,
     findAppScenarioByAppId:findAppScenarioByAppId,
     findAppScenarioForIdentity:findAppScenarioForIdentity,
+    countAppScenarios:countAppScenarios,
+    uniqueScenarioName:uniqueScenarioName,
     startInlineCreate:startInlineCreate,
     cancelInlineCreate:cancelInlineCreate,
     bindEvents:bindEvents,

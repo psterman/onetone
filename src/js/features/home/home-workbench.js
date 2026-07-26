@@ -628,47 +628,64 @@
     return null;
   }
 
-  function openHabitChannelChip(channel){
+  function openHabitChannelChip(channel,opts){
+    opts=opts||{};
     channel=String(channel||'').trim();
+    var focus=String(opts.focus||'').trim();
     var m=currentHabitMapping();
     var id=m&&m.id?String(m.id):'';
     var diff=global.OneToneHabitOverrideDiff;
     var banner=global.OneToneHabitScenarioContextBanner;
     var isApp=!!(m&&diff&&diff.isAppScenarioMapping&&diff.isAppScenarioMapping(m));
 
+    function afterOpenFocus(){
+      if(!focus) return;
+      var drawer=global.OneToneSettingsDrawer;
+      if(drawer&&drawer.focusField){
+        requestAnimationFrame(function(){
+          try{ drawer.focusField(focus); }catch(_){}
+        });
+      }
+    }
+
     if(channel==='keys'){
       if(isApp&&banner&&banner.openScenarioKeysEdit){
         banner.openScenarioKeysEdit(id,{returnToHub:false});
+        afterOpenFocus();
         return;
       }
       if(id&&global.OneToneState&&global.OneToneState.state){
         global.OneToneState.state.selectedMappingId=id;
       }
-      openSettings({panel:'keys',focus:id||undefined});
+      openSettings({panel:'keys',focus:focus||'trigger'});
       return;
     }
     if(channel==='voice'){
       if(isApp&&banner&&banner.openScenarioVoiceEdit){
         banner.openScenarioVoiceEdit(id,{returnToHub:false});
+        afterOpenFocus();
         return;
       }
       if(banner&&banner.openGlobalVoice){
         banner.openGlobalVoice({fromHub:false});
+        afterOpenFocus();
         return;
       }
-      openSettings({panel:'voiceWake'});
+      openSettings({panel:'voiceWake',focus:focus||'wakePhrases'});
       return;
     }
     if(channel==='camera'){
       if(isApp&&banner&&banner.openScenarioCameraEdit){
         banner.openScenarioCameraEdit(id,{returnToHub:false});
+        afterOpenFocus();
         return;
       }
       if(banner&&banner.openGlobalCamera){
         banner.openGlobalCamera({fromHub:false});
+        afterOpenFocus();
         return;
       }
-      openSettings({panel:'camera'});
+      openSettings({panel:'camera',focus:focus||undefined});
       return;
     }
     if(channel==='softPad'){
@@ -676,11 +693,15 @@
       var softId='';
       if(m&&hub&&hub.isSoftPadSchemeEligible&&hub.isSoftPadSchemeEligible(m)){
         softId=id;
+      }else if(hub&&hub.listSoftPadSchemes){
+        var entries=hub.listSoftPadSchemes()||[];
+        var on=entries.filter(function(e){ return e&&e.padEnabled; });
+        var pick=(on.length?on:entries)[0];
+        if(pick&&pick.mapping&&pick.mapping.id) softId=String(pick.mapping.id);
       }
       if(softId&&global.OneToneState&&global.OneToneState.state){
         global.OneToneState.state.selectedMappingId=softId;
       }
-      // No Soft Pad on this habit / none configured → Soft Pad panel (empty CTA when none exist).
       openSettings({panel:'softPad',mappingId:softId||undefined});
       return;
     }
@@ -759,10 +780,19 @@
         openSettings({panel:'habits',habitWizard:true});
         return;
       }
+      var howtoZone=e.target.closest&&e.target.closest('[data-wb-howto-channel]');
+      if(howtoZone){
+        e.preventDefault();
+        e.stopPropagation();
+        openHabitChannelChip(
+          howtoZone.getAttribute('data-wb-howto-channel')||'',
+          {focus:howtoZone.getAttribute('data-wb-howto-focus')||''}
+        );
+        return;
+      }
       var howto=e.target.closest&&e.target.closest('[data-wb-howto]');
       if(howto){
         var kind=howto.getAttribute('data-wb-howto')||'';
-        // Hero tabs own activation mode; howto cards deep-link via habit channel paths.
         if(kind==='keys'||kind==='voice'||kind==='camera'||kind==='softPad'){
           openHabitChannelChip(kind);
         }

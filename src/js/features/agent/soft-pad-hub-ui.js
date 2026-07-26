@@ -417,6 +417,10 @@
 
   function displayTitle(entry) {
     if (!entry) return '—';
+    if (entry.mapping && global.OneToneHabitProfile && global.OneToneHabitProfile.habitDisplayName) {
+      var hn = global.OneToneHabitProfile.habitDisplayName(entry.mapping);
+      if (hn && hn !== '—') return hn;
+    }
     return entry.title;
   }
 
@@ -456,8 +460,18 @@
   function updateScopeHint() {
     var e = els();
     if (!e.hint) return;
-    e.hint.textContent = t('softPadHintApp', '{app}：该应用前台时的键位和状态灯')
-      .replace('{app}', appTitleFor(selectedScopeId || 'codex'));
+    var app = appTitleFor(selectedScopeId || 'codex');
+    var scenario = '';
+    var entry = findEntry(getSelectedMappingId()) || pickGlobalEntry();
+    if (entry && entry.mapping) scenario = displayTitle(entry);
+    if (scenario && scenario !== '—' && scenario !== app) {
+      e.hint.textContent = t('softPadHintAppBound', '{app} · 绑定「{scenario}」：该应用前台时的键位和状态灯')
+        .replace('{app}', app)
+        .replace('{scenario}', scenario);
+    } else {
+      e.hint.textContent = t('softPadHintApp', '{app}：该应用前台时的键位和状态灯')
+        .replace('{app}', app);
+    }
   }
 
   function clearSubpage() {

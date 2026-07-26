@@ -532,11 +532,64 @@ html[data-theme="dark"] .wb-dot-grid {
   background: var(--surface-high);
   box-shadow: var(--shadow-card);
   text-align: left;
-  cursor: pointer;
-  font: inherit;
   color: inherit;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   overflow: hidden;
+}
+
+.wb-howto-zone {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wb-howto-zone:hover,
+.wb-howto-zone:focus-visible {
+  background: color-mix(in srgb, var(--primary-soft) 55%, transparent);
+  outline: none;
+}
+
+.wb-howto-zone:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.wb-howto-card-main.wb-howto-zone {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+}
+
+.wb-howto-meta-row.wb-howto-zone {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  font-size: 11px;
+  color: var(--on-surface-muted);
+}
+
+.wb-howto-phrase-row.wb-howto-zone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 4px;
+  margin: 0 -4px;
 }
 
 .wb-howto-card:hover {

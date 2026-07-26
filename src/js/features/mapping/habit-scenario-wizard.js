@@ -121,6 +121,7 @@
       btnHabitScenarioGoKeys:'habitScenarioGoKeysSettings',
       btnHabitScenarioGoVoice:'habitScenarioGoVoiceSettings',
       btnHabitScenarioGoCamera:'habitScenarioGoCameraSettings',
+      btnHabitScenarioGoSoftPad:'habitScenarioGoSoftPadSettings',
       habitScenarioPreviewTitle:'habitScenarioPreviewTitle',
       habitScenarioFlowHint:'habitScenarioFlowHint',
       habitScenarioDiffTitle:'habitScenarioDiffTitle',

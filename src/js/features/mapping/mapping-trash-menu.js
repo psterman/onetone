@@ -100,12 +100,31 @@
     hooks.ensureConfig();
     var src=state.config.mappings.find(function(x){ return x.id===id; });
     if(!src) return;
+    var appId=String(src.appTargetId||'').trim();
+    var hub=global.OneToneHabitHub;
+    // Non-Codex preset apps: one scenario per app — block copy.
+    if(appId&&appId!=='custom'&&appId!=='codex-chat'){
+      if(global.OneToneAppToast&&global.OneToneI18n){
+        global.OneToneAppToast.show(global.OneToneI18n.t('habitHubDupBlocked')||global.OneToneI18n.t('habitHubAppScenarioExists'),'scheme');
+      }
+      return;
+    }
     var copy=JSON.parse(JSON.stringify(src));
     var newId=hooks.newMappingId();
     copy.id=newId;
     copy.enabled=false;
     copy.order=state.config.mappings.length;
     copy.label=(copy.label||'').trim();
+    if(appId==='codex-chat'&&hub&&hub.uniqueScenarioName){
+      // Include source in the count so the copy gets · 2, · 3…
+      copy.group=hub.uniqueScenarioName(appId);
+    }else if(appId==='codex-chat'&&hub&&typeof hub.countAppScenarios==='function'){
+      var base=(global.OneToneI18n&&global.OneToneI18n.t)
+        ?global.OneToneI18n.t('habitWizardDefaultName').replace('{app}','Codex')
+        :'Codex 场景';
+      var n=hub.countAppScenarios(appId);
+      copy.group=n<=0?base:(base+' · '+(n+1));
+    }
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.rekeyVoiceCommandsForMapping){
       copy.voiceCommands=global.OneToneConfigPersist.rekeyVoiceCommandsForMapping(copy.voiceCommands,newId);
     }else if(Array.isArray(copy.voiceCommands)){

@@ -113,22 +113,28 @@
   }
 
   function howToCardHtml(opts){
-    return '<button type="button" class="wb-howto-card'+(opts.active?' is-active':'')+(opts.kind?' is-'+opts.kind:'')+'" data-wb-howto="'+esc(opts.kind)+'" title="'+esc(opts.tip||'')+'">'
+    var kind=opts.kind||'';
+    var mainFocus=opts.mainFocus||'';
+    var meta1Focus=opts.meta1Focus||'';
+    var meta2Focus=opts.meta2Focus||'';
+    return '<article class="wb-howto-card'+(opts.active?' is-active':'')+(kind?' is-'+kind:'')+'" data-wb-howto="'+esc(kind)+'">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+opts.icon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(opts.title)+'</span>'
       +(opts.status?'<span class="wb-howto-card-status">'+esc(opts.status)+'</span>':'')
       +'</div>'
-      +'<div class="wb-howto-card-main">'
+      +'<button type="button" class="wb-howto-zone wb-howto-card-main" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(mainFocus)+'" title="'+esc(opts.tip||'')+'">'
       +'<strong class="wb-howto-card-value">'+esc(opts.value)+'</strong>'
       +(opts.art?'<span class="wb-howto-card-art" aria-hidden="true">'+opts.art+'</span>':'')
-      +'</div>'
+      +'</button>'
       +'<div class="wb-howto-card-meta">'
-      +'<div class="wb-howto-meta-row"><span>'+esc(opts.meta1Lbl)+'</span><strong>'+esc(opts.meta1Val)+'</strong></div>'
-      +'<div class="wb-howto-meta-row"><span>'+esc(opts.meta2Lbl)+'</span><strong>'+esc(opts.meta2Val)+'</strong></div>'
+      +'<button type="button" class="wb-howto-zone wb-howto-meta-row" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(meta1Focus)+'">'
+      +'<span>'+esc(opts.meta1Lbl)+'</span><strong>'+esc(opts.meta1Val)+'</strong></button>'
+      +'<button type="button" class="wb-howto-zone wb-howto-meta-row" data-wb-howto-channel="'+esc(kind)+'" data-wb-howto-focus="'+esc(meta2Focus)+'">'
+      +'<span>'+esc(opts.meta2Lbl)+'</span><strong>'+esc(opts.meta2Val)+'</strong></button>'
       +'</div>'
       +'<p class="wb-howto-card-tip">'+esc(opts.tip)+'</p>'
-      +'</button>';
+      +'</article>';
   }
 
   function engineName(vm){
@@ -160,11 +166,12 @@
     if(more>0){
       chips+='<span class="wb-howto-phrase-chip is-more" title="'+esc(phrases.slice(2).join(' · '))+'">+'+more+'</span>';
     }
-    return '<div class="wb-howto-phrase-row" data-phrase-kind="'+esc(kind)+'">'
-      +'<span class="wb-howto-phrase-ico" title="'+esc(label)+'" aria-label="'+esc(label)+'">'+phraseIconSvg(kind)+'</span>'
+    var focus=kind==='wake'?'wakePhrases':'endPhrases';
+    return '<button type="button" class="wb-howto-zone wb-howto-phrase-row" data-wb-howto-channel="voice" data-wb-howto-focus="'+esc(focus)+'" data-phrase-kind="'+esc(kind)+'">'
+      +'<span class="wb-howto-phrase-ico" title="'+esc(label)+'" aria-hidden="true">'+phraseIconSvg(kind)+'</span>'
       +'<span class="wb-howto-phrase-lbl">'+esc(label)+'</span>'
       +'<div class="wb-howto-phrase-list">'+chips+'</div>'
-      +'</div>';
+      +'</button>';
   }
 
   function voicePhrasePanelHtml(vm){
@@ -250,35 +257,41 @@
         active:mode==='keys',
         title:t('homeWbHowToKeysTitle'),
         value:keysLine,
+        mainFocus:'trigger',
         meta1Lbl:t('homeWbHowToFinish'),
         meta1Val:finish,
+        meta1Focus:'keyFinishFlow',
         meta2Lbl:t('homeWbHowToSilence'),
         meta2Val:silence,
+        meta2Focus:'cancel',
         tip:t('homeWbHowToKeysTip'),
         icon:keyIcon,
         art:keycapArt(trig)
       })
-      +'<button type="button" class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
+      +'<article class="wb-howto-card is-voice'+(mode==='voice'?' is-active':'')+'" data-wb-howto="voice">'
       +'<div class="wb-howto-card-head">'
       +'<span class="wb-howto-card-ico" aria-hidden="true">'+voiceIcon+'</span>'
       +'<span class="wb-howto-card-title">'+esc(t('homeWbHowToVoiceTitle'))+'</span>'
       +'</div>'
-      +'<div class="wb-howto-card-main wb-howto-card-main--voice">'
+      +'<button type="button" class="wb-howto-zone wb-howto-card-main wb-howto-card-main--voice" data-wb-howto-channel="voice" data-wb-howto-focus="wakePhrases" title="'+esc(t('homeWbHowToVoiceTip'))+'">'
       +'<strong class="wb-howto-card-value">'+esc(wakeMain)+'</strong>'
-      +'</div>'
+      +'</button>'
       +voicePhrasePanelHtml(vm)
       +'<p class="wb-howto-card-tip">'+esc(t('homeWbHowToVoiceTip'))+'</p>'
-      +'</button>'
+      +'</article>'
       +howToCardHtml({
         kind:'camera',
         active:mode==='camera',
         title:t('homeWbHowToCameraTitle'),
         value:cam.value,
+        mainFocus:'',
         status:cam.enabled?t('homeWbHabitActive'):'',
         meta1Lbl:t('homeWbHowToCameraPresence'),
         meta1Val:cam.presenceLbl,
+        meta1Focus:'',
         meta2Lbl:t('homeWbHowToCameraBound'),
         meta2Val:cam.boundLbl,
+        meta2Focus:'cameraActions',
         tip:t('homeWbHowToCameraTip'),
         icon:camIcon,
         art:camArt
@@ -288,11 +301,14 @@
         active:false,
         title:t('homeWbHowToSoftPadTitle'),
         value:pad.value,
+        mainFocus:'',
         status:pad.status,
         meta1Lbl:t('homeWbHowToSoftPadStatus'),
         meta1Val:pad.statusLbl,
-        meta2Lbl:t('homeWbHowToSoftPadApps'),
-        meta2Val:pad.countLbl,
+        meta1Focus:'',
+        meta2Lbl:t('homeWbHowToSoftPadBound','绑定场景'),
+        meta2Val:pad.boundName||pad.countLbl,
+        meta2Focus:'',
         tip:t('homeWbHowToSoftPadTip'),
         icon:softIcon,
         art:softArt
@@ -393,17 +409,33 @@
         value:t('homeWbChannelUnset'),
         status:'',
         statusLbl:t('homeWbChannelUnset'),
-        countLbl:t('homeWbHowToSoftPadCount').replace('{n}','0')
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}','0'),
+        boundName:t('homeWbChannelUnset'),
+        mappingId:''
       };
     }
     var on=entries.filter(function(e){ return e&&e.padEnabled; });
+    var pick=(on.length?on:entries)[0]||null;
     var titles=(on.length?on:entries).map(function(e){ return e.title; }).filter(Boolean);
     var value=titles.length?titles.join(' · '):t('homeWbChannelUnset');
+    var boundName='';
+    var mappingId='';
+    if(pick&&pick.mapping){
+      mappingId=String(pick.mapping.id||'');
+      if(global.OneToneHabitProfile&&global.OneToneHabitProfile.habitDisplayName){
+        boundName=global.OneToneHabitProfile.habitDisplayName(pick.mapping);
+      }else if(global.OneToneHomeScheme&&global.OneToneHomeScheme.shortName){
+        boundName=global.OneToneHomeScheme.shortName(pick.mapping);
+      }
+    }
+    if(!boundName) boundName=t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length));
     return {
       value:value,
       status:on.length?t('homeWbHabitActive'):'',
       statusLbl:on.length?t('homeWbHowToSoftPadOn'):t('homeWbHowToSoftPadOff'),
-      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length))
+      countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(entries.length)),
+      boundName:boundName,
+      mappingId:mappingId
     };
   }
 

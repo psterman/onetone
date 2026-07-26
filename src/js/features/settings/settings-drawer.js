@@ -180,6 +180,16 @@
 
     }
 
+    if(focus==='cameraActions'||focus==='cameraPresence'){
+      setSettingsPanel('camera');
+      try{
+        var triggerBtn=document.getElementById('cameraFlowNodeTrigger');
+        if(triggerBtn&&typeof triggerBtn.click==='function') triggerBtn.click();
+      }catch(_){}
+      scrollSettingsToTarget(['cameraPresenceConfig','cameraRulesBasic','cameraBindRowAway','cameraPanelTrigger']);
+      return;
+    }
+
     if(focus==='recordingAudio'){
       if(ui.settingsPanel!=='voiceWake') setSettingsPanel('voiceWake');
       if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){

@@ -425,3 +425,11 @@
 {"ts":1785072462637,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
 {"ts":1785072474178,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
 {"ts":1785072504478,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072745289,"hook_event_name":"beforeSubmitPrompt","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072934903,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785073901649,"hook_event_name":"beforeSubmitPrompt","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785074055423,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785075174190,"hook_event_name":"SessionStart","session_id":"abacf740-c197-4b5b-b694-bff20b7d4835","cwd":"C:\\Users\\Administrator","model":"deepseek-v4-pro"}
+{"ts":1785076310327}
+{"ts":1785076364731,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785076408610,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
