@@ -1399,6 +1399,52 @@
     return inboundCfg;
   }
 
+  function applySchemeSwitchedRuntime(msg){
+    msg=msg||{};
+    var st=state();
+    // Cold start / no FE config yet — must take full init once.
+    if(!st.config||!Array.isArray(st.config.mappings)||!st.config.mappings.length){
+      if(msg.config){
+        applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});
+      }
+      return;
+    }
+    ensureConfig();
+    var toId=String(msg.toId||'').trim();
+    if(!toId&&msg.config){
+      toId=String(msg.config.activeSceneId||msg.config.active_scene_id||'').trim();
+    }
+    if(toId) st.config.activeSceneId=toId;
+
+    // Merge only runtime switch fields. Keep FE editing drafts / selectedMappingId intact.
+    // Full applyMvpInit here used to remount editors and 假死 the home switch path.
+    var inbound=msg.config&&Array.isArray(msg.config.mappings)?msg.config.mappings:null;
+    if(inbound&&inbound.length){
+      var byId={};
+      for(var i=0;i<inbound.length;i++){
+        var src=inbound[i];
+        if(src&&src.id) byId[String(src.id)]=src;
+      }
+      (st.config.mappings||[]).forEach(function(local){
+        if(!local||!local.id) return;
+        var remote=byId[String(local.id)];
+        if(!remote) return;
+        if(remote.enabled!=null) local.enabled=!!remote.enabled;
+        if(remote.lastUsedAt!=null) local.lastUsedAt=remote.lastUsedAt;
+        else if(remote.last_used_at!=null) local.lastUsedAt=remote.last_used_at;
+        if(remote.useCount!=null) local.useCount=remote.useCount;
+        else if(remote.use_count!=null) local.useCount=remote.use_count;
+      });
+    }else if(toId){
+      (st.config.mappings||[]).forEach(function(mapping){
+        mapping.enabled=(String(mapping.id)===toId);
+      });
+    }
+    earlyPersistLog('applySchemeSwitchedRuntime to='+toId+
+      ' maps='+(st.config.mappings?st.config.mappings.length:0)+
+      ' edit='+String(st.selectedMappingId==null?'null':st.selectedMappingId));
+  }
+
   function applyMvpInit(msg){
     if(!msg||typeof msg!=='object') return;
     if(!hooksReady()){
@@ -1459,8 +1505,7 @@
       // Do NOT force selectedMappingId = activeSceneId here.
       // Runtime switch / full config sync must preserve editing selection
       // (including null = global voice/camera base). Heal-only lives in ensureConfig.
-      // Long-term: mvp_scheme_switched should be a dedicated runtime event that
-      // only merges activeSceneId/enabled/use stats instead of full applyMvpInit.
+      // mvp_scheme_switched uses applySchemeSwitchedRuntime (light merge) — not this path.
       const toggleBusy=voiceToggleBusy();
       const selectedMapping=hookFn('selectedMapping');
       const m=selectedMapping?selectedMapping():null;
@@ -1721,6 +1766,7 @@
     saveCameraPrefsQuiet:saveCameraPrefsQuiet,
     rememberCameraPrefs:function(){ rememberCameraPrefsFromConfig(state().config); },
     applyMvpInit:applyMvpInit,
+    applySchemeSwitchedRuntime:applySchemeSwitchedRuntime,
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,
     flushDeferredMvpInitSideEffects:flushDeferredMvpInitSideEffects,

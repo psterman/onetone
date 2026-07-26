@@ -160,7 +160,10 @@
         global.OneToneVoiceWake.handleKwsDownloadMessage(msg);
       }
       if(msg.type==='mvp_scheme_switched'){
-        if(hooks().applyMvpInit){
+        // Light runtime merge only — full applyMvpInit remounts editors and 假死's home switch.
+        if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.applySchemeSwitchedRuntime==='function'){
+          global.OneToneConfigPersist.applySchemeSwitchedRuntime(msg);
+        }else if(hooks().applyMvpInit&&msg.config){
           hooks().applyMvpInit({type:'mvp_init',config:msg.config,conflicts:msg.conflicts});
         }else if(msg.config){
           state.config=msg.config;

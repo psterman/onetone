@@ -416,3 +416,12 @@
 {"ts":1785059439433,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
 {"ts":1785069726262}
 {"ts":1785069783739,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785071204561,"hook_event_name":"beforeSubmitPrompt","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785071301517,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785071351498,"hook_event_name":"beforeSubmitPrompt","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785071407449,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072384733,"hook_event_name":"beforeSubmitPrompt","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072459402,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072462637,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072474178,"hook_event_name":"subagentStop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
+{"ts":1785072504478,"hook_event_name":"stop","session_id":"0b81eace-69c2-4e44-a5f4-2a07f9960cfc","model":"default"}
