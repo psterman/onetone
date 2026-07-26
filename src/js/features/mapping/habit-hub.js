@@ -406,6 +406,7 @@
     keys:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
     voice:'<path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/>',
     camera:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    softPad:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/>',
     copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     rename:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
     del:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
@@ -429,6 +430,44 @@
     return '<div class="habit-hub-channel-rail is-camera" aria-hidden="true">'
       +'<canvas class="habit-hub-cam-canvas" width="220" height="36"></canvas>'
       +'</div>';
+  }
+
+  function softPadChannelRail(){
+    return '<div class="habit-hub-channel-rail is-softpad" aria-hidden="true">'
+      +'<span class="habit-hub-softpad-pad">'
+      +'<i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i>'
+      +'<i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i>'
+      +'<i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i><i class="habit-hub-softpad-key"></i>'
+      +'</span></div>';
+  }
+
+  function globalSoftPadChannel(){
+    var hub=global.OneToneSoftPadHub;
+    var entries=(hub&&hub.listSoftPadSchemes)?hub.listSoftPadSchemes():[];
+    if(!entries.length){
+      return {
+        apps:t('habitHubSoftPadAppsNone','未配置'),
+        status:t('habitHubSoftPadStatusNone','未配置'),
+        ready:false
+      };
+    }
+    var on=entries.filter(function(e){ return e&&e.padEnabled; });
+    var titles=(on.length?on:entries).map(function(e){ return e.title; }).filter(Boolean);
+    return {
+      apps:titles.length?titles.join(' · '):t('habitHubSoftPadAppsNone','未配置'),
+      status:on.length?t('habitHubSoftPadStatusOn','已启用'):t('habitHubSoftPadStatusOff','未启用'),
+      ready:on.length>0
+    };
+  }
+
+  function openHabitSoftPadPanel(mappingId){
+    mappingId=String(mappingId||'').trim();
+    if(mappingId&&global.OneToneState&&global.OneToneState.state){
+      global.OneToneState.state.selectedMappingId=mappingId;
+    }
+    if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setPanel){
+      global.OneToneSettingsDrawer.setPanel('softPad');
+    }
   }
 
   function camWaveTheme(){
@@ -656,6 +695,17 @@
     html+=ctaActBtn('data-habit-global-camera',t('habitHubGlobalOpenCamera'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
     html+='<span class="habit-hub-channel-hover-tip">'+esc(t('habitHubChannelCameraHoverTip'))+'</span>';
     html+='</div>';
+    var softChannel=globalSoftPadChannel();
+    var softTip=t('habitHubChannelSoftPadHoverTip')||t('softPadBoundaryHint');
+    html+='<div class="habit-hub-channel habit-hub-spring" data-habit-channel="softPad" tabindex="0" role="button" aria-label="'+esc(t('habitHubGlobalSoftPadLbl')+'。'+softTip)+'">';
+    html+='<div class="habit-hub-channel-end is-input">'
+      +channelGlyph('softPad',t('habitHubChannelSoftPadInput'))
+      +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadInput'))+'</span><strong>'+esc(softChannel.apps)+'</strong><em>'+esc(t('habitHubChannelSoftPadBoundHint'))+'</em></span></div>';
+    html+=softPadChannelRail();
+    html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelSoftPadOutput'))+'</span><strong>'+esc(softChannel.status)+'</strong></span></div>';
+    html+=ctaActBtn('data-habit-global-softpad',t('habitHubGlobalOpenSoftPad'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
+    html+='<span class="habit-hub-channel-hover-tip">'+esc(softTip)+'</span>';
+    html+='</div>';
     html+='</div></article>';
     return html;
   }
@@ -839,6 +889,10 @@
         html+=ctaActBtn('data-habit-scenario-keys="'+esc(m.id)+'"',t('habitHubGlobalOpenKeys','改按键'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});
         html+=ctaActBtn('data-habit-scenario-voice="'+esc(m.id)+'"',t('habitHubGlobalOpenVoice','配语音'),ACT_ICON.voice,{primary:true,tip:t('habitHubVoiceCtaTip')});
         html+=ctaActBtn('data-habit-scenario-camera="'+esc(m.id)+'"',t('habitHubGlobalOpenCamera','配摄像头'),ACT_ICON.camera,{primary:true,tip:t('habitHubCameraCtaTip')});
+        var softHub=global.OneToneSoftPadHub;
+        if(softHub&&softHub.isSoftPadSchemeEligible&&softHub.isSoftPadSchemeEligible(m)){
+          html+=ctaActBtn('data-habit-scenario-softpad="'+esc(m.id)+'"',t('habitHubGlobalOpenSoftPad','配虚拟键盘'),ACT_ICON.softPad,{primary:true,tip:t('habitHubSoftPadCtaTip')});
+        }
         html+='<span class="habit-hub-act-sep" aria-hidden="true"></span>';
         html+=iconActBtn('data-habit-move="up" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveUp'),ACT_ICON.up,{disabled:!opts.canMoveUp});
         html+=iconActBtn('data-habit-move="down" data-habit-id="'+esc(m.id)+'"',t('habitHubActMoveDown'),ACT_ICON.down,{disabled:!opts.canMoveDown});
@@ -1755,6 +1809,13 @@
           else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
           return;
         }
+        var globalSoftPadBtn=e.target.closest&&e.target.closest('[data-habit-global-softpad]');
+        if(globalSoftPadBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          openHabitSoftPadPanel('');
+          return;
+        }
         var guideClose=e.target.closest&&e.target.closest('[data-habit-guide-close]');
         if(guideClose){
           e.preventDefault();
@@ -1775,6 +1836,8 @@
           }else if(ch==='camera'){
             if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalCamera({fromHub:true});
             else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
+          }else if(ch==='softPad'){
+            openHabitSoftPadPanel('');
           }else{
             if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.openGlobalKeys({fromHub:true});
             else if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('keys');
@@ -1922,7 +1985,7 @@
           render();
           return;
         }
-        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-enable]');
+        var actBtn=e.target.closest&&e.target.closest('.habit-hub-card-actions [data-habit-dup],.habit-hub-card-actions [data-habit-rename],.habit-hub-card-actions [data-habit-migrate],.habit-hub-card-actions [data-habit-scenario-keys],.habit-hub-card-actions [data-habit-scenario-voice],.habit-hub-card-actions [data-habit-scenario-camera],.habit-hub-card-actions [data-habit-scenario-softpad],.habit-hub-card-actions [data-habit-enable]');
         if(actBtn){
           e.stopPropagation();
         }
@@ -1975,6 +2038,13 @@
           if(cameraId&&global.OneToneHabitScenarioContextBanner){
             global.OneToneHabitScenarioContextBanner.openScenarioCameraEdit(cameraId,{returnToHub:true});
           }
+          return;
+        }
+        var scenarioSoftPadBtn=e.target.closest&&e.target.closest('[data-habit-scenario-softpad]');
+        if(scenarioSoftPadBtn){
+          e.preventDefault();
+          e.stopPropagation();
+          openHabitSoftPadPanel(scenarioSoftPadBtn.getAttribute('data-habit-scenario-softpad')||'');
           return;
         }
         var voiceCmdChip=e.target.closest&&e.target.closest('[data-habit-voice-cmd]');
