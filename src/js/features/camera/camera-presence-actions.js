@@ -145,6 +145,8 @@
     lastThrottleToastAt:0,
     escBound:false,
     uiBound:false,
+    uiSyncing:false,
+    recommendBusy:false,
     rulesSegment:'basic',
     onDetectInterval:null,
     onStateChange:null,
@@ -1642,6 +1644,11 @@
       if(st.privacyOpen) closePrivacyScreen(false);
       if(st.lowPowerActive) exitLowPowerMode();
       noteEvent('return');
+      try{
+        if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.onReturnPresent){
+          global.OneToneCameraProGlance.onReturnPresent();
+        }
+      }catch(_){}
       var retAct=normalizeAction(p.onReturn);
       if(retAct==='none'){
         emitRuntime();
@@ -1875,6 +1882,11 @@
     resetBlinkGesture();
     st.blinkOpenSince=st.lastBlinkAt;
     noteEvent('blink');
+    try{
+      if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.noteBlink){
+        global.OneToneCameraProGlance.noteBlink();
+      }
+    }catch(_){}
     if(normalizeAction(p.deliberateBlink)==='none'){
       pulseGesture('blink');
       setSkipReason(t('cameraTriggerRecognizedUnbound','已识别 · 未绑定动作'),'blink');
@@ -2099,6 +2111,12 @@
     var yaw=point&&point.yaw;
     if(yaw==null||!isFinite(yaw)) yaw=null;
 
+    try{
+      if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.onVisionFrame){
+        global.OneToneCameraProGlance.onVisionFrame(point);
+      }
+    }catch(_){}
+
     if(face){
       if(!st.faceTrueSince) st.faceTrueSince=now;
       st.faceFalseSince=0;
@@ -2292,7 +2310,9 @@
   }
 
   function ensureActionSelect(key,value){
-    var row=document.querySelector('#cameraPresenceConfig [data-camera-bind-key="'+key+'"]');
+    var row=document.querySelector('#cameraPresenceConfig [data-camera-bind-key="'+key+'"]')
+      ||document.querySelector('#cameraRulesPro [data-camera-bind-key="'+key+'"]')
+      ||document.querySelector('[data-camera-bind-key="'+key+'"]');
     if(!row) return;
     var sel=row.querySelector('select.camera-action-select');
     if(!sel) return;
@@ -2338,7 +2358,7 @@
         }
       }
     }
-    sel.value=cur;
+    if(String(sel.value)!==String(cur)) sel.value=cur;
   }
 
   /** Keep tile helper for hidden legacy bind list; primary UI uses select. */
@@ -2413,7 +2433,9 @@
     }
 
     function syncCard(kind,trigOn,summaryText){
-      var card=document.querySelector('#cameraPresenceConfig [data-camera-trigger="'+kind+'"]');
+      var card=document.querySelector('#cameraPresenceConfig [data-camera-trigger="'+kind+'"]')
+        ||document.querySelector('#cameraRulesPro [data-camera-trigger="'+kind+'"]')
+        ||document.querySelector('[data-camera-trigger="'+kind+'"]');
       if(!card) return;
       var sw=card.querySelector('[data-camera-trigger-toggle]');
       var sum=card.querySelector('.camera-bind-summary');
@@ -2594,50 +2616,65 @@
     var next=seg==='pro'?'pro':'basic';
     writeStoredRulesSegment(next);
     var basic=$('cameraRulesBasic');
+    if(basic) basic.hidden=false;
     var pro=$('cameraRulesPro');
-    if(basic) basic.hidden=next!=='basic';
-    if(pro) pro.hidden=next!=='pro';
-    var buttons=document.querySelectorAll('#cameraRulesSegment [data-camera-rules-seg]');
-    for(var i=0;i<buttons.length;i++){
-      var btn=buttons[i];
-      var on=String(btn.getAttribute('data-camera-rules-seg')||'')===next;
-      btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-    }
-    if(next==='pro') syncProHandRulesHint();
-    if(opts.scroll&&next==='pro'&&pro&&pro.scrollIntoView){
-      try{ pro.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){
-        try{ pro.scrollIntoView(true); }catch(__){}
+    if(pro) pro.hidden=false;
+    if(next==='pro'){
+      syncProHandRulesHint();
+      var wf=global.OneToneCameraWorkflow;
+      try{
+        if(wf&&wf.activateTab) wf.activateTab('pro');
+        if(wf&&wf.activateProSubtab) wf.activateProSubtab('gesture');
+        else if(wf&&wf.openProPanel) wf.openProPanel('cameraProSubGesture');
+      }catch(_){}
+      if(opts.scroll){
+        var el=$('cameraProSubGesture')||pro||$('cameraPanelPro');
+        if(el&&el.scrollIntoView){
+          try{ el.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){
+            try{ el.scrollIntoView(true); }catch(__){}
+          }
+        }
       }
     }
     return next;
   }
 
   function syncUiFromPrefs(){
-    // Global camera page shows/edits global bindings; scenario edit uses merged override.
-    var p=scenarioCameraEditMapping()?prefs():basePresencePrefs();
-    st.enabled=!!basePresencePrefs().enabled;
-    ensureActionSelect('onAway',p.onAway);
-    ensureActionSelect('onReturn',p.onReturn);
-    ensureActionSelect('shakeHead',p.shakeHead);
-    ensureActionSelect('deliberateBlink',p.deliberateBlink);
-    ensureActionSelect('openPalm',p.openPalm);
-    ensureActionSelect('okHand',p.okHand);
-    ensureActionSelect('fist',p.fist);
-    ensureActionSelect('wave',p.wave);
-    // Legacy hidden bind list (if present)
-    ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="onAway"]'),'onAway',p.onAway);
-    ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="onReturn"]'),'onReturn',p.onReturn);
-    ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
-    ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
-    syncTriggerSummaries(p);
-    syncBlinkBaselineUi();
-    syncMasterLockUi();
-    showRulesSegment(readStoredRulesSegment(),{scroll:false});
-    syncProHandRulesHint();
-    renderHeroUi();
-    if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncInactiveHint){
-      try{ global.OneToneCameraWorkflow.syncInactiveHint(); }catch(_){}
+    if(st.uiSyncing) return;
+    st.uiSyncing=true;
+    try{
+      // Global camera page shows/edits global bindings; scenario edit uses merged override.
+      var p=scenarioCameraEditMapping()?prefs():basePresencePrefs();
+      st.enabled=!!basePresencePrefs().enabled;
+      ensureActionSelect('onAway',p.onAway);
+      ensureActionSelect('onReturn',p.onReturn);
+      ensureActionSelect('shakeHead',p.shakeHead);
+      ensureActionSelect('deliberateBlink',p.deliberateBlink);
+      ensureActionSelect('openPalm',p.openPalm);
+      ensureActionSelect('okHand',p.okHand);
+      ensureActionSelect('fist',p.fist);
+      ensureActionSelect('wave',p.wave);
+      // Legacy hidden bind list (if present)
+      ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="onAway"]'),'onAway',p.onAway);
+      ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="onReturn"]'),'onReturn',p.onReturn);
+      ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="shakeHead"]'),'shakeHead',p.shakeHead);
+      ensureActionTiles(document.querySelector('#cameraPresenceBindList [data-camera-bind-key="deliberateBlink"]'),'deliberateBlink',p.deliberateBlink);
+      syncTriggerSummaries(p);
+      syncBlinkBaselineUi();
+      syncMasterLockUi();
+      // Basic rules stay on Visual recognition; Pro hand rules live under Pro · Gesture.
+      var basic=$('cameraRulesBasic');
+      if(basic) basic.hidden=false;
+      var pro=$('cameraRulesPro');
+      if(pro) pro.hidden=false;
+      writeStoredRulesSegment('basic');
+      syncProHandRulesHint();
+      renderHeroUi();
+      if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.syncInactiveHint){
+        try{ global.OneToneCameraWorkflow.syncInactiveHint(); }catch(_){}
+      }
+    }finally{
+      st.uiSyncing=false;
     }
   }
 
@@ -2661,6 +2698,10 @@
   }
 
   function applyRecommendedPresencePrefs(){
+    if(st.recommendBusy) return Promise.resolve(false);
+    st.recommendBusy=true;
+    var btn=$('cameraApplyRecommendBtn');
+    if(btn) btn.disabled=true;
     var rec=recommendedPresencePrefs();
     var lines=[
       t('cameraRecommendConfirmIntro','将写入以下推荐绑定：'),
@@ -2673,22 +2714,44 @@
     ];
     var body=lines.join('\n');
     var title=t('cameraRecommendConfirmTitle','套用推荐规则');
+    function finish(result){
+      st.recommendBusy=false;
+      if(btn) btn.disabled=false;
+      return result;
+    }
     function commit(){
-      persistPresencePrefs(rec);
-      toast(t('cameraRecommendApplied','已套用小白默认推荐'));
-      return true;
+      // Defer so confirm overlay can close/paint before DOM sync.
+      return new Promise(function(resolve){
+        setTimeout(function(){
+          try{
+            persistPresencePrefs(rec);
+            toast(t('cameraRecommendApplied','已套用小白默认推荐'));
+            resolve(true);
+          }catch(err){
+            if(global.console&&console.warn) console.warn('[camera-recommend]',err);
+            resolve(false);
+          }
+        },0);
+      });
     }
     var modal=global.OneToneMappingConfirmModal;
-    if(modal&&typeof modal.open==='function'){
-      return Promise.resolve(modal.open(body,{title:title})).then(function(ok){
-        if(!ok) return false;
-        return commit();
-      }).catch(function(){ return false; });
+    var opened=null;
+    try{
+      if(modal&&typeof modal.open==='function') opened=modal.open(body,{title:title});
+    }catch(err){
+      if(global.console&&console.warn) console.warn('[camera-recommend-modal]',err);
+      opened=null;
+    }
+    if(opened&&typeof opened.then==='function'){
+      return Promise.resolve(opened).then(function(ok){
+        if(!ok) return finish(false);
+        return commit().then(finish);
+      }).catch(function(){ return finish(false); });
     }
     var ok=false;
     try{ ok=!!global.confirm(body); }catch(_){ ok=false; }
-    if(!ok) return false;
-    return commit();
+    if(!ok) return Promise.resolve(finish(false));
+    return commit().then(finish);
   }
 
   function toggleTrigger(kind,wantOn){
@@ -2734,62 +2797,79 @@
       });
     }
 
+    function onRulesClick(e){
+      var sw=e.target&&e.target.closest?e.target.closest('[data-camera-trigger-toggle]'):null;
+      if(sw){
+        e.preventDefault();
+        var kind=String(sw.getAttribute('data-camera-trigger-toggle')||'');
+        var on=sw.getAttribute('aria-checked')==='true';
+        toggleTrigger(kind,!on);
+        return;
+      }
+      var recalib=e.target&&e.target.closest?e.target.closest('#cameraBlinkRecalibrateBtn'):null;
+      if(recalib){
+        e.preventDefault();
+        if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
+          global.OneToneCameraWorkflow.activateTab('action');
+        }
+        var blinkHint=$('cameraBlinkBaselineHint');
+        var preview=$('cameraHeroPreview')||$('cameraCalibBlock');
+        if(preview&&preview.scrollIntoView){
+          try{ preview.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ try{ preview.scrollIntoView(true); }catch(__){} }
+        }
+        startBlinkBaselineSample(true);
+        if(blinkHint&&blinkHint.scrollIntoView){
+          try{ blinkHint.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){}
+        }
+      }
+    }
+
+    function onRulesChange(e){
+      if(st.uiSyncing) return;
+      var sel=e.target&&e.target.closest?e.target.closest('select.camera-action-select'):null;
+      if(!sel) return;
+      var key=String(sel.getAttribute('data-camera-action-for')||'');
+      if(!key){
+        var row=sel.closest('[data-camera-bind-key]');
+        key=row?String(row.getAttribute('data-camera-bind-key')||''):'';
+      }
+      var action=normalizeAction(sel.value);
+      if(!key||BIND_KEYS.indexOf(key)<0) return;
+      if(!isActionAllowedForKey(key,action)){
+        toast(actionBlockedReason(key,action)||t('cameraPresenceSkipInvalidCombo','此动作与当前事件不兼容'));
+        ensureActionSelect(key,prefs()[key]);
+        return;
+      }
+      var patch={};
+      patch[key]=action;
+      persistPresencePrefs(patch);
+    }
+
     var config=$('cameraPresenceConfig');
     if(config){
-      config.addEventListener('click',function(e){
-        var sw=e.target&&e.target.closest?e.target.closest('[data-camera-trigger-toggle]'):null;
-        if(sw){
-          e.preventDefault();
-          var kind=String(sw.getAttribute('data-camera-trigger-toggle')||'');
-          var on=sw.getAttribute('aria-checked')==='true';
-          toggleTrigger(kind,!on);
-          return;
-        }
-        var recalib=e.target&&e.target.closest?e.target.closest('#cameraBlinkRecalibrateBtn'):null;
-        if(recalib){
-          e.preventDefault();
-          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
-            global.OneToneCameraWorkflow.activateTab('action');
-          }
-          var blinkHint=$('cameraBlinkBaselineHint');
-          var preview=$('cameraHeroPreview')||$('cameraCalibBlock');
-          if(preview&&preview.scrollIntoView){
-            try{ preview.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){ try{ preview.scrollIntoView(true); }catch(__){} }
-          }
-          startBlinkBaselineSample(true);
-          if(blinkHint&&blinkHint.scrollIntoView){
-            try{ blinkHint.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(_){}
-          }
-        }
-      });
-      config.addEventListener('change',function(e){
-        var sel=e.target&&e.target.closest?e.target.closest('select.camera-action-select'):null;
-        if(!sel) return;
-        var key=String(sel.getAttribute('data-camera-action-for')||'');
-        if(!key){
-          var row=sel.closest('[data-camera-bind-key]');
-          key=row?String(row.getAttribute('data-camera-bind-key')||''):'';
-        }
-        var action=normalizeAction(sel.value);
-        if(!key||BIND_KEYS.indexOf(key)<0) return;
-        if(!isActionAllowedForKey(key,action)){
-          toast(actionBlockedReason(key,action)||t('cameraPresenceSkipInvalidCombo','此动作与当前事件不兼容'));
-          ensureActionSelect(key,prefs()[key]);
-          return;
-        }
-        var patch={};
-        patch[key]=action;
-        persistPresencePrefs(patch);
-      });
+      config.addEventListener('click',onRulesClick);
+      config.addEventListener('change',onRulesChange);
+    }
+    var proRules=$('cameraRulesPro');
+    if(proRules&&proRules!==config&&!(config&&config.contains(proRules))){
+      proRules.addEventListener('click',onRulesClick);
+      proRules.addEventListener('change',onRulesChange);
     }
 
     var segHost=$('cameraRulesSegment');
-    if(segHost){
+    if(segHost&&segHost.querySelector&&segHost.querySelector('[data-camera-rules-seg]')){
       segHost.addEventListener('click',function(e){
         var btn=e.target&&e.target.closest?e.target.closest('[data-camera-rules-seg]'):null;
         if(!btn) return;
         e.preventDefault();
         showRulesSegment(String(btn.getAttribute('data-camera-rules-seg')||'basic'),{scroll:false});
+      });
+    }
+    var gotoProGestures=$('cameraGotoProGesturesBtn');
+    if(gotoProGestures){
+      gotoProGestures.addEventListener('click',function(e){
+        e.preventDefault();
+        showRulesSegment('pro',{scroll:true});
       });
     }
 
@@ -2878,6 +2958,7 @@
     recommendedPresencePrefs:recommendedPresencePrefs,
     resolveVoiceActivateKey:resolveVoiceActivateKey,
     setPrivacyOpen:setPrivacyOpen,
+    openPrivacyScreen:openPrivacyScreen,
     closePrivacyScreen:closePrivacyScreen,
     syncDetectInterval:syncDetectInterval,
     preferredDetectIntervalMs:preferredDetectIntervalMs,

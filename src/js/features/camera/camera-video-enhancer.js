@@ -64,6 +64,9 @@
 
   var smoothFace={cx:0.5,cy:0.42,cheekL:{x:0.35,y:0.48},cheekR:{x:0.65,y:0.48},has:false,at:0};
   var FACE_HOLD_MS=400;
+  // Mask clears look like a reload; hold last landmarks briefly across detect gaps.
+  var maskHold={lms:null,at:0};
+  var MASK_HOLD_MS=700;
 
   function clamp(n,lo,hi){
     n=Number(n);
@@ -258,18 +261,28 @@
     return maskCanvasEl;
   }
 
-  function destroyPipeline(){
+  function destroyBeautifyPipeline(){
     if(beautify){
       try{ beautify.destroy(); }catch(_){}
       beautify=null;
     }
     ctx2d=null;
+  }
+
+  function destroyMaskPipeline(){
     maskCtx=null;
     faceMaskEng=null;
+    maskHold.lms=null;
+    maskHold.at=0;
+  }
+
+  function destroyPipeline(){
+    destroyBeautifyPipeline();
+    destroyMaskPipeline();
   }
 
   function initGpuBeautify(canvas){
-    destroyPipeline();
+    destroyBeautifyPipeline();
     var api=beautifyApi();
     if(!api||typeof api.create!=='function') return false;
     var eng=api.create();
@@ -283,7 +296,7 @@
   }
 
   function initCanvas2d(canvas){
-    destroyPipeline();
+    destroyBeautifyPipeline();
     try{ ctx2d=canvas.getContext('2d',{alpha:false}); }catch(_){ ctx2d=null; }
     qualityTier='css';
     return !!ctx2d;
@@ -374,8 +387,12 @@
     if(mask){
       mask.hidden=!maskOn;
       mask.style.pointerEvents='none';
-      if(!maskOn&&maskCtx){
-        try{ maskCtx.clearRect(0,0,mask.width||0,mask.height||0); }catch(_){}
+      if(!maskOn){
+        maskHold.lms=null;
+        maskHold.at=0;
+        if(maskCtx){
+          try{ maskCtx.clearRect(0,0,mask.width||0,mask.height||0); }catch(_){}
+        }
       }
     }
   }
@@ -395,20 +412,30 @@
   function drawFaceMask(){
     if(!wantsMask()||!maskCanvasEl||!maskCtx) return;
     resizeMaskCanvas();
+    var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
     var api=global.OneToneCameraGazeLandmarker;
     var lms=api&&api.getLastLandmarks?api.getLastLandmarks():null;
+    if(lms&&lms.length){
+      maskHold.lms=lms;
+      maskHold.at=now;
+    }else if(maskHold.lms&&(now-maskHold.at)<MASK_HOLD_MS){
+      // Keep last plate for brief landmarker gaps (blink / turn / detect skip).
+      lms=maskHold.lms;
+    }else{
+      maskHold.lms=null;
+      maskHold.at=0;
+      try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(_){}
+      return;
+    }
     if(!faceMaskEng){
       var fm=global.OneToneFaceMask;
       if(fm&&fm.create) faceMaskEng=fm.create();
     }
-    if(!faceMaskEng||!lms||!lms.length){
-      try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(_){}
-      return;
-    }
+    if(!faceMaskEng) return;
     try{
       faceMaskEng.draw(maskCtx,maskCanvasEl.width,maskCanvasEl.height,lms,prefs.faceMask);
     }catch(_){
-      try{ maskCtx.clearRect(0,0,maskCanvasEl.width,maskCanvasEl.height); }catch(__){}
+      // Keep previous frame on draw errors — clearing here caused flicker/reload look.
     }
   }
 

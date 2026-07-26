@@ -7,6 +7,7 @@ mod app_log;
 mod audio_frame_bus;
 mod audio_win;
 mod backdrop;
+mod camera_capability_probe;
 mod coach_hud;
 mod claude_cli_session;
 mod claude_hook_setup;
@@ -750,6 +751,8 @@ pub fn run() {
             ipc::cmd_export_logs,
             ipc::cmd_app_log,
             ipc::cmd_open_url,
+            ipc::cmd_probe_camera_capabilities,
+            ipc::cmd_windows_hello_confirm,
             ipc::cmd_coach_hud_get_state,
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,

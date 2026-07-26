@@ -675,6 +675,12 @@
       if(partial.selectedFrameRate!=null) prefs.selectedFrameRate=Math.max(0,Number(partial.selectedFrameRate)||0)|0;
       if(partial.gazeCalibration!==undefined) prefs.gazeCalibration=partial.gazeCalibration;
       if(partial.presenceActions!==undefined) prefs.presenceActions=partial.presenceActions;
+      if(partial.proFeatures!==undefined){
+        var pg=global.OneToneCameraProGlance;
+        prefs.proFeatures=pg&&pg.normalizeProFeatures
+          ?pg.normalizeProFeatures(partial.proFeatures)
+          :partial.proFeatures;
+      }
       if(partial.videoEnhancement!==undefined){
         var api=enhancerApi();
         var merged=Object.assign({},ensureVideoEnhancement(prefs),partial.videoEnhancement||{});

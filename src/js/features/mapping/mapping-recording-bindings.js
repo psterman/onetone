@@ -115,6 +115,15 @@
       if(global.OneToneSceneSyncConfirm&&global.OneToneSceneSyncConfirm.isChoiceMode()) return;
       if(e.target===this) hooks.closeConfirmModal(false);
     });
+    // Escape always dismisses a normal confirm (never leave a blocking overlay).
+    global.addEventListener('keydown',function(e){
+      if(e.key!=='Escape'&&e.key!=='Esc') return;
+      var overlay=$('confirmOverlay');
+      if(!overlay||!overlay.classList.contains('open')) return;
+      if(global.OneToneSceneSyncConfirm&&global.OneToneSceneSyncConfirm.isChoiceMode()) return;
+      e.preventDefault();
+      hooks.closeConfirmModal(false);
+    },true);
     bindEvent('trashList','click',function(e){
       var btn=e.target.closest&&e.target.closest('[data-restore]');
       if(btn) hooks.restoreFromTrash(btn.dataset.restore);

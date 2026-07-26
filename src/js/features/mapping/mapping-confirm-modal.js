@@ -15,6 +15,19 @@
 
   function openConfirmModal(message,opts){
     opts=opts&&typeof opts==='object'?opts:{};
+    // Stuck scene-sync choiceMode leaves OK/Cancel no-ops → looks like UI freeze.
+    try{
+      var sync=global.OneToneSceneSyncConfirm;
+      if(sync&&sync.isChoiceMode&&sync.isChoiceMode()&&sync.forceResetChoiceMode){
+        sync.forceResetChoiceMode('cancel');
+      }
+    }catch(_){}
+    // If a previous open never resolved, drop it so callers are not left hanging.
+    if(confirmResolve){
+      var stale=confirmResolve;
+      confirmResolve=null;
+      try{ stale(false); }catch(_){}
+    }
     return new Promise(function(resolve){
       confirmResolve=resolve;
       var titleEl=$('confirmTitle');
@@ -29,12 +42,19 @@
       }
       var alt=$('btnConfirmAlt');
       if(alt) alt.hidden=true;
+      var okBtn=$('btnConfirmOk');
+      if(okBtn){
+        try{ okBtn.textContent=t('confirmOk','确定'); }catch(_){}
+      }
+      var cancelBtn=$('btnConfirmCancel');
+      if(cancelBtn){
+        try{ cancelBtn.textContent=t('confirmCancel','取消'); }catch(_){}
+      }
       var overlay=$('confirmOverlay');
       if(overlay){
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden','false');
       }
-      var okBtn=$('btnConfirmOk');
       if(okBtn&&okBtn.focus){
         try{ okBtn.focus(); }catch(_){}
       }

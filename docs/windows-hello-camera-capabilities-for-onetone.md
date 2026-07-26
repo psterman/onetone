@@ -1,5 +1,10 @@
 # Windows Hello 红外摄像头为 OneTone 赋能分析
 
+> **口径收紧**  
+> Windows Hello 官方能力重点是**认证/再认证**，不保证把 IR 原始流稳定交给 WebView/MediaPipe，也不等于 HumanPresenceSensor。  
+> 多人隐私、Visualizer、健康助手：**先 RGB 视觉主链**；Hello / HPS 仅作条件增强或营销分层。  
+> `detectWindowsHelloCamera()` 类设备名匹配 → **启发式 only**；真相用 A/B/C 三段探测（`cmd_probe_camera_capabilities`）。
+
 ## 一、Windows Hello 摄像头的独特硬件能力
 
 基于深入研究，Windows Hello 红外摄像头具有以下独特硬件优势：
@@ -90,23 +95,14 @@ Pro 专属功能：
 
 ### 👥 **能力 4：多人与隐私保护增强**
 #### 技术原理
-IR 人脸检测 + 深度信息，更可靠地区分多人和异常距离。
+**落地主路径是 RGB MediaPipe 多脸**（`numFaces>1`），不是 Hello/IR。IR/深度若未来稳定可得，仅作可能增强，不作产品承诺。
 
 #### OneTone 应用
 ```
-Glance 同款功能：
-1. 隐私卫士 (Privacy Guard)
-   - 检测到第 2 张人脸时（同事、路人）
-   - 自动模糊屏幕或显示隐私提示
-   - 可配置白名单（如某些人脸不触发）
-
-2. 智能显示 (Smart Display)
-   - 多屏环境下，只保留你在看的屏幕清晰
-   - 其他屏幕自动模糊（防旁边人偷看）
-
-3. 距离警告
-   - 检测到人脸异常靠近（身后偷看）
-   - 立即触发隐私保护模式
+Glance 同款（Pro 通用，已接入开关）：
+1. 隐私卫士 (Privacy Guard) — RGB 第二张脸 / 过近 → privacyScreen
+2. 隐私提醒 (Privacy Alert) — 多人温和 toast
+3. Smart Display — 多屏实验室灰显，未接入
 ```
 
 ---

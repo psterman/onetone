@@ -86,6 +86,8 @@ permissions = [
   "allow-cmd-export-logs",
   "allow-cmd-app-log",
   "allow-cmd-open-url",
+  "allow-cmd-probe-camera-capabilities",
+  "allow-cmd-windows-hello-confirm",
   "allow-cmd-coach-hud-get-state",
   "allow-cmd-coach-hud-dismiss",
   "allow-cmd-coach-hud-set-enabled",

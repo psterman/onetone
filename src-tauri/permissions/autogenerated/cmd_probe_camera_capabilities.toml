@@ -1,0 +1,10 @@
+# Automatically generated - Do not edit!
+[[permission]]
+identifier = "allow-cmd-probe-camera-capabilities"
+description = "Enables the cmd_probe_camera_capabilities command without any pre-configured scope."
+commands.allow = ["cmd_probe_camera_capabilities"]
+
+[[permission]]
+identifier = "deny-cmd-probe-camera-capabilities"
+description = "Denies the cmd_probe_camera_capabilities command without any pre-configured scope."
+commands.deny = ["cmd_probe_camera_capabilities"]

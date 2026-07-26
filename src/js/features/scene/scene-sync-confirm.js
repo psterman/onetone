@@ -119,6 +119,11 @@
     });
   }
 
+  function forceResetChoiceMode(result){
+    if(!choiceMode&&!choiceResolve) return;
+    closeChoice(result==null?'cancel':result);
+  }
+
   function bindEvents(){
     var alt=$('btnConfirmAlt');
     var ok=$('btnConfirmOk');
@@ -164,6 +169,7 @@
     clearActiveSceneTargetOverride:clearActiveSceneTargetOverride,
     guardGlobalTargetWrite:guardGlobalTargetWrite,
     isChoiceMode:function(){ return choiceMode; },
+    forceResetChoiceMode:forceResetChoiceMode,
     bindEvents:bindEvents
   };
 })((typeof window!=='undefined')?window:globalThis);

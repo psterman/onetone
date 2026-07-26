@@ -128,6 +128,27 @@
     return clampRange((nose.x-mid)/half,-1.2,1.2);
   }
 
+  /** Normalized face box area in video space (0–1), for distance / Visualizer. */
+  function faceAreaFromLandmarks(landmarks){
+    if(!landmarks||!landmarks.length) return 0;
+    var minX=1,minY=1,maxX=0,maxY=0;
+    // Stride sample — full 478-pt scan every detect frame is unnecessary for a coarse area.
+    var step=landmarks.length>80?4:1;
+    for(var i=0;i<landmarks.length;i+=step){
+      var p=landmarks[i];
+      if(!p) continue;
+      var x=Number(p.x); var y=Number(p.y);
+      if(!isFinite(x)||!isFinite(y)) continue;
+      if(x<minX) minX=x;
+      if(y<minY) minY=y;
+      if(x>maxX) maxX=x;
+      if(y>maxY) maxY=y;
+    }
+    var w=Math.max(0,maxX-minX);
+    var h=Math.max(0,maxY-minY);
+    return w*h;
+  }
+
   function headPoseFromMatrix(mat){
     if(!mat||mat.length<16) return {yaw:0,pitch:0};
     var r00=mat[0],r10=mat[1],r20=mat[2];
@@ -309,7 +330,7 @@
               delegate:delegate
             },
             runningMode:'VIDEO',
-            numFaces:1,
+            numFaces:2,
             outputFaceBlendshapes:true,
             outputFacialTransformationMatrixes:true,
             minFaceDetectionConfidence:0.5,
@@ -358,6 +379,9 @@
         confidence:0.05,
         state:'lost',
         faceDetected:false,
+        faceCount:0,
+        faceArea:0,
+        pitch:null,
         yaw:null,
         blink:null,
         error:err&&err.message
@@ -373,6 +397,9 @@
         confidence:0.08,
         state:'lost',
         faceDetected:false,
+        faceCount:0,
+        faceArea:0,
+        pitch:null,
         yaw:null,
         blink:null
       });
@@ -395,6 +422,7 @@
     var proxy=estimateGazeProxy(faces[0],blendMap,mat);
     var overlay=global.document&&global.document.getElementById('cameraGazeOverlay');
     var mapped=mapVideoNormToOverlay(proxy.x,proxy.y,videoEl,overlay);
+    var faceArea=faceAreaFromLandmarks(faces[0]);
     var out={
       x:mapped.x,
       y:mapped.y,
@@ -402,6 +430,9 @@
       state:proxy.state,
       feats:proxy.feats||null,
       faceDetected:true,
+      faceCount:faces.length,
+      faceArea:faceArea,
+      pitch:pose.pitch!=null?pose.pitch:null,
       yaw:yawOut,
       matrixYaw:pose.yaw,
       landmarkYaw:lmYaw,

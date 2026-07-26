@@ -4341,7 +4341,7 @@
     }
     .test-overlay.open .test-modal{transform:translateY(0) scale(1)}
     .confirm-overlay{
-      position:fixed;inset:0;z-index:820;background:rgba(237,245,250,.88);backdrop-filter:blur(14px);
+      position:fixed;inset:0;z-index:14000;background:rgba(237,245,250,.88);backdrop-filter:blur(14px);
       display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;
       transition:opacity var(--dur-med) var(--ease-standard);
     }
@@ -4721,9 +4721,9 @@
     }
     .habit-setup-actions--activation{margin-top:4px}
     html.habit-setup-open,html.habit-setup-open body{overflow:hidden}
-    html.habit-setup-open .test-overlay{z-index:12100}
-    html.habit-setup-open .confirm-overlay{z-index:12110}
-    html.habit-setup-open .phrase-practice-overlay{z-index:12100}
+    html.habit-setup-open .test-overlay{z-index:14100}
+    html.habit-setup-open .confirm-overlay{z-index:14110}
+    html.habit-setup-open .phrase-practice-overlay{z-index:14100}
     .habit-setup-view{
       position:relative;padding-top:4px;display:flex;flex-direction:column;align-items:center;
       width:min(760px,100%);min-height:auto;margin:0 auto;flex:0 0 auto

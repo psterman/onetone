@@ -114,6 +114,16 @@
       return;
     }
     activateTab('pro');
+    var sub='';
+    if(id==='cameraProFilterSection'||id==='cameraProSubBeauty') sub='beauty';
+    else if(id==='cameraProPrivacySection'||id==='cameraProSubPrivacy') sub='privacy';
+    else if(id==='cameraProWellnessSection'||id==='cameraProSubWellness') sub='wellness';
+    else if(id==='cameraProHandCard'||id==='cameraProSubGesture') sub='gesture';
+    if(sub){
+      activateProSubtab(sub);
+      scrollToEl($('cameraProSubtabs')||$('cameraPanelPro'));
+      return;
+    }
     var el=$(id)||$('cameraPanelPro');
     scrollToEl(el);
   }
@@ -715,11 +725,12 @@
   }
 
   function openHandRulesBind(){
-    activateTab('trigger');
     var pa=presenceApi();
     if(pa&&pa.showRulesSegment){
-      try{ pa.showRulesSegment('pro',{scroll:true}); }catch(_){}
+      try{ pa.showRulesSegment('pro',{scroll:true}); return; }catch(_){}
     }
+    activateTab('pro');
+    activateProSubtab('gesture');
   }
 
   function syncMetrics(){
@@ -764,10 +775,55 @@
     }
   }
 
+  var currentProSubtab='beauty';
+
+  function activateProSubtab(name){
+    name=String(name||'beauty');
+    if(['beauty','privacy','wellness','gesture'].indexOf(name)<0) name='beauty';
+    currentProSubtab=name;
+    var tabs=document.querySelectorAll('#cameraProSubtabs [data-pro-subtab]');
+    for(var i=0;i<tabs.length;i++){
+      var tab=tabs[i];
+      var on=tab.getAttribute('data-pro-subtab')===name;
+      tab.classList.toggle('is-active',on);
+      tab.setAttribute('aria-selected',on?'true':'false');
+    }
+    var panels=document.querySelectorAll('#cameraProSubpanels [data-pro-subpanel]');
+    for(var j=0;j<panels.length;j++){
+      var panel=panels[j];
+      var show=panel.getAttribute('data-pro-subpanel')===name;
+      panel.classList.toggle('is-active',show);
+      panel.hidden=!show;
+    }
+    if(name==='gesture'){
+      syncProHandCard();
+      try{
+        var pa=presenceApi();
+        if(pa&&pa.syncProHandRulesHint) pa.syncProHandRulesHint();
+        if(pa&&pa.syncTriggerSummaries) pa.syncTriggerSummaries();
+      }catch(_){}
+    }
+    if(name==='beauty') syncProEnhUi();
+  }
+
+  function bindProSubtabs(){
+    var root=$('cameraProSubtabs');
+    if(!root||root.dataset.bound==='1') return;
+    root.dataset.bound='1';
+    root.addEventListener('click',function(e){
+      var btn=e.target&&e.target.closest?e.target.closest('[data-pro-subtab]'):null;
+      if(!btn) return;
+      e.preventDefault();
+      activateProSubtab(btn.getAttribute('data-pro-subtab')||'beauty');
+    });
+  }
+
   function bindUi(){
     if(bound) return;
     bound=true;
     bindProEnhUi();
+    bindProSubtabs();
+    activateProSubtab(currentProSubtab||'beauty');
     var nodes=$('cameraFlowNodes');
     if(nodes){
       nodes.addEventListener('click',function(e){
@@ -806,16 +862,6 @@
         activateTab('trigger');
       });
     }
-    var helloCheck=$('cameraProHelloCheckBtn');
-    if(helloCheck){
-      helloCheck.addEventListener('click',function(e){
-        e.preventDefault();
-        var el=$('cameraProStatusHello');
-        var msg=t('cameraProHelloCheckResult','当前环境未接入系统确认；仍显示为未来能力。');
-        if(el) el.textContent=msg;
-        toast(msg);
-      });
-    }
   }
 
   function onPanelVisible(){
@@ -828,6 +874,12 @@
       try{ pa.syncUiFromPrefs(); }catch(_){}
     }
     try{
+      if(global.OneToneCameraProGlance){
+        if(global.OneToneCameraProGlance.onPanelVisible) global.OneToneCameraProGlance.onPanelVisible();
+        else if(global.OneToneCameraProGlance.init) global.OneToneCameraProGlance.init();
+      }
+    }catch(_){}
+    try{
       if(global.OneToneAppThemePrefs&&global.OneToneAppThemePrefs.renderSoundSettingsPanel){
         global.OneToneAppThemePrefs.renderSoundSettingsPanel();
       }
@@ -836,11 +888,21 @@
 
   function onPanelHidden(){
     stopPoll();
+    try{
+      if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.onPanelHidden){
+        global.OneToneCameraProGlance.onPanelHidden();
+      }
+    }catch(_){}
   }
 
   function init(){
     bindUi();
     activateTab('trigger');
+    try{
+      if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.init){
+        global.OneToneCameraProGlance.init();
+      }
+    }catch(_){}
     if(panelVisible()) startPoll();
   }
 
@@ -849,13 +911,15 @@
     onPanelVisible:onPanelVisible,
     onPanelHidden:onPanelHidden,
     activateTab:activateTab,
+    activateProSubtab:activateProSubtab,
     syncMetrics:syncMetrics,
     syncInactiveHint:syncInactiveHint,
     syncGazeMap:syncGazeMap,
     openProPanel:openProPanel,
     openTriggerTools:openTriggerTools,
     openAdvancedConfirmFold:openAdvancedConfirmFold,
-    getTab:function(){ return currentTab; }
+    getTab:function(){ return currentTab; },
+    getProSubtab:function(){ return currentProSubtab; }
   };
 
   if(document.readyState==='loading'){

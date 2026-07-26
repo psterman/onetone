@@ -1,5 +1,12 @@
 # 摄像头 Pro 页面 Windows Hello 红外摄像头延伸功能方案
 
+> **口径收紧（以落地为准）**  
+> 两条链拆开：**RGB + MediaPipe 视觉主链** vs **Windows Hello 认证 / HumanPresenceSensor 系统增强链**。  
+> Hello **不等于** Gaze / 多人 / IR 增强 / 多屏能力。多人 Privacy Alert/Guard 与 Visualizer / 健康助手走 RGB 主链（已接入 Pro 通用区）。  
+> 三段探测分开展示：A RGB · B Hello 认证 · C HumanPresenceSensor。设备名匹配只作启发式。  
+> 多屏 Pointer/Snap/Display = 实验室灰显；Virtual Presenter = 不承诺上线。  
+> 详见收紧版规划与 `camera-pro-glance.js`。
+
 ## 一、背景分析
 
 ### 1.1 Glance 软件的完整功能清单

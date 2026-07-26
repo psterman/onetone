@@ -52,3 +52,13 @@ pub fn cmd_open_url(url: String) -> Result<(), String> {
         Err("open url is only supported on Windows".into())
     }
 }
+
+#[tauri::command]
+pub fn cmd_probe_camera_capabilities() -> serde_json::Value {
+    crate::camera_capability_probe::probe_camera_capabilities()
+}
+
+#[tauri::command]
+pub fn cmd_windows_hello_confirm(reason: Option<String>) -> serde_json::Value {
+    crate::camera_capability_probe::windows_hello_confirm(reason.as_deref().unwrap_or(""))
+}

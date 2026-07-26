@@ -1,0 +1,10 @@
+# Automatically generated - Do not edit!
+[[permission]]
+identifier = "allow-cmd-windows-hello-confirm"
+description = "Enables the cmd_windows_hello_confirm command without any pre-configured scope."
+commands.allow = ["cmd_windows_hello_confirm"]
+
+[[permission]]
+identifier = "deny-cmd-windows-hello-confirm"
+description = "Denies the cmd_windows_hello_confirm command without any pre-configured scope."
+commands.deny = ["cmd_windows_hello_confirm"]

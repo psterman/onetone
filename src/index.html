@@ -2467,21 +2467,13 @@
                   <div class="camera-panel-head camera-panel-head--switch">
                     <div>
                       <h2 class="camera-panel-title" data-i18n="cameraPanelTriggerTitle">视觉识别</h2>
-                      <p class="camera-panel-desc" data-i18n="cameraPanelTriggerDesc">设计 if-then 规则：看到什么动作，执行什么结果。主开关只在本页。</p>
+                      <p class="camera-panel-desc" data-i18n="cameraPanelTriggerDesc">设计基础 if-then：离席、回席、摇头、故意眨眼。Pro 手势在「Pro 视觉能力 · 手势」。主开关只在本页。</p>
                       <p class="camera-master-inactive-hint" id="cameraMasterInactiveHint" hidden data-i18n="cameraMasterConfiguredInactive">已配置，但不会生效</p>
                     </div>
                     <button type="button" class="toggle-switch page-status-toggle" id="cameraPresenceEnabledToggle" role="switch" aria-checked="false" aria-label="开启摄像头识别" title="开启摄像头识别"></button>
                   </div>
-                  <div class="camera-rules-segment" id="cameraRulesSegment" role="tablist" aria-label="规则分段">
-                    <button type="button" class="camera-rules-seg-btn is-active" id="cameraRulesSegBasic" data-camera-rules-seg="basic" role="tab" aria-selected="true" aria-controls="cameraRulesBasic" data-i18n="cameraRulesSegBasic">基础识别</button>
-                    <button type="button" class="camera-rules-seg-btn" id="cameraRulesSegPro" data-camera-rules-seg="pro" role="tab" aria-selected="false" aria-controls="cameraRulesPro">
-                      <span data-i18n="cameraRulesSegPro">Pro 手势</span>
-                      <span class="camera-chip camera-rules-pro-badge" data-i18n="cameraProBadge">Pro</span>
-                    </button>
-                  </div>
-
                   <div id="cameraPresenceConfig" class="camera-presence-config">
-                    <div class="camera-rule-list" id="cameraRulesBasic" data-camera-rules-panel="basic" role="tabpanel" aria-labelledby="cameraRulesSegBasic">
+                    <div class="camera-rule-list" id="cameraRulesBasic" data-camera-rules-panel="basic" role="region" aria-label="基础识别">
                       <div class="camera-rule-row" data-camera-card="away" data-camera-trigger="away" data-camera-bind-key="onAway" id="cameraBindRowAway">
                         <div class="camera-rule-row-main">
                           <button type="button" class="toggle-switch" id="cameraTriggerToggleAway" data-camera-trigger-toggle="away" role="switch" aria-checked="false" aria-label="离席回席"></button>
@@ -2530,54 +2522,9 @@
                           <button type="button" class="control-btn camera-rule-extra-btn" id="cameraBlinkRecalibrateBtn" data-i18n="cameraPresenceBlinkRecalibrate">去摄像头设置适配</button>
                         </div>
                       </div>
-                    </div>
-
-                    <div class="camera-rule-list" id="cameraRulesPro" data-camera-rules-panel="pro" role="tabpanel" aria-labelledby="cameraRulesSegPro" hidden>
-                      <p class="camera-rules-pro-hint" id="cameraRulesProHint" data-i18n="cameraRulesProHint">已可配置 · 开启预览后识别</p>
-                      <div class="camera-rule-row" data-camera-card="openPalm" data-camera-trigger="openPalm" data-camera-bind-key="openPalm" id="cameraBindRowOpenPalm">
-                        <div class="camera-rule-row-main">
-                          <button type="button" class="toggle-switch" id="cameraTriggerToggleOpenPalm" data-camera-trigger-toggle="openPalm" role="switch" aria-checked="false" aria-label="五指张开"></button>
-                          <div class="camera-rule-row-text">
-                            <div class="camera-card-title" data-i18n="cameraCardOpenPalmTitle">五指张开</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardOpenPalmDesc" title="正对摄像头张开五指。">正对摄像头张开五指。</div>
-                          </div>
-                        </div>
-                        <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="openPalm" aria-label="五指张开动作"></select>
-                      </div>
-                      <div class="camera-rule-row" data-camera-card="okHand" data-camera-trigger="okHand" data-camera-bind-key="okHand" id="cameraBindRowOkHand">
-                        <div class="camera-rule-row-main">
-                          <button type="button" class="toggle-switch" id="cameraTriggerToggleOkHand" data-camera-trigger-toggle="okHand" role="switch" aria-checked="false" aria-label="OK"></button>
-                          <div class="camera-rule-row-text">
-                            <div class="camera-card-title" data-i18n="cameraCardOkHandTitle">OK</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardOkHandDesc" title="拇指与食指成圈、其余手指伸直。">拇指与食指成圈、其余手指伸直。</div>
-                          </div>
-                        </div>
-                        <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="okHand" aria-label="OK 动作"></select>
-                      </div>
-                      <div class="camera-rule-row" data-camera-card="fist" data-camera-trigger="fist" data-camera-bind-key="fist" id="cameraBindRowFist">
-                        <div class="camera-rule-row-main">
-                          <button type="button" class="toggle-switch" id="cameraTriggerToggleFist" data-camera-trigger-toggle="fist" role="switch" aria-checked="false" aria-label="握拳"></button>
-                          <div class="camera-rule-row-text">
-                            <div class="camera-card-title" data-i18n="cameraCardFistTitle">握拳</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardFistDesc" title="握紧拳头。">握紧拳头。</div>
-                          </div>
-                        </div>
-                        <p class="camera-bind-summary" id="cameraTriggerSummaryFist" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="fist" aria-label="握拳动作"></select>
-                      </div>
-                      <div class="camera-rule-row" data-camera-card="wave" data-camera-trigger="wave" data-camera-bind-key="wave" id="cameraBindRowWave">
-                        <div class="camera-rule-row-main">
-                          <button type="button" class="toggle-switch" id="cameraTriggerToggleWave" data-camera-trigger-toggle="wave" role="switch" aria-checked="false" aria-label="挥手"></button>
-                          <div class="camera-rule-row-text">
-                            <div class="camera-card-title" data-i18n="cameraCardWaveTitle">挥手</div>
-                            <div class="camera-card-desc" data-i18n="cameraCardWaveDesc" title="张开手掌左右摆动数次。">张开手掌左右摆动数次。</div>
-                          </div>
-                        </div>
-                        <p class="camera-bind-summary" id="cameraTriggerSummaryWave" hidden>尚未绑定结果</p>
-                        <select class="camera-action-select" data-camera-action-for="wave" aria-label="挥手动作"></select>
-                      </div>
+                      <p class="camera-rules-pro-bridge" id="cameraRulesProBridge">
+                        <button type="button" class="control-btn" id="cameraGotoProGesturesBtn" data-i18n="cameraGotoProGestures">Pro 手势（五指 / OK / 握拳 / 挥手）→</button>
+                      </p>
                     </div>
                   </div>
 
@@ -2745,13 +2692,21 @@
                   <div class="camera-panel-head">
                     <div>
                       <h2 class="camera-panel-title" data-i18n="cameraPanelProTitle">Pro 视觉能力</h2>
-                      <p class="camera-panel-desc" data-i18n="cameraPanelProDesc">左侧预览可即时查看增强效果；识别仍用原始画面，不会自动开启摄像头。</p>
+                      <p class="camera-panel-desc" data-i18n="cameraPanelProDesc">美颜、隐私、健康与手势分栏管理；识别仍用原始画面，不会自动开启摄像头。</p>
                     </div>
                   </div>
                   <div class="camera-pro-workbench" id="cameraProWorkbench">
                     <div class="camera-pro-preview-host" id="cameraProPreviewHost" aria-label="Pro 预览"></div>
                     <div class="camera-pro-stack" id="cameraProStack">
-                    <section class="camera-pro-section camera-pro-filter-section" id="cameraProFilterSection" aria-labelledby="cameraProFilterTitle">
+                    <div class="camera-pro-subtabs" id="cameraProSubtabs" role="tablist" aria-label="Pro sections">
+                      <button type="button" class="camera-pro-subtab is-active" role="tab" id="cameraProSubtabBeauty" data-pro-subtab="beauty" aria-selected="true" aria-controls="cameraProSubBeauty" data-i18n="cameraProSubtabBeauty">美颜</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabPrivacy" data-pro-subtab="privacy" aria-selected="false" aria-controls="cameraProSubPrivacy" data-i18n="cameraProSubtabPrivacy">隐私</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabWellness" data-pro-subtab="wellness" aria-selected="false" aria-controls="cameraProSubWellness" data-i18n="cameraProSubtabWellness">健康</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabGesture" data-pro-subtab="gesture" aria-selected="false" aria-controls="cameraProSubGesture" data-i18n="cameraProSubtabGesture">手势</button>
+                    </div>
+
+                    <div class="camera-pro-subpanels" id="cameraProSubpanels">
+                    <section class="camera-pro-section camera-pro-filter-section camera-pro-subpanel is-active" id="cameraProSubBeauty" role="tabpanel" data-pro-subpanel="beauty" aria-labelledby="cameraProSubtabBeauty">
                       <div class="camera-card-kicker" data-i18n="cameraProFilterKicker">本地预览</div>
                       <div class="camera-card-title-row">
                         <div class="camera-card-title" id="cameraProFilterTitle" data-i18n="cameraProFilterTitle">美颜 / 画面增强</div>
@@ -2880,63 +2835,156 @@
                       </div>
                     </section>
 
-                    <div class="camera-pro-capability-grid" id="cameraProCapabilityGrid">
-                      <div class="camera-config-card" data-camera-card="beauty">
-                        <div class="camera-card-kicker" data-i18n="cameraProCapBeautyKicker">已接入</div>
-                        <div class="camera-card-title" data-i18n="cameraProCapBeautyTitle">美颜 / 画面增强</div>
-                        <div class="camera-card-desc" data-i18n="cameraProCapBeautyDesc">上方可调节本地预览增强；默认关闭，不影响识别链路。</div>
+                    <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubPrivacy" role="tabpanel" data-pro-subpanel="privacy" aria-labelledby="cameraProSubtabPrivacy" hidden>
+                      <div class="camera-card-kicker" data-i18n="cameraProPrivacyKicker">RGB 视觉主链</div>
+                      <div class="camera-card-title" id="cameraProPrivacyTitle" data-i18n="cameraProPrivacyTitle">隐私与范围</div>
+                      <p class="camera-card-desc" data-i18n="cameraProPrivacyDesc">多人提醒与隐私卫士走现有视觉识别，不依赖 Windows Hello / IR。</p>
+                      <div class="camera-pro-visualizer" id="cameraProVisualizer">
+                        <span class="camera-pro-visualizer-dot is-idle" id="cameraProVisualizerDot" aria-hidden="true"></span>
+                        <div>
+                          <div class="camera-media-label" data-i18n="cameraProVisualizerLabel">范围指示</div>
+                          <p class="camera-pro-status-line" id="cameraProVisualizerStatus" data-i18n="cameraProVisIdle">待命 · 开启预览后显示</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProVisualizerToggle" role="switch" aria-checked="false" aria-label="Visualizer"></button>
                       </div>
-                      <div class="camera-config-card" data-camera-card="hand" id="cameraProHandCard">
-                        <div class="camera-card-kicker" id="cameraProHandKicker" data-i18n="cameraProCapGestureKicker">已接入</div>
-                        <div class="camera-card-title" data-i18n="cameraCardHandTitle">手势识别</div>
-                        <div class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraProHandBindHint">规则在「视觉识别 · Pro 手势」中绑定；本页只看运行状态。</div>
-                        <p class="camera-bind-summary" id="cameraProHandStatus">尚未开启预览</p>
-                        <div class="camera-action-bar">
-                          <button type="button" class="control-btn is-primary" id="cameraProHandGotoBind" data-i18n="cameraProHandGotoBind">去绑定手势</button>
+                      <div class="camera-pro-toggle-row">
+                        <div>
+                          <strong data-i18n="cameraProPrivacyAlertTitle">旁人提醒</strong>
+                          <p class="camera-card-desc" data-i18n="cameraProPrivacyAlertDesc">检测到第二张脸时温和提醒，不自动遮罩。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProPrivacyAlertToggle" role="switch" aria-checked="false" aria-label="Privacy Alert"></button>
+                      </div>
+                      <div class="camera-pro-toggle-row">
+                        <div>
+                          <strong data-i18n="cameraProPrivacyGuardTitle">隐私卫士</strong>
+                          <p class="camera-card-desc" data-i18n="cameraProPrivacyGuardDesc">多人同框或距离过近时，复用应用内隐私遮罩。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProPrivacyGuardToggle" role="switch" aria-checked="false" aria-label="Privacy Guard"></button>
+                      </div>
+                      <label class="camera-pro-select-row">
+                        <span data-i18n="cameraProPrivacySensLabel">灵敏度</span>
+                        <select id="cameraProPrivacySens">
+                          <option value="low" data-i18n="cameraProPrivacySensLow">低</option>
+                          <option value="mid" selected data-i18n="cameraProPrivacySensMid">中</option>
+                          <option value="high" data-i18n="cameraProPrivacySensHigh">高</option>
+                        </select>
+                      </label>
+                      <p class="camera-pro-status-line" id="cameraProPrivacyStatus" aria-live="polite"></p>
+                    </section>
+
+                    <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubWellness" role="tabpanel" data-pro-subpanel="wellness" aria-labelledby="cameraProSubtabWellness" hidden>
+                      <div class="camera-card-kicker" data-i18n="cameraProWellnessKicker">健康助手</div>
+                      <div class="camera-card-title" id="cameraProWellnessTitle" data-i18n="cameraProWellnessTitle">健康助手</div>
+                      <p class="camera-card-desc" data-i18n="cameraProWellnessDesc">本地状态机提醒；与故意眨眼确认分流，无医疗宣称。</p>
+                      <div class="camera-pro-toggle-row">
+                        <div>
+                          <strong data-i18n="cameraProWellness2020Title">20-20-20</strong>
+                          <p class="camera-card-desc" data-i18n="cameraProWellness2020Desc">在席累计后提醒看远处约 20 秒。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProWellness2020Toggle" role="switch" aria-checked="false" aria-label="20-20-20"></button>
+                      </div>
+                      <label class="camera-pro-select-row">
+                        <span data-i18n="cameraProWellness2020MinsLabel">间隔（分钟）</span>
+                        <select id="cameraProWellness2020Mins">
+                          <option value="10">10</option>
+                          <option value="20" selected>20</option>
+                          <option value="30">30</option>
+                          <option value="45">45</option>
+                          <option value="60">60</option>
+                        </select>
+                      </label>
+                      <div class="camera-pro-toggle-row">
+                        <div>
+                          <strong data-i18n="cameraProWellnessBlinkTitle">眨眼频率提醒</strong>
+                          <p class="camera-card-desc" data-i18n="cameraProWellnessBlinkDesc">长期眨眼偏少时提醒；不影响故意眨眼确认动作。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProWellnessBlinkToggle" role="switch" aria-checked="false" aria-label="Blink wellness"></button>
+                      </div>
+                      <div class="camera-pro-toggle-row">
+                        <div>
+                          <strong data-i18n="cameraProWellnessPostureTitle">坐姿粗检</strong>
+                          <p class="camera-card-desc" data-i18n="cameraProWellnessPostureDesc">头部俯仰偏离较久时温和提醒。</p>
+                        </div>
+                        <button type="button" class="toggle-switch" id="cameraProWellnessPostureToggle" role="switch" aria-checked="false" aria-label="Posture"></button>
+                      </div>
+                      <p class="camera-pro-status-line" id="cameraProWellnessStatus" aria-live="polite"></p>
+                    </section>
+
+                    <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubGesture" role="tabpanel" data-pro-subpanel="gesture" aria-labelledby="cameraProSubtabGesture" hidden>
+                      <div class="camera-card-kicker" id="cameraProHandKicker" data-i18n="cameraProCapGestureKicker">已接入</div>
+                      <div class="camera-card-title" data-i18n="cameraCardHandTitle">手势识别</div>
+                      <p class="camera-card-desc" id="cameraProHandDesc" data-i18n="cameraProHandBindHint">五指 / OK / 握拳 / 挥手的 if-then 规则在这里配置，与「视觉识别」基础项分开。</p>
+                      <p class="camera-pro-status-line" id="cameraProHandStatus" aria-live="polite">尚未开启预览</p>
+                      <div class="camera-rule-list camera-pro-hand-rules" id="cameraRulesPro" data-camera-rules-panel="pro" role="region" aria-label="Pro 手势">
+                        <p class="camera-rules-pro-hint" id="cameraRulesProHint" data-i18n="cameraRulesProHint">已可配置 · 开启预览后识别</p>
+                        <div class="camera-rule-row" data-camera-card="openPalm" data-camera-trigger="openPalm" data-camera-bind-key="openPalm" id="cameraBindRowOpenPalm">
+                          <div class="camera-rule-row-main">
+                            <button type="button" class="toggle-switch" id="cameraTriggerToggleOpenPalm" data-camera-trigger-toggle="openPalm" role="switch" aria-checked="false" aria-label="五指张开"></button>
+                            <div class="camera-rule-row-text">
+                              <div class="camera-card-title" data-i18n="cameraCardOpenPalmTitle">五指张开</div>
+                              <div class="camera-card-desc" data-i18n="cameraCardOpenPalmDesc" title="正对摄像头张开五指。">正对摄像头张开五指。</div>
+                            </div>
+                          </div>
+                          <p class="camera-bind-summary" id="cameraTriggerSummaryOpenPalm" hidden>尚未绑定结果</p>
+                          <select class="camera-action-select" data-camera-action-for="openPalm" aria-label="五指张开动作"></select>
+                        </div>
+                        <div class="camera-rule-row" data-camera-card="okHand" data-camera-trigger="okHand" data-camera-bind-key="okHand" id="cameraBindRowOkHand">
+                          <div class="camera-rule-row-main">
+                            <button type="button" class="toggle-switch" id="cameraTriggerToggleOkHand" data-camera-trigger-toggle="okHand" role="switch" aria-checked="false" aria-label="OK"></button>
+                            <div class="camera-rule-row-text">
+                              <div class="camera-card-title" data-i18n="cameraCardOkHandTitle">OK</div>
+                              <div class="camera-card-desc" data-i18n="cameraCardOkHandDesc" title="拇指与食指成圈、其余手指伸直。">拇指与食指成圈、其余手指伸直。</div>
+                            </div>
+                          </div>
+                          <p class="camera-bind-summary" id="cameraTriggerSummaryOkHand" hidden>尚未绑定结果</p>
+                          <select class="camera-action-select" data-camera-action-for="okHand" aria-label="OK 动作"></select>
+                        </div>
+                        <div class="camera-rule-row" data-camera-card="fist" data-camera-trigger="fist" data-camera-bind-key="fist" id="cameraBindRowFist">
+                          <div class="camera-rule-row-main">
+                            <button type="button" class="toggle-switch" id="cameraTriggerToggleFist" data-camera-trigger-toggle="fist" role="switch" aria-checked="false" aria-label="握拳"></button>
+                            <div class="camera-rule-row-text">
+                              <div class="camera-card-title" data-i18n="cameraCardFistTitle">握拳</div>
+                              <div class="camera-card-desc" data-i18n="cameraCardFistDesc" title="握紧拳头。">握紧拳头。</div>
+                            </div>
+                          </div>
+                          <p class="camera-bind-summary" id="cameraTriggerSummaryFist" hidden>尚未绑定结果</p>
+                          <select class="camera-action-select" data-camera-action-for="fist" aria-label="握拳动作"></select>
+                        </div>
+                        <div class="camera-rule-row" data-camera-card="wave" data-camera-trigger="wave" data-camera-bind-key="wave" id="cameraBindRowWave">
+                          <div class="camera-rule-row-main">
+                            <button type="button" class="toggle-switch" id="cameraTriggerToggleWave" data-camera-trigger-toggle="wave" role="switch" aria-checked="false" aria-label="挥手"></button>
+                            <div class="camera-rule-row-text">
+                              <div class="camera-card-title" data-i18n="cameraCardWaveTitle">挥手</div>
+                              <div class="camera-card-desc" data-i18n="cameraCardWaveDesc" title="张开手掌左右摆动数次。">张开手掌左右摆动数次。</div>
+                            </div>
+                          </div>
+                          <p class="camera-bind-summary" id="cameraTriggerSummaryWave" hidden>尚未绑定结果</p>
+                          <select class="camera-action-select" data-camera-action-for="wave" aria-label="挥手动作"></select>
                         </div>
                       </div>
-                      <div class="camera-config-card is-placeholder" data-camera-card="identity" aria-disabled="true">
-                        <div class="camera-card-kicker" data-i18n="cameraProCapIdentityKicker">边界说明</div>
-                        <div class="camera-card-title" data-i18n="cameraProCapIdentityTitle">身份识别</div>
-                        <div class="camera-card-desc" data-i18n="cameraProCapIdentityDesc">Windows Hello 等系统级确认尚未接入；需兼容 IR / 安全摄像头。</div>
-                      </div>
+                    </section>
                     </div>
 
-                    <details class="camera-fine-gaze-fold camera-fine-map-fold" id="cameraFineMapFold" open>
-                      <summary class="camera-fine-map-summary" data-i18n="cameraFineMapSummary">九宫格区域输入（说明预览）</summary>
-                      <div class="camera-fine-gaze-body">
-                        <div class="camera-card-kicker" data-i18n="cameraGazeMapKicker">屏幕区域（说明）</div>
-                        <div class="camera-card-title-row">
-                          <div class="camera-card-title" data-i18n="cameraGazeMapTitle">9 宫格示意</div>
-                          <span class="camera-chip" id="cameraGazeMapModeChip" data-i18n="cameraGazeMapModeDocs">说明预览 · 不会自动发送 · 需要精细校准</span>
-                        </div>
-                        <ul class="camera-gaze-map-warnings" aria-label="九宫格说明边界">
-                          <li data-i18n="cameraGazeMapWarnDocs">说明预览</li>
-                          <li data-i18n="cameraGazeMapWarnNoAutoSend">不会自动发送</li>
-                          <li data-i18n="cameraGazeMapWarnNeedFine">需要精细校准</li>
-                        </ul>
-                        <p class="camera-card-desc" data-i18n="cameraGazeMapNote">说明预览，未接入发送确认执行。看向区域不会自动发出内容。需要精细校准后才有更细区域。</p>
-                        <div class="camera-gaze-map is-coarse is-docs-only" id="cameraGazeMap" aria-label="视线九宫格说明预览">
-                          <div class="camera-gaze-cell" data-zone="tl" data-i18n="cameraGazeZoneCmd">命令</div>
-                          <div class="camera-gaze-cell" data-zone="tc" data-i18n="cameraGazeZoneTop">上方</div>
-                          <div class="camera-gaze-cell" data-zone="tr" data-i18n="cameraGazeZoneCand">候选</div>
-                          <div class="camera-gaze-cell is-cancel" data-zone="ml" data-i18n="cameraGazeZoneCancel">取消</div>
-                          <div class="camera-gaze-cell is-center" data-zone="center" data-i18n="cameraGazeZoneCenter">中心</div>
-                          <div class="camera-gaze-cell" data-zone="mr" data-i18n="cameraGazeZoneContinue">继续</div>
-                          <div class="camera-gaze-cell" data-zone="bl" data-i18n="cameraGazeZoneBl">左下</div>
-                          <div class="camera-gaze-cell" data-zone="bc" data-i18n="cameraGazeZoneBottom">下方</div>
-                          <div class="camera-gaze-cell is-send" data-zone="br" data-i18n="cameraGazeZoneSend">发送区</div>
-                        </div>
-                      </div>
-                    </details>
-
                     <div hidden aria-hidden="true">
+                      <section id="cameraProFilterSection"></section>
+                      <section id="cameraProPrivacySection"></section>
+                      <section id="cameraProWellnessSection"></section>
+                      <div id="cameraProHandCard"></div>
+                      <div id="cameraProCapabilityGrid"></div>
+                      <details id="cameraFineMapFold">
+                        <div class="camera-gaze-map is-coarse is-docs-only" id="cameraGazeMap"></div>
+                        <span id="cameraGazeMapModeChip"></span>
+                      </details>
                       <section id="cameraProHelloSection"></section>
                       <section id="cameraProDeviceSection"></section>
                       <button type="button" id="cameraProHelloCheckBtn"></button>
-                      <p id="cameraProStatusHello" data-i18n="cameraProHelloStatusFuture">未来支持 · 需要兼容 IR / 安全摄像头</p>
+                      <p id="cameraProStatusHello"></p>
                       <details id="cameraProFutureFold"></details>
                       <div class="camera-bind-list" id="cameraPresenceBindList"></div>
+                      <div id="cameraRulesSegment"></div>
+                      <button type="button" id="cameraRulesSegBasic" data-camera-rules-seg="basic"></button>
+                      <button type="button" id="cameraRulesSegPro" data-camera-rules-seg="pro"></button>
+                      <button type="button" id="cameraProHandGotoBind"></button>
                       <p class="camera-action-send-note" data-i18n="cameraActionSendDesc">发送需要二次确认。本轮不会把单个视觉动作直接绑定为发送。</p>
                     </div>
                     </div>
@@ -3597,6 +3645,7 @@
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-presence-actions.js"></script>
+  <script src="js/features/camera/camera-pro-glance.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
   <script src="vendor/face-mask/face-mask.js"></script>
   <script src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>

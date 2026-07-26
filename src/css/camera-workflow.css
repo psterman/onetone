@@ -228,9 +228,46 @@
 
 .camera-pro-stack{
   min-width:0;
-  display:grid;
+  display:flex;
+  flex-direction:column;
   gap:12px;
 }
+
+.camera-pro-subtabs{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow-x:auto;
+  padding:2px 0 8px;
+  border-bottom:1px solid var(--outline-variant);
+  scrollbar-width:thin;
+}
+
+.camera-pro-subtab{
+  flex:0 0 auto;
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--on-surface-muted);
+  border-radius:999px;
+  padding:7px 14px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.camera-pro-subtab:hover{
+  color:var(--on-surface);
+  background:var(--surface-soft, rgba(0,0,0,.04));
+}
+.camera-pro-subtab.is-active{
+  color:var(--primary, #2a9cc4);
+  background:rgba(42,156,196,.12);
+  border-color:rgba(42,156,196,.28);
+}
+
+.camera-pro-subpanels{min-width:0}
+.camera-pro-subpanel[hidden]{display:none !important}
 
 @media (max-width:1080px){
   .camera-pro-workbench{
@@ -318,6 +355,26 @@
   font-size:12px;
   line-height:1.45;
   color:var(--on-surface-muted);
+}
+
+.camera-rules-pro-bridge{
+  margin:10px 0 0;
+}
+
+.camera-rules-pro-bridge .control-btn{
+  width:100%;
+  justify-content:flex-start;
+}
+
+.camera-pro-hand-rules{
+  margin-top:10px;
+}
+
+.camera-pro-subpanel .camera-rule-row{
+  border:1px solid var(--outline-variant);
+  border-radius:12px;
+  padding:10px 12px;
+  background:var(--surface-high, var(--surface));
 }
 
 .camera-rule-row{
@@ -1472,8 +1529,10 @@
 }
 
 .camera-pro-stack{
-  display:grid;
+  display:flex;
+  flex-direction:column;
   gap:14px;
+  min-width:0;
 }
 
 .camera-pro-banner{
@@ -1774,6 +1833,126 @@
 
 .camera-pro-section--future{
   opacity:0.92;
+}
+
+.camera-pro-section--lab{
+  opacity:0.95;
+}
+
+.camera-pro-section.is-gated{
+  outline:1px dashed rgba(148,163,184,.45);
+}
+
+.camera-pro-visualizer{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:var(--surface-soft, rgba(0,0,0,.04));
+}
+
+.camera-pro-visualizer-dot{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  flex:0 0 auto;
+  background:#94a3b8;
+  box-shadow:0 0 0 3px rgba(148,163,184,.25);
+}
+.camera-pro-visualizer-dot.is-green{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.28)}
+.camera-pro-visualizer-dot.is-yellow{background:#eab308;box-shadow:0 0 0 3px rgba(234,179,8,.28)}
+.camera-pro-visualizer-dot.is-red{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.28)}
+.camera-pro-visualizer-dot.is-idle{background:#94a3b8}
+
+.camera-pro-toggle-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:6px 0;
+}
+.camera-pro-toggle-row > div{min-width:0;flex:1}
+.camera-pro-toggle-row .camera-card-desc{margin:4px 0 0}
+
+.camera-pro-select-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:12px;
+  font-weight:700;
+}
+.camera-pro-select-row select{
+  min-width:120px;
+  border-radius:8px;
+  border:1px solid var(--outline-variant);
+  background:var(--surface);
+  color:inherit;
+  padding:6px 8px;
+}
+
+.camera-pro-status-line{
+  margin:0;
+  font-size:12px;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-gate-note{
+  margin:0;
+  font-size:12px;
+  color:#b45309;
+  background:rgba(245,158,11,.12);
+  border:1px solid rgba(245,158,11,.28);
+  border-radius:8px;
+  padding:8px 10px;
+}
+
+.camera-pro-cap-probe-grid{
+  display:grid;
+  gap:8px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+@media (max-width:900px){
+  .camera-pro-cap-probe-grid{grid-template-columns:1fr}
+}
+
+.camera-pro-cap-probe{
+  border:1px solid var(--outline-variant);
+  border-radius:10px;
+  padding:10px;
+  background:var(--surface);
+}
+.camera-pro-cap-probe.is-ready{
+  border-color:rgba(34,197,94,.4);
+  background:rgba(34,197,94,.08);
+}
+.camera-pro-cap-probe.is-missing{
+  border-color:rgba(148,163,184,.35);
+}
+.camera-pro-cap-probe-title{
+  font-size:12px;
+  font-weight:800;
+}
+.camera-pro-cap-probe-desc{
+  margin-top:4px;
+  font-size:11px;
+  line-height:1.4;
+  color:var(--on-surface-muted);
+}
+
+.camera-pro-lab-grid{
+  display:grid;
+  gap:8px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+@media (max-width:900px){
+  .camera-pro-lab-grid{grid-template-columns:1fr}
+}
+.camera-config-card.is-lab,
+.camera-config-card.is-disabled{
+  opacity:0.72;
+  pointer-events:none;
 }
 
 .camera-pro-future-status{
