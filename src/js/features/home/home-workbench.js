@@ -319,6 +319,64 @@
     return s;
   }
 
+  function renderHeroFlowSummary(vm){
+    var host=$('wbHeroFlowSummary');
+    if(!host) return;
+    try{
+    var mode=normalizeHeroMode(heroMode);
+    var paused=!!(vm.runtime&&vm.runtime.paused);
+    var live=vm.vpState==='DICTATING'||!!(vm.summary&&vm.summary.dictating);
+    var listening=!paused&&!live&&((vm.summary&&vm.summary.statusMode==='listening')||vm.vpState==='LISTENING');
+    var target=String(vm.targetLabel||'').trim()||t('homeV9TargetUnknown');
+    var habit=String(vm.habitName||'').trim();
+    if(habit&&habit!==target) target=habit+' · '+target;
+    var trigger;
+    if(mode==='keys'){
+      trigger=vm.triggerKey&&vm.triggerKey!==t('homeLiveUnset')?vm.triggerKey:t('homeWbHeroModeKeys');
+    }else if(mode==='camera'){
+      var cam=cameraPresenceSnapshot();
+      trigger=cameraChannelLabel(cam)||t('homeWbHeroModeCamera');
+    }else{
+      trigger=vm.wakePrimary&&vm.wakePrimary!==t('homeLiveUnset')?vm.wakePrimary:t('homeWbHeroModeVoice');
+    }
+    var statusCls='';
+    var status;
+    if(paused){
+      status=t('homeWbListenResume');
+      statusCls='is-warn';
+    }else if(mode==='camera'){
+      var camSt=cameraPresenceSnapshot();
+      status=cameraChannelLabel(camSt)||t('homeWbStatusIdle');
+      if(camSt&&(camSt.running||camSt.status==='running')) statusCls='is-live';
+    }else if(live){
+      status=t('homeWbTriggerLive')||t('homeWbTriggerHeroLive');
+      statusCls='is-live';
+    }else if(listening){
+      status=t('homeWbVoiceWaitingWake')||t('homeWbStatusReady');
+      statusCls='is-live';
+    }else if(vm.summary&&vm.summary.statusMode==='error'){
+      status=t('homeWbDiagRecogError')||t('homeV9EngineOffline');
+      statusCls='is-warn';
+    }else{
+      status=t('homeWbStatusReady');
+    }
+    var finish=String(vm.finishPill||vm.finishText||'').trim()||t('homeLiveUnset');
+    function cell(lbl,val,cls){
+      return '<div class="wb-hero-flow-item">'
+        +'<span class="wb-hero-flow-lbl">'+esc(lbl)+'</span>'
+        +'<strong class="wb-hero-flow-val'+(cls?' '+cls:'')+'" title="'+esc(val)+'">'+esc(val)+'</strong>'
+        +'</div>';
+    }
+    host.innerHTML=
+      cell(t('homeWbFlowTarget'),target,'')+
+      cell(t('homeWbFlowTrigger'),trigger,'')+
+      cell(t('homeWbFlowStatus'),status,statusCls)+
+      cell(t('homeWbFlowFinish'),finish,'');
+    }catch(err){
+      try{ console.error('wbHeroFlowSummary',err); }catch(_){}
+    }
+  }
+
   function renderHeroPills(vm,stats){
     var host=$('wbHeroPills');
     if(!host) return;
@@ -444,6 +502,7 @@
     var stats=global.OneToneHomeWorkbenchStats
       ?global.OneToneHomeWorkbenchStats.buildHeroStats(vm)
       :{uptime:'—',opCount:'—',topTarget:'—',topShortcut:'—',latency:'—'};
+    renderHeroFlowSummary(vm);
     renderHeroPills(vm,stats);
     renderHeroStats(stats);
   }
@@ -1076,15 +1135,19 @@
     var api=cameraPresenceApi();
     if(!api) return;
     presenceHooked=true;
-    if(typeof api.setOnStateChange==='function'){
-      api.setOnStateChange(function(){
+    var presenceRenderTimer=0;
+    function schedulePresenceRender(){
+      if(presenceRenderTimer) return;
+      presenceRenderTimer=setTimeout(function(){
+        presenceRenderTimer=0;
         try{ render(); }catch(_){}
-      });
+      },80);
+    }
+    if(typeof api.setOnStateChange==='function'){
+      api.setOnStateChange(schedulePresenceRender);
     }
     if(typeof api.setRuntimeStateListener==='function'){
-      api.setRuntimeStateListener(function(){
-        try{ render(); }catch(_){}
-      });
+      api.setRuntimeStateListener(schedulePresenceRender);
     }
   }
 

@@ -90,7 +90,8 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
         .build(app)?;
 
     start_tray_mic_poll(app.clone());
-    refresh_tray_visual_forced(&app);
+    // Do not refresh_tray_visual_forced here — WASAPI on the setup path 假死'd launch.
+    // First paint comes from the poll thread after the event loop is up.
 
     let _ = state;
     Ok(())
@@ -100,8 +101,9 @@ fn start_tray_mic_poll(app: AppHandle) {
     std::thread::Builder::new()
         .name("tray-mic-poll".into())
         .spawn(move || {
+            // Defer first paint off tray setup — sync WASAPI enum on the UI thread used to 假死 launch.
             std::thread::sleep(std::time::Duration::from_millis(900));
-            refresh_tray_visual_from_poll(&app, false);
+            refresh_tray_visual_from_poll(&app, true);
             loop {
                 std::thread::sleep(std::time::Duration::from_secs(2));
                 refresh_tray_visual_from_poll(&app, false);
@@ -148,30 +150,33 @@ pub fn after_mic_state_changed(app: &AppHandle, st: &MicMuteState) {
 
 /// Sync tray hover text with listen / voice / mic state.
 pub fn refresh_tray_tooltip(app: &AppHandle, state: &AppState) {
+    // Never hold cfg while touching WASAPI — that deadlock'd launch (Responding=false).
     let paused = *state.paused.lock();
-    let cfg = state.cfg.lock();
-    let voice_on = cfg.voice_vosk.enabled || cfg.voice_sapi.enabled;
-    let mic = resolve_tray_mic_visual(state);
+    let voice_on = {
+        let cfg = state.cfg.lock();
+        cfg.voice_vosk.enabled || cfg.voice_sapi.enabled
+    };
+    let mic_status = resolve_tray_mic_status_label(state);
     let agent = read_tray_agent_visual();
     let tip = if paused {
         format!(
             "一声 · 已暂停（按键与语音均不响应，已释放语音占用） · 麦克风{}",
-            mic.status_label
+            mic_status
         )
     } else if agent.light != "idle" && !agent.agent_name.is_empty() {
         format!(
             "一声 · {} {} · 麦克风{}",
-            agent.agent_name, agent.status_label, mic.status_label
+            agent.agent_name, agent.status_label, mic_status
         )
     } else if voice_on {
         format!(
             "一声 · 监听中（按键 + 语音唤醒） · 麦克风{}",
-            mic.status_label
+            mic_status
         )
     } else {
         format!(
             "一声 · 仅按键（语音已关，省内存） · 麦克风{}",
-            mic.status_label
+            mic_status
         )
     };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
@@ -624,18 +629,33 @@ fn tray_engine_label(engine: &str) -> &'static str {
 
 fn resolve_tray_mic_visual(state: &AppState) -> TrayMicVisual {
     if *state.paused.lock() {
-        let mut base = read_system_mic_visual();
+        let mut base = read_system_mic_visual_light();
         base.key = "paused";
         base.status_label = "已暂停".into();
         return base;
     }
     if *state.recording.lock() {
-        let mut base = read_system_mic_visual();
+        let mut base = read_system_mic_visual_light();
         base.key = "recording";
         base.status_label = "录音中".into();
         return base;
     }
-    read_system_mic_visual()
+    read_system_mic_visual_light()
+}
+
+/// Tooltip / poll path: mute status only — never enumerate devices (that WASAPI walk 假死'd UI).
+fn resolve_tray_mic_status_label(state: &AppState) -> String {
+    if *state.paused.lock() {
+        return "已暂停".into();
+    }
+    if *state.recording.lock() {
+        return "录音中".into();
+    }
+    match read_system_mic_key() {
+        "muted" => "已静音".into(),
+        "ready" => "开麦中".into(),
+        _ => "不可用".into(),
+    }
 }
 
 fn resolve_tray_icon_inputs(state: &AppState) -> (&'static str, String) {
@@ -678,10 +698,10 @@ fn visual_cache_key(mic_key: &str, agent_light: &str) -> String {
     format!("{mic_key}:{agent_light}")
 }
 
-fn read_system_mic_visual() -> TrayMicVisual {
+/// Light mic visual for tray menu/tooltip — mute probe only, no device enumeration.
+fn read_system_mic_visual_light() -> TrayMicVisual {
     #[cfg(windows)]
     {
-        let device_label = tray_default_mic_device_label();
         match crate::audio_win::get_default_capture_mute() {
             Ok(st) if st.available => {
                 if st.muted {
@@ -689,7 +709,7 @@ fn read_system_mic_visual() -> TrayMicVisual {
                         key: "muted",
                         muted: Some(true),
                         status_label: "已静音".into(),
-                        device_label,
+                        device_label: "默认".into(),
                         available: true,
                         can_toggle: true,
                     }
@@ -698,25 +718,17 @@ fn read_system_mic_visual() -> TrayMicVisual {
                         key: "ready",
                         muted: Some(false),
                         status_label: "开麦中".into(),
-                        device_label,
+                        device_label: "默认".into(),
                         available: true,
                         can_toggle: true,
                     }
                 }
             }
-            Ok(_) => TrayMicVisual {
+            Ok(_) | Err(_) => TrayMicVisual {
                 key: "missing",
                 muted: None,
                 status_label: "不可用".into(),
-                device_label,
-                available: false,
-                can_toggle: false,
-            },
-            Err(_) => TrayMicVisual {
-                key: "missing",
-                muted: None,
-                status_label: "不可用".into(),
-                device_label,
+                device_label: "默认".into(),
                 available: false,
                 can_toggle: false,
             },
@@ -733,6 +745,15 @@ fn read_system_mic_visual() -> TrayMicVisual {
             can_toggle: false,
         }
     }
+}
+
+fn read_system_mic_visual() -> TrayMicVisual {
+    let mut base = read_system_mic_visual_light();
+    #[cfg(windows)]
+    {
+        base.device_label = tray_default_mic_device_label();
+    }
+    base
 }
 
 fn tray_default_mic_device_label() -> String {

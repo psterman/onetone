@@ -1,4 +1,4 @@
-/* Voice page v2 shell — layout driven by OneToneVoicePageState.activeStep */
+/* Voice page v2 shell ??? layout driven by OneToneVoicePageState.activeStep */
 
 #settingsPanelVoiceWake.voice-page-v2 .voice-page-layout {
   display: grid;
@@ -31,7 +31,7 @@
   min-width: 0;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1179px) {
   #settingsPanelVoiceWake .voice-page-body {
     grid-template-columns: 1fr;
   }
@@ -1134,13 +1134,33 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-v2 .voice-setup-banne
   color: #fdba74;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1179px) {
   #settingsPanelVoiceWake.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
   #settingsPanelVoiceWake.voice-page-v2 .keys-workflow-arrow {
+    display: none;
+  }
+
+  /* Mid-width + aside: keep nodes/pipeline, show only active step body */
+  #settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-settings-flow.keys-workflow-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  #settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col:not(.is-active-step) > .keys-step-body {
+    display: none;
+  }
+
+  #settingsPanelVoiceWake.voice-page-parallel.voice-page-v2 .voice-flow-step.keys-workflow-col.is-active-step > .keys-step-body {
+    display: grid;
+    max-height: min(70vh, 640px);
+    overflow-y: auto;
+  }
+
+  #settingsPanelVoiceWake.voice-page-parallel .voice-workflow-arrow {
     display: none;
   }
 }
@@ -1151,7 +1171,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-v2 .voice-setup-banne
   }
 }
 
-/* Dark theme — voice page v2 shell */
+/* Dark theme ??? voice page v2 shell */
 html[data-theme="dark"] #settingsPanelVoiceWake .voice-subtab-bar {
   background: rgba(22, 30, 44, 0.96);
   border-color: rgba(94, 200, 232, 0.14);
@@ -1197,7 +1217,7 @@ html[data-theme="dark"] .voice-models-page .models-resource-row strong {
   color: var(--on-surface);
 }
 
-/* Voice page desk mode — single-panel step switching */
+/* Voice page desk mode ??? single-panel step switching */
 
 #settingsPanelVoiceWake.voice-page-desk .voice-settings-flow.keys-workflow-grid {
   display: block;
@@ -1348,7 +1368,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   background: rgba(22, 30, 44, 0.92);
 }
 
-/* Voice step pages — mutually exclusive IA */
+/* Voice step pages ??? mutually exclusive IA */
 
 #settingsPanelVoiceWake.voice-page-desk .voice-step-page-head {
   margin: 0 0 10px;
@@ -2160,7 +2180,7 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   color: var(--on-surface-variant, #64748b);
 }
 
-/* Top status bar — brand + engine pills + scope (match reference) */
+/* Top status bar ??? brand + engine pills + scope (match reference) */
 #settingsPanelVoiceWake .voice-page-status-bar {
   display: grid;
   grid-template-columns: minmax(140px, 0.9fr) minmax(0, 1.6fr) minmax(140px, 0.9fr);

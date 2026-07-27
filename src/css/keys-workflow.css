@@ -498,7 +498,7 @@
   font-weight: 600;
 }
 
-@media (min-width: 1041px) {
+@media (min-width: 1180px) {
   #settingsPanelKeys .keys-workflow-col .keys-flow-row {
     flex-direction: column;
     align-items: stretch;
@@ -514,7 +514,7 @@
   }
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1179px) {
   #settingsPanelKeys .habit-default-flow.keys-workflow-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1545,7 +1545,7 @@
   max-height: min(160px, 28vh);
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1179px) {
   #settingsPanelKeys .keys-scheme-summary {
     flex-direction: column;
     align-items: stretch;
@@ -2024,7 +2024,7 @@
   min-width: 0;
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1179px) {
   :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-workflow-grid {
     grid-template-columns: 1fr;
     gap: 12px;

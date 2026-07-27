@@ -175,6 +175,7 @@
                               <button type="button" class="wb-trigger-btn wb-trigger-btn-cancel" id="wbBtnCancel" data-i18n="homeWbBtnCancel" hidden>取消，不要了</button>
                             </div>
                           </div>
+                          <div class="wb-hero-flow" id="wbHeroFlowSummary" aria-label="当前工作流摘要"></div>
                           <div class="wb-hero-stage">
                             <div class="wb-hero-wave wb-hero-wave--left" id="wbHeroWavesLeft" aria-hidden="true">
                               <span style="--h:1"></span><span style="--h:1.5"></span><span style="--h:2"></span><span style="--h:2.5"></span>
@@ -512,8 +513,13 @@
           <div class="settings-panel-wrap" id="settingsPanelWrap">
         <section class="settings-panel drawer-section pref-page basic-page" id="settingsPanelBasic" style="border-top:0;padding-top:0">
           <header class="pref-page-head basic-page-head">
-            <h3 class="pref-page-title" id="prefBasicTitle">基础</h3>
-            <p class="pref-page-subtitle" id="settingsPanelBasicDesc">运行、外观、字体与语言</p>
+            <div class="basic-page-head-row">
+              <div class="basic-page-head-copy">
+                <h3 class="pref-page-title" id="prefBasicTitle">基础</h3>
+                <p class="pref-page-subtitle" id="settingsPanelBasicDesc">运行、外观、字体与语言</p>
+              </div>
+              <p class="basic-save-hint" id="basicSaveHint" role="status">更改立即生效 · 仅保存在本机</p>
+            </div>
           </header>
           <section class="basic-block basic-global-listen-block" aria-labelledby="basicGlobalListenLabel">
             <div class="basic-list-card">
@@ -549,8 +555,8 @@
           <div class="basic-page-stack">
             <section class="basic-block" aria-labelledby="basicCommonTitle">
               <div class="basic-block-head">
-                <h4 class="basic-block-title" id="basicCommonTitle">常用</h4>
-                <p class="basic-block-desc" id="basicCommonDesc">先处理最常改的运行选项</p>
+                <h4 class="basic-block-title" id="basicCommonTitle">运行</h4>
+                <p class="basic-block-desc" id="basicCommonDesc">开机启动、托盘与按键提示</p>
               </div>
               <div class="basic-list-card">
                 <div class="pref-row">

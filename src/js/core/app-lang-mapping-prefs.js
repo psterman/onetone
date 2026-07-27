@@ -49,6 +49,7 @@
     var basicSummaryLanguageLabel=$('basicSummaryLanguageLabel'); if(basicSummaryLanguageLabel) basicSummaryLanguageLabel.textContent=d.basicSummaryLanguageLabel;
     var basicCommonTitle=$('basicCommonTitle'); if(basicCommonTitle) basicCommonTitle.textContent=d.basicCommonTitle;
     var basicCommonDesc=$('basicCommonDesc'); if(basicCommonDesc) basicCommonDesc.textContent=d.basicCommonDesc;
+    var basicSaveHint=$('basicSaveHint'); if(basicSaveHint) basicSaveHint.textContent=d.basicSaveHint;
     var prefSectionRuntime=$('prefSectionRuntime'); if(prefSectionRuntime) prefSectionRuntime.textContent=d.prefSectionRuntime;
     var prefSectionAppearance=$('prefSectionAppearance'); if(prefSectionAppearance) prefSectionAppearance.textContent=d.prefSectionAppearance;
     var basicAppearanceDesc=$('basicAppearanceDesc'); if(basicAppearanceDesc) basicAppearanceDesc.textContent=d.basicAppearanceDesc;
