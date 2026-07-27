@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>托盘图标 v2 预览 · 静音修订</title>
+  <style>
+    :root{
+      --theme-src:url('../src-tauri/icons/tray-32.png');
+      --theme-bg:#030e2a;
+      --surface:#f4f9fc;
+      --on-surface:#152238;
+      --on-muted:#5a7086;
+      --outline:rgba(26,45,74,.12);
+      --unavail-bg:#a8b0ba;
+      --unavail-bg-hi:#c2c9d1;
+      --record-red:#e53935;
+      --record-red-hi:#ff6b6b;
+      --agent-running:rgba(42,156,196,.92);
+      --agent-listening:rgba(0,163,255,.95);
+      --agent-needs:rgba(245,166,35,.95);
+      --agent-done:rgba(64,180,120,.92);
+      --agent-failed:rgba(220,80,90,.95);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;padding:28px 24px 40px;
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      color:var(--on-surface);
+      background:linear-gradient(160deg,#e8eef5 0%,#d5dee8 100%);
+    }
+    h1{font-size:20px;margin:0 0 6px}
+    .lead{margin:0 0 20px;color:var(--on-muted);font-size:13px;line-height:1.55;max-width:980px}
+    .layout{display:grid;grid-template-columns:minmax(300px,390px) 1fr;gap:24px;align-items:start}
+    @media (max-width:900px){.layout{grid-template-columns:1fr}}
+    .panel{background:var(--surface);border:1px solid var(--outline);border-radius:14px;padding:16px;box-shadow:0 10px 28px rgba(26,45,74,.12)}
+    .panel h2{font-size:13px;margin:0 0 12px;letter-spacing:.06em;text-transform:uppercase;color:var(--on-muted)}
+    .field{display:grid;gap:6px;margin-bottom:12px}
+    .field label{font-size:12px;font-weight:700;color:var(--on-muted)}
+    .seg{display:flex;flex-wrap:wrap;gap:6px}
+    .seg button{border:1px solid var(--outline);background:#fff;color:var(--on-surface);border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+    .seg button.is-active{border-color:#2a9cc4;background:#e6f7fc;color:#0e7490}
+    .taskbars{display:grid;gap:12px;margin-top:8px}
+    .taskbar{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;min-height:56px}
+    .taskbar.light{background:#f3f3f3;border:1px solid #d4d4d4}
+    .taskbar.dark{background:#1f1f1f;border:1px solid #333}
+    .taskbar .lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;min-width:72px}
+    .taskbar.light .lbl{color:#666}
+    .taskbar.dark .lbl{color:#aaa}
+    .sizes{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+    .size-col{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .size-col span{font-size:10px;color:var(--on-muted);font-weight:600}
+    .spec{font-size:12px;line-height:1.55;color:#334155;background:rgba(42,156,196,.08);border:1px solid rgba(42,156,196,.18);border-radius:10px;padding:10px 12px}
+
+    .tray-icon{
+      position:relative;display:grid;place-items:center;flex:0 0 auto;
+      border-radius:24%;overflow:visible;
+      background:var(--theme-bg);
+    }
+    .tray-icon[data-mic="ready"],
+    .tray-icon[data-mic="muted"]{
+      background:transparent;
+    }
+    .tray-icon[data-mic="missing"]{
+      background:linear-gradient(145deg,var(--unavail-bg-hi),var(--unavail-bg));
+    }
+    .tray-icon::before{
+      content:"";position:absolute;inset:-20%;border-radius:30%;pointer-events:none;
+    }
+    .tray-icon[data-mic="muted"]::before{display:none}
+    .tray-icon[data-agent="running"]::before{box-shadow:0 0 0 3px color-mix(in srgb,var(--agent-running) 50%,transparent),0 0 12px 3px var(--agent-running)}
+    .tray-icon[data-agent="listening"]::before{box-shadow:0 0 0 3px color-mix(in srgb,var(--agent-listening) 50%,transparent),0 0 14px 4px var(--agent-listening)}
+    .tray-icon[data-agent="needs_input"]::before{box-shadow:0 0 0 3px color-mix(in srgb,var(--agent-needs) 55%,transparent),0 0 16px 4px var(--agent-needs);animation:halo 1.2s ease-in-out infinite}
+    .tray-icon[data-agent="done"]::before{box-shadow:0 0 0 3px color-mix(in srgb,var(--agent-done) 50%,transparent),0 0 12px 3px var(--agent-done)}
+    .tray-icon[data-agent="failed"]::before{box-shadow:0 0 0 3px color-mix(in srgb,var(--agent-failed) 55%,transparent),0 0 16px 4px var(--agent-failed);animation:halo 1s ease-in-out infinite}
+    @keyframes halo{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
+
+    .tray-icon__center{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%}
+    .glyph{display:none}
+    .tray-icon[data-mic="ready"] .glyph-full{display:block}
+    .tray-icon[data-mic="muted"] .glyph-muted{display:block}
+    .tray-icon[data-mic="recording"] .glyph-dot{display:block}
+    .tray-icon[data-mic="missing"] .glyph-full{display:block}
+    .tray-icon[data-mic="paused"] .glyph-pause{display:flex}
+
+    .glyph-full img,
+    .glyph-muted img{
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      border-radius:24%;
+    }
+    .tray-icon[data-mic="missing"] .glyph-full img{
+      filter:grayscale(1) brightness(.72) contrast(.75);
+      opacity:.55;
+    }
+
+    .glyph-dot{
+      border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,var(--record-red-hi) 0%,var(--record-red) 55%,#b71c1c 100%);
+      box-shadow:0 0 0 2px rgba(255,255,255,.35),0 0 10px rgba(229,57,53,.75);
+      animation:rec-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes rec-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+    .glyph-pause{align-items:center;justify-content:center;gap:3px}
+    .glyph-pause i{display:block;background:#fff;border-radius:1px}
+
+    .combo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;margin-top:14px}
+    .combo{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:10px;background:#f8fafc;border:1px solid var(--outline)}
+    .combo small{font-size:9px;color:var(--on-muted);text-align:center;line-height:1.35}
+  </style>
+</head>
+<body>
+  <h1>托盘图标 v2 预览（静音修订）</h1>
+  <p class="lead">
+    <strong>静音</strong>：保留 logo 原图蓝底，仅将中心麦克风图形从青色改为纯白色（#FFFFFF），扁平无发光。
+    与空闲图标布局完全一致，只换麦克风颜色。
+  </p>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>状态切换</h2>
+      <div class="field">
+        <label>麦克风状态</label>
+        <div class="seg" id="micSeg">
+          <button type="button" data-mic="ready" class="is-active">空闲</button>
+          <button type="button" data-mic="recording">录音</button>
+          <button type="button" data-mic="muted">静音</button>
+          <button type="button" data-mic="missing">不可用</button>
+          <button type="button" data-mic="paused">暂停</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Agent 光晕（Codex/Claude）</label>
+        <div class="seg" id="agentSeg">
+          <button type="button" data-agent="idle" class="is-active">空闲</button>
+          <button type="button" data-agent="running">执行中</button>
+          <button type="button" data-agent="listening">听写</button>
+          <button type="button" data-agent="needs_input">待输入</button>
+          <button type="button" data-agent="done">完成</button>
+          <button type="button" data-agent="failed">失败</button>
+        </div>
+      </div>
+      <div class="spec">
+        空闲：真实主题图标（青色麦克风）<br/>
+        静音：同款蓝底 + 中心麦克风改纯白色（无光效）<br/>
+        录音：logo 蓝底 + 中心红色圆球<br/>
+        不可用：浅灰底 + 整体淡化灰图标<br/>
+        暂停：logo 蓝底 + 双竖线
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>任务栏预览</h2>
+      <div class="taskbars">
+        <div class="taskbar light">
+          <span class="lbl">浅色栏</span>
+          <div class="sizes" id="sizesLight"></div>
+        </div>
+        <div class="taskbar dark">
+          <span class="lbl">深色栏</span>
+          <div class="sizes" id="sizesDark"></div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:20px">组合示例</h2>
+      <div class="combo-grid" id="comboGrid"></div>
+    </section>
+  </div>
+
+  <script>
+    var THEME_SRC = '../src-tauri/icons/tray-32.png';
+    var MUTED_ICON_SRC = './tray-32-muted.png';
+    var THEME_BG = { r: 3, g: 14, b: 42 };
+    var state = { mic: 'ready', agent: 'idle' };
+    var SIZES = [16, 24, 32, 48];
+
+    function isGlyphPixel(r, g, b, lum){
+      if(lum > 120) return true;
+      if(g > 130 && b > 130 && g > r + 20) return true;
+      if(b > 100 && g > 80 && lum > 70) return true;
+      return false;
+    }
+
+    function buildMutedIcon(src){
+      return new Promise(function(resolve){
+        var img = new Image();
+        img.onload = function(){
+          try{
+            var canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            var data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var px = data.data;
+            for(var i = 0; i < px.length; i += 4){
+              var r = px[i], g = px[i + 1], b = px[i + 2], a = px[i + 3];
+              if(a < 8){ px[i + 3] = 0; continue; }
+              var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              if(isGlyphPixel(r, g, b, lum)){
+                px[i] = 255;
+                px[i + 1] = 255;
+                px[i + 2] = 255;
+                px[i + 3] = 255;
+              } else {
+                px[i] = THEME_BG.r;
+                px[i + 1] = THEME_BG.g;
+                px[i + 2] = THEME_BG.b;
+                px[i + 3] = 255;
+              }
+            }
+            ctx.putImageData(data, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch(err){
+            resolve(null);
+          }
+        };
+        img.onerror = function(){ resolve(null); };
+        img.src = src;
+      });
+    }
+
+    function glyphHtml(px){
+      var dot = Math.round(px * 0.36);
+      var barH = Math.round(px * 0.42);
+      var barW = Math.max(2, Math.round(px * 0.11));
+      var mutedSrc = MUTED_ICON_SRC || THEME_SRC;
+      return ''
+        + '<span class="glyph glyph-full"><img src="' + THEME_SRC + '" alt="" /></span>'
+        + '<span class="glyph glyph-muted"><img src="' + mutedSrc + '" alt="" /></span>'
+        + '<span class="glyph glyph-dot" style="width:' + dot + 'px;height:' + dot + 'px"></span>'
+        + '<span class="glyph glyph-pause" style="height:' + barH + 'px"><i style="width:' + barW + 'px;height:' + barH + 'px"></i><i style="width:' + barW + 'px;height:' + barH + 'px"></i></span>';
+    }
+
+    function iconEl(px, mic, agent){
+      var el = document.createElement('div');
+      el.className = 'tray-icon';
+      el.style.width = px + 'px';
+      el.style.height = px + 'px';
+      el.dataset.mic = mic != null ? mic : state.mic;
+      el.dataset.agent = agent != null ? agent : state.agent;
+      el.innerHTML = '<span class="tray-icon__center">' + glyphHtml(px) + '</span>';
+      return el;
+    }
+
+    function mountSizes(id){
+      var root = document.getElementById(id);
+      root.replaceChildren();
+      SIZES.forEach(function(px){
+        var col = document.createElement('div');
+        col.className = 'size-col';
+        col.appendChild(iconEl(px));
+        var cap = document.createElement('span');
+        cap.textContent = px + 'px';
+        col.appendChild(cap);
+        root.appendChild(col);
+      });
+    }
+
+    function refresh(){
+      document.querySelectorAll('#sizesLight .tray-icon,#sizesDark .tray-icon').forEach(function(el){
+        el.dataset.mic = state.mic;
+        el.dataset.agent = state.agent;
+      });
+    }
+
+    function bindSeg(id,key){
+      document.getElementById(id).addEventListener('click', function(e){
+        var btn = e.target.closest('[data-' + key + ']');
+        if(!btn) return;
+        state[key] = btn.getAttribute('data-' + key);
+        btn.parentElement.querySelectorAll('button').forEach(function(b){ b.classList.toggle('is-active', b === btn); });
+        refresh();
+      });
+    }
+
+    var combos = [
+      { mic:'ready', agent:'idle', label:'空闲（青色麦克风）' },
+      { mic:'muted', agent:'idle', label:'静音（白麦克风）' },
+      { mic:'recording', agent:'listening', label:'录音（红球）' },
+      { mic:'paused', agent:'idle', label:'暂停（双竖线）' },
+      { mic:'missing', agent:'idle', label:'不可用（浅灰）' },
+      { mic:'ready', agent:'running', label:'空闲+执行中' },
+      { mic:'muted', agent:'running', label:'静音+执行中' }
+    ];
+
+    function buildCombos(){
+      var grid = document.getElementById('comboGrid');
+      grid.replaceChildren();
+      combos.forEach(function(c){
+        var box = document.createElement('div');
+        box.className = 'combo';
+        box.appendChild(iconEl(32,c.mic,c.agent));
+        var cap = document.createElement('small');
+        cap.textContent = c.label;
+        box.appendChild(cap);
+        grid.appendChild(box);
+      });
+    }
+
+    function renderAll(){
+      mountSizes('sizesLight');
+      mountSizes('sizesDark');
+      buildCombos();
+    }
+
+    function boot(){
+      bindSeg('micSeg','mic');
+      bindSeg('agentSeg','agent');
+      renderAll();
+      buildMutedIcon(THEME_SRC).then(function(dataUrl){
+        if(dataUrl) MUTED_ICON_SRC = dataUrl;
+        renderAll();
+      });
+    }
+
+    boot();
+  </script>
+</body>
+</html>

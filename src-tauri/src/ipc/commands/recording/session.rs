@@ -5,7 +5,12 @@ use crate::ipc::recording::{RecordMode, RecordingTarget};
 use crate::AppState;
 
 #[tauri::command]
-pub fn cmd_start_recording(state: tauri::State<Arc<AppState>>, mapping_id: String, mode: String) {
+pub fn cmd_start_recording(
+    app: tauri::AppHandle,
+    state: tauri::State<Arc<AppState>>,
+    mapping_id: String,
+    mode: String,
+) {
     state.machine_pool.lock().reset_all();
     let record_mode = match mode.as_str() {
         "target" => RecordMode::Target,
@@ -23,10 +28,11 @@ pub fn cmd_start_recording(state: tauri::State<Arc<AppState>>, mapping_id: Strin
     if let Some(ref mgr) = *state.hotkey_mgr.lock() {
         mgr.start_recording();
     }
+    crate::tray::refresh_tray_visual_forced(&app);
 }
 
 #[tauri::command]
-pub fn cmd_stop_recording(state: tauri::State<Arc<AppState>>) {
+pub fn cmd_stop_recording(app: tauri::AppHandle, state: tauri::State<Arc<AppState>>) {
     *state.recording.lock() = false;
     *state.recording_target.lock() = None;
     *state.record_hw_pending.lock() = None;
@@ -39,4 +45,5 @@ pub fn cmd_stop_recording(state: tauri::State<Arc<AppState>>) {
         mgr.bind_all(&cfg.bindings());
         mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
     }
+    crate::tray::refresh_tray_visual_forced(&app);
 }

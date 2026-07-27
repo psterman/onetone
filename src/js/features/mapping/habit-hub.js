@@ -425,10 +425,19 @@
 
   var camWaveRaf=0;
   var camWaveStates=null;
+  var HABIT_HUB_RAIL_W=120;
+  var HABIT_HUB_RAIL_H=30;
+
+  function habitHubFlowRail(){
+    var w=HABIT_HUB_RAIL_W;
+    var mid=Math.round(HABIT_HUB_RAIL_H/2);
+    var end=w-4;
+    return '<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 '+w+' '+HABIT_HUB_RAIL_H+'" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M4 '+mid+'H'+end+'"/><path class="habit-hub-data-flow" d="M4 '+mid+'H'+end+'"/></svg></div>';
+  }
 
   function cameraSpectrumRail(){
     return '<div class="habit-hub-channel-rail is-camera" aria-hidden="true">'
-      +'<canvas class="habit-hub-cam-canvas" width="220" height="36"></canvas>'
+      +'<canvas class="habit-hub-cam-canvas" width="'+HABIT_HUB_RAIL_W+'" height="'+HABIT_HUB_RAIL_H+'"></canvas>'
       +'</div>';
   }
 
@@ -508,7 +517,7 @@
     var ctx=canvas.getContext('2d');
     if(!ctx) return;
     // Fixed backing store — avoid getBoundingClientRect/resize thrash on every frame.
-    var w=220,h=36;
+    var w=HABIT_HUB_RAIL_W,h=HABIT_HUB_RAIL_H;
     if(canvas.width!==w||canvas.height!==h){
       canvas.width=w;
       canvas.height=h;
@@ -671,7 +680,7 @@
     html+='<div class="habit-hub-channel-end is-input">'
       +channelGlyph('keys',keyChannel.trigger)
       +'<span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysInput'))+'</span><strong>'+esc(keyChannel.trigger)+'</strong></span></div>';
-    html+='<div class="habit-hub-channel-rail" aria-hidden="true"><svg viewBox="0 0 220 28" preserveAspectRatio="none"><path class="habit-hub-rail-base" d="M8 14H212"/><path class="habit-hub-data-flow" d="M8 14H212"/></svg></div>';
+    html+=habitHubFlowRail();
     html+='<div class="habit-hub-channel-end is-output"><span class="habit-hub-channel-copy"><span>'+esc(t('habitHubChannelKeysOutput'))+'</span><strong>'+esc(keyChannel.target)+'</strong></span>'
       +channelKeycap(keyChannel.target,'is-output')+'</div>';
     html+=ctaActBtn('data-habit-global-keys',t('habitHubGlobalOpenKeys'),ACT_ICON.keys,{primary:true,tip:t('habitHubKeysCtaTip')});

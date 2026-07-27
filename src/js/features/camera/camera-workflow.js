@@ -776,10 +776,48 @@
   }
 
   var currentProSubtab='beauty';
+  var PRO_SUBTABS=['beauty','privacy','wellness','gesture','track','snap','automute'];
+
+  function notifyProFeatureSubtab(name, visible){
+    try{
+      if(name==='track'){
+        var sp=global.OneToneCameraSmartPointer;
+        if(!sp) return;
+        if(visible){
+          if(sp.onPanelVisible) sp.onPanelVisible();
+          else if(sp.init) sp.init();
+        }else if(sp.onPanelHidden) sp.onPanelHidden();
+        return;
+      }
+      if(name==='snap'){
+        var snap=global.OneToneCameraSnapWindow;
+        if(!snap) return;
+        if(visible){
+          if(snap.onPanelVisible) snap.onPanelVisible();
+          else if(snap.init) snap.init();
+        }else if(snap.onPanelHidden) snap.onPanelHidden();
+        return;
+      }
+      if(name==='automute'){
+        var am=global.OneToneCameraAutoMute;
+        if(!am) return;
+        if(visible){
+          if(am.onPanelVisible) am.onPanelVisible();
+          else if(am.init) am.init();
+        }else if(am.onPanelHidden) am.onPanelHidden();
+      }
+    }catch(_){}
+  }
 
   function activateProSubtab(name){
     name=String(name||'beauty');
-    if(['beauty','privacy','wellness','gesture','track'].indexOf(name)<0) name='beauty';
+    if(PRO_SUBTABS.indexOf(name)<0) name='beauty';
+    var prev=currentProSubtab;
+    if(prev!==name){
+      if(prev==='track'||prev==='snap'||prev==='automute'){
+        notifyProFeatureSubtab(prev,false);
+      }
+    }
     currentProSubtab=name;
     var tabs=document.querySelectorAll('#cameraProSubtabs [data-pro-subtab]');
     for(var i=0;i<tabs.length;i++){
@@ -804,13 +842,9 @@
       }catch(_){}
     }
     if(name==='beauty') syncProEnhUi();
-    if(name==='track'){
+    if(name==='track'||name==='snap'||name==='automute'){
+      notifyProFeatureSubtab(name,true);
       try{
-        var sp=global.OneToneCameraSmartPointer;
-        if(sp){
-          if(sp.onPanelVisible) sp.onPanelVisible();
-          else if(sp.init) sp.init();
-        }
         if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
           global.OneToneCameraPreview.syncLiveLandmarker();
         }
@@ -901,6 +935,10 @@
   function onPanelHidden(){
     stopPoll();
     try{
+      var sub=currentProSubtab;
+      if(sub==='track'||sub==='snap'||sub==='automute'){
+        notifyProFeatureSubtab(sub,false);
+      }
       if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.onPanelHidden){
         global.OneToneCameraProGlance.onPanelHidden();
       }

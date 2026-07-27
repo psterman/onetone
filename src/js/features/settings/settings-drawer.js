@@ -626,8 +626,14 @@
     // Leaving keys: stop pad readiness remount/poll so「我的习惯」open is not stacked under it.
     if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
+      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+      }
     }
     if(panelChanged&&lastPanel==='softPad'&&panel!=='softPad'){
+      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+      }
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
       }

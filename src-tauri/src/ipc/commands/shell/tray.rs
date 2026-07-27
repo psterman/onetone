@@ -29,3 +29,8 @@ pub fn cmd_tray_menu_present(
     crate::tray::present_tray_menu(&window, width, height, cursor_x, cursor_y)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn cmd_tray_sync_mic(app: tauri::AppHandle) {
+    crate::tray::refresh_tray_visual_forced(&app);
+}

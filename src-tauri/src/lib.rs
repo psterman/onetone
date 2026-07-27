@@ -39,6 +39,8 @@ mod scene_config;
 mod send_guard;
 mod state;
 mod tray;
+mod tray_agent_bridge;
+mod tray_icon_render;
 mod update;
 mod vendor_hid;
 pub mod voice_acoustic_command;
@@ -702,6 +704,7 @@ pub fn run() {
             ipc::cmd_tray_menu_ready,
             ipc::cmd_tray_action,
             ipc::cmd_tray_menu_present,
+            ipc::cmd_tray_sync_mic,
             ipc::cmd_autostart_get,
             ipc::cmd_autostart_set,
             ipc::cmd_mic_list,
@@ -761,6 +764,10 @@ pub fn run() {
             ipc::cmd_gaze_get_cursor_position,
             ipc::cmd_gaze_move_cursor_to_monitor,
             ipc::cmd_gaze_is_ctrl_down,
+            ipc::cmd_gaze_drag_state,
+            ipc::cmd_gaze_move_window_to_monitor,
+            ipc::cmd_mic_get_mute,
+            ipc::cmd_mic_set_mute,
             ipc::cmd_codex_micro_overlay_get_state,
             ipc::cmd_codex_micro_protocol_inject,
             ipc::cmd_codex_micro_protocol_server_start,

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-sync-mic"
+description = "Enables the cmd_tray_sync_mic command without any pre-configured scope."
+commands.allow = ["cmd_tray_sync_mic"]
+
+[[permission]]
+identifier = "deny-cmd-tray-sync-mic"
+description = "Denies the cmd_tray_sync_mic command without any pre-configured scope."
+commands.deny = ["cmd_tray_sync_mic"]

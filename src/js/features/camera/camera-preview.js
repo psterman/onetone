@@ -503,6 +503,24 @@
     }
   }
 
+  function snapWindowApi(){
+    return global.OneToneCameraSnapWindow||null;
+  }
+
+  function autoMuteApi(){
+    return global.OneToneCameraAutoMute||null;
+  }
+
+  function snapOrMuteWanted(){
+    try{
+      var snap=snapWindowApi();
+      if(snap&&snap.isWanted&&snap.isWanted()) return true;
+      var am=autoMuteApi();
+      if(am&&am.isWanted&&am.isWanted()) return true;
+    }catch(_){}
+    return false;
+  }
+
   function presenceEnabled(){
     var api=presenceApi();
     return !!(api&&api.isEnabled&&api.isEnabled());
@@ -527,14 +545,15 @@
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
-    // Smart Pointer alone: 66–100ms is enough for coarse monitor classify.
-    if(spWanted&&!presenceEnabled()){
+    var snapMuteWanted=snapOrMuteWanted();
+    // Smart Pointer / Snap / AutoMute alone: 66–100ms is enough for coarse classify.
+    if((spWanted||snapMuteWanted)&&!presenceEnabled()){
       var spMs=(smartPointerApi()&&smartPointerApi().DETECT_INTERVAL_MS)||80;
       lm.setDetectIntervalMs(Math.max(66,Math.min(100,spMs|0)));
       return;
     }
     if(!presenceEnabled()){
-      if(spWanted){
+      if(spWanted||snapMuteWanted){
         lm.setDetectIntervalMs(80);
         return;
       }
@@ -551,7 +570,7 @@
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
-    if(spWanted){
+    if(spWanted||snapMuteWanted){
       lm.setDetectIntervalMs(80);
       return;
     }
@@ -601,6 +620,14 @@
       var sp=smartPointerApi();
       if(sp&&sp.onGazeFrame) sp.onGazeFrame(point);
     }catch(_){}
+    try{
+      var snap=snapWindowApi();
+      if(snap&&snap.onGazeFrame) snap.onGazeFrame(point);
+    }catch(_){}
+    try{
+      var am=autoMuteApi();
+      if(am&&am.onGazeFrame) am.onGazeFrame(point);
+    }catch(_){}
     // Feed presence — even when gaze overlay is off (decoupling).
     if(presenceEnabled()){
       var pa=presenceApi();
@@ -618,7 +645,7 @@
   function syncLiveLandmarker(){
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
-    var want=(!!gaze.enabled||calRunning||presenceEnabled()||smartPointerWanted())&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
+    var want=(!!gaze.enabled||calRunning||presenceEnabled()||smartPointerWanted()||snapOrMuteWanted())&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
     var api=landmarkerApi();
     if(!want){
       stopLandmarker();
@@ -667,7 +694,7 @@
   }
 
   function ephemeralCameraPrefs(){
-    return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
+    return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
   }
 
   function configPersistLoaded(){
@@ -692,6 +719,8 @@
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
     if(cfg.cameraPrefs.blinkBaseline===undefined) cfg.cameraPrefs.blinkBaseline=null;
     if(cfg.cameraPrefs.smartPointer===undefined) cfg.cameraPrefs.smartPointer=null;
+    if(cfg.cameraPrefs.snapWindow===undefined) cfg.cameraPrefs.snapWindow=null;
+    if(cfg.cameraPrefs.autoMute===undefined) cfg.cameraPrefs.autoMute=null;
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
       cfg.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
     }
@@ -712,6 +741,8 @@
       if(partial.selectedFrameRate!=null) prefs.selectedFrameRate=Math.max(0,Number(partial.selectedFrameRate)||0)|0;
       if(partial.gazeCalibration!==undefined) prefs.gazeCalibration=partial.gazeCalibration;
       if(partial.smartPointer!==undefined) prefs.smartPointer=partial.smartPointer;
+      if(partial.snapWindow!==undefined) prefs.snapWindow=partial.snapWindow;
+      if(partial.autoMute!==undefined) prefs.autoMute=partial.autoMute;
       if(partial.presenceActions!==undefined) prefs.presenceActions=partial.presenceActions;
       if(partial.proFeatures!==undefined){
         var pg=global.OneToneCameraProGlance;

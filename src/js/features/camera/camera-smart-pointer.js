@@ -11,6 +11,12 @@
   var TRIGGERS=['dwell','ctrl','ctrl_or_dwell'];
   var CAMERA_POSITIONS=['center-top','left-top','right-top','laptop-built-in','custom'];
   var LAND_PREFS=['last','center'];
+  var FEEL_PRESETS={
+    sensitive:{minConfidence:0.45,dwellMs:400,cooldownMs:800},
+    balanced:{minConfidence:0.55,dwellMs:700,cooldownMs:1200},
+    steady:{minConfidence:0.70,dwellMs:1100,cooldownMs:1800}
+  };
+  var FEEL_IDS=['sensitive','balanced','steady'];
 
   function emptyAssessment(){
     var Assess=global.OneToneCameraGazeMonitorAssessment;
@@ -40,6 +46,7 @@
       /** 'center' = always screen center; 'last' = last pos on that screen else center */
       landPreference:'center',
       landPrefV:2,
+      feel:'balanced',
       setupConfirmed:false,
       lastPositions:{},
       assessment:emptyAssessment()
@@ -139,6 +146,7 @@
       minConfidence:Math.max(0.2,Math.min(0.95,Number(raw.minConfidence)))||d.minConfidence,
       landPreference:landPreference,
       landPrefV:landPrefV,
+      feel:FEEL_IDS.indexOf(String(raw.feel||''))>=0?String(raw.feel):'',
       setupConfirmed:!!raw.setupConfirmed,
       lastPositions:normalizeLastPositions(raw.lastPositions),
       assessment:assessment
@@ -147,6 +155,7 @@
     // Align trigger with mode defaults.
     if(draft.mode==='auto') draft.trigger='dwell';
     if(draft.mode==='confirm'&&draft.trigger==='dwell') draft.trigger='ctrl';
+    if(!draft.feel) draft.feel=feelFromSettings(draft);
     return draft;
   }
 
@@ -597,6 +606,38 @@
     return (settings.screenCount|0)===expected;
   }
 
+  function feelFromSettings(settings){
+    settings=settings||getSettings();
+    var conf=Number(settings.minConfidence)||0.55;
+    var dwell=settings.dwellMs|0;
+    var cool=settings.cooldownMs|0;
+    var best='balanced';
+    var bestScore=1e9;
+    for(var i=0;i<FEEL_IDS.length;i++){
+      var id=FEEL_IDS[i];
+      var p=FEEL_PRESETS[id];
+      var score=Math.abs(conf-p.minConfidence)*1000
+        +Math.abs(dwell-p.dwellMs)*0.02
+        +Math.abs(cool-p.cooldownMs)*0.01;
+      if(score<bestScore){
+        bestScore=score;
+        best=id;
+      }
+    }
+    return best;
+  }
+
+  function applyFeelPreset(feelId){
+    var id=FEEL_IDS.indexOf(String(feelId||''))>=0?String(feelId):'balanced';
+    var p=FEEL_PRESETS[id];
+    return patchSettings({
+      minConfidence:p.minConfidence,
+      dwellMs:p.dwellMs,
+      cooldownMs:p.cooldownMs,
+      feel:id
+    });
+  }
+
   function statusPillText(settings){
     settings=settings||getSettings();
     if(!settings.enabled) return t('cameraSmartPointerStatusDisabled','未启用');
@@ -605,11 +646,6 @@
     var stab=rt.stability;
     if((settings.mode==='auto'||settings.mode==='confirm')&&stab&&stab.monitorId&&(stab.stableMs|0)>=Math.min(300,settings.dwellMs|0)){
       return t('cameraSmartPointerStatusTracking','追踪中');
-    }
-    var a=settings.assessment||{};
-    if(a.status==='running') return t('cameraSmartPointerStatusRunning','评估中');
-    if(a.status==='stale'||a.quality==='poor'){
-      return t('cameraSmartPointerStatusTune','已启用 · 建议微调');
     }
     return t('cameraSmartPointerStatusReady','已启用');
   }
@@ -626,15 +662,17 @@
       btn.classList.toggle('is-active',settings.mode===mode);
       btn.setAttribute('aria-disabled','false');
     }
-    var hint=$('cameraSmartPointerModeHint');
-    if(hint){
-      if(settings.enabled&&qualitySuggestsTune(settings)&&(settings.mode==='auto'||settings.mode==='confirm')){
-        hint.hidden=false;
-        hint.textContent=t('cameraSmartPointerModeTuneHint','评估一般或未完成：可微调灵敏度/停留，或完成快速评估作参考');
-      }else{
-        hint.hidden=true;
-        hint.textContent='';
-      }
+  }
+
+  function syncFeelButtons(settings){
+    settings=settings||getSettings();
+    var seg=$('cameraSmartPointerFeelSeg');
+    if(!seg) return;
+    var feel=settings.feel&&FEEL_IDS.indexOf(settings.feel)>=0?settings.feel:feelFromSettings(settings);
+    var btns=seg.querySelectorAll('[data-sp-feel]');
+    for(var i=0;i<btns.length;i++){
+      var btn=btns[i];
+      btn.classList.toggle('is-active',btn.getAttribute('data-sp-feel')===feel);
     }
   }
 
@@ -661,24 +699,7 @@
 
   function syncTuneControls(settings){
     settings=settings||getSettings();
-    var conf=$('cameraSmartPointerTuneConfidence');
-    var confVal=$('cameraSmartPointerTuneConfidenceVal');
-    if(conf){
-      conf.value=String(Math.round((settings.minConfidence||0.55)*100));
-      if(confVal) confVal.textContent=Number(settings.minConfidence).toFixed(2);
-    }
-    var dwell=$('cameraSmartPointerTuneDwell');
-    var dwellVal=$('cameraSmartPointerTuneDwellVal');
-    if(dwell){
-      dwell.value=String(settings.dwellMs|0);
-      if(dwellVal) dwellVal.textContent=String(settings.dwellMs|0);
-    }
-    var cool=$('cameraSmartPointerTuneCooldown');
-    var coolVal=$('cameraSmartPointerTuneCooldownVal');
-    if(cool){
-      cool.value=String(settings.cooldownMs|0);
-      if(coolVal) coolVal.textContent=String(settings.cooldownMs|0);
-    }
+    syncFeelButtons(settings);
     var landSeg=$('cameraSmartPointerLandSeg');
     if(landSeg){
       var btns=landSeg.querySelectorAll('[data-sp-land]');
@@ -874,19 +895,15 @@
       aliasEl.textContent=result&&result.alias?aliasLabel(result.alias):'—';
     }
     if(metaEl){
-      if(!result){
+      if(!result||!result.alias){
         metaEl.textContent='';
         return;
       }
-      var bits=[];
-      if(result.lowAccuracy) bits.push(t('cameraSmartPointerLowAccuracy','准确率较低'));
-      if(result.source==='heuristic') bits.push('heuristic');
-      if(result.source==='assessment') bits.push('assessment');
-      if(result.look!=null&&isFinite(Number(result.look))){
-        bits.push('look '+Number(result.look).toFixed(2));
+      if(result.lowAccuracy){
+        metaEl.textContent=' · '+t('cameraSmartPointerLowAccuracy','准确率较低');
+      }else{
+        metaEl.textContent='';
       }
-      if(result.stableMs!=null) bits.push((result.stableMs|0)+'ms');
-      metaEl.textContent=bits.length?' · '+bits.join(' · '):'';
     }
   }
 
@@ -928,7 +945,6 @@
     syncCamGrid(settings);
     syncSetupSummary(settings);
     syncTuneControls(settings);
-    syncAssessUi(settings);
     syncPreviewResult(rt.lastResult);
     var actionEl=$('cameraSmartPointerActionText');
     if(actionEl){
@@ -936,7 +952,6 @@
         ?String(rt.lastAction)
         :t('cameraSmartPointerActionNone','无');
     }
-    renderDebugPre();
   }
 
   function patchSettings(partial){
@@ -1010,32 +1025,15 @@
   }
 
   function pollCursorDebug(){
-    if(!rt.panelVisible||!isWanted()) return;
-    var fold=$('cameraSmartPointerDebugFold');
-    // Enumerating monitors is expensive — only while debug fold is open.
-    if(!fold||!fold.open) return;
-    var inv=global.OneToneIpc&&global.OneToneIpc.invoke;
-    if(!inv) return;
-    inv('cmd_gaze_get_cursor_position',{}).then(function(res){
-      if(res&&typeof res==='object'){
-        rt.cursorDebug={x:res.x|0,y:res.y|0,monitorId:String(res.monitorId||'')};
-        renderDebugPre();
-      }
-    }).catch(function(){});
+    // Debug UI removed — keep stub for callers.
   }
 
   function startUiTimers(){
     if(rt.uiTimer||!rt.panelVisible) return;
     rt.uiTimer=setInterval(function(){
-      if(!rt.panelVisible) return;
-      if(rt.assessmentSession&&(rt.assessmentSession.running||rt.assessmentSession.stepConfirmPending)){
-        syncAssessUi();
-      }
-      if(isWanted()){
-        pollCursorDebug();
-        var pill=$('cameraSmartPointerStatusText');
-        if(pill) pill.textContent=statusPillText(getSettings());
-      }
+      if(!rt.panelVisible||!isWanted()) return;
+      var pill=$('cameraSmartPointerStatusText');
+      if(pill) pill.textContent=statusPillText(getSettings());
     },800);
   }
 
@@ -1142,20 +1140,16 @@
         syncCamGrid(Object.assign({},getSettings(),rt.setupDraft));
       });
     }
-    function bindRange(id, key, scale){
-      var el=$(id);
-      if(!el) return;
-      el.addEventListener('input',function(){
-        var v=Number(el.value);
-        if(!isFinite(v)) return;
-        var patch={};
-        patch[key]=scale?v/scale:v;
-        patchSettings(patch);
+    var feelSeg=$('cameraSmartPointerFeelSeg');
+    if(feelSeg){
+      feelSeg.addEventListener('click',function(e){
+        var btn=e.target&&e.target.closest?e.target.closest('[data-sp-feel]'):null;
+        if(!btn) return;
+        var feel=btn.getAttribute('data-sp-feel');
+        if(FEEL_IDS.indexOf(feel)<0) return;
+        applyFeelPreset(feel);
       });
     }
-    bindRange('cameraSmartPointerTuneConfidence','minConfidence',100);
-    bindRange('cameraSmartPointerTuneDwell','dwellMs',0);
-    bindRange('cameraSmartPointerTuneCooldown','cooldownMs',0);
 
     var landSeg=$('cameraSmartPointerLandSeg');
     if(landSeg){
@@ -1165,30 +1159,6 @@
         var land=btn.getAttribute('data-sp-land');
         if(LAND_PREFS.indexOf(land)<0) return;
         patchSettings({landPreference:land});
-      });
-    }
-
-    var assessBtn=$('cameraSmartPointerAssessBtn');
-    if(assessBtn){
-      assessBtn.addEventListener('click',function(){
-        ensureTopologyThen(function(){
-          try{
-            startAssessment();
-            syncUi();
-            notifyPreviewLandmarker();
-          }catch(err){
-            var line=$('cameraSmartPointerAssessLine');
-            if(line) line.textContent=String(err&&err.message||err);
-          }
-        });
-      });
-    }
-    var stepBtn=$('cameraSmartPointerAssessStepBtn');
-    if(stepBtn){
-      stepBtn.addEventListener('click',function(){
-        confirmAssessmentStep(Date.now());
-        syncUi();
-        notifyPreviewLandmarker();
       });
     }
   }
@@ -1227,19 +1197,21 @@
     if(result&&(now==null||!rt.lastUiGazeAt||(now-rt.lastUiGazeAt)>280)){
       rt.lastUiGazeAt=now!=null?now:Date.now();
       syncPreviewResult(result);
-      if(rt.assessmentSession) syncAssessUi();
     }
     return result;
   };
 
   global.OneToneCameraSmartPointer={
     DETECT_INTERVAL_MS:DETECT_INTERVAL_MS,
+    FEEL_PRESETS:FEEL_PRESETS,
     defaultSmartPointer:defaultSmartPointer,
     normalizeSmartPointer:normalizeSmartPointer,
     normalizeAssessment:normalizeAssessment,
     allowedMoveModes:allowedMoveModes,
     canUseAuto:canUseAuto,
     qualitySuggestsTune:qualitySuggestsTune,
+    feelFromSettings:feelFromSettings,
+    applyFeelPreset:applyFeelPreset,
     isSetupReady:isSetupReady,
     coerceMode:coerceMode,
     shouldAttemptMove:shouldAttemptMove,

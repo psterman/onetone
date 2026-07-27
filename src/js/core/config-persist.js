@@ -28,6 +28,19 @@
     deferredMvpInitSideEffects=true;
   }
 
+  /** Same guards as pullBackendConfig — full remount during pad/keys edit 假死's the drawer. */
+  function mvpInitHeavyRemountBlocked(){
+    try{
+      var Pad=global.OneToneCodexMicroPadUi;
+      if(Pad&&typeof Pad.isPadManagerOpen==='function'&&Pad.isPadManagerOpen()) return true;
+      var modal=document.getElementById('codexMicroEditModal');
+      if(modal&&!modal.hidden) return true;
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!ui||!ui.drawerOpen) return false;
+      return ui.settingsPanel==='softPad'||ui.settingsPanel==='keys';
+    }catch(_){ return false; }
+  }
+
   function runMvpInitHeavySideEffects(){
     const st=state();
     const toggleBusy=voiceToggleBusy();
@@ -615,7 +628,7 @@
       trash:[],
       intervalMs:1200,enterDelayMs:5000,cancelEnabled:true,autoEnterEnabled:true,
       debounceMs:80,keyPressDurationMs:250,schemeSwitchKey:'',keyWakeSoundEnabled:false,coachHudEnabled:false,startMinimizedToTray:false,
-      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
+      cameraPrefs:{enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:{enabled:false,look:'off',faceMask:'off',preset:'natural',beautyEnabled:false,whiten:0,smooth:0,rosy:0,slim:0,beauty:18,brightness:0,contrast:8,saturation:6,sharpen:8,denoise:8,lowLight:0,antiFlicker:'auto',displayFrameRate:0}},
       sounds:hooks().defaultSoundsConfig(),
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
@@ -676,7 +689,7 @@
       // Before backend hydrate, do not invent defaults onto config — a later
       // quiet save would wipe real disk prefs. After hydrate, fill schema gaps.
       if(configLoadedFromBackend){
-        st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
+        st.config.cameraPrefs={enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,snapWindow:null,autoMute:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'},videoEnhancement:defaultVideoEnhancementPrefs()};
       }
     }else{
       if(st.config.cameraPrefs.selectedDeviceId==null) st.config.cameraPrefs.selectedDeviceId='';
@@ -687,6 +700,8 @@
       if(st.config.cameraPrefs.gazeCalibration===undefined) st.config.cameraPrefs.gazeCalibration=null;
       if(st.config.cameraPrefs.blinkBaseline===undefined) st.config.cameraPrefs.blinkBaseline=null;
       if(st.config.cameraPrefs.smartPointer===undefined) st.config.cameraPrefs.smartPointer=null;
+      if(st.config.cameraPrefs.snapWindow===undefined) st.config.cameraPrefs.snapWindow=null;
+      if(st.config.cameraPrefs.autoMute===undefined) st.config.cameraPrefs.autoMute=null;
       st.config.cameraPrefs.videoEnhancement=normalizeVideoEnhancementPrefs(st.config.cameraPrefs.videoEnhancement);
       if(!st.config.cameraPrefs.presenceActions||typeof st.config.cameraPrefs.presenceActions!=='object'){
         st.config.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',openPalm:'none',okHand:'none',fist:'none',wave:'none'};
@@ -809,6 +824,8 @@
           gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
           blinkBaseline:p.blinkBaseline!=null?p.blinkBaseline:null,
           smartPointer:p.smartPointer!=null?p.smartPointer:null,
+          snapWindow:p.snapWindow!=null?p.snapWindow:null,
+          autoMute:p.autoMute!=null?p.autoMute:null,
           presenceActions:{
             enabled:presenceEnabled,
             triggers:{
@@ -1003,6 +1020,8 @@
     if(p.gazeCalibration!=null) return false;
     if(p.blinkBaseline!=null) return false;
     if(p.smartPointer!=null) return false;
+    if(p.snapWindow!=null) return false;
+    if(p.autoMute!=null) return false;
     if(!presenceActionsAreBlank(p.presenceActions)) return false;
     var ve=p.videoEnhancement;
     if(ve&&typeof ve==='object'&&(ve.enabled||ve.beautyEnabled||(ve.look&&ve.look!=='off')||(ve.faceMask&&ve.faceMask!=='off'))){
@@ -1108,6 +1127,8 @@
         gazeCalibration:p.gazeCalibration!=null?p.gazeCalibration:null,
         blinkBaseline:p.blinkBaseline!=null?p.blinkBaseline:null,
         smartPointer:p.smartPointer!=null?p.smartPointer:null,
+        snapWindow:p.snapWindow!=null?p.snapWindow:null,
+        autoMute:p.autoMute!=null?p.autoMute:null,
         presenceActions:p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{
           enabled:false,triggers:{away:false,shake:false,blink:false,openPalm:false,okHand:false,fist:false,wave:false},
           onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none',
@@ -1133,6 +1154,12 @@
         if(candidate.smartPointer==null&&lastKnownCameraPrefs.smartPointer!=null){
           candidate.smartPointer=lastKnownCameraPrefs.smartPointer;
         }
+        if(candidate.snapWindow==null&&lastKnownCameraPrefs.snapWindow!=null){
+          candidate.snapWindow=lastKnownCameraPrefs.snapWindow;
+        }
+        if(candidate.autoMute==null&&lastKnownCameraPrefs.autoMute!=null){
+          candidate.autoMute=lastKnownCameraPrefs.autoMute;
+        }
       }
       lastKnownCameraPrefs=JSON.parse(JSON.stringify(candidate));
     }catch(_){
@@ -1152,6 +1179,8 @@
     var blinkBase=p.blinkBaseline!=null?p.blinkBaseline:(known.blinkBaseline!=null?known.blinkBaseline:null);
     var smartPtr=p.smartPointer!=null?p.smartPointer:(known.smartPointer!=null?known.smartPointer:null);
     if(opts.clearSmartPointer) smartPtr=null;
+    var snapWin=p.snapWindow!=null?p.snapWindow:(known.snapWindow!=null?known.snapWindow:null);
+    var autoMute=p.autoMute!=null?p.autoMute:(known.autoMute!=null?known.autoMute:null);
     var pa=p.presenceActions&&typeof p.presenceActions==='object'?p.presenceActions:{};
     var knownPa=known.presenceActions&&typeof known.presenceActions==='object'?known.presenceActions:{};
     var shouldRestorePresence=(presenceActionsLookStripped(pa)||presenceActionsAreBlank(pa))
@@ -1170,6 +1199,12 @@
     }
     if(p.smartPointer==null&&smartPtr!=null&&st.config.cameraPrefs){
       st.config.cameraPrefs.smartPointer=smartPtr;
+    }
+    if(p.snapWindow==null&&snapWin!=null&&st.config.cameraPrefs){
+      st.config.cameraPrefs.snapWindow=snapWin;
+    }
+    if(p.autoMute==null&&autoMute!=null&&st.config.cameraPrefs){
+      st.config.cameraPrefs.autoMute=autoMute;
     }
     var tr=pa.triggers&&typeof pa.triggers==='object'?pa.triggers:{};
     var presenceEnabled=!!pa.enabled;
@@ -1191,6 +1226,8 @@
       clearGazeCalibration:!!opts.clearGazeCalibration,
       blinkBaseline:blinkBase,
       smartPointer:smartPtr,
+      snapWindow:snapWin,
+      autoMute:autoMute,
       clearSmartPointer:!!opts.clearSmartPointer,
       presenceActions:{
         enabled:presenceEnabled,
@@ -1545,7 +1582,7 @@
         }
       }
       const syncEditor=hookFn('syncEditorFromSelection');
-      if(syncEditor&&!bootSettling()) syncEditor();
+      if(syncEditor&&!bootSettling()&&!mvpInitHeavyRemountBlocked()) syncEditor();
       configLoadedFromBackend=true;
       pendingMvpInitMsg=null;
       clearTimeout(configBootstrapWatchdog);
@@ -1572,7 +1609,7 @@
       flushPendingCameraPrefsQuiet();
       earlyPersistLog('applyMvpInit ok maps='+(st.config.mappings?st.config.mappings.length:0)+
         ' appRemembered='+Object.keys(lastKnownAppScenarios).length);
-      if(bootSettling()){
+      if(bootSettling()||mvpInitHeavyRemountBlocked()){
         scheduleDeferredMvpInitSideEffects();
         return;
       }

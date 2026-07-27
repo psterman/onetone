@@ -34,6 +34,7 @@ pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
     );
     crate::tray::refresh_menu(app);
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
+    crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
 }
 
@@ -53,5 +54,6 @@ pub fn resume_listen(state: &Arc<AppState>, app: &AppHandle) {
     );
     crate::tray::refresh_menu(app);
     crate::tray::refresh_tray_tooltip(app, state.as_ref());
+    crate::tray::refresh_tray_visual_forced(app);
     crate::coach_hud::push_state(app, state.as_ref());
 }

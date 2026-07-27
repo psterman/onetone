@@ -1589,6 +1589,12 @@ pub struct CameraPrefs {
     /// Clear only via `clearSmartPointer` flag — never use null to wipe.
     #[serde(default)]
     pub smart_pointer: Option<serde_json::Value>,
+    /// Snap Window prefs (FE-owned JSON). Null on quiet save keeps disk.
+    #[serde(default)]
+    pub snap_window: Option<serde_json::Value>,
+    /// Auto Mute prefs (FE-owned JSON). Null on quiet save keeps disk.
+    #[serde(default)]
+    pub auto_mute: Option<serde_json::Value>,
 }
 
 /// Legacy / reserved; not used at runtime.
@@ -4281,6 +4287,12 @@ pub fn merge_camera_prefs_quiet(
     }
     if incoming.smart_pointer.is_none() && !clear_smart_pointer {
         incoming.smart_pointer = existing.smart_pointer.clone();
+    }
+    if incoming.snap_window.is_none() {
+        incoming.snap_window = existing.snap_window.clone();
+    }
+    if incoming.auto_mute.is_none() {
+        incoming.auto_mute = existing.auto_mute.clone();
     }
     if incoming.blink_baseline.is_none() && existing.blink_baseline.is_some() {
         incoming.blink_baseline = existing.blink_baseline.clone();

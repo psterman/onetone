@@ -18,8 +18,15 @@
   var micDeviceRefreshInFlight=false;
   var homeMicLastLevel=0;
   var micWavePhase=0;
+  var micMuted=false;
+  var micMuteKnown=false;
+  var micSystemAvailable=true;
+  var micUiBound=false;
+  var trayMicBound=false;
+  var manualOverrideUntil=0;
 
   var MIC_DEVICE_REFRESH_MS=8000;
+  var MIC_MANUAL_OVERRIDE_MS=45000;
   var MIC_RECOVERY_BASE_MS=30000;
   var MIC_RECOVERY_MAX_MS=120000;
   var MIC_MANUAL_REFRESH_SETTLE_MS=800;
@@ -39,6 +46,16 @@
     var html='';
     for(var i=0;i<count;i++) html+='<span></span>';
     return html;
+  }
+
+  function barCountForWrap(wrap){
+    if(!wrap||!wrap.classList) return 12;
+    if(wrap.classList.contains('mic-level-bars--pill')) return 8;
+    if(wrap.classList.contains('mic-level-bars--home')) return 28;
+    if(wrap.classList.contains('mic-level-bars--global')) return 8;
+    if(wrap.classList.contains('mic-level-bars--snap')) return 10;
+    if(wrap.classList.contains('mic-level-bars--wide')) return 20;
+    return 12;
   }
 
   function findMicDeviceCard(deviceId){
@@ -70,6 +87,10 @@
     if(practiceMic) pushTarget(practiceMic);
     var homeMic=$('wbHomeMicLevel');
     if(homeMic) pushTarget(homeMic);
+    var globalHub=$('globalMicHub');
+    if(globalHub) pushTarget(globalHub);
+    var snapCheck=$('cameraSnapMicCheck');
+    if(snapCheck) pushTarget(snapCheck);
     return targets;
   }
 
@@ -89,8 +110,7 @@
         ?card
         :card.querySelector('.mic-level-bars');
       if(!wrap) return;
-      var barCount=wrap.classList.contains('mic-level-bars--pill')?8
-        :(wrap.classList.contains('mic-level-bars--home')?28:12);
+      var barCount=barCountForWrap(wrap);
       var bars=wrap.querySelectorAll('span');
       if(!bars.length||bars.length!==barCount){
         wrap.innerHTML=buildMicLevelBars(barCount);
@@ -167,6 +187,9 @@
 
   function micLevelUiVisible(){
     if(ui.drawerOpen&&ui.settingsPanel==='voiceWake') return true;
+    if($('globalMicHub')) return true;
+    var snapPanel=$('cameraProSubSnap');
+    if(snapPanel&&!snapPanel.hidden) return true;
     if(onboardingMicContextOpen()) return true;
     return !ui.drawerOpen;
   }
@@ -341,6 +364,7 @@
         empty.textContent=t('micEmpty');
       }
       renderHomeMicCurrent();
+      renderMicSurfaces();
       return;
     }
     if(empty) empty.hidden=true;
@@ -365,6 +389,7 @@
       list.appendChild(btn);
     });
     renderHomeMicCurrent();
+    renderMicSurfaces();
   }
 
   function renderHomeMicCurrent(){
@@ -404,6 +429,7 @@
       }
       activeMicId=resolveActiveMicId(micDevices,prevId);
       renderMicDevices();
+      renderMicSurfaces();
       var pick=micDevices.find(function(d){ return d.id===activeMicId; });
       if(!micDeviceAvailable(pick)){
         micMonitorDeviceId='';
@@ -470,6 +496,244 @@
     return dev?(dev.name||dev.label||dev.id):'';
   }
 
+  function micLabelFallback(){
+    return activeMicLabel()||t('micUiDeviceMissing');
+  }
+
+  function getMicUiState(){
+    var dev=micDevices.find(function(d){ return d.id===activeMicId; })
+      ||micDevices.find(function(d){ return d.isDefault; })
+      ||micDevices[0]||null;
+    var recovering=micBackoffActive()||!!micRecoveryTimer||!!micDeviceRefreshInFlight;
+    var hasDevice=!!(dev&&micDeviceAvailable(dev)&&micSystemAvailable!==false);
+    var key='ready';
+    if(recovering&&!hasDevice) key='recovering';
+    else if(!hasDevice) key='missing';
+    else if(!micMuteKnown) key='checking';
+    else if(micMuted) key='muted';
+    var level=Number(homeMicLastLevel)||0;
+    var labels={
+      ready:t('micUiReady'),
+      muted:t('micUiMuted'),
+      missing:t('micUiMissing'),
+      recovering:t('micUiRecovering'),
+      checking:t('micUiMuteChecking')
+    };
+    return {
+      key:key,
+      label:labels[key]||labels.ready,
+      deviceId:dev?dev.id:(activeMicId||''),
+      deviceName:dev?(dev.name||dev.label||dev.id):micLabelFallback(),
+      available:hasDevice,
+      muteKnown:micMuteKnown,
+      muted:micMuteKnown?!!micMuted:null,
+      recovering:recovering,
+      level:level,
+      hasLevel:level>2,
+      canToggleMute:hasDevice&&!recovering&&micMuteKnown,
+      canPickDevice:true,
+      manualOverrideActive:manualOverrideUntil>Date.now()
+    };
+  }
+
+  function isMicManualOverrideActive(now){
+    return manualOverrideUntil>(now!=null?now:Date.now());
+  }
+
+  function applyMicMuteState(st){
+    if(!st) return getMicUiState();
+    micMuteKnown=st.muted!=null;
+    if(st.muted!=null) micMuted=!!st.muted;
+    if(st.available!=null) micSystemAvailable=!!st.available;
+    if(st.deviceId||st.device_id){
+      var id=String(st.deviceId||st.device_id||'').trim();
+      if(id) activeMicId=id;
+    }
+    renderMicSurfaces();
+    return getMicUiState();
+  }
+
+  function refreshMicUiState(opts){
+    opts=opts||{};
+    var prep=(!micListLoaded||opts.forceDevices)
+      ?loadMicDevices({manual:!!opts.manual}).catch(function(){})
+      :Promise.resolve();
+    return prep.then(function(){
+      return vpInvoke('cmd_mic_get_mute',{}).then(function(st){
+        return applyMicMuteState(st);
+      }).catch(function(){
+        micSystemAvailable=micDevices.length>0;
+        renderMicSurfaces();
+        return getMicUiState();
+      });
+    });
+  }
+
+  function setMicUiMuted(muted, opts){
+    opts=opts||{};
+    var source=String(opts.source||'manual').trim()||'manual';
+    if(source==='manual'||source==='tray'){
+      manualOverrideUntil=Date.now()+MIC_MANUAL_OVERRIDE_MS;
+    }
+    return vpInvoke('cmd_mic_set_mute',{muted:!!muted}).then(function(st){
+      applyMicMuteState(st||{muted:!!muted,available:true});
+      return getMicUiState();
+    }).catch(function(err){
+      console.error('mic mute toggle',err);
+      var detail=err&&(err.message||String(err))||'';
+      safeToast(detail?(t('micUiToggleFail')+'：'+detail):t('micUiToggleFail'));
+      throw err;
+    });
+  }
+
+  function safeToast(msg){
+    try{
+      var h=hooks();
+      if(h&&h.toast) h.toast(msg);
+    }catch(_){}
+  }
+
+  function openMicPicker(){
+    var h=hooks();
+    if(h&&h.openSettings) h.openSettings({panel:'voiceWake',focus:'mic'});
+  }
+
+  function openAutoMute(){
+    try{
+      var drawer=global.OneToneSettingsDrawer;
+      if(drawer&&drawer.open) drawer.open({panel:'camera'});
+      else if(hooks().openSettings) hooks().openSettings({panel:'camera'});
+      setTimeout(function(){
+        if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
+          global.OneToneCameraWorkflow.activateTab('pro');
+          global.OneToneCameraWorkflow.activateProSubtab('automute');
+        }
+      },0);
+    }catch(_){}
+  }
+
+  function ensureLevelBars(el,cls,count){
+    if(!el) return;
+    var bars=el.querySelector('.'+cls);
+    if(!bars) return;
+    var spans=bars.querySelectorAll('span');
+    if(!spans.length||spans.length!==count) bars.innerHTML=buildMicLevelBars(count);
+  }
+
+  function setSurfaceStateClass(el,state){
+    if(!el||!el.classList) return;
+    ['ready','muted','missing','recovering','checking'].forEach(function(k){
+      el.classList.toggle('is-'+k,state.key===k);
+    });
+  }
+
+  function formatMutedFact(st){
+    if(!st||!st.muteKnown) return t('micUiMuteChecking');
+    return st.muted?t('micUiMutedYes'):t('micUiMutedNo');
+  }
+
+  function renderGlobalMicHub(){
+    var hub=$('globalMicHub');
+    if(!hub) return;
+    bindMicUi();
+    var st=getMicUiState();
+    ensureLevelBars(hub,'mic-level-bars--global',8);
+    setSurfaceStateClass(hub,st);
+    var status=$('globalMicHubStatus');
+    if(status) status.textContent=st.label;
+    var device=$('globalMicHubDevice');
+    if(device) device.textContent=st.deviceName||t('micUiDeviceMissing');
+    var toggle=$('globalMicHubToggle');
+    if(toggle){
+      toggle.disabled=!st.canToggleMute;
+      if(st.muteKnown){
+        toggle.setAttribute('aria-pressed',st.muted?'true':'false');
+        toggle.textContent=st.muted?t('micUiUnmute'):t('micUiMute');
+      }else{
+        toggle.removeAttribute('aria-pressed');
+        toggle.textContent=t('micUiMuteChecking');
+      }
+    }
+    hub.title=(st.deviceName||'')+' · '+st.label;
+  }
+
+  function renderSnapMicCheck(){
+    var card=$('cameraSnapMicCheck');
+    if(!card) return;
+    bindMicUi();
+    var st=getMicUiState();
+    ensureLevelBars(card,'mic-level-bars--snap',10);
+    setSurfaceStateClass(card,st);
+    var status=$('cameraSnapMicStatus');
+    if(status) status.textContent=st.label;
+    var device=$('cameraSnapMicDevice');
+    if(device) device.textContent=st.deviceName||t('micUiDeviceMissing');
+    var muted=$('cameraSnapMicMuted');
+    if(muted) muted.textContent=formatMutedFact(st);
+    var input=$('cameraSnapMicInput');
+    if(input) input.textContent=st.hasLevel?t('micUiInputDetected'):t('micUiInputQuiet');
+    var hint=$('cameraSnapMicHint');
+    if(hint){
+      if(st.key==='missing') hint.textContent=t('cameraSnapMicHintMissing');
+      else if(st.key==='recovering') hint.textContent=t('cameraSnapMicHintRecovering');
+      else if(st.key==='muted') hint.textContent=t('cameraSnapMicHintMuted');
+      else hint.textContent=t('cameraSnapMicHintReady');
+    }
+    var toggle=$('cameraSnapMicToggle');
+    if(toggle){
+      toggle.disabled=!st.canToggleMute;
+      if(st.muteKnown){
+        toggle.textContent=st.muted?t('micUiUnmute'):t('micUiMute');
+      }else{
+        toggle.textContent=t('micUiMuteChecking');
+      }
+    }
+  }
+
+  function renderMicSurfaces(){
+    renderGlobalMicHub();
+    renderSnapMicCheck();
+  }
+
+  function bindTrayMicSync(){
+    if(trayMicBound) return;
+    var eventApi=global.__TAURI__&&global.__TAURI__.event;
+    if(!eventApi||typeof eventApi.listen!=='function') return;
+    trayMicBound=true;
+    eventApi.listen('mic_tray_state',function(ev){
+      var st=ev&&ev.payload;
+      if(st) applyMicMuteState(st);
+    }).catch(function(){
+      trayMicBound=false;
+    });
+  }
+
+  function bindMicUi(){
+    bindTrayMicSync();
+    if(micUiBound) return;
+    micUiBound=true;
+    document.addEventListener('click',function(e){
+      var target=e.target&&e.target.closest?e.target.closest('[data-mic-ui-action]'):null;
+      if(!target) return;
+      var act=target.getAttribute('data-mic-ui-action');
+      if(act==='toggle'){
+        e.preventDefault();
+        var st=getMicUiState();
+        if(!st.muteKnown||!st.canToggleMute) return;
+        setMicUiMuted(!st.muted,{source:'manual'}).catch(function(){});
+      }else if(act==='pick'){
+        e.preventDefault();
+        openMicPicker();
+      }else if(act==='automute'){
+        e.preventDefault();
+        openAutoMute();
+      }else if(act==='refresh'){
+        e.preventDefault();
+        refreshMicUiState({manual:true,forceDevices:true}).catch(function(){});
+      }
+    });
+  }
+
   global.OneToneAppMic={
     buildMicLevelBars:buildMicLevelBars,
     syncHomeMicPickState:syncHomeMicPickState,
@@ -490,8 +754,21 @@
     listLoaded:function(){ return micListLoaded; },
     activeMicId:function(){ return activeMicId; },
     activeMicLabel:activeMicLabel,
+    getMicUiState:getMicUiState,
+    refreshMicUiState:refreshMicUiState,
+    setMicUiMuted:setMicUiMuted,
+    isMicManualOverrideActive:isMicManualOverrideActive,
+    applyMicMuteState:applyMicMuteState,
+    renderMicSurfaces:renderMicSurfaces,
+    barCountForWrap:barCountForWrap,
     micRecoveryTimer:function(){ return micRecoveryTimer; },
     clearMicRecoveryTimer:function(){ clearTimeout(micRecoveryTimer); micRecoveryTimer=0; },
     hasMicPollTimer:function(){ return !!micPollTimer; }
   };
+
+  if(global.document&&global.document.readyState==='loading'){
+    global.document.addEventListener('DOMContentLoaded',function(){ try{ renderMicSurfaces(); }catch(_){} });
+  }else{
+    try{ renderMicSurfaces(); }catch(_){}
+  }
 })((typeof window!=='undefined')?window:globalThis);

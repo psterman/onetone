@@ -1,4 +1,5 @@
 use tauri::Emitter;
+use tauri::Manager;
 
 use crate::config::{is_allowed_target_shortcut, is_allowed_trigger};
 use crate::ipc::core::persist_and_rebind;
@@ -175,6 +176,7 @@ pub(crate) fn finish_hardware_capture(
         "mode": mode,
     });
     window.emit("to_js", &ack).ok();
+    crate::tray::refresh_tray_visual_forced(window.app_handle());
 }
 
 pub fn finish_trigger_gesture_capture(

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-gaze-move-window-to-monitor"
+description = "Enables the cmd_gaze_move_window_to_monitor command without any pre-configured scope."
+commands.allow = ["cmd_gaze_move_window_to_monitor"]
+
+[[permission]]
+identifier = "deny-cmd-gaze-move-window-to-monitor"
+description = "Denies the cmd_gaze_move_window_to_monitor command without any pre-configured scope."
+commands.deny = ["cmd_gaze_move_window_to_monitor"]

@@ -1,12 +1,15 @@
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewWindow,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewWindow,
 };
 
+use crate::audio_win::MicMuteState;
+use crate::tray_agent_bridge::{read_tray_agent_visual, TrayAgentVisual};
+use crate::tray_icon_render;
 use crate::config::{mapping_is_complete, MappingEntry, TriggerMode, VoiceConfig};
 use crate::ipc;
 use crate::AppState;
@@ -15,9 +18,22 @@ pub const TRAY_ID: &str = "onetone-tray";
 const TRAY_MENU_LABEL: &str = "tray_menu";
 const BLUR_GUARD_MS: u64 = 280;
 const TRAY_OPEN_DEBOUNCE_MS: u64 = 220;
+const TRAY_VISUAL_DEBOUNCE_MS: u64 = 500;
 
 static TRAY_MENU_SHOWN_AT: AtomicU64 = AtomicU64::new(0);
 static TRAY_MENU_OPEN_AT: AtomicU64 = AtomicU64::new(0);
+static TRAY_VISUAL_REFRESH_AT: AtomicU64 = AtomicU64::new(0);
+static LAST_TRAY_VISUAL_KEY: Mutex<Option<String>> = Mutex::new(None);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TrayMicVisual {
+    key: &'static str,
+    muted: Option<bool>,
+    status_label: String,
+    device_label: String,
+    available: bool,
+    can_toggle: bool,
+}
 
 fn tray_icon() -> tauri::Result<Image<'static>> {
     // 32px tray asset — crisp at 100%/125% DPI; OS scales down instead of up.
@@ -73,21 +89,90 @@ pub fn setup(app: &AppHandle, state: Arc<AppState>) -> tauri::Result<()> {
         })
         .build(app)?;
 
+    start_tray_mic_poll(app.clone());
+    refresh_tray_visual_forced(&app);
+
     let _ = state;
     Ok(())
 }
 
-/// Sync tray hover text with listen / voice state.
+fn start_tray_mic_poll(app: AppHandle) {
+    std::thread::Builder::new()
+        .name("tray-mic-poll".into())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(900));
+            refresh_tray_visual_from_poll(&app, false);
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                refresh_tray_visual_from_poll(&app, false);
+            }
+        })
+        .ok();
+}
+
+/// Refresh tray icon/tooltip/menu mic presentation (debounced unless forced).
+/// Call from IPC / main thread only — must not use `run_on_main_thread` (deadlocks while JS awaits invoke).
+pub fn refresh_tray_visual(app: &AppHandle, force: bool) {
+    if !force && visual_debounce_active() {
+        return;
+    }
+    mark_visual_refresh();
+    refresh_tray_visual_on_main(app);
+}
+
+/// Background poll thread → schedule tray APIs on the UI thread.
+fn refresh_tray_visual_from_poll(app: &AppHandle, force: bool) {
+    let app = app.clone();
+    let _ = app.clone().run_on_main_thread(move || {
+        refresh_tray_visual(&app, force);
+    });
+}
+
+fn refresh_tray_visual_on_main(app: &AppHandle) {
+    if let Some(state) = app.try_state::<Arc<AppState>>() {
+        let (mic_key, agent_light) = resolve_tray_icon_inputs(state.inner());
+        let _ = update_tray_icon_if_needed(app, mic_key, &agent_light);
+        refresh_tray_tooltip(app, state.inner());
+        refresh_menu_data(app);
+    }
+}
+
+pub fn refresh_tray_visual_forced(app: &AppHandle) {
+    refresh_tray_visual(app, true);
+}
+
+pub fn after_mic_state_changed(app: &AppHandle, st: &MicMuteState) {
+    refresh_tray_visual_forced(app);
+    notify_main_mic_state(app, st);
+}
+
+/// Sync tray hover text with listen / voice / mic state.
 pub fn refresh_tray_tooltip(app: &AppHandle, state: &AppState) {
     let paused = *state.paused.lock();
     let cfg = state.cfg.lock();
     let voice_on = cfg.voice_vosk.enabled || cfg.voice_sapi.enabled;
+    let mic = resolve_tray_mic_visual(state);
+    let agent = read_tray_agent_visual();
     let tip = if paused {
-        "一声 · 已暂停（按键与语音均不响应，已释放语音占用）"
+        format!(
+            "一声 · 已暂停（按键与语音均不响应，已释放语音占用） · 麦克风{}",
+            mic.status_label
+        )
+    } else if agent.light != "idle" && !agent.agent_name.is_empty() {
+        format!(
+            "一声 · {} {} · 麦克风{}",
+            agent.agent_name, agent.status_label, mic.status_label
+        )
     } else if voice_on {
-        "一声 · 监听中（按键 + 语音唤醒）"
+        format!(
+            "一声 · 监听中（按键 + 语音唤醒） · 麦克风{}",
+            mic.status_label
+        )
     } else {
-        "一声 · 仅按键（语音已关，省内存）"
+        format!(
+            "一声 · 仅按键（语音已关，省内存） · 麦克风{}",
+            mic.status_label
+        )
     };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let _ = tray.set_tooltip(Some(tip));
@@ -112,6 +197,20 @@ pub fn refresh_menu(app: &AppHandle) {
     };
     let (cx, cy) = cursor_physical_position();
     open_tray_menu(&menu_win, state.inner(), cx, cy);
+}
+
+fn refresh_menu_data(app: &AppHandle) {
+    let Some(menu_win) = app.get_webview_window(TRAY_MENU_LABEL) else {
+        return;
+    };
+    if !menu_win.is_visible().unwrap_or(false) {
+        return;
+    }
+    let Some(state) = app.try_state::<Arc<AppState>>() else {
+        return;
+    };
+    let json = tray_menu_init_json(state.inner());
+    let _ = menu_win.eval(&format!("window.__tray_patch__({json});"));
 }
 
 pub fn tray_menu_init_json(state: &AppState) -> String {
@@ -150,9 +249,15 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
     let voice_engine = tray_voice_engine(&cfg);
     let (voice_state, voice_error) = tray_voice_state_and_error(state, voice_engine);
     let engine_label = tray_engine_label(voice_engine);
-    let mic_label = tray_mic_label();
+    let mic = resolve_tray_mic_visual(state);
+    let agent = read_tray_agent_visual();
+    let agent_light = if paused {
+        "paused".to_string()
+    } else {
+        agent.light.clone()
+    };
     let (status_title, status_badge, status_tone) =
-        tray_status_card(paused, voice_engine, &voice_state, &voice_error);
+        tray_status_card(paused, voice_engine, &voice_state, &voice_error, &agent);
 
     let payload = serde_json::json!({
         "paused": paused,
@@ -161,7 +266,15 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
         "triggerModeLabel": trigger_mode_label,
         "activeSchemeLabel": active_scheme_label,
         "engineLabel": engine_label,
-        "micLabel": mic_label,
+        "micLabel": mic.device_label,
+        "micKey": mic.key,
+        "micMuted": mic.muted,
+        "micStatusLabel": mic.status_label,
+        "micCanToggle": mic.can_toggle,
+        "agentLight": agent_light,
+        "agentStatusLabel": agent.status_label,
+        "agentName": agent.agent_name,
+        "agentSource": agent.source,
         "statusTitle": status_title,
         "statusBadge": status_badge,
         "statusTone": status_tone,
@@ -239,6 +352,22 @@ pub fn handle_tray_action(
             let mapping_id = tray_active_mapping_id(state);
             let _ = ipc::perform_test_send(state, app, mapping_id, None);
         }
+        "mic_toggle" => {
+            #[cfg(windows)]
+            {
+                if let Ok(st) = crate::audio_win::get_default_capture_mute() {
+                    if st.available {
+                        if let Ok(next) = crate::audio_win::set_default_capture_mute(!st.muted) {
+                            after_mic_state_changed(app, &next);
+                        }
+                    }
+                }
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = (app, state);
+            }
+        }
         "quit" => exit_app(app),
         _ => {}
     }
@@ -286,7 +415,7 @@ fn estimate_menu_size(state: &AppState) -> (f64, f64) {
         .filter(|m| mapping_is_complete(m))
         .count();
     let can_cycle = scheme_count > 1;
-    let main_rows = 8 + usize::from(can_cycle);
+    let main_rows = 9 + usize::from(can_cycle);
     let scheme_rows = 3 + scheme_count.max(1) + usize::from(can_cycle) + 1;
     let mode_rows = 7;
     let item_rows = main_rows.max(scheme_rows).max(mode_rows);
@@ -493,7 +622,120 @@ fn tray_engine_label(engine: &str) -> &'static str {
     }
 }
 
-fn tray_mic_label() -> String {
+fn resolve_tray_mic_visual(state: &AppState) -> TrayMicVisual {
+    if *state.paused.lock() {
+        let mut base = read_system_mic_visual();
+        base.key = "paused";
+        base.status_label = "已暂停".into();
+        return base;
+    }
+    if *state.recording.lock() {
+        let mut base = read_system_mic_visual();
+        base.key = "recording";
+        base.status_label = "录音中".into();
+        return base;
+    }
+    read_system_mic_visual()
+}
+
+fn resolve_tray_icon_inputs(state: &AppState) -> (&'static str, String) {
+    let mic_key = if *state.paused.lock() {
+        "paused"
+    } else if *state.recording.lock() {
+        "recording"
+    } else {
+        read_system_mic_key()
+    };
+    let agent_light = if mic_key == "muted" || mic_key == "paused" {
+        "idle".to_string()
+    } else {
+        read_tray_agent_visual().light
+    };
+    (mic_key, agent_light)
+}
+
+fn read_system_mic_key() -> &'static str {
+    #[cfg(windows)]
+    {
+        match crate::audio_win::get_default_capture_mute() {
+            Ok(st) if st.available => {
+                if st.muted {
+                    "muted"
+                } else {
+                    "ready"
+                }
+            }
+            Ok(_) | Err(_) => "missing",
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        "missing"
+    }
+}
+
+fn visual_cache_key(mic_key: &str, agent_light: &str) -> String {
+    format!("{mic_key}:{agent_light}")
+}
+
+fn read_system_mic_visual() -> TrayMicVisual {
+    #[cfg(windows)]
+    {
+        let device_label = tray_default_mic_device_label();
+        match crate::audio_win::get_default_capture_mute() {
+            Ok(st) if st.available => {
+                if st.muted {
+                    TrayMicVisual {
+                        key: "muted",
+                        muted: Some(true),
+                        status_label: "已静音".into(),
+                        device_label,
+                        available: true,
+                        can_toggle: true,
+                    }
+                } else {
+                    TrayMicVisual {
+                        key: "ready",
+                        muted: Some(false),
+                        status_label: "开麦中".into(),
+                        device_label,
+                        available: true,
+                        can_toggle: true,
+                    }
+                }
+            }
+            Ok(_) => TrayMicVisual {
+                key: "missing",
+                muted: None,
+                status_label: "不可用".into(),
+                device_label,
+                available: false,
+                can_toggle: false,
+            },
+            Err(_) => TrayMicVisual {
+                key: "missing",
+                muted: None,
+                status_label: "不可用".into(),
+                device_label,
+                available: false,
+                can_toggle: false,
+            },
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        TrayMicVisual {
+            key: "missing",
+            muted: None,
+            status_label: "不可用".into(),
+            device_label: "默认".into(),
+            available: false,
+            can_toggle: false,
+        }
+    }
+}
+
+fn tray_default_mic_device_label() -> String {
     #[cfg(windows)]
     {
         if let Ok(devices) = crate::audio_win::list_input_devices() {
@@ -506,6 +748,44 @@ fn tray_mic_label() -> String {
         }
     }
     "默认".into()
+}
+
+fn notify_main_mic_state(app: &AppHandle, st: &MicMuteState) {
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.emit("mic_tray_state", st);
+    }
+}
+
+fn visual_debounce_active() -> bool {
+    let last = TRAY_VISUAL_REFRESH_AT.load(Ordering::SeqCst);
+    if last == 0 {
+        return false;
+    }
+    now_millis().saturating_sub(last) < TRAY_VISUAL_DEBOUNCE_MS
+}
+
+fn mark_visual_refresh() {
+    TRAY_VISUAL_REFRESH_AT.store(now_millis(), Ordering::SeqCst);
+}
+
+fn update_tray_icon_if_needed(
+    app: &AppHandle,
+    mic_key: &str,
+    agent_light: &str,
+) -> tauri::Result<()> {
+    let cache_key = visual_cache_key(mic_key, agent_light);
+    let mut last = LAST_TRAY_VISUAL_KEY.lock().unwrap_or_else(|e| e.into_inner());
+    if last.as_deref() == Some(cache_key.as_str()) {
+        return Ok(());
+    }
+    *last = Some(cache_key);
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_icon(Some(tray_icon_render::tray_icon_image(
+            mic_key,
+            agent_light,
+        )))?;
+    }
+    Ok(())
 }
 
 fn truncate_label(s: &str, max_chars: usize) -> String {
@@ -524,9 +804,23 @@ fn tray_status_card(
     engine: &str,
     voice_state: &str,
     voice_error: &str,
+    agent: &TrayAgentVisual,
 ) -> (String, String, &'static str) {
     if paused {
         return ("已暂停".into(), "暂停".into(), "paused");
+    }
+    if agent.light != "idle" && agent_priority(&agent.light) > 0 {
+        let title = if agent.agent_name.is_empty() {
+            format!("Agent {}", agent.status_label)
+        } else {
+            format!("{} {}", agent.agent_name, agent.status_label)
+        };
+        let tone = match agent.light.as_str() {
+            "failed" => "error",
+            "needs_input" => "needs_input",
+            _ => "agent",
+        };
+        return (title, agent.status_label.clone(), tone);
     }
     if engine == "off" {
         return ("仅按键".into(), "就绪".into(), "normal");
@@ -539,6 +833,17 @@ fn tray_status_card(
         "listening" | "cooldown" | "triggered" => ("监听中".into(), "就绪".into(), "normal"),
         "stopped" => ("语音已停止".into(), "停止".into(), "normal"),
         _ => ("监听中".into(), "就绪".into(), "normal"),
+    }
+}
+
+fn agent_priority(light: &str) -> u8 {
+    match light.trim() {
+        "failed" => 60,
+        "needs_input" => 50,
+        "running" => 40,
+        "listening" => 30,
+        "done" => 20,
+        _ => 0,
     }
 }
 

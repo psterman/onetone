@@ -404,6 +404,245 @@ pub fn is_ctrl_down() -> bool {
     false
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DragState {
+    pub lmb_down: bool,
+    pub is_title_bar: bool,
+    pub hwnd: Option<String>,
+    pub monitor_id: String,
+    pub rect: Option<WindowRect>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveWindowToMonitorArgs {
+    pub hwnd: String,
+    pub monitor_id: String,
+}
+
+/// Center a window of `width`×`height` on monitor `m`, clamped so the window
+/// stays fully inside when it fits, otherwise top-left clamped.
+pub fn centered_window_origin(m: &MonitorInfo, width: i32, height: i32) -> PointXy {
+    let w = width.max(1);
+    let h = height.max(1);
+    let mw = m.width as i32;
+    let mh = m.height as i32;
+    let mut x = m.x.saturating_add((mw.saturating_sub(w)) / 2);
+    let mut y = m.y.saturating_add((mh.saturating_sub(h)) / 2);
+    if w <= mw {
+        let max_x = m.x.saturating_add(mw.saturating_sub(w));
+        x = x.clamp(m.x, max_x);
+    } else {
+        x = m.x;
+    }
+    if h <= mh {
+        let max_y = m.y.saturating_add(mh.saturating_sub(h));
+        y = y.clamp(m.y, max_y);
+    } else {
+        y = m.y;
+    }
+    PointXy { x, y }
+}
+
+fn hwnd_to_string(hwnd: isize) -> String {
+    format!("0x{hwnd:X}")
+}
+
+fn parse_hwnd(s: &str) -> Result<isize, String> {
+    let t = s.trim();
+    if t.is_empty() {
+        return Err("invalid_hwnd".into());
+    }
+    if let Some(hex) = t
+        .strip_prefix("0x")
+        .or_else(|| t.strip_prefix("0X"))
+    {
+        return isize::from_str_radix(hex, 16).map_err(|_| "invalid_hwnd".into());
+    }
+    t.parse::<isize>().map_err(|_| "invalid_hwnd".into())
+}
+
+#[cfg(windows)]
+fn point_to_lparam(x: i32, y: i32) -> isize {
+    let lo = (x as u16) as u32;
+    let hi = (y as u16) as u32;
+    ((hi << 16) | lo) as isize
+}
+
+#[cfg(windows)]
+pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
+    use winapi::shared::windef::{HWND, POINT, RECT};
+    use winapi::um::winuser::{
+        GetAsyncKeyState, GetCursorPos, GetForegroundWindow, GetWindowRect, IsWindow,
+        SendMessageW, WindowFromPoint, HTCAPTION, VK_LBUTTON, WM_NCHITTEST,
+    };
+
+    let lmb_down = unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 };
+    let mut pt = POINT { x: 0, y: 0 };
+    let ok = unsafe { GetCursorPos(&mut pt) };
+    if ok == 0 {
+        return Err("cursor_failed".into());
+    }
+
+    let monitor_id = find_monitor_for_point(&topology.monitors, pt.x, pt.y)
+        .map(|m| m.id.clone())
+        .unwrap_or_else(|| {
+            topology
+                .monitors
+                .iter()
+                .find(|m| m.primary)
+                .map(|m| m.id.clone())
+                .unwrap_or_else(|| "monitor-0".into())
+        });
+
+    if !lmb_down {
+        return Ok(DragState {
+            lmb_down: false,
+            is_title_bar: false,
+            hwnd: None,
+            monitor_id,
+            rect: None,
+        });
+    }
+
+    let hwnd_at = unsafe { WindowFromPoint(pt) };
+    let fg = unsafe { GetForegroundWindow() };
+    let hwnd: HWND = if !hwnd_at.is_null() && unsafe { IsWindow(hwnd_at) } != 0 {
+        hwnd_at
+    } else if !fg.is_null() {
+        fg
+    } else {
+        return Ok(DragState {
+            lmb_down: true,
+            is_title_bar: false,
+            hwnd: None,
+            monitor_id,
+            rect: None,
+        });
+    };
+
+    let hit = unsafe {
+        SendMessageW(hwnd, WM_NCHITTEST, 0, point_to_lparam(pt.x, pt.y))
+    };
+    let is_title_bar = hit == HTCAPTION as isize;
+
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    let rect_ok = unsafe { GetWindowRect(hwnd, &mut rect) };
+    let window_rect = if rect_ok != 0 {
+        Some(WindowRect {
+            x: rect.left,
+            y: rect.top,
+            width: rect.right.saturating_sub(rect.left),
+            height: rect.bottom.saturating_sub(rect.top),
+        })
+    } else {
+        None
+    };
+
+    let win_monitor = window_rect
+        .as_ref()
+        .and_then(|r| {
+            find_monitor_for_point(
+                &topology.monitors,
+                r.x + r.width.max(1) / 2,
+                r.y + r.height.max(1) / 2,
+            )
+        })
+        .map(|m| m.id.clone())
+        .unwrap_or(monitor_id);
+
+    Ok(DragState {
+        lmb_down: true,
+        is_title_bar,
+        hwnd: Some(hwnd_to_string(hwnd as isize)),
+        monitor_id: win_monitor,
+        rect: window_rect,
+    })
+}
+
+#[cfg(not(windows))]
+pub fn get_drag_state(_topology: &MonitorTopology) -> Result<DragState, String> {
+    Err("unsupported_platform".into())
+}
+
+#[cfg(windows)]
+pub fn move_window_to_monitor(
+    topology: &MonitorTopology,
+    args: &MoveWindowToMonitorArgs,
+) -> Result<PointXy, String> {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::{
+        GetWindowRect, IsIconic, IsWindow, IsZoomed, SetWindowPos, ShowWindow, SWP_NOACTIVATE,
+        SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE,
+    };
+
+    let m = find_monitor_by_id(&topology.monitors, &args.monitor_id)
+        .ok_or_else(|| "monitor_not_found".to_string())?;
+    let hwnd_val = parse_hwnd(&args.hwnd)?;
+    let hwnd = hwnd_val as winapi::shared::windef::HWND;
+    if hwnd.is_null() || unsafe { IsWindow(hwnd) } == 0 {
+        return Err("invalid_hwnd".into());
+    }
+
+    unsafe {
+        if IsZoomed(hwnd) != 0 || IsIconic(hwnd) != 0 {
+            ShowWindow(hwnd, SW_RESTORE);
+        }
+    }
+
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    let ok = unsafe { GetWindowRect(hwnd, &mut rect) };
+    if ok == 0 {
+        return Err("window_rect_failed".into());
+    }
+    let width = rect.right.saturating_sub(rect.left).max(1);
+    let height = rect.bottom.saturating_sub(rect.top).max(1);
+    let target = centered_window_origin(m, width, height);
+    let moved = unsafe {
+        SetWindowPos(
+            hwnd,
+            std::ptr::null_mut(),
+            target.x,
+            target.y,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+        )
+    };
+    if moved == 0 {
+        return Err("move_failed".into());
+    }
+    Ok(target)
+}
+
+#[cfg(not(windows))]
+pub fn move_window_to_monitor(
+    _topology: &MonitorTopology,
+    _args: &MoveWindowToMonitorArgs,
+) -> Result<PointXy, String> {
+    Err("unsupported_platform".into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -530,5 +769,16 @@ mod tests {
                 .id,
             "monitor-2"
         );
+    }
+
+    #[test]
+    fn centered_window_on_negative_monitor() {
+        let m = mon("monitor-0", -1920, 0, 1920, 1080, 1.0, false);
+        let p = centered_window_origin(&m, 800, 600);
+        assert_eq!(p.x, -1920 + (1920 - 800) / 2);
+        assert_eq!(p.y, (1080 - 600) / 2);
+        let oversized = centered_window_origin(&m, 3000, 2000);
+        assert_eq!(oversized.x, -1920);
+        assert_eq!(oversized.y, 0);
     }
 }

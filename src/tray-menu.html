@@ -17,6 +17,11 @@
       --green-soft:rgba(46,125,79,.1);
       --orange:#b9530a;
       --orange-soft:rgba(185,83,10,.1);
+      --micro-hw-status-running:rgba(42,156,196,.75);
+      --micro-hw-status-listening:rgba(0,163,255,.9);
+      --micro-hw-status-needs-input:rgba(245,166,35,.88);
+      --micro-hw-status-done:rgba(64,180,120,.85);
+      --micro-hw-status-failed:rgba(220,80,90,.9);
       --radius:12px;
       --radius-row:8px;
       --shadow:0 10px 28px rgba(26,45,74,.18);
@@ -56,11 +61,46 @@
     }
     .status-card.is-paused .pulse{background:var(--orange);box-shadow:0 0 0 4px var(--orange-soft)}
     .status-card.is-error .pulse{background:var(--danger);box-shadow:0 0 0 4px rgba(220,38,38,.12)}
+    .status-card .head .pulse[data-light="running"]{
+      background:var(--micro-hw-status-running);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--micro-hw-status-running) 35%, transparent);
+    }
+    .status-card .head .pulse[data-light="listening"]{
+      background:var(--micro-hw-status-listening);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--micro-hw-status-listening) 35%, transparent);
+    }
+    .status-card .head .pulse[data-light="needs_input"]{
+      background:var(--micro-hw-status-needs-input);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--micro-hw-status-needs-input) 35%, transparent);
+    }
+    .status-card .head .pulse[data-light="done"]{
+      background:var(--micro-hw-status-done);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--micro-hw-status-done) 35%, transparent);
+    }
+    .status-card .head .pulse[data-light="failed"]{
+      background:var(--micro-hw-status-failed);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--micro-hw-status-failed) 35%, transparent);
+    }
+    .status-card .head .pulse[data-light="idle"]{
+      background:var(--green);
+      box-shadow:0 0 0 4px var(--green-soft);
+    }
+    .status-card.is-needs-input .badge{background:rgba(245,166,35,.16);color:#b45309}
+    .status-card.is-agent .badge{background:color-mix(in srgb, var(--micro-hw-status-running) 20%, transparent);color:#0e7490}
     .status-card .head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:18px}
+    .status-card .head .pulse-wrap{position:relative;flex:0 0 auto;width:8px;height:8px}
     .status-card .head .pulse{
       width:8px;height:8px;border-radius:50%;background:var(--green);
       box-shadow:0 0 0 4px var(--green-soft);flex:0 0 auto;
     }
+    .status-card .head .mic-badge{
+      position:absolute;right:-3px;bottom:-3px;width:7px;height:7px;border-radius:50%;
+      border:1.5px solid var(--surface);background:var(--green);pointer-events:none;
+    }
+    .status-card .head .mic-badge.is-muted{background:var(--danger)}
+    .status-card .head .mic-badge.is-missing{background:var(--on-surface-muted)}
+    .status-card .head .mic-badge.is-recording{background:#e53935}
+    .status-card .head .mic-badge.is-paused{background:var(--orange)}
     .status-card .head .title{font-size:12px;font-weight:700;color:var(--on-surface);flex:1;min-width:0}
     .status-card .head .badge{
       margin-left:auto;font-size:10px;padding:2px 6px;border-radius:4px;
@@ -131,7 +171,9 @@
       settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
       back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
       quit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
-      check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>'
+      check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>',
+      mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4"/></svg>',
+      micOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v4"/><path d="M1 1l22 22"/><path d="M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/></svg>'
     };
 
     let menuData={};
@@ -178,10 +220,24 @@
 
     Element.prototype.tap=function(fn){ fn(this); return this; };
 
+    function micBadgeClass(key){
+      if(key==='muted') return 'is-muted';
+      if(key==='missing') return 'is-missing';
+      if(key==='recording') return 'is-recording';
+      if(key==='paused') return 'is-paused';
+      return 'is-ready';
+    }
+
     function statusCard(data){
-      const card=el('div','status-card'+(data.paused?' is-paused':'')+(data.statusTone==='error'?' is-error':''));
+      const agentLight=data.agentLight||'idle';
+      const card=el('div','status-card'
+        +(data.paused?' is-paused':'')
+        +(data.statusTone==='error'?' is-error':'')
+        +(data.statusTone==='needs_input'?' is-needs-input':'')
+        +(data.statusTone==='agent'?' is-agent':'')
+      );
       card.innerHTML=
-        '<div class="head"><span class="pulse"></span><span class="title"></span><span class="badge"></span></div>'
+        '<div class="head"><span class="pulse-wrap"><span class="pulse" data-light="'+agentLight+'"></span><span class="mic-badge"></span></span><span class="title"></span><span class="badge"></span></div>'
         +'<div class="grid">'
         +'<div class="cell"><span class="k">触发键</span><span class="v" data-k="triggerKey"></span></div>'
         +'<div class="cell"><span class="k">触发方式</span><span class="v" data-k="triggerMode"></span></div>'
@@ -193,7 +249,14 @@
       card.querySelector('[data-k="triggerKey"]').textContent=data.triggerKeyLabel||'—';
       card.querySelector('[data-k="triggerMode"]').textContent=data.triggerModeLabel||'—';
       card.querySelector('[data-k="engine"]').textContent=data.engineLabel||'—';
-      card.querySelector('[data-k="mic"]').textContent=data.micLabel||'默认';
+      const micBadge=card.querySelector('.mic-badge');
+      if(micBadge){
+        micBadge.className='mic-badge '+micBadgeClass(data.micKey||'ready');
+        micBadge.title=data.micStatusLabel||'';
+      }
+      const micVal=data.micLabel||'默认';
+      const micStatus=data.micStatusLabel||'';
+      card.querySelector('[data-k="mic"]').textContent=micStatus?(micVal+' · '+micStatus):micVal;
       return card;
     }
 
@@ -207,6 +270,13 @@
         icon:data.paused?ICONS.play:ICONS.pause,
         label:data.paused?'恢复监听':'暂停监听',
         action:'listen_toggle'
+      }));
+      root.appendChild(row({
+        icon:data.micMuted?ICONS.micOff:ICONS.mic,
+        label:data.micMuted?'取消麦克风静音':'静音麦克风',
+        greenIco:!data.micMuted,
+        action:'mic_toggle',
+        disabled:!data.micCanToggle
       }));
       if(data.canCycle){
         root.appendChild(row({icon:ICONS.cycle,label:'轮换到下一习惯',action:'cycle_scheme'}));
@@ -287,6 +357,10 @@
     window.__tray_init__=function(data){
       menuView='main';
       render(data||{});
+    };
+    window.__tray_patch__=function(data){
+      menuData=Object.assign({},menuData,data||{});
+      render(menuData);
     };
   </script>
 </body>

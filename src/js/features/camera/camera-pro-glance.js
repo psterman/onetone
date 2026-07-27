@@ -512,12 +512,11 @@
   }
 
   function syncLabUi(){
-    ['cameraProLabSnap','cameraProLabDisplay'].forEach(function(id){
-      var el=$(id);
-      if(!el) return;
+    var el=$('cameraProLabDisplay');
+    if(el){
       el.classList.add('is-lab','is-disabled');
       el.setAttribute('aria-disabled','true');
-    });
+    }
   }
 
   function syncSmartPointerBridge(){
@@ -653,9 +652,18 @@
     // Defer Smart Pointer so settings nav switch stays responsive.
     setTimeout(function(){
       try{
-        if(global.OneToneCameraSmartPointer){
-          if(global.OneToneCameraSmartPointer.onPanelVisible) global.OneToneCameraSmartPointer.onPanelVisible();
-          else if(global.OneToneCameraSmartPointer.init) global.OneToneCameraSmartPointer.init();
+        if(global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.init){
+          global.OneToneCameraSmartPointer.init();
+        }
+        if(global.OneToneCameraSnapWindow&&global.OneToneCameraSnapWindow.init){
+          global.OneToneCameraSnapWindow.init();
+        }
+        if(global.OneToneCameraAutoMute&&global.OneToneCameraAutoMute.init){
+          global.OneToneCameraAutoMute.init();
+        }
+        var wf=global.OneToneCameraWorkflow;
+        if(wf&&wf.activateProSubtab){
+          wf.activateProSubtab(wf.getProSubtab?wf.getProSubtab():'beauty');
         }
       }catch(_){}
     },0);
@@ -664,8 +672,18 @@
   function onPanelHidden(){
     stopWellnessTimer();
     try{
-      if(global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.onPanelHidden){
-        global.OneToneCameraSmartPointer.onPanelHidden();
+      var wf=global.OneToneCameraWorkflow;
+      var sub=wf&&wf.getProSubtab?wf.getProSubtab():'';
+      if(sub==='track'||sub==='snap'||sub==='automute'){
+        if(sub==='track'&&global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.onPanelHidden){
+          global.OneToneCameraSmartPointer.onPanelHidden();
+        }
+        if(sub==='snap'&&global.OneToneCameraSnapWindow&&global.OneToneCameraSnapWindow.onPanelHidden){
+          global.OneToneCameraSnapWindow.onPanelHidden();
+        }
+        if(sub==='automute'&&global.OneToneCameraAutoMute&&global.OneToneCameraAutoMute.onPanelHidden){
+          global.OneToneCameraAutoMute.onPanelHidden();
+        }
       }
     }catch(_){}
   }
@@ -678,6 +696,16 @@
     try{
       if(global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.init){
         global.OneToneCameraSmartPointer.init();
+      }
+    }catch(_){}
+    try{
+      if(global.OneToneCameraSnapWindow&&global.OneToneCameraSnapWindow.init){
+        global.OneToneCameraSnapWindow.init();
+      }
+    }catch(_){}
+    try{
+      if(global.OneToneCameraAutoMute&&global.OneToneCameraAutoMute.init){
+        global.OneToneCameraAutoMute.init();
       }
     }catch(_){}
   }

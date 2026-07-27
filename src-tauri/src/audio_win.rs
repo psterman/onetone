@@ -140,6 +140,39 @@ pub struct MicDeviceInfo {
     pub is_available: bool,
 }
 
+/// Default capture (microphone) mute state — separate from speaker recording duck.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MicMuteState {
+    pub muted: bool,
+    pub available: bool,
+    pub device_id: Option<String>,
+}
+
+#[cfg(windows)]
+pub fn get_default_capture_mute() -> Result<MicMuteState, String> {
+    imp::get_default_capture_mute()
+}
+
+#[cfg(not(windows))]
+pub fn get_default_capture_mute() -> Result<MicMuteState, String> {
+    Ok(MicMuteState {
+        muted: false,
+        available: false,
+        device_id: None,
+    })
+}
+
+#[cfg(windows)]
+pub fn set_default_capture_mute(muted: bool) -> Result<MicMuteState, String> {
+    imp::set_default_capture_mute(muted)
+}
+
+#[cfg(not(windows))]
+pub fn set_default_capture_mute(_muted: bool) -> Result<MicMuteState, String> {
+    Err("microphone mute is Windows-only".into())
+}
+
 pub struct MicMonitorHandle {
     stop: Arc<AtomicBool>,
     thread: Option<thread::JoinHandle<()>>,
@@ -273,6 +306,59 @@ mod imp {
                 eprintln!("set default communications (non-fatal): {err}");
             }
             Ok(())
+        }
+    }
+
+    pub fn get_default_capture_mute() -> Result<MicMuteState, String> {
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let Ok(device) = enumerator.GetDefaultAudioEndpoint(eCapture, eConsole) else {
+                return Ok(MicMuteState {
+                    muted: false,
+                    available: false,
+                    device_id: None,
+                });
+            };
+            let id = device_id(&device).ok();
+            let endpoint: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate endpoint volume: {e}"))?;
+            let muted = endpoint
+                .GetMute()
+                .map_err(|e| format!("endpoint mute: {e}"))?
+                .as_bool();
+            Ok(MicMuteState {
+                muted,
+                available: true,
+                device_id: id,
+            })
+        }
+    }
+
+    pub fn set_default_capture_mute(muted: bool) -> Result<MicMuteState, String> {
+        unsafe {
+            init_com_apartment()?;
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| format!("enumerator: {e}"))?;
+            let device = enumerator
+                .GetDefaultAudioEndpoint(eCapture, eConsole)
+                .map_err(|e| format!("default capture: {e}"))?;
+            let id = device_id(&device).ok();
+            let endpoint: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| format!("activate endpoint volume: {e}"))?;
+            endpoint
+                .SetMute(muted, core::ptr::null())
+                .map_err(|e| format!("set mute: {e}"))?;
+            Ok(MicMuteState {
+                muted,
+                available: true,
+                device_id: id,
+            })
         }
     }
 

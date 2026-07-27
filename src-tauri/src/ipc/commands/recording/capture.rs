@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tauri::Emitter;
+use tauri::Manager;
 
 use crate::config::{canonical_trigger, RawEvent};
 use crate::ipc::core::persist_and_rebind;
@@ -91,6 +92,8 @@ pub fn cmd_frontend_keydown(
         mgr.stop_recording();
     }
     persist_and_rebind(&state, &window, "recorded");
+
+    crate::tray::refresh_tray_visual_forced(window.app_handle());
 
     let captured_key = if is_target {
         key
