@@ -196,14 +196,17 @@
     try{
       var Tc=global.OneToneAgentScenarioTemplate;
       var mc=core()&&core().byId?core().byId(id):null;
-      if(Tc&&Tc.ensurePackForMapping&&mc) Tc.ensurePackForMapping(mc,{persist:true});
+      // Memory-only before paint — sync cmd_save + MediaPipe open used to 假死.
+      if(Tc&&Tc.ensurePackForMapping&&mc) Tc.ensurePackForMapping(mc,{persist:false});
+      syncEditor(id);
     }catch(_){}
-    syncEditor(id);
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('camera');
     render();
-    if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
-      try{ global.OneToneCameraPresenceActions.syncUiFromPrefs(); }catch(_){}
-    }
+    setTimeout(function(){
+      var p=global.OneToneConfigPersist;
+      if(p&&p.saveAsync) p.saveAsync();
+      else if(p&&p.save) p.save();
+    },120);
     // No Codex camera PackCard — apply lives on Habit Hub Codex card.
   }
 

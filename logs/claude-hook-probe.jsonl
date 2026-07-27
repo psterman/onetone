@@ -570,3 +570,12 @@
 {"ts":1785156602965,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
 {"ts":1785157487615,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
 {"ts":1785157758425,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785190346785}
+{"ts":1785190401155,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785190690321,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785190901129,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785192232385,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785192495058,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785192739764,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785192841025,"hook_event_name":"subagentStop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785192922294,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}

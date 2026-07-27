@@ -28,7 +28,7 @@
     deferredMvpInitSideEffects=true;
   }
 
-  /** Same guards as pullBackendConfig — full remount during pad/keys edit 假死's the drawer. */
+  /** Full remount during Soft Pad / keys / camera open 假死's the drawer (MediaPipe + pad remount). */
   function mvpInitHeavyRemountBlocked(){
     try{
       var Pad=global.OneToneCodexMicroPadUi;
@@ -37,7 +37,8 @@
       if(modal&&!modal.hidden) return true;
       var ui=global.OneToneState&&global.OneToneState.ui;
       if(!ui||!ui.drawerOpen) return false;
-      return ui.settingsPanel==='softPad'||ui.settingsPanel==='keys';
+      var p=ui.settingsPanel;
+      return p==='softPad'||p==='keys'||p==='camera';
     }catch(_){ return false; }
   }
 
@@ -1659,20 +1660,8 @@
   var pullBackendConfigInFlight=false;
   function pullBackendConfig(){
     if(!tauriBridgeReady()) return Promise.resolve(false);
-    // Pad manager / Soft Pad / keycap edit open: cmd_ready → applyMvpInit remount storm 假死's the UI.
-    try{
-      var Pad=global.OneToneCodexMicroPadUi;
-      if(Pad&&typeof Pad.isPadManagerOpen==='function'&&Pad.isPadManagerOpen()){
-        return Promise.resolve(false);
-      }
-      if(document.getElementById('codexMicroEditModal')&&!document.getElementById('codexMicroEditModal').hidden){
-        return Promise.resolve(false);
-      }
-      var ui=global.OneToneState&&global.OneToneState.ui;
-      if(ui&&ui.drawerOpen&&ui.settingsPanel==='softPad'){
-        return Promise.resolve(false);
-      }
-    }catch(_){}
+    // Pad / keys / camera open: cmd_ready → applyMvpInit remount storm 假死's the UI (esp. MediaPipe).
+    if(mvpInitHeavyRemountBlocked()) return Promise.resolve(false);
     if(bootSettling()&&configLoadedFromBackend&&configHasSceneData()) return Promise.resolve(false);
     clearTimeout(pullBackendConfigTimer);
     return new Promise(function(resolve){
@@ -1819,6 +1808,7 @@
     saveCameraPrefsQuiet:saveCameraPrefsQuiet,
     rememberCameraPrefs:function(){ rememberCameraPrefsFromConfig(state().config); },
     applyMvpInit:applyMvpInit,
+    mvpInitHeavyRemountBlocked:mvpInitHeavyRemountBlocked,
     applySchemeSwitchedRuntime:applySchemeSwitchedRuntime,
     applyRawMvpInit:applyRawMvpInit,
     flushPendingMvpInit:flushPendingMvpInit,

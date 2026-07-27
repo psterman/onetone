@@ -626,14 +626,8 @@
     // Leaving keys: stop pad readiness remount/poll so「我的习惯」open is not stacked under it.
     if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
-      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
-        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
-      }
     }
     if(panelChanged&&lastPanel==='softPad'&&panel!=='softPad'){
-      if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
-        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
-      }
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
       }
@@ -650,6 +644,16 @@
     }
 
     ui.settingsPanel=panel;
+
+    // Flush deferred mvp_init only after leaving Soft Pad / keys / camera — never while still on one
+    // (softPad→camera used to flush remount + MediaPipe open in the same turn → 假死).
+    if(panelChanged&&global.OneToneConfigPersist){
+      var blocked=global.OneToneConfigPersist.mvpInitHeavyRemountBlocked;
+      if(typeof blocked==='function'&&!blocked()&&
+         typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+      }
+    }
 
     const highlight=navHighlightPanel(panel);
 
@@ -783,15 +787,25 @@
         ui.cameraEditMode='appScenario';
         if(ui.habitScenarioReturnId) state().selectedMappingId=String(ui.habitScenarioReturnId);
       }
-      if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
-        global.OneToneCameraPreview.onPanelVisible();
-      }
-      if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
-        global.OneToneCameraWorkflow.onPanelVisible();
-      }
-      if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
-        global.OneToneHabitScenarioContextBanner.render();
-      }
+      // Defer preview/reconcile/MediaPipe — sync onPanelVisible used to 假死 the drawer on open.
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='camera') return;
+          if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
+            try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
+              console.error('camera preview onPanelVisible',err);
+            }
+          }
+          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
+            try{ global.OneToneCameraWorkflow.onPanelVisible(); }catch(err){
+              console.error('camera workflow onPanelVisible',err);
+            }
+          }
+          if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
+            try{ global.OneToneHabitScenarioContextBanner.render(); }catch(_){}
+          }
+        },0);
+      });
 
     }
 
@@ -1008,10 +1022,13 @@
 
     }
 
-    if(global.OneToneConfigPersist&&typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
-
-      global.OneToneConfigPersist.pullBackendConfig();
-
+    if(global.OneToneConfigPersist){
+      if(typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
+        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+      }
+      if(typeof global.OneToneConfigPersist.pullBackendConfig==='function'){
+        global.OneToneConfigPersist.pullBackendConfig();
+      }
     }
 
     setTimeout(function(){
