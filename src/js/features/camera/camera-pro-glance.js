@@ -512,12 +512,26 @@
   }
 
   function syncLabUi(){
-    ['cameraProLabPointer','cameraProLabSnap','cameraProLabDisplay'].forEach(function(id){
+    ['cameraProLabSnap','cameraProLabDisplay'].forEach(function(id){
       var el=$(id);
       if(!el) return;
       el.classList.add('is-lab','is-disabled');
       el.setAttribute('aria-disabled','true');
     });
+  }
+
+  function syncSmartPointerBridge(){
+    try{
+      var sp=global.OneToneCameraSmartPointer;
+      if(!sp) return;
+      var enabled=!!(sp.getSettings&&sp.getSettings().enabled);
+      // Mirror into proFeatures for any legacy readers; Snap/Display stay forced off.
+      if(rt.featCache) rt.featCache.labSmartPointer=enabled;
+      var cp=cameraPrefs();
+      if(cp.proFeatures&&typeof cp.proFeatures==='object'){
+        cp.proFeatures.labSmartPointer=enabled;
+      }
+    }catch(_){}
   }
 
   function refreshProbe(){
@@ -633,16 +647,39 @@
   function onPanelVisible(){
     bindUi();
     syncTogglesFromPrefs();
+    syncLabUi();
+    syncSmartPointerBridge();
     startWellnessTimer();
+    // Defer Smart Pointer so settings nav switch stays responsive.
+    setTimeout(function(){
+      try{
+        if(global.OneToneCameraSmartPointer){
+          if(global.OneToneCameraSmartPointer.onPanelVisible) global.OneToneCameraSmartPointer.onPanelVisible();
+          else if(global.OneToneCameraSmartPointer.init) global.OneToneCameraSmartPointer.init();
+        }
+      }catch(_){}
+    },0);
   }
 
   function onPanelHidden(){
     stopWellnessTimer();
+    try{
+      if(global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.onPanelHidden){
+        global.OneToneCameraSmartPointer.onPanelHidden();
+      }
+    }catch(_){}
   }
 
   function init(){
     bindUi();
     syncTogglesFromPrefs();
+    syncLabUi();
+    syncSmartPointerBridge();
+    try{
+      if(global.OneToneCameraSmartPointer&&global.OneToneCameraSmartPointer.init){
+        global.OneToneCameraSmartPointer.init();
+      }
+    }catch(_){}
   }
 
   /** Optional: require Hello before changing sensitive camera prefs when toggle on. */

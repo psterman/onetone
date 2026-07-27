@@ -2703,6 +2703,7 @@
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabPrivacy" data-pro-subtab="privacy" aria-selected="false" aria-controls="cameraProSubPrivacy" data-i18n="cameraProSubtabPrivacy">隐私</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabWellness" data-pro-subtab="wellness" aria-selected="false" aria-controls="cameraProSubWellness" data-i18n="cameraProSubtabWellness">健康</button>
                       <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabGesture" data-pro-subtab="gesture" aria-selected="false" aria-controls="cameraProSubGesture" data-i18n="cameraProSubtabGesture">手势</button>
+                      <button type="button" class="camera-pro-subtab" role="tab" id="cameraProSubtabTrack" data-pro-subtab="track" aria-selected="false" aria-controls="cameraProSubTrack" data-i18n="cameraProSubtabTrack">自动追踪</button>
                     </div>
 
                     <div class="camera-pro-subpanels" id="cameraProSubpanels">
@@ -2963,9 +2964,173 @@
                         </div>
                       </div>
                     </section>
+
+                    <section class="camera-pro-section camera-pro-subpanel" id="cameraProSubTrack" role="tabpanel" data-pro-subpanel="track" aria-labelledby="cameraProSubtabTrack" hidden>
+                      <div class="camera-pro-toggle-row camera-pro-track-enable-row">
+                        <div>
+                          <strong data-i18n="cameraSmartPointerEnable">启用自动追踪</strong>
+                          <p class="camera-card-desc" data-i18n="cameraSmartPointerEnableDesc">默认关闭；开启后默认自动模式，持续监察视线。</p>
+                        </div>
+                        <div class="camera-pro-track-enable-aside">
+                          <span class="camera-pro-status-pill" id="cameraSmartPointerStatusPill">
+                            <span id="cameraSmartPointerStatusText" data-i18n="cameraSmartPointerStatusDisabled">未启用</span>
+                          </span>
+                          <button type="button" class="toggle-switch" id="cameraSmartPointerToggle" role="switch" aria-checked="false" aria-label="Auto track"></button>
+                        </div>
+                      </div>
+                      <div class="camera-card-kicker" data-i18n="cameraProTrackKicker">多屏视线</div>
+                      <div class="camera-card-title" data-i18n="cameraProTrackTitle">自动追踪</div>
+                      <p class="camera-card-desc" data-i18n="cameraProTrackDesc">粗略判断看向哪块屏并可选移动鼠标；不做像素级视线鼠标。</p>
+
+                      <div class="camera-pro-select-row camera-pro-track-mode-row">
+                        <span data-i18n="cameraSmartPointerModeLabel">模式</span>
+                        <div class="pref-segmented is-wide" id="cameraSmartPointerModeSeg" role="radiogroup" aria-label="Track mode">
+                          <button type="button" class="pref-segmented-btn is-active" data-sp-mode="auto" data-i18n="cameraSmartPointerModeAuto">自动</button>
+                          <button type="button" class="pref-segmented-btn" data-sp-mode="confirm" data-i18n="cameraSmartPointerModeConfirm">Ctrl 触发</button>
+                          <button type="button" class="pref-segmented-btn" data-sp-mode="preview" data-i18n="cameraSmartPointerModePreview">预览</button>
+                        </div>
+                      </div>
+                      <p class="camera-pro-status-line" id="cameraSmartPointerModeHint" hidden></p>
+
+                      <div class="camera-pro-track-setup-row">
+                        <div>
+                          <strong data-i18n="cameraSmartPointerSetupTitle">显示器设置</strong>
+                          <p class="camera-card-desc" id="cameraSmartPointerSetupSummary" data-i18n="cameraSmartPointerSetupSummaryIdle">尚未确认多屏布局</p>
+                        </div>
+                        <button type="button" class="control-btn" id="cameraSmartPointerSetupBtn" data-i18n="cameraSmartPointerSetupOpen">设置屏幕与摄像头</button>
+                      </div>
+
+                      <p class="camera-pro-status-line" id="cameraSmartPointerGazeLine" aria-live="polite">
+                        <span data-i18n="cameraSmartPointerGazeLabel">当前看向</span>：
+                        <strong id="cameraSmartPointerGazeAlias">—</strong>
+                        <span id="cameraSmartPointerGazeMeta"></span>
+                      </p>
+                      <p class="camera-pro-status-line" id="cameraSmartPointerActionLine">
+                        <span data-i18n="cameraSmartPointerActionLabel">最近一次动作</span>：
+                        <strong id="cameraSmartPointerActionText" data-i18n="cameraSmartPointerActionNone">无</strong>
+                      </p>
+                      <p class="camera-sp-land-banner" id="cameraSmartPointerLandBanner" hidden aria-live="polite"></p>
+
+                      <details class="camera-pro-lab-debug" id="cameraSmartPointerTuneFold">
+                        <summary data-i18n="cameraSmartPointerTuneTitle">微调</summary>
+                        <div class="camera-pro-select-row">
+                          <span data-i18n="cameraSmartPointerTuneConfidence">灵敏度（最低置信度）</span>
+                          <input type="range" id="cameraSmartPointerTuneConfidence" min="20" max="90" step="5" value="55">
+                          <strong id="cameraSmartPointerTuneConfidenceVal">0.55</strong>
+                        </div>
+                        <div class="camera-pro-select-row">
+                          <span data-i18n="cameraSmartPointerTuneDwell">停留（ms）</span>
+                          <input type="range" id="cameraSmartPointerTuneDwell" min="300" max="2000" step="50" value="700">
+                          <strong id="cameraSmartPointerTuneDwellVal">700</strong>
+                        </div>
+                        <div class="camera-pro-select-row">
+                          <span data-i18n="cameraSmartPointerTuneCooldown">冷却（ms）</span>
+                          <input type="range" id="cameraSmartPointerTuneCooldown" min="400" max="3000" step="100" value="1200">
+                          <strong id="cameraSmartPointerTuneCooldownVal">1200</strong>
+                        </div>
+                        <div class="camera-pro-select-row">
+                          <span data-i18n="cameraSmartPointerLandLabel">落点</span>
+                          <div class="pref-segmented" id="cameraSmartPointerLandSeg" role="radiogroup" aria-label="Land preference">
+                            <button type="button" class="pref-segmented-btn is-active" data-sp-land="center" data-i18n="cameraSmartPointerLandCenter">屏幕中心</button>
+                            <button type="button" class="pref-segmented-btn" data-sp-land="last" data-i18n="cameraSmartPointerLandLast">上次位置</button>
+                          </div>
+                        </div>
+                      </details>
+
+                      <details class="camera-pro-lab-debug" id="cameraSmartPointerAssessFold">
+                        <summary data-i18n="cameraSmartPointerAssessFoldTitle">快速评估（参考）</summary>
+                        <div class="camera-pro-lab-actions">
+                          <button type="button" class="control-btn" id="cameraSmartPointerAssessBtn" data-i18n="cameraSmartPointerAssessStart">开始快速评估</button>
+                          <button type="button" class="control-btn" id="cameraSmartPointerAssessStepBtn" hidden data-i18n="cameraSmartPointerAssessConfirm">开始采中间屏</button>
+                        </div>
+                        <p class="camera-pro-status-line" id="cameraSmartPointerAssessLine" aria-live="polite"></p>
+                      </details>
+
+                      <p class="camera-card-desc" data-i18n="cameraSmartPointerHonesty">粗略判断看哪块显示器，不做像素级视线鼠标。评估仅作参考，不阻止自动模式。</p>
+                      <details class="camera-pro-lab-debug" id="cameraSmartPointerDebugFold">
+                        <summary data-i18n="cameraSmartPointerDebugTitle">调试：显示器 bounds / 光标</summary>
+                        <pre class="camera-pro-lab-debug-pre" id="cameraSmartPointerDebugPre">—</pre>
+                      </details>
+
+                      <div class="camera-pro-lab-grid camera-pro-track-lab-mini" id="cameraProLabGrid">
+                        <article class="camera-config-card camera-pro-lab-card is-lab is-disabled" id="cameraProLabSnap" aria-disabled="true">
+                          <div class="camera-card-title" data-i18n="cameraProLabSnapTitle">Snap Window</div>
+                          <p class="camera-card-desc" data-i18n="cameraProLabSnapDesc">拖标题栏看屏移窗 · 未接入</p>
+                        </article>
+                        <article class="camera-config-card camera-pro-lab-card is-lab is-disabled" id="cameraProLabDisplay" aria-disabled="true">
+                          <div class="camera-card-title" data-i18n="cameraProLabDisplayTitle">Smart Display</div>
+                          <p class="camera-card-desc" data-i18n="cameraProLabDisplayDesc">非注视屏降清晰度 · 未接入</p>
+                        </article>
+                      </div>
+                    </section>
+                    </div>
+
+                    <div class="camera-sp-modal" id="cameraSmartPointerSetupModal" hidden aria-hidden="true">
+                      <div class="camera-sp-modal-backdrop" id="cameraSmartPointerSetupBackdrop"></div>
+                      <div class="camera-sp-modal-card" role="dialog" aria-modal="true" aria-labelledby="cameraSmartPointerSetupModalTitle">
+                        <div class="camera-sp-modal-head">
+                          <div>
+                            <div class="camera-card-kicker" data-i18n="cameraSmartPointerSetupKicker">对照你的桌面</div>
+                            <strong id="cameraSmartPointerSetupModalTitle" data-i18n="cameraSmartPointerSetupModalTitle">屏幕与摄像头</strong>
+                          </div>
+                          <button type="button" class="welcome-close" id="cameraSmartPointerSetupClose" aria-label="Close">×</button>
+                        </div>
+                        <p class="camera-card-desc" data-i18n="cameraSmartPointerSetupLead">先确认左右排列，再点选摄像头装在哪块屏上方。</p>
+                        <p class="camera-sp-detect-line" id="cameraSmartPointerDetectLine" data-i18n="cameraSmartPointerDetectIdle">正在检测显示器…</p>
+
+                        <div class="camera-sp-desk" id="cameraSmartPointerDesk" aria-label="desk layout">
+                          <div class="camera-sp-desk-rail" id="cameraSmartPointerMonitorStrip"></div>
+                          <p class="camera-sp-desk-caption" id="cameraSmartPointerDeskCaption"></p>
+                        </div>
+
+                        <div class="camera-sp-setup-block">
+                          <div class="camera-sp-setup-label">
+                            <span class="camera-sp-step">1</span>
+                            <span data-i18n="cameraSmartPointerScreenCount">使用屏幕数</span>
+                          </div>
+                          <div class="camera-fps-pills" id="cameraSmartPointerScreenPills" role="group">
+                            <button type="button" class="camera-fps-pill" data-sp-screens="1">1</button>
+                            <button type="button" class="camera-fps-pill" data-sp-screens="2">2</button>
+                            <button type="button" class="camera-fps-pill is-active" data-sp-screens="3">3</button>
+                          </div>
+                        </div>
+
+                        <div class="camera-sp-setup-block">
+                          <div class="camera-sp-setup-label">
+                            <span class="camera-sp-step">2</span>
+                            <span data-i18n="cameraSmartPointerCameraPos">摄像头位置</span>
+                          </div>
+                          <p class="camera-card-desc camera-sp-cam-hint" data-i18n="cameraSmartPointerCamHint">也可直接点上面示意里的某一屏。</p>
+                          <div class="camera-sp-cam-grid" id="cameraSmartPointerCamGrid" role="group">
+                            <button type="button" class="camera-sp-cam-card is-active" data-sp-cam="center-top">
+                              <span class="camera-sp-cam-visual" data-cam-visual="center" aria-hidden="true"></span>
+                              <span data-i18n="cameraSmartPointerCamCenter">中间屏上方</span>
+                            </button>
+                            <button type="button" class="camera-sp-cam-card" data-sp-cam="left-top">
+                              <span class="camera-sp-cam-visual" data-cam-visual="left" aria-hidden="true"></span>
+                              <span data-i18n="cameraSmartPointerCamLeft">左屏上方</span>
+                            </button>
+                            <button type="button" class="camera-sp-cam-card" data-sp-cam="right-top">
+                              <span class="camera-sp-cam-visual" data-cam-visual="right" aria-hidden="true"></span>
+                              <span data-i18n="cameraSmartPointerCamRight">右屏上方</span>
+                            </button>
+                            <button type="button" class="camera-sp-cam-card" data-sp-cam="laptop-built-in">
+                              <span class="camera-sp-cam-visual" data-cam-visual="laptop" aria-hidden="true"></span>
+                              <span data-i18n="cameraSmartPointerCamLaptop">笔记本内置</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <p class="camera-pro-status-line" data-i18n="cameraSmartPointerLayoutHorizontal">排列：横向（MVP）</p>
+                        <div class="camera-pro-lab-actions">
+                          <button type="button" class="control-btn" id="cameraSmartPointerSetupRefresh" data-i18n="cameraSmartPointerSetupRefresh">重新检测</button>
+                          <button type="button" class="control-btn primary" id="cameraSmartPointerSetupConfirm" data-i18n="cameraSmartPointerSetupConfirm">确认</button>
+                        </div>
+                      </div>
                     </div>
 
                     <div hidden aria-hidden="true">
+                      <article id="cameraProLabPointer"></article>
                       <section id="cameraProFilterSection"></section>
                       <section id="cameraProPrivacySection"></section>
                       <section id="cameraProWellnessSection"></section>
@@ -3645,6 +3810,10 @@
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/camera/camera-presence-actions.js"></script>
+  <script src="js/features/camera/camera-gaze-monitor-topology.js"></script>
+  <script src="js/features/camera/camera-gaze-monitor-assessment.js"></script>
+  <script src="js/features/camera/camera-gaze-monitor-classifier.js"></script>
+  <script src="js/features/camera/camera-smart-pointer.js"></script>
   <script src="js/features/camera/camera-pro-glance.js"></script>
   <script src="js/features/camera/camera-preview.js"></script>
   <script src="vendor/face-mask/face-mask.js"></script>

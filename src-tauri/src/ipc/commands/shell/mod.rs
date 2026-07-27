@@ -1,4 +1,5 @@
 mod coach_hud_cmd;
+mod gaze_monitor_cmd;
 mod codex_micro_overlay_cmd;
 mod codex_micro_pad_fire_cmd;
 mod codex_micro_pad_flags_cmd;
@@ -12,6 +13,7 @@ mod update;
 mod window;
 
 pub use coach_hud_cmd::*;
+pub use gaze_monitor_cmd::*;
 pub use codex_micro_overlay_cmd::*;
 pub use codex_micro_pad_fire_cmd::*;
 pub use codex_micro_pad_flags_cmd::*;

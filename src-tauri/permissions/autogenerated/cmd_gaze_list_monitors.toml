@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-gaze-list-monitors"
+description = "Enables the cmd_gaze_list_monitors command without any pre-configured scope."
+commands.allow = ["cmd_gaze_list_monitors"]
+
+[[permission]]
+identifier = "deny-cmd-gaze-list-monitors"
+description = "Denies the cmd_gaze_list_monitors command without any pre-configured scope."
+commands.deny = ["cmd_gaze_list_monitors"]

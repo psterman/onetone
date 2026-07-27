@@ -9,6 +9,7 @@ mod audio_win;
 mod backdrop;
 mod camera_capability_probe;
 mod coach_hud;
+mod gaze_monitor;
 mod claude_cli_session;
 mod claude_hook_setup;
 mod codex_app_state;
@@ -756,6 +757,10 @@ pub fn run() {
             ipc::cmd_coach_hud_get_state,
             ipc::cmd_coach_hud_dismiss,
             ipc::cmd_coach_hud_set_enabled,
+            ipc::cmd_gaze_list_monitors,
+            ipc::cmd_gaze_get_cursor_position,
+            ipc::cmd_gaze_move_cursor_to_monitor,
+            ipc::cmd_gaze_is_ctrl_down,
             ipc::cmd_codex_micro_overlay_get_state,
             ipc::cmd_codex_micro_protocol_inject,
             ipc::cmd_codex_micro_protocol_server_start,

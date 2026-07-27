@@ -1585,6 +1585,10 @@ pub struct CameraPrefs {
     /// Preview-only enhancement; omitted in quiet saves must not wipe disk prefs.
     #[serde(default)]
     pub video_enhancement: VideoEnhancementPrefs,
+    /// Smart Pointer lab prefs (FE-owned JSON). Null on quiet save keeps disk.
+    /// Clear only via `clearSmartPointer` flag — never use null to wipe.
+    #[serde(default)]
+    pub smart_pointer: Option<serde_json::Value>,
 }
 
 /// Legacy / reserved; not used at runtime.
@@ -4255,6 +4259,9 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
 /// snapshot was never hydrated. Preserve disk calibration unless the FE explicitly
 /// asks to clear it. Also keep a non-empty device id if the payload omits it.
 ///
+/// Same null-keep rule for `smartPointer` — disable by saving `{enabled:false,…}`;
+/// wipe only when `clear_smart_pointer` is true.
+///
 /// `has_video_enhancement`: true when the raw JSON included `videoEnhancement`.
 /// Field missing → keep existing (old clients / partial payloads). Field present
 /// (even all-defaults / enabled:false) → take incoming so intentional resets stick.
@@ -4267,9 +4274,13 @@ pub fn merge_camera_prefs_quiet(
     clear_gaze_calibration: bool,
     has_video_enhancement: bool,
     has_selected_frame_rate: bool,
+    clear_smart_pointer: bool,
 ) -> CameraPrefs {
     if incoming.gaze_calibration.is_none() && !clear_gaze_calibration {
         incoming.gaze_calibration = existing.gaze_calibration.clone();
+    }
+    if incoming.smart_pointer.is_none() && !clear_smart_pointer {
+        incoming.smart_pointer = existing.smart_pointer.clone();
     }
     if incoming.blink_baseline.is_none() && existing.blink_baseline.is_some() {
         incoming.blink_baseline = existing.blink_baseline.clone();
@@ -5050,7 +5061,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false, false);
         assert_eq!(
             merged.gaze_calibration,
             Some(serde_json::json!({"v":1,"ok":true}))
@@ -5071,8 +5082,74 @@ mod tests {
             gaze_calibration: None,
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, true, false, false);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, true, false, false, false);
         assert!(merged.gaze_calibration.is_none());
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_keeps_smart_pointer_when_incoming_null() {
+        let existing = CameraPrefs {
+            smart_pointer: Some(serde_json::json!({
+                "enabled": false,
+                "mode": "preview",
+                "assessment": { "status": "ready", "quality": "ok" }
+            })),
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            smart_pointer: None,
+            selected_device_id: "cam-sp".into(),
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false, false);
+        assert_eq!(merged.selected_device_id, "cam-sp");
+        assert_eq!(
+            merged.smart_pointer,
+            Some(serde_json::json!({
+                "enabled": false,
+                "mode": "preview",
+                "assessment": { "status": "ready", "quality": "ok" }
+            }))
+        );
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_clears_smart_pointer_when_flagged() {
+        let existing = CameraPrefs {
+            smart_pointer: Some(serde_json::json!({"enabled": true})),
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            smart_pointer: None,
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false, true);
+        assert!(merged.smart_pointer.is_none());
+    }
+
+    #[test]
+    fn merge_camera_prefs_quiet_applies_smart_pointer_object() {
+        let existing = CameraPrefs {
+            smart_pointer: Some(serde_json::json!({"enabled": true, "mode": "auto"})),
+            ..Default::default()
+        };
+        let incoming = CameraPrefs {
+            smart_pointer: Some(serde_json::json!({
+                "enabled": false,
+                "mode": "preview",
+                "assessment": { "status": "not_run", "quality": null }
+            })),
+            ..Default::default()
+        };
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false, false);
+        assert_eq!(
+            merged.smart_pointer.as_ref().and_then(|v| v.get("enabled")),
+            Some(&serde_json::json!(false))
+        );
+        assert_eq!(
+            merged.smart_pointer.as_ref().and_then(|v| v.get("mode")),
+            Some(&serde_json::json!("preview"))
+        );
     }
 
     #[test]
@@ -5091,7 +5168,7 @@ mod tests {
             selected_device_id: "cam-2".into(),
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, false, false);
         assert!(merged.video_enhancement.enabled);
         assert_eq!(merged.video_enhancement.preset, "clear");
         assert_eq!(merged.video_enhancement.beauty, 40);
@@ -5112,7 +5189,7 @@ mod tests {
             video_enhancement: VideoEnhancementPrefs::default(),
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, false, true, true);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, true, true, false);
         assert!(!merged.video_enhancement.enabled);
         assert_eq!(merged.video_enhancement.preset, "natural");
     }
@@ -5127,7 +5204,7 @@ mod tests {
             selected_frame_rate: 0,
             ..Default::default()
         };
-        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, true);
+        let merged = merge_camera_prefs_quiet(&existing, incoming, false, false, true, false);
         assert_eq!(merged.selected_frame_rate, 0);
     }
 

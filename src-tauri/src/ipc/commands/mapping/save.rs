@@ -128,6 +128,10 @@ pub fn cmd_save_camera_prefs(
         .get("clearGazeCalibration")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let clear_smart_pointer = value
+        .get("clearSmartPointer")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let has_video_enhancement = value.get("videoEnhancement").is_some();
     let has_selected_frame_rate = value.get("selectedFrameRate").is_some();
     let incoming: CameraPrefs = serde_json::from_value(value).map_err(|e| {
@@ -142,6 +146,7 @@ pub fn cmd_save_camera_prefs(
             clear_gaze,
             has_video_enhancement,
             has_selected_frame_rate,
+            clear_smart_pointer,
         );
         crate::config::save_config(&cfg);
     }

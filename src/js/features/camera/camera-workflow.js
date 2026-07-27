@@ -779,7 +779,7 @@
 
   function activateProSubtab(name){
     name=String(name||'beauty');
-    if(['beauty','privacy','wellness','gesture'].indexOf(name)<0) name='beauty';
+    if(['beauty','privacy','wellness','gesture','track'].indexOf(name)<0) name='beauty';
     currentProSubtab=name;
     var tabs=document.querySelectorAll('#cameraProSubtabs [data-pro-subtab]');
     for(var i=0;i<tabs.length;i++){
@@ -804,6 +804,18 @@
       }catch(_){}
     }
     if(name==='beauty') syncProEnhUi();
+    if(name==='track'){
+      try{
+        var sp=global.OneToneCameraSmartPointer;
+        if(sp){
+          if(sp.onPanelVisible) sp.onPanelVisible();
+          else if(sp.init) sp.init();
+        }
+        if(global.OneToneCameraPreview&&global.OneToneCameraPreview.syncLiveLandmarker){
+          global.OneToneCameraPreview.syncLiveLandmarker();
+        }
+      }catch(_){}
+    }
   }
 
   function bindProSubtabs(){

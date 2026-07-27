@@ -487,6 +487,22 @@
     return global.OneToneCameraPresenceActions||null;
   }
 
+  function smartPointerApi(){
+    return global.OneToneCameraSmartPointer||null;
+  }
+
+  function smartPointerWanted(){
+    var sp=smartPointerApi();
+    if(!sp) return false;
+    try{
+      if(sp.isWanted) return !!sp.isWanted();
+      var s=sp.getSettings?sp.getSettings():null;
+      return !!(s&&s.enabled);
+    }catch(_){
+      return false;
+    }
+  }
+
   function presenceEnabled(){
     var api=presenceApi();
     return !!(api&&api.isEnabled&&api.isEnabled());
@@ -496,12 +512,13 @@
     var api=presenceApi();
     if(api&&api.syncDetectInterval){
       try{ api.syncDetectInterval(); }catch(_){}
-      return;
+      // Still apply Smart Pointer interval preference when presence helper ran.
     }
     var lm=landmarkerApi();
     if(!lm||!lm.setDetectIntervalMs) return;
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
+    var spWanted=smartPointerWanted();
     var gazeMs=33;
     if(api&&api.preferredDetectIntervalMs){
       try{ gazeMs=api.preferredDetectIntervalMs(getCaptureFpsHint())||33; }catch(_){ gazeMs=33; }
@@ -510,7 +527,17 @@
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
+    // Smart Pointer alone: 66–100ms is enough for coarse monitor classify.
+    if(spWanted&&!presenceEnabled()){
+      var spMs=(smartPointerApi()&&smartPointerApi().DETECT_INTERVAL_MS)||80;
+      lm.setDetectIntervalMs(Math.max(66,Math.min(100,spMs|0)));
+      return;
+    }
     if(!presenceEnabled()){
+      if(spWanted){
+        lm.setDetectIntervalMs(80);
+        return;
+      }
       lm.setDetectIntervalMs(gazeMs);
       return;
     }
@@ -522,6 +549,10 @@
     ));
     if(gestureOn){
       lm.setDetectIntervalMs(gazeMs);
+      return;
+    }
+    if(spWanted){
+      lm.setDetectIntervalMs(80);
       return;
     }
     var st=api&&api.getState?api.getState():null;
@@ -565,7 +596,12 @@
 
   function onLandmarkerPoint(point){
     if(!previewLive) return;
-    // Feed presence first — even when gaze overlay is off (decoupling).
+    // Smart Pointer first — must not be gated by gaze.mode / overlay.
+    try{
+      var sp=smartPointerApi();
+      if(sp&&sp.onGazeFrame) sp.onGazeFrame(point);
+    }catch(_){}
+    // Feed presence — even when gaze overlay is off (decoupling).
     if(presenceEnabled()){
       var pa=presenceApi();
       if(pa&&pa.onFrame){
@@ -582,7 +618,7 @@
   function syncLiveLandmarker(){
     var cal=calibrationApi();
     var calRunning=!!(cal&&cal.getState&&cal.getState().running);
-    var want=(!!gaze.enabled||calRunning||presenceEnabled())&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
+    var want=(!!gaze.enabled||calRunning||presenceEnabled()||smartPointerWanted())&&!!previewLive&&gaze.mode==='live'&&!gaze.modelFailed;
     var api=landmarkerApi();
     if(!want){
       stopLandmarker();
@@ -631,7 +667,7 @@
   }
 
   function ephemeralCameraPrefs(){
-    return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
+    return {enabled:false,selectedDeviceId:'',previewEnabled:false,selectedWidth:0,selectedHeight:0,selectedFrameRate:0,gazeCalibration:null,blinkBaseline:null,smartPointer:null,presenceActions:{enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'},videoEnhancement:defaultVideoEnhancement()};
   }
 
   function configPersistLoaded(){
@@ -655,6 +691,7 @@
     }
     if(cfg.cameraPrefs.gazeCalibration===undefined) cfg.cameraPrefs.gazeCalibration=null;
     if(cfg.cameraPrefs.blinkBaseline===undefined) cfg.cameraPrefs.blinkBaseline=null;
+    if(cfg.cameraPrefs.smartPointer===undefined) cfg.cameraPrefs.smartPointer=null;
     if(!cfg.cameraPrefs.presenceActions||typeof cfg.cameraPrefs.presenceActions!=='object'){
       cfg.cameraPrefs.presenceActions={enabled:false,triggers:{away:false,shake:false,blink:false},onAway:'none',onReturn:'none',shakeHead:'none',deliberateBlink:'none'};
     }
@@ -674,6 +711,7 @@
       if(partial.selectedHeight!=null) prefs.selectedHeight=Math.max(0,Number(partial.selectedHeight)||0)|0;
       if(partial.selectedFrameRate!=null) prefs.selectedFrameRate=Math.max(0,Number(partial.selectedFrameRate)||0)|0;
       if(partial.gazeCalibration!==undefined) prefs.gazeCalibration=partial.gazeCalibration;
+      if(partial.smartPointer!==undefined) prefs.smartPointer=partial.smartPointer;
       if(partial.presenceActions!==undefined) prefs.presenceActions=partial.presenceActions;
       if(partial.proFeatures!==undefined){
         var pg=global.OneToneCameraProGlance;
@@ -1539,8 +1577,8 @@
       gaze.modelFailed=false;
       gaze.modelLoading=false;
       cancelCalibration();
-      // Do not stop landmarker if presence sensor still needs it.
-      if(!presenceEnabled()) stopLandmarker();
+      // Do not stop landmarker if presence / Smart Pointer still needs it.
+      if(!presenceEnabled()&&!smartPointerWanted()) stopLandmarker();
     }
     syncPresenceDetectInterval();
     refreshGazeUi();

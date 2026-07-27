@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-gaze-get-cursor-position"
+description = "Enables the cmd_gaze_get_cursor_position command without any pre-configured scope."
+commands.allow = ["cmd_gaze_get_cursor_position"]
+
+[[permission]]
+identifier = "deny-cmd-gaze-get-cursor-position"
+description = "Denies the cmd_gaze_get_cursor_position command without any pre-configured scope."
+commands.deny = ["cmd_gaze_get_cursor_position"]
