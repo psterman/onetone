@@ -628,3 +628,9 @@
 {"ts":1785202354896,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
 {"ts":1785202672926}
 {"ts":1785202752042,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785202792998,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785203003041,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785203713743,"hook_event_name":"beforeSubmitPrompt","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785203844073,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}
+{"ts":1785203978831}
+{"ts":1785204171295,"hook_event_name":"stop","session_id":"02e03765-10cb-4c2b-8b6f-36814d5203f6","model":"default"}

@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>快速入门 · 定稿蓝图预览</title>
+  <style>
+    :root{
+      --vp-blue:#00A3FF;--vp-blue-2:#0085DB;--vp-blue-soft:rgba(0,163,255,.10);
+      --vp-success:#34D399;--vp-success-soft:rgba(52,211,153,.14);
+      --vp-warn:#FBBF24;--vp-warn-soft:rgba(251,191,36,.14);
+      --vp-bg:#F2F2F7;--vp-surface:#FFFFFF;--vp-surface-2:#FAFAFC;
+      --vp-text:rgba(0,0,0,.88);--vp-text-2:rgba(60,60,67,.60);--vp-text-3:rgba(60,60,67,.30);
+      --vp-border:rgba(60,60,67,.10);--vp-border-2:rgba(60,60,67,.18);
+      --vp-radius:10px;--vp-radius-lg:14px;
+      --vp-shadow:0 12px 32px -12px rgba(0,0,0,.32),0 2px 6px rgba(0,0,0,.16);
+    }
+    html[data-theme="dark"]{
+      --vp-bg:#0F1419;--vp-surface:#1A2436;--vp-surface-2:#243042;
+      --vp-text:#E6EDF3;--vp-text-2:#9CA9BC;--vp-text-3:#6B7A91;
+      --vp-border:rgba(255,255,255,.06);--vp-border-2:rgba(255,255,255,.10);
+      --vp-blue-soft:rgba(0,163,255,.14);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--vp-text);
+      font-family:"Segoe UI Variable","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+      background:
+        radial-gradient(900px 420px at 12% -10%,rgba(0,163,255,.14),transparent 60%),
+        radial-gradient(700px 380px at 100% 0%,rgba(52,211,153,.08),transparent 55%),
+        var(--vp-bg);
+    }
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    @media(max-width:960px){.app{grid-template-columns:1fr}}
+    .rail{padding:18px 14px;border-right:1px solid var(--vp-border);background:color-mix(in srgb,var(--vp-surface) 92%,transparent)}
+    .rail h1{margin:0 0 4px;font-size:15px;font-weight:750}
+    .rail .lead{margin:0 0 12px;font-size:12px;line-height:1.55;color:var(--vp-text-2)}
+    .note{font-size:11px;line-height:1.5;padding:10px;border-radius:var(--vp-radius);background:var(--vp-blue-soft);border:1px solid rgba(0,163,255,.22);margin-bottom:12px;color:var(--vp-text-2)}
+    .note b{display:block;margin-bottom:4px;color:var(--vp-text)}
+    .map h2{margin:0 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--vp-text-3)}
+    .map-list{display:grid;gap:5px;margin-bottom:14px}
+    .mi{display:flex;gap:8px;padding:7px 9px;border-radius:9px;background:var(--vp-surface);border:1px solid transparent;font-size:11px;line-height:1.35;color:var(--vp-text-2)}
+    .mi.is-on{border-color:rgba(0,163,255,.4);background:var(--vp-blue-soft);color:var(--vp-text)}
+    .mi.is-done{opacity:.85}
+    .mi .d{width:7px;height:7px;border-radius:50%;margin-top:4px;background:var(--vp-text-3);flex:0 0 auto}
+    .mi.is-on .d{background:var(--vp-blue)}
+    .mi.is-done .d{background:var(--vp-success)}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .chip{border:1px solid var(--vp-border);background:var(--vp-surface);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:650;color:var(--vp-text-2);cursor:pointer}
+    .chip.is-on{background:var(--vp-blue-soft);border-color:rgba(0,163,255,.4);color:var(--vp-blue-2)}
+    .stage{padding:20px;display:grid;gap:12px;align-content:start}
+    .phone{
+      position:relative;width:min(920px,100%);margin:0 auto;min-height:640px;
+      border-radius:18px;overflow:hidden;border:1px solid var(--vp-border);
+      background:var(--vp-bg);box-shadow:var(--vp-shadow);
+    }
+    .home{display:grid;grid-template-columns:64px 1fr;min-height:640px}
+    .nav{background:#0b1522;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:10px}
+    .brand{
+      width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:11px;
+      background:linear-gradient(135deg,var(--vp-blue),var(--vp-blue-2));
+      box-shadow:0 0 12px rgba(0,163,255,.45);
+    }
+    .nd{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.08)}
+    .main{padding:16px 18px}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .top h3{margin:0;font-size:14px}
+    .qs{
+      border:0;border-radius:var(--vp-radius);padding:8px 13px;font:inherit;font-size:12px;font-weight:700;color:#fff;cursor:pointer;
+      background:linear-gradient(180deg,var(--vp-blue),var(--vp-blue-2));
+    }
+    .hero{
+      display:grid;place-items:center;gap:8px;padding:48px 12px;border:1px solid var(--vp-border);
+      border-radius:var(--vp-radius-lg);background:var(--vp-surface);
+    }
+    .orb{
+      width:76px;height:76px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%,#9fd9ff,var(--vp-blue) 55%,var(--vp-blue-2));
+      box-shadow:0 0 28px rgba(0,163,255,.45);
+    }
+    .scrim{position:absolute;inset:0;background:rgba(12,18,28,.52);display:none;align-items:center;justify-content:center;padding:14px;z-index:5}
+    .scrim.is-on{display:flex}
+    .hs{
+      width:min(600px,100%);max-height:min(94vh,720px);background:var(--vp-surface);
+      border-radius:16px;border:1px solid var(--vp-border);box-shadow:var(--vp-shadow);
+      display:flex;flex-direction:column;overflow:hidden;
+    }
+    .hs-head{padding:10px 12px;border-bottom:1px solid var(--vp-border);display:flex;align-items:center;gap:8px}
+    .hs-nav{display:flex;flex:1;gap:4px;flex-wrap:wrap}
+    .hs-tab{border:0;background:var(--vp-surface-2);color:var(--vp-text-3);border-radius:8px;padding:5px 7px;font:inherit;font-size:10px;font-weight:700}
+    .hs-tab.on{background:var(--vp-blue-soft);color:var(--vp-blue-2)}
+    .hs-tab.done{background:var(--vp-success-soft);color:#059669}
+    .hs-x{border:0;background:transparent;font-size:18px;color:var(--vp-text-3);cursor:pointer}
+    .hs-body{padding:14px 16px 10px;overflow:auto;flex:1}
+    .hs-foot{padding:10px 14px;border-top:1px solid var(--vp-border);display:flex;gap:8px;justify-content:flex-end;background:var(--vp-surface-2)}
+    .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--vp-blue-2);background:var(--vp-blue-soft);border-radius:999px;padding:3px 9px;margin-bottom:8px}
+    .hs-title{margin:0 0 4px;font-size:17px;font-weight:750}
+    .hs-desc{margin:0 0 12px;font-size:12px;color:var(--vp-text-2);line-height:1.55}
+    .btn{border:1px solid var(--vp-border-2);background:var(--vp-surface);border-radius:var(--vp-radius);padding:8px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--vp-text)}
+    .btn.primary{border:0;background:linear-gradient(180deg,var(--vp-blue),var(--vp-blue-2));color:#fff}
+    .btn.ghost{background:transparent}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .meta-bar{margin-top:10px;font-size:11px;color:var(--vp-text-3)}
+
+    /* intent — workbench selector */
+    .habit-setup-intent-ask{margin:0 0 12px;font-size:15px;font-weight:750}
+    .habit-setup-intent-list{display:grid;gap:10px}
+    .habit-setup-intent-card{
+      display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;
+      width:100%;text-align:left;border:1px solid var(--vp-border);border-radius:var(--vp-radius-lg);
+      padding:12px 14px;background:var(--vp-surface-2);cursor:pointer;color:inherit;
+    }
+    .habit-setup-intent-card:hover{border-color:rgba(0,163,255,.35)}
+    .habit-setup-intent-card.is-bright{
+      background:linear-gradient(180deg,rgba(0,163,255,.12),var(--vp-surface));
+      border-color:rgba(0,163,255,.4);box-shadow:0 0 0 1px rgba(0,163,255,.08);
+    }
+    .habit-setup-intent-card.is-mid{background:var(--vp-surface)}
+    .habit-setup-intent-card.is-quiet{opacity:.96;background:transparent}
+    .habit-setup-intent-ico{
+      width:40px;height:40px;border-radius:11px;display:grid;place-items:center;
+      background:var(--vp-blue-soft);color:var(--vp-blue-2);font-size:16px;font-weight:800;
+    }
+    .habit-setup-intent-card.is-quiet .habit-setup-intent-ico{background:var(--vp-surface-2);color:var(--vp-text-2)}
+    .habit-setup-intent-copy strong{display:block;font-size:13px;margin-bottom:3px}
+    .habit-setup-intent-copy span{display:block;font-size:11px;line-height:1.5;color:var(--vp-text-2)}
+    .habit-setup-intent-cta{
+      border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:11px;font-weight:750;
+      background:linear-gradient(180deg,var(--vp-blue),var(--vp-blue-2));color:#fff;white-space:nowrap;cursor:pointer;
+    }
+    .habit-setup-intent-card.is-mid .habit-setup-intent-cta{background:var(--vp-surface-2);color:var(--vp-blue-2);border:1px solid rgba(0,163,255,.35)}
+    .tool-badges{display:flex;gap:4px;margin-top:6px}
+    .tool-badges em{font-style:normal;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--vp-surface);border:1px solid var(--vp-border);color:var(--vp-text-2)}
+
+    .habit-setup-pick-list{display:grid;gap:6px;margin-top:4px}
+    .habit-setup-pick-row{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius);padding:10px 12px;
+      background:var(--vp-surface);cursor:pointer;font:inherit;color:inherit;text-align:left;
+    }
+    .habit-setup-pick-row:hover{border-color:rgba(0,163,255,.4);background:var(--vp-blue-soft)}
+    .habit-setup-pick-row strong{display:block;font-size:12px}
+    .habit-setup-pick-row span{font-size:11px;color:var(--vp-text-2)}
+    .habit-setup-pick-row .go{font-size:11px;font-weight:700;color:var(--vp-blue-2)}
+
+    .toast{
+      position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+      background:#0b1522;color:#fff;font-size:12px;padding:8px 12px;border-radius:999px;
+      opacity:0;pointer-events:none;transition:opacity .2s;z-index:8;white-space:nowrap;
+    }
+    .toast.show{opacity:1}
+
+    /* tool */
+    .habit-setup-tool-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .habit-setup-tool{
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius);padding:12px 10px;
+      background:var(--vp-surface-2);cursor:pointer;text-align:center;font:inherit;color:inherit;
+    }
+    .habit-setup-tool.on{border-color:rgba(0,163,255,.5);background:var(--vp-blue-soft)}
+    .habit-setup-tool strong{display:block;font-size:12px;margin-bottom:4px}
+    .habit-setup-tool span{font-size:10px;color:var(--vp-text-2);line-height:1.4}
+    .habit-setup-tool-more{margin-top:8px;font-size:11px;color:var(--vp-text-3)}
+    .bound{margin:10px 0 0;padding:8px 10px;border-radius:9px;background:var(--vp-warn-soft);font-size:11px;line-height:1.45;color:#7a5a00}
+    html[data-theme="dark"] .bound{color:#fde68a}
+
+    /* core steps */
+    .stage-box{
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius-lg);padding:18px;
+      background:var(--vp-surface-2);text-align:center;margin-bottom:10px;
+    }
+    .stage-box .k{font-size:22px;font-weight:800;letter-spacing:.04em;margin:6px 0}
+    .ok-line{font-size:12px;color:#059669;font-weight:700;margin-top:8px}
+    .one-action{font-size:11px;color:var(--vp-text-3);margin:0 0 10px}
+
+    /* IME rich grid */
+    .habit-setup-ime-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .habit-setup-ime{
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius);padding:10px 12px;
+      background:var(--vp-surface);cursor:pointer;text-align:left;font:inherit;color:inherit;
+    }
+    .habit-setup-ime:hover{border-color:rgba(0,163,255,.35)}
+    .habit-setup-ime.on{border-color:rgba(0,163,255,.5);background:var(--vp-blue-soft)}
+    .habit-setup-ime strong{display:block;font-size:12px;margin-bottom:2px}
+    .habit-setup-ime .lab{font-size:10px;color:var(--vp-text-3)}
+    .habit-setup-ime .key{font-size:12px;font-weight:750;color:var(--vp-blue-2);margin-top:2px}
+    .habit-setup-ime .tag{
+      display:inline-block;margin-top:5px;font-size:10px;font-weight:650;padding:1px 6px;border-radius:999px;
+      background:var(--vp-surface-2);border:1px solid var(--vp-border);color:var(--vp-text-3);
+    }
+    .habit-setup-ime-hint{margin:8px 0 0;font-size:11px;color:#a16207;background:var(--vp-warn-soft);padding:8px 10px;border-radius:9px;line-height:1.45}
+
+    /* Soft Pad toggle demo */
+    .habit-setup-softpad-warn{
+      margin:0 0 10px;padding:10px;border-radius:var(--vp-radius);font-size:11px;line-height:1.5;
+      background:var(--vp-warn-soft);border:1px solid rgba(251,191,36,.35);color:#7a5a00;
+    }
+    html[data-theme="dark"] .habit-setup-softpad-warn{color:#fde68a}
+    .habit-setup-softpad-warn b{color:var(--vp-text)}
+    .habit-setup-toggle{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius-lg);background:var(--vp-surface);margin:0 0 10px;
+    }
+    .habit-setup-toggle span{font-size:12px;line-height:1.4}
+    .habit-setup-toggle .sub{display:block;font-size:11px;color:var(--vp-text-2);margin-top:2px}
+    .sw{width:42px;height:24px;border-radius:999px;background:#c5d0db;position:relative;flex:0 0 auto;cursor:pointer;border:0}
+    .sw.on{background:var(--vp-blue)}
+    .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+    .sw.on::after{left:21px}
+    .habit-setup-softpad-wrap{
+      display:grid;grid-template-columns:minmax(200px,240px) 1fr;gap:12px;align-items:start;margin-bottom:10px;
+    }
+    @media(max-width:520px){.habit-setup-softpad-wrap{grid-template-columns:1fr}}
+    .soft-face{
+      width:100%;aspect-ratio:1/1.05;padding:10px;border-radius:16px;
+      display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:5px;
+      transition:transform .18s ease,box-shadow .18s ease;
+    }
+    .soft-face.is-flip{animation:padFlip .35s ease}
+    @keyframes padFlip{
+      0%{transform:scale(.96);opacity:.7}
+      55%{transform:scale(1.02)}
+      100%{transform:scale(1);opacity:1}
+    }
+    .soft-face--shortcut{
+      background:linear-gradient(160deg,#eef2f6,#e4e9ef);border:1px solid rgba(15,23,42,.08);
+    }
+    .soft-face--numpad{background:#121a24;border:1px solid rgba(255,255,255,.1)}
+    .sk{
+      border:0;border-radius:10px;display:grid;place-items:center;font-size:11px;font-weight:800;
+      color:#334155;background:#f8fafc;box-shadow:0 1px 0 rgba(255,255,255,.9),0 3px 8px rgba(15,23,42,.08);
+      position:relative;
+    }
+    .soft-face--numpad .sk{color:#d7e6f3;background:rgba(255,255,255,.08);box-shadow:none;border-radius:8px}
+    .sk.glow-g{box-shadow:0 0 0 2px rgba(52,211,153,.35)}
+    .sk.glow-y{box-shadow:0 0 0 2px rgba(251,191,36,.35)}
+    .sk.glow-b{box-shadow:0 0 0 2px rgba(56,189,248,.4)}
+    .sk.glow-p{box-shadow:0 0 0 2px rgba(244,114,182,.35)}
+    .sk.power{color:#ea580c;cursor:pointer}
+    .sk.num-btn{cursor:pointer;outline:2px solid transparent}
+    .sk.num-btn.is-pulse{animation:numPulse .45s ease;outline-color:rgba(0,163,255,.7)}
+    @keyframes numPulse{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+    .sk.dim{opacity:.35}
+    .sk.mic{border-radius:12px}
+    .habit-setup-softpad-panel{
+      border:1px solid var(--vp-border);border-radius:var(--vp-radius);padding:10px;background:var(--vp-surface-2);margin-bottom:8px;
+    }
+    .habit-setup-softpad-panel h6{margin:0 0 4px;font-size:12px}
+    .habit-setup-softpad-panel p{margin:0 0 8px;font-size:11px;color:var(--vp-text-2);line-height:1.45}
+    .habit-setup-softpad-rules{margin:0 0 10px;padding:0;list-style:none;display:grid;gap:6px}
+    .habit-setup-softpad-rules li{font-size:12px;line-height:1.45;color:var(--vp-text-2)}
+    .habit-setup-softpad-rules b{color:var(--vp-text);display:inline-block;min-width:4.8em}
+    .feat-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+    .feat-list li{display:flex;gap:8px;font-size:11px;line-height:1.4;color:var(--vp-text-2)}
+    .feat-list b{color:var(--vp-text);min-width:64px;font-size:11px}
+
+    /* done */
+    .habit-setup-done-list{display:grid;gap:8px;margin:0 0 12px;padding:0;list-style:none}
+    .habit-setup-done-list li{
+      display:flex;gap:10px;align-items:flex-start;padding:10px 12px;
+      border-radius:var(--vp-radius);border:1px solid var(--vp-border);background:var(--vp-surface-2);
+      font-size:12px;line-height:1.45;
+    }
+    .habit-setup-done-list .tag{
+      flex:0 0 auto;font-size:10px;font-weight:750;padding:2px 7px;border-radius:999px;
+      background:var(--vp-success-soft);color:#059669;
+    }
+    .habit-setup-done-list .tag.learn{background:var(--vp-blue-soft);color:var(--vp-blue-2)}
+    .habit-setup-done-list .tag.next{background:var(--vp-warn-soft);color:#a16207}
+    .drawer-sim{
+      position:absolute;right:0;top:0;bottom:0;width:min(320px,86%);
+      background:var(--vp-surface);border-left:1px solid var(--vp-border);
+      box-shadow:var(--vp-shadow);transform:translateX(105%);transition:transform .22s;z-index:7;
+      padding:16px;display:flex;flex-direction:column;gap:8px;
+    }
+    .drawer-sim.open{transform:none}
+    .drawer-sim h4{margin:0;font-size:14px}
+    .drawer-sim p{margin:0;font-size:12px;color:var(--vp-text-2);line-height:1.5}
+    .drawer-sim .focus{
+      margin-top:8px;padding:10px;border-radius:9px;border:1px dashed rgba(0,163,255,.45);
+      background:var(--vp-blue-soft);font-size:11px;color:var(--vp-blue-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <h1>快速入门 · 定稿蓝图</h1>
+      <p class="lead">编排器只作交通灯。配置写现有模块。摄像头不进强制路径。</p>
+      <div class="note">
+        <b>预览说明</b>
+        视觉用 OneTone `--vp-*`，不是旧 mock 皮肤。单项深链会关掉向导并打开模拟 SettingsDrawer。
+      </div>
+      <div class="chips">
+        <button type="button" class="chip is-on" id="themeLight">浅色</button>
+        <button type="button" class="chip" id="themeDark">深色</button>
+        <button type="button" class="chip" id="hasMicChip">有麦</button>
+      </div>
+      <div class="map">
+        <h2>当前路径</h2>
+        <div class="map-list" id="mapList"></div>
+      </div>
+      <div class="note" style="background:var(--vp-warn-soft);border-color:rgba(251,191,36,.35)">
+        <b>Soft Pad</b>
+        总开关默认关。Number = 单击切换（非按住）。教学演示 ≠ 已配置。
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="phone" id="phone">
+        <div class="home">
+          <div class="nav"><div class="brand">一声</div><div class="nd"></div><div class="nd"></div><div class="nd"></div></div>
+          <div class="main">
+            <div class="top">
+              <h3>首页工作台</h3>
+              <button type="button" class="qs" id="btnQuickStart">快速入门</button>
+            </div>
+            <div class="hero">
+              <div class="orb" aria-hidden="true"></div>
+              <div style="font-size:13px;font-weight:700">按启动键开始说话</div>
+              <div style="font-size:12px;color:var(--vp-text-2)">点「快速入门」打开工作台选择器</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scrim" id="scrim" aria-hidden="true">
+          <div class="hs" role="dialog" aria-modal="true">
+            <header class="hs-head">
+              <nav class="hs-nav" id="hsNav"></nav>
+              <button type="button" class="hs-x" id="hsClose" aria-label="关闭">×</button>
+            </header>
+            <div class="hs-body" id="hsBody"></div>
+            <footer class="hs-foot" id="hsFoot"></footer>
+          </div>
+        </div>
+
+        <aside class="drawer-sim" id="drawer">
+          <h4 id="drawerTitle">设置</h4>
+          <p id="drawerDesc"></p>
+          <div class="focus" id="drawerFocus" hidden></div>
+          <button type="button" class="btn" id="drawerClose" style="margin-top:auto">关闭设置</button>
+        </aside>
+        <div class="toast" id="toast"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+(function(){
+  var IME_LIST=[
+    {id:'xunfei', name:'讯飞输入法', key:'F2', verified:true},
+    {id:'typeless', name:'Typeless', key:'RAlt', verified:true},
+    {id:'qianwen', name:'千问输入法', key:'RAlt', verified:true},
+    {id:'sogou', name:'搜狗输入法', key:'Ctrl+Shift+Z', verified:false},
+    {id:'baidu', name:'百度输入法', key:'Alt+`', verified:false},
+    {id:'custom', name:'自定义录制', key:'自己按一次', verified:true, custom:true},
+    {id:'wechat', name:'微信输入法', key:'Ctrl+Shift+Win', verified:true},
+    {id:'zhipu', name:'智谱输入法', key:'RAlt', verified:true},
+    {id:'shandianshuo', name:'闪电说', key:'RAlt', verified:true},
+    {id:'microsoft', name:'Windows 语音输入', key:'Win+H', verified:true},
+    {id:'shouxin', name:'手心输入法', key:'F11', verified:false}
+  ];
+  var PAD_CMDS={
+    codex:[
+      {k:'Num 1', t:'发送 / 确认'},{k:'Num 2', t:'换行'},{k:'Num 3', t:'打断生成'},
+      {k:'Num 4', t:'/compact'},{k:'Num 5', t:'/status'},{k:'Num Enter', t:'发送'},{k:'Num 7–9', t:'常用指令槽'}
+    ],
+    claude:[
+      {k:'Num 1', t:'发送 / 确认'},{k:'Num 2', t:'换行'},{k:'Num 3', t:'打断'},
+      {k:'Num 4', t:'/compact'},{k:'Num 5', t:'/clear'},{k:'Num Enter', t:'发送'},{k:'Num 7–9', t:'常用指令槽'}
+    ],
+    cursor:[
+      {k:'Num 1', t:'打开 Chat（Ctrl+L）'},{k:'Num 2', t:'Inline Edit（Ctrl+K）'},
+      {k:'Num 3', t:'Agent（Ctrl+I）'},{k:'Num 4', t:'Accept（Ctrl+Enter）'},
+      {k:'Num 5', t:'Reject（Ctrl+Backspace）'},{k:'Num 6', t:'Tab 接受补全'},
+      {k:'Num Enter', t:'强制发送 / 确认'}
+    ]
+  };
+
+  var S={
+    open:false, persona:null, stepId:'intent', tool:'codex',
+    hasMic:true, softPadOpenedSettings:false,
+    ime:false, trigger:false, keyOk:false, endOk:false,
+    padEnabled:false, softShortcut:false, padFlip:false
+  };
+
+  var BEG=['intent','activation','trigger','keyTest','voiceEnd','done'];
+  var VIBE=['intent','tool','activation','trigger','keyTest','voiceEnd','softPad','done'];
+  var LABELS={
+    intent:'选择', tool:'工具', activation:'输入法', trigger:'启动键',
+    keyTest:'验证', voiceEnd:'结束词', softPad:'Soft Pad', done:'完成'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function steps(){
+    if(S.persona==='beginner') return BEG.slice();
+    if(S.persona==='vibe') return VIBE.slice();
+    return ['intent'];
+  }
+  function idx(){ return steps().indexOf(S.stepId); }
+  function toolName(){
+    return S.tool==='cursor'?'Cursor':S.tool==='claude'?'Claude Code':'Codex';
+  }
+  function toast(msg){
+    var el=$('toast'); el.textContent=msg; el.classList.add('show');
+    clearTimeout(toast._t); toast._t=setTimeout(function(){ el.classList.remove('show'); },1800);
+  }
+  function closeDrawer(){ $('drawer').classList.remove('open'); }
+  function openDrawer(panel, opts){
+    opts=opts||{};
+    var map={
+      keys:{title:'按键设置', desc:'映射表与启动键编辑。'},
+      voiceWake:{title:'语音设置', desc:'唤醒词 / 结束词 / 识别资源。'},
+      softPad:{title:'虚拟键盘 Soft Pad', desc:'占用数字小键盘、布局与迷你横栏。'},
+      camera:{title:'摄像头', desc:'离席静音、手势、健康与隐私。'}
+    };
+    var m=map[panel]||{title:'设置',desc:panel};
+    $('drawerTitle').textContent=m.title;
+    $('drawerDesc').textContent=m.desc;
+    var focus=$('drawerFocus');
+    if(panel==='voiceWake'&&opts.voiceSubpage==='wake'){
+      focus.hidden=false;
+      focus.textContent='焦点已落到：唤醒 / 结束词区域（voiceSubpage: wake）';
+    } else {
+      focus.hidden=true; focus.textContent='';
+    }
+    $('drawer').classList.add('open');
+    toast('深链 → '+panel+(opts.voiceSubpage?' / '+opts.voiceSubpage:''));
+  }
+  function closeWizard(){
+    S.open=false; S.persona=null; S.stepId='intent';
+    $('scrim').classList.remove('is-on');
+    $('scrim').setAttribute('aria-hidden','true');
+    renderMap();
+  }
+  function openWizard(){
+    S.open=true; S.persona=null; S.stepId='intent';
+    S.ime=S.trigger=S.keyOk=S.endOk=false; S.softPadOpenedSettings=false;
+    S.padEnabled=false; S.softShortcut=false; S.padFlip=false;
+    $('scrim').classList.add('is-on');
+    $('scrim').setAttribute('aria-hidden','false');
+    closeDrawer();
+    render();
+  }
+  function goFeature(panel, opts){
+    closeWizard();
+    openDrawer(panel, opts);
+  }
+  function go(delta){
+    var list=steps(); var i=idx()+delta;
+    if(i<0){
+      if(S.stepId!=='intent'){ S.persona=null; S.stepId='intent'; render(); }
+      return;
+    }
+    if(i>=list.length) return;
+    S.stepId=list[i];
+    render();
+  }
+  function canNext(){
+    if(S.stepId==='activation') return S.ime;
+    if(S.stepId==='trigger') return S.trigger;
+    if(S.stepId==='keyTest') return S.keyOk;
+    if(S.stepId==='voiceEnd') return !S.hasMic || S.endOk;
+    if(S.stepId==='tool') return !!S.tool;
+    return true;
+  }
+  function renderMap(){
+    var list=steps();
+    $('mapList').innerHTML=list.map(function(id){
+      var on=S.open&&id===S.stepId;
+      var done=S.open&&idx()>list.indexOf(id);
+      return '<div class="mi'+(on?' is-on':'')+(done?' is-done':'')+'"><i class="d"></i><div><b>'+(LABELS[id]||id)+'</b><br><span>'+id+'</span></div></div>';
+    }).join('');
+  }
+  function foot(showBack, nextLabel, enabled, onNext){
+    var html='';
+    if(showBack) html+='<button type="button" class="btn ghost" id="btnBack">上一步</button>';
+    if(nextLabel) html+='<button type="button" class="btn primary" id="btnNext"'+(enabled?'':' disabled')+'>'+nextLabel+'</button>';
+    $('hsFoot').innerHTML=html;
+    var b=$('btnBack'); if(b) b.onclick=function(){ go(-1); };
+    var n=$('btnNext'); if(n) n.onclick=onNext||function(){ go(1); };
+  }
+  function renderNav(){
+    var list=steps().filter(function(id){ return id!=='intent'; });
+    if(S.stepId==='intent'||!S.persona){ $('hsNav').innerHTML=''; return; }
+    $('hsNav').innerHTML=list.map(function(id){
+      var on=id===S.stepId; var done=idx()>steps().indexOf(id);
+      return '<button type="button" class="hs-tab'+(on?' on':'')+(done?' done':'')+'">'+(LABELS[id]||id)+'</button>';
+    }).join('');
+  }
+
+  function render(){
+    renderMap(); renderNav();
+    var body=$('hsBody');
+    var id=S.stepId;
+
+    if(id==='intent'||!S.persona){
+      body.innerHTML=
+        '<p class="habit-setup-intent-ask">你想先让 OneTone 做什么？</p>'+
+        '<div class="habit-setup-intent-list">'+
+          '<div class="habit-setup-intent-card is-bright">'+
+            '<div class="habit-setup-intent-ico">①</div>'+
+            '<div class="habit-setup-intent-copy"><strong>刚到新手村</strong>'+
+              '<span>按一个键，OneTone 帮你打开语音输入；说「结束听写」只结束，不自动发送。</span></div>'+
+            '<button type="button" class="habit-setup-intent-cta" id="goBeg">开始 3 分钟配置</button>'+
+          '</div>'+
+          '<div class="habit-setup-intent-card is-mid">'+
+            '<div class="habit-setup-intent-ico">⌘</div>'+
+            '<div class="habit-setup-intent-copy"><strong>我是程序员</strong>'+
+              '<span>给 Cursor / Codex / Claude 配启动键、结束词和 Soft Pad 借用规则。</span>'+
+              '<div class="tool-badges"><em>Cursor</em><em>Codex</em><em>Claude</em></div></div>'+
+            '<button type="button" class="habit-setup-intent-cta" id="goVibe">配置 AI 编程</button>'+
+          '</div>'+
+          '<div class="habit-setup-intent-card is-quiet">'+
+            '<div class="habit-setup-intent-ico">⋯</div>'+
+            '<div class="habit-setup-intent-copy" style="grid-column:span 1"><strong>我只想配某一项</strong>'+
+              '<span>只改按键、语音、虚拟键盘或摄像头。点下去即关向导并打开设置。</span>'+
+              '<div class="habit-setup-pick-list" style="margin-top:8px">'+
+                '<button type="button" class="habit-setup-pick-row" data-panel="keys"><div><strong>按键</strong><span>启动键与映射</span></div><span class="go">打开</span></button>'+
+                '<button type="button" class="habit-setup-pick-row" data-panel="voiceWake"><div><strong>语音</strong><span>唤醒 / 结束词</span></div><span class="go">打开</span></button>'+
+                '<button type="button" class="habit-setup-pick-row" data-panel="softPad"><div><strong>虚拟键盘</strong><span>Soft Pad 设置</span></div><span class="go">打开</span></button>'+
+                '<button type="button" class="habit-setup-pick-row" data-panel="camera"><div><strong>摄像头</strong><span>静音 · 手势 · 隐私</span></div><span class="go">打开</span></button>'+
+              '</div></div>'+
+          '</div>'+
+        '</div>'+
+        '<p class="meta-bar">预计 3 分钟 · 本机保存 · 可随时跳过</p>';
+      $('goBeg').onclick=function(){ S.persona='beginner'; S.stepId='activation'; S.ime=S.trigger=S.keyOk=S.endOk=false; render(); };
+      $('goVibe').onclick=function(){
+        S.persona='vibe'; S.stepId='tool';
+        S.ime=S.trigger=S.keyOk=S.endOk=false; S.softPadOpenedSettings=false;
+        S.padEnabled=false; S.softShortcut=false; S.padFlip=false; render();
+      };
+      body.querySelectorAll('[data-panel]').forEach(function(el){
+        el.onclick=function(){
+          var p=el.getAttribute('data-panel');
+          if(p==='voiceWake') goFeature('voiceWake',{voiceSubpage:'wake'});
+          else goFeature(p);
+        };
+      });
+      foot(false,'',true); return;
+    }
+
+    if(id==='tool'){
+      body.innerHTML=
+        '<div class="badge">程序员</div>'+
+        '<h3 class="hs-title">你主要用哪个？</h3>'+
+        '<p class="hs-desc">Codex 可准备 scenario 与入门 Soft Pad layout。Cursor / Claude 只记目标应用与推荐热键，不假装已配完第三方内部设置。</p>'+
+        '<div class="habit-setup-tool-grid">'+
+          '<button type="button" class="habit-setup-tool'+(S.tool==='cursor'?' on':'')+'" data-tool="cursor"><strong>Cursor</strong><span>目标应用 + 热键建议</span></button>'+
+          '<button type="button" class="habit-setup-tool'+(S.tool==='codex'?' on':'')+'" data-tool="codex"><strong>Codex</strong><span>scenario + Soft Pad layout</span></button>'+
+          '<button type="button" class="habit-setup-tool'+(S.tool==='claude'?' on':'')+'" data-tool="claude"><strong>Claude</strong><span>目标应用 + 热键建议</span></button>'+
+        '</div>'+
+        '<p class="habit-setup-tool-more">更多 · MiniMax（不进默认主路径）</p>'+
+        (S.tool==='codex'
+          ? '<div class="bound">将调用现有 hub：准备 Codex app scenario + 入门 Soft Pad layout（预览示意，不缓存配置副本）。</div>'
+          : '<div class="bound">仅推荐映射提示。OneTone <b>不会</b>声称已完成 '+toolName()+' 内部配置。</div>');
+      body.querySelectorAll('[data-tool]').forEach(function(el){
+        el.onclick=function(){ S.tool=el.getAttribute('data-tool'); render(); };
+      });
+      foot(true,'下一步',!!S.tool); return;
+    }
+
+    if(id==='activation'){
+      var sel=null;
+      for(var i=0;i<IME_LIST.length;i++){ if(IME_LIST[i].id===S.ime){ sel=IME_LIST[i]; break; } }
+      body.innerHTML=
+        '<div class="badge">输入法</div>'+
+        '<h3 class="hs-title">你平时用哪个语音输入法？</h3>'+
+        '<p class="one-action">本步唯一成功动作：点选一个。键位待核的可稍后自录。</p>'+
+        '<div class="habit-setup-ime-grid">'+
+          IME_LIST.map(function(p){
+            return '<button type="button" class="habit-setup-ime'+(S.ime===p.id?' on':'')+'" data-ime="'+p.id+'">'+
+              '<strong>'+p.name+'</strong>'+
+              '<div class="lab">'+(p.custom?'':'语音快捷键')+'</div>'+
+              '<div class="key">'+p.key+'</div>'+
+              (p.verified?'':('<span class="tag">键位待核</span>'))+
+            '</button>';
+          }).join('')+
+        '</div>'+
+        (sel&&!sel.verified
+          ? '<p class="habit-setup-ime-hint">该输入法默认键因版本而异，下一步后可在设置里「自定义录制」核对。</p>'
+          : '');
+      body.querySelectorAll('[data-ime]').forEach(function(el){
+        el.onclick=function(){ S.ime=el.getAttribute('data-ime'); render(); };
+      });
+      foot(true,'下一步',!!S.ime); return;
+    }
+
+    if(id==='trigger'){
+      body.innerHTML=
+        '<div class="badge">启动键</div>'+
+        '<h3 class="hs-title">录一个最顺手的启动键</h3>'+
+        '<p class="one-action">本步唯一成功动作：录到一个键。默认点按开始 / 再按结束（无模式问卷）</p>'+
+        '<div class="stage-box">'+
+          '<div style="font-size:12px;color:var(--vp-text-2)">'+(S.trigger?'已录到':'等待按键…')+'</div>'+
+          '<div class="k">'+(S.trigger||'—')+'</div>'+
+          '<button type="button" class="btn primary" id="simKey">'+(S.trigger?'换一个键':'模拟按下 T')+'</button>'+
+        '</div>';
+      $('simKey').onclick=function(){ S.trigger='T'; render(); };
+      foot(true,'下一步',!!S.trigger); return;
+    }
+
+    if(id==='keyTest'){
+      body.innerHTML=
+        '<div class="badge">验证</div>'+
+        '<h3 class="hs-title">按一次启动键，看 OneTone 能否代按</h3>'+
+        '<p class="one-action">本步唯一成功动作：验证成功</p>'+
+        '<div class="stage-box">'+
+          '<div style="font-size:12px;color:var(--vp-text-2)">请按你的启动键 · '+ (S.trigger||'T') +'</div>'+
+          (S.keyOk?'<div class="ok-line">绑定成功：已触发输入法语音快捷键</div>':'')+
+          '<button type="button" class="btn primary" id="simTest" style="margin-top:12px">'+(S.keyOk?'再测一次':'模拟验证成功')+'</button>'+
+        '</div>';
+      $('simTest').onclick=function(){ S.keyOk=true; render(); };
+      foot(true,'下一步',S.keyOk); return;
+    }
+
+    if(id==='voiceEnd'){
+      body.innerHTML=
+        '<div class="badge">结束词</div>'+
+        '<h3 class="hs-title">说「结束输入」，只结束听写</h3>'+
+        '<p class="hs-desc">不自动发送。取消词不在快速入门，去语音设置高级项。</p>'+
+        '<p class="one-action">本步唯一成功动作：识别结束词（无麦可跳过）</p>'+
+        (S.hasMic
+          ? '<div class="stage-box"><div style="font-size:13px;font-weight:700">请说：结束输入</div>'+
+            (S.endOk?'<div class="ok-line">已结束听写（发送请自行操作）</div>':'')+
+            '<button type="button" class="btn primary" id="simEnd" style="margin-top:12px">'+(S.endOk?'再测一次':'模拟识别成功')+'</button></div>'
+          : '<div class="stage-box"><div style="font-size:12px;color:var(--vp-text-2)">未检测到麦克风，可跳过</div></div>');
+      var se=$('simEnd'); if(se) se.onclick=function(){ S.endOk=true; render(); };
+      foot(true, S.hasMic?'下一步':'跳过，继续', S.hasMic?S.endOk:true); return;
+    }
+
+    if(id==='softPad'){
+      var cmds=PAD_CMDS[S.tool]||PAD_CMDS.codex;
+      var face=S.softShortcut?'shortcut':'numpad';
+      var masterOn=!!S.padEnabled;
+      body.innerHTML=
+        '<div class="badge">Soft Pad · 规则卡</div>'+
+        '<h3 class="hs-title">为什么数字小键盘会变快捷键？</h3>'+
+        '<p class="hs-desc">虚拟键盘借用数字小键盘同一键位。总开关默认关闭，避免数字键突然变成快捷键。</p>'+
+        '<div class="habit-setup-toggle">'+
+          '<span><b>启用 Soft Pad（数字键占用）</b><span class="sub">默认关闭。打开后，单击 Number 才在快捷 / 数字间切换。</span></span>'+
+          '<button type="button" class="sw'+(masterOn?' on':'')+'" id="swPad" aria-pressed="'+(masterOn?'true':'false')+'"></button>'+
+        '</div>'+
+        '<div class="habit-setup-softpad-warn">'+
+          (masterOn
+            ? '<b>总开关已开</b> 实体数字小键盘可被 Soft Pad 占用。下面演示：单击 Number 切换状态（不是按住）。'
+            : '<b>总开关关闭</b> 实体数字键只输入数字。下面仍可演示切换动画，便于理解能力；打开总开关后实体键才会占用。')+
+        '</div>'+
+        '<div class="habit-setup-softpad-wrap">'+
+          softPadFaceHtml(face, S.padFlip)+
+          '<div>'+
+            '<div class="habit-setup-softpad-panel">'+
+              '<h6>当前演示 · '+(S.softShortcut?'快捷 Soft Pad':'日常数字键盘')+'</h6>'+
+              '<p>'+(S.softShortcut
+                ? '屏上键位对应 Soft Pad 能力（与实体小键盘位置一一对应）。'
+                : '数字面：7/8/9… 为日常数字输入。')+'</p>'+
+              '<button type="button" class="btn primary" id="btnNumToggle" style="width:100%">'+
+                (S.softShortcut?'模拟单击 Number · 还原数字键盘':'模拟单击 Number · 切换到快捷 Soft Pad')+
+              '</button>'+
+            '</div>'+
+            '<ul class="habit-setup-softpad-rules">'+
+              '<li><b>Number</b>单击切换快捷 / 数字（开关按钮，非按住）</li>'+
+              '<li><b>NumLock</b>切换数字输入 / 快捷输入</li>'+
+              '<li><b>⏻</b>关闭 Soft Pad 或还原数字输入</li>'+
+            '</ul>'+
+            '<h6 style="margin:0 0 6px;font-size:12px">'+toolName()+' 常用能力（快捷面可用）</h6>'+
+            '<ul class="feat-list">'+cmds.map(function(c){ return '<li><b>'+c.k+'</b>'+c.t+'</li>'; }).join('')+'</ul>'+
+          '</div>'+
+        '</div>'+
+        '<p class="hs-desc" style="margin:0">目标工具：'+toolName()+
+          '。教学演示 ≠「已配置完成」'+(masterOn?' · 你已主动打开总开关（预览态）':'')+'。</p>';
+      function flipNum(){
+        S.softShortcut=!S.softShortcut;
+        S.padFlip=true;
+        render();
+        setTimeout(function(){ S.padFlip=false; }, 400);
+      }
+      $('swPad').onclick=function(){ S.padEnabled=!S.padEnabled; render(); };
+      $('btnNumToggle').onclick=flipNum;
+      body.querySelectorAll('[data-face-toggle]').forEach(function(el){ el.onclick=flipNum; });
+      foot(true,'我明白了，继续',true,function(){ go(1); });
+      $('hsFoot').insertAdjacentHTML('afterbegin',
+        '<button type="button" class="btn ghost" id="btnSoftSettings">打开 Soft Pad 设置</button>');
+      $('btnSoftSettings').onclick=function(){
+        S.softPadOpenedSettings=true;
+        openDrawer('softPad');
+      };
+      return;
+    }
+
+    if(id==='done'){
+      var vibe=S.persona==='vibe';
+      var softLine=null;
+      if(vibe){
+        if(S.padEnabled){
+          softLine={tag:'已启用', cls:'', text:'Soft Pad 数字键占用已打开（预览）；布局可在设置继续调整'};
+        } else if(S.softPadOpenedSettings){
+          softLine={tag:'已配置', cls:'', text:'已打开 Soft Pad 设置调整（以设置页真实状态为准）'};
+        } else {
+          softLine={tag:'已了解', cls:'learn', text:'已了解 Soft Pad 借用规则 · 总开关仍为关闭 · 可在设置里继续调整'};
+        }
+      }
+      body.innerHTML=
+        '<div class="badge">完成</div>'+
+        '<h3 class="hs-title">'+(vibe?'可以开始用了':'通用习惯就绪')+'</h3>'+
+        '<p class="hs-desc">摘要区分「已配置 / 已了解 / 建议下一步」。编排器不缓存配置副本。</p>'+
+        '<ul class="habit-setup-done-list">'+
+          '<li><span class="tag">已配置</span><div>启动键：'+(S.trigger||'—')+'</div></li>'+
+          '<li><span class="tag">已配置</span><div>语音快捷键 / 结束词（结束听写，不自动发送）</div></li>'+
+          (vibe?'<li><span class="tag">目标</span><div>目标工具：'+toolName()+'（选择态，非第三方内部已配完）</div></li>':'')+
+          (softLine?'<li><span class="tag '+softLine.cls+'">'+softLine.tag+'</span><div>'+softLine.text+'</div></li>':'')+
+          (vibe?'<li><span class="tag next">建议下一步</span><div>摄像头：离席静音等能力，需要时再配</div></li>':'')+
+        '</ul>';
+      if(vibe){
+        $('hsFoot').innerHTML=
+          '<button type="button" class="btn ghost" id="btnBack">上一步</button>'+
+          '<button type="button" class="btn ghost" id="btnCam">继续配置摄像头</button>'+
+          '<button type="button" class="btn primary" id="btnHome">回到首页</button>';
+        $('btnBack').onclick=function(){ go(-1); };
+        $('btnCam').onclick=function(){ closeWizard(); openDrawer('camera'); };
+        $('btnHome').onclick=function(){ closeWizard(); };
+      } else {
+        foot(false,'回到首页',true,function(){ closeWizard(); });
+      }
+      return;
+    }
+  }
+
+  function softPadFaceHtml(face, flip){
+    var tip=face==='shortcut'?'单击 Number：还原数字':'单击 Number：切换到快捷 Soft Pad';
+    var cls='soft-face soft-face--'+face+(flip?' is-flip':'');
+    var numCls='sk num-btn'+(flip?' is-pulse':'');
+    if(face==='numpad'){
+      return '<div class="'+cls+'">'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk power" data-face-toggle title="⏻">⏻</div>'+
+        '<div class="sk">/</div><div class="sk">*</div><div class="sk">−</div>'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk">7</div><div class="sk">8</div><div class="sk">9</div>'+
+        '<div class="sk" style="grid-row:span 2">+</div>'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk">4</div><div class="sk">5</div><div class="sk">6</div>'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk">1</div><div class="sk">2</div><div class="sk">3</div>'+
+        '<div class="sk" style="grid-row:span 2">↵</div>'+
+        '<div class="sk dim"></div>'+
+        '<div class="sk" style="grid-column:span 2">0</div><div class="'+numCls+'" data-face-toggle title="'+tip+'">N</div>'+
+        '</div>';
+    }
+    return '<div class="'+cls+'">'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk power" data-face-toggle title="⏻">⏻</div>'+
+      '<div class="sk">⚡</div><div class="sk">☰</div><div class="sk">✕</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk glow-g">⌘</div><div class="sk glow-y">＋</div><div class="sk glow-b">⚡</div>'+
+      '<div class="sk" style="grid-row:span 2">＋</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk">⌕</div><div class="sk glow-p">↩</div><div class="sk glow-b">✕</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk">＋</div><div class="sk">↶</div><div class="sk">⌕</div>'+
+      '<div class="sk" style="grid-row:span 2">⇥</div>'+
+      '<div class="sk dim"></div>'+
+      '<div class="sk mic" style="grid-column:span 2">🎙</div><div class="'+numCls+'" data-face-toggle title="'+tip+'">N</div>'+
+      '</div>';
+  }
+
+  $('btnQuickStart').onclick=openWizard;
+  $('hsClose').onclick=closeWizard;
+  $('drawerClose').onclick=closeDrawer;
+  $('themeLight').onclick=function(){
+    document.documentElement.setAttribute('data-theme','light');
+    $('themeLight').classList.add('is-on'); $('themeDark').classList.remove('is-on');
+  };
+  $('themeDark').onclick=function(){
+    document.documentElement.setAttribute('data-theme','dark');
+    $('themeDark').classList.add('is-on'); $('themeLight').classList.remove('is-on');
+  };
+  $('hasMicChip').onclick=function(){
+    S.hasMic=!S.hasMic;
+    $('hasMicChip').classList.toggle('is-on', S.hasMic);
+    $('hasMicChip').textContent=S.hasMic?'有麦':'无麦';
+    if(S.open) render();
+  };
+  renderMap();
+})();
+  </script>
+</body>
+</html>
